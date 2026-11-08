@@ -395,6 +395,12 @@ Not built before milestone 4; when it is, the sim drive gains a power-board mode
 - Self-test only with VBUS below 3 V, at least 5 s after the last stop, pack at least 40 V; tell the operator to wait for VBUS below
   3 V before pressing reset.
 - Brake clamp caps: 30 W average over 60 s until the heat test, 3 kJ per burst. Brown-out budget per STATUS.md.
+- **Power-fail warning:** `PWR_FAIL_N` (J21 pin 8, active low, open drain, pulled up to the Pi's 3.3 V) goes low when the pack
+  falls under 31.4 V and re-arms at 34.4 V. Read it as an edge-triggered GPIO. On assert, run the one shutdown path in
+  [deploy.md](conventions/deploy.md): stop the motors, record the event, close the recording, sync, remount data read-only,
+  power off. There is no hold-up capacitance, so a sudden total loss (pulled plug, BMS trip) gives only about 70 µs: the
+  software low-pack rules above act first on a draining pack, and `PWR_FAIL_N` is the backstop. ext4 journaling covers the
+  rest. Prove the shutdown order on `vcan`.
 - The battery's VBUS window replaces the bench one through the skeleton's `power` block.
 
 ## Observability (tenet 8)
