@@ -12,6 +12,7 @@ to guess. The newtypes that enforce units in Rust are in [rust.md section 3](rus
 |---|---|---|
 | Angle, joint position | radians (rad) | `Radians` |
 | Angular velocity | rad/s | `RadPerSec` |
+| Angular acceleration | rad/s² | `RadPerSecSq` |
 | Torque | newton metres (N·m) | `NewtonMeters` |
 | Current | amperes (A) | `Amps` |
 | Voltage | volts (V) | `Volts` |
@@ -21,6 +22,7 @@ to guess. The newtypes that enforce units in Rust are in [rust.md section 3](rus
 | Time span | seconds as `Duration` in Rust; `_s` or `_ms` suffix in config | `std::time::Duration` |
 | Frequency | hertz (Hz) | plain `u32` with `_hz` name suffix |
 | Power, energy | watts (W), joules (J) | `Watts`, `Joules` |
+| Drive loop and filter gains | the drive's own, unstated by the manual | `Gain` (`robstride` only) |
 
 - **Degrees appear only on screen and in prose for people.** The UI may show degrees; it converts at the last moment and labels
   the unit. Config never takes degrees. **Why:** the elbow stop is 124°, which is 2.164 rad. One file in degrees and one in
