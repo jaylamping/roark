@@ -7,6 +7,8 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo nextest run --workspace --locked
 cargo test --workspace --doc --locked
+# The crate READMEs are the crate docs (rust.md section 11): a broken item link or bad markdown fails here.
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
 cargo deny check
 python3 scripts/check_rules.py
 python3 scripts/check_rules.py count
