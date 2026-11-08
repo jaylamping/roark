@@ -1,6 +1,8 @@
+<!-- Describe the change itself. Not who asked for it, not the chat or agent session it came from (conventions/git.md section 2). -->
+
 ## Why
 
-<!-- What problem this solves, and the PLAN item or tenet it serves. -->
+<!-- The problem in the code or the robot this solves, and the PLAN item or tenet it serves. -->
 
 ## What
 

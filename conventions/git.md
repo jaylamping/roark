@@ -23,6 +23,12 @@
 - No generated files, build output, logs, MCAP sessions or secrets in git. Large bench logs live outside the repo; commits
   cite them by session ID.
 
+- **Describe the change, not the conversation.** Commit messages and PR descriptions say what the change does and why the
+  code needs it. They don't say who asked for it ("Joey asked for...", "per the chat"), retell the discussion that led to it,
+  or link chat threads or agent sessions. Name a person only when they're the source of a fact ("measured by Joey on the bench,
+  session 2026-11-12T19:04Z"). The only exception is attribution lines an agent's tool is required to add; keep those to the
+  required lines and say nothing else about the conversation.
+
 **Why:** `git log` and `git blame` are how the next person (or agent) learns why a line exists. "fix stuff" teaches nothing.
 
 ## 3. Pull requests
@@ -32,7 +38,7 @@
   safety-relevant code needs real reading, not skimming.
 - **Don't mix kinds.** Skeleton value changes, safety rule changes, refactors and features each go in their own PR. A refactor
   PR changes no behaviour.
-- **The description says:**
+- **The description says** (written about the code, never about the conversation that produced it; section 2):
   1. What changes and why, in a few sentences, with the PLAN item or tenet it serves.
   2. Anything the reviewer must look at closely (a safety rule, a loosened threshold, a new dependency with its reason line,
      a new seam per [architecture.md section 11](architecture.md#11-changing-the-shape)).
