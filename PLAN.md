@@ -206,8 +206,7 @@ choice (Grafana, Sentry, OpenTelemetry, Foxglove, Rerun) is still to be research
 - **No spare actuators.** Nothing overloads, overheats or stalls a real drive. Destructive tests use printed dummies.
 - **Stationary and supported** until legs exist. The arm may drop onto the foam pad when a run stops hard; that's accepted.
 - **The bench supply has no current limit.** 3 A fuse for first power-up, 10 A after.
-- **No pointless tests** (tenet 6). A test guards a real failure: a bug we hit, a safety rule, a protocol contract, a number a
-  loop depends on. How tests are written and run: [conventions/testing.md](conventions/testing.md).
+- **No pointless tests** (tenet 6). A test guards a real failure: a bug we hit, a safety rule, a protocol contract.
 - Hardware facts change: check [STATUS.md](https://github.com/jaylamping/marengo/blob/main/hardware/STATUS.md) before acting on a number here.
 
 ## Before the old stack is deleted

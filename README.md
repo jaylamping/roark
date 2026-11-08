@@ -5,5 +5,5 @@ five CAN buses, plus a simulated drive, agent tools and an operator UI.
 
 - [TENETS.md](TENETS.md): how everything should work.
 - [PLAN.md](PLAN.md): what gets built, in order.
-- [conventions/testing.md](conventions/testing.md): when a test is worth writing, and how.
+- [conventions/](conventions/): how code, config, tests and procedures are written and reviewed.
 - Hardware, CAD and the legacy software live in the reference repo, [jaylamping/marengo](https://github.com/jaylamping/marengo).
