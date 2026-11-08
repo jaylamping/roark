@@ -102,7 +102,7 @@ Levels mean the same thing in every language and tool:
 
 ## 4. Log lines
 
-Rust usage and levels are in rust.md section 12. Across every language:
+Levels are in section 2b; the Rust mechanics are in rust.md section 12. Across every language:
 
 - **The message is a short, constant phrase;** the values go in fields. `"drive went silent"` with `joint`, `missed = 3`, not
   `"left_elbow_pitch missed 3 replies"`. **Why:** constant messages can be searched, counted and grouped; interpolated ones
