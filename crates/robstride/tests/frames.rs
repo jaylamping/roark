@@ -1,20 +1,19 @@
 //! The codec against the manuals and the bench: exact bytes out, typed frames in, and the refusals (can.md section 1,
 //! "Tests"). Manual citations are section numbers; every manual has the same section layout. Bench rows cite their capture.
-#![expect(
-    clippy::unwrap_used,
-    reason = "the table helpers build known-good values; clippy allows unwrap only inside #[test] bodies"
-)]
 
+mod common;
+
+use common::{header, id};
 use robstride::{
-    Celsius, DecodeError, DeviceId, Echo, EchoKind, EncodeError, Frame, Header, Inbound,
-    MitCommand, MitField, Mode, Model, NewtonMeters, NmPerRad, NmSecPerRad, ParamOutcome,
-    RadPerSec, Radians, Reporting, Status, StatusFault, Uid, UnvouchedModel, decode, encode,
+    DecodeError, Echo, EchoKind, EncodeError, Frame, Inbound, MitCommand, MitField, Mode, Model,
+    NewtonMeters, NmPerRad, NmSecPerRad, ParamOutcome, RadPerSec, Radians, Reporting, Uid,
+    UnvouchedModel, decode, encode,
 };
 
-fn id(n: u8) -> DeviceId {
-    DeviceId::new(u64::from(n)).unwrap()
-}
-
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper for finite values; clippy allows unwrap only inside #[test] bodies"
+)]
 fn mit(position: f64, velocity: f64, kp: f64, kd: f64, torque: f64) -> MitCommand {
     MitCommand {
         position: Radians::new(position).unwrap(),
@@ -22,14 +21,6 @@ fn mit(position: f64, velocity: f64, kp: f64, kd: f64, torque: f64) -> MitComman
         kp: NmPerRad::new(kp).unwrap(),
         kd: NmSecPerRad::new(kd).unwrap(),
         torque: NewtonMeters::new(torque).unwrap(),
-    }
-}
-
-fn header(device: u8, mode: Mode, faults: &[StatusFault]) -> Header {
-    Header {
-        device: id(device),
-        mode,
-        faults: faults.iter().copied().collect(),
     }
 }
 
@@ -45,7 +36,7 @@ fn encoded_frames_match_the_manuals() {
             0x0300_FD0C,
             [0; 8],
         ),
-        // §4.1.4: "when the motor is running normally, 0 must be cleared in the data field". Byte 0 = 1 would clear faults.
+        // §4.1.4: a plain disable is all zeros. Byte 0 = 1 clears faults, which this host never sends (PLAN item 2).
         (
             "disable, §4.1.4",
             encode::disable(id(12)),
@@ -98,11 +89,19 @@ fn encoded_frames_match_the_manuals() {
         ),
         (
             // round((1.25 + 20) × 65535 / 40) = round(34815.47) = 0x87FF. Under the old ±50 scale the drive read this frame's predecessor
-            // (0x8332) as 0.50 rad/s; see the RS03 velocity test below.
+            // (0x8332) as 0.50 rad/s; see the RS03 velocity test in status.rs.
             "MIT, RS03 cruise 1.25 rad/s",
             encode::mit(Model::Rs03, id(1), &mit(0.0, 1.25, 0.0, 0.0, 0.0)).unwrap(),
             0x0180_0001,
             [0x80, 0x00, 0x87, 0xFF, 0, 0, 0, 0],
+        ),
+        (
+            // Distinct gains, so Kp and Kd can't trade places: 1250 / 5000 of full scale is 0x4000, 75 / 100 is 0xBFFF,
+            // and torque 30 is 0xBFFF in the ID.
+            "MIT, distinct gains, RS03",
+            encode::mit(Model::Rs03, id(1), &mit(0.0, 0.0, 1250.0, 75.0, 30.0)).unwrap(),
+            0x01BF_FF01,
+            [0x80, 0x00, 0x80, 0x00, 0x40, 0x00, 0xBF, 0xFF],
         ),
     ];
     for (what, frame, want_id, want_data) in rows {
@@ -116,21 +115,13 @@ fn encoded_frames_match_the_manuals() {
     }
 }
 
-/// Guards: protocol - every frame the host reads, typed, RobStride manuals §4.1.1 to §4.1.14 and bench captures.
+/// Guards: protocol - identity, version, fault and parameter replies and the host's echoes, typed, RobStride manuals §4.1.1 to §4.1.14 and bench captures. Status frames are tested in status.rs.
 #[test]
 #[expect(
     clippy::too_many_lines,
     reason = "one table, one row per received frame shape"
 )]
 fn decoded_frames_match_the_manuals() {
-    let bench_status = [0x7e, 0x28, 0x75, 0x10, 0x7d, 0x99, 0x00, 0xe6];
-    let bench_codes = Status {
-        header: header(1, Mode::Run, &[]),
-        position: 0x7e28,
-        velocity: 0x7510,
-        torque: 0x7d99,
-        temperature: Celsius::new(23.0).unwrap(),
-    };
     let echo = |kind, target| {
         Inbound::Echo(Echo {
             kind,
@@ -147,42 +138,6 @@ fn decoded_frames_match_the_manuals() {
                 device: id(1),
                 uid: Uid([0x45, 0x7B, 0x30, 0x02, 0x0C, 0x32, 0x38, 0x17]),
             },
-        ),
-        (
-            // §4.1.2 type 2; bench capture cd-20261003T145133Z, right_shoulder_pitch (RS03, ID 1) during a ramp.
-            "status reply, Run, no faults",
-            0x0280_01FD,
-            bench_status,
-            Inbound::Status(bench_codes),
-        ),
-        (
-            // §4.1.2: fault bits 21..16, mode bits 23..22. Bits 16 (undervoltage) and 21 (uncalibrated), Reset mode.
-            "status reply with faults",
-            0x0221_01FD,
-            bench_status,
-            Inbound::Status(Status {
-                header: header(
-                    1,
-                    Mode::Reset,
-                    &[StatusFault::Undervoltage, StatusFault::Uncalibrated],
-                ),
-                ..bench_codes
-            }),
-        ),
-        (
-            "status reply, every fault bit, calibration mode",
-            0x027F_01FD,
-            bench_status,
-            Inbound::Status(Status {
-                header: header(1, Mode::Calibration, &StatusFault::ALL),
-                ..bench_codes
-            }),
-        ),
-        (
-            "active report, §4.1.11",
-            0x1880_01FD,
-            bench_status,
-            Inbound::Report(bench_codes),
         ),
         (
             // §4.1.4: a type-2 reply starting 00 C4 56 answers the version query; it is not a pose. Bench firmware 0.3.1.42.
@@ -277,15 +232,17 @@ fn decoded_frames_match_the_manuals() {
             echo(EchoKind::SetId { new: id(11) }, 1),
         ),
         (
+            // Bytes 4 to 7 of a read aren't checked (the manual's text for them is garbled).
             "echo: parameter read",
             0x1100_FD7F,
-            [0x1E, 0x70, 0, 0, 0, 0, 0, 0],
+            [0x1E, 0x70, 0, 0, 0xAA, 0, 0, 0],
             echo(EchoKind::ParamRead, 0x7F),
         ),
         (
+            // §4.1.14: loc_kp (0x701E) = 30.0, a little-endian f32 in bytes 4 to 7.
             "echo: parameter write",
             0x1200_FD7F,
-            [0x05, 0x70, 0, 0, 0, 0, 0, 0],
+            [0x1E, 0x70, 0, 0, 0x00, 0x00, 0xF0, 0x41],
             echo(EchoKind::ParamWrite, 0x7F),
         ),
         (
@@ -325,123 +282,326 @@ fn malformed_frames_are_refused() {
             "short frame",
             0x0280_01FD,
             &status[..7],
-            DecodeError::BadLength(7),
+            DecodeError::BadLength {
+                len: 7,
+                id: 0x0280_01FD,
+            },
         ),
         (
             "long frame",
             0x0280_01FD,
             &[0; 9],
-            DecodeError::BadLength(9),
+            DecodeError::BadLength {
+                len: 9,
+                id: 0x0280_01FD,
+            },
         ),
-        ("empty frame", 0x0280_01FD, &[], DecodeError::BadLength(0)),
+        (
+            "empty frame",
+            0x0280_01FD,
+            &[],
+            DecodeError::BadLength {
+                len: 0,
+                id: 0x0280_01FD,
+            },
+        ),
         (
             "unknown type 5",
             0x0500_FD01,
             &[0; 8],
-            DecodeError::UnknownType(5),
+            DecodeError::UnknownType {
+                kind: 5,
+                id: 0x0500_FD01,
+            },
         ),
         (
             "unknown type 31",
             0x1F00_FD01,
             &[0; 8],
-            DecodeError::UnknownType(31),
+            DecodeError::UnknownType {
+                kind: 31,
+                id: 0x1F00_FD01,
+            },
         ),
         // §4.1.9, §4.1.10, §4.1.12: save, baud rate and protocol frames. The host never sends them (PLAN item 2).
         (
             "save frame on the bus",
             0x1600_FD01,
             &[1, 2, 3, 4, 5, 6, 7, 8],
-            DecodeError::ForeignType(22),
+            DecodeError::ForeignType {
+                kind: 22,
+                id: 0x1600_FD01,
+            },
         ),
         (
             "baud rate frame on the bus",
             0x1700_FD01,
             &[1, 2, 3, 4, 5, 6, 1, 0],
-            DecodeError::ForeignType(23),
+            DecodeError::ForeignType {
+                kind: 23,
+                id: 0x1700_FD01,
+            },
         ),
         (
             "protocol frame on the bus",
             0x1900_FD01,
             &[1, 2, 3, 4, 5, 6, 0, 0],
-            DecodeError::ForeignType(25),
+            DecodeError::ForeignType {
+                kind: 25,
+                id: 0x1900_FD01,
+            },
         ),
         (
             "status addressed to another host",
             0x0280_01FE,
             &status,
-            DecodeError::OtherHost(0xFE),
+            DecodeError::OtherHost {
+                host: 0xFE,
+                id: 0x0280_01FE,
+            },
         ),
         (
             "status from device 0",
             0x0280_00FD,
             &status,
-            DecodeError::BadDeviceId(0),
+            DecodeError::BadDeviceId {
+                device: 0,
+                id: 0x0280_00FD,
+            },
         ),
         (
             "status from device 128",
             0x0280_80FD,
             &status,
-            DecodeError::BadDeviceId(128),
+            DecodeError::BadDeviceId {
+                device: 128,
+                id: 0x0280_80FD,
+            },
         ),
         (
             "status in reserved mode 3",
             0x02C0_01FD,
             &status,
-            DecodeError::ReservedMode,
+            DecodeError::ReservedMode { id: 0x02C0_01FD },
         ),
         (
             "command from another host",
             0x0300_FE0C,
             &[0; 8],
-            DecodeError::OtherHost(0xFE),
+            DecodeError::OtherHost {
+                host: 0xFE,
+                id: 0x0300_FE0C,
+            },
         ),
         (
             "MIT frame to device 0",
             0x0180_0000,
             &[0; 8],
-            DecodeError::BadDeviceId(0),
+            DecodeError::BadDeviceId {
+                device: 0,
+                id: 0x0180_0000,
+            },
         ),
         (
             "identity reply from device 0",
             0x0000_00FE,
             &[0; 8],
-            DecodeError::BadDeviceId(0),
+            DecodeError::BadDeviceId {
+                device: 0,
+                id: 0x0000_00FE,
+            },
         ),
         (
             "set zero without its flag byte",
             0x0600_FD0C,
             &[0; 8],
-            DecodeError::UnexpectedData(6),
+            DecodeError::UnexpectedData {
+                kind: 6,
+                id: 0x0600_FD0C,
+            },
         ),
         (
             "disable with other bytes set",
             0x0400_FD0C,
             &[0, 0, 0, 0, 0, 0, 0, 1],
-            DecodeError::UnexpectedData(4),
+            DecodeError::UnexpectedData {
+                kind: 4,
+                id: 0x0400_FD0C,
+            },
         ),
         (
             "reporting with an unknown switch",
             0x1800_FD0C,
             &[1, 2, 3, 4, 5, 6, 2, 0],
-            DecodeError::UnexpectedData(24),
+            DecodeError::UnexpectedData {
+                kind: 24,
+                id: 0x1800_FD0C,
+            },
         ),
         (
             "reporting without its fixed bytes",
             0x1800_FD0C,
             &[0, 0, 0, 0, 0, 0, 1, 0],
-            DecodeError::UnexpectedData(24),
+            DecodeError::UnexpectedData {
+                kind: 24,
+                id: 0x1800_FD0C,
+            },
         ),
         (
             "parameter reply with an unknown result",
             0x1102_7FFD,
             &[0x1E, 0x70, 0, 0, 0, 0, 0, 0],
-            DecodeError::UnexpectedData(17),
+            DecodeError::UnexpectedData {
+                kind: 17,
+                id: 0x1102_7FFD,
+            },
+        ),
+        (
+            "parameter reply to another host",
+            0x1100_7FFE,
+            &[0x1E, 0x70, 0, 0, 0x00, 0x00, 0xF0, 0x41],
+            DecodeError::OtherHost {
+                host: 0xFE,
+                id: 0x1100_7FFE,
+            },
+        ),
+        (
+            "active report to another host",
+            0x1880_01FE,
+            &status,
+            DecodeError::OtherHost {
+                host: 0xFE,
+                id: 0x1880_01FE,
+            },
+        ),
+        // §4.1.6 and §4.1.7: bytes 2 and 3 are 00 in a parameter read, its reply and a parameter write.
+        (
+            "parameter reply with byte 2 set",
+            0x1100_7FFD,
+            &[0x1E, 0x70, 1, 0, 0x00, 0x00, 0xF0, 0x41],
+            DecodeError::UnexpectedData {
+                kind: 17,
+                id: 0x1100_7FFD,
+            },
+        ),
+        (
+            "parameter reply with byte 3 set",
+            0x1100_7FFD,
+            &[0x1E, 0x70, 0, 1, 0x00, 0x00, 0xF0, 0x41],
+            DecodeError::UnexpectedData {
+                kind: 17,
+                id: 0x1100_7FFD,
+            },
+        ),
+        (
+            "parameter read with byte 3 set",
+            0x1100_FD7F,
+            &[0x1E, 0x70, 0, 1, 0, 0, 0, 0],
+            DecodeError::UnexpectedData {
+                kind: 17,
+                id: 0x1100_FD7F,
+            },
+        ),
+        (
+            "parameter read with byte 2 set",
+            0x1100_FD7F,
+            &[0x1E, 0x70, 1, 0, 0, 0, 0, 0],
+            DecodeError::UnexpectedData {
+                kind: 17,
+                id: 0x1100_FD7F,
+            },
+        ),
+        (
+            "parameter write with byte 2 set",
+            0x1200_FD7F,
+            &[0x05, 0x70, 1, 0, 0, 0, 0, 0],
+            DecodeError::UnexpectedData {
+                kind: 18,
+                id: 0x1200_FD7F,
+            },
+        ),
+        (
+            "parameter write with byte 3 set",
+            0x1200_FD7F,
+            &[0x05, 0x70, 0, 1, 0, 0, 0, 0],
+            DecodeError::UnexpectedData {
+                kind: 18,
+                id: 0x1200_FD7F,
+            },
+        ),
+        // Another host's frame is named as such before its bytes are checked.
+        (
+            "another host's parameter read",
+            0x1100_FE7F,
+            &[0x1E, 0x70, 0, 0, 0, 0, 0, 0],
+            DecodeError::OtherHost {
+                host: 0xFE,
+                id: 0x1100_FE7F,
+            },
+        ),
+        (
+            "another host's reporting switch",
+            0x1800_FE0C,
+            &[1, 2, 3, 4, 5, 6, 1, 0],
+            DecodeError::OtherHost {
+                host: 0xFE,
+                id: 0x1800_FE0C,
+            },
+        ),
+        (
+            "another host's reporting switch with a bad switch byte",
+            0x1800_FE0C,
+            &[1, 2, 3, 4, 5, 6, 2, 0],
+            DecodeError::OtherHost {
+                host: 0xFE,
+                id: 0x1800_FE0C,
+            },
+        ),
+        (
+            "another host's disable with a bad byte",
+            0x0400_FE0C,
+            &[2, 0, 0, 0, 0, 0, 0, 0],
+            DecodeError::OtherHost {
+                host: 0xFE,
+                id: 0x0400_FE0C,
+            },
+        ),
+        (
+            "another host's set ID to 0",
+            0x0700_FE0C,
+            &[0; 8],
+            DecodeError::OtherHost {
+                host: 0xFE,
+                id: 0x0700_FE0C,
+            },
+        ),
+        // Types 17 and 24 travel both ways; one from this host is its own frame, so a bad target is a bad device ID.
+        (
+            "parameter read from this host to device 0",
+            0x1100_FD00,
+            &[0x1E, 0x70, 0, 0, 0, 0, 0, 0],
+            DecodeError::BadDeviceId {
+                device: 0,
+                id: 0x1100_FD00,
+            },
+        ),
+        (
+            "reporting switch from this host to device 0",
+            0x1800_FD00,
+            &[1, 2, 3, 4, 5, 6, 0, 0],
+            DecodeError::BadDeviceId {
+                device: 0,
+                id: 0x1800_FD00,
+            },
         ),
         (
             "set ID to 0",
             0x0700_FD01,
             &[0; 8],
-            DecodeError::BadDeviceId(0),
+            DecodeError::BadDeviceId {
+                device: 0,
+                id: 0x0700_FD01,
+            },
         ),
     ];
     for (what, frame_id, data, want) in rows {
@@ -459,6 +619,7 @@ fn mit_encode_refuses_rather_than_clamps() {
             mit(12.58, 0.0, 0.0, 0.0, 0.0),
             EncodeError::OutOfRange {
                 field: MitField::Position,
+                value: 12.58,
                 min: -12.57,
                 max: 12.57,
             },
@@ -469,6 +630,7 @@ fn mit_encode_refuses_rather_than_clamps() {
             mit(0.0, -20.01, 0.0, 0.0, 0.0),
             EncodeError::OutOfRange {
                 field: MitField::Velocity,
+                value: -20.01,
                 min: -20.0,
                 max: 20.0,
             },
@@ -479,6 +641,7 @@ fn mit_encode_refuses_rather_than_clamps() {
             mit(0.0, 0.0, 500.1, 0.0, 0.0),
             EncodeError::OutOfRange {
                 field: MitField::Kp,
+                value: 500.1,
                 min: 0.0,
                 max: 500.0,
             },
@@ -489,6 +652,7 @@ fn mit_encode_refuses_rather_than_clamps() {
             mit(0.0, 0.0, 0.0, -0.1, 0.0),
             EncodeError::OutOfRange {
                 field: MitField::Kd,
+                value: -0.1,
                 min: 0.0,
                 max: 100.0,
             },
@@ -499,6 +663,7 @@ fn mit_encode_refuses_rather_than_clamps() {
             mit(0.0, 0.0, 0.0, 0.0, 120.5),
             EncodeError::OutOfRange {
                 field: MitField::Torque,
+                value: 120.5,
                 min: -120.0,
                 max: 120.0,
             },
@@ -528,20 +693,20 @@ fn mit_ranges_match_the_manuals() {
     for (model, position, velocity, kp, kd, torque) in rows {
         let s = model.mit_scales().unwrap();
         let got = (
-            s.position.max,
-            s.velocity.max,
-            s.kp.max,
-            s.kd.max,
-            s.torque.max,
+            s.position.max(),
+            s.velocity.max(),
+            s.kp.max(),
+            s.kd.max(),
+            s.torque.max(),
         );
         assert_eq!(got, (position, velocity, kp, kd, torque), "{model}");
         assert_eq!(
             (
-                s.position.min,
-                s.velocity.min,
-                s.kp.min,
-                s.kd.min,
-                s.torque.min
+                s.position.min(),
+                s.velocity.min(),
+                s.kp.min(),
+                s.kd.min(),
+                s.torque.min()
             ),
             (-position, -velocity, 0.0, 0.0, -torque),
             "{model}"
@@ -567,48 +732,15 @@ fn mit_codes_round_trip() {
     }
 }
 
-/// Guards: bug - RS03 velocity was decoded at ±50 rad/s, 2.5x high (marengo docs/commissioning/firmware/robstride-mit-ranges.md, capture cd-20261003T145133Z).
+/// Guards: safety - a non-finite value never encodes; `as` would turn NaN into code 0, the most negative command (rust.md section 7).
 #[test]
-fn rs03_status_velocity_matches_its_position_slope() {
-    // (microseconds since the first frame, payload): consecutive type-2 frames from right_shoulder_pitch (RS03, ID 1,
-    // firmware 0.3.1.42) during the cruise of a downward ramp, 10.615 to 10.656 s into the capture.
-    let ramp: [(u32, [u8; 8]); 9] = [
-        (0, [0x7e, 0x28, 0x75, 0x10, 0x7d, 0x99, 0x00, 0xe6]),
-        (5_049, [0x7e, 0x12, 0x75, 0x1f, 0x7e, 0xaf, 0x00, 0xe6]),
-        (10_100, [0x7d, 0xfb, 0x74, 0x9c, 0x7e, 0x71, 0x00, 0xe6]),
-        (15_149, [0x7d, 0xe4, 0x75, 0x00, 0x7d, 0x99, 0x00, 0xe6]),
-        (20_199, [0x7d, 0xce, 0x75, 0x91, 0x7d, 0x5a, 0x00, 0xe6]),
-        (25_249, [0x7d, 0xb8, 0x75, 0xb0, 0x7e, 0x47, 0x00, 0xe6]),
-        (30_355, [0x7d, 0xa1, 0x74, 0x92, 0x7e, 0x7f, 0x00, 0xe6]),
-        (35_504, [0x7d, 0x8a, 0x75, 0x22, 0x7d, 0xa4, 0x00, 0xe6]),
-        (40_454, [0x7d, 0x75, 0x76, 0x72, 0x7d, 0x72, 0x00, 0xe6]),
-    ];
-    let samples: Vec<(f64, f64, f64)> = ramp
-        .iter()
-        .map(|(micros, data)| {
-            let status = match decode(0x0280_01FD, data) {
-                Ok(Inbound::Status(status)) => Some(status),
-                Ok(_) | Err(_) => None,
+fn mit_codes_refuse_non_finite_values() {
+    for model in [Model::Rs02, Model::Rs03, Model::Rs04] {
+        let s = model.mit_scales().unwrap();
+        for range in [s.position, s.velocity, s.kp, s.kd, s.torque] {
+            for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+                assert_eq!(range.code(value), None, "{model} {range:?} {value}");
             }
-            .expect("captured frame must decode as status");
-            let f = status.feedback(Model::Rs03).unwrap();
-            (
-                f64::from(*micros) * 1e-6,
-                f.position.get(),
-                f.velocity.get(),
-            )
-        })
-        .collect();
-    let (first, last) = (samples[0], samples[samples.len() - 1]);
-    let position_change = last.1 - first.1;
-    // Trapezoidal integral of the drive's own velocity over the same 40.45 ms. At ±20 the ratio is 0.996; at ±50, 2.49.
-    let integrated: f64 = samples
-        .windows(2)
-        .map(|w| f64::midpoint(w[0].2, w[1].2) * (w[1].0 - w[0].0))
-        .sum();
-    let ratio = integrated / position_change;
-    assert!(
-        (ratio - 1.0).abs() <= 0.10,
-        "velocity integrates to {ratio} of the position change"
-    );
+        }
+    }
 }

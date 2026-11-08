@@ -55,8 +55,10 @@ impl Frame {
     }
 }
 
-/// An ID split into its fields: communication type, data area 2 high and low bytes, destination.
+/// An ID split into its fields: communication type, data area 2 high and low bytes, destination. Keeps the whole ID too,
+/// for errors that name the frame.
 pub(crate) struct Parts {
+    pub(crate) id: u32,
     pub(crate) kind: u8,
     pub(crate) area_hi: u8,
     pub(crate) area_lo: u8,
@@ -70,6 +72,7 @@ pub(crate) const fn parts(id: u32) -> Option<Parts> {
     }
     let [kind, area_hi, area_lo, destination] = id.to_be_bytes();
     Some(Parts {
+        id,
         kind,
         area_hi,
         area_lo,

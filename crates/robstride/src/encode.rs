@@ -1,8 +1,8 @@
 //! Frames the host sends: one function per frame, each returning the frame to queue, never sending it (can.md section 1).
 //!
-//! Only the transmit allowlist is here: types 0, 1, 3, 4, 6, 7, 17, 18 and 24 (PLAN item 2). There is no way to build a
-//! save (22), baud rate (23) or protocol (25) frame, or a Disable with the fault-clear byte set. Parameter reads and
-//! writes (17, 18) come with the parameter table.
+//! The builders here are types 0, 1, 3, 4, 6 and 24 from the transmit allowlist, plus type 7, which only the set-ID command
+//! sends (PLAN item 2). The allowlist's parameter reads and writes (17, 18) have no builder in this module. There is no way to build a save (22), baud rate (23) or protocol (25) frame, or a Disable with the fault-clear byte
+//! set.
 
 use crate::frame::{Frame, HOST_ID};
 use crate::model::{MitRange, Model, UnvouchedModel};
@@ -88,10 +88,12 @@ pub enum MitField {
 #[derive(Clone, Copy, Debug, PartialEq, thiserror::Error)]
 pub enum EncodeError {
     /// A field is outside the model's MIT range.
-    #[error("MIT {field:?} is outside {min} to {max}")]
+    #[error("MIT {field:?} {value} is outside {min} to {max}")]
     OutOfRange {
         /// The field.
         field: MitField,
+        /// The value refused.
+        value: f64,
         /// The lowest value the model accepts.
         min: f64,
         /// The highest value the model accepts.
@@ -144,8 +146,9 @@ pub fn mit(model: Model, target: DeviceId, command: &MitCommand) -> Result<Frame
 fn code(range: MitRange, value: f64, field: MitField) -> Result<u16, EncodeError> {
     range.code(value).ok_or(EncodeError::OutOfRange {
         field,
-        min: range.min,
-        max: range.max,
+        value,
+        min: range.min(),
+        max: range.max(),
     })
 }
 

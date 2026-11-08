@@ -160,13 +160,12 @@ pub struct MitScales {
     pub torque: MitRange,
 }
 
-/// A 16-bit MIT field's range: code 0 is `min`, code 65535 is `max` (§4.1.2).
+/// A 16-bit MIT field's range: code 0 is `min`, code 65535 is `max` (§4.1.2). Only [`Model::mit_scales`] builds one, so
+/// `min` and `max` are always finite with `min < max`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MitRange {
-    /// The value code 0 stands for.
-    pub min: f64,
-    /// The value code 65535 stands for.
-    pub max: f64,
+    min: f64,
+    max: f64,
 }
 
 impl MitRange {
@@ -176,6 +175,18 @@ impl MitRange {
 
     const fn up_to(max: f64) -> Self {
         Self { min: 0.0, max }
+    }
+
+    /// The value code 0 stands for.
+    #[must_use]
+    pub const fn min(self) -> f64 {
+        self.min
+    }
+
+    /// The value code 65535 stands for.
+    #[must_use]
+    pub const fn max(self) -> f64 {
+        self.max
     }
 
     /// The value a code stands for, as the drive reads it.
@@ -190,7 +201,7 @@ impl MitRange {
     /// floating-point error puts thousands of exact codes a hair below themselves.
     #[must_use]
     pub fn code(self, value: f64) -> Option<u16> {
-        if !(self.min..=self.max).contains(&value) {
+        if !value.is_finite() || !(self.min..=self.max).contains(&value) {
             return None;
         }
         // In [0.5, 65535.5] here, so the cast floors a non-negative value and the result fits in 16 bits.

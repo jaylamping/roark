@@ -2,10 +2,20 @@
 //! `RECV_OWN_MSGS`, can.md section 2). Any ID and any bytes give a typed frame or a typed error; nothing here panics.
 //!
 //! Reserved ID bits are ignored on receive. A frame is checked against what the manual says its bytes are, and refused if
-//! they say something else, so a foreign or corrupt frame never reads as one of ours.
+//! they say something else, so a foreign or corrupt frame never reads as one of ours. Bytes the manual leaves open (MIT
+//! fields, status codes, UIDs, fault words, parameter values) are read as they come; bytes 4 to 7 of a parameter read,
+//! which the manual's text garbles, aren't checked.
+//!
+//! Types 0, 17 and 24 travel both ways. A type-0 frame addressed to 0xFE is a drive's identity reply. A type-17 or type-24
+//! frame with this host in bits 15..8, or addressed to a drive ID (1 to 127), is a host frame; any other is a drive's, and
+//! must be addressed to this host. A drive's frame to another host whose ID is 1 to 127 can't be told from that host's
+//! own command, and is refused as the other host's. Every other type is sent by one side only.
+//!
+//! A host frame is read back only if bits 15..8 are this host; that is checked before anything else in it, so another
+//! host's frame is always named as such.
 
 use crate::encode::{REPORTING_PREFIX, Reporting, SET_ZERO_DATA, VERSION_QUERY_DATA, kind};
-use crate::frame::{HOST_ID, IDENTITY_MARKER, parts};
+use crate::frame::{HOST_ID, IDENTITY_MARKER, Parts, parts};
 use crate::model::{Model, UnvouchedModel};
 use crate::units::{Celsius, DeviceId, NewtonMeters, RadPerSec, Radians, Uid};
 
@@ -139,18 +149,19 @@ impl FromIterator<StatusFault> for StatusFaults {
     }
 }
 
-/// A type-2 or type-24 frame's fields, as the codes the drive sent. [`Status::feedback`] turns them into SI with the
-/// drive's model.
+/// A type-2 or type-24 frame. Its position, velocity and torque are the codes the drive sent, private to the codec:
+/// other crates read them only through [`Status::feedback`], in SI with the drive's model (units-and-frames.md
+/// section 1). `Debug` still prints the codes, for test and trace output.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Status {
     /// Mode and fault bits.
     pub header: Header,
     /// Position code, bytes 0 and 1.
-    pub position: u16,
+    position: u16,
     /// Velocity code, bytes 2 and 3.
-    pub velocity: u16,
+    velocity: u16,
     /// Torque code, bytes 4 and 5.
-    pub torque: u16,
+    torque: u16,
     /// Bytes 6 and 7: tenths of a degree (§4.1.2, "Temp(Celsius) *10").
     pub temperature: Celsius,
 }
@@ -241,26 +252,60 @@ pub enum DecodeError {
     #[error("ID {0:#X} is wider than 29 bits")]
     IdTooWide(u32),
     /// Every RobStride frame has 8 data bytes.
-    #[error("{0} data bytes, expected 8")]
-    BadLength(usize),
+    #[error("{len} data bytes, expected 8, ID {id:#010X}")]
+    BadLength {
+        /// How many data bytes the frame had.
+        len: usize,
+        /// The frame's ID.
+        id: u32,
+    },
     /// Not a communication type in the manual.
-    #[error("unknown communication type {0}")]
-    UnknownType(u8),
+    #[error("unknown communication type {kind}, ID {id:#010X}")]
+    UnknownType {
+        /// The communication type, ID bits 28..24.
+        kind: u8,
+        /// The frame's ID.
+        id: u32,
+    },
     /// A save (22), baud rate (23) or protocol (25) frame: the host never sends one, so another sender is on the bus.
-    #[error("communication type {0} is never sent by this host")]
-    ForeignType(u8),
+    #[error("communication type {kind} is never sent by this host, ID {id:#010X}")]
+    ForeignType {
+        /// The communication type, ID bits 28..24.
+        kind: u8,
+        /// The frame's ID.
+        id: u32,
+    },
     /// The host field isn't this host's 0xFD.
-    #[error("frame is for or from host {0:#04X}, not this host")]
-    OtherHost(u8),
+    #[error("frame is for or from host {host:#04X}, not this host, ID {id:#010X}")]
+    OtherHost {
+        /// The host byte the frame carries.
+        host: u8,
+        /// The frame's ID.
+        id: u32,
+    },
     /// A device ID outside 1 to 127.
-    #[error("device ID {0} is outside 1 to 127")]
-    BadDeviceId(u8),
+    #[error("device ID {device} is outside 1 to 127, ID {id:#010X}")]
+    BadDeviceId {
+        /// The device byte the frame carries.
+        device: u8,
+        /// The frame's ID.
+        id: u32,
+    },
     /// Status mode 3, which the manual doesn't define.
-    #[error("status mode 3 is undefined")]
-    ReservedMode,
-    /// The data bytes aren't what the manual gives for this communication type.
-    #[error("unexpected data for communication type {0}")]
-    UnexpectedData(u8),
+    #[error("status mode 3 is undefined, ID {id:#010X}")]
+    ReservedMode {
+        /// The frame's ID, which names the drive.
+        id: u32,
+    },
+    /// The data bytes, or a type-specific ID field such as a parameter reply's result, aren't what the manual gives for
+    /// this communication type.
+    #[error("unexpected data for communication type {kind}, ID {id:#010X}")]
+    UnexpectedData {
+        /// The communication type, ID bits 28..24.
+        kind: u8,
+        /// The frame's ID.
+        id: u32,
+    },
 }
 
 /// Reads one received frame.
@@ -269,23 +314,19 @@ pub enum DecodeError {
 /// [`DecodeError`] naming what is wrong with the frame.
 pub fn decode(id: u32, data: &[u8]) -> Result<Inbound, DecodeError> {
     let p = parts(id).ok_or(DecodeError::IdTooWide(id))?;
-    let data: [u8; 8] = data
-        .try_into()
-        .map_err(|_| DecodeError::BadLength(data.len()))?;
-    let drive_to_host = p.destination == HOST_ID;
+    let data: [u8; 8] = data.try_into().map_err(|_| DecodeError::BadLength {
+        len: data.len(),
+        id,
+    })?;
+    let host_frame = p.area_lo == HOST_ID || (1..=DeviceId::MAX).contains(&p.destination);
     match p.kind {
         kind::GET_ID if p.destination == IDENTITY_MARKER => Ok(Inbound::Identity {
-            device: device(p.area_lo)?,
+            device: device(&p, p.area_lo)?,
             uid: Uid(data),
         }),
-        kind::GET_ID => echo(&p, EchoKind::GetId, data == [0; 8]),
-        kind::MIT => Ok(Inbound::Echo(Echo {
-            kind: EchoKind::Mit,
-            target: device(p.destination)?,
-        })),
         kind::STATUS => {
-            to_host(p.destination)?;
-            let header = header(p.area_hi, p.area_lo)?;
+            to_host(&p)?;
+            let header = header(&p)?;
             match data {
                 // §4.1.4: the version reply's first three bytes. Byte 7 isn't described.
                 [0x00, 0xC4, 0x56, v0, v1, v2, v3, _] => Ok(Inbound::Version {
@@ -295,100 +336,137 @@ pub fn decode(id: u32, data: &[u8]) -> Result<Inbound, DecodeError> {
                 _ => Ok(Inbound::Status(status(header, data))),
             }
         }
-        kind::ENABLE => echo(&p, EchoKind::Enable, data == [0; 8]),
-        kind::DISABLE => {
-            let what = match data {
-                [0, 0, 0, 0, 0, 0, 0, 0] => EchoKind::Disable,
-                [1, 0, 0, 0, 0, 0, 0, 0] => EchoKind::FaultClear,
-                VERSION_QUERY_DATA => EchoKind::VersionQuery,
-                _ => return Err(DecodeError::UnexpectedData(kind::DISABLE)),
-            };
-            echo(&p, what, true)
-        }
-        kind::SET_ZERO => echo(&p, EchoKind::SetZero, data == SET_ZERO_DATA),
-        kind::SET_ID => {
-            let new = device(p.area_hi)?;
-            echo(&p, EchoKind::SetId { new }, data == [0; 8])
-        }
-        kind::PARAM_READ if drive_to_host => {
-            let [i0, i1, _, _, b4, b5, b6, b7] = data;
-            let outcome = match p.area_hi {
-                0 => ParamOutcome::Read([b4, b5, b6, b7]),
-                1 => ParamOutcome::Refused,
-                _ => return Err(DecodeError::UnexpectedData(kind::PARAM_READ)),
-            };
-            Ok(Inbound::Param {
-                device: device(p.area_lo)?,
-                index: u16::from_le_bytes([i0, i1]),
-                outcome,
-            })
-        }
-        kind::PARAM_READ => echo(&p, EchoKind::ParamRead, true),
-        kind::PARAM_WRITE => echo(&p, EchoKind::ParamWrite, true),
+        kind::PARAM_READ if !host_frame => param_reply(&p, data),
         kind::FAULT => {
-            to_host(p.destination)?;
+            to_host(&p)?;
             let [f0, f1, f2, f3, w0, w1, w2, w3] = data;
             Ok(Inbound::Fault {
-                device: device(p.area_lo)?,
+                device: device(&p, p.area_lo)?,
                 faults: [f0, f1, f2, f3],
                 warnings: [w0, w1, w2, w3],
             })
         }
-        kind::REPORTING if drive_to_host => {
-            Ok(Inbound::Report(status(header(p.area_hi, p.area_lo)?, data)))
+        kind::REPORTING if !host_frame => {
+            to_host(&p)?;
+            Ok(Inbound::Report(status(header(&p)?, data)))
         }
-        kind::REPORTING => {
-            let (prefix, rest) = data.split_at(REPORTING_PREFIX.len());
-            let switch = match rest {
-                [0, 0] => Reporting::Off,
-                [1, 0] => Reporting::On,
-                _ => return Err(DecodeError::UnexpectedData(kind::REPORTING)),
-            };
-            echo(&p, EchoKind::Reporting(switch), prefix == REPORTING_PREFIX)
+        // Type 1 carries torque where other host frames carry the host, so its sender can't be checked.
+        kind::MIT => Ok(Inbound::Echo(Echo {
+            kind: EchoKind::Mit,
+            target: device(&p, p.destination)?,
+        })),
+        kind::GET_ID
+        | kind::ENABLE
+        | kind::DISABLE
+        | kind::SET_ZERO
+        | kind::SET_ID
+        | kind::PARAM_READ
+        | kind::PARAM_WRITE
+        | kind::REPORTING => echo(&p, data),
+        kind::SAVE | kind::BAUD | kind::PROTOCOL => {
+            Err(DecodeError::ForeignType { kind: p.kind, id })
         }
-        kind::SAVE | kind::BAUD | kind::PROTOCOL => Err(DecodeError::ForeignType(p.kind)),
-        other => Err(DecodeError::UnknownType(other)),
+        _ => Err(DecodeError::UnknownType { kind: p.kind, id }),
     }
 }
 
-/// A host frame read back: the host in data area bits 15..8, the target as destination, and data the manual allows.
-fn echo(p: &crate::frame::Parts, kind: EchoKind, data_ok: bool) -> Result<Inbound, DecodeError> {
+/// A type-17 reply from a drive to the host (§4.1.6).
+fn param_reply(p: &Parts, data: [u8; 8]) -> Result<Inbound, DecodeError> {
+    to_host(p)?;
+    // Bytes 2 and 3 are 00.
+    let [i0, i1, 0, 0, b4, b5, b6, b7] = data else {
+        return Err(unexpected(p));
+    };
+    let outcome = match p.area_hi {
+        0 => ParamOutcome::Read([b4, b5, b6, b7]),
+        1 => ParamOutcome::Refused,
+        _ => return Err(unexpected(p)),
+    };
+    Ok(Inbound::Param {
+        device: device(p, p.area_lo)?,
+        index: u16::from_le_bytes([i0, i1]),
+        outcome,
+    })
+}
+
+/// A host frame read back: this host in data area bits 15..8, checked first, then data the manual allows and the target
+/// as destination.
+fn echo(p: &Parts, data: [u8; 8]) -> Result<Inbound, DecodeError> {
     if p.area_lo != HOST_ID {
-        return Err(DecodeError::OtherHost(p.area_lo));
+        return Err(DecodeError::OtherHost {
+            host: p.area_lo,
+            id: p.id,
+        });
     }
-    if !data_ok {
-        return Err(DecodeError::UnexpectedData(p.kind));
-    }
+    let kind = match (p.kind, data) {
+        (kind::GET_ID, [0, 0, 0, 0, 0, 0, 0, 0]) => EchoKind::GetId,
+        (kind::ENABLE, [0, 0, 0, 0, 0, 0, 0, 0]) => EchoKind::Enable,
+        (kind::DISABLE, [0, 0, 0, 0, 0, 0, 0, 0]) => EchoKind::Disable,
+        (kind::DISABLE, [1, 0, 0, 0, 0, 0, 0, 0]) => EchoKind::FaultClear,
+        (kind::DISABLE, VERSION_QUERY_DATA) => EchoKind::VersionQuery,
+        (kind::SET_ZERO, SET_ZERO_DATA) => EchoKind::SetZero,
+        (kind::SET_ID, [0, 0, 0, 0, 0, 0, 0, 0]) => EchoKind::SetId {
+            new: device(p, p.area_hi)?,
+        },
+        // §4.1.6 and §4.1.7: bytes 2 and 3 are 00.
+        (kind::PARAM_READ, [_, _, 0, 0, ..]) => EchoKind::ParamRead,
+        (kind::PARAM_WRITE, [_, _, 0, 0, ..]) => EchoKind::ParamWrite,
+        (kind::REPORTING, [r0, r1, r2, r3, r4, r5, switch, 0])
+            if [r0, r1, r2, r3, r4, r5] == REPORTING_PREFIX =>
+        {
+            match switch {
+                0 => EchoKind::Reporting(Reporting::Off),
+                1 => EchoKind::Reporting(Reporting::On),
+                _ => return Err(unexpected(p)),
+            }
+        }
+        _ => return Err(unexpected(p)),
+    };
     Ok(Inbound::Echo(Echo {
         kind,
-        target: device(p.destination)?,
+        target: device(p, p.destination)?,
     }))
 }
 
-const fn to_host(destination: u8) -> Result<(), DecodeError> {
-    if destination == HOST_ID {
+/// A drive's frame must be addressed to this host.
+const fn to_host(p: &Parts) -> Result<(), DecodeError> {
+    if p.destination == HOST_ID {
         Ok(())
     } else {
-        Err(DecodeError::OtherHost(destination))
+        Err(DecodeError::OtherHost {
+            host: p.destination,
+            id: p.id,
+        })
     }
 }
 
-fn device(id: u8) -> Result<DeviceId, DecodeError> {
-    DeviceId::new(u64::from(id)).map_err(|_| DecodeError::BadDeviceId(id))
+/// `byte` of frame `p` as a drive ID.
+fn device(p: &Parts, byte: u8) -> Result<DeviceId, DecodeError> {
+    DeviceId::new(u64::from(byte)).map_err(|_| DecodeError::BadDeviceId {
+        device: byte,
+        id: p.id,
+    })
+}
+
+const fn unexpected(p: &Parts) -> DecodeError {
+    DecodeError::UnexpectedData {
+        kind: p.kind,
+        id: p.id,
+    }
 }
 
 /// Mode from ID bits 23..22 and fault bits from 21..16 (`area_hi`), sender from bits 15..8 (`area_lo`).
-fn header(area_hi: u8, area_lo: u8) -> Result<Header, DecodeError> {
-    let mode = match area_hi >> 6 {
+fn header(p: &Parts) -> Result<Header, DecodeError> {
+    let mode = match p.area_hi >> 6 {
         0 => Mode::Reset,
         1 => Mode::Calibration,
         2 => Mode::Run,
-        _ => return Err(DecodeError::ReservedMode),
+        _ => return Err(DecodeError::ReservedMode { id: p.id }),
     };
     Ok(Header {
-        device: device(area_lo)?,
+        device: device(p, p.area_lo)?,
         mode,
-        faults: StatusFaults(area_hi & 0x3F),
+        faults: StatusFaults(p.area_hi & 0x3F),
     })
 }
 
