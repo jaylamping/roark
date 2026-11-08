@@ -6,21 +6,21 @@ name: roark
 power:
   source: bench_24v
   vbus_v: [22.0, 26.0]          # bench window, PLAN item 6
-  current_budget_a: 90.0        # STATUS.md, drive current limits
+  current_budget_a: 90.0        # summed Iq caps, STATUS.md drive current limits; PLAN item 1
 buses:
   can0:                         # MCP2515 HAT until the right arm gets its own adapter (PLAN, Open with Joey 2)
-    bitrate: 1000000            # ADR 0001
-    sample_point: 0.75          # PLAN item 1
+    bitrate_bps: 1000000        # ADR 0001
+    sample_point: 0.75          # can-stack-for-marengo.md
     adapter_serial: null        # HAT, no USB adapter
   can1:
-    bitrate: 1000000            # ADR 0001
-    sample_point: 0.75          # PLAN item 1
+    bitrate_bps: 1000000        # ADR 0001
+    sample_point: 0.75          # can-stack-for-marengo.md
     adapter_serial: null        # adapter not bought yet
 limbs:
   left_arm:
     joints:
       - name: left_shoulder_pitch
-        actuator: rs03
+        actuator: rs03                # STATUS.md
         bus: can1
         id: 11                # STATUS.md
         uid: null
@@ -33,7 +33,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: left_shoulder_roll
-        actuator: rs03
+        actuator: rs03                # STATUS.md
         bus: can1
         id: 12                # STATUS.md
         uid: null
@@ -46,7 +46,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: left_upper_arm_yaw
-        actuator: rs02
+        actuator: rs02                # STATUS.md
         bus: can1
         id: 13                # STATUS.md
         uid: null
@@ -59,7 +59,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: left_elbow_pitch
-        actuator: rs02
+        actuator: rs02                # STATUS.md
         bus: can1
         id: 14                # STATUS.md (proposal)
         uid: null
@@ -72,7 +72,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: left_lower_arm_yaw
-        actuator: rs00
+        actuator: rs00                # STATUS.md
         bus: can1
         id: 15                # STATUS.md (proposal)
         uid: null
@@ -89,7 +89,7 @@ limbs:
     # stay null here until milestone 2 re-checks them (PLAN, "Before the legacy code is deleted").
     joints:
       - name: right_shoulder_pitch
-        actuator: rs03
+        actuator: rs03                # ADR 0001
         bus: can0
         id: 1                 # ADR 0001
         uid: null
@@ -102,7 +102,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: right_shoulder_roll
-        actuator: rs03
+        actuator: rs03                # ADR 0001
         bus: can0
         id: 2                 # ADR 0001
         uid: null
@@ -115,7 +115,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: right_upper_arm_yaw
-        actuator: rs02
+        actuator: rs02                # ADR 0001
         bus: can0
         id: 3                 # ADR 0001
         uid: null
@@ -128,7 +128,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: right_elbow_pitch
-        actuator: rs02
+        actuator: rs02                # ADR 0001
         bus: can0
         id: 4                 # ADR 0001
         uid: null
@@ -141,7 +141,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: right_lower_arm_yaw
-        actuator: rs00
+        actuator: rs00                # ADR 0001
         bus: can0
         id: 5                 # ADR 0001
         uid: null
@@ -158,7 +158,7 @@ limbs:
   waist:
     joints:
       - name: waist_yaw
-        actuator: rs03
+        actuator: rs03                # kinematics.md
         bus: null
         id: 41                # ADR 0001 block; bus not assigned
         uid: null
@@ -173,7 +173,7 @@ limbs:
   left_leg:
     joints:
       - name: left_hip_yaw
-        actuator: rs03
+        actuator: rs03                # kinematics.md
         bus: null
         id: 31                # ADR 0001 block; bus not assigned
         uid: null
@@ -186,7 +186,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: left_hip_roll
-        actuator: rs03
+        actuator: rs03                # kinematics.md
         bus: null
         id: 32                # ADR 0001 block; bus not assigned
         uid: null
@@ -199,7 +199,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: left_hip_pitch
-        actuator: rs04
+        actuator: rs04                # kinematics.md
         bus: null
         id: 33                # ADR 0001 block; bus not assigned
         uid: null
@@ -212,7 +212,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: left_knee
-        actuator: rs04
+        actuator: rs04                # kinematics.md
         bus: null
         id: 34                # ADR 0001 block; bus not assigned
         uid: null
@@ -225,7 +225,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: left_ankle_pitch
-        actuator: rs02
+        actuator: rs02                # kinematics.md
         bus: null
         id: 35                # ADR 0001 block; bus not assigned
         uid: null
@@ -238,7 +238,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: left_ankle_roll
-        actuator: rs02
+        actuator: rs02                # kinematics.md
         bus: null
         id: 36                # ADR 0001 block; bus not assigned
         uid: null
@@ -253,7 +253,7 @@ limbs:
   right_leg:
     joints:
       - name: right_hip_yaw
-        actuator: rs03
+        actuator: rs03                # kinematics.md
         bus: null
         id: 21                # ADR 0001 block; bus not assigned
         uid: null
@@ -266,7 +266,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: right_hip_roll
-        actuator: rs03
+        actuator: rs03                # kinematics.md
         bus: null
         id: 22                # ADR 0001 block; bus not assigned
         uid: null
@@ -279,7 +279,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: right_hip_pitch
-        actuator: rs04
+        actuator: rs04                # kinematics.md
         bus: null
         id: 23                # ADR 0001 block; bus not assigned
         uid: null
@@ -292,7 +292,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: right_knee
-        actuator: rs04
+        actuator: rs04                # kinematics.md
         bus: null
         id: 24                # ADR 0001 block; bus not assigned
         uid: null
@@ -305,7 +305,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: right_ankle_pitch
-        actuator: rs02
+        actuator: rs02                # kinematics.md
         bus: null
         id: 25                # ADR 0001 block; bus not assigned
         uid: null
@@ -318,7 +318,7 @@ limbs:
         current_cap_a: null
         speed_cap_rad_s: null
       - name: right_ankle_roll
-        actuator: rs02
+        actuator: rs02                # kinematics.md
         bus: null
         id: 26                # ADR 0001 block; bus not assigned
         uid: null

@@ -28,9 +28,10 @@ ALLOWED_DEPS = {
 
 MAX_LINES = 800
 GUARDS = re.compile(r"^\s*///\s*Guards: (bug|safety|protocol|number) - \S")
-TEST_ATTR = re.compile(r"^\s*#\[(test|tokio::test)\]")
+TEST_ATTR = re.compile(r"^\s*#\[(test|tokio::test)\b")
 SLEEP = re.compile(r"\b(thread::sleep|tokio::time::sleep)\b")
 BARE_TODO = re.compile(r"\bTODO\b(?!\()")
+ISSUE_LINK = re.compile(r"https://github\.com/[^/\s]+/[^/\s]+/issues/\d+")
 
 
 def rust_files():
@@ -52,7 +53,7 @@ def check_deps():
             errors.append(f"{name}: not in the dependency table; add it to architecture.md section 3 and this script")
             continue
         for dep in pkg["dependencies"]:
-            if dep["name"] in names and dep["kind"] in (None, "build") and dep["name"] not in ALLOWED_DEPS[name]:
+            if dep["name"] in names and dep["name"] not in ALLOWED_DEPS[name]:
                 errors.append(f"{name} -> {dep['name']}: edge not allowed by architecture.md section 3")
     return errors
 
@@ -78,8 +79,20 @@ def check_guards():
             if not TEST_ATTR.match(line):
                 continue
             j = i - 1
-            while j >= 0 and lines[j].strip().startswith("#["):
-                j -= 1
+            # Skip the attributes between the doc comment and #[test], including ones that span lines.
+            while j >= 0 and not lines[j].strip().startswith("///"):
+                stripped = lines[j].strip()
+                if stripped.startswith("#["):
+                    j -= 1
+                    continue
+                k = j
+                while k >= 0 and not lines[k].strip().startswith("#[") and not lines[k].strip().startswith("///"):
+                    k -= 1
+                if k >= 0 and lines[k].strip().startswith("#[") and (stripped.endswith("]") or stripped.endswith(",")
+                                                                      or stripped.endswith("(")):
+                    j = k - 1
+                    continue
+                break
             docs = []
             while j >= 0 and lines[j].strip().startswith("///"):
                 docs.append(lines[j])
@@ -108,7 +121,8 @@ def check_todo():
         if path.resolve() == Path(__file__).resolve():
             continue
         for i, line in enumerate(path.read_text().splitlines()):
-            if BARE_TODO.search(re.sub(r"`[^`]*`", "", line)):  # a TODO quoted as code is prose about TODOs
+            # A TODO quoted as code is prose about TODOs; one with an issue link on its line is tracked.
+            if BARE_TODO.search(re.sub(r"`[^`]*`", "", line)) and not ISSUE_LINK.search(line):
                 errors.append(f"{path.relative_to(ROOT)}:{i + 1}: bare TODO; write TODO(name) or link an issue")
     return errors
 

@@ -1,10 +1,10 @@
 //! Reading one joint, and the checks that need only that joint: caps inside the model's range, soft limits inside hard
-//! limits, and the hard window clear of the drive's power-on wrap point (PLAN item 1, "Loader refuses").
+//! limits, and the hard window inside one turn of the drive's power-on reading (PLAN item 1, "Loader refuses").
 
 use robstride::{Amps, DeviceId, Model, NewtonMeters, RadPerSec, Radians};
 
 use crate::error::ProblemKind;
-use crate::read::{Fields, Reader, integer, number, positive, range, text};
+use crate::read::{Fields, Reader, integer, number, plain, positive, range, text};
 use crate::types::{BusName, Direction, Joint, JointName, Uid, Window};
 use crate::yaml::Node;
 
@@ -13,6 +13,8 @@ pub(crate) struct Site {
     pub(crate) joint: Joint,
     pub(crate) path: String,
     pub(crate) line: usize,
+    pub(crate) bus_line: usize,
+    pub(crate) id_line: usize,
 }
 
 pub(crate) fn read_joint(
@@ -66,13 +68,19 @@ pub(crate) fn read_joint(
     if let Some(joint) = &joint {
         check_joint(r, &f, joint);
     }
-    let (path, line) = (f.path.clone(), f.line);
+    let (path, line, bus_line, id_line) =
+        (f.path.clone(), f.line, f.line_of("bus"), f.line_of("id"));
     f.finish(r);
-    joint.map(|joint| Site { joint, path, line })
+    joint.map(|joint| Site {
+        joint,
+        path,
+        line,
+        bus_line,
+        id_line,
+    })
 }
 
 fn check_joint(r: &mut Reader, f: &Fields<'_>, j: &Joint) {
-    let line = f.line;
     let max = j.actuator.ranges();
     let caps = [
         (
@@ -93,40 +101,52 @@ fn check_joint(r: &mut Reader, f: &Fields<'_>, j: &Joint) {
     ];
     for (key, cap, max) in caps {
         if cap.is_some_and(|c| c > max) {
-            r.report(line, f.path_of(key), ProblemKind::CapAboveModel { max });
+            r.report(
+                f.line_of(key),
+                f.path_of(key),
+                ProblemKind::CapAboveModel { max },
+            );
         }
     }
     if let (Some(hard), Some(soft)) = (j.hard_rad, j.soft_rad)
         && (soft.lower < hard.lower || soft.upper > hard.upper)
     {
-        r.report(line, f.path_of("soft_rad"), ProblemKind::SoftOutsideHard);
-    }
-    if let (Some(hard), Some(direction), Some(zero)) = (j.hard_rad, j.direction, j.zero_rad)
-        && let Some(wrap_rad) = wrap_inside(j.actuator, hard, direction, zero)
-    {
         r.report(
-            line,
-            f.path_of("hard_rad"),
-            ProblemKind::HardWindowContainsWrap { wrap_rad },
+            f.line_of("soft_rad"),
+            f.path_of("soft_rad"),
+            ProblemKind::SoftOutsideHard,
         );
+    }
+    if let Some(hard) = j.hard_rad
+        && let Some(kind) = outside_power_on_turn(j.actuator, hard, j.direction, j.zero_rad)
+    {
+        r.report(f.line_of("hard_rad"), f.path_of("hard_rad"), kind);
     }
 }
 
-/// The first drive position inside the hard window (ends included) where the drive's power-on reading folds over, if
-/// any. Drive position is `zero_rad + direction × q_joint`, the inverse of PLAN item 1's conversion.
-fn wrap_inside(
+/// The drive reports its output position inside one turn after power-on (manual §4.2.2). A hard window must fit inside
+/// that turn, or a reading after power-up can't say which turn the joint is in. Without a zero and a direction only
+/// the width can be checked; with them, the window seen from the drive, `zero_rad + direction × q_joint` (the inverse
+/// of PLAN item 1's conversion), must lie in `[start, start + turn)`.
+fn outside_power_on_turn(
     model: Model,
     hard: Window<Radians>,
-    direction: Direction,
-    zero: Radians,
-) -> Option<f64> {
-    let (start, length) = model.power_on_window();
-    let (start, length) = (start.get(), length.get());
+    direction: Option<Direction>,
+    zero: Option<Radians>,
+) -> Option<ProblemKind> {
+    let (start, turn) = model.power_on_window();
+    let (start, turn) = (start.get(), turn.get());
+    if hard.upper.get() - hard.lower.get() >= turn {
+        return Some(ProblemKind::HardWindowTooWide { max_rad: turn });
+    }
+    let (direction, zero) = (direction?, zero?);
     let a = zero.get() + direction.sign() * hard.lower.get();
     let b = zero.get() + direction.sign() * hard.upper.get();
     let (low, high) = if a <= b { (a, b) } else { (b, a) };
-    let fold = start + ((low - start) / length).ceil() * length;
-    (fold <= high).then_some(fold)
+    (low < start || high >= start + turn).then_some(ProblemKind::HardWindowOutsidePowerOnTurn {
+        drive_rad: [low, high],
+        turn_rad: [start, start + turn],
+    })
 }
 
 fn window(node: &Node) -> Result<Window<Radians>, ProblemKind> {
@@ -159,10 +179,10 @@ pub(crate) fn bus_name(node: &Node) -> Result<BusName, ProblemKind> {
 }
 
 fn direction(node: &Node) -> Result<Direction, ProblemKind> {
-    match text(node) {
-        Ok("1" | "+1") => Ok(Direction::Same),
-        Ok("-1") => Ok(Direction::Reversed),
-        Ok(_) | Err(_) => Err(ProblemKind::Expected("1 or -1")),
+    match plain(node) {
+        Some("1" | "+1") => Ok(Direction::Same),
+        Some("-1") => Ok(Direction::Reversed),
+        Some(_) | None => Err(ProblemKind::Expected("1 or -1, unquoted")),
     }
 }
 
@@ -170,8 +190,9 @@ fn uid(node: &Node) -> Result<Uid, ProblemKind> {
     let t = text(node)?;
     let hex = t.strip_prefix("0x").unwrap_or(t);
     let mut out = [0_u8; 8];
+    // Checked digit by digit: `from_str_radix` alone would accept a sign, so "+1+2+3+4+5+6+7+8" would load.
     let ok = hex.len() == 16
-        && hex.is_ascii()
+        && hex.bytes().all(|b| b.is_ascii_hexdigit())
         && out.iter_mut().enumerate().all(|(i, byte)| {
             hex.get(2 * i..2 * i + 2)
                 .and_then(|pair| u8::from_str_radix(pair, 16).ok())

@@ -43,7 +43,7 @@ pub struct Bus {
     /// Interface name, also used for `vcan` in sim (PLAN item 4).
     pub name: BusName,
     /// Bit rate, bit/s.
-    pub bitrate: u32,
+    pub bitrate_bps: u32,
     /// Sample point as a fraction of the bit, between 0 and 1.
     pub sample_point: f64,
     /// USB serial of the adapter, for its link file (PLAN item 3). `None` until the adapter exists.
@@ -75,7 +75,7 @@ pub enum LimbName {
 }
 
 impl LimbName {
-    /// Every limb, in the order the file lists them (skeleton.md section 4).
+    /// Every limb, in the order skeleton.md section 4 asks the file to list them. The loader doesn't enforce order.
     pub const ALL: [Self; 5] = [
         Self::LeftArm,
         Self::RightArm,

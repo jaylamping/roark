@@ -15,6 +15,7 @@ mod read;
 mod types;
 mod yaml;
 
+use std::io::Read;
 use std::path::Path;
 
 pub use error::{LoadError, Problem, ProblemKind};
@@ -44,14 +45,19 @@ pub fn load(path: &Path) -> Result<Skeleton, LoadError> {
         path: path.to_owned(),
         source,
     };
-    let size = std::fs::metadata(path).map_err(read_error)?.len();
-    if size > MAX_BYTES {
+    // Read through `take`, not a size check first: a FIFO or /dev/zero reports size 0, and a file can grow after the check.
+    let mut text = String::new();
+    std::fs::File::open(path)
+        .map_err(read_error)?
+        .take(MAX_BYTES + 1)
+        .read_to_string(&mut text)
+        .map_err(read_error)?;
+    if u64::try_from(text.len()).map_or(true, |n| n > MAX_BYTES) {
         return Err(LoadError::Invalid(vec![Problem::at_line(
             1,
             ProblemKind::OutOfRange("at most 1 MiB"),
         )]));
     }
-    let text = std::fs::read_to_string(path).map_err(read_error)?;
     parse(&text)
 }
 
@@ -81,34 +87,46 @@ fn read_skeleton(r: &mut Reader, root: &Node) -> Option<Skeleton> {
     let schema = r.required(&mut f, "schema", integer)?;
     if schema != SCHEMA {
         // Nothing else in a file of another schema can be read with these rules.
-        r.report(root.line, "schema", ProblemKind::UnknownSchema(schema));
+        r.report(
+            f.line_of("schema"),
+            "schema",
+            ProblemKind::UnknownSchema(schema),
+        );
         return None;
     }
-    let name = r.required(&mut f, "name", |n| match text(n)? {
-        "" => Err(ProblemKind::Expected("a name")),
-        t => Ok(t.to_owned()),
-    });
+    let name = r.required(&mut f, "name", |n| text(n).map(str::to_owned));
     let power = f.take("power", r).and_then(|n| read_power(r, n));
     let buses = f.take("buses", r).and_then(|n| check::read_buses(r, n));
-    let limbs = f.take("limbs", r).and_then(|n| check::read_limbs(r, n));
+    let limbs_line = f.line_of("limbs");
+    let limbs = f
+        .take("limbs", r)
+        .and_then(|n| check::read_limbs(r, n, limbs_line));
     f.finish(r);
 
-    let (power, budget_line) = power?;
-    let skeleton = Skeleton {
-        name: name?,
-        power,
-        buses: buses?,
-        limbs: Vec::new(),
-    };
-    let limbs = limbs?;
-    check::cross_joint(r, &skeleton, &limbs, budget_line);
+    // Cross-joint checks run on whatever parsed, so every problem is reported at once.
+    let budget = power
+        .as_ref()
+        .and_then(|(p, line)| p.as_ref().map(|p| (p.current_budget_a.get(), *line)));
+    if let Some(limbs) = &limbs {
+        check::cross_joint(
+            r,
+            &limbs.sites,
+            buses.as_ref().map(|b| b.names.as_slice()),
+            budget,
+        );
+    }
+
+    let buses = buses.filter(|b| b.complete)?.buses;
     Some(Skeleton {
-        limbs: limbs.into_iter().map(|(limb, _)| limb).collect(),
-        ..skeleton
+        name: name?,
+        power: power?.0?,
+        buses,
+        limbs: limbs?.limbs?,
     })
 }
 
-fn read_power(r: &mut Reader, node: &Node) -> Option<(Power, usize)> {
+/// The power block if it parsed, and the line of `current_budget_a` for the budget check.
+fn read_power(r: &mut Reader, node: &Node) -> Option<(Option<Power>, usize)> {
     let mut f = r.fields(node, "power")?;
     let source = r.required(&mut f, "source", |n| match text(n)? {
         "bench_24v" => Ok(PowerSource::Bench24V),
@@ -122,19 +140,17 @@ fn read_power(r: &mut Reader, node: &Node) -> Option<(Power, usize)> {
             Err(ProblemKind::OutOfRange("above 0 V"))
         }
     });
-    let budget_node = f.take("current_budget_a", r);
-    let budget_line = budget_node.map_or(f.line, |n| n.line);
-    let current_budget_a =
-        budget_node.and_then(|n| r.parsed(n, f.path_of("current_budget_a"), positive(Amps::new)));
+    let budget_line = f.line_of("current_budget_a");
+    let current_budget_a = r.required(&mut f, "current_budget_a", positive(Amps::new));
     f.finish(r);
-    Some((
-        Power {
+    let power = (|| {
+        Some(Power {
             source: source?,
             vbus_v: vbus_v?,
             current_budget_a: current_budget_a?,
-        },
-        budget_line,
-    ))
+        })
+    })();
+    Some((power, budget_line))
 }
 
 /// The sample point as a fraction strictly between 0 and 1.

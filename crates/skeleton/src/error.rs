@@ -64,11 +64,18 @@ pub enum ProblemKind {
         /// The model's upper bound for this cap.
         max: f64,
     },
-    /// The hard window, seen from the drive, contains the point where the drive's power-on position folds over, so a
-    /// reading after power-up can't say which side of it the joint is on.
-    HardWindowContainsWrap {
-        /// The drive position (rad) where the reading folds over.
-        wrap_rad: f64,
+    /// The hard window is a full turn or wider, so no zero can fit it inside the drive's power-on turn.
+    HardWindowTooWide {
+        /// One turn, rad.
+        max_rad: f64,
+    },
+    /// The hard window, seen from the drive (`zero_rad + direction × q`), leaves the one turn the drive reports after
+    /// power-on, so a reading after power-up can't say which turn the joint is in.
+    HardWindowOutsidePowerOnTurn {
+        /// The hard window in drive position, rad.
+        drive_rad: [f64; 2],
+        /// The power-on turn, rad, end excluded.
+        turn_rad: [f64; 2],
     },
     /// Two joints with one name.
     DuplicateJoint(String),
@@ -134,10 +141,19 @@ impl fmt::Display for Problem {
             ProblemKind::CapAboveModel { max } => {
                 write!(f, "above this actuator's maximum of {max}")
             }
-            ProblemKind::HardWindowContainsWrap { wrap_rad } => write!(
+            ProblemKind::HardWindowTooWide { max_rad } => {
+                write!(
+                    f,
+                    "hard window is {max_rad:.3} rad or wider; it must fit inside one turn of the drive"
+                )
+            }
+            ProblemKind::HardWindowOutsidePowerOnTurn {
+                drive_rad: [lo, hi],
+                turn_rad: [start, end],
+            } => write!(
                 f,
-                "with this zero_rad and direction the hard window crosses drive position {wrap_rad:.3} rad, where the \
-                 drive's power-on reading folds over"
+                "with this zero_rad and direction the hard window is drive position {lo:.3} to {hi:.3} rad, outside \
+                 the {start:.3} to {end:.3} rad the drive reports after power-on"
             ),
             ProblemKind::DuplicateJoint(name) => write!(f, "joint `{name}` is listed twice"),
             ProblemKind::DuplicateAddress { other } => write!(f, "same bus and ID as `{other}`"),

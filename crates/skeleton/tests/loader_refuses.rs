@@ -1,6 +1,8 @@
 //! The loader's refusals, one row per rule in PLAN item 1 ("Loader refuses", "Null is not permission") and skeleton.md
 //! section 5. Every row edits one small all-limb fixture, never the live skeleton (testing.md rule 3).
 
+use std::f64::consts::TAU;
+
 use skeleton::{LoadError, ProblemKind};
 
 /// Five limbs, some wired and some offline. One joint is fully commissioned so the checks that need a zero and a
@@ -14,11 +16,11 @@ power:
   current_budget_a: 25.0
 buses:
   bus0:
-    bitrate: 1000000
+    bitrate_bps: 1000000
     sample_point: 0.75
     adapter_serial: null
   bus1:
-    bitrate: 1000000
+    bitrate_bps: 1000000
     sample_point: 0.75
     adapter_serial: \"ABC123\"
 limbs:
@@ -109,6 +111,13 @@ fn problems(text: &str) -> Vec<(String, ProblemKind)> {
     }
 }
 
+fn outside(drive_rad: [f64; 2]) -> ProblemKind {
+    ProblemKind::HardWindowOutsidePowerOnTurn {
+        drive_rad,
+        turn_rad: [0.0, TAU],
+    }
+}
+
 fn at(path: &str, kind: ProblemKind) -> (String, ProblemKind) {
     (path.to_owned(), kind)
 }
@@ -178,13 +187,74 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
             )],
         ),
         (
-            // Drive position = 3.0 - q: the window [-0.5, 1.5] spans drive 1.5 to 3.5, clear of 0 and 2π. Moving the zero
-            // to 1.0 makes it span -0.5 to 1.5, across the power-on fold at 0.
-            "hard window contains the drive's position wrap point",
+            // Drive position = 3.0 - q: the window [-0.5, 1.5] is drive 1.5 to 3.5, inside the power-on turn 0 to 2π.
+            // A zero of 1.0 puts it at -0.5 to 1.5, across the fold at 0.
+            "hard window crosses the drive's power-on fold",
             edit("zero_rad: 3.0", "zero_rad: 1.0"),
+            vec![at(&format!("{J1}.hard_rad"), outside([-0.5, 1.5]))],
+        ),
+        (
+            // A zero of 9.0 puts it at 7.5 to 9.5: no fold inside, but a whole turn above what the drive reports.
+            "hard window sits in another turn",
+            edit("zero_rad: 3.0", "zero_rad: 9.0"),
+            vec![at(&format!("{J1}.hard_rad"), outside([7.5, 9.5]))],
+        ),
+        (
+            "hard window a full turn wide is refused even with no zero",
+            edit(
+                "hard_rad: null\n        soft_rad: null\n        torque_cap_nm: null\n        current_cap_a: 10.0",
+                "hard_rad: [-3.2, 3.2]\n        soft_rad: null\n        torque_cap_nm: null\n        current_cap_a: 10.0",
+            ),
             vec![at(
-                &format!("{J1}.hard_rad"),
-                ProblemKind::HardWindowContainsWrap { wrap_rad: 0.0 },
+                "limbs.left_arm.arm_joint_two.hard_rad",
+                ProblemKind::HardWindowTooWide { max_rad: TAU },
+            )],
+        ),
+        (
+            "a problem elsewhere doesn't hide a cross-joint one",
+            edit("source: bench_24v", "source: bench_48v")
+                .replace("name: other_arm_joint", "name: arm_joint_one"),
+            vec![
+                at("power.source", ProblemKind::Expected("bench_24v")),
+                at(
+                    "limbs.right_arm.arm_joint_one",
+                    ProblemKind::DuplicateJoint("arm_joint_one".to_owned()),
+                ),
+            ],
+        ),
+        (
+            "a blank is not a value",
+            edit(
+                "reference_pose: \"link hanging, resting on the pad\"",
+                "reference_pose: \"\"",
+            ),
+            vec![at(
+                &format!("{J1}.reference_pose"),
+                ProblemKind::Expected("text (write `null` if it isn't known yet)"),
+            )],
+        ),
+        (
+            "an ID with a leading zero",
+            edit("id: 12", "id: 012"),
+            vec![at(
+                "limbs.left_arm.arm_joint_two.id",
+                ProblemKind::Expected("a whole number without leading zeros"),
+            )],
+        ),
+        (
+            "a quoted direction",
+            edit("direction: -1", "direction: \"-1\""),
+            vec![at(
+                &format!("{J1}.direction"),
+                ProblemKind::Expected("1 or -1, unquoted"),
+            )],
+        ),
+        (
+            "a UID with sign characters",
+            edit("uid: \"0x0123456789abcdef\"", "uid: \"+1+2+3+4+5+6+7+8\""),
+            vec![at(
+                &format!("{J1}.uid"),
+                ProblemKind::Expected("16 hex digits"),
             )],
         ),
         (
@@ -252,4 +322,19 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
     for (what, text, expected) in rows {
         assert_eq!(problems(&text), expected, "{what}");
     }
+
+    // Problems point at the field's own line, not the joint's.
+    let found = match skeleton::parse(&edit("zero_rad: 3.0", "zero_rad: 1.0")) {
+        Err(LoadError::Invalid(found)) => found,
+        Ok(_) | Err(LoadError::Read { .. }) => Vec::new(),
+    };
+    let hard_line = FIXTURE
+        .lines()
+        .position(|l| l.contains("hard_rad: [-0.5, 1.5]"))
+        .map(|i| i + 1);
+    assert_eq!(
+        found.first().map(|p| p.line),
+        hard_line,
+        "line of the hard_rad problem"
+    );
 }

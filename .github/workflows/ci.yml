@@ -1,5 +1,6 @@
 # CI gates, rust.md section 13. Gates 1 to 5 are scripts/check.sh, the same command run locally before a push.
 # Gate 7 (the sim-drive suite on vcan) joins with the first sim test (PLAN item 4); it is never skipped silently.
+# Gate 6 builds libraries only until the first binary lands; the aarch64 linker is exercised from then on.
 name: ci
 
 on:
@@ -24,7 +25,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-nextest,cargo-deny
+          tool: cargo-nextest@0.9.151,cargo-deny@0.20.2   # pinned; bump in its own PR
       - run: ./scripts/check.sh
 
   pi-build:

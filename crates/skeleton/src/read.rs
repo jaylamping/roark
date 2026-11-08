@@ -111,6 +111,14 @@ impl<'n> Fields<'n> {
         self.entries.iter().any(|e| e.key == key)
     }
 
+    /// The line of `key`'s value, so a problem with a field points at that field; the mapping's line if it's absent.
+    pub(crate) fn line_of(&self, key: &str) -> usize {
+        self.entries
+            .iter()
+            .find(|e| e.key == key)
+            .map_or(self.line, |e| e.value.line)
+    }
+
     pub(crate) fn path_of(&self, key: &str) -> String {
         if self.path.is_empty() {
             key.to_owned()
@@ -138,23 +146,37 @@ pub(crate) fn is_null(node: &Node) -> bool {
     matches!(&node.value, Value::Scalar { text, quoted: false } if text == "null" || text == "~")
 }
 
-/// A scalar's text. Plain `null` is not text.
+/// A scalar's non-blank text. An empty value, or another spelling of null (`Null`, `NULL`), is refused rather than
+/// read as text, so a blank can't stand in for a value ("Null is not permission", PLAN item 1).
 pub(crate) fn text(node: &Node) -> Result<&str, ProblemKind> {
     match &node.value {
-        Value::Scalar { text, .. } if !is_null(node) => Ok(text),
-        Value::Scalar { .. } | Value::Seq(_) | Value::Map(_) => Err(ProblemKind::Expected("text")),
+        Value::Scalar {
+            text,
+            quoted: false,
+        } if matches!(text.as_str(), "Null" | "NULL") => {
+            Err(ProblemKind::Expected("`null` in lower case"))
+        }
+        Value::Scalar { text, .. } if !is_null(node) && !text.trim().is_empty() => Ok(text),
+        Value::Scalar { .. } | Value::Seq(_) | Value::Map(_) => Err(ProblemKind::Expected(
+            "text (write `null` if it isn't known yet)",
+        )),
+    }
+}
+
+/// A plain (unquoted) scalar's text: numbers and signs are never written as quoted strings.
+pub(crate) fn plain(node: &Node) -> Option<&str> {
+    match &node.value {
+        Value::Scalar {
+            text,
+            quoted: false,
+        } => Some(text),
+        Value::Scalar { quoted: true, .. } | Value::Seq(_) | Value::Map(_) => None,
     }
 }
 
 /// A finite number written as a plain scalar.
 pub(crate) fn number(node: &Node) -> Result<f64, ProblemKind> {
-    let Value::Scalar {
-        text,
-        quoted: false,
-    } = &node.value
-    else {
-        return Err(ProblemKind::Expected("a number"));
-    };
+    let text = plain(node).ok_or(ProblemKind::Expected("a number"))?;
     let lower = text.to_ascii_lowercase();
     if matches!(
         lower.trim_start_matches(['+', '-']),
@@ -172,18 +194,20 @@ pub(crate) fn number(node: &Node) -> Result<f64, ProblemKind> {
     }
 }
 
-/// A non-negative integer written as plain decimal digits.
+/// A non-negative integer in plain decimal digits. A leading zero is refused: YAML 1.1 tools read `012` as octal 10.
 pub(crate) fn integer(node: &Node) -> Result<u64, ProblemKind> {
-    match &node.value {
-        Value::Scalar {
-            text,
-            quoted: false,
-        } if !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()) => text
-            .parse()
-            .map_err(|_| ProblemKind::OutOfRange("below 2^64")),
-        Value::Scalar { .. } | Value::Seq(_) | Value::Map(_) => {
-            Err(ProblemKind::Expected("a whole number"))
+    match plain(node) {
+        Some(text)
+            if !text.is_empty()
+                && text.bytes().all(|b| b.is_ascii_digit())
+                && (text == "0" || !text.starts_with('0')) =>
+        {
+            text.parse()
+                .map_err(|_| ProblemKind::OutOfRange("below 2^64"))
         }
+        Some(_) | None => Err(ProblemKind::Expected(
+            "a whole number without leading zeros",
+        )),
     }
 }
 
