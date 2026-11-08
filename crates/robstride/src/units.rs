@@ -33,6 +33,10 @@ si_unit!(
     RadPerSec
 );
 si_unit!(
+    /// An angular acceleration in rad/s².
+    RadPerSecSq
+);
+si_unit!(
     /// A torque in N·m.
     NewtonMeters
 );

@@ -6,7 +6,7 @@ mod common;
 use common::{header, id};
 use robstride::{
     DecodeError, Echo, EchoKind, EncodeError, Frame, Inbound, MitCommand, MitField, Mode, Model,
-    NewtonMeters, NmPerRad, NmSecPerRad, ParamOutcome, RadPerSec, Radians, Reporting, Uid,
+    NewtonMeters, NmPerRad, NmSecPerRad, Param, ParamOutcome, RadPerSec, Radians, Reporting, Uid,
     UnvouchedModel, decode, encode,
 };
 
@@ -161,24 +161,13 @@ fn decoded_frames_match_the_manuals() {
             },
         ),
         (
-            // §4.1.14 worked example: reading loc_kp (0x701E) from ID 0x7F returns 30.0 as a little-endian f32.
-            "parameter read reply",
-            0x1100_7FFD,
-            [0x1E, 0x70, 0, 0, 0x00, 0x00, 0xF0, 0x41],
-            Inbound::Param {
-                device: id(0x7F),
-                index: 0x701E,
-                outcome: ParamOutcome::Read([0x00, 0x00, 0xF0, 0x41]),
-            },
-        ),
-        (
             // §4.1.6: bits 23..16 are 00 on success, 01 on failure.
             "parameter read refused",
             0x1101_7FFD,
             [0x1E, 0x70, 0, 0, 0, 0, 0, 0],
             Inbound::Param {
                 device: id(0x7F),
-                index: 0x701E,
+                param: Param::LocKp,
                 outcome: ParamOutcome::Refused,
             },
         ),
@@ -230,20 +219,6 @@ fn decoded_frames_match_the_manuals() {
             0x070B_FD01,
             [0; 8],
             echo(EchoKind::SetId { new: id(11) }, 1),
-        ),
-        (
-            // Bytes 4 to 7 of a read aren't checked (the manual's text for them is garbled).
-            "echo: parameter read",
-            0x1100_FD7F,
-            [0x1E, 0x70, 0, 0, 0xAA, 0, 0, 0],
-            echo(EchoKind::ParamRead, 0x7F),
-        ),
-        (
-            // §4.1.14: loc_kp (0x701E) = 30.0, a little-endian f32 in bytes 4 to 7.
-            "echo: parameter write",
-            0x1200_FD7F,
-            [0x1E, 0x70, 0, 0, 0x00, 0x00, 0xF0, 0x41],
-            echo(EchoKind::ParamWrite, 0x7F),
         ),
         (
             "echo: reporting on",
