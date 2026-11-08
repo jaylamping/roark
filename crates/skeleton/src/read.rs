@@ -184,6 +184,15 @@ pub(crate) fn number(node: &Node) -> Result<f64, ProblemKind> {
     ) {
         return Err(ProblemKind::NonFinite);
     }
+    // As in `integer`: YAML 1.1 tools read `012` as octal 10. `0`, `0.5` and `-0.5` keep their single zero.
+    let whole = lower
+        .trim_start_matches(['+', '-'])
+        .split(['.', 'e'])
+        .next()
+        .unwrap_or_default();
+    if whole.len() > 1 && whole.starts_with('0') {
+        return Err(ProblemKind::Expected("a number without leading zeros"));
+    }
     let value: f64 = text
         .parse()
         .map_err(|_| ProblemKind::Expected("a number"))?;

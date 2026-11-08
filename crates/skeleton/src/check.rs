@@ -11,7 +11,7 @@ use robstride::DeviceId;
 use crate::error::ProblemKind;
 use crate::joint::{Site, bus_name, read_joint};
 use crate::read::{Reader, integer, text};
-use crate::types::{Bus, BusName, Limb, LimbName};
+use crate::types::{Bus, BusName, JointName, Limb, LimbName};
 use crate::yaml::{Node, Value};
 
 /// Classical CAN tops out at 1 Mbit/s (ISO 11898-1).
@@ -97,15 +97,18 @@ pub(crate) fn read_limbs(r: &mut Reader, node: &Node, limbs_line: usize) -> Opti
             );
         }
         let joints = read_limb(r, &entry.value, &path);
-        let complete = joints
-            .as_ref()
-            .is_some_and(|sites| sites.iter().all(Option::is_some));
-        // Every joint that parsed goes to the cross-joint checks, even when a sibling didn't.
+        let complete = joints.as_ref().is_some_and(|sites| {
+            sites
+                .iter()
+                .all(|s| s.as_ref().is_some_and(|s| s.joint.is_some()))
+        });
+        // Every joint entry goes to the cross-joint checks with whatever of it parsed, even when a sibling, or another
+        // field of the same joint, didn't.
         let sites: Vec<Site> = joints.into_iter().flatten().flatten().collect();
         match (name, complete, &mut out.limbs) {
             (Some(name), true, Some(limbs)) => limbs.push(Limb {
                 name,
-                joints: sites.iter().map(|s| s.joint.clone()).collect(),
+                joints: sites.iter().filter_map(|s| s.joint.clone()).collect(),
             }),
             (_, _, limbs) => *limbs = None,
         }
@@ -156,16 +159,21 @@ pub(crate) fn cross_joint(
     let mut current_sum_a = 0.0;
 
     for site in sites {
-        let j = &site.joint;
-        if !names.insert(j.name.as_str()) {
+        // A joint whose name didn't parse is named by its path in other joints' problems.
+        let name = site
+            .name
+            .as_ref()
+            .map_or(site.path.as_str(), JointName::as_str);
+        if site.name.is_some() && !names.insert(name) {
             r.report(
                 site.line,
                 site.path.clone(),
-                ProblemKind::DuplicateJoint(j.name.to_string()),
+                ProblemKind::DuplicateJoint(name.to_owned()),
             );
         }
-        let Some(bus) = &j.bus else {
+        let Some(Some(bus)) = &site.bus else {
             // No bus: the joint is offline and can't be enabled, so it takes no address and no share of the budget.
+            // A bus that didn't parse is reported already.
             continue;
         };
         if bus_names.is_some_and(|names| !names.iter().any(|n| n == bus.as_str())) {
@@ -175,7 +183,9 @@ pub(crate) fn cross_joint(
                 ProblemKind::UnknownBus(bus.to_string()),
             );
         }
-        if let Some(other) = addresses.insert((bus, j.id), j.name.as_str()) {
+        if let Some(id) = site.id
+            && let Some(other) = addresses.insert((bus, id), name)
+        {
             r.report(
                 site.id_line,
                 format!("{}.id", site.path),
@@ -184,8 +194,12 @@ pub(crate) fn cross_joint(
                 },
             );
         }
-        // Every joint with a bus can be named in one enable (tenet 1), so all of them count against the budget.
-        current_sum_a += j.current_cap_a.map_or(0.0, robstride::Amps::get);
+        // Every joint with a bus can be named in one enable (tenet 1), so every written cap counts against the
+        // budget. A null cap refuses enable (PLAN item 1, "Null is not permission"), so it adds nothing.
+        current_sum_a += site
+            .current_cap_a
+            .flatten()
+            .map_or(0.0, robstride::Amps::get);
     }
 
     if let Some((budget_a, line)) = budget

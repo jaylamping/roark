@@ -84,8 +84,11 @@ pub fn parse(text: &str) -> Result<Skeleton, LoadError> {
 
 fn read_skeleton(r: &mut Reader, root: &Node) -> Option<Skeleton> {
     let mut f = r.fields(root, "")?;
-    let schema = r.required(&mut f, "schema", integer)?;
-    if schema != SCHEMA {
+    // A missing or unreadable schema is one more problem, and the rest is still checked against this schema's rules.
+    let schema = r.required(&mut f, "schema", integer);
+    if let Some(schema) = schema
+        && schema != SCHEMA
+    {
         // Nothing else in a file of another schema can be read with these rules.
         r.report(
             f.line_of("schema"),
@@ -104,9 +107,7 @@ fn read_skeleton(r: &mut Reader, root: &Node) -> Option<Skeleton> {
     f.finish(r);
 
     // Cross-joint checks run on whatever parsed, so every problem is reported at once.
-    let budget = power
-        .as_ref()
-        .and_then(|(p, line)| p.as_ref().map(|p| (p.current_budget_a.get(), *line)));
+    let budget = power.as_ref().and_then(|p| p.budget);
     if let Some(limbs) = &limbs {
         check::cross_joint(
             r,
@@ -116,17 +117,24 @@ fn read_skeleton(r: &mut Reader, root: &Node) -> Option<Skeleton> {
         );
     }
 
+    schema?;
     let buses = buses.filter(|b| b.complete)?.buses;
     Some(Skeleton {
         name: name?,
-        power: power?.0?,
+        power: power?.power?,
         buses,
         limbs: limbs?.limbs?,
     })
 }
 
-/// The power block if it parsed, and the line of `current_budget_a` for the budget check.
-fn read_power(r: &mut Reader, node: &Node) -> Option<(Option<Power>, usize)> {
+/// What `read_power` found: the block if all of it parsed, and the budget with its line if that field did, so the
+/// budget check still runs when another power field is broken.
+struct PowerBlock {
+    power: Option<Power>,
+    budget: Option<(f64, usize)>,
+}
+
+fn read_power(r: &mut Reader, node: &Node) -> Option<PowerBlock> {
     let mut f = r.fields(node, "power")?;
     let source = r.required(&mut f, "source", |n| match text(n)? {
         "bench_24v" => Ok(PowerSource::Bench24V),
@@ -150,7 +158,8 @@ fn read_power(r: &mut Reader, node: &Node) -> Option<(Option<Power>, usize)> {
             current_budget_a: current_budget_a?,
         })
     })();
-    Some((power, budget_line))
+    let budget = current_budget_a.map(|a| (a.get(), budget_line));
+    Some(PowerBlock { power, budget })
 }
 
 /// The sample point as a fraction strictly between 0 and 1.

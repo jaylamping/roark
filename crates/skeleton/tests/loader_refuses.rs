@@ -235,6 +235,71 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
             ],
         ),
         (
+            "a bad power field doesn't hide the current budget",
+            edit("source: bench_24v", "source: bench_48v")
+                .replace("current_cap_a: 10.0", "current_cap_a: 14.0"),
+            vec![
+                at("power.source", ProblemKind::Expected("bench_24v")),
+                at(
+                    "power.current_budget_a",
+                    ProblemKind::CurrentBudget {
+                        sum_a: 26.0,
+                        budget_a: 25.0,
+                    },
+                ),
+            ],
+        ),
+        (
+            "a bad field doesn't hide the same joint's other checks",
+            edit("hard_rad: [-0.5, 1.5]", "hard_rad: [1.5, -0.5]")
+                .replace("torque_cap_nm: 10.0", "torque_cap_nm: 61.0"),
+            vec![
+                at(&format!("{J1}.hard_rad"), ProblemKind::ReversedRange),
+                at(
+                    &format!("{J1}.torque_cap_nm"),
+                    ProblemKind::CapAboveModel { max: 60.0 },
+                ),
+            ],
+        ),
+        (
+            "a bad field doesn't hide the same joint's duplicate address",
+            edit("id: 12", "id: 11").replace("current_cap_a: 10.0", "current_cap_a: -1.0"),
+            vec![
+                at(
+                    "limbs.left_arm.arm_joint_two.id",
+                    ProblemKind::DuplicateAddress {
+                        other: "arm_joint_one".to_owned(),
+                    },
+                ),
+                at(
+                    "limbs.left_arm.arm_joint_two.current_cap_a",
+                    ProblemKind::OutOfRange("above 0"),
+                ),
+            ],
+        ),
+        (
+            "a schema that isn't a number doesn't stop the rest of the file being checked",
+            edit("schema: 1", "schema: one")
+                .replace("name: test_robot", "name: test_robot\nextra_key: 1"),
+            vec![
+                at(
+                    "schema",
+                    ProblemKind::Expected("a whole number without leading zeros"),
+                ),
+                at("", ProblemKind::UnknownKey("extra_key".to_owned())),
+            ],
+        ),
+        (
+            // YAML 1.1 tools read `012` as octal 10, so a cap with a leading zero means different things to different
+            // readers.
+            "a number with a leading zero",
+            edit("current_cap_a: 12.0", "current_cap_a: 012"),
+            vec![at(
+                &format!("{J1}.current_cap_a"),
+                ProblemKind::Expected("a number without leading zeros"),
+            )],
+        ),
+        (
             "a blank is not a value",
             edit(
                 "reference_pose: \"link hanging, resting on the pad\"",

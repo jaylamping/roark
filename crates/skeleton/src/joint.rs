@@ -8,15 +8,42 @@ use crate::read::{Fields, Reader, integer, number, plain, positive, range, text}
 use crate::types::{BusName, Direction, Joint, JointName, Uid, Window};
 use crate::yaml::Node;
 
-/// A joint and the lines its cross-joint checks report against.
+/// One joint entry as read: the whole joint if every field parsed, the fields the cross-joint checks need each on
+/// its own (so one broken field doesn't hide a duplicate name, address or budget share), and the lines to report at.
+/// Outer `None` on a field means it didn't parse and was reported.
+#[expect(
+    clippy::option_option,
+    reason = "outer None is a reported problem, inner None is a written `null`"
+)]
 pub(crate) struct Site {
-    pub(crate) joint: Joint,
+    pub(crate) joint: Option<Joint>,
+    pub(crate) name: Option<JointName>,
+    pub(crate) bus: Option<Option<BusName>>,
+    pub(crate) id: Option<DeviceId>,
+    pub(crate) current_cap_a: Option<Option<Amps>>,
     pub(crate) path: String,
     pub(crate) line: usize,
     pub(crate) bus_line: usize,
     pub(crate) id_line: usize,
 }
 
+/// The fields the single-joint checks read, each as parsed: outer `None` is a reported problem, inner `None` a `null`.
+#[expect(
+    clippy::option_option,
+    reason = "outer None is a reported problem, inner None is a written `null`"
+)]
+struct Checked {
+    actuator: Option<Model>,
+    direction: Option<Option<Direction>>,
+    zero_rad: Option<Option<Radians>>,
+    hard_rad: Option<Option<Window<Radians>>>,
+    soft_rad: Option<Option<Window<Radians>>>,
+    torque_cap_nm: Option<Option<NewtonMeters>>,
+    current_cap_a: Option<Option<Amps>>,
+    speed_cap_rad_s: Option<Option<RadPerSec>>,
+}
+
+/// `None` only when the entry isn't a mapping at all.
 pub(crate) fn read_joint(
     r: &mut Reader,
     node: &Node,
@@ -48,11 +75,22 @@ pub(crate) fn read_joint(
     let current_cap_a = r.nullable(&mut f, "current_cap_a", positive(Amps::new));
     let speed_cap_rad_s = r.nullable(&mut f, "speed_cap_rad_s", positive(RadPerSec::new));
 
+    let checked = Checked {
+        actuator,
+        direction,
+        zero_rad,
+        hard_rad,
+        soft_rad,
+        torque_cap_nm,
+        current_cap_a,
+        speed_cap_rad_s,
+    };
+    check_joint(r, &f, &checked);
     let joint = (|| {
         Some(Joint {
-            name: name?,
+            name: name.clone()?,
             actuator: actuator?,
-            bus: bus?,
+            bus: bus.clone()?,
             id: id?,
             uid: uid?,
             direction: direction?,
@@ -65,50 +103,54 @@ pub(crate) fn read_joint(
             speed_cap_rad_s: speed_cap_rad_s?,
         })
     })();
-    if let Some(joint) = &joint {
-        check_joint(r, &f, joint);
-    }
-    let (path, line, bus_line, id_line) =
-        (f.path.clone(), f.line, f.line_of("bus"), f.line_of("id"));
-    f.finish(r);
-    joint.map(|joint| Site {
+    let site = Site {
         joint,
-        path,
-        line,
-        bus_line,
-        id_line,
-    })
+        name,
+        bus,
+        id,
+        current_cap_a,
+        path: f.path.clone(),
+        line: f.line,
+        bus_line: f.line_of("bus"),
+        id_line: f.line_of("id"),
+    };
+    f.finish(r);
+    Some(site)
 }
 
-fn check_joint(r: &mut Reader, f: &Fields<'_>, j: &Joint) {
-    let max = j.actuator.ranges();
-    let caps = [
-        (
-            "torque_cap_nm",
-            j.torque_cap_nm.map(NewtonMeters::get),
-            max.torque_max.get(),
-        ),
-        (
-            "current_cap_a",
-            j.current_cap_a.map(Amps::get),
-            max.current_max.get(),
-        ),
-        (
-            "speed_cap_rad_s",
-            j.speed_cap_rad_s.map(RadPerSec::get),
-            max.speed_max.get(),
-        ),
-    ];
-    for (key, cap, max) in caps {
-        if cap.is_some_and(|c| c > max) {
-            r.report(
-                f.line_of(key),
-                f.path_of(key),
-                ProblemKind::CapAboveModel { max },
-            );
+/// Each check runs when the fields it reads parsed, whatever else in the joint is broken (skeleton.md section 5).
+fn check_joint(r: &mut Reader, f: &Fields<'_>, j: &Checked) {
+    if let Some(model) = j.actuator {
+        let max = model.ranges();
+        let caps = [
+            (
+                "torque_cap_nm",
+                j.torque_cap_nm.flatten().map(NewtonMeters::get),
+                max.torque_max.get(),
+            ),
+            (
+                "current_cap_a",
+                j.current_cap_a.flatten().map(Amps::get),
+                max.current_max.get(),
+            ),
+            (
+                "speed_cap_rad_s",
+                j.speed_cap_rad_s.flatten().map(RadPerSec::get),
+                max.speed_max.get(),
+            ),
+        ];
+        for (key, cap, max) in caps {
+            if cap.is_some_and(|c| c > max) {
+                r.report(
+                    f.line_of(key),
+                    f.path_of(key),
+                    ProblemKind::CapAboveModel { max },
+                );
+            }
         }
     }
-    if let (Some(hard), Some(soft)) = (j.hard_rad, j.soft_rad)
+    let hard = j.hard_rad.flatten();
+    if let (Some(hard), Some(soft)) = (hard, j.soft_rad.flatten())
         && (soft.lower < hard.lower || soft.upper > hard.upper)
     {
         r.report(
@@ -117,8 +159,10 @@ fn check_joint(r: &mut Reader, f: &Fields<'_>, j: &Joint) {
             ProblemKind::SoftOutsideHard,
         );
     }
-    if let Some(hard) = j.hard_rad
-        && let Some(kind) = outside_power_on_turn(j.actuator, hard, j.direction, j.zero_rad)
+    // A direction or zero that didn't parse is treated as unknown: only the window's width is checked.
+    if let (Some(model), Some(hard)) = (j.actuator, hard)
+        && let Some(kind) =
+            outside_power_on_turn(model, hard, j.direction.flatten(), j.zero_rad.flatten())
     {
         r.report(f.line_of("hard_rad"), f.path_of("hard_rad"), kind);
     }
