@@ -41,9 +41,12 @@ jobs:
           tool: cargo-nextest@0.9.151   # pinned; bump in its own PR
       - name: Create vcan can0 to can4, the skeleton's bus names (PLAN item 4)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y "linux-modules-extra-$(uname -r)" iproute2
-          sudo modprobe vcan
+          # vcan ships in the base modules of some runner kernels and in linux-modules-extra on others.
+          if ! sudo modprobe vcan; then
+            sudo apt-get update
+            sudo apt-get install -y "linux-modules-extra-$(uname -r)"
+            sudo modprobe vcan
+          fi
           for bus in can0 can1 can2 can3 can4; do
             sudo ip link add dev "$bus" type vcan
             sudo ip link set "$bus" up
