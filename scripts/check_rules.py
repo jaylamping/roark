@@ -27,6 +27,7 @@ ALLOWED_DEPS = {
     "skeleton": {"robstride"},
     "sim-drive": {"robstride", "skeleton"},
     "sim-suite": {"robstride", "sim-drive"},
+    "telemetry": set(),
 }
 
 # rust.md section 11. Each workspace package's README.md is its crate doc, by kind: a library shows its API in a Rust
@@ -36,6 +37,7 @@ DOC_KIND = {
     "skeleton": "library",
     "sim-drive": "library",  # its library is what the sim suite drives; the README also covers the binary
     "sim-suite": "tests",
+    "telemetry": "library",
 }
 DOC_INCLUDE = '#![doc = include_str!("../README.md")]'
 DOC_SECTIONS = ["## What it does", "## Must never", "## Talks to", "## Using it"]
