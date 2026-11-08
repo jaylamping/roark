@@ -235,8 +235,15 @@ Per [can-stack-for-marengo.md](https://github.com/jaylamping/marengo/blob/main/h
   each citing its manual section (the skeleton names the model only), test vectors from the manuals, cross-checked against the
   `motorcom` crate. Stay in the drive's default private protocol with active reporting off. Refuse out-of-range or non-finite
   values; never clamp.
-- **Linux:** bitrate and sample point set explicitly, error frames on, no automatic bus-off restart while any drive is enabled,
-  short TX queue. PREEMPT_RT only if the Pi 5 measurement misses its budget.
+- **Linux:** bitrate and sample point set explicitly, error frames on, short TX queue. PREEMPT_RT only if the Pi 5 measurement
+  misses its budget. Pin a kernel that includes the fix for CVE-2023-53523 (gs_usb timestamp init).
+- **Bus-off is latched in software.** Current candleLight firmware restarts the bus by itself about 100 ms after bus-off unless
+  the host claims recovery (`GS_CAN_FEATURE_BUS_OFF_RECOVERY`, `CAN_BUS_OFF_RESTART_DELAY_MS` in `src/can_common.c`), and
+  mainline gs_usb never claims it, so `restart-ms` and `ip link restart` don't control it. The runtime latches a stop on the
+  first bus-off error frame and stays stopped after the adapter recovers. Whether older firmware on shipped adapters behaves
+  the same is unverified; item 5 checks it.
+- **TX echo** from gs_usb means the frame reached the adapter's controller, not that it went out on the wire. Don't use it as
+  proof of delivery.
 - **Stable bus names.** gs_usb adapters get `canN` names in plug-in order, and the MCP2515 HAT already provides `can0` and
   `can1`. Pin each adapter to its skeleton bus name with a udev rule on its USB serial; disable the HAT's `can1` before the
   adapter takes that name. At start, check each interface's driver against the skeleton.
@@ -292,7 +299,8 @@ names** (`ip link add dev can1 type vcan`), so the runtime runs literally unchan
   120 Ω at each end (the adapter's termination jumper replaces the HAT end), about 60 Ω across CAN_H/CAN_L with power off, one
   ground tie.
 - Scan, set IDs one drive at a time, then a 1 h idle soak (error frames, RX overflow, error counters, bus load). Then measure
-  round-trip latency and per-tick jitter at 250 Hz. **Done when** the soak is clean and the numbers are committed. Only then buy
+  round-trip latency and per-tick jitter at 250 Hz. Record the adapter's firmware version and check its bus-off behaviour
+  (item 3) by shorting CAN_H to CAN_L with no drive enabled. **Done when** the soak is clean and the numbers are committed. Only then buy
   adapters for the other buses.
 
 ## 6. Safety: the three layers (tenet 3)
@@ -329,7 +337,7 @@ Each rule names what it protects and the failure it covers. A rule that protects
 | Host | Sign: no gravity feed-forward on a joint until its direction is verified by a small torque-only pulse with the link supported, checked against the skeleton. Feed-forward runs only on a chain whose every joint answers with a verified direction | Arm and parts | Feed-forward pushing the wrong way |
 | Host | Temperature: pause at 60 °C (rest pose, torque off if the pose allows) until 45 °C; stop at 75 °C | Drive windings | Overheating (drive's own protection is far higher) |
 | Host | Hang: see item 3 (stale batches, watchdog, no auto-enable) | All drives | Hung control thread keeping drives fed |
-| Host | Bus-off, interface down or gone (`ENODEV`, `ENETDOWN`): stop every active run; the drives on that bus time out | All limbs | Lost bus or unplugged adapter |
+| Host | Bus-off (latched on the first error frame, even if the adapter restarts itself), interface down or gone (`ENODEV`, `ENETDOWN`): stop every active run; the drives on that bus time out | All limbs | Lost bus, wiring fault or unplugged adapter |
 | Host | Logging: if the session log can't open or the disk is full, refuse the next enable; never stop a running motion for it | The record (tenet 6) | Disk full or slow |
 
 **Done when** preflight refuses an enable for each of: `canTimeout` ≠ 1000, a cap mismatch, damper ≠ 0, VBUS outside the window,
