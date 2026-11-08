@@ -126,9 +126,13 @@ telemetry (leaf for producers: takes events, depends on nothing above)
 
 ## 9. Testing seams
 
-- **The only swap is the bus.** Real drives on `can*`, `sim-drive` on `vcan*`, same `runtime` binary, same codec. Everything
-  else runs for real. Details in [testing.md](testing.md).
-- No seam exists only to make a mock possible.
+- **The only I/O seam is the bus.** Real drives on `can*`, `sim-drive` on `vcan*`, same `runtime` binary, same codec.
+  Everything else runs for real.
+- **Pure logic is unit-tested directly**, with no bus: the codec, skeleton checks and safety rules are plain functions.
+- **Time is given, not read.** Logic that depends on time (the 50 ms timeout, three missed replies, temperature pauses) takes
+  the current time as an argument from the loop, so a test steps time by hand instead of sleeping. Prefer passing the
+  `Instant` value over a clock trait.
+- No seam exists only to make a mock possible. Details in [testing.md](testing.md).
 
 ## 10. The UI and agent tools
 
