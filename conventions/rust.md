@@ -209,14 +209,14 @@ PLAN section 3 sets the design: one process, one blocking thread per bus, SCHED_
   the crate has no hidden I/O.
 - **Reject non-finite values before encoding.** In Rust, `f64 as u16` saturates and turns `NaN` into `0`, and in an MIT-mode
   scale `0` means the most negative position, speed or torque in the range. So: check `is_finite()` first and return an
-  error, then clamp to the model's range, then convert with explicit rounding. One function does this, used by every
-  encoder.
+  error, then refuse a value outside the model's range (never clamp, PLAN item 3), then convert with explicit rounding.
+  One function does this, used by every encoder (`MitRange::code` in `robstride`).
 - **Every protocol constant cites its source**: manual name, version and section or table, for example
   `// RS03 manual 261013, section 4.1.2: type 1 frame layout`. Constants live in one table per frame type, not inline.
 - **The 29-bit extended ID layout is built and parsed in exactly one place**, with `const fn`s, and checked against the
   manuals' worked examples in tests.
 - **Test vectors are tables**: every manual example and every captured real frame that taught us something (RECONCILIATION's
-  hard-won list), as `(input, expected bytes)` rows. Add property tests (`proptest`) for round trips and clamping. These are
+  hard-won list), as `(input, expected bytes)` rows. Add property tests for round trips and refusals: exhaustive loops where the domain is small (every 16-bit code), `proptest` where it isn't. These are
   the "protocol contract" tests tenet 6 allows.
 
 ## 8. Tests

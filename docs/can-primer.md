@@ -55,7 +55,7 @@ RobStride drives use 29-bit IDs split into three fields (manual section 4):
 (target position, velocity, stiffness `kp`, damping `kd`, torque) and the drive answers with a **type 2 "feedback" frame**
 (position, velocity, torque, temperature, plus fault and mode bits in the ID).
 
-Each value is a 16-bit number scaled to a range the manual gives per model. For example, position `0..65535` means `−4π..+4π`
+Each value is a 16-bit number scaled to a range the manual gives per model. For example, position `0..65535` means `−12.57..+12.57`
 radians. The `robstride` codec does that conversion in one place, so nothing else ever sees raw numbers.
 
 **The drive's safety timeout (`canTimeout`):** each drive is set to stop driving its motor (go limp) if it hasn't heard a

@@ -163,9 +163,9 @@ impl Direction {
     }
 }
 
-/// The drive's 64-bit MCU unique identifier (type-0 reply, manual §4.1.1).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Uid(pub [u8; 8]);
+/// The drive's MCU unique identifier, the codec's type: what the skeleton stores is compared with what a type-0 reply
+/// carries.
+pub use robstride::Uid;
 
 /// A joint name from the skeleton: lower-case letters, digits and `_`, starting with a letter.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
