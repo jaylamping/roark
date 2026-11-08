@@ -5,7 +5,8 @@ day-to-day work. Values (IDs, limits, thresholds, sequences) are not kept here: 
 `config/skeleton.yaml` and [STATUS.md](https://github.com/jaylamping/marengo/blob/main/hardware/STATUS.md), and these pages
 link to them.
 
-Read the page for the area you're touching before you write code.
+Read the page for the area you're touching before you write code. New to CAN? Start with
+[docs/can-primer.md](../docs/can-primer.md).
 
 | Page | Covers |
 |---|---|

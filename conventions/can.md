@@ -9,6 +9,8 @@ CAN is the most important data stream in the robot, so it should be the most tru
 [can-stack-for-marengo.md](https://github.com/jaylamping/marengo/blob/main/hardware/docs/research/can-stack-for-marengo.md).
 Realtime rules for any loop are in [rust.md section 6](rust.md#6-the-realtime-loop-rt).
 
+New to CAN? Read [docs/can-primer.md](../docs/can-primer.md) first.
+
 This page is **how the code in `robstride` and `can` is written and reviewed**. It draws on how other maintained projects do it
 (listed at the end).
 
