@@ -1,7 +1,7 @@
 //! The drive's side of the protocol, for `sim-drive` (PLAN item 4) and tests: a host command read in full, and the
 //! frames a drive sends built.
 //!
-//! A drive frame is a [`DriveFrame`], never a [`Frame`](crate::Frame). Only [`encode`](crate::encode) makes a `Frame`,
+//! A drive frame is a [`DriveFrame`], never a [`Frame`]. Only [`encode`](crate::encode) makes a `Frame`,
 //! and the bus layer transmits only `Frame`s, so code that sends to the robot's drives can't send one of these: the
 //! transmit allowlist (PLAN item 2) is held by the types, whichever crates a build compiles together.
 
@@ -13,7 +13,7 @@ use crate::model::{Drive, MitRange, Model, UnvouchedModel};
 use crate::param::{Param, ParamValue, encode_value};
 use crate::units::{DeviceId, NewtonMeters, NmPerRad, NmSecPerRad, RadPerSec, Radians, Uid};
 
-/// A frame a drive sends. Built only by this module; the host's transmit path takes [`Frame`](crate::Frame) instead.
+/// A frame a drive sends. Built only by this module; the host's transmit path takes [`Frame`] instead.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DriveFrame {
     id: u32,

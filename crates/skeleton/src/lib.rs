@@ -1,12 +1,4 @@
-//! Loads and checks `config/skeleton.yaml`, the one file that says what the robot is (tenet 2).
-//!
-//! The file is parsed once, at startup, into checked types ([`Skeleton`]); nothing downstream sees raw YAML or re-checks
-//! it. Every problem in the file is reported at once, each naming its line, limb, joint and field. The rules are PLAN
-//! item 1, "Loader refuses", and skeleton.md sections 4 and 5.
-//!
-//! Must never: write the skeleton, read any other file about the hardware (CAD, URDF, legacy config), or give a safety
-//! value a default. Unknown is `None`, and `None` refuses enable downstream.
-//! Talks to: `robstride` for the actuator models and their ranges. Read by every binary that needs the robot's shape.
+#![doc = include_str!("../README.md")]
 
 mod check;
 mod error;

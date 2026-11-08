@@ -249,10 +249,24 @@ abstraction section 11 forbids.
 
 ## 11. Shape and readability (tenet 7)
 
-- **Each crate's `lib.rs` (or `main.rs`) opens with a `//!` header**: what it is for, what it must never do, and what it talks
-  to. Example for `can`: "Owns every CAN socket. Must never: allocate in the tick, take a lock shared with non-realtime code,
-  or let anyone but the runtime transmit. Talks to: `robstride` (encode and decode), `safety` (checks every command), the
-  `rtrb` queues to `api` and `telemetry`."
+- **Each crate's `README.md` is its crate doc.** Its `lib.rs` (or `main.rs` for a binary with no library) opens with
+  `#![doc = include_str!("../README.md")]`, so the one file is what GitHub shows, what `cargo doc` renders, and, for its
+  Rust examples, a doc test. It has four sections:
+  - **What it does**: what the crate is for, in a paragraph or two.
+  - **Must never**: the lines it can't cross. For `can`: allocate in the tick, take a lock shared with non-realtime code,
+    let anyone but the runtime transmit.
+  - **Talks to**: which crates it uses and which use it, and through what, linking the
+    [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md) rather than restating it.
+  - **Using it**: the entry points and the order to call them. A library shows them in a ```` ```rust ```` example that runs
+    as a doc test (not `ignore` or `no_run`), portable and finishing at once; code that needs Linux, `vcan` or a long run is
+    shown as commands and proven by the sim suite. A binary or a test crate shows its commands in a ```` ```bash ```` block
+    and names the test or script that proves them.
+
+  Links in a README are full GitHub URLs, and code items are named in plain backticks: a relative link works on GitHub but
+  not in `cargo doc`, and a rustdoc item link (`` [`Frame`] ``) works in `cargo doc` but shows as brackets on GitHub.
+  `check_rules.py docs` enforces the shape; whether the prose is true is the reviewer's check, in the PR that changes it
+  (docs.md section 3). **Why:** one file can't drift from itself, and an example that stops compiling fails CI (Sol, Astra
+  and Joey, 2026-11-08).
 - **Concrete types first.** A trait only when two real implementations exist today. Generics only to remove real
   duplication. No `Box<dyn Trait>` where an enum works. **Why:** layered abstractions are the fastest way to make code an
   agent can't learn in minutes.
@@ -285,10 +299,12 @@ Every PR, before merge:
 
 1. `cargo fmt --all --check`
 2. `cargo clippy --workspace --all-targets -- -D warnings`
-3. `cargo test --workspace` (unit, codec vectors, property tests)
+3. `cargo test --workspace` (unit, codec vectors, property tests) and the doc tests, which run every crate README's
+   example; then `cargo doc` with warnings as errors, so a broken link in a README fails
 4. `cargo deny check`
-5. Shape checks, one small script: crate dependencies only point the way [architecture.md](architecture.md) section 3
-   allows (read from `cargo metadata`), and no source file passes 800 lines
+5. Shape checks, one small script (`scripts/check_rules.py`): crate dependencies only point the way
+   [architecture.md](architecture.md) section 3 allows (read from `cargo metadata`), no source file passes 800 lines,
+   every test names what it guards, and every crate's README has the shape section 11 asks for
 6. Release build for `aarch64-unknown-linux-gnu`
 7. The sim-drive suite on `vcan`: fault injection and the tick-timing budget (section 6)
 
