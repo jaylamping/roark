@@ -34,13 +34,12 @@
   PR changes no behaviour.
 - **The description says:**
   1. What changes and why, in a few sentences, with the PLAN item or tenet it serves.
-  2. How it was checked: the local check command, the `vcan` run, a bench session ID if any.
-  3. Anything the reviewer must look at closely (a safety rule, a loosened threshold, a new dependency with its reason line,
+  2. Anything the reviewer must look at closely (a safety rule, a loosened threshold, a new dependency with its reason line,
      a new seam per [architecture.md section 11](architecture.md#11-changing-the-shape)).
-  4. Which tests were added or removed, and what each new one guards ([testing.md](testing.md)).
-  5. **Evidence:** for code, the test or `vcan` run that shows it works; for a change that only shows on hardware, the bench
+  3. Which tests were added or removed, and what each new one guards ([testing.md](testing.md)).
+  4. **Evidence:** for code, the test or `vcan` run that shows it works; for a change that only shows on hardware, the bench
      session ID and its log. No evidence, no review. (PX4's rule for safety-critical changes.)
-  6. **How sure the author is,** and which parts an agent wrote. A reviewer reads a confident human change and an unchecked
+  5. **How sure the author is,** and which parts an agent wrote. A reviewer reads a confident human change and an unchecked
      agent draft differently. (rerun asks for this.)
   The repo's PR template (`.github/pull_request_template.md`) has these headings.
 - **Self-review first.** Read your own diff on GitHub before asking anyone else to. Most review comments are things the
