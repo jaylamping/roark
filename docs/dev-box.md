@@ -26,6 +26,7 @@ It checks each hop below in order and stops at the first one that fails, with th
 
 ```bash
 scripts/devbox.sh run ./scripts/check.sh           # the whole local check, on Linux
+scripts/devbox.sh run ./scripts/sim.sh             # the sim suite on vcan (CI gate 7)
 scripts/devbox.sh run cargo nextest run -p can     # any command; the cargo toolchain is on PATH
 scripts/devbox.sh shell                            # an interactive shell in the copy
 ```

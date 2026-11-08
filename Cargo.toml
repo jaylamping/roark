@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*"]
+members = ["crates/*", "bins/*"]
 
 [workspace.package]
 edition = "2024"
@@ -10,6 +10,9 @@ publish = false
 
 [workspace.dependencies]
 robstride = { path = "crates/robstride" }
+sim-drive = { path = "bins/sim-drive" }
+skeleton = { path = "crates/skeleton" }
+socketcan = { version = "4.0.0", default-features = false }
 saphyr-parser = { version = "0.3.3", default-features = false }
 thiserror = { version = "2.0.21", default-features = false }
 

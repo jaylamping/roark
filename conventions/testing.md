@@ -285,7 +285,7 @@ number` test for every constant the sim gets from that script.
 |---|---|---|---|
 | Unit (pure logic: codec, skeleton checks, safety rules as functions) | `#[cfg(test)] mod tests` at the bottom of the file under test | `cargo nextest run` | Everywhere, including a Mac laptop. Whole run in seconds |
 | Integration (a crate's public API, more than one module) | `crates/<name>/tests/<behaviour>.rs`, named after the behaviour, never after a PR or phase | `cargo nextest run` | Everywhere |
-| Sim (the runtime against `sim-drive` on `vcan`, fault injection) | `bins/runtime/tests/` or one sim test crate | a separate command (for example `just test-sim`) | Linux with `vcan` ([the dev box](../docs/dev-box.md)), and CI |
+| Sim (the runtime against `sim-drive` on `vcan`, fault injection) | `crates/sim-suite/tests/`, the one sim test crate | `scripts/sim.sh` (nextest profile `sim`; the default profile leaves the crate out) | Linux with `vcan` ([the dev box](../docs/dev-box.md)), and CI |
 | Bench (real drives) | `robot-cli` procedures and the test-stand runner, not test code | a person or agent, on purpose | The Pi, on the bench. Never CI |
 
 **Why the split:** Rust has a built-in convention (`mod tests` in the file for small checks, `tests/` for the public API), so we
