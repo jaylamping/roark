@@ -12,3 +12,6 @@ limb currently on the bench (tenet 0).
    never as patterns. Nothing in this repo depends on or copies its structure.
 
 Work on branches and open PRs. No tests written just for coverage.
+
+Commits and PR descriptions describe the change only ([conventions/git.md](conventions/git.md) section 2): no AI attribution
+(no `Co-Authored-By` for AI, no session links, no "Generated with" footers), no "who asked", no retelling of the chat.

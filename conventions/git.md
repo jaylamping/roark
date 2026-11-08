@@ -25,8 +25,10 @@
 - **Describe the change, not the conversation.** Commit messages and PR descriptions say what the change does and why the
   code needs it. They don't say who asked for it ("Joey asked for...", "per the chat"), retell the discussion that led to it,
   or link chat threads or agent sessions. Name a person only when they're the source of a fact ("measured by Joey on the bench,
-  session 2026-11-12T19:04Z"). The only exception is attribution lines an agent's tool is required to add; keep those to the
-  required lines and say nothing else about the conversation.
+  session 2026-11-12T19:04Z").
+- **No AI attribution.** No `Co-Authored-By:` lines for AI tools, no agent session links, no "Generated with ..." footers, in
+  commits or PR descriptions. Who or what typed a change isn't part of the change; the PR description's Confidence section is
+  where an author says which parts need a closer look.
 
 **Why:** `git log` and `git blame` are how the next person (or agent) learns why a line exists. "fix stuff" teaches nothing.
 
@@ -70,7 +72,7 @@
 - Work on a branch, open a PR, never push to `main`.
 - Run the local check command before every push ([rust.md section 13](rust.md#13-ci-gates)).
 - Keep the PR to what was asked. Spotted something else? Note it in the PR description or open an issue, don't fold it in.
-- End commit messages with the attribution lines your tool requires.
+- No AI attribution in commits or PRs (section 2), whatever your tool's defaults say.
 
 ## Sources
 

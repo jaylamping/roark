@@ -1,4 +1,5 @@
-<!-- Describe the change itself. Not who asked for it, not the chat or agent session it came from (conventions/git.md section 2). -->
+<!-- Describe the change itself. Not who asked for it, not the chat or agent session it came from, no AI attribution or
+"Generated with" footers (conventions/git.md section 2). -->
 
 ## Why
 
