@@ -111,7 +111,8 @@ the next crate over.
   this way ("sans-IO") is what makes it cheap to test.
 - Code that talks to buses is tested against **`sim-drive` on `vcan`**, the same way the runtime runs (PLAN item 4). No
   hand-written mock CAN socket, no mock `Supervisor`.
-- Fakes are fine only at the edge of the world we don't control: the clock, the filesystem, a real hardware device.
+- Fakes are fine only at the edge of the world we don't control: the filesystem, a real hardware device. Time isn't faked at
+  all; it's passed in as an argument (rule 6).
 
 **Why:** a mock only knows what its author believed the real thing does, so a test against a mock proves the code agrees with
 that belief, not with the drive. The legacy code grew whole simulated owners (`Supervisor::from_simulation`) that every test had
@@ -122,15 +123,17 @@ mocks. In JS terms: prefer one MSW-style fake server over `jest.mock` in every f
 ## Rule 6: no sleeping, no wall clock
 
 - Code that depends on time (the 50 ms drive timeout, "3 missed replies", the 250 Hz tick, temperature pauses) takes its time
-  from a clock it is given, so a test can step time by hand.
+  as an argument: the loop reads `Instant::now()` once per tick and passes it in. Logic never reads the clock itself, so a test
+  passes in whatever times it wants. No `Clock` trait: a trait needs two real implementors ([rust.md](rust.md)), and a plain
+  argument does the job.
 - Tests never call `thread::sleep` to wait for something. A tick-driven test calls `tick()` N times; a sim test waits on an
   event with a deadline, not a fixed nap.
 - Fault injection in `sim-drive` is deterministic: a fault happens at tick N or after frame M, never "sometimes". Random
   inputs use a fixed seed printed on failure.
 
 **Why:** a test that sleeps 100 ms to "let the loop run" is slow when it passes and random when the machine is busy. A flaky
-test is worse than none, because it trains everyone, agents included, to rerun until green and ignore red. This is
-`jest.useFakeTimers()` for Rust: you control time, so a 50 ms timeout test runs in microseconds and gives the same answer every
+test is worse than none, because it trains everyone, agents included, to rerun until green and ignore red. This does the job of
+`jest.useFakeTimers()` in Rust, only simpler: you control time, so a 50 ms timeout test runs in microseconds and gives the same answer every
 time.
 
 ## Rule 7: a bug gets its test before its fix
@@ -178,7 +181,7 @@ The four guards put a natural ceiling on the count. For milestone 1, roughly:
 |---|---|---|
 | `skeleton` | Live skeleton loads; one table of invalid skeletons, one row per validation rule (duplicate ID, limit outside hard stop, unknown bus...) | 2 to 5 |
 | `robstride` | One table test per frame type, vectors from the manuals; round-trip encode/decode; the lifted bench facts (ID layout, MIT scales, TX allowlist) | 10 to 20 |
-| `can` | Tick schedule and silence detection with a stepped clock; scan and set-ID against `sim-drive` | 5 to 10 |
+| `can` | Tick schedule and silence detection with times passed in by the test; scan and set-ID against `sim-drive` | 5 to 10 |
 | `safety` | One unit test per host rule and drive preflight check in PLAN item 6; one `sim-drive` test per fault the sim can inject | 20 to 30 |
 | `control`, `dynamics` | Numbers loops depend on (gravity terms, calibration fit on a known synthetic set) and bugs hit | a handful each |
 | `telemetry`, `api` | The `api` message contract; MCAP output readable by the replay tool | a handful each |
@@ -286,6 +289,6 @@ These run in CI so the rules don't depend on anyone remembering them:
 1. Which guard is it: bug, safety, protocol or number? If none, don't write it.
 2. Is there already a test for this rule? Add a row to it instead.
 3. Does it name a limb, joint, bus or ID, or read the live skeleton for a value? Use a fixture instead.
-4. Does it touch private items, mock our own code, or sleep? Rework it through the public seam, `sim-drive`, or a stepped clock.
+4. Does it touch private items, mock our own code, or sleep? Rework it through the public seam, `sim-drive`, or by passing the time in.
 5. Could it move a real motor? Then it's a bench procedure, not a test.
 6. Did this PR delete or change code that other tests guard? Delete or change those tests too.
