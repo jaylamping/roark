@@ -6,7 +6,9 @@
 [PLAN "Observability"](../PLAN.md#observability-tenet-8) holds the decided facts: what a session is, what goes in its MCAP file
 and `session.json`, the `candump` black box, the logging thread fed by a lock-free ring, and the shared clock.
 [architecture.md section 8](architecture.md#8-observability-is-part-of-the-design) says every seam emits.
-[rust.md section 12](rust.md#12-logging-in-code-tenet-8) gives `tracing` usage, shared field names and log levels in Rust.
+[rust.md section 12](rust.md#12-logging-in-code-tenet-8) covers the Rust mechanics (`tracing` with typed fields, realtime
+threads push to a ring, no `println!`). This page is the one home for field names, levels, event kinds, MCAP channels and
+metric names.
 
 This page covers **how records are named, shaped and used** across every part of the robot (runtime, `sim-drive`, tools, UI),
 so that months from now a session can still be replayed and a stop at 2 a.m. can be explained from the logs alone.
@@ -38,10 +40,8 @@ level.
 - **Every event has a `kind` from one closed list**, written as `area.past_tense_verb`: `drive.enabled`, `drive.went_silent`,
   `limb.stopped`, `preflight.refused`, `limit.hit`, `fault.latched`, `fault.cleared`, `operator.requested`, `skeleton.loaded`,
   `bus.off`. In Rust it's an enum, so adding a kind is a deliberate change, and the UI's types are generated from it.
-- **Every event carries:** stamp (`stamp_ns`, [units-and-frames.md section 5](units-and-frames.md#5-time-and-timestamps)), kind,
-  and the fields that apply from the shared set (`session`, `bus`, `device_id`, `joint`, `limb`, `mode`, `fault`), plus:
-  - for safety: `rule` (the rule ID from [safety.md](safety.md)), the measured value and the threshold;
-  - for operator actions: `client` (which UI, CLI or agent) and who.
+- **Every event carries** a stamp (`stamp_ns`, [units-and-frames.md section 5](units-and-frames.md#5-time-and-timestamps)),
+  its kind, and whichever shared fields apply (section 2a). Safety events add the measured value and the threshold.
 - **Event kinds and field names are an interface.** Renaming one breaks dashboards, replay scripts and every query anyone saved.
   Change them like an `api` message: on purpose, in one PR, with the readers updated.
 - **Causes are explicit.** A `limb.stopped` event says what caused it (`rule = host.silence`, or `operator`), rather than
@@ -50,6 +50,40 @@ level.
 **Why:** "why did the elbow stop?" should be one search, not an afternoon of reading. A closed list of kinds with consistent
 fields makes the history queryable and keeps every part of the system speaking the same vocabulary. OpenTelemetry's semantic
 conventions follow the same idea at a much larger scale.
+
+## 2a. Shared field names
+
+One set of names, used in log fields, event fields, MCAP messages, metric labels and the UI. Nothing else invents a synonym
+(`motor`, `axis`, `can_id`, `node`).
+
+| Field | Meaning | Example |
+|---|---|---|
+| `session` | The session ID (PLAN "Observability") | `2026-11-12T19:04:11Z` |
+| `bus` | Bus name from the skeleton | `can1` |
+| `device_id` | Drive ID on that bus | `14` |
+| `joint` | Joint name from the skeleton | `left_elbow_pitch` |
+| `limb` | Limb name | `left_arm` |
+| `mode` | Drive or limb mode/state | `enabled` |
+| `fault` | Fault kind or bit name | `over_temperature` |
+| `rule` | Safety rule ID ([safety.md section 2](safety.md#2-each-rule-has-a-stable-id)) | `host.silence` |
+| `client` | Who sent a request: UI, CLI, an agent, and the person if known | `robot-cli:joey` |
+
+Values carry units in the name when they're bare numbers (`temp_c`, `latency_us`), per
+[units-and-frames.md](units-and-frames.md). Adding a shared field is a change to this table.
+
+## 2b. Levels
+
+Levels mean the same thing in every language and tool:
+
+| Level | Means | Examples |
+|---|---|---|
+| `error` | An operator or agent must look | A stop, a refused enable, a latched fault, a bus-off, the recorder failing |
+| `warn` | Degraded but handled | A late reply, a dropped frame, a slow tick, a client that disconnected |
+| `info` | State changes and operator actions | Drive enabled, limb stopped and cleared, skeleton loaded, session started |
+| `debug`, `trace` | Per-frame or per-tick detail | Off by default; never needed for replay, because the recording holds the frames |
+
+**Why:** if `error` sometimes means "look now" and sometimes "something odd happened", people stop looking. Losing data is an
+`error`, not a `warn` (rerun's rule).
 
 ## 3. The recording (MCAP)
 
