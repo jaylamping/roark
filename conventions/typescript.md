@@ -1,7 +1,6 @@
 # TypeScript and UI conventions
 
-**Status:** proposed for Joey's review, 2026-11-08. Joey knows this side better than anyone, so treat the tooling choices
-here as defaults he can overrule. The robot-specific rules (sections 3 to 5) are the part that matters most.
+**Status:** proposed for Joey's review, 2026-11-08. The robot-specific rules (sections 3 to 5) are the part that matters most.
 
 Applies to `ui/` and to `mcp/` if it's written in TypeScript. Both are clients of `api`
 ([architecture.md section 10](architecture.md#10-the-ui-and-agent-tools)): they show state and send requests, and can crash
