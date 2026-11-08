@@ -63,7 +63,7 @@ adds the power board interface (item 10).
    `candump -L` recording from the first run (see [Observability](#observability-tenet-8)).
 7. **Safety** (item 6) on `vcan` until every stop rule has a passing fault test. Add the systemd unit, the watchdog and the
    `ExecStopPost` disable.
-8. **On the real adapter, no Enable yet:** udev-name it, scan, set IDs, soak, measure latency and jitter (item 5); run the zero
+8. **On the real adapter, no Enable yet:** name it by serial, scan, set IDs, soak, measure latency and jitter (item 5); run the zero
    persistence test (item 1) and the caps-in-mode test (item 6).
 9. **First attended Enable** of the loose drives with Joey: preflight, sign check, unloaded jog.
 10. Then the test stand (item 7), the elbow rig result into item 8's limits, and the camera loop (item 9).
@@ -112,7 +112,7 @@ it lives once, as `name:` in the skeleton. The architecture map, with owners and
 ## Repo, toolchain, CI and deploy
 
 - **Layout:** one Cargo workspace: `crates/`, `bins/`, `config/skeleton.yaml`, `config/dynamics.yaml`, `deploy/` (systemd units,
-  udev rules, CAN link setup), `docs/`, `conventions/`.
+  CAN link files), `docs/`, `conventions/`.
 - **Toolchain and lints:** per [conventions/rust.md](conventions/rust.md). Target `aarch64-unknown-linux-gnu`, 64-bit Raspberry
   Pi OS, kernel 6.1 or newer (gs_usb hardware timestamps).
 - **CI on every PR:** the gates in rust.md, including the `vcan` fault tests. If hosted runners can't load `vcan`, those tests run
@@ -138,7 +138,7 @@ schema: 1
 name: roark                     # the only place the robot's name appears
 power: { source: bench_24v, vbus_min_v: 22, vbus_max_v: 26 }
 buses:
-  can1: { bitrate: 1000000, sample_point: 0.75, adapter_serial: "<USB serial, for the udev rule>" }
+  can1: { bitrate: 1000000, sample_point: 0.75, adapter_serial: "<USB serial, for its link file>" }
 limbs:
   left_arm:
     joints:
@@ -298,7 +298,7 @@ names** (`ip link add dev can1 type vcan`), so the runtime runs literally unchan
 
 ## 5. Bench bring-up (milestone 1: `can1`)
 
-- Confirm the adapter: `dmesg` shows `gs_usb` (not slcan); write its udev rule; `ip -details link show can1` lists it.
+- Confirm the adapter: `dmesg` shows `gs_usb` (not slcan); write its link file; `ip -details link show can1` lists it.
 - Bench harness per [left-shoulder-bench-harness.md](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/wiring/left-shoulder-bench-harness.md):
   120 Ω at each end (the adapter's termination jumper replaces the HAT end), about 60 Ω across CAN_H/CAN_L with power off, one
   ground tie.
@@ -430,7 +430,7 @@ evaluated only against a named need.
    before trusting them.
 2. Don't carry the `control.yaml` gains: the RS03 gains were tuned while the drive saw 0.4 × the commanded velocity. Friction
    fits move to `config/dynamics.yaml` only after a re-check. `right_lower_arm_yaw`'s URDF axis is wrong (`kinematics.md`).
-3. Give `can0` its own adapter with a udev rule and retire the HAT; rewrite `canTimeout` from 600 to 1000; run the sign check
+3. Give `can0` its own adapter with its own link file and retire the HAT; rewrite `canTimeout` from 600 to 1000; run the sign check
    and C1 again.
 4. Keep the `gravity-fit` and `firmware-timing` tools' logic and the commissioning docs. Then Joey (or an agent he assigns in
    marengo) deletes per the
