@@ -97,23 +97,19 @@ pub(crate) fn read_limbs(r: &mut Reader, node: &Node, limbs_line: usize) -> Opti
             );
         }
         let joints = read_limb(r, &entry.value, &path);
-        let joints = joints.and_then(|sites| {
-            let parsed: Option<Vec<Site>> = sites.into_iter().collect();
-            parsed
-        });
-        match (name, joints, &mut out.limbs) {
-            (Some(name), Some(sites), Some(limbs)) => {
-                limbs.push(Limb {
-                    name,
-                    joints: sites.iter().map(|s| s.joint.clone()).collect(),
-                });
-                out.sites.extend(sites);
-            }
-            (_, joints, limbs) => {
-                *limbs = None;
-                out.sites.extend(joints.into_iter().flatten());
-            }
+        let complete = joints
+            .as_ref()
+            .is_some_and(|sites| sites.iter().all(Option::is_some));
+        // Every joint that parsed goes to the cross-joint checks, even when a sibling didn't.
+        let sites: Vec<Site> = joints.into_iter().flatten().flatten().collect();
+        match (name, complete, &mut out.limbs) {
+            (Some(name), true, Some(limbs)) => limbs.push(Limb {
+                name,
+                joints: sites.iter().map(|s| s.joint.clone()).collect(),
+            }),
+            (_, _, limbs) => *limbs = None,
         }
+        out.sites.extend(sites);
     }
     for limb in LimbName::ALL {
         if !f.has(limb.as_str()) {

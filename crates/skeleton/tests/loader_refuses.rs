@@ -223,6 +223,18 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
             ],
         ),
         (
+            "a broken joint doesn't hide a cross-joint problem between its siblings",
+            edit("zero_rad: 3.0", "zero_rad: .nan")
+                .replace("name: other_arm_joint", "name: arm_joint_two"),
+            vec![
+                at(&format!("{J1}.zero_rad"), ProblemKind::NonFinite),
+                at(
+                    "limbs.right_arm.arm_joint_two",
+                    ProblemKind::DuplicateJoint("arm_joint_two".to_owned()),
+                ),
+            ],
+        ),
+        (
             "a blank is not a value",
             edit(
                 "reference_pose: \"link hanging, resting on the pad\"",
