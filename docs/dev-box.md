@@ -8,8 +8,8 @@ Windows PC is always on, so it runs an Ubuntu (in WSL, Windows' built-in Linux V
 [`scripts/devbox.sh`](../scripts/devbox.sh) copies your checkout over and runs a command there.
 
 CI on GitHub is still the gate (rust.md section 13). The box is for your own loop: running the `vcan` tests before you push,
-long soaks, big builds. It has 32 cores and, as of 2026-11-08, 31 GB of memory (48 GB after the next WSL restart; see
-`.wslconfig` below). `ssh joey-wsl 'nproc; free -g'` shows the current numbers.
+long soaks, big builds. It has 32 cores and 31 GB of memory (WSL's default, half the PC's 64 GB, kept on purpose: Joey,
+2026-11-08). `ssh joey-wsl 'nproc; free -g'` shows the current numbers.
 
 **On the Mac you need:** Tailscale connected, the key `~/.ssh/id_ed25519` (authorized on the box, see "Connecting a new
 Mac"), the `~/.ssh/config` lines below, and the stock `ssh`, `rsync` and `nc`.
@@ -87,7 +87,7 @@ Host joey-wsl
 |---|---|---|
 | Windows | Joey's PC, 64 GB RAM | Other WSL distros live on it (JetPack SDK, Docker Desktop, an older Ubuntu, Debian). Leave them alone. |
 | WSL | 3.0.3, kernel 6.18.54.1-microsoft-standard-WSL2 | The stock kernel has `CONFIG_CAN_VCAN=m`; nothing custom |
-| `%UserProfile%\.wslconfig` | Windows | `memory=48GB` (WSL's default is half the RAM), `vmIdleTimeout=-1` and `instanceIdleTimeout=-1` so WSL keeps running when no session is open. Takes effect after the next `wsl --shutdown`; until then WSL has 31 GB and may stop when idle, which the ProxyCommand handles by starting it again. |
+| `%UserProfile%\.wslconfig` | Windows | `vmIdleTimeout=-1` and `instanceIdleTimeout=-1` so WSL keeps running when no session is open; memory stays at the default. Takes effect after the next `wsl --shutdown`; until then WSL may stop when idle, which the ProxyCommand handles by starting it again. |
 | Ubuntu | distro `Ubuntu-24.04`, default user `joeyl`, systemd on (`/etc/wsl.conf`) | |
 | `sshd` | `/etc/ssh/sshd_config.d/10-roark.conf`: port 2222, `127.0.0.1` only, no passwords, no root | `ssh.service` enabled |
 | Virtual buses | `roark-vcan.service` (`/etc/systemd/system/`) creates `can0` to `can4` at boot | The skeleton's bus names (PLAN item 4), so the runtime runs unchanged. Up already; tests never need root. |
@@ -167,7 +167,6 @@ From scratch on a Windows PC with WSL and Tailscale installed and the OpenSSH Se
    instanceIdleTimeout=-1
 
    [wsl2]
-   memory=48GB
    vmIdleTimeout=-1
    ```
 
