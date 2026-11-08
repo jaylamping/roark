@@ -87,12 +87,31 @@ allow_attributes_without_reason = "deny"
 mem_forget = "deny"
 await_holding_lock = "deny"
 large_stack_arrays = "deny"
+large_stack_frames = "warn"
+undocumented_unsafe_blocks = "deny"     # every unsafe block carries a // SAFETY: comment
 ```
 
 ```toml
 # clippy.toml
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
+
+# Each entry says why. Bans that apply only to the realtime crates (reading the clock, sleeping) go in that crate's own
+# clippy.toml, because time is passed in there (architecture.md section 9).
+disallowed-methods = [
+  { path = "std::panic::catch_unwind", reason = "we run panic = abort; a caught panic leaves a half-alive process" },
+  { path = "std::sync::mpsc::channel", reason = "unbounded; use a bounded queue so overload is visible" },
+  { path = "crossbeam_channel::unbounded", reason = "unbounded; use bounded() with a defined full behaviour" },
+]
+```
+
+```toml
+# clippy.toml in robstride, safety and control
+disallowed-methods = [
+  { path = "std::time::Instant::now", reason = "time is passed in by the loop so tests can step it" },
+  { path = "std::time::SystemTime::now", reason = "wall clock is for logs only, and not in these crates" },
+  { path = "std::thread::sleep", reason = "the loop owns timing; these crates never wait" },
+]
 ```
 
 The realtime crates also turn on `clippy::wildcard_enum_match_arm` and `clippy::as_conversions` in their `lib.rs`.
@@ -135,6 +154,12 @@ The realtime crates also turn on `clippy::wildcard_enum_match_arm` and `clippy::
   a half-alive one is not.
 - **Install a panic hook in `runtime`** that writes the panic message, thread name and location to stderr (the journal)
   before the abort. It must not lock, allocate much or touch the CAN socket.
+- **Assertions stay on in release.** Check invariants with `assert!` at the seams (a pre-condition on entry, the matching
+  post-condition on exit), not `debug_assert!`. In the realtime path a broken invariant ends the process and the drives time
+  out; never log-and-continue (no "recover and carry on" macros). Expected bad input, such as a malformed frame, is an
+  `Err`, not an assertion.
+- **Put a limit on everything.** Every loop, queue, retry, buffer and wait has a stated upper bound, taken from the skeleton
+  or a named constant. "Until it answers" is not a bound.
 - **`Drop` is not a safety mechanism.** It doesn't run on abort, `SIGKILL`, OOM kill or power loss. Nothing safety-critical
   may depend on a destructor running. The drive timeout and the systemd `disable` are the safety path; a clean `Drop` is
   only a courtesy.
@@ -204,10 +229,12 @@ abstraction section 11 forbids.
 
 - **Few, boring, maintained.** Every new dependency gets one line in its PR: what it does that we shouldn't write, and why
   this one.
-- **(rt) Realtime crates take only what PLAN section 3 names** (`socketcan`, `rtrb`, `thread-priority`), plus small, pure
-  crates such as `thiserror`. Anything else in a realtime crate needs a reason in the PR.
-- **`cargo deny check`** in CI: licences, security advisories, banned or duplicate crates. Unused dependencies are removed
-  (`cargo machete` or similar).
+- **(rt) Realtime crates take only** `socketcan`, `rtrb` and `thread-priority`, plus small, pure crates such as `thiserror`.
+  Anything else in a realtime crate needs a reason in the PR. No allocation, copy or added latency on the hot path without a
+  written reason agreed in the PR.
+- **`cargo deny check`** in CI: licences, security advisories, banned or duplicate crates. `deny.toml` denies wildcard
+  versions, unknown registries and git sources. Every advisory ignore carries a reason and a `Review: YYYY-MM` date, and is
+  re-checked by then. Unused dependencies are removed (`cargo machete` or similar).
 - **Turn off default features you don't use** (`default-features = false`) for anything pulled into the realtime crates.
 - **Never add a dependency to get past a compile error.** Understand the error first.
 
@@ -261,10 +288,12 @@ Every PR, before merge:
 2. `cargo clippy --workspace --all-targets -- -D warnings`
 3. `cargo test --workspace` (unit, codec vectors, property tests)
 4. `cargo deny check`
-5. Release build for `aarch64-unknown-linux-gnu`
-6. The sim-drive suite on `vcan`: fault injection and the tick-timing budget (section 6)
+5. Shape checks, one small script: crate dependencies only point the way [architecture.md](architecture.md) section 3
+   allows (read from `cargo metadata`), and no source file passes 800 lines
+6. Release build for `aarch64-unknown-linux-gnu`
+7. The sim-drive suite on `vcan`: fault injection and the tick-timing budget (section 6)
 
-One local command runs 1 to 4 (a `just check` recipe or a small script; pick one and name it in the README), so an agent can
+One local command runs 1 to 5 (a `just check` recipe or a small script; pick one and name it in the README), so an agent can
 run exactly what CI runs before pushing.
 
 ## 14. Smells to question in a PR
