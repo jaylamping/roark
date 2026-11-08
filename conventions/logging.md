@@ -178,71 +178,113 @@ ratio.
 
 ### 8.2 Shape of the recording
 
-- **One MCAP message per bus per tick** on `/can/<bus>/frames`, holding that tick's frames in order. Each frame inside keeps its
-  own kernel timestamp, direction (`tx`/`rx`), ID, length and data. **Why:** this halves the size compared with one message per
-  frame and matches how the bus thread works (one batch per tick), so a replay sees ticks as they happened.
-- **Frames that arrive outside a tick** (late replies, error frames, parameter replies in the slack) go in the next tick's
-  message with their own timestamps. Nothing is dropped for arriving late.
-- **TX records what the bus thread handed to the socket and when**, plus anything the socket refused (`ENOBUFS`, deadline
-  passed) as its own entry. A command that was meant to go but didn't is as important as one that went.
+- **One MCAP message per bus per tick** on `/can/<bus>/frames`, holding that tick's frames in order, with the tick number and
+  the tick's monotonic time. **Why:** half the size of one message per frame, and it matches how the bus thread works, so a
+  replay sees ticks as they happened. openpilot, which logs every CAN frame of a car, batches the same way.
+- **Each frame inside carries the same fields as the ASAM MDF4 bus-logging standard,** so it converts to vendor formats without
+  loss: bus, ID, extended flag, error and remote flags, length, data, kernel timestamp, and direction:
+  - `rx` (from a drive);
+  - `tx_echo` (our own frame coming back from the kernel, which marks that it left this socket);
+  - `tx_other` (sent by another program on the Pi, which should never happen; PLAN item 3).
+- **Each batch carries a `valid` flag and the kernel's drop count.** `valid` is false when the bus is unhealthy (error passive,
+  bus-off, interface down). The drop count is the socket's overflow counter (`SO_RXQ_OVFL`), so frames the kernel threw away
+  before we read them are visible too.
+- **What the bus thread meant to send is its own record** on `/can/<bus>/tx_intent`: every frame handed to the socket, and every
+  frame not sent with the reason (deadline passed, `ENOBUFS`). The echo shows what left the Pi; the intent shows what the
+  software decided. (openpilot keeps sent and received CAN as separate streams for the same reason.)
+- **Frames that arrive outside a tick** (late replies, error frames, parameter replies in the slack) go in the next tick's batch
+  with their own timestamps. Nothing is dropped for arriving late.
 - **Error frames are recorded as frames,** decoded into the bus error enum ([can.md](can.md)), not only as log lines.
+- **Interface counters** (controller state, bus errors, error-warning and error-passive counts, bus-off count, RX dropped and
+  overrun, the same numbers `ip -details -statistics` shows) are sampled once a second per bus onto `/can/<bus>/stats`.
 - **Decoded joint state** goes on `/joint_state` once per tick, from the same replies. Text logs never carry per-frame or
   per-tick data.
-- **Channels are per bus,** so a reader can open one bus without decoding the others, and a missing bus is visible as a missing
+- **Channels are per bus,** so a reader can open one bus without decoding the others, and a missing bus shows as a missing
   channel.
+- **Our own schema.** Foxglove has no standard CAN schema, so the frame schema is ours, generated from the Rust types (section
+  3). An export script converts a session to MF4 or BLF (through `python-can` or `asammdf`) for vendor tools.
 
-### 8.3 The path from bus thread to disk
+### 8.3 Timestamps
+
+- **Kernel timestamps are wall-clock time,** and NTP can step them. So each batch also carries the tick's monotonic time, and the
+  recorder writes the offset between the two clocks to `/clock` once a second. Analysis uses monotonic time for intervals.
+- **The timestamp source is recorded per bus:** hardware timestamps from the gs_usb adapters, software timestamps from anything
+  without them (the MCP2515 HAT has none). Startup logs which each bus has.
+- Use the kernel's 64-bit (`_NEW`) timestamp socket options, which keep working after 2038.
+
+### 8.4 The path from bus thread to disk
 
 - **The bus thread copies each tick's frames into a fixed-size slot** in its own single-producer ring (`rtrb`, PLAN item 3). The
   slot is a plain struct sized for the most frames a tick can hold. No allocation, no lock, no system call. **Why:** the bus
-  thread's only job is the tick; anything that can block it can make a drive time out.
-- **The ring holds at least 2 seconds of worst-case traffic per bus.** That rides out a slow SD card write or a compression
-  hiccup without loss.
-- **If the ring is full, the newest batch is dropped and counted,** never blocking. The count per bus becomes an event
-  (`recorder.dropped`, `error` level, because lost data is an error), a metric, and a line in the session summary.
-- **One recorder thread** drains every bus ring, builds MCAP messages, compresses chunks with zstd and writes. It runs at normal
-  priority, on a core the bus threads aren't pinned to.
-- **Chunks are written about once a second.** A crash or power cut loses at most about a second of the MCAP; the `candump` black
-  box covers that second.
+  thread's only job is the tick; anything that can block it can make a drive time out. copper-rs and PX4's logger work the same
+  way.
+- **The socket receive buffer is set explicitly** at startup (`SO_RCVBUFFORCE`) and read back and logged, so a burst can't
+  overflow the kernel's default buffer.
+- **The ring is sized from measured storage stalls, not the average write speed.** Start at 2 seconds of worst-case traffic per
+  bus; the bench soak measures the SSD's worst write and `fsync` stall over a long run, and the ring must cover several times
+  that. **Why:** PX4 found that storage pauses, not average speed, cause log dropouts; many SD cards pause for hundreds of
+  milliseconds several times a minute.
+- **If the ring is full, the newest batch is dropped and counted,** never blocking. The recorder writes a **gap record** into
+  the file (bus, frames lost, time span), so the hole is in the data itself, not only in a counter. It's also an event
+  (`recorder.dropped`, `error` level), a metric, and a line in the session summary. (PX4's log format has the same "dropout"
+  record.)
+- **One recorder thread** drains every bus ring, builds MCAP messages, compresses chunks with zstd and writes. Normal priority, on
+  a core the bus threads aren't pinned to.
+- **Chunks are closed every second or at about 4 MB, whichever comes first,** with chunk checksums on. A crash loses at most
+  about a second; `mcap recover` rebuilds the index of a file cut off by a crash, and the `candump` black box covers the lost
+  second. (Foxglove recommends chunks of 1 to 4 MB and flushing every few seconds.)
 - **On a stop, drives are disabled before the recorder flushes** (PLAN item 3). The recorder then writes the stop's events and
   closes the file cleanly.
 
-### 8.4 Two independent records
+### 8.5 Files
 
-- **MCAP from the runtime** has everything: raw frames, decoded state, commands, events, injected faults.
-- **`candump -L` per bus** (PLAN) sees what the kernel saw, independent of our code. If the runtime crashes, hangs or has a bug
-  in its recorder, the black box still has the frames.
-- **They can be checked against each other.** An analysis script compares frame counts and timestamps per bus per session; a
-  mismatch means a drop or a recorder bug. The bench soak (PLAN item 5) runs this check.
-- **`candump` files are compressed and rotated by `deploy/`** (for example hourly files, compressed with zstd as they close), so
-  a long soak can't fill the disk with text.
+- **A session is split into numbered files** in its directory, cut on a tick boundary when a file reaches about 1 GB or
+  10 minutes, whichever comes first. A file being written has a `.lock` beside it. (openpilot splits every minute; CANedge
+  splits by size or time.)
+- **Every file starts with a header record** (session, file number, git commit, skeleton hash, bitrates, socket filters, adapter
+  firmware versions, timestamp source per bus) and ends with an end marker, so any one file makes sense alone and a missing end
+  marker means the file was cut off.
 
-### 8.5 Disk and retention
+### 8.6 Two independent records
 
-- **Session data goes on an SSD, not the SD card.** At these rates an SD card wears out and its write stalls are the most likely
-  reason a ring fills. Which drive the Pi uses is a hardware choice; the software requirement is sustained writes of a few MB/s
-  with no long stalls.
+- **MCAP from the runtime** has everything: raw frames, intent, decoded state, events, injected faults.
+- **`candump` per bus** (PLAN) sees what the kernel saw, independent of our code. If the runtime crashes, hangs or has a bug in
+  its recorder, the black box still has the frames.
+- **How `candump` runs:** `-L` (log format), `-x` (marks each frame R or T), `-d` (writes the kernel's drop count into the log as
+  `DROPCOUNT` lines, which parsers must accept), `-r` (a larger receive buffer), and on gs_usb buses `-H -N` (hardware
+  timestamps in nanoseconds).
+- **`candump` can't rotate its own files,** and restarting it leaves gaps. So its output is piped into a rotator that cuts and
+  compresses with zstd (for example hourly), set up in `deploy/`.
+- **The two are checked against each other.** An analysis script compares frame counts and timestamps per bus per session; a
+  mismatch means a drop or a recorder bug. The bench soak (PLAN item 5) runs it.
+
+### 8.7 Disk and retention
+
+- **Session data goes on an SSD, not the SD card.** At these rates an SD card wears out and stalls. Which drive the Pi uses is a
+  hardware choice; the requirement is sustained writes of a few MB/s with short worst-case stalls (section 8.4).
 - **A disk floor:** below a set amount of free space, the runtime refuses the next enable (PLAN item 6, "Logging" row) and says
   why. A running motion is never stopped for it.
-- **Nothing deletes MCAP sessions automatically.** Sessions from bench procedures and faults are the most valuable data we have.
-  Clearing old sessions is a deliberate command that lists what it will delete. Rotated `candump` files may be pruned
-  automatically after a set number of days, since the MCAP holds the same frames.
-- **Long sessions split by size:** past about 1 GB, the recorder closes the file and continues in a new numbered file in the
-  same session directory, so no single file is too big to copy or open.
+- **Sessions on real hardware are never deleted automatically.** They're the most valuable data we have. A person clears them
+  with a command that lists what it will delete.
+- **`vcan` sessions are deleted automatically,** oldest first, when free space nears the floor. Any session can be marked
+  `preserve` to keep it. Rotated `candump` files are pruned after a set number of days, since the MCAP holds the same frames.
+  (openpilot and CANedge both delete automatically; we only do it for data a rerun can reproduce.)
 
-### 8.6 Reading it back
+### 8.8 Reading it back
 
 - **Foxglove** opens the MCAP directly, per bus and per joint.
 - **Replay:** the replay tool feeds a session's recorded replies into the runtime's decode and control path, and `canplayer`
-  can replay a `candump` file onto `vcan` to drive `sim-drive` or the runtime unchanged.
-- **Analysis scripts** read MCAP with the official MCAP libraries (Rust or Python), never with a parser of our own.
+  replays a `candump` file onto `vcan` to drive `sim-drive` or the runtime unchanged.
+- **Analysis scripts** read MCAP with the official MCAP libraries (Rust or Python), never a parser of our own.
+- **Small browsing copies, if wanted,** decimate decoded state, never raw CAN. (openpilot's small log leaves CAN out almost
+  entirely; the full log is the record.)
 
-### 8.7 CAN metrics
+### 8.9 CAN metrics
 
 Counted by the bus thread as plain integers in its snapshot, exported by the non-realtime side (section 5 naming):
 `can_frames_total{bus,dir}`, `can_bus_load_ratio{bus}`, `can_errors_total{bus,kind}`, `can_tx_dropped_total{bus,reason}`,
-`can_replies_missed_total{bus,joint}`, `can_reply_latency_seconds{bus}` (histogram), `can_ticks_late_total{bus}`,
-`recorder_dropped_total{bus}`.
+`can_kernel_dropped_total{bus}`, `can_replies_missed_total{bus,joint}`, `can_reply_latency_seconds{bus}` (histogram),
+`can_ticks_late_total{bus}`, `recorder_dropped_total{bus}`.
 
 ## 9. Using the records
 
@@ -265,6 +307,17 @@ Counted by the bus thread as plain integers in its snapshot, exported by the non
 
 ## Sources
 
+- openpilot logging (batched CAN events, separate sent and received streams, segment rotation, `deleter.py`):
+  https://github.com/commaai/openpilot/tree/master/system/loggerd
+- Foxglove on MCAP chunk size and compression: https://www.foxglove.dev/blog/understanding-mcap-chunk-size-and-compression and
+  recording on a Pi from a writer thread: https://www.foxglove.dev/blog/recording-robocar-data-with-mcap
+- CSS Electronics CANedge (MDF4 logging, splitting, metadata per file):
+  https://canlogger.csselectronics.com/canedge-docs/ce2/filesystem/log-file.html
+- PX4 logging (storage stalls, dropout records): https://docs.px4.io/main/en/dev_log/logging.html and
+  https://github.com/PX4/PX4-Autopilot/blob/main/docs/en/dev_log/ulog_file_format.md
+- Linux timestamping and SocketCAN docs: https://docs.kernel.org/networking/timestamping.html,
+  https://docs.kernel.org/networking/can.html; can-utils `candump.c`: https://github.com/linux-can/can-utils
+- python-can file formats (MF4, BLF, candump): https://python-can.readthedocs.io/en/stable/file_io.html
 - MCAP specification and registry (schemas stored in the file, `log_time` and `publish_time`): https://mcap.dev/spec and
   https://mcap.dev/spec/registry
 - Prometheus metric and label naming: https://prometheus.io/docs/practices/naming/
