@@ -117,7 +117,8 @@ it lives once, as `name:` in the skeleton. The architecture map, with owners and
   Pi OS, kernel 6.1 or newer (gs_usb hardware timestamps).
 - **CI on every PR:** the gates in rust.md, including the `vcan` fault tests. If hosted runners can't load `vcan`, those tests run
   on a self-hosted runner or the Pi, never skipped silently. No hardware in CI.
-- **Deploy:** cross-build, copy the binaries, `deploy/` units and udev rules to `/opt/robot` on the Pi. No self-update
+- **Deploy:** cross-build, install to `/opt/robot/releases/<rev>` with an atomic `current` symlink; config in `/etc/robot`;
+  data in `/var/lib/robot` on its own partition. Details in [deploy.md](conventions/deploy.md). No self-update
   machinery (`marengo-deploy` is deleted, not rebuilt).
 - **Units:** `runtime.service` (`Type=notify`, `WatchdogSec`, `LimitRTPRIO`, `LimitMEMLOCK=infinity`,
   `ExecStopPost=robot-cli disable`, `Restart=always`, which is safe only because of the no-auto-enable rule in item 3);
@@ -236,7 +237,9 @@ Per [can-stack-for-marengo.md](https://github.com/jaylamping/marengo/blob/main/h
   `motorcom` crate. Stay in the drive's default private protocol with active reporting off. Refuse out-of-range or non-finite
   values; never clamp.
 - **Linux:** bitrate and sample point set explicitly, error frames on, short TX queue. PREEMPT_RT only if the Pi 5 measurement
-  misses its budget. Pin a kernel that includes the fix for CVE-2023-53523 (gs_usb timestamp init).
+  misses its budget, but expect it to: published Pi 5 numbers show a stock kernel past 9 ms worst case under stress against
+  about 100 to 225 µs with PREEMPT_RT, and Raspberry Pi ships no RT kernel. Measure with 1 h of `cyclictest` or `rtla` under
+  `stress-ng` memory load ([deploy.md](conventions/deploy.md)). Pin a kernel that includes the fix for CVE-2023-53523 (gs_usb timestamp init).
 - **Bus-off is latched in software.** Current candleLight firmware restarts the bus by itself about 100 ms after bus-off unless
   the host claims recovery (`GS_CAN_FEATURE_BUS_OFF_RECOVERY`, `CAN_BUS_OFF_RESTART_DELAY_MS` in `src/can_common.c`), and
   mainline gs_usb never claims it, so `restart-ms` and `ip link restart` don't control it. The runtime latches a stop on the
@@ -245,7 +248,8 @@ Per [can-stack-for-marengo.md](https://github.com/jaylamping/marengo/blob/main/h
 - **TX echo** from gs_usb means the frame reached the adapter's controller, not that it went out on the wire. Don't use it as
   proof of delivery.
 - **Stable bus names.** gs_usb adapters get `canN` names in plug-in order, and the MCP2515 HAT already provides `can0` and
-  `can1`. Pin each adapter to its skeleton bus name with a udev rule on its USB serial; disable the HAT's `can1` before the
+  `can1`. Pin each adapter to its skeleton bus name by its USB serial (a systemd-networkd `.link` file, with bitrate in a `.network`
+  file, per [deploy.md](conventions/deploy.md)); disable the HAT's `can1` before the
   adapter takes that name. At start, check each interface's driver against the skeleton.
 - **Only the realtime process transmits.** Scan, set-ID and parameter reads are runtime commands through `api`; `robot-cli` is
   a client. The one exception is `robot-cli disable`: it reads only (bus, ID) pairs from the skeleton, opens the sockets itself,
@@ -266,7 +270,7 @@ Per [can-stack-for-marengo.md](https://github.com/jaylamping/marengo/blob/main/h
 
 - **Transport:** local to the Pi (default: one Unix-domain socket), with socket permissions limiting who can command motion.
   Encoding is the builder's call. A slow or dead client never blocks the loop. The UI bridge never exposes an unauthenticated
-  remote motion endpoint.
+  remote motion endpoint (one way to do it: [remote-access.md](conventions/remote-access.md)).
 - **Reads:** a decimated snapshot (per joint: position, velocity, torque, temperature, mode, fault bits, reply age; per bus:
   state and error counters; limb and robot state), the scan table, and the event stream.
 - **Requests:** `stop(scope)` is always accepted from any client and jumps the queue. `enable(joints)` runs preflight first.
@@ -338,6 +342,7 @@ Each rule names what it protects and the failure it covers. A rule that protects
 | Host | Temperature: pause at 60 °C (rest pose, torque off if the pose allows) until 45 °C; stop at 75 °C | Drive windings | Overheating (drive's own protection is far higher) |
 | Host | Hang: see item 3 (stale batches, watchdog, no auto-enable) | All drives | Hung control thread keeping drives fed |
 | Host | Bus-off (latched on the first error frame, even if the adapter restarts itself), interface down or gone (`ENODEV`, `ENETDOWN`): stop every active run; the drives on that bus time out | All limbs | Lost bus, wiring fault or unplugged adapter |
+| Host | Pi health: read `vcgencmd get_throttled` once a second; refuse enable while under-voltage or throttling is active, and log it if it starts during a run | Control timing | A browned-out or throttled Pi missing ticks |
 | Host | Logging: if the session log can't open or the disk is full, refuse the next enable; never stop a running motion for it | The record (tenet 6) | Disk full or slow |
 
 **Done when** preflight refuses an enable for each of: `canTimeout` ≠ 1000, a cap mismatch, damper ≠ 0, VBUS outside the window,
@@ -396,11 +401,11 @@ Not built before milestone 4; when it is, the sim drive gains a power-board mode
 
 **Decided now, needed from the first `vcan` run:**
 
-- **One session** is one runtime start to stop, in one directory `<data>/sessions/<UTC start>/`: one MCAP file (raw frames per bus
+- **One session** is one runtime start to stop, in one directory `/var/lib/robot/sessions/<UTC start>/`: one MCAP file (raw frames per bus
   `{bus, id, dlc, data, t_kernel, t_mono, dir}`, decoded joint state, commands, injected faults, events: state changes, stops,
   limit hits, operator actions with the client's identity) and `session.json` (skeleton file and hash, git revision, operator,
   stage).
-- **Black box:** `candump -L` per bus as its own systemd service, to `<data>/candump/<bus>-<UTC>.log`, independent of the runtime.
+- **Black box:** `candump -L` per bus as its own systemd service, to `/var/lib/robot/candump/<bus>-<UTC>.log`, independent of the runtime.
 - **Logging runs inside the runtime on a non-realtime thread**, fed by a lock-free ring. When full it drops and counts. It can
   fail without affecting motion (tenet 5); see the logging row in §6.
 - **One clock:** the Pi disciplined by chrony; MCAP carries kernel CAN timestamps and monotonic time; the Jetson joins via chrony
