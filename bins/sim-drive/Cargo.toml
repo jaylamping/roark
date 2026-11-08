@@ -1,0 +1,19 @@
+[package]
+name = "sim-drive"
+description = "Simulated RobStride drives on vcan, speaking the protocol through the robstride codec"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+robstride.workspace = true
+skeleton.workspace = true
+thiserror = { workspace = true, features = ["std"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+socketcan.workspace = true
+
+[lints]
+workspace = true

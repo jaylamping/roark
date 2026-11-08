@@ -177,6 +177,16 @@ pub enum RunMode {
 }
 
 impl RunMode {
+    const fn byte(self) -> u8 {
+        match self {
+            Self::Mit => 0,
+            Self::Position => 1,
+            Self::Velocity => 2,
+            Self::Current => 3,
+            Self::Csp => 5,
+        }
+    }
+
     const fn from_byte(byte: u8) -> Option<Self> {
         match byte {
             0 => Some(Self::Mit),
@@ -336,6 +346,48 @@ pub(crate) fn decode_value(param: Param, bytes: [u8; 4]) -> Option<ParamValue> {
         Class::Volts => ParamValue::Volts(Volts(float?)),
         Class::Gain => ParamValue::Gain(Gain(float?)),
     })
+}
+
+/// Data bytes 4 to 7 for `value` in `param`, the inverse of [`decode_value`]; `None` if `value` isn't of `param`'s type
+/// or is a float that doesn't fit an f32.
+pub(crate) fn encode_value(param: Param, value: ParamValue) -> Option<[u8; 4]> {
+    let byte = |b: u8| Some([b, 0, 0, 0]);
+    match (param.class(), value) {
+        (Class::RunMode, ParamValue::RunMode(mode)) => byte(mode.byte()),
+        (Class::ZeroSta, ParamValue::ZeroSta(z)) => byte(match z {
+            ZeroSta::ZeroToTwoPi => 0,
+            ZeroSta::MinusPiToPi => 1,
+        }),
+        (Class::Damper, ParamValue::Damper(d)) => byte(match d {
+            Damper::ProtectionOn => 0,
+            Damper::ProtectionOff => 1,
+        }),
+        (Class::Switch, ParamValue::Switch(on)) => byte(u8::from(on)),
+        (Class::ReportTicks, ParamValue::ReportInterval(r)) => {
+            let [b0, b1] = r.0.to_le_bytes();
+            Some([b0, b1, 0, 0])
+        }
+        (Class::CanTimeout, ParamValue::CanTimeout(t)) => Some(t.0.to_le_bytes()),
+        (Class::Amps, ParamValue::Amps(v)) => single(v.0),
+        (Class::RadPerSec, ParamValue::RadPerSec(v)) => single(v.0),
+        (Class::NewtonMeters, ParamValue::NewtonMeters(v)) => single(v.0),
+        (Class::Radians, ParamValue::Radians(v)) => single(v.0),
+        (Class::RadPerSecSq, ParamValue::RadPerSecSq(v)) => single(v.0),
+        (Class::Volts, ParamValue::Volts(v)) => single(v.0),
+        (Class::Gain, ParamValue::Gain(v)) => single(v.0),
+        _ => None,
+    }
+}
+
+/// `value` rounded to the nearest f32, little-endian; `None` if it overflows.
+fn single(value: f64) -> Option<[u8; 4]> {
+    #[expect(
+        clippy::as_conversions,
+        clippy::cast_possible_truncation,
+        reason = "rounds to the nearest f32; a value too big for one becomes infinite and is refused below"
+    )]
+    let single = value as f32;
+    single.is_finite().then(|| single.to_le_bytes())
 }
 
 /// A parameter write the host may send, to one drive. Its constructors are the only writes there are: `run_mode` MIT,

@@ -132,6 +132,11 @@ impl StatusFault {
 pub struct StatusFaults(u8);
 
 impl StatusFaults {
+    /// The six bits as they sit in ID bits 21..16.
+    pub(crate) const fn bits(self) -> u8 {
+        self.0
+    }
+
     /// Whether `fault` is set.
     #[must_use]
     pub const fn contains(self, fault: StatusFault) -> bool {

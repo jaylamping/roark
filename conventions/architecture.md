@@ -29,7 +29,7 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
    systemd: watchdog on runtime; ExecStopPost = robot-cli disable (independent of runtime)
    candump -L per bus: independent black box
 
- Dev machine or CI: sim-drive on vcan0..vcan4 stands in for the drives; runtime runs unchanged.
+ Dev box or CI: sim-drive on vcan can0..can4 (the skeleton's names) stands in for the drives; runtime runs unchanged.
  Later: Jetson (perception) is another api client, never a CAN writer.
 ```
 
@@ -42,7 +42,7 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
 | `telemetry` | MCAP files, metrics, structured logs | Event queues in, disk and Prometheus out | Be in the stop path (a slow disk never delays a stop) |
 | `ui/`, `mcp/`, `robot-cli` | Nothing about the hardware | `api` only | Open a CAN socket (the one exception below) |
 | `robot-cli disable` | Nothing | The bus directly, after `runtime` has exited | Run while `runtime` is alive |
-| `sim-drive` | Simulated drive state | `vcan` through the same `robstride` codec | Be linked into `runtime` |
+| `sim-drive` | Simulated drive state | `vcan` through the same `robstride` codec (its drive side, `robstride::drive`) | Be linked into `runtime`, or open an interface that isn't `vcan` |
 
 ## 2. Process boundaries are failure domains
 
@@ -68,6 +68,8 @@ skeleton   (types and loader, no I/O beyond reading the file; reads robstride's 
                       dynamics
 api       (message types; used by runtime, ui bridge, mcp, robot-cli)
 telemetry (leaf for producers: takes events, depends on nothing above)
+
+sim-drive (bin) --> robstride, skeleton        sim-suite (tests only) --> sim-drive, robstride
 ```
 
 - Arrows only point toward the leaves. No cycles, no "utils" or "common" crate that everything imports.
@@ -76,6 +78,13 @@ telemetry (leaf for producers: takes events, depends on nothing above)
   `robstride` too: the codec is where drive values become SI, and every other crate already depends on it.
 - **The codec does no I/O.** `robstride` turns bytes into typed frames and back. It can be tested with plain byte arrays and
   reused by `sim-drive` and `robot-cli` unchanged.
+- **A drive's frames are their own type.** `robstride::drive` (the drive's side, for `sim-drive`) builds a `DriveFrame`,
+  never a `Frame`; only `robstride::encode` makes a `Frame`, and the bus layer transmits only `Frame`s. So nothing that talks
+  to the robot's drives can send a drive's frame, whichever crates a build compiles together. **Why:** a cargo feature
+  can't hold this, because a workspace build turns a feature on for every crate in it.
+- **Only named crates open a CAN socket.** `deny.toml` bans `socketcan` except as a direct dependency of `sim-drive` and
+  `sim-suite`; `can` joins that list when it exists. `sim-drive` and every sim test check an interface is `vcan` before
+  the first frame, because the sim's buses carry the robot's real bus names.
 - **Clients depend on `api`, never on `runtime` internals.** If a client needs something, it becomes an `api` message.
 - A new crate needs a separate reason to exist: a different owner, a different realtime class, or reuse by two binaries. "It
   felt big" is a reason for a module, not a crate.
