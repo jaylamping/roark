@@ -11,5 +11,4 @@ limb currently on the bench (tenet 0).
    ([RECONCILIATION.md](https://github.com/jaylamping/marengo/blob/main/review/sw-foundation-20261108/RECONCILIATION.md)),
    never as patterns. Nothing in this repo depends on or copies its structure.
 
-Work on branches and open PRs. No tests written just for coverage: before writing or changing a test, read
-[conventions/testing.md](conventions/testing.md).
+Work on branches and open PRs. No tests written just for coverage.
