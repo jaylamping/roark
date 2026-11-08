@@ -271,12 +271,11 @@ abstraction section 11 forbids.
 
 ## 12. Logging in code (tenet 8)
 
-- **`tracing`** for structured events, outside the realtime threads. One set of field names everywhere: `bus`, `device_id`,
-  `joint`, `limb`, `mode`, `fault`, `session`. Values are typed fields, not interpolated strings:
-  `info!(joint = %j, bus = %b, "drive enabled")`.
-- **Levels mean something.** `error`: an operator or agent must look. `warn`: degraded but handled (a late reply, a retry).
-  `info`: state changes and operator actions. `debug`/`trace`: per-frame detail, off by default and never needed for replay,
-  because MCAP holds the frames.
+What to record, the event kinds, field names, levels, MCAP channels and metric names are in [logging.md](logging.md). The Rust
+side only:
+
+- **`tracing`** for structured events, outside the realtime threads. Values are typed fields, not interpolated strings:
+  `info!(joint = %j, bus = %b, "drive enabled")`. Realtime threads push event structs onto a ring instead (section 6).
 - **No `println!`/`eprintln!`** (clippy denies them). CLIs print results through one output function, so they can also emit
   JSON for agents.
 
