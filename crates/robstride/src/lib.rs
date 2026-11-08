@@ -37,9 +37,11 @@ pub use decode::{
 };
 pub use encode::{EncodeError, MitCommand, MitField, Reporting};
 pub use frame::{Frame, HOST_ID};
-pub use model::{MitRange, MitScales, Model, ModelRanges, UnknownModel, UnvouchedModel};
-pub use param::{CanTimeout, Param, ParamType, ParamValue, RunMode, Write, ZeroSta};
+pub use model::{Drive, MitRange, MitScales, Model, ModelRanges, UnknownModel, UnvouchedModel};
+pub use param::{
+    CanTimeout, Damper, Param, ParamType, ParamValue, ReportInterval, RunMode, Write, ZeroSta,
+};
 pub use units::{
-    Amps, Celsius, DeviceId, InvalidDeviceId, NewtonMeters, NmPerRad, NmSecPerRad, RadPerSec,
+    Amps, Celsius, DeviceId, Gain, InvalidDeviceId, NewtonMeters, NmPerRad, NmSecPerRad, RadPerSec,
     RadPerSecSq, Radians, Uid, Volts,
 };

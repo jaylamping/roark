@@ -6,7 +6,7 @@
 //! set.
 
 use crate::frame::{Frame, HOST_ID};
-use crate::model::{MitRange, Model, UnvouchedModel};
+use crate::model::{Drive, MitRange, Model, UnvouchedModel};
 use crate::param::{Param, Write};
 use crate::units::{DeviceId, NewtonMeters, NmPerRad, NmSecPerRad, RadPerSec, Radians};
 
@@ -130,12 +130,13 @@ pub const fn get_id(target: DeviceId) -> Frame {
     host_frame(kind::GET_ID, 0, target, [0; 8])
 }
 
-/// Type 1 (§4.1.2): one MIT command. The torque code rides in the ID; the other four fields are big-endian in the data.
+/// Type 1 (§4.1.2): one MIT command to `drive`, scaled for its model. The torque code rides in the ID; the other four
+/// fields are big-endian in the data.
 ///
 /// # Errors
 /// [`EncodeError::OutOfRange`] naming the first field outside the model's range, or [`EncodeError::UnvouchedModel`].
-pub fn mit(model: Model, target: DeviceId, command: &MitCommand) -> Result<Frame, EncodeError> {
-    let s = model.mit_scales()?;
+pub fn mit(drive: Drive, command: &MitCommand) -> Result<Frame, EncodeError> {
+    let s = drive.model().mit_scales()?;
     let position = code(s.position, command.position.get(), MitField::Position)?;
     let velocity = code(s.velocity, command.velocity.get(), MitField::Velocity)?;
     let kp = code(s.kp, command.kp.get(), MitField::Kp)?;
@@ -152,7 +153,7 @@ pub fn mit(model: Model, target: DeviceId, command: &MitCommand) -> Result<Frame
         kind::MIT,
         torque_hi,
         torque_lo,
-        target.get(),
+        drive.id().get(),
         [p0, p1, v0, v1, kp0, kp1, kd0, kd1],
     ))
 }
@@ -205,13 +206,18 @@ pub const fn param_read(target: DeviceId, param: Param) -> Frame {
     host_frame(kind::PARAM_READ, 0, target, [i0, i1, 0, 0, 0, 0, 0, 0])
 }
 
-/// Type 18 (§4.1.7): write one parameter, lost at power-off (the host never saves, PLAN item 2). The drive answers with
-/// a type-2 status frame.
+/// Type 18 (§4.1.7): write one parameter to the drive the [`Write`] was built for, lost at power-off (the host never
+/// saves, PLAN item 2). The drive answers with a type-2 status frame.
 #[must_use]
-pub const fn param_write(target: DeviceId, write: &Write) -> Frame {
+pub const fn param_write(write: &Write) -> Frame {
     let [i0, i1] = write.param().index().to_le_bytes();
     let [v0, v1, v2, v3] = write.bytes();
-    host_frame(kind::PARAM_WRITE, 0, target, [i0, i1, 0, 0, v0, v1, v2, v3])
+    host_frame(
+        kind::PARAM_WRITE,
+        0,
+        write.target(),
+        [i0, i1, 0, 0, v0, v1, v2, v3],
+    )
 }
 
 /// Type 24 (§4.1.11): switch active reporting.

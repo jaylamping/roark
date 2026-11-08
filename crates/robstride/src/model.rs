@@ -4,7 +4,7 @@
 
 use core::f64::consts::TAU;
 
-use crate::units::{Amps, NewtonMeters, RadPerSec, Radians};
+use crate::units::{Amps, DeviceId, NewtonMeters, RadPerSec, Radians};
 
 /// A RobStride actuator model. The skeleton names the model; everything model-specific lives here.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -17,6 +17,35 @@ pub enum Model {
     Rs03,
     /// RS04.
     Rs04,
+}
+
+/// One drive on the bus: its ID paired with its model once, from the skeleton. Every frame whose bytes depend on the
+/// model (an MIT command, a cap) is built through it, so a frame scaled or capped for one model can't be sent to a drive
+/// of another.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Drive {
+    id: DeviceId,
+    model: Model,
+}
+
+impl Drive {
+    /// Drive `id`, a `model`.
+    #[must_use]
+    pub const fn new(id: DeviceId, model: Model) -> Self {
+        Self { id, model }
+    }
+
+    /// Its CAN ID.
+    #[must_use]
+    pub const fn id(self) -> DeviceId {
+        self.id
+    }
+
+    /// Its model.
+    #[must_use]
+    pub const fn model(self) -> Model {
+        self.model
+    }
 }
 
 /// A model name that isn't one of `rs00`, `rs02`, `rs03`, `rs04`.
@@ -39,6 +68,9 @@ pub struct ModelRanges {
 }
 
 impl Model {
+    /// Every model, in table order.
+    pub(crate) const ALL: [Self; 4] = [Self::Rs00, Self::Rs02, Self::Rs03, Self::Rs04];
+
     /// Parses the skeleton's lower-case model name.
     ///
     /// # Errors
