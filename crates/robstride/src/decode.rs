@@ -4,7 +4,8 @@
 //! Reserved ID bits are ignored on receive. A frame is checked against what the manual says its bytes are, and refused if
 //! they say something else, so a foreign or corrupt frame never reads as one of ours. Bytes the manual leaves open (MIT
 //! fields, status codes, UIDs and fault words) are read as they come. A parameter value must be one its register can
-//! hold ([`Param`]), and a parameter write read back must be one [`Write`](crate::Write) could have built.
+//! hold ([`Param`]: its type, filler and enum values, not the manual's ranges), and a parameter write read back must be
+//! one [`Write`](crate::Write) builds for some model.
 //!
 //! Types 0, 17 and 24 travel both ways. A type-0 frame addressed to 0xFE is a drive's identity reply. A type-17 or type-24
 //! frame with this host in bits 15..8, or addressed to a drive ID (1 to 127), is a host frame; any other is a drive's, and
@@ -17,7 +18,7 @@
 use crate::encode::{REPORTING_PREFIX, Reporting, SET_ZERO_DATA, VERSION_QUERY_DATA, kind};
 use crate::frame::{HOST_ID, IDENTITY_MARKER, Parts, parts};
 use crate::model::{Model, UnvouchedModel};
-use crate::param::{Param, ParamValue, Write, decode_value};
+use crate::param::{Body, Param, ParamValue, decode_value};
 use crate::units::{Celsius, DeviceId, NewtonMeters, RadPerSec, Radians, Uid};
 
 /// A frame read from the bus.
@@ -240,7 +241,8 @@ pub enum EchoKind {
     },
     /// Type 17: a read of this register.
     ParamRead(Param),
-    /// Type 18: a write this host's [`Write`] could have built.
+    /// Type 18: a write this host's [`Write`](crate::Write) builds for some model. Which drive and model the target is,
+    /// the bus layer checks by matching the echo against the frame it queued.
     ParamWrite {
         /// The register written.
         param: Param,
@@ -311,12 +313,27 @@ pub enum DecodeError {
         /// The frame's ID.
         id: u32,
     },
-    /// A parameter write this host never sends: a register or value [`Write`] can't build, such as `zero_sta` 0x7029 or
-    /// `run_mode` velocity. Another sender is on the bus.
-    #[error("write to parameter {index:#06X} is never sent by this host, ID {id:#010X}")]
+    /// A parameter write this host never sends: to a register it never writes, such as `zero_sta` 0x7029, or a value it
+    /// never writes, such as `run_mode` velocity or `canTimeout` 600. Another sender is on the bus.
+    #[error(
+        "write of {value:02X?} to parameter {index:#06X} is not one this host sends, ID {id:#010X}"
+    )]
     ForeignWrite {
         /// The index the frame carries.
         index: u16,
+        /// Data bytes 4 to 7.
+        value: [u8; 4],
+        /// The frame's ID.
+        id: u32,
+    },
+    /// A parameter value the register can't hold: a 1- or 2-byte value with its unused bytes set, an enum value the
+    /// manual doesn't list, or a float that isn't finite.
+    #[error("parameter {index:#06X} carries {value:02X?}, a value it can't hold, ID {id:#010X}")]
+    BadParamValue {
+        /// The index the frame carries.
+        index: u16,
+        /// Data bytes 4 to 7.
+        value: [u8; 4],
         /// The frame's ID.
         id: u32,
     },
@@ -402,7 +419,14 @@ fn param_reply(p: &Parts, data: [u8; 8]) -> Result<Inbound, DecodeError> {
     };
     let param = param(p, [i0, i1])?;
     let outcome = match p.area_hi {
-        0 => ParamOutcome::Read(decode_value(param, [b4, b5, b6, b7]).ok_or(unexpected(p))?),
+        0 => ParamOutcome::Read(decode_value(param, [b4, b5, b6, b7]).ok_or(
+            DecodeError::BadParamValue {
+                index: param.index(),
+                value: [b4, b5, b6, b7],
+                id: p.id,
+            },
+        )?),
+        // A refusal's value bytes aren't defined, so they aren't read.
         1 => ParamOutcome::Refused,
         _ => return Err(unexpected(p)),
     };
@@ -419,20 +443,33 @@ fn param(p: &Parts, index: [u8; 2]) -> Result<Param, DecodeError> {
     Param::from_index(index).ok_or(DecodeError::UnknownParam { index, id: p.id })
 }
 
-/// A type-18 write read back (§4.1.7): bytes 2 and 3 are 00, and the write must be one [`Write`] could have built. A
-/// write to an index outside the table is one this host never sends, so it is foreign too.
+/// A type-18 write read back (§4.1.7): bytes 2 and 3 are 00, and the write must be one [`Write`](crate::Write) builds
+/// for some model. A write to a register `Write` never targets, or to an index outside the table, is foreign whatever
+/// its value; a value the register can't hold is a bad value; any other value `Write` doesn't send is foreign.
 fn param_write_echo(p: &Parts, data: [u8; 8]) -> Result<EchoKind, DecodeError> {
     let [i0, i1, 0, 0, b4, b5, b6, b7] = data else {
         return Err(unexpected(p));
     };
     let index = u16::from_le_bytes([i0, i1]);
-    let foreign = DecodeError::ForeignWrite { index, id: p.id };
-    let param = Param::from_index(index).ok_or(foreign)?;
-    let value = decode_value(param, [b4, b5, b6, b7]).ok_or(unexpected(p))?;
-    if !Write::could_build(param, value) {
-        return Err(foreign);
-    }
-    Ok(EchoKind::ParamWrite { param, value })
+    let value = [b4, b5, b6, b7];
+    let foreign = DecodeError::ForeignWrite {
+        index,
+        value,
+        id: p.id,
+    };
+    let (param, writer) = Param::from_index(index)
+        .and_then(|param| Some((param, Body::writer(param)?)))
+        .ok_or(foreign)?;
+    decode_value(param, value).ok_or(DecodeError::BadParamValue {
+        index,
+        value,
+        id: p.id,
+    })?;
+    let write = writer(value).ok_or(foreign)?;
+    Ok(EchoKind::ParamWrite {
+        param,
+        value: write.value(),
+    })
 }
 
 /// A host frame read back: this host in data area bits 15..8, checked first, then data the manual allows and the target

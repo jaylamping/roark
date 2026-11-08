@@ -1,6 +1,7 @@
 //! Status frames (types 2 and 24) against the manuals and the bench: header bits, fault flags, SI conversion per model,
 //! and the RS03 velocity scale measured on the bench.
 
+#[expect(dead_code, reason = "this file uses only common::header")]
 mod common;
 
 use common::header;

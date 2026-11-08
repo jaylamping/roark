@@ -1,4 +1,4 @@
-//! SI newtypes (units-and-frames.md section 1) and the drive's CAN device ID.
+//! Unit newtypes (units-and-frames.md section 1): SI, plus `Gain` in the drive's own units; and the drive's CAN device ID.
 //!
 //! Values are always finite: `new` refuses NaN and infinities, so nothing downstream has to ask.
 
@@ -47,6 +47,10 @@ si_unit!(
 si_unit!(
     /// A voltage in volts.
     Volts
+);
+si_unit!(
+    /// A drive loop or filter gain, in the drive's own units, which the manual doesn't give.
+    Gain
 );
 si_unit!(
     /// A temperature in degrees Celsius.

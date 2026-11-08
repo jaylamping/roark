@@ -1,6 +1,6 @@
 //! Helpers shared by the codec's test files.
 
-use robstride::{DeviceId, Header, Mode, StatusFault};
+use robstride::{DeviceId, Drive, Header, Mode, Model, StatusFault};
 
 #[expect(
     clippy::unwrap_used,
@@ -16,4 +16,9 @@ pub(crate) fn header(device: u8, mode: Mode, faults: &[StatusFault]) -> Header {
         mode,
         faults: faults.iter().copied().collect(),
     }
+}
+
+/// Drive `n`, a `model`.
+pub(crate) fn drive(model: Model, n: u8) -> Drive {
+    Drive::new(id(n), model)
 }
