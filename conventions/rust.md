@@ -1,6 +1,7 @@
 # Rust conventions
 
-How Roark's Rust is written. [TENETS.md](TENETS.md) says what is right; this file says how to write it in Rust. If the two
+How Roark's Rust is written. [TENETS.md](../TENETS.md) says what is right, [architecture.md](architecture.md) says how the pieces fit, and this file says
+how to write it in Rust. If the two
 ever disagree, the tenets win and this file gets fixed. Every rule here exists because of a failure it prevents, named in its
 "why". Most rules are enforced by the compiler, clippy or CI, so nobody has to judge Rust by eye.
 
@@ -150,6 +151,9 @@ The realtime crates also turn on `clippy::wildcard_enum_match_arm` and `clippy::
   channel. If you add one, the PR says why a channel won't do.
 - **Fighting the borrow checker means the ownership design is wrong.** Restructure who owns what. Don't paper over it with
   `.clone()`, `Rc<RefCell<_>>` or `'static` lifetimes.
+- **Async only at the edges.** `tokio` is fine in `api`, the UI bridge, `mcp/` and the recorder's file and network I/O. Never
+  block inside async code (no `std::thread::sleep`, no blocking file or socket calls); use `spawn_blocking` or a plain thread.
+  The realtime side never awaits anything: it talks to async code only through `rtrb` queues or bounded channels.
 - **Every thread is named** (`std::thread::Builder::name`), so panics, logs and `top -H` show which bus or job it is.
 - **Every thread has an explicit stop path**: a shared `AtomicBool` or a stop message, checked each loop.
 
@@ -190,19 +194,11 @@ PLAN section 3 sets the design: one process, one blocking thread per bus, SCHED_
   hard-won list), as `(input, expected bytes)` rows. Add property tests (`proptest`) for round trips and clamping. These are
   the "protocol contract" tests tenet 6 allows.
 
-## 8. Tests (tenet 6, in Rust terms)
+## 8. Tests
 
-- **A test guards a real failure**: a bug we hit, a safety rule, a protocol contract or a number a loop depends on. Name it
-  after the failure, for example `nan_torque_is_rejected_not_encoded_as_min`, not `test_encode_3`. A one-line comment links
-  the bug, bench log or manual section.
-- **Unit tests sit beside the code** in `#[cfg(test)] mod tests`. **Integration tests** go in each crate's `tests/`.
-- **Don't mock the CAN socket.** The bus is tested against `sim-drive` on `vcan`, the same path the real robot uses. A
-  `trait Bus` added only so a mock can exist is the kind of abstraction section 11 forbids.
-- **Fault-injection tests run on vcan in CI**: lost replies, a drive that goes silent, a drive power cycle mid-run, bus-off,
-  the runtime process killed with `SIGKILL`. Each checks what the tenets require: drives stop, the snapshot shows stale ages,
-  nothing moves on its own. If the CI runner can't load `vcan`, those tests run on a self-hosted runner or the Pi, never
-  skipped silently.
-- `unwrap`/`expect` are fine in tests (`clippy.toml` allows them).
+How we test, what earns a test and what doesn't, lives in [testing.md](testing.md). Two Rust-specific notes only:
+`unwrap`/`expect` are fine in tests (`clippy.toml` allows them), and a `trait` added only so a mock can exist is the kind of
+abstraction section 11 forbids.
 
 ## 9. Dependencies
 
@@ -233,6 +229,11 @@ PLAN section 3 sets the design: one process, one blocking thread per bus, SCHED_
 - **Concrete types first.** A trait only when two real implementations exist today. Generics only to remove real
   duplication. No `Box<dyn Trait>` where an enum works. **Why:** layered abstractions are the fastest way to make code an
   agent can't learn in minutes.
+- **Actuator differences are data.** RS00, RS02, RS03 and RS04 differ by a table of scales and limits, not by types or
+  traits. No generic "any actuator" or "any limb" framework (tenet 1).
+- **No builders, factories or dependency-injection containers.** Structs with public fields or a plain `new`.
+- **Files stay small.** Aim under 600 lines, hard cap 800 (CI checks it); functions around 60 lines. A long file means a
+  concept wants its own module.
 - **Small public surface.** Default to private, then `pub(crate)`. A `pub` item is a promise to other crates.
 - **`macro_rules!` only for tables** (such as the frame or parameter table), never to hide control flow. No procedural macros
   of our own.
@@ -268,23 +269,31 @@ run exactly what CI runs before pushing.
 
 ## 14. Smells to question in a PR
 
-Any of these in a diff is worth asking "why?", even without reading Rust fluently:
+You don't need to read Rust fluently to review it. Each row maps a Rust smell to the JavaScript habit it resembles and the
+question to ask.
 
-- `.unwrap()`, `.expect(`, `panic!`, `todo!` outside tests (clippy should already block them)
-- `.clone()` in a loop, or many `.clone()` calls in one change
-- `Arc<Mutex`, `RwLock`, `Rc<RefCell` anywhere, and especially in `can`, `robstride`, `safety`, `control`
-- `async`, `tokio` or `.await` in a realtime crate
-- `as u8`, `as u16`, `as i16` near motor values; `#[expect(clippy::cast_...)]`
-- `unsafe`
-- `Box<dyn ...>` or a new `trait` with one implementation
-- a new crate, or a new dependency without a reason line
-- `#[expect(...)]` without a convincing reason, or edits to the lint table
-- `let _ =` on anything that returns `Result`
-- `format!`, `String`, `Vec::new()` or `tracing` calls inside the tick
+| You see | It's like (JS) | Ask |
+|---|---|---|
+| `.unwrap()`, `.expect(`, `panic!`, `todo!` outside tests | Uncaught promise rejections | What happens when this fails mid-motion? (clippy should already block it) |
+| `Arc<Mutex`, `RwLock`, `Rc<RefCell` piling up | A global store everyone mutates | Who owns this data? Never in `can`, `robstride`, `safety`, `control` |
+| `.clone()` in a loop, or many in one change | Deep-copying to dodge a bug | Was ownership decided, or dodged? |
+| `async`, `tokio`, `.await` in a realtime crate | Heavy sync work on the main thread | Why is the realtime path waiting on anything? |
+| `Box<dyn ...>`, a new `trait` with one implementation, generics everywhere | A six-layer HOC or provider pyramid | Are there two real implementations today? |
+| `unsafe` | `eval` | Where is the `SAFETY:` comment, and why can't a safe crate do it? |
+| `#[expect(...)]` with a weak reason, or edits to the lint table | `// eslint-disable-next-line` | Why is the warning wrong here? |
+| `as u8`, `as u16`, `as i16` near motor values | `parseInt` on untrusted input | What happens with NaN, or a value out of range? |
+| `let _ =` on something that returns `Result` | A floating promise with no `catch` | Where does this error go? |
+| `format!`, `String`, `Vec::new()`, `tracing` inside the tick | Allocating inside a render loop | Can this happen once at startup instead? |
+| A new crate, or a new dependency without a reason line | A new npm package for one function | What does it replace, and is it maintained? |
+| A file passing 600 lines | A 1,500-line component | What concept can be split out? |
+| A bare `f32`/`f64` in a signature for a physical value | `any` | Which unit is this? Use the newtype |
 
 ## 15. Rules for agents
 
 - Run the local check command (section 13) before every push. Don't push red.
+- **Check the API before calling it.** Agents invent crate methods. Read docs.rs for the exact version in `Cargo.lock`, and
+  compile early and often.
+- Don't copy legacy patterns. The marengo repo is for facts and bench lessons only.
 - When the borrow checker refuses, change the ownership, not the lifetimes. Cloning to make it compile is a design smell,
   not a fix.
 - Never weaken a lint, a test or a CI step to get green. If a rule is wrong, say so in the PR and change it on purpose.
