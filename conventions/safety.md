@@ -54,7 +54,23 @@ test with one search. It's the same idea as an error code in an API.
 - **No catching and continuing.** A panic or error in the realtime path ends with drives timing out (50 ms) by design. Don't
   wrap safety code in recovery logic that keeps drives fed.
 
-## 5. Every rule is proven twice
+- **No config value turns a protection off.** No `0 = infinite` timeout, no `null = no limit`, no "skip checks" setting. The
+  loader refuses such values (PLAN item 6 already refuses `canTimeout` 0). **Why:** ArduPilot ships a setting to skip its
+  arming checks and has to warn people never to use it; moteus and ODRI both let a value disable their watchdog.
+
+## 5. Every refusal tells the operator what to do
+
+Each preflight refusal and stop has an operator-facing message with three parts, kept next to the rule:
+
+| Message | Cause | What to do |
+|---|---|---|
+| `refused: left_elbow_pitch canTimeout reads 0, expected 1000` | The drive rebooted and lost its setting | Run preflight again; the runtime rewrites it |
+
+The message names the joint, the measured value and the expected value. **Why:** a refusal that just says "preflight failed"
+gets worked around. ArduPilot documents every pre-arm check this way (message, cause, solution), and its users fix the cause
+instead of disabling the check.
+
+## 6. Every rule is proven twice
 
 1. **Unit test** of the rule's function, `Guards: safety - <rule ID>`, a table of inputs at, just inside and just outside the
    threshold.
@@ -63,7 +79,7 @@ test with one search. It's the same idea as an error code in an API.
 
 Where PLAN's "Done when" asks for it, the rule is also shown once on a real drive, attended, per [bench.md](bench.md).
 
-## 6. Changing a rule
+## 7. Changing a rule
 
 A PR that adds, removes or changes a safety rule:
 
@@ -73,7 +89,7 @@ A PR that adds, removes or changes a safety rule:
 - never loosens a threshold to make a run pass. If a rule stops a run that should have passed, find out why before touching
   the rule.
 
-## 7. Logging
+## 8. Logging
 
 Every verdict other than `Allow` is an event: rule ID, joint, limb, the measured value, the threshold and the time
 ([rust.md section 12](rust.md#12-logging-in-code-tenet-8) for field names). Every enable, refused enable, stop and clear is an
@@ -87,3 +103,14 @@ event too. The realtime thread doesn't log directly; it hands events to the logg
 - Is there any path, flag or mode that skips it?
 - Unit test and sim test both present, both citing the rule ID?
 - PLAN row, code and tests changed together?
+
+## Sources
+
+- ArduPilot pre-arm checks (message, cause, solution; "never disable arming checks"):
+  https://github.com/ArduPilot/ardupilot_wiki/blob/master/common/source/docs/common-prearm-safety-checks.rst
+- moteus timeout mode (latched until an explicit stop): https://mjbots.github.io/moteus/reference/configuration/
+- ODRI master board (command timeout, session ID so only one program controls the robot):
+  https://github.com/open-dynamic-robot-initiative/master-board/blob/master/documentation/masterboard_communication.md
+- PX4 contribution rules ("PX4 is safety-critical": evidence for every change): https://github.com/PX4/PX4-Autopilot/blob/main/CONTRIBUTING.md
+- rerun CODE_STYLE ("an error should never happen in silence"; invalid configuration is an error, not a silent fallback):
+  https://github.com/rerun-io/rerun/blob/main/CODE_STYLE.md

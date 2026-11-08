@@ -14,7 +14,9 @@ without affecting motion (tenet 5).
 - **Lint:** ESLint flat config with `typescript-eslint`'s `strict-type-checked` and `stylistic-type-checked`, plus the React
   Hooks rules if the UI is React. Prettier for formatting, no style debates.
 - **Build:** Vite. One package manager, pinned in `package.json` (`packageManager` field) with a committed lockfile.
-- **Tests:** Vitest, Testing Library, MSW, Playwright, per [testing.md](testing.md) (rule 9 limits what the UI tests).
+- **Tests:** Vitest, Testing Library, MSW, Playwright, per [testing.md](testing.md) (rule 9 limits what the UI tests). Query by
+  role and label (`getByRole`), drive with `user-event` (not `fireEvent`), keep tests next to the code they test, and run
+  Playwright against the real stack on `sim-drive` without mocks (Grafana's frontend testing guides say the same).
 - **Dependencies:** few and maintained, same bar as Rust: every new one gets a reason line in its PR.
 
 ## 2. Types
@@ -64,3 +66,12 @@ without affecting motion (tenet 5).
 - **No global mutable store** beyond what the data really needs. Server state (what the robot reports) and UI state (what panel
   is open) are kept apart.
 - Files stay small, as in Rust: a component file past a few hundred lines wants splitting.
+- **Named exports only;** no default exports. Renames then stay consistent across the codebase (Grafana's frontend style).
+- **No error happens in silence.** A failed request, a dropped connection or a message that doesn't parse is shown to the
+  operator and logged, once, not swallowed (rerun's rule).
+
+## Sources
+
+- Grafana frontend style, testing and Playwright guides: https://github.com/grafana/grafana/tree/main/contribute/style-guides
+- rerun CODE_STYLE (errors never silent): https://github.com/rerun-io/rerun/blob/main/CODE_STYLE.md
+- typescript-eslint shared configs: https://typescript-eslint.io/users/configs/

@@ -173,6 +173,30 @@ If the dashboard looks wrong, you see it; if it sends an enable without a confir
 **Why:** tests are code, and tenet 4's "speculative code is deleted" applies to them too. A test whose reason has gone is not
 "extra safety", it is a tripwire for the next person. Git history keeps it if it's ever needed again.
 
+## Rule 11: no ignored tests, no expected panics
+
+- **No `#[ignore]`** and no skipped Vitest/Playwright tests (`it.skip`, `test.fixme`) on `main`. A test that can't pass yet
+  either isn't merged, or asserts today's (wrong) behaviour with a `FIXME(<issue link>)` comment, so it goes red the day the
+  behaviour changes.
+- **No `#[should_panic]`.** Test the error value the code returns. Panicking is not an API.
+- **Assert exact values** (`assert_eq!` on the whole value), not "contains" or "is ok". A loose assertion passes on the wrong
+  answer.
+
+**Why:** an ignored test is a test nobody runs, which is worse than no test because it looks like coverage. rust-analyzer bans
+both outright; rerun asks for `assert_eq!` over `contains` for the same reason.
+
+## Rule 12: the suite has a time budget
+
+- `cargo nextest run` (unit and integration) finishes in **under 30 seconds** on a laptop. Each test gets a slow warning at 5 s
+  and is killed at 60 s (`.config/nextest.toml`).
+- The sim suite on `vcan` finishes in **under 5 minutes** in CI. Simulated time runs as fast as the code allows, never at wall
+  speed.
+- A test that needs longer is a sign it's testing too much at once. Split it, or make it a scheduled job (fuzzing, mutation
+  testing), not a PR gate.
+
+**Why:** a fast suite gets run before every push; a slow one gets skipped, and then it guards nothing. rust-analyzer keeps its
+whole suite under about 30 s; Materialize aims for PR checks under 10 minutes that catch 95 % of bugs.
+
 ## How big the suite should be
 
 The four guards put a natural ceiling on the count. For milestone 1, roughly:
@@ -216,7 +240,7 @@ them, missing match arms). A test that only re-checks what the compiler guarante
 
 | Need | Tool | How we use it | Why this one |
 |---|---|---|---|
-| Test runner | **cargo-nextest** (`cargo nextest run`) | The default runner locally and in CI. Doc examples still run with `cargo test --doc` | The de facto runner for serious Rust projects: each test in its own process (one crash or hang can't take down others), per-test timeouts that catch a hung loop, clear failure output, retries reported as flaky instead of hidden |
+| Test runner | **cargo-nextest** (`cargo nextest run`) | The default runner locally and in CI. Doc examples still run with `cargo test --doc` | The de facto runner for serious Rust projects: each test in its own process (one crash or hang can't take down others), per-test timeouts that catch a hung loop, clear failure output, retries reported as flaky instead of hidden. **Retries are off by default** (`retries = 0`); a flaky test is fixed, not retried |
 | Example tests | built-in `#[test]` and `assert_eq!` | Rules 1 to 7 | It's the standard; no extra framework (no "describe/it" DSL crate) |
 | Property tests | **proptest** | Codec round-trips (`decode(encode(x)) == x` for any valid frame), skeleton validation never panics on any input, safety checks hold for any command stream. One property test counts as one test and needs a `Guards:` line | Instead of a few hand-picked inputs, it tries hundreds of generated ones and shrinks a failure to the smallest case. Like `fast-check` in JS. For a codec this catches far more than example tests, with fewer of them |
 | Fuzzing | **cargo-fuzz** (libFuzzer) | One fuzz target on the frame decoder: bytes off the bus must never panic or hang it. Run on demand and before each milestone, not on every PR | Everything on the bus is outside input. A decoder panic in the realtime thread would stop the robot. Fuzzing is the standard tool for "this parser must survive anything" |
@@ -292,3 +316,33 @@ These run in CI so the rules don't depend on anyone remembering them:
 4. Does it touch private items, mock our own code, or sleep? Rework it through the public seam, `sim-drive`, or by passing the time in.
 5. Could it move a real motor? Then it's a bench procedure, not a test.
 6. Did this PR delete or change code that other tests guard? Delete or change those tests too.
+7. Wrote several tests in one go (agents especially)? Prune to the ones that each guard something different. Pinocchio's
+   contribution rules ask for exactly this.
+
+## Sources
+
+What other maintained projects say on the same points, read 2026-11-08:
+
+- rerun TESTING.md: "Test behavior that could plausibly break. Don't add tests for one case out of many that all work the same
+  way." https://github.com/rerun-io/rerun/blob/main/TESTING.md
+- probe-rs CONTRIBUTING: "avoid tautology. Tests that just describe the implementation bloat up a PR."
+  https://github.com/probe-rs/probe-rs/blob/master/CONTRIBUTING.md
+- ros2_rust CONTRIBUTING: "Avoid writing tests that simply restate the definition of a function."
+  https://github.com/ros2-rust/ros2_rust/blob/main/docs/CONTRIBUTING.md
+- rust-analyzer style guide (no `#[ignore]`, no `#[should_panic]`, data-driven tests through one `check` helper) and matklad's
+  "How to Test" (sans-IO, fast suite, test features not code):
+  https://github.com/rust-lang/rust-analyzer/blob/master/docs/book/src/contributing/style.md,
+  https://matklad.github.io/2021/05/31/how-to-test.html
+- TigerBeetle deterministic simulation (seed plus commit replays any failure): https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/internals/vopr.md
+- dora-rs test ratings (Contract, Smoke, Structural) and test tiers: https://github.com/dora-rs/dora/blob/main/docs/testing-capabilities.md
+- uv and probe-rs nextest profiles (slow timeouts, hardware tests filtered out, serial groups):
+  https://github.com/astral-sh/uv/blob/main/.config/nextest.toml, https://github.com/probe-rs/probe-rs/blob/master/.config/nextest.toml
+- zenoh codec fuzzing and malformed-input tests: https://github.com/eclipse-zenoh/zenoh/tree/main/commons/zenoh-codec
+- PX4 evidence rule (SITL test, or a log for hardware-only changes): https://github.com/PX4/PX4-Autopilot/blob/main/CONTRIBUTING.md
+- Grafana testing style (Testing Library `*ByRole`, `user-event`; Playwright without mocks):
+  https://github.com/grafana/grafana/blob/main/contribute/style-guides/testing.md
+- Pinocchio AI policy (prune excess AI-written tests): https://github.com/stack-of-tasks/pinocchio/blob/main/CONTRIBUTING.md
+
+Where projects disagree, this page sides with the robot: Tokio "avoids unit tests" in favour of integration tests, which suits a
+library's API but not a sans-IO codec; dora asks for TDD on every change, which is how suites grow out of control; zenoh retries
+failing tests twice by default, which hides timing bugs.

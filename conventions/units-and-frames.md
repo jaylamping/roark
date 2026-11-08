@@ -48,6 +48,11 @@ protects Rust code, but a YAML file or a Grafana panel only has the name. In JS 
 - **Base frame** is the pelvis (`base_link`), with Z up when the robot stands upright. While the robot is stationary on its
   stand, `base_link` is fixed to the world.
 - **Positive rotation follows the right-hand rule** about the joint axis as defined in the URDF.
+- **Transforms are named `a_from_b`:** `base_from_shoulder` maps a point in the shoulder frame into the base frame, so they
+  chain by reading right to left: `point_in_base = base_from_shoulder * point_in_shoulder`. Positions and velocities say which
+  frame they're in (`hand_pos_in_base`). **Why:** a transform used backwards compiles and runs and puts the hand somewhere
+  else. When the frames are in the name, a wrong chain looks wrong (`base_from_shoulder * point_in_elbow`). This is rerun's
+  convention; Drake's monogram notation (`p_BoBcm_B`) does the same job but is harder to read for newcomers.
 - **Left and right** always mean the **robot's** left and right, as if you were standing inside it. Never the viewer's.
   **Why:** the hardware project already hit this: the built arm on the bench is the robot's *right* arm.
 
@@ -106,3 +111,15 @@ The values and the loader's checks are in [PLAN item 1](../PLAN.md#1-the-skeleto
 - No raw drive integers outside `robstride`.
 - No side-specific sign flips in code; signs come from `direction` and the URDF.
 - New joints follow `side_part_axis` naming and appear in the skeleton before anywhere else.
+
+## Sources
+
+- ROS REP-103 (SI units, Celsius, X forward / Y left / Z up): https://www.ros.org/reps/rep-0103.html and REP-105 (named
+  frames): https://www.ros.org/reps/rep-0105.html
+- rerun CODE_STYLE (units in names such as `duration_secs`, radians, `a_from_b` transforms):
+  https://github.com/rerun-io/rerun/blob/main/CODE_STYLE.md
+- Drake monogram notation: https://drake.mit.edu/doxygen_cxx/group__multibody__quantities.html
+- TigerBeetle TIGER_STYLE (units last in names, `latency_ms_max`): https://github.com/tigerbeetle/tigerbeetle/blob/main/docs/TIGER_STYLE.md
+- Cautionary: K-Scale's KOS actuator API takes degrees and percent torque, with units only in comments
+  (https://github.com/kscalelabs/kos/blob/master/kos/proto/kos/actuator.proto); moteus works in output-shaft rotations
+  (https://mjbots.github.io/moteus/protocol/registers/). Both are why vendor units stop at the codec here.

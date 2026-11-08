@@ -49,10 +49,26 @@ Every procedure's checklist starts with these (PLAN holds the numbers; check the
 - **Don't edit the procedure or plan mid-session.** If something needs changing, stop, change it, re-run on `vcan`, then
   resume. **Why:** a tweak made at the bench skips every review that made the procedure safe.
 - **A stop is information, not an obstacle.** After any software stop or E-stop, find out why from the log before running
-  again. Never loosen a limit or a rule to get past one (safety.md section 6).
+  again. Never loosen a limit or a rule to get past one ([safety.md section 7](safety.md#7-changing-a-rule)).
 - **One operator action per step,** logged as an event: start, pause, stop, clear, with who did it.
 
-## 4. Recording results
+## 4. What the runner enforces
+
+The procedure runner (`robot-cli` or the test-stand runner) makes the rules above mechanical:
+
+- **It refuses to start without an expected build.** The plan file names the git commit and skeleton hash it was dry-run
+  with; the runner compares them with what's running and refuses on a mismatch.
+- **Steps that move anything need an explicit flag or confirm** (for example `--allow-motion`), separate from starting the
+  procedure. Reads and scans don't.
+- **Every step has a timeout,** and a timeout fails the run naming the step and what it was waiting for. Nothing waits forever.
+- **The result is `PASS` or `FAIL` per step and overall,** written with the evidence (log, plan, versions, operator notes) to
+  one folder per session.
+
+**Why:** PX4's bench-test tool works exactly this way (named timeouts, PASS/FAIL, an evidence folder with the firmware hash, and
+a separate `--allow-arming` for the one step that can spin motors). Rules in a doc get skipped when people are tired; rules in
+the runner don't.
+
+## 5. Recording results
 
 - **Every session is logged with:** git commit, skeleton file hash, procedure name, plan file, operator, the hardware setup,
   and the result. The binaries stamp the commit automatically ([architecture.md section 8](architecture.md#8-observability-is-part-of-the-design)).
@@ -63,9 +79,17 @@ Every procedure's checklist starts with these (PLAN holds the numbers; check the
 - **Failures are recorded too,** with the log. A failure on the bench is the most valuable data we get, and the first input to
   a `Guards: bug` test ([testing.md rule 7](testing.md#rule-7-a-bug-gets-its-test-before-its-fix)).
 
-## 5. Agents and the bench
+## 6. Agents and the bench
 
 - Agents write procedures and plan files, run them on `vcan`, and judge logs. They don't start a run on real hardware unless
   Joey has said go for that session (PLAN's Real hardware rule and "Open with Joey" item 5 for enable and clear).
 - An agent never uses a tool that stops the runtime and opens the bus itself (PLAN: the legacy `marengo-pi-mcp` tools).
 - An agent asked to "just try it" on real hardware without a written procedure writes the procedure first.
+
+## Sources
+
+- PX4 bench testing (named timeouts, PASS/FAIL, evidence folder, `--allow-arming`):
+  https://github.com/PX4/PX4-Autopilot/blob/main/docs/en/test_and_ci/bench_testing.md
+- PX4 test cards (a preflight section with expected parameter values, then checkbox steps):
+  https://github.com/PX4/PX4-Autopilot/blob/main/docs/en/test_cards/mc_04_failsafe_testing.md
+- ArduPilot bug reports ("facts only", logs attached): https://github.com/ArduPilot/ardupilot/blob/master/.github/CONTRIBUTING.md

@@ -49,12 +49,17 @@ applies to these convention pages too: they link PLAN for values.
 - **Comments in code say why, not what** ([rust.md section 11](rust.md#11-shape-and-readability-tenet-7)). Magic numbers cite a
   manual section, a bench session or a tenet.
 
-## 5. Keeping the map current
+## 5. TODOs have an owner
+
+A `TODO` in code or docs is written `TODO(name)` or links an issue. A bare `TODO` fails CI. **Why:** an ownerless TODO is a
+wish nobody will grant; with a name or an issue it's tracked work, or it gets deleted. (rerun enforces this in CI.)
+
+## 6. Keeping the map current
 
 [architecture.md](architecture.md) is updated in the same PR as any change listed in its section 11 (a new process, crate,
 dependency edge, queue, `api` message or owner of state). A reviewer who sees one of those without a map change asks for it.
 
-## 6. Milestone sweep
+## 7. Milestone sweep
 
 At the end of each milestone, alongside the test sweep in [testing.md rule 10](testing.md#rule-10-delete-tests-as-eagerly-as-you-add-them):
 read every doc in the repo once, and fix or delete anything that's no longer true. PLAN calls for the same sweep over the
