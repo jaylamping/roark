@@ -99,8 +99,9 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
 
 ### Logging
 
-- **Every frame in and out goes to the recorder** with its kernel timestamp, direction and bus, decoded and raw (PLAN
-  "Observability"). The bus thread hands frames off through the bounded queue; it never writes files.
+- **Every frame in and out goes to the recorder** through the bus thread's ring; the bus thread never writes files. How frames
+  are batched, buffered, written, rotated and checked against `candump` is in
+  [logging.md section 8](logging.md#8-can-frame-logging).
 - **Injected faults are logged as such** in sim, so a replay shows what was real and what was injected.
 
 ## 3. Simulation and tests

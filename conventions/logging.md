@@ -148,7 +148,103 @@ When PLAN turns metrics on, they follow Prometheus's own naming rules:
 - Personal data beyond an operator's name on their own actions.
 - Full config or skeleton dumps at `info` (the hash and file path are enough; the file is in git).
 
-## 8. Using the records
+## 8. CAN frame logging
+
+CAN is the chattiest stream in the robot and the one replay depends on most, so it gets its own rules. The goal: **every frame
+in and out is kept, the bus threads never wait on it, and any gap is known.**
+
+### 8.1 How much data
+
+Working numbers for the finished robot. They're estimates to size buffers and disks; the bench soak (PLAN item 5) measures the
+real ones, and they replace these.
+
+| Assumption | Value |
+|---|---|
+| Drives per bus | about 6 on each arm and leg bus (including a future hand), 1 on the waist |
+| Frames per drive per tick | 2 (one command, one reply), plus a little parameter traffic in the slack |
+| Tick rate | 250 Hz |
+
+| Result | Value |
+|---|---|
+| Frames per second, one arm bus | about 3,000 (about 45 % load at 1 Mbit/s with extended IDs) |
+| Frames per second, whole robot | about 12,500 |
+| Raw frames in MCAP, one message per frame | about 2.8 GB per hour before compression (the per-message header is as big as the frame) |
+| Raw frames in MCAP, one message per bus per tick | about 1.2 GB per hour before compression |
+| Decoded joint state at full rate | about 0.9 GB per hour before compression |
+| `candump -L` text, all buses | about 2.3 GB per hour before compression |
+
+CAN data compresses well (repeated IDs, slowly changing values), so expect a few times smaller on disk. The soak gives the real
+ratio.
+
+### 8.2 Shape of the recording
+
+- **One MCAP message per bus per tick** on `/can/<bus>/frames`, holding that tick's frames in order. Each frame inside keeps its
+  own kernel timestamp, direction (`tx`/`rx`), ID, length and data. **Why:** this halves the size compared with one message per
+  frame and matches how the bus thread works (one batch per tick), so a replay sees ticks as they happened.
+- **Frames that arrive outside a tick** (late replies, error frames, parameter replies in the slack) go in the next tick's
+  message with their own timestamps. Nothing is dropped for arriving late.
+- **TX records what the bus thread handed to the socket and when**, plus anything the socket refused (`ENOBUFS`, deadline
+  passed) as its own entry. A command that was meant to go but didn't is as important as one that went.
+- **Error frames are recorded as frames,** decoded into the bus error enum ([can.md](can.md)), not only as log lines.
+- **Decoded joint state** goes on `/joint_state` once per tick, from the same replies. Text logs never carry per-frame or
+  per-tick data.
+- **Channels are per bus,** so a reader can open one bus without decoding the others, and a missing bus is visible as a missing
+  channel.
+
+### 8.3 The path from bus thread to disk
+
+- **The bus thread copies each tick's frames into a fixed-size slot** in its own single-producer ring (`rtrb`, PLAN item 3). The
+  slot is a plain struct sized for the most frames a tick can hold. No allocation, no lock, no system call. **Why:** the bus
+  thread's only job is the tick; anything that can block it can make a drive time out.
+- **The ring holds at least 2 seconds of worst-case traffic per bus.** That rides out a slow SD card write or a compression
+  hiccup without loss.
+- **If the ring is full, the newest batch is dropped and counted,** never blocking. The count per bus becomes an event
+  (`recorder.dropped`, `error` level, because lost data is an error), a metric, and a line in the session summary.
+- **One recorder thread** drains every bus ring, builds MCAP messages, compresses chunks with zstd and writes. It runs at normal
+  priority, on a core the bus threads aren't pinned to.
+- **Chunks are written about once a second.** A crash or power cut loses at most about a second of the MCAP; the `candump` black
+  box covers that second.
+- **On a stop, drives are disabled before the recorder flushes** (PLAN item 3). The recorder then writes the stop's events and
+  closes the file cleanly.
+
+### 8.4 Two independent records
+
+- **MCAP from the runtime** has everything: raw frames, decoded state, commands, events, injected faults.
+- **`candump -L` per bus** (PLAN) sees what the kernel saw, independent of our code. If the runtime crashes, hangs or has a bug
+  in its recorder, the black box still has the frames.
+- **They can be checked against each other.** An analysis script compares frame counts and timestamps per bus per session; a
+  mismatch means a drop or a recorder bug. The bench soak (PLAN item 5) runs this check.
+- **`candump` files are compressed and rotated by `deploy/`** (for example hourly files, compressed with zstd as they close), so
+  a long soak can't fill the disk with text.
+
+### 8.5 Disk and retention
+
+- **Session data goes on an SSD, not the SD card.** At these rates an SD card wears out and its write stalls are the most likely
+  reason a ring fills. Which drive the Pi uses is a hardware choice; the software requirement is sustained writes of a few MB/s
+  with no long stalls.
+- **A disk floor:** below a set amount of free space, the runtime refuses the next enable (PLAN item 6, "Logging" row) and says
+  why. A running motion is never stopped for it.
+- **Nothing deletes MCAP sessions automatically.** Sessions from bench procedures and faults are the most valuable data we have.
+  Clearing old sessions is a deliberate command that lists what it will delete. Rotated `candump` files may be pruned
+  automatically after a set number of days, since the MCAP holds the same frames.
+- **Long sessions split by size:** past about 1 GB, the recorder closes the file and continues in a new numbered file in the
+  same session directory, so no single file is too big to copy or open.
+
+### 8.6 Reading it back
+
+- **Foxglove** opens the MCAP directly, per bus and per joint.
+- **Replay:** the replay tool feeds a session's recorded replies into the runtime's decode and control path, and `canplayer`
+  can replay a `candump` file onto `vcan` to drive `sim-drive` or the runtime unchanged.
+- **Analysis scripts** read MCAP with the official MCAP libraries (Rust or Python), never with a parser of our own.
+
+### 8.7 CAN metrics
+
+Counted by the bus thread as plain integers in its snapshot, exported by the non-realtime side (section 5 naming):
+`can_frames_total{bus,dir}`, `can_bus_load_ratio{bus}`, `can_errors_total{bus,kind}`, `can_tx_dropped_total{bus,reason}`,
+`can_replies_missed_total{bus,joint}`, `can_reply_latency_seconds{bus}` (histogram), `can_ticks_late_total{bus}`,
+`recorder_dropped_total{bus}`.
+
+## 9. Using the records
 
 - **Replay before re-running.** When something goes wrong, first try to answer it from the session's recording and log, then
   replay it in sim. Only go back to hardware if the records can't answer it. (copper-rs: "prefer extraction and resimulation
@@ -164,6 +260,7 @@ When PLAN turns metrics on, they follow Prometheus's own naming rules:
 - Is it an event kind from the list, with the shared field names and units in its fields?
 - Is the message a constant phrase with values in fields?
 - Could it run in the realtime tick, repeat every tick, or carry a secret?
+- If it touches CAN frames: does it follow section 8 (per-tick batches, ring never blocks, drops counted)?
 - If it's a metric: base units, `_total` for counters, bounded labels?
 
 ## Sources
