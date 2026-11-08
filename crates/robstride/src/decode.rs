@@ -3,8 +3,9 @@
 //!
 //! Reserved ID bits are ignored on receive. A frame is checked against what the manual says its bytes are, and refused if
 //! they say something else, so a foreign or corrupt frame never reads as one of ours. Bytes the manual leaves open (MIT
-//! fields, status codes, UIDs, fault words, parameter values) are read as they come; bytes 4 to 7 of a parameter read,
-//! which the manual's text garbles, aren't checked.
+//! fields, status codes, UIDs and fault words) are read as they come. A parameter value must be one its register can
+//! hold ([`Param`]: its type, filler and enum values, not the manual's ranges), and a parameter write read back must be
+//! one [`Write`](crate::Write) builds for some model.
 //!
 //! Types 0, 17 and 24 travel both ways. A type-0 frame addressed to 0xFE is a drive's identity reply. A type-17 or type-24
 //! frame with this host in bits 15..8, or addressed to a drive ID (1 to 127), is a host frame; any other is a drive's, and
@@ -17,6 +18,7 @@
 use crate::encode::{REPORTING_PREFIX, Reporting, SET_ZERO_DATA, VERSION_QUERY_DATA, kind};
 use crate::frame::{HOST_ID, IDENTITY_MARKER, Parts, parts};
 use crate::model::{Model, UnvouchedModel};
+use crate::param::{Body, Param, ParamValue, decode_value};
 use crate::units::{Celsius, DeviceId, NewtonMeters, RadPerSec, Radians, Uid};
 
 /// A frame read from the bus.
@@ -53,9 +55,9 @@ pub enum Inbound {
     Param {
         /// The drive that answered.
         device: DeviceId,
-        /// The parameter index, 0x70xx.
-        index: u16,
-        /// The value bytes, or the drive's refusal.
+        /// The register read.
+        param: Param,
+        /// Its value, or the drive's refusal.
         outcome: ParamOutcome,
     },
     /// One of the host's own frames, read back.
@@ -196,18 +198,18 @@ impl Status {
     }
 }
 
-/// The value bytes of a type-17 reply, or the drive's refusal (§4.1.6: ID bits 23..16 are 00 on success, 01 on failure).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// The value of a type-17 reply, or the drive's refusal (§4.1.6: ID bits 23..16 are 00 on success, 01 on failure).
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ParamOutcome {
-    /// Bytes 4 to 7, low byte first. What they mean depends on the parameter.
-    Read([u8; 4]),
-    /// The drive couldn't read the parameter.
+    /// The register's value, from bytes 4 to 7.
+    Read(ParamValue),
+    /// The drive couldn't read the register. Its value bytes aren't read.
     Refused,
 }
 
 /// One of the host's own frames, read back. On real CAN the echo means the adapter's controller took the frame, not
 /// that it went out on the wire (PLAN item 3).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Echo {
     /// What the frame was.
     pub kind: EchoKind,
@@ -216,7 +218,7 @@ pub struct Echo {
 }
 
 /// Which host frame an [`Echo`] is.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EchoKind {
     /// Type 0.
     GetId,
@@ -237,10 +239,16 @@ pub enum EchoKind {
         /// The ID the target was told to take.
         new: DeviceId,
     },
-    /// Type 17.
-    ParamRead,
-    /// Type 18.
-    ParamWrite,
+    /// Type 17: a read of this register.
+    ParamRead(Param),
+    /// Type 18: a write this host's [`Write`](crate::Write) builds for some model. Which drive and model the target is,
+    /// the bus layer checks by matching the echo against the frame it queued.
+    ParamWrite {
+        /// The register written.
+        param: Param,
+        /// The value written.
+        value: ParamValue,
+    },
     /// Type 24.
     Reporting(Reporting),
 }
@@ -295,6 +303,38 @@ pub enum DecodeError {
     #[error("status mode 3 is undefined, ID {id:#010X}")]
     ReservedMode {
         /// The frame's ID, which names the drive.
+        id: u32,
+    },
+    /// A parameter index that isn't in the §4.1.13 table.
+    #[error("parameter index {index:#06X} is not in the table, ID {id:#010X}")]
+    UnknownParam {
+        /// The index the frame carries.
+        index: u16,
+        /// The frame's ID.
+        id: u32,
+    },
+    /// A parameter write this host never sends: to a register it never writes, such as `zero_sta` 0x7029, or a value it
+    /// never writes, such as `run_mode` velocity or `canTimeout` 600. Another sender is on the bus.
+    #[error(
+        "write of {value:02X?} to parameter {index:#06X} is not one this host sends, ID {id:#010X}"
+    )]
+    ForeignWrite {
+        /// The index the frame carries.
+        index: u16,
+        /// Data bytes 4 to 7.
+        value: [u8; 4],
+        /// The frame's ID.
+        id: u32,
+    },
+    /// A parameter value the register can't hold: a 1- or 2-byte value with its unused bytes set, an enum value the
+    /// manual doesn't list, or a float that isn't finite.
+    #[error("parameter {index:#06X} carries {value:02X?}, a value it can't hold, ID {id:#010X}")]
+    BadParamValue {
+        /// The index the frame carries.
+        index: u16,
+        /// Data bytes 4 to 7.
+        value: [u8; 4],
+        /// The frame's ID.
         id: u32,
     },
     /// The data bytes, or a type-specific ID field such as a parameter reply's result, aren't what the manual gives for
@@ -377,15 +417,58 @@ fn param_reply(p: &Parts, data: [u8; 8]) -> Result<Inbound, DecodeError> {
     let [i0, i1, 0, 0, b4, b5, b6, b7] = data else {
         return Err(unexpected(p));
     };
+    let param = param(p, [i0, i1])?;
     let outcome = match p.area_hi {
-        0 => ParamOutcome::Read([b4, b5, b6, b7]),
+        0 => ParamOutcome::Read(decode_value(param, [b4, b5, b6, b7]).ok_or(
+            DecodeError::BadParamValue {
+                index: param.index(),
+                value: [b4, b5, b6, b7],
+                id: p.id,
+            },
+        )?),
+        // A refusal's value bytes aren't defined, so they aren't read.
         1 => ParamOutcome::Refused,
         _ => return Err(unexpected(p)),
     };
     Ok(Inbound::Param {
         device: device(p, p.area_lo)?,
-        index: u16::from_le_bytes([i0, i1]),
+        param,
         outcome,
+    })
+}
+
+/// The register a frame's index bytes name.
+fn param(p: &Parts, index: [u8; 2]) -> Result<Param, DecodeError> {
+    let index = u16::from_le_bytes(index);
+    Param::from_index(index).ok_or(DecodeError::UnknownParam { index, id: p.id })
+}
+
+/// A type-18 write read back (§4.1.7): bytes 2 and 3 are 00, and the write must be one [`Write`](crate::Write) builds
+/// for some model. A write to a register `Write` never targets, or to an index outside the table, is foreign whatever
+/// its value; a value the register can't hold is a bad value; any other value `Write` doesn't send is foreign.
+fn param_write_echo(p: &Parts, data: [u8; 8]) -> Result<EchoKind, DecodeError> {
+    let [i0, i1, 0, 0, b4, b5, b6, b7] = data else {
+        return Err(unexpected(p));
+    };
+    let index = u16::from_le_bytes([i0, i1]);
+    let value = [b4, b5, b6, b7];
+    let foreign = DecodeError::ForeignWrite {
+        index,
+        value,
+        id: p.id,
+    };
+    let (param, writer) = Param::from_index(index)
+        .and_then(|param| Some((param, Body::writer(param)?)))
+        .ok_or(foreign)?;
+    decode_value(param, value).ok_or(DecodeError::BadParamValue {
+        index,
+        value,
+        id: p.id,
+    })?;
+    let write = writer(value).ok_or(foreign)?;
+    Ok(EchoKind::ParamWrite {
+        param,
+        value: write.value(),
     })
 }
 
@@ -408,9 +491,9 @@ fn echo(p: &Parts, data: [u8; 8]) -> Result<Inbound, DecodeError> {
         (kind::SET_ID, [0, 0, 0, 0, 0, 0, 0, 0]) => EchoKind::SetId {
             new: device(p, p.area_hi)?,
         },
-        // §4.1.6 and §4.1.7: bytes 2 and 3 are 00.
-        (kind::PARAM_READ, [_, _, 0, 0, ..]) => EchoKind::ParamRead,
-        (kind::PARAM_WRITE, [_, _, 0, 0, ..]) => EchoKind::ParamWrite,
+        // §4.1.14 worked example: a read's bytes 2 to 7 are 00.
+        (kind::PARAM_READ, [i0, i1, 0, 0, 0, 0, 0, 0]) => EchoKind::ParamRead(param(p, [i0, i1])?),
+        (kind::PARAM_WRITE, _) => param_write_echo(p, data)?,
         (kind::REPORTING, [r0, r1, r2, r3, r4, r5, switch, 0])
             if [r0, r1, r2, r3, r4, r5] == REPORTING_PREFIX =>
         {

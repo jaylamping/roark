@@ -1,11 +1,13 @@
 //! Frames the host sends: one function per frame, each returning the frame to queue, never sending it (can.md section 1).
 //!
-//! The builders here are types 0, 1, 3, 4, 6 and 24 from the transmit allowlist, plus type 7, which only the set-ID command
-//! sends (PLAN item 2). The allowlist's parameter reads and writes (17, 18) have no builder in this module. There is no way to build a save (22), baud rate (23) or protocol (25) frame, or a Disable with the fault-clear byte
+//! The builders here are the transmit allowlist, types 0, 1, 3, 4, 6, 17, 18 and 24, plus type 7, which only the set-ID
+//! command sends (PLAN item 2). A type-18 write takes a [`Write`], so only the registers it can build are ever written.
+//! There is no way to build a save (22), baud rate (23) or protocol (25) frame, or a Disable with the fault-clear byte
 //! set.
 
 use crate::frame::{Frame, HOST_ID};
-use crate::model::{MitRange, Model, UnvouchedModel};
+use crate::model::{Drive, MitRange, Model, UnvouchedModel};
+use crate::param::{Param, Write};
 use crate::units::{DeviceId, NewtonMeters, NmPerRad, NmSecPerRad, RadPerSec, Radians};
 
 /// Communication types (manual §4.1), host side.
@@ -99,6 +101,18 @@ pub enum EncodeError {
         /// The highest value the model accepts.
         max: f64,
     },
+    /// A parameter write outside the model's range for that register.
+    #[error("{param:?} {value} is outside {min} to {max}")]
+    ParamOutOfRange {
+        /// The register.
+        param: Param,
+        /// The value refused.
+        value: f64,
+        /// The lowest value the model accepts.
+        min: f64,
+        /// The highest value the model accepts.
+        max: f64,
+    },
     /// The model's MIT scales aren't settled.
     #[error("{0} MIT scales are not settled; no command is encoded for it")]
     UnvouchedModel(Model),
@@ -116,12 +130,13 @@ pub const fn get_id(target: DeviceId) -> Frame {
     host_frame(kind::GET_ID, 0, target, [0; 8])
 }
 
-/// Type 1 (§4.1.2): one MIT command. The torque code rides in the ID; the other four fields are big-endian in the data.
+/// Type 1 (§4.1.2): one MIT command to `drive`, scaled for its model. The torque code rides in the ID; the other four
+/// fields are big-endian in the data.
 ///
 /// # Errors
 /// [`EncodeError::OutOfRange`] naming the first field outside the model's range, or [`EncodeError::UnvouchedModel`].
-pub fn mit(model: Model, target: DeviceId, command: &MitCommand) -> Result<Frame, EncodeError> {
-    let s = model.mit_scales()?;
+pub fn mit(drive: Drive, command: &MitCommand) -> Result<Frame, EncodeError> {
+    let s = drive.model().mit_scales()?;
     let position = code(s.position, command.position.get(), MitField::Position)?;
     let velocity = code(s.velocity, command.velocity.get(), MitField::Velocity)?;
     let kp = code(s.kp, command.kp.get(), MitField::Kp)?;
@@ -138,7 +153,7 @@ pub fn mit(model: Model, target: DeviceId, command: &MitCommand) -> Result<Frame
         kind::MIT,
         torque_hi,
         torque_lo,
-        target.get(),
+        drive.id().get(),
         [p0, p1, v0, v1, kp0, kp1, kd0, kd1],
     ))
 }
@@ -182,6 +197,27 @@ pub const fn set_zero(target: DeviceId) -> Frame {
 #[must_use]
 pub const fn set_id(target: DeviceId, new: DeviceId) -> Frame {
     host_frame(kind::SET_ID, new.get(), target, [0; 8])
+}
+
+/// Type 17 (§4.1.6, §4.1.14): read one parameter. The drive answers with a type-17 reply.
+#[must_use]
+pub const fn param_read(target: DeviceId, param: Param) -> Frame {
+    let [i0, i1] = param.index().to_le_bytes();
+    host_frame(kind::PARAM_READ, 0, target, [i0, i1, 0, 0, 0, 0, 0, 0])
+}
+
+/// Type 18 (§4.1.7): write one parameter to the drive the [`Write`] was built for, lost at power-off (the host never
+/// saves, PLAN item 2). The drive answers with a type-2 status frame.
+#[must_use]
+pub const fn param_write(write: &Write) -> Frame {
+    let [i0, i1] = write.param().index().to_le_bytes();
+    let [v0, v1, v2, v3] = write.bytes();
+    host_frame(
+        kind::PARAM_WRITE,
+        0,
+        write.target(),
+        [i0, i1, 0, 0, v0, v1, v2, v3],
+    )
 }
 
 /// Type 24 (§4.1.11): switch active reporting.

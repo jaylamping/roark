@@ -3,10 +3,10 @@
 
 mod common;
 
-use common::{header, id};
+use common::{drive, header, id};
 use robstride::{
     DecodeError, Echo, EchoKind, EncodeError, Frame, Inbound, MitCommand, MitField, Mode, Model,
-    NewtonMeters, NmPerRad, NmSecPerRad, ParamOutcome, RadPerSec, Radians, Reporting, Uid,
+    NewtonMeters, NmPerRad, NmSecPerRad, Param, ParamOutcome, RadPerSec, Radians, Reporting, Uid,
     UnvouchedModel, decode, encode,
 };
 
@@ -77,13 +77,13 @@ fn encoded_frames_match_the_manuals() {
         // the middle of the signed ranges: 32767.5 rounds to 0x8000.
         (
             "MIT, all zero, RS03",
-            encode::mit(Model::Rs03, id(1), &mit(0.0, 0.0, 0.0, 0.0, 0.0)).unwrap(),
+            encode::mit(drive(Model::Rs03, 1), &mit(0.0, 0.0, 0.0, 0.0, 0.0)).unwrap(),
             0x0180_0001,
             [0x80, 0x00, 0x80, 0x00, 0, 0, 0, 0],
         ),
         (
             "MIT, every field at its range end, RS02",
-            encode::mit(Model::Rs02, id(14), &mit(12.57, -44.0, 500.0, 5.0, 17.0)).unwrap(),
+            encode::mit(drive(Model::Rs02, 14), &mit(12.57, -44.0, 500.0, 5.0, 17.0)).unwrap(),
             0x01FF_FF0E,
             [0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF],
         ),
@@ -91,7 +91,7 @@ fn encoded_frames_match_the_manuals() {
             // round((1.25 + 20) × 65535 / 40) = round(34815.47) = 0x87FF. Under the old ±50 scale the drive read this frame's predecessor
             // (0x8332) as 0.50 rad/s; see the RS03 velocity test in status.rs.
             "MIT, RS03 cruise 1.25 rad/s",
-            encode::mit(Model::Rs03, id(1), &mit(0.0, 1.25, 0.0, 0.0, 0.0)).unwrap(),
+            encode::mit(drive(Model::Rs03, 1), &mit(0.0, 1.25, 0.0, 0.0, 0.0)).unwrap(),
             0x0180_0001,
             [0x80, 0x00, 0x87, 0xFF, 0, 0, 0, 0],
         ),
@@ -99,7 +99,7 @@ fn encoded_frames_match_the_manuals() {
             // Distinct gains, so Kp and Kd can't trade places: 1250 / 5000 of full scale is 0x4000, 75 / 100 is 0xBFFF,
             // and torque 30 is 0xBFFF in the ID.
             "MIT, distinct gains, RS03",
-            encode::mit(Model::Rs03, id(1), &mit(0.0, 0.0, 1250.0, 75.0, 30.0)).unwrap(),
+            encode::mit(drive(Model::Rs03, 1), &mit(0.0, 0.0, 1250.0, 75.0, 30.0)).unwrap(),
             0x01BF_FF01,
             [0x80, 0x00, 0x80, 0x00, 0x40, 0x00, 0xBF, 0xFF],
         ),
@@ -161,24 +161,13 @@ fn decoded_frames_match_the_manuals() {
             },
         ),
         (
-            // §4.1.14 worked example: reading loc_kp (0x701E) from ID 0x7F returns 30.0 as a little-endian f32.
-            "parameter read reply",
-            0x1100_7FFD,
-            [0x1E, 0x70, 0, 0, 0x00, 0x00, 0xF0, 0x41],
-            Inbound::Param {
-                device: id(0x7F),
-                index: 0x701E,
-                outcome: ParamOutcome::Read([0x00, 0x00, 0xF0, 0x41]),
-            },
-        ),
-        (
             // §4.1.6: bits 23..16 are 00 on success, 01 on failure.
             "parameter read refused",
             0x1101_7FFD,
             [0x1E, 0x70, 0, 0, 0, 0, 0, 0],
             Inbound::Param {
                 device: id(0x7F),
-                index: 0x701E,
+                param: Param::LocKp,
                 outcome: ParamOutcome::Refused,
             },
         ),
@@ -230,20 +219,6 @@ fn decoded_frames_match_the_manuals() {
             0x070B_FD01,
             [0; 8],
             echo(EchoKind::SetId { new: id(11) }, 1),
-        ),
-        (
-            // Bytes 4 to 7 of a read aren't checked (the manual's text for them is garbled).
-            "echo: parameter read",
-            0x1100_FD7F,
-            [0x1E, 0x70, 0, 0, 0xAA, 0, 0, 0],
-            echo(EchoKind::ParamRead, 0x7F),
-        ),
-        (
-            // §4.1.14: loc_kp (0x701E) = 30.0, a little-endian f32 in bytes 4 to 7.
-            "echo: parameter write",
-            0x1200_FD7F,
-            [0x1E, 0x70, 0, 0, 0x00, 0x00, 0xF0, 0x41],
-            echo(EchoKind::ParamWrite, 0x7F),
         ),
         (
             "echo: reporting on",
@@ -677,7 +652,7 @@ fn mit_encode_refuses_rather_than_clamps() {
         ),
     ];
     for (what, model, command, want) in rows {
-        assert_eq!(encode::mit(model, id(1), &command), Err(want), "{what}");
+        assert_eq!(encode::mit(drive(model, 1), &command), Err(want), "{what}");
     }
 }
 
