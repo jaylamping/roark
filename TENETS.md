@@ -89,7 +89,8 @@ affecting motion, and a stop never waits for it.
 - Anything we'd do more than twice becomes a script or loop an agent can run and judge on its own. A feedback loop beats
   debugging by hand every time.
 - **No pointless tests.** A test exists only if it guards a real failure: a bug we actually hit, a safety rule, a protocol
-  contract, or a number a loop depends on. No tests written for coverage or just because a file was touched.
+  contract, or a number a loop depends on. No tests written for coverage or just because a file was touched. The rules and
+  tools are in [conventions/testing.md](conventions/testing.md).
 
 ## 7. Any agent can learn it fast
 
