@@ -7,11 +7,11 @@ something that answers like the real drives before any real drive is enabled.
 
 - **`SimDrive`** is one simulated drive, sans-IO: host frames in (`receive`), its frames out when they fall due
   (`pop_due`), with the time passed in by the caller (testing.md rule 6). It answers each host frame the way the manuals
-  say a drive does, and keeps the timings measured on the bench (PLAN items 2 and 4): enable reaches Run 0 to 11 ms
-  later; nothing is answered for up to 50 ms after a Disable; a Set Zero on an enabled drive goes silent 511 to 614 ms
-  later for 45 to 66 ms; `canTimeout` drops an enabled drive to Reset; `power_cycle` puts every parameter back to its
-  default (`canTimeout` 0); active reports go out every 10 ms while on. Every delay comes from the seed it's given, so a
-  run replays exactly.
+  say a drive does, with the delays measured on the bench (PLAN [item 2](https://github.com/jaylamping/roark/blob/main/PLAN.md#2-lift-the-hard-won-knowledge-first) and
+  [item 4](https://github.com/jaylamping/roark/blob/main/PLAN.md#4-simulated-drives-on-vcan)): the wait from Enable to Run, the silence after a Disable, and the
+  blackout some time after a Set Zero on an enabled drive. `canTimeout` drops an enabled drive to Reset; `power_cycle`
+  puts every parameter back to its default (`canTimeout` 0); active reports go out on a fixed period while on. Every
+  delay comes from the seed it's given, so a run replays exactly.
 - **`serve`** (Linux) runs a set of `SimDrive`s on one bus's `vcan` socket until told to stop.
 - **The `sim-drive` binary** simulates every drive the skeleton puts on each bus, one thread per bus.
 
@@ -66,9 +66,10 @@ On Linux, the binary simulates every drive on the skeleton's buses (all of them,
 picks the delays. Each bus must be a `vcan` interface; on the dev box they are up at boot (docs/dev-box.md).
 
 ```bash
-cargo run -p sim-drive -- --bus can1 --seed 3
+cargo run -p sim-drive -- --bus can1 --seed 3 &   # runs until killed
 candump can1 &
 cansend can1 0000FD0B#0000000000000000   # get_id to drive 11: it answers 00000BFE with its UID
 ```
 
-`crates/sim-suite` proves this end to end on `vcan` (`scripts/sim.sh`, CI gate 7).
+`crates/sim-suite` runs `serve` with a drive on `vcan` and checks it answers the host (`scripts/sim.sh`, CI gate 7). It
+doesn't start the binary, so the binary's argument parsing and skeleton filter are checked only by running it as above.

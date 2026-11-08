@@ -299,10 +299,12 @@ Every PR, before merge:
 
 1. `cargo fmt --all --check`
 2. `cargo clippy --workspace --all-targets -- -D warnings`
-3. `cargo test --workspace` (unit, codec vectors, property tests)
+3. `cargo test --workspace` (unit, codec vectors, property tests) and the doc tests, which run every crate README's
+   example; then `cargo doc` with warnings as errors, so a broken link in a README fails
 4. `cargo deny check`
-5. Shape checks, one small script: crate dependencies only point the way [architecture.md](architecture.md) section 3
-   allows (read from `cargo metadata`), and no source file passes 800 lines
+5. Shape checks, one small script (`scripts/check_rules.py`): crate dependencies only point the way
+   [architecture.md](architecture.md) section 3 allows (read from `cargo metadata`), no source file passes 800 lines,
+   every test names what it guards, and every crate's README has the shape section 11 asks for
 6. Release build for `aarch64-unknown-linux-gnu`
 7. The sim-drive suite on `vcan`: fault injection and the tick-timing budget (section 6)
 

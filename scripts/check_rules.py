@@ -40,11 +40,39 @@ DOC_KIND = {
 DOC_INCLUDE = '#![doc = include_str!("../README.md")]'
 DOC_SECTIONS = ["## What it does", "## Must never", "## Talks to", "## Using it"]
 ARCHITECTURE_URL = "https://github.com/jaylamping/roark/blob/main/conventions/architecture.md"
-# A relative link resolves on GitHub but not in rustdoc (target/doc/<crate>/), and rustdoc doesn't warn.
-RELATIVE_LINK = re.compile(r"\]\((?!https?://|#)")
+# A relative link resolves on GitHub but not in rustdoc (target/doc/<crate>/), and rustdoc doesn't warn. Inline links,
+# reference definitions and HTML attributes all count.
+RELATIVE_LINKS = [
+    re.compile(r"\]\((?!https?://|#)"),
+    re.compile(r"^\s{0,3}\[[^\]]+\]:\s*(?!https?://|#)\S"),
+    re.compile(r"\b(?:href|src)\s*=\s*[\"'](?!https?://|#)"),
+]
 # `[`Item`]` is a rustdoc link that GitHub shows as literal brackets; name items in plain backticks.
-ITEM_LINK = re.compile(r"\[`[^`]+`\](?!\()")
-RUST_FENCE = re.compile(r"^```rust\s*$")
+ITEM_LINK = re.compile(r"\[`[^`]+`\](?![(\[:])")
+FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})\s*([^`]*)$")
+CODE_SPAN = re.compile(r"(`+)(?:(?!\1).)+?\1")
+# rustdoc skips or doesn't run these, so an example marked with one proves nothing.
+NOT_RUN = {"ignore", "no_run", "compile_fail", "should_panic"}
+
+
+def markdown(lines):
+    """Split a README into prose lines (outside fences) and fences (line, info string), as CommonMark does: a fence
+    closes only on the same character, at least as long, with no info string."""
+    prose, fences, open_fence, errors = [], [], None, []
+    for i, line in enumerate(lines):
+        m = FENCE.match(line)
+        if open_fence is None:
+            if m:
+                open_fence = (m.group(1), i)
+                fences.append((i, m.group(2).strip()))
+            else:
+                prose.append((i, line))
+        elif m and m.group(1)[0] == open_fence[0][0] and len(m.group(1)) >= len(open_fence[0]) and not m.group(2).strip():
+            open_fence = None
+    if open_fence is not None:
+        errors.append((open_fence[1], "fence never closed"))
+    return prose, fences, errors
+
 
 MAX_LINES = 800
 GUARDS = re.compile(r"^\s*///\s*Guards: (bug|safety|protocol|number) - \S")
@@ -89,8 +117,8 @@ def check_docs():
     for pkg in meta["packages"]:
         name = pkg["name"]
         kind = DOC_KIND.get(name)
-        if kind is None:
-            errors.append(f"{name}: not in DOC_KIND; give it a README (rust.md section 11) and add it here")
+        if kind not in ("library", "tests"):
+            errors.append(f"{name}: DOC_KIND must say library or tests; give it a README (rust.md section 11)")
             continue
         manifest = Path(pkg["manifest_path"])
         readme = manifest.parent / "README.md"
@@ -100,33 +128,39 @@ def check_docs():
             continue
         targets = {t["kind"][0]: Path(t["src_path"]) for t in pkg["targets"]}
         root = targets.get("lib") or targets.get("bin")
-        first = next((l for l in root.read_text().splitlines() if l.strip()), "")
-        if first.strip() != DOC_INCLUDE:
-            errors.append(f"{root.relative_to(ROOT)}: must open with {DOC_INCLUDE}")
-        text = readme.read_text()
-        lines = text.splitlines()
+        if root is None:
+            errors.append(f"{name}: no lib or bin target to carry the crate doc")
+        else:
+            first = next((l for l in root.read_text().splitlines() if l.strip()), "")
+            if first.strip() != DOC_INCLUDE:
+                errors.append(f"{root.relative_to(ROOT)}: must open with {DOC_INCLUDE}")
+        prose, fences, problems = markdown(readme.read_text().splitlines())
+        errors += [f"{where}:{i + 1}: {p}" for i, p in problems]
+        prose_lines = [line for _, line in prose]
         for section in DOC_SECTIONS:
-            if section not in lines:
+            if section not in prose_lines:
                 errors.append(f"{where}: no '{section}' section")
-        if ARCHITECTURE_URL not in text:
+        if not any(ARCHITECTURE_URL in CODE_SPAN.sub("", line) for line in prose_lines):
             errors.append(f"{where}: link the map, {ARCHITECTURE_URL}")
-        fenced = False
-        for i, line in enumerate(lines):
-            if line.startswith("```"):
-                fenced = not fenced
-                continue
-            if fenced:
-                continue
-            prose = re.sub(r"`[^`]*`(?!\])", "", line)
-            if RELATIVE_LINK.search(prose):
-                errors.append(f"{where}:{i + 1}: relative link; use a full GitHub URL (it breaks in rustdoc)")
+        for i, line in prose:
             if ITEM_LINK.search(line):
                 errors.append(f"{where}:{i + 1}: rustdoc item link; GitHub shows it as brackets, use plain backticks")
-        has_rust = any(RUST_FENCE.match(l) for l in lines)
-        has_shell = any(l.strip() == "```bash" for l in lines)
-        if kind == "library" and not has_rust:
-            errors.append(f"{where}: a library README needs a ```rust example that runs (not ignore or no_run)")
-        if kind in ("binary", "tests") and not has_shell:
+            text = CODE_SPAN.sub("", line)
+            if any(r.search(text) for r in RELATIVE_LINKS):
+                errors.append(f"{where}:{i + 1}: relative link; use a full GitHub URL (it breaks in rustdoc)")
+        runnable = 0
+        for i, info in fences:
+            words = {w.strip() for w in re.split(r"[,\s]+", info) if w.strip()}
+            if not words:
+                errors.append(f"{where}:{i + 1}: unlabelled fence; rustdoc runs it as Rust, so name its language")
+            elif "rust" in words and words & NOT_RUN:
+                errors.append(f"{where}:{i + 1}: {', '.join(sorted(words & NOT_RUN))} example; examples run (rust.md section 11)")
+            elif words == {"rust"}:
+                runnable += 1
+        if kind == "library" and runnable == 0:
+            errors.append(f"{where}: a library README needs a ```rust example that runs")
+        needs_shell = kind == "tests" or "bin" in targets
+        if needs_shell and not any(info == "bash" for _, info in fences):
             errors.append(f"{where}: needs a ```bash block showing how to run it")
     return errors
 

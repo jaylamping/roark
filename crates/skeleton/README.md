@@ -28,25 +28,93 @@ by every binary that needs the robot's shape: today `sim-drive`, later `runtime`
 partly checked one.
 
 ```rust
-use std::path::Path;
+/// A small skeleton: two drives wired on one bus, one joint not wired yet, and the other limbs empty.
+const ROBOT: &str = "\
+schema: 1
+name: example
+power:
+  source: bench_24v
+  vbus_v: [22.0, 26.0]
+  current_budget_a: 25.0
+buses:
+  bus0:
+    bitrate_bps: 1000000
+    sample_point: 0.75
+    adapter_serial: null
+limbs:
+  left_arm:
+    joints:
+      - name: shoulder
+        actuator: rs03
+        bus: bus0
+        id: 11
+        uid: null
+        direction: null
+        zero_rad: null
+        reference_pose: null
+        hard_rad: null
+        soft_rad: null
+        torque_cap_nm: null
+        current_cap_a: null
+        speed_cap_rad_s: null
+      - name: elbow
+        actuator: rs03
+        bus: bus0
+        id: 12
+        uid: null
+        direction: null
+        zero_rad: null
+        reference_pose: null
+        hard_rad: null
+        soft_rad: null
+        torque_cap_nm: null
+        current_cap_a: null
+        speed_cap_rad_s: null
+      - name: wrist
+        actuator: rs03
+        bus: null
+        id: 13
+        uid: null
+        direction: null
+        zero_rad: null
+        reference_pose: null
+        hard_rad: null
+        soft_rad: null
+        torque_cap_nm: null
+        current_cap_a: null
+        speed_cap_rad_s: null
+  right_arm:
+    joints: []
+  waist:
+    joints: []
+  left_leg:
+    joints: []
+  right_leg:
+    joints: []
+";
 
 fn main() -> Result<(), skeleton::LoadError> {
-    // Doc tests run from the crate's folder, so the repo's skeleton is two levels up.
-    let robot = skeleton::load(Path::new("../../config/skeleton.yaml"))?;
+    let robot = skeleton::parse(ROBOT)?;
 
-    // The drives on one bus, by name and ID: what a bus thread or sim-drive needs.
-    let on_can1: Vec<(&str, u8)> = robot
+    // The drives on one bus, by name and ID: what a bus thread or sim-drive needs. The wrist isn't wired, so it
+    // isn't on any bus.
+    let on_bus0: Vec<(&str, u8)> = robot
         .limbs
         .iter()
         .flat_map(|limb| &limb.joints)
-        .filter(|joint| joint.bus.as_ref().is_some_and(|bus| bus.as_str() == "can1"))
+        .filter(|joint| joint.bus.as_ref().is_some_and(|bus| bus.as_str() == "bus0"))
         .map(|joint| (joint.name.as_str(), joint.id.get()))
         .collect();
-    assert!(on_can1.contains(&("left_elbow_pitch", 14)));
+    assert_eq!(on_bus0, [("shoulder", 11), ("elbow", 12)]);
 
-    // A bad file is refused whole, each problem with its line.
-    let refused = skeleton::parse("schema: 1\nname: robot\n");
-    assert!(matches!(refused, Err(skeleton::LoadError::Invalid(problems)) if !problems.is_empty()));
+    // A bad file is refused whole, each problem naming where it is: here two drives share an ID on one bus.
+    match skeleton::parse(&ROBOT.replace("id: 12", "id: 11")) {
+        Err(skeleton::LoadError::Invalid(problems)) => {
+            let paths: Vec<&str> = problems.iter().map(|p| p.path.as_str()).collect();
+            assert_eq!(paths, ["limbs.left_arm.elbow.id"]);
+        }
+        other => panic!("two drives with one ID must be refused, got {other:?}"),
+    }
     Ok(())
 }
 ```
