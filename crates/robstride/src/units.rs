@@ -44,6 +44,23 @@ si_unit!(
     /// A voltage in volts.
     Volts
 );
+si_unit!(
+    /// A temperature in degrees Celsius.
+    Celsius
+);
+si_unit!(
+    /// A position gain (MIT Kp) in N·m/rad.
+    NmPerRad
+);
+si_unit!(
+    /// A velocity gain (MIT Kd) in N·m·s/rad.
+    NmSecPerRad
+);
+
+/// A drive's 64-bit MCU unique identifier, exactly as the type-0 reply carries it (manual §4.1.1). The manual gives no
+/// byte order, so it is compared as raw bytes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Uid(pub [u8; 8]);
 
 /// A drive's CAN ID on its bus, 1 to 127.
 ///
