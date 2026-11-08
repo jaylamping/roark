@@ -1,11 +1,11 @@
 # can
 
-The bus layer: one bus's tick, which sends control's commands on a fixed schedule, reads every frame the socket
+The bus layer: one thread per CAN bus that sends control's commands on a fixed tick, reads every frame the socket
 delivers, and publishes what each drive last said and how fresh it is (PLAN item 3, can.md section 2).
 
 ## What it does
 
-Each tick, on the monotonic clock (the steps the bus thread's shell runs around `BusTick`):
+Each tick, on the monotonic clock:
 
 1. **Wake** at the tick's scheduled start (`clock_nanosleep`, absolute). Waking later than the send window is a missed
    deadline and stops the bus.
@@ -43,27 +43,29 @@ error-passive.
 
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
 a drive table past `MAX_DRIVES` and timing that breaks its promises (`Timing::check`: for one, three periods must fit
-inside the drives' 50 ms timeout, so the rate is at least 61 Hz). The Linux shell that owns the socket and the
-clock comes next (PLAN step 6).
+inside the drives' 50 ms timeout, so the rate is at least 61 Hz). The Linux shell (`spawn`) owns the socket: it
+opens only `vcan` until the real adapter is supported (PLAN step 8), takes every ID (no kernel filter), and reads each
+frame with its kernel timestamp, its direction and the overflow count in one `recvmsg`.
 
 ## Must never
 
 Send a command late, retry one, or re-send a stale batch. Treat a TX echo or any traffic as proof a drive is alive.
 Allocate, lock, log or wait without a deadline in the tick, or take a lock shared with non-realtime code. Let anyone
 but the runtime transmit. Let a stop be undone: a stopping bus refuses every batch, and a latched bus error stays
-latched.
+latched. Open an interface that isn't `vcan`.
 
 ## Talks to
 
-`robstride` for the frames (it builds them, this crate only sends `Frame`s) and `telemetry` for the frame records the
-recorder stores. Control will sit on the other side of two queues, batches in and snapshots out; neither it nor the
-socket shell exists yet, so today only the tests drive `BusTick`. See the
-[map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
+`robstride` for the frames (it builds them, this crate only sends `Frame`s) and `telemetry` for the recording: each
+tick's frames go to a `BusRecorder`. Control is on the other side of two `rtrb` queues, batches in and snapshots out.
+The runtime that wires those up doesn't exist yet; the sim suite drives the shell against `sim-drive` on `vcan`. See
+the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
 
 ## Using it
 
 Build a `BusTick` with the bus's drives in slot order, then per tick: `begin`, write each send and report it with
-`sent`, feed every frame read with `on_frame`, and `end` for the snapshot.
+`sent`, feed every frame read with `on_frame`, and `end` for the snapshot. On Linux, `spawn` runs exactly that on a
+socket.
 
 ```rust
 use can::{BusState, BusTick, CommandBatch, SendOutcome, Timing};
@@ -113,3 +115,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+The `vcan` run against `sim-drive`, with its recording checked frame by frame against `candump`, is in the sim suite
+(`crates/sim-suite/tests/bus.rs`).

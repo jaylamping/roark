@@ -52,6 +52,8 @@ jobs:
             sudo ip link set "$bus" up
           done
           ip -brief link show type vcan
+      - name: Install can-utils (candump, the independent capture the bus recording is checked against)
+        run: sudo apt-get update && sudo apt-get install -y can-utils
       - run: ./scripts/sim.sh
 
   pi-build:
