@@ -9,6 +9,7 @@ license = "UNLICENSED"
 publish = false
 
 [workspace.dependencies]
+can = { path = "crates/can" }
 robstride = { path = "crates/robstride" }
 sim-drive = { path = "bins/sim-drive" }
 skeleton = { path = "crates/skeleton" }

@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # architecture.md section 3. Each workspace crate lists the workspace crates it may depend on. A crate missing from this
 # table fails the check: add it here and to the map in the same PR.
 ALLOWED_DEPS = {
+    "can": {"robstride", "telemetry"},
     "robstride": set(),
     "skeleton": {"robstride"},
     "sim-drive": {"robstride", "skeleton"},
@@ -33,6 +34,7 @@ ALLOWED_DEPS = {
 # rust.md section 11. Each workspace package's README.md is its crate doc, by kind: a library shows its API in a Rust
 # example that runs as a doc test; a binary or the sim suite shows its commands. A package missing here fails the check.
 DOC_KIND = {
+    "can": "library",
     "robstride": "library",
     "skeleton": "library",
     "sim-drive": "library",  # its library is what the sim suite drives; the README also covers the binary
