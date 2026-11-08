@@ -15,3 +15,6 @@ limb currently on the bench (tenet 0).
    never as patterns. Nothing in this repo depends on or copies its structure.
 
 Work on branches and open PRs. No tests written just for coverage.
+
+**Real hardware:** no Enable, motion, Set Zero, set-ID or parameter write to a real drive unless Joey is present and has
+said go for that session ([PLAN.md, Real hardware rule](PLAN.md#real-hardware-rule)). `vcan` is always fine.
