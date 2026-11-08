@@ -1,6 +1,5 @@
-//! `sim-drive [--skeleton <file>] [--seed <n>] [--bus <name>]...`: simulate every drive the skeleton puts on each named
-//! bus (all of them by default), each bus on its own thread, until killed. Every bus must be a `vcan` interface named as
-//! the skeleton names it (PLAN item 4); anything else is refused before a frame is sent.
+//! The `sim-drive` binary: `sim-drive [--skeleton <file>] [--seed <n>] [--bus <name>]...`. What it does and how to
+//! run it: the crate README (`bins/sim-drive/README.md`).
 
 #[cfg(target_os = "linux")]
 fn main() -> Result<(), String> {

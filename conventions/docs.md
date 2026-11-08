@@ -14,7 +14,7 @@ with ADRs and agent guides that described code that no longer existed. These rul
 | [PLAN.md](../PLAN.md) | What to build, in order, and the software-side facts and values it needs | Code style |
 | `conventions/` | How code, config, tests and procedures are written and reviewed | Values (link PLAN, the skeleton or STATUS.md instead) |
 | [architecture.md](architecture.md) | The map: processes, crates, seams, data flows | Per-crate detail |
-| Crate `//!` header | What the crate is for, what it must never do, what it talks to ([rust.md section 11](rust.md#11-shape-and-readability-tenet-7)) | Tutorials |
+| Crate `README.md` (the crate doc, through `include_str!`) | What the crate does, what it must never do, what it talks to, how to use it, with an example that runs ([rust.md section 11](rust.md#11-shape-and-readability-tenet-7)) | The map (link [architecture.md](architecture.md)), tutorials |
 | `config/skeleton.yaml` | Joint facts, each with a source comment ([skeleton.md](skeleton.md)) | Schema docs (those are on the loader) |
 | [STATUS.md](https://github.com/jaylamping/marengo/blob/main/hardware/STATUS.md) (marengo) | Hardware state and facts | Software decisions |
 | README.md | What the repo is, how to build and run, links to the above | Anything that changes often |
@@ -31,7 +31,7 @@ applies to these convention pages too: they link PLAN for values.
 
 - Docs describe what exists and what was decided, not what might be built (tenet 4). "Later we could..." is deleted.
 - A doc that's no longer true is fixed or deleted **in the PR that made it untrue**, not in a later clean-up.
-- No ADR folder by default. A decision is recorded where it applies (PLAN, a convention page, the crate header) with the date
+- No ADR folder by default. A decision is recorded where it applies (PLAN, a convention page, the crate README) with the date
   and who decided. If a decision really needs its own page (rare: a trade-off that will be questioned again), it gets one
   short page with the options, the choice and the reason, and is deleted when the code it describes is.
 - No per-folder `AGENTS.md` files or agent-only guides. Agents read the same docs as people: CLAUDE.md points them here.
@@ -42,7 +42,8 @@ applies to these convention pages too: they link PLAN for values.
 - **Rules come with their reason.** A **Why:** line after any rule that isn't obvious. A rule without a reason gets ignored the
   first time it's inconvenient, and can't be judged when circumstances change.
 - **Tables for facts and comparisons, lists for steps, prose for reasoning.**
-- **Link, don't paste.** Link files by relative path in this repo and by full GitHub URL into marengo.
+- **Link, don't paste.** Link files by relative path in this repo and by full GitHub URL into marengo. A crate `README.md` is
+  the exception: it is also rendered by `cargo doc`, where relative links break, so it links by full GitHub URL.
 - **Dates are absolute** (2026-11-08), and decisions name who made them ("Joey, 2026-11-08").
 - **Names say what things do** (tenet 7). No codenames, no robot name except the skeleton's `name:`, no limb names for things
   that aren't limb-specific (tenet 1).
