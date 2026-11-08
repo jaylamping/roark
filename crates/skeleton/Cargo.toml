@@ -1,0 +1,16 @@
+[package]
+name = "skeleton"
+description = "Loads and checks the skeleton YAML, the one file that describes the robot"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+robstride.workspace = true
+saphyr-parser.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
