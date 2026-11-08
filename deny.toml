@@ -16,6 +16,10 @@ ignore = true
 [bans]
 multiple-versions = "deny"
 wildcards = "deny"
+# Only these may open a CAN socket (architecture.md section 2: one process owns motion; sim-drive answers only on vcan).
+deny = [
+    { crate = "socketcan", wrappers = ["sim-drive", "sim-suite"], reason = "only the bus layer and the simulator open CAN sockets" },
+]
 allow-wildcard-paths = true
 
 [sources]

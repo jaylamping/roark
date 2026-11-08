@@ -24,6 +24,8 @@ ROOT = Path(__file__).resolve().parent.parent
 ALLOWED_DEPS = {
     "robstride": set(),
     "skeleton": {"robstride"},
+    "sim-drive": {"robstride", "skeleton"},
+    "sim-suite": {"robstride", "sim-drive"},
 }
 
 MAX_LINES = 800

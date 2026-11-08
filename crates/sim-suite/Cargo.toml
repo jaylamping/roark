@@ -1,0 +1,16 @@
+[package]
+name = "sim-suite"
+description = "The sim suite: tests against sim-drive on vcan (CI gate 7); Linux only, run by scripts/sim.sh"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+robstride.workspace = true
+sim-drive.workspace = true
+socketcan.workspace = true
+
+[lints]
+workspace = true

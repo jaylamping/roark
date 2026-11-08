@@ -25,6 +25,7 @@
 #![warn(clippy::wildcard_enum_match_arm, clippy::as_conversions)]
 
 mod decode;
+pub mod drive;
 pub mod encode;
 mod frame;
 mod model;
