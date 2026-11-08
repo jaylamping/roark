@@ -59,8 +59,9 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
 ## 3. Dependencies point one way
 
 ```
-skeleton   (leaf: types and loader, no I/O beyond reading the file)
-robstride  (leaf: codec, no I/O)
+robstride  (leaf: codec, per-model tables and unit types, no I/O)
+   ^
+skeleton   (types and loader, no I/O beyond reading the file; reads robstride's model table)
    ^
   can  <-- safety <-- control <-- runtime (bin)
                          ^
@@ -70,6 +71,9 @@ telemetry (leaf for producers: takes events, depends on nothing above)
 ```
 
 - Arrows only point toward the leaves. No cycles, no "utils" or "common" crate that everything imports.
+- **`skeleton` reads `robstride`'s model table**, because the loader refuses a cap above the model's range and the
+  per-model ranges are manual facts that live once, in the codec (skeleton.md section 4). The SI unit types live in
+  `robstride` too: the codec is where drive values become SI, and every other crate already depends on it.
 - **The codec does no I/O.** `robstride` turns bytes into typed frames and back. It can be tested with plain byte arrays and
   reused by `sim-drive` and `robot-cli` unchanged.
 - **Clients depend on `api`, never on `runtime` internals.** If a client needs something, it becomes an `api` message.

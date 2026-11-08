@@ -1,0 +1,219 @@
+//! Reading YAML nodes into typed values, collecting every problem rather than stopping at the first.
+
+use crate::error::{Problem, ProblemKind};
+use crate::yaml::{Entry, Node, Value};
+
+/// Collects problems while the loader walks the tree.
+#[derive(Default)]
+pub(crate) struct Reader {
+    pub(crate) problems: Vec<Problem>,
+}
+
+/// The keys of one mapping. Each key is taken once; `finish` reports the ones nobody took.
+pub(crate) struct Fields<'n> {
+    entries: &'n [Entry],
+    taken: Vec<bool>,
+    pub(crate) path: String,
+    pub(crate) line: usize,
+}
+
+impl Reader {
+    pub(crate) fn report(&mut self, line: usize, path: impl Into<String>, kind: ProblemKind) {
+        self.problems.push(Problem {
+            line,
+            path: path.into(),
+            kind,
+        });
+    }
+
+    /// The node as a mapping, or a reported problem.
+    pub(crate) fn fields<'n>(&mut self, node: &'n Node, path: &str) -> Option<Fields<'n>> {
+        match &node.value {
+            Value::Map(entries) => Some(Fields {
+                entries,
+                taken: vec![false; entries.len()],
+                path: path.to_owned(),
+                line: node.line,
+            }),
+            Value::Scalar { .. } | Value::Seq(_) => {
+                self.report(node.line, path, ProblemKind::Expected("a mapping"));
+                None
+            }
+        }
+    }
+
+    /// A required field. Missing or unparsable is reported and gives `None`.
+    pub(crate) fn required<T>(
+        &mut self,
+        fields: &mut Fields<'_>,
+        key: &str,
+        parse: impl FnOnce(&Node) -> Result<T, ProblemKind>,
+    ) -> Option<T> {
+        let node = fields.take(key, self)?;
+        self.parsed(node, fields.path_of(key), parse)
+    }
+
+    /// A field that must be written out but may be `null`. The outer `None` means a problem was reported.
+    #[expect(
+        clippy::option_option,
+        reason = "outer None is a reported problem, inner None is a written `null`"
+    )]
+    pub(crate) fn nullable<T>(
+        &mut self,
+        fields: &mut Fields<'_>,
+        key: &str,
+        parse: impl FnOnce(&Node) -> Result<T, ProblemKind>,
+    ) -> Option<Option<T>> {
+        let node = fields.take(key, self)?;
+        if is_null(node) {
+            return Some(None);
+        }
+        self.parsed(node, fields.path_of(key), parse).map(Some)
+    }
+
+    pub(crate) fn parsed<T>(
+        &mut self,
+        node: &Node,
+        path: String,
+        parse: impl FnOnce(&Node) -> Result<T, ProblemKind>,
+    ) -> Option<T> {
+        parse(node)
+            .map_err(|kind| self.report(node.line, path, kind))
+            .ok()
+    }
+}
+
+impl<'n> Fields<'n> {
+    /// The value under `key`, reporting it missing if absent.
+    pub(crate) fn take(&mut self, key: &str, reader: &mut Reader) -> Option<&'n Node> {
+        let found = self.entries.iter().position(|e| e.key == key);
+        if let Some(i) = found {
+            if let Some(t) = self.taken.get_mut(i) {
+                *t = true;
+            }
+        } else {
+            reader.report(
+                self.line,
+                self.path.clone(),
+                ProblemKind::Missing(key.to_owned()),
+            );
+        }
+        found.and_then(|i| self.entries.get(i)).map(|e| &e.value)
+    }
+
+    /// Every entry, marking them all taken, for mappings keyed by name (buses, limbs).
+    pub(crate) fn all(&mut self) -> &'n [Entry] {
+        self.taken.fill(true);
+        self.entries
+    }
+
+    pub(crate) fn has(&self, key: &str) -> bool {
+        self.entries.iter().any(|e| e.key == key)
+    }
+
+    pub(crate) fn path_of(&self, key: &str) -> String {
+        if self.path.is_empty() {
+            key.to_owned()
+        } else {
+            format!("{}.{key}", self.path)
+        }
+    }
+
+    /// Reports every key nobody asked for.
+    pub(crate) fn finish(self, reader: &mut Reader) {
+        for (entry, taken) in self.entries.iter().zip(&self.taken) {
+            if !taken {
+                reader.report(
+                    entry.key_line,
+                    self.path.clone(),
+                    ProblemKind::UnknownKey(entry.key.clone()),
+                );
+            }
+        }
+    }
+}
+
+/// Plain `null` or `~`. An empty value is not null: unknown values are written out (skeleton.md section 3).
+pub(crate) fn is_null(node: &Node) -> bool {
+    matches!(&node.value, Value::Scalar { text, quoted: false } if text == "null" || text == "~")
+}
+
+/// A scalar's text. Plain `null` is not text.
+pub(crate) fn text(node: &Node) -> Result<&str, ProblemKind> {
+    match &node.value {
+        Value::Scalar { text, .. } if !is_null(node) => Ok(text),
+        Value::Scalar { .. } | Value::Seq(_) | Value::Map(_) => Err(ProblemKind::Expected("text")),
+    }
+}
+
+/// A finite number written as a plain scalar.
+pub(crate) fn number(node: &Node) -> Result<f64, ProblemKind> {
+    let Value::Scalar {
+        text,
+        quoted: false,
+    } = &node.value
+    else {
+        return Err(ProblemKind::Expected("a number"));
+    };
+    let lower = text.to_ascii_lowercase();
+    if matches!(
+        lower.trim_start_matches(['+', '-']),
+        ".nan" | ".inf" | "nan" | "inf" | "infinity"
+    ) {
+        return Err(ProblemKind::NonFinite);
+    }
+    let value: f64 = text
+        .parse()
+        .map_err(|_| ProblemKind::Expected("a number"))?;
+    if value.is_finite() {
+        Ok(value)
+    } else {
+        Err(ProblemKind::NonFinite)
+    }
+}
+
+/// A non-negative integer written as plain decimal digits.
+pub(crate) fn integer(node: &Node) -> Result<u64, ProblemKind> {
+    match &node.value {
+        Value::Scalar {
+            text,
+            quoted: false,
+        } if !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()) => text
+            .parse()
+            .map_err(|_| ProblemKind::OutOfRange("below 2^64")),
+        Value::Scalar { .. } | Value::Seq(_) | Value::Map(_) => {
+            Err(ProblemKind::Expected("a whole number"))
+        }
+    }
+}
+
+/// A finite number above zero, through the unit's constructor.
+pub(crate) fn positive<T>(make: fn(f64) -> Option<T>) -> impl Fn(&Node) -> Result<T, ProblemKind> {
+    move |node| {
+        let value = number(node)?;
+        if value > 0.0 {
+            make(value).ok_or(ProblemKind::NonFinite)
+        } else {
+            Err(ProblemKind::OutOfRange("above 0"))
+        }
+    }
+}
+
+/// `[lower, upper]`: two finite numbers, lower below upper.
+pub(crate) fn range<T>(
+    make: fn(f64) -> Option<T>,
+) -> impl Fn(&Node) -> Result<(T, T), ProblemKind> {
+    move |node| {
+        let Value::Seq(items) = &node.value else {
+            return Err(ProblemKind::Expected("[lower, upper]"));
+        };
+        let [lower, upper] = items.as_slice() else {
+            return Err(ProblemKind::Expected("[lower, upper]"));
+        };
+        let (lower, upper) = (number(lower)?, number(upper)?);
+        if lower >= upper {
+            return Err(ProblemKind::ReversedRange);
+        }
+        make(lower).zip(make(upper)).ok_or(ProblemKind::NonFinite)
+    }
+}
