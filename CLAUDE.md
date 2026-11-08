@@ -18,3 +18,6 @@ Work on branches and open PRs. No tests written just for coverage.
 
 **Real hardware:** no Enable, motion, Set Zero, set-ID or parameter write to a real drive unless Joey is present and has
 said go for that session ([PLAN.md, Real hardware rule](PLAN.md#real-hardware-rule)). `vcan` is always fine.
+
+Commits and PR descriptions describe the change only ([conventions/git.md](conventions/git.md) section 2): no AI attribution
+(no `Co-Authored-By` for AI, no session links, no "Generated with" footers), no "who asked", no retelling of the chat.
