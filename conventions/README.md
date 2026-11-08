@@ -15,6 +15,7 @@ Read the page for the area you're touching before you write code.
 | [safety.md](safety.md) | How safety rules are written, proven, changed and reviewed |
 | [units-and-frames.md](units-and-frames.md) | Units, signs, frames, limits and names |
 | [skeleton.md](skeleton.md) | How `config/skeleton.yaml` is written, changed and reviewed |
+| [logging.md](logging.md) | Recordings, log lines, events and metrics: names, shapes and how they're used |
 | [testing.md](testing.md) | When a test is worth writing, and the tools for each language |
 | [bench.md](bench.md) | How procedures on real drives are written, run and recorded |
 | [typescript.md](typescript.md) | The operator UI and other TypeScript clients |
