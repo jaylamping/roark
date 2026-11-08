@@ -13,6 +13,8 @@ limb currently on the bench (tenet 0).
    manuals) and the legacy software. Mine the legacy code for facts and bench lessons
    ([RECONCILIATION.md](https://github.com/jaylamping/marengo/blob/main/review/sw-foundation-20261108/RECONCILIATION.md)),
    never as patterns. Nothing in this repo depends on or copies its structure.
+5. **Linux work** (`vcan`, SocketCAN, the sim suite, anything macOS can't run) goes to the dev box: run
+   `scripts/devbox.sh doctor`, then `scripts/devbox.sh run <command>`. How it works and how to fix it: [docs/dev-box.md](docs/dev-box.md).
 
 Work on branches and open PRs. No tests written just for coverage.
 
