@@ -19,6 +19,8 @@ Read the page for the area you're touching before you write code. New to CAN? St
 | [logging.md](logging.md) | Recordings, log lines, events and metrics: names, shapes and how they're used |
 | [testing.md](testing.md) | When a test is worth writing, and the tools for each language |
 | [bench.md](bench.md) | How procedures on real drives are written, run and recorded |
+| [deploy.md](deploy.md) | The Pi: storage, file layout, deploying, services, realtime tuning, the OS |
+| [remote-access.md](remote-access.md) | Connecting over Tailscale: tags, policy in git, SSH, agent keys, the UI, offline fallback |
 | [typescript.md](typescript.md) | The operator UI and other TypeScript clients |
 | [git.md](git.md) | Branches, commits, pull requests and review |
 | [docs.md](docs.md) | Which doc holds what, and how docs are written and kept true |
