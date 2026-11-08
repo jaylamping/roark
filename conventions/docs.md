@@ -51,7 +51,7 @@ applies to these convention pages too: they link PLAN for values.
 
 ## 5. TODOs have an owner
 
-A `TODO` in code or docs is written `TODO(name)` or links an issue. A bare `TODO` fails CI. **Why:** an ownerless TODO is a
+A `TODO` in code or docs is written `TODO(name)` or links an issue. A bare `TODO` fails CI. **Why:** an ownerless `TODO` is a
 wish nobody will grant; with a name or an issue it's tracked work, or it gets deleted. (rerun enforces this in CI.)
 
 ## 6. Keeping the map current

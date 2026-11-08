@@ -68,9 +68,9 @@ were never right, and people copied them.
 
 - **Parse once, at startup, into checked types** ([rust.md section 3](rust.md#3-types-carry-meaning)). Nothing downstream sees
   raw YAML or re-checks it.
-- **Unknown keys are an error** (`#[serde(deny_unknown_fields)]`). **Why:** a misspelt `torque_cap_mn` would otherwise be
+- **Unknown keys are an error.** **Why:** a misspelt `torque_cap_mn` would otherwise be
   silently ignored, leaving the cap `null` or, worse, defaulted.
-- **No defaults for safety values.** Caps, limits, directions and zeros have no `#[serde(default)]`. Defaults exist only where
+- **No defaults for safety values.** Every field is written out, as `null` if unknown; a missing key is an error. Defaults exist only where
   PLAN names them (the soft-limit inset).
 - **Every error names the limb, the joint and the field**, and the loader reports all errors at once rather than stopping at
   the first. **Why:** the hardware side fixes the file in one pass instead of one restart per typo.

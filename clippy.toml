@@ -1,0 +1,10 @@
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-indexing-slicing-in-tests = true
+doc-valid-idents = ["RobStride", "SocketCAN", ".."]
+
+# Each entry says why. Bans that apply only to the realtime crates live in that crate's own clippy.toml.
+disallowed-methods = [
+  { path = "std::panic::catch_unwind", reason = "we run panic = abort; a caught panic leaves a half-alive process" },
+  { path = "std::sync::mpsc::channel", reason = "unbounded; use a bounded queue so overload is visible" },
+]

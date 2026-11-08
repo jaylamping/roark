@@ -1,0 +1,25 @@
+# cargo-deny (rust.md section 9): licences, advisories, bans and sources.
+[graph]
+all-features = true
+
+[advisories]
+# Every ignore carries a reason and a "Review: YYYY-MM" date.
+ignore = []
+
+[licenses]
+allow = ["MIT", "Apache-2.0", "Unicode-3.0"]
+confidence-threshold = 0.9
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "deny"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

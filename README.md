@@ -18,3 +18,24 @@ five CAN buses, plus a simulated drive, agent tools and an operator UI.
 - [PLAN.md](PLAN.md): what gets built, in order.
 - [conventions/](conventions/): how code, config, tests and procedures are written and reviewed.
 - Hardware, CAD and the legacy software live in the reference repo, [jaylamping/marengo](https://github.com/jaylamping/marengo).
+
+## Build and check
+
+The toolchain is pinned in `rust-toolchain.toml`; `rustup` installs it on first use. The checks also need
+[cargo-nextest](https://nexte.st), [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) and Python 3.
+
+```bash
+cargo install --locked cargo-nextest cargo-deny
+```
+
+Run what CI runs before every push:
+
+```bash
+./scripts/check.sh
+```
+
+Cross-build for the Pi with the distro's aarch64 GCC (`gcc-aarch64-linux-gnu` on Debian and Ubuntu):
+
+```bash
+cargo build --release --workspace --locked --target aarch64-unknown-linux-gnu
+```
