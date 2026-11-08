@@ -4,10 +4,12 @@ all-features = true
 
 [advisories]
 # Every ignore carries a reason and a "Review: YYYY-MM" date.
-ignore = []
+ignore = [
+    { id = "RUSTSEC-2024-0436", reason = "paste is unmaintained, not unsound; mcap uses it at build time only. Review: 2027-05" },
+]
 
 [licenses]
-allow = ["MIT", "Apache-2.0", "Unicode-3.0"]
+allow = ["MIT", "Apache-2.0", "Unicode-3.0", "BSD-3-Clause"]
 confidence-threshold = 0.9
 
 [licenses.private]
@@ -21,6 +23,9 @@ deny = [
     { crate = "socketcan", wrappers = ["sim-drive", "sim-suite"], reason = "only the bus layer and the simulator open CAN sockets" },
 ]
 allow-wildcard-paths = true
+skip = [
+    { crate = "syn@2", reason = "mcap's binrw and enumset derives are still on syn 2; build time only" },
+]
 
 [sources]
 unknown-registry = "deny"
