@@ -22,7 +22,6 @@
 - **One logical change per commit.** Formatting-only changes go in their own commit.
 - No generated files, build output, logs, MCAP sessions or secrets in git. Large bench logs live outside the repo; commits
   cite them by session ID.
-
 - **Describe the change, not the conversation.** Commit messages and PR descriptions say what the change does and why the
   code needs it. They don't say who asked for it ("Joey asked for...", "per the chat"), retell the discussion that led to it,
   or link chat threads or agent sessions. Name a person only when they're the source of a fact ("measured by Joey on the bench,
