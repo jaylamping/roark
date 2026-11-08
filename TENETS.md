@@ -1,4 +1,4 @@
-# Marengo software tenets
+# Roark software tenets
 
 **Agreed by Joey, 2026-11-08.** These are the rules the robot software is judged against. The left arm is brought up on a
 fresh, lean stack that follows them. Existing code that doesn't honour them gets rewritten or deleted, and once the left arm

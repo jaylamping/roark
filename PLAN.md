@@ -1,4 +1,4 @@
-# Robot software plan
+# Roark software plan
 
 **Status:** brief for the software project, rev 3, 2026-11-08. Written by the hardware project. Joey pastes this page's link
 into the software project as its starting brief.
@@ -60,7 +60,7 @@ disagree, this plan wins.
 
 Plain names that say what each piece does (tenet 7). The Napoleon names go. New code gets the new names from day one; the old
 crates are **not renamed**, they're deleted when their replacement passes, so nobody pays for a rename twice. Proposed layout,
-about 10 crates in place of 15 crates and 6 bins. **"Marengo" is not permanent** (Joey may rename the robot), so no crate,
+about 10 crates in place of 15 crates and 6 bins. **The robot is Roark (renamed from Marengo, 2026-11-08), and names can change again**, so no crate,
 binary, service or config key carries the robot's name; it lives once, as `name:` in the skeleton.
 
 | New | Does | Replaces |
