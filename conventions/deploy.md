@@ -29,9 +29,14 @@ pinned OS image, and nobody changes it by hand without putting the change back i
 - **Never** `barrier=0` or `data=writeback`. They trade power-loss safety for speed.
 - **Files that must survive a power cut are written safely:** write a temp file, `fsync`, then `rename` over the old one. Never
   overwrite in place. Recordings get the same protection by closing chunks and files regularly (logging.md section 8).
-- **Power loss is normal,** first from the bench supply and later from the battery. The robot must boot cleanly after any cut,
-  and the battery design should give the Pi a signal to shut down cleanly when the pack runs low (a hardware requirement to
-  pass on).
+- **Power loss is normal,** first from the bench supply and later from the battery. The robot must boot cleanly after any cut.
+  A pulled plug gives almost no warning (the power board has no hold-up capacitors), so ext4 journaling and the safe writes
+  above are what protect the data.
+- **A low pack is a planned shutdown.** The power board's power-fail line and the software low-pack limits are specified in
+  [REV_B_PARTS.md](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/pdb/REV_B_PARTS.md) and
+  [PLAN item 10](../PLAN.md#10-power-board-interface-milestone-4). One shutdown path in the runtime handles every trigger, in
+  this order: stop the motors (the normal stop sequence), record the event, close the recording, `sync`, remount
+  `/var/lib/robot` read-only, then `systemctl poweroff`. It's tested on `vcan` with the trigger simulated.
 
 **Why:** Raspberry Pi's own whitepaper on resilient file systems recommends exactly this set. Each item protects against a way
 a sudden power cut corrupts data.
