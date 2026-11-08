@@ -5,7 +5,8 @@
 How files are laid out, stored, installed and run on the robot's Raspberry Pi 5. PLAN
 ["Repo, toolchain, CI and deploy"](../PLAN.md#repo-toolchain-ci-and-deploy) holds what's decided: cross-build, copy to
 `/opt/robot`, the `runtime.service` and `candump@<bus>.service` units and their key settings, and no self-update machinery.
-How to reach the Pi is in [remote-access.md](remote-access.md). This page covers everything else on the Pi itself, so the robot
+How to reach the Pi is in [remote-access.md](remote-access.md). Setting up a fresh Pi step by step is in
+[docs/pi-setup.md](../docs/pi-setup.md). This page covers everything else on the Pi itself, so the robot
 behaves the same after every boot, every deploy and every power cut.
 
 **The principle:** the Pi is an appliance, not a workstation. Everything on it comes from this repo (`deploy/`) or from a
