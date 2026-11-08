@@ -12,8 +12,15 @@ publish = false
 robstride = { path = "crates/robstride" }
 sim-drive = { path = "bins/sim-drive" }
 skeleton = { path = "crates/skeleton" }
-socketcan = { version = "4.0.0", default-features = false }
+telemetry = { path = "crates/telemetry" }
+mcap = { version = "0.26.0", default-features = false, features = ["zstd"] }
+rtrb = { version = "0.4.1", default-features = false }
 saphyr-parser = { version = "0.3.3", default-features = false }
+schemars = { version = "1.2.3", default-features = false, features = ["derive", "std"] }
+serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }
+serde_json = { version = "1.0.154", default-features = false, features = ["std"] }
+sha2 = { version = "0.11.1", default-features = false }
+socketcan = { version = "4.0.0", default-features = false }
 thiserror = { version = "2.0.21", default-features = false }
 
 [profile.release]

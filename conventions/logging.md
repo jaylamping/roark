@@ -87,13 +87,16 @@ Levels mean the same thing in every language and tool:
 
 ## 3. The recording (MCAP)
 
-- **Channel names are paths by what they carry,** never by limb or milestone: `/can/<bus>/rx`, `/can/<bus>/tx`, `/joint_state`,
+- **Channel names are paths by what they carry,** never by limb or milestone: `/can/<bus>/frames`, `/can/<bus>/tx_intent`, `/joint_state`,
   `/command`, `/event`, `/fault_injected` (sim only), `/session`. Joints are fields inside the messages, not separate channels.
 - **Every channel declares a schema stored in the file** (MCAP's rule for anything that isn't self-describing). Schemas come from
   the Rust types, never hand-written. **Why:** a recording from milestone 1 must still open after the code has changed. With the
   schema inside the file, Foxglove and Python can read it without our build.
-- **Two times per message:** MCAP's `log_time` is when the recorder wrote it; `publish_time` is when it happened at the source
-  (the kernel RX timestamp for CAN frames). Replay and analysis use `publish_time`.
+- **Both of a message's MCAP times are when it happened at the source,** on the wall clock: for a bus's tick, the tick's
+  start (each frame inside carries its own kernel timestamp). **Why:** Foxglove plays a file by `log_time`, so a recorder
+  `log_time` would replay a storage stall as a pause and then a burst. How far the recorder fell behind is its own number.
+- **Times inside JSON messages are `{sec, nsec}` objects,** never one integer of nanoseconds. **Why:** JSON readers that
+  parse numbers as doubles (JavaScript, so Foxglove) lose the last digits of a nanosecond Unix time.
 - **Raw and decoded both.** Raw frames are the ground truth if the codec turns out to be wrong; decoded state is what analysis
   wants. Never only decoded.
 - **Injected faults are recorded as injected,** on their own channel, so a replay shows what was real.

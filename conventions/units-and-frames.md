@@ -92,8 +92,10 @@ The values and the loader's checks are in [PLAN item 1](../PLAN.md#1-the-skeleto
 
 ## 5. Time and timestamps
 
-- Stamps are `u64` **nanoseconds** since the Unix epoch in logs, MCAP and the `api` (`stamp_ns`). Inside the realtime loop,
-  `Instant` on the monotonic clock ([architecture.md section 7](architecture.md#7-time)).
+- Stamps are `u64` **nanoseconds** since the Unix epoch in logs, MCAP and the `api` (`stamp_ns`). Inside a JSON message
+  they are written as `{sec, nsec}`, so readers that parse numbers as doubles keep every nanosecond
+  ([logging.md section 3](logging.md#3-the-recording-mcap)). Inside the realtime loop, `Instant` on the monotonic clock
+  ([architecture.md section 7](architecture.md#7-time)).
 - CAN frames carry the **kernel RX timestamp**, not the time the user-space code got round to reading them.
 - Durations in logs use the same suffix rule as everything else (`latency_us`, `age_ms`).
 
