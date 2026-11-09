@@ -319,9 +319,9 @@ pub struct DriveView {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Counters {
     /// Commands the socket took that got no status by the collect deadline, counted only where a miss counts toward
-    /// `Timing::silence_misses`: not Enable or Disable, nothing to a drive this host hasn't enabled (which covers the
-    /// post-Disable silence), and nothing in the first `ENABLE_TO_RUN_NS` after an Enable (PLAN.md item 2 Silence
-    /// windows).
+    /// `Timing::silence_misses`: not Enable or Disable; nothing to a drive this host never enabled or saw reach Reset
+    /// after its Disable; nothing in the `Timing::stop_confirm_ns` after a Disable; and nothing in the first
+    /// `ENABLE_TO_RUN_NS` after an Enable while the drive hasn't shown Run (PLAN.md item 2 Silence windows).
     pub unanswered: u64,
     /// Statuses for a command after its tick's collect deadline.
     pub late: u64,
@@ -347,7 +347,7 @@ pub struct Counters {
     pub tx_expired: u64,
     /// Ticks handed a stale or expired batch.
     pub stale_ticks: u64,
-    /// Batches refused because every limb was stopping or stopped.
+    /// Batches refused because every limb was stopping or stopped, a bad one included once no limb was left to stop.
     pub refused_batches: u64,
     /// Frames of a fresh batch dropped because their limb was stopping or stopped.
     pub refused_frames: u64,
