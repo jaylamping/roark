@@ -121,6 +121,37 @@ fn a_late_wake_stops_the_bus() {
     assert_eq!(snap.counters.missed_deadlines, 1);
 }
 
+/// Guards: safety - ticks a stalled thread slept through are each a missed deadline and stop the bus as a late wake
+/// would, Disables on the next tick it runs; none skipped is no news (PLAN.md item 3: missed deadlines are counted,
+/// never skipped silently).
+#[test]
+fn skipped_ticks_are_missed_deadlines_and_stop_the_bus() {
+    let mut bus = bus();
+    run_tick(
+        &mut bus,
+        0,
+        Some(&batch(0, &[Some(encode::enable(id(101))), None])),
+        &[],
+    );
+    let _ = bus.end(deadline(0));
+    bus.skipped(0, PERIOD);
+    run_tick(&mut bus, 1, Some(&batch(1, &[None, None])), &[]);
+    let snap = bus.end(deadline(1));
+    assert_eq!(
+        (snap.state, snap.counters.missed_deadlines),
+        (BusState::Active, 0)
+    );
+    // The thread wakes after tick 1 to find ticks 2 to 4 already past: tick 5 runs on time, as a stop.
+    bus.skipped(3, 5 * PERIOD);
+    let sent = run_tick(&mut bus, 5, Some(&batch(5, &[None, None])), &[]);
+    assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Disable)]);
+    let snap = bus.end(deadline(5));
+    assert_eq!(
+        (snap.stop, snap.counters.missed_deadlines),
+        (Some(StopReason::LateWake), 3)
+    );
+}
+
 /// Guards: safety - bus-off is latched on the first error frame and nothing later clears it (PLAN.md item 3, item 6
 /// Bus-off row).
 #[test]

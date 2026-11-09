@@ -198,7 +198,7 @@ fn play_control(
     while !enabled {
         send(
             &snap,
-            [Some(encode::enable(id(11))), Some(encode::enable(id(12)))],
+            [Some(encode::enable(id(101))), Some(encode::enable(id(102)))],
         );
         snap = next_snapshot(snapshots, end).unwrap();
         enabled = snap.drives().all(|d| {
@@ -209,7 +209,7 @@ fn play_control(
     // Hold: every drive answers every tick.
     let mut answered = 0;
     for _ in 0..HOLD_TICKS {
-        send(&snap, [Some(hold(11)), Some(hold(12))]);
+        send(&snap, [Some(hold(101)), Some(hold(102))]);
         snap = next_snapshot(snapshots, end).unwrap();
         assert_eq!(snap.state, BusState::Active, "{snap:?}");
         answered += snap.drives().filter(|d| d.answered).count();
@@ -260,7 +260,7 @@ fn spawn_refuses_anything_but_vcan() {
         let refused = can::spawn(
             BusConfig {
                 name: bus.to_owned(),
-                drives: vec![id(11)],
+                drives: vec![id(101)],
                 timing: Timing::at_hz(HZ),
             },
             BusLinks {
@@ -304,7 +304,7 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
     let bus = can::spawn(
         BusConfig {
             name: IDLE_BUS.to_owned(),
-            drives: vec![id(11)],
+            drives: vec![id(101)],
             timing: Timing::at_hz(HZ),
         },
         BusLinks {
@@ -386,8 +386,8 @@ fn the_bus_loop_runs_against_sim_drive_and_its_recording_matches_candump() {
         let _shutdown = Shutdown(&stop_sim, Arc::clone(&exit));
         let sim = scope.spawn(|| {
             let mut drives = [
-                SimDrive::new(Drive::new(id(11), Model::Rs03), Uid([1; 8]), 5),
-                SimDrive::new(Drive::new(id(12), Model::Rs03), Uid([2; 8]), 6),
+                SimDrive::new(Drive::new(id(101), Model::Rs03), Uid([1; 8]), 5),
+                SimDrive::new(Drive::new(id(102), Model::Rs03), Uid([2; 8]), 6),
             ];
             serve(BUS, &mut drives, &stop_sim)
         });
@@ -404,7 +404,7 @@ fn the_bus_loop_runs_against_sim_drive_and_its_recording_matches_candump() {
         let bus = can::spawn(
             BusConfig {
                 name: BUS.to_owned(),
-                drives: vec![id(11), id(12)],
+                drives: vec![id(101), id(102)],
                 timing: Timing::at_hz(HZ),
             },
             BusLinks {

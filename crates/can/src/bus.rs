@@ -17,7 +17,9 @@ use telemetry::{BusRecorder, Epoch, TickBatch};
 use crate::error_frame::BusError;
 use crate::sys::{self, SO_RCVBUFFORCE, SO_RXQ_OVFL, SO_TIMESTAMPNS_NEW};
 use crate::tick::BusTick;
-use crate::types::{BusState, CommandBatch, ConfigError, SendKind, SendOutcome, Snapshot, Timing};
+use crate::types::{
+    BusState, CommandBatch, ConfigError, Drain, SendKind, SendOutcome, Snapshot, Timing,
+};
 
 /// The most frames a tick's drain may find before the send. More than that queued means the thread can't tell what the
 /// bus said in time, so it stops (1 Mbit/s carries about 8,000 frames a second: 32 a tick at 250 Hz).
@@ -207,7 +209,7 @@ struct Clock {
 
 impl Clock {
     fn new(epoch: Epoch) -> io::Result<Self> {
-        let start = Instant::now();
+        let start = mono_now();
         let start_ts = clock_gettime(ClockId::CLOCK_MONOTONIC).map_err(io::Error::from)?;
         Ok(Self {
             start,
@@ -243,10 +245,33 @@ impl Clock {
     }
 }
 
+/// The monotonic clock, read only here and in [`wall_ns`]: the tick itself is handed time (clippy.toml).
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the shell is where the bus reads its clock"
+)]
+fn mono_now() -> Instant {
+    Instant::now()
+}
+
+/// The wall clock, for the recording's `wall_ns` only.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the recording stamps each tick with wall time (logging.md)"
+)]
 fn wall_ns() -> u64 {
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .map_or(0, |d| u64::try_from(d.as_nanos()).unwrap_or(u64::MAX))
+}
+
+/// Sleep for `span`, relative: only when the monotonic clock itself failed, so the stop still has ticks to run in.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the fallback when the absolute sleep can't read the clock"
+)]
+fn sleep_relative(span: Duration) {
+    std::thread::sleep(span);
 }
 
 fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
@@ -270,9 +295,11 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             // No clock to keep the schedule: stop the drives, sleeping relative to get there.
             tick.request_stop();
             exit.error.get_or_insert(e);
-            std::thread::sleep(scheduled.saturating_duration_since(Instant::now()));
+            sleep_relative(scheduled.saturating_duration_since(mono_now()));
         }
         let mut batch = TickBatch::new(n, clock.ns(scheduled), wall_ns());
+        // The overflow count is the last one seen; a frame read this tick may update it.
+        batch.kernel_drops = exit.last.map_or(0, |s| s.counters.kernel_drops);
 
         // Drain what arrived in the slack before anything is sent.
         if let Err(e) = drain(socket, &clock, &mut tick, &mut batch) {
@@ -294,14 +321,14 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         // Planned against the tick's own schedule, so a wake any number of periods late is a missed deadline.
         let sends = tick.begin(
             n,
-            clock.ns(Instant::now()),
+            clock.ns(mono_now()),
             clock.ns(scheduled),
             command.as_ref(),
         );
         let send_by = scheduled + Duration::from_nanos(timing.send_window_ns);
         for (index, send) in sends.iter().enumerate() {
             // Only commands expire: a late Disable is still the right one (can.md section 2).
-            let outcome = if send.kind == SendKind::Command && Instant::now() > send_by {
+            let outcome = if send.kind == SendKind::Command && mono_now() > send_by {
                 SendOutcome::Expired
             } else {
                 match write(socket, &send.frame) {
@@ -322,9 +349,8 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             tick.lost_bus(bus_error(&e));
             exit.error.get_or_insert(e);
         }
-        let snap = tick.end(clock.ns(Instant::now()));
+        let snap = tick.end(clock.ns(mono_now()));
         batch.valid = snap.healthy;
-        batch.kernel_drops = snap.counters.kernel_drops;
         if links.snapshots.push(snap).is_err() {
             // Control's ring is full: it keeps its older snapshots and this one is lost, counted in the next.
             tick.snapshot_dropped();
@@ -336,12 +362,10 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         }
         // The next tick is the first not yet due; any skipped were missed deadlines, and this late tick has already
         // stopped the bus.
-        let due = Instant::now()
-            .saturating_duration_since(clock.start)
-            .as_nanos()
+        let due = mono_now().saturating_duration_since(clock.start).as_nanos()
             / u128::from(timing.period_ns);
         let next = u64::try_from(due).unwrap_or(u64::MAX).max(n + 1);
-        tick.skipped(next - n - 1, clock.ns(Instant::now()));
+        tick.skipped(next - n - 1, clock.ns(mono_now()));
         n = next;
     }
     exit
@@ -358,8 +382,9 @@ fn newest(commands: &mut Consumer<CommandBatch>) -> Option<CommandBatch> {
     newest
 }
 
-/// Empty the socket before the send, so what is read after it came after the backlog. Past [`DRAIN_MAX`] frames the
-/// bus stops; past `DRAIN_LIMIT` the socket is left unemptied and the tick told its reads are unordered.
+/// Empty the socket before the send, so what is read after it came after the backlog, and tell the tick how it went:
+/// past [`DRAIN_MAX`] frames the bus stops; past `DRAIN_LIMIT` the socket is left unemptied and the tick's reads are
+/// unordered until a drain empties it.
 fn drain(
     socket: &CanSocket,
     clock: &Clock,
@@ -368,14 +393,16 @@ fn drain(
 ) -> io::Result<()> {
     for read in 0..DRAIN_LIMIT {
         let Some(received) = sys::recv(socket.as_fd())? else {
-            if read > DRAIN_MAX {
-                tick.backlog(true);
-            }
+            tick.drained(if read > DRAIN_MAX {
+                Drain::Backlog
+            } else {
+                Drain::Emptied
+            });
             return Ok(());
         };
         take(clock, tick, batch, received);
     }
-    tick.backlog(false);
+    tick.drained(Drain::Unemptied);
     Ok(())
 }
 
@@ -387,7 +414,7 @@ fn collect(
     deadline: Instant,
 ) -> io::Result<()> {
     loop {
-        let now = Instant::now();
+        let now = mono_now();
         if now >= deadline {
             return Ok(());
         }
@@ -396,7 +423,7 @@ fn collect(
         }
         while let Some(received) = sys::recv(socket.as_fd())? {
             take(clock, tick, batch, received);
-            if Instant::now() >= deadline {
+            if mono_now() >= deadline {
                 return Ok(());
             }
         }
@@ -404,9 +431,10 @@ fn collect(
 }
 
 fn take(clock: &Clock, tick: &mut BusTick, batch: &mut TickBatch, received: sys::Received) {
-    let read_ns = clock.ns(Instant::now());
+    let read_ns = clock.ns(mono_now());
     if let Some(drops) = received.drops {
         tick.note_kernel_drops(drops);
+        batch.kernel_drops = drops;
     }
     tick.on_frame(read_ns, &received.frame);
     // A batch past its capacity counts the frame as omitted; the recording says so.
@@ -428,7 +456,14 @@ fn write(socket: &CanSocket, frame: &Frame) -> io::Result<SendOutcome> {
         {
             Ok(SendOutcome::QueueFull)
         }
-        Err(e) if matches!(e.raw_os_error(), Some(libc::ENETDOWN | libc::ENODEV)) => Err(e),
+        Err(e)
+            if matches!(
+                e.raw_os_error(),
+                Some(libc::ENETDOWN | libc::ENODEV | libc::ENXIO)
+            ) =>
+        {
+            Err(e)
+        }
         Err(_) => Ok(SendOutcome::Failed),
     }
 }
