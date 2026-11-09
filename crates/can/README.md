@@ -37,8 +37,8 @@ A drive confirms with a Reset-mode status read after the stop's Disable; one tha
 Disable every tick, so it gets no reporting off. The bus is `Stopped` once every drive has confirmed and taken its
 reporting off, or after 100 ms.
 
-A latched bus error (bus-off, interface down or gone) sends nothing: there is no bus to send on, so the bus is
-`Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's
+A latched bus error (bus-off, interface down or gone, another socket error) sends nothing: there is no bus to send on,
+so the bus is `Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's
 `bus_error`, even if a stop was already under way; `healthy` is false while there is one or the controller is
 error-passive.
 
@@ -46,17 +46,23 @@ error-passive.
 a drive table past `MAX_DRIVES` and timing that breaks its promises (`Timing::check`: for one, three periods must fit
 inside the drives' 50 ms timeout, so the rate is at least 61 Hz). The Linux shell (`spawn`) owns the socket: it
 opens only `vcan` until the real adapter is supported (PLAN step 8), takes every ID (no kernel filter), and reads each
-frame with its kernel timestamp, its direction and the overflow count in one `recvmsg`. `spawn` returns the receive
-buffer the kernel actually gave (`Spawned::receive_buffer_bytes`) for the runtime's startup log. Each tick's recorded
-batch is `valid` while the snapshot is `healthy`, and a snapshot control's full ring can't take is counted
-(`snapshots_dropped`). Setting `exit` on an active bus stops its drives first.
+frame with its kernel timestamp, its direction and the overflow count in one `recvmsg`. `bus_info` is the session's
+record of that socket, from the same constants `open` applies, and `spawn` returns the receive buffer the kernel
+actually gave (`Spawned::receive_buffer_bytes`) for the runtime's startup log. Each tick's recorded batch is `valid`
+while the bus is healthy, the exit tick's included, and a snapshot control's full ring can't take is counted
+(`snapshots_dropped`). Ticks a stall slept through are each a missed deadline, and stop an active bus. Any write error
+but a full queue loses the bus, as a read error does. Setting `exit` on an active bus stops its drives first.
+
+Not yet: the `/can/<bus>/tx_intent` record of every frame handed to the socket or not sent, with the reason
+(logging.md section 8.2), and the per-run tick duration and jitter (rust.md section 6). Both come with the runtime,
+which owns the recording's channels and the metrics, before step 8 measures latency and jitter on the real adapter.
 
 ## Must never
 
 Send a command late, retry one, or re-send a stale batch. Treat a TX echo or any traffic as proof a drive is alive.
 Allocate, lock, log or wait without a deadline in the tick, or take a lock shared with non-realtime code. Let anyone
 but the runtime transmit. Let a stop be undone: a stopping bus refuses every batch, and a latched bus error stays
-latched. Open an interface that isn't `vcan`.
+latched. Open an interface that isn't `vcan` before the real adapter's checks exist (PLAN step 8).
 
 ## Talks to
 

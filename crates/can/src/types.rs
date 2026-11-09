@@ -414,7 +414,7 @@ pub struct Counters {
     pub stale_ticks: u64,
     /// Batches refused while stopping or stopped.
     pub refused_batches: u64,
-    /// Ticks the thread woke for after their send window.
+    /// Ticks that ran past their send window, and ticks a stalled thread never ran.
     pub missed_deadlines: u64,
     /// The socket's overflow counter (`SO_RXQ_OVFL`), the last value seen.
     pub kernel_drops: u32,
@@ -431,7 +431,7 @@ pub struct Snapshot {
     pub state: BusState,
     /// Why it stopped, if it has.
     pub stop: Option<StopReason>,
-    /// The first bus error that latched (bus-off, interface down or gone), even if the bus was already stopping.
+    /// The first bus error that latched (bus-off, interface down or gone, another socket error), even if the bus was already stopping.
     pub bus_error: Option<BusError>,
     /// No latched bus error and not error-passive: the recording's `valid` flag (logging.md section 8.2).
     pub healthy: bool,

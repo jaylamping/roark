@@ -96,9 +96,10 @@ impl Loss {
 pub struct TickBatch {
     /// The tick number, counting from the bus thread's start.
     pub tick: u64,
-    /// The tick's start on the monotonic clock, nanoseconds since the session's [`Epoch`](crate::Epoch).
+    /// The tick's scheduled start on the monotonic clock, nanoseconds since the session's [`Epoch`](crate::Epoch).
     pub mono_ns: u64,
-    /// The tick's start on the wall clock, nanoseconds since the Unix epoch. The recording's envelope times.
+    /// The wall clock when the tick woke, nanoseconds since the Unix epoch: the recording's envelope times. On a late
+    /// wake it trails `mono_ns`'s instant by the lateness; `/clock` relates the two clocks.
     pub wall_ns: u64,
     /// False while the bus is unhealthy (error passive, bus-off, interface down).
     pub valid: bool,

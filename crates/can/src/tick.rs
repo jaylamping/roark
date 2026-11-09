@@ -157,7 +157,7 @@ impl BusTick {
         }
     }
 
-    /// The socket failed with `error` (interface down or gone): latch stopped. There is no bus to send a stop on; the
+    /// The socket failed with `error` (interface down or gone, or any other socket error): latch stopped. There is no bus to send a stop on; the
     /// drives time out on their own (`canTimeout`). An error that doesn't latch ([`BusError::latches`]) changes nothing
     /// here: it isn't a lost bus.
     pub fn lost_bus(&mut self, error: BusError) {
@@ -172,13 +172,29 @@ impl BusTick {
         self.counters.kernel_drops = count;
     }
 
-    /// `count` ticks went by without running (the thread stalled past them): each a missed deadline, and the bus stops
-    /// as for a late wake (PLAN.md item 3: missed deadlines are counted, never skipped silently).
-    pub fn skipped(&mut self, count: u64, now_ns: u64) {
+    /// `count` ticks went by without running (the thread stalled past them): each a missed deadline (PLAN.md item 3:
+    /// missed deadlines are counted, never skipped silently). As for a late wake, an active bus stops, at the next
+    /// `begin`; an idle one has nothing to stop.
+    pub fn skipped(&mut self, count: u64) {
         if count > 0 {
             self.counters.missed_deadlines += count;
-            self.begin_stop(StopReason::LateWake, now_ns);
+            if self.state == BusState::Active {
+                self.pending_stop.get_or_insert(StopReason::LateWake);
+            }
         }
+    }
+
+    /// The bus's state now, between snapshots (the shell's exit check reads it after the drain).
+    #[must_use]
+    pub fn state(&self) -> BusState {
+        self.state
+    }
+
+    /// Whether the bus is healthy now: no latched bus error and not error-passive. The snapshot's `healthy` is this at
+    /// `end`.
+    #[must_use]
+    pub fn healthy(&self) -> bool {
+        self.bus_error.is_none() && !self.error_passive
     }
 
     /// The last snapshot couldn't be handed to control (its ring was full): counted in the next one.
@@ -582,7 +598,7 @@ impl BusTick {
                 self.state = BusState::Stopped;
             }
         }
-        let healthy = self.bus_error.is_none() && !self.error_passive;
+        let healthy = self.healthy();
         let mut snap = Snapshot::new(
             tick,
             self.state,

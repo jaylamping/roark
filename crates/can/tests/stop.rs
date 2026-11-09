@@ -176,34 +176,39 @@ fn only_consecutive_silent_ticks_stop_the_bus() {
     assert_eq!(bus.end(deadline(4)).stop, Some(StopReason::ControlSilent));
 }
 
-/// Guards: safety - ticks a stalled thread slept through are each a missed deadline and stop the bus as a late wake
-/// would, Disables on the next tick it runs; none skipped is no news (PLAN.md item 3: missed deadlines are counted,
-/// never skipped silently).
+/// Guards: safety - ticks a stalled thread slept through are each a missed deadline and stop an active bus as a late
+/// wake would, Disables on the next tick it runs; an idle bus only counts them; none skipped is no news (PLAN.md item
+/// 3: missed deadlines are counted, never skipped silently).
 #[test]
 fn skipped_ticks_are_missed_deadlines_and_stop_the_bus() {
     let mut bus = bus();
-    run_tick(
-        &mut bus,
-        0,
-        Some(&batch(0, &[Some(encode::enable(id(101))), None])),
-        &[],
-    );
+    run_tick(&mut bus, 0, None, &[]);
     let _ = bus.end(deadline(0));
-    bus.skipped(0, PERIOD);
-    run_tick(&mut bus, 1, Some(&batch(1, &[None, None])), &[]);
-    let snap = bus.end(deadline(1));
+    // Idle: counted, nothing to stop, and the next batch still goes out.
+    bus.skipped(2);
+    let enable = batch(3, &[Some(encode::enable(id(101))), None]);
+    let sent = run_tick(&mut bus, 3, Some(&enable), &[]);
+    assert_eq!(sent, [(0, SendKind::Command)]);
+    let snap = bus.end(deadline(3));
+    assert_eq!(
+        (snap.state, snap.stop, snap.counters.missed_deadlines),
+        (BusState::Active, None, 2)
+    );
+    bus.skipped(0);
+    run_tick(&mut bus, 4, Some(&batch(4, &[None, None])), &[]);
+    let snap = bus.end(deadline(4));
     assert_eq!(
         (snap.state, snap.counters.missed_deadlines),
-        (BusState::Active, 0)
+        (BusState::Active, 2)
     );
-    // The thread wakes after tick 1 to find ticks 2 to 4 already past: tick 5 runs on time, as a stop.
-    bus.skipped(3, 5 * PERIOD);
-    let sent = run_tick(&mut bus, 5, Some(&batch(5, &[None, None])), &[]);
+    // The thread wakes after tick 4 to find ticks 5 to 7 already past: tick 8 runs on time, as a stop.
+    bus.skipped(3);
+    let sent = run_tick(&mut bus, 8, Some(&batch(8, &[None, None])), &[]);
     assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Disable)]);
-    let snap = bus.end(deadline(5));
+    let snap = bus.end(deadline(8));
     assert_eq!(
         (snap.stop, snap.counters.missed_deadlines),
-        (Some(StopReason::LateWake), 3)
+        (Some(StopReason::LateWake), 5)
     );
 }
 

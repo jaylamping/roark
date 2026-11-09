@@ -14,7 +14,7 @@ mod tick;
 mod types;
 
 #[cfg(target_os = "linux")]
-pub use bus::{BusConfig, BusExit, BusLinks, BusRunError, DRAIN_MAX, Spawned, spawn};
+pub use bus::{BusConfig, BusExit, BusLinks, BusRunError, Spawned, bus_info, spawn};
 
 pub use error_frame::{BusError, classify};
 pub use tick::BusTick;
