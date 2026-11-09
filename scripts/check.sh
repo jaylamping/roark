@@ -13,3 +13,5 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
 cargo deny check
 python3 scripts/check_rules.py
 python3 scripts/check_rules.py count
+# No file of 100 MB or more, LFS pointers included (conventions/cad.md rule 5).
+python3 tools/check_file_sizes.py

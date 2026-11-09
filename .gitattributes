@@ -1,0 +1,13 @@
+# CAD under cad/ goes through Git LFS (conventions/cad.md). Extensions are matched without regard to case, because
+# SolidWorks writes them in upper case. FEA output (.STE, .CWR) is gitignored, not stored.
+cad/**/*.[sS][lL][dD][pP][rR][tT] filter=lfs diff=lfs merge=lfs -text
+cad/**/*.[sS][lL][dD][aA][sS][mM] filter=lfs diff=lfs merge=lfs -text
+cad/**/*.[sS][lL][dD][dD][rR][wW] filter=lfs diff=lfs merge=lfs -text
+cad/**/*.[sS][tT][eE][pP] filter=lfs diff=lfs merge=lfs -text
+cad/**/*.[sS][tT][pP] filter=lfs diff=lfs merge=lfs -text
+cad/**/*.[sS][tT][lL] filter=lfs diff=lfs merge=lfs -text
+cad/**/*.3[mM][fF] filter=lfs diff=lfs merge=lfs -text
+cad/**/*.[gG][cC][oO][dD][eE] filter=lfs diff=lfs merge=lfs -text
+cad/**/*.[xX]_[tT] filter=lfs diff=lfs merge=lfs -text
+cad/**/*.[iI][gG][sS] filter=lfs diff=lfs merge=lfs -text
+cad/**/*.[iI][gG][eE][sS] filter=lfs diff=lfs merge=lfs -text
