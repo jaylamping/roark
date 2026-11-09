@@ -40,10 +40,11 @@ class Router:
         self.byid = {UID(t): t for t in self.tracks + self.pads}
         self.idx = {}
         self.ignore = set()
-        self.fine = []
+        self.fine = []; self.fineshape = []
         for ref in ('U1', 'U2', 'U7'):
             f = self.b.FindFootprintByReference(ref)
             self.fine.append(self.bb(f.GetCourtyard(pcbnew.F_CrtYd).BBox()))
+            self.fineshape.append(pcbnew.SHAPE_POLY_SET(f.GetCourtyard(pcbnew.F_CrtYd)))
         e = self.bb(self.b.GetBoardEdgesBoundingBox())
         self.bounds = (e[0]+.85, e[1]+.85, e[2]-.85, e[3]-.85)   # board edge clearance 0.5 mm + via radius 0.3 mm
         for p in self.pads:
@@ -69,16 +70,28 @@ class Router:
                         for h in range(ps.HoleCount(i)): one.AddHole(ps.Hole(i, h))
                         self.add(L, z.GetNetname(), one, 'zone', UID(z))
         self.zones = zones
+        self.hvzones = [z for z in zones if not z.GetIsRuleArea() and domains.is_hv(z.GetNetname())]
 
     @staticmethod
     def bb(b): return MM(b.GetLeft()), MM(b.GetTop()), MM(b.GetRight()), MM(b.GetBottom())
+    def incy(self, shape, bb):
+        """the fine-pitch courtyards (U1/U2/U7) the copper itself enters, as the .kicad_dru intersectsCourtyard() tests;
+        a bounding-box overlap alone would relax the clearance for a long diagonal that only passes near the courtyard"""
+        out = set()
+        for i, f in enumerate(self.fine):
+            if not self.overlap(bb, f): continue
+            c = self.fineshape[i]
+            try: hit = c.Collide(shape, 0)
+            except Exception: hit = any(c.Collide(shape.Outline(k), 0) for k in range(shape.OutlineCount()))
+            if hit: out.add(i)
+        return out
     @staticmethod
     def cells(bb):
         for x in range(math.floor(bb[0]/2), math.floor(bb[2]/2)+1):
             for y in range(math.floor(bb[1]/2), math.floor(bb[3]/2)+1): yield x, y
     def add(self, L, net, shape, kind, uid):
         bb = self.bb(shape.BBox())
-        cy = {i for i, f in enumerate(self.fine) if self.overlap(bb, f)}
+        cy = self.incy(shape, bb)
         ob = (net, shape, kind, bb, cy, uid)
         for c in self.cells(bb): self.idx.setdefault((L,)+c, []).append(ob)
     @staticmethod
@@ -90,7 +103,7 @@ class Router:
     def free(self, net, L, shape, via=False, diagnostics=None):
         bb = self.bb(shape.BBox()); margin = 1.51
         query = (bb[0]-margin, bb[1]-margin, bb[2]+margin, bb[3]+margin)
-        cy = {i for i, f in enumerate(self.fine) if self.overlap(bb, f)}
+        cy = self.incy(shape, bb)
         seen = set()
         for c in self.cells(query):
             for ob in self.idx.get((L,)+c, ()):
@@ -133,6 +146,7 @@ class Router:
         if not self.inside(p) or (130<=p[0]<=160 and 180<=p[1]<=190): return False
         if hasattr(self,'via_filter') and not self.via_filter(net,p): return False
         if self.in_latch(net,(p[0]-.3,p[1]-.3,p[0]+.3,p[1]+.3)): return False   # a via is inner copper too
+        if domains.is_estop(net) and any(z.Outline().Contains(V(p)) for z in self.hvzones): return False   # route_checks 5
         sh=pcbnew.SHAPE_CIRCLE(V(p),IU(.3))
         return all(self.free(net,L,sh,via=True) for L in CU)
     @staticmethod
