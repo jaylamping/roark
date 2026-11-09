@@ -17,7 +17,8 @@ five CAN buses, plus a simulated drive, agent tools and an operator UI.
 - [TENETS.md](TENETS.md): how everything should work.
 - [PLAN.md](PLAN.md): what gets built, in order.
 - [conventions/](conventions/): how code, config, tests and procedures are written and reviewed.
-- Hardware, CAD and the legacy software live in the reference repo, [jaylamping/marengo](https://github.com/jaylamping/marengo).
+- The power board (schematic, layout, tools and docs) is in [hardware/power-board/](hardware/power-board/README.md).
+- The rest of the hardware, CAD and the legacy software live in the reference repo, [jaylamping/marengo](https://github.com/jaylamping/marengo).
 
 ## Build and check
 

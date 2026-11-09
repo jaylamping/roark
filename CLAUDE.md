@@ -10,7 +10,8 @@ limb currently on the bench (tenet 0).
    [rust.md](conventions/rust.md) is how the Rust is written; [testing.md](conventions/testing.md) is what earns a test.
 4. The reference repo, [jaylamping/marengo](https://github.com/jaylamping/marengo), is **read-only from here**. It holds the
    hardware (designs, electrical, [STATUS.md](https://github.com/jaylamping/marengo/blob/main/hardware/STATUS.md), RobStride
-   manuals) and the legacy software. Mine the legacy code for facts and bench lessons
+   manuals) and the legacy software; the power board has moved here, to [hardware/power-board/](hardware/power-board/README.md).
+   Mine the legacy code for facts and bench lessons
    ([RECONCILIATION.md](https://github.com/jaylamping/marengo/blob/main/review/sw-foundation-20261108/RECONCILIATION.md)),
    never as patterns. Nothing in this repo depends on or copies its structure.
 5. **Linux work** (`vcan`, SocketCAN, the sim suite, anything macOS can't run) goes to the dev box: run
