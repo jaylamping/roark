@@ -93,13 +93,13 @@ Path from junction to air for one bank FET:
 | Step | K/W | Rise at 2.7 W |
 | --- | --- | --- |
 | Junction to tab (IPB017N10N5LF) | 0.4 | 1 K |
-| Solder + 2 oz pad | 0.1 | 0.3 K |
+| Solder + 1 oz pad (6 layers since 2026-11-09; 2 oz was 0.1) | 0.2 | 0.5 K |
 | 50 × 0.3 mm vias through 1.6 mm (unfilled, 25 µm plating, about 176 K/W each) | 3.5 | 9.5 K |
 | Bottom pad 15 × 15 mm into a 0.5 mm insulating gap pad at 3 W/mK | 0.75 | 2 K |
-| **Junction to heatsink** | **about 4.8** | **about 13 K** |
+| **Junction to heatsink** | **about 4.9** | **about 13.5 K** |
 
 The heatsink takes all 16 W: about 1.5 K/W with fan air → +24 K. Ambient inside the torso is taken as 40 °C. So
-**Tj ≈ 40 + 24 + 13 ≈ 77 °C**. The board copper still spreads and sheds some heat in parallel, so this is the pessimistic
+**Tj ≈ 40 + 24 + 13.5 ≈ 78 °C**. The board copper still spreads and sheds some heat in parallel, so this is the pessimistic
 side. Without fan air, the heatsink (about 3 K/W natural) gives about 101 °C, still under 125 °C.
 
 Layout for D (done since stage 1):
@@ -160,8 +160,8 @@ Hole positions in the heatsink base (bottom end at board Y 196.5): **7.5 mm and 
 into the fin root (about 8 mm of thread). Tools: 2.5 mm drill, M3 tap. No other machining.
 
 Thermal check with this part: about 2.2 K/W in natural convection and about 1.0–1.2 K/W at 1–2 m/s (vendor class figures
-for 120 × 69 × 36; the 100 mm version is listed at 2.6 K/W natural). At 16 W with fan air: Tj ≈ 40 + 19 + 13 ≈ 72 °C;
-without fan air ≈ 88 °C.
+for 120 × 69 × 36; the 100 mm version is listed at 2.6 K/W natural). At 16 W with fan air: Tj ≈ 40 + 19 + 13.5 ≈ 73 °C;
+without fan air ≈ 89 °C.
 
 The FETs, board and stencils don't change. The two 2.2 µF drain capacitors (option-independent) add about $0.50 per board.
 
@@ -195,6 +195,8 @@ Coordinates are board/torso X and Y, with Z 0 at the board's bottom face.
   the IPB017N10N5LF's short-pulse SOA at 50 V and 1–2 µs against port_sim's peak, with the FET's transfer curve in the model.
 - **Bank B bus ceiling (9.4 mF) vs the drive interface requirement (20 mF).** These don't agree. Measure the drive
   capacitance per limb (already a bring-up open item) before the board is ordered.
-- **Copper:** with D, the current-only copper calc passes on 2 oz outer + 1 oz inner (L1 and L4 each carry 30 A in 10.5 mm at
-  20 °C rise per IPC-2221; the two 1 oz inner GND planes return 60 A across about 100 mm). That is JLC's standard stackup,
-  not the JLC3313 2/2 oz one.
+- **Copper:** since 2026-11-09 the board is 6 layers with 1 oz outer / 0.5 oz inner. 1 oz pours carry about 18 A per
+  layer in 10.5 mm at 20 °C rise (IPC-2221), so the 60 A path and the 30 A port legs run on soldered copper bars
+  ([LAYOUT_RULES.md](LAYOUT_RULES.md), "Power path"). The heat path above goes down through the filled vias, so it barely
+  changes: the 1 oz tab pad adds about 0.1 K/W (Tj about +0.5 K). The two 0.5 oz GND planes return 60 A across about
+  90 mm, about 3 W spread over the board.

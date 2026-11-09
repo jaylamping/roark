@@ -9,7 +9,9 @@ import json,sys
 import pcbnew
 b=pcbnew.LoadBoard(sys.argv[1])
 pcbnew.ZONE_FILLER(b).Fill(b.Zones())
-LAYERS={pcbnew.F_Cu:0,pcbnew.In1_Cu:1,pcbnew.In2_Cu:2,pcbnew.B_Cu:3}
+sys.path.insert(0,__import__('os').path.dirname(__import__('os').path.abspath(__file__))); import stack
+LAYERS={L:i for i,L in enumerate(stack.kicad_layers(pcbnew))}
+PLANES={stack.kicad_layers(pcbnew)[i] for i in stack.GNDPLANE}
 mm=pcbnew.ToMM
 def polys(sps):
     out=[]
@@ -38,10 +40,10 @@ for z in b.Zones():
     if z.GetIsRuleArea() or not z.GetNetname(): continue
     for L in z.GetLayerSet().Seq():
         if L not in LAYERS: continue
-        if z.GetNetname()=='GND' and L!=pcbnew.In1_Cu: continue
+        if z.GetNetname()=='GND' and L not in PLANES: continue
         fp=z.GetFilledPolysList(L)
         if fp.OutlineCount():
-            items.append(dict(net=z.GetNetname(),layer=LAYERS[L],kind='plane' if (z.GetNetname()=='GND' and L==pcbnew.In1_Cu) else 'zone',poly=polys(fp)))
+            items.append(dict(net=z.GetNetname(),layer=LAYERS[L],kind='plane' if (z.GetNetname()=='GND' and L in PLANES) else 'zone',poly=polys(fp)))
 for z in b.Zones():   # board rule areas that forbid tracks (the hole keep-outs from tools/place.py)
     if z.GetIsRuleArea() and z.GetDoNotAllowTracks():
         for L,k in LAYERS.items():

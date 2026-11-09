@@ -2,7 +2,8 @@
 """Rev B5 power routing, stage 2: copper pours and via arrays for the 60 A path (LAYOUT_RULES.md, THERMAL_OPTION.md D).
 Run with KiCad's Python: <kicad python> tools/route_power.py <placed.kicad_pcb> <out.kicad_pcb>
 Coordinates are the floorplan's (X -50..50, robot's left = +X; Y 190..340 up), as in tools/place.py.
-L1 (F.Cu): power pours. In1: solid GND. In2: GND (second return plane; signals cut it later). L4 (B.Cu): mirrors of the
+6-layer stack (tools/stack.py). L1 (F.Cu): power pours. In1 and In4: solid GND. In2 and In3: signal layers, GND-filled
+where the signals leave room. L4 here means L6 (B.Cu, the bottom): mirrors of the
 power pours under the FETs (heatsink pads) and the VBUS sheet to the ports, GND fill elsewhere.
 Prints, for each pour, any pad of another net that lies inside it (to be moved or carved), then fills and saves."""
 import os,sys
@@ -12,7 +13,7 @@ OX,OY=100,100
 def P(X,Y): return pcbnew.VECTOR2I(pcbnew.FromMM(OX+X+50),pcbnew.FromMM(OY+340-Y))
 b=pcbnew.LoadBoard(sys.argv[1])
 NET={n:b.FindNet(n) for n in ('GND','/BAT','/SW_D','/MID','/VBUS','/ABS','/ABS_N','/CL_D')+tuple(f'/{a}_L{k}' for a in 'DV' for k in range(1,7))}
-L1,L4,I1,I2=pcbnew.F_Cu,pcbnew.B_Cu,pcbnew.In1_Cu,pcbnew.In2_Cu
+L1,L4,I1,I2,I3,I4=pcbnew.F_Cu,pcbnew.B_Cu,pcbnew.In1_Cu,pcbnew.In2_Cu,pcbnew.In3_Cu,pcbnew.In4_Cu   # L4 = the bottom layer (B.Cu)
 POURS=[]
 def zone(net,layer,rects,prio,clear=0.6,name=''):
     """one zone whose outline is the union of the rectangles (X0,X1,Y0,Y1); solid pad connection (power), 0.25 mm min width"""
@@ -67,7 +68,9 @@ for k,Y1,s in PORTS:
     zone(f'/V_L{k}',L1,[T((26.6,47.3,Y0+0.1,Y0+5.3)),T((43.0,47.3,Y0+5.3,Y0+7.3))],5,name=f'V_L{k}')
 # ---------------- inner GND planes ----------------
 zone('GND',I1,[(-49.6,49.6,YB+0.4,339.6)],0,clear=0.6,name='GND In1')
-zone('GND',I2,[(-49.6,49.6,YB+0.4,339.6)],0,clear=0.6,name='GND In2')
+zone('GND',I4,[(-49.6,49.6,YB+0.4,339.6)],0,clear=0.6,name='GND In4')
+zone('GND',I2,[(-49.6,49.6,YB+0.4,339.6)],0,clear=0.6,name='GND In2 fill')   # signal layers: refilled round the signals
+zone('GND',I3,[(-49.6,49.6,YB+0.4,339.6)],0,clear=0.6,name='GND In3 fill')
 # ---------------- L4: mirrors under the FETs (heatsink pads), VBUS sheet, GND fill ----------------
 zone('/SW_D',L4,[(-11.0,-0.3,290.2,303.6),(7.0,17.8,290.2,303.6),(-11.0,17.8,300.2,304.6)],5,name='SW_D L4')   # bridged above the pins
 zone('/MID',L4,[(-18.4,18.0,270.2,290.0),(-18.4,-12.3,290.0,299.4),(0.7,5.7,290.0,299.4)],4,name='MID L4')

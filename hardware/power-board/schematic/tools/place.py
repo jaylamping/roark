@@ -10,7 +10,7 @@ HERE=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 N=parse(open(sys.argv[1]).read())
 OX,OY=100,100                       # page offset, mm
 def P(X,Y): return pcbnew.VECTOR2I(pcbnew.FromMM(OX+X+50),pcbnew.FromMM(OY+340-Y))
-b=pcbnew.BOARD(); b.SetCopperLayerCount(4)
+b=pcbnew.BOARD(); b.SetCopperLayerCount(6)   # tools/stack.py
 # board bottom edge: 170 is the 100 x 170 board (option A, Joey 2026-11-07: routing room); PDU_YBOT=190 rebuilds the old
 # 100 x 150 placement, whose control blocks were too dense to route (74-84 % fill). The extra 20 mm go to
 # the bottom, under the ports, so the pack entry, absorber, banks, heatsink and ports keep their coordinates

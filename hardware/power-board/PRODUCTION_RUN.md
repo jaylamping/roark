@@ -12,17 +12,19 @@ so 5 + 5 bare boards are ordered and 2 + 2 are built. **All prices are estimates
 | Board parts for 2 main + 2 buck, cheapest per line (mostly LCSC, the rest DigiKey or Mouser), with spares on cheap parts | about $200 |
 | LCSC shipping (Global Direct or DHL) | about $20 |
 | US duty on the LCSC share (China origin, about 37.5 %; LCSC ships duty-unpaid) | about $55 |
-| Bare boards, JLCPCB: 5 main (100 × 170, 4 layers, 2 oz outer / 1 oz inner, ENIG) + 5 buck (about 45 × 60, same) | about $115–165 |
+| Bare boards, JLCPCB: 5 main (100 × 170, 6 layers, 1 oz outer / 0.5 oz inner, OSP, filled thermal vias: **$44.00 quoted 2026-11-09**, 7–8 day build) + 5 buck (about 60 × 85, 4 layers, 1 oz, to quote: about $20–35) | about $65–80 |
 | 2 frameless stencils (JLC) | about $16 |
 | JLC shipping, DHL | about $25–45 |
 | JLC prepaid duty (US DDP: 35 % on boards, 90 % on stencils) | about $55–75 |
-| **Total, 2 sets** | **about $490–575** |
+| **Total, 2 sets** | **about $440–490** |
 | Heatsink kit, thermal option D (chosen; [THERMAL_OPTION.md](THERMAL_OPTION.md)): 120 × 69 × 36 mm extruded heatsink (no cut), insulating 0.5 mm pad, 2 × M3, 2 sets | about $41–53 |
 | Conformal coat (Joey chose coating, 2026-11-09): MG Chemicals 419D acrylic, 55 mL brush bottle, enough for both boards; Kapton tape for masking | about $10 |
 | Tools (section 6), one-off | about $110–200 |
 
 **Why this is above the $370–470 estimated earlier:** US duty adds about $110–130 across parts, boards and stencils. JLC's
-free ENIG finish ended in July 2026, and 2 oz copper costs extra. Without duty the total is about $380–445.
+free ENIG finish ended in July 2026, and 2 oz copper costs extra. Without duty the total is about $380–445. Since
+2026-11-09 the main board is 6 layers with 1 oz outer copper and bars on the 60 A path, which brought the board line down
+by about $50 (JLC quotes: 4 layers 2 oz outer $96.47, 4 layers 1 oz $57.67, 6 layers 1 oz $44.00, all qty 5).
 
 **The other part-buying routes, 2 sets:**
 
@@ -36,9 +38,10 @@ free ENIG finish ended in July 2026, and 2 oz copper costs extra. Without duty t
 right now anyway. Where both have stock, buy the ICs from DigiKey (no duty, genuine TI) and everything passive from LCSC.
 
 **Levers still open:**
-- With thermal option D the copper is for current only, so 2 oz outer / 1 oz inner (JLC's standard stackup) is enough;
-  that is already assumed above. Dropping ENIG for lead-free HASL saves about $10–20, but HASL isn't flat enough for the
-  QFN and 0.5 mm pitch parts. Keep ENIG.
+- The main board is 6 layers, 1 oz outer / 0.5 oz inner, OSP (2026-11-09), with copper bars on the 60 A path; that is
+  already assumed above. OSP is flat like ENIG (fine for the QFN and 0.5 mm pitch parts) but has a shelf life of about
+  6 months and tolerates few heat cycles: assemble within a few months of delivery, in one reflow pass plus the
+  through-hole step. HASL isn't offered at 6 layers. ENIG is an option at extra cost if the boards will wait.
 - PCBWay is about 1.5–2.5 × JLC for 4-layer 2 oz boards (estimate, section 5). JLC is the pick.
 
 ## 2. Boards in the run
@@ -111,7 +114,7 @@ Biggest lines (2 sets, cheapest source):
 
 ## 5. Bare boards and stencils, fab comparison (qty 5 each, estimates)
 
-| Fab | Main 100 × 170, 4L, 2/1 oz, ENIG | Buck 45 × 60, same | Stencil | Shipping to US | Duty |
+| Fab | Main 100 × 170 (6L 1/0.5 oz OSP since 2026-11-09; this table was for 4L 2/1 oz ENIG) | Buck | Stencil | Shipping to US | Duty |
 | --- | --- | --- | --- | --- | --- |
 | **JLCPCB** | about $70–100 (2/2 oz on JLC3313: $90–130; 1/0.5 oz: $35–45) | about $45–65 | frameless about $7–9, framed $15–20 (+$15–30 shipping) | DHL about $25–45 | DDP prepaid: 35 % boards, 90 % stencils |
 | PCBWay | about $120–180 | about $80–110 | frameless $15–20, framed $25–35 | DHL about $25–40 | duty on arrival |

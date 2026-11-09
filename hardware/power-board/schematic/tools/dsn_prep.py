@@ -41,7 +41,8 @@ def scan(poly):
             if c-a>0.05: segs.append((a,c,y))
         y+=PITCH
     return segs
-LN={pcbnew.F_Cu:'F.Cu',pcbnew.In1_Cu:'In1.Cu',pcbnew.In2_Cu:'In2.Cu',pcbnew.B_Cu:'B.Cu'}
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import stack
+LN=dict(zip(stack.kicad_layers(pcbnew),stack.NAMES))
 wires=[]; nseg={}; HATCH=[]
 for z in b.Zones():
     n=z.GetNetname()
@@ -99,9 +100,11 @@ s=s[:start]+cls('kicad_default',rest,200,200)+cls('ESTOPC',ESTN,200,200)+cls('HV
 # ---- append the hatch to the wiring
 k=s.rfind('  (wiring'); e=s.find('\n  )\n',k)
 if HATCHMODE: s=s[:e]+'\n'+'\n'.join(wires)+s[e:]
-# In1: active (an inactive layer also blocks every via through it) but 50x the trace cost, so the router keeps off it;
+# In1 and In4 (the GND planes): active (an inactive layer also blocks every via through it) but 50x the trace cost, so the
+# router keeps off them;
 # tools/ses_import.py reports anything left on In1
-open(os.path.splitext(sys.argv[2])[0]+'.rules','w').write('(rules PCB pdu\n  (autoroute_settings\n    (layer_rule In1.Cu (active on) (preferred_direction_trace_costs 50.0) (against_preferred_direction_trace_costs 50.0))\n  )\n)\n')
+PL=''.join(f'    (layer_rule {stack.NAMES[i]} (active on) (preferred_direction_trace_costs 50.0) (against_preferred_direction_trace_costs 50.0))\n' for i in sorted(stack.GNDPLANE))
+open(os.path.splitext(sys.argv[2])[0]+'.rules','w').write('(rules PCB pdu\n  (autoroute_settings\n'+PL+'  )\n)\n')
 open(sys.argv[2],'w',encoding='utf-8').write(s)
 json.dump(HATCH if HATCHMODE else [],open(sys.argv[2]+'.hatch.json','w'))   # tools/ses_import.py deletes exactly these after the import
 print('dsn',sys.argv[2],'hatch segments',sum(nseg.values()),{k:v for k,v in sorted(nseg.items())})

@@ -15,7 +15,8 @@ b=pcbnew.LoadBoard(sys.argv[1]); mm=pcbnew.FromMM
 sys.path.insert(0,__import__('os').path.dirname(__file__)); import domains
 ESTOP={n for n in map(str,b.GetNetsByName().keys()) if domains.is_estop(n)}
 HV=domains.is_hv; dom=domains.dom; RIDES=domains.rides
-LAYERS=[pcbnew.F_Cu,pcbnew.In1_Cu,pcbnew.In2_Cu,pcbnew.B_Cu]
+import stack
+LAYERS=stack.kicad_layers(pcbnew)
 OUTER={pcbnew.F_Cu,pcbnew.B_Cu}
 items=[]   # (net, layer, shape, label, footprint ref or None)
 def fpref(it):

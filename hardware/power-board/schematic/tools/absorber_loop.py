@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """Absorber loop inductance LABS (and LBAR) from the routed copper, for tools/absorber_sim.py.
 Method: each L1 conductor of the loop is a wide microstrip over the solid In1 GND plane, whose loop inductance (trace plus
-its image return in the plane) is mu0 * h * l / w, with h = 0.2104 mm (JLC04161H-7628, L1 to In1). The current divides
+its image return in the plane) is mu0 * h * l / w, with h = L1 to In1 from tools/stack.py (about 0.1 mm on the 6-layer stack; 0.2104 mm on the old 4-layer JLC04161H-7628). The current divides
 over the 8 cans (4 finger rows x 2 columns), so each segment counts with (I_seg / I)^2 (energy method). Part ESLs are
 datasheet-class figures, listed below as assumptions. Part positions come from the board; conductor widths from the
 pours of tools/route_power.py.
 Run with KiCad's Python: <kicad python> tools/absorber_loop.py <board.kicad_pcb>"""
 import sys
 import pcbnew
-MU0=4e-7*3.141592653589793; H=0.2104e-3
+import os,sys
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import stack
+MU0=4e-7*3.141592653589793; H=stack.H_L1_L2
 b=pcbnew.LoadBoard(sys.argv[1])
 def pad(r,n):
     p=[q for q in b.FindFootprintByReference(r).Pads() if q.GetNumber()==n][0].GetPosition()
