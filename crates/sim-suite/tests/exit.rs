@@ -211,6 +211,8 @@ fn exit_with_a_full_ring(drain: bool) -> (bool, Option<Snapshot>, bool) {
                 snapshots: snapshots_tx,
                 recorder: buses.remove(0),
                 epoch,
+                requests: rtrb::RingBuffer::new(1).1,
+                results: rtrb::RingBuffer::new(1).0,
                 start: soon(),
                 exit: Arc::clone(&exit),
             },
