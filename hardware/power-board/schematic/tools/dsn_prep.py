@@ -15,7 +15,7 @@ import json,os,re,sys
 import pcbnew
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import domains
 POWER=['/BAT','/SW_D','/MID','/VBUS','/ABS','/ABS_N','/CL_D','/BRK_D','/BRK_F','/BAT_F','/PWR']+[f'/{a}_L{k}' for a in 'DV' for k in range(1,7)]
-P12=['/+12V_RAW','/+12V','/+12V_JET','/+12V_PI','/SPARE_SW','/SPARE_ON','/SP_SW1']
+P12=['/+12V_RAW','/+12V','/+12V_JET','/+12V_PI','/+12V_FAN','/SPARE_SW','/SPARE_ON','/SP_SW1']
 W,PITCH=0.5,0.4
 INSET=0.35   # hatch stays this far inside the fill edge, so Freerouting's class clearances (0.6 mm to the full via pad) don't
              # see fake violations against foreign vias the fill only clears by hole + 0.5 mm
