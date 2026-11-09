@@ -28,7 +28,13 @@
   session 2026-11-12T19:04Z").
 - **No AI attribution.** No `Co-Authored-By:` lines for AI tools, no agent session links, no "Generated with ..." footers, in
   commits or PR descriptions. Who or what typed a change isn't part of the change; the PR description's Confidence section is
-  where an author says which parts need a closer look.
+  where an author says which parts need a closer look. The repo is public, and a session link opens the chat it came from.
+- **Commit as a person.** Agent tools commit as their own identity (`noreply@anthropic.com` and the like) unless told
+  otherwise; set `git config user.name` and `user.email` first. `.claude/settings.json` turns off Claude Code's
+  attribution and sets the identity at session start.
+- **Checked twice.** `scripts/check_attribution.py` is a `commit-msg` hook (`python3 scripts/check_attribution.py install`,
+  once per clone) and a CI job (`.github/workflows/attribution.yml`) that fails a push or PR whose commits or description
+  carry a trailer, session link, footer or AI identity.
 
 **Why:** `git log` and `git blame` are how the next person (or agent) learns why a line exists. "fix stuff" teaches nothing.
 
@@ -72,7 +78,7 @@
 - Work on a branch, open a PR, never push to `main`.
 - Run the local check command before every push ([rust.md section 13](rust.md#13-ci-gates)).
 - Keep the PR to what was asked. Spotted something else? Note it in the PR description or open an issue, don't fold it in.
-- No AI attribution in commits or PRs (section 2), whatever your tool's defaults say.
+- No AI attribution in commits or PRs (section 2), whatever your tool's defaults say. PR comments too: no footers or session links there either.
 
 ## Sources
 

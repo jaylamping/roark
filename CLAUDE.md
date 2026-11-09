@@ -24,4 +24,5 @@ Work on branches and open PRs. No tests written just for coverage.
 said go for that session ([PLAN.md, Real hardware rule](PLAN.md#real-hardware-rule)). `vcan` is always fine.
 
 Commits and PR descriptions describe the change only ([conventions/git.md](conventions/git.md) section 2): no AI attribution
-(no `Co-Authored-By` for AI, no session links, no "Generated with" footers), no "who asked", no retelling of the chat.
+(no `Co-Authored-By` for AI, no session links, no "Generated with" footers, in PR comments too), no "who asked", no
+retelling of the chat. The repo is public. Commit as Joey, never as an AI identity; `scripts/check_attribution.py` checks it.
