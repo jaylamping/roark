@@ -37,13 +37,15 @@ A drive's status read after a command the socket took is its **fresh** status, a
 the collect deadline. That is evidence the drive is there and what state it was in, never an acknowledgement: there
 are no sequence numbers to prove which command a status answers. Faults are never filtered: a status or report
 updates what the drive was seen saying, and any status, report, version reply or type-21 fault report with a fault set
-latches `fault_seen`. Missing replies aren't counted toward a drive's silence for an Enable or Disable, between an
-Enable and the drive's first Run status, or within 100 ms of a Disable: the drive may take 10 ms to reach Run, and goes
-silent after a Disable (PLAN item 2 Silence windows). Each drive's last echo of this host's frame
+latches `fault_seen`. Missing replies aren't counted toward a drive's silence for an Enable or Disable, for anything
+sent to a drive this host hasn't enabled (which covers the post-Disable silence, however long), or for the first
+`ENABLE_TO_RUN_NS` (50 ms) after an Enable while the drive hasn't shown Run: the drive may take 10 ms to reach Run, and
+goes silent after a Disable (PLAN item 2 Silence windows). `silent_ticks` and `silence_misses` must be at least one and
+must fire before the drives' own timeout, or the bus is refused at startup. Each drive's last echo of this host's frame
 to it (`last_echo`: its kind and when it was read) is kept, for the enable sequence's "reporting-off echo plus one
 tick".
 
-A limb stop (`stop_limb`, the check above, expired feedback) stops that limb; a bus stop (`request_stop`, control
+A limb stop (`stop_limb`, named `LimbRequested`; the check above; expired feedback) stops that limb; a bus stop (`request_stop`, control
 silent, a late wake, a bad batch, or a backlog) stops every limb. A stopping limb sends Disable to each of its drives,
 re-sends it each tick to every drive that hasn't confirmed, and sends active reporting off to each confirmed drive once
 its post-Disable silence is over (50 ms after its confirmation), again each tick until the socket takes it. A drive

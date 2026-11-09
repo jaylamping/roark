@@ -12,9 +12,8 @@ use robstride::encode::{self, Reporting};
 
 use crate::error_frame::BusError;
 use crate::tick::{BusTick, Phase};
-use crate::types::{
-    DRIVE_TIMEOUT_NS, LimbState, MAX_DRIVES, RearmRefused, Send, SendKind, StopOutcome, StopReason,
-};
+use crate::timing::DRIVE_TIMEOUT_NS;
+use crate::types::{LimbState, MAX_DRIVES, RearmRefused, Send, SendKind, StopOutcome, StopReason};
 
 impl BusTick {
     /// Stop every limb not already stopping or stopped, for a reason that is the whole bus's.
@@ -43,6 +42,7 @@ impl BusTick {
                 }
             }
             StopReason::Requested
+            | StopReason::LimbRequested
             | StopReason::ControlSilent
             | StopReason::BadBatch { .. }
             | StopReason::ExpiredFeedback { .. }

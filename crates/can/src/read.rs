@@ -5,7 +5,7 @@ use robstride::{DecodeError, DeviceId, Inbound, Mode, Status, decode};
 use telemetry::{Direction, FrameRecord};
 
 use crate::error_frame::{classify, controller_passive};
-use crate::tick::{BusTick, DriveState, Phase, Reply};
+use crate::tick::{BusTick, DriveState, Reply};
 use crate::types::{EchoSeen, LimbState, Observed, StopOutcome};
 
 impl BusTick {
@@ -65,10 +65,20 @@ impl BusTick {
                 Some(d) => d.fault_seen |= faults != [0; 4],
                 None => self.counters.unexpected += 1,
             },
-            Ok(Inbound::Version { header, .. }) => match self.slot_of(header.device) {
-                Some(d) => d.fault_seen |= !header.faults.is_empty(),
-                None => self.counters.unexpected += 1,
-            },
+            Ok(Inbound::Version { header, .. }) => {
+                let unordered = self.unordered;
+                let limbs = self.limbs;
+                match self.slot_of(header.device) {
+                    // A version reply carries the status header too: its faults and its mode count like a status's.
+                    Some(d) => {
+                        d.fault_seen |= !header.faults.is_empty();
+                        let active = limbs.get(d.limb).copied().flatten().map(|l| l.state)
+                            == Some(LimbState::Active);
+                        d.note_mode(header.mode, active, unordered);
+                    }
+                    None => self.counters.unexpected += 1,
+                }
+            }
             Ok(Inbound::Identity { device, .. } | Inbound::Param { device, .. }) => {
                 if self.slot_of(device).is_none() {
                     self.counters.unexpected += 1;
@@ -98,11 +108,7 @@ impl BusTick {
         let limb = limbs.get(d.limb).copied().flatten().map(|l| l.state);
         let active = limb == Some(LimbState::Active);
         let stopping = matches!(limb, Some(LimbState::Stopping { .. }));
-        if d.phase == Phase::Enabling && active && status.header.mode == Mode::Run && !unordered {
-            d.phase = Phase::Running;
-        } else if d.phase == Phase::Running && status.header.mode != Mode::Run {
-            d.phase = Phase::LeftRun;
-        }
+        d.note_mode(status.header.mode, active, unordered);
         if !answer {
             return;
         }

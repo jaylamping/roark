@@ -18,9 +18,8 @@ use telemetry::{BusInfo, BusRecorder, Epoch, TickBatch, TimestampSource};
 use crate::error_frame::BusError;
 use crate::sys;
 use crate::tick::BusTick;
-use crate::types::{
-    BusDrive, CommandBatch, ConfigError, Drain, SendList, SendOutcome, Snapshot, Timing,
-};
+use crate::timing::Timing;
+use crate::types::{BusDrive, CommandBatch, ConfigError, Drain, SendList, SendOutcome, Snapshot};
 
 /// The most frames a tick's drain may find before the send. More than that queued means the thread can't tell what the
 /// bus said in time, so it stops (1 Mbit/s carries about 8,000 frames a second: 32 a tick at 250 Hz).

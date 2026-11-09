@@ -13,6 +13,7 @@ mod stop;
 )]
 mod sys;
 mod tick;
+mod timing;
 mod types;
 
 #[cfg(target_os = "linux")]
@@ -20,8 +21,9 @@ pub use bus::{BusConfig, BusExit, BusLinks, BusRunError, Spawned, bus_info, spaw
 
 pub use error_frame::{BusError, classify};
 pub use tick::BusTick;
+pub use timing::{DRIVE_TIMEOUT_NS, ENABLE_TO_RUN_NS, Timing, TimingError};
 pub use types::{
-    BusDrive, CommandBatch, ConfigError, Counters, DRIVE_TIMEOUT_NS, Drain, DriveView, EchoSeen,
-    LimbState, LimbView, MAX_DRIVES, MAX_SENDS, NoSuchLimb, Observed, RearmRefused, Send, SendKind,
-    SendList, SendOutcome, Snapshot, StopOutcome, StopReason, Timing, TimingError,
+    BusDrive, CommandBatch, ConfigError, Counters, Drain, DriveView, EchoSeen, LimbState, LimbView,
+    MAX_DRIVES, MAX_SENDS, NoSuchLimb, Observed, RearmRefused, Send, SendKind, SendList,
+    SendOutcome, Snapshot, StopOutcome, StopReason,
 };

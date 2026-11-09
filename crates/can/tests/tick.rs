@@ -4,8 +4,8 @@
 mod common;
 
 use can::{
-    BusError, BusTick, CommandBatch, ConfigError, LimbState, MAX_DRIVES, SendKind, SendOutcome,
-    StopOutcome, StopReason, Timing, TimingError, classify,
+    BusError, BusTick, CommandBatch, ConfigError, DRIVE_TIMEOUT_NS, LimbState, MAX_DRIVES,
+    SendKind, SendOutcome, StopOutcome, StopReason, Timing, TimingError, classify,
 };
 use common::{
     MS, PERIOD, at, batch, bus, deadline, drive, error_frame, hold, id, one_limb, record,
@@ -630,32 +630,92 @@ fn timing_that_breaks_the_tick_is_refused() {
     }
 }
 
-/// Guards: safety - a silence count of zero is refused at startup: zero silent ticks would stop an active bus on its
-/// first tick, and zero missed replies would stop every limb at its first send (PLAN.md items 3 and 6).
+/// Guards: safety - each silence count must be at least one and fire before the drives time out on their own: zero
+/// would stop an active bus at its first tick or every limb at its first send, and a count that spans the drives'
+/// timeout turns its rule off (safety.md section 4: no config value turns a protection off; PLAN.md items 3 and 6).
 #[test]
-fn zero_silence_counts_are_refused() {
+fn silence_counts_must_fire_before_the_drive_timeout() {
     let base = Timing::at_hz(250);
+    // The fewest periods that reach the drives' timeout.
+    let span = u32::try_from(DRIVE_TIMEOUT_NS.div_ceil(base.period_ns)).unwrap_or(u32::MAX);
     let rows = [
         (
+            "no silent ticks",
             Timing {
                 silent_ticks: 0,
                 ..base
             },
-            TimingError::NoSilentTicks,
+            Some(TimingError::SilentTicks {
+                silent_ticks: 0,
+                period_ns: base.period_ns,
+            }),
         ),
         (
+            "silent ticks reach the drive timeout",
+            Timing {
+                silent_ticks: span,
+                ..base
+            },
+            Some(TimingError::SilentTicks {
+                silent_ticks: span,
+                period_ns: base.period_ns,
+            }),
+        ),
+        (
+            "silent ticks just inside the drive timeout",
+            Timing {
+                silent_ticks: span - 1,
+                ..base
+            },
+            None,
+        ),
+        (
+            "silent ticks exactly the drive timeout",
+            Timing {
+                silent_ticks: 10,
+                ..Timing::at_hz(200)
+            },
+            Some(TimingError::SilentTicks {
+                silent_ticks: 10,
+                period_ns: 5 * MS,
+            }),
+        ),
+        (
+            "no silence misses",
             Timing {
                 silence_misses: 0,
                 ..base
             },
-            TimingError::NoSilenceMisses,
+            Some(TimingError::SilenceMisses {
+                silence_misses: 0,
+                period_ns: base.period_ns,
+            }),
+        ),
+        (
+            "silence misses reach the drive timeout",
+            Timing {
+                silence_misses: span,
+                ..base
+            },
+            Some(TimingError::SilenceMisses {
+                silence_misses: span,
+                period_ns: base.period_ns,
+            }),
+        ),
+        (
+            "silence misses just inside the drive timeout",
+            Timing {
+                silence_misses: span - 1,
+                ..base
+            },
+            None,
         ),
     ];
-    for (timing, refused) in rows {
+    for (name, timing, refused) in rows {
         assert_eq!(
             BusTick::new(&one_limb(&[id(101)]), timing).err(),
-            Some(ConfigError::Timing(refused)),
-            "{timing:?}"
+            refused.map(ConfigError::Timing),
+            "{name}: {timing:?}"
         );
     }
 }
