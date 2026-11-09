@@ -3,7 +3,7 @@ Edit this, not the .kicad_sch. Run: python -X utf8 gen_buck.py <this folder>, th
 Starting point: TI LM5146 datasheet SNVSBV0A, application circuit 2 (48 V to 12 V, 8 A, 400 kHz): same L, C and
 compensation, uprated FETs and inductor for 12 A, our UVLO, an input filter and the J24 interface."""
 import os,sys,textwrap
-sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','marengo_pdu_revb','gen'))
+sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','schematic','gen'))
 import kit
 kit.PROJ='marengo_buck12'; kit.LIBNAME='marengo_buck12'
 from kit import *
