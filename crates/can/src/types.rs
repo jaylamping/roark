@@ -300,7 +300,10 @@ pub struct DriveView {
     /// time, not arrival: it can trail the kernel's receipt by up to period - collect + send window
     /// (units-and-frames.md section 5).
     pub fresh_ns: Option<u64>,
-    /// The status `fresh_ns` is the read time of, kept when a later status (a duplicate, a report) replaces `observed`.
+    /// The status `fresh_ns` is the read time of, kept when a later status of the same mode (a duplicate, a report, an
+    /// unsolicited or earlier-tick status) replaces `observed`, and dropped when a later one shows another mode: the
+    /// drive took its answer back. Read mode and faults from `observed` and `fault_seen`, never from this; `fresh_ns`
+    /// stays the age of the last fresh reply either way.
     pub fresh_status: Option<Observed>,
     /// Whether it answered this tick's command by the collect deadline.
     pub answered: bool,
