@@ -52,7 +52,7 @@ fn passed() -> PreflightPassed {
                             .value(),
                     })),
                 };
-                preflight.answered(outcome);
+                preflight.answered(outcome, now);
             }
             Step::Passed(passed) => return passed,
             step => panic!("{step:?}"),
@@ -86,8 +86,14 @@ fn to_mit(t0: u64) -> (Enabling, DriveView, u64) {
     let enable_at = t0 + 2 * PERIOD;
     let run = with_status(echo, Mode::Run, enable_at + 1);
     let mit_at = enable_at + PERIOD;
-    assert!(matches!(enabling.step(&run, 3, mit_at), Next::Send(_)));
+    assert_eq!(enabling.step(&run, 3, mit_at), mit_write());
     (enabling, run, mit_at)
+}
+
+/// The `run_mode` = MIT write to the fixture's first joint.
+fn mit_write() -> Next {
+    let drive = robstride::Drive::new(joint(&skeleton(), 0).id, robstride::Model::Rs03);
+    Next::Send(encode::param_write(&Write::mit_mode(drive)))
 }
 
 /// `echo` with a status in `mode` read at `read_ns`.
@@ -155,6 +161,15 @@ fn the_enable_sequence_runs_its_steps_in_order() {
         enabling.step(&reset, 105, enable_at + 2 * PERIOD),
         Next::Wait
     );
+    let not_fresh = DriveView {
+        fresh_ns: Some(enable_at - 1),
+        ..with_status(echo, Mode::Run, enable_at + 2)
+    };
+    assert_eq!(
+        enabling.step(&not_fresh, 105, enable_at + 2 * PERIOD),
+        Next::Wait,
+        "a Run that answers nothing since the Enable"
+    );
     let run = with_status(echo, Mode::Run, enable_at + 2);
     let mit_at = enable_at + 3 * PERIOD;
     assert_eq!(
@@ -173,10 +188,19 @@ fn the_enable_sequence_runs_its_steps_in_order() {
         "an MIT echo from before"
     );
     let mit = echoed(run, MIT, mit_at + 10);
-    assert_eq!(enabling.step(&mit, 109, mit_at + 3 * PERIOD), Next::Enabled);
+    assert_eq!(
+        enabling.step(&mit, 109, mit_at + 3 * PERIOD),
+        Next::Wait,
+        "the echo alone: the frame reached the controller, not the drive"
+    );
+    let answered = echoed(with_status(run, Mode::Run, mit_at + 20), MIT, mit_at + 10);
+    assert_eq!(
+        enabling.step(&answered, 110, mit_at + 4 * PERIOD),
+        Next::Enabled
+    );
     assert!(enabling.enable_planned());
     assert_eq!(
-        enabling.step(&mit, 110, mit_at + 4 * PERIOD),
+        enabling.step(&answered, 111, mit_at + 5 * PERIOD),
         Next::Enabled,
         "it stays enabled"
     );
@@ -199,10 +223,10 @@ fn the_enable_sequence_gives_up_on_no_run_or_a_fault() {
     );
     let (mut on_time, _) = to_enable(t0);
     let run = with_status(echo, Mode::Run, enable_at + RUN_WITHIN_NS);
-    assert!(matches!(
+    assert_eq!(
         on_time.step(&run, 3, enable_at + RUN_WITHIN_NS),
-        Next::Send(_)
-    ));
+        mit_write()
+    );
     let failed = Next::Failed(EnableFailure::NoRun {
         last: Some(Mode::Reset),
     });
@@ -217,11 +241,17 @@ fn the_enable_sequence_gives_up_on_no_run_or_a_fault() {
     // A Run read after its window, however the ticks fall, is too late.
     let (mut late, _) = to_enable(t0);
     let late_run = with_status(echo, Mode::Run, enable_at + RUN_WITHIN_NS + 1);
+    let too_late = EnableFailure::NoRun {
+        last: Some(Mode::Run),
+    };
     assert_eq!(
         late.step(&late_run, 3, enable_at + RUN_WITHIN_NS + 1),
-        Next::Failed(EnableFailure::NoRun {
-            last: Some(Mode::Run)
-        })
+        Next::Failed(too_late)
+    );
+    assert_eq!(
+        too_late.message("arm_joint_one"),
+        "enable failed (host.mode): arm_joint_one reported Run only after the 50 ms after its Enable, expected Run \
+         within them"
     );
 
     let mut deaf = Enabling::new(passed(), t0);
@@ -272,8 +302,9 @@ fn the_enable_sequence_gives_up_on_no_run_or_a_fault() {
     );
 }
 
-/// Guards: safety - `host.bus`: a drive whose `run_mode` = MIT write isn't read back within 50 ms of being planned is
-/// never handed to control: the drive may not be in MIT mode, and since its Enable went out the limb is stopped.
+/// Guards: safety - `host.bus` and `host.mode`: a drive whose `run_mode` = MIT write isn't read back within 50 ms of
+/// being planned, or isn't answered by a fresh Run status in that time, is never handed to control: the drive may not
+/// be in MIT mode, or has left Run; since its Enable went out the limb is stopped.
 #[test]
 fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
     let t0 = 100 * PERIOD;
@@ -293,11 +324,40 @@ fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
         "an echo read after its window"
     );
     let (mut on_time, run, mit_at) = to_mit(t0);
-    let echo = echoed(run, MIT, mit_at + RUN_WITHIN_NS);
+    let echo = echoed(
+        with_status(run, Mode::Run, mit_at + RUN_WITHIN_NS),
+        MIT,
+        mit_at + RUN_WITHIN_NS,
+    );
     assert_eq!(
         on_time.step(&echo, 4, mit_at + RUN_WITHIN_NS),
         Next::Enabled,
         "at 50 ms"
     );
     assert_eq!(EnableFailure::NoModeEcho.rule(), RuleId::HostBus);
+
+    // Echoed, but the drive answered in Reset, or not at all.
+    let (mut dropped, run, mit_at) = to_mit(t0);
+    let reset = echoed(with_status(run, Mode::Reset, mit_at + 20), MIT, mit_at + 10);
+    assert_eq!(
+        dropped.step(&reset, 4, mit_at + PERIOD),
+        Next::Failed(EnableFailure::LeftRun {
+            last: Some(Mode::Reset)
+        })
+    );
+    assert!(dropped.enable_planned());
+    let (mut silent, run, mit_at) = to_mit(t0);
+    let echo_only = echoed(run, MIT, mit_at + 10);
+    assert_eq!(
+        silent.step(&echo_only, 4, mit_at + RUN_WITHIN_NS),
+        Next::Wait
+    );
+    assert_eq!(
+        silent.step(&echo_only, 5, mit_at + RUN_WITHIN_NS + 1),
+        Next::Failed(EnableFailure::LeftRun { last: None })
+    );
+    assert_eq!(
+        EnableFailure::LeftRun { last: None }.rule(),
+        RuleId::HostMode
+    );
 }

@@ -1,5 +1,5 @@
-//! The rule IDs (safety.md section 2): one per row of PLAN item 6's rule table, the same string in the table, the code,
-//! each test's `Guards:` line, every event the rule emits and the operator's fault display.
+//! The rule IDs (safety.md section 2): one per rule in PLAN item 6's table (the limits row holds two), the same string
+//! in the table, the code, each test's `Guards:` line, every event the rule emits and the operator's fault display.
 
 use can::StopReason;
 

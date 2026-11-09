@@ -8,8 +8,9 @@ use robstride::{
 };
 use skeleton::{Joint, Skeleton};
 
-/// One arm on one bus. `arm_joint_one` is fully set (direction and zero too); `arm_joint_two` leaves its torque cap null; `arm_joint_three` has
-/// no bus yet; `arm_joint_four` has every cap, a direction and a zero, and no UID.
+/// One arm on one bus. `arm_joint_one` is fully set (direction, zero and hard limits too); `arm_joint_two` leaves its
+/// torque cap null; `arm_joint_three` has no bus yet; `arm_joint_four` has every cap, a direction, a zero and hard
+/// limits, and no UID.
 pub(crate) const FIXTURE: &str = "\
 schema: 1
 name: test_robot
@@ -72,7 +73,7 @@ limbs:
         direction: 1
         zero_rad: 0.0
         reference_pose: null
-        hard_rad: null
+        hard_rad: [0.5, 1.5]
         soft_rad: null
         torque_cap_nm: 5.0
         current_cap_a: 10.0
@@ -155,10 +156,11 @@ pub(crate) fn quiet() -> DriveView {
     }
 }
 
-/// Drive 101 with its last status.
+/// Drive 101 with its last status, fresh: the first after a command.
 pub(crate) fn seen(observed: Observed) -> DriveView {
     DriveView {
         observed: Some(observed),
+        fresh_ns: Some(observed.read_ns),
         fault_seen: !observed.status.header.faults.is_empty(),
         ..quiet()
     }

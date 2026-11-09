@@ -12,6 +12,9 @@ use robstride::{
     Amps, CanTimeout, Damper, Drive, Mode, NewtonMeters, Param, ParamOutcome, ParamValue,
     RadPerSec, Uid, Volts, Write,
 };
+
+// Times here (`now_ns`, `read_ns`, `at_ns`) are nanoseconds on the runtime's monotonic epoch, the clock the bus layer
+// stamps its views with (can's `Epoch`); a bare `u64` like the bus layer's own, so they compare with its fields as is.
 use skeleton::{Joint, Power, Window};
 
 use crate::refusal::{CapKind, JointFact, Refusal, Unanswered};
@@ -138,13 +141,18 @@ impl Target {
     /// The checks for `joint`'s drive under `power`.
     ///
     /// # Errors
-    /// [`Refusal::Unwired`] for a joint with no bus, [`Refusal::CapUnset`] for a null cap, [`Refusal::FactUnset`] for a
-    /// null direction or zero, [`Refusal::CapOutOfRange`] for a cap its model can't take.
+    /// [`Refusal::Unwired`] for a joint with no bus, [`Refusal::UnvouchedModel`] for a model whose MIT scales aren't
+    /// settled, [`Refusal::CapUnset`] for a null cap, [`Refusal::FactUnset`] for a null direction, zero or hard limits,
+    /// [`Refusal::CapOutOfRange`] for a cap its model can't take.
     pub fn new(joint: &Joint, power: &Power) -> Result<Self, Refusal> {
         if joint.bus.is_none() {
             return Err(Refusal::Unwired);
         }
         let drive = Drive::new(joint.id, joint.actuator);
+        // Control can't command a model whose MIT frame isn't settled, so it isn't enabled (PLAN item 2).
+        if drive.model().mit_scales().is_err() {
+            return Err(Refusal::UnvouchedModel(drive.model()));
+        }
         let ranges = drive.model().ranges();
         let torque: NewtonMeters = joint
             .torque_cap_nm
@@ -160,6 +168,9 @@ impl Target {
         }
         if joint.zero_rad.is_none() {
             return Err(Refusal::FactUnset(JointFact::Zero));
+        }
+        if joint.hard_rad.is_none() {
+            return Err(Refusal::FactUnset(JointFact::HardLimits));
         }
         let out = |cap, value: f64, max: f64| Refusal::CapOutOfRange { cap, value, max };
         Ok(Self {
@@ -197,8 +208,10 @@ impl Target {
 /// so one preflight enables at most once. It proves the drive was right when it was made, and stays true only until an
 /// event voids it: a stop, a fault, silence, a drop out of Run, a bus lost, a reboot or runtime restart, or a write to
 /// the drive from anything else (an ordinary reply doesn't). Keeping it fresh is the runtime's duty, not a time limit
-/// here: it starts the enable sequence in the tick it gets the proof, drops the proof or cancels the sequence on any such
-/// event, and runs preflight again for every enable.
+/// here: it runs preflight for every named drive of the enable first, and starts their enable sequences in the tick the
+/// last proof comes (the bus refuses slow requests to a limb that isn't idle, so a drive enabled early would refuse its
+/// limb-mates' preflights); it drops every proof or cancels every sequence on any such event, and runs preflight again
+/// for every enable.
 #[derive(Debug, PartialEq, Eq)]
 pub struct PreflightPassed {
     drive: Drive,
@@ -275,13 +288,18 @@ impl Preflight {
     }
 
     /// The next step, given the drive's latest view and the time. A fault in the latest status or latched since the
-    /// last clear, or Run in the latest status since preflight began, refuses at once; so does a request with no
-    /// result within [`ANSWER_WITHIN_NS`].
+    /// last clear, or any mode but Reset in the latest status since preflight began, refuses at once; so does a request
+    /// with no result within [`ANSWER_WITHIN_NS`], and a view of another drive.
     pub fn poll(&mut self, view: &DriveView, now_ns: u64) -> Step {
-        if let State::Asking { .. } = self.state
-            && let Some(refusal) = self.status_refusal(view)
-        {
-            self.state = State::Refused(refusal);
+        if let State::Asking { .. } = self.state {
+            if view.device != self.target.drive.id() {
+                self.state = State::Refused(Refusal::WrongView {
+                    view: view.device,
+                    drive: self.target.drive.id(),
+                });
+            } else if let Some(refusal) = self.status_refusal(view) {
+                self.state = State::Refused(refusal);
+            }
         }
         match self.state {
             State::Asking { next, submitted_ns } => match (EXCHANGES.get(next), submitted_ns) {
@@ -322,11 +340,12 @@ impl Preflight {
         }
     }
 
-    /// The result of the request in flight. A result with none in flight is ignored.
-    pub fn answered(&mut self, outcome: SlowOutcome) {
+    /// The result of the request in flight, handed over at `now_ns`. A result with none in flight is ignored; one
+    /// handed over after [`ANSWER_WITHIN_NS`] refuses, as if none had come.
+    pub fn answered(&mut self, outcome: SlowOutcome, now_ns: u64) {
         let State::Asking {
             next,
-            submitted_ns: Some(_),
+            submitted_ns: Some(at),
         } = self.state
         else {
             return;
@@ -334,7 +353,15 @@ impl Preflight {
         let Some(&exchange) = EXCHANGES.get(next) else {
             return;
         };
-        self.state = match self.check(exchange, outcome) {
+        let checked = if now_ns.saturating_sub(at) > ANSWER_WITHIN_NS {
+            Err(Refusal::NoAnswer {
+                exchange,
+                how: Unanswered::TimedOut,
+            })
+        } else {
+            self.check(exchange, outcome)
+        };
+        self.state = match checked {
             Ok(()) => State::Asking {
                 next: next + 1,
                 submitted_ns: None,
@@ -365,7 +392,8 @@ impl Preflight {
     }
 
     /// A refusal from what the drive's statuses show: the latest one's fault bits first, so the operator sees them,
-    /// then a fault latched since the last clear, then Run.
+    /// then a fault latched since the last clear, then any mode but Reset (Run, or Calibration: something other than
+    /// this host's enable sequence put it there).
     fn status_refusal(&self, view: &DriveView) -> Option<Refusal> {
         let latest = view.observed.filter(|o| o.read_ns >= self.started_ns);
         if let Some(o) = latest
@@ -379,8 +407,9 @@ impl Preflight {
             return Some(Refusal::FaultSeen);
         }
         latest
-            .is_some_and(|o| o.status.header.mode == Mode::Run)
-            .then_some(Refusal::AlreadyRunning)
+            .map(|o| o.status.header.mode)
+            .filter(|mode| *mode != Mode::Reset)
+            .map(|mode| Refusal::NotReset { mode })
     }
 
     fn check(&self, exchange: Exchange, outcome: SlowOutcome) -> Result<(), Refusal> {
@@ -389,7 +418,7 @@ impl Preflight {
             (_, SlowOutcome::TimedOut) => Err(no_answer(Unanswered::TimedOut)),
             (_, SlowOutcome::NotSent(sent)) => Err(no_answer(Unanswered::NotSent(sent))),
             (_, SlowOutcome::Refused(refusal)) => Err(no_answer(Unanswered::Refused(refusal))),
-            (_, SlowOutcome::Read(ParamOutcome::Refused)) => {
+            (Exchange::Read(_), SlowOutcome::Read(ParamOutcome::Refused)) => {
                 Err(no_answer(Unanswered::ReadRefused))
             }
             (Exchange::Identity, SlowOutcome::Identity(read)) => match self.target.uid {

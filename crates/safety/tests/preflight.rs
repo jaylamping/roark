@@ -95,6 +95,8 @@ fn run(n: usize, drive: &Drive) -> (Result<(), Refusal>, Vec<(Param, ParamValue)
     let mut written = Vec::new();
     for _ in 0..32 {
         now += 4_000_000;
+        // The row's views are drive 101's; joint `n`'s drive may have another ID.
+        view.device = target.drive().id();
         let kind = match preflight.poll(&view, now) {
             Step::Submit(kind) => kind,
             Step::Passed(passed) => {
@@ -133,7 +135,7 @@ fn run(n: usize, drive: &Drive) -> (Result<(), Refusal>, Vec<(Param, ParamValue)
                 ..seen(status(mode, faults, now + 500_000))
             };
         }
-        preflight.answered(outcome);
+        preflight.answered(outcome, now);
     }
     unreachable_end()
 }
@@ -318,6 +320,16 @@ fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
             20.5,
             20.0,
         ),
+        // Below the range too: a negative cap is no cap a drive can be set to.
+        (
+            skeleton::Joint {
+                torque_cap_nm: NewtonMeters::new(-1.0),
+                ..rs03.clone()
+            },
+            CapKind::Torque,
+            -1.0,
+            60.0,
+        ),
     ] {
         assert_eq!(
             target(&joint),
@@ -336,8 +348,9 @@ fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
     );
 }
 
-/// Guards: safety - `host.preflight`: a joint whose direction or zero hasn't been verified on the hardware (null in the
-/// skeleton) is refused before anything is sent (tenets, fail closed; PLAN item 1, null is not permission).
+/// Guards: safety - `host.preflight`: a joint whose direction, zero or hard limits haven't been verified on the hardware
+/// (null in the skeleton), or whose drive model has no settled MIT scales, is refused before anything is sent (tenets,
+/// fail closed; PLAN item 1, null is not permission; item 2, the RS00's scales).
 #[test]
 fn a_null_direction_or_zero_refuses_before_anything_is_sent() {
     let skeleton = skeleton();
@@ -366,7 +379,27 @@ fn a_null_direction_or_zero_refuses_before_anything_is_sent() {
         target(&neither),
         Err(Refusal::FactUnset(JointFact::Direction))
     );
-    for fact in [JointFact::Direction, JointFact::Zero] {
+    let no_limits = skeleton::Joint {
+        hard_rad: None,
+        ..set.clone()
+    };
+    assert_eq!(
+        target(&no_limits),
+        Err(Refusal::FactUnset(JointFact::HardLimits))
+    );
+    let rs00 = skeleton::Joint {
+        actuator: robstride::Model::Rs00,
+        ..set.clone()
+    };
+    assert_eq!(
+        target(&rs00),
+        Err(Refusal::UnvouchedModel(robstride::Model::Rs00))
+    );
+    assert_eq!(
+        Refusal::UnvouchedModel(robstride::Model::Rs00).rule(),
+        RuleId::HostPreflight
+    );
+    for fact in [JointFact::Direction, JointFact::Zero, JointFact::HardLimits] {
         assert_eq!(Refusal::FactUnset(fact).rule(), RuleId::HostPreflight);
     }
     assert_eq!(
@@ -419,6 +452,15 @@ fn preflight_refuses_vbus_out_of_window_a_fault_and_a_running_drive() {
         };
         assert_eq!(verdict, expected, "{v} V");
     }
+    assert_eq!(
+        Refusal::Vbus {
+            read: Volts::new(21.995).unwrap(),
+            window
+        }
+        .message("arm_joint_one"),
+        "refused (host.preflight): arm_joint_one VBUS reads 21.995 V, expected 22 to 26 V",
+        "every digit read, so a value just outside never prints as the bound"
+    );
 
     let over: StatusFaults = [StatusFault::Overcurrent].into_iter().collect();
     let with = |status| Drive {
@@ -433,7 +475,13 @@ fn preflight_refuses_vbus_out_of_window_a_fault_and_a_running_drive() {
         ),
         (
             with(Some((Mode::Run, StatusFaults::default()))),
-            Err(Refusal::AlreadyRunning),
+            Err(Refusal::NotReset { mode: Mode::Run }),
+        ),
+        (
+            with(Some((Mode::Calibration, StatusFaults::default()))),
+            Err(Refusal::NotReset {
+                mode: Mode::Calibration,
+            }),
         ),
         (with(None), Err(Refusal::NoStatus)),
         (
@@ -480,7 +528,7 @@ fn preflight_refuses_vbus_out_of_window_a_fault_and_a_running_drive() {
     for refusal in [
         Refusal::Faults { bits: over },
         Refusal::FaultSeen,
-        Refusal::AlreadyRunning,
+        Refusal::NotReset { mode: Mode::Run },
         Refusal::NoStatus,
         Refusal::Vbus {
             read: Volts::new(1.0).unwrap(),
@@ -514,6 +562,14 @@ fn the_uid_must_match_once_commissioned() {
         }
         .rule(),
         RuleId::HostIdentity
+    );
+    assert_eq!(
+        Refusal::Uid {
+            read: other,
+            expected: UID
+        }
+        .message("arm_joint_one"),
+        "refused (host.identity): arm_joint_one UID reads 0x0909090909090909, expected 0x0123456789abcdef"
     );
 }
 
@@ -576,17 +632,25 @@ fn a_request_without_a_usable_answer_refuses_under_its_rule() {
         );
     }
     let read = Exchange::Read(Register::Vbus);
+    let cant_read = SlowOutcome::Read(ParamOutcome::Refused);
     assert_eq!(
-        run(
-            0,
-            &Drive::answering(read, SlowOutcome::Read(ParamOutcome::Refused))
-        )
-        .0,
+        run(0, &Drive::answering(read, cant_read)).0,
         Err(Refusal::NoAnswer {
             exchange: read,
             how: Unanswered::ReadRefused
         })
     );
+    // "Can't read it" answering a write or get-ID is an answer of the wrong kind.
+    for exchange in [Exchange::Identity, Exchange::Write(Register::LimitCur)] {
+        assert_eq!(
+            run(0, &Drive::answering(exchange, cant_read)).0,
+            Err(Refusal::NoAnswer {
+                exchange,
+                how: Unanswered::WrongAnswer
+            }),
+            "{exchange:?}"
+        );
+    }
 }
 
 /// Guards: safety - fail closed (safety.md section 3): a request with no result within its window refuses preflight,
@@ -604,6 +668,33 @@ fn a_request_with_no_result_in_time_refuses() {
         how: Unanswered::TimedOut,
     });
     assert_eq!(preflight.poll(&view, 2_001 + ANSWER_WITHIN_NS), refused);
-    preflight.answered(SlowOutcome::Identity(UID));
+    preflight.answered(SlowOutcome::Identity(UID), 2_002 + ANSWER_WITHIN_NS);
     assert_eq!(preflight.poll(&view, 2_002 + ANSWER_WITHIN_NS), refused);
+
+    // A result handed over late, with no poll in between, refuses all the same; one at exactly 1 s counts.
+    let mut late = Preflight::start(target, 1_000);
+    assert_eq!(late.poll(&view, 2_000), Step::Submit(SlowKind::GetId));
+    late.answered(SlowOutcome::Identity(UID), 2_001 + ANSWER_WITHIN_NS);
+    assert_eq!(late.poll(&view, 2_001 + ANSWER_WITHIN_NS), refused);
+    let mut on_time = Preflight::start(target, 1_000);
+    assert_eq!(on_time.poll(&view, 2_000), Step::Submit(SlowKind::GetId));
+    on_time.answered(SlowOutcome::Identity(UID), 2_000 + ANSWER_WITHIN_NS);
+    assert!(matches!(
+        on_time.poll(&view, 2_000 + ANSWER_WITHIN_NS),
+        Step::Submit(SlowKind::Write(_))
+    ));
+
+    // Another drive's view: a runtime bug, refused before anything is asked.
+    let mut crossed = Preflight::start(target, 1_000);
+    let other = can::DriveView {
+        device: common::id(102),
+        ..view
+    };
+    assert_eq!(
+        crossed.poll(&other, 2_000),
+        Step::Refused(Refusal::WrongView {
+            view: common::id(102),
+            drive: common::id(101),
+        })
+    );
 }

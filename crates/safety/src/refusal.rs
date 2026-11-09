@@ -2,7 +2,7 @@
 //! was measured, what was expected, and what to do.
 
 use can::{SlowRefusal, Unsent};
-use robstride::{CanTimeout, ParamValue, StatusFaults, Uid, Volts};
+use robstride::{CanTimeout, DeviceId, Mode, Model, ParamValue, StatusFaults, Uid, Volts};
 use skeleton::Window;
 
 use crate::preflight::{Exchange, Register};
@@ -38,6 +38,8 @@ pub enum JointFact {
     Direction,
     /// `zero_rad`, set after referencing (PLAN item 1, Zero convention).
     Zero,
+    /// `hard_rad`, the joint's hard limits inside its physical stops.
+    HardLimits,
 }
 
 impl JointFact {
@@ -47,6 +49,7 @@ impl JointFact {
         match self {
             Self::Direction => "direction",
             Self::Zero => "zero_rad",
+            Self::HardLimits => "hard_rad",
         }
     }
 }
@@ -87,6 +90,15 @@ pub enum Refusal {
     FactUnset(JointFact),
     /// The joint has no bus: it is offline and can't be enabled.
     Unwired,
+    /// The joint's drive model has no settled MIT scales, so control can't command it.
+    UnvouchedModel(Model),
+    /// Preflight was handed another drive's view: a runtime bug.
+    WrongView {
+        /// The view's drive.
+        view: DeviceId,
+        /// Preflight's drive.
+        drive: DeviceId,
+    },
     /// A request got no usable answer.
     NoAnswer {
         /// The request.
@@ -132,8 +144,12 @@ pub enum Refusal {
     /// A fault was seen since start or the limb's last clear, and the latest status shows none (fault bits clear only
     /// by power-cycling the drive, then a clear).
     FaultSeen,
-    /// The drive's latest status is in Run: something other than this host's enable sequence put it there.
-    AlreadyRunning,
+    /// The drive's latest status is in a mode other than Reset: Run or Calibration, put there by something other than
+    /// this host's enable sequence.
+    NotReset {
+        /// The mode it reports.
+        mode: Mode,
+    },
     /// No status came back during preflight, so its faults and mode are unknown.
     NoStatus,
 }
@@ -149,11 +165,13 @@ impl Refusal {
             Self::Uid { .. } => RuleId::HostIdentity,
             Self::NoAnswer { exchange, .. } => exchange.rule(),
             Self::Unwired
+            | Self::UnvouchedModel(_)
+            | Self::WrongView { .. }
             | Self::FactUnset(_)
             | Self::Vbus { .. }
             | Self::Faults { .. }
             | Self::FaultSeen
-            | Self::AlreadyRunning
+            | Self::NotReset { .. }
             | Self::NoStatus => RuleId::HostPreflight,
         }
     }
@@ -162,7 +180,10 @@ impl Refusal {
     #[must_use]
     pub fn message(&self, joint: &str) -> String {
         let what = match self {
-            Self::CapUnset(cap) => format!("{} is null in the skeleton", cap.field()),
+            Self::CapUnset(cap) => format!(
+                "{} is null in the skeleton, expected the agreed cap",
+                cap.field()
+            ),
             Self::CapOutOfRange { cap, value, max } => format!(
                 "{} is {value} in the skeleton, expected 0 to {max} for its drive",
                 cap.field()
@@ -173,11 +194,23 @@ impl Refusal {
                     fact.field()
                 )
             }
-            Self::Unwired => "has no bus in the skeleton".to_owned(),
+            Self::Unwired => "has no bus in the skeleton, expected its bus".to_owned(),
+            Self::UnvouchedModel(model) => {
+                format!(
+                    "is a {model:?}, whose MIT scales aren't settled, expected a model they are for"
+                )
+            }
+            Self::WrongView { view, drive } => format!(
+                "was checked against drive {}'s view, expected drive {}'s",
+                view.get(),
+                drive.get()
+            ),
             Self::NoAnswer { exchange, how } => {
                 format!("got no usable answer to {}: {how:?}", exchange.describe())
             }
-            Self::Uid { read, expected } => format!("UID reads {read:?}, expected {expected:?}"),
+            Self::Uid { read, expected } => {
+                format!("UID reads {}, expected {}", hex(*read), hex(*expected))
+            }
             Self::CanTimeout { read } => format!(
                 "canTimeout reads {}, expected {}",
                 read.ticks(),
@@ -195,15 +228,17 @@ impl Refusal {
             ),
             Self::DamperOff => "damper reads 1 (protection off), expected 0".to_owned(),
             Self::Vbus { read, window } => format!(
-                "VBUS reads {:.2} V, expected {:.2} to {:.2} V",
+                "VBUS reads {} V, expected {} to {} V",
                 read.get(),
                 window.lower.get(),
                 window.upper.get()
             ),
             Self::Faults { bits } => format!("reports faults {bits:?}, expected none"),
-            Self::FaultSeen => "had a fault since the last clear".to_owned(),
-            Self::AlreadyRunning => "is already in Run, expected Reset".to_owned(),
-            Self::NoStatus => "sent no status during preflight".to_owned(),
+            Self::FaultSeen => "had a fault since the last clear, expected none".to_owned(),
+            Self::NotReset { mode } => format!("is in {mode:?}, expected Reset"),
+            Self::NoStatus => {
+                "sent no status during preflight, expected one with its mode and faults".to_owned()
+            }
         };
         format!("refused ({}): {joint} {what}", self.rule())
     }
@@ -221,7 +256,14 @@ impl Refusal {
             Self::FactUnset(JointFact::Zero) => {
                 "Reference the joint with the hardware side and put zero_rad in the skeleton"
             }
+            Self::FactUnset(JointFact::HardLimits) => {
+                "Measure the joint's stops with the hardware side and put hard_rad in the skeleton"
+            }
             Self::Unwired => "Wire the joint and give it its bus in the skeleton",
+            Self::UnvouchedModel(_) => {
+                "Settle the model's MIT scales on the bench (PLAN item 2) before enabling it"
+            }
+            Self::WrongView { .. } => "A runtime bug: stop and report it with the log",
             Self::NoAnswer { how, .. } => how.remedy(),
             Self::NoStatus => "Check the drive's power and cable, then run preflight again",
             Self::Uid { .. } => {
@@ -237,8 +279,8 @@ impl Refusal {
             Self::Faults { .. } | Self::FaultSeen => {
                 "Find the fault's cause, power-cycle the drive, clear the limb, then run preflight again"
             }
-            Self::AlreadyRunning => {
-                "Find what enabled it; power-cycle the drive, then run preflight again"
+            Self::NotReset { .. } => {
+                "Find what put it in that mode; power-cycle the drive, clear the limb, then run preflight again"
             }
         }
     }
@@ -247,8 +289,12 @@ impl Refusal {
 impl Unanswered {
     const fn remedy(self) -> &'static str {
         match self {
-            Self::TimedOut | Self::ReadRefused | Self::WrongAnswer => {
-                "Check the drive's power and cable, then run preflight again"
+            Self::TimedOut => "Check the drive's power and cable, then run preflight again",
+            Self::ReadRefused => {
+                "The drive wouldn't read the register: check its firmware with the vendor tool, then run preflight again"
+            }
+            Self::WrongAnswer => {
+                "Another frame answered in its place: check for a second drive or tool on the bus, then run preflight again"
             }
             Self::NotSent(Unsent::Expired | Unsent::QueueFull) => {
                 "The bus was too busy to send it: run preflight again"
@@ -257,8 +303,11 @@ impl Unanswered {
                 "The bus failed: check the adapter and cable, then restart the runtime"
             }
             Self::Refused(refusal) => match refusal {
-                SlowRefusal::LimbStopped | SlowRefusal::LimbNotIdle => {
-                    "The limb is stopped or running: clear it, then run preflight again"
+                SlowRefusal::LimbStopped => {
+                    "The limb is stopped: find why, clear the limb, then run preflight again"
+                }
+                SlowRefusal::LimbNotIdle => {
+                    "A joint of the limb is enabled: disable the limb, then run every joint's preflight before enabling any"
                 }
                 SlowRefusal::CommandUnanswered => {
                     "A command to the drive was still waiting for its answer: run preflight again"
@@ -278,15 +327,26 @@ impl Unanswered {
     }
 }
 
+/// A UID as the skeleton writes it: `0x` and 16 hex digits, bytes in the order the reply carries them.
+fn hex(uid: Uid) -> String {
+    format!("0x{:016x}", u64::from_be_bytes(uid.0))
+}
+
 /// A cap's value with its unit.
 fn amount(value: ParamValue) -> String {
-    if let ParamValue::NewtonMeters(v) = value {
-        format!("{} N·m", v.get())
-    } else if let ParamValue::Amps(v) = value {
-        format!("{} A", v.get())
-    } else if let ParamValue::RadPerSec(v) = value {
-        format!("{} rad/s", v.get())
-    } else {
-        format!("{value:?}")
+    match value {
+        ParamValue::NewtonMeters(v) => format!("{} N·m", v.get()),
+        ParamValue::Amps(v) => format!("{} A", v.get()),
+        ParamValue::RadPerSec(v) => format!("{} rad/s", v.get()),
+        ParamValue::RunMode(_)
+        | ParamValue::ZeroSta(_)
+        | ParamValue::Damper(_)
+        | ParamValue::Switch(_)
+        | ParamValue::ReportInterval(_)
+        | ParamValue::CanTimeout(_)
+        | ParamValue::Volts(_)
+        | ParamValue::Radians(_)
+        | ParamValue::RadPerSecSq(_)
+        | ParamValue::Gain(_) => format!("{value:?}"),
     }
 }
