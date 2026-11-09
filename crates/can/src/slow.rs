@@ -13,7 +13,7 @@
 
 use robstride::{Frame, Param, ParamOutcome, Uid, Write, encode};
 
-use crate::tick::{BusTick, Reply};
+use crate::tick::{BusTick, Reply, batch_may_carry, echo_of};
 use crate::types::{LimbState, SendOutcome};
 
 /// Slow requests a bus holds at once, queued, in flight or with a result not yet taken.
@@ -89,6 +89,10 @@ pub enum SlowRefusal {
     /// A write built for another drive.
     #[error("the write is for another drive")]
     WrongTarget,
+    /// A write only control's batch sends (the enable sequence's `run_mode` = MIT): its echo would pass for the
+    /// sequence's own.
+    #[error("that write goes only in control's batch")]
+    BatchOnly,
     /// The drive's limb is stopping or stopped, or a drive of the limb shows what stops it at the next send.
     #[error("the drive's limb is stopping, stopped or due to stop")]
     LimbStopped,
@@ -361,10 +365,14 @@ impl BusTick {
             .copied()
             .flatten()
             .ok_or(SlowRefusal::NoSuchSlot)?;
-        if let SlowKind::Write(write) = request.kind
-            && write.target() != drive.device
-        {
-            return Err(SlowRefusal::WrongTarget);
+        if let SlowKind::Write(write) = request.kind {
+            if write.target() != drive.device {
+                return Err(SlowRefusal::WrongTarget);
+            }
+            if echo_of(&encode::param_write(&write)).is_some_and(|(kind, _)| batch_may_carry(kind))
+            {
+                return Err(SlowRefusal::BatchOnly);
+            }
         }
         if self.bus_error.is_some() {
             return Err(SlowRefusal::BusFailed);
@@ -385,8 +393,12 @@ impl BusTick {
             if limb.is_none_or(|l| l.state != LimbState::Idle) {
                 return Err(SlowRefusal::LimbNotIdle);
             }
-            // An idle limb's batch may still carry a Disable or the run_mode write.
-            if drive.outstanding.is_some_and(|o| o.reply == Reply::Waiting) {
+            // An idle limb's batch may still carry a Disable or the run_mode write. Only this tick's: an earlier one's
+            // reply is late or lost, and a lost one must not hold writes off for good.
+            if drive
+                .outstanding
+                .is_some_and(|o| o.tick == self.tick && o.reply == Reply::Waiting)
+            {
                 return Err(SlowRefusal::CommandUnanswered);
             }
         }
