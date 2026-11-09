@@ -2,7 +2,7 @@
 
     from sw_instance import launch
 
-    with launch() as inst:      # hidden, never takes focus
+    with launch() as inst:      # hidden; a launch can still take focus briefly (RULES.md)
         sw = inst.sw
         ...
 
@@ -72,7 +72,7 @@ def _clear_journal_prompt(pid):
     win32gui.EnumWindows(find, None)
     for h in tops:
         kids = []
-        win32gui.EnumChildWindows(h, lambda c, _: kids.append(c) or True, None)
+        win32gui.EnumChildWindows(h, lambda c, _: kids.append(c) or True, None)  # noqa: B023 - called before the loop moves on
         texts = {win32gui.GetWindowText(c): c for c in kids}
         if any("journal file could not be created" in s for s in texts) and "OK" in texts:
             win32gui.PostMessage(texts["OK"], win32con.BM_CLICK, 0, 0)
@@ -161,7 +161,7 @@ def _watch_hidden(pid):
             log(h, ev == 3)
             if ev == 3 and state["prev"] and win32gui.IsWindow(state["prev"]):
                 user.SwitchToThisWindow(state["prev"], True)
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 - an exception must never escape a Windows event hook
             pass
 
     proc = ctypes.WINFUNCTYPE(None, wt.HANDLE, wt.DWORD, wt.HWND, wt.LONG, wt.LONG, wt.DWORD, wt.DWORD)(event)
@@ -235,6 +235,7 @@ class Instance:
         self.sw = sw
         self.owned = owned
         self.no_auto_recover = False
+        self.started = _started(pid)  # Windows reuses pids: only ever stop the process with this start time
 
     def __enter__(self):
         return self
@@ -257,7 +258,7 @@ class Instance:
         for prog in ("SldWorks.Simulation", "CosmosWorks.CosmosWorks"):
             try:
                 add = self.sw.GetAddInObject(prog)
-            except Exception:
+            except Exception:  # noqa: BLE001 - any failure means try the next name, then LoadAddIn
                 add = None
             if add is not None:
                 break
@@ -275,30 +276,41 @@ class Instance:
         if not self.owned:
             raise RuntimeError("this session does not own that instance")
         if self.sw is not None:
-            if int(self.sw.GetProcessID) != self.pid:
-                raise RuntimeError("handle does not match this instance's PID")
-            self.sw.CloseAllDocuments(True)
-            self.sw.ExitApp()
-            self.sw = None
+            try:
+                if int(self.sw.GetProcessID) != self.pid:
+                    raise RuntimeError("handle does not match this instance's PID")
+                self.sw.CloseAllDocuments(True)
+                self.sw.ExitApp()
+            except pythoncom.com_error:
+                pass  # crashed or hung: the process cleanup below still runs
+            finally:
+                self.sw = None
         pythoncom.CoFreeUnusedLibraries()
-        try:
-            psutil.Process(self.pid).wait(timeout)
-        except psutil.TimeoutExpired:
-            # ExitApp can leave a half-closed process with no documents and no Simulation license.
-            psutil.Process(self.pid).kill()
-            psutil.Process(self.pid).wait(30)
-        except psutil.NoSuchProcess:
-            pass
+        if self.started is not None and _started(self.pid) == self.started:
+            try:
+                proc = psutil.Process(self.pid)
+                try:
+                    proc.wait(timeout)
+                except psutil.TimeoutExpired:
+                    # ExitApp can leave a half-closed process with no documents and no Simulation license.
+                    proc.kill()
+                    proc.wait(30)
+            except psutil.NoSuchProcess:
+                pass
         # ExitApp can start sldexitapp.exe, which opens a visible Error Report. Only this PID's own child.
         for p in psutil.process_iter(["name", "ppid"]):
             if p.info["ppid"] == self.pid and (p.info["name"] or "").lower() == "sldexitapp.exe":
-                p.kill()
+                try:
+                    p.kill()
+                except psutil.NoSuchProcess:
+                    pass
 
 
 def launch(timeout=300, visible=False):
     """Start a new SolidWorks process and return an Instance attached to it by PID.
 
-    Hidden by default, so it never pops up or takes focus. Pass visible=True only when someone needs to see it.
+    Hidden by default, so it never stays on screen; a launch can still take focus briefly (RULES.md, Hidden by
+    default). Pass visible=True only when someone needs to see it.
     """
     if not os.path.exists(EXE):
         raise RuntimeError(f"SolidWorks not found at {EXE}")
@@ -309,38 +321,47 @@ def launch(timeout=300, visible=False):
             si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             si.wShowWindow = win32con.SW_HIDE
         proc = subprocess.Popen([EXE], startupinfo=si)
-        pid = proc.pid
-        if not visible:
-            _start_hider(pid)
-        start = time.time()
-        disp = None
-        journal = False
-        while time.time() - start < timeout:
-            if proc.poll() is not None:
-                raise RuntimeError(f"SolidWorks exited during start, code {proc.returncode}")
-            journal = _clear_journal_prompt(pid) or journal
-            try:
-                disp = _attach_by_pid(pid)
-            except pythoncom.com_error:
-                disp = None
-            if disp is not None:
+        try:
+            return _finish_launch(proc, timeout, visible)
+        except BaseException:
+            proc.kill()  # never leave a hidden instance behind
+            raise
+
+
+def _finish_launch(proc, timeout, visible):
+    """Attach to the process launch() just started and wait for it to finish starting."""
+    pid = proc.pid
+    if not visible:
+        _start_hider(pid)
+    start = time.time()
+    disp = None
+    journal = False
+    while time.time() - start < timeout:
+        if proc.poll() is not None:
+            raise RuntimeError(f"SolidWorks exited during start, code {proc.returncode}")
+        journal = _clear_journal_prompt(pid) or journal
+        try:
+            disp = _attach_by_pid(pid)
+        except pythoncom.com_error:
+            disp = None
+        if disp is not None:
+            break
+        time.sleep(1)
+    if disp is None:
+        raise RuntimeError(f"SolidWorks PID {pid} never registered in the ROT")
+    sw = wc.dynamic.Dispatch(disp)
+    while time.time() - start < timeout:
+        if proc.poll() is not None:
+            raise RuntimeError(f"SolidWorks exited during start, code {proc.returncode}")
+        journal = _clear_journal_prompt(pid) or journal
+        try:
+            if sw.StartupProcessCompleted:
                 break
-            time.sleep(1)
-        if disp is None:
-            proc.kill()
-            raise RuntimeError(f"SolidWorks PID {pid} never registered in the ROT")
-        sw = wc.dynamic.Dispatch(disp)
-        while time.time() - start < timeout:
-            journal = _clear_journal_prompt(pid) or journal
-            try:
-                if sw.StartupProcessCompleted:
-                    break
-            except pythoncom.com_error:
-                pass
-            time.sleep(1)
-        else:
-            proc.kill()
-            raise RuntimeError(f"SolidWorks PID {pid} did not finish starting")
+        except pythoncom.com_error:
+            pass
+        time.sleep(1)
+    else:
+        raise RuntimeError(f"SolidWorks PID {pid} did not finish starting")
     got = int(sw.GetProcessID)
     if got != pid:
         raise RuntimeError(f"attached to PID {got}, expected {pid}")
@@ -365,16 +386,35 @@ def attach(pid):
     return Instance(pid, sw)
 
 
+def _session_pid(state):
+    """The PID in the state file if that exact process (same start time) is still SolidWorks, else None.
+
+    The file holds "pid start_time", because Windows reuses pids: a bare pid could name another session's instance.
+    """
+    try:
+        with open(state) as fh:
+            pid_text, started = fh.read().split()
+        pid = int(pid_text)
+        proc = psutil.Process(pid)
+        if proc.name().lower() == "sldworks.exe" and repr(proc.create_time()) == started:
+            return pid
+    except (OSError, ValueError, psutil.Error):
+        pass
+    return None
+
+
 def session(state_file, visible=False):
-    """Reuse this session's instance across script runs, keyed by a PID file the session owns."""
+    """Reuse this session's instance across script runs, keyed by a state file the session owns.
+
+    `visible` applies only when a new instance is launched; an existing one keeps how it was started.
+    """
     state = str(state_file)
-    if os.path.exists(state):
-        pid = int(open(state).read().strip())
-        if psutil.pid_exists(pid) and psutil.Process(pid).name().lower() == "sldworks.exe":
-            return attach(pid)
+    pid = _session_pid(state) if os.path.exists(state) else None
+    if pid is not None:
+        return attach(pid)
     inst = launch(visible=visible)
     with open(state, "w") as f:
-        f.write(str(inst.pid))
+        f.write(f"{inst.pid} {inst.started!r}")
     return inst
 
 
@@ -382,8 +422,8 @@ def end_session(state_file):
     """Close this session's instance if it is running. Never starts one."""
     state = str(state_file)
     if os.path.exists(state):
-        pid = int(open(state).read().strip())
-        if psutil.pid_exists(pid) and psutil.Process(pid).name().lower() == "sldworks.exe":
+        pid = _session_pid(state)
+        if pid is not None:
             attach(pid).close()
         os.remove(state)
 

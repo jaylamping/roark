@@ -18,7 +18,7 @@ with launch() as inst:          # new SLDWORKS.exe, hidden, attached by PID
 
 `inst.pid` is the session's PID. If `inst.no_auto_recover` is True, that instance has no Auto Recover.
 
-To reuse one instance across separate script runs, use `session(state_file)` with a PID file the session owns, and call `inst.close()` when finished.
+To reuse one instance across separate script runs, use `session(state_file)` with a state file the session owns, and call `end_session(state_file)` when finished. The file holds the PID and the process start time, because Windows reuses PIDs: a file whose process is gone, or whose PID now belongs to another process, is never attached to or closed. `visible` only applies when `session()` launches a new instance.
 
 ## Hidden by default
 
