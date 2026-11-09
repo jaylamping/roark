@@ -31,6 +31,26 @@ impl CapKind {
     }
 }
 
+/// A joint fact the skeleton holds only once it is verified on the hardware (PLAN item 1).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum JointFact {
+    /// `direction`, set after the sign check.
+    Direction,
+    /// `zero_rad`, set after referencing (PLAN item 1, Zero convention).
+    Zero,
+}
+
+impl JointFact {
+    /// The skeleton field.
+    #[must_use]
+    pub const fn field(self) -> &'static str {
+        match self {
+            Self::Direction => "direction",
+            Self::Zero => "zero_rad",
+        }
+    }
+}
+
 /// How a request went unanswered.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Unanswered {
@@ -62,6 +82,9 @@ pub enum Refusal {
         /// The model's highest.
         max: f64,
     },
+    /// The skeleton has no verified value for this fact: unverified is null, and null refuses enable (tenets, fail
+    /// closed).
+    FactUnset(JointFact),
     /// The joint has no bus: it is offline and can't be enabled.
     Unwired,
     /// A request got no usable answer.
@@ -126,6 +149,7 @@ impl Refusal {
             Self::Uid { .. } => RuleId::HostIdentity,
             Self::NoAnswer { exchange, .. } => exchange.rule(),
             Self::Unwired
+            | Self::FactUnset(_)
             | Self::Vbus { .. }
             | Self::Faults { .. }
             | Self::FaultSeen
@@ -143,6 +167,12 @@ impl Refusal {
                 "{} is {value} in the skeleton, expected 0 to {max} for its drive",
                 cap.field()
             ),
+            Self::FactUnset(fact) => {
+                format!(
+                    "{} is null in the skeleton, expected a verified value",
+                    fact.field()
+                )
+            }
             Self::Unwired => "has no bus in the skeleton".to_owned(),
             Self::NoAnswer { exchange, how } => {
                 format!("got no usable answer to {}: {how:?}", exchange.describe())
@@ -184,6 +214,12 @@ impl Refusal {
         match self {
             Self::CapUnset(_) | Self::CapOutOfRange { .. } => {
                 "Agree the cap with the hardware side and put it in the skeleton"
+            }
+            Self::FactUnset(JointFact::Direction) => {
+                "Run the sign check with the hardware side and put the direction in the skeleton"
+            }
+            Self::FactUnset(JointFact::Zero) => {
+                "Reference the joint with the hardware side and put zero_rad in the skeleton"
             }
             Self::Unwired => "Wire the joint and give it its bus in the skeleton",
             Self::NoAnswer { how, .. } => how.remedy(),

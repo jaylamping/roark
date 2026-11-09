@@ -14,7 +14,7 @@ use robstride::{
 };
 use skeleton::{Joint, Power, Window};
 
-use crate::refusal::{CapKind, Refusal, Unanswered};
+use crate::refusal::{CapKind, JointFact, Refusal, Unanswered};
 use crate::rule::RuleId;
 
 /// How long preflight waits for one request's result before refusing. A bus serves one slow request a tick, so at
@@ -138,8 +138,8 @@ impl Target {
     /// The checks for `joint`'s drive under `power`.
     ///
     /// # Errors
-    /// [`Refusal::Unwired`] for a joint with no bus, [`Refusal::CapUnset`] for a null cap, [`Refusal::CapOutOfRange`]
-    /// for one its model can't take.
+    /// [`Refusal::Unwired`] for a joint with no bus, [`Refusal::CapUnset`] for a null cap, [`Refusal::FactUnset`] for a
+    /// null direction or zero, [`Refusal::CapOutOfRange`] for a cap its model can't take.
     pub fn new(joint: &Joint, power: &Power) -> Result<Self, Refusal> {
         if joint.bus.is_none() {
             return Err(Refusal::Unwired);
@@ -155,6 +155,12 @@ impl Target {
         let speed: RadPerSec = joint
             .speed_cap_rad_s
             .ok_or(Refusal::CapUnset(CapKind::Speed))?;
+        if joint.direction.is_none() {
+            return Err(Refusal::FactUnset(JointFact::Direction));
+        }
+        if joint.zero_rad.is_none() {
+            return Err(Refusal::FactUnset(JointFact::Zero));
+        }
         let out = |cap, value: f64, max: f64| Refusal::CapOutOfRange { cap, value, max };
         Ok(Self {
             drive,

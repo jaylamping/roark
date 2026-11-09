@@ -12,7 +12,8 @@ pub enum RuleId {
     DriveCaps,
     /// The damper reads 0, protection on.
     DriveDamper,
-    /// Preflight's own checks: VBUS inside the skeleton's window, no fault bits, the drive not already running.
+    /// Preflight's own checks: VBUS inside the skeleton's window, no fault bits, the drive not already running, the
+    /// joint's direction and zero set.
     HostPreflight,
     /// The drive's UID matches the skeleton's, once commissioned.
     HostIdentity,

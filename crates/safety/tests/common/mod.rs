@@ -8,8 +8,8 @@ use robstride::{
 };
 use skeleton::{Joint, Skeleton};
 
-/// One arm on one bus. `arm_joint_one` is fully set; `arm_joint_two` leaves its torque cap null; `arm_joint_three` has
-/// no bus yet; `arm_joint_four` has every cap and no UID.
+/// One arm on one bus. `arm_joint_one` is fully set (direction and zero too); `arm_joint_two` leaves its torque cap null; `arm_joint_three` has
+/// no bus yet; `arm_joint_four` has every cap, a direction and a zero, and no UID.
 pub(crate) const FIXTURE: &str = "\
 schema: 1
 name: test_robot
@@ -30,8 +30,8 @@ limbs:
         bus: bus0
         id: 101
         uid: \"0x0123456789abcdef\"
-        direction: null
-        zero_rad: null
+        direction: -1
+        zero_rad: 2.0
         reference_pose: null
         hard_rad: [-0.5, 1.5]
         soft_rad: null
@@ -69,8 +69,8 @@ limbs:
         bus: bus0
         id: 104
         uid: null
-        direction: null
-        zero_rad: null
+        direction: 1
+        zero_rad: 0.0
         reference_pose: null
         hard_rad: null
         soft_rad: null

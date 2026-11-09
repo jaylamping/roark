@@ -14,8 +14,8 @@ control thread runs it; the bus layer (`can`) does the pre-send veto, and this c
   clear, no status at all, or a request with no result within `ANSWER_WITHIN_NS` (1 s) refuses. Only a pass makes a
   `PreflightPassed`, which proves the drive was right then; the runtime enables from it at once and runs preflight
   again for every enable. Each `Refusal` names its rule, the measured and the expected value, and what the operator does
-  about it (safety.md section 5). A null cap, a cap the drive's model can't take, or an unwired joint refuses before
-  anything is sent.
+  about it (safety.md section 5). A null cap, a cap the drive's model can't take, a null `direction` or `zero_rad`, or an
+  unwired joint refuses before anything is sent.
 - **The enable sequence** (`Enabling`): takes a `PreflightPassed` by value, so an enable without a preflight doesn't
   compile and one preflight enables once. Reporting off, its echo plus one tick, Enable, Run within 50 ms, then
   `run_mode` = MIT and its echo within 50 ms, one frame per tick in control's batch; each reply counts only if it was

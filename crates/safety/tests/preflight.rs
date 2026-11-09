@@ -11,8 +11,8 @@ use robstride::{
     StatusFault, StatusFaults, Uid, Volts,
 };
 use safety::{
-    ANSWER_WITHIN_NS, CapKind, Exchange, Preflight, Refusal, Register, RuleId, Step, Target,
-    Unanswered,
+    ANSWER_WITHIN_NS, CapKind, Exchange, JointFact, Preflight, Refusal, Register, RuleId, Step,
+    Target, Unanswered,
 };
 
 /// The fixture's UID for `arm_joint_one`.
@@ -333,6 +333,45 @@ fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
         }
         .message("arm_joint_one"),
         "refused (drive.caps): arm_joint_one torque_cap_nm is 60.5 in the skeleton, expected 0 to 60 for its drive"
+    );
+}
+
+/// Guards: safety - `host.preflight`: a joint whose direction or zero hasn't been verified on the hardware (null in the
+/// skeleton) is refused before anything is sent (tenets, fail closed; PLAN item 1, null is not permission).
+#[test]
+fn a_null_direction_or_zero_refuses_before_anything_is_sent() {
+    let skeleton = skeleton();
+    let set = joint(&skeleton, 0);
+    let target = |joint: &skeleton::Joint| Target::new(joint, &skeleton.power).map(|_| ());
+    assert_eq!(target(&set), Ok(()));
+    let no_direction = skeleton::Joint {
+        direction: None,
+        ..set.clone()
+    };
+    let no_zero = skeleton::Joint {
+        zero_rad: None,
+        ..set.clone()
+    };
+    let neither = skeleton::Joint {
+        direction: None,
+        zero_rad: None,
+        ..set.clone()
+    };
+    assert_eq!(
+        target(&no_direction),
+        Err(Refusal::FactUnset(JointFact::Direction))
+    );
+    assert_eq!(target(&no_zero), Err(Refusal::FactUnset(JointFact::Zero)));
+    assert_eq!(
+        target(&neither),
+        Err(Refusal::FactUnset(JointFact::Direction))
+    );
+    for fact in [JointFact::Direction, JointFact::Zero] {
+        assert_eq!(Refusal::FactUnset(fact).rule(), RuleId::HostPreflight);
+    }
+    assert_eq!(
+        Refusal::FactUnset(JointFact::Zero).message("arm_joint_one"),
+        "refused (host.preflight): arm_joint_one zero_rad is null in the skeleton, expected a verified value"
     );
 }
 
