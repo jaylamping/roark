@@ -54,8 +54,19 @@ struct DriveState {
     stop: StopOutcome,
     /// When this stop's Disable was confirmed.
     confirmed_ns: Option<u64>,
-    /// Whether this stop's reporting-off was taken by the socket.
-    reporting_off_sent: bool,
+    /// This stop's reporting off.
+    off: Off,
+}
+
+/// Where a stop's reporting off to one drive is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Off {
+    /// Not planned yet.
+    Untried,
+    /// Planned, not yet taken by the socket.
+    Tried,
+    /// Taken by the socket.
+    Sent,
 }
 
 /// One bus's drives and the tick logic over them.
@@ -66,6 +77,8 @@ pub struct BusTick {
     state: BusState,
     stop: Option<StopReason>,
     pending_stop: Option<StopReason>,
+    /// The last drain read past its limit or left frames queued: what it said can't be known in time.
+    backlog: bool,
     bus_error: Option<BusError>,
     error_passive: bool,
     /// Reads may predate this tick's sends: the last drain left frames queued, and none since has emptied the socket.
@@ -105,7 +118,7 @@ impl BusTick {
                 fault_seen: false,
                 stop: StopOutcome::None,
                 confirmed_ns: None,
-                reporting_off_sent: false,
+                off: Off::Untried,
             });
         }
         Ok(Self {
@@ -114,6 +127,7 @@ impl BusTick {
             state: BusState::Idle,
             stop: None,
             pending_stop: None,
+            backlog: false,
             bus_error: None,
             error_passive: false,
             unordered: false,
@@ -137,8 +151,9 @@ impl BusTick {
     }
 
     /// How this tick's drain ended: call it after the drain (its frames already fed to [`Self::on_frame`]), before
-    /// [`Self::begin`]. A backlog stops an active or stopping bus at this tick's start. Reads stay unordered from a
-    /// drain that left frames queued until a drain empties the socket.
+    /// [`Self::begin`]. A backlog stops an active bus at this tick's start; an idle bus sends only its batch's Disables
+    /// and reporting off that tick (see [`Self::begin`]). Reads stay unordered from a drain that left frames queued
+    /// until a drain empties the socket.
     ///
     /// The frames of the drain itself are ordered unless an earlier drain left the socket unemptied: the socket is a
     /// queue, and the last drain emptied it before the last tick's sends, so whatever this drain reads came after them.
@@ -147,23 +162,21 @@ impl BusTick {
         match drain {
             Drain::Emptied => self.unordered = false,
             Drain::Backlog => {
-                self.pending_stop.get_or_insert(StopReason::Backlog);
+                self.backlog = true;
                 self.unordered = false;
             }
             Drain::Unemptied => {
-                self.pending_stop.get_or_insert(StopReason::Backlog);
+                self.backlog = true;
                 self.unordered = true;
             }
         }
     }
 
-    /// The socket failed with `error` (interface down or gone): latch stopped. There is no bus to send a stop on; the
-    /// drives time out on their own (`canTimeout`). An error that doesn't latch ([`BusError::latches`]) changes nothing
-    /// here: it isn't a lost bus.
+    /// The socket failed with `error`: latch stopped, whatever the error, since a socket that can't send can't stop the
+    /// drives either (fail closed, safety.md section 2). There is no bus to send a stop on; the drives time out on
+    /// their own (`canTimeout`). Error frames come through [`Self::on_frame`] instead, where only bus-off latches.
     pub fn lost_bus(&mut self, error: BusError) {
-        if error.latches() {
-            self.latch(error);
-        }
+        self.latch(error);
     }
 
     /// The socket's overflow counter, the last value the shell saw (`SO_RXQ_OVFL` comes only on frames queued after a
@@ -182,9 +195,11 @@ impl BusTick {
     /// Each send says whether it expires ([`Send::expires`]): a command goes out only inside the send window, while a
     /// Disable or active reporting off goes out late too, whoever planned it, since late it is still the right frame.
     ///
-    /// A wake past the send window is a missed deadline, counted in every state. It stops an active bus; an idle bus
-    /// (nothing enabled since start) has nothing to stop, so it sends nothing that tick and carries on (PLAN.md item 3
-    /// stops a late wake for its limbs' sake).
+    /// A stop asked for before the tick is taken first, so it keeps its reason. A backlog in the drain, then a wake past
+    /// the send window (a missed deadline, counted in every state), stops an active bus. An idle bus (nothing enabled
+    /// since start) has nothing to stop: that tick it sends only its batch's Disables and reporting off, which are
+    /// right late or not, and holds back the rest (`held_batches`), so nothing is enabled on a tick whose reads can't
+    /// be trusted (PLAN.md item 3 stops a late wake for its limbs' sake).
     pub fn begin(
         &mut self,
         tick: u64,
@@ -198,24 +213,20 @@ impl BusTick {
         for d in self.drives.iter_mut().flatten() {
             d.answered = false;
         }
-        // A stop asked for before this tick began came first, so it keeps its reason over a late wake.
+        // A stop asked for before this tick began came first, so it keeps its reason over a backlog or a late wake.
         if let Some(reason) = self.pending_stop.take() {
-            // A backlog on an idle bus stops nothing: no drive is enabled. Its reads stay unordered all the same.
-            if reason != StopReason::Backlog || self.state != BusState::Idle {
-                self.begin_stop(reason, now_ns);
-            }
+            self.begin_stop(reason, now_ns);
         }
-        if now_ns > scheduled_ns.saturating_add(self.timing.send_window_ns) {
+        let backlog = std::mem::take(&mut self.backlog);
+        let late = now_ns > scheduled_ns.saturating_add(self.timing.send_window_ns);
+        if late {
             self.counters.missed_deadlines += 1;
-            match self.state {
-                BusState::Active => self.begin_stop(StopReason::LateWake, now_ns),
-                BusState::Idle => {
-                    if batch.is_some() {
-                        self.counters.stale_ticks += 1;
-                    }
-                    return self.sends;
-                }
-                BusState::Stopping { .. } | BusState::Stopped => {}
+        }
+        if self.state == BusState::Active {
+            if backlog {
+                self.begin_stop(StopReason::Backlog, now_ns);
+            } else if late {
+                self.begin_stop(StopReason::LateWake, now_ns);
             }
         }
         match self.state {
@@ -225,12 +236,15 @@ impl BusTick {
                 }
                 self.plan_stop(now_ns);
             }
-            BusState::Idle | BusState::Active => self.plan_batch(tick, now_ns, batch),
+            BusState::Idle | BusState::Active => {
+                self.plan_batch(tick, now_ns, batch, backlog || late);
+            }
         }
         self.sends
     }
 
-    fn plan_batch(&mut self, tick: u64, now_ns: u64, batch: Option<&CommandBatch>) {
+    /// Check control's batch and plan it. With `hold`, only its Disables and reporting off are planned.
+    fn plan_batch(&mut self, tick: u64, now_ns: u64, batch: Option<&CommandBatch>, hold: bool) {
         let fresh = batch.filter(|b| b.tick == tick && b.expires_ns > now_ns);
         let Some(batch) = fresh else {
             if batch.is_some() {
@@ -268,12 +282,17 @@ impl BusTick {
                 return;
             }
         }
+        let mut held_back = false;
         for (slot, frame) in batch.frames().iter().enumerate() {
             if let Some(frame) = frame {
                 let late_ok = matches!(
                     echo_of(frame),
                     Some((EchoKind::Disable | EchoKind::Reporting(Reporting::Off), _))
                 );
+                if hold && !late_ok {
+                    held_back = true;
+                    continue;
+                }
                 self.sends.push(Send {
                     slot,
                     kind: SendKind::Command,
@@ -281,6 +300,9 @@ impl BusTick {
                     expires: !late_ok,
                 });
             }
+        }
+        if held_back {
+            self.counters.held_batches += 1;
         }
     }
 
@@ -316,12 +338,14 @@ impl BusTick {
                 });
             }
         }
-        for (slot, d) in self.drives.iter().enumerate() {
+        let silence = self.timing.disable_silence_ns;
+        for (slot, d) in self.drives.iter_mut().enumerate() {
             if let Some(d) = d
-                && !d.reporting_off_sent
+                && d.off != Off::Sent
                 && d.confirmed_ns
-                    .is_some_and(|at| now_ns >= at.saturating_add(self.timing.disable_silence_ns))
+                    .is_some_and(|at| now_ns >= at.saturating_add(silence))
             {
+                d.off = Off::Tried;
                 self.sends.push(Send {
                     slot,
                     kind: SendKind::ReportingOff,
@@ -334,24 +358,25 @@ impl BusTick {
 
     /// Whether a stop that began at `since_ns` is over at `now_ns`. Disables go out for the confirm window; a drive
     /// confirmed in it (or by a Reset read just after it) still gets its reporting off once its silence is over, so
-    /// the stop runs on past the window while one waits, at most until the window, the silence and a period have
-    /// passed: a drive confirmed at the window's end is then a tick past its silence.
+    /// the stop runs on past the window while one waits. Each confirmed drive waits until its reporting off has been
+    /// planned at least once and a period has passed since it fell due, so a drive confirmed at the window's end still
+    /// gets it, and a reporting off the queue keeps refusing ends the stop a period later.
     fn stop_over(&self, since_ns: u64, now_ns: u64) -> bool {
-        let elapsed = now_ns.saturating_sub(since_ns);
-        if elapsed < self.timing.stop_confirm_ns {
+        if now_ns.saturating_sub(since_ns) < self.timing.stop_confirm_ns {
             return false;
         }
-        let waiting = self
-            .drives
-            .iter()
-            .flatten()
-            .any(|d| d.confirmed_ns.is_some() && !d.reporting_off_sent);
-        let cap = self
+        let last_chance = self
             .timing
-            .stop_confirm_ns
-            .saturating_add(self.timing.disable_silence_ns)
+            .disable_silence_ns
             .saturating_add(self.timing.period_ns);
-        !waiting || elapsed >= cap
+        let waiting = self.drives.iter().flatten().any(|d| {
+            d.confirmed_ns.is_some_and(|at| match d.off {
+                Off::Untried => true,
+                Off::Tried => now_ns < at.saturating_add(last_chance),
+                Off::Sent => false,
+            })
+        });
+        !waiting
     }
 
     fn begin_stop(&mut self, reason: StopReason, now_ns: u64) {
@@ -363,7 +388,7 @@ impl BusTick {
         for d in self.drives.iter_mut().flatten() {
             d.stop = StopOutcome::NeverSent;
             d.confirmed_ns = None;
-            d.reporting_off_sent = false;
+            d.off = Off::Untried;
         }
     }
 
@@ -413,7 +438,7 @@ impl BusTick {
         };
         match send.kind {
             SendKind::Disable if d.stop == StopOutcome::NeverSent => d.stop = StopOutcome::Sent,
-            SendKind::ReportingOff => d.reporting_off_sent = true,
+            SendKind::ReportingOff => d.off = Off::Sent,
             SendKind::Disable | SendKind::Command => {}
         }
         if expects_status {
@@ -568,7 +593,7 @@ impl BusTick {
                 .drives
                 .iter()
                 .flatten()
-                .all(|d| d.stop == StopOutcome::Confirmed && d.reporting_off_sent);
+                .all(|d| d.stop == StopOutcome::Confirmed && d.off == Off::Sent);
             if all_done || self.stop_over(since_ns, now_ns) {
                 self.state = BusState::Stopped;
             }
@@ -593,7 +618,7 @@ impl BusTick {
                         answered: d.answered,
                         fault_seen: d.fault_seen,
                         stop: d.stop,
-                        reporting_off_sent: d.reporting_off_sent,
+                        reporting_off_sent: d.off == Off::Sent,
                     },
                 );
             }

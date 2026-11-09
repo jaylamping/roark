@@ -8,7 +8,7 @@ delivers, and publishes what each drive last said and how fresh it is (PLAN item
 Each tick, on the monotonic clock (the steps the bus thread's shell runs around `BusTick`):
 
 1. **Wake** at the tick's scheduled start (`clock_nanosleep`, absolute). Waking later than the send window is a missed
-   deadline and stops the bus.
+   deadline: it stops an active bus, and an idle bus sends only its batch's Disables and reporting off that tick.
 2. **Drain** the socket to empty, so what is read after the send came after the backlog. It is not a strict barrier:
    a frame landing between the drain and the write counts as after it, which is still evidence of the drive then.
 3. **Plan** with `BusTick::begin`: the newest `CommandBatch` from control, only if it is for this tick and unexpired.
@@ -29,14 +29,19 @@ updates what the drive was seen saying, and any status, report, version reply or
 latches `fault_seen`. Missing replies to Enable and Disable aren't counted as unanswered: the drive may take 10 ms to
 reach Run, and goes silent after a Disable (PLAN item 2 Silence windows).
 
+A drain that reads past its limit or leaves frames queued is a backlog: what it said can't be known in time, so it
+stops an active bus, and an idle bus sends only its batch's Disables and reporting off that tick, as for a late wake
+(`held_batches`).
+
 A stop (requested, control silent, a late wake, expired feedback, a bad batch, or a backlog) sends Disable to every
 drive, re-sends it each tick to every drive that hasn't confirmed, and sends active reporting off to each confirmed
 drive once its post-Disable silence is over (50 ms after its confirmation), again each tick until the socket takes it.
 A drive confirms with a Reset-mode status read after the stop's Disable; one that never confirms is still getting a
-Disable every tick, so it gets no reporting off. The bus is `Stopped` once every drive has confirmed and taken its
-reporting off, or after 100 ms.
+Disable every tick, so it gets no reporting off. Disables go out for 100 ms; the bus is `Stopped` once every drive
+has confirmed and taken its reporting off, or once the 100 ms have passed and no confirmed drive still waits for its
+reporting off. A drive waits until its reporting off has been tried and a period has passed since it fell due.
 
-A latched bus error (bus-off, interface down or gone) sends nothing: there is no bus to send on, so the bus is
+A latched bus error (bus-off in an error frame, or any socket failure) sends nothing: there is no bus to send on, so the bus is
 `Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's
 `bus_error`, even if a stop was already under way; `healthy` is false while there is one or the controller is
 error-passive.

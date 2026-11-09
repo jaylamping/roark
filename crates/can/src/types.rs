@@ -11,13 +11,9 @@ pub const MAX_DRIVES: usize = 8;
 /// or a reporting off, never both); twice that is headroom, and a tick that plans past it is a bug in this crate.
 pub const MAX_SENDS: usize = 2 * MAX_DRIVES;
 
-/// The drives' own command timeout, the `canTimeout` the host writes ([`CanTimeout::RUNTIME`], in 50 µs steps): three
-/// periods of feedback must fit inside it (PLAN.md item 3 Timing).
-#[expect(
-    clippy::as_conversions,
-    reason = "u32 to u64 widens losslessly, and u64::from isn't const"
-)]
-pub const DRIVE_TIMEOUT_NS: u64 = CanTimeout::RUNTIME.ticks() as u64 * 50_000;
+/// The drives' own command timeout, the `canTimeout` the host writes ([`CanTimeout::RUNTIME`]): three periods of
+/// feedback must fit inside it (PLAN.md item 3 Timing).
+pub const DRIVE_TIMEOUT_NS: u64 = CanTimeout::RUNTIME.nanos();
 
 /// The tick's timing, in nanoseconds on the monotonic clock (`u64`, not `Duration`: the bus tick's exception,
 /// units-and-frames.md section 5). [`BusTick::new`](crate::BusTick::new) refuses timing that
@@ -26,16 +22,16 @@ pub const DRIVE_TIMEOUT_NS: u64 = CanTimeout::RUNTIME.ticks() as u64 * 50_000;
 pub struct Timing {
     /// One tick.
     pub period_ns: u64,
-    /// How late after its scheduled start a tick may still send a command. Waking later is a missed deadline and a
-    /// stop. A quarter period by default: provisional, to be tuned on the real adapter (PLAN step 8).
+    /// How late after its scheduled start a tick may still send a command. Waking later is a missed deadline: it stops an
+    /// active bus, and an idle one sends only its batch's Disables and reporting off that tick. A quarter period by default: provisional, to be tuned on the real adapter (PLAN step 8).
     pub send_window_ns: u64,
     /// When the tick stops collecting replies, from its scheduled start (about 60 % of the period, PLAN.md item 3).
     pub collect_ns: u64,
     /// The oldest a drive's last fresh status may be when motion is sent to it (three periods: 12 ms at 250 Hz, PLAN.md
     /// item 6 Silence row).
     pub feedback_limit_ns: u64,
-    /// How long a stop waits for each drive's Disable to be confirmed and its reporting-off sent before it records the
-    /// rest as unconfirmed (100 ms, PLAN.md item 2 Silence windows).
+    /// How long a stop sends Disables for each drive's Disable to be confirmed (100 ms, PLAN.md item 2 Silence windows);
+    /// drives unconfirmed by then stay so. A drive confirmed in it still gets its reporting off after its silence.
     pub stop_confirm_ns: u64,
     /// How long a drive drops frames after a Disable; its reporting-off waits this long after its confirmation, and a
     /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
@@ -201,10 +197,10 @@ impl CommandBatch {
 pub enum Drain {
     /// It emptied the socket: what is read from here on came after the backlog.
     Emptied,
-    /// It emptied the socket but read more frames than the shell may before a send: the bus stops, since what it said
-    /// can't be known in time.
+    /// It emptied the socket but read more frames than the shell may before a send: what it said can't be known in time,
+    /// so an active bus stops and an idle one sends only its batch's Disables and reporting off that tick.
     Backlog,
-    /// It gave up with frames still queued: the bus stops, and until a drain empties the socket its statuses may
+    /// It gave up with frames still queued: as for `Backlog`, and until a drain empties the socket its statuses may
     /// predate the sends. They still show each drive's mode and faults, but answer nothing and confirm nothing.
     Unemptied,
 }
@@ -414,6 +410,9 @@ pub struct Counters {
     pub stale_ticks: u64,
     /// Batches refused while stopping or stopped.
     pub refused_batches: u64,
+    /// Batches an idle bus sent only the Disables and reporting off of, holding back the rest, for a backlog or a late
+    /// wake that tick.
+    pub held_batches: u64,
     /// Ticks the thread woke for after their send window.
     pub missed_deadlines: u64,
     /// The socket's overflow counter (`SO_RXQ_OVFL`), the last value seen.
