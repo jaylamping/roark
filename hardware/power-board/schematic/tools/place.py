@@ -47,6 +47,17 @@ if WIDE:
     BLK.update(soft=(-48.0,-11.0,311.0,328.4),latch=domains.LATCH,bankctl=(-30.5,-17.8,268.0,310.5),lv=(-48.0,48.0,YB+11.0,200.5))
     put('lv','U17 C30 R47 D18 TP9 R44 R45 C37 D6 D13')
     put('lv','U25 R128 R129 R130 R131 Q21 C80 C81 D41 R67'); put('lv',PF)
+# Port blocks taller (2026-11-09): each port's low-power column (shunt, controller, meter, caps) gets PORTGROW mm more
+# height, so the meter sits PORTGROW further from its controller and the controller's V_L pin can reach it; the column
+# stack moves down into the empty band under the ports (L5/L6 end at Y 201 - 3*PORTGROW). The port FETs, their gate
+# zeners' neighbours D(d0+2), the V_L necks and the pigtails keep their old places on the heatsink (OLDBLK); the gate
+# zener D(d0+1) moves with the column.
+PORTGROW=float(os.environ.get('PORTGROW','1.5'))
+OLDBLK={k:BLK[k] for k in ('L1','L2','L3','L4','L5','L6')}
+for k in ('L1','L2','L3','L4','L5','L6'):
+    X0,X1,Y0,Y1=BLK[k]; n=(int(k[1])-1)//2   # 0 for L1/L2, 1 for L3/L4, 2 for L5/L6
+    BLK[k]=(X0,X1,Y0-(n+1)*PORTGROW,Y1-n*PORTGROW)
+if WIDE: BLK['lv']=(BLK['lv'][0],BLK['lv'][1],BLK['lv'][2],min(BLK['lv'][3],201.0-3*PORTGROW-0.5))
 RES={}; PFIX={}
 ZROT=int(os.environ.get('ZROT','270'))   # the port zener's turn: V_L pad toward the pin row's via line, G_L pad toward the gate
 PORT={1:('RS2','U11','C21','U19','Q15',68,50,23),2:('RS3','U12','C22','U20','Q16',78,55,26),3:('RS4','U13','C23','U21','Q17',88,60,29),
@@ -54,24 +65,24 @@ PORT={1:('RS2','U11','C21','U19','Q15',68,50,23),2:('RS3','U12','C22','U20','Q16
 # block -> reserved rects (X0,X1,Y0,Y1), kept free of parts (via fields, pour necks)
 for k,(rs,ina,cd,u,q,r0,c0,d0) in PORT.items():
     put(f'L{k}',' '.join([cd,u]+[f'R{r0+i}' for i in range(10)]+[f'C{c0+i}' for i in range(5)]+[f'D{d0+i}' for i in range(2)]))
-    s=1 if k%2 else -1; X0,X1,Y0,Y1=BLK[f'L{k}']
+    s=1 if k%2 else -1; X0,X1,Y0,Y1=BLK[f'L{k}']; _,_,OY0,OY1=OLDBLK[f'L{k}']   # OY: the FET-side places stay put
     # right ports as drawn; left ports are the same row turned 180 degrees about the block centre, so the FET's gate pin
     # stays on the inner side and the source pins face the pigtail (a mirror image isn't possible single-sided)
     if s>0:
-        PFIX[rs]=(14.6,Y1-2.15,0); PFIX[q]=(25.9,Y0+8.75,90); PFIX[f'D{d0+2}']=(35.4,Y0+5.0,90)
+        PFIX[rs]=(14.6,Y1-2.15,0); PFIX[q]=(25.9,OY0+8.75,90); PFIX[f'D{d0+2}']=(35.4,OY0+5.0,90)
         # port controller straight under the shunt, its power-side row (sense, gate, V_L) facing it: Kelvin legs under
         # 8 mm; the meter under the controller
-        PFIX[u]=(15.0,Y1-7.8,90); PFIX[ina]=(14.45,Y1-13.4,0)
+        PFIX[u]=(15.0,Y1-7.8,90); PFIX[ina]=(14.45,Y1-13.4-PORTGROW,0)
         # gate-source zener at the FET's gate pin (pin row at Y0+3, gate at X 22.1), between the meter and the FET
-        PFIX[f'D{d0+1}']=(18.95,Y0+3.0,ZROT)
+        PFIX[f'D{d0+1}']=(18.95,Y0+3.0,ZROT)   # moves with the column (PORTGROW): up to 3*PORTGROW from the gate pin row
         RES.setdefault('out',[]).append((6.8,9.0,Y1-7.5,Y1))   # VBUS via field at the shunt's bus pad, on the out block's edge
-        RES[f'L{k}']=[(38.8,42.5,Y0,Y0+5.2)]   # V_L neck; the D_L copper runs in the gap between the shunt and FET courtyards
+        RES[f'L{k}']=[(38.8,42.5,OY0,OY0+5.2)]   # V_L neck; the D_L copper runs in the gap between the shunt and FET courtyards
     else:
-        PFIX[rs]=(-14.6,Y0+2.15,180); PFIX[q]=(-25.9,Y1-8.75,270); PFIX[f'D{d0+2}']=(-35.4,Y1-5.0,270)
-        PFIX[u]=(-15.0,Y0+7.8,270); PFIX[ina]=(-14.45,Y0+13.4,180)
+        PFIX[rs]=(-14.6,Y0+2.15,180); PFIX[q]=(-25.9,OY1-8.75,270); PFIX[f'D{d0+2}']=(-35.4,OY1-5.0,270)
+        PFIX[u]=(-15.0,Y0+7.8,270); PFIX[ina]=(-14.45,Y0+13.4+PORTGROW,180)
         PFIX[f'D{d0+1}']=(-18.95,Y1-3.0,(ZROT+180)%360)
         RES.setdefault('out',[]).append((-9.0,-6.8,Y0,Y0+7.5))
-        RES[f'L{k}']=[(-42.5,-38.8,Y1-5.2,Y1)]     # V_L neck from the output clamp to the pigtail
+        RES[f'L{k}']=[(-42.5,-38.8,OY1-5.2,OY1)]     # V_L neck from the output clamp to the pigtail
 if WIDE:
     # each port's RUN_P resistors (EN and INP feeds, and the EN pull-down) sit in the out block, away from the port's
     # 54 V shunt and sense parts (E-stop 1.5 mm rule); the out block's VBUS via fields keep 1.6 mm round them
@@ -95,7 +106,9 @@ FIX['C87']=(-8.6,307.6,90,False); FIX['C88']=(-13.1,307.6,90,False)   # bank A d
 FIX['C89']=(5.8,312.4,90,False); FIX['C90']=(9.4,312.4,90,False); FIX['C91']=(-8.6,327.6,0,False); FIX['C92']=(-8.6,331.0,0,False)   # pack-entry ceramics on the BAT pour
 # absorber: eight 10 x 10 cans in a 2 x 4 block right of the pack keep-out (X -5..25, Y 315-340), D7 pair beside RS1
 for k,r in enumerate(('C38','C44','C45','C82','C83','C84','C85','C86')): FIX[r]=(30.75+11.5*(k%2),320.7-13.8*(k//2),90,False); FIX['D1']=(-14.5,334.5,90,False)
-FIX['Q8']=(-9.0,296.0,0,False); FIX['Q9']=(9.0,296.0,0,False); FIX['Q1']=(-9.0,276.0,0,False); FIX['Q2']=(9.0,276.0,0,False)
+FIX['Q8']=(-9.0,296.0,0,False); FIX['Q9']=(9.0,296.0,0,False); FIX['Q1']=(-9.0,276.0,0,False)
+# Q2 1 mm lower than Q1 (2026-11-09): opens a channel at its gate side for G2 from R2; its pad stays on the heatsink
+FIX['Q2']=(9.0,275.0,0,False)
 for k,r in enumerate(('C10','C11','C12','C13','C47')): FIX[r]=(-23.2+k*11.6,260.5,270,False)   # + pad up, toward bank B's sources
 # heatsink (THERMAL_OPTION.md option D): 4 x M3 through the board into the finned block under the FET zone (X -33..33, Y 200-305)
 # 2-point mount on the centre line (two screws clamp it flat and fix its rotation): one in the 8.6 mm gap between
