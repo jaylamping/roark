@@ -72,7 +72,7 @@ pub struct Frames {
     pub tick: u64,
     /// The tick's start, monotonic clock.
     pub monotonic: Stamp,
-    /// The tick's start, wall clock.
+    /// The wall clock when the tick woke.
     pub wall: Stamp,
     /// False while the bus was unhealthy.
     pub valid: bool,
