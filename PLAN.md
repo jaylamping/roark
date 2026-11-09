@@ -207,8 +207,8 @@ The legacy code holds real bench lessons. Copy them into the codec's docs and te
   and drops every frame in that window. Send nothing that matters to that drive for 800 ms.
 - **Silence windows:** don't count missed replies during the enable-to-Run window or for 100 ms after a Disable (post-Disable
   silences up to 48.7 ms are measured). A Reset read after the Disable ends counting until the next Enable: the drive is
-  disabled, and a silent disabled drive is `offline` (item 6 Silence row). Without that Reset, counting resumes after the
-  100 ms.
+  disabled, and a silent disabled drive is `offline` (item 6 Silence row). So does a drive never enabled, and another
+  Disable doesn't change either. Without that Reset, counting resumes after the 100 ms.
 
 **Transmit allowlist:** types 0, 1, 3, 4, 6, 17, 18, 24. Type 7 (set ID) only from the set-ID command with exactly one drive
 answering on that bus. Never 22, 23 or 25; never write 0x7029, 0x702B or 0x702A; never type 4 with the fault-clear byte set.
@@ -337,7 +337,7 @@ Each rule names what it protects and the failure it covers. A rule that protects
 | Drive | Damper 0x702A: read only, never written. The default 0 means the post-power-off anti-backdrive protection is **on**; 1 turns it off. Refuse enable unless it reads 0 | Drive and gearbox | Arm back-driving the drive when power is off |
 | Host | Preflight: VBUS 0x701C inside the skeleton's window (bench 22 to 26 V; this is a bench window, not the battery's), no fault bits, the three caps and `canTimeout` read back as written | Every drive | Wrong settings, wrong supply, drive already faulted |
 | Host | VBUS while running: read 0x701C in the slack at least once a second per drive; stop outside the window | Drives and supply | Supply sag or regen overvoltage |
-| Host | Silence: while a limb is enabled, stop it after 3 consecutive missed replies (12 ms at 250 Hz) or when any reply age passes 12 ms. A silent disabled drive is `offline`, not a fault | The limb's drives and parts | Lost drive, cable, power cycle |
+| Host | Silence: while a limb is enabled, stop it after 3 consecutive missed replies (12 ms at 250 Hz) or when any reply age passes 12 ms. A silent disabled drive (never enabled, or seen in Reset after its Disable) is `offline`, not a fault; one whose Disable no Reset answered counts again after 100 ms (item 2 Silence windows) | The limb's drives and parts | Lost drive, cable, power cycle |
 | Host | Faults: stop on any fault bit. A latched stop clears only by an operator `clear` through `api`; a drive fault bit clears only by power-cycling that drive, then full preflight | Everything on that limb | Drive fault; never auto-clear and retry |
 | Host | Limits: soft limits inside every hard stop (§1). Total commanded torque per joint, kp·(q_des − q) + kd·(dq_des − dq) + τ_ff, is predicted from the latest reply and refused above the joint's torque cap; backed by the drive's own limit once proven in MIT mode | Printed parts, hard stops | Bad target, gain or feed-forward |
 | Host | Sign: no gravity feed-forward on a joint until its direction is verified by a small torque-only pulse with the link supported, checked against the skeleton. Feed-forward runs only on a chain whose every joint answers with a verified direction | Arm and parts | Feed-forward pushing the wrong way |
