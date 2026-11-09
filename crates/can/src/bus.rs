@@ -114,7 +114,7 @@ pub enum BusRunError {
 pub struct BusExit {
     /// The recorder producer, for `telemetry::Recording::close`.
     pub recorder: BusRecorder,
-    /// The last snapshot.
+    /// The last snapshot taken, whether or not control's ring took it.
     pub last: Option<Snapshot>,
     /// The socket or clock error that ended it, if one did.
     pub error: Option<io::Error>,
@@ -350,6 +350,8 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         }
     };
     let mut n = clock.first_due(timing.period_ns);
+    // The last snapshot control's ring took: `outcome.last` is the last one made, taken or not.
+    let mut shown: Option<Snapshot> = None;
     loop {
         let due = clock.at(n, timing.period_ns);
         if let Err(e) = clock.sleep_until(due) {
@@ -376,11 +378,9 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             lose(&mut tick, &mut outcome, e);
         }
         if links.exit.load(Ordering::Acquire) {
-            // Done once nothing needs stopping and control has seen where every limb ended: the last snapshot shows
+            // Done once nothing needs stopping and control has seen where every limb ended: the last snapshot its ring took shows
             // the same states, or every limb is idle. A limb this drain stopped (a latched error) runs on to publish it.
-            if tick.settled()
-                && (tick.all_idle() || outcome.last.is_some_and(|s| tick.shown_in(&s)))
-            {
+            if tick.settled() && (tick.all_idle() || shown.is_some_and(|s| tick.shown_in(&s))) {
                 // The frames this drain read are still recorded, with the health they left the bus in.
                 batch.valid = tick.healthy();
                 outcome.recorder.record(batch);
@@ -409,6 +409,8 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         if links.snapshots.push(snap).is_err() {
             // Control's ring is full: it keeps its older snapshots and this one is lost, counted in the next.
             tick.snapshot_dropped();
+        } else {
+            shown = Some(snap);
         }
         outcome.recorder.record(batch);
         outcome.last = Some(snap);
