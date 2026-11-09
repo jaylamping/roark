@@ -12,8 +12,10 @@ can.workspace = true
 mcap.workspace = true
 robstride.workspace = true
 rtrb.workspace = true
+safety.workspace = true
 serde_json.workspace = true
 sim-drive.workspace = true
+skeleton.workspace = true
 socketcan.workspace = true
 telemetry.workspace = true
 

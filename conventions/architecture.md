@@ -82,7 +82,7 @@ telemetry (leaf for producers: takes events, depends on nothing above; can hands
 
 can --> robstride, telemetry        safety --> can, robstride, skeleton
 
-sim-drive (bin) --> robstride, skeleton        sim-suite (tests only) --> can, sim-drive, robstride, telemetry
+sim-drive (bin) --> robstride, skeleton        sim-suite (tests only) --> can, safety, sim-drive, skeleton, robstride, telemetry
 ```
 
 - Arrows only point toward the leaves. No cycles, no "utils" or "common" crate that everything imports.

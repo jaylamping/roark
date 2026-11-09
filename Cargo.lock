@@ -576,8 +576,10 @@ dependencies = [
  "mcap",
  "robstride",
  "rtrb",
+ "safety",
  "serde_json",
  "sim-drive",
+ "skeleton",
  "socketcan",
  "telemetry",
 ]

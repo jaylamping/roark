@@ -28,7 +28,7 @@ ALLOWED_DEPS = {
     "safety": {"can", "robstride", "skeleton"},
     "skeleton": {"robstride"},
     "sim-drive": {"robstride", "skeleton"},
-    "sim-suite": {"can", "robstride", "sim-drive", "telemetry"},
+    "sim-suite": {"can", "robstride", "safety", "sim-drive", "skeleton", "telemetry"},
     "telemetry": set(),
 }
 
