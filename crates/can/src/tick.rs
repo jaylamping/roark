@@ -120,8 +120,10 @@ impl DriveState {
     /// What a status header's mode says about the drive's run, from a status, a report or a version reply alike. Run
     /// after an Enable is the drive running, counted only from an ordered read while its limb is active; any other mode
     /// after running, without a Disable from this host, is latched as having left Run; Reset from an ordered read after a
-    /// Disable confirms the drive off.
+    /// Disable confirms the drive off. A mode other than the fresh status's supersedes it (`fresh_status` goes), the
+    /// age of the last fresh reply (`fresh_ns`) staying.
     pub(crate) fn note_mode(&mut self, mode: Mode, limb_active: bool, unordered: bool) {
+        self.fresh_status = self.fresh_status.filter(|f| f.status.header.mode == mode);
         match self.phase {
             Phase::Enabling { .. } if mode == Mode::Run && limb_active && !unordered => {
                 self.phase = Phase::Running;
