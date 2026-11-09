@@ -113,7 +113,7 @@ pub enum BusRunError {
 pub struct BusExit {
     /// The recorder producer, for `telemetry::Recording::close`.
     pub recorder: BusRecorder,
-    /// The last snapshot.
+    /// The last snapshot taken, whether or not control's ring took it.
     pub last: Option<Snapshot>,
     /// The socket or clock error that ended it, if one did.
     pub error: Option<io::Error>,
@@ -328,6 +328,8 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         }
     };
     let mut n: u64 = 0;
+    // Whether a Stopped snapshot reached control's ring: `outcome.last` is the last one taken, published or not.
+    let mut shown_stopped = false;
     loop {
         let due = clock.at(n, timing.period_ns);
         if let Err(e) = clock.sleep_until(due) {
@@ -355,8 +357,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         }
         if links.exit.load(Ordering::Acquire) {
             // Done once nothing needs stopping and control has seen where the bus ended: idle, or stopped in a
-            // snapshot already published. A bus this drain stopped (a latched error) runs on to publish it.
-            let published_stopped = outcome.last.is_some_and(|s| s.state == BusState::Stopped);
+            // snapshot control's ring took. A bus this drain stopped (a latched error) runs on to publish it.
             match tick.state() {
                 BusState::Idle => {
                     // The frames this drain read are still recorded, with the health they left the bus in.
@@ -364,7 +365,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
                     outcome.recorder.record(batch);
                     break;
                 }
-                BusState::Stopped if published_stopped => {
+                BusState::Stopped if shown_stopped => {
                     batch.valid = tick.healthy();
                     outcome.recorder.record(batch);
                     break;
@@ -394,6 +395,8 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         if links.snapshots.push(snap).is_err() {
             // Control's ring is full: it keeps its older snapshots and this one is lost, counted in the next.
             tick.snapshot_dropped();
+        } else if snap.state == BusState::Stopped {
+            shown_stopped = true;
         }
         outcome.recorder.record(batch);
         outcome.last = Some(snap);
