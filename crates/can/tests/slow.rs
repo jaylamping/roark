@@ -53,7 +53,7 @@ fn last_chance(bus: &BusTick, tick: u64) -> u64 {
 
 /// Guards: protocol - one slow exchange in flight per bus, sent only after the collect deadline and only while its reply
 /// fits before the next tick's send; a read is answered only by its drive's reply naming its register, and the others
-/// queued wait their turn in order (PLAN.md item 3: parameter traffic only in the slack; can.md section 2).
+/// queued wait their turn in order (PLAN.md item 3: parameter traffic only in the slack; can.md section 2; crates/can/README.md, slow requests).
 #[test]
 fn a_read_goes_alone_in_the_slack_and_only_its_register_answers_it() {
     let mut bus = bus();
@@ -114,7 +114,7 @@ fn a_read_goes_alone_in_the_slack_and_only_its_register_answers_it() {
 
 /// Guards: protocol - a slow request is never retried by the bus layer: one the socket doesn't take is reported not
 /// sent, and one with no reply by the next tick's start is reported timed out, its late reply answering nothing
-/// (can.md section 2: slow requests ride in the slack: one result, never retried).
+/// (can.md section 2; crates/can/README.md, slow requests: slow requests ride in the slack: one result, never retried).
 #[test]
 fn a_slow_request_is_reported_once_and_never_retried() {
     let mut bus = bus();
@@ -405,7 +405,7 @@ fn faulted(n: u8, mode: Mode) -> telemetry::FrameRecord {
 /// Guards: safety - a slow frame is a send, so the slack refuses what the veto would stop at the next send: a fault
 /// read in the collect on any drive of the limb, or a stop asked for and not yet taken, refuses the request at once;
 /// and a write goes only to a drive of an idle limb with no command of that tick unanswered, so its status answer can't
-/// pass for a command's reply (can.md section 2: check before every send).
+/// pass for a command's reply (can.md section 2; crates/can/README.md, slow requests: check before every send).
 #[test]
 fn the_slack_refuses_what_the_veto_would_stop_and_writes_to_a_running_limb() {
     let mut bus = two_limbs();
@@ -486,7 +486,7 @@ fn the_slack_refuses_what_the_veto_would_stop_and_writes_to_a_running_limb() {
 
 /// Guards: protocol - every request gets exactly one result when the bus thread ends with it held: one in flight has
 /// timed out, a queued one is refused (`Ended`, or `BusFailed` on a failed bus), and a result not yet taken is kept
-/// (can.md section 2: slow requests ride in the slack; `BusLinks::results`).
+/// (can.md section 2; crates/can/README.md, slow requests: slow requests ride in the slack; `BusLinks::results`).
 #[test]
 fn every_request_held_gets_its_result_when_the_thread_ends() {
     for (bus_failed, refusal) in [(false, SlowRefusal::Ended), (true, SlowRefusal::BusFailed)] {
