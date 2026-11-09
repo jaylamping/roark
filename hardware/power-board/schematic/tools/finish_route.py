@@ -42,7 +42,7 @@ class Router:
         self.ignore = set()
         self.collect_all = False   # escape_probe.py: free() lists every blocker instead of stopping at the first
         self.fine = []; self.fineshape = []
-        for ref in ('U1', 'U2', 'U7'):
+        for ref in os.getenv('FINE','U1,U2,U7,U8').split(','):   # the .kicad_dru fine-pitch courtyards
             f = self.b.FindFootprintByReference(ref)
             self.fine.append(self.bb(f.GetCourtyard(pcbnew.F_CrtYd).BBox()))
             self.fineshape.append(pcbnew.SHAPE_POLY_SET(f.GetCourtyard(pcbnew.F_CrtYd)))
