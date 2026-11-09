@@ -36,7 +36,14 @@ HOOK = f"""#!/bin/sh
 {HOOK_MARK}
 CHECK="$(git rev-parse --show-toplevel)/scripts/check_attribution.py"
 [ -f "$CHECK" ] || exit 0
-exec python3 "$CHECK" commit-msg "$1"
+# Windows has a python3 stub that only opens the Store; take the first interpreter that runs.
+for PY in python3 python py; do
+  if "$PY" -c "import sys" >/dev/null 2>&1; then
+    exec "$PY" "$CHECK" commit-msg "$1"
+  fi
+done
+echo "commit-msg: no working Python found for scripts/check_attribution.py" >&2
+exit 1
 """
 
 
