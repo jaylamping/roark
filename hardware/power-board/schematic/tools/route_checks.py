@@ -4,7 +4,7 @@
      UVLO enables bank B by itself).
   2. 54 V copper keeps >= 0.6 mm (outer) / 0.2 mm (inner) to every net of another voltage domain (IPC-2221B, 51-100 V).
   Net classes and domains: tools/domains.py (the router uses the same table). Copper entering a fine-pitch IC's courtyard
-  (U1, U2, U7) keeps 0.15 mm, as in the .kicad_dru. Pairs inside one footprint are listed
+  (U1, U2, U7, U8) keeps 0.15 mm, as in the .kicad_dru. Pairs inside one footprint are listed
   separately: the package sets those, not the routing.
   3. Kelvin sense pairs: each SH*_P / SH*_N pair runs as a tight pair; reports the length of each leg and the share of
      the P leg that lies within 1.0 mm of the N leg.
@@ -39,10 +39,10 @@ for L in LAYERS:
         if z.IsOnLayer(L) and not z.GetIsRuleArea() and z.GetNetname():
             fp=z.GetFilledPolysList(L)
             if fp.OutlineCount(): items.append((z.GetNetname(),L,fp,f'zone {z.GetNetname()}',None))
-# fine-pitch courtyards (the .kicad_dru rules fine_pitch_U1/U2/U7): between copper that enters one of these courtyards
+# fine-pitch courtyards (the .kicad_dru rules fine_pitch_U1/U2/U7/U8): between copper that enters one of these courtyards
 # (the IC's own pads, each pin's first escape segment) the rule is 0.15 mm, the package's own pad gap
 FINE={}
-for r in ('U1','U2','U7'):
+for r in ('U1','U2','U7','U8'):
     f=b.FindFootprintByReference(r)
     if f: cb=f.GetCourtyard(pcbnew.F_CrtYd).BBox(); FINE[r]=(cb.GetLeft(),cb.GetRight(),cb.GetTop(),cb.GetBottom())
 def incy(s,ref):

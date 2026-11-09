@@ -144,7 +144,9 @@ that is never coated must not go on the pack.
     0.15 mm apart, so **only clearances between copper that enters that IC's courtyard** (its own pads, and each pin's
     first escape segment) drop to 0.15 mm:
     `(rule fine_pitch_U1 (constraint clearance (min 0.15mm)) (condition "(A.memberOfFootprint('U1') && B.intersectsCourtyard('U1')) || (B.memberOfFootprint('U1') && A.intersectsCourtyard('U1')) || (A.intersectsCourtyard('U1') && B.intersectsCourtyard('U1'))"))`,
-    and the same for U2 and U7.
+    and the same for U2, U7 and U8. U8 (TPS48100, VSSOP-19 0.5 mm, the latch controller) was added by Joey on 2026-11-09: its
+    E-stop pins (EN_A, FLT_A) sit 0.5 mm from its 54 V pins, so inside U8's courtyard only, E-stop copper may also come within
+    0.15 mm of 54 V copper. Outside that courtyard the 1.5 mm rule stands.
   - Outside the courtyards, E-stop copper stays at 1.5 mm from 54 V, and 54 V domains at 0.2 mm (coated).
     schematic/tools/route_checks.py tests the same scope.
   - U1's UVLO pin sits between SH_P and the GND pins. schematic/tools/route_u1.py therefore draws U1's escapes as single straight
