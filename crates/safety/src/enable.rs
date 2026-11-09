@@ -37,8 +37,8 @@ pub enum EnableFailure {
         /// The last mode the drive reported.
         last: Option<Mode>,
     },
-    /// The `run_mode` = MIT write was echoed but no fresh Run status answered it within [`RUN_WITHIN_NS`]; the last mode
-    /// seen since, if any.
+    /// The drive left Run after the Enable's answer: its latest status shows another mode, or the `run_mode` = MIT
+    /// write was echoed but no fresh Run status answered it within [`RUN_WITHIN_NS`]; the last mode seen since, if any.
     LeftRun {
         /// The last mode the drive reported.
         last: Option<Mode>,
@@ -95,7 +95,7 @@ impl EnableFailure {
             } => "reported Run, but no status read in the 50 ms after the run_mode = MIT write answered it in Run"
                 .to_owned(),
             Self::LeftRun { last: Some(mode) } => format!(
-                "reported {mode:?} after the run_mode = MIT write, expected Run within 50 ms"
+                "reported {mode:?} after the Enable's Run, expected Run through the run_mode = MIT write within 50 ms"
             ),
             Self::LeftRun { last: None } => {
                 "sent no status within 50 ms of the run_mode = MIT write, expected Run".to_owned()
@@ -270,18 +270,22 @@ impl Enabling {
                     param: Param::RunMode,
                     value: ParamValue::RunMode(RunMode::Mit),
                 };
-                // Strictly after the Enable's answer, so that one status never answers both frames. Any status after it
-                // in another mode is the drive leaving Run, fresh or not.
+                // Strictly after the Enable's answer, so that one status never answers both frames. The drive's latest
+                // status, if it is after that and in another mode, is the drive leaving Run, fresh or not. (A Reset
+                // hidden by a later Run in one snapshot is the bus layer's latch, and this ends in `LeftRun` after the
+                // window.)
                 let left = view
                     .observed
                     .filter(|o| o.read_ns > run_read_ns && o.status.header.mode != Mode::Run)
                     .map(|o| o.status.header.mode);
-                let answer = left.or_else(|| {
-                    fresh_since(view, since_ns)
-                        .filter(|a| a.read_ns > run_read_ns)
-                        .map(|a| a.mode)
-                });
-                match (answer, echoed(view, mit, since_ns), late(since_ns, now_ns)) {
+                let answer = fresh_since(view, since_ns)
+                    .filter(|a| a.read_ns > run_read_ns)
+                    .map(|a| a.mode);
+                match (
+                    left.or(answer),
+                    echoed(view, mit, since_ns),
+                    late(since_ns, now_ns),
+                ) {
                     (Some(Mode::Run), true, _) => (Stage::Enabled, Next::Enabled),
                     (Some(mode @ (Mode::Reset | Mode::Calibration)), _, _) => {
                         self.failed(EnableFailure::LeftRun { last: Some(mode) })
@@ -342,7 +346,8 @@ struct Answer {
 
 /// The fresh status (the first after a command the socket took) read inside the window of a step planned at `since_ns`:
 /// the drive's answer to that step's frame, as near as the protocol can tell. A later status that agrees with it (a
-/// duplicate, a report) leaves it standing; one that contradicts it takes it back, and the step waits.
+/// duplicate, a report) leaves it standing; one that contradicts it takes it back: awaiting the Enable's Run the step
+/// waits, awaiting the write's answer a status in another mode ends the sequence by itself.
 fn fresh_since(view: &DriveView, since_ns: u64) -> Option<Answer> {
     let fresh = view
         .fresh_status
