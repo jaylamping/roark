@@ -53,7 +53,7 @@ fn last_chance(bus: &BusTick, tick: u64) -> u64 {
 
 /// Guards: protocol - one slow exchange in flight per bus, sent only after the collect deadline and only while its reply
 /// fits before the next tick's send; a read is answered only by its drive's reply naming its register, and the others
-/// queued wait their turn in order (PLAN.md item 3: parameter traffic only in the slack; `api` contract: crates/can/README.md, Slow requests).
+/// queued wait their turn in order (PLAN.md item 3: parameter traffic only in the slack; can.md section 2).
 #[test]
 fn a_read_goes_alone_in_the_slack_and_only_its_register_answers_it() {
     let mut bus = bus();
@@ -114,7 +114,7 @@ fn a_read_goes_alone_in_the_slack_and_only_its_register_answers_it() {
 
 /// Guards: protocol - a slow request is never retried by the bus layer: one the socket doesn't take is reported not
 /// sent, and one with no reply by the next tick's start is reported timed out, its late reply answering nothing
-/// (`api` contract: crates/can/README.md, Slow requests: one result, never retried).
+/// (can.md section 2: slow requests ride in the slack: one result, never retried).
 #[test]
 fn a_slow_request_is_reported_once_and_never_retried() {
     let mut bus = bus();
@@ -303,8 +303,8 @@ fn a_stop_or_silent_control_refuses_and_cancels_slow_requests() {
     );
 }
 
-/// Guards: protocol - a slow request names a drive the bus owns, a write is built for that drive, and the queue is
-/// bounded: past `SLOW_SLOTS` (counting results not yet taken) it refuses, and taking a result frees a slot (can.md
+/// Guards: protocol - a slow request names a drive the bus owns, a write is built for that drive and is never one only
+/// control's batch sends, and the queue is bounded: past `SLOW_SLOTS` (counting results not yet taken) it refuses, and taking a result frees a slot (can.md
 /// section 2: bounded everything).
 #[test]
 fn slow_requests_name_a_drive_on_the_bus_and_the_queue_is_bounded() {
@@ -321,6 +321,15 @@ fn slow_requests_name_a_drive_on_the_bus_and_the_queue_is_bounded() {
             kind: SlowKind::Write(Write::can_timeout(drive(102))),
         }),
         Err(SlowRefusal::WrongTarget)
+    );
+    // The enable sequence's write: its echo would pass for the sequence's own.
+    assert_eq!(
+        bus.submit(SlowRequest {
+            tag: 3,
+            slot: 0,
+            kind: SlowKind::Write(Write::mit_mode(drive(101))),
+        }),
+        Err(SlowRefusal::BatchOnly)
     );
     for tag in 0..u32::try_from(SLOW_SLOTS).unwrap_or(u32::MAX) {
         assert_eq!(bus.submit(read(tag, 0, Param::CanTimeout)), Ok(()));
@@ -395,9 +404,8 @@ fn faulted(n: u8, mode: Mode) -> telemetry::FrameRecord {
 
 /// Guards: safety - a slow frame is a send, so the slack refuses what the veto would stop at the next send: a fault
 /// read in the collect on any drive of the limb, or a stop asked for and not yet taken, refuses the request at once;
-/// and a write goes only to a drive of an idle limb with no command unanswered, so its status answer can't pass for a
-/// command's reply (can.md
-/// section 2: check before every send).
+/// and a write goes only to a drive of an idle limb with no command of that tick unanswered, so its status answer can't
+/// pass for a command's reply (can.md section 2: check before every send).
 #[test]
 fn the_slack_refuses_what_the_veto_would_stop_and_writes_to_a_running_limb() {
     let mut bus = two_limbs();
@@ -460,11 +468,25 @@ fn the_slack_refuses_what_the_veto_would_stop_and_writes_to_a_running_limb() {
         Err(SlowRefusal::CommandUnanswered)
     );
     assert_eq!(bus.submit(read(8, 1, Param::Vbus)), Ok(()), "a read may go");
+    // Only the tick's own command: by the next tick its reply is late or lost, and a lost one doesn't hold writes off.
+    quiet_tick(&mut bus, 1);
+    assert_eq!(bus.submit(write(9, 102)), Ok(()));
+
+    // Answered in its tick: the write may go at once.
+    let mut bus = two_limbs();
+    run_tick(
+        &mut bus,
+        0,
+        Some(&batch(0, &[None, Some(encode::disable(id(102)))])),
+        &[(MS, status(102, Mode::Reset))],
+    );
+    let _ = bus.end(deadline(0));
+    assert_eq!(bus.submit(write(10, 102)), Ok(()));
 }
 
 /// Guards: protocol - every request gets exactly one result when the bus thread ends with it held: one in flight has
 /// timed out, a queued one is refused (`Ended`, or `BusFailed` on a failed bus), and a result not yet taken is kept
-/// (`api` contract: crates/can/README.md, Slow requests; `BusLinks::results`).
+/// (can.md section 2: slow requests ride in the slack; `BusLinks::results`).
 #[test]
 fn every_request_held_gets_its_result_when_the_thread_ends() {
     for (bus_failed, refusal) in [(false, SlowRefusal::Ended), (true, SlowRefusal::BusFailed)] {
