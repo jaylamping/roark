@@ -40,28 +40,22 @@ pub(crate) fn one_limb(devices: &[DeviceId]) -> Vec<BusDrive> {
         .collect()
 }
 
-/// A bus whose drives are all in limb 0: its state and stop are that limb's.
-pub(crate) trait OneLimb {
-    fn state(&self) -> LimbState;
-    fn stop(&self) -> Option<StopReason>;
+/// Limb 0's state, on a bus whose drives are all in limb 0.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: limb 0 exists on every test bus"
+)]
+pub(crate) fn state_of(snap: &Snapshot) -> LimbState {
+    snap.limb(0).unwrap().state
 }
 
-impl OneLimb for Snapshot {
-    #[expect(
-        clippy::unwrap_used,
-        reason = "test helper: limb 0 exists on every test bus"
-    )]
-    fn state(&self) -> LimbState {
-        self.limb(0).unwrap().state
-    }
-
-    #[expect(
-        clippy::unwrap_used,
-        reason = "test helper: limb 0 exists on every test bus"
-    )]
-    fn stop(&self) -> Option<StopReason> {
-        self.limb(0).unwrap().stop
-    }
+/// Limb 0's stop, on a bus whose drives are all in limb 0.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: limb 0 exists on every test bus"
+)]
+pub(crate) fn stop_of(snap: &Snapshot) -> Option<StopReason> {
+    snap.limb(0).unwrap().stop
 }
 
 pub(crate) fn record(id: u32, data: [u8; 8], direction: Direction) -> FrameRecord {
@@ -155,7 +149,7 @@ pub(crate) fn run_tick(
     let list = bus.begin(tick, start, start, batch);
     let sent: Vec<_> = list.iter().map(|s| (s.slot, s.kind)).collect();
     for (index, _) in list.iter().enumerate() {
-        bus.sent(index, SendOutcome::Sent);
+        bus.sent(index, SendOutcome::Sent, start);
     }
     for (offset, frame) in replies {
         bus.on_frame(start + offset, frame);

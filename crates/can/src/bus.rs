@@ -352,7 +352,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
                     }
                 }
             };
-            tick.sent(index, outcome);
+            tick.sent(index, outcome, clock.ns(mono_now()));
         }
 
         // Collect until the deadline.

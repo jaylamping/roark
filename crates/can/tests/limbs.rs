@@ -67,7 +67,7 @@ fn running(bus: &mut BusTick) {
 fn a_limb_stop_leaves_the_other_limb_running() {
     let mut bus = two_limbs();
     running(&mut bus);
-    bus.stop_limb(0);
+    assert_eq!(bus.stop_limb(0), Ok(()));
     let sent = run_tick(
         &mut bus,
         2,
@@ -95,8 +95,9 @@ fn a_limb_stop_leaves_the_other_limb_running() {
 }
 
 /// Guards: safety - what the drain reads before the send is checked before the send: a fault bit, or Reset after the
-/// drive was seen in Run, stops that drive's limb on that same tick, so no command goes to it, while the other limb's
-/// command still goes out (PLAN.md item 6 Faults row and States; safety.md section 3: every check before transmit).
+/// drive was seen in Run (even with a Run status read after it), stops that drive's limb on that same tick, so no
+/// command goes to it, while the other limb's command still goes out. An idle limb is checked too: a faulted drive
+/// never gets its Enable (PLAN.md item 6 Faults row and States; safety.md section 3: every check before transmit).
 #[test]
 fn a_fault_or_reset_read_before_the_send_stops_its_limb_at_once() {
     let faulted = status_frame(
@@ -104,15 +105,21 @@ fn a_fault_or_reset_read_before_the_send_stops_its_limb_at_once() {
         Mode::Run,
         [StatusFault::Overcurrent].into_iter().collect(),
     );
+    let faulted = record(faulted.id(), faulted.data(), Direction::TxOther);
     let rows = [
         (
             "fault bit",
-            record(faulted.id(), faulted.data(), Direction::TxOther),
+            vec![faulted],
             StopReason::DriveFault { slot: 0 },
         ),
         (
             "reset after run",
-            status(101, Mode::Reset),
+            vec![status(101, Mode::Reset)],
+            StopReason::DriveMode { slot: 0 },
+        ),
+        (
+            "reset, then run again",
+            vec![status(101, Mode::Reset), status(101, Mode::Run)],
             StopReason::DriveMode { slot: 0 },
         ),
     ];
@@ -120,7 +127,9 @@ fn a_fault_or_reset_read_before_the_send_stops_its_limb_at_once() {
         let mut bus = two_limbs();
         running(&mut bus);
         // Read in tick 2's drain, after tick 1's collect.
-        bus.on_frame(2 * PERIOD - MS, &drained);
+        for frame in &drained {
+            bus.on_frame(2 * PERIOD - MS, frame);
+        }
         let sent = run_tick(
             &mut bus,
             2,
@@ -139,6 +148,124 @@ fn a_fault_or_reset_read_before_the_send_stops_its_limb_at_once() {
         );
         assert_eq!(limb(&snap, 1), (LimbState::Active, None), "{name}");
     }
+
+    // An idle limb: the fault read before its first Enable.
+    let mut bus = two_limbs();
+    bus.on_frame(0, &faulted);
+    let enable = batch(
+        0,
+        &[Some(encode::enable(id(101))), Some(encode::enable(id(102)))],
+    );
+    let sent = run_tick(&mut bus, 0, Some(&enable), &[]);
+    assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Command)]);
+    let snap = bus.end(deadline(0));
+    assert!(matches!(
+        limb(&snap, 0),
+        (
+            LimbState::Stopping { .. },
+            Some(StopReason::DriveFault { slot: 0 })
+        )
+    ));
+}
+
+/// Guards: safety - motion on expired feedback stops only that drive's limb: the other limb's command still goes out
+/// (PLAN.md item 6 Silence row; a stop names its scope).
+#[test]
+fn expired_feedback_stops_only_its_limb() {
+    let mut bus = two_limbs();
+    running(&mut bus);
+    // Drive 101 is left alone, so it misses nothing, until its last status is past the feedback limit.
+    let mut tick = 2;
+    while tick * PERIOD - (PERIOD + MS) <= bus.timing().feedback_limit_ns {
+        run_tick(
+            &mut bus,
+            tick,
+            Some(&batch(tick, &[None, Some(hold(102))])),
+            &[(MS, status(102, Mode::Run))],
+        );
+        let _ = bus.end(deadline(tick));
+        tick += 1;
+    }
+    let sent = run_tick(
+        &mut bus,
+        tick,
+        Some(&batch(tick, &[Some(hold(101)), Some(hold(102))])),
+        &[],
+    );
+    assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Command)]);
+    let snap = bus.end(deadline(tick));
+    assert!(matches!(
+        limb(&snap, 0),
+        (
+            LimbState::Stopping { .. },
+            Some(StopReason::ExpiredFeedback { slot: 0 })
+        )
+    ));
+    assert_eq!(limb(&snap, 1), (LimbState::Active, None));
+}
+
+/// Guards: safety - replies missed while a drive is between its Enable and its first Run status, or within 100 ms of a
+/// Disable, aren't counted toward its silence; outside those windows they are (PLAN.md item 2 Silence windows).
+#[test]
+fn misses_in_the_enable_and_post_disable_windows_are_not_counted() {
+    // The enable sequence's run_mode write needs no fresh feedback, so it can go unanswered in either window.
+    let write = encode::param_write(&robstride::Write::mit_mode(common::drive(101)));
+    let misses = two_limbs().timing().silence_misses;
+
+    // Between the Enable and the first Run status.
+    let mut bus = two_limbs();
+    run_tick(
+        &mut bus,
+        0,
+        Some(&batch(0, &[Some(encode::enable(id(101))), None])),
+        &[],
+    );
+    let _ = bus.end(deadline(0));
+    let enabling_ticks = u64::from(misses) + 1;
+    for tick in 1..=enabling_ticks {
+        let sent = run_tick(
+            &mut bus,
+            tick,
+            Some(&batch(tick, &[Some(write), None])),
+            &[],
+        );
+        assert_eq!(sent, [(0, SendKind::Command)], "tick {tick}");
+        assert_eq!(at(&bus.end(deadline(tick)), 0).misses, 0, "tick {tick}");
+    }
+
+    // After a Disable from control, counted only once 100 ms have passed.
+    let mut bus = two_limbs();
+    running(&mut bus);
+    run_tick(
+        &mut bus,
+        2,
+        Some(&batch(
+            2,
+            &[Some(encode::disable(id(101))), Some(hold(102))],
+        )),
+        &[(MS, status(101, Mode::Reset)), (MS, status(102, Mode::Run))],
+    );
+    let _ = bus.end(deadline(2));
+    let first_counted = 2 + bus.timing().stop_confirm_ns / PERIOD;
+    let mut tick = 3;
+    let stopped_at = loop {
+        let sent = run_tick(
+            &mut bus,
+            tick,
+            Some(&batch(tick, &[Some(write), Some(hold(102))])),
+            &[(MS, status(102, Mode::Run))],
+        );
+        if sent.first() == Some(&(0, SendKind::Disable)) {
+            break tick;
+        }
+        let snap = bus.end(deadline(tick));
+        let counted = tick
+            .saturating_sub(first_counted - 1)
+            .min(u64::from(misses));
+        assert_eq!(u64::from(at(&snap, 0).misses), counted, "tick {tick}");
+        tick += 1;
+    };
+    assert_eq!(stopped_at, first_counted + u64::from(misses));
 }
 
 /// Guards: safety - a drive that leaves `silence_misses` commands in a row unanswered stops its limb before the next
@@ -286,7 +413,11 @@ fn a_stopped_limb_is_rearmed_only_when_its_drives_are_known_disabled() {
         if limb(&snap, 0).0 == LimbState::Stopped {
             break (tick - 1) * PERIOD;
         }
-        assert!(sent.contains(&(0, SendKind::Disable)), "tick {tick}");
+        assert_eq!(
+            sent,
+            [(0, SendKind::Disable), (1, SendKind::Command)],
+            "tick {tick}"
+        );
         tick += 1;
     };
     let now = tick * PERIOD;
@@ -343,7 +474,7 @@ fn each_drives_last_echo_is_kept() {
     let off = encode::active_reporting(id(102), robstride::encode::Reporting::Off);
     let list = bus.begin(0, 0, 0, Some(&batch(0, &[None, Some(off)])));
     assert_eq!(list.len(), 1);
-    bus.sent(0, SendOutcome::Sent);
+    bus.sent(0, SendOutcome::Sent, 0);
     bus.on_frame(200_000, &record(off.id(), off.data(), Direction::TxEcho));
     let snap = bus.end(deadline(0));
     assert_eq!(at(&snap, 0).last_echo, None);
@@ -371,4 +502,74 @@ fn a_limb_past_the_table_is_refused() {
             limb: MAX_DRIVES
         })
     );
+}
+
+/// Guards: safety - the re-arm's quiet time counts from when the socket took the last frame, not from its tick's
+/// scheduled start: a Disable written late (it never expires) holds the re-arm off for the drive timeout after the
+/// write (can.md section 2: sent nothing for longer than the drive timeout).
+#[test]
+fn a_late_written_disable_holds_off_the_rearm() {
+    let late = PERIOD + PERIOD / 2;
+    let mut bus = two_limbs();
+    running(&mut bus);
+    assert_eq!(bus.stop_limb(0), Ok(()));
+    // Drive 101 never answers; each tick's Disable to it is written `late`.
+    let mut tick = 2;
+    let last_write = loop {
+        let start = tick * PERIOD;
+        let list = bus.begin(
+            tick,
+            start,
+            start,
+            Some(&batch(tick, &[None, Some(hold(102))])),
+        );
+        let mut disabled = false;
+        for (index, send) in list.iter().enumerate() {
+            let at = if send.slot == 0 { start + late } else { start };
+            disabled |= send.slot == 0;
+            bus.sent(index, SendOutcome::Sent, at);
+        }
+        bus.on_frame(start + MS, &status(102, Mode::Run));
+        let snap = bus.end(deadline(tick));
+        if limb(&snap, 0).0 == LimbState::Stopped && !disabled {
+            break (tick - 1) * PERIOD + late;
+        }
+        tick += 1;
+    };
+    let quiet = DRIVE_TIMEOUT_NS + PERIOD;
+    assert_eq!(
+        bus.rearm(0, last_write - late + quiet),
+        Err(RearmRefused::DriveNotQuiet { slot: 0 })
+    );
+    assert_eq!(
+        bus.rearm(0, last_write + quiet - 1),
+        Err(RearmRefused::DriveNotQuiet { slot: 0 })
+    );
+    assert_eq!(bus.rearm(0, last_write + quiet), Ok(()));
+}
+
+/// Guards: safety - a limb whose drives all confirmed Reset re-arms as soon as it is stopped, with no wait: a confirmed
+/// drive is known disabled (PLAN.md item 6: operator clear).
+#[test]
+fn a_confirmed_limb_rearms_at_once() {
+    let mut bus = two_limbs();
+    running(&mut bus);
+    assert_eq!(bus.stop_limb(0), Ok(()));
+    let mut tick = 2;
+    loop {
+        run_tick(
+            &mut bus,
+            tick,
+            Some(&batch(tick, &[None, Some(hold(102))])),
+            &[(MS, status(101, Mode::Reset)), (MS, status(102, Mode::Run))],
+        );
+        let snap = bus.end(deadline(tick));
+        if limb(&snap, 0).0 == LimbState::Stopped {
+            assert_eq!(at(&snap, 0).stop, StopOutcome::Confirmed);
+            break;
+        }
+        tick += 1;
+    }
+    // Its reporting off went out this very tick.
+    assert_eq!(bus.rearm(0, deadline(tick)), Ok(()));
 }

@@ -15,10 +15,12 @@ Each tick, on the monotonic clock:
    bus the same way.
 2. **Drain** the socket to empty, so what is read after the send came after the backlog. It is not a strict barrier:
    a frame landing between the drain and the write counts as after it, which is still evidence of the drive then.
-3. **Check** what the drain read, before anything is sent: a drive of a running limb that shows a fault, has left Run
-   after it was seen in Run, or has left `silence_misses` (3) commands in a row unanswered stops its limb now
-   (`DriveFault`, `DriveMode`, `DriveSilent`, each naming the slot), so no command goes to it this tick. A Disable from
-   control isn't leaving Run: its Reset answer is expected.
+3. **Check** what the drain read, before anything is sent: a drive of an idle or active limb that shows a fault, has
+   left Run after it was seen in Run (latched when read, so a later Run status can't hide it), or has left
+   `silence_misses` (3) commands in a row unanswered stops its limb now (`DriveFault`, `DriveMode`, `DriveSilent`, each
+   naming the slot), so no command, Enable included, goes to it this tick. A Disable from control isn't leaving Run:
+   its Reset answer is expected. A drive this host never enabled isn't watched for mode: preflight refuses one found
+   already in Run.
 4. **Plan** with `BusTick::begin`: the newest `CommandBatch` from control, only if it is for this tick and unexpired.
    A stale or missing batch sends nothing; two silent ticks while a limb runs stop the bus. A batch carries only motion,
    Enable, Disable and the enable sequence's reporting off and `run_mode` = MIT write; anything else (Set Zero, set-ID,
@@ -35,8 +37,9 @@ A drive's status read after a command the socket took is its **fresh** status, a
 the collect deadline. That is evidence the drive is there and what state it was in, never an acknowledgement: there
 are no sequence numbers to prove which command a status answers. Faults are never filtered: a status or report
 updates what the drive was seen saying, and any status, report, version reply or type-21 fault report with a fault set
-latches `fault_seen`. Missing replies to Enable and Disable aren't counted as unanswered: the drive may take 10 ms to
-reach Run, and goes silent after a Disable (PLAN item 2 Silence windows). Each drive's last echo of this host's frame
+latches `fault_seen`. Missing replies aren't counted toward a drive's silence for an Enable or Disable, between an
+Enable and the drive's first Run status, or within 100 ms of a Disable: the drive may take 10 ms to reach Run, and goes
+silent after a Disable (PLAN item 2 Silence windows). Each drive's last echo of this host's frame
 to it (`last_echo`: its kind and when it was read) is kept, for the enable sequence's "reporting-off echo plus one
 tick".
 
@@ -57,7 +60,8 @@ Only the operator's clear undoes a stop: `rearm(limb, now)` makes a `Stopped` li
 `generation`, its drives' stop outcomes, fault history (`fault_seen`) and miss counts started afresh. It is refused
 while the bus has a latched error (that bus is rebuilt instead), while the limb is running or still stopping, and until
 every drive in it is known disabled: confirmed in Reset by the stop, or sent nothing for longer than the drives' 50 ms
-timeout plus a period. Each drive needs a fresh preflight before it is enabled again; that is the safety layer's.
+timeout plus a period since the socket took its last frame (stamped when it was written, so a late Disable counts from
+when it went). Each drive needs a fresh preflight before it is enabled again; that is the safety layer's.
 
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
 a drive table past `MAX_DRIVES`, a limb index past it, and timing that breaks its promises (`Timing::check`: for one, three periods must fit
@@ -106,7 +110,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     assert!(batch.set(0, encode::enable(device)));
     let sends = bus.begin(0, 0, 0, Some(&batch));
     assert_eq!(sends.len(), 1);
-    bus.sent(0, SendOutcome::Sent);
+    bus.sent(0, SendOutcome::Sent, 0);
 
     // 1 ms later the drive's status arrives: Run mode, no faults.
     let at_rest = Feedback {

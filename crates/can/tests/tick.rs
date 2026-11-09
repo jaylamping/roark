@@ -8,8 +8,8 @@ use can::{
     StopOutcome, StopReason, Timing, TimingError, classify,
 };
 use common::{
-    MS, OneLimb, PERIOD, at, batch, bus, deadline, drive, error_frame, hold, id, one_limb, record,
-    report_frame, run_tick, status, status_frame,
+    MS, PERIOD, at, batch, bus, deadline, drive, error_frame, hold, id, one_limb, record,
+    report_frame, run_tick, state_of, status, status_frame, stop_of,
 };
 use robstride::encode::{self, Reporting};
 use robstride::{Mode, Param, StatusFault, Write};
@@ -61,8 +61,8 @@ fn a_send_the_socket_did_not_take_cannot_be_answered() {
         );
         let list = bus.begin(0, 0, 0, Some(&b));
         assert_eq!(list.len(), 2);
-        bus.sent(0, SendOutcome::Sent);
-        bus.sent(1, outcome);
+        bus.sent(0, SendOutcome::Sent, 0);
+        bus.sent(1, outcome, 0);
         bus.on_frame(MS, &status(101, Mode::Run));
         bus.on_frame(MS, &status(102, Mode::Run));
         let snap = bus.end(deadline(0));
@@ -82,8 +82,8 @@ fn a_send_the_socket_did_not_take_cannot_be_answered() {
         bus.request_stop();
         let list = bus.begin(1, PERIOD, PERIOD, None);
         assert_eq!(list.len(), 2);
-        bus.sent(0, SendOutcome::Sent);
-        bus.sent(1, outcome);
+        bus.sent(0, SendOutcome::Sent, PERIOD);
+        bus.sent(1, outcome, PERIOD);
         bus.on_frame(PERIOD + MS, &status(101, Mode::Reset));
         bus.on_frame(PERIOD + MS, &status(102, Mode::Reset));
         let snap = bus.end(deadline(1));
@@ -115,7 +115,7 @@ fn a_disable_never_expires_whoever_planned_it() {
         [(SendKind::Command, true), (SendKind::Command, false)]
     );
     for index in 0..list.len() {
-        bus.sent(index, SendOutcome::Sent);
+        bus.sent(index, SendOutcome::Sent, 0);
     }
     bus.on_frame(MS, &status(101, Mode::Reset));
     bus.on_frame(MS, &status(102, Mode::Reset));
@@ -128,7 +128,7 @@ fn a_disable_never_expires_whoever_planned_it() {
             .all(|s| s.kind == SendKind::Disable && !s.expires)
     );
     for index in 0..list.len() {
-        bus.sent(index, SendOutcome::Sent);
+        bus.sent(index, SendOutcome::Sent, PERIOD);
     }
     bus.on_frame(PERIOD + MS, &status(101, Mode::Reset));
     let _ = bus.end(deadline(1));
@@ -279,14 +279,14 @@ fn an_idle_bus_sends_nothing_without_batches() {
     for tick in 0..5 {
         assert_eq!(run_tick(&mut bus, tick, None, &[]), []);
         assert_eq!(
-            bus.end(tick * PERIOD + PERIOD * 6 / 10).state(),
+            state_of(&bus.end(tick * PERIOD + PERIOD * 6 / 10)),
             LimbState::Idle
         );
     }
 }
 
 /// Guards: safety - motion with expired feedback is never sent: an MIT frame for a drive whose last fresh status is
-/// older than 12 ms is refused and stops the bus (PLAN.md item 3 and item 6 Silence row).
+/// older than 12 ms is refused and stops that drive's limb (PLAN.md item 3 and item 6 Silence row).
 #[test]
 fn motion_with_expired_feedback_stops_instead_of_sending() {
     let mut bus = bus();
@@ -314,7 +314,7 @@ fn motion_with_expired_feedback_stops_instead_of_sending() {
         "{sent:?}"
     );
     assert_eq!(
-        bus.end(4 * PERIOD + PERIOD * 6 / 10).stop(),
+        stop_of(&bus.end(4 * PERIOD + PERIOD * 6 / 10)),
         Some(StopReason::ExpiredFeedback { slot: 0 })
     );
 }
@@ -406,9 +406,10 @@ fn reply_counters_follow_the_deadline_not_the_read_order() {
 }
 
 /// Guards: safety - a batch is checked whole before any of it is sent: a frame aimed at another drive, a frame in a
-/// slot with no drive, motion to a drive never heard from, or a frame a batch may not carry (Set Zero, set-ID, parameter
-/// reads and other writes, reporting on, queries: each needs sequencing a tick can't give, PLAN.md item 2) sends
-/// nothing and stops the bus with the exact reason (PLAN.md item 3, item 6 Silence row).
+/// slot with no drive, or a frame a batch may not carry (Set Zero, set-ID, parameter reads and other writes, reporting
+/// on, queries: each needs sequencing a tick can't give, PLAN.md item 2) sends nothing and stops the bus with the exact
+/// reason; motion to a drive never heard from stops that drive's limb, here the bus's only one (PLAN.md item 3, item 6
+/// Silence row).
 #[test]
 fn a_bad_batch_sends_nothing_and_names_the_slot() {
     let rows = [
@@ -473,7 +474,7 @@ fn a_bad_batch_sends_nothing_and_names_the_slot() {
             sent.iter().all(|(_, kind)| *kind != SendKind::Command),
             "{name}: {sent:?}"
         );
-        assert_eq!(bus.end(deadline(0)).stop(), Some(reason), "{name}");
+        assert_eq!(stop_of(&bus.end(deadline(0))), Some(reason), "{name}");
     }
 }
 
@@ -491,7 +492,7 @@ fn a_batch_carries_the_enable_sequence() {
     );
     let sent = run_tick(&mut bus, 0, Some(&b), &[]);
     assert_eq!(sent, [(0, SendKind::Command), (1, SendKind::Command)]);
-    assert_eq!(bus.end(deadline(0)).stop(), None);
+    assert_eq!(stop_of(&bus.end(deadline(0))), None);
 }
 
 /// Guards: number - feedback exactly three periods old still carries motion; one nanosecond more stops (PLAN.md item 3:
@@ -596,14 +597,6 @@ fn timing_that_breaks_the_tick_is_refused() {
             },
             None,
         ),
-        (
-            "no silent ticks",
-            Timing {
-                silent_ticks: 0,
-                ..base
-            },
-            Some(TimingError::NoSilentTicks),
-        ),
         ("250 Hz", base, None),
     ];
     for (name, timing, refused) in rows {
@@ -611,6 +604,36 @@ fn timing_that_breaks_the_tick_is_refused() {
             BusTick::new(&one_limb(&[id(101)]), timing).err(),
             refused.map(ConfigError::Timing),
             "{name}: {timing:?}"
+        );
+    }
+}
+
+/// Guards: safety - a silence count of zero is refused at startup: zero silent ticks would stop an active bus on its
+/// first tick, and zero missed replies would stop every limb at its first send (PLAN.md items 3 and 6).
+#[test]
+fn zero_silence_counts_are_refused() {
+    let base = Timing::at_hz(250);
+    let rows = [
+        (
+            Timing {
+                silent_ticks: 0,
+                ..base
+            },
+            TimingError::NoSilentTicks,
+        ),
+        (
+            Timing {
+                silence_misses: 0,
+                ..base
+            },
+            TimingError::NoSilenceMisses,
+        ),
+    ];
+    for (timing, refused) in rows {
+        assert_eq!(
+            BusTick::new(&one_limb(&[id(101)]), timing).err(),
+            Some(ConfigError::Timing(refused)),
+            "{timing:?}"
         );
     }
 }
@@ -642,7 +665,7 @@ fn error_frames_are_classified_and_passive_marks_the_bus_unhealthy() {
     run_tick(&mut bus, 0, None, &[(MS, error_frame(0x04, 0x20))]);
     let snap = bus.end(deadline(0));
     assert_eq!(
-        (snap.healthy, snap.state()),
+        (snap.healthy, state_of(&snap)),
         (false, LimbState::Idle),
         "passive doesn't stop the bus"
     );

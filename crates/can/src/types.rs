@@ -29,7 +29,8 @@ pub struct Timing {
     /// item 6 Silence row).
     pub feedback_limit_ns: u64,
     /// How long a stop waits for each drive's Disable to be confirmed and its reporting-off sent before it records the
-    /// rest as unconfirmed (100 ms, PLAN.md item 2 Silence windows).
+    /// rest as unconfirmed, and how long after any Disable a drive's missed replies aren't counted (100 ms, PLAN.md
+    /// item 2 Silence windows).
     pub stop_confirm_ns: u64,
     /// How long a drive drops frames after a Disable; its reporting-off waits this long after its confirmation, and a
     /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
@@ -337,7 +338,9 @@ pub struct EchoSeen {
     pub read_ns: u64,
 }
 
-/// Why a limb stopped. The reasons naming a slot stop only that drive's limb; the others stop every limb on the bus.
+/// Why a limb stopped. `ExpiredFeedback`, `DriveFault`, `DriveMode` and `DriveSilent` stop only that drive's limb;
+/// `Requested` stops the scope it was asked for (`BusTick::stop_limb` one limb, `BusTick::request_stop` the bus); the
+/// rest, `BadBatch` included, stop every limb on the bus.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StopReason {
     /// No fresh batch for `Timing::silent_ticks` ticks while a limb was active (PLAN.md item 3).
@@ -349,12 +352,13 @@ pub enum StopReason {
         /// That drive's slot.
         slot: usize,
     },
-    /// A drive of an active limb reported a fault, read before the send (PLAN.md item 6 Faults row).
+    /// A drive of an idle or active limb reported a fault, read before the send (PLAN.md item 6 Faults row).
     DriveFault {
         /// That drive's slot.
         slot: usize,
     },
-    /// A drive seen in Run after its Enable reported another mode, read before the send (PLAN.md item 6 States).
+    /// A drive seen in Run after its Enable later reported another mode with no Disable from this host (PLAN.md item 6
+    /// States). A drive this host never enabled isn't watched here: preflight refuses one found already in Run.
     DriveMode {
         /// That drive's slot.
         slot: usize,
@@ -571,6 +575,11 @@ pub enum ConfigError {
     #[error("bad timing: {0}")]
     Timing(TimingError),
 }
+
+/// A limb index that isn't on this bus.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("limb {0} isn't on this bus")]
+pub struct NoSuchLimb(pub usize);
 
 /// Why a limb can't be re-armed yet.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]

@@ -100,6 +100,8 @@ impl BusTick {
             .is_some_and(|l| l.state == LimbState::Active);
         if d.phase == Phase::Enabling && active && status.header.mode == Mode::Run && !unordered {
             d.phase = Phase::Running;
+        } else if d.phase == Phase::Running && status.header.mode != Mode::Run {
+            d.phase = Phase::LeftRun;
         }
         if !answer {
             return;
@@ -130,7 +132,7 @@ impl BusTick {
         }
     }
 
-    pub(crate) fn slot_of(&mut self, device: DeviceId) -> Option<&mut DriveState> {
+    fn slot_of(&mut self, device: DeviceId) -> Option<&mut DriveState> {
         self.drives
             .iter_mut()
             .flatten()

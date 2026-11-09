@@ -7,7 +7,6 @@
 //! tick, so it never leaves its silence and gets no reporting off. The limb is stopped once every drive has confirmed
 //! and taken its reporting off, or once the confirm window has passed.
 
-use robstride::Mode;
 use robstride::encode::{self, Reporting};
 
 use crate::error_frame::BusError;
@@ -55,8 +54,9 @@ impl BusTick {
         }
     }
 
-    /// The check before every send, on what the drain just read: a drive of an active limb that shows a fault, has
-    /// left Run after running, or has missed too many replies in a row stops its limb before any command goes to it.
+    /// The check before every send, on what the drain just read: a drive of an idle or active limb that shows a fault,
+    /// has left Run after running, or has missed too many replies in a row stops its limb before any command goes to
+    /// it. An idle limb is checked too, so a faulted drive never gets its Enable.
     pub(crate) fn veto(&mut self, now_ns: u64) {
         for slot in 0..self.drives.len() {
             let Some(d) = self.drives.get(slot).copied().flatten() else {
@@ -67,16 +67,13 @@ impl BusTick {
                 .get(d.limb)
                 .copied()
                 .flatten()
-                .is_some_and(|l| l.state == LimbState::Active);
+                .is_some_and(|l| matches!(l.state, LimbState::Idle | LimbState::Active));
             if !active {
                 continue;
             }
-            let left_run = d.phase == Phase::Running
-                && d.observed
-                    .is_some_and(|o| o.status.header.mode != Mode::Run);
             let reason = if d.fault_seen {
                 Some(StopReason::DriveFault { slot })
-            } else if left_run {
+            } else if d.phase == Phase::LeftRun {
                 Some(StopReason::DriveMode { slot })
             } else if d.misses >= self.timing.silence_misses {
                 Some(StopReason::DriveSilent { slot })
@@ -176,8 +173,9 @@ impl BusTick {
 
     /// The operator cleared limb `limb` (PLAN.md item 6: a latched stop clears only by an operator `clear`): idle again,
     /// with its stop outcomes, fault history and miss counts started afresh, and a new generation. Each drive must
-    /// first be confirmed in Reset by the stop, or have had no frame from this bus for longer than the drive timeout
-    /// (plus a period, for a send late in its tick), so it has dropped to Reset on its own. Every drive in it needs a
+    /// first be confirmed in Reset by the stop, or have been sent nothing by this host for longer than the drive timeout
+    /// since the last write the socket took (plus a period of margin for the adapter's queue), so it has dropped to
+    /// Reset on its own. Every drive in it needs a
     /// fresh preflight before it is enabled again; that is the safety layer's.
     ///
     /// # Errors

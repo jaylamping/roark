@@ -22,6 +22,6 @@ pub use error_frame::{BusError, classify};
 pub use tick::BusTick;
 pub use types::{
     BusDrive, CommandBatch, ConfigError, Counters, DRIVE_TIMEOUT_NS, Drain, DriveView, EchoSeen,
-    LimbState, LimbView, MAX_DRIVES, MAX_SENDS, Observed, RearmRefused, Send, SendKind, SendList,
-    SendOutcome, Snapshot, StopOutcome, StopReason, Timing, TimingError,
+    LimbState, LimbView, MAX_DRIVES, MAX_SENDS, NoSuchLimb, Observed, RearmRefused, Send, SendKind,
+    SendList, SendOutcome, Snapshot, StopOutcome, StopReason, Timing, TimingError,
 };

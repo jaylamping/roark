@@ -18,8 +18,8 @@ use robstride::{DeviceId, EchoKind, Frame, Inbound, Param, ParamValue, RunMode, 
 use crate::error_frame::BusError;
 use crate::types::{
     BusDrive, CommandBatch, ConfigError, Counters, Drain, DriveView, EchoSeen, LimbState, LimbView,
-    MAX_DRIVES, Observed, Send, SendKind, SendList, SendOutcome, Snapshot, StopOutcome, StopReason,
-    Timing,
+    MAX_DRIVES, NoSuchLimb, Observed, Send, SendKind, SendList, SendOutcome, Snapshot, StopOutcome,
+    StopReason, Timing,
 };
 
 /// A command the socket took, waiting for its status.
@@ -29,8 +29,9 @@ pub(crate) struct Outstanding {
     pub(crate) deadline_ns: u64,
     /// A stop's Disable: a Reset status after it confirms the stop.
     pub(crate) stop_disable: bool,
-    /// Whether a missing status counts as unanswered. Not for Enable or Disable: the drive may be slow or silent then
-    /// (PLAN.md item 2 Silence windows).
+    /// Whether a missing status counts as unanswered. Not for Enable or Disable, nor for anything sent between an
+    /// Enable and the drive's first Run status, or within `Timing::stop_confirm_ns` (100 ms) after a Disable: the drive
+    /// may be slow or silent then (PLAN.md item 2 Silence windows).
     pub(crate) counts_missed: bool,
     pub(crate) reply: Reply,
     pub(crate) counted: bool,
@@ -55,7 +56,9 @@ pub(crate) struct DriveState {
     pub(crate) fault_seen: bool,
     pub(crate) misses: u32,
     pub(crate) phase: Phase,
-    /// The scheduled start of the last tick in which the socket took a frame to it.
+    /// When the socket last took a Disable to it.
+    pub(crate) disabled_ns: Option<u64>,
+    /// When the socket last took a frame to it, as the shell read the clock after the write.
     pub(crate) last_sent_ns: Option<u64>,
     pub(crate) last_echo: Option<EchoSeen>,
     pub(crate) stop: StopOutcome,
@@ -72,8 +75,11 @@ pub(crate) enum Phase {
     Off,
     /// An Enable was taken; no Run status since.
     Enabling,
-    /// It reported Run after that Enable: a later status in another mode stops its limb.
+    /// It reported Run after that Enable.
     Running,
+    /// It reported another mode after running, without a Disable from this host: its limb stops before the next send.
+    /// Latched when the status is read, so a later status can't hide it.
+    LeftRun,
 }
 
 /// One limb's run state on this bus.
@@ -141,6 +147,7 @@ impl BusTick {
                 fault_seen: false,
                 misses: 0,
                 phase: Phase::Off,
+                disabled_ns: None,
                 last_sent_ns: None,
                 last_echo: None,
                 stop: StopOutcome::None,
@@ -175,12 +182,19 @@ impl BusTick {
         self.pending_stop.get_or_insert(StopReason::Requested);
     }
 
-    /// Stop limb `limb` at the start of the next tick; the bus's other limbs keep running. A limb not on this bus is
-    /// ignored.
-    pub fn stop_limb(&mut self, limb: usize) {
-        if let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut) {
-            l.pending.get_or_insert(StopReason::Requested);
-        }
+    /// Stop limb `limb` at the start of the next tick; the bus's other limbs keep running.
+    ///
+    /// # Errors
+    /// [`NoSuchLimb`] when the limb isn't on this bus; nothing is stopped then, so the caller must stop the right
+    /// scope itself.
+    pub fn stop_limb(&mut self, limb: usize) -> Result<(), NoSuchLimb> {
+        let l = self
+            .limbs
+            .get_mut(limb)
+            .and_then(Option::as_mut)
+            .ok_or(NoSuchLimb(limb))?;
+        l.pending.get_or_insert(StopReason::Requested);
+        Ok(())
     }
 
     /// How this tick's drain ended: call it after the drain, before [`Self::begin`]. A backlog stops the bus at this
@@ -362,8 +376,9 @@ impl BusTick {
         }
     }
 
-    /// What became of send `index` of this tick's list. A command's status window opens only if the socket took it.
-    pub fn sent(&mut self, index: usize, outcome: SendOutcome) {
+    /// What became of send `index` of this tick's list, written at `sent_ns`. A command's status window opens only if
+    /// the socket took it.
+    pub fn sent(&mut self, index: usize, outcome: SendOutcome, sent_ns: u64) {
         let Some(send) = self.sends.get(index) else {
             return;
         };
@@ -390,11 +405,15 @@ impl BusTick {
             )
         );
         let deadline_ns = self.scheduled_ns.saturating_add(self.timing.collect_ns);
-        let (tick, scheduled_ns) = (self.tick, self.scheduled_ns);
+        let tick = self.tick;
+        let quiet_after_disable_ns = self.timing.stop_confirm_ns;
         let Some(d) = self.drives.get_mut(send.slot).and_then(Option::as_mut) else {
             return;
         };
-        d.last_sent_ns = Some(scheduled_ns);
+        d.last_sent_ns = Some(sent_ns);
+        let in_silence = d.phase == Phase::Enabling
+            || d.disabled_ns
+                .is_some_and(|at| sent_ns.saturating_sub(at) < quiet_after_disable_ns);
         if matches!(kind, Some(EchoKind::Enable)) {
             if d.phase == Phase::Off {
                 d.phase = Phase::Enabling;
@@ -402,6 +421,7 @@ impl BusTick {
         } else if matches!(kind, Some(EchoKind::Disable)) {
             // Disabled on purpose: its Reset reply is no surprise.
             d.phase = Phase::Off;
+            d.disabled_ns = Some(sent_ns);
         }
         match send.kind {
             SendKind::Disable if d.stop == StopOutcome::NeverSent => d.stop = StopOutcome::Sent,
@@ -413,7 +433,8 @@ impl BusTick {
                 tick,
                 deadline_ns,
                 stop_disable: send.kind == SendKind::Disable,
-                counts_missed: !matches!(kind, Some(EchoKind::Enable | EchoKind::Disable)),
+                counts_missed: !in_silence
+                    && !matches!(kind, Some(EchoKind::Enable | EchoKind::Disable)),
                 reply: Reply::Waiting,
                 counted: false,
             });
@@ -497,7 +518,7 @@ fn batch_may_carry(kind: EchoKind) -> bool {
 }
 
 /// What a host frame is and whom it targets, read back through the codec (so the ID layout stays in `robstride`).
-pub(crate) fn echo_of(frame: &Frame) -> Option<(EchoKind, DeviceId)> {
+fn echo_of(frame: &Frame) -> Option<(EchoKind, DeviceId)> {
     match decode(frame.id(), &frame.data()) {
         Ok(Inbound::Echo(echo)) => Some((echo.kind, echo.target)),
         Ok(
