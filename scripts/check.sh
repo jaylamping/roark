@@ -15,3 +15,6 @@ python3 scripts/check_rules.py
 python3 scripts/check_rules.py count
 # No file of 100 MB or more, LFS pointers included (conventions/cad.md rule 5).
 python3 tools/check_file_sizes.py
+# The tracked CAD layout and the CAD tool tests (conventions/cad.md section 5).
+python3 tools/cad/check_cad_layout.py --repo --quiet
+python3 -m pytest -q tools/cad

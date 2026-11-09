@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "description": "File name rules for native CAD. A part or assembly name starts with its region folder (hyphens become underscores); no robot name in file names. Checked by tools/cad/check_cad_layout.py.",
+  "partFilenamePattern": "^[a-z0-9]+(_[a-z0-9]+)+\\.SLDPRT$",
+  "assemblyFilenamePattern": "^[a-z0-9]+(_[a-z0-9]+)*_asm\\.SLDASM$",
+  "vendorFilenamePattern": "^vendor_[a-z0-9]+_[a-z0-9_-]+\\."
+}
