@@ -291,6 +291,7 @@ impl BusTick {
             d.phase = Phase::Off;
             d.outstanding = None;
             d.fresh_ns = None;
+            d.fresh_status = None;
         }
         Ok(())
     }

@@ -299,6 +299,8 @@ pub struct DriveView {
     /// time, not arrival: it can trail the kernel's receipt by up to period - collect + send window
     /// (units-and-frames.md section 5).
     pub fresh_ns: Option<u64>,
+    /// The status `fresh_ns` is the read time of, kept when a later status (a duplicate, a report) replaces `observed`.
+    pub fresh_status: Option<Observed>,
     /// Whether it answered this tick's command by the collect deadline.
     pub answered: bool,
     /// Any fault bit or fault report seen since start or its limb's last re-arm. Sticky until then.

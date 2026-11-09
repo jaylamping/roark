@@ -185,6 +185,10 @@ fn duplicates_and_late_answers_are_counted() {
 
     assert_eq!(snap.counters.duplicate, 1);
     assert_eq!(snap.counters.late, 1);
+    // The duplicate is the latest status, but the fresh answer is still the first.
+    let d11 = at(&snap, 0);
+    assert_eq!(d11.observed.map(|o| o.read_ns), Some(MS + 1));
+    assert_eq!(d11.fresh_status.map(|o| o.read_ns), Some(MS));
     assert!(!at(&snap, 1).answered, "after the deadline");
     assert_eq!(
         at(&snap, 1).fresh_ns,

@@ -118,6 +118,7 @@ impl BusTick {
         };
         if o.reply == Reply::Waiting {
             d.fresh_ns = Some(read_ns);
+            d.fresh_status = Some(Observed { status, read_ns });
             if read_ns <= o.deadline_ns {
                 o.reply = Reply::OnTime;
                 d.answered = o.tick == tick;
