@@ -222,6 +222,12 @@ impl SimDrive {
     /// other frame, so the faults in effect when it falls due apply to it too; it isn't doubled again.
     pub fn pop_due(&mut self, now: Instant) -> Option<DriveFrame> {
         self.advance(now);
+        self.next_out(now).map(|q| q.frame)
+    }
+
+    /// The next frame due by `now` that the injected transport faults let out ([`Self::pop_due`]), taken out of the
+    /// outbox.
+    fn next_out(&mut self, now: Instant) -> Option<Queued> {
         loop {
             let slot = self
                 .outbox
@@ -229,6 +235,9 @@ impl SimDrive {
                 .filter(|s| s.is_some_and(|q| q.due <= now))
                 .min_by_key(|s| s.map(|q| q.due))?;
             let queued = slot.take()?;
+            if queued.gone {
+                return Some(queued);
+            }
             if self.active.silent {
                 continue;
             }
@@ -251,7 +260,7 @@ impl SimDrive {
                     ..queued
                 });
             }
-            return Some(queued.frame);
+            return Some(queued);
         }
     }
 
@@ -269,18 +278,31 @@ impl SimDrive {
 
     /// Power off and on at `at`: Reset, every parameter back to its default (`canTimeout` 0), reporting off, every
     /// injected fault cleared (PLAN item 4). Frames already due by `at` went out before the power went; the rest are
-    /// lost. The joint stays where it is, and the fault plan and its record are the test's, so they stay too.
+    /// lost. What went out is what the transport faults in effect let out, so a silent drive sent nothing and a late one
+    /// only what its lateness let go by `at`. The joint stays where it is, and the fault plan and its record are the
+    /// test's, so they stay too.
     fn reboot(&mut self, at: Instant) {
         let mut outbox = [None; OUTBOX];
-        for (kept, queued) in outbox
-            .iter_mut()
-            .zip(self.outbox.iter().flatten().filter(|q| q.due <= at))
-        {
-            *kept = Some(*queued);
+        let mut free = outbox.iter_mut();
+        let mut dropped = self.dropped;
+        // Each pass takes a frame out, delays it once or doubles it once, so at most three passes per frame.
+        for _ in 0..3 * OUTBOX {
+            let Some(queued) = self.next_out(at) else {
+                break;
+            };
+            match free.next() {
+                Some(slot) => {
+                    *slot = Some(Queued {
+                        gone: true,
+                        ..queued
+                    });
+                }
+                None => dropped += 1,
+            }
         }
         *self = Self {
             rng: Rng(self.rng.next()),
-            dropped: self.dropped,
+            dropped,
             plant: self.plant.at_rest(),
             plan: self.plan,
             stepped: self.stepped,
@@ -300,11 +322,28 @@ impl SimDrive {
     /// the Run status. Events at `now` itself happen only if `inclusive`.
     fn advance_to(&mut self, now: Instant, inclusive: bool) {
         // Faults fire once each; Run comes once per Enable, and a timeout once per Run reached (an Enable, or a Mode
-        // fault); the outbox holds no more reports than this. Reports still due past the bound are skipped and counted.
-        for _ in 0..2 * crate::FAULT_PLAN + 2 + OUTBOX {
-            let Some((at, event)) = self.next_due(now, inclusive) else {
-                break;
-            };
+        // fault). Reports go one at a time while the outbox has room, at most `OUTBOX` of them a step; past that, the
+        // reports before the next other event are skipped in one go and counted, as the full outbox would drop them.
+        let mut events = 0;
+        let mut reports = 0;
+        while let Some((at, event)) = self.next_due(now, inclusive, true) {
+            if matches!(event, Event::Report) {
+                if let Some(interval) = self.report_interval()
+                    && (reports >= OUTBOX || self.outbox.iter().all(Option::is_some))
+                {
+                    let until = self
+                        .next_due(now, inclusive, false)
+                        .map_or((now, inclusive), |(next, _)| (next, false));
+                    self.skip_reports(at, interval, until);
+                    continue;
+                }
+                reports += 1;
+            } else {
+                events += 1;
+                if events > 2 * crate::FAULT_PLAN + 2 {
+                    break;
+                }
+            }
             let limits = self.limits();
             self.plant.advance(at, self.mode == Mode::Run, limits);
             self.stepped = Some(at);
@@ -328,20 +367,54 @@ impl SimDrive {
                 }
             }
         }
-        while let Some(at) = self
-            .next_report
-            .filter(|at| *at < now || (inclusive && *at == now))
+        if let (Some(at), Some(interval)) =
+            (self.next_due_report(now, inclusive), self.report_interval())
         {
-            self.dropped += 1;
-            self.next_report = self.report_interval().map(|i| at + i);
+            self.skip_reports(at, interval, (now, inclusive));
         }
         let limits = self.limits();
         self.plant.advance(now, self.mode == Mode::Run, limits);
         self.stepped = Some(self.stepped.map_or(now, |s| s.max(now)));
     }
 
-    /// The earliest event due by `now` (before it, unless `inclusive`), and when, at the earliest the time last stepped to.
-    fn next_due(&self, now: Instant, inclusive: bool) -> Option<(Instant, Event)> {
+    /// The next report's time, if it is due by `now`.
+    fn next_due_report(&self, now: Instant, inclusive: bool) -> Option<Instant> {
+        self.next_report
+            .filter(|at| *at < now || (inclusive && *at == now))
+    }
+
+    /// Skip the reports every `interval` from `first` to before `until` (or at it, if inclusive): each one not in the
+    /// Set Zero blackout is counted dropped, as a full outbox would drop it, and the next report falls after them.
+    fn skip_reports(
+        &mut self,
+        first: Instant,
+        interval: Duration,
+        (until, inclusive): (Instant, bool),
+    ) {
+        let step = interval.as_nanos().max(1);
+        // How many of the reports fall before `t`.
+        let before = |t: Instant| -> u128 {
+            t.checked_duration_since(first)
+                .map_or(0, |d| d.as_nanos().div_ceil(step))
+        };
+        let count = match until.checked_duration_since(first) {
+            Some(d) if inclusive => d.as_nanos() / step + 1,
+            Some(_) => before(until),
+            None => 0,
+        };
+        let silent = self.blackout.map_or(0, |(start, end)| {
+            before(end).min(count) - before(start).min(count)
+        });
+        self.dropped = self
+            .dropped
+            .saturating_add(u64::try_from(count - silent).unwrap_or(u64::MAX));
+        let skipped = u64::try_from(step * count).unwrap_or(u64::MAX);
+        self.next_report = first.checked_add(Duration::from_nanos(skipped));
+    }
+
+    /// The earliest event due by `now` (before it, unless `inclusive`), and when, at the earliest the time last stepped to;
+    /// reports only if `reports`.
+    fn next_due(&self, now: Instant, inclusive: bool, reports: bool) -> Option<(Instant, Event)> {
         let since = self.stepped.unwrap_or(now);
         let due = |at: Option<Instant>| {
             at.filter(|at| *at < now || (inclusive && *at == now))
@@ -351,7 +424,7 @@ impl SimDrive {
             (due(self.plan.next_at()), Event::Fault),
             (due(self.run_at), Event::Run),
             (due(self.timeout_at()), Event::Timeout),
-            (due(self.next_report), Event::Report),
+            (due(self.next_report.filter(|_| reports)), Event::Report),
         ]
         .into_iter()
         .filter_map(|(at, event)| Some((at?, event)))
@@ -510,6 +583,7 @@ impl SimDrive {
                     frame,
                     delayed: false,
                     copy: false,
+                    gone: false,
                 });
             }
             (None, _) | (Some(_), None) => self.dropped += 1,
@@ -526,6 +600,8 @@ struct Queued {
     delayed: bool,
     /// The second copy of a doubled frame.
     copy: bool,
+    /// Went out before a reboot, so no fault injected after it reaches the frame.
+    gone: bool,
 }
 
 /// What [`SimDrive::advance_to`] handles next, in the order ties go.

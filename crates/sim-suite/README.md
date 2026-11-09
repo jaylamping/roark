@@ -11,13 +11,15 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   the kernel.
 - `bus.rs`: `can::spawn` refuses anything that isn't `vcan`, and the bus thread runs two simulated drives through
   enable, hold and a shutdown stop, recorded by `telemetry`; the recording is checked frame by frame against an
-  independent `candump -L -x` capture (needs `can-utils`). Also a thread started after the schedule joining it, and slow
-  requests (get-ID, a write, its read-back) reaching a drive and coming back.
+  independent `candump -L -x` capture (needs `can-utils`). Also a thread started after the schedule joining it.
+- `slow.rs`: slow requests (get-ID, a write, its read-back) reaching a drive and coming back.
 - `faults.rs`: a fault injected into one drive is caught by the bus thread before the next send, stopping only that
-  drive's limb. The rest of the fault tests (PLAN item 4, "Done when") join it as the safety layer lands.
+  drive's limb; a drive gone silent, and one that also loses its Disable, stop their limb for the silence. The rest of
+  the fault tests (PLAN item 4, "Done when") join them as the safety layer lands.
 
-Each test uses a bus of its own, because every frame on a bus reaches every socket on it. The two tests that share `can0`
-run one at a time (nextest's `can0` test group, `.config/nextest.toml`); a new test on a shared bus joins that group.
+Each test file uses a bus of its own, because every frame on a bus reaches every socket on it. The test binaries that
+share `can0` (`slow`, `faults`) run one test at a time (nextest's `can0` test group, `.config/nextest.toml`); a new test
+on a shared bus joins that group.
 
 nextest's default profile leaves this crate out, so `scripts/check.sh` stays runnable on any machine; the `sim` profile
 runs only this crate.
