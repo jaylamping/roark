@@ -208,7 +208,7 @@ g.C('1uF 50V X7R','RST_SRC','GND',C805); g.Z('BZT52C10','MID','MID_Z'); g.R('220
 s.refc['Q']=max(s.refc.get('Q',0),9)
 Q(NPN,'MMBT3904',(268,562),'INT_B','GND','RST_SRC'); Q(NPN,'MMBT3904',(295,562),'MID_B','GND','INT_B')
 # 12 V converter pigtail: the DVE moved off the board (Joey, 2026-11-07)
-conn(12,'Buck board pigtail: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 GND, 7 +3V3_PI, 8 SDA, 9 GND, 10 SCL, 11 SP_EN, 12 GND',(66,385),'Connector_Molex:Molex_Micro-Fit_3.0_43045-1212_2x06_P3.00mm_Vertical',['BRK_F','BRK_F','GND','GND','BRK_ON','GND','+3V3_PI','I2C_SDA','GND','I2C_SCL','SP_EN','GND'])
+conn(12,'Buck board pigtail: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 +3V3_PI, 7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA',(66,385),'Connector_Molex:Molex_Micro-Fit_3.0_43045-1212_2x06_P3.00mm_Vertical',['BRK_F','BRK_F','GND','GND','BRK_ON','+3V3_PI','GND','GND','SP_EN','GND','I2C_SCL','I2C_SDA'])
 g=Grid(s,114.3,398,20.32,30.48,200)
 g.two('Device:Fuse','F','20A 58V MINI 0997020.WXN','BRK_IN','BRK_F','Fuse:Fuseholder_Blade_Mini_Keystone_3568'); g.R('470k','BRK_IN','BRK_PG',R1206); g.Z('BZT52C12','BRK_PG','GND')
 nic(s,'Transistor_FET:Q_NMOS_GSD',s.nref('Q'),'2N7002',(240,402),SOT23,{'1':'BRK_PG','2':'GND','3':'BRK_OND'})
@@ -225,8 +225,8 @@ wnote('''Block 10. Absorber: a bank trip into a bus short cuts 350-890 A. tools/
 U2 feed: F1, 22R, ES1D in series, then 1 uF. A shorted U2 puts the pack on VCTL: 22R holds it to about 1.6 A, so SMAJ15A clamps under 19.2 V (Q6 gate 20 V) and F1 (50 A breaking) opens. The series diode keeps C5 from back-driving U2 when BAT collapses, and 22R keeps C39's inrush far under F1's I2t.
 Absorber close option (M3), DNP: if the BMS trips when it closes onto the absorber, remove the 0R and fit 2R + the delayed NMOS + its RC: 25 A at close, clamp unchanged (absorber_sim.py).
 RUN_A and RUN_B diodes: a U1 pin 2-3 bridge or an EN fault can't drive RUN. FLT reaches UVLO through BAT46W + 10k (2010) with a 12 V zener on FLT_A: FLT low holds UVLO near 1.9 V; a bridged UVLO puts at most 5.5 mA into FLT and 12.7 V on it (15 V recommended).
-Converter: F2 20 A on the board end protects the pigtail (U7 already limits at 9.7-12.3 A; F2 backs up a shorted Q7). The DVE has no reverse protection, so the keyed connector carries polarity. U7 PGD high (good) turns on the 2N7002, which pulls ON/OFF to -Vin through 220R: on (0.45 V at 2 mA). 220R limits a pin 5-11 short to 55 mA. 470k and the 12 V zener bias the gate from BRK_IN, so it doesn't depend on VCTL.
-1 uF on RST_SRC (M8): a reset held at power-up no longer arms the latch (tools/latch_sim.py, 36 cases). Reset interlock (M1): Q10 shorts RST_SRC until MID is over about 11 V (10 V zener, Q11), and Q14 shorts it while VBUS is over 6-8.5 V (5.1 V zener, hFE spread). Operator rule: wait for VBUS under 3 V. Reset needs MID healthy and the bus down, so a shorted B can't be hard-closed onto a charged bus. After a stop, wait for the drives' caps to bleed. It loads MID by about 30 uA. 33k on U17 VBUS (M13). 22 nF SRC to GND, TI's recommendation for U8. BAT46W (M4). 330 uF on +12V: spare-output shorts and servo back-feed (M9) land in it and the compute loads.''',(300,128),175)
+Converter: F2 20 A on the board end protects the pigtail (U7 already limits at 9.7-12.3 A; F2 backs up a shorted Q7). The DVE has no reverse protection, so the keyed connector carries polarity. U7 PGD high (good) turns on the 2N7002, which pulls ON/OFF to -Vin through 220R: on (0.45 V at 2 mA). 470k and the 12 V zener bias the gate from BRK_IN, so it doesn't depend on VCTL.
+1 uF on RST_SRC (M8): a reset held at power-up no longer arms the latch (tools/latch_sim.py, 36 cases). Reset interlock (M1): Q10 shorts RST_SRC until MID is over about 11 V (10 V zener, Q11), and Q14 shorts it while VBUS is over 6-8.5 V (5.1 V zener, hFE spread). Operator rule: wait for VBUS under 3 V. Reset needs MID healthy and the bus down, so a shorted B can't be hard-closed onto a charged bus. After a stop, wait for the drives' caps to bleed. It loads MID by about 30 uA. 33k on U17 VBUS (M13). 22 nF SRC to GND, TI's recommendation for U8. BAT46W (M4). The 330 uF +12V cap (M9: spare-output shorts and servo back-feed land in it) moved to the buck board in split S1.''',(300,128),175)
 # M1 (Joey, 2026-11-07): reset also needs the bus down. Q14 shorts RST_SRC while VBUS is over about 6 V. Last, so earlier refs keep their numbers.
 g=Grid(s,322,530,17,30.48,352); g.Z('BZT52C5V1','VBUS','VB_Z'); g.R('220k','VB_B','GND',R603); g.nl(); g.R('47k','VB_Z','VB_B','Resistor_SMD:R_0805_2012Metric')
 Q(NPN,'MMBT3904',(345,562),'VB_B','GND','RST_SRC')
@@ -239,7 +239,7 @@ g.R('0R','SH_P','CSP_A',R603); g.R('0R','SH_N','CSN_A',R603); g.C('1nF C0G','CSP
 skip('D'); g.R('4.7k 2W','VBUS','GND','Resistor_SMD:R_2512_6332Metric'); dnp(f"R{s.refc['R']}")
 skip('F',3)   # Jetson, Pi-buck and fan fuses moved
 skip('D')   # +12V back-feed TVS moved
-wnote('''Rev B4 review: two more absorber cans (three in all). U2 feed 22R and series ES1D. FLT diode BAT46W (pull-down only). 68 V zener on U17 VBUS. 220R in Q12's drain. U8 sense RC placeholder: 0R fitted, 1 nF DNP. Schottky on SPARE_ON (and D5 on SPARE_SW). VBUS bleeder footprint, DNP: fit it only if the drives don't bleed the bus. Fuses on the Jetson, Pi buck and fan outputs (the DVE limits at about 30 A). SMBJ15A on +12V: servo back-feed clamp, 16.7 V min breakdown, so it never conducts at 12 V.''',(25.4,700),160)
+wnote('''Rev B4 review: two more absorber cans (three in all). U2 feed 22R and series ES1D. FLT diode BAT46W (pull-down only). 68 V zener on U17 VBUS. 220R in Q12's drain. U8 sense RC placeholder: 0R fitted, 1 nF DNP. VBUS bleeder footprint, DNP: fit it only if the drives don't bleed the bus. The SPARE_ON and SPARE_SW Schottkys, the Jetson, Pi buck and fan fuses and the +12V SMBJ15A moved to the buck board in split S1.''',(25.4,700),160)
 conn(2,'HS50 B (-X): 1 VBUS, 2 FET drain (Mini-Fit Jr, 18 AWG)',(200,660),MINI,['VBUS','CL_D'],ref='J25')
 g.R('9.53M','CL_HY','CL_SENSE',R603)  # R22 split: 19.1 MOhm isn't stocked in 0402 (rev B4 audit)
 dnp('C29')  # bank A comparator at its fastest: TMR with R37 only (rev B3 review B2)
@@ -333,16 +333,18 @@ wnote('''Why: the Pi 5 boots from NVMe and consumer drives have no power-loss pr
 Sense on BRK_IN, the converter input behind U7: 118k/10k, 220 nF (2 ms) against motor-current dips. TLV1805 on VCTL (alive with the pack), own LM4040 2.5 V into IN+ through 10k, 499k from OUT for hysteresis: trip 31.4 V falling, re-arm 34.4 V rising (VL 2.451 V, VH 2.689 V at OUT 0/12.1 V), above the converter's 27.2 V UVLO-off, so the Pi gets its warning while compute is still up.
 Output open drain: OUT high (input low) turns on the 2N7002, PWR_FAIL_N low. 100R + 1 nF at the pin, BAT54S clamp; the pull-up is on the Pi's 3.3 V side, J21 pin 8. Pack absent or U7 off: BRK_IN at 0, PWR_FAIL_N low. VCTL lost alone (F1 open) leaves it high: the 38 V / 3.0 V and BMS-telemetry rules still cover a low pack.''',(300,955),175)
 # ---------- split S1 (2026-11-09): the buck board link, appended so earlier refs keep their numbers ----------
-head('5c. Buck board link (J24): SPARE_SW enable',(300,960))
-g=Grid(s,310,985,20.32,30.48,420)
-g.D('BAV19W','SP_EN','SP_ENR')   # RUN -> 100k -> this diode -> J24 pin 11 -> 68k pull-down and U9 EN on the buck board
+head('5c. Buck board link (J24): SPARE_SW enable',(300,990))
+g=Grid(s,310,1010,20.32,30.48,420)
+g.D('BAV19W','SP_EN','SP_ENR')   # RUN -> 100k -> this diode -> J24 pin 9 -> 68k pull-down and U3 EN on the buck board
 wnote('''SP_EN is the only latch-derived signal on the pigtail. The series diode stops any fault on the buck board or the cable
-from feeding RUN; the 68k pull-down at U9's EN (buck board) holds SPARE_SW off when RUN drops, the diode opens or the pigtail
-is unplugged. RUN 7.7 V: EN = (7.7 - 0.6) x 68/168 = 2.9 V, on.
-I2C to the buck board's two meters: one set of pull-ups only (the Pi's); the pigtail keeps SDA and SCL beside GND (pins 8,
-9, 10). Pigtail length up to about 300 mm at 100 kHz (about 150 pF of cable plus the meters, under the 400 pF bus limit).
-Ground: the buck board's ground meets this board's at J24 only. The Pi's return runs on its own 12 V output (buck board
-J6); J21's GND is the I2C reference, so route the J21 cable beside the pigtail to keep that loop small.''',(300,1010),150)
+from feeding RUN; the 68k pull-down at U3's EN (buck board) holds SPARE_SW off when RUN drops, the diode opens or the pigtail
+is unplugged. RUN 7 V: EN = (7 - 0.6) x 68/168 = 2.6 V, on.
+Pinout: the 54 V input (1, 2) faces GND (7, 8), and SP_EN (9) faces GND and sits between GND pins, so a short between facing
+or neighbouring contacts trips U7 or turns SPARE_SW off. SCL and SDA (11, 12) face ON/OFF and +3V3: a short there upsets
+I2C or holds the converter off. One set of I2C pull-ups only (the Pi's). Pigtail length up to about 300 mm at 100 kHz.
+Ground: the buck board's ground meets this board's at J24 and again through the Pi (its 12 V return on buck board J3, and
+J21's GND). If the J3 return opens, the Pi buck's return falls back through J21's one GND pin: route the J21 cable beside
+the pigtail and check the J3 return crimp at assembly.''',(300,1035),150)
 writelib()
 s.write([('/'+ROOT,'1')])
 print('ok',{k:v for k,v in s.refc.items() if not k.startswith('#')})

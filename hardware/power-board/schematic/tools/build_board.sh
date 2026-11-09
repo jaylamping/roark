@@ -4,7 +4,7 @@
 # after the base board)
 # The work dir needs net.net (kicad-cli sch export netlist). Each stage's output is the next one's input:
 #   place  -> placed.kicad_pcb          (tools/place.py)
-#   power  -> base.kicad_pcb            (route_power, route_12v, hv_spacing, gnd_fanout, route_u1) + copper.json
+#   power  -> base.kicad_pcb            (route_power, hv_spacing, gnd_fanout, route_u1) + copper.json
 #   route  -> routes.json               (tools/grid_route.py, plain Python, about an hour)
 #   import -> routed.kicad_pcb + drc.json + checks.txt (route_import, kicad-cli DRC with the project rules, route_checks)
 set -uo pipefail
@@ -22,7 +22,6 @@ if run place; then
 fi
 if run power; then
   "$KP" tools/route_power.py "$W/placed.kicad_pcb" "$W/base.kicad_pcb" 2>&1 | q | tail -1
-  "$KP" tools/route_12v.py "$W/base.kicad_pcb" 2>&1 | q | tail -1
   "$KP" tools/hv_spacing.py "$W/base.kicad_pcb" > "$W/hv_spacing.txt" 2>&1 || echo "hv_spacing exit $?"; grep -E '^moved|^left|guard|removed' "$W/hv_spacing.txt" | cut -c1-160
   "$KP" tools/gnd_fanout.py "$W/base.kicad_pcb" 2>&1 | q | cut -c1-160 | tail -1
   "$KP" tools/route_u1.py "$W/base.kicad_pcb" 2>&1 | q | tail -1

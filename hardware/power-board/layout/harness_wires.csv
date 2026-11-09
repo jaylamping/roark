@@ -9,7 +9,7 @@ W7,L leg +/return,V_L5 / GND,2,14 AWG,3.6,silicone,J12.1 / J12.2,inline 20 A MIN
 W8,R leg +/return,V_L6 / GND,2,14 AWG,3.6,silicone,J13.1 / J13.2,inline 20 A MINI fuse then XT60 (+ GH CAN at the leg),TBD,twisted pair,unfitted until legs,14 AWG kept for the 40 A-class legs (rev C)
 W9,brake +X,VBUS / CL_D,2,18 AWG,2.3,silicone,J3 (Mini-Fit Jr 5557-02R plug),HS50 20R on the +X gusset (ring or solder tabs),about 50,twisted pair,fitted,
 W10,brake -X,VBUS / CL_D,2,18 AWG,2.3,silicone,J25 (Mini-Fit Jr 5557-02R plug),HS50 20R on the -X gusset,about 200,twisted pair,fitted,
-W11,buck board pigtail,BRK_F x2 / GND x5 / BRK_ON / +3V3_PI / I2C_SDA / I2C_SCL / SP_EN,12,18 AWG,1.9,thin-wall PVC or silicone (Micro-Fit 3.0 crimp),J24 (Micro-Fit 3.0 43025-1200 plug),buck board J1 (43025-1200 plug) on the -X rail,about 150 (300 at most: I2C),twisted in facing pairs (n with n+6),fitted,split S1 pinout (2026-11-09)
+W11,buck board pigtail,BRK_F x2 / GND x5 / BRK_ON / +3V3_PI / SP_EN / I2C_SCL / I2C_SDA,12,18 AWG,1.9,thin-wall PVC or silicone (Micro-Fit 3.0 crimp),J24 (Micro-Fit 3.0 43025-1200 plug),buck board J1 (43025-1200 plug) on the -X rail,about 150 (300 at most: I2C),twisted in facing pairs (n with n+6),fitted,split S1 pinout (2026-11-09)
 W12,12 V Jetson,+12V_JET / GND,2,18 AWG,1.9,PVC,buck board J2 (Micro-Fit 3.0 43025-0200),Jetson DC input,TBD,twisted pair,fitted,
 W13,12 V Pi 5 V buck,+12V_PI / GND,2,18 AWG,1.9,PVC,buck board J3 (43025-0200),Pi 5 V buck,TBD,twisted pair,fitted,
 W14,12 V fans,+12V_FAN / GND,2,22 AWG,1.3,PVC,buck board J4 (43025-0200),fan splitter to 4 fans (about 0.15 A each),TBD,twisted pair,fitted,
