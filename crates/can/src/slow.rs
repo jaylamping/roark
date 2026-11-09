@@ -6,14 +6,15 @@
 //! Each request gets exactly one result: its reply, timed out, not sent, or refused, including when the bus thread ends
 //! with it pending. The bus layer never retries one. A write is answered by an ordinary status with no register in it,
 //! so its result says only that the drive answered; a read-back is what proves the value. Writes go only to drives of
-//! an idle limb with no command of the tick still unanswered, so that status can't be a command's reply. A request for
+//! an idle limb with no command of the tick still unanswered, so that status is unlikely to be a command's reply (a reply
+//! more than a tick late can still be taken for the write's answer, which is why the read-back proves the value). A request for
 //! a drive whose limb is stopping, stopped or due to stop (the veto's own checks on any drive of the limb: a fault, a
 //! drop out of Run, too many misses), while control is silent, or on a failed bus is refused, and one already queued is
 //! cancelled before it goes, so slow traffic never keeps a drive alive (`canTimeout` counts from any frame).
 
-use robstride::{Frame, Param, ParamOutcome, Uid, Write, encode};
+use robstride::{EchoKind, Frame, Param, ParamOutcome, Uid, Write, encode};
 
-use crate::tick::{BusTick, Reply, batch_may_carry, echo_of};
+use crate::tick::{BusTick, Reply, batch_may_carry};
 use crate::types::{LimbState, SendOutcome};
 
 /// Slow requests a bus holds at once, queued, in flight or with a result not yet taken.
@@ -369,8 +370,11 @@ impl BusTick {
             if write.target() != drive.device {
                 return Err(SlowRefusal::WrongTarget);
             }
-            if echo_of(&encode::param_write(&write)).is_some_and(|(kind, _)| batch_may_carry(kind))
-            {
+            // Judged from the write itself, not a decode of its frame: a write that didn't round-trip must not pass.
+            if batch_may_carry(EchoKind::ParamWrite {
+                param: write.param(),
+                value: write.value(),
+            }) {
                 return Err(SlowRefusal::BatchOnly);
             }
         }

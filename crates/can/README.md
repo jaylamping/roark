@@ -87,7 +87,7 @@ its type-0 reply, and a write by any status from the drive while the write is in
 value: preflight reads every write back. A fault or mode that status shows counts like any status's. Writes go only to
 drives of an idle limb (`LimbNotIdle`) with no command of the tick still unanswered (`CommandUnanswered`: an idle
 limb's batch may carry a Disable or the `run_mode` write; an earlier tick's command is late or lost and doesn't hold
-writes off), so that status can't be a command's reply. The `run_mode` = MIT write goes only in control's batch
+writes off), so that status is unlikely to be a command's reply (a reply more than a tick late can still be taken for the write's answer, which is why the read-back proves the value). The `run_mode` = MIT write goes only in control's batch
 (`BatchOnly`), so a slow frame's echo is never of a kind kept as the drive's `last_echo`. Each request gets exactly one result: its answer, `TimedOut` (no reply by
 the next tick's start), `NotSent`, or `Refused`, including when the thread ends with it pending (`end_slow`: `Ended`,
 or `BusFailed`). Nothing is retried. A request for a drive whose limb is stopping, stopped or due to stop (a stop asked
