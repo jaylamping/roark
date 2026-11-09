@@ -14,8 +14,8 @@
 
 use can::DriveView;
 use robstride::{
-    Drive, EchoKind, Frame, Mode, Param, ParamValue, Reporting, RunMode, StatusFaults, Write,
-    encode,
+    DeviceId, Drive, EchoKind, Frame, Mode, Param, ParamValue, Reporting, RunMode, StatusFaults,
+    Write, encode,
 };
 
 use crate::preflight::PreflightPassed;
@@ -43,6 +43,11 @@ pub enum EnableFailure {
         /// The last mode the drive reported.
         last: Option<Mode>,
     },
+    /// The sequence was handed another drive's view: a runtime bug.
+    WrongView {
+        /// The view's drive.
+        view: DeviceId,
+    },
     /// A status since the sequence began carried fault bits, or a fault was seen since the limb's last clear (then the
     /// bits are those of the latest status, possibly none).
     Faults {
@@ -57,6 +62,7 @@ impl EnableFailure {
     pub const fn rule(self) -> RuleId {
         match self {
             Self::NoEcho | Self::NoModeEcho => RuleId::HostBus,
+            Self::WrongView { .. } => RuleId::HostPreflight,
             Self::NoRun { .. } | Self::LeftRun { .. } => RuleId::HostMode,
             Self::Faults { .. } => RuleId::HostFault,
         }
@@ -75,19 +81,25 @@ impl EnableFailure {
             }
             Self::NoRun {
                 last: Some(Mode::Run),
-            } => "reported Run only after the 50 ms after its Enable, expected Run within them"
-                .to_owned(),
+            } => "reported Run, but no status read in the 50 ms after its Enable answered it in Run".to_owned(),
             Self::NoRun { last: Some(mode) } => {
                 format!("reported {mode:?} 50 ms after its Enable, expected Run")
             }
             Self::NoRun { last: None } => {
                 "sent no status within 50 ms of its Enable, expected Run".to_owned()
             }
+            Self::LeftRun {
+                last: Some(Mode::Run),
+            } => "reported Run, but no status read in the 50 ms after the run_mode = MIT write answered it in Run"
+                .to_owned(),
             Self::LeftRun { last: Some(mode) } => format!(
                 "reported {mode:?} after the run_mode = MIT write, expected Run within 50 ms"
             ),
             Self::LeftRun { last: None } => {
                 "sent no status within 50 ms of the run_mode = MIT write, expected Run".to_owned()
+            }
+            Self::WrongView { view } => {
+                format!("was stepped with drive {}'s view", view.get())
             }
             Self::Faults { bits } if bits.is_empty() => {
                 "had a fault since the last clear, expected none".to_owned()
@@ -103,9 +115,13 @@ impl EnableFailure {
     #[must_use]
     pub const fn remedy(self) -> &'static str {
         match self {
-            Self::NoEcho | Self::NoModeEcho => {
+            Self::NoEcho => {
                 "Frames aren't reaching the adapter: check the bus and the runtime's log, then enable again"
             }
+            Self::NoModeEcho => {
+                "Frames aren't reaching the adapter: check the bus and the runtime's log, clear the limb, then run preflight and enable again"
+            }
+            Self::WrongView { .. } => "A runtime bug: stop and report it with the log",
             Self::NoRun { .. } | Self::LeftRun { .. } => {
                 "Check the drive's power and fault state, clear the limb, then run preflight and enable again"
             }
@@ -143,6 +159,8 @@ enum Stage {
     },
     AwaitModeEcho {
         since_ns: u64,
+        /// When the Run status that answered the Enable was read: the write's answer must come after it.
+        run_read_ns: u64,
     },
     Enabled,
     Failed {
@@ -193,7 +211,11 @@ impl Enabling {
     /// The step for tick `tick`'s batch, planned at `now_ns` (the runtime's monotonic epoch, as the view's times) from the
     /// drive's latest view.
     pub fn step(&mut self, view: &DriveView, tick: u64, now_ns: u64) -> Next {
-        if let Some(bits) = self.faults(view) {
+        if view.device != self.drive.id() && !matches!(self.stage, Stage::Failed { .. }) {
+            self.stage = self
+                .failed(EnableFailure::WrongView { view: view.device })
+                .0;
+        } else if let Some(bits) = self.faults(view) {
             self.stage = self.failed(EnableFailure::Faults { bits }).0;
         }
         let (stage, next) = match self.stage {
@@ -217,9 +239,12 @@ impl Enabling {
             ),
             Stage::Settle { .. } => (self.stage, Next::Wait),
             Stage::AwaitRun { since_ns } => {
-                if run_since(view, since_ns) {
+                if let Some(answer) = fresh_since(view, since_ns).filter(|a| a.mode == Mode::Run) {
                     (
-                        Stage::AwaitModeEcho { since_ns: now_ns },
+                        Stage::AwaitModeEcho {
+                            since_ns: now_ns,
+                            run_read_ns: answer.read_ns,
+                        },
                         Next::Send(encode::param_write(&Write::mit_mode(self.drive))),
                     )
                 } else if late(since_ns, now_ns) {
@@ -230,24 +255,28 @@ impl Enabling {
                     (self.stage, Next::Wait)
                 }
             }
-            Stage::AwaitModeEcho { since_ns } => {
+            Stage::AwaitModeEcho {
+                since_ns,
+                run_read_ns,
+            } => {
                 let mit = EchoKind::ParamWrite {
                     param: Param::RunMode,
                     value: ParamValue::RunMode(RunMode::Mit),
                 };
-                let answered = fresh_since(view, since_ns);
-                if answered.is_some_and(|mode| mode != Mode::Run) {
-                    self.failed(EnableFailure::LeftRun { last: answered })
-                } else if echoed(view, mit, since_ns) && answered == Some(Mode::Run) {
-                    (Stage::Enabled, Next::Enabled)
-                } else if !late(since_ns, now_ns) {
-                    (self.stage, Next::Wait)
-                } else if echoed(view, mit, since_ns) {
-                    self.failed(EnableFailure::LeftRun {
+                // Strictly after the Enable's answer, so that one status never answers both frames.
+                let answer = fresh_since(view, since_ns)
+                    .filter(|a| a.read_ns > run_read_ns)
+                    .map(|a| a.mode);
+                match (answer, echoed(view, mit, since_ns), late(since_ns, now_ns)) {
+                    (Some(Mode::Run), true, _) => (Stage::Enabled, Next::Enabled),
+                    (Some(mode @ (Mode::Reset | Mode::Calibration)), _, _) => {
+                        self.failed(EnableFailure::LeftRun { last: Some(mode) })
+                    }
+                    (Some(Mode::Run) | None, _, false) => (self.stage, Next::Wait),
+                    (None, true, true) => self.failed(EnableFailure::LeftRun {
                         last: mode_since(view, since_ns),
-                    })
-                } else {
-                    self.failed(EnableFailure::NoModeEcho)
+                    }),
+                    (Some(Mode::Run) | None, false, true) => self.failed(EnableFailure::NoModeEcho),
                 }
             }
             Stage::Enabled => (self.stage, Next::Enabled),
@@ -290,18 +319,23 @@ const fn late(since_ns: u64, now_ns: u64) -> bool {
     now_ns.saturating_sub(since_ns) > RUN_WITHIN_NS
 }
 
-/// The mode of a fresh status (the first after a command the socket took) read inside the window of a step planned at
-/// `since_ns`: the drive's answer to that step's frame, as near as the protocol can tell.
-fn fresh_since(view: &DriveView, since_ns: u64) -> Option<Mode> {
-    view.observed
-        .filter(|o| in_window(o.read_ns, since_ns))
-        .filter(|_| view.fresh_ns.is_some_and(|f| in_window(f, since_ns)))
-        .map(|o| o.status.header.mode)
+/// A status that answered a frame: its mode and when it was read.
+#[derive(Clone, Copy)]
+struct Answer {
+    mode: Mode,
+    read_ns: u64,
 }
 
-/// Whether a fresh Run status answered the step planned at `since_ns` inside its window.
-fn run_since(view: &DriveView, since_ns: u64) -> bool {
-    fresh_since(view, since_ns) == Some(Mode::Run)
+/// The fresh status (the first after a command the socket took) read inside the window of a step planned at `since_ns`,
+/// while it is still the drive's latest: the drive's answer to that step's frame, as near as the protocol can tell. A
+/// later status, fresh or not, hides it, and the step waits for the next.
+fn fresh_since(view: &DriveView, since_ns: u64) -> Option<Answer> {
+    view.observed
+        .filter(|o| view.fresh_ns == Some(o.read_ns) && in_window(o.read_ns, since_ns))
+        .map(|o| Answer {
+            mode: o.status.header.mode,
+            read_ns: o.read_ns,
+        })
 }
 
 /// The last mode reported since a step planned at `since_ns`, fresh or not, in or after its window.

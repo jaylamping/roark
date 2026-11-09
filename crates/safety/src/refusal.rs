@@ -60,6 +60,8 @@ pub enum Unanswered {
     /// No result within its window: the bus timed it out, or no result came back within
     /// [`crate::ANSWER_WITHIN_NS`].
     TimedOut,
+    /// A result came, but control handed it over after [`crate::ANSWER_WITHIN_NS`]: the runtime fell behind.
+    Late,
     /// The socket didn't take it.
     NotSent(Unsent),
     /// The bus layer refused it.
@@ -290,6 +292,9 @@ impl Unanswered {
     const fn remedy(self) -> &'static str {
         match self {
             Self::TimedOut => "Check the drive's power and cable, then run preflight again",
+            Self::Late => {
+                "The runtime fell behind handing over the answer: check its log and the Pi's load, then run preflight again"
+            }
             Self::ReadRefused => {
                 "The drive wouldn't read the register: check its firmware with the vendor tool, then run preflight again"
             }

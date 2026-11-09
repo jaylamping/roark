@@ -7,14 +7,16 @@
 //! until its read-back. Every unknown fails closed: a request not answered in time, an answer of the wrong kind, a value
 //! the skeleton leaves null.
 
+//!
+//! Times here (`now_ns`, `read_ns`, `at_ns`) are nanoseconds on the runtime's monotonic epoch, the clock the bus layer
+//! stamps its views with (`telemetry::Epoch`); a bare `u64` like the bus layer's own, so they compare with its fields
+//! as is.
+
 use can::{DriveView, SlowKind, SlowOutcome};
 use robstride::{
     Amps, CanTimeout, Damper, Drive, Mode, NewtonMeters, Param, ParamOutcome, ParamValue,
     RadPerSec, Uid, Volts, Write,
 };
-
-// Times here (`now_ns`, `read_ns`, `at_ns`) are nanoseconds on the runtime's monotonic epoch, the clock the bus layer
-// stamps its views with (can's `Epoch`); a bare `u64` like the bus layer's own, so they compare with its fields as is.
 use skeleton::{Joint, Power, Window};
 
 use crate::refusal::{CapKind, JointFact, Refusal, Unanswered};
@@ -22,8 +24,13 @@ use crate::rule::RuleId;
 
 /// How long preflight waits for one request's result before refusing. A bus serves one slow request a tick, so at
 /// 250 Hz a full bus (`can::MAX_DRIVES` drives, each asking one at a time) answers every drive's request within 8 ticks;
-/// a second is far past that and bounds only a result the bus dropped.
+/// a second is far past that and bounds only a result the bus dropped, or one control handed over late.
 pub const ANSWER_WITHIN_NS: u64 = 1_000_000_000;
+
+/// Whether a request submitted at `at_ns` has had longer than [`ANSWER_WITHIN_NS`] by `now_ns`.
+const fn overdue(at_ns: u64, now_ns: u64) -> bool {
+    now_ns.saturating_sub(at_ns) > ANSWER_WITHIN_NS
+}
 
 /// The registers preflight writes or reads.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -209,7 +216,7 @@ impl Target {
 /// event voids it: a stop, a fault, silence, a drop out of Run, a bus lost, a reboot or runtime restart, or a write to
 /// the drive from anything else (an ordinary reply doesn't). Keeping it fresh is the runtime's duty, not a time limit
 /// here: it runs preflight for every named drive of the enable first, and starts their enable sequences in the tick the
-/// last proof comes (the bus refuses slow requests to a limb that isn't idle, so a drive enabled early would refuse its
+/// last proof comes (the bus refuses slow writes to a limb that isn't idle, so a drive enabled early would refuse its
 /// limb-mates' preflights); it drops every proof or cancels every sequence on any such event, and runs preflight again
 /// for every enable.
 #[derive(Debug, PartialEq, Eq)]
@@ -304,7 +311,7 @@ impl Preflight {
         match self.state {
             State::Asking { next, submitted_ns } => match (EXCHANGES.get(next), submitted_ns) {
                 (Some(&exchange), Some(at)) => {
-                    if now_ns.saturating_sub(at) > ANSWER_WITHIN_NS {
+                    if overdue(at, now_ns) {
                         self.refuse(Refusal::NoAnswer {
                             exchange,
                             how: Unanswered::TimedOut,
@@ -353,10 +360,10 @@ impl Preflight {
         let Some(&exchange) = EXCHANGES.get(next) else {
             return;
         };
-        let checked = if now_ns.saturating_sub(at) > ANSWER_WITHIN_NS {
+        let checked = if overdue(at, now_ns) {
             Err(Refusal::NoAnswer {
                 exchange,
-                how: Unanswered::TimedOut,
+                how: Unanswered::Late,
             })
         } else {
             self.check(exchange, outcome)

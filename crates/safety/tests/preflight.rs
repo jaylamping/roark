@@ -671,11 +671,20 @@ fn a_request_with_no_result_in_time_refuses() {
     preflight.answered(SlowOutcome::Identity(UID), 2_002 + ANSWER_WITHIN_NS);
     assert_eq!(preflight.poll(&view, 2_002 + ANSWER_WITHIN_NS), refused);
 
-    // A result handed over late, with no poll in between, refuses all the same; one at exactly 1 s counts.
+    // A result handed over late, with no poll in between, refuses as late (control fell behind); one at exactly 1 s
+    // counts.
     let mut late = Preflight::start(target, 1_000);
     assert_eq!(late.poll(&view, 2_000), Step::Submit(SlowKind::GetId));
     late.answered(SlowOutcome::Identity(UID), 2_001 + ANSWER_WITHIN_NS);
-    assert_eq!(late.poll(&view, 2_001 + ANSWER_WITHIN_NS), refused);
+    let handed_late = Refusal::NoAnswer {
+        exchange: Exchange::Identity,
+        how: Unanswered::Late,
+    };
+    assert_eq!(
+        late.poll(&view, 2_001 + ANSWER_WITHIN_NS),
+        Step::Refused(handed_late)
+    );
+    assert!(handed_late.remedy().starts_with("The runtime fell behind"));
     let mut on_time = Preflight::start(target, 1_000);
     assert_eq!(on_time.poll(&view, 2_000), Step::Submit(SlowKind::GetId));
     on_time.answered(SlowOutcome::Identity(UID), 2_000 + ANSWER_WITHIN_NS);

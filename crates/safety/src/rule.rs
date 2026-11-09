@@ -12,8 +12,8 @@ pub enum RuleId {
     DriveCaps,
     /// The damper reads 0, protection on.
     DriveDamper,
-    /// Preflight's own checks: VBUS inside the skeleton's window, no fault bits, the drive not already running, the
-    /// joint's direction and zero set.
+    /// Preflight's own checks: VBUS inside the skeleton's window, no fault bits, the drive in Reset, the joint's
+    /// direction, zero and hard limits set, and its model's MIT scales settled.
     HostPreflight,
     /// The drive's UID matches the skeleton's, once commissioned.
     HostIdentity,
@@ -23,7 +23,8 @@ pub enum RuleId {
     HostSilence,
     /// Any fault bit stops the limb.
     HostFault,
-    /// A drive that leaves Run by itself, or never reaches it after its Enable, stops its limb.
+    /// A drive that leaves Run by itself, or shows no fresh Run within 50 ms of its Enable or of its `run_mode` = MIT
+    /// write, stops its limb.
     HostMode,
     /// Soft limits inside every hard stop.
     HostSoftLimit,
@@ -35,7 +36,7 @@ pub enum RuleId {
     HostTemperature,
     /// A hung, late or broken control side lets the drives time out.
     HostHang,
-    /// Bus-off, an interface down or gone, or a bus the thread can't keep up with.
+    /// Bus-off, an interface down or gone, a bus the thread can't keep up with, or an enable's frames not read back.
     HostBus,
     /// Under-voltage or throttling on the Pi refuses enable.
     HostPiHealth,

@@ -9,9 +9,11 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use can::{BusConfig, BusLinks, CommandBatch, SlowRequest, Snapshot};
+use can::{
+    BusConfig, BusLinks, CommandBatch, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, Snapshot,
+};
 use common::{HZ, drive, id, info, next_snapshot, soon, timing};
-use robstride::{Drive, Model, Uid};
+use robstride::{Drive, Mode, Model, Uid};
 use safety::{
     EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal, RuleId, Step, Target,
 };
@@ -66,9 +68,10 @@ limbs:
 /// What the drive does once preflight has passed.
 #[derive(Clone, Copy)]
 enum After {
-    /// Answers as a drive does.
+    /// Answers as a drive does. The sim serves without a break.
     Answers,
-    /// Answers nothing from then on: it never reaches Run as far as the host can tell.
+    /// Answers nothing from then on: it never reaches Run as far as the host can tell. The sim stops serving when
+    /// preflight passes and serves the silent drive again, and nothing it could have missed in between would answer.
     Silent,
 }
 
@@ -101,13 +104,14 @@ impl Drop for Stop<'_> {
 }
 
 /// Run preflight and, if it passes, the enable sequence for drive 101 on `BUS`, playing control on the bus layer's
-/// rings, against a sim drive answering with `uid` and doing `after` once preflight passes.
+/// rings, against a sim drive answering with `uid`, with `start` applied before it serves, and doing `after` once
+/// preflight passes.
 #[expect(
     clippy::unwrap_used,
     clippy::too_many_lines,
     reason = "test helper: one control loop, start to end"
 )]
-fn attempt(uid: Uid, after: After) -> Ended {
+fn attempt(uid: Uid, start: Option<Fault>, after: After) -> Ended {
     ensure_vcan(BUS).unwrap();
     let root = std::env::temp_dir().join(format!("sim-suite-enable-{}", std::process::id()));
     let (passed, applied, stop_sim) = (
@@ -123,8 +127,11 @@ fn attempt(uid: Uid, after: After) -> Ended {
         let _stop = Stop(&passed, &stop_sim, Arc::clone(&exit));
         let sim = scope.spawn(|| {
             let mut drives = [SimDrive::new(Drive::new(id(101), Model::Rs03), uid, 5)];
-            serve(BUS, &mut drives, &passed, &mut |_| {})?;
+            if let Some(fault) = start {
+                drives[0].inject(Instant::now(), fault).unwrap();
+            }
             if let After::Silent = after {
+                serve(BUS, &mut drives, &passed, &mut |_| {})?;
                 drives[0].inject(Instant::now(), Fault::Silent).unwrap();
             }
             applied.store(true, Ordering::Release);
@@ -158,8 +165,9 @@ fn attempt(uid: Uid, after: After) -> Ended {
         .unwrap();
 
         let end = Instant::now() + Duration::from_secs(10);
-        // A few ticks of empty batches first, so the sim is serving before the first request.
-        let warm = Instant::now() + Duration::from_millis(100);
+        // Before preflight, a get-ID until the sim answers, so its first request doesn't race the sim's socket; asked
+        // again on a time-out or a stall of this thread, a few times at most.
+        let (mut serving, mut asked, mut retries) = (false, false, 0);
         let mut phase = None;
         let mut tag = 0;
         let ended = loop {
@@ -167,7 +175,34 @@ fn attempt(uid: Uid, after: After) -> Ended {
             let now = epoch.ns(Instant::now());
             let view = *snap.drive(0).unwrap();
             let mut batch = batch_after(&snap, epoch);
-            if Instant::now() < warm {
+            if !serving {
+                if let Ok(result) = results.pop() {
+                    assert_eq!(result.tag, tag, "one request at a time");
+                    serving = matches!(result.outcome, SlowOutcome::Identity(_));
+                    assert!(
+                        serving
+                            || (retries < 5
+                                && matches!(
+                                    result.outcome,
+                                    SlowOutcome::TimedOut
+                                        | SlowOutcome::Refused(SlowRefusal::ControlSilent)
+                                )),
+                        "{result:?}"
+                    );
+                    retries += u32::from(!serving);
+                    asked = false;
+                }
+                if !serving && !asked {
+                    tag += 1;
+                    let request = SlowRequest {
+                        tag,
+                        slot: 0,
+                        kind: SlowKind::GetId,
+                    };
+                    assert!(requests.push(request).is_ok());
+                    asked = true;
+                }
+                // This tick's batch goes out either way; preflight starts with the next.
                 assert!(commands.push(batch).is_ok());
                 continue;
             }
@@ -260,7 +295,7 @@ fn batch_after(snap: &Snapshot, epoch: Epoch) -> CommandBatch {
 /// drive; item 6 Preflight row).
 #[test]
 fn a_truthful_drive_passes_preflight_and_enables_on_vcan() {
-    assert_eq!(attempt(UID, After::Answers), Ended::Enabled);
+    assert_eq!(attempt(UID, None, After::Answers), Ended::Enabled);
 }
 
 /// Guards: safety - `host.identity`: on a real socket, a drive answering get-ID with another UID than the skeleton's
@@ -268,7 +303,7 @@ fn a_truthful_drive_passes_preflight_and_enables_on_vcan() {
 #[test]
 fn a_drive_with_another_uid_is_refused_on_vcan() {
     let other = Uid([9; 8]);
-    let ended = attempt(other, After::Answers);
+    let ended = attempt(other, None, After::Answers);
     assert_eq!(
         ended,
         Ended::Refused(Refusal::Uid {
@@ -287,10 +322,28 @@ fn a_drive_with_another_uid_is_refused_on_vcan() {
 /// after 50 ms; item 6 Mode row).
 #[test]
 fn a_drive_that_never_reaches_run_fails_the_enable_on_vcan() {
-    let ended = attempt(UID, After::Silent);
+    let ended = attempt(UID, None, After::Silent);
     assert_eq!(
         ended,
         Ended::Failed(EnableFailure::NoRun { last: None }, true)
     );
     assert_eq!(EnableFailure::NoRun { last: None }.rule(), RuleId::HostMode);
+}
+
+/// Guards: safety - `host.preflight` on a real socket: a drive in another mode than Reset (here Calibration, as another
+/// controller could leave it) is refused at the first status it shows, and never enabled (PLAN item 6 Preflight row:
+/// the drive in Reset).
+#[test]
+fn a_drive_not_in_reset_is_refused_on_vcan() {
+    let ended = attempt(UID, Some(Fault::Mode(Mode::Calibration)), After::Answers);
+    assert_eq!(
+        ended,
+        Ended::Refused(Refusal::NotReset {
+            mode: Mode::Calibration
+        })
+    );
+    let Ended::Refused(refusal) = ended else {
+        return;
+    };
+    assert_eq!(refusal.rule(), RuleId::HostPreflight);
 }

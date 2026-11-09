@@ -197,7 +197,8 @@ The legacy code holds real bench lessons. Copy them into the codec's docs and te
 
 - **Enable one drive:** preflight read-backs pass → active reporting (type 24) off → wait for its echo plus one tick → no Set
   Zero to this drive in the last 800 ms → Enable (type 3) → expect a reply in Run mode (measured 1.4 to 10.3 ms; refuse after
-  50 ms) → write RunMode 0x7005 = 0 (MIT) → no non-neutral MIT frame before Run is seen.
+  50 ms) → write RunMode 0x7005 = 0 (MIT) → its echo and a later fresh Run status within 50 ms → no non-neutral MIT
+  frame before Run is seen.
 - **Stop:** Disable (type 4, fault-clear byte unset) to every affected drive on every reachable bus, without waiting for one
   drive's answer before the next, then active reporting off. A lost bus never delays stops on healthy buses. Pre-steps
   (SpeedTarget 0x700A = 0, a neutral MIT frame) are allowed only if they don't delay Disable. Each stop records what was
@@ -350,7 +351,8 @@ Each rule names what it protects and the failure it covers. A rule that protects
 | Host | `host.logging` | Logging: if the session log can't open or the disk is full, refuse the next enable; never stop a running motion for it | The record (tenet 6) | Disk full or slow |
 
 **Done when** preflight refuses an enable for each of: `canTimeout` ≠ 1000, a cap mismatch, damper ≠ 0, VBUS outside the window,
-any fault bit, a null `direction` or `zero_rad`; proven on `vcan` and once on a real drive.
+any fault bit, a drive not in Reset, a null `direction`, `zero_rad` or `hard_rad`, a model without settled MIT scales;
+proven on `vcan` and once on a real drive.
 
 ## 7. Actuator test stand tooling (T1 to T6)
 

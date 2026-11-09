@@ -5,21 +5,23 @@ control thread runs it; the bus layer (`can`) does the pre-send veto, and this c
 
 ## What it does
 
-- **Rule IDs** (`RuleId`): one per row of PLAN item 6's rule table, the same string in the table, the code, the tests'
+- **Rule IDs** (`RuleId`): one per rule in PLAN item 6's table (the limits row holds two), the same string in the table, the code, the tests'
   `Guards:` lines and every event (safety.md section 2). `RuleId::of_stop` names the rule behind each of the bus
   layer's own stops; a requested stop carries its asker's `Cause`.
 - **Preflight** (`Preflight`): for one drive, over its bus's slow requests one at a time (each an `Exchange` on a
   `Register`): get-ID and the UID check, write `canTimeout` 1000 and the skeleton's three caps, then read all four back
-  with the damper and VBUS. Fault bits or Run in the latest status since it began, a fault latched since the last
-  clear, no status at all, or a request with no result within `ANSWER_WITHIN_NS` (1 s) refuses. Only a pass makes a
-  `PreflightPassed`, which proves the drive was right then; the runtime enables from it at once and runs preflight
-  again for every enable. Each `Refusal` names its rule, the measured and the expected value, and what the operator does
-  about it (safety.md section 5). A null cap, a cap the drive's model can't take, a null `direction` or `zero_rad`, or an
-  unwired joint refuses before anything is sent.
+  with the damper and VBUS. Fault bits or any mode but Reset in the latest status since it began, a fault latched
+  since the last clear, no status at all, another drive's view, or a request with no result within `ANSWER_WITHIN_NS`
+  (1 s) refuses. Only a pass makes a `PreflightPassed`, which proves the drive was right then; the runtime runs every
+  named drive's preflight, enables them together from their proofs, drops the proofs on any event that voids them, and
+  runs preflight again for every enable. Each `Refusal` names its rule, the measured and the expected value, and what the operator does
+  about it (safety.md section 5). A null cap, a cap the drive's model can't take, a null `direction`, `zero_rad` or `hard_rad`, a
+  model whose MIT scales aren't settled, or an unwired joint refuses before anything is sent.
 - **The enable sequence** (`Enabling`): takes a `PreflightPassed` by value, so an enable without a preflight doesn't
-  compile and one preflight enables once. Reporting off, its echo plus one tick, Enable, Run within 50 ms, then
-  `run_mode` = MIT and its echo within 50 ms, one frame per tick in control's batch; each reply counts only if it was
-  read inside its step's window (`RUN_WITHIN_NS`). Only `Next::Enabled` lets control command the drive. A failure
+  compile and one preflight enables once. Reporting off, its echo plus one tick, Enable, a fresh Run status within 50 ms,
+  then `run_mode` = MIT, its echo and a later fresh Run status within 50 ms, one frame per tick in control's batch.
+  A reply counts only if it was read inside its step's window (`RUN_WITHIN_NS`), and a status only while it is the
+  drive's latest and the fresh one, so one status never answers two frames. Another drive's view ends the sequence. Only `Next::Enabled` lets control command the drive. A failure
   after the Enable is planned means the limb must be stopped (`Enabling::enable_planned`), not just refused; each
   `EnableFailure` has its operator line and remedy too.
 - **States** (`DriveState`, `LimbState`): PLAN item 6's machines as transition functions. An event a state doesn't
