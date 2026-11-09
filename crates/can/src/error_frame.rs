@@ -68,16 +68,17 @@ pub(crate) fn controller_passive(class: u32, data: [u8; 8]) -> Option<bool> {
 /// The most severe error an error frame carries: `class` is its ID without `CAN_ERR_FLAG`, `data` its bytes.
 #[must_use]
 pub fn classify(class: u32, data: &[u8; 8]) -> BusError {
-    let [_, crtl, ..] = *data;
+    // The controller byte counts only when the frame says it carries one.
+    let crtl = if class & CRTL == 0 { 0 } else { data[1] };
     if class & BUSOFF != 0 {
         BusError::BusOff
-    } else if class & CRTL != 0 && crtl & (CRTL_RX_PASSIVE | CRTL_TX_PASSIVE) != 0 {
+    } else if crtl & (CRTL_RX_PASSIVE | CRTL_TX_PASSIVE) != 0 {
         BusError::ErrorPassive
-    } else if class & CRTL != 0 && crtl & CRTL_RX_OVERFLOW != 0 {
+    } else if crtl & CRTL_RX_OVERFLOW != 0 {
         BusError::RxOverflow
-    } else if class & CRTL != 0 && crtl & (CRTL_RX_WARNING | CRTL_TX_WARNING) != 0 {
+    } else if crtl & (CRTL_RX_WARNING | CRTL_TX_WARNING) != 0 {
         BusError::ErrorWarning
-    } else if class & CRTL != 0 && crtl & CRTL_ACTIVE != 0 {
+    } else if crtl & CRTL_ACTIVE != 0 {
         BusError::ErrorActive
     } else if class & TX_TIMEOUT != 0 {
         BusError::TxTimeout
