@@ -112,31 +112,37 @@ drifts from its part is how a print or a URDF ends up built from the wrong geome
 `cad/`, it takes the lock and names itself in that shell:
 
 ```bash
-python tools/cad/cad_lock.py acquire <name>      # then: export CAD_WRITER=<name>  (PowerShell: $env:CAD_WRITER = "<name>")
-python tools/cad/cad_lock.py release <name>      # after the commit
+python3 tools/cad/cad_lock.py acquire <name>   # prints the CAD_WRITER value to export in this shell (<name>:<token>)
+python3 tools/cad/cad_lock.py refresh          # during long work, at least every few hours
+python3 tools/cad/cad_lock.py release          # after the commit
 ```
 
-Hold it too while switching branches, resetting or pulling in that checkout. The pre-commit hook refuses a commit that touches
-CAD unless `CAD_WRITER` holds the lock. A lock untouched for 4 hours is stale: make sure that session has stopped and closed
-its SolidWorks, then `acquire <name> --take-stale`. An unreadable lock, or a leftover `.recover` guard from a crashed takeover,
-is cleared by hand. **Why:** two sessions saving into one tree, or one committing while another is mid-save, corrupt
+PowerShell: `$env:CAD_WRITER = "<name>:<token>"`. The token is new on every acquire, so two sessions that pick the same name
+never share the lock. Hold it too while switching branches, resetting or pulling in that checkout. The pre-commit hook refuses
+a commit that touches CAD unless `CAD_WRITER` holds the lock, and refreshes it. A lock not refreshed for 4 hours is stale, even
+if SolidWorks is still open: make sure that session has stopped and closed its SolidWorks, then
+`acquire <name> --take-stale`. Every change to the lock runs under a short mutex file, `.cad-writer.lock.mutex`; an unreadable
+lock, or a mutex left by a crash, is cleared by hand. **Why:** two sessions saving into one tree, or one committing while another is mid-save, corrupt
 assemblies in ways that only show when someone opens them.
 
 **Hooks.** Install once per clone that commits CAD, and again after `git lfs install`:
 
 ```bash
-python tools/cad/install_hooks.py
+python3 tools/cad/install_hooks.py
 ```
 
 pre-commit checks staged sizes and, when CAD is staged, the lock and the `--repo` layout. pre-push checks the pushed sizes and
-the LFS budget for all refs of the push together, then runs `git lfs pre-push`, and fails if Git LFS is missing. Another
-existing hook is kept as `<hook>.local` and still runs. CI repeats the size and layout checks, so a `--no-verify` commit is
+the LFS budget for all refs of the push together, runs any `pre-push.local`, and only then runs `git lfs pre-push`, so nothing
+is uploaded for a refused push; it fails if Git LFS is missing. Git LFS's stock pre-push hook is replaced; any other existing
+hook is kept as `<hook>.local` and still runs. CI repeats the size and layout checks, so a `--no-verify` commit is
 still caught at the PR.
 
-**LFS budget.** The pre-push hook fails a push that adds more than 300 MB of new LFS data, takes the month past 1 GB, or takes
-storage past 9 GB ([cad/manifests/lfs-budget.json](../cad/manifests/lfs-budget.json)). With Joey's OK for that push, set
-`CAD_BUDGET_OK=1`. `python tools/cad/lfs_budget.py report` shows the totals. It counts what local history can see and dates
-objects by commit, so it is a lower bound: objects from deleted branches or rewritten history are still billed. Check the
+**LFS budget.** The pre-push hook fails a push over the per-push, monthly or storage limit in
+[cad/manifests/lfs-budget.json](../cad/manifests/lfs-budget.json). With Joey's OK for that one push, run
+`CAD_BUDGET_OK=1 git push ...` (never export it). `python3 tools/cad/lfs_budget.py report` shows the totals. It counts what
+local history can see, so it is a lower bound: objects from deleted branches or rewritten history are still billed. It dates
+objects by commit, not by push, so the monthly limit only catches data committed and pushed in the same month; and with stale
+remote-tracking refs it can count an object the remote already has as new. Fetch before a big push. Check the
 real figure on GitHub (Settings, Billing, Git LFS) at the start of each month.
 
 ## 7. Clones and bandwidth
