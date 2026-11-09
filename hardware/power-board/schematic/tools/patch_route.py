@@ -57,6 +57,7 @@ def free(net, L, shape, bb, via=False):
             if id(o) in seen: continue
             seen.add(id(o))
             if via and o.kind == 'pad' and o.shape.Collide(shape, 0): return False   # no via in any pad
+            if via and o.kind == 'via' and o.shape.Collide(shape, IU(0.3)): return False   # hole to hole, own net too
             if o.net == net or (via and o.soft): continue
             if o.shape.Collide(shape, IU(clr(net, o.net, L))):
                 if DIAG: print('    blocked', b.GetLayerName(L), o.kind, o.net, round(clr(net, o.net, L), 2))
