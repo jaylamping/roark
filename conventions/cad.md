@@ -137,6 +137,10 @@ is uploaded for a refused push; it fails if Git LFS is missing. Git LFS's stock 
 hook is kept as `<hook>.local` and still runs. CI repeats the size and layout checks, so a `--no-verify` commit is
 still caught at the PR.
 
+All worktrees of a clone share one hooks folder, so installing from one worktree installs for all of them. A worktree whose
+branch has no `tools/cad/hooks/` (one cut before them) prints a warning and skips the CAD checks; its pre-push still runs Git
+LFS. **Why:** on Joey-PC an install from a CAD worktree once broke every commit in the power-board worktrees.
+
 **LFS budget.** The pre-push hook fails a push over the per-push, monthly or storage limit in
 [cad/manifests/lfs-budget.json](../cad/manifests/lfs-budget.json). With Joey's OK for that one push, run
 `CAD_BUDGET_OK=1 git push ...` (never export it). `python3 tools/cad/lfs_budget.py report` shows the totals. It counts what

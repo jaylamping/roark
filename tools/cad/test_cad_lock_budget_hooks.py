@@ -334,3 +334,38 @@ def test_installed_pre_push_runs_checks_then_local_then_lfs(repo: Path, tmp_path
     log.write_text("")
     assert push(1) == 1
     assert log.read_text().splitlines() == [f"local {stdin.strip()}"]  # nothing uploaded for a refused push
+
+
+def test_worktree_without_the_cad_tools_still_commits_and_pushes(
+    tmp_path: Path,
+) -> None:
+    """Guards: bug - hooks installed from one worktree failed every commit in worktrees whose branch had no tools/cad/hooks (Joey-PC, 2026-11-09)."""
+    main, remote, wt = tmp_path / "main", tmp_path / "remote", tmp_path / "board"
+    main.mkdir()
+    remote.mkdir()
+    git(main, "init", "-q", "-b", "main")
+    git(main, "config", "commit.gpgsign", "false")
+    commit(main, {"README.md": "x\n"}, "base")  # a branch from before tools/cad
+    install_hooks.install(main)
+    git(remote, "init", "-q", "--bare")
+    git(main, "remote", "add", "up", str(remote))
+    git(main, "worktree", "add", "-q", "-b", "board", str(wt))
+    (wt / "board.txt").write_text("net list\n")
+    git(wt, "add", "-A")
+    env = dict(
+        os.environ,
+        GIT_AUTHOR_NAME="t",
+        GIT_AUTHOR_EMAIL="t@t",
+        GIT_COMMITTER_NAME="t",
+        GIT_COMMITTER_EMAIL="t@t",
+    )
+    for args in (["commit", "-qm", "board"], ["push", "-q", "up", "board"]):
+        done = subprocess.run(
+            ["git", "-C", str(wt), *args],
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+        )
+        assert done.returncode == 0, done.stderr
+        assert "CAD checks skipped" in done.stderr

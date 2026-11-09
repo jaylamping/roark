@@ -9,10 +9,11 @@ pre-commit: tools/cad/hooks/pre_commit.py (staged sizes; layout + writer lock wh
 pre-push:   tools/cad/hooks/pre_push.py (pushed sizes, LFS budget), then <hook>.local if present,
             then `git lfs pre-push` (fails if Git LFS is missing), so nothing is uploaded for a
             push a check refuses.
-Does not set core.hooksPath. Git LFS's own stock pre-push hook (only the git-lfs presence check
-and `git lfs pre-push "$@"`) is replaced, since ours runs it; a copy is kept as pre-push.lfs-orig.
-Any other existing hook, including one that runs git lfs among other things, is kept as
-<hook>.local and still runs.
+Does not set core.hooksPath, so every worktree of the clone shares these hooks; a worktree whose
+checkout has no tools/cad/hooks skips the CAD checks with a warning (pre-push still runs Git LFS).
+Git LFS's own stock pre-push hook (only the git-lfs presence check and `git lfs pre-push "$@"`)
+is replaced, since ours runs it; a copy is kept as pre-push.lfs-orig. Any other existing hook,
+including one that runs git lfs among other things, is kept as <hook>.local and still runs.
 Run it once per clone (the CAD workstation, any laptop that commits CAD); re-run after `git lfs install`.
 """
 
@@ -26,25 +27,35 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gitlfs import REPO_ROOT, git
 
-MARK = "# repo-cad-hooks v2"
+MARK = "# repo-cad-hooks v3"
 
-FIND_PY = """for c in python3 python py; do
-  if command -v "$c" >/dev/null 2>&1 && "$c" -c "import sys; sys.exit(sys.version_info < (3, 9))" >/dev/null 2>&1; then
-    PY=$c; break
-  fi
-done
-if [ -z "$PY" ]; then
-  echo "cad hooks: Python 3.9+ not found; install it (or bypass once with --no-verify)" >&2
-  exit 1
-fi
-TOP=$(git rev-parse --show-toplevel)
+# Worktrees share one hooks folder, so a worktree whose checkout has no tools/cad/hooks (a branch from
+# before them) skips the CAD checks with a warning instead of failing every commit and push.
+PRELUDE = """TOP=$(git rev-parse --show-toplevel)
 HOOKS=$(git rev-parse --git-path hooks)
+"""
+
+FIND_PY = """  for c in python3 python py; do
+    if command -v "$c" >/dev/null 2>&1 && "$c" -c "import sys; sys.exit(sys.version_info < (3, 9))" >/dev/null 2>&1; then
+      PY=$c; break
+    fi
+  done
+  if [ -z "$PY" ]; then
+    echo "cad hooks: Python 3.9+ not found; install it (or bypass once with --no-verify)" >&2
+    exit 1
+  fi
+"""
+
+SKIP = """  echo "cad hooks: no tools/cad/hooks in $TOP (branch from before them); CAD checks skipped" >&2
 """
 
 HOOKS = {
     "pre-commit": f"""#!/bin/sh
 {MARK}
-{FIND_PY}"$PY" "$TOP/tools/cad/hooks/pre_commit.py" || exit 1
+{PRELUDE}if [ -f "$TOP/tools/cad/hooks/pre_commit.py" ]; then
+{FIND_PY}  "$PY" "$TOP/tools/cad/hooks/pre_commit.py" || exit 1
+else
+{SKIP}fi
 if [ -x "$HOOKS/pre-commit.local" ]; then
   exec "$HOOKS/pre-commit.local" "$@"
 fi
@@ -52,18 +63,24 @@ exit 0
 """,
     "pre-push": f"""#!/bin/sh
 {MARK}
-{FIND_PY}input=$(cat)
-printf '%s\\n' "$input" | "$PY" "$TOP/tools/cad/hooks/pre_push.py" "$@" || exit 1
+{PRELUDE}input=$(cat)
+if [ -f "$TOP/tools/cad/hooks/pre_push.py" ]; then
+{FIND_PY}  printf '%s\\n' "$input" | "$PY" "$TOP/tools/cad/hooks/pre_push.py" "$@" || exit 1
+  NEED_LFS=1
+else
+{SKIP}  grep -qs 'filter=lfs' "$TOP/.gitattributes" && NEED_LFS=1
+fi
 if [ -x "$HOOKS/pre-push.local" ]; then
   printf '%s\\n' "$input" | "$HOOKS/pre-push.local" "$@" || exit 1
 fi
 # Last, once every check has passed: Git LFS must upload the objects, or the remote gets
 # pointers with no content.
-if ! command -v git-lfs >/dev/null 2>&1; then
+if command -v git-lfs >/dev/null 2>&1; then
+  printf '%s\\n' "$input" | git lfs pre-push "$@" || exit 1
+elif [ -n "$NEED_LFS" ]; then
   echo "cad hooks: git-lfs not found; install Git LFS before pushing (https://git-lfs.com)" >&2
   exit 1
 fi
-printf '%s\\n' "$input" | git lfs pre-push "$@" || exit 1
 exit 0
 """,
 }
