@@ -13,7 +13,8 @@ pub const MAX_SENDS: usize = 2 * MAX_DRIVES;
 /// The drives' own command timeout: three periods of feedback must fit inside it (PLAN.md item 3 Timing).
 pub const DRIVE_TIMEOUT_NS: u64 = 50_000_000;
 
-/// The tick's timing, in nanoseconds on the monotonic clock. [`BusTick::new`](crate::BusTick::new) refuses timing that
+/// The tick's timing, in nanoseconds on the monotonic clock (`u64`, not `Duration`: the bus tick's exception,
+/// units-and-frames.md section 5). [`BusTick::new`](crate::BusTick::new) refuses timing that
 /// [`Timing::check`] doesn't pass.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Timing {
