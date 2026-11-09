@@ -1,0 +1,139 @@
+//! Frames read from the socket, before the send (the drain) or after it (the collect): what each one says about the bus
+//! and its drives.
+
+use robstride::{DecodeError, DeviceId, Inbound, Mode, Status, decode};
+use telemetry::{Direction, FrameRecord};
+
+use crate::error_frame::{BusError, classify};
+use crate::tick::{BusTick, DriveState, Phase, Reply};
+use crate::types::{EchoSeen, LimbState, Observed, StopOutcome};
+
+impl BusTick {
+    /// One frame read at `read_ns`, before the send (draining) or after it.
+    pub fn on_frame(&mut self, read_ns: u64, frame: &FrameRecord) {
+        if frame.error {
+            self.counters.error_frames += 1;
+            let error = classify(frame.id, &frame.data);
+            if error.latches() {
+                self.latch(error);
+            }
+            match error {
+                BusError::ErrorPassive => self.error_passive = true,
+                BusError::ErrorActive => self.error_passive = false,
+                BusError::BusOff
+                | BusError::ErrorWarning
+                | BusError::RxOverflow
+                | BusError::TxTimeout
+                | BusError::InterfaceDown
+                | BusError::InterfaceGone
+                | BusError::Socket(_)
+                | BusError::Other(_) => {}
+            }
+            return;
+        }
+        if !frame.extended || frame.remote {
+            self.counters.undecodable += 1;
+            return;
+        }
+        match decode(frame.id, frame.payload()) {
+            // The codec names frames only another sender could have put on the bus.
+            Err(
+                DecodeError::OtherHost { .. }
+                | DecodeError::ForeignType { .. }
+                | DecodeError::ForeignWrite { .. },
+            ) => self.counters.foreign_host += 1,
+            Err(_) => self.counters.undecodable += 1,
+            Ok(Inbound::Echo(echo)) => {
+                if frame.direction == Direction::TxEcho {
+                    self.counters.echoes += 1;
+                    if let Some(d) = self.slot_of(echo.target) {
+                        d.last_echo = Some(EchoSeen {
+                            kind: echo.kind,
+                            read_ns,
+                        });
+                    }
+                } else {
+                    self.counters.foreign_host += 1;
+                }
+            }
+            Ok(Inbound::Status(status)) => self.on_status(read_ns, status, true),
+            Ok(Inbound::Report(status)) => self.on_status(read_ns, status, false),
+            Ok(Inbound::Fault { device, faults, .. }) => match self.slot_of(device) {
+                // Warnings alone aren't a fault (the codec: non-zero fault bytes mean faulted).
+                Some(d) => d.fault_seen |= faults != [0; 4],
+                None => self.counters.unexpected += 1,
+            },
+            Ok(Inbound::Version { header, .. }) => match self.slot_of(header.device) {
+                Some(d) => d.fault_seen |= !header.faults.is_empty(),
+                None => self.counters.unexpected += 1,
+            },
+            Ok(Inbound::Identity { device, .. } | Inbound::Param { device, .. }) => {
+                if self.slot_of(device).is_none() {
+                    self.counters.unexpected += 1;
+                }
+            }
+        }
+    }
+
+    fn on_status(&mut self, read_ns: u64, status: Status, answer: bool) {
+        let device = status.header.device;
+        let tick = self.tick;
+        let unordered = self.unordered;
+        let limbs = self.limbs;
+        let Some(d) = self
+            .drives
+            .iter_mut()
+            .flatten()
+            .find(|d| d.device == device)
+        else {
+            self.counters.unexpected += 1;
+            return;
+        };
+        d.observed = Some(Observed { status, read_ns });
+        if !status.header.faults.is_empty() {
+            d.fault_seen = true;
+        }
+        let active = limbs
+            .get(d.limb)
+            .copied()
+            .flatten()
+            .is_some_and(|l| l.state == LimbState::Active);
+        if d.phase == Phase::Enabling && active && status.header.mode == Mode::Run && !unordered {
+            d.phase = Phase::Running;
+        }
+        if !answer {
+            return;
+        }
+        let Some(o) = d.outstanding.as_mut().filter(|_| !unordered) else {
+            self.counters.unsolicited += 1;
+            return;
+        };
+        if o.reply == Reply::Waiting {
+            d.fresh_ns = Some(read_ns);
+            if read_ns <= o.deadline_ns {
+                o.reply = Reply::OnTime;
+                d.answered = o.tick == tick;
+                d.misses = 0;
+            } else {
+                o.reply = Reply::Late;
+                self.counters.late += 1;
+            }
+        } else if o.tick == tick {
+            self.counters.duplicate += 1;
+        } else {
+            self.counters.unsolicited += 1;
+        }
+        // Any Reset after the stop's Disable confirms it, even behind an earlier status still in flight.
+        if o.stop_disable && status.header.mode == Mode::Reset && d.stop != StopOutcome::Confirmed {
+            d.stop = StopOutcome::Confirmed;
+            d.confirmed_ns = Some(read_ns);
+        }
+    }
+
+    pub(crate) fn slot_of(&mut self, device: DeviceId) -> Option<&mut DriveState> {
+        self.drives
+            .iter_mut()
+            .flatten()
+            .find(|d| d.device == device)
+    }
+}

@@ -1,7 +1,9 @@
 //! Helpers shared by the tick's test files: a two-drive bus at 250 Hz, frames as `vcan` delivers them, and one tick run
 //! by hand.
 
-use can::{BusTick, CommandBatch, SendKind, SendOutcome, Timing};
+use can::{
+    BusDrive, BusTick, CommandBatch, LimbState, SendKind, SendOutcome, Snapshot, StopReason, Timing,
+};
 use robstride::drive::{self, DriveFrame};
 use robstride::{
     DeviceId, Drive, Feedback, Frame, MitCommand, Mode, Model, NewtonMeters, NmPerRad, NmSecPerRad,
@@ -24,10 +26,42 @@ pub(crate) fn drive(n: u8) -> Drive {
     Drive::new(id(n), Model::Rs03)
 }
 
-/// A bus of two drives at 250 Hz. The IDs are arbitrary, outside the skeleton's (testing.md rule 3).
+/// A bus of two drives in one limb at 250 Hz. The IDs are arbitrary, outside the skeleton's (testing.md rule 3).
 #[expect(clippy::unwrap_used, reason = "test helper: two drives fit")]
 pub(crate) fn bus() -> BusTick {
-    BusTick::new(&[id(101), id(102)], Timing::at_hz(250)).unwrap()
+    BusTick::new(&one_limb(&[id(101), id(102)]), Timing::at_hz(250)).unwrap()
+}
+
+/// `devices` all in limb 0.
+pub(crate) fn one_limb(devices: &[DeviceId]) -> Vec<BusDrive> {
+    devices
+        .iter()
+        .map(|&device| BusDrive { device, limb: 0 })
+        .collect()
+}
+
+/// A bus whose drives are all in limb 0: its state and stop are that limb's.
+pub(crate) trait OneLimb {
+    fn state(&self) -> LimbState;
+    fn stop(&self) -> Option<StopReason>;
+}
+
+impl OneLimb for Snapshot {
+    #[expect(
+        clippy::unwrap_used,
+        reason = "test helper: limb 0 exists on every test bus"
+    )]
+    fn state(&self) -> LimbState {
+        self.limb(0).unwrap().state
+    }
+
+    #[expect(
+        clippy::unwrap_used,
+        reason = "test helper: limb 0 exists on every test bus"
+    )]
+    fn stop(&self) -> Option<StopReason> {
+        self.limb(0).unwrap().stop
+    }
 }
 
 pub(crate) fn record(id: u32, data: [u8; 8], direction: Direction) -> FrameRecord {

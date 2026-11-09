@@ -4,12 +4,12 @@
 mod common;
 
 use can::{
-    BusError, BusState, BusTick, CommandBatch, ConfigError, MAX_DRIVES, SendKind, SendOutcome,
+    BusError, BusTick, CommandBatch, ConfigError, LimbState, MAX_DRIVES, SendKind, SendOutcome,
     StopOutcome, StopReason, Timing, TimingError, classify,
 };
 use common::{
-    MS, PERIOD, at, batch, bus, deadline, drive, error_frame, hold, id, record, report_frame,
-    run_tick, status, status_frame,
+    MS, OneLimb, PERIOD, at, batch, bus, deadline, drive, error_frame, hold, id, one_limb, record,
+    report_frame, run_tick, status, status_frame,
 };
 use robstride::encode::{self, Reporting};
 use robstride::{Mode, Param, StatusFault, Write};
@@ -279,8 +279,8 @@ fn an_idle_bus_sends_nothing_without_batches() {
     for tick in 0..5 {
         assert_eq!(run_tick(&mut bus, tick, None, &[]), []);
         assert_eq!(
-            bus.end(tick * PERIOD + PERIOD * 6 / 10).state,
-            BusState::Idle
+            bus.end(tick * PERIOD + PERIOD * 6 / 10).state(),
+            LimbState::Idle
         );
     }
 }
@@ -314,7 +314,7 @@ fn motion_with_expired_feedback_stops_instead_of_sending() {
         "{sent:?}"
     );
     assert_eq!(
-        bus.end(4 * PERIOD + PERIOD * 6 / 10).stop,
+        bus.end(4 * PERIOD + PERIOD * 6 / 10).stop(),
         Some(StopReason::ExpiredFeedback { slot: 0 })
     );
 }
@@ -355,11 +355,11 @@ fn too_many_drives_is_refused() {
         .map(id)
         .collect();
     assert_eq!(
-        BusTick::new(&ids, Timing::at_hz(250)).err(),
+        BusTick::new(&one_limb(&ids), Timing::at_hz(250)).err(),
         Some(ConfigError::TooManyDrives(MAX_DRIVES + 1))
     );
     // A full table holds every drive, in slot order.
-    let mut full = BusTick::new(&ids[..MAX_DRIVES], Timing::at_hz(250)).unwrap();
+    let mut full = BusTick::new(&one_limb(&ids[..MAX_DRIVES]), Timing::at_hz(250)).unwrap();
     let held: Vec<_> = full.end(0).drives().map(|d| d.device).collect();
     assert_eq!(held, ids[..MAX_DRIVES]);
 }
@@ -473,7 +473,7 @@ fn a_bad_batch_sends_nothing_and_names_the_slot() {
             sent.iter().all(|(_, kind)| *kind != SendKind::Command),
             "{name}: {sent:?}"
         );
-        assert_eq!(bus.end(deadline(0)).stop, Some(reason), "{name}");
+        assert_eq!(bus.end(deadline(0)).stop(), Some(reason), "{name}");
     }
 }
 
@@ -491,7 +491,7 @@ fn a_batch_carries_the_enable_sequence() {
     );
     let sent = run_tick(&mut bus, 0, Some(&b), &[]);
     assert_eq!(sent, [(0, SendKind::Command), (1, SendKind::Command)]);
-    assert_eq!(bus.end(deadline(0)).stop, None);
+    assert_eq!(bus.end(deadline(0)).stop(), None);
 }
 
 /// Guards: number - feedback exactly three periods old still carries motion; one nanosecond more stops (PLAN.md item 3:
@@ -608,7 +608,7 @@ fn timing_that_breaks_the_tick_is_refused() {
     ];
     for (name, timing, refused) in rows {
         assert_eq!(
-            BusTick::new(&[id(101)], timing).err(),
+            BusTick::new(&one_limb(&[id(101)]), timing).err(),
             refused.map(ConfigError::Timing),
             "{name}: {timing:?}"
         );
@@ -642,8 +642,8 @@ fn error_frames_are_classified_and_passive_marks_the_bus_unhealthy() {
     run_tick(&mut bus, 0, None, &[(MS, error_frame(0x04, 0x20))]);
     let snap = bus.end(deadline(0));
     assert_eq!(
-        (snap.healthy, snap.state),
-        (false, BusState::Idle),
+        (snap.healthy, snap.state()),
+        (false, LimbState::Idle),
         "passive doesn't stop the bus"
     );
     run_tick(&mut bus, 1, None, &[(MS, error_frame(0x04, 0x40))]);

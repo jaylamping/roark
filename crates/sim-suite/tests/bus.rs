@@ -10,8 +10,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use can::{
-    BusConfig, BusLinks, BusRunError, BusState, CommandBatch, Snapshot, StopOutcome, StopReason,
-    Timing,
+    BusConfig, BusDrive, BusLinks, BusRunError, CommandBatch, LimbState, Snapshot, StopOutcome,
+    StopReason, Timing,
 };
 use robstride::{
     DeviceId, Drive, Frame, Inbound, MitCommand, Mode, Model, NewtonMeters, NmPerRad, NmSecPerRad,
@@ -39,6 +39,24 @@ const MARKER: u16 = 0x7AB;
 )]
 fn id(n: u8) -> DeviceId {
     DeviceId::new(u64::from(n)).unwrap()
+}
+
+/// Drive `n` in limb `limb`.
+fn drive(n: u8, limb: usize) -> BusDrive {
+    BusDrive {
+        device: id(n),
+        limb,
+    }
+}
+
+/// Every limb's state and stop.
+fn limbs(snap: &Snapshot) -> Vec<(LimbState, Option<StopReason>)> {
+    snap.limbs().map(|(_, l)| (l.state, l.stop)).collect()
+}
+
+/// A schedule that starts two periods from now, as the runtime's does.
+fn soon() -> Instant {
+    Instant::now() + Duration::from_nanos(2 * 1_000_000_000 / HZ)
 }
 
 #[expect(
@@ -211,7 +229,11 @@ fn play_control(
     for _ in 0..HOLD_TICKS {
         send(&snap, [Some(hold(101)), Some(hold(102))]);
         snap = next_snapshot(snapshots, end).unwrap();
-        assert_eq!(snap.state, BusState::Active, "{snap:?}");
+        assert_eq!(
+            limbs(&snap),
+            [(LimbState::Active, None), (LimbState::Active, None)],
+            "{snap:?}"
+        );
         answered += snap.drives().filter(|d| d.answered).count();
     }
     assert!(
@@ -221,10 +243,16 @@ fn play_control(
     );
     // Shutdown while active: the thread stops the drives before it returns.
     exit.store(true, Ordering::Release);
-    while snap.state != BusState::Stopped {
+    while !snap.stopped() {
         snap = next_snapshot(snapshots, end).unwrap();
     }
-    assert_eq!(snap.stop, Some(StopReason::Requested));
+    assert_eq!(
+        limbs(&snap),
+        [
+            (LimbState::Stopped, Some(StopReason::Requested)),
+            (LimbState::Stopped, Some(StopReason::Requested))
+        ]
+    );
     assert!(
         snap.drives()
             .all(|d| d.stop == StopOutcome::Confirmed && d.reporting_off_sent),
@@ -260,7 +288,7 @@ fn spawn_refuses_anything_but_vcan() {
         let refused = can::spawn(
             BusConfig {
                 name: bus.to_owned(),
-                drives: vec![id(101)],
+                drives: vec![drive(101, 0)],
                 timing: Timing::at_hz(HZ),
             },
             BusLinks {
@@ -268,6 +296,7 @@ fn spawn_refuses_anything_but_vcan() {
                 snapshots,
                 recorder: buses.remove(0),
                 epoch: recording.epoch(),
+                start: soon(),
                 exit: Arc::new(AtomicBool::new(false)),
             },
         );
@@ -304,7 +333,7 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
     let bus = can::spawn(
         BusConfig {
             name: IDLE_BUS.to_owned(),
-            drives: vec![id(101)],
+            drives: vec![drive(101, 0)],
             timing: Timing::at_hz(HZ),
         },
         BusLinks {
@@ -312,6 +341,7 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
             snapshots: snapshots_tx,
             recorder: buses.remove(0),
             epoch,
+            start: soon(),
             exit: Arc::clone(&exit),
         },
     )
@@ -334,7 +364,7 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
             break s;
         }
     };
-    assert_eq!(dropped.state, BusState::Idle);
+    assert_eq!(limbs(&dropped), [(LimbState::Idle, None)]);
 
     // Right after a snapshot the thread sleeps until its next tick: a frame sent now is read by that tick's drain,
     // which is where the thread sees `exit` and returns.
@@ -364,6 +394,62 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
         }
     }
     assert!(seen, "the exit drain's frame is in the recording");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Guards: safety - every bus thread ticks on the one schedule the runtime gives it: a thread started after tick 0
+/// begins at the first tick not yet due, numbered from that origin, instead of waking late and stopping its limbs
+/// (step 7 design D1: one schedule for every bus and control).
+#[test]
+fn a_bus_started_after_the_schedule_joins_it() {
+    const LATE_BUS: &str = "can1";
+    const BEHIND: u64 = 100;
+    ensure_vcan(LATE_BUS).unwrap();
+    let root = std::env::temp_dir().join(format!("sim-suite-late-{}", std::process::id()));
+    let mut info = info();
+    info.buses[0].name = LATE_BUS.to_owned();
+    let session = Session::start(&root, info, 1_000_000_000).unwrap();
+    let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
+    let epoch = recording.epoch();
+    let recorder = Recorder::spawn(recording).unwrap();
+    let (_commands_tx, commands) = rtrb::RingBuffer::new(1);
+    let (snapshots_tx, mut snapshots) = rtrb::RingBuffer::new(64);
+    let exit = Arc::new(AtomicBool::new(false));
+    let start = Instant::now()
+        .checked_sub(Duration::from_nanos(BEHIND * 1_000_000_000 / HZ))
+        .unwrap();
+    let bus = can::spawn(
+        BusConfig {
+            name: LATE_BUS.to_owned(),
+            drives: vec![drive(101, 0)],
+            timing: Timing::at_hz(HZ),
+        },
+        BusLinks {
+            commands,
+            snapshots: snapshots_tx,
+            recorder: buses.remove(0),
+            epoch,
+            start,
+            exit: Arc::clone(&exit),
+        },
+    )
+    .unwrap();
+    let _shutdown = Shutdown(&AtomicBool::new(false), Arc::clone(&exit));
+
+    let end = Instant::now() + Duration::from_secs(10);
+    let first = next_snapshot(&mut snapshots, end).unwrap();
+    let due = u64::try_from(start.elapsed().as_nanos() * u128::from(HZ) / 1_000_000_000).unwrap();
+    assert!(
+        (BEHIND..=due).contains(&first.tick),
+        "first tick {} not between {BEHIND} and {due}",
+        first.tick
+    );
+    assert_eq!(limbs(&first), [(LimbState::Idle, None)], "{first:?}");
+    assert_eq!(first.counters.missed_deadlines, 0, "{first:?}");
+    exit.store(true, Ordering::Release);
+    let done = bus.thread.join().unwrap();
+    assert!(done.error.is_none(), "{:?}", done.error);
+    recorder.close(vec![done.recorder]).unwrap();
     let _ = std::fs::remove_dir_all(&root);
 }
 
@@ -404,7 +490,7 @@ fn the_bus_loop_runs_against_sim_drive_and_its_recording_matches_candump() {
         let bus = can::spawn(
             BusConfig {
                 name: BUS.to_owned(),
-                drives: vec![id(101), id(102)],
+                drives: vec![drive(101, 0), drive(102, 1)],
                 timing: Timing::at_hz(HZ),
             },
             BusLinks {
@@ -412,6 +498,7 @@ fn the_bus_loop_runs_against_sim_drive_and_its_recording_matches_candump() {
                 snapshots: snapshots_tx,
                 recorder: buses.remove(0),
                 epoch,
+                start: soon(),
                 exit: Arc::clone(&exit),
             },
         )

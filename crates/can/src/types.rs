@@ -1,7 +1,7 @@
 //! What crosses the bus thread's seams: command batches in, snapshots out, all fixed-size and `Copy` so the rings never
 //! allocate (rust.md section 6).
 
-use robstride::{DeviceId, Frame, Status};
+use robstride::{DeviceId, EchoKind, Frame, Status};
 
 use crate::error_frame::BusError;
 
@@ -36,6 +36,9 @@ pub struct Timing {
     pub disable_silence_ns: u64,
     /// Ticks without a fresh batch that stop an active bus (PLAN.md item 3: two).
     pub silent_ticks: u32,
+    /// Consecutive commands a drive may leave unanswered by the collect deadline before its limb stops (PLAN.md item 6
+    /// Silence row: three).
+    pub silence_misses: u32,
 }
 
 impl Timing {
@@ -56,6 +59,7 @@ impl Timing {
             stop_confirm_ns: 100_000_000,
             disable_silence_ns: 50_000_000,
             silent_ticks: 2,
+            silence_misses: 3,
         }
     }
 
@@ -93,6 +97,8 @@ impl Timing {
             })
         } else if self.silent_ticks == 0 {
             Err(TimingError::NoSilentTicks)
+        } else if self.silence_misses == 0 {
+            Err(TimingError::NoSilenceMisses)
         } else {
             Ok(())
         }
@@ -150,6 +156,9 @@ pub enum TimingError {
     /// `silent_ticks` is zero.
     #[error("silent_ticks must be at least 1")]
     NoSilentTicks,
+    /// `silence_misses` is zero.
+    #[error("silence_misses must be at least 1")]
+    NoSilenceMisses,
 }
 
 /// One tick's commands from control: at most one encoded frame per drive slot (the drive's place in the bus's table).
@@ -283,31 +292,75 @@ impl SendList {
     }
 }
 
-/// Where a bus is.
+/// One drive on a bus and the limb it belongs to: the limb's index among the skeleton's limbs on this bus, from 0.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BusState {
-    /// Nothing enabled or commanded since start; no batches needed.
+pub struct BusDrive {
+    /// The drive.
+    pub device: DeviceId,
+    /// Its limb on this bus, below [`MAX_DRIVES`].
+    pub limb: usize,
+}
+
+/// Where one limb on a bus is. Each limb runs and stops on its own; a stop of the whole bus stops every limb.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LimbState {
+    /// Nothing enabled or commanded since start or the last re-arm; no batches needed.
     Idle,
-    /// It has sent an Enable or MIT frame, so it needs a fresh batch every tick.
+    /// An Enable or MIT frame to one of its drives was sent, so the bus needs a fresh batch every tick.
     Active,
-    /// A stop is in progress: Disable to every unconfirmed drive each tick, batches refused.
+    /// A stop is in progress: Disable to every unconfirmed drive each tick, its frames in batches refused.
     Stopping {
         /// When the stop began, monotonic.
         since_ns: u64,
     },
-    /// Stopped, latched: nothing in this crate leaves it. Clearing is the safety layer's, through preflight.
+    /// Stopped, latched: only an operator's clear re-arms it ([`BusTick::rearm`](crate::BusTick::rearm)).
     Stopped,
 }
 
-/// Why a bus stopped.
+/// One limb in a snapshot.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LimbView {
+    /// Where it is.
+    pub state: LimbState,
+    /// Why it stopped, if it has since its last re-arm.
+    pub stop: Option<StopReason>,
+    /// How many times it has been re-armed: fault history and stop outcomes count from the last one.
+    pub generation: u32,
+}
+
+/// The last of this host's frames to a drive read back from the socket.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EchoSeen {
+    /// What it was.
+    pub kind: EchoKind,
+    /// When it was read, monotonic.
+    pub read_ns: u64,
+}
+
+/// Why a limb stopped. The reasons naming a slot stop only that drive's limb; the others stop every limb on the bus.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StopReason {
-    /// No fresh batch for `Timing::silent_ticks` ticks while active (PLAN.md item 3).
+    /// No fresh batch for `Timing::silent_ticks` ticks while a limb was active (PLAN.md item 3).
     ControlSilent,
     /// The thread woke after its send window (PLAN.md item 3).
     LateWake,
     /// A batch carried motion for a drive whose last fresh status was too old.
     ExpiredFeedback {
+        /// That drive's slot.
+        slot: usize,
+    },
+    /// A drive of an active limb reported a fault, read before the send (PLAN.md item 6 Faults row).
+    DriveFault {
+        /// That drive's slot.
+        slot: usize,
+    },
+    /// A drive seen in Run after its Enable reported another mode, read before the send (PLAN.md item 6 States).
+    DriveMode {
+        /// That drive's slot.
+        slot: usize,
+    },
+    /// A drive left `Timing::silence_misses` commands in a row unanswered (PLAN.md item 6 Silence row).
+    DriveSilent {
         /// That drive's slot.
         slot: usize,
     },
@@ -319,7 +372,7 @@ pub enum StopReason {
     },
     /// More frames were queued before the send than the tick may read.
     Backlog,
-    /// Asked for by the runtime or a test.
+    /// Asked for by the runtime or a test, for one limb or the whole bus.
     Requested,
     /// The bus itself failed.
     Bus(BusError),
@@ -355,6 +408,8 @@ pub struct Observed {
 pub struct DriveView {
     /// The drive.
     pub device: DeviceId,
+    /// Its limb on this bus.
+    pub limb: usize,
     /// The last status or report read from it, answer or not: its mode and fault bits are never filtered out.
     pub observed: Option<Observed>,
     /// When its last fresh status was read: the first status after a command the socket took. Freshness, not
@@ -364,8 +419,13 @@ pub struct DriveView {
     pub fresh_ns: Option<u64>,
     /// Whether it answered this tick's command by the collect deadline.
     pub answered: bool,
-    /// Any fault bit or fault report seen since start. Sticky.
+    /// Any fault bit or fault report seen since start or its limb's last re-arm. Sticky until then.
     pub fault_seen: bool,
+    /// Commands in a row it left unanswered by the collect deadline.
+    pub misses: u32,
+    /// The last of this host's frames to it read back from the socket: the evidence a frame reached the controller
+    /// (never that it reached the drive).
+    pub last_echo: Option<EchoSeen>,
     /// What the current or last stop achieved for it.
     pub stop: StopOutcome,
     /// Whether the current or last stop's active reporting off was taken by the socket.
@@ -401,8 +461,10 @@ pub struct Counters {
     pub tx_expired: u64,
     /// Ticks handed a stale or expired batch.
     pub stale_ticks: u64,
-    /// Batches refused while stopping or stopped.
+    /// Batches refused because every limb was stopping or stopped.
     pub refused_batches: u64,
+    /// Frames of a fresh batch dropped because their limb was stopping or stopped.
+    pub refused_frames: u64,
     /// Ticks the thread woke for after their send window.
     pub missed_deadlines: u64,
     /// The socket's overflow counter (`SO_RXQ_OVFL`), the last value seen.
@@ -416,37 +478,59 @@ pub struct Counters {
 pub struct Snapshot {
     /// The tick.
     pub tick: u64,
-    /// The bus's state after it.
-    pub state: BusState,
-    /// Why it stopped, if it has.
-    pub stop: Option<StopReason>,
     /// The first bus error that latched (bus-off, interface down or gone), even if the bus was already stopping.
     pub bus_error: Option<BusError>,
     /// No latched bus error and not error-passive: the recording's `valid` flag (logging.md section 8.2).
     pub healthy: bool,
     /// Counts since start.
     pub counters: Counters,
+    limbs: [Option<LimbView>; MAX_DRIVES],
     drives: [Option<DriveView>; MAX_DRIVES],
 }
 
 impl Snapshot {
     pub(crate) fn new(
         tick: u64,
-        state: BusState,
-        stop: Option<StopReason>,
         bus_error: Option<BusError>,
         healthy: bool,
         counters: Counters,
+        limbs: &[Option<LimbView>; MAX_DRIVES],
     ) -> Self {
         Self {
             tick,
-            state,
-            stop,
             bus_error,
             healthy,
             counters,
+            limbs: *limbs,
             drives: [None; MAX_DRIVES],
         }
+    }
+
+    /// Limb `limb` on this bus.
+    #[must_use]
+    pub fn limb(&self, limb: usize) -> Option<&LimbView> {
+        self.limbs.get(limb).and_then(Option::as_ref)
+    }
+
+    /// Every limb on this bus, with its index.
+    pub fn limbs(&self) -> impl Iterator<Item = (usize, &LimbView)> + '_ {
+        self.limbs
+            .iter()
+            .enumerate()
+            .filter_map(|(i, l)| l.as_ref().map(|l| (i, l)))
+    }
+
+    /// Whether every limb is idle or stopped: nothing on this bus is running or still stopping.
+    #[must_use]
+    pub fn settled(&self) -> bool {
+        self.limbs()
+            .all(|(_, l)| matches!(l.state, LimbState::Idle | LimbState::Stopped))
+    }
+
+    /// Whether every limb is stopped.
+    #[must_use]
+    pub fn stopped(&self) -> bool {
+        self.limbs().all(|(_, l)| l.state == LimbState::Stopped)
     }
 
     pub(crate) fn set(&mut self, slot: usize, view: DriveView) {
@@ -473,7 +557,39 @@ pub enum ConfigError {
     /// More drives than [`MAX_DRIVES`].
     #[error("{0} drives on one bus; the bus table holds {MAX_DRIVES}")]
     TooManyDrives(usize),
+    /// A drive's limb index is past the table.
+    #[error(
+        "the drive in slot {slot} is in limb {limb}; limbs on one bus are numbered below {MAX_DRIVES}"
+    )]
+    LimbOutOfRange {
+        /// The drive's slot.
+        slot: usize,
+        /// The limb it named.
+        limb: usize,
+    },
     /// Timing [`Timing::check`] refuses.
     #[error("bad timing: {0}")]
     Timing(TimingError),
+}
+
+/// Why a limb can't be re-armed yet.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum RearmRefused {
+    /// No drive on this bus is in that limb.
+    #[error("no limb {0} on this bus")]
+    NoSuchLimb(usize),
+    /// The bus itself failed; only a new bus thread and socket bring it back.
+    #[error("the bus failed ({0:?}); it comes back only with a new bus thread")]
+    BusFailed(BusError),
+    /// The limb is running or still stopping: only a stopped limb is re-armed.
+    #[error("limb {0} isn't stopped")]
+    NotStopped(usize),
+    /// A drive is neither confirmed in Reset nor silent long enough to have timed out.
+    #[error(
+        "the drive in slot {slot} isn't confirmed disabled and hasn't been quiet past its timeout"
+    )]
+    DriveNotQuiet {
+        /// That drive's slot.
+        slot: usize,
+    },
 }

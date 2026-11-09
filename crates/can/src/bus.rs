@@ -8,8 +8,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant, SystemTime};
 
+use nix::sys::time::TimeSpec;
 use nix::time::{ClockId, ClockNanosleepFlags, clock_gettime, clock_nanosleep};
-use robstride::{DeviceId, Frame};
+use robstride::Frame;
 use rtrb::{Consumer, Producer};
 use socketcan::{CanDataFrame, CanSocket, EmbeddedFrame, ExtendedId, Socket, SocketOptions};
 use telemetry::{BusRecorder, Epoch, TickBatch};
@@ -17,7 +18,7 @@ use telemetry::{BusRecorder, Epoch, TickBatch};
 use crate::error_frame::BusError;
 use crate::sys::{self, SO_RCVBUFFORCE, SO_RXQ_OVFL, SO_TIMESTAMPNS_NEW};
 use crate::tick::BusTick;
-use crate::types::{BusState, CommandBatch, ConfigError, Drain, SendOutcome, Snapshot, Timing};
+use crate::types::{BusDrive, CommandBatch, ConfigError, Drain, SendOutcome, Snapshot, Timing};
 
 /// The most frames a tick's drain may find before the send. More than that queued means the thread can't tell what the
 /// bus said in time, so it stops (1 Mbit/s carries about 8,000 frames a second: 32 a tick at 250 Hz).
@@ -33,8 +34,8 @@ const RCVBUF_BYTES: libc::c_int = 1 << 20;
 pub struct BusConfig {
     /// The interface, as the skeleton names it.
     pub name: String,
-    /// The drives the skeleton puts on it, in slot order.
-    pub drives: Vec<DeviceId>,
+    /// The drives the skeleton puts on it, in slot order, each with its limb's index on this bus.
+    pub drives: Vec<BusDrive>,
     /// The tick.
     pub timing: Timing,
 }
@@ -103,6 +104,9 @@ pub struct BusLinks {
     pub recorder: BusRecorder,
     /// The session's monotonic zero.
     pub epoch: Epoch,
+    /// Tick 0's start, shared by every bus thread and the control thread so their tick numbers name the same instant.
+    /// A thread started after it begins at the first tick not yet due.
+    pub start: Instant,
     /// Set to end the thread: an active bus stops its drives first, then the thread returns.
     pub exit: Arc<AtomicBool>,
 }
@@ -201,14 +205,20 @@ fn link_kind(bus: &str) -> Result<String, String> {
 /// The bus's clocks: the loop's schedule on `CLOCK_MONOTONIC` (absolute sleeps) and the session's epoch for stamps.
 struct Clock {
     start: Instant,
-    start_ts: nix::sys::time::TimeSpec,
+    start_ts: TimeSpec,
     epoch: Epoch,
 }
 
 impl Clock {
-    fn new(epoch: Epoch) -> io::Result<Self> {
-        let start = mono_now();
-        let start_ts = clock_gettime(ClockId::CLOCK_MONOTONIC).map_err(io::Error::from)?;
+    /// The schedule from `start`, read against `CLOCK_MONOTONIC` (which `Instant` is on Linux) once, now.
+    fn new(epoch: Epoch, start: Instant) -> io::Result<Self> {
+        let now = mono_now();
+        let now_ts = clock_gettime(ClockId::CLOCK_MONOTONIC).map_err(io::Error::from)?;
+        let start_ts = if start >= now {
+            now_ts + TimeSpec::from_duration(start.duration_since(now))
+        } else {
+            now_ts - TimeSpec::from_duration(now.duration_since(start))
+        };
         Ok(Self {
             start,
             start_ts,
@@ -219,7 +229,7 @@ impl Clock {
     /// Sleep until `at` on the monotonic clock, absolute, so a slow tick never shifts the next.
     fn sleep_until(&self, at: Instant) -> io::Result<()> {
         let offset = at.saturating_duration_since(self.start);
-        let target = self.start_ts + nix::sys::time::TimeSpec::from_duration(offset);
+        let target = self.start_ts + TimeSpec::from_duration(offset);
         loop {
             match clock_nanosleep(
                 ClockId::CLOCK_MONOTONIC,
@@ -231,6 +241,12 @@ impl Clock {
                 Err(e) => return Err(e.into()),
             }
         }
+    }
+
+    /// The first tick whose start hasn't passed: 0 when the thread starts before the schedule does.
+    fn first_due(&self, period_ns: u64) -> u64 {
+        let behind = mono_now().saturating_duration_since(self.start).as_nanos();
+        u64::try_from(behind.div_ceil(u128::from(period_ns))).unwrap_or(u64::MAX)
     }
 
     /// Tick `n`'s scheduled start.
@@ -279,14 +295,14 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         last: None,
         error: None,
     };
-    let clock = match Clock::new(links.epoch) {
+    let clock = match Clock::new(links.epoch, links.start) {
         Ok(clock) => clock,
         Err(e) => {
             exit.error = Some(e);
             return exit;
         }
     };
-    let mut n: u64 = 0;
+    let mut n = clock.first_due(timing.period_ns);
     loop {
         let scheduled = clock.at(n, timing.period_ns);
         if let Err(e) = clock.sleep_until(scheduled) {
@@ -305,15 +321,13 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             exit.error.get_or_insert(e);
         }
         if links.exit.load(Ordering::Acquire) {
-            match exit.last.map(|s| s.state) {
-                None | Some(BusState::Idle | BusState::Stopped) => {
-                    // The frames this drain read are still recorded.
-                    batch.valid = exit.last.is_none_or(|s| s.healthy);
-                    exit.recorder.record(batch);
-                    break;
-                }
-                Some(BusState::Active | BusState::Stopping { .. }) => tick.request_stop(),
+            if exit.last.is_none_or(|s| s.settled()) {
+                // The frames this drain read are still recorded.
+                batch.valid = exit.last.is_none_or(|s| s.healthy);
+                exit.recorder.record(batch);
+                break;
             }
+            tick.request_stop();
         }
         let command = newest(&mut links.commands);
         // Planned against the tick's own schedule, so a wake any number of periods late is a missed deadline.
@@ -355,7 +369,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         }
         exit.recorder.record(batch);
         exit.last = Some(snap);
-        if exit.error.is_some() && snap.state == BusState::Stopped {
+        if exit.error.is_some() && snap.stopped() {
             break;
         }
         // The next tick is the first not yet due; any skipped were missed deadlines, and this late tick has already

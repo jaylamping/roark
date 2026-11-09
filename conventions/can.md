@@ -108,6 +108,19 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
 - **Error counters and drops are metrics** (per bus: bus errors, error-passive, bus-off count, RX overflow, TX drops, late
   ticks), exported every second and shown in the UI.
 
+### Stops and the schedule
+
+- **A stop names its scope.** A fault, a drop out of Run, a silent drive or motion on expired feedback stops that drive's
+  limb; a late wake, a backlog, a bad batch, control going silent or a bus error stops every limb on the bus. **Why:** the
+  affected limb stops ([architecture.md](architecture.md)), and the other arm on the same bus has done nothing wrong.
+- **Check before every send.** What the drain read before the send is checked before the tick's commands go out, so a
+  fault read in the slack stops its limb on that tick, not the next ([safety.md section 3](safety.md#3-how-a-rule-is-written)).
+- **Only an operator clear re-arms,** and only a stopped limb whose drives are known disabled (confirmed in Reset, or sent
+  nothing for longer than the drive timeout). A latched bus error is never re-armed in place: the bus thread and socket
+  are rebuilt. Nothing in the bus layer re-arms itself.
+- **One schedule for every bus.** Every bus thread and the control thread tick from the one origin the runtime picks, so
+  tick n is the same instant everywhere.
+
 ### Logging
 
 - **Every frame in and out goes to the recorder** through the bus thread's ring; the bus thread never writes files. How frames
@@ -135,6 +148,7 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
 - Can anything send a frame without a deadline, retry in a loop, or block the bus thread?
 - Is every queue bounded, and every drop counted?
 - Is any bus-off or interface error handled by anything other than stop and latch?
+- Does every new stop name its scope (the limb or the whole bus), and can anything but an operator clear re-arm one?
 - Are error frames on, loopback on, and the (empty) filter list recorded?
 
 ## Sources

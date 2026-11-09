@@ -7,96 +7,142 @@
 //! the write still counts as after the send, which is evidence of the drive at that moment. Which command a status
 //! answers can't be proven (no sequence numbers): it is evidence the drive is there and of its state then, never an
 //! acknowledgement.
+//!
+//! The drives on a bus belong to limbs. Each limb runs and stops on its own; a stop of the whole bus (a late wake, a
+//! backlog, control gone silent, a bad batch, a failed bus) stops every limb. Frames in are read in `read.rs`, limb stops
+//! are planned in `stop.rs`.
 
-use robstride::encode::{self, Reporting};
-use robstride::{
-    DecodeError, DeviceId, EchoKind, Frame, Inbound, Mode, Param, ParamValue, RunMode, Status,
-    decode,
-};
-use telemetry::{Direction, FrameRecord};
+use robstride::encode::Reporting;
+use robstride::{DeviceId, EchoKind, Frame, Inbound, Param, ParamValue, RunMode, decode};
 
-use crate::error_frame::{BusError, classify};
+use crate::error_frame::BusError;
 use crate::types::{
-    BusState, CommandBatch, ConfigError, Counters, Drain, DriveView, MAX_DRIVES, Observed, Send,
-    SendKind, SendList, SendOutcome, Snapshot, StopOutcome, StopReason, Timing,
+    BusDrive, CommandBatch, ConfigError, Counters, Drain, DriveView, EchoSeen, LimbState, LimbView,
+    MAX_DRIVES, Observed, Send, SendKind, SendList, SendOutcome, Snapshot, StopOutcome, StopReason,
+    Timing,
 };
 
 /// A command the socket took, waiting for its status.
 #[derive(Clone, Copy, Debug)]
-struct Outstanding {
-    tick: u64,
-    deadline_ns: u64,
+pub(crate) struct Outstanding {
+    pub(crate) tick: u64,
+    pub(crate) deadline_ns: u64,
     /// A stop's Disable: a Reset status after it confirms the stop.
-    stop_disable: bool,
+    pub(crate) stop_disable: bool,
     /// Whether a missing status counts as unanswered. Not for Enable or Disable: the drive may be slow or silent then
     /// (PLAN.md item 2 Silence windows).
-    counts_missed: bool,
-    reply: Reply,
-    counted: bool,
+    pub(crate) counts_missed: bool,
+    pub(crate) reply: Reply,
+    pub(crate) counted: bool,
 }
 
 /// Whether an outstanding command has had its status yet.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Reply {
+pub(crate) enum Reply {
     Waiting,
     OnTime,
     Late,
 }
 
 #[derive(Clone, Copy, Debug)]
-struct DriveState {
-    device: DeviceId,
-    observed: Option<Observed>,
-    fresh_ns: Option<u64>,
-    outstanding: Option<Outstanding>,
-    answered: bool,
-    fault_seen: bool,
-    stop: StopOutcome,
+pub(crate) struct DriveState {
+    pub(crate) device: DeviceId,
+    pub(crate) limb: usize,
+    pub(crate) observed: Option<Observed>,
+    pub(crate) fresh_ns: Option<u64>,
+    pub(crate) outstanding: Option<Outstanding>,
+    pub(crate) answered: bool,
+    pub(crate) fault_seen: bool,
+    pub(crate) misses: u32,
+    pub(crate) phase: Phase,
+    /// The scheduled start of the last tick in which the socket took a frame to it.
+    pub(crate) last_sent_ns: Option<u64>,
+    pub(crate) last_echo: Option<EchoSeen>,
+    pub(crate) stop: StopOutcome,
     /// When this stop's Disable was confirmed.
-    confirmed_ns: Option<u64>,
+    pub(crate) confirmed_ns: Option<u64>,
     /// Whether this stop's reporting-off was taken by the socket.
-    reporting_off_sent: bool,
+    pub(crate) reporting_off_sent: bool,
 }
 
-/// One bus's drives and the tick logic over them.
+/// Where a drive is between this host's Enable and Disable.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Phase {
+    /// No Enable taken by the socket since the last Disable.
+    Off,
+    /// An Enable was taken; no Run status since.
+    Enabling,
+    /// It reported Run after that Enable: a later status in another mode stops its limb.
+    Running,
+}
+
+/// One limb's run state on this bus.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Limb {
+    pub(crate) state: LimbState,
+    pub(crate) stop: Option<StopReason>,
+    pub(crate) generation: u32,
+    /// A stop asked for this limb alone, taken at the next tick's start.
+    pub(crate) pending: Option<StopReason>,
+}
+
+/// One bus's drives, their limbs, and the tick logic over them.
 #[derive(Debug)]
 pub struct BusTick {
-    timing: Timing,
-    drives: [Option<DriveState>; MAX_DRIVES],
-    state: BusState,
-    stop: Option<StopReason>,
-    pending_stop: Option<StopReason>,
-    bus_error: Option<BusError>,
-    error_passive: bool,
+    pub(crate) timing: Timing,
+    pub(crate) drives: [Option<DriveState>; MAX_DRIVES],
+    pub(crate) limbs: [Option<Limb>; MAX_DRIVES],
+    /// A stop of the whole bus, taken at the next tick's start.
+    pub(crate) pending_stop: Option<StopReason>,
+    pub(crate) bus_error: Option<BusError>,
+    pub(crate) error_passive: bool,
     /// Reads may predate this tick's sends: the last drain left frames queued, and none since has emptied the socket.
-    unordered: bool,
-    counters: Counters,
-    silent: u32,
-    tick: u64,
-    scheduled_ns: u64,
-    sends: SendList,
+    pub(crate) unordered: bool,
+    pub(crate) counters: Counters,
+    pub(crate) silent: u32,
+    pub(crate) tick: u64,
+    pub(crate) scheduled_ns: u64,
+    pub(crate) sends: SendList,
 }
 
 impl BusTick {
-    /// The drives this bus owns, in slot order (the skeleton's order).
+    /// The drives this bus owns, in slot order (the skeleton's order), each with its limb.
     ///
     /// # Errors
-    /// [`ConfigError::TooManyDrives`] past [`MAX_DRIVES`]; [`ConfigError::Timing`] for timing that
-    /// [`Timing::check`] refuses.
-    pub fn new(devices: &[DeviceId], timing: Timing) -> Result<Self, ConfigError> {
-        if devices.len() > MAX_DRIVES {
-            return Err(ConfigError::TooManyDrives(devices.len()));
+    /// [`ConfigError::TooManyDrives`] past [`MAX_DRIVES`]; [`ConfigError::LimbOutOfRange`] for a limb index past the
+    /// table; [`ConfigError::Timing`] for timing that [`Timing::check`] refuses.
+    pub fn new(drives: &[BusDrive], timing: Timing) -> Result<Self, ConfigError> {
+        if drives.len() > MAX_DRIVES {
+            return Err(ConfigError::TooManyDrives(drives.len()));
         }
         timing.check().map_err(ConfigError::Timing)?;
-        let mut drives = [None; MAX_DRIVES];
-        for (slot, &device) in drives.iter_mut().zip(devices) {
-            *slot = Some(DriveState {
-                device,
+        let mut table = [None; MAX_DRIVES];
+        let mut limbs = [None; MAX_DRIVES];
+        for (slot, (entry, drive)) in table.iter_mut().zip(drives).enumerate() {
+            let Some(limb) = limbs.get_mut(drive.limb) else {
+                return Err(ConfigError::LimbOutOfRange {
+                    slot,
+                    limb: drive.limb,
+                });
+            };
+            limb.get_or_insert(Limb {
+                state: LimbState::Idle,
+                stop: None,
+                generation: 0,
+                pending: None,
+            });
+            *entry = Some(DriveState {
+                device: drive.device,
+                limb: drive.limb,
                 observed: None,
                 fresh_ns: None,
                 outstanding: None,
                 answered: false,
                 fault_seen: false,
+                misses: 0,
+                phase: Phase::Off,
+                last_sent_ns: None,
+                last_echo: None,
                 stop: StopOutcome::None,
                 confirmed_ns: None,
                 reporting_off_sent: false,
@@ -104,9 +150,8 @@ impl BusTick {
         }
         Ok(Self {
             timing,
-            drives,
-            state: BusState::Idle,
-            stop: None,
+            drives: table,
+            limbs,
             pending_stop: None,
             bus_error: None,
             error_passive: false,
@@ -125,9 +170,17 @@ impl BusTick {
         self.timing
     }
 
-    /// Stop at the start of the next tick: Disable to every drive, then reporting off.
+    /// Stop the whole bus at the start of the next tick: Disable to every drive, then reporting off.
     pub fn request_stop(&mut self) {
         self.pending_stop.get_or_insert(StopReason::Requested);
+    }
+
+    /// Stop limb `limb` at the start of the next tick; the bus's other limbs keep running. A limb not on this bus is
+    /// ignored.
+    pub fn stop_limb(&mut self, limb: usize) {
+        if let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut) {
+            l.pending.get_or_insert(StopReason::Requested);
+        }
     }
 
     /// How this tick's drain ended: call it after the drain, before [`Self::begin`]. A backlog stops the bus at this
@@ -163,7 +216,7 @@ impl BusTick {
     pub fn skipped(&mut self, count: u64, now_ns: u64) {
         if count > 0 {
             self.counters.missed_deadlines += count;
-            self.begin_stop(StopReason::LateWake, now_ns);
+            self.stop_all(StopReason::LateWake, now_ns);
         }
     }
 
@@ -173,8 +226,9 @@ impl BusTick {
     }
 
     /// Start tick `tick`, scheduled at `scheduled_ns`, woken at `now_ns`, with the newest batch from control. Call after
-    /// draining the socket. Returns the frames to send, in order; report each with [`Self::sent`]. A command goes out
-    /// only inside the send window; stop frames go out whenever planned, since a late Disable is still the right one.
+    /// draining the socket. Returns the frames to send, in order, stop frames first; report each with [`Self::sent`].
+    /// Before anything is planned, a drive of an active limb that the drain showed faulted, out of Run after running,
+    /// or silent too long stops its limb, so no command reaches it this tick.
     pub fn begin(
         &mut self,
         tick: u64,
@@ -190,146 +244,122 @@ impl BusTick {
         }
         if now_ns > scheduled_ns.saturating_add(self.timing.send_window_ns) {
             self.counters.missed_deadlines += 1;
-            self.begin_stop(StopReason::LateWake, now_ns);
+            self.stop_all(StopReason::LateWake, now_ns);
         }
         if let Some(reason) = self.pending_stop.take() {
-            self.begin_stop(reason, now_ns);
+            self.stop_all(reason, now_ns);
         }
-        match self.state {
-            BusState::Stopped | BusState::Stopping { .. } => {
-                if batch.is_some() {
-                    self.counters.refused_batches += 1;
-                }
-                self.plan_stop(now_ns);
+        self.take_pending_limb_stops(now_ns);
+        self.veto(now_ns);
+        let accepted = if self.any_running() {
+            self.check_batch(tick, now_ns, batch)
+        } else {
+            if batch.is_some() {
+                self.counters.refused_batches += 1;
             }
-            BusState::Idle | BusState::Active => self.plan_batch(tick, now_ns, batch),
+            None
+        };
+        self.plan_stops(now_ns);
+        if let Some(batch) = accepted {
+            self.push_commands(&batch);
         }
         self.sends
     }
 
-    fn plan_batch(&mut self, tick: u64, now_ns: u64, batch: Option<&CommandBatch>) {
+    /// Whether any limb is idle or active, so a batch could carry something.
+    fn any_running(&self) -> bool {
+        self.limbs
+            .iter()
+            .flatten()
+            .any(|l| matches!(l.state, LimbState::Idle | LimbState::Active))
+    }
+
+    /// The batch if it is fresh and sound. A frame aimed wrong, in a slot with no drive, or of a kind a batch may not
+    /// carry is a bug upstream and stops the whole bus; motion on expired feedback stops that drive's limb.
+    fn check_batch(
+        &mut self,
+        tick: u64,
+        now_ns: u64,
+        batch: Option<&CommandBatch>,
+    ) -> Option<CommandBatch> {
         let fresh = batch.filter(|b| b.tick == tick && b.expires_ns > now_ns);
         let Some(batch) = fresh else {
             if batch.is_some() {
                 self.counters.stale_ticks += 1;
             }
-            if self.state == BusState::Active {
+            let active = self
+                .limbs
+                .iter()
+                .flatten()
+                .any(|l| l.state == LimbState::Active);
+            if active {
                 self.silent += 1;
                 if self.silent >= self.timing.silent_ticks {
-                    self.stop_now(StopReason::ControlSilent, now_ns);
+                    self.stop_all(StopReason::ControlSilent, now_ns);
                 }
             }
-            return;
+            return None;
         };
         self.silent = 0;
         // Check the whole batch before sending any of it.
         for (slot, frame) in batch.frames().iter().enumerate() {
             let Some(frame) = frame else { continue };
             let Some(drive) = self.drives.get(slot).copied().flatten() else {
-                self.stop_now(StopReason::BadBatch { slot }, now_ns);
-                return;
+                self.stop_all(StopReason::BadBatch { slot }, now_ns);
+                return None;
             };
             let Some((kind, target)) = echo_of(frame) else {
-                self.stop_now(StopReason::BadBatch { slot }, now_ns);
-                return;
+                self.stop_all(StopReason::BadBatch { slot }, now_ns);
+                return None;
             };
             if target != drive.device || !batch_may_carry(kind) {
-                self.stop_now(StopReason::BadBatch { slot }, now_ns);
-                return;
-            }
-            let stale = drive
-                .fresh_ns
-                .is_none_or(|at| now_ns.saturating_sub(at) > self.timing.feedback_limit_ns);
-            if matches!(kind, EchoKind::Mit) && stale {
-                self.stop_now(StopReason::ExpiredFeedback { slot }, now_ns);
-                return;
+                self.stop_all(StopReason::BadBatch { slot }, now_ns);
+                return None;
             }
         }
         for (slot, frame) in batch.frames().iter().enumerate() {
-            if let Some(frame) = frame {
-                let late_ok = matches!(
-                    echo_of(frame),
-                    Some((EchoKind::Disable | EchoKind::Reporting(Reporting::Off), _))
-                );
-                self.sends.push(Send {
-                    slot,
-                    kind: SendKind::Command,
-                    frame: *frame,
-                    expires: !late_ok,
-                });
+            let (Some(frame), Some(drive)) = (frame, self.drives.get(slot).copied().flatten())
+            else {
+                continue;
+            };
+            let stale = drive
+                .fresh_ns
+                .is_none_or(|at| now_ns.saturating_sub(at) > self.timing.feedback_limit_ns);
+            if matches!(echo_of(frame), Some((EchoKind::Mit, _))) && stale {
+                self.stop_limb_now(drive.limb, StopReason::ExpiredFeedback { slot }, now_ns);
             }
         }
+        Some(*batch)
     }
 
-    fn stop_now(&mut self, reason: StopReason, now_ns: u64) {
-        self.begin_stop(reason, now_ns);
-        self.plan_stop(now_ns);
-    }
-
-    /// While stopping: Disable to every drive not yet confirmed, then reporting off to each confirmed drive once the
-    /// post-Disable silence after its confirmation is over (a drive drops every frame in it, PLAN.md item 2 Silence
-    /// windows), until the socket takes it. A drive that never confirms is sent a Disable every tick, so it never
-    /// leaves its silence and gets no reporting off. Once the confirm window has passed, stopped.
-    fn plan_stop(&mut self, now_ns: u64) {
-        let BusState::Stopping { since_ns } = self.state else {
-            return;
-        };
-        if now_ns.saturating_sub(since_ns) >= self.timing.stop_confirm_ns {
-            self.state = BusState::Stopped;
-            return;
-        }
-        for (slot, d) in self.drives.iter().enumerate() {
-            if let Some(d) = d
-                && d.stop != StopOutcome::Confirmed
-            {
-                self.sends.push(Send {
-                    slot,
-                    kind: SendKind::Disable,
-                    frame: encode::disable(d.device),
-                    expires: false,
-                });
+    /// The batch's frames for limbs still idle or active; those for a stopping or stopped limb are dropped and counted.
+    fn push_commands(&mut self, batch: &CommandBatch) {
+        for (slot, frame) in batch.frames().iter().enumerate() {
+            let (Some(frame), Some(drive)) = (frame, self.drives.get(slot).copied().flatten())
+            else {
+                continue;
+            };
+            let running = self
+                .limbs
+                .get(drive.limb)
+                .copied()
+                .flatten()
+                .is_some_and(|l| matches!(l.state, LimbState::Idle | LimbState::Active));
+            if !running {
+                self.counters.refused_frames += 1;
+                continue;
             }
+            let late_ok = matches!(
+                echo_of(frame),
+                Some((EchoKind::Disable | EchoKind::Reporting(Reporting::Off), _))
+            );
+            self.sends.push(Send {
+                slot,
+                kind: SendKind::Command,
+                frame: *frame,
+                expires: !late_ok,
+            });
         }
-        for (slot, d) in self.drives.iter().enumerate() {
-            if let Some(d) = d
-                && !d.reporting_off_sent
-                && d.confirmed_ns
-                    .is_some_and(|at| now_ns >= at.saturating_add(self.timing.disable_silence_ns))
-            {
-                self.sends.push(Send {
-                    slot,
-                    kind: SendKind::ReportingOff,
-                    frame: encode::active_reporting(d.device, Reporting::Off),
-                    expires: false,
-                });
-            }
-        }
-    }
-
-    fn begin_stop(&mut self, reason: StopReason, now_ns: u64) {
-        if matches!(self.state, BusState::Stopping { .. } | BusState::Stopped) {
-            return;
-        }
-        self.stop = Some(reason);
-        self.state = BusState::Stopping { since_ns: now_ns };
-        for d in self.drives.iter_mut().flatten() {
-            d.stop = StopOutcome::NeverSent;
-            d.confirmed_ns = None;
-            d.reporting_off_sent = false;
-        }
-    }
-
-    /// A bus error that leaves nothing to send on: stopped now, whatever the bus was doing. The first such error is
-    /// kept in every later snapshot.
-    fn latch(&mut self, error: BusError) {
-        self.bus_error.get_or_insert(error);
-        if matches!(self.state, BusState::Idle | BusState::Active) {
-            self.stop = Some(StopReason::Bus(error));
-            for d in self.drives.iter_mut().flatten() {
-                d.stop = StopOutcome::NeverSent;
-            }
-        }
-        self.state = BusState::Stopped;
     }
 
     /// What became of send `index` of this tick's list. A command's status window opens only if the socket took it.
@@ -349,9 +379,6 @@ impl BusTick {
             }
         }
         let kind = echo_of(&send.frame).map(|(kind, _)| kind);
-        if matches!(kind, Some(EchoKind::Mit | EchoKind::Enable)) && self.state == BusState::Idle {
-            self.state = BusState::Active;
-        }
         let expects_status = matches!(
             kind,
             Some(
@@ -363,10 +390,19 @@ impl BusTick {
             )
         );
         let deadline_ns = self.scheduled_ns.saturating_add(self.timing.collect_ns);
-        let tick = self.tick;
+        let (tick, scheduled_ns) = (self.tick, self.scheduled_ns);
         let Some(d) = self.drives.get_mut(send.slot).and_then(Option::as_mut) else {
             return;
         };
+        d.last_sent_ns = Some(scheduled_ns);
+        if matches!(kind, Some(EchoKind::Enable)) {
+            if d.phase == Phase::Off {
+                d.phase = Phase::Enabling;
+            }
+        } else if matches!(kind, Some(EchoKind::Disable)) {
+            // Disabled on purpose: its Reset reply is no surprise.
+            d.phase = Phase::Off;
+        }
         match send.kind {
             SendKind::Disable if d.stop == StopOutcome::NeverSent => d.stop = StopOutcome::Sent,
             SendKind::ReportingOff => d.reporting_off_sent = true,
@@ -382,118 +418,13 @@ impl BusTick {
                 counted: false,
             });
         }
-    }
-
-    /// One frame read at `read_ns`, before the send (draining) or after it.
-    pub fn on_frame(&mut self, read_ns: u64, frame: &FrameRecord) {
-        if frame.error {
-            self.counters.error_frames += 1;
-            let error = classify(frame.id, &frame.data);
-            if error.latches() {
-                self.latch(error);
-            }
-            match error {
-                BusError::ErrorPassive => self.error_passive = true,
-                BusError::ErrorActive => self.error_passive = false,
-                BusError::BusOff
-                | BusError::ErrorWarning
-                | BusError::RxOverflow
-                | BusError::TxTimeout
-                | BusError::InterfaceDown
-                | BusError::InterfaceGone
-                | BusError::Socket(_)
-                | BusError::Other(_) => {}
-            }
-            return;
+        let limb = d.limb;
+        if matches!(kind, Some(EchoKind::Mit | EchoKind::Enable))
+            && let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut)
+            && l.state == LimbState::Idle
+        {
+            l.state = LimbState::Active;
         }
-        if !frame.extended || frame.remote {
-            self.counters.undecodable += 1;
-            return;
-        }
-        match decode(frame.id, frame.payload()) {
-            // The codec names frames only another sender could have put on the bus.
-            Err(
-                DecodeError::OtherHost { .. }
-                | DecodeError::ForeignType { .. }
-                | DecodeError::ForeignWrite { .. },
-            ) => self.counters.foreign_host += 1,
-            Err(_) => self.counters.undecodable += 1,
-            Ok(Inbound::Echo(_)) => {
-                if frame.direction == Direction::TxEcho {
-                    self.counters.echoes += 1;
-                } else {
-                    self.counters.foreign_host += 1;
-                }
-            }
-            Ok(Inbound::Status(status)) => self.on_status(read_ns, status, true),
-            Ok(Inbound::Report(status)) => self.on_status(read_ns, status, false),
-            Ok(Inbound::Fault { device, faults, .. }) => match self.slot_of(device) {
-                // Warnings alone aren't a fault (the codec: non-zero fault bytes mean faulted).
-                Some(d) => d.fault_seen |= faults != [0; 4],
-                None => self.counters.unexpected += 1,
-            },
-            Ok(Inbound::Version { header, .. }) => match self.slot_of(header.device) {
-                Some(d) => d.fault_seen |= !header.faults.is_empty(),
-                None => self.counters.unexpected += 1,
-            },
-            Ok(Inbound::Identity { device, .. } | Inbound::Param { device, .. }) => {
-                if self.slot_of(device).is_none() {
-                    self.counters.unexpected += 1;
-                }
-            }
-        }
-    }
-
-    fn on_status(&mut self, read_ns: u64, status: Status, answer: bool) {
-        let device = status.header.device;
-        let tick = self.tick;
-        let unordered = self.unordered;
-        let Some(d) = self
-            .drives
-            .iter_mut()
-            .flatten()
-            .find(|d| d.device == device)
-        else {
-            self.counters.unexpected += 1;
-            return;
-        };
-        d.observed = Some(Observed { status, read_ns });
-        if !status.header.faults.is_empty() {
-            d.fault_seen = true;
-        }
-        if !answer {
-            return;
-        }
-        let Some(o) = d.outstanding.as_mut().filter(|_| !unordered) else {
-            self.counters.unsolicited += 1;
-            return;
-        };
-        if o.reply == Reply::Waiting {
-            d.fresh_ns = Some(read_ns);
-            if read_ns <= o.deadline_ns {
-                o.reply = Reply::OnTime;
-                d.answered = o.tick == tick;
-            } else {
-                o.reply = Reply::Late;
-                self.counters.late += 1;
-            }
-        } else if o.tick == tick {
-            self.counters.duplicate += 1;
-        } else {
-            self.counters.unsolicited += 1;
-        }
-        // Any Reset after the stop's Disable confirms it, even behind an earlier status still in flight.
-        if o.stop_disable && status.header.mode == Mode::Reset && d.stop != StopOutcome::Confirmed {
-            d.stop = StopOutcome::Confirmed;
-            d.confirmed_ns = Some(read_ns);
-        }
-    }
-
-    fn slot_of(&mut self, device: DeviceId) -> Option<&mut DriveState> {
-        self.drives
-            .iter_mut()
-            .flatten()
-            .find(|d| d.device == device)
     }
 
     /// End the tick at `now_ns` (the collect deadline): count commands not answered by the deadline and return the
@@ -508,38 +439,34 @@ impl BusTick {
                 && !o.counted
             {
                 o.counted = true;
+                d.misses = d.misses.saturating_add(1);
                 self.counters.unanswered += 1;
             }
         }
-        if let BusState::Stopping { since_ns } = self.state {
-            let all_done = self
-                .drives
-                .iter()
-                .flatten()
-                .all(|d| d.stop == StopOutcome::Confirmed && d.reporting_off_sent);
-            if all_done || now_ns.saturating_sub(since_ns) >= self.timing.stop_confirm_ns {
-                self.state = BusState::Stopped;
-            }
-        }
+        self.settle_stops(now_ns);
         let healthy = self.bus_error.is_none() && !self.error_passive;
-        let mut snap = Snapshot::new(
-            tick,
-            self.state,
-            self.stop,
-            self.bus_error,
-            healthy,
-            self.counters,
-        );
+        let mut limbs = [None; MAX_DRIVES];
+        for (view, limb) in limbs.iter_mut().zip(&self.limbs) {
+            *view = limb.map(|l| LimbView {
+                state: l.state,
+                stop: l.stop,
+                generation: l.generation,
+            });
+        }
+        let mut snap = Snapshot::new(tick, self.bus_error, healthy, self.counters, &limbs);
         for (slot, d) in self.drives.iter().enumerate() {
             if let Some(d) = d {
                 snap.set(
                     slot,
                     DriveView {
                         device: d.device,
+                        limb: d.limb,
                         observed: d.observed,
                         fresh_ns: d.fresh_ns,
                         answered: d.answered,
                         fault_seen: d.fault_seen,
+                        misses: d.misses,
+                        last_echo: d.last_echo,
                         stop: d.stop,
                         reporting_off_sent: d.reporting_off_sent,
                     },
@@ -570,7 +497,7 @@ fn batch_may_carry(kind: EchoKind) -> bool {
 }
 
 /// What a host frame is and whom it targets, read back through the codec (so the ID layout stays in `robstride`).
-fn echo_of(frame: &Frame) -> Option<(EchoKind, DeviceId)> {
+pub(crate) fn echo_of(frame: &Frame) -> Option<(EchoKind, DeviceId)> {
     match decode(frame.id(), &frame.data()) {
         Ok(Inbound::Echo(echo)) => Some((echo.kind, echo.target)),
         Ok(

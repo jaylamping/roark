@@ -4,6 +4,8 @@
 #[cfg(target_os = "linux")]
 mod bus;
 mod error_frame;
+mod read;
+mod stop;
 #[cfg(target_os = "linux")]
 #[expect(
     unsafe_code,
@@ -19,7 +21,7 @@ pub use bus::{BusConfig, BusExit, BusLinks, BusRunError, DRAIN_MAX, Spawned, spa
 pub use error_frame::{BusError, classify};
 pub use tick::BusTick;
 pub use types::{
-    BusState, CommandBatch, ConfigError, Counters, DRIVE_TIMEOUT_NS, Drain, DriveView, MAX_DRIVES,
-    MAX_SENDS, Observed, Send, SendKind, SendList, SendOutcome, Snapshot, StopOutcome, StopReason,
-    Timing, TimingError,
+    BusDrive, CommandBatch, ConfigError, Counters, DRIVE_TIMEOUT_NS, Drain, DriveView, EchoSeen,
+    LimbState, LimbView, MAX_DRIVES, MAX_SENDS, Observed, RearmRefused, Send, SendKind, SendList,
+    SendOutcome, Snapshot, StopOutcome, StopReason, Timing, TimingError,
 };

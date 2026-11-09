@@ -1,0 +1,225 @@
+//! Stopping limbs: what starts a stop, what each stopping limb sends, when it is over, the bus error that stops every
+//! limb at once, and the operator's re-arm.
+//!
+//! A stop sends Disable to every drive of the limb not yet confirmed, re-sent each tick, and active reporting off to
+//! each confirmed drive once the post-Disable silence after its confirmation is over (a drive drops every frame in it,
+//! PLAN.md item 2 Silence windows), until the socket takes it. A drive that never confirms is sent a Disable every
+//! tick, so it never leaves its silence and gets no reporting off. The limb is stopped once every drive has confirmed
+//! and taken its reporting off, or once the confirm window has passed.
+
+use robstride::Mode;
+use robstride::encode::{self, Reporting};
+
+use crate::error_frame::BusError;
+use crate::tick::{BusTick, Phase};
+use crate::types::{
+    DRIVE_TIMEOUT_NS, LimbState, RearmRefused, Send, SendKind, StopOutcome, StopReason,
+};
+
+impl BusTick {
+    /// Stop every limb not already stopping or stopped, for a reason that is the whole bus's.
+    pub(crate) fn stop_all(&mut self, reason: StopReason, now_ns: u64) {
+        for limb in 0..self.limbs.len() {
+            self.stop_limb_now(limb, reason, now_ns);
+        }
+    }
+
+    /// Start stopping limb `limb` now, unless it is already stopping or stopped (the first reason stays).
+    pub(crate) fn stop_limb_now(&mut self, limb: usize, reason: StopReason, now_ns: u64) {
+        let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut) else {
+            return;
+        };
+        if matches!(l.state, LimbState::Stopping { .. } | LimbState::Stopped) {
+            return;
+        }
+        l.stop = Some(reason);
+        l.state = LimbState::Stopping { since_ns: now_ns };
+        l.pending = None;
+        for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {
+            d.stop = StopOutcome::NeverSent;
+            d.confirmed_ns = None;
+            d.reporting_off_sent = false;
+        }
+    }
+
+    pub(crate) fn take_pending_limb_stops(&mut self, now_ns: u64) {
+        for limb in 0..self.limbs.len() {
+            let pending = self
+                .limbs
+                .get_mut(limb)
+                .and_then(Option::as_mut)
+                .and_then(|l| l.pending.take());
+            if let Some(reason) = pending {
+                self.stop_limb_now(limb, reason, now_ns);
+            }
+        }
+    }
+
+    /// The check before every send, on what the drain just read: a drive of an active limb that shows a fault, has
+    /// left Run after running, or has missed too many replies in a row stops its limb before any command goes to it.
+    pub(crate) fn veto(&mut self, now_ns: u64) {
+        for slot in 0..self.drives.len() {
+            let Some(d) = self.drives.get(slot).copied().flatten() else {
+                continue;
+            };
+            let active = self
+                .limbs
+                .get(d.limb)
+                .copied()
+                .flatten()
+                .is_some_and(|l| l.state == LimbState::Active);
+            if !active {
+                continue;
+            }
+            let left_run = d.phase == Phase::Running
+                && d.observed
+                    .is_some_and(|o| o.status.header.mode != Mode::Run);
+            let reason = if d.fault_seen {
+                Some(StopReason::DriveFault { slot })
+            } else if left_run {
+                Some(StopReason::DriveMode { slot })
+            } else if d.misses >= self.timing.silence_misses {
+                Some(StopReason::DriveSilent { slot })
+            } else {
+                None
+            };
+            if let Some(reason) = reason {
+                self.stop_limb_now(d.limb, reason, now_ns);
+            }
+        }
+    }
+
+    /// The stop frames of every stopping limb, and stopped once a limb's confirm window has passed.
+    pub(crate) fn plan_stops(&mut self, now_ns: u64) {
+        for limb in 0..self.limbs.len() {
+            let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut) else {
+                continue;
+            };
+            let LimbState::Stopping { since_ns } = l.state else {
+                continue;
+            };
+            if now_ns.saturating_sub(since_ns) >= self.timing.stop_confirm_ns {
+                l.state = LimbState::Stopped;
+                continue;
+            }
+            for (slot, d) in self.drives.iter().enumerate() {
+                if let Some(d) = d
+                    && d.limb == limb
+                    && d.stop != StopOutcome::Confirmed
+                {
+                    self.sends.push(Send {
+                        slot,
+                        kind: SendKind::Disable,
+                        frame: encode::disable(d.device),
+                        expires: false,
+                    });
+                }
+            }
+            for (slot, d) in self.drives.iter().enumerate() {
+                if let Some(d) = d
+                    && d.limb == limb
+                    && !d.reporting_off_sent
+                    && d.confirmed_ns.is_some_and(|at| {
+                        now_ns >= at.saturating_add(self.timing.disable_silence_ns)
+                    })
+                {
+                    self.sends.push(Send {
+                        slot,
+                        kind: SendKind::ReportingOff,
+                        frame: encode::active_reporting(d.device, Reporting::Off),
+                        expires: false,
+                    });
+                }
+            }
+        }
+    }
+
+    /// At the tick's end: a stopping limb whose drives have all confirmed and taken reporting off, or whose confirm
+    /// window has passed, is stopped.
+    pub(crate) fn settle_stops(&mut self, now_ns: u64) {
+        for limb in 0..self.limbs.len() {
+            let all_done = self
+                .drives
+                .iter()
+                .flatten()
+                .filter(|d| d.limb == limb)
+                .all(|d| d.stop == StopOutcome::Confirmed && d.reporting_off_sent);
+            let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut) else {
+                continue;
+            };
+            if let LimbState::Stopping { since_ns } = l.state
+                && (all_done || now_ns.saturating_sub(since_ns) >= self.timing.stop_confirm_ns)
+            {
+                l.state = LimbState::Stopped;
+            }
+        }
+    }
+
+    /// A bus error that leaves nothing to send on: every limb stopped now, whatever it was doing. The first such error
+    /// is kept in every later snapshot.
+    pub(crate) fn latch(&mut self, error: BusError) {
+        self.bus_error.get_or_insert(error);
+        for limb in 0..self.limbs.len() {
+            let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut) else {
+                continue;
+            };
+            if matches!(l.state, LimbState::Idle | LimbState::Active) {
+                l.stop = Some(StopReason::Bus(error));
+                for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {
+                    d.stop = StopOutcome::NeverSent;
+                }
+            }
+            l.state = LimbState::Stopped;
+            l.pending = None;
+        }
+    }
+
+    /// The operator cleared limb `limb` (PLAN.md item 6: a latched stop clears only by an operator `clear`): idle again,
+    /// with its stop outcomes, fault history and miss counts started afresh, and a new generation. Each drive must
+    /// first be confirmed in Reset by the stop, or have had no frame from this bus for longer than the drive timeout
+    /// (plus a period, for a send late in its tick), so it has dropped to Reset on its own. Every drive in it needs a
+    /// fresh preflight before it is enabled again; that is the safety layer's.
+    ///
+    /// # Errors
+    /// [`RearmRefused`] when the limb isn't on this bus, isn't stopped, the bus has failed, or a drive isn't known to
+    /// be disabled yet.
+    pub fn rearm(&mut self, limb: usize, now_ns: u64) -> Result<(), RearmRefused> {
+        let Some(l) = self.limbs.get(limb).copied().flatten() else {
+            return Err(RearmRefused::NoSuchLimb(limb));
+        };
+        if let Some(error) = self.bus_error {
+            return Err(RearmRefused::BusFailed(error));
+        }
+        if l.state != LimbState::Stopped {
+            return Err(RearmRefused::NotStopped(limb));
+        }
+        let quiet_ns = DRIVE_TIMEOUT_NS.saturating_add(self.timing.period_ns);
+        for (slot, d) in self.drives.iter().enumerate() {
+            if let Some(d) = d
+                && d.limb == limb
+                && d.stop != StopOutcome::Confirmed
+                && d.last_sent_ns
+                    .is_some_and(|at| now_ns.saturating_sub(at) < quiet_ns)
+            {
+                return Err(RearmRefused::DriveNotQuiet { slot });
+            }
+        }
+        if let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut) {
+            l.state = LimbState::Idle;
+            l.stop = None;
+            l.pending = None;
+            l.generation = l.generation.saturating_add(1);
+        }
+        for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {
+            d.stop = StopOutcome::None;
+            d.confirmed_ns = None;
+            d.reporting_off_sent = false;
+            d.fault_seen = false;
+            d.misses = 0;
+            d.phase = Phase::Off;
+            d.outstanding = None;
+            d.fresh_ns = None;
+        }
+        Ok(())
+    }
+}
