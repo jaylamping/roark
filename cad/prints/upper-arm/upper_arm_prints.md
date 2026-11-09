@@ -4,19 +4,19 @@ region = "upper-arm"
 
 [[print]]
 part = "upper arm, one piece (now the clamshell master, upper_arm_clam_master_left)"
-revision = "draft 2"
+revision = "one-piece db71b23b"
 cad = "marengo db71b23b"
 date = "2026-11-08"
 printer = "P2S, 0.4 mm high flow"
 material = "PETG"
 plate = "Cool Plate Super Tack"
-settings = "6 walls, 50% with 100% modifiers on the hoop, seat, corners and hub (3MF marengo 612b5e08); tree supports; laid flat"
+settings = "6 walls, 50% with 100% modifiers on the hoop, seat, corners and hub (3MF marengo 612b5e08, not re-checked); tree supports; laid flat"
 mass_g = 202
 mass_sliced_g = 229.0
-fit = ["RS02 seats well, except its housing tab: the tab lip interferes by about 1 mm (Joey: \"fits great except for this tab bit\"); the CAD shows 0.84 mm against the vendor model"]
+fit = ["RS02 seats well, except its housing tab: the tab lip interferes by about 1 mm (Joey: \"fits great except for this tab bit\"); 0.84 mm in CAD against the vendor model is from the process write-up, not re-checked"]
 surface = ["Rough outer skin on every supported face", "Support trapped in the enclosed cavity, nearly impossible to clear through the small door"]
 post_work = "none recorded"
-action = "Clamshell redesign printed upright with no trap door, lighter; RS02 seat pocket run through to the face"
+action = "Clamshell redesign with no trap door, lighter; each part oriented so outer faces print clean (halves seam-face down, ring X-up, hub RS02-face down, clip on its end); RS02 seat pocket run through to the face"
 action_commit = "marengo a6315f0c; roark PR #28 (draft 3)"
 source = "Joey in the left-arm thread, 2026-11-08 around 02:13Z, with photos in that thread; mass_sliced_g is the draft 3 README's re-slice on the same process"
 
@@ -36,7 +36,7 @@ text = "Bambu Studio's mass estimate read 13% high on the one-piece upper arm (2
 What each printed revision of the upper arm taught us. Format and rules:
 [conventions/part-lifecycle.md](../../../conventions/part-lifecycle.md) section 4. Newest first.
 
-## Draft 2, one piece (marengo db71b23b), 2026-11-08
+## One piece (marengo db71b23b), 2026-11-08
 
 Backfilled 2026-11-09 from the left-arm thread; the photos are in that thread, not in the repo.
 

@@ -54,7 +54,7 @@ layer_sf = 1.25
 
 [[load_case]]
 id = "LC2"
-what = "17 N.m twist: the forearm driven onto the printed elbow stop"
+what = "17 N.m twist about Y, the link's long axis (p3_fea.py)"
 bulk_sf = 1.5
 layer_sf = 1.25
 
@@ -72,7 +72,7 @@ up = [0, 0, 1]
 hidden_by = ["exports/upper-arm/upper_arm_shell_back_left.stl", "exports/upper-arm/upper_arm_elbow_ring_left.stl", "exports/upper-arm/upper_arm_hub_left.stl", "exports/upper-arm/upper_arm_spring_carrier_left.stl"]
 settings = { sparse_infill_density = "50%", wall_loops = "4" }
 visible_support_mm2 = 84
-visible_support_reason = "insert-hole ceilings and fuse-pocket faces inside the closed shell, reachable by a ray only through the seam (draft 3 README, support check)"
+visible_support_reason = "insert-hole ceilings and fuse-pocket faces inside the closed shell, reachable by a ray only through the seam (draft 3 value; re-check after the halves rebuild)"
 
 [[part]]
 name = "upper_arm_shell_back_left"
@@ -81,7 +81,7 @@ up = [0, 0, -1]
 hidden_by = ["exports/upper-arm/upper_arm_shell_front_left.stl", "exports/upper-arm/upper_arm_elbow_ring_left.stl", "exports/upper-arm/upper_arm_hub_left.stl", "exports/upper-arm/upper_arm_spring_carrier_left.stl"]
 settings = { sparse_infill_density = "50%", wall_loops = "4" }
 visible_support_mm2 = 0.5
-visible_support_reason = "0.4 mm2 at the seam edge, Y 254.8 (draft 3 README, support check)"
+visible_support_reason = "0.4 mm2 at the seam edge, Y 254.8 (draft 3 value; re-check after the halves rebuild)"
 
 [[part]]
 name = "upper_arm_elbow_ring_left"
@@ -97,7 +97,7 @@ up = [0, -1, 0]
 hidden_by = ["exports/upper-arm/upper_arm_shell_front_left.stl", "exports/upper-arm/upper_arm_shell_back_left.stl", "exports/upper-arm/upper_arm_elbow_ring_left.stl", "exports/upper-arm/upper_arm_spring_carrier_left.stl"]
 settings = { sparse_infill_density = "50%" }
 visible_support_mm2 = 183
-visible_support_reason = "lug faces under the spigot, inside the closed arm (draft 3 README, support check)"
+visible_support_reason = "lug faces under the spigot, inside the closed arm (draft 3 value; re-check after the halves rebuild)"
 
 [[part]]
 name = "upper_arm_loop_clip_left"
@@ -123,7 +123,7 @@ The `[[load_case]]` table above is the list the gate checks. In words:
   this is 62 N along gravity plus 17.2 N·m, about 24 N·m at the hub face (draft 3 README).
 - **Pass marks:** 1.5 bulk, 1.25 layer; 2.0 bulk at 90° for creep while the shoulder holds (design decision, 11-07).
 - **Lateral:** the same load with gravity along ±X (design decision, 11-08).
-- **Elbow stop:** the forearm driven onto the printed stop at 17 N·m (left-arm thread, 11-07).
+- **Twist (LC2):** 17 N·m about Y, the link's long axis (left-arm FEA, p3_fea.py).
 - **How SF is taken:** per part with each part's own layer normal; points within 4.5 mm of the load and fixture patches are
   excluded. A result counts only when it held on a finer mesh.
 - **Not a load case yet:** ground-level tip-over. The robot is stationary and supported until legs exist (Joey 2026-11-07
@@ -168,7 +168,8 @@ These apply to every printed structural part of the robot; links repeat only wha
 - **Material:** structural parts PETG; internal non-structural parts regular PLA (Joey 2026-11-07 10:49Z). Visible arm parts
   white PETG (11-07).
 - **Plate:** Cool Plate Super Tack, no glue. **Supports:** tree by default; normal only where a face needs it (Joey 11-07).
-- **Infill:** 6 walls / 50% with 100% modifiers on clamped blocks and seats is Joey's preference over solid (11-07).
+- **Infill:** 50% with 100% modifiers on clamped blocks and seats, rather than solid, is Joey's preference (11-07). The
+  one-piece used 6 walls; the draft 3 halves use 4 walls outside the 100% / 6-wall zones (ua_slice.py), for Joey to confirm.
 - **3MF:** every overridden setting flagged so Bambu Studio keeps it (11-07).
 - **Bearings or bushings** on all moving surfaces; tap threads; no threadlocker during testing (Joey 11-07).
 

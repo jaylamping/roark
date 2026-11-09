@@ -85,14 +85,16 @@ The link from the elbow RS02 output down to the wrist flange, including the RS00
 The `[[load_case]]` table above is the list the gate checks. In words:
 
 - **Governing case** (Joey 2026-11-07 19:55–19:59Z): arm straight, 5 kg at the outer end, from rest, slow sweep through the
-  full shoulder pitch range. Absolute worst-case **sustained** load; must not fail. About 9.6 N·m at the elbow over 195 mm.
+  full shoulder pitch range. Absolute worst-case **sustained** load; must not fail. With the load 90 mm past the wrist
+  face plus self-weight, about 14–17 N·m at the elbow when horizontal (the upper arm uses 17.2 N·m for the same case).
   Strength wins over interior space.
 - **Pass marks:** 1.5 bulk / 1.25 layer for the worst case and the stop; 2.0 / 1.5 for the working case (500 g hand plus
   test weights) (left-arm thread, 11-07).
 - **Material model:** PETG, E 1.9 GPa, yield 45 MPa, layer strength 0.5 × yield (left-arm thread, 11-07).
 - **Elbow stop contact:** pressure under 55 / 1.5 = 36.7 MPa at the RS02 peak and at 34 N·m shoulder-driven (draft 4).
-- **Not a structural spec for the motors:** bent-elbow 5 kg (about 14 N·m) is past the RS02's continuous rating; behaviours
-  prefer straight-arm and two-arm carries (Joey 19:57Z). The structure must still survive it.
+- **Not a structural spec for the motors:** 5 kg with the forearm horizontal (straight or bent arm, the elbow moment is the
+  same, about 14–17 N·m) is past the RS02's continuous rating (about 6 N·m); carrying it is for behaviours to manage, and
+  the printed stop and structure must still survive it (Joey 2026-11-07 19:57–20:00Z).
 - **Not a load case yet:** tip-over (see the upper arm spec).
 
 ## Motion
