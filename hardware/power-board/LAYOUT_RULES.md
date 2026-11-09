@@ -1,6 +1,6 @@
 # Power board rev B: layout rules
 
-2026-11-07, rev B5. These rules come from the Opus round 5 layout review ([opus-review-r5/5-layout.md](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/pdb/design/opus-review-r5/5-layout.md)) and Joey's single-sided rule. They replace LAYOUT_NOTES.md, which still describes rev A. tools/place.py follows them.
+2026-11-07, rev B5. These rules come from the Opus round 5 layout review ([opus-review-r5/5-layout.md](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/pdb/design/opus-review-r5/5-layout.md)) and Joey's single-sided rule. They replace LAYOUT_NOTES.md, which still describes rev A. schematic/tools/place.py follows them.
 
 ## Board
 
@@ -12,7 +12,7 @@
 - **6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, OSP** (Joey, 2026-11-09: JLC quoted $82.80 for 5, against $96.47 for
   4 layers with 2 oz outer and $44.00 for 6 layers with 1 oz; the thermal vias are filled and capped at no charge). 2 oz
   outer was chosen over 1 oz plus soldered copper bars: no bar parts or bar soldering, and the VBUS spine can stay on L6
-  beside the heatsink pads. [tools/stack.py](schematic/tools/stack.py) holds the
+  beside the heatsink pads. [schematic/tools/stack.py](schematic/tools/stack.py) holds the
   stack for the tools:
   - L1 (F.Cu): parts, positive pours, short escapes.
   - L2 (In1): solid GND, unbroken under the banks, the absorber, the bus caps and the port FETs.
@@ -34,7 +34,7 @@
   - D7, D21 and the eight cans in one cluster at the BAT entry; R53 (the ABS_N to GND link) under the can stack.
   - ABS and ABS_N are pours directly over unbroken L2.
   - R53 is at least 5 mm wide, with 10 or more vias to L2 and L3.
-  - **Loop:** extracted from the routed copper by `tools/absorber_loop.py`: **LABS 5.4 nH**, LBAR 2.0 nH. Microstrip over In1
+  - **Loop:** extracted from the routed copper by `schematic/tools/absorber_loop.py`: **LABS 5.4 nH**, LBAR 2.0 nH. Microstrip over In1
     (h 0.21 mm) per segment, weighted by its share of the current, plus assumed part ESLs: 1.5 nH per SMC diode, 3 nH per
     can, 1 nH for RS1. The ABS_N spine down to R53 is the largest term (about 2.4 nH), because R53 sits at the bottom of
     the stack. 2 nH isn't reachable with these parts; the ceramics below take the fast edge instead.
@@ -81,7 +81,7 @@
   - the gate resistor at the gate pin;
   - the gate return taken as its own trace from the source pin nearest the gate, running beside the gate trace;
   - symmetric between the two FETs of a bank.
-- **Controllers at their shunts (2026-11-08):** tools/place.py fixes each controller next to its shunt, sense pins facing
+- **Controllers at their shunts (2026-11-08):** schematic/tools/place.py fixes each controller next to its shunt, sense pins facing
   the sense pads:
   - U1 in the GND gap left of RS1, GATE toward Q8; UVLO leaves through a via under the body;
   - U7 with its sense pins toward RS9;
@@ -91,9 +91,9 @@
 - **Critical nets are routed first by script and locked:**
   - the nets: every Kelvin pair, the gate drives (GATE, GATE_A, GA1/GA2, G1/G2, G_L*, GPU/GPD_L*, BRK_GATE, PRE_G, CL_G)
     and UVLO;
-  - tools/grid_route.py with `ONLY=<regex>`; `FONLY` makes them try F.Cu alone first (no via, so the solid In1 GND
+  - schematic/tools/grid_route.py with `ONLY=<regex>`; `FONLY` makes them try F.Cu alone first (no via, so the solid In1 GND
     plane lies under the whole run), falling back to all layers;
-  - the autorouter takes the rest, and tools/ses_import.py `LOCK=<regex>` keeps the pre-routes locked for hand finishing.
+  - the autorouter takes the rest, and schematic/tools/ses_import.py `LOCK=<regex>` keeps the pre-routes locked for hand finishing.
 
 ## E-stop safety nets
 
@@ -118,7 +118,7 @@ rule below is therefore the 0.2 mm default (IPC-2221B A5/A7, 0.13 mm); the tools
 E-stop rule and the hole keep-outs don't change. Without the coat it would be 0.6 mm on the outer layers, so a board
 that is never coated must not go on the pack.
 
-- **One rule table** ([tools/domains.py](schematic/tools/domains.py)), used by the router, the
+- **One rule table** ([schematic/tools/domains.py](schematic/tools/domains.py)), used by the router, the
   placement spacing pass, the GND fanout and the checks (2026-11-08):
   - E-stop nets (the ESTOP_SAFE list above) keep **1.5 mm** to the 54 V list (BAT, SW_D, MID, VBUS, ABS, ABS_N, CL_D,
     BRK_*, SH*, V_L*, D_L*) on every layer.
@@ -129,26 +129,26 @@ that is never coated must not go on the pack.
   - Everything else 0.2 mm.
 - **DRC rules** (layout/marengo_pdu_revb.kicad_dru; a later rule wins in KiCad):
   - `estop_to_54v`: 1.5 mm from net class ESTOP to net class HV54 on every layer (classes set by
-    tools/handfinish_prep.py from tools/domains.py).
+    schematic/tools/handfinish_prep.py from schematic/tools/domains.py).
   - **Fine-pitch footprints:** U1 and U7 (LM5069, MSOP-10 0.5 mm) and U2 (TPS7A4001, HVSSOP-8) put their own pads
     0.15 mm apart, so **only clearances between copper that enters that IC's courtyard** (its own pads, and each pin's
     first escape segment) drop to 0.15 mm:
     `(rule fine_pitch_U1 (constraint clearance (min 0.15mm)) (condition "(A.memberOfFootprint('U1') && B.intersectsCourtyard('U1')) || (B.memberOfFootprint('U1') && A.intersectsCourtyard('U1')) || (A.intersectsCourtyard('U1') && B.intersectsCourtyard('U1'))"))`,
     and the same for U2 and U7.
   - Outside the courtyards, E-stop copper stays at 1.5 mm from 54 V, and 54 V domains at 0.2 mm (coated).
-    tools/route_checks.py tests the same scope.
-  - U1's UVLO pin sits between SH_P and the GND pins. tools/route_u1.py therefore draws U1's escapes as single straight
+    schematic/tools/route_checks.py tests the same scope.
+  - U1's UVLO pin sits between SH_P and the GND pins. schematic/tools/route_u1.py therefore draws U1's escapes as single straight
     segments: SH_P and SH_N straight out to RS1, and UVLO inward to a via under the body.
 - **Holes:** no copper within 2 mm of the heatsink screw holes HS1/HS2 (the screw and the heatsink aren't insulated from
-  it), 0.6 mm round the tie holes and the M3 mounting pads (rule areas from tools/place.py).
+  it), 0.6 mm round the tie holes and the M3 mounting pads (rule areas from schematic/tools/place.py).
 
 ## Hand finishing (2026-11-09, 6 layers)
 
-The autorouters don't finish this board. tools/route_stages.sh (critical nets, rails, the I2C/VCTL/RUN_P bus, the port
-meter nets, the rest, tools/route_fixes.py, then tools/patch_route.py for short connections) leaves **59 connections on
+The autorouters don't finish this board. schematic/tools/route_stages.sh (critical nets, rails, the I2C/VCTL/RUN_P bus, the port
+meter nets, the rest, schematic/tools/route_fixes.py, then schematic/tools/patch_route.py for short connections) leaves **59 connections on
 44 nets** open, with DRC clean (0 clearance violations, schematic parity 0) and route_checks clean. Freerouting 2.5
 thrashed again (about 2,800 violations after six passes) and is not used; shuffled net orders did no better.
-- The meter block sits over the L6 VBUS pour. Without vias through that pour (`SOFTV` in tools/grid_route.py) every
+- The meter block sits over the L6 VBUS pour. Without vias through that pour (`SOFTV` in schematic/tools/grid_route.py) every
   signal there was confined to F.Cu and the bus nets could not route at all; with them, 123 open connections became 67,
   and patch_route.py closed 8 more. 94 signal and GND vias now pass through the VBUS pour, 27 of them in the 180–190 mm
   band where the full 60 A flows: keep new vias out of that band when finishing, and move some out if it is easy.
@@ -165,11 +165,11 @@ thrashed again (about 2,800 violations after six passes) and is not used; shuffl
 
 The rest is finished by hand in KiCad, starting from the board with the power stage and the locked critical pre-routes:
 - Net classes ESTOP, HV54 and P12 are set, and the DRC holds the E-stop rule.
-- Run `MARENGO_COATED=1 tools/route_checks.py` after each session. It is the authority for the 54 V domain rule; coated,
+- Run `MARENGO_COATED=1 schematic/tools/route_checks.py` after each session. It is the authority for the 54 V domain rule; coated,
   that rule is the 0.2 mm default.
-- The open nets are in layout/open_nets.csv (tools/open_nets.py, from the DRC's unconnected items).
+- The open nets are in layout/open_nets.csv (schematic/tools/open_nets.py, from the DRC's unconnected items).
 
-Gate parts (tools/place.py, 2026-11-09):
+Gate parts (schematic/tools/place.py, 2026-11-09):
 - Each port's gate-source zener (D24, D27, D30, D33, D36, D39) sits at its FET's gate pin, between the meter and the FET.
   Its G_L pad faces the gate and its V_L pad lines up with the source-pin via row. The series diode of each pair (D23 and
   the rest) stays in the port block.

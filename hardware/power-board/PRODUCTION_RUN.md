@@ -49,7 +49,7 @@ right now anyway. Where both have stock, buy the ICs from DigiKey (no duty, genu
 
 | Board | Status | Size | Stackup | Parts per board |
 | --- | --- | --- | --- | --- |
-| **Main power board** ([marengo_pdu_revb](schematic)) | schematic done, ERC clean; placement being reworked (hand-assembly sizes, thermal option) | 100 × 150 mm | 4 layers, 1.6 mm, 2 oz outer / 1 oz inner, ENIG | 170 lines, 358 parts |
+| **Main power board** ([marengo_pdu_revb](schematic)) | schematic done, ERC clean; placed, routing not finished ([README](README.md)) | 100 × 170 mm | 4 layers, 1.6 mm, 2 oz outer / 1 oz inner, ENIG | [bom-rev-B.csv](bom-rev-B.csv) |
 | **12 V buck and 12 V distribution** ([buck12](buck12), LM5146, 12 A; split S1 2026-11-09) | schematic done, ERC clean, check_buck.py clean; layout not started | about 60 × 85 mm | same | 53 lines, 73 parts |
 
 Not in the run:

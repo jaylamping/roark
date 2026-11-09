@@ -15,13 +15,15 @@
 ## 2. Commits
 
 - **Subject line:** `area: imperative summary`, under about 72 characters: `can: stop the limb after three missed replies`.
-  The area is the crate, `ui`, `config`, `deploy`, `docs` or `conventions`. (Tokio, ArduPilot and PX4 all use an area
+  The area is the crate, `ui`, `config`, `deploy`, `docs`, `conventions`, `cad` or `power-board`. (Tokio, ArduPilot and PX4 all use an area
   prefix, so `git log` filters by area.)
 - **Body:** why the change is needed and anything a reviewer can't see in the diff (the bench session, the manual page, the
   bug). Wrap around 72 columns.
 - **One logical change per commit.** Formatting-only changes go in their own commit.
 - No generated files, build output, logs, MCAP sessions or secrets in git. Large bench logs live outside the repo; commits
-  cite them by session ID.
+  cite them by session ID. One exception: a hardware design of record (the power board's KiCad schematic and board, their
+  renders and BOMs) is committed beside the generator that writes it, because the board is hand-finished after generation
+  and the fab order is made from those files.
 - **Describe the change, not the conversation.** Commit messages and PR descriptions say what the change does and why the
   code needs it. They don't say who asked for it ("Joey asked for...", "per the chat"), retell the discussion that led to it,
   or link chat threads or agent sessions. Name a person only when they're the source of a fact ("measured by Joey on the bench,
@@ -51,7 +53,7 @@
   The repo's PR template (`.github/pull_request_template.md`) has these headings.
 - **Self-review first.** Read your own diff on GitHub before asking anyone else to. Most review comments are things the
   author would have caught (Drake's checklist says it covers about 80 % of comments).
-- **Size:** if a PR passes about 400 changed lines of code (generated files and data don't count), say why in the description;
+- **Size:** if a PR passes about 400 changed lines of code (generated files, data and files moved unchanged don't count), say why in the description;
   past 1,000, split it. (Drake caps PRs at 1,500.)
 - **Lockfile-only updates** (`cargo update`, a package bump) go in their own PR, and the reviewer reads the lockfile diff.
 - **CI green before review.** Don't ask for review on red. Never weaken a lint, test or CI step to get green

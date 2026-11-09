@@ -5,7 +5,8 @@ import os,sys
 sys.path.insert(0,os.path.dirname(__file__)); from sx import *
 import pcbnew
 MM=pcbnew.pcbIUScale.IU_PER_MM if hasattr(pcbnew,'pcbIUScale') else 1e6
-FPDIR=os.environ.get('KICAD_FP',next(p for p in ('/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints/','C:/Program Files/KiCad/10.0/share/kicad/footprints/') if os.path.isdir(p)))
+FPDIR=os.environ.get('KICAD_FP') or next((p for p in ('/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints/','C:/Program Files/KiCad/10.0/share/kicad/footprints/') if os.path.isdir(p)),None)
+assert FPDIR,'set KICAD_FP to the KiCad footprints folder'
 N=parse(open(sys.argv[1]).read())
 rows=[]
 for c in getall(get(N,'components'),'comp'):
@@ -13,14 +14,14 @@ for c in getall(get(N,'components'),'comp'):
     if not f: continue
     d=any(str(get(p,'name')[1])=='dnp' for p in getall(c,'property'))
     lib,name=f.split(':')
-    fp=pcbnew.FootprintLoad('marengo_revb.pretty' if lib=='marengo_revb' else FPDIR+lib+'.pretty',name)
+    fp=pcbnew.FootprintLoad(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),'marengo_revb.pretty') if lib=='marengo_revb' else FPDIR+lib+'.pretty',name)
     cy=fp.GetCourtyard(pcbnew.F_CrtYd); bb=cy.BBox() if cy.OutlineCount() else fp.GetBoundingBox(False)
     a=bb.GetWidth()/MM*bb.GetHeight()/MM
     rows.append((a,ref,str(get(c,'value')[1])[:30],d,any(p.HasHole() for p in fp.Pads())))
 rows.sort(reverse=True)
 import json
 if len(sys.argv)>2: json.dump([dict(a=r[0],ref=r[1],val=r[2],dnp=r[3],tht=r[4]) for r in rows],open(sys.argv[2],'w'))
-BOARD=100*150
+BOARD=100*170   # rev B5 outline (LAYOUT_RULES.md)
 tot=sum(r[0] for r in rows); fit=sum(r[0] for r in rows if not r[3]); tht=sum(r[0] for r in rows if r[4]); 
 print('parts',len(rows),'fitted',sum(1 for r in rows if not r[3]))
 print(f'courtyard all {tot:.0f} mm2, without legs {fit:.0f} mm2')

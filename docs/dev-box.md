@@ -178,7 +178,7 @@ From scratch on a Windows PC with WSL and Tailscale installed and the OpenSSH Se
    ssh joey-pc 'wsl -d Ubuntu-24.04 -u root -- bash -s' <<'EOF'
    export DEBIAN_FRONTEND=noninteractive
    apt-get update -qq
-   apt-get install -y -qq openssh-server rsync netcat-openbsd can-utils build-essential pkg-config curl
+   apt-get install -y -qq openssh-server rsync netcat-openbsd can-utils build-essential pkg-config curl python3-pytest
    printf 'Port 2222\nListenAddress 127.0.0.1\nPasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin no\n' \
      >/etc/ssh/sshd_config.d/10-roark.conf
    install -d -m 700 -o joeyl -g joeyl /home/joeyl/.ssh
