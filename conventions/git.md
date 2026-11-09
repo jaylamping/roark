@@ -15,7 +15,7 @@
 ## 2. Commits
 
 - **Subject line:** `area: imperative summary`, under about 72 characters: `can: stop the limb after three missed replies`.
-  The area is the crate, `ui`, `config`, `deploy`, `docs` or `conventions`. (Tokio, ArduPilot and PX4 all use an area
+  The area is the crate, `ui`, `config`, `deploy`, `docs`, `conventions` or `cad`. (Tokio, ArduPilot and PX4 all use an area
   prefix, so `git log` filters by area.)
 - **Body:** why the change is needed and anything a reviewer can't see in the diff (the bench session, the manual page, the
   bug). Wrap around 72 columns.
