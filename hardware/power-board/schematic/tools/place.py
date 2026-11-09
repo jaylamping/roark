@@ -11,7 +11,8 @@ HERE=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 N=parse(open(sys.argv[1]).read())
 OX,OY=100,100                       # page offset, mm
 def P(X,Y): return pcbnew.VECTOR2I(pcbnew.FromMM(OX+X+50),pcbnew.FromMM(OY+340-Y))
-b=pcbnew.BOARD(); b.SetCopperLayerCount(6)   # tools/stack.py
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import stack
+b=pcbnew.BOARD(); b.SetCopperLayerCount(stack.NL)
 # board bottom edge: 170 is the 100 x 170 board (option A, Joey 2026-11-07: routing room); PDU_YBOT=190 rebuilds the old
 # 100 x 150 placement, whose control blocks were too dense to route (74-84 % fill). The extra 20 mm go to
 # the bottom, under the ports, so the pack entry, absorber, banks, heatsink and ports keep their coordinates
@@ -33,9 +34,10 @@ put('bankactl','U8 C27 C28 C29 R27 R28 R29 R30 R31 R32 R35 R36 R37 C40 C46 R61 R
 put('clamp','R46 D4 Q6 C49 R23 R24 TP8')
 put('bankctl','TP14'); put('bankactl','TP15'); put('latch','TP16')   # hand-assembly probe pads (SW_D, ABS, WDO_N)
 put('out','U3 U4 R18 R19 R20 R21 R22 R64 C8 C9 R65 R66 C48')
-put('soft','Q7 U7 R25 R26 C19 C20 TP5 C14 C15 F2 R51 D15 Q12 R60 D43')   # D43: SP_EN series diode, by J24
-put('out','U17 C30 R47 D18 R38 TP9 R44 R45 C37 D6 D13')
+put('soft','Q7 U7 R25 R26 C19 C20 TP5 C14 C15 F2 R51 D15 Q12 R60')
+put('out','U17 C30 R47 D18 TP9 R44 R45 C37 D6 D13')
 put('latch','U25 R128 R129 R130 R131 Q21 C80 C81 D41 R67')   # watchdog beside the latch it drops (L_E, Q5)
+put('latch','R38 D43')   # SP_EN feed (RUN -> 100k -> D43): at RUN, away from 54 V; only SP_EN, behind the diode, runs to J24
 PF='U26 U27 R132 R133 R134 R135 R136 R137 R138 C93 C94 C95 Q22 D42'   # power-fail warning (block 5b): beside the 12 V block and J21
 put('out',PF)
 if WIDE:
@@ -43,7 +45,7 @@ if WIDE:
     # the M3 hole reserved), bank B's controller takes the latch's old column, and a new low-voltage band along the new
     # bottom edge takes the 12 V distribution (next to its Micro-Fit outputs) and the watchdog
     BLK.update(soft=(-48.0,-11.0,311.0,328.4),latch=(-48.0,-31.0,254.0,310.5),bankctl=(-30.5,-17.8,268.0,310.5),lv=(-48.0,48.0,YB+11.0,200.5))
-    put('lv','U17 C30 R47 D18 R38 TP9 R44 R45 C37 D6 D13')
+    put('lv','U17 C30 R47 D18 TP9 R44 R45 C37 D6 D13')
     put('lv','U25 R128 R129 R130 R131 Q21 C80 C81 D41 R67'); put('lv',PF)
 RES={}; PFIX={}
 ZROT=int(os.environ.get('ZROT','270'))   # the port zener's turn: V_L pad toward the pin row's via line, G_L pad toward the gate
@@ -266,8 +268,8 @@ for sx_ in (-1,1):
     for Y in (YB+4,265,336): keepout(sx_*46,Y,3.2+0.6,f'KO_H_{sx_*46}_{Y:g}')
 for a,c,t in (((-40,304),(40,264),'Fan zone (upper)'),((-40,233),(40,193),'Fan zone (lower)')):
     seg(pcbnew.Cmts_User,a,c); txt(pcbnew.Cmts_User,a[0]+12,a[1]-1.5,t)
-for (a,c,t) in (((-15,304),(15,287),'Thermal: bank A drain SW_D, all 4 layers (2 oz outer / 1 oz inner), via field under each tab (route_power.py)'),
-                ((-15,286),(15,266),'Thermal: bank B drain MID, all 4 layers (2 oz outer / 1 oz inner), via field under each tab (route_power.py)')):
+for (a,c,t) in (((-15,304),(15,287),'Thermal: bank A drain SW_D, all 6 layers (2 oz outer / 0.5 oz inner), filled via field under each tab (route_power.py)'),
+                ((-15,286),(15,266),'Thermal: bank B drain MID, all 6 layers (2 oz outer / 0.5 oz inner), filled via field under each tab (route_power.py)')):
     seg(pcbnew.User_1,a,c,0.3); txt(pcbnew.User_1,a[0]+1,c[1]+1.5,t,1.0)
 for blk,(X0,X1,Y0,Y1) in BLK.items():
     seg(pcbnew.User_2,(X0,Y1),(X1,Y0),0.1); txt(pcbnew.User_2,X0+0.8,Y1-0.8,blk,0.9)

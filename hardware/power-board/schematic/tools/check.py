@@ -61,7 +61,12 @@ ok(n('U7',2)==n('RS9',2) and n('U7',1)==n('RS9',3) and n('U7',3)==n('U7',2),'U7 
 ok(n('U7',4)=='GND' and n('U7',9)=='BRK_IN','U7 OVLO low, OUT on BRK_IN')
 ok(not any(r in ('U7','Q7') for r,p in nets['RUN']+nets['VCTL']),'E-stop latch does not touch the brick path')
 ok(all(val(c).startswith('2.2uF') for c in [r for r,p in nets['BRK_IN'] if r[0]=='C']),'brick input caps only 2.2 uF')
-ok(all(n(jb,p)=='GND' for p in (3,4,6,9,12)) and [n(jb,p) for p in (7,8,10,11)]==['+3V3_PI','I2C_SDA','I2C_SCL','SP_EN'] and not {n(jb,p) for p in (1,2)}&{n(jb,p+6) for p in (1,2)}-{'GND'},'buck pigtail (split S1): returns on GND, Pi 3V3 and I2C with GND between SDA and SCL, SP_EN; nothing on the input row faces a signal')
+ok([n(jb,p) for p in range(1,13)]==['BRK_F','BRK_F','GND','GND','BRK_ON','+3V3_PI','GND','GND','SP_EN','GND','I2C_SCL','I2C_SDA'],'buck pigtail (split S1): J24 pinout, pin for pin (buck12/check_buck.py checks the same list on J1)')
+# Micro-Fit 2x6: pin n faces pin n+6, and pins 1-6 and 7-12 are each a row. The 54 V input may face and sit next to GND
+# only; SP_EN may face and sit next to GND only, so a contact short trips U7 or turns SPARE_SW off
+NB=lambda p:[q for q in (p-6,p+6) if 1<=q<=12]+[q for q in (p-1,p+1) if (q-1)//6==(p-1)//6 and 1<=q<=12]
+ok(all(n(jb,q) in ('GND','BRK_F') for p in (1,2) for q in NB(p)) and all(n(jb,q)=='GND' for p in range(1,13) if n(jb,p)=='SP_EN' for q in NB(p)),
+   'buck pigtail: the 54 V input and SP_EN face and sit next to GND only')
 # latch
 f1=[r for r in comp if r[0]=='F' and n(r,1)=='BAT']; fo=n(f1[0],2) if f1 else None
 rs=[r for r in comp if r[0]=='R' and fo in (n(r,1),n(r,2))]; ro=({n(rs[0],1),n(rs[0],2)}-{fo}).pop() if len(rs)==1 else None
@@ -119,7 +124,7 @@ legs=[r for r in comp if dnp(r) and r not in OPT]
 # SPARE_SW enable to the buck board (split S1): fail-off. RUN feeds SP_EN only through 100k and a series diode, so the
 # buck board or the pigtail can't drive RUN; nothing here pulls SP_EN up (the 68k pull-down is at the eFuse, check_buck.py)
 spr=two('RUN','SP_ENR',('R',))
-ok(len(spr)==1 and val(spr[0])=='100k' and diode('SP_EN','SP_ENR') and sorted(r for r,p in nets['SP_EN'])==sorted([diode('SP_EN','SP_ENR')[0],jb]) and n(jb,11)=='SP_EN','SPARE_SW enable: RUN through 100k and a series diode to J24 pin 11 only')
+ok(len(spr)==1 and val(spr[0])=='100k' and diode('SP_EN','SP_ENR') and sorted(r for r,p in nets['SP_EN'])==sorted([diode('SP_EN','SP_ENR')[0],jb]) and n(jb,9)=='SP_EN','SPARE_SW enable: RUN through 100k and a series diode to J24 pin 9 only')
 ok(not [r for r in comp if r[0] in 'FU' and '+12V' in {n(r,p) for p in range(1,10)}] and '+12V' not in nets and '+12V_RAW' not in nets,'no 12 V on this board (split S1)')
 ok(len(legs)==3*(4+20),'aux and legs DNP (4 limb parts + 20 breaker parts each): '+str(len(legs)))
 ok(not [r for r,p in nets['GND'] if r[0]=='J' and val(r).startswith('GND stud')],'no GND studs: each limb return sits beside its +')

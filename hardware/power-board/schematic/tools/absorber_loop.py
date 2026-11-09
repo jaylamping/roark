@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Absorber loop inductance LABS (and LBAR) from the routed copper, for tools/absorber_sim.py.
 Method: each L1 conductor of the loop is a wide microstrip over the solid In1 GND plane, whose loop inductance (trace plus
-its image return in the plane) is mu0 * h * l / w, with h = L1 to In1 from tools/stack.py (about 0.1 mm on the 6-layer stack; 0.2104 mm on the old 4-layer JLC04161H-7628). The current divides
+its image return in the plane) is mu0 * h * l / w, with h = L1 to In1 from tools/stack.py (held at the 4-layer 0.2104 mm until JLC confirms the 2 oz 6-layer prepreg; about 0.1 mm at 1 oz). The current divides
 over the 8 cans (4 finger rows x 2 columns), so each segment counts with (I_seg / I)^2 (energy method). Part ESLs are
 datasheet-class figures, listed below as assumptions. Part positions come from the board; conductor widths from the
 pours of tools/route_power.py.
@@ -11,7 +11,8 @@ import pcbnew
 import os,sys
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import stack
 MU0=4e-7*3.141592653589793; H=stack.H_L1_L2
-b=pcbnew.LoadBoard(sys.argv[1])
+b=pcbnew.LoadBoard(sys.argv[1]); stack.check_board(b)
+print(f'h (L1 to In1) = {H*1e3:.3f} mm from tools/stack.py: the conservative 4-layer value until JLC confirms the 2 oz 6-layer stack')
 def pad(r,n):
     p=[q for q in b.FindFootprintByReference(r).Pads() if q.GetNumber()==n][0].GetPosition()
     return pcbnew.ToMM(p.x)-150,340-(pcbnew.ToMM(p.y)-100)

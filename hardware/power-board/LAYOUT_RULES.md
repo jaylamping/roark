@@ -5,8 +5,8 @@
 ## Board
 
 - **100 × 170 mm** (option A, Joey 2026-11-07: the 100 × 150 placement packed the control blocks to 74–84 % and couldn't be
-  routed). The extra 20 mm are at the bottom (Y 170–190): the 12 V distribution and the watchdog moved there, next to the
-  Micro-Fit outputs (now at Y 175); the latch and soft start widened to the left edge. Power path, banks, heatsink and ports
+  routed). The extra 20 mm are at the bottom (Y 170–190): the watchdog and the power-fail warning moved there, beside J21
+  (the 12 V distribution and its Micro-Fit outputs went to the buck board in split S1, 2026-11-09); the latch and soft start widened to the left edge. Power path, banks, heatsink and ports
   kept their coordinates. M3 holes at X ±46, Y 174 / 265 / 336.
 - **Single-sided: every part on the front face.** The rear has 6 mm to the carrier, and a back-side part would need a second reflow pass (Joey, 2026-11-07).
 - **6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, OSP** (Joey, 2026-11-09: JLC quoted $82.80 for 5, against $96.47 for
@@ -23,19 +23,25 @@
   rise (IPC-2221B, external), and about 27.5 mm carries 60 A. So the 60 A path (BAT, SW_D, MID, VBUS) needs about 27.5 mm
   of outer copper in total (one layer, or L1 plus L6 stitched with vias), and each 30 A port leg about 10.5 mm in total.
   No bars. Pour widths on the routed board (2026-11-09): BAT 27 mm on L1; VBUS 24 mm on L6 (signal vias pass through it under the meter block, 0.25 mm clearance) plus about 3–7 mm on L1;
-  MID 23 mm on L6 plus up to 27 mm on L1; SW_D 22 mm on L6 plus 13 mm on L1; port legs about 5 mm on each outer layer. The two
-  0.5 oz GND planes return 60 A across about 90 mm (about 0.8 mOhm, about 3 W spread over the board). At layer changes, use about 1 A per 0.3 mm via.
+  MID 23 mm on L6 plus up to 27 mm on L1; SW_D 22 mm on L6 plus 13 mm on L1; port legs about 5 mm on each outer layer. **Open before fab:** BAT (27 mm, L1 only) and the port legs (about 10 mm
+  in total) sit just under their targets: widen them or mirror BAT on L6. The two 0.5 oz GND planes return 60 A across
+  about 90 mm (about 0.8 mOhm, about 3 W spread over the board). By IPC-2221B's internal curve the two planes alone rise
+  about 44 °C at 60 A (about 7,900 mil² for 20 °C, about 4,900 mil² there); the GND fill on L1 and L6 carries part of
+  the return, but its width along the path isn't measured yet. **Open before fab:** measure the outer GND return and
+  show the rise, or add outer GND copper. At layer changes, use about 1 A per 0.3 mm via.
 
 ## Power path
 
 - **Flow order down the board:** BAT pair (top edge) → absorber cluster and RS1 → bank A → bank B (under the upper fan) → bus caps → port breakers → limb pigtails. Remove the old B → A → B detour.
-- **Pack entry:** the BAT and GND 8 AWG pair (4.5 mm holes, 8 mm pads, 14 mm pitch; to an XT90) sits side by side on the top edge, in the frame's pack cable path. **Keep-out: no components in X −5..25, Y 315–340** (the leads run up the face and bend over the top edge at R15 from about Y 330); the pads sit in that strip. Solid connections to all four layers, no thermal reliefs. A cable-tie hole each side of the pair.
+- **Pack entry:** the BAT and GND 8 AWG pair (4.5 mm holes, 8 mm pads, 14 mm pitch; to an XT90) sits side by side on the top edge, in the frame's pack cable path. **Keep-out: no components in X −5..25, Y 315–340** (the leads run up the face and bend over the top edge at R15 from about Y 330); the pads sit in that strip. Solid connections to every copper layer, no thermal reliefs. A cable-tie hole each side of the pair.
 - **Absorber cluster:**
   - D7, D21 and the eight cans in one cluster at the BAT entry; R53 (the ABS_N to GND link) under the can stack.
   - ABS and ABS_N are pours directly over unbroken L2.
-  - R53 is at least 5 mm wide, with 10 or more vias to L2 and L3.
-  - **Loop:** extracted from the routed copper by `schematic/tools/absorber_loop.py`: **LABS 5.4 nH**, LBAR 2.0 nH. Microstrip over In1
-    (h 0.21 mm) per segment, weighted by its share of the current, plus assumed part ESLs: 1.5 nH per SMC diode, 3 nH per
+  - R53 is at least 5 mm wide, with 10 or more vias to the GND planes, L2 and L5 (In1, In4).
+  - **Loop:** extracted from the 4-layer routed copper by `schematic/tools/absorber_loop.py`: **LABS 5.4 nH**, LBAR 2.0 nH.
+    **Rerun absorber_loop.py and absorber_sim on the 6-layer board before fab.** Microstrip over In1
+    (h 0.21 mm; tools/stack.py keeps it until JLC confirms the 2 oz 6-layer prepreg, since a thinner one only lowers the
+    loop) per segment, weighted by its share of the current, plus assumed part ESLs: 1.5 nH per SMC diode, 3 nH per
     can, 1 nH for RS1. The ABS_N spine down to R53 is the largest term (about 2.4 nH), because R53 sits at the bottom of
     the stack. 2 nH isn't reachable with these parts; the ceramics below take the fast edge instead.
 - **Pack-entry ceramics C89–C92** (4 × 4.7 µF 100 V 1210, BAT to GND, about 8.8 µF at 54 V bias): two between RS1 and D7,

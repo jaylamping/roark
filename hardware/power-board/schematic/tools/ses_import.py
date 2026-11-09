@@ -30,8 +30,11 @@ key=lambda t:(t.GetNetname(),t.GetLayer(),um(t.GetStart().x),um(t.GetStart().y),
 import os,re
 LOCK=re.compile(os.environ.get('LOCK','^$'))
 for t in ALL: t.SetLocked(bool(LOCK.match(t.GetNetname())) and key(t) in PRE0)
-on_in1=[t for t in ALL if t.GetClass()=='PCB_TRACK' and t.GetLayer() in (pcbnew.In1_Cu,pcbnew.In4_Cu)]
-print('tracks on In1/In4 (should be none; they cut the GND planes):',len(on_in1),sorted({t.GetNetname() for t in on_in1})[:20])
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import stack
+PL={stack.kicad_layers(pcbnew)[i] for i in stack.GNDPLANE}
+on_in1=[t for t in ALL if t.GetClass()=='PCB_TRACK' and t.GetLayer() in PL]
+print('tracks on the GND planes (In1/In4; should be none, they cut the planes):',len(on_in1),sorted({t.GetNetname() for t in on_in1})[:20])
+if on_in1: sys.exit('ses_import: tracks on a GND plane layer')
 pcbnew.ZONE_FILLER(b).Fill(b.Zones())
 b.Save(sys.argv[4])
 n1=len(ALL)

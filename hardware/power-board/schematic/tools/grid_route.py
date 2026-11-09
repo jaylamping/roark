@@ -9,7 +9,7 @@ sequential maze router:
     steps), inside a window round the two islands that grows on failure;
   - a cell is usable when its distance to other nets' copper keeps the rules: track half-width + 0.2 mm, or + 0.6 mm to
     54 V copper on the outer layers (IPC-2221B), + 0.2 mm to holes, + 0.4 mm to the board edge. A via (0.6/0.3) needs the
-    same on all four layers;
+    same on every layer;
   - classes: signals 0.2 mm, low-voltage supply rails (RAILS) 0.4 mm, GND and 54 V nets 0.25 mm (sense and divider taps off 0.5 mm-pitch pins; the current is in the pours),
     12 V distribution 0.6 mm (W12).
 Output: routes.json (tracks as polylines per layer with width, vias) for tools/route_import.py, plus a list of what failed.
@@ -25,6 +25,7 @@ NETS=sorted({it['net'] for it in D['items'] if it['net']}|{h['net'] for h in D['
 NID={n:i+1 for i,n in enumerate(NETS)}
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import domains   # the net classes route_checks.py tests
 import stack   # the 6-layer stack: layer index = position in stack.NAMES
+stack.check_json(D,sys.argv[1])
 P12={'/+12V_RAW','/+12V','/+12V_JET','/+12V_PI','/+12V_FAN','/SPARE_SW','/SPARE_ON','/SP_SW1'}
 HV=np.zeros(len(NETS)+1,bool); ES=np.zeros(len(NETS)+1,bool)
 for n,i in NID.items(): HV[i]=domains.is_hv(n); ES[i]=domains.is_estop(n)
@@ -306,7 +307,7 @@ def astar(v,src,dst,r0,r1,c0,c1,base_only=False):
     N=h_*w_; nl=len(RL)
     G=b''.join((goal[L].ravel() if L in goal else np.zeros(N,bool)).tobytes() for L in RL)
     OK=b''.join(ok[L].ravel().tobytes() for L in RL); VO=via_ok.ravel().tobytes(); HD=(hd.ravel()*HW).tolist()
-    LC=[{0:1.0,2:1.0,3:1.05,5:1.1}[L] for L in RL]   # the inner signal layers sit between GND planes
+    LC=[stack.COST[L] for L in RL]   # the inner signal layers sit between GND planes
     # Kelvin pairs (/SH*_P with /SH*_N): steps within 0.6 mm of the partner leg's routed copper cost half, so the second
     # leg runs alongside the first
     pv=PARTNER.get(v); NEAR=None   # KFAR: step cost away from the partner (1.0 = plain; higher holds the pair tighter)
@@ -419,7 +420,7 @@ def norip(u): return NETS[u-1]=='GND' or len(ROUTES.get(u,[]))>6 or ripped.get(u
 def dump():
     open_=sorted({n for n in set(fails)|set(queue) if len(islands(NID[n]))>1})
     routes=[dict(net=NETS[v-1],tracks=[s for rec in recs for s in rec['segs']],vias=[q for rec in recs for q in rec['vias_mm']]) for v,recs in ROUTES.items()]
-    json.dump(dict(routes=routes,failed=open_),open(sys.argv[2],'w')); return open_
+    json.dump(dict(layers=stack.NAMES,routes=routes,failed=open_),open(sys.argv[2],'w')); return open_
 def connect(v,base_only=False):
     comps=islands(v)
     if len(comps)<2: return 'done'

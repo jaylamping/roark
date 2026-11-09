@@ -15,14 +15,14 @@ so 5 + 5 bare boards are ordered and 2 + 2 are built. **All prices are estimates
 | Bare boards, JLCPCB: 5 main (100 × 170, 6 layers, 2 oz outer / 0.5 oz inner, OSP, filled thermal vias: **$82.80 quoted 2026-11-09**, 7–8 day build) + 5 buck (about 60 × 85, 4 layers, 1 oz, to quote: about $20–35) | about $105–120 |
 | 2 frameless stencils (JLC) | about $16 |
 | JLC shipping, DHL | about $25–45 |
-| JLC prepaid duty (US DDP: 35 % on boards, 90 % on stencils) | about $55–75 |
-| **Total, 2 sets** | **about $480–530** |
+| JLC prepaid duty (US DDP: 35 % on boards, 90 % on stencils) | about $51–57 |
+| **Total, 2 sets** | **about $470–515** |
 | Heatsink kit, thermal option D (chosen; [THERMAL_OPTION.md](THERMAL_OPTION.md)): 120 × 69 × 36 mm extruded heatsink (no cut), insulating 0.5 mm pad, 2 × M3, 2 sets | about $41–53 |
 | Conformal coat (Joey chose coating, 2026-11-09): MG Chemicals 419D acrylic, 55 mL brush bottle, enough for both boards; Kapton tape for masking | about $10 |
 | Tools (section 6), one-off | about $110–200 |
 
-**Why this is above the $370–470 estimated earlier:** US duty adds about $110–130 across parts, boards and stencils. JLC's
-free ENIG finish ended in July 2026, and 2 oz copper costs extra. Without duty the total is about $380–445. Since
+**Why this is above the $370–470 estimated earlier:** US duty adds about $105–115 across parts, boards and stencils. JLC's
+free ENIG finish ended in July 2026, and 2 oz copper costs extra. Without duty the total is about $365–400. Since
 2026-11-09 the main board is 6 layers with 2 oz outer copper (Joey picked it over 1 oz plus copper bars), about $14 under
 the 4-layer 2 oz board (JLC quotes, qty 5: 4 layers 2 oz outer $96.47, 4 layers 1 oz $57.67, 6 layers 1 oz $44.00,
 6 layers 2 oz outer $82.80).
@@ -49,11 +49,11 @@ right now anyway. Where both have stock, buy the ICs from DigiKey (no duty, genu
 
 | Board | Status | Size | Stackup | Parts per board |
 | --- | --- | --- | --- | --- |
-| **Main power board** ([marengo_pdu_revb](schematic)) | schematic done, ERC clean; placed, routing not finished ([README](README.md)) | 100 × 170 mm | 4 layers, 1.6 mm, 2 oz outer / 1 oz inner, ENIG | [bom-rev-B.csv](bom-rev-B.csv) |
-| **12 V buck and 12 V distribution** ([buck12](buck12), LM5146, 12 A; split S1 2026-11-09) | schematic done, ERC clean, check_buck.py clean; layout not started | about 60 × 85 mm | same | 53 lines, 73 parts |
+| **Main power board** ([marengo_pdu_revb](schematic)) | schematic done, ERC clean; placed, routing not finished ([README](README.md)) | 100 × 170 mm | 6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, OSP, thermal vias filled and capped | [bom-rev-B.csv](bom-rev-B.csv) |
+| **12 V buck and 12 V distribution** ([buck12](buck12), LM5146, 12 A; split S1 2026-11-09) | schematic done, ERC clean, check_buck.py clean; layout not started | about 60 × 85 mm | 4 layers, 1.6 mm, 1 oz (to quote) | 53 lines, 73 parts |
 
 Not in the run:
-- **DVE adapter:** a fallback only.
+- **DVE adapter:** dropped. Since split S1 the buck board carries the 12 V distribution and J24 carries I2C and SP_EN, so the DVE no longer drops in.
 - **Pack sense board:** dropped; the BMS sits on the pack.
 - **Rev A logic board:** its functions are all on the main board.
 - **Arm junction boards:** ruled out.
@@ -69,7 +69,7 @@ Both boards are ordered as **two separate designs in one JLC order**, not one pa
 
 | Part | Package | Why it stays | Fit |
 | --- | --- | --- | --- |
-| TPS259541 (U9, U18) | WSON-8 2 × 2 mm, 0.5 mm pitch | the TPS2595 family is DSG-only | hot plate; the hardest part on the board, place it with tweezers under magnification |
+| TPS259541 (buck U3, U5) | WSON-8 2 × 2 mm, 0.5 mm pitch | the TPS2595 family is DSG-only | hot plate; the hardest part in the run, place it with tweezers under magnification |
 | TPS3431S (U25) | VSON-8 3 × 3 mm, 0.65 mm | DRB is its only package | hot plate |
 | LM5146 (buck U1) | VQFN-20 3.5 × 4.5 mm | RGY is its only package | hot plate; the buck board is the practice run |
 | BSC040N10NS5 / BSC070N10NS5 | SuperSO8 (leads visible) | low-inductance power stage | hot plate |
@@ -79,7 +79,7 @@ Both boards are ordered as **two separate designs in one JLC order**, not one pa
   (VSSOP-10), TPS48100/TPS48111 (VSSOP-19). The 0.15 mm gaps inside the U2 and U7 footprints are footprint geometry, not
   a package choice.
 - **Probe pads added** on BAT, SW_D, ABS, CL_D, V_L1–V_L3, PORT_FLT_N, WDO_N and +3V3_PI, on top of the existing GATE,
-  GATE_A, UVLO, FLT_A, VCTL, RUN, VBUS, +12V, BRK_IN and MID pads and the three GND loops.
+  GATE_A, UVLO, FLT_A, VCTL, RUN, VBUS, BRK_IN and MID pads and the three GND loops.
 - **Thermal relief:** solid connections only where current needs them (the power pads, the FET tabs, the pigtail and pack
   pads); every small-signal pad on a pour gets thermal relief, so it reflows and reworks normally.
 - **Every part survives a full hot-plate reflow.** The EEH-ZC/ZA hybrids, the EEE-TK can, the XAL inductors, the shunts
@@ -158,17 +158,17 @@ Work on the buck board first; it's the practice run. Inspect and test between ev
 **A. Buck board (warm-up)**
 1. Clean the bare board with IPA. Tape the stencil over it, with spare boards around it as shims. Print paste in one firm
    pass, then lift the stencil straight up. Check every pad has paste and none bridged; reprint if not.
-2. Place parts with tweezers, smallest first: LM5146, then the resistors and capacitors, the SuperSO8 FETs, the diodes,
-   and the inductors and the can last.
+2. Place parts with tweezers, smallest first: LM5146, the two TPS259541 eFuses and the two INA237 meters, then the
+   resistors and capacitors, the SuperSO8 FETs, the diodes, the WSK2512 shunts, and the inductors and the cans last.
 3. Reflow on the hot plate:
    - preheat at 150 °C for 90–120 s;
    - then set about 235–245 °C until the paste around the largest part goes shiny (the thermocouple on the board top
      should read 210–220 °C);
    - hold for about 30–45 s, then slide the board off onto a metal surface to cool.
    - Don't nudge anything while it's molten.
-4. Inspect under magnification: bridges on the LM5146, tombstoned 0603s. Fix with gel flux and the iron, or the
+4. Inspect under magnification: bridges on the LM5146 and the INA237s, the WSON eFuses' side fillets, tombstoned 0603s. Fix with gel flux and the iron, or the
    hot-air gun for the QFN.
-5. Hand-solder J1 (Micro-Fit), on the plate at about 150 °C preheat to help the iron.
+5. Hand-solder J1 to J6 (Micro-Fit), on the plate at about 150 °C preheat to help the iron.
 6. Test before it touches the main board:
    - meter for shorts VIN–GND and VOUT–GND;
    - bench supply at 30 V and 0.2 A limit, then 48 V: check UVLO on at about 30 V and 12 V out with no load;
@@ -177,14 +177,14 @@ Work on the buck board first; it's the practice run. Inspect and test between ev
 **B. Main board**
 1. Clean, print paste with the main stencil, inspect.
 2. Place in groups and check each group against the placement print before moving on:
-   - the fine-pitch ICs (TPS259541, TPS3431, TPS48100/TPS48111, INA237, LM5069, TPS7A4001);
+   - the fine-pitch ICs (TPS3431, TPS48100/TPS48111, INA237, LM5069, TPS7A4001);
    - the 0603 passives, block by block;
    - SOD/SOT parts;
    - shunts, D2PAK-7 FETs, SMC diodes;
    - the cans last.
-3. Reflow: the same profile, with a longer preheat (2–3 min). The 4-layer board with large pours lags the plate: watch the
+3. Reflow: the same profile, with a longer preheat (2–3 min). The 6-layer board with 2 oz pours lags the plate: watch the
    paste around the D2PAK tabs and the cans, not the plate reading.
-4. Inspect all the fine-pitch ICs, the WSON eFuses (look at the side fillets) and the FET tabs (solder flowed out to the
+4. Inspect all the fine-pitch ICs, the VSON watchdog (look at the side fillets) and the FET tabs (solder flowed out to the
    pad edge). Rework with flux and the iron, or the hot-air gun.
 5. Wash off the flux (IPA and a brush) around U1, U7, U8 and the latch block, no-clean flux included, and let it dry
    fully (warm air or 30 min). The ESTOP_SAFE nets need clean, dry board: U1 pin 2 (SH_P, 54 V) sits 0.15 mm from pin 3
@@ -223,7 +223,8 @@ Hot air is for rework only (removing or reseating a part). Joey's low-power gun 
    **Joey prefers one source for all board parts:** re-check DigiKey stock for the 6 ICs out of stock on 2026-11-07
    (INA237, LM5069-1/-2, TPS7A4001, TPS3431S, LM5146). If they're back, order everything from DigiKey (route A) and
    accept the about $80–95 premium; otherwise DigiKey for everything it stocks plus one LCSC order for the rest.
-3. JLC quote for both designs (2/1 oz, ENIG, 1.6 mm, frameless stencils); section 1 updated.
+3. JLC quote for both designs, frameless stencils: main 6 layers, 2 oz outer / 0.5 oz inner, OSP, thermal vias filled and
+   capped; buck 4 layers, 1 oz. Confirm the main board's L1–In1 prepreg (tools/stack.py) and update section 1.
 4. The big review on the routed boards (Fable plus several Opus). Fix everything blocking.
 5. Gerbers, drill files and stencil (paste) layers exported; polarity of every diode, can and IC checked in the 3D view.
 6. Order the boards, the parts (LCSC + DigiKey), the tools, and the off-board parts (pack plan, REVB5_CHANGES), so they all

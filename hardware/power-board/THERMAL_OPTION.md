@@ -3,7 +3,7 @@
 2026-11-07. Joey (17:34Z): uncomfortable using the PCB as the heatsink; fine with heatsinks, bus bars and separately cooled
 paths; will place the power hardware in the torso's upper cavity himself (the 24 mm envelope is no longer a constraint).
 This page compares the options and recommends one. **Chosen: option D (Joey, decision card 2026-11-07 19:39Z).** The layout
-has carried it since stage 1 (via arrays, bare L4 pads, HS1/HS2); the parts are below under "Parts (chosen)".
+has carried it since stage 1 (via arrays, bare L6 pads, HS1/HS2); the parts are below under "Parts (chosen)".
 
 ## Recommendation
 
@@ -73,7 +73,7 @@ part, including the current one (open item below).
 | Heat leaves through | board copper and the air over it | heatsink on top (through an insulating pad: every tab is a different drain) | one heatsink per FET (each one live at drain voltage) | one bar, insulated pads and shoulder washers | one heatsink under the FET zone, through via arrays and an insulating gap pad |
 | Inductance | lowest | lowest | +10–15 nH per FET | +10–15 nH per FET + bus bar (about 30 nH) | same as current |
 | absorber_sim / port_sim | see below | same as 0 | bank drain into avalanche at 117–127 V; port peak 1.1 kA, 24 mJ | same as B | same as 0 |
-| Board copper | 2 oz outer for current and heat | 2 oz outer | 1 oz possible only if every 60 A path is on bars | 1 oz possible with bars | **2 oz outer, 1 oz inner** (for current only) |
+| Board copper | 2 oz outer for current and heat | 2 oz outer | 1 oz possible only if every 60 A path is on bars | 1 oz possible with bars | **2 oz outer, 0.5 oz inner** (6 layers since 2026-11-09; for current only) |
 | Hand assembly | hot plate | hot plate; flat FET tops are critical | iron for the FETs | iron for the FETs, plus bar work | hot plate (unchanged); heatsink screwed on afterwards |
 | Extra cost, 2 sets | – | about $60 (TOLT parts + heatsink) | about $40 (clip-ons; FETs about the same) | about $80 (bar, insulators, bus bars, IXYS L2 hybrid more) | **about $40** |
 | Size | board only | +15–25 mm on top | +38 mm on top, wide | bar along one edge, about 150 × 40 × 30 mm | **+25 mm under the board** |
@@ -94,7 +94,7 @@ Path from junction to air for one bank FET:
 | --- | --- | --- |
 | Junction to tab (IPB017N10N5LF) | 0.4 | 1 K |
 | Solder + 2 oz pad | 0.1 | 0.3 K |
-| 50 × 0.3 mm vias through 1.6 mm (unfilled, 25 µm plating, about 176 K/W each) | 3.5 | 9.5 K |
+| 50 × 0.3 mm vias through 1.6 mm (25 µm plating, about 176 K/W each; JLC fills them with resin and caps them, and the resin adds little, so this keeps the unfilled figure) | 3.5 | 9.5 K |
 | Bottom pad 15 × 15 mm into a 0.5 mm insulating gap pad at 3 W/mK | 0.75 | 2 K |
 | **Junction to heatsink** | **about 4.8** | **about 13 K** |
 
@@ -103,9 +103,9 @@ The heatsink takes all 16 W: about 1.5 K/W with fan air → +24 K. Ambient insid
 side. Without fan air, the heatsink (about 3 K/W natural) gives about 101 °C, still under 125 °C.
 
 Layout for D (done since stage 1):
-- 50 vias per tab, at the pad edge and under the tab. Tent them on the bottom (the gap pad is insulating). Keep them out of
-  the paste aperture so they don't wick solder on the hot plate.
-- Bare bottom copper (solder mask off, ENIG) under each FET, 15 × 15 mm per tab.
+- 50 vias per tab, at the pad edge and under the tab, filled and capped (free at 6 layers) so they don't wick solder on
+  the hot plate; the gap pad insulates them on the bottom.
+- Bare bottom copper (solder mask off, OSP) under each FET, 15 × 15 mm per tab.
 - Two M3 holes for the heatsink, HS1 (0, 286) and HS2 (0, 204), non-plated with a copper keep-out around each; the screw
   heads sit on solder mask and the heatsink floats (insulated by the pad).
 - No THT pins inside the heatsink footprint: on the 100 × 170 board the Micro-Fit pins are at Y 175 and F2's pins start at
@@ -176,7 +176,7 @@ The FETs, board and stencils don't change. The two 2.2 µF drain capacitors (opt
 | Mounting | the board's 6 × M3 holes at X ±46, Y 174 / 265 / 336; the heatsink hangs off the board on its own 2 × M3 (HS1, HS2; insulated by the pad); nothing is bolted to the frame through the heatsink |
 | Airflow | along the fins, parallel to the board's long side (Y). **Minimum about 1 m/s over the fins.** One 40 mm intake (5–8 CFM) ducted across a 70 × 20 mm fin section gives about 2–3 m/s |
 | Fins' clear space | 20 mm free beyond the fin tips; the air inlet and outlet at the heatsink's short ends kept open |
-| Cable exits | top edge (Y 340): pack 8 AWG pair (X 1 and 15), brake Mini-Fit pairs (X 29, 37, 18 AWG), 12 V converter pigtail J24 (X −41 to −19, 18 AWG). Left and right edges (X ±45): limb pigtails at Y 209–249, 16 AWG pairs for the arms, waist and aux, 14 AWG for the unfitted legs. Bottom edge (Y 175): Pi GH 8-pin (X −31, 26–28 AWG), Micro-Fit 12 V outputs (X −19 to 18, 18–20 AWG) |
+| Cable exits | top edge (Y 340): pack 8 AWG pair (X 1 and 15), brake Mini-Fit pairs (X 29, 37, 18 AWG), 12 V converter pigtail J24 (X −41 to −19, 18 AWG). Left and right edges (X ±45): limb pigtails at Y 209–249, 16 AWG pairs for the arms, waist and aux, 14 AWG for the unfitted legs. Bottom edge (Y 175): Pi GH 8-pin (X −31, 26–28 AWG). The 12 V outputs are on the buck board since split S1 (2026-11-09) |
 | Keep-outs | pack lead bend: X −5..25, Y 315–340 above the front face (8 AWG at R15, 7 mm OD). Back side outside the heatsink: THT pins up to 2.5 mm proud. 6 mm around each M3 hole |
 
 **STEP for placement:** [marengo_pdu_revb_package.step](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/pdb/design/layout/marengo_pdu_revb_package.step) (still in marengo, Git LFS, 58 MB; rebuilt by
@@ -198,4 +198,5 @@ Coordinates are board/torso X and Y, with Z 0 at the board's bottom face.
 - **Copper:** since 2026-11-09 the board is 6 layers with 2 oz outer / 0.5 oz inner (no bars). A 2 oz outer pour carries
   about 30 A in 10.5 mm and 60 A in about 27.5 mm at 20 °C rise (IPC-2221); the 60 A path and the 30 A port legs use L1
   and L6 together ([LAYOUT_RULES.md](LAYOUT_RULES.md)). The heat path above goes down through the filled vias and is the
-  same as on the 4-layer board. The two 0.5 oz GND planes return 60 A across about 90 mm, about 3 W spread over the board.
+  same as on the 4-layer board. The two 0.5 oz GND planes return 60 A across about 90 mm, about 3 W spread over the board; that
+  return's temperature rise is an open item in LAYOUT_RULES.md and isn't in the Tj sum above.

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Stage 3 (own router), step 3: add the tracks and vias from tools/grid_route.py to the board, refill the zones (the GND
-fills on L1, In2 and L4 close round the new signals) and save.
+fills on F.Cu, In2, In3 and B.Cu close round the new signals) and save.
 Layers in routes.json: index into tools/stack.py NAMES (F.Cu, In1..In4, B.Cu). Vias are 0.6 mm / 0.3 mm.
 The router joins islands on a 0.1 mm grid, so a route can stop on the raster edge of its target: at the edge of a
 same-net track (0.1 mm off its centreline) or just outside a pad. Such ends are extended here with one short segment
@@ -10,6 +10,7 @@ import json,math,sys
 import pcbnew
 b=pcbnew.LoadBoard(sys.argv[1]); R=json.load(open(sys.argv[2]))
 sys.path.insert(0,__import__('os').path.dirname(__import__('os').path.abspath(__file__))); import stack
+stack.check_board(b); stack.check_json(R,sys.argv[2])
 LAY=dict(enumerate(stack.kicad_layers(pcbnew)))
 P=lambda x,y: pcbnew.VECTOR2I(pcbnew.FromMM(x),pcbnew.FromMM(y))
 nt=nv=0; new=[]
