@@ -4,8 +4,8 @@
 use robstride::{DecodeError, DeviceId, Inbound, Mode, Status, decode};
 use telemetry::{Direction, FrameRecord};
 
-use crate::error_frame::{BusError, classify};
-use crate::tick::{BusTick, DriveState, Phase, Reply};
+use crate::error_frame::{classify, controller_passive};
+use crate::tick::{BusTick, DriveState, Reply, batch_may_carry};
 use crate::types::{EchoSeen, LimbState, Observed, StopOutcome};
 
 impl BusTick {
@@ -17,17 +17,10 @@ impl BusTick {
             if error.latches() {
                 self.latch(error);
             }
-            match error {
-                BusError::ErrorPassive => self.error_passive = true,
-                BusError::ErrorActive => self.error_passive = false,
-                BusError::BusOff
-                | BusError::ErrorWarning
-                | BusError::RxOverflow
-                | BusError::TxTimeout
-                | BusError::InterfaceDown
-                | BusError::InterfaceGone
-                | BusError::Socket(_)
-                | BusError::Other(_) => {}
+            // The controller's state, read on its own: a frame can carry it beside a more severe flag (passive back
+            // to warning together with an overflow), and warning after passive is a recovery.
+            if let Some(passive) = controller_passive(frame.id, frame.data) {
+                self.error_passive = passive;
             }
             return;
         }
@@ -42,11 +35,23 @@ impl BusTick {
                 | DecodeError::ForeignType { .. }
                 | DecodeError::ForeignWrite { .. },
             ) => self.counters.foreign_host += 1,
-            Err(_) => self.counters.undecodable += 1,
+            Err(
+                DecodeError::IdTooWide(_)
+                | DecodeError::BadLength { .. }
+                | DecodeError::UnknownType { .. }
+                | DecodeError::BadDeviceId { .. }
+                | DecodeError::ReservedMode { .. }
+                | DecodeError::UnknownParam { .. }
+                | DecodeError::BadParamValue { .. }
+                | DecodeError::UnexpectedData { .. },
+            ) => self.counters.undecodable += 1,
             Ok(Inbound::Echo(echo)) => {
                 if frame.direction == Direction::TxEcho {
                     self.counters.echoes += 1;
-                    if let Some(d) = self.slot_of(echo.target) {
+                    // Only the tick's own kinds of frame: a slow request's echo never hides the enable sequence's.
+                    if batch_may_carry(echo.kind)
+                        && let Some(d) = self.slot_of(echo.target)
+                    {
                         d.last_echo = Some(EchoSeen {
                             kind: echo.kind,
                             read_ns,
@@ -63,69 +68,79 @@ impl BusTick {
                 Some(d) => d.fault_seen |= faults != [0; 4],
                 None => self.counters.unexpected += 1,
             },
-            Ok(Inbound::Version { header, .. }) => match self.slot_of(header.device) {
-                Some(d) => d.fault_seen |= !header.faults.is_empty(),
-                None => self.counters.unexpected += 1,
-            },
+            Ok(Inbound::Version { header, .. }) => {
+                let unordered = self.unordered;
+                let limbs = self.limbs;
+                match self.slot_of(header.device) {
+                    // A version reply carries the status header too: its faults and its mode count like a status's.
+                    Some(d) => {
+                        d.fault_seen |= !header.faults.is_empty();
+                        let active = limbs.get(d.limb).copied().flatten().map(|l| l.state)
+                            == Some(LimbState::Active);
+                        d.note_mode(header.mode, active, unordered);
+                    }
+                    None => self.counters.unexpected += 1,
+                }
+            }
             Ok(Inbound::Param {
                 device,
                 param,
                 outcome,
             }) => match self.slot_index(device) {
-                Some(slot) if self.slow_read_reply(slot, param, outcome) => {}
-                Some(_) => self.counters.unsolicited += 1,
+                Some(slot) => {
+                    if !self.slow_read_reply(slot, param, outcome) {
+                        self.counters.unsolicited += 1;
+                    }
+                }
                 None => self.counters.unexpected += 1,
             },
             Ok(Inbound::Identity { device, uid }) => match self.slot_index(device) {
-                Some(slot) if self.slow_identity_reply(slot, uid) => {}
-                Some(_) => self.counters.unsolicited += 1,
+                Some(slot) => {
+                    if !self.slow_identity_reply(slot, uid) {
+                        self.counters.unsolicited += 1;
+                    }
+                }
                 None => self.counters.unexpected += 1,
             },
         }
     }
 
     fn on_status(&mut self, read_ns: u64, status: Status, answer: bool) {
-        let device = status.header.device;
         let tick = self.tick;
         let unordered = self.unordered;
-        let limbs = self.limbs;
-        let Some(d) = self
-            .drives
-            .iter_mut()
-            .flatten()
-            .find(|d| d.device == device)
-        else {
+        let Some(slot) = self.slot_index(status.header.device) else {
             self.counters.unexpected += 1;
+            return;
+        };
+        let limb = self
+            .drives
+            .get(slot)
+            .copied()
+            .flatten()
+            .and_then(|d| self.limbs.get(d.limb).copied().flatten())
+            .map(|l| l.state);
+        let Some(d) = self.drives.get_mut(slot).and_then(Option::as_mut) else {
             return;
         };
         d.observed = Some(Observed { status, read_ns });
         if !status.header.faults.is_empty() {
             d.fault_seen = true;
         }
-        let active = limbs
-            .get(d.limb)
-            .copied()
-            .flatten()
-            .is_some_and(|l| l.state == LimbState::Active);
-        if d.phase == Phase::Enabling && active && status.header.mode == Mode::Run && !unordered {
-            d.phase = Phase::Running;
-        } else if d.phase == Phase::Running && status.header.mode != Mode::Run {
-            d.phase = Phase::LeftRun;
-        }
+        let stopping = matches!(limb, Some(LimbState::Stopping { .. }));
+        d.note_mode(
+            status.header.mode,
+            limb == Some(LimbState::Active),
+            unordered,
+        );
         if !answer {
             return;
         }
-        let slot = self.slot_index(device);
-        // A status while a write is in flight to the drive answers the write, not a command.
-        if slot.is_some_and(|slot| self.slow_write_reply(slot)) {
+        // A status while a write is in flight to the drive answers the write, not a command. Its faults and mode are
+        // already taken above.
+        if self.slow_write_reply(slot) {
             return;
         }
-        let Some(d) = self
-            .drives
-            .iter_mut()
-            .flatten()
-            .find(|d| d.device == device)
-        else {
+        let Some(d) = self.drives.get_mut(slot).and_then(Option::as_mut) else {
             return;
         };
         let Some(o) = d.outstanding.as_mut().filter(|_| !unordered) else {
@@ -147,8 +162,13 @@ impl BusTick {
         } else {
             self.counters.unsolicited += 1;
         }
-        // Any Reset after the stop's Disable confirms it, even behind an earlier status still in flight.
-        if o.stop_disable && status.header.mode == Mode::Reset && d.stop != StopOutcome::Confirmed {
+        // Any Reset after the stop's Disable confirms it, even behind an earlier status still in flight. Once the limb
+        // is stopped nothing more is sent, so a confirmation then would record a reporting off that never comes.
+        if stopping
+            && o.stop_disable
+            && status.header.mode == Mode::Reset
+            && d.stop != StopOutcome::Confirmed
+        {
             d.stop = StopOutcome::Confirmed;
             d.confirmed_ns = Some(read_ns);
         }

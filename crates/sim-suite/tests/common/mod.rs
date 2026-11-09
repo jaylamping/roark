@@ -4,15 +4,26 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use can::{BusDrive, LimbState, Snapshot, StopReason};
+use can::{BusDrive, LimbState, Snapshot, StopReason, Timing};
 use robstride::{
     DeviceId, Drive, Frame, MitCommand, Model, NewtonMeters, NmPerRad, NmSecPerRad, RadPerSec,
     Radians, encode,
 };
-use telemetry::{BusInfo, SessionInfo, SkeletonRef, Stage, TimestampSource};
+use telemetry::{SessionInfo, SkeletonRef, Stage};
 
 /// Slow enough that the test thread, playing control, makes every tick on a loaded machine.
 pub(crate) const HZ: u64 = 100;
+
+/// The tick at `HZ`, with the send window stretched to the collect deadline: these tests check the loop, its recording
+/// and what it does on a drive's word, not the wake budget, so a test thread that wakes a few milliseconds late on a
+/// loaded runner is not a late wake (the tick tests cover that).
+pub(crate) fn timing() -> Timing {
+    let at_hz = Timing::at_hz(HZ);
+    Timing {
+        send_window_ns: at_hz.collect_ns,
+        ..at_hz
+    }
+}
 
 #[expect(
     clippy::unwrap_used,
@@ -65,14 +76,7 @@ pub(crate) fn info(bus: &str) -> SessionInfo {
             path: "inline".to_owned(),
             sha256: "00".repeat(32),
         },
-        buses: vec![BusInfo {
-            name: bus.to_owned(),
-            bitrate: 1_000_000,
-            timestamps: TimestampSource::Software,
-            receive_filters: Vec::new(),
-            error_filter: u32::MAX,
-            adapter_firmware: None,
-        }],
+        buses: vec![can::bus_info(bus, 1_000_000)],
     }
 }
 

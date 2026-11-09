@@ -1,11 +1,12 @@
 //! The bus tick without a socket: frames in and out as values, time stepped by hand (testing.md rule 6). Replies,
 //! freshness, faults, batch checks and configuration; the stop path is in `stop.rs`.
 
+#[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
 use can::{
-    BusError, BusTick, CommandBatch, ConfigError, LimbState, MAX_DRIVES, SendKind, SendOutcome,
-    StopOutcome, StopReason, Timing, TimingError, classify,
+    BusError, BusTick, CommandBatch, ConfigError, DRIVE_TIMEOUT_NS, LimbState, MAX_DRIVES,
+    SendKind, SendOutcome, StopOutcome, StopReason, Timing, TimingError, classify,
 };
 use common::{
     MS, PERIOD, at, batch, bus, deadline, drive, error_frame, hold, id, one_limb, record,
@@ -41,6 +42,23 @@ fn a_status_after_the_send_is_fresh_and_one_before_it_is_not() {
     );
     // An Enable's missing reply isn't counted: Run may take 10 ms (PLAN.md item 2 Silence windows).
     assert_eq!(snap.counters.unanswered, 0);
+
+    // An active report (type 24) after a command is seen but answers nothing: liveness comes from replies.
+    run_tick(
+        &mut bus,
+        1,
+        Some(&batch(1, &[None, Some(encode::enable(id(102)))])),
+        &[(MS, report(102))],
+    );
+    let d12 = at(&bus.end(deadline(1)), 1);
+    assert_eq!((d12.answered, d12.fresh_ns), (false, None));
+    assert_eq!(d12.observed.map(|o| o.read_ns), Some(PERIOD + MS));
+}
+
+/// Drive `n`'s active report as `vcan` delivers it.
+fn report(n: u8) -> telemetry::FrameRecord {
+    let f = report_frame(n, robstride::StatusFaults::default());
+    record(f.id(), f.data(), Direction::TxOther)
 }
 
 /// Guards: protocol - a send the socket never took (queue full, write failed, window passed) opens no status window: a
@@ -258,7 +276,7 @@ fn version_replies_and_fault_reports_latch_faults() {
         [0x00, 0xC4, 0x56, 1, 2, 3, 4, 0],
         Direction::TxOther,
     );
-    // Type-104 reports from drive 102 (§4.1.8): warnings only, then a fault byte.
+    // Type-21 reports from drive 102 (§4.1.8): warnings only, then a fault byte.
     let warning_only = record(0x1500_66FD, [0, 0, 0, 0, 1, 0, 0, 0], Direction::TxOther);
     let fault = record(0x1500_66FD, [1, 0, 0, 0, 0, 0, 0, 0], Direction::TxOther);
     run_tick(&mut bus, 0, None, &[(MS, version), (MS, warning_only)]);
@@ -362,6 +380,11 @@ fn too_many_drives_is_refused() {
     let mut full = BusTick::new(&one_limb(&ids[..MAX_DRIVES]), Timing::at_hz(250)).unwrap();
     let held: Vec<_> = full.end(0).drives().map(|d| d.device).collect();
     assert_eq!(held, ids[..MAX_DRIVES]);
+    // A drive listed twice is refused: its second slot could never be answered.
+    assert_eq!(
+        BusTick::new(&one_limb(&[id(101), id(102), id(101)]), Timing::at_hz(250)).err(),
+        Some(ConfigError::DuplicateDrive(id(101)))
+    );
 }
 
 /// Guards: protocol - `unanswered` counts every command without a status by the collect deadline, whenever the late
@@ -608,32 +631,92 @@ fn timing_that_breaks_the_tick_is_refused() {
     }
 }
 
-/// Guards: safety - a silence count of zero is refused at startup: zero silent ticks would stop an active bus on its
-/// first tick, and zero missed replies would stop every limb at its first send (PLAN.md items 3 and 6).
+/// Guards: safety - each silence count must be at least one and fire before the drives time out on their own: zero
+/// would stop an active bus at its first tick or every limb at its first send, and a count that spans the drives'
+/// timeout turns its rule off (safety.md section 4: no config value turns a protection off; PLAN.md items 3 and 6).
 #[test]
-fn zero_silence_counts_are_refused() {
+fn silence_counts_must_fire_before_the_drive_timeout() {
     let base = Timing::at_hz(250);
+    // The fewest periods that reach the drives' timeout.
+    let span = u32::try_from(DRIVE_TIMEOUT_NS.div_ceil(base.period_ns)).unwrap_or(u32::MAX);
     let rows = [
         (
+            "no silent ticks",
             Timing {
                 silent_ticks: 0,
                 ..base
             },
-            TimingError::NoSilentTicks,
+            Some(TimingError::SilentTicks {
+                silent_ticks: 0,
+                period_ns: base.period_ns,
+            }),
         ),
         (
+            "silent ticks reach the drive timeout",
+            Timing {
+                silent_ticks: span,
+                ..base
+            },
+            Some(TimingError::SilentTicks {
+                silent_ticks: span,
+                period_ns: base.period_ns,
+            }),
+        ),
+        (
+            "silent ticks just inside the drive timeout",
+            Timing {
+                silent_ticks: span - 1,
+                ..base
+            },
+            None,
+        ),
+        (
+            "silent ticks exactly the drive timeout",
+            Timing {
+                silent_ticks: 10,
+                ..Timing::at_hz(200)
+            },
+            Some(TimingError::SilentTicks {
+                silent_ticks: 10,
+                period_ns: 5 * MS,
+            }),
+        ),
+        (
+            "no silence misses",
             Timing {
                 silence_misses: 0,
                 ..base
             },
-            TimingError::NoSilenceMisses,
+            Some(TimingError::SilenceMisses {
+                silence_misses: 0,
+                period_ns: base.period_ns,
+            }),
+        ),
+        (
+            "silence misses reach the drive timeout",
+            Timing {
+                silence_misses: span,
+                ..base
+            },
+            Some(TimingError::SilenceMisses {
+                silence_misses: span,
+                period_ns: base.period_ns,
+            }),
+        ),
+        (
+            "silence misses just inside the drive timeout",
+            Timing {
+                silence_misses: span - 1,
+                ..base
+            },
+            None,
         ),
     ];
-    for (timing, refused) in rows {
+    for (name, timing, refused) in rows {
         assert_eq!(
             BusTick::new(&one_limb(&[id(101)]), timing).err(),
-            Some(ConfigError::Timing(refused)),
-            "{timing:?}"
+            refused.map(ConfigError::Timing),
+            "{name}: {timing:?}"
         );
     }
 }
@@ -671,4 +754,20 @@ fn error_frames_are_classified_and_passive_marks_the_bus_unhealthy() {
     );
     run_tick(&mut bus, 1, None, &[(MS, error_frame(0x04, 0x40))]);
     assert!(bus.end(deadline(1)).healthy);
+    // Passive, then back to warning: a recovery, healthy again. Passive, then back to active in the same frame as an
+    // overflow (which outranks it as the error): healthy too. An overflow alone says nothing about the state.
+    let rows = [(0x08, true), (0x41, true), (0x01, false)];
+    for (crtl, healthy) in rows {
+        let mut bus = common::bus();
+        run_tick(
+            &mut bus,
+            0,
+            None,
+            &[
+                (MS, error_frame(0x04, 0x20)),
+                (2 * MS, error_frame(0x04, crtl)),
+            ],
+        );
+        assert_eq!(bus.end(deadline(0)).healthy, healthy, "crtl {crtl:#x}");
+    }
 }

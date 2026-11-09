@@ -9,8 +9,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use can::{BusConfig, BusLinks, CommandBatch, LimbState, Snapshot, Spawned, StopReason, Timing};
-use common::{HZ, Shutdown, drive, hold, id, info, limbs, next_snapshot, soon};
+use can::{BusConfig, BusLinks, CommandBatch, LimbState, Snapshot, Spawned, StopReason};
+use common::{HZ, Shutdown, drive, hold, id, info, limbs, next_snapshot, soon, timing};
 use robstride::{Drive, Frame, Mode, Model, StatusFault, StatusFaults, Uid, encode};
 use sim_drive::{Fault, Injected, SimDrive, Trigger, ensure_vcan, serve};
 use telemetry::{BusRecorder, Epoch, Recorder, Recording, Session};
@@ -40,7 +40,7 @@ fn start_bus(
         BusConfig {
             name: FAULT_BUS.to_owned(),
             drives: vec![drive(101, 0), drive(102, 1)],
-            timing: Timing::at_hz(HZ),
+            timing: timing(),
         },
         BusLinks {
             commands,
@@ -101,7 +101,7 @@ fn enable_both(
 /// Guards: safety - a fault injected into one drive on `vcan` is caught before the next send: within one tick of the
 /// bus thread reading it, that drive's limb is stopping with `DriveFault` and its Disable sent, control's next frame to
 /// it is refused, and the bus's other limb keeps getting commands and answering; the injection is reported as it
-/// fires (PLAN item 6 Faults row; step 7 design D1; logging.md section 3: injected faults recorded).
+/// fires (PLAN item 6 Faults row; logging.md section 3: injected faults recorded).
 #[test]
 fn a_fault_injected_on_vcan_stops_only_its_limb() {
     ensure_vcan(FAULT_BUS).unwrap();
