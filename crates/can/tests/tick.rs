@@ -41,6 +41,23 @@ fn a_status_after_the_send_is_fresh_and_one_before_it_is_not() {
     );
     // An Enable's missing reply isn't counted: Run may take 10 ms (PLAN.md item 2 Silence windows).
     assert_eq!(snap.counters.unanswered, 0);
+
+    // An active report (type 24) after a command is seen but answers nothing: liveness comes from replies.
+    run_tick(
+        &mut bus,
+        1,
+        Some(&batch(1, &[None, Some(encode::enable(id(102)))])),
+        &[(MS, report(102))],
+    );
+    let d12 = at(&bus.end(deadline(1)), 1);
+    assert_eq!((d12.answered, d12.fresh_ns), (false, None));
+    assert_eq!(d12.observed.map(|o| o.read_ns), Some(PERIOD + MS));
+}
+
+/// Drive `n`'s active report as `vcan` delivers it.
+fn report(n: u8) -> telemetry::FrameRecord {
+    let f = report_frame(n, robstride::StatusFaults::default());
+    record(f.id(), f.data(), Direction::TxOther)
 }
 
 /// Guards: protocol - a send the socket never took (queue full, write failed, window passed) opens no status window: a
@@ -258,7 +275,7 @@ fn version_replies_and_fault_reports_latch_faults() {
         [0x00, 0xC4, 0x56, 1, 2, 3, 4, 0],
         Direction::TxOther,
     );
-    // Type-104 reports from drive 102 (§4.1.8): warnings only, then a fault byte.
+    // Type-21 reports from drive 102 (§4.1.8): warnings only, then a fault byte.
     let warning_only = record(0x1500_66FD, [0, 0, 0, 0, 1, 0, 0, 0], Direction::TxOther);
     let fault = record(0x1500_66FD, [1, 0, 0, 0, 0, 0, 0, 0], Direction::TxOther);
     run_tick(&mut bus, 0, None, &[(MS, version), (MS, warning_only)]);
@@ -362,6 +379,11 @@ fn too_many_drives_is_refused() {
     let mut full = BusTick::new(&ids[..MAX_DRIVES], Timing::at_hz(250)).unwrap();
     let held: Vec<_> = full.end(0).drives().map(|d| d.device).collect();
     assert_eq!(held, ids[..MAX_DRIVES]);
+    // A drive listed twice is refused: its second slot could never be answered.
+    assert_eq!(
+        BusTick::new(&[id(101), id(102), id(101)], Timing::at_hz(250)).err(),
+        Some(ConfigError::DuplicateDrive(id(101)))
+    );
 }
 
 /// Guards: protocol - `unanswered` counts every command without a status by the collect deadline, whenever the late
@@ -489,8 +511,29 @@ fn a_batch_carries_the_enable_sequence() {
             Some(encode::param_write(&Write::mit_mode(drive(102)))),
         ],
     );
-    let sent = run_tick(&mut bus, 0, Some(&b), &[]);
-    assert_eq!(sent, [(0, SendKind::Command), (1, SendKind::Command)]);
+    let list = bus.begin(0, 0, 0, Some(&b));
+    let sends: Vec<_> = list
+        .iter()
+        .map(|s| (s.slot, s.kind, s.frame, s.expires))
+        .collect();
+    // The frames go out as control built them; reporting off never expires, the `run_mode` write does.
+    assert_eq!(
+        sends,
+        [
+            (
+                0,
+                SendKind::Command,
+                encode::active_reporting(id(101), Reporting::Off),
+                false
+            ),
+            (
+                1,
+                SendKind::Command,
+                encode::param_write(&Write::mit_mode(drive(102))),
+                true
+            ),
+        ]
+    );
     assert_eq!(bus.end(deadline(0)).stop, None);
 }
 
@@ -648,4 +691,20 @@ fn error_frames_are_classified_and_passive_marks_the_bus_unhealthy() {
     );
     run_tick(&mut bus, 1, None, &[(MS, error_frame(0x04, 0x40))]);
     assert!(bus.end(deadline(1)).healthy);
+    // Passive, then back to warning: a recovery, healthy again. Passive, then back to active in the same frame as an
+    // overflow (which outranks it as the error): healthy too. An overflow alone says nothing about the state.
+    let rows = [(0x08, true), (0x41, true), (0x01, false)];
+    for (crtl, healthy) in rows {
+        let mut bus = common::bus();
+        run_tick(
+            &mut bus,
+            0,
+            None,
+            &[
+                (MS, error_frame(0x04, 0x20)),
+                (2 * MS, error_frame(0x04, crtl)),
+            ],
+        );
+        assert_eq!(bus.end(deadline(0)).healthy, healthy, "crtl {crtl:#x}");
+    }
 }
