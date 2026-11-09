@@ -240,7 +240,9 @@ fn attempt(uid: Uid, after: After) -> Ended {
 )]
 fn newest(snapshots: &mut rtrb::Consumer<Snapshot>, end: Instant) -> Snapshot {
     let mut snap = next_snapshot(snapshots, end).unwrap();
-    while let Ok(newer) = snapshots.pop() {
+    // At most the ring's worth: the bus publishes once a period, so this never chases it.
+    for _ in 0..snapshots.buffer().capacity() {
+        let Ok(newer) = snapshots.pop() else { break };
         snap = newer;
     }
     snap
