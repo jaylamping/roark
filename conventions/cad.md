@@ -28,7 +28,10 @@ nothing.
 1. **Work in `_wip/`.** New ideas, variants and experiments start there and are never committed.
 2. **Promote when chosen.** A part moves into its region folder when it is picked: it passes its gate, or an assembly or a
    print starts using it. Move and rename native files **inside SolidWorks** (Pack and Go or SOLIDWORKS Explorer), never with
-   a plain file move. Rebuild the top assembly once before committing. **Why:** a plain move breaks every assembly that
+   a plain file move. Rebuild and save the top assembly, stage everything, then run
+   `python tools/cad/check_sw_refs.py --all` on Windows and commit with nothing saved in between: every reference of every
+   tracked part, assembly and drawing must resolve to a committed or staged file in `cad/`, outside the scratch folders, and
+   it refuses if a scanned file's working copy differs from its staged copy. **Why:** a plain move breaks every assembly that
    references the file, and the break only shows when someone opens it.
 3. **Overwrite in place.** Region, export, print and drawing folders hold only the current version; git history is the
    version trail. No `_v2`, `_revC`, `_final`, `(2)` or `Copy of` files there.
@@ -102,7 +105,8 @@ over the warning limits, and packets with no `Pinned commit:` line. The limits a
 
 **Export records.** Each STEP/STL in `exports/` has an entry in
 [cad/manifests/exports.json](../cad/manifests/exports.json): the export, its source part, configuration, export settings, and
-the SHA-256 of both (for an LFS file, the `oid` in its pointer). The check warns when the source changed after the export
+the SHA-256 of both (for an LFS file, the `oid` in its pointer). Record one right after exporting:
+`python tools/cad/record_export.py exports/<region>/<file> <region>/<part>.SLDPRT --config <name> --settings "<STEP AP214, ...>"`. The check warns when the source changed after the export
 (stale) or an export has no entry, and fails when an export no longer matches its entry. **Why:** an export that silently
 drifts from its part is how a print or a URDF ends up built from the wrong geometry.
 
