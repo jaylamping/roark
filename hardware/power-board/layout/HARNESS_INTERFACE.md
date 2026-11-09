@@ -5,10 +5,10 @@ board, where it leaves, and what each run ends in. In-torso routing is the frame
 
 | File | Content |
 | --- | --- |
-| [power_board_package.step](../../../cad/reference/power_board_package.step) (LFS) | board with parts, option-D heatsink, `KO_*` keep-outs, `WIRE_*` stubs |
+| [marengo_pdu_revb_package.step](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/pdb/design/layout/marengo_pdu_revb_package.step) (in marengo, LFS) | board with parts, option-D heatsink, `KO_*` keep-outs, `WIRE_*` stubs |
 | [harness_wires.csv](harness_wires.csv) | wire list: one row per conductor group (net, gauge, OD, from/to, twist) |
 | [harness_exits.csv](harness_exits.csv) | one row per `WIRE_*` body: exit point, exit direction, bend radius, direction after the bend |
-| [tools/package_step.py](../schematic/tools/package_step.py) | builds the STEP and `harness_exits.csv` from the board (`tools/conn_export.py` gives the connector data) |
+| [schematic/tools/package_step.py](../schematic/tools/package_step.py) | builds the STEP and `harness_exits.csv` from the board (`schematic/tools/conn_export.py` gives the connector data) |
 
 ## 1. Package frame (local origin and orientation)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""U1 (LM5069, bank A) escapes, drawn by hand before any routing. The package puts UVLO (pin 3, E-stop) between SH_P
+"""U1 (LM5069, bank B) escapes, drawn by hand before any routing. The package puts UVLO (pin 3, E-stop) between SH_P
 (pin 2) and the GND pins, and both sense pins face RS1, so the router's escape would run 54 V copper alongside the UVLO
 pad just outside the courtyard. Here every escape is one straight segment out of the courtyard (the fine-pitch rule in
 the .kicad_dru covers copper that enters it), clear of the 1.5 mm E-stop rule beyond:

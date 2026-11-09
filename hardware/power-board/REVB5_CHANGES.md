@@ -1,5 +1,10 @@
 # Power board rev B5: what changed after the Opus round 5 review
 
+This is the record of the 2026-11-07 change session. Later decisions replaced parts of it, and where they differ the
+live docs win: the stackup is 2 oz outer / 1 oz inner ([LAYOUT_RULES.md](LAYOUT_RULES.md)); the absorber is eight cans,
+75 V at the worst corner ([REV_B_PARTS.md](REV_B_PARTS.md)); assembly is bare boards and hand reflow with nothing smaller
+than 0603 ([PRODUCTION_RUN.md](PRODUCTION_RUN.md)).
+
 2026-11-07. Joey approved, at 15:49Z:
 - every blocker, major and high finding, plus every non-minor recommendation, in [opus-review-r5/CHANGE_LIST.md](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/pdb/design/opus-review-r5/CHANGE_LIST.md);
 - the recommended cost package;
@@ -26,7 +31,7 @@ Legs move to rev C. Their port footprints stay on the board, unfitted.
 | Item | What changed | Check |
 | --- | --- | --- |
 | Reverse polarity | J1/J2 M4 studs replaced by one soldered 8 AWG pair, BAT and GND side by side, ending in an XT90 that only mates the pack's XT90S one way. 8 AWG (Joey: the heaviest run in the robot). The AS150U was tried and doesn't fit the pack corner; XT90 is 45 A continuous, fine for arms and waist | check.py: BAT on one two-pole connector |
-| Limb short drops the whole bus | Every port gets its own breaker: TPS48111-Q1 plus an IPB017. Short trip at 35–45 A within 1.6 µs, overload at 30 A for about 16 ms, latch-off cleared by an E-stop cycle, enabled from RUN. Each limb's + and return now leave on one soldered pair (no GND studs). The 20 A pigtail fuses stay as wire protection | **tools/port_sim.py:** 50 nH to 1 µH wiring, 0.5–1 µH pack lead, 0 or 50 A on the other limbs. RS1 peaks at 130 A or less, against U8 158 A and U1 160 A minimum: the faulted port always opens first |
+| Limb short drops the whole bus | Every port gets its own breaker: TPS48111-Q1 plus an IPB017. Short trip at 35–45 A within 1.6 µs, overload at 30 A for about 16 ms, latch-off cleared by an E-stop cycle, enabled from RUN. Each limb's + and return now leave on one soldered pair (no GND studs). The 20 A pigtail fuses stay as wire protection | **schematic/tools/port_sim.py:** 50 nH to 1 µH wiring, 0.5–1 µH pack lead, 0 or 50 A on the other limbs. RS1 peaks at 130 A or less, against U8 158 A and U1 160 A minimum: the faulted port always opens first |
 | Crashed Pi leaves motors live | TPS3431 watchdog in series with the latch's seal-in NPN. The Pi toggles WD_FEED every 50–100 ms; with no falling edge for 270–355 ms the latch drops and stays off until reset. Powered from VCTL, not the Pi, so a dead Pi, a floating pin or a dead watchdog rail all drop the latch. It can only drop the latch, never hold it | **latch_sim:** missed heartbeat drops it, it stays off after WDO releases, and reset is blocked while the watchdog is low (all hFE corners) |
 
 **Port FET stress.** A dead short right at the board pads puts about 1.1–1.4 kA through the port FET for under 2 µs (5–14 mJ). That's why the port uses the bank FET (1024 A pulse, 979 mJ avalanche). A short in the harness (200 nH or more) is 400–540 A.
@@ -43,7 +48,7 @@ Legs move to rev C. Their port footprints stay on the board, unfitted.
 
 | Item | What changed |
 | --- | --- |
-| 12 V converter | **Own 12 A buck on a separate small board:** LM5146, BSC070/BSC040, XAL1010 6.8 µH, 400 kHz, starting from TI's 48 V → 12 V application circuit 2. It bolts to the -X rail where the DVE sat and plugs into the same J24 pigtail. **The DVE0125V2NBC and its adapter stay the drop-in fallback.** Kept off the main board on purpose: its 4–6 W goes into the frame rail instead of a board that already carries 11 W of FET heat; it keeps switching noise away from the meters and the latch; and the main board has no pour budget left (layout review finding 2). The input runs through an LC filter: tools/absorber_sim.py now follows the bank-trip spike through U7, F2, the pigtail and the filter, and buck VIN peaks at 86 V (100 V parts). UVLO is 30.2 V on and 27.2 V off, below the 30.5 V worst sag |
+| 12 V converter | **Own 12 A buck on a separate small board:** LM5146, BSC070/BSC040, XAL1010 6.8 µH, 400 kHz, starting from TI's 48 V → 12 V application circuit 2. It bolts to the -X rail where the DVE sat and plugs into the same J24 pigtail. **The DVE0125V2NBC and its adapter stay the drop-in fallback.** Kept off the main board on purpose: its 4–6 W goes into the frame rail instead of a board that already carries 11 W of FET heat; it keeps switching noise away from the meters and the latch; and the main board has no pour budget left (layout review finding 2). The input runs through an LC filter: schematic/tools/absorber_sim.py now follows the bank-trip spike through U7, F2, the pigtail and the filter, and buck VIN peaks at 86 V (100 V parts). UVLO is 30.2 V on and 27.2 V off, below the 30.5 V worst sag |
 | Meters | INA228 → INA237: same pinout, addresses and 85 V rating. 16-bit, no energy accumulator, so the Pi integrates |
 | Brake leads | M4 terminals → one Mini-Fit Jr 2-pin header per resistor (J3, J25). A different connector family from every 12 V output, so no 12 V load can mate a 57 V brake header |
 | Limb outputs and returns | Soldered pigtail pairs with strain-relief holes (KiCad SolderWire-2.5sqmm Relief): 16 AWG silicone for arms, waist and aux into the XT30(2+2), as in the arm trunk plan; 14 AWG for the legs (rev C). See layout/HARNESS_INTERFACE.md for the thermal check |
@@ -73,7 +78,7 @@ Legs move to rev C. Their port footprints stay on the board, unfitted.
 
 ## Layout
 
-The layout findings are written into [LAYOUT_RULES.md](LAYOUT_RULES.md), and tools/place.py follows them:
+The layout findings are written into [LAYOUT_RULES.md](LAYOUT_RULES.md), and schematic/tools/place.py follows them:
 - single-sided;
 - 2 oz on all four layers, L2 solid GND;
 - BAT pair at the top edge;

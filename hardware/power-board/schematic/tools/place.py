@@ -5,7 +5,8 @@ Board coordinates follow the floorplan: X -50..50 (robot's left = +X), Y 170..34
 import os,sys,json
 sys.path.insert(0,os.path.dirname(__file__)); from sx import *
 import pcbnew
-FPDIR=os.environ.get('KICAD_FP',next(p for p in ('/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints/','C:/Program Files/KiCad/10.0/share/kicad/footprints/') if os.path.isdir(p)))
+FPDIR=os.environ.get('KICAD_FP') or next((p for p in ('/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints/','C:/Program Files/KiCad/10.0/share/kicad/footprints/') if os.path.isdir(p)),None)
+assert FPDIR,'set KICAD_FP to the KiCad footprints folder'
 HERE=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 N=parse(open(sys.argv[1]).read())
 OX,OY=100,100                       # page offset, mm
@@ -82,7 +83,7 @@ FIX['RS9']=(-20.4,326.4,180,False); FIX['R53']=(45.5,270.3,0,False)
 FIX['U1']=(-8.25,312.6,180,False); FIX['U7']=(-13.8,320.15,270,False)
 FIX['C87']=(-8.6,307.6,90,False); FIX['C88']=(-13.1,307.6,90,False)   # bank A drain ceramics, SW_D pad down onto the drain pour
 FIX['C89']=(5.8,312.4,90,False); FIX['C90']=(9.4,312.4,90,False); FIX['C91']=(-8.6,327.6,0,False); FIX['C92']=(-8.6,331.0,0,False)   # pack-entry ceramics on the BAT pour
-# absorber: six 10 x 10 cans in a 2 x 3 block right of the pack keep-out (X -5..25, Y 315-340), D7 pair beside RS1
+# absorber: eight 10 x 10 cans in a 2 x 4 block right of the pack keep-out (X -5..25, Y 315-340), D7 pair beside RS1
 for k,r in enumerate(('C38','C44','C45','C82','C83','C84','C85','C86')): FIX[r]=(30.75+11.5*(k%2),320.7-13.8*(k//2),90,False); FIX['D1']=(-14.5,334.5,90,False)
 FIX['Q8']=(-9.0,296.0,0,False); FIX['Q9']=(9.0,296.0,0,False); FIX['Q1']=(-9.0,276.0,0,False); FIX['Q2']=(9.0,276.0,0,False)
 for k,r in enumerate(('C10','C11','C12','C13','C47')): FIX[r]=(-23.2+k*11.6,260.5,270,False)   # + pad up, toward bank B's sources
@@ -232,7 +233,6 @@ seg(pcbnew.Edge_Cuts,(-50,340),(50,YB),0.1)
 for sx_ in (-1,1):
     for Y in (YB+4,265,336):
         h=pcbnew.FootprintLoad(FPDIR+'MountingHole.pretty','MountingHole_3.2mm_M3_Pad'); h.SetReference(f'H{len([f for f in b.GetFootprints() if f.GetReference().startswith("H")])+1}')
-        gnd=nets.get(('J2','1'));
         b.Add(h); h.SetPosition(P(sx_*46,Y))
 TIE=[(-7.0,336.0),(23.0,336.0)]+[(s*45.0,Y-8.75) for s in (-1,1) for Y in (244.7,227.2,209.7)]  # one hole per pair: the tie loops through it and round the board edge
 for k,(X,Y) in enumerate(HSINK):
@@ -258,8 +258,8 @@ for sx_ in (-1,1):
     for Y in (YB+4,265,336): keepout(sx_*46,Y,3.2+0.6,f'KO_H_{sx_*46}_{Y:g}')
 for a,c,t in (((-40,304),(40,264),'Fan zone (upper)'),((-40,233),(40,193),'Fan zone (lower)')):
     seg(pcbnew.Cmts_User,a,c); txt(pcbnew.Cmts_User,a[0]+12,a[1]-1.5,t)
-for (a,c,t) in (((-15,304),(15,287),'Thermal: bank A drain SW_D, all 4 layers (2 oz), 30 vias/tab'),
-                ((-15,286),(15,266),'Thermal: bank B drain MID, all 4 layers (2 oz), 30 vias/tab')):
+for (a,c,t) in (((-15,304),(15,287),'Thermal: bank A drain SW_D, all 4 layers (2 oz outer / 1 oz inner), via field under each tab (route_power.py)'),
+                ((-15,286),(15,266),'Thermal: bank B drain MID, all 4 layers (2 oz outer / 1 oz inner), via field under each tab (route_power.py)')):
     seg(pcbnew.User_1,a,c,0.3); txt(pcbnew.User_1,a[0]+1,c[1]+1.5,t,1.0)
 for blk,(X0,X1,Y0,Y1) in BLK.items():
     seg(pcbnew.User_2,(X0,Y1),(X1,Y0),0.1); txt(pcbnew.User_2,X0+0.8,Y1-0.8,blk,0.9)

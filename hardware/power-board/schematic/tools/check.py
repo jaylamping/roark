@@ -41,7 +41,7 @@ ok(n('U17',8)=='MID_S' and two('MID','MID_S',('R',)) and n('U17',9)=='GND' and n
 ok(n('U12',8)=='D_L2' and n('U11',8)=='V_L1','U12 reads VBUS on the R arm port input, U11 its port output')
 ok(n('U1',3)=='UVLO' and len(two('RUN_B','UVLO'))==1 and len(two('UVLO','GND'))==1 and diode('RUN_B','RUN'),'UVLO only from RUN, through its own diode: no RUN, no bank')
 ok(not any(r[0]=='R' and 'RUN' in (n(r,1),n(r,2)) and {n(r,1),n(r,2)}&{'UVLO','EN_A'} for r in comp),'no resistor from RUN straight to UVLO or EN_A: a pin fault cannot back-drive RUN')
-ok(not any(n(r,p) in('BAT','VBUS') for r,p in pin if r!='x' and n(r,p)=='UVLO'),'UVLO has no path to the bus')
+ok(not any(n(r,q) in ('BAT','VBUS') for r,p in nets['UVLO'] if r[0] in 'RCD' for r2,q in pin if r2==r),'UVLO has no resistor, capacitor or diode to the bus')
 pk=[r for r in comp if r[0]=='J' and n(r,1)=='BAT']
 ok(len(pk)==1 and n(pk[0],2)=='GND' and not any(r[0]=='J' and r!=pk[0] for r,p in nets['BAT']),'pack in on one keyed two-pole connector, BAT and GND side by side')
 # nothing bulky ahead of the bank
@@ -131,7 +131,6 @@ ok(not any(r=='J21' for r,p in nets['RUN']+nets['VCTL']+nets['VBUS']),'nothing a
 ok(any(r[0]=='D' and n(r,1)=='MID_S' and n(r,2)=='GND' for r in comp),'U17 VBUS pin clamped')
 ok(not any(n(u,p)=='I2C_SDA' for u in addr.values() for p in (1,2)),'no meter address strap on SDA')
 ok(two('+12V','SPON_EN',('R',)) and val(two('SPON_EN','GND',('R',))[0])=='33k','U18 EN divider keeps EN under 6 V up to 20 V of back-feed')
-ok(len({len([p for r2,p in pin if r2==j]) for j in ('J22',)}|{2})==2 or True,'')
 ok(sum(1 for p in range(1,5) if n('J22',p))==4 and n('J5',1)!='SPARE_SW','SPARE_SW on a 4-pin header, keyed apart from the 2-pin outputs')
 for j,nm in (('J5','Jetson'),('J6','Pi buck'),('J7','fans')):
     ok(any(r[0]=='F' and {n(r,1),n(r,2)}=={'+12V',n(j,1)} for r in comp),nm+' output fused')
@@ -146,3 +145,4 @@ ok(two('PF_VR','PF_REF',('R',)) and two('PF_OUT','PF_REF',('R',)),'power-fail hy
 qf=[q for q in comp if q[0]=='Q' and n(q,1)=='PF_OUT' and n(q,2)=='GND']
 ok(len(qf)==1 and two(n(qf[0],3),'PWR_FAIL_N',('R',)) and n('J21',8)=='PWR_FAIL_N' and not two('PWR_FAIL_N','+3V3_PI',('R',)),'PWR_FAIL_N open drain on J21 pin 8, pull-up on the Pi side')
 print('audited',cnt[0]); print('FAILS',len(fail))
+sys.exit(1 if fail else 0)

@@ -126,7 +126,7 @@ note('''Ahead of the E-stop: motors off, compute stays up. Soft start in block 5
 Off board on the top front rail (frame 3877317), baseplate down, 4x M3 into its threaded baseplate (50.8 x 15.24 mm, 3 mm max depth). J24 sits on the board's top edge, -X half. -Vin and -Vout both go to GND: the robot has one ground, P-.
 Pigtail about 150 mm, twisted pairs, 18 AWG: 2 wires each way on the input, 3 each way on +12 V (0.1 V drop at 12 A including contacts). At the converter end: 47 uF 100 V aluminium (its ESR damps the lead, 75-150 nH) plus 1 uF across +VIN/-VIN at the pins. 300 W, 25 A, 94.6 %: about 9 W at the 140 W ceiling, into the plate.
 Input UVLO 32-36 V on, 30-34 V off, fixed on the DVE: near an empty pack under sag, compute can drop before the BMS cuts out.
-INA228 addresses, no strap on SDA: L arm 0x40, R arm 0x41, aux 0x43, L leg 0x44, R leg 0x45, SPARE_SW 0x47, waist 0x4C, 12 V 0x4D, MID 0x4F. Powered by the Pi's 3.3 V; Pi pull-ups on I2C.''',(25.4,424))
+INA237 addresses, no strap on SDA: L arm 0x40, R arm 0x41, aux 0x43, L leg 0x44, R leg 0x45, SPARE_SW 0x47, waist 0x4C, 12 V 0x4D, MID 0x4F. Powered by the Pi's 3.3 V; Pi pull-ups on I2C.''',(25.4,424))
 
 
 # ---------- brick soft start ----------
@@ -179,7 +179,7 @@ Close order: U8 FLT holds U1 UVLO low (about 1.9 V, through BAT46W + 10k) until 
 Off edge: EN falls first, 4.6 us typ, 6.5 us max, then G1PD pulls 390 nC through 22R: about 2-3 us. On a bus short U1's breaker can open B first, so the spike can land on MID with A on: the absorber (block 10) bounds BAT, and so MID, and U17 has its own clamp.
 Short-circuit comparator on RS1: 40.2k gives 99 mV, 158-242 A, above U1's limit. CS+/CS- through 0R with a DNP cap: TI's RC placeholder against nuisance trips. TMR 100k only (C29 DNP): fastest response, 4.3 us, still latch-off, cleared by an E-stop cycle. It covers reset with B shorted: A opens, and FLT holds B off.
 Driver off holds gate to source with no path to GND, so MID can be biased: 47k + 47k, 0.47 x pack nominal, 0.6 mA, 16 mW each. Hot FET leakage (200 uA per bank at 125 C) moves MID by up to about 4 V. U17 reads MID through 33k with a 68 V zener at the pin (85 V max): calibrate the 3 % gain.
-Self-test before reset, pack 36-54.6 V, BMS telemetry for pack voltage: MID 0.33-0.60 x pack and VBUS under 3 V is healthy (U11 reads V_L1: use the highest limb meter). MID within 2 V of pack: A shorted. MID under 3 V: B shorted. VBUS high: both shorted, or the bus has not bled down yet, about 11 s on board caps, longer with drives.
+Self-test before reset, pack 36-54.6 V, BMS telemetry for pack voltage: MID 0.33-0.60 x pack and VBUS under 3 V is healthy (U12: it reads VBUS at the R arm port input, so it works with every port off). MID within 2 V of pack: A shorted. MID under 3 V: B shorted. VBUS high: both shorted, or the bus has not bled down yet, about 11 s on board caps, longer with drives.
 U17 reads MID on its VBUS pin, and clamp duty on IN+ (block 10d). VBUS alone cannot see one shorted bank, which is why MID is read.''',(650,428),165)
 
 # ---------- spare 12 V outputs ----------

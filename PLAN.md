@@ -386,7 +386,7 @@ stays on the Pi or storage, referenced by hash. **Done when** C0 to C2 pass atte
 
 Not built before milestone 4; when it is, the sim drive gains a power-board model first. Requirements:
 [STATUS.md, power board section](https://github.com/jaylamping/marengo/blob/main/hardware/STATUS.md#power-board-and-battery-what-software-must-do) and
-[REV_B_PARTS.md](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/pdb/REV_B_PARTS.md#accepted-risks-and-software-requirements-joey-2026-11-07-rev-b5-rows-marked):
+[REV_B_PARTS.md](hardware/power-board/REV_B_PARTS.md#accepted-risks-and-software-requirements-joey-2026-11-07-rev-b5-rows-marked):
 
 - Heartbeat toggled every 50 to 100 ms from the same health decision that feeds the systemd watchdog, never from its own timer;
   a falling edge at least every 270 ms or the latch drops and needs a manual reset.
