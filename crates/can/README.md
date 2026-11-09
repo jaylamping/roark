@@ -39,10 +39,12 @@ the collect deadline. That is evidence the drive is there and what state it was 
 are no sequence numbers to prove which command a status answers. Faults are never filtered: a status or report
 updates what the drive was seen saying, and any status, report, version reply or type-21 fault report with a fault set
 latches `fault_seen`. Missing replies aren't counted toward a drive's silence for an Enable or Disable, for anything
-sent to a drive this host hasn't enabled (which covers the post-Disable silence, however long), or for the first
-`ENABLE_TO_RUN_NS` (50 ms) after an Enable while the drive hasn't shown Run: the drive may take 10 ms to reach Run, and
-goes silent after a Disable (PLAN item 2 Silence windows). `silent_ticks` and `silence_misses` must be at least one and
-must fire before the drives' own timeout, or the bus is refused at startup. Each drive's last echo of this host's frame
+sent to a drive this host never enabled or saw reach Reset after its Disable, for `stop_confirm_ns` (100 ms) after a
+Disable no Reset has answered (a Disable sent again keeps the first one's window), or for the first `ENABLE_TO_RUN_NS`
+(50 ms) after an Enable while the drive hasn't shown Run: the drive may take 10 ms to reach Run, and goes silent after a
+Disable (PLAN item 2 Silence windows). A lost Disable therefore can't leave a running drive's silence uncounted.
+`silent_ticks` and `silence_misses` must be at least one and must stop a limb before the drives' own timeout, or the bus
+is refused at startup. Each drive's last echo of this host's frame
 to it (`last_echo`: its kind and when it was read) is kept, for the enable sequence's "reporting-off echo plus one
 tick".
 
@@ -91,8 +93,8 @@ and one already queued is cancelled before it goes, so slow traffic never keeps 
 
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
 a drive table past `MAX_DRIVES`, a drive listed twice, a limb index past the table, and timing that breaks its
-promises (`Timing::check`: for one, three periods must fit inside the drives' 50 ms timeout, so the rate is at least
-61 Hz). The Linux shell (`spawn`) owns the socket: it
+promises (`Timing::check`: for one, three missed replies and the tick that stops on them, four periods, must fit inside
+the drives' 50 ms timeout, so the rate is at least 81 Hz). The Linux shell (`spawn`) owns the socket: it
 opens only `vcan` until the real adapter is supported (PLAN step 8), takes every ID (no kernel filter), and reads each
 frame with its kernel timestamp, its direction and the overflow count in one `recvmsg`. `bus_info` is the session's
 record of that socket, from the same constants `open` applies, and `spawn` returns the receive buffer the kernel

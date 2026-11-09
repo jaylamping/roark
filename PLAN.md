@@ -206,7 +206,9 @@ The legacy code holds real bench lessons. Copy them into the codec's docs and te
 - **Set Zero:** only with the limb stopped. After a Set Zero on an enabled drive, it goes silent 511 to 614 ms later for 45 to 66 ms
   and drops every frame in that window. Send nothing that matters to that drive for 800 ms.
 - **Silence windows:** don't count missed replies during the enable-to-Run window or for 100 ms after a Disable (post-Disable
-  silences up to 48.7 ms are measured).
+  silences up to 48.7 ms are measured). A Reset read after the Disable ends counting until the next Enable: the drive is
+  disabled, and a silent disabled drive is `offline` (item 6 Silence row). Without that Reset, counting resumes after the
+  100 ms.
 
 **Transmit allowlist:** types 0, 1, 3, 4, 6, 17, 18, 24. Type 7 (set ID) only from the set-ID command with exactly one drive
 answering on that bus. Never 22, 23 or 25; never write 0x7029, 0x702B or 0x702A; never type 4 with the fault-clear byte set.
