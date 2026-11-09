@@ -66,7 +66,7 @@ def lfs_history(
 def new_objects(
     rev_args: list[str], stored: dict[str, tuple[int, str]], root: Path = REPO_ROOT
 ) -> dict[str, int]:
-    """LFS oid -> size for objects the commits add that the remotes don't already store."""
+    """LFS oid -> size for objects the commits add that `stored` (the target remote's objects) doesn't hold."""
     blobs = [b for b, _ in changed_blobs(rev_args, root=root)]
     pushed = {ptr[0]: ptr[1] for _, ptr in blob_sizes(blobs, root=root).values() if ptr}
     return {oid: size for oid, size in pushed.items() if oid not in stored}
