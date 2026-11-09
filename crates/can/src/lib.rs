@@ -10,7 +10,7 @@ mod stop;
 #[cfg(target_os = "linux")]
 #[expect(
     unsafe_code,
-    reason = "recvmsg and poll for the frame's flags, timestamp and drop count (rust.md section 10)"
+    reason = "recvmsg for the frame's flags, timestamp and drop count (rust.md section 10)"
 )]
 mod sys;
 mod tick;
