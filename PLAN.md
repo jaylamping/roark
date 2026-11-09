@@ -115,6 +115,8 @@ it lives once, as `name:` in the skeleton. The architecture map, with owners and
   CAN link files), `docs/`, `conventions/`.
 - **Toolchain and lints:** per [conventions/rust.md](conventions/rust.md). Target `aarch64-unknown-linux-gnu`, 64-bit Raspberry
   Pi OS, kernel 6.1 or newer (gs_usb hardware timestamps).
+- **File size limit:** no file of 100 MB (100,000,000 bytes) or more in git, LFS files included (Joey, 2026-11-08).
+  `tools/check_file_sizes.py` holds it as `MAX_FILE_BYTES`; [cad.md](conventions/cad.md) rule 5 says how it's checked.
 - **CI on every PR:** the gates in rust.md, including the `vcan` fault tests. If hosted runners can't load `vcan`, those tests run
   on a self-hosted runner or the Pi, never skipped silently. No hardware in CI.
 - **Deploy:** cross-build, install to `/opt/robot/releases/<rev>` with an atomic `current` symlink; config in `/etc/robot`;
@@ -384,7 +386,7 @@ stays on the Pi or storage, referenced by hash. **Done when** C0 to C2 pass atte
 
 Not built before milestone 4; when it is, the sim drive gains a power-board model first. Requirements:
 [STATUS.md, power board section](https://github.com/jaylamping/marengo/blob/main/hardware/STATUS.md#power-board-and-battery-what-software-must-do) and
-[REV_B_PARTS.md](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/pdb/REV_B_PARTS.md#accepted-risks-and-software-requirements-joey-2026-11-07-rev-b5-rows-marked):
+[REV_B_PARTS.md](hardware/power-board/REV_B_PARTS.md#accepted-risks-and-software-requirements-joey-2026-11-07-rev-b5-rows-marked):
 
 - Heartbeat toggled every 50 to 100 ms from the same health decision that feeds the systemd watchdog, never from its own timer;
   a falling edge at least every 270 ms or the latch drops and needs a manual reset.

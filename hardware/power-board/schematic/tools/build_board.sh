@@ -12,6 +12,7 @@ W=$(cd "$1" && (pwd -W 2>/dev/null || pwd)); FROM=${2:-place}   # pwd -W: a Wind
 ROOT=$(cd "$(dirname "$0")/.." && pwd); LAYOUT="$ROOT/../layout"
 KP="/c/Program Files/KiCad/10.0/bin/python.exe"; KC="/c/Program Files/KiCad/10.0/bin/kicad-cli.exe"
 [ -x "$KP" ] || { KP=/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3; KC=/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli; }
+PY=$(command -v python3 || command -v python)
 export MSYS_NO_PATHCONV=1
 q() { grep -v 'memory leak'; }
 cd "$ROOT"
@@ -30,13 +31,22 @@ if run power; then
   [ "${STOP:-}" = power ] && exit 0   # STOP=power: build the base board only
 fi
 if run route; then
-  python -u tools/grid_route.py "$W/copper.json" "$W/routes.json" > "$W/route.log" 2>&1; grep -E '^done|Traceback' "$W/route.log" | cut -c1-400
+  "$PY" -u tools/grid_route.py "$W/copper.json" "$W/routes.json" > "$W/route.log" 2>&1; grep -E '^done|Traceback' "$W/route.log" | cut -c1-400
   [ -s "$W/routes.json" ] || { echo 'routing failed'; exit 1; }
 fi
 if run import; then
   "$KP" tools/route_import.py "$W/base.kicad_pcb" "$W/routes.json" "$W/routed.kicad_pcb" 2>&1 | q | cut -c1-300
-  cp "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/routed.kicad_pro"; cp "$LAYOUT/marengo_pdu_revb.kicad_dru" "$W/routed.kicad_dru"
-  "$KC" pcb drc --format json --schematic-parity -o "$W/drc.json" "$W/routed.kicad_pcb" >/dev/null 2>&1
-  python -c "import json,collections,sys;d=json.load(open(sys.argv[1]));print('DRC',dict(collections.Counter(v['type'] for v in d['violations'])),'unconnected',len(d['unconnected_items']))" "$W/drc.json"
-  "$KP" tools/route_checks.py "$W/routed.kicad_pcb" 2>&1 | q > "$W/checks.txt"; grep -v '^    (' "$W/checks.txt"
+  # The project and rules share the board's base name, so DRC uses the board's rules. The schematic goes in under the
+  # board's name and the name the project file gives its top sheet, so parity has a sheet either way.
+  cp "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/routed.kicad_pro" && cp "$LAYOUT/marengo_pdu_revb.kicad_dru" "$W/routed.kicad_dru" \
+    && cp "$ROOT/marengo_pdu_revb.kicad_sch" "$W/routed.kicad_sch" && cp "$ROOT/marengo_pdu_revb.kicad_sch" "$W/marengo_pdu_revb.kicad_sch" \
+    || { echo 'copying the project files failed'; exit 1; }
+  rm -f "$W/drc.json"
+  "$KC" pcb drc --format json --schematic-parity -o "$W/drc.json" "$W/routed.kicad_pcb" > "$W/drc.log" 2>&1
+  [ -s "$W/drc.json" ] || { echo 'DRC wrote no report:'; cat "$W/drc.log"; exit 1; }
+  if grep -qi 'failed to fetch schematic' "$W/drc.log"; then echo 'DRC skipped the schematic parity check:'; cat "$W/drc.log"; exit 1; fi
+  "$PY" -c "import json,collections,sys;d=json.load(open(sys.argv[1]));print('DRC',dict(collections.Counter(v['type'] for v in d['violations'])),'unconnected',len(d['unconnected_items']),'parity',len(d.get('schematic_parity',[])))" "$W/drc.json"
+  "$KP" tools/route_checks.py "$W/routed.kicad_pcb" > "$W/checks.txt" 2>&1; rc=$?
+  q < "$W/checks.txt" | grep -v '^    ('
+  [ "$rc" = 0 ] || { echo "route_checks failed (exit $rc)"; exit "$rc"; }
 fi

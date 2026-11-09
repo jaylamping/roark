@@ -1,5 +1,5 @@
 """12 V, 12 A buck board (rev B5): replaces the Murata DVE on the -X rail and plugs into the same J24 pigtail.
-Edit this, not the .kicad_sch. Run: python -X utf8 gen_buck.py <this folder>, then ERC (tools/regen_buck.sh).
+Edit this, not the .kicad_sch. Run: python -X utf8 gen_buck.py <this folder>, then ERC (regen_buck.sh in this folder).
 Starting point: TI LM5146 datasheet SNVSBV0A, application circuit 2 (48 V to 12 V, 8 A, 400 kHz): same L, C and
 compensation, uprated FETs and inductor for 12 A, our UVLO, an input filter and the J24 interface."""
 import os,sys,textwrap

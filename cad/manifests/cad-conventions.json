@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "description": "File name rules for native CAD and vendor models. A part or assembly name starts with its region folder (hyphens become underscores); stems are lower case (extensions match in any case); no robot name in file names. Checked by tools/cad/check_cad_layout.py.",
+  "partFilenamePattern": "^[a-z0-9]+(_[a-z0-9]+)+\\.sldprt$",
+  "assemblyFilenamePattern": "^[a-z0-9]+(_[a-z0-9]+)*_asm\\.sldasm$",
+  "vendorFilenamePattern": "^vendor_[a-z0-9]+_[a-z0-9_-]+\\.[a-z0-9_]+$",
+  "vendorNameExtensions": [
+    ".sldprt",
+    ".sldasm",
+    ".step",
+    ".stp",
+    ".x_t",
+    ".x_b",
+    ".igs",
+    ".iges"
+  ],
+  "forbiddenNameTokens": [
+    "roark",
+    "marengo"
+  ]
+}

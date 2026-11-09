@@ -4,7 +4,8 @@ Usage: python tools/latch_sim.py [path to ngspice.dll]. Values follow gen.py blo
 Each case prints the RUN voltage it ends on and PASS or FAIL against what the latch must do."""
 import ctypes,os,sys,tempfile
 DLL=sys.argv[1] if len(sys.argv)>1 else 'C:/Program Files/KiCad/10.0/bin/ngspice.dll'
-os.add_dll_directory(os.path.dirname(DLL)); ng=ctypes.CDLL(DLL)
+if hasattr(os,'add_dll_directory'): os.add_dll_directory(os.path.dirname(DLL))
+ng=ctypes.CDLL(DLL)
 OUT=ctypes.CFUNCTYPE(ctypes.c_int,ctypes.c_char_p,ctypes.c_int,ctypes.c_void_p)
 NUL=ctypes.CFUNCTYPE(ctypes.c_int,ctypes.c_int,ctypes.c_bool,ctypes.c_bool,ctypes.c_int,ctypes.c_void_p)
 log=[]
@@ -126,3 +127,4 @@ for cn,bn,bp in CORN:
     r=run('1m','0 1 1 1',f'0 0 {t0} 0 {t0+1e-4} 1 {t0+0.02} 1 {t0+0.0201} 0 1 0','0.1',bn,bp,wdo='0 1 1 1')
     case(f'{cn}: watchdog low (Pi dead), reset is blocked',max(x[1] for x in r)<H,f'RUN max {max(x[1] for x in r):.2f} V')
 print('FAILS',fails)
+sys.exit(1 if fails else 0)
