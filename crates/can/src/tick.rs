@@ -223,6 +223,12 @@ impl BusTick {
         })
     }
 
+    /// Whether a bus error has latched (bus-off, or the socket failed): there is nothing to send on.
+    #[must_use]
+    pub(crate) fn bus_lost(&self) -> bool {
+        self.bus_error.is_some()
+    }
+
     /// The tick's timing.
     #[must_use]
     pub fn timing(&self) -> Timing {
@@ -297,14 +303,32 @@ impl BusTick {
 
     /// Whether every limb is idle or stopped now, so nothing needs stopping (the shell's exit check, after the drain).
     #[must_use]
-    pub fn settled(&self) -> bool {
+    pub(crate) fn settled(&self) -> bool {
         self.limbs.iter().flatten().all(|l| l.state.settled())
+    }
+
+    /// Whether every limb is idle: nothing was ever enabled, or every limb was re-armed.
+    #[must_use]
+    pub(crate) fn all_idle(&self) -> bool {
+        self.limbs
+            .iter()
+            .flatten()
+            .all(|l| l.state == LimbState::Idle)
+    }
+
+    /// Whether `snap` shows every limb in the state it is in now.
+    #[must_use]
+    pub(crate) fn shown_in(&self, snap: &Snapshot) -> bool {
+        self.limbs
+            .iter()
+            .enumerate()
+            .all(|(i, l)| l.map(|l| l.state) == snap.limb(i).map(|v| v.state))
     }
 
     /// Whether the bus is healthy now: no latched bus error and not error-passive. The snapshot's `healthy` is this at
     /// `end`.
     #[must_use]
-    pub fn healthy(&self) -> bool {
+    pub(crate) fn healthy(&self) -> bool {
         self.bus_error.is_none() && !self.error_passive
     }
 

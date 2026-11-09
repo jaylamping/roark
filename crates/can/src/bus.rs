@@ -35,8 +35,9 @@ const RCVBUF_BYTES: libc::c_int = 1 << 20;
 /// The error classes the socket reports: every one (`CAN_ERR_MASK`).
 const ERROR_FILTER: u32 = libc::CAN_ERR_MASK;
 
-/// The session's record of the socket [`spawn`] opens on `bus`: the same settings `open` applies, from the same
-/// constants, so the recording can't drift from the socket. `bitrate` is the skeleton's.
+/// The session's record of the socket [`spawn`] opens on `bus`: the settings `open` applies. The error filter comes from
+/// the same constant; the timestamp source and the empty receive filter are stated here and must change with `open`.
+/// `bitrate` is the skeleton's.
 #[must_use]
 pub fn bus_info(bus: &str, bitrate: u32) -> BusInfo {
     BusInfo {
@@ -343,12 +344,13 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
     };
     let mut n = clock.first_due(timing.period_ns);
     loop {
-        let mut scheduled = clock.at(n, timing.period_ns);
-        if let Err(e) = clock.sleep_until(scheduled) {
-            // No clock to keep the schedule: stop the drives, sleeping relative to get there.
+        let due = clock.at(n, timing.period_ns);
+        if let Err(e) = clock.sleep_until(due) {
+            // No clock to keep the schedule: stop the drives, sleeping relative to get there. The socket is still
+            // there, so the stop's frames are written as usual.
             tick.request_stop();
             outcome.error.get_or_insert(e);
-            sleep_relative(scheduled.saturating_duration_since(mono_now()));
+            sleep_relative(due.saturating_duration_since(mono_now()));
         }
         // A stall (in the sleep, or the last tick overrunning) may have carried the thread past whole ticks: run the
         // one now in progress, and count the ones between as missed deadlines; `begin` judges whether this one is late.
@@ -356,8 +358,8 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         if current > n {
             tick.skipped(current - n);
             n = current;
-            scheduled = clock.at(n, timing.period_ns);
         }
+        let scheduled = clock.at(n, timing.period_ns);
         let mut batch = TickBatch::new(n, clock.ns(scheduled), wall_ns());
         // The overflow count is the last one seen; a frame read this tick may update it.
         batch.kernel_drops = outcome.last.map_or(0, |s| s.counters.kernel_drops);
@@ -367,7 +369,11 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             lose(&mut tick, &mut outcome, e);
         }
         if links.exit.load(Ordering::Acquire) {
-            if tick.settled() {
+            // Done once nothing needs stopping and control has seen where every limb ended: the last snapshot shows
+            // the same states, or every limb is idle. A limb this drain stopped (a latched error) runs on to publish it.
+            if tick.settled()
+                && (tick.all_idle() || outcome.last.is_some_and(|s| tick.shown_in(&s)))
+            {
                 // The frames this drain read are still recorded, with the health they left the bus in.
                 batch.valid = tick.healthy();
                 outcome.recorder.record(batch);
@@ -376,7 +382,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             tick.request_stop();
         }
         let command = newest(&mut links.commands);
-        // Planned against the tick's own schedule, so a wake any number of periods late is a missed deadline.
+        // Planned against the tick's own schedule: a wake past its send window is a missed deadline.
         let sends = tick.begin(
             n,
             clock.ns(mono_now()),
@@ -407,8 +413,8 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
     outcome
 }
 
-/// Write each planned send once, in order, and report it to the tick. Once a write loses the bus the rest aren't
-/// tried: there is no bus to send on.
+/// Write each planned send once, in order, and report it to the tick. Once the bus is lost (a write or read failed, or
+/// a bus-off) the rest aren't tried: there is no bus to send on. A failed clock alone doesn't stop the writes.
 fn send_all(
     socket: &CanSocket,
     clock: &Clock,
@@ -419,7 +425,7 @@ fn send_all(
 ) {
     for (index, send) in sends.iter().enumerate() {
         // A Disable or reporting off never expires: late, it is still the right one (can.md section 2).
-        let result = if outcome.error.is_some() {
+        let result = if tick.bus_lost() {
             SendOutcome::Failed
         } else if send.expires && mono_now() > send_by {
             SendOutcome::Expired
@@ -463,7 +469,16 @@ fn drain(
     batch: &mut TickBatch,
 ) -> io::Result<()> {
     for read in 0..DRAIN_LIMIT {
-        let Some(received) = sys::recv(socket.as_fd())? else {
+        let received = match sys::recv(socket.as_fd()) {
+            Ok(received) => received,
+            // Interrupted twice: frames may still be queued, so this drain didn't empty the socket.
+            Err(e) if e.kind() == io::ErrorKind::Interrupted => {
+                tick.drained(Drain::Unemptied);
+                return Ok(());
+            }
+            Err(e) => return Err(e),
+        };
+        let Some(received) = received else {
             tick.drained(if read > DRAIN_MAX {
                 Drain::Backlog
             } else {
@@ -492,7 +507,14 @@ fn collect(
         if !sys::wait(socket.as_fd(), deadline - now)? {
             continue;
         }
-        while let Some(received) = sys::recv(socket.as_fd())? {
+        loop {
+            let received = match sys::recv(socket.as_fd()) {
+                Ok(Some(received)) => received,
+                // Interrupted twice: wait and read again; nothing here depends on having emptied the socket.
+                Ok(None) => break,
+                Err(e) if e.kind() == io::ErrorKind::Interrupted => break,
+                Err(e) => return Err(e),
+            };
             take(clock, tick, batch, received);
             if mono_now() >= deadline {
                 return Ok(());
