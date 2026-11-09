@@ -20,16 +20,24 @@ use robstride::{
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use socketcan::{CanDataFrame, CanSocket, EmbeddedFrame, Socket, StandardId};
 use telemetry::wire::Frames;
-use telemetry::{
-    BusInfo, Direction, Epoch, Recorder, Recording, Session, SessionInfo, SkeletonRef, Stage,
-    TimestampSource,
-};
+use telemetry::{Direction, Epoch, Recorder, Recording, Session, SessionInfo, SkeletonRef, Stage};
 
 /// A bus no other sim test uses.
 const BUS: &str = "can2";
 /// Slow enough that the test thread, playing control, makes every tick on a loaded machine.
 const HZ: u64 = 100;
 const HOLD_TICKS: usize = 50;
+
+/// The tick at `HZ`, with the send window stretched to the collect deadline: these tests check the loop and its
+/// recording, not the wake budget, so a test thread that wakes a few milliseconds late on a loaded runner is not a
+/// late wake (the tick tests cover that).
+fn timing() -> Timing {
+    let at_hz = Timing::at_hz(HZ);
+    Timing {
+        send_window_ns: at_hz.collect_ns,
+        ..at_hz
+    }
+}
 /// The marker sent until `candump` has it, so the capture is known to cover the whole run.
 const MARKER: u16 = 0x7AB;
 
@@ -83,14 +91,7 @@ fn info() -> SessionInfo {
             path: "inline".to_owned(),
             sha256: "00".repeat(32),
         },
-        buses: vec![BusInfo {
-            name: BUS.to_owned(),
-            bitrate: 1_000_000,
-            timestamps: TimestampSource::Software,
-            receive_filters: Vec::new(),
-            error_filter: u32::MAX,
-            adapter_firmware: None,
-        }],
+        buses: vec![can::bus_info(BUS, 1_000_000)],
     }
 }
 
@@ -236,6 +237,7 @@ fn play_control(
         );
         answered += snap.drives().filter(|d| d.answered).count();
     }
+    // One tick of slack: the test thread playing control may miss one tick on a loaded runner (two would stop the bus).
     assert!(
         answered >= 2 * (HOLD_TICKS - 1),
         "answered {answered} of {}",
@@ -289,7 +291,7 @@ fn spawn_refuses_anything_but_vcan() {
             BusConfig {
                 name: bus.to_owned(),
                 drives: vec![drive(101, 0)],
-                timing: Timing::at_hz(HZ),
+                timing: timing(),
             },
             BusLinks {
                 commands,
@@ -322,7 +324,7 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
     ensure_vcan(IDLE_BUS).unwrap();
     let root = std::env::temp_dir().join(format!("sim-suite-idle-{}", std::process::id()));
     let mut info = info();
-    info.buses[0].name = IDLE_BUS.to_owned();
+    info.buses[0] = can::bus_info(IDLE_BUS, 1_000_000);
     let session = Session::start(&root, info, 1_000_000_000).unwrap();
     let session_dir = session.dir().to_owned();
     let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
@@ -336,7 +338,7 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
         BusConfig {
             name: IDLE_BUS.to_owned(),
             drives: vec![drive(101, 0)],
-            timing: Timing::at_hz(HZ),
+            timing: timing(),
         },
         BusLinks {
             commands,
@@ -370,9 +372,8 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
     };
     assert_eq!(limbs(&dropped), [(LimbState::Idle, None)]);
 
-    // Right after a snapshot the thread sleeps until its next tick: a frame sent now is read by that tick's drain,
-    // which is where the thread sees `exit` and returns.
-    let next = next_snapshot(&mut snapshots, end).unwrap();
+    // A frame on the bus, then the exit: the thread reads the frame (in this tick's collect or the next drain), sees
+    // `exit` after a drain, records that drain's batch and returns.
     let frame = CanDataFrame::new(StandardId::new(LAST).unwrap(), &[7; 8]).unwrap();
     CanSocket::open(IDLE_BUS)
         .unwrap()
@@ -381,23 +382,25 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
     exit.store(true, Ordering::Release);
     let done = bus.thread.join().unwrap();
     assert!(done.error.is_none(), "{:?}", done.error);
-    assert_eq!(
-        done.last.map(|s| s.tick),
-        Some(next.tick),
-        "returned on the next tick's drain"
-    );
+    let last_snapshot = done.last.map(|s| s.tick).unwrap();
     recorder.close(vec![done.recorder]).unwrap();
 
     let bytes = std::fs::read(session_dir.join("0000.mcap")).unwrap();
     let mut seen = false;
+    let mut last_batch = None;
     for message in mcap::MessageStream::new(&bytes).unwrap() {
         let message = message.unwrap();
         if message.channel.topic == format!("/can/{IDLE_BUS}/frames") {
             let frames: Frames = serde_json::from_slice(&message.data).unwrap();
             seen |= frames.frames.iter().any(|f| f.id == u32::from(LAST));
+            last_batch = Some(frames.tick);
         }
     }
-    assert!(seen, "the exit drain's frame is in the recording");
+    assert!(seen, "the frame is in the recording");
+    assert!(
+        last_batch.is_some_and(|t| t > last_snapshot),
+        "the exit drain, after the last snapshot (tick {last_snapshot}), is recorded: last batch {last_batch:?}"
+    );
     let _ = std::fs::remove_dir_all(&root);
 }
 
@@ -411,7 +414,7 @@ fn a_bus_started_after_the_schedule_joins_it() {
     ensure_vcan(LATE_BUS).unwrap();
     let root = std::env::temp_dir().join(format!("sim-suite-late-{}", std::process::id()));
     let mut info = info();
-    info.buses[0].name = LATE_BUS.to_owned();
+    info.buses[0] = can::bus_info(LATE_BUS, 1_000_000);
     let session = Session::start(&root, info, 1_000_000_000).unwrap();
     let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
     let epoch = recording.epoch();
@@ -426,7 +429,7 @@ fn a_bus_started_after_the_schedule_joins_it() {
         BusConfig {
             name: LATE_BUS.to_owned(),
             drives: vec![drive(101, 0)],
-            timing: Timing::at_hz(HZ),
+            timing: timing(),
         },
         BusLinks {
             commands,
@@ -603,7 +606,7 @@ fn the_bus_loop_runs_against_sim_drive_and_its_recording_matches_candump() {
             BusConfig {
                 name: BUS.to_owned(),
                 drives: vec![drive(101, 0), drive(102, 1)],
-                timing: Timing::at_hz(HZ),
+                timing: timing(),
             },
             BusLinks {
                 commands: commands_rx,

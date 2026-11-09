@@ -38,21 +38,28 @@ A drive's status read after a command the socket took is its **fresh** status, a
 the collect deadline. That is evidence the drive is there and what state it was in, never an acknowledgement: there
 are no sequence numbers to prove which command a status answers. Faults are never filtered: a status or report
 updates what the drive was seen saying, and any status, report, version reply or type-21 fault report with a fault set
-latches `fault_seen`. Missing replies aren't counted toward a drive's silence for an Enable or Disable, between an
-Enable and the drive's first Run status, or within 100 ms of a Disable: the drive may take 10 ms to reach Run, and goes
-silent after a Disable (PLAN item 2 Silence windows). Each drive's last echo of this host's frame
+latches `fault_seen`. Missing replies aren't counted toward a drive's silence for an Enable or Disable, for anything
+sent to a drive this host hasn't enabled (which covers the post-Disable silence, however long), or for the first
+`ENABLE_TO_RUN_NS` (50 ms) after an Enable while the drive hasn't shown Run: the drive may take 10 ms to reach Run, and
+goes silent after a Disable (PLAN item 2 Silence windows). `silent_ticks` and `silence_misses` must be at least one and
+must fire before the drives' own timeout, or the bus is refused at startup. Each drive's last echo of this host's frame
 to it (`last_echo`: its kind and when it was read) is kept, for the enable sequence's "reporting-off echo plus one
 tick".
 
-A limb stop (`stop_limb`, the check above, expired feedback) stops that limb; a bus stop (`request_stop`, control
+A limb stop (`stop_limb`, named `LimbRequested`; the check above; expired feedback) stops that limb; a bus stop (`request_stop`, control
 silent, a late wake, a bad batch, or a backlog) stops every limb. A stopping limb sends Disable to each of its drives,
 re-sends it each tick to every drive that hasn't confirmed, and sends active reporting off to each confirmed drive once
 its post-Disable silence is over (50 ms after its confirmation), again each tick until the socket takes it. A drive
 confirms with a Reset-mode status read after the stop's Disable; one that never confirms is still getting a Disable
-every tick, so it gets no reporting off. The limb is `Stopped` once every drive has confirmed and taken its reporting
-off, or after 100 ms. The first reason a limb stopped for stays in its `LimbView`.
+every tick of the 100 ms confirm window, so it gets no reporting off. Every Disable goes out ahead of every reporting
+off. The limb is `Stopped` once every drive has confirmed and taken its reporting off, or once the window has passed
+and no confirmed drive still waits for its reporting off (at most the window, the 50 ms silence and a period). The
+first reason a limb stopped for stays in its `LimbView`.
 
-A latched bus error (bus-off, interface down or gone) sends nothing: there is no bus to send on, so every limb is
+A late wake, ticks a stall slept through, or a backlog stop every active limb; an idle limb has nothing enabled, so
+it only counts the missed deadline. A late tick sends no batch.
+
+A latched bus error (bus-off, interface down or gone, another socket error) sends nothing: there is no bus to send on, so every limb is
 `Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's
 `bus_error`, even if a stop was already under way; `healthy` is false while there is one or the controller is
 error-passive.
@@ -80,13 +87,20 @@ and one already queued is cancelled before it goes, so slow traffic never keeps 
 (`canTimeout` counts from any frame).
 
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
-a drive table past `MAX_DRIVES`, a limb index past it, and timing that breaks its promises (`Timing::check`: for one, three periods must fit
-inside the drives' 50 ms timeout, so the rate is at least 61 Hz). The Linux shell (`spawn`) owns the socket: it
+a drive table past `MAX_DRIVES`, a drive listed twice, a limb index past the table, and timing that breaks its
+promises (`Timing::check`: for one, three periods must fit inside the drives' 50 ms timeout, so the rate is at least
+61 Hz). The Linux shell (`spawn`) owns the socket: it
 opens only `vcan` until the real adapter is supported (PLAN step 8), takes every ID (no kernel filter), and reads each
-frame with its kernel timestamp, its direction and the overflow count in one `recvmsg`. `spawn` returns the receive
-buffer the kernel actually gave (`Spawned::receive_buffer_bytes`) for the runtime's startup log. Each tick's recorded
-batch is `valid` while the snapshot is `healthy`, and a snapshot control's full ring can't take is counted
-(`snapshots_dropped`). Setting `exit` while a limb is running or stopping stops the bus first.
+frame with its kernel timestamp, its direction and the overflow count in one `recvmsg`. `bus_info` is the session's
+record of that socket, from the same constants `open` applies, and `spawn` returns the receive buffer the kernel
+actually gave (`Spawned::receive_buffer_bytes`) for the runtime's startup log. Each tick's recorded batch is `valid`
+while the bus is healthy, the exit tick's included, and a snapshot control's full ring can't take is counted
+(`snapshots_dropped`). Any write error but a full queue loses the bus, as a read error does. Setting `exit` while a
+limb is running or stopping stops the bus first.
+
+Not yet: the `/can/<bus>/tx_intent` record of every frame handed to the socket or not sent, with the reason
+(logging.md section 8.2), and the per-run tick duration and jitter (rust.md section 6). Both come with the runtime,
+which owns the recording's channels and the metrics, before step 8 measures latency and jitter on the real adapter.
 
 ## Must never
 
@@ -94,7 +108,7 @@ Send a command late, retry one, or re-send a stale batch. Treat a TX echo or any
 Allocate, lock, log or wait without a deadline in the tick, or take a lock shared with non-realtime code. Let anyone
 but the runtime transmit. Retry a slow request, or send one to a stopped limb or while control is silent. Undo a stop
 on its own: a stopping or stopped limb gets none of control's frames until the operator's `rearm`, and a latched bus
-error stays latched. Open an interface that isn't `vcan`.
+error stays latched. Open an interface that isn't `vcan` before the real adapter's checks exist (PLAN step 8).
 
 ## Talks to
 
@@ -106,9 +120,11 @@ the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture
 
 ## Using it
 
-Build a `BusTick` with the bus's drives in slot order, each with its limb, then per tick: `begin`, write each send and report it with
-`sent`, feed every frame read with `on_frame`, and `end` for the snapshot. On Linux, `spawn` runs exactly that on a
-socket.
+Build a `BusTick` with the bus's drives in slot order, each with its limb, then per tick: empty the socket, feeding
+each frame to `on_frame`, and report how the drain went with `drained`; `begin`, write each send and report it with
+`sent`; feed every frame read with `on_frame`; and `end` for the snapshot. `request_stop` and `stop_limb` ask for a stop
+at the next `begin`, `skipped` counts ticks a stall slept through, and `lost_bus` latches every limb stopped when the
+socket fails. On Linux, `spawn` runs exactly that on a socket.
 
 ```rust
 use can::{BusDrive, BusTick, CommandBatch, LimbState, SendOutcome, Timing};

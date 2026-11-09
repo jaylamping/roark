@@ -5,13 +5,14 @@
 mod common;
 
 use can::{
-    BusDrive, BusError, BusTick, ConfigError, DRIVE_TIMEOUT_NS, EchoSeen, LimbState, MAX_DRIVES,
-    RearmRefused, SendKind, SendOutcome, Snapshot, StopOutcome, StopReason, Timing,
+    BusDrive, BusError, BusTick, ConfigError, DRIVE_TIMEOUT_NS, ENABLE_TO_RUN_NS, EchoSeen,
+    LimbState, MAX_DRIVES, NoSuchLimb, RearmRefused, SendKind, SendOutcome, Snapshot, StopOutcome,
+    StopReason, Timing,
 };
 use common::{
     MS, PERIOD, at, batch, deadline, error_frame, hold, id, record, run_tick, status, status_frame,
 };
-use robstride::{EchoKind, Mode, StatusFault, encode};
+use robstride::{EchoKind, Mode, StatusFault, StatusFaults, encode};
 use telemetry::Direction;
 
 /// Drive 101 in limb 0 and drive 102 in limb 1, at 250 Hz.
@@ -67,6 +68,7 @@ fn running(bus: &mut BusTick) {
 fn a_limb_stop_leaves_the_other_limb_running() {
     let mut bus = two_limbs();
     running(&mut bus);
+    assert_eq!(bus.stop_limb(MAX_DRIVES), Err(NoSuchLimb(MAX_DRIVES)));
     assert_eq!(bus.stop_limb(0), Ok(()));
     let sent = run_tick(
         &mut bus,
@@ -78,7 +80,7 @@ fn a_limb_stop_leaves_the_other_limb_running() {
     let snap = bus.end(deadline(2));
     assert!(matches!(
         limb(&snap, 0),
-        (LimbState::Stopping { .. }, Some(StopReason::Requested))
+        (LimbState::Stopping { .. }, Some(StopReason::LimbRequested))
     ));
     assert_eq!(limb(&snap, 1), (LimbState::Active, None));
     assert_eq!(snap.counters.refused_frames, 1);
@@ -204,15 +206,17 @@ fn expired_feedback_stops_only_its_limb() {
     assert_eq!(limb(&snap, 1), (LimbState::Active, None));
 }
 
-/// Guards: safety - replies missed while a drive is between its Enable and its first Run status, or within 100 ms of a
-/// Disable, aren't counted toward its silence; outside those windows they are (PLAN.md item 2 Silence windows).
+/// Guards: safety - replies missed while a drive is between its Enable and its first Run status aren't counted for
+/// [`ENABLE_TO_RUN_NS`], and none are counted while it is disabled, which covers the post-Disable silence; once Run is
+/// seen after an Enable they count again (PLAN.md item 2 Silence windows; item 6 Silence row: a silent disabled drive
+/// is offline, not a fault).
 #[test]
 fn misses_in_the_enable_and_post_disable_windows_are_not_counted() {
     // The enable sequence's run_mode write needs no fresh feedback, so it can go unanswered in either window.
     let write = encode::param_write(&robstride::Write::mit_mode(common::drive(101)));
-    let misses = two_limbs().timing().silence_misses;
+    let misses = u64::from(two_limbs().timing().silence_misses);
 
-    // Between the Enable and the first Run status.
+    // Between the Enable and the first Run status: counted only from the first send at least 50 ms after the Enable.
     let mut bus = two_limbs();
     run_tick(
         &mut bus,
@@ -221,19 +225,11 @@ fn misses_in_the_enable_and_post_disable_windows_are_not_counted() {
         &[],
     );
     let _ = bus.end(deadline(0));
-    let enabling_ticks = u64::from(misses) + 1;
-    for tick in 1..=enabling_ticks {
-        let sent = run_tick(
-            &mut bus,
-            tick,
-            Some(&batch(tick, &[Some(write), None])),
-            &[],
-        );
-        assert_eq!(sent, [(0, SendKind::Command)], "tick {tick}");
-        assert_eq!(at(&bus.end(deadline(tick)), 0).misses, 0, "tick {tick}");
-    }
+    let first_counted = ENABLE_TO_RUN_NS.div_ceil(PERIOD);
+    let stopped_at = silent_until_stopped(&mut bus, 1, first_counted, misses, write);
+    assert_eq!(stopped_at, first_counted + misses);
 
-    // After a Disable from control, counted only once 100 ms have passed.
+    // After a Disable from control: never counted while disabled, well past the post-Disable silence.
     let mut bus = two_limbs();
     running(&mut bus);
     run_tick(
@@ -246,26 +242,77 @@ fn misses_in_the_enable_and_post_disable_windows_are_not_counted() {
         &[(MS, status(101, Mode::Reset)), (MS, status(102, Mode::Run))],
     );
     let _ = bus.end(deadline(2));
-    let first_counted = 2 + bus.timing().stop_confirm_ns / PERIOD;
-    let mut tick = 3;
-    let stopped_at = loop {
+    let quiet_until = 3 + 2 * bus.timing().stop_confirm_ns / PERIOD + misses;
+    for tick in 3..quiet_until {
         let sent = run_tick(
             &mut bus,
             tick,
             Some(&batch(tick, &[Some(write), Some(hold(102))])),
             &[(MS, status(102, Mode::Run))],
         );
-        if sent.first() == Some(&(0, SendKind::Disable)) {
-            break tick;
-        }
+        assert_eq!(
+            sent,
+            [(0, SendKind::Command), (1, SendKind::Command)],
+            "tick {tick}"
+        );
         let snap = bus.end(deadline(tick));
-        let counted = tick
-            .saturating_sub(first_counted - 1)
-            .min(u64::from(misses));
+        assert_eq!(at(&snap, 0).misses, 0, "tick {tick}");
+    }
+
+    // Enabled again and seen in Run: its misses count from the next send.
+    let tick = quiet_until;
+    run_tick(
+        &mut bus,
+        tick,
+        Some(&batch(
+            tick,
+            &[Some(encode::enable(id(101))), Some(hold(102))],
+        )),
+        &[(MS, status(101, Mode::Run)), (MS, status(102, Mode::Run))],
+    );
+    let _ = bus.end(deadline(tick));
+    let stopped_at = silent_until_stopped(&mut bus, tick + 1, tick + 1, misses, hold(101));
+    assert_eq!(stopped_at, tick + 1 + misses);
+}
+
+/// Sends `frame` to drive 101 every tick from `from`, never answered, with drive 102 held and answering, until drive
+/// 101's limb stops; checks each tick's miss count against misses counted from tick `first_counted`. Returns the tick
+/// whose send was the stop's Disable.
+fn silent_until_stopped(
+    bus: &mut BusTick,
+    from: u64,
+    first_counted: u64,
+    misses: u64,
+    frame: robstride::Frame,
+) -> u64 {
+    let mut tick = from;
+    loop {
+        let sent = run_tick(
+            bus,
+            tick,
+            Some(&batch(tick, &[Some(frame), Some(hold(102))])),
+            &[(MS, status(102, Mode::Run))],
+        );
+        if sent.first() == Some(&(0, SendKind::Disable)) {
+            let snap = bus.end(deadline(tick));
+            assert!(matches!(
+                limb(&snap, 0),
+                (
+                    LimbState::Stopping { .. },
+                    Some(StopReason::DriveSilent { slot: 0 })
+                )
+            ));
+            return tick;
+        }
+        assert!(
+            tick <= first_counted + misses,
+            "never stopped by tick {tick}"
+        );
+        let snap = bus.end(deadline(tick));
+        let counted = (tick + 1).saturating_sub(first_counted).min(misses);
         assert_eq!(u64::from(at(&snap, 0).misses), counted, "tick {tick}");
         tick += 1;
-    };
-    assert_eq!(stopped_at, first_counted + u64::from(misses));
+    }
 }
 
 /// Guards: safety - a drive that leaves `silence_misses` commands in a row unanswered stops its limb before the next
@@ -315,6 +362,42 @@ fn missed_replies_in_a_row_stop_the_limb() {
         )
     ));
     assert_eq!(at(&snap, 0).misses, misses);
+
+    // Answers that come after the collect deadline are misses too: they never reset the count.
+    let mut bus = two_limbs();
+    running(&mut bus);
+    let late = PERIOD * 8 / 10;
+    for tick in 2..2 + u64::from(misses) {
+        let sent = run_tick(
+            &mut bus,
+            tick,
+            Some(&batch(tick, &[Some(hold(101)), Some(hold(102))])),
+            &[(late, status(101, Mode::Run)), (MS, status(102, Mode::Run))],
+        );
+        assert_eq!(
+            sent,
+            [(0, SendKind::Command), (1, SendKind::Command)],
+            "tick {tick}"
+        );
+        let _ = bus.end(tick * PERIOD + late);
+    }
+    let tick = 2 + u64::from(misses);
+    let sent = run_tick(
+        &mut bus,
+        tick,
+        Some(&batch(tick, &[Some(hold(101)), Some(hold(102))])),
+        &[],
+    );
+    assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Command)]);
+    let snap = bus.end(deadline(tick));
+    assert_eq!(snap.counters.late, u64::from(misses));
+    assert!(matches!(
+        limb(&snap, 0),
+        (
+            LimbState::Stopping { .. },
+            Some(StopReason::DriveSilent { slot: 0 })
+        )
+    ));
 }
 
 /// Guards: safety - only leaving Run after the drive was seen in Run is a mode change: a Reset still in flight when the
@@ -362,6 +445,31 @@ fn only_leaving_run_after_running_is_a_mode_change() {
         )
     ));
 
+    // A version reply carries the status header: its Reset after Run is a mode change too.
+    let mut bus = two_limbs();
+    running(&mut bus);
+    let reset = status_frame(101, Mode::Reset, StatusFaults::default());
+    let version = record(
+        reset.id(),
+        [0x00, 0xC4, 0x56, 1, 2, 3, 4, 0],
+        Direction::TxOther,
+    );
+    bus.on_frame(2 * PERIOD - MS, &version);
+    let sent = run_tick(
+        &mut bus,
+        2,
+        Some(&batch(2, &[Some(hold(101)), Some(hold(102))])),
+        &[],
+    );
+    assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Command)]);
+    assert!(matches!(
+        limb(&bus.end(deadline(2)), 0),
+        (
+            LimbState::Stopping { .. },
+            Some(StopReason::DriveMode { slot: 0 })
+        )
+    ));
+
     // Disabled by control while running.
     let mut bus = two_limbs();
     running(&mut bus);
@@ -378,6 +486,49 @@ fn only_leaving_run_after_running_is_a_mode_change() {
     let sent = run_tick(&mut bus, 3, Some(&batch(3, &[None, Some(hold(102))])), &[]);
     assert_eq!(sent, [(1, SendKind::Command)]);
     let snap = bus.end(deadline(3));
+    assert_eq!(limb(&snap, 0), (LimbState::Active, None));
+}
+
+/// Guards: safety - a limb is its drives, wherever they sit in the table: a fault on one drive Disables every drive of
+/// its limb and no other, with limb numbers that aren't slot numbers (PLAN.md item 6: a stop names its scope).
+#[test]
+fn a_stop_reaches_every_drive_of_its_limb_and_no_other() {
+    let drives = [(101, 1), (102, 1), (103, 0)].map(|(n, limb)| BusDrive {
+        device: id(n),
+        limb,
+    });
+    let mut bus = BusTick::new(&drives, Timing::at_hz(250)).unwrap();
+    let enable = batch(0, &[101, 102, 103].map(|n| Some(encode::enable(id(n)))));
+    let running = [101, 102, 103].map(|n| (MS, status(n, Mode::Run)));
+    run_tick(&mut bus, 0, Some(&enable), &running);
+    let _ = bus.end(deadline(0));
+    let faulted = status_frame(
+        101,
+        Mode::Run,
+        [StatusFault::Overcurrent].into_iter().collect(),
+    );
+    bus.on_frame(
+        PERIOD - MS,
+        &record(faulted.id(), faulted.data(), Direction::TxOther),
+    );
+    let holds = batch(1, &[101, 102, 103].map(|n| Some(hold(n))));
+    let sent = run_tick(&mut bus, 1, Some(&holds), &[]);
+    assert_eq!(
+        sent,
+        [
+            (0, SendKind::Disable),
+            (1, SendKind::Disable),
+            (2, SendKind::Command)
+        ]
+    );
+    let snap = bus.end(deadline(1));
+    assert!(matches!(
+        limb(&snap, 1),
+        (
+            LimbState::Stopping { .. },
+            Some(StopReason::DriveFault { slot: 0 })
+        )
+    ));
     assert_eq!(limb(&snap, 0), (LimbState::Active, None));
 }
 

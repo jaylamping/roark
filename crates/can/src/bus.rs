@@ -13,22 +13,44 @@ use nix::time::{ClockId, ClockNanosleepFlags, clock_gettime, clock_nanosleep};
 use robstride::Frame;
 use rtrb::{Consumer, Producer};
 use socketcan::{CanDataFrame, CanSocket, EmbeddedFrame, ExtendedId, Socket, SocketOptions};
-use telemetry::{BusRecorder, Epoch, TickBatch};
+use telemetry::{BusInfo, BusRecorder, Epoch, TickBatch, TimestampSource};
 
 use crate::error_frame::BusError;
 use crate::slow::{SlowOutcome, SlowRequest, SlowResult};
-use crate::sys::{self, SO_RCVBUFFORCE, SO_RXQ_OVFL, SO_TIMESTAMPNS_NEW};
+use crate::sys;
 use crate::tick::BusTick;
-use crate::types::{BusDrive, CommandBatch, ConfigError, Drain, SendOutcome, Snapshot, Timing};
+use crate::timing::Timing;
+use crate::types::{BusDrive, CommandBatch, ConfigError, Drain, SendList, SendOutcome, Snapshot};
 
 /// The most frames a tick's drain may find before the send. More than that queued means the thread can't tell what the
 /// bus said in time, so it stops (1 Mbit/s carries about 8,000 frames a second: 32 a tick at 250 Hz).
-pub const DRAIN_MAX: usize = 256;
+const DRAIN_MAX: usize = 256;
 /// The most frames a drain reads. A real bus can't refill the socket faster than it is read, so a drain empties it
 /// long before this; only a flood on `vcan` reaches it, and then the tick's reads may predate its sends.
 const DRAIN_LIMIT: usize = 8 * DRAIN_MAX;
-/// The receive buffer asked for: a second of the busiest bus, so a stall can't overflow the kernel's default.
+/// The receive buffer asked for. The kernel charges each queued frame its whole buffer (about 0.6 to 1 KiB, not 16
+/// bytes), so this holds about a third of a second of a saturated bus; without `CAP_NET_ADMIN` it is capped at
+/// `rmem_max`. An overflow is counted (`SO_RXQ_OVFL`), and [`DRAIN_MAX`] stops the bus long before either limit.
 const RCVBUF_BYTES: libc::c_int = 1 << 20;
+
+/// The error classes the socket reports: every one (`CAN_ERR_MASK`).
+const ERROR_FILTER: u32 = libc::CAN_ERR_MASK;
+
+/// The session's record of the socket [`spawn`] opens on `bus`: the same settings `open` applies, from the same
+/// constants, so the recording can't drift from the socket. `bitrate` is the skeleton's.
+#[must_use]
+pub fn bus_info(bus: &str, bitrate: u32) -> BusInfo {
+    BusInfo {
+        name: bus.to_owned(),
+        bitrate,
+        // Kernel stamps until the real adapter's hardware stamps are supported (PLAN step 8).
+        timestamps: TimestampSource::Software,
+        // Every ID: a kernel filter would hide a duplicate sender (can.md section 2).
+        receive_filters: Vec::new(),
+        error_filter: ERROR_FILTER,
+        adapter_firmware: None,
+    }
+}
 
 /// What a bus thread needs.
 #[derive(Clone, Debug)]
@@ -61,11 +83,24 @@ pub enum BusRunError {
         reason: String,
     },
     /// The drive table or timing is one the tick refuses.
-    #[error(transparent)]
-    Config(#[from] ConfigError),
+    #[error("{bus}: {source}")]
+    Config {
+        /// The interface.
+        bus: String,
+        /// What the tick refused.
+        source: ConfigError,
+    },
     /// Opening or setting up the socket failed.
     #[error("{bus}: {source}")]
     Socket {
+        /// The interface.
+        bus: String,
+        /// What failed.
+        source: io::Error,
+    },
+    /// The bus thread couldn't be started.
+    #[error("{bus}: can't start the bus thread: {source}")]
+    Thread {
         /// The interface.
         bus: String,
         /// What failed.
@@ -122,7 +157,11 @@ pub struct BusLinks {
 /// # Errors
 /// [`BusRunError`] before any frame is sent.
 pub fn spawn(config: BusConfig, links: BusLinks) -> Result<Spawned, BusRunError> {
-    let tick = BusTick::new(&config.drives, config.timing)?;
+    let tick =
+        BusTick::new(&config.drives, config.timing).map_err(|source| BusRunError::Config {
+            bus: config.name.clone(),
+            source,
+        })?;
     let socket = open(&config.name)?;
     let receive_buffer_bytes =
         sys::receive_buffer(socket.as_fd()).map_err(|source| BusRunError::Socket {
@@ -132,7 +171,7 @@ pub fn spawn(config: BusConfig, links: BusLinks) -> Result<Spawned, BusRunError>
     let thread = std::thread::Builder::new()
         .name(format!("bus-{}", config.name))
         .spawn(move || run(&socket, tick, links))
-        .map_err(|source| BusRunError::Socket {
+        .map_err(|source| BusRunError::Thread {
             bus: config.name,
             source,
         })?;
@@ -144,13 +183,13 @@ pub fn spawn(config: BusConfig, links: BusLinks) -> Result<Spawned, BusRunError>
 
 /// Open `bus` with can.md section 2's settings: error frames on, loopback on, our own frames back (so they record as
 /// `tx_echo`), every ID accepted (so unexpected senders stay visible), kernel timestamps, the overflow counter, a large
-/// receive buffer, non-blocking.
+/// receive buffer, non-blocking. [`bus_info`] records the same settings.
 fn open(bus: &str) -> Result<CanSocket, BusRunError> {
-    let kind = link_kind(bus).map_err(|reason| BusRunError::Unchecked {
+    let vcan = is_vcan(bus).map_err(|reason| BusRunError::Unchecked {
         bus: bus.to_owned(),
         reason,
     })?;
-    if kind != "vcan" {
+    if !vcan {
         return Err(BusRunError::NotVcan {
             bus: bus.to_owned(),
         });
@@ -160,20 +199,20 @@ fn open(bus: &str) -> Result<CanSocket, BusRunError> {
         source,
     };
     let socket = CanSocket::open(bus).map_err(err)?;
-    socket.set_error_filter_accept_all().map_err(err)?;
+    socket.set_error_filter(ERROR_FILTER).map_err(err)?;
     socket.set_loopback(true).map_err(err)?;
     socket.set_recv_own_msgs(true).map_err(err)?;
     socket.set_filter_accept_all().map_err(err)?;
     socket
-        .set_socket_option_int(libc::SOL_SOCKET, SO_TIMESTAMPNS_NEW, 1)
+        .set_socket_option_int(libc::SOL_SOCKET, libc::SO_TIMESTAMPNS_NEW, 1)
         .map_err(err)?;
     socket
-        .set_socket_option_int(libc::SOL_SOCKET, SO_RXQ_OVFL, 1)
+        .set_socket_option_int(libc::SOL_SOCKET, libc::SO_RXQ_OVFL, 1)
         .map_err(err)?;
     // SO_RCVBUFFORCE needs CAP_NET_ADMIN; without it the kernel caps SO_RCVBUF at rmem_max. `spawn` reads back what
     // the kernel gave, for the runtime to log.
     if socket
-        .set_socket_option_int(libc::SOL_SOCKET, SO_RCVBUFFORCE, RCVBUF_BYTES)
+        .set_socket_option_int(libc::SOL_SOCKET, libc::SO_RCVBUFFORCE, RCVBUF_BYTES)
         .is_err()
     {
         socket
@@ -184,9 +223,9 @@ fn open(bus: &str) -> Result<CanSocket, BusRunError> {
     Ok(socket)
 }
 
-/// The interface's link kind from `ip -details -json`, or why it can't be read. An interface with no kind (a plain
-/// device such as `lo`) is the empty string.
-fn link_kind(bus: &str) -> Result<String, String> {
+/// Whether `bus` is a `vcan` interface, from `ip -details -json`, or why that can't be read. `ip ... show dev` prints
+/// one link with at most one `info_kind`, so the pair appearing is the answer; a plain device such as `lo` has none.
+fn is_vcan(bus: &str) -> Result<bool, String> {
     if bus.is_empty() || bus.starts_with('-') {
         return Err(format!("{bus:?} is not an interface name"));
     }
@@ -197,15 +236,7 @@ fn link_kind(bus: &str) -> Result<String, String> {
     if !out.status.success() {
         return Err(String::from_utf8_lossy(&out.stderr).trim().to_owned());
     }
-    let text = String::from_utf8_lossy(&out.stdout);
-    let key = r#""info_kind":""#;
-    let Some(at) = text.find(key).map(|at| at + key.len()) else {
-        return Ok(String::new());
-    };
-    let rest = text.get(at..).unwrap_or_default();
-    rest.get(..rest.find('"').unwrap_or_default())
-        .map(str::to_owned)
-        .ok_or_else(|| "ip's output has no link kind".to_owned())
+    Ok(String::from_utf8_lossy(&out.stdout).contains(r#""info_kind":"vcan""#))
 }
 
 /// The bus's clocks: the loop's schedule on `CLOCK_MONOTONIC` (absolute sleeps) and the session's epoch for stamps.
@@ -218,8 +249,10 @@ struct Clock {
 impl Clock {
     /// The schedule from `start`, read against `CLOCK_MONOTONIC` (which `Instant` is on Linux) once, now.
     fn new(epoch: Epoch, start: Instant) -> io::Result<Self> {
-        let now = mono_now();
+        // Two reads of one clock: the sleep base first, so the gap between them makes every wake measure early, never
+        // late.
         let now_ts = clock_gettime(ClockId::CLOCK_MONOTONIC).map_err(io::Error::from)?;
+        let now = mono_now();
         let start_ts = if start >= now {
             now_ts + TimeSpec::from_duration(start.duration_since(now))
         } else {
@@ -247,6 +280,12 @@ impl Clock {
                 Err(e) => return Err(e.into()),
             }
         }
+    }
+
+    /// The tick whose period `now` falls in: its start has passed, the next one's hasn't.
+    fn tick_at(&self, now: Instant, period_ns: u64) -> u64 {
+        let elapsed = now.saturating_duration_since(self.start).as_nanos();
+        u64::try_from(elapsed / u128::from(period_ns)).unwrap_or(u64::MAX)
     }
 
     /// The first tick whose start hasn't passed: 0 when the thread starts before the schedule does.
@@ -296,7 +335,7 @@ fn sleep_relative(span: Duration) {
 
 fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
     let timing = tick.timing();
-    let mut exit = BusExit {
+    let mut outcome = BusExit {
         recorder: links.recorder,
         last: None,
         error: None,
@@ -304,34 +343,41 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
     let clock = match Clock::new(links.epoch, links.start) {
         Ok(clock) => clock,
         Err(e) => {
-            exit.error = Some(e);
+            outcome.error = Some(e);
             end_slow(&mut tick, &mut links.requests, &mut links.results);
-            return exit;
+            return outcome;
         }
     };
     let mut n = clock.first_due(timing.period_ns);
     loop {
-        let scheduled = clock.at(n, timing.period_ns);
+        let mut scheduled = clock.at(n, timing.period_ns);
         if let Err(e) = clock.sleep_until(scheduled) {
             // No clock to keep the schedule: stop the drives, sleeping relative to get there.
             tick.request_stop();
-            exit.error.get_or_insert(e);
+            outcome.error.get_or_insert(e);
             sleep_relative(scheduled.saturating_duration_since(mono_now()));
+        }
+        // A stall (in the sleep, or the last tick overrunning) may have carried the thread past whole ticks: run the
+        // one now in progress, and count the ones between as missed deadlines; `begin` judges whether this one is late.
+        let current = clock.tick_at(mono_now(), timing.period_ns);
+        if current > n {
+            tick.skipped(current - n);
+            n = current;
+            scheduled = clock.at(n, timing.period_ns);
         }
         let mut batch = TickBatch::new(n, clock.ns(scheduled), wall_ns());
         // The overflow count is the last one seen; a frame read this tick may update it.
-        batch.kernel_drops = exit.last.map_or(0, |s| s.counters.kernel_drops);
+        batch.kernel_drops = outcome.last.map_or(0, |s| s.counters.kernel_drops);
 
         // Drain what arrived in the slack before anything is sent.
         if let Err(e) = drain(socket, &clock, &mut tick, &mut batch) {
-            tick.lost_bus(bus_error(&e));
-            exit.error.get_or_insert(e);
+            lose(&mut tick, &mut outcome, e);
         }
         if links.exit.load(Ordering::Acquire) {
-            if exit.last.is_none_or(|s| s.settled()) {
-                // The frames this drain read are still recorded.
-                batch.valid = exit.last.is_none_or(|s| s.healthy);
-                exit.recorder.record(batch);
+            if tick.settled() {
+                // The frames this drain read are still recorded, with the health they left the bus in.
+                batch.valid = tick.healthy();
+                outcome.recorder.record(batch);
                 break;
             }
             tick.request_stop();
@@ -345,28 +391,12 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             command.as_ref(),
         );
         let send_by = scheduled + Duration::from_nanos(timing.send_window_ns);
-        for (index, send) in sends.iter().enumerate() {
-            // A Disable or reporting off never expires: late, it is still the right one (can.md section 2).
-            let outcome = if send.expires && mono_now() > send_by {
-                SendOutcome::Expired
-            } else {
-                match write(socket, &send.frame) {
-                    Ok(outcome) => outcome,
-                    Err(e) => {
-                        tick.lost_bus(bus_error(&e));
-                        exit.error.get_or_insert(e);
-                        SendOutcome::Failed
-                    }
-                }
-            };
-            tick.sent(index, outcome, clock.ns(mono_now()));
-        }
+        send_all(socket, &clock, &mut tick, &mut outcome, &sends, send_by);
 
         // Collect until the deadline.
         let deadline = scheduled + Duration::from_nanos(timing.collect_ns);
         if let Err(e) = collect(socket, &clock, &mut tick, &mut batch, deadline) {
-            tick.lost_bus(bus_error(&e));
-            exit.error.get_or_insert(e);
+            lose(&mut tick, &mut outcome, e);
         }
         let snap = tick.end(clock.ns(mono_now()));
         batch.valid = snap.healthy;
@@ -374,9 +404,9 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             // Control's ring is full: it keeps its older snapshots and this one is lost, counted in the next.
             tick.snapshot_dropped();
         }
-        exit.recorder.record(batch);
-        exit.last = Some(snap);
-        if exit.error.is_some() && snap.stopped() {
+        outcome.recorder.record(batch);
+        outcome.last = Some(snap);
+        if outcome.error.is_some() && snap.stopped() {
             break;
         }
         // The slack after the collect deadline: control's slow requests, one exchange at a time.
@@ -387,19 +417,47 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             &mut links.requests,
             &mut links.results,
         ) {
-            tick.lost_bus(bus_error(&e));
-            exit.error.get_or_insert(e);
+            lose(&mut tick, &mut outcome, e);
         }
-        // The next tick is the first not yet due; any skipped were missed deadlines, and this late tick has already
-        // stopped the bus.
-        let due = mono_now().saturating_duration_since(clock.start).as_nanos()
-            / u128::from(timing.period_ns);
-        let next = u64::try_from(due).unwrap_or(u64::MAX).max(n + 1);
-        tick.skipped(next - n - 1, clock.ns(mono_now()));
-        n = next;
+        n += 1;
     }
     end_slow(&mut tick, &mut links.requests, &mut links.results);
-    exit
+    outcome
+}
+
+/// Write each planned send once, in order, and report it to the tick. Once a write loses the bus the rest aren't
+/// tried: there is no bus to send on.
+fn send_all(
+    socket: &CanSocket,
+    clock: &Clock,
+    tick: &mut BusTick,
+    outcome: &mut BusExit,
+    sends: &SendList,
+    send_by: Instant,
+) {
+    for (index, send) in sends.iter().enumerate() {
+        // A Disable or reporting off never expires: late, it is still the right one (can.md section 2).
+        let result = if outcome.error.is_some() {
+            SendOutcome::Failed
+        } else if send.expires && mono_now() > send_by {
+            SendOutcome::Expired
+        } else {
+            match write(socket, &send.frame) {
+                Ok(result) => result,
+                Err(e) => {
+                    lose(tick, outcome, e);
+                    SendOutcome::Failed
+                }
+            }
+        };
+        tick.sent(index, result, clock.ns(mono_now()));
+    }
+}
+
+/// The socket failed: the tick latches the bus lost, and the first error is kept for [`BusExit`].
+fn lose(tick: &mut BusTick, outcome: &mut BusExit, e: io::Error) {
+    tick.lost_bus(bus_error(&e));
+    outcome.error.get_or_insert(e);
 }
 
 fn newest(commands: &mut Consumer<CommandBatch>) -> Option<CommandBatch> {
@@ -545,7 +603,8 @@ fn end_slow(
     }
 }
 
-/// Write one frame, once. A full queue drops it (never retried, can.md section 2); a lost interface is an error.
+/// Write one frame, once. A full queue drops it (never retried, can.md section 2). Any other failure is an error that
+/// loses the bus: the socket can't be trusted to carry the stop either, and the errno is kept for [`BusExit`].
 fn write(socket: &CanSocket, frame: &Frame) -> io::Result<SendOutcome> {
     let Some(id) = ExtendedId::new(frame.id()) else {
         return Ok(SendOutcome::Failed);
@@ -560,15 +619,7 @@ fn write(socket: &CanSocket, frame: &Frame) -> io::Result<SendOutcome> {
         {
             Ok(SendOutcome::QueueFull)
         }
-        Err(e)
-            if matches!(
-                e.raw_os_error(),
-                Some(libc::ENETDOWN | libc::ENODEV | libc::ENXIO)
-            ) =>
-        {
-            Err(e)
-        }
-        Err(_) => Ok(SendOutcome::Failed),
+        Err(e) => Err(e),
     }
 }
 

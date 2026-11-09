@@ -13,14 +13,15 @@
 //! are planned in `stop.rs`.
 
 use robstride::encode::Reporting;
-use robstride::{DeviceId, EchoKind, Frame, Inbound, Param, ParamValue, RunMode, decode};
+use robstride::{DeviceId, EchoKind, Frame, Inbound, Mode, Param, ParamValue, RunMode, decode};
 
 use crate::error_frame::BusError;
 use crate::slow::{SLOW_SLOTS, SlowEntry};
+use crate::timing::{ENABLE_TO_RUN_NS, Timing};
 use crate::types::{
     BusDrive, CommandBatch, ConfigError, Counters, Drain, DriveView, EchoSeen, LimbState, LimbView,
     MAX_DRIVES, NoSuchLimb, Observed, Send, SendKind, SendList, SendOutcome, Snapshot, StopOutcome,
-    StopReason, Timing,
+    StopReason,
 };
 
 /// A command the socket took, waiting for its status.
@@ -30,9 +31,10 @@ pub(crate) struct Outstanding {
     pub(crate) deadline_ns: u64,
     /// A stop's Disable: a Reset status after it confirms the stop.
     pub(crate) stop_disable: bool,
-    /// Whether a missing status counts as unanswered. Not for Enable or Disable, nor for anything sent between an
-    /// Enable and the drive's first Run status, or within `Timing::stop_confirm_ns` (100 ms) after a Disable: the drive
-    /// may be slow or silent then (PLAN.md item 2 Silence windows).
+    /// Whether a missing status counts as unanswered. Not for Enable or Disable; not for anything sent to a drive this
+    /// host hasn't enabled (a silent disabled drive is offline, not a fault: PLAN.md item 6 Silence row), which covers
+    /// the post-Disable silence; and not in the enable-to-Run window, up to [`ENABLE_TO_RUN_NS`] after the Enable
+    /// (PLAN.md item 2 Silence windows).
     pub(crate) counts_missed: bool,
     pub(crate) reply: Reply,
     pub(crate) counted: bool,
@@ -57,8 +59,6 @@ pub(crate) struct DriveState {
     pub(crate) fault_seen: bool,
     pub(crate) misses: u32,
     pub(crate) phase: Phase,
-    /// When the socket last took a Disable to it.
-    pub(crate) disabled_ns: Option<u64>,
     /// When the socket last took a frame to it, as the shell read the clock after the write.
     pub(crate) last_sent_ns: Option<u64>,
     pub(crate) last_echo: Option<EchoSeen>,
@@ -69,13 +69,31 @@ pub(crate) struct DriveState {
     pub(crate) reporting_off_sent: bool,
 }
 
+impl DriveState {
+    /// What a status header's mode says about the drive's run, from a status, a report or a version reply alike. Run
+    /// after an Enable is the drive running, counted only from an ordered read while its limb is active; any other mode
+    /// after running, without a Disable from this host, is latched as having left Run.
+    pub(crate) fn note_mode(&mut self, mode: Mode, limb_active: bool, unordered: bool) {
+        match self.phase {
+            Phase::Enabling { .. } if mode == Mode::Run && limb_active && !unordered => {
+                self.phase = Phase::Running;
+            }
+            Phase::Running if mode != Mode::Run => self.phase = Phase::LeftRun,
+            Phase::Off | Phase::Enabling { .. } | Phase::Running | Phase::LeftRun => {}
+        }
+    }
+}
+
 /// Where a drive is between this host's Enable and Disable.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Phase {
     /// No Enable taken by the socket since the last Disable.
     Off,
-    /// An Enable was taken; no Run status since.
-    Enabling,
+    /// An Enable was taken at `since_ns`; no Run status since.
+    Enabling {
+        /// When the socket took the Enable.
+        since_ns: u64,
+    },
     /// It reported Run after that Enable.
     Running,
     /// It reported another mode after running, without a Disable from this host: its limb stops before the next send.
@@ -118,11 +136,17 @@ impl BusTick {
     /// The drives this bus owns, in slot order (the skeleton's order), each with its limb.
     ///
     /// # Errors
-    /// [`ConfigError::TooManyDrives`] past [`MAX_DRIVES`]; [`ConfigError::LimbOutOfRange`] for a limb index past the
-    /// table; [`ConfigError::Timing`] for timing that [`Timing::check`] refuses.
+    /// [`ConfigError::TooManyDrives`] past [`MAX_DRIVES`]; [`ConfigError::DuplicateDrive`] for a drive listed twice;
+    /// [`ConfigError::LimbOutOfRange`] for a limb index past the table; [`ConfigError::Timing`] for timing that
+    /// [`Timing::check`] refuses.
     pub fn new(drives: &[BusDrive], timing: Timing) -> Result<Self, ConfigError> {
         if drives.len() > MAX_DRIVES {
             return Err(ConfigError::TooManyDrives(drives.len()));
+        }
+        for (i, drive) in drives.iter().enumerate() {
+            if drives.iter().skip(i + 1).any(|d| d.device == drive.device) {
+                return Err(ConfigError::DuplicateDrive(drive.device));
+            }
         }
         timing.check().map_err(ConfigError::Timing)?;
         let mut table = [None; MAX_DRIVES];
@@ -150,7 +174,6 @@ impl BusTick {
                 fault_seen: false,
                 misses: 0,
                 phase: Phase::Off,
-                disabled_ns: None,
                 last_sent_ns: None,
                 last_echo: None,
                 stop: StopOutcome::None,
@@ -198,12 +221,17 @@ impl BusTick {
             .get_mut(limb)
             .and_then(Option::as_mut)
             .ok_or(NoSuchLimb(limb))?;
-        l.pending.get_or_insert(StopReason::Requested);
+        l.pending.get_or_insert(StopReason::LimbRequested);
         Ok(())
     }
 
-    /// How this tick's drain ended: call it after the drain, before [`Self::begin`]. A backlog stops the bus at this
-    /// tick's start. Reads stay unordered from a drain that left frames queued until a drain empties the socket.
+    /// How this tick's drain ended: call it after the drain (its frames already fed to [`Self::on_frame`]), before
+    /// [`Self::begin`]. A backlog stops every active limb at this tick's start. Reads stay unordered from a drain that
+    /// left frames queued until a drain empties the socket.
+    ///
+    /// The frames of the drain itself are ordered unless an earlier drain left the socket unemptied: the socket is a
+    /// queue, and the last drain emptied it before the last tick's sends, so whatever this drain reads came after them.
+    /// Only what a drain leaves queued may predate the next sends, which is what `Unemptied` marks.
     pub fn drained(&mut self, drain: Drain) {
         match drain {
             Drain::Emptied => self.unordered = false,
@@ -218,10 +246,13 @@ impl BusTick {
         }
     }
 
-    /// The socket failed with `error` (interface down or gone): latch stopped. There is no bus to send a stop on; the
-    /// drives time out on their own (`canTimeout`).
+    /// The socket failed with `error` (interface down or gone, or any other socket error): every limb latches stopped.
+    /// There is no bus to send a stop on; the drives time out on their own (`canTimeout`). An error that doesn't latch
+    /// ([`BusError::latches`]) changes nothing here: it isn't a lost bus.
     pub fn lost_bus(&mut self, error: BusError) {
-        self.latch(error);
+        if error.latches() {
+            self.latch(error);
+        }
     }
 
     /// The socket's overflow counter, the last value the shell saw (`SO_RXQ_OVFL` comes only on frames queued after a
@@ -230,13 +261,27 @@ impl BusTick {
         self.counters.kernel_drops = count;
     }
 
-    /// `count` ticks went by without running (the thread stalled past them): each a missed deadline, and the bus stops
-    /// as for a late wake (PLAN.md item 3: missed deadlines are counted, never skipped silently).
-    pub fn skipped(&mut self, count: u64, now_ns: u64) {
+    /// `count` ticks went by without running (the thread stalled past them): each a missed deadline (PLAN.md item 3:
+    /// missed deadlines are counted, never skipped silently). As for a late wake, every active limb stops, at the next
+    /// `begin`; an idle limb has nothing to stop.
+    pub fn skipped(&mut self, count: u64) {
         if count > 0 {
             self.counters.missed_deadlines += count;
-            self.stop_all(StopReason::LateWake, now_ns);
+            self.pending_stop.get_or_insert(StopReason::LateWake);
         }
+    }
+
+    /// Whether every limb is idle or stopped now, so nothing needs stopping (the shell's exit check, after the drain).
+    #[must_use]
+    pub fn settled(&self) -> bool {
+        self.limbs.iter().flatten().all(|l| l.state.settled())
+    }
+
+    /// Whether the bus is healthy now: no latched bus error and not error-passive. The snapshot's `healthy` is this at
+    /// `end`.
+    #[must_use]
+    pub fn healthy(&self) -> bool {
+        self.bus_error.is_none() && !self.error_passive
     }
 
     /// The last snapshot couldn't be handed to control (its ring was full): counted in the next one.
@@ -245,9 +290,15 @@ impl BusTick {
     }
 
     /// Start tick `tick`, scheduled at `scheduled_ns`, woken at `now_ns`, with the newest batch from control. Call after
-    /// draining the socket. Returns the frames to send, in order, stop frames first; report each with [`Self::sent`].
-    /// Before anything is planned, a drive of an active limb that the drain showed faulted, out of Run after running,
-    /// or silent too long stops its limb, so no command reaches it this tick.
+    /// draining the socket and [`Self::drained`]. Returns the frames to send, in order, stop frames first; report each
+    /// with [`Self::sent`]. Each send says whether it expires ([`Send::expires`]): a command goes out only inside the
+    /// send window, while a Disable or active reporting off goes out late too, whoever planned it.
+    ///
+    /// A stop asked for before the tick (the whole bus's or one limb's) is taken first, so it keeps its reason. A wake
+    /// past the send window is a missed deadline, counted whatever the limbs are doing: every active limb stops, an idle
+    /// one has nothing to stop, and no batch is sent that tick. Then, before anything is planned, a drive of an idle or
+    /// active limb that the drain or an earlier read showed faulted, out of Run after running, or silent too long stops
+    /// its limb, so no command (Enable included) reaches it this tick.
     pub fn begin(
         &mut self,
         tick: u64,
@@ -262,16 +313,30 @@ impl BusTick {
             d.answered = false;
         }
         self.time_out_slow();
-        if now_ns > scheduled_ns.saturating_add(self.timing.send_window_ns) {
-            self.counters.missed_deadlines += 1;
-            self.stop_all(StopReason::LateWake, now_ns);
-        }
+        // A stop asked for before this tick began came first, so it keeps its reason over a late wake.
         if let Some(reason) = self.pending_stop.take() {
-            self.stop_all(reason, now_ns);
+            self.stop_bus(reason, now_ns);
         }
+        // Whether a batch is still checked this tick is decided before any one limb stops: a batch for a bus whose
+        // only limb stops now is still checked whole, and its frames for that limb are refused one by one.
+        let takes_batches = self.any_running();
         self.take_pending_limb_stops(now_ns);
+        let late = now_ns > scheduled_ns.saturating_add(self.timing.send_window_ns);
+        if late {
+            self.counters.missed_deadlines += 1;
+            self.stop_bus(StopReason::LateWake, now_ns);
+        }
         self.veto(now_ns);
-        let accepted = if self.any_running() {
+        let accepted = if late {
+            if batch.is_some() {
+                if self.any_running() {
+                    self.counters.stale_ticks += 1;
+                } else {
+                    self.counters.refused_batches += 1;
+                }
+            }
+            None
+        } else if takes_batches {
             self.check_batch(tick, now_ns, batch)
         } else {
             if batch.is_some() {
@@ -291,7 +356,7 @@ impl BusTick {
         self.limbs
             .iter()
             .flatten()
-            .any(|l| matches!(l.state, LimbState::Idle | LimbState::Active))
+            .any(|l| l.state.takes_commands())
     }
 
     /// The batch if it is fresh and sound. A frame aimed wrong, in a slot with no drive, or of a kind a batch may not
@@ -363,7 +428,7 @@ impl BusTick {
                 .get(drive.limb)
                 .copied()
                 .flatten()
-                .is_some_and(|l| matches!(l.state, LimbState::Idle | LimbState::Active));
+                .is_some_and(|l| l.state.takes_commands());
             if !running {
                 self.counters.refused_frames += 1;
                 continue;
@@ -402,31 +467,31 @@ impl BusTick {
         let expects_status = matches!(
             kind,
             Some(
-                EchoKind::Mit
-                    | EchoKind::Enable
-                    | EchoKind::Disable
-                    | EchoKind::SetZero
-                    | EchoKind::ParamWrite { .. }
+                EchoKind::Mit | EchoKind::Enable | EchoKind::Disable | EchoKind::ParamWrite { .. }
             )
         );
         let deadline_ns = self.scheduled_ns.saturating_add(self.timing.collect_ns);
         let tick = self.tick;
-        let quiet_after_disable_ns = self.timing.stop_confirm_ns;
         let Some(d) = self.drives.get_mut(send.slot).and_then(Option::as_mut) else {
             return;
         };
         d.last_sent_ns = Some(sent_ns);
-        let in_silence = d.phase == Phase::Enabling
-            || d.disabled_ns
-                .is_some_and(|at| sent_ns.saturating_sub(at) < quiet_after_disable_ns);
-        if matches!(kind, Some(EchoKind::Enable)) {
-            if d.phase == Phase::Off {
-                d.phase = Phase::Enabling;
+        let counts_missed = match d.phase {
+            Phase::Off => false,
+            Phase::Enabling { since_ns } => sent_ns.saturating_sub(since_ns) >= ENABLE_TO_RUN_NS,
+            Phase::Running | Phase::LeftRun => true,
+        };
+        match kind {
+            Some(EchoKind::Enable) if d.phase == Phase::Off => {
+                d.phase = Phase::Enabling { since_ns: sent_ns };
+                d.misses = 0;
             }
-        } else if matches!(kind, Some(EchoKind::Disable)) {
-            // Disabled on purpose: its Reset reply is no surprise.
-            d.phase = Phase::Off;
-            d.disabled_ns = Some(sent_ns);
+            Some(EchoKind::Disable) => {
+                // Disabled on purpose: its Reset reply is no surprise, and its silence is no fault. The miss count stays
+                // for the snapshot; the next Enable starts it afresh.
+                d.phase = Phase::Off;
+            }
+            _ => {}
         }
         match send.kind {
             SendKind::Disable if d.stop == StopOutcome::NeverSent => d.stop = StopOutcome::Sent,
@@ -438,7 +503,7 @@ impl BusTick {
                 tick,
                 deadline_ns,
                 stop_disable: send.kind == SendKind::Disable,
-                counts_missed: !in_silence
+                counts_missed: counts_missed
                     && !matches!(kind, Some(EchoKind::Enable | EchoKind::Disable)),
                 reply: Reply::Waiting,
                 counted: false,
@@ -470,7 +535,7 @@ impl BusTick {
             }
         }
         self.settle_stops(now_ns);
-        let healthy = self.bus_error.is_none() && !self.error_passive;
+        let healthy = self.healthy();
         let mut limbs = [None; MAX_DRIVES];
         for (view, limb) in limbs.iter_mut().zip(&self.limbs) {
             *view = limb.map(|l| LimbView {
