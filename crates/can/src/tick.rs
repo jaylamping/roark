@@ -32,9 +32,9 @@ pub(crate) struct Outstanding {
     /// A stop's Disable: a Reset status after it confirms the stop.
     pub(crate) stop_disable: bool,
     /// Whether a missing status counts as unanswered. Not for Enable or Disable; not for anything sent to a drive this
-    /// host hasn't enabled (a silent disabled drive is offline, not a fault: PLAN.md item 6 Silence row), which covers
-    /// the post-Disable silence; and not in the enable-to-Run window, up to [`ENABLE_TO_RUN_NS`] after the Enable
-    /// (PLAN.md item 2 Silence windows).
+    /// host never enabled or saw reach Reset after its Disable (a silent disabled drive is offline, not a fault: PLAN.md
+    /// item 6 Silence row); not in the [`Timing::stop_confirm_ns`] after a Disable no Reset has confirmed yet; and not in
+    /// the enable-to-Run window, up to [`ENABLE_TO_RUN_NS`] after the Enable (PLAN.md item 2 Silence windows).
     pub(crate) counts_missed: bool,
     pub(crate) reply: Reply,
     pub(crate) counted: bool,
@@ -72,14 +72,20 @@ pub(crate) struct DriveState {
 impl DriveState {
     /// What a status header's mode says about the drive's run, from a status, a report or a version reply alike. Run
     /// after an Enable is the drive running, counted only from an ordered read while its limb is active; any other mode
-    /// after running, without a Disable from this host, is latched as having left Run.
+    /// after running, without a Disable from this host, is latched as having left Run; Reset from an ordered read after a
+    /// Disable confirms the drive off.
     pub(crate) fn note_mode(&mut self, mode: Mode, limb_active: bool, unordered: bool) {
         match self.phase {
             Phase::Enabling { .. } if mode == Mode::Run && limb_active && !unordered => {
                 self.phase = Phase::Running;
             }
             Phase::Running if mode != Mode::Run => self.phase = Phase::LeftRun,
-            Phase::Off | Phase::Enabling { .. } | Phase::Running | Phase::LeftRun => {}
+            Phase::Disabled { .. } if mode == Mode::Reset && !unordered => self.phase = Phase::Off,
+            Phase::Off
+            | Phase::Disabled { .. }
+            | Phase::Enabling { .. }
+            | Phase::Running
+            | Phase::LeftRun => {}
         }
     }
 }
@@ -87,8 +93,14 @@ impl DriveState {
 /// Where a drive is between this host's Enable and Disable.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Phase {
-    /// No Enable taken by the socket since the last Disable.
+    /// Never enabled since start or the limb's last clear, or reported Reset after this host's Disable.
     Off,
+    /// A Disable was taken at `since_ns` and no Reset has been read since. Its misses count again once the post-Disable
+    /// silence window has passed, so a lost Disable can't leave a running drive uncounted.
+    Disabled {
+        /// When the socket took the Disable.
+        since_ns: u64,
+    },
     /// An Enable was taken at `since_ns`; no Run status since.
     Enabling {
         /// When the socket took the Enable.
@@ -389,15 +401,15 @@ impl BusTick {
         for (slot, frame) in batch.frames().iter().enumerate() {
             let Some(frame) = frame else { continue };
             let Some(drive) = self.drives.get(slot).copied().flatten() else {
-                self.stop_all(StopReason::BadBatch { slot }, now_ns);
+                self.bad_batch(slot, now_ns);
                 return None;
             };
             let Some((kind, target)) = echo_of(frame) else {
-                self.stop_all(StopReason::BadBatch { slot }, now_ns);
+                self.bad_batch(slot, now_ns);
                 return None;
             };
             if target != drive.device || !batch_may_carry(kind) {
-                self.stop_all(StopReason::BadBatch { slot }, now_ns);
+                self.bad_batch(slot, now_ns);
                 return None;
             }
         }
@@ -414,6 +426,15 @@ impl BusTick {
             }
         }
         Some(*batch)
+    }
+
+    /// A bad batch stops every limb. If this tick's stops already took the last idle or active one, there is nothing left
+    /// to stop and no stop records it, so it is counted as refused.
+    fn bad_batch(&mut self, slot: usize, now_ns: u64) {
+        if !self.any_running() {
+            self.counters.refused_batches += 1;
+        }
+        self.stop_all(StopReason::BadBatch { slot }, now_ns);
     }
 
     /// The batch's frames for limbs still idle or active; those for a stopping or stopped limb are dropped and counted.
@@ -471,6 +492,7 @@ impl BusTick {
             )
         );
         let deadline_ns = self.scheduled_ns.saturating_add(self.timing.collect_ns);
+        let quiet_ns = self.timing.stop_confirm_ns;
         let tick = self.tick;
         let Some(d) = self.drives.get_mut(send.slot).and_then(Option::as_mut) else {
             return;
@@ -478,18 +500,21 @@ impl BusTick {
         d.last_sent_ns = Some(sent_ns);
         let counts_missed = match d.phase {
             Phase::Off => false,
+            Phase::Disabled { since_ns } => sent_ns.saturating_sub(since_ns) >= quiet_ns,
             Phase::Enabling { since_ns } => sent_ns.saturating_sub(since_ns) >= ENABLE_TO_RUN_NS,
             Phase::Running | Phase::LeftRun => true,
         };
         match kind {
-            Some(EchoKind::Enable) if d.phase == Phase::Off => {
+            Some(EchoKind::Enable) if matches!(d.phase, Phase::Off | Phase::Disabled { .. }) => {
                 d.phase = Phase::Enabling { since_ns: sent_ns };
                 d.misses = 0;
             }
+            // A repeated Disable keeps the first one's window, so Disables sent every tick can't hold misses off.
+            Some(EchoKind::Disable) if matches!(d.phase, Phase::Disabled { .. }) => {}
             Some(EchoKind::Disable) => {
-                // Disabled on purpose: its Reset reply is no surprise, and its silence is no fault. The miss count stays
-                // for the snapshot; the next Enable starts it afresh.
-                d.phase = Phase::Off;
+                // Disabled on purpose: its Reset reply is no surprise, and its silence is no fault until the window has
+                // passed with no Reset read. The miss count stays for the snapshot; the next Enable starts it afresh.
+                d.phase = Phase::Disabled { since_ns: sent_ns };
             }
             _ => {}
         }
