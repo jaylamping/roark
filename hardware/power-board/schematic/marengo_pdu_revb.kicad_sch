@@ -31963,7 +31963,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "Buck board pigtail: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 GND, 7 +3V3_PI, 8 SDA, 9 GND, 10 SCL, 11 SP_EN, 12 GND"
+		(property "Value" "Buck board pigtail: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 +3V3_PI, 7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA"
 			(at 60.96 411.48 0)
 			(effects
 				(font
@@ -32273,9 +32273,30 @@
 		)
 		(uuid "7ed4a328-4e63-5843-ad99-e5139882645f")
 	)
+	(label "+3V3_PI"
+		(at 55.88 384.81 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "a274440b-80b6-59b2-86fb-e3f263435d09")
+	)
+	(wire
+		(pts
+			(xy 60.96 387.35)
+			(xy 55.88 387.35)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "764822d0-b199-543b-9dae-77b0ce46a742")
+	)
 	(symbol
 		(lib_id "power:GND")
-		(at 55.88 384.81 270)
+		(at 55.88 387.35 270)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
@@ -32283,7 +32304,7 @@
 		(dnp no)
 		(uuid "f8b7f614-4a52-505e-966c-fa885243bf1c")
 		(property "Reference" "#PWR95"
-			(at 55.88 382.27 90)
+			(at 55.88 384.81 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32292,7 +32313,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 55.88 387.35 90)
+			(at 55.88 389.89 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32300,7 +32321,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 55.88 384.81 90)
+			(at 55.88 387.35 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32309,7 +32330,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 55.88 384.81 90)
+			(at 55.88 387.35 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32318,7 +32339,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 55.88 384.81 90)
+			(at 55.88 387.35 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32340,27 +32361,6 @@
 	)
 	(wire
 		(pts
-			(xy 60.96 387.35)
-			(xy 55.88 387.35)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "a274440b-80b6-59b2-86fb-e3f263435d09")
-	)
-	(label "+3V3_PI"
-		(at 55.88 387.35 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right bottom)
-		)
-		(uuid "764822d0-b199-543b-9dae-77b0ce46a742")
-	)
-	(wire
-		(pts
 			(xy 60.96 389.89)
 			(xy 55.88 389.89)
 		)
@@ -32370,30 +32370,9 @@
 		)
 		(uuid "fcb746e4-f5ac-5486-a442-80d9acafd4b1")
 	)
-	(label "I2C_SDA"
-		(at 55.88 389.89 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right bottom)
-		)
-		(uuid "0085fb9d-7c23-56ef-b6dd-750e3c0cdaf5")
-	)
-	(wire
-		(pts
-			(xy 60.96 392.43)
-			(xy 55.88 392.43)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ee5263de-c9b8-54ad-b1b7-caf1f402f2a9")
-	)
 	(symbol
 		(lib_id "power:GND")
-		(at 55.88 392.43 270)
+		(at 55.88 389.89 270)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
@@ -32401,7 +32380,7 @@
 		(dnp no)
 		(uuid "91b8bbc4-3692-5ad5-a7f6-da9f53307656")
 		(property "Reference" "#PWR96"
-			(at 55.88 389.89 90)
+			(at 55.88 387.35 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32410,7 +32389,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 55.88 394.97 90)
+			(at 55.88 392.43 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32418,7 +32397,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 55.88 392.43 90)
+			(at 55.88 389.89 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32427,7 +32406,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 55.88 392.43 90)
+			(at 55.88 389.89 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32436,7 +32415,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 55.88 392.43 90)
+			(at 55.88 389.89 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32458,6 +32437,27 @@
 	)
 	(wire
 		(pts
+			(xy 60.96 392.43)
+			(xy 55.88 392.43)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0085fb9d-7c23-56ef-b6dd-750e3c0cdaf5")
+	)
+	(label "SP_EN"
+		(at 55.88 392.43 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "ee5263de-c9b8-54ad-b1b7-caf1f402f2a9")
+	)
+	(wire
+		(pts
 			(xy 60.96 394.97)
 			(xy 55.88 394.97)
 		)
@@ -32467,51 +32467,9 @@
 		)
 		(uuid "bc3315d4-1387-59d2-80b5-f115c65925cf")
 	)
-	(label "I2C_SCL"
-		(at 55.88 394.97 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right bottom)
-		)
-		(uuid "535a8eeb-cb2b-5a46-8ea1-01954d18ce93")
-	)
-	(wire
-		(pts
-			(xy 60.96 397.51)
-			(xy 55.88 397.51)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "8f79e045-13ac-5447-9c31-ac6e3d6bfb16")
-	)
-	(label "SP_EN"
-		(at 55.88 397.51 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right bottom)
-		)
-		(uuid "04786b8b-b7d9-52c3-84dc-5889c6485a1b")
-	)
-	(wire
-		(pts
-			(xy 60.96 400.05)
-			(xy 55.88 400.05)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "7ce1f224-e3b2-5496-a0e9-37f82f30c596")
-	)
 	(symbol
 		(lib_id "power:GND")
-		(at 55.88 400.05 270)
+		(at 55.88 394.97 270)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
@@ -32519,7 +32477,7 @@
 		(dnp no)
 		(uuid "8542f791-82d1-5741-ace6-d83e624b5dd2")
 		(property "Reference" "#PWR97"
-			(at 55.88 397.51 90)
+			(at 55.88 392.43 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32528,7 +32486,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 55.88 402.59 90)
+			(at 55.88 397.51 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32536,7 +32494,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 55.88 400.05 90)
+			(at 55.88 394.97 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32545,7 +32503,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 55.88 400.05 90)
+			(at 55.88 394.97 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32554,7 +32512,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 55.88 400.05 90)
+			(at 55.88 394.97 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -32573,6 +32531,48 @@
 				)
 			)
 		)
+	)
+	(wire
+		(pts
+			(xy 60.96 397.51)
+			(xy 55.88 397.51)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "535a8eeb-cb2b-5a46-8ea1-01954d18ce93")
+	)
+	(label "I2C_SCL"
+		(at 55.88 397.51 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "8f79e045-13ac-5447-9c31-ac6e3d6bfb16")
+	)
+	(wire
+		(pts
+			(xy 60.96 400.05)
+			(xy 55.88 400.05)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "04786b8b-b7d9-52c3-84dc-5889c6485a1b")
+	)
+	(label "I2C_SDA"
+		(at 55.88 400.05 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "7ce1f224-e3b2-5496-a0e9-37f82f30c596")
 	)
 	(symbol
 		(lib_id "Device:Fuse")
@@ -34274,7 +34274,7 @@
 		)
 		(uuid "fcb67255-b0d5-5b91-a14b-d0d0808c26c4")
 	)
-	(text "Block 10. Absorber: a bank trip into a bus short cuts 350-890 A. tools/absorber_sim.py (pack 54.6 V, no pack yet), worst corners: 0.05 Ohm pulse loop (cell AC resistance),\n0.5-1 uH, D1 at 71.2 V, C -20 %, trip 8.8-17.5 us. Eight 47 uF 80 V hybrids (EEH-ZC1K470P, the bus-cap part) give BAT 75 V or less (0.05 Ohm loop): 6 % under rating, about 18\n% under surge (rev B5: the APZ 100 V line is obsolete). Bring-up step 1 is a gate: a pulse loop under 0.05 Ohm means rerun absorber_sim before motors. Measure lead L and pulse\nR at bring-up. 100k bleeds it. BMS close drives about 300 A into three cans for a few us: bench it on the JK.\nU2 feed: F1, 22R, ES1D in series, then 1 uF. A shorted U2 puts the pack on VCTL: 22R holds it to about 1.6 A, so SMAJ15A clamps under 19.2 V (Q6 gate 20 V) and F1 (50 A\nbreaking) opens. The series diode keeps C5 from back-driving U2 when BAT collapses, and 22R keeps C39's inrush far under F1's I2t.\nAbsorber close option (M3), DNP: if the BMS trips when it closes onto the absorber, remove the 0R and fit 2R + the delayed NMOS + its RC: 25 A at close, clamp unchanged\n(absorber_sim.py).\nRUN_A and RUN_B diodes: a U1 pin 2-3 bridge or an EN fault can't drive RUN. FLT reaches UVLO through BAT46W + 10k (2010) with a 12 V zener on FLT_A: FLT low holds UVLO near\n1.9 V; a bridged UVLO puts at most 5.5 mA into FLT and 12.7 V on it (15 V recommended).\nConverter: F2 20 A on the board end protects the pigtail (U7 already limits at 9.7-12.3 A; F2 backs up a shorted Q7). The DVE has no reverse protection, so the keyed connector\ncarries polarity. U7 PGD high (good) turns on the 2N7002, which pulls ON/OFF to -Vin through 220R: on (0.45 V at 2 mA). 220R limits a pin 5-11 short to 55 mA. 470k and the 12\nV zener bias the gate from BRK_IN, so it doesn't depend on VCTL.\n1 uF on RST_SRC (M8): a reset held at power-up no longer arms the latch (tools/latch_sim.py, 36 cases). Reset interlock (M1): Q10 shorts RST_SRC until MID is over about 11 V\n(10 V zener, Q11), and Q14 shorts it while VBUS is over 6-8.5 V (5.1 V zener, hFE spread). Operator rule: wait for VBUS under 3 V. Reset needs MID healthy and the bus down, so\na shorted B can't be hard-closed onto a charged bus. After a stop, wait for the drives' caps to bleed. It loads MID by about 30 uA. 33k on U17 VBUS (M13). 22 nF SRC to GND,\nTI's recommendation for U8. BAT46W (M4). 330 uF on +12V: spare-output shorts and servo back-feed (M9) land in it and the compute loads."
+	(text "Block 10. Absorber: a bank trip into a bus short cuts 350-890 A. tools/absorber_sim.py (pack 54.6 V, no pack yet), worst corners: 0.05 Ohm pulse loop (cell AC resistance),\n0.5-1 uH, D1 at 71.2 V, C -20 %, trip 8.8-17.5 us. Eight 47 uF 80 V hybrids (EEH-ZC1K470P, the bus-cap part) give BAT 75 V or less (0.05 Ohm loop): 6 % under rating, about 18\n% under surge (rev B5: the APZ 100 V line is obsolete). Bring-up step 1 is a gate: a pulse loop under 0.05 Ohm means rerun absorber_sim before motors. Measure lead L and pulse\nR at bring-up. 100k bleeds it. BMS close drives about 300 A into three cans for a few us: bench it on the JK.\nU2 feed: F1, 22R, ES1D in series, then 1 uF. A shorted U2 puts the pack on VCTL: 22R holds it to about 1.6 A, so SMAJ15A clamps under 19.2 V (Q6 gate 20 V) and F1 (50 A\nbreaking) opens. The series diode keeps C5 from back-driving U2 when BAT collapses, and 22R keeps C39's inrush far under F1's I2t.\nAbsorber close option (M3), DNP: if the BMS trips when it closes onto the absorber, remove the 0R and fit 2R + the delayed NMOS + its RC: 25 A at close, clamp unchanged\n(absorber_sim.py).\nRUN_A and RUN_B diodes: a U1 pin 2-3 bridge or an EN fault can't drive RUN. FLT reaches UVLO through BAT46W + 10k (2010) with a 12 V zener on FLT_A: FLT low holds UVLO near\n1.9 V; a bridged UVLO puts at most 5.5 mA into FLT and 12.7 V on it (15 V recommended).\nConverter: F2 20 A on the board end protects the pigtail (U7 already limits at 9.7-12.3 A; F2 backs up a shorted Q7). The DVE has no reverse protection, so the keyed connector\ncarries polarity. U7 PGD high (good) turns on the 2N7002, which pulls ON/OFF to -Vin through 220R: on (0.45 V at 2 mA). 470k and the 12 V zener bias the gate from BRK_IN, so\nit doesn't depend on VCTL.\n1 uF on RST_SRC (M8): a reset held at power-up no longer arms the latch (tools/latch_sim.py, 36 cases). Reset interlock (M1): Q10 shorts RST_SRC until MID is over about 11 V\n(10 V zener, Q11), and Q14 shorts it while VBUS is over 6-8.5 V (5.1 V zener, hFE spread). Operator rule: wait for VBUS under 3 V. Reset needs MID healthy and the bus down, so\na shorted B can't be hard-closed onto a charged bus. After a stop, wait for the drives' caps to bleed. It loads MID by about 30 uA. 33k on U17 VBUS (M13). 22 nF SRC to GND,\nTI's recommendation for U8. BAT46W (M4). The 330 uF +12V cap (M9: spare-output shorts and servo back-feed land in it) moved to the buck board in split S1."
 		(exclude_from_sim no)
 		(at 300 128 0)
 		(effects
@@ -36122,7 +36122,7 @@
 			)
 		)
 	)
-	(text "Rev B4 review: two more absorber cans (three in all). U2 feed 22R and series ES1D. FLT diode BAT46W (pull-down only). 68 V zener on U17 VBUS. 220R in Q12's\ndrain. U8 sense RC placeholder: 0R fitted, 1 nF DNP. Schottky on SPARE_ON (and D5 on SPARE_SW). VBUS bleeder footprint, DNP: fit it only if the drives don't\nbleed the bus. Fuses on the Jetson, Pi buck and fan outputs (the DVE limits at about 30 A). SMBJ15A on +12V: servo back-feed clamp, 16.7 V min breakdown, so it\nnever conducts at 12 V."
+	(text "Rev B4 review: two more absorber cans (three in all). U2 feed 22R and series ES1D. FLT diode BAT46W (pull-down only). 68 V zener on U17 VBUS. 220R in Q12's\ndrain. U8 sense RC placeholder: 0R fitted, 1 nF DNP. VBUS bleeder footprint, DNP: fit it only if the drives don't bleed the bus. The SPARE_ON and SPARE_SW\nSchottkys, the Jetson, Pi buck and fan fuses and the +12V SMBJ15A moved to the buck board in split S1."
 		(exclude_from_sim no)
 		(at 25.4 700 0)
 		(effects
@@ -65122,7 +65122,7 @@
 	)
 	(text "5c. Buck board link (J24): SPARE_SW enable"
 		(exclude_from_sim no)
-		(at 300 960 0)
+		(at 300 990 0)
 		(effects
 			(font
 				(size 2 2)
@@ -65134,7 +65134,7 @@
 	)
 	(symbol
 		(lib_id "Device:D")
-		(at 309.88 985.52 270)
+		(at 309.88 1009.65 270)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -65142,7 +65142,7 @@
 		(dnp no)
 		(uuid "f2b5d06a-19bf-5fdf-a62d-acbae1206b57")
 		(property "Reference" "D43"
-			(at 312.42 984.25 90)
+			(at 312.42 1008.38 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -65150,7 +65150,7 @@
 			)
 		)
 		(property "Value" "BAV19W"
-			(at 312.42 986.79 90)
+			(at 312.42 1010.92 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -65158,7 +65158,7 @@
 			)
 		)
 		(property "Footprint" "Diode_SMD:D_SOD-123"
-			(at 309.88 985.52 90)
+			(at 309.88 1009.65 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -65167,7 +65167,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 309.88 985.52 90)
+			(at 309.88 1009.65 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -65176,7 +65176,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 309.88 985.52 90)
+			(at 309.88 1009.65 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -65201,8 +65201,8 @@
 	)
 	(wire
 		(pts
-			(xy 309.88 981.71)
-			(xy 309.88 979.17)
+			(xy 309.88 1005.84)
+			(xy 309.88 1003.3)
 		)
 		(stroke
 			(width 0)
@@ -65211,7 +65211,7 @@
 		(uuid "e19795ad-d5a2-5460-97e9-c1f2a13a2029")
 	)
 	(label "SP_EN"
-		(at 309.88 979.17 90)
+		(at 309.88 1003.3 90)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -65222,8 +65222,8 @@
 	)
 	(wire
 		(pts
-			(xy 309.88 989.33)
-			(xy 309.88 991.87)
+			(xy 309.88 1013.46)
+			(xy 309.88 1016)
 		)
 		(stroke
 			(width 0)
@@ -65232,7 +65232,7 @@
 		(uuid "413230e3-1c63-5bcb-9b62-4518a21cf79c")
 	)
 	(label "SP_ENR"
-		(at 309.88 991.87 270)
+		(at 309.88 1016 270)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -65241,9 +65241,9 @@
 		)
 		(uuid "e43880d8-a14b-5527-8e02-59f7d18dd5b4")
 	)
-	(text "SP_EN is the only latch-derived signal on the pigtail. The series diode stops any fault on the buck board or the cable\nfrom feeding RUN; the 68k pull-down at U9's EN (buck board) holds SPARE_SW off when RUN drops, the diode opens or the pigtail\nis unplugged. RUN 7.7 V: EN = (7.7 - 0.6) x 68/168 = 2.9 V, on.\nI2C to the buck board's two meters: one set of pull-ups only (the Pi's); the pigtail keeps SDA and SCL beside GND (pins 8,\n9, 10). Pigtail length up to about 300 mm at 100 kHz (about 150 pF of cable plus the meters, under the 400 pF bus limit).\nGround: the buck board's ground meets this board's at J24 only. The Pi's return runs on its own 12 V output (buck board\nJ6); J21's GND is the I2C reference, so route the J21 cable beside the pigtail to keep that loop small."
+	(text "SP_EN is the only latch-derived signal on the pigtail. The series diode stops any fault on the buck board or the cable\nfrom feeding RUN; the 68k pull-down at U3's EN (buck board) holds SPARE_SW off when RUN drops, the diode opens or the pigtail\nis unplugged. RUN 7 V: EN = (7 - 0.6) x 68/168 = 2.6 V, on.\nPinout: the 54 V input (1, 2) faces GND (7, 8), and SP_EN (9) faces GND and sits between GND pins, so a short between facing\nor neighbouring contacts trips U7 or turns SPARE_SW off. SCL and SDA (11, 12) face ON/OFF and +3V3: a short there upsets\nI2C or holds the converter off. One set of I2C pull-ups only (the Pi's). Pigtail length up to about 300 mm at 100 kHz.\nGround: the buck board's ground meets this board's at J24 and again through the Pi (its 12 V return on buck board J3, and\nJ21's GND). If the J3 return opens, the Pi buck's return falls back through J21's one GND pin: route the J21 cable beside\nthe pigtail and check the J3 return crimp at assembly."
 		(exclude_from_sim no)
-		(at 300 1010 0)
+		(at 300 1035 0)
 		(effects
 			(font
 				(size 1.27 1.27)

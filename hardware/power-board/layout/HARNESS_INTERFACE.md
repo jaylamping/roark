@@ -38,7 +38,7 @@ Each `WIRE_*` body runs 80–120 mm. Rows that bend the same way use concentric 
 | Brake J3, J25 (Mini-Fit Jr, 18 AWG, 2.3 mm) | mated plug top, Z about 23.6, at X 29 and 37 | +Z, then +Y | R8 and up (nested) | `KO_brake_plugs_J3_J25` |
 | Buck board pigtail J24 (Micro-Fit 2 × 6, 18 AWG, 1.9 mm) | plug top, Z about 17.6, X −37.5..−22.5 | +Z, then +Y | R6 and up | `KO_12V_converter_plug_J24` |
 | 12 V outputs | on the buck board since split S1 (2026-11-09): J2 Jetson, J3 Pi buck, J4 fans, J5 SPARE_SW, J6 SPARE_ON | | | |
-| Pi link J21 (GH 8, 26 AWG, 1.0 mm) | plug back at Y about 185, Z 3.8 | −Y (side entry) | none on the board | same |
+| Pi link J21 (GH 8, 26 AWG, 1.0 mm) | plug back at Y about 185, Z 3.8 | −Y (side entry) | none on the board | `KO_bottom_plug_J21` |
 | E-stop loop J20 (GH 8, 26 AWG, 1.0 mm) | plug back at X about −48.5, Z 3.8 | −X (side entry) | none on the board | `KO_estop_plug_J20` |
 
 Rev B5 change in this hand-off: J20 was turned 180° so its plug enters from the −X edge. It used to face into the board.

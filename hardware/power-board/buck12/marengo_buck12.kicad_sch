@@ -3,13 +3,13 @@
 	(generator "eeschema")
 	(generator_version "10.0")
 	(uuid "1f6e173b-b73c-54ed-8d33-6e2134203921")
-	(paper "A2")
+	(paper "A1")
 	(title_block
 		(title "marengo 12 V buck board (rev B5)")
 		(date "2026-11-06")
 		(rev "B-wip")
 		(company "marengo")
-		(comment 1 "Replaces the DVE0125V2NBC on J24. Main board: hardware/power-board/schematic.")
+		(comment 1 "On the J24 pigtail (split S1 pinout). Main board: hardware/power-board/schematic.")
 	)
 	(lib_symbols
 		(symbol "Connector_Generic:Conn_02x06_Odd_Even"
@@ -4024,7 +4024,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "J24 mate: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 GND, 7 +3V3_PI, 8 SDA, 9 GND, 10 SCL, 11 SP_EN, 12 GND"
+		(property "Value" "J24 mate: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 +3V3_PI, 7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA"
 			(at 34.29 88.9 0)
 			(effects
 				(font
@@ -4334,9 +4334,30 @@
 		)
 		(uuid "30397f69-2b4e-5b70-933c-19e542e62fc3")
 	)
+	(label "+3V3_PI"
+		(at 52.07 69.85 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "40c0a288-6816-5643-ba9c-820e9ecf931a")
+	)
+	(wire
+		(pts
+			(xy 34.29 72.39)
+			(xy 29.21 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "67235aef-8b69-514f-83bc-0c2e3e759387")
+	)
 	(symbol
 		(lib_id "power:GND")
-		(at 52.07 69.85 90)
+		(at 29.21 72.39 270)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
@@ -4344,7 +4365,7 @@
 		(dnp no)
 		(uuid "d8cd70b5-509d-5e92-9ff6-cfa2930e5ef1")
 		(property "Reference" "#PWR3"
-			(at 52.07 67.31 90)
+			(at 29.21 69.85 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4353,7 +4374,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 52.07 72.39 90)
+			(at 29.21 74.93 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4361,7 +4382,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 52.07 69.85 90)
+			(at 29.21 72.39 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4370,7 +4391,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 52.07 69.85 90)
+			(at 29.21 72.39 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4379,7 +4400,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 52.07 69.85 90)
+			(at 29.21 72.39 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4401,27 +4422,6 @@
 	)
 	(wire
 		(pts
-			(xy 34.29 72.39)
-			(xy 29.21 72.39)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "40c0a288-6816-5643-ba9c-820e9ecf931a")
-	)
-	(label "+3V3_PI"
-		(at 29.21 72.39 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right bottom)
-		)
-		(uuid "67235aef-8b69-514f-83bc-0c2e3e759387")
-	)
-	(wire
-		(pts
 			(xy 46.99 72.39)
 			(xy 52.07 72.39)
 		)
@@ -4431,30 +4431,9 @@
 		)
 		(uuid "13fbb8b9-0362-5f00-9d4c-ae79b78c8eaa")
 	)
-	(label "I2C_SDA"
-		(at 52.07 72.39 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "e1904f66-9e54-5878-82f8-46b8f07198a2")
-	)
-	(wire
-		(pts
-			(xy 34.29 74.93)
-			(xy 29.21 74.93)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ceb8a9ec-4e8f-5981-b2b0-9815e764fc2d")
-	)
 	(symbol
 		(lib_id "power:GND")
-		(at 29.21 74.93 270)
+		(at 52.07 72.39 90)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
@@ -4462,7 +4441,7 @@
 		(dnp no)
 		(uuid "171ec9a5-1382-5a65-b884-cf5750bc3a20")
 		(property "Reference" "#PWR4"
-			(at 29.21 72.39 90)
+			(at 52.07 69.85 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4471,7 +4450,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 29.21 77.47 90)
+			(at 52.07 74.93 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4479,7 +4458,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 29.21 74.93 90)
+			(at 52.07 72.39 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4488,7 +4467,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 29.21 74.93 90)
+			(at 52.07 72.39 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4497,7 +4476,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 29.21 74.93 90)
+			(at 52.07 72.39 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4519,6 +4498,27 @@
 	)
 	(wire
 		(pts
+			(xy 34.29 74.93)
+			(xy 29.21 74.93)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e1904f66-9e54-5878-82f8-46b8f07198a2")
+	)
+	(label "SP_EN"
+		(at 29.21 74.93 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "ceb8a9ec-4e8f-5981-b2b0-9815e764fc2d")
+	)
+	(wire
+		(pts
 			(xy 46.99 74.93)
 			(xy 52.07 74.93)
 		)
@@ -4528,51 +4528,9 @@
 		)
 		(uuid "3468f943-a8d5-5fa8-965d-4a640db443fe")
 	)
-	(label "I2C_SCL"
-		(at 52.07 74.93 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "6d21bd92-2fca-5a54-ae58-bae6e7d4d504")
-	)
-	(wire
-		(pts
-			(xy 34.29 77.47)
-			(xy 29.21 77.47)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "524aed0c-e070-53f5-bffb-7e699b35f50a")
-	)
-	(label "SP_EN"
-		(at 29.21 77.47 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right bottom)
-		)
-		(uuid "28835235-c8e9-53fb-81d3-91b717948ebc")
-	)
-	(wire
-		(pts
-			(xy 46.99 77.47)
-			(xy 52.07 77.47)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "3152fe6f-170f-5360-a328-ff17bec30dd1")
-	)
 	(symbol
 		(lib_id "power:GND")
-		(at 52.07 77.47 90)
+		(at 52.07 74.93 90)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom no)
@@ -4580,7 +4538,7 @@
 		(dnp no)
 		(uuid "fbad1fa0-2659-5745-9454-38740a9caceb")
 		(property "Reference" "#PWR5"
-			(at 52.07 74.93 90)
+			(at 52.07 72.39 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4589,7 +4547,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 52.07 80.01 90)
+			(at 52.07 77.47 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4597,7 +4555,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 52.07 77.47 90)
+			(at 52.07 74.93 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4606,7 +4564,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 52.07 77.47 90)
+			(at 52.07 74.93 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4615,7 +4573,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 52.07 77.47 90)
+			(at 52.07 74.93 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4634,6 +4592,48 @@
 				)
 			)
 		)
+	)
+	(wire
+		(pts
+			(xy 34.29 77.47)
+			(xy 29.21 77.47)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6d21bd92-2fca-5a54-ae58-bae6e7d4d504")
+	)
+	(label "I2C_SCL"
+		(at 29.21 77.47 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "524aed0c-e070-53f5-bffb-7e699b35f50a")
+	)
+	(wire
+		(pts
+			(xy 46.99 77.47)
+			(xy 52.07 77.47)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "28835235-c8e9-53fb-81d3-91b717948ebc")
+	)
+	(label "I2C_SDA"
+		(at 52.07 77.47 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "3152fe6f-170f-5360-a328-ff17bec30dd1")
 	)
 	(symbol
 		(lib_id "Device:D")
@@ -11915,7 +11915,7 @@
 		)
 		(uuid "6d354766-a84e-5d29-a5be-613cd5e4db99")
 	)
-	(text "Input: SK810L crowbar (a reversed pigtail clamps at about 1 V; U7 on the main board limits and times out), 1 uF at the connector, 2.2 uH filter, 47 uF aluminium (0.42 Ohm\nESR damps the filter and the pigtail), 5 x 2.2 uF hot-loop ceramics at Q1. tools/absorber_sim.py (main board) runs the bank-trip spike through U7, F2, the pigtail and\nthis filter.\nUVLO: 300k / 12.4k: on at 30.2 V, off at 27.2 V (10 uA hysteresis current). Below the 30.5 V worst sag at 90 A from a 38 V pack, so motor load can't brown out compute\nbefore the BMS does; the Pi still shuts down on its load-aware threshold.\nON/OFF: the main board's 2N7002 pulls pin 5 low through 220R when U7's PGD is good. Pin 5 open: 220k from VIN biases the NPN, which holds EN low (off). Pin 5 low: NPN\noff, EN rises: on. Pin 5 idles at about 2.7 V, like the DVE's.\nPower train (TI design 2 uprated): 400 kHz (RT 24.9k), 6.8 uH 8.9 mOhm 21.8 A Isat, 3.3 A ripple; Q1 BSC070N10NS5 (low Qgd), Q2 BSC040N10NS5. Valley limit by Q2 RDS(on):\n200 uA x 402R / 4.5 mOhm = 18 A cold, about 12-13 A hot: over the 11.6 A ceiling, under the 19-21 A of the inductor. Hiccup on overload.\nOutput: 12.0 V (0.8 V x (1 + 21k / 1.5k)), 5 x 22 uF here, plus 330 uF + 2 x 22 uF on the main board at the far end of the pigtail. Compensation is TI's for this L and C\n(40 kHz crossover). The pigtail and 330 uF resonate near 20 kHz: measure the loop with an injection resistor in place of the 0R before trusting it. VCC from VOUT through\nBAT46W (TI's D1) cuts bias loss.\nLoss at 12 A, 48 V (est): Q1 0.4 W conduction + 1.2 W switching, Q2 0.7 W, inductor 1.3 W, controller 0.3 W: about 4 W, 97 %. Board: about 60 x 85 mm with the 12 V\ndistribution and its six outputs, bolted to the rail with a thermal pad like the DVE."
+	(text "Input: SK810L crowbar (a reversed pigtail clamps at about 1 V; U7 on the main board limits and times out), 1 uF at the connector, 2.2 uH filter, 47 uF aluminium (0.42 Ohm\nESR damps the filter and the pigtail), 5 x 2.2 uF hot-loop ceramics at Q1. tools/absorber_sim.py (main board) runs the bank-trip spike through U7, F2, the pigtail and\nthis filter.\nUVLO: 300k / 12.4k: on at 30.2 V, off at 27.2 V (10 uA hysteresis current). Below the 30.5 V worst sag at 90 A from a 38 V pack, so motor load can't brown out compute\nbefore the BMS does; the Pi still shuts down on its load-aware threshold.\nON/OFF: the main board's 2N7002 pulls pin 5 low through 220R when U7's PGD is good. Pin 5 open: 220k from VIN biases the NPN, which holds EN low (off). Pin 5 low: NPN\noff, EN rises: on. Pin 5 idles at about 2.7 V, like the DVE's.\nPower train (TI design 2 uprated): 400 kHz (RT 24.9k), 6.8 uH 8.9 mOhm 21.8 A Isat, 3.3 A ripple; Q1 BSC070N10NS5 (low Qgd), Q2 BSC040N10NS5. Valley limit by Q2 RDS(on):\n200 uA x 402R / 4.5 mOhm = 18 A cold, about 12-13 A hot: over the 11.6 A ceiling, under the 19-21 A of the inductor. Hiccup on overload.\nOutput: 12.0 V (0.8 V x (1 + 21k / 1.5k)), 5 x 22 uF at VOUT plus the 330 uF bulk cap on +12V behind RS1 (12 V distribution, below). Compensation is TI's for this L and 5\nx 22 uF only (40 kHz crossover): recheck it for the 330 uF and measure the loop with an injection resistor in place of the 0R before loading. VCC from VOUT through BAT46W\n(TI's D1) cuts bias loss.\nLoss at 12 A, 48 V (est): Q1 0.4 W conduction + 1.2 W switching, Q2 0.7 W, inductor 1.3 W, controller 0.3 W: about 4 W, 97 %. Board: about 60 x 85 mm with the 12 V\ndistribution and its six outputs, bolted to the rail with a thermal pad like the DVE."
 		(exclude_from_sim no)
 		(at 20 280 0)
 		(effects
@@ -17885,7 +17885,7 @@
 		)
 		(uuid "c1146363-0068-5ecc-b9d9-c5eb6b0e4232")
 	)
-	(text "Moved from the main board (split S1): the 12 V meter (0x4D) and SPARE_SW meter (0x47) on the Pi's I2C, powered by the Pi's 3.3 V through J1 pin 7; pull-ups only at the\nPi.\nSP_EN (J1 pin 11) comes from the main board's RUN through 100k and a series diode; the 68k here pulls EN low, so SPARE_SW is off when RUN drops, the diode opens or the\npigtail is unplugged (fail-off). EN about 2.9 V with RUN up.\nSPARE_SW: limit 3.87-4.42 A (499R), dV/dt 3.3 nF about 12 V/ms. SPARE_ON: unswitched, about 2 A limit. B340A clamps on both outputs. SMBJ15A: servo back-feed clamp on\n+12V.\n330 uF + 5 x 22 uF now sit at the converter output, not at the far end of the pigtail: recheck the compensation and measure the loop at the 0R injection point before\nloading."
+	(text "Moved from the main board (split S1): the 12 V meter (0x4D) and SPARE_SW meter (0x47) on the Pi's I2C, powered by the Pi's 3.3 V through J1 pin 6; pull-ups only at the\nPi.\nSP_EN (J1 pin 9, between GND pins) comes from the main board's RUN through 100k and a series diode; the 68k here pulls EN low, so SPARE_SW is off when RUN drops, the\ndiode opens or the pigtail is unplugged (fail-off). EN about 2.6 V with RUN up.\nSPARE_SW: limit 3.87-4.42 A (499R), dV/dt 3.3 nF about 12 V/ms. SPARE_ON: unswitched, about 2 A limit. B340A clamps on both outputs. SMBJ15A: servo back-feed clamp on\n+12V.\n330 uF + 5 x 22 uF now sit at the converter output, not at the far end of the pigtail: recheck the compensation and measure the loop at the 0R injection point before\nloading.\nThe DVE fallback no longer plugs into J24: this board has no 12 V input, and the old DVE adapter pinout puts 12 V on SCL and SP_EN."
 		(exclude_from_sim no)
 		(at 20 500 0)
 		(effects

@@ -5,8 +5,8 @@
 ## Board
 
 - **100 × 170 mm** (option A, Joey 2026-11-07: the 100 × 150 placement packed the control blocks to 74–84 % and couldn't be
-  routed). The extra 20 mm are at the bottom (Y 170–190): the 12 V distribution and the watchdog moved there, next to the
-  Micro-Fit outputs (now at Y 175); the latch and soft start widened to the left edge. Power path, banks, heatsink and ports
+  routed). The extra 20 mm are at the bottom (Y 170–190): the watchdog and the power-fail warning moved there, beside J21
+  (the 12 V distribution and its Micro-Fit outputs went to the buck board in split S1, 2026-11-09); the latch and soft start widened to the left edge. Power path, banks, heatsink and ports
   kept their coordinates. M3 holes at X ±46, Y 174 / 265 / 336.
 - **Single-sided: every part on the front face.** The rear has 6 mm to the carrier, and a back-side part would need a second reflow pass (Joey, 2026-11-07).
 - **6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, OSP** (Joey, 2026-11-09: JLC quoted $82.80 for 5, against $96.47 for
