@@ -536,7 +536,8 @@ fn the_feedback_limit_is_three_periods_inclusive() {
 }
 
 /// Guards: safety - timing that breaks the tick's promises is refused at startup, never quietly replaced, one row per
-/// rule and its boundary: a rate whose three periods reach the drives' 50 ms timeout (60 Hz) is refused and 61 Hz is not,
+/// rule and its boundary: a rate whose three periods of feedback reach the drives' 50 ms timeout (60 Hz) is refused, as
+/// is one whose three misses and the tick that stops on them reach it (80 Hz), and 81 Hz is not,
 /// and a stop window must fit the post-Disable silence and a tick to send reporting off (safety.md: invalid
 /// configuration is an error; PLAN.md item 3).
 #[test]
@@ -598,7 +599,15 @@ fn timing_that_breaks_the_tick_is_refused() {
                 period_ns: 16_666_667,
             }),
         ),
-        ("61 Hz", Timing::at_hz(61), None),
+        (
+            "80 Hz",
+            Timing::at_hz(80),
+            Some(TimingError::SilenceMisses {
+                silence_misses: 3,
+                period_ns: 12_500_000,
+            }),
+        ),
+        ("81 Hz", Timing::at_hz(81), None),
         (
             "stop window too short",
             Timing {
@@ -703,9 +712,20 @@ fn silence_counts_must_fire_before_the_drive_timeout() {
             }),
         ),
         (
-            "silence misses just inside the drive timeout",
+            "silence misses whose stop, a tick after the last, reaches the drive timeout",
             Timing {
                 silence_misses: span - 1,
+                ..base
+            },
+            Some(TimingError::SilenceMisses {
+                silence_misses: span - 1,
+                period_ns: base.period_ns,
+            }),
+        ),
+        (
+            "silence misses whose stop lands just inside the drive timeout",
+            Timing {
+                silence_misses: span - 2,
                 ..base
             },
             None,

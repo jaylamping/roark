@@ -207,9 +207,9 @@ fn expired_feedback_stops_only_its_limb() {
 }
 
 /// Guards: safety - replies missed while a drive is between its Enable and its first Run status aren't counted for
-/// [`ENABLE_TO_RUN_NS`], and none are counted while it is disabled, which covers the post-Disable silence; once Run is
-/// seen after an Enable they count again (PLAN.md item 2 Silence windows; item 6 Silence row: a silent disabled drive
-/// is offline, not a fault).
+/// [`ENABLE_TO_RUN_NS`]; after a Disable they aren't counted for `stop_confirm_ns`, nor at all once a Reset confirms
+/// the drive off; once Run is seen after an Enable they count again (PLAN.md item 2 Silence windows; item 6 Silence row:
+/// a silent disabled drive is offline, not a fault).
 #[test]
 fn misses_in_the_enable_and_post_disable_windows_are_not_counted() {
     // The enable sequence's run_mode write needs no fresh feedback, so it can go unanswered in either window.
@@ -218,18 +218,22 @@ fn misses_in_the_enable_and_post_disable_windows_are_not_counted() {
 
     // Between the Enable and the first Run status: counted only from the first send at least 50 ms after the Enable.
     let mut bus = two_limbs();
+    // Drive 102 enabled and answering, so the helper's holds to it go out.
     run_tick(
         &mut bus,
         0,
-        Some(&batch(0, &[Some(encode::enable(id(101))), None])),
-        &[],
+        Some(&batch(
+            0,
+            &[Some(encode::enable(id(101))), Some(encode::enable(id(102)))],
+        )),
+        &[(MS, status(102, Mode::Run))],
     );
     let _ = bus.end(deadline(0));
     let first_counted = ENABLE_TO_RUN_NS.div_ceil(PERIOD);
     let stopped_at = silent_until_stopped(&mut bus, 1, first_counted, misses, write);
     assert_eq!(stopped_at, first_counted + misses);
 
-    // After a Disable from control: never counted while disabled, well past the post-Disable silence.
+    // After a Disable from control that Reset confirms: never counted, well past the post-Disable silence.
     let mut bus = two_limbs();
     running(&mut bus);
     run_tick(
@@ -273,6 +277,26 @@ fn misses_in_the_enable_and_post_disable_windows_are_not_counted() {
     let _ = bus.end(deadline(tick));
     let stopped_at = silent_until_stopped(&mut bus, tick + 1, tick + 1, misses, hold(101));
     assert_eq!(stopped_at, tick + 1 + misses);
+
+    // A Disable with no Reset read after it (lost, or its replies dropped): counted again from the first send
+    // `stop_confirm_ns` after it, and a Disable sent again doesn't restart that window.
+    let mut bus = two_limbs();
+    running(&mut bus);
+    for tick in 2..4 {
+        run_tick(
+            &mut bus,
+            tick,
+            Some(&batch(
+                tick,
+                &[Some(encode::disable(id(101))), Some(hold(102))],
+            )),
+            &[(MS, status(102, Mode::Run))],
+        );
+        let _ = bus.end(deadline(tick));
+    }
+    let first_counted = 2 + bus.timing().stop_confirm_ns.div_ceil(PERIOD);
+    let stopped_at = silent_until_stopped(&mut bus, 4, first_counted, misses, write);
+    assert_eq!(stopped_at, first_counted + misses);
 }
 
 /// Sends `frame` to drive 101 every tick from `from`, never answered, with drive 102 held and answering, until drive
@@ -723,4 +747,20 @@ fn a_confirmed_limb_rearms_at_once() {
     }
     // Its reporting off went out this very tick.
     assert_eq!(bus.rearm(0, deadline(tick)), Ok(()));
+}
+
+/// Guards: safety - a bad batch arriving in the tick its bus's last running limb stops has no limb left to stop, so it is
+/// counted as refused rather than lost (logging.md section 4: nothing fails in silence).
+#[test]
+fn a_bad_batch_as_the_last_limb_stops_is_counted() {
+    let mut bus = two_limbs();
+    running(&mut bus);
+    assert_eq!(bus.stop_limb(0), Ok(()));
+    assert_eq!(bus.stop_limb(1), Ok(()));
+    // Slot 0 carries a frame for drive 102: aimed wrong.
+    let sent = run_tick(&mut bus, 2, Some(&batch(2, &[Some(hold(102)), None])), &[]);
+    assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Disable)]);
+    let snap = bus.end(deadline(2));
+    assert_eq!(snap.counters.refused_batches, 1);
+    assert_eq!(limb(&snap, 0).1, Some(StopReason::LimbRequested));
 }

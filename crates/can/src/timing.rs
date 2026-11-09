@@ -31,8 +31,8 @@ pub struct Timing {
     /// item 6 Silence row).
     pub feedback_limit_ns: u64,
     /// How long a stop waits for each drive's Disable to be confirmed and its reporting-off sent before it records the
-    /// rest as unconfirmed, and how long after any Disable a drive's missed replies aren't counted (100 ms, PLAN.md
-    /// item 2 Silence windows).
+    /// rest as unconfirmed, and how long after a Disable a drive's missed replies aren't counted while no Reset has
+    /// answered it (100 ms, PLAN.md item 2 Silence windows).
     pub stop_confirm_ns: u64,
     /// How long a drive drops frames after a Disable; its reporting-off waits this long after its confirmation, and a
     /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
@@ -46,8 +46,8 @@ pub struct Timing {
 
 impl Timing {
     /// The defaults at `hz` ticks a second (250 by default, PLAN.md item 3), the period rounded up to a whole
-    /// nanosecond so the rate is never above `hz`. A rate [`Self::check`] refuses (0, or below 61 Hz, where three
-    /// periods reach the drives' timeout) gives timing it refuses.
+    /// nanosecond so the rate is never above `hz`. A rate [`Self::check`] refuses (0, or below 81 Hz, where three
+    /// missed replies and the tick that stops on them reach the drives' timeout) gives timing it refuses.
     #[must_use]
     pub const fn at_hz(hz: u64) -> Self {
         let period_ns = match hz {
@@ -103,7 +103,10 @@ impl Timing {
                 silent_ticks: self.silent_ticks,
                 period_ns,
             })
-        } else if self.silence_misses == 0 || spans_timeout(self.silence_misses, period_ns) {
+        // Misses are counted at a tick's end and stop the limb at the next tick's start: one period more than the count.
+        } else if self.silence_misses == 0
+            || spans_timeout(self.silence_misses.saturating_add(1), period_ns)
+        {
             Err(TimingError::SilenceMisses {
                 silence_misses: self.silence_misses,
                 period_ns,
@@ -174,8 +177,9 @@ pub enum TimingError {
         period_ns: u64,
     },
     /// `silence_misses` is zero, or so many that the drives' timeout passes first (the count would never stop a limb).
+    /// The limb stops at the tick after the last miss, so the count plus one periods must stay under the timeout.
     #[error(
-        "silence_misses {silence_misses} must be at least 1, and that many periods of {period_ns} ns under the \
+        "silence_misses {silence_misses} must be at least 1, and that many periods of {period_ns} ns plus one under the \
          drives' {DRIVE_TIMEOUT_NS} ns timeout"
     )]
     SilenceMisses {
