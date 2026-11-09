@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Stage 3 (own router), step 1: the board's copper as polygons for tools/grid_route.py.
 Every pad, track, via and zone fill is exported per copper layer as polygons with its net; holes go to a separate list
-(obstacles on every layer). The GND fills on L1, In2 and L4 are left out: they are refilled around the signals after
-routing. The In1 GND fill is exported but flagged, so it joins GND pads for connectivity without blocking other nets'
-vias (the fill will clear them). Coordinates in mm (KiCad page coordinates).
+(obstacles on every layer). The GND fills on F.Cu, In2, In3 and B.Cu are left out: they are refilled around the signals
+after routing. The In1 and In4 GND planes are exported but flagged, so they join GND pads for connectivity without
+blocking other nets' vias (the planes will clear them). The file records tools/stack.py's layer names. Coordinates in mm (KiCad page coordinates).
 Run with KiCad's Python: <kicad python> tools/route_export.py <board.kicad_pcb> <copper.json>"""
 import json,sys
 import pcbnew
@@ -54,5 +54,5 @@ for f in b.GetFootprints():   # footprint rule areas (keep-outs in the libraries
             for L,k in LAYERS.items():
                 if z.IsOnLayer(L): items.append(dict(net='',layer=k,kind='keepout',poly=polys(z.Outline())))
 bb=b.GetBoardEdgesBoundingBox()
-json.dump(dict(edge=[mm(bb.GetLeft()),mm(bb.GetTop()),mm(bb.GetRight()),mm(bb.GetBottom())],items=items,holes=holes),open(sys.argv[2],'w'))
+json.dump(dict(layers=stack.NAMES,edge=[mm(bb.GetLeft()),mm(bb.GetTop()),mm(bb.GetRight()),mm(bb.GetBottom())],items=items,holes=holes),open(sys.argv[2],'w'))
 print('items',len(items),'holes',len(holes))

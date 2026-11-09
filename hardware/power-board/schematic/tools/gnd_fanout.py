@@ -8,12 +8,13 @@ A second pass serves what is left (mostly fine-pitch IC pins): a 0.2 mm pad-to-p
 part within 1.3 mm, else a 0.2 mm dog-leg out along the pin's axis to a via up to about 2 mm further on, never within
 0.55 mm of any pad. A pad counts as served only if it has its own via or link, or a via was already there before this
 script ran (power-stage grids, in-pad vias); a via another pad just got never serves it by distance alone.
-Pads it can't serve are listed; the router connects those (GND is routable, never on In1).
+Pads it can't serve are listed; the router connects those (GND is routable, never on the In1 and In4 planes).
 Run with KiCad's Python, in place: <kicad python> tools/gnd_fanout.py <board.kicad_pcb>"""
 import os,sys
 import pcbnew
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import domains, stack
 b=pcbnew.LoadBoard(sys.argv[1]); mm=pcbnew.FromMM
+stack.check_board(b)
 pcbnew.ZONE_FILLER(b).Fill(b.Zones())
 G=b.FindNet('GND'); g=G.GetNetCode()
 PADS=[p for p in b.GetPads()]; TRK=[t for t in b.GetTracks()]

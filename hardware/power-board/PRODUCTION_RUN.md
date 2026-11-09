@@ -15,14 +15,14 @@ so 5 + 5 bare boards are ordered and 2 + 2 are built. **All prices are estimates
 | Bare boards, JLCPCB: 5 main (100 × 170, 6 layers, 2 oz outer / 0.5 oz inner, OSP, filled thermal vias: **$82.80 quoted 2026-11-09**, 7–8 day build) + 5 buck (about 60 × 85, 4 layers, 1 oz, to quote: about $20–35) | about $105–120 |
 | 2 frameless stencils (JLC) | about $16 |
 | JLC shipping, DHL | about $25–45 |
-| JLC prepaid duty (US DDP: 35 % on boards, 90 % on stencils) | about $55–75 |
-| **Total, 2 sets** | **about $480–530** |
+| JLC prepaid duty (US DDP: 35 % on boards, 90 % on stencils) | about $51–57 |
+| **Total, 2 sets** | **about $470–515** |
 | Heatsink kit, thermal option D (chosen; [THERMAL_OPTION.md](THERMAL_OPTION.md)): 120 × 69 × 36 mm extruded heatsink (no cut), insulating 0.5 mm pad, 2 × M3, 2 sets | about $41–53 |
 | Conformal coat (Joey chose coating, 2026-11-09): MG Chemicals 419D acrylic, 55 mL brush bottle, enough for both boards; Kapton tape for masking | about $10 |
 | Tools (section 6), one-off | about $110–200 |
 
-**Why this is above the $370–470 estimated earlier:** US duty adds about $110–130 across parts, boards and stencils. JLC's
-free ENIG finish ended in July 2026, and 2 oz copper costs extra. Without duty the total is about $380–445. Since
+**Why this is above the $370–470 estimated earlier:** US duty adds about $105–115 across parts, boards and stencils. JLC's
+free ENIG finish ended in July 2026, and 2 oz copper costs extra. Without duty the total is about $365–400. Since
 2026-11-09 the main board is 6 layers with 2 oz outer copper (Joey picked it over 1 oz plus copper bars), about $14 under
 the 4-layer 2 oz board (JLC quotes, qty 5: 4 layers 2 oz outer $96.47, 4 layers 1 oz $57.67, 6 layers 1 oz $44.00,
 6 layers 2 oz outer $82.80).
@@ -49,8 +49,8 @@ right now anyway. Where both have stock, buy the ICs from DigiKey (no duty, genu
 
 | Board | Status | Size | Stackup | Parts per board |
 | --- | --- | --- | --- | --- |
-| **Main power board** ([marengo_pdu_revb](schematic)) | schematic done, ERC clean; placed, routing not finished ([README](README.md)) | 100 × 170 mm | 4 layers, 1.6 mm, 2 oz outer / 1 oz inner, ENIG | [bom-rev-B.csv](bom-rev-B.csv) |
-| **12 V buck and 12 V distribution** ([buck12](buck12), LM5146, 12 A; split S1 2026-11-09) | schematic done, ERC clean, check_buck.py clean; layout not started | about 60 × 85 mm | same | 53 lines, 73 parts |
+| **Main power board** ([marengo_pdu_revb](schematic)) | schematic done, ERC clean; placed, routing not finished ([README](README.md)) | 100 × 170 mm | 6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, OSP, thermal vias filled and capped | [bom-rev-B.csv](bom-rev-B.csv) |
+| **12 V buck and 12 V distribution** ([buck12](buck12), LM5146, 12 A; split S1 2026-11-09) | schematic done, ERC clean, check_buck.py clean; layout not started | about 60 × 85 mm | 4 layers, 1.6 mm, 1 oz (to quote) | 53 lines, 73 parts |
 
 Not in the run:
 - **DVE adapter:** dropped. Since split S1 the buck board carries the 12 V distribution and J24 carries I2C and SP_EN, so the DVE no longer drops in.
@@ -182,7 +182,7 @@ Work on the buck board first; it's the practice run. Inspect and test between ev
    - SOD/SOT parts;
    - shunts, D2PAK-7 FETs, SMC diodes;
    - the cans last.
-3. Reflow: the same profile, with a longer preheat (2–3 min). The 4-layer board with large pours lags the plate: watch the
+3. Reflow: the same profile, with a longer preheat (2–3 min). The 6-layer board with 2 oz pours lags the plate: watch the
    paste around the D2PAK tabs and the cans, not the plate reading.
 4. Inspect all the fine-pitch ICs, the VSON watchdog (look at the side fillets) and the FET tabs (solder flowed out to the
    pad edge). Rework with flux and the iron, or the hot-air gun.
@@ -223,7 +223,8 @@ Hot air is for rework only (removing or reseating a part). Joey's low-power gun 
    **Joey prefers one source for all board parts:** re-check DigiKey stock for the 6 ICs out of stock on 2026-11-07
    (INA237, LM5069-1/-2, TPS7A4001, TPS3431S, LM5146). If they're back, order everything from DigiKey (route A) and
    accept the about $80–95 premium; otherwise DigiKey for everything it stocks plus one LCSC order for the rest.
-3. JLC quote for both designs (2/1 oz, ENIG, 1.6 mm, frameless stencils); section 1 updated.
+3. JLC quote for both designs, frameless stencils: main 6 layers, 2 oz outer / 0.5 oz inner, OSP, thermal vias filled and
+   capped; buck 4 layers, 1 oz. Confirm the main board's L1–In1 prepreg (tools/stack.py) and update section 1.
 4. The big review on the routed boards (Fable plus several Opus). Fix everything blocking.
 5. Gerbers, drill files and stencil (paste) layers exported; polarity of every diode, can and IC checked in the 3D view.
 6. Order the boards, the parts (LCSC + DigiKey), the tools, and the off-board parts (pack plan, REVB5_CHANGES), so they all
