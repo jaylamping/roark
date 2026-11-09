@@ -305,6 +305,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         Ok(clock) => clock,
         Err(e) => {
             exit.error = Some(e);
+            end_slow(&mut tick, &mut links.requests, &mut links.results);
             return exit;
         }
     };
@@ -397,6 +398,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         tick.skipped(next - n - 1, clock.ns(mono_now()));
         n = next;
     }
+    end_slow(&mut tick, &mut links.requests, &mut links.results);
     exit
 }
 
@@ -470,7 +472,6 @@ fn take(clock: &Clock, tick: &mut BusTick, batch: &mut TickBatch, received: sys:
     let _ = batch.push(received.frame);
 }
 
-/// Write one frame, once. A full queue drops it (never retried, can.md section 2); a lost interface is an error.
 /// Queue the slow requests that fit, send one if the tick allows, and hand every result back. A full result ring
 /// drops the result and counts it; the requester times out.
 fn slow(
@@ -480,7 +481,11 @@ fn slow(
     requests: &mut Consumer<SlowRequest>,
     results: &mut Producer<SlowResult>,
 ) -> io::Result<()> {
-    while tick.slow_room() > 0 {
+    // Bounded by the ring: a refused request takes no slot, so room alone wouldn't end the loop.
+    for _ in 0..requests.buffer().capacity() {
+        if tick.slow_room() == 0 {
+            break;
+        }
         let Ok(request) = requests.pop() else {
             break;
         };
@@ -503,14 +508,44 @@ fn slow(
         });
         tick.slow_sent(outcome, clock.ns(mono_now()));
     }
+    hand_back(tick, results);
+    failed
+}
+
+/// Every result the tick holds, onto control's ring; a full ring drops the result and counts it.
+fn hand_back(tick: &mut BusTick, results: &mut Producer<SlowResult>) {
     while let Some(result) = tick.take_slow_result() {
         if results.push(result).is_err() {
             tick.slow_result_dropped();
         }
     }
-    failed
 }
 
+/// The thread is ending: every slow request still held or still in the ring gets its one result (can.md section 2:
+/// none goes unanswered). A drop here can't be counted in a snapshot; the requester times out.
+fn end_slow(
+    tick: &mut BusTick,
+    requests: &mut Consumer<SlowRequest>,
+    results: &mut Producer<SlowResult>,
+) {
+    let refusal = tick.end_slow();
+    hand_back(tick, results);
+    for _ in 0..requests.buffer().capacity() {
+        let Ok(request) = requests.pop() else {
+            break;
+        };
+        let refused = SlowResult {
+            tag: request.tag,
+            slot: request.slot,
+            outcome: SlowOutcome::Refused(refusal),
+        };
+        if results.push(refused).is_err() {
+            tick.slow_result_dropped();
+        }
+    }
+}
+
+/// Write one frame, once. A full queue drops it (never retried, can.md section 2); a lost interface is an error.
 fn write(socket: &CanSocket, frame: &Frame) -> io::Result<SendOutcome> {
     let Some(id) = ExtendedId::new(frame.id()) else {
         return Ok(SendOutcome::Failed);

@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 use can::{
     BusConfig, BusDrive, BusLinks, BusRunError, CommandBatch, LimbState, SlowKind, SlowOutcome,
-    SlowRequest, SlowResult, Snapshot, StopOutcome, StopReason, Timing,
+    SlowRefusal, SlowRequest, SlowResult, Snapshot, StopOutcome, StopReason, Timing,
 };
 use robstride::{
     DeviceId, Drive, Frame, Inbound, MitCommand, Mode, Model, NewtonMeters, NmPerRad, NmSecPerRad,
@@ -519,6 +519,7 @@ fn slow_requests_reach_a_drive_on_vcan_and_come_back() {
         let mut step = 0;
         let mut asked = false;
         let mut tag = 0;
+        let mut retries = 0;
         while step < steps.len() {
             // Play control: an empty batch for every next tick.
             let snap = next_snapshot(&mut snapshots, end).unwrap();
@@ -538,10 +539,17 @@ fn slow_requests_reach_a_drive_on_vcan_and_come_back() {
             {
                 assert_eq!((got, slot), (tag, 0));
                 asked = false;
-                // Until the drive is up and control has been heard, a get-ID may time out or be refused; ask again.
-                let early =
-                    step == 0 && matches!(outcome, SlowOutcome::TimedOut | SlowOutcome::Refused(_));
-                if !early {
+                // Until the drive is up and control has been heard, a get-ID may time out or be refused as control
+                // silent; ask again, a few times at most.
+                let early = step == 0
+                    && retries < 5
+                    && matches!(
+                        outcome,
+                        SlowOutcome::TimedOut | SlowOutcome::Refused(SlowRefusal::ControlSilent)
+                    );
+                if early {
+                    retries += 1;
+                } else {
                     assert_eq!(outcome, expected, "step {step}");
                     step += 1;
                 }

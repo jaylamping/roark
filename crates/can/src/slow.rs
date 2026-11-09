@@ -3,11 +3,13 @@
 //! the reply can be back before the next tick's send: the next drain reads it, so it never lands among the tick's
 //! command replies.
 //!
-//! Each request gets exactly one result: its reply, timed out, not sent, or refused. The bus layer never retries one.
-//! A write is answered by an ordinary status with no register in it, so its result says only that the drive answered;
-//! a read-back is what proves the value. A request for a drive in a stopping or stopped limb, while control is silent,
-//! or on a failed bus is refused, and one already queued is cancelled before it goes, so slow traffic never keeps a
-//! drive alive (`canTimeout` counts from any frame).
+//! Each request gets exactly one result: its reply, timed out, not sent, or refused, including when the bus thread ends
+//! with it pending. The bus layer never retries one. A write is answered by an ordinary status with no register in it,
+//! so its result says only that the drive answered; a read-back is what proves the value. Writes go only to drives of
+//! an idle limb, where no command is outstanding for that status to be mistaken for. A request for a drive whose limb is
+//! stopping, stopped or due to stop (the veto's own checks: a fault, a drop out of Run, too many misses), while control
+//! is silent, or on a failed bus is refused, and one already queued is cancelled before it goes, so slow traffic never
+//! keeps a drive alive (`canTimeout` counts from any frame).
 
 use robstride::{Frame, Param, ParamOutcome, Uid, Write, encode};
 
@@ -76,9 +78,12 @@ pub enum SlowRefusal {
     /// A write built for another drive.
     #[error("the write is for another drive")]
     WrongTarget,
-    /// The drive's limb is stopping or stopped.
+    /// The drive's limb is stopping or stopped, or the drive shows what stops it at the next send.
     #[error("the drive's limb is stopping or stopped")]
     LimbStopped,
+    /// A write to a drive whose limb isn't idle: its status answer could pass for a command's reply.
+    #[error("writes go only to drives of an idle limb")]
+    LimbNotIdle,
     /// Control has sent no fresh batch for the silent-tick limit.
     #[error("control is silent")]
     ControlSilent,
@@ -88,6 +93,9 @@ pub enum SlowRefusal {
     /// Every slot holds a request or a result not yet taken.
     #[error("the slow queue is full")]
     QueueFull,
+    /// The bus thread ended before sending it.
+    #[error("the bus thread ended")]
+    Ended,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -241,6 +249,26 @@ impl BusTick {
         Some(result)
     }
 
+    /// The thread is ending: every request held ends now. One in flight has timed out; queued ones are refused with
+    /// the returned reason ([`SlowRefusal::BusFailed`] on a failed bus, else [`SlowRefusal::Ended`]), which the shell
+    /// gives the requests still in its ring too. Take the results with [`Self::take_slow_result`].
+    pub fn end_slow(&mut self) -> SlowRefusal {
+        let refusal = if self.bus_error.is_some() {
+            SlowRefusal::BusFailed
+        } else {
+            SlowRefusal::Ended
+        };
+        for i in 0..SLOW_SLOTS {
+            let outcome = match self.slow.get(i).copied().flatten().map(|e| e.state) {
+                Some(SlowState::Queued) => SlowOutcome::Refused(refusal),
+                Some(SlowState::Sending | SlowState::Waiting) => SlowOutcome::TimedOut,
+                Some(SlowState::Done(_)) | None => continue,
+            };
+            self.finish_slow(i, outcome);
+        }
+        refusal
+    }
+
     /// A slow result couldn't be handed to control (its ring was full): counted in the next snapshot.
     pub fn slow_result_dropped(&mut self) {
         self.counters.slow_results_dropped += 1;
@@ -319,17 +347,22 @@ impl BusTick {
         if self.bus_error.is_some() {
             return Err(SlowRefusal::BusFailed);
         }
-        let running = self
-            .limbs
-            .get(drive.limb)
-            .copied()
-            .flatten()
-            .is_some_and(|l| matches!(l.state, LimbState::Idle | LimbState::Active));
-        if !running {
+        let limb = self.limbs.get(drive.limb).copied().flatten();
+        // A stop asked for but not yet taken counts: it is taken at the next tick's start, before any send.
+        let running = self.pending_stop.is_none()
+            && limb.is_some_and(|l| {
+                l.pending.is_none() && matches!(l.state, LimbState::Idle | LimbState::Active)
+            });
+        if !running || self.stop_due(request.slot, &drive).is_some() {
             return Err(SlowRefusal::LimbStopped);
         }
         if self.silent >= self.timing.silent_ticks {
             return Err(SlowRefusal::ControlSilent);
+        }
+        if let SlowKind::Write(_) = request.kind
+            && limb.is_none_or(|l| l.state != LimbState::Idle)
+        {
+            return Err(SlowRefusal::LimbNotIdle);
         }
         Ok(())
     }

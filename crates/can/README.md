@@ -69,12 +69,15 @@ once-a-second reads; they never ride in a batch. A bus holds `SLOW_SLOTS` of the
 after the collect deadline and only while its reply fits before the next tick starts (`Timing::slow_reply_ns`, a
 quarter period by default, provisional until the real adapter is measured), so the next drain reads the reply and it
 never lands among the tick's command replies. A read is answered by its drive's reply naming its register, get-ID by
-its type-0 reply, and a write by the drive's next status, which proves nothing about the value: preflight reads every
-write back. Each request gets exactly one result: its answer, `TimedOut` (no reply by the next tick's start),
-`NotSent`, or `Refused`. Nothing is retried. A request for a drive in a stopping or stopped limb, while control has
-been silent for the silent-tick limit (counted with every limb idle too), or on a failed bus is refused, and one
-already queued is cancelled before it goes, so slow traffic never keeps a drive alive past a stop (`canTimeout`
-counts from any frame).
+its type-0 reply, and a write by any status from the drive while the write is in flight, which proves nothing about the
+value: preflight reads every write back. Writes go only to drives of an idle limb (`LimbNotIdle`), where no command is
+outstanding for that status to be mistaken for. Each request gets exactly one result: its answer, `TimedOut` (no reply
+by the next tick's start), `NotSent`, or `Refused`, including when the thread ends with it pending (`end_slow`:
+`Ended`, or `BusFailed`). Nothing is retried. A request for a drive whose limb is stopping, stopped or due to stop (a
+stop asked for and not yet taken, or what the veto stops on: a fault, a drop out of Run, too many misses), while
+control has been silent for the silent-tick limit (counted with every limb idle too), or on a failed bus is refused,
+and one already queued is cancelled before it goes, so slow traffic never keeps a drive alive past a stop
+(`canTimeout` counts from any frame).
 
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
 a drive table past `MAX_DRIVES`, a limb index past it, and timing that breaks its promises (`Timing::check`: for one, three periods must fit

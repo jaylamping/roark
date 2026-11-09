@@ -10,7 +10,7 @@
 use robstride::encode::{self, Reporting};
 
 use crate::error_frame::BusError;
-use crate::tick::{BusTick, Phase};
+use crate::tick::{BusTick, DriveState, Phase};
 use crate::types::{
     DRIVE_TIMEOUT_NS, LimbState, RearmRefused, Send, SendKind, StopOutcome, StopReason,
 };
@@ -71,18 +71,23 @@ impl BusTick {
             if !active {
                 continue;
             }
-            let reason = if d.fault_seen {
-                Some(StopReason::DriveFault { slot })
-            } else if d.phase == Phase::LeftRun {
-                Some(StopReason::DriveMode { slot })
-            } else if d.misses >= self.timing.silence_misses {
-                Some(StopReason::DriveSilent { slot })
-            } else {
-                None
-            };
-            if let Some(reason) = reason {
+            if let Some(reason) = self.stop_due(slot, &d) {
                 self.stop_limb_now(d.limb, reason, now_ns);
             }
+        }
+    }
+
+    /// Why the drive in `slot` must stop its limb, if it must: a fault, a drop out of Run, or too many misses. The veto
+    /// acts on it before the tick's sends, and a slow request is refused for it (slow traffic is a send too).
+    pub(crate) fn stop_due(&self, slot: usize, d: &DriveState) -> Option<StopReason> {
+        if d.fault_seen {
+            Some(StopReason::DriveFault { slot })
+        } else if d.phase == Phase::LeftRun {
+            Some(StopReason::DriveMode { slot })
+        } else if d.misses >= self.timing.silence_misses {
+            Some(StopReason::DriveSilent { slot })
+        } else {
+            None
         }
     }
 

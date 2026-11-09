@@ -1,4 +1,5 @@
-//! What crosses the bus thread's seams: command batches in, snapshots out, all fixed-size and `Copy` so the rings never
+//! What crosses the bus thread's seams: command batches in, snapshots out (slow requests and results are in `slow`), all
+//! fixed-size and `Copy` so the rings never
 //! allocate (rust.md section 6).
 
 use robstride::{DeviceId, EchoKind, Frame, Status};
@@ -35,7 +36,8 @@ pub struct Timing {
     /// How long a drive drops frames after a Disable; its reporting-off waits this long after its confirmation, and a
     /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
     pub disable_silence_ns: u64,
-    /// Ticks without a fresh batch that stop an active bus (PLAN.md item 3: two).
+    /// Ticks without a fresh batch that stop an active bus (PLAN.md item 3: two). Counted with every limb idle too:
+    /// past it, slow requests are refused.
     pub silent_ticks: u32,
     /// Consecutive commands a drive may leave unanswered by the collect deadline before its limb stops (PLAN.md item 6
     /// Silence row: three).
@@ -71,7 +73,8 @@ impl Timing {
 
     /// Whether this timing keeps the tick's promises: a send window inside the collect window inside the period, at
     /// least a period of feedback but less than the drives' timeout, a stop window that fits the post-Disable silence and a
-    /// tick to send reporting off after it.
+    /// tick to send reporting off after it, at least one silent tick and one miss, and a slow reply window that fits
+    /// between the collect deadline and the next tick.
     ///
     /// # Errors
     /// The first rule it breaks.
@@ -331,7 +334,8 @@ pub struct BusDrive {
 /// Where one limb on a bus is. Each limb runs and stops on its own; a stop of the whole bus stops every limb.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LimbState {
-    /// Nothing enabled or commanded since start or the last re-arm; no batches needed.
+    /// Nothing enabled or commanded since start or the last re-arm; no batches needed, though slow requests are refused
+    /// while control is silent.
     Idle,
     /// An Enable or MIT frame to one of its drives was sent, so the bus needs a fresh batch every tick.
     Active,
@@ -472,8 +476,9 @@ pub struct Counters {
     pub late: u64,
     /// A second status for one command within its tick.
     pub duplicate: u64,
-    /// Statuses from this bus's drives that answer nothing: no command outstanding, a status after the command was
-    /// answered in an earlier tick, or a read that may predate the send.
+    /// Frames from this bus's drives that answer nothing: a status with no command outstanding, after the command was
+    /// answered in an earlier tick, or read when it may predate the send; a parameter or identity reply with no slow
+    /// request waiting for it.
     pub unsolicited: u64,
     /// Frames from a device this bus doesn't own.
     pub unexpected: u64,
