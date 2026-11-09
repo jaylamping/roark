@@ -1,8 +1,8 @@
 # Power board
 
 The robot's main power board: the 54 V battery path (soft start, two FET banks, absorber, brake clamp), six limb ports
-with eFuses and meters, the E-stop latch and the 12 V distribution. Rev B5: 100 × 170 mm, 4 layers, conformal-coated
-after bring-up. A separate 12 V buck board feeds it.
+with eFuses and meters, and the E-stop latch. Rev B5: 100 × 170 mm, 4 layers, conformal-coated
+after bring-up. A separate buck board makes the 12 V and carries the 12 V outputs (split S1, 2026-11-09).
 
 **Status (2026-11-09):** schematic done, ERC clean. On the layout, placement, the power stage and the critical pre-routes
 (Kelvin pairs, gate drives, UVLO) are done. Signal routing has 153 nets (429 connections) open

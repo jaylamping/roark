@@ -46,7 +46,7 @@ right now anyway. Where both have stock, buy the ICs from DigiKey (no duty, genu
 | Board | Status | Size | Stackup | Parts per board |
 | --- | --- | --- | --- | --- |
 | **Main power board** ([marengo_pdu_revb](schematic)) | schematic done, ERC clean; placement being reworked (hand-assembly sizes, thermal option) | 100 × 150 mm | 4 layers, 1.6 mm, 2 oz outer / 1 oz inner, ENIG | 170 lines, 358 parts |
-| **12 V buck** ([marengo_buck12](buck12), LM5146, 12 A) | schematic done, ERC clean; layout not started | about 45 × 60 mm | same | 33 lines, 43 parts |
+| **12 V buck and 12 V distribution** ([buck12](buck12), LM5146, 12 A; split S1 2026-11-09) | schematic done, ERC clean, check_buck.py clean; layout not started | about 60 × 85 mm | same | 53 lines, 73 parts |
 
 Not in the run:
 - **DVE adapter:** a fallback only.
@@ -84,7 +84,7 @@ Both boards are ordered as **two separate designs in one JLC order**, not one pa
 
 ## 4. Kit list
 
-[design/kit-2sets.csv](kit-2sets.csv) lists every fitted line for 2 main + 2 buck boards: 153 lines and 855 parts,
+[kit-2sets.csv](kit-2sets.csv) lists every fitted line for 2 main + 2 buck boards: 175 lines and 864 parts,
 counting spares. Spares are about 15 % (minimum 2) on cheap passives, small diodes, small transistors and 1206 fuses only;
 expensive parts get none. The off-board parts (BMS, Class T fuse, brake resistors, thermostats, harness) are in the pack
 plan and REVB5_CHANGES.

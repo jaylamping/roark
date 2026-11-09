@@ -32,8 +32,8 @@ put('bankactl','U8 C27 C28 C29 R27 R28 R29 R30 R31 R32 R35 R36 R37 C40 C46 R61 R
 put('clamp','R46 D4 Q6 C49 R23 R24 TP8')
 put('bankctl','TP14'); put('bankactl','TP15'); put('latch','TP16')   # hand-assembly probe pads (SW_D, ABS, WDO_N)
 put('out','U3 U4 R18 R19 R20 R21 R22 R64 C8 C9 R65 R66 C48')
-put('soft','Q7 U7 R25 R26 C19 C20 TP5 C14 C15 F2 R51 D15 Q12 R60')
-put('out','U17 C30 R47 D18 RS8 U6 C16 C17 C18 TP4 C41 F3 F4 F5 D20 U9 RS10 U10 R38 R39 R40 R41 R42 R43 C31 C32 C33 C34 C35 C36 D5 D19 U18 TP9 R44 R45 C37 D6 D13')
+put('soft','Q7 U7 R25 R26 C19 C20 TP5 C14 C15 F2 R51 D15 Q12 R60 D43')   # D43: SP_EN series diode, by J24
+put('out','U17 C30 R47 D18 R38 TP9 R44 R45 C37 D6 D13')
 put('latch','U25 R128 R129 R130 R131 Q21 C80 C81 D41 R67')   # watchdog beside the latch it drops (L_E, Q5)
 PF='U26 U27 R132 R133 R134 R135 R136 R137 R138 C93 C94 C95 Q22 D42'   # power-fail warning (block 5b): beside the 12 V block and J21
 put('out',PF)
@@ -42,7 +42,7 @@ if WIDE:
     # the M3 hole reserved), bank B's controller takes the latch's old column, and a new low-voltage band along the new
     # bottom edge takes the 12 V distribution (next to its Micro-Fit outputs) and the watchdog
     BLK.update(soft=(-48.0,-11.0,311.0,328.4),latch=(-48.0,-31.0,254.0,310.5),bankctl=(-30.5,-17.8,268.0,310.5),lv=(-48.0,48.0,YB+11.0,200.5))
-    put('lv','U17 C30 R47 D18 RS8 U6 C16 C17 C18 TP4 C41 F3 F4 F5 D20 U9 RS10 U10 R38 R39 R40 R41 R42 R43 C31 C32 C33 C34 C35 C36 D5 D19 U18 TP9 R44 R45 C37 D6 D13')
+    put('lv','U17 C30 R47 D18 R38 TP9 R44 R45 C37 D6 D13')
     put('lv','U25 R128 R129 R130 R131 Q21 C80 C81 D41 R67'); put('lv',PF)
 RES={}; PFIX={}
 ZROT=int(os.environ.get('ZROT','270'))   # the port zener's turn: V_L pad toward the pin row's via line, G_L pad toward the gate
@@ -104,7 +104,7 @@ for X,Y in HSINK:
 RES.setdefault('soft',[]).append((-16.0,-11.0,323.6,328.4))   # BAT neck from RS9 to D1 and the pack pour
 for Y,r in ((244.7,'J8'),(227.2,'J10'),(209.7,'J12')): FIX[r]=(45.0,Y,90,False)
 for Y,r in ((244.7,'J9'),(227.2,'J11'),(209.7,'J13')): FIX[r]=(-45.0,Y,270,False)   # + at the top, toward the turned FET's pins
-for X,r in ((-31.0,'J21'),(-19.0,'J5'),(-10.5,'J6'),(-2.0,'J7'),(6.5,'J23'),(17.5,'J22')): FIX[r]=(X,YB+5.0,0,False)
+FIX['J21']=(-31.0,YB+5.0,0,False)   # the 12 V outputs J5-J7, J22, J23 moved to the buck board (split S1, 2026-11-09)
 if WIDE:
     FIX['J20']=(-45.25,303.2,270,False); G.pop('J20',None)        # E-stop GH at the -X edge, opening outward
     RES.setdefault('latch',[]).append((-50.0,-41.8,260.8,269.2))   # M3 hole H at (-46, 265)

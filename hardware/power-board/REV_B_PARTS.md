@@ -19,8 +19,8 @@ These are Joey's answers to the clean sheet ([REV_B_CLEAN_SHEET.md](https://gith
 | Brake resistor thermostats | **Two Sensata Airpax 67L120**, one on each resistor's plate, wired in series in the NC loop (rev B5) | 6700 series, TO-220, open on rise ("L"), 120 ±5 °C, resets at 85 °C or above. Contacts 0.5 A at 48 VDC; the loop carries about 17 mA. $5.57 at Heilind (2,035 in stock) on 2026-11-07. Clamp each bracket to its plate strip under the HS50 body with thermal compound. Two, so an open resistor or lead can't leave the other one unwatched |
 | Brake resistors | 2 × Arcol HS50 20R J (Ohmite at DigiKey; $6.11 at Arrow/TTI). Order the 20 Ω part (HS5010RJ is 10 Ω) | One per gusset, leads to the Mini-Fit Jr headers J3 (+X) and J25 (−X) |
 | Limb fuses | Littelfuse 997 58 V MINI blade fuses in inline holders in each pigtail: 20 A | Wire protection and backup for a shorted port FET. The port breaker clears faults first. **Operator rule: fit or remove limb fuses and connectors only with VBUS under 3 V** |
-| 12 V converter | **Own 12 A buck board** (LM5146, [marengo_buck12](buck12)) on the -X rail, on the J24 pigtail. **Fallback: Murata DVE0125V2NBC + adapter** on the same pigtail | See "12 V converter" below |
-| Pi 5.1 V | **Commodity 12 → 5 V buck module rated at least 6 A continuous**, set to 5.1–5.2 V, at the Pi, on the fused +12V_PI output (J6) (rev B5, 2026-11-08: the 5 A module ran at its limit) | **Under 100 mV drop at 5 A at the Pi input:** feed the Pi through a short, heavy USB-C pigtail, or through the GPIO 5 V pins (2 and 4, with GND on 6 and 9) if that keeps the drop in spec; measure it at bring-up. Pi settings: EEPROM `PSU_MAX_CURRENT=5000`, plus `usb_max_current_enable=1` in config.txt if the firmware still limits USB to 600 mA. Goal: no USB-CAN brown-outs. The 12 V budget keeps the Pi at 25.5 W (5 A, set by the Pi's firmware limit); the 6 A rating is headroom for drop and temperature, not load |
+| 12 V converter and 12 V distribution | **Own 12 A buck board** (LM5146, [buck12](buck12)) on the -X rail, on the J24 pigtail. Since split S1 (2026-11-09) it also carries the 12 V meter, the SPARE_SW and SPARE_ON eFuses and the fused Jetson, Pi-buck and fan outputs. **Fallback: Murata DVE0125V2NBC + adapter** feeding the buck board's 12 V side | See "12 V converter" below |
+| Pi 5.1 V | **Commodity 12 → 5 V buck module rated at least 6 A continuous**, set to 5.1–5.2 V, at the Pi, on the fused +12V_PI output (buck board J3) (rev B5, 2026-11-08: the 5 A module ran at its limit) | **Under 100 mV drop at 5 A at the Pi input:** feed the Pi through a short, heavy USB-C pigtail, or through the GPIO 5 V pins (2 and 4, with GND on 6 and 9) if that keeps the drop in spec; measure it at bring-up. Pi settings: EEPROM `PSU_MAX_CURRENT=5000`, plus `usb_max_current_enable=1` in config.txt if the firmware still limits USB to 600 mA. Goal: no USB-CAN brown-outs. The 12 V budget keeps the Pi at 25.5 W (5 A, set by the Pi's firmware limit); the 6 A rating is headroom for drop and temperature, not load |
 | Other rails | None (Joey: no other loads expected) | Add a small module at a load if one appears. USB-C PD was evaluated and rejected: the Jetson takes a barrel jack and nothing else needs PD |
 
 ## On the board (one board, 100 × 170 mm since option A, 2026-11-07)
@@ -61,21 +61,26 @@ Budget:
 - **Valley current limit** at about 12–13 A hot. **UVLO** 30.2 V on, 27.2 V off: below the 30.5 V worst sag at 90 A from a 38 V pack.
 - **Loss and efficiency:** about 4 W at 12 A (about 97 %).
 - **Why separate:** heat goes to the frame, switching noise stays away from the meters and the latch, and the main board has no pour budget left.
-- **J24 pinout is unchanged.** Pin 5 low = on (U7 PGD good). With pin 5 open the board stays off, so the DVE fallback plugs into the same pigtail.
+- **12 V distribution (split S1, 2026-11-09):** RS1/U2 12 V meter (0x4D), U3 SPARE_SW eFuse with RS2/U4 meter (0x47), U5 SPARE_ON eFuse, fuses F1-F3 and the outputs J2 (Jetson), J3 (Pi buck), J4 (fans), J5 (SPARE_SW, 2 x 2) and J6 (SPARE_ON), 330 uF and SMBJ15A on +12V. +12 V never returns to the main board, so the main board needs no 12 A strip. About 60 x 85 mm.
+- **SPARE_SW enable, fail-off:** RUN -> 100k -> D43 (BAV19W) on the main board -> J24 pin 11 -> 68k pull-down at U3's EN. RUN low, D43 open or the pigtail unplugged: EN low, SPARE_SW off. The diode keeps any buck-board fault off RUN. check.py and buck12/check_buck.py test both halves.
+- **I2C and ground:** the Pi's I2C reaches the two buck-board meters through J24 (pins 8 and 10, GND between them). Pull-ups only at the Pi; pigtail up to about 300 mm at 100 kHz. The buck board's ground meets the main board's at J24 only; the Pi's 12 V return runs on its own output (J3), and J21's GND is only the I2C reference, so the J21 cable runs beside the pigtail.
+- Pin 5 low = on (U7 PGD good). With pin 5 open the converter stays off.
 
 Main-board side, unchanged:
 - **F2** is a 20 A MINI blade fuse (0997020.WXN) in a Keystone 3568 holder at the board end.
 - **U7** limits at 9.7–12.3 A and soft-starts the converter input.
-- **Pigtail:** Molex Micro-Fit 3.0 43025-1200 plugs at both ends, 18 AWG, twisted in pairs, about 150 mm. Pin n faces pin n+6 across the rows:
+- **Pigtail:** Molex Micro-Fit 3.0 43025-1200 plugs at both ends, 18 AWG, twisted in pairs, about 150 mm (300 mm at most for the I2C). Pin n faces pin n+6 across the rows (split S1 pinout, 2026-11-09):
 
 | J24 pin | Net | Faces |
 | --- | --- | --- |
-| 1, 2 | +VIN (BRK_F, after F2) | 7, 8: −VOUT (GND) |
-| 3, 4 | −VIN (GND) | 9: −VOUT; 10: +VOUT |
-| 5 | ON/OFF, low = on | 11: +VOUT. A short there turns the converter off |
-| 6 | −VIN (GND) | 12: +VOUT |
-| 7, 8, 9 | −VOUT (GND) | |
-| 10, 11, 12 | +VOUT (+12V_RAW) | |
+| 1, 2 | +VIN (BRK_F, after F2) | 7: +3V3_PI; 8: SDA |
+| 3, 4 | GND | 9: GND; 10: SCL |
+| 5 | ON/OFF, low = on | 11: SP_EN. A short between them turns the converter on early but U7 still limits; SP_EN stays fail-off |
+| 6 | GND | 12: GND |
+| 7, 8 | +3V3_PI, I2C SDA | |
+| 9 | GND (between SDA and SCL) | |
+| 10, 11 | I2C SCL, SP_EN | |
+| 12 | GND | |
 
 **DVE fallback.** Murata DVE0125V2NBC: 25 A, input UVLO fixed at 32–36 V on and 30–34 V off. It needs its adapter board:
 - 47 µF 100 V EEE-TK2A470AQ plus 1 µF on the input;
