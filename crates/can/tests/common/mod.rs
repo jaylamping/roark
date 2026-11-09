@@ -24,10 +24,10 @@ pub(crate) fn drive(n: u8) -> Drive {
     Drive::new(id(n), Model::Rs03)
 }
 
-/// A bus with drives 11 and 12 at 250 Hz.
+/// A bus of two drives at 250 Hz. The IDs are arbitrary, outside the skeleton's (testing.md rule 3).
 #[expect(clippy::unwrap_used, reason = "test helper: two drives fit")]
 pub(crate) fn bus() -> BusTick {
-    BusTick::new(&[id(11), id(12)], Timing::at_hz(250)).unwrap()
+    BusTick::new(&[id(101), id(102)], Timing::at_hz(250)).unwrap()
 }
 
 pub(crate) fn record(id: u32, data: [u8; 8], direction: Direction) -> FrameRecord {

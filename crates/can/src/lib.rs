@@ -8,7 +8,7 @@ mod types;
 pub use error_frame::{BusError, classify};
 pub use tick::BusTick;
 pub use types::{
-    BusState, CommandBatch, ConfigError, Counters, DRIVE_TIMEOUT_NS, DriveView, MAX_DRIVES,
+    BusState, CommandBatch, ConfigError, Counters, DRIVE_TIMEOUT_NS, Drain, DriveView, MAX_DRIVES,
     MAX_SENDS, Observed, Send, SendKind, SendList, SendOutcome, Snapshot, StopOutcome, StopReason,
     Timing,
 };

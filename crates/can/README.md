@@ -28,10 +28,11 @@ latches `fault_seen`. Missing replies to Enable and Disable aren't counted as un
 reach Run, and goes silent after a Disable (PLAN item 2 Silence windows).
 
 A stop (requested, control silent, a late wake, expired feedback, a bad batch, or a backlog) sends Disable to every
-drive, re-sends it each tick to every drive that hasn't confirmed, and sends active reporting off to each drive once
-its post-Disable silence is over (50 ms after its confirmation), again each tick until the socket takes it. A drive
-confirms with a Reset-mode status read after the stop's Disable. The bus is `Stopped` once every drive has confirmed
-and taken its reporting off, or after 100 ms.
+drive, re-sends it each tick to every drive that hasn't confirmed, and sends active reporting off to each confirmed
+drive once its post-Disable silence is over (50 ms after its confirmation), again each tick until the socket takes it.
+A drive confirms with a Reset-mode status read after the stop's Disable; one that never confirms is still getting a
+Disable every tick, so it gets no reporting off. The bus is `Stopped` once every drive has confirmed and taken its
+reporting off, or after 100 ms.
 
 A latched bus error (bus-off, interface down or gone) sends nothing: there is no bus to send on, so the bus is
 `Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's
@@ -40,7 +41,7 @@ error-passive.
 
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
 a drive table past `MAX_DRIVES` and timing that breaks its promises (`Timing::check`: for one, three periods must fit
-inside the drives' 50 ms timeout, so the rate is at least about 61 Hz). The Linux shell that owns the socket and the
+inside the drives' 50 ms timeout, so the rate is at least 61 Hz). The Linux shell that owns the socket and the
 clock comes next (PLAN step 6).
 
 ## Must never
@@ -71,13 +72,13 @@ use robstride::{
 use telemetry::{Direction, FrameRecord};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let shoulder = DeviceId::new(11)?;
+    let device = DeviceId::new(101)?;
     let timing = Timing::at_hz(250);
-    let mut bus = BusTick::new(&[shoulder], timing)?;
+    let mut bus = BusTick::new(&[device], timing)?;
 
-    // Tick 0 starts at 0 ns. Control's batch enables the shoulder and is good until the next tick.
+    // Tick 0 starts at 0 ns. Control's batch enables the drive and is good until the next tick.
     let mut batch = CommandBatch::new(0, timing.period_ns);
-    assert!(batch.set(0, encode::enable(shoulder)));
+    assert!(batch.set(0, encode::enable(device)));
     let sends = bus.begin(0, 0, 0, Some(&batch));
     assert_eq!(sends.len(), 1);
     bus.sent(0, SendOutcome::Sent);
@@ -89,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         torque: NewtonMeters::new(0.0).ok_or("torque")?,
         temperature: Celsius::new(25.0).ok_or("temperature")?,
     };
-    let status = drive::status(Drive::new(shoulder, Model::Rs03), Mode::Run, StatusFaults::default(), &at_rest)?;
+    let status = drive::status(Drive::new(device, Model::Rs03), Mode::Run, StatusFaults::default(), &at_rest)?;
     let read = FrameRecord {
         id: status.id(),
         extended: true,
@@ -104,9 +105,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let snap = bus.end(timing.collect_ns);
     assert_eq!(snap.state, BusState::Active);
-    let shoulder_view = snap.drive(0).ok_or("slot 0")?;
-    assert!(shoulder_view.answered);
-    assert_eq!(shoulder_view.fresh_ns, Some(1_000_000));
+    let view = snap.drive(0).ok_or("slot 0")?;
+    assert!(view.answered);
+    assert_eq!(view.fresh_ns, Some(1_000_000));
     Ok(())
 }
 ```

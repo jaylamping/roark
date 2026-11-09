@@ -14,8 +14,8 @@ use telemetry::{Direction, FrameRecord};
 
 use crate::error_frame::{BusError, classify};
 use crate::types::{
-    BusState, CommandBatch, ConfigError, Counters, DriveView, MAX_DRIVES, Observed, Send, SendKind,
-    SendList, SendOutcome, Snapshot, StopOutcome, StopReason, Timing,
+    BusState, CommandBatch, ConfigError, Counters, Drain, DriveView, MAX_DRIVES, Observed, Send,
+    SendKind, SendList, SendOutcome, Snapshot, StopOutcome, StopReason, Timing,
 };
 
 /// A command the socket took, waiting for its status.
@@ -65,7 +65,7 @@ pub struct BusTick {
     pending_stop: Option<StopReason>,
     bus_error: Option<BusError>,
     error_passive: bool,
-    /// This tick's reads may predate its sends: the shell couldn't empty the socket first.
+    /// Reads may predate this tick's sends: the last drain left frames queued, and none since has emptied the socket.
     unordered: bool,
     counters: Counters,
     silent: u32,
@@ -127,14 +127,19 @@ impl BusTick {
         self.pending_stop.get_or_insert(StopReason::Requested);
     }
 
-    /// More frames were queued before the send than the shell may read: stop at this tick's start, since what the bus
-    /// said can't be known in time. `emptied` false means the socket still held frames when the shell gave up, so
-    /// statuses read this tick may predate its sends: they still show the drive's mode and faults, but answer nothing
-    /// and confirm nothing.
-    pub fn backlog(&mut self, emptied: bool) {
-        self.pending_stop.get_or_insert(StopReason::Backlog);
-        if !emptied {
-            self.unordered = true;
+    /// How this tick's drain ended: call it after the drain, before [`Self::begin`]. A backlog stops the bus at this
+    /// tick's start. Reads stay unordered from a drain that left frames queued until a drain empties the socket.
+    pub fn drained(&mut self, drain: Drain) {
+        match drain {
+            Drain::Emptied => self.unordered = false,
+            Drain::Backlog => {
+                self.pending_stop.get_or_insert(StopReason::Backlog);
+                self.unordered = false;
+            }
+            Drain::Unemptied => {
+                self.pending_stop.get_or_insert(StopReason::Backlog);
+                self.unordered = true;
+            }
         }
     }
 
@@ -244,9 +249,10 @@ impl BusTick {
         self.plan_stop(now_ns);
     }
 
-    /// While stopping: Disable to every drive not yet confirmed, then reporting off to each drive once its post-Disable
-    /// silence is over (a drive drops every frame in it, PLAN.md item 2 Silence windows), until the socket takes it.
-    /// Once the confirm window has passed, stopped.
+    /// While stopping: Disable to every drive not yet confirmed, then reporting off to each confirmed drive once the
+    /// post-Disable silence after its confirmation is over (a drive drops every frame in it, PLAN.md item 2 Silence
+    /// windows), until the socket takes it. A drive that never confirms is sent a Disable every tick, so it never
+    /// leaves its silence and gets no reporting off. Once the confirm window has passed, stopped.
     fn plan_stop(&mut self, now_ns: u64) {
         let BusState::Stopping { since_ns } = self.state else {
             return;
@@ -269,10 +275,8 @@ impl BusTick {
         for (slot, d) in self.drives.iter().enumerate() {
             if let Some(d) = d
                 && !d.reporting_off_sent
-                && now_ns
-                    >= d.confirmed_ns
-                        .unwrap_or(since_ns)
-                        .saturating_add(self.timing.disable_silence_ns)
+                && d.confirmed_ns
+                    .is_some_and(|at| now_ns >= at.saturating_add(self.timing.disable_silence_ns))
             {
                 self.sends.push(Send {
                     slot,
@@ -476,7 +480,6 @@ impl BusTick {
     /// snapshot.
     pub fn end(&mut self, now_ns: u64) -> Snapshot {
         let tick = self.tick;
-        self.unordered = false;
         for d in self.drives.iter_mut().flatten() {
             if let Some(o) = d.outstanding.as_mut()
                 && o.tick == tick

@@ -31,21 +31,22 @@ pub struct Timing {
     /// How long a stop waits for each drive's Disable to be confirmed and its reporting-off sent before it records the
     /// rest as unconfirmed (100 ms, PLAN.md item 2 Silence windows).
     pub stop_confirm_ns: u64,
-    /// How long a drive drops frames after a Disable; its reporting-off waits this long after the confirmation (post-
-    /// Disable silences up to 48.7 ms measured, PLAN.md item 2).
+    /// How long a drive drops frames after a Disable; its reporting-off waits this long after its confirmation, and a
+    /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
     pub disable_silence_ns: u64,
     /// Ticks without a fresh batch that stop an active bus (PLAN.md item 3: two).
     pub silent_ticks: u32,
 }
 
 impl Timing {
-    /// The defaults at `hz` ticks a second (250 by default, PLAN.md item 3). A rate [`Self::check`] refuses (0, or
-    /// below about 61 Hz, where three periods pass the drives' timeout) gives timing it refuses.
+    /// The defaults at `hz` ticks a second (250 by default, PLAN.md item 3), the period rounded up to a whole
+    /// nanosecond so the rate is never above `hz`. A rate [`Self::check`] refuses (0, or below 61 Hz, where three
+    /// periods reach the drives' timeout) gives timing it refuses.
     #[must_use]
     pub const fn at_hz(hz: u64) -> Self {
-        let period_ns = match 1_000_000_000_u64.checked_div(hz) {
-            Some(p) => p,
-            None => 0,
+        let period_ns = match hz {
+            0 => 0,
+            hz => 1_000_000_000_u64.div_ceil(hz),
         };
         Self {
             period_ns,
@@ -59,7 +60,8 @@ impl Timing {
     }
 
     /// Whether this timing keeps the tick's promises: a send window inside the collect window inside the period, at
-    /// least a period of feedback but less than the drives' timeout, a stop window longer than the post-Disable silence.
+    /// least a period of feedback but less than the drives' timeout, a stop window that fits the post-Disable silence and a
+    /// tick to send reporting off after it.
     ///
     /// # Errors
     /// The first rule it breaks.
@@ -74,8 +76,8 @@ impl Timing {
             || self.feedback_limit_ns >= DRIVE_TIMEOUT_NS
         {
             Err("the feedback limit must be at least a period and under the drives' 50 ms timeout")
-        } else if self.stop_confirm_ns <= self.disable_silence_ns {
-            Err("the stop window must outlast the post-Disable silence")
+        } else if self.stop_confirm_ns < self.disable_silence_ns.saturating_add(self.period_ns) {
+            Err("the stop window must outlast the post-Disable silence by a period")
         } else if self.silent_ticks == 0 {
             Err("silent_ticks must be at least 1")
         } else {
@@ -117,6 +119,19 @@ impl CommandBatch {
     pub(crate) fn frames(&self) -> &[Option<Frame>; MAX_DRIVES] {
         &self.frames
     }
+}
+
+/// How the shell's drain before a send ended.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Drain {
+    /// It emptied the socket: what is read from here on came after the backlog.
+    Emptied,
+    /// It emptied the socket but read more frames than the shell may before a send: the bus stops, since what it said
+    /// can't be known in time.
+    Backlog,
+    /// It gave up with frames still queued: the bus stops, and until a drain empties the socket its statuses may
+    /// predate the sends. They still show each drive's mode and faults, but answer nothing and confirm nothing.
+    Unemptied,
 }
 
 /// What a planned send is.
@@ -225,7 +240,7 @@ pub enum StopReason {
         /// That drive's slot.
         slot: usize,
     },
-    /// A batch's frame didn't target its slot's drive: a bug upstream.
+    /// A batch's frame didn't target its slot's drive, or sat in a slot with no drive: a bug upstream.
     BadBatch {
         /// The slot.
         slot: usize,
@@ -247,7 +262,8 @@ pub enum StopOutcome {
     /// A stop happened but no Disable to this drive was taken by the socket (also every drive of a bus whose error
     /// left nothing to send on).
     NeverSent,
-    /// Disable was sent; no Reset-mode status came after it.
+    /// Disable was sent; no Reset-mode status read after it was counted (a read that may predate it, after a drain that
+    /// left frames queued, confirms nothing).
     Sent,
     /// A Reset-mode status was read after a sent Disable.
     Confirmed,
@@ -285,13 +301,15 @@ pub struct DriveView {
 /// Per-bus counts since start.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Counters {
-    /// Commands the socket took that got no status by the collect deadline.
+    /// Commands the socket took that got no status by the collect deadline. Not Enable or Disable: a drive may take
+    /// 10 ms to reach Run, and goes silent after a Disable (PLAN.md item 2 Silence windows).
     pub unanswered: u64,
     /// Statuses for a command after its tick's collect deadline.
     pub late: u64,
-    /// A second status for one command.
+    /// A second status for one command within its tick.
     pub duplicate: u64,
-    /// Statuses from this bus's drives with no command outstanding.
+    /// Statuses from this bus's drives that answer nothing: no command outstanding, a status after the command was
+    /// answered in an earlier tick, or a read that may predate the send.
     pub unsolicited: u64,
     /// Frames from a device this bus doesn't own.
     pub unexpected: u64,
