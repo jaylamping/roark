@@ -10,37 +10,75 @@ pub const MAX_DRIVES: usize = 8;
 /// The most frames one tick sends: a command per drive, or a Disable and a reporting-off per drive while stopping.
 pub const MAX_SENDS: usize = 2 * MAX_DRIVES;
 
-/// The tick's timing, in nanoseconds on the monotonic clock.
+/// The drives' own command timeout: three periods of feedback must fit inside it (PLAN.md item 3 Timing).
+pub const DRIVE_TIMEOUT_NS: u64 = 50_000_000;
+
+/// The tick's timing, in nanoseconds on the monotonic clock. [`BusTick::new`](crate::BusTick::new) refuses timing that
+/// [`Timing::check`] doesn't pass.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Timing {
     /// One tick.
     pub period_ns: u64,
-    /// How late after its scheduled start a tick may still send. Waking later is a missed deadline and a stop.
+    /// How late after its scheduled start a tick may still send a command. Waking later is a missed deadline and a
+    /// stop. A quarter period by default: provisional, to be tuned on the real adapter (PLAN step 8).
     pub send_window_ns: u64,
     /// When the tick stops collecting replies, from its scheduled start (about 60 % of the period, PLAN.md item 3).
     pub collect_ns: u64,
     /// The oldest a drive's last fresh status may be when motion is sent to it (three periods: 12 ms at 250 Hz, PLAN.md
     /// item 6 Silence row).
     pub feedback_limit_ns: u64,
-    /// How long a stop waits for each drive's Disable to be confirmed before it records the rest as unconfirmed
-    /// (PLAN.md item 2: no missed replies counted for 100 ms after a Disable).
+    /// How long a stop waits for each drive's Disable to be confirmed and its reporting-off sent before it records the
+    /// rest as unconfirmed (100 ms, PLAN.md item 2 Silence windows).
     pub stop_confirm_ns: u64,
+    /// How long a drive drops frames after a Disable; its reporting-off waits this long after the confirmation (post-
+    /// Disable silences up to 48.7 ms measured, PLAN.md item 2).
+    pub disable_silence_ns: u64,
     /// Ticks without a fresh batch that stop an active bus (PLAN.md item 3: two).
     pub silent_ticks: u32,
 }
 
 impl Timing {
-    /// The defaults at `hz` ticks a second (250 by default, PLAN.md item 3).
+    /// The defaults at `hz` ticks a second (250 by default, PLAN.md item 3). A rate [`Self::check`] refuses (0, or
+    /// below about 61 Hz, where three periods pass the drives' timeout) gives timing it refuses.
     #[must_use]
     pub const fn at_hz(hz: u64) -> Self {
-        let period_ns = 1_000_000_000 / if hz == 0 { 1 } else { hz };
+        let period_ns = match 1_000_000_000_u64.checked_div(hz) {
+            Some(p) => p,
+            None => 0,
+        };
         Self {
             period_ns,
             send_window_ns: period_ns / 4,
             collect_ns: period_ns * 6 / 10,
             feedback_limit_ns: 3 * period_ns,
             stop_confirm_ns: 100_000_000,
+            disable_silence_ns: 50_000_000,
             silent_ticks: 2,
+        }
+    }
+
+    /// Whether this timing keeps the tick's promises: a send window inside the collect window inside the period, at
+    /// least a period of feedback but less than the drives' timeout, a stop window longer than the post-Disable silence.
+    ///
+    /// # Errors
+    /// The first rule it breaks.
+    pub const fn check(&self) -> Result<(), &'static str> {
+        if self.period_ns == 0 {
+            Err("the period is zero")
+        } else if self.send_window_ns == 0 || self.send_window_ns > self.collect_ns {
+            Err("the send window must be non-zero and end by the collect deadline")
+        } else if self.collect_ns >= self.period_ns {
+            Err("the collect deadline must fall inside the period")
+        } else if self.feedback_limit_ns < self.period_ns
+            || self.feedback_limit_ns >= DRIVE_TIMEOUT_NS
+        {
+            Err("the feedback limit must be at least a period and under the drives' 50 ms timeout")
+        } else if self.stop_confirm_ns <= self.disable_silence_ns {
+            Err("the stop window must outlast the post-Disable silence")
+        } else if self.silent_ticks == 0 {
+            Err("silent_ticks must be at least 1")
+        } else {
+            Ok(())
         }
     }
 }
@@ -110,7 +148,7 @@ pub enum SendOutcome {
     Sent,
     /// `ENOBUFS` or `EAGAIN`: dropped and counted, never retried.
     QueueFull,
-    /// Its send window had passed before the write: dropped and counted.
+    /// A command whose send window had passed before the write: dropped and counted. Stop frames never expire.
     Expired,
     /// Any other write error.
     Failed,
@@ -205,7 +243,8 @@ pub enum StopOutcome {
     /// No stop has happened.
     #[default]
     None,
-    /// A stop happened but no Disable to this drive was taken by the socket.
+    /// A stop happened but no Disable to this drive was taken by the socket (also every drive of a bus whose error
+    /// left nothing to send on).
     NeverSent,
     /// Disable was sent; no Reset-mode status came after it.
     Sent,
@@ -238,6 +277,8 @@ pub struct DriveView {
     pub fault_seen: bool,
     /// What the current or last stop achieved for it.
     pub stop: StopOutcome,
+    /// Whether the current or last stop's active reporting off was taken by the socket.
+    pub reporting_off_sent: bool,
 }
 
 /// Per-bus counts since start.
@@ -273,6 +314,8 @@ pub struct Counters {
     pub missed_deadlines: u64,
     /// The socket's overflow counter (`SO_RXQ_OVFL`), the last value seen.
     pub kernel_drops: u32,
+    /// Snapshots control's ring was too full to take.
+    pub snapshots_dropped: u64,
 }
 
 /// The bus at the end of a tick, for control and the safety layer.
@@ -284,6 +327,10 @@ pub struct Snapshot {
     pub state: BusState,
     /// Why it stopped, if it has.
     pub stop: Option<StopReason>,
+    /// The first bus error that latched (bus-off, interface down or gone), even if the bus was already stopping.
+    pub bus_error: Option<BusError>,
+    /// No latched bus error and not error-passive: the recording's `valid` flag (logging.md section 8.2).
+    pub healthy: bool,
     /// Counts since start.
     pub counters: Counters,
     drives: [Option<DriveView>; MAX_DRIVES],
@@ -294,12 +341,16 @@ impl Snapshot {
         tick: u64,
         state: BusState,
         stop: Option<StopReason>,
+        bus_error: Option<BusError>,
+        healthy: bool,
         counters: Counters,
     ) -> Self {
         Self {
             tick,
             state,
             stop,
+            bus_error,
+            healthy,
             counters,
             drives: [None; MAX_DRIVES],
         }
@@ -323,7 +374,13 @@ impl Snapshot {
     }
 }
 
-/// A bus with more drives than [`MAX_DRIVES`].
+/// A bus the tick can't run.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
-#[error("{0} drives on one bus; the bus table holds {MAX_DRIVES}")]
-pub struct TooManyDrives(pub usize);
+pub enum ConfigError {
+    /// More drives than [`MAX_DRIVES`].
+    #[error("{0} drives on one bus; the bus table holds {MAX_DRIVES}")]
+    TooManyDrives(usize),
+    /// Timing [`Timing::check`] refuses.
+    #[error("bad timing: {0}")]
+    Timing(&'static str),
+}

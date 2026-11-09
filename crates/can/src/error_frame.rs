@@ -10,6 +10,8 @@ pub enum BusError {
     ErrorPassive,
     /// The controller passed the error-warning level (`CAN_ERR_CRTL_RX_WARNING` or `_TX_WARNING`).
     ErrorWarning,
+    /// The controller is back to error-active (`CAN_ERR_CRTL_ACTIVE`): not an error, it ends `ErrorPassive`.
+    ErrorActive,
     /// The controller's receive buffer overflowed (`CAN_ERR_CRTL_RX_OVERFLOW`).
     RxOverflow,
     /// A transmit timed out (`CAN_ERR_TX_TIMEOUT`).
@@ -41,6 +43,7 @@ const CRTL_RX_WARNING: u8 = 0x04;
 const CRTL_TX_WARNING: u8 = 0x08;
 const CRTL_RX_PASSIVE: u8 = 0x10;
 const CRTL_TX_PASSIVE: u8 = 0x20;
+const CRTL_ACTIVE: u8 = 0x40;
 
 /// The most severe error an error frame carries: `class` is its ID without `CAN_ERR_FLAG`, `data` its bytes.
 #[must_use]
@@ -54,6 +57,8 @@ pub fn classify(class: u32, data: &[u8; 8]) -> BusError {
         BusError::RxOverflow
     } else if class & CRTL != 0 && crtl & (CRTL_RX_WARNING | CRTL_TX_WARNING) != 0 {
         BusError::ErrorWarning
+    } else if class & CRTL != 0 && crtl & CRTL_ACTIVE != 0 {
+        BusError::ErrorActive
     } else if class & TX_TIMEOUT != 0 {
         BusError::TxTimeout
     } else {

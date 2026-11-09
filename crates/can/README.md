@@ -9,33 +9,46 @@ Each tick, on the monotonic clock (the steps the bus thread's shell runs around 
 
 1. **Wake** at the tick's scheduled start (`clock_nanosleep`, absolute). Waking later than the send window is a missed
    deadline and stops the bus.
-2. **Drain** the socket, so any frame read after the send arrived after it.
+2. **Drain** the socket to empty, so what is read after the send came after the backlog. It is not a strict barrier:
+   a frame landing between the drain and the write counts as after it, which is still evidence of the drive then.
 3. **Plan** with `BusTick::begin`: the newest `CommandBatch` from control, only if it is for this tick and unexpired.
    A stale or missing batch sends nothing; two silent ticks on an active bus stop it. An MIT frame to a drive whose
    fresh status is older than three periods is refused and stops the bus.
-4. **Send** each planned frame once, before the send window closes, and feed the outcome back (`sent`). A full queue
-   drops the frame and counts it; it is never retried.
+4. **Send** each planned frame once and feed the outcome back (`sent`). A command goes out only before the send
+   window closes; stop frames go out even late, since a late Disable is still the right one. A full queue drops the
+   frame and counts it; it is never retried within the tick.
 5. **Collect** until the collect deadline (about 60 % of the period), feeding each frame to `on_frame`.
 6. **Publish** the `Snapshot` (`end`) to control and hand every frame of the tick to the recorder.
 
 A drive's status read after a command the socket took is its **fresh** status, and it **answered** the tick if read by
 the collect deadline. That is evidence the drive is there and what state it was in, never an acknowledgement: there
-are no sequence numbers to prove which command a status answers. Faults are never filtered: any status, report or
-fault frame updates what the drive was seen saying and latches `fault_seen`.
+are no sequence numbers to prove which command a status answers. Faults are never filtered: a status or report
+updates what the drive was seen saying, and any status, report, version reply or type-21 fault report with a fault set
+latches `fault_seen`. Missing replies to Enable and Disable aren't counted as unanswered: the drive may take 10 ms to
+reach Run, and goes silent after a Disable (PLAN item 2 Silence windows).
 
-A stop (requested, control silent, a late wake, expired feedback, a bad batch, a backlog, or a latched bus error such
-as bus-off) sends Disable to every drive and active reporting off once, then re-sends Disable each tick to every drive
-that hasn't confirmed. A drive confirms with a Reset-mode status read after its Disable. The bus is `Stopped` once all
-have confirmed, or after 100 ms.
+A stop (requested, control silent, a late wake, expired feedback, a bad batch, or a backlog) sends Disable to every
+drive, re-sends it each tick to every drive that hasn't confirmed, and sends active reporting off to each drive once
+its post-Disable silence is over (50 ms after its confirmation), again each tick until the socket takes it. A drive
+confirms with a Reset-mode status read after the stop's Disable. The bus is `Stopped` once every drive has confirmed
+and taken its reporting off, or after 100 ms.
 
-`BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. The
-Linux shell that owns the socket and the clock comes next (PLAN step 6).
+A latched bus error (bus-off, interface down or gone) sends nothing: there is no bus to send on, so the bus is
+`Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's
+`bus_error`, even if a stop was already under way; `healthy` is false while there is one or the controller is
+error-passive.
+
+`BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
+a drive table past `MAX_DRIVES` and timing that breaks its promises (`Timing::check`: for one, three periods must fit
+inside the drives' 50 ms timeout, so the rate is at least about 61 Hz). The Linux shell that owns the socket and the
+clock comes next (PLAN step 6).
 
 ## Must never
 
-Send a frame late, retry one, or re-send a stale batch. Treat a TX echo or any traffic as proof a drive is alive.
-Allocate, lock, log or wait without a deadline in the tick. Let a stop be undone: a stopping bus refuses every batch,
-and a latched bus error stays latched.
+Send a command late, retry one, or re-send a stale batch. Treat a TX echo or any traffic as proof a drive is alive.
+Allocate, lock, log or wait without a deadline in the tick, or take a lock shared with non-realtime code. Let anyone
+but the runtime transmit. Let a stop be undone: a stopping bus refuses every batch, and a latched bus error stays
+latched.
 
 ## Talks to
 

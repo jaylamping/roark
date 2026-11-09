@@ -1,6 +1,6 @@
 [package]
 name = "can"
-description = "The bus layer: one blocking thread per CAN bus running the tick, recorded from its first frame"
+description = "The bus layer: one CAN bus's tick as plain values (what to send, what each frame read means, the snapshot)"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true

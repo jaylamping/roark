@@ -2,18 +2,20 @@
 //! no clock: the shell passes the monotonic time in (testing.md rule 6).
 //!
 //! Correlation (PLAN.md item 3): one command per drive per tick. A status read after a command the socket took is that
-//! drive's fresh status; it answers the tick if read by the collect deadline. The shell drains the socket before it
-//! sends, so a frame read after the send arrived after it. Which command a status answers can't be proven (no sequence
-//! numbers): it is evidence the drive is there and of its state then, never an acknowledgement.
+//! drive's fresh status; it answers the tick if read by the collect deadline. The shell empties the socket before it
+//! sends, so what it reads afterwards came after the backlog: a frame landing in the microseconds between the drain and
+//! the write still counts as after the send, which is evidence of the drive at that moment. Which command a status
+//! answers can't be proven (no sequence numbers): it is evidence the drive is there and of its state then, never an
+//! acknowledgement.
 
 use robstride::encode::{self, Reporting};
-use robstride::{DeviceId, EchoKind, Frame, Inbound, Mode, Status, decode};
+use robstride::{DecodeError, DeviceId, EchoKind, Frame, Inbound, Mode, Status, decode};
 use telemetry::{Direction, FrameRecord};
 
 use crate::error_frame::{BusError, classify};
 use crate::types::{
-    BusState, CommandBatch, Counters, DriveView, MAX_DRIVES, Observed, Send, SendKind, SendList,
-    SendOutcome, Snapshot, StopOutcome, StopReason, Timing, TooManyDrives,
+    BusState, CommandBatch, ConfigError, Counters, DriveView, MAX_DRIVES, Observed, Send, SendKind,
+    SendList, SendOutcome, Snapshot, StopOutcome, StopReason, Timing,
 };
 
 /// A command the socket took, waiting for its status.
@@ -21,9 +23,21 @@ use crate::types::{
 struct Outstanding {
     tick: u64,
     deadline_ns: u64,
-    disable: bool,
-    matched: bool,
+    /// A stop's Disable: a Reset status after it confirms the stop.
+    stop_disable: bool,
+    /// Whether a missing status counts as unanswered. Not for Enable or Disable: the drive may be slow or silent then
+    /// (PLAN.md item 2 Silence windows).
+    counts_missed: bool,
+    reply: Reply,
     counted: bool,
+}
+
+/// Whether an outstanding command has had its status yet.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Reply {
+    Waiting,
+    OnTime,
+    Late,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -35,6 +49,10 @@ struct DriveState {
     answered: bool,
     fault_seen: bool,
     stop: StopOutcome,
+    /// When this stop's Disable was confirmed.
+    confirmed_ns: Option<u64>,
+    /// Whether this stop's reporting-off was taken by the socket.
+    reporting_off_sent: bool,
 }
 
 /// One bus's drives and the tick logic over them.
@@ -45,7 +63,10 @@ pub struct BusTick {
     state: BusState,
     stop: Option<StopReason>,
     pending_stop: Option<StopReason>,
-    reporting_off_due: bool,
+    bus_error: Option<BusError>,
+    error_passive: bool,
+    /// This tick's reads may predate its sends: the shell couldn't empty the socket first.
+    unordered: bool,
     counters: Counters,
     silent: u32,
     tick: u64,
@@ -57,11 +78,13 @@ impl BusTick {
     /// The drives this bus owns, in slot order (the skeleton's order).
     ///
     /// # Errors
-    /// [`TooManyDrives`] past [`MAX_DRIVES`].
-    pub fn new(devices: &[DeviceId], timing: Timing) -> Result<Self, TooManyDrives> {
+    /// [`ConfigError::TooManyDrives`] past [`MAX_DRIVES`]; [`ConfigError::Timing`] for timing that
+    /// [`Timing::check`] refuses.
+    pub fn new(devices: &[DeviceId], timing: Timing) -> Result<Self, ConfigError> {
         if devices.len() > MAX_DRIVES {
-            return Err(TooManyDrives(devices.len()));
+            return Err(ConfigError::TooManyDrives(devices.len()));
         }
+        timing.check().map_err(ConfigError::Timing)?;
         let mut drives = [None; MAX_DRIVES];
         for (slot, &device) in drives.iter_mut().zip(devices) {
             *slot = Some(DriveState {
@@ -72,6 +95,8 @@ impl BusTick {
                 answered: false,
                 fault_seen: false,
                 stop: StopOutcome::None,
+                confirmed_ns: None,
+                reporting_off_sent: false,
             });
         }
         Ok(Self {
@@ -80,7 +105,9 @@ impl BusTick {
             state: BusState::Idle,
             stop: None,
             pending_stop: None,
-            reporting_off_due: false,
+            bus_error: None,
+            error_passive: false,
+            unordered: false,
             counters: Counters::default(),
             silent: 0,
             tick: 0,
@@ -101,15 +128,20 @@ impl BusTick {
     }
 
     /// More frames were queued before the send than the shell may read: stop at this tick's start, since what the bus
-    /// said can't be known in time.
-    pub fn backlog(&mut self) {
-        self.pending_stop = Some(StopReason::Backlog);
+    /// said can't be known in time. `emptied` false means the socket still held frames when the shell gave up, so
+    /// statuses read this tick may predate its sends: they still show the drive's mode and faults, but answer nothing
+    /// and confirm nothing.
+    pub fn backlog(&mut self, emptied: bool) {
+        self.pending_stop.get_or_insert(StopReason::Backlog);
+        if !emptied {
+            self.unordered = true;
+        }
     }
 
     /// The socket failed with `error` (interface down or gone): latch stopped. There is no bus to send a stop on; the
     /// drives time out on their own (`canTimeout`).
     pub fn lost_bus(&mut self, error: BusError) {
-        self.latch(StopReason::Bus(error));
+        self.latch(error);
     }
 
     /// The socket's overflow counter, the last value the shell saw (`SO_RXQ_OVFL` comes only on frames queued after a
@@ -118,8 +150,14 @@ impl BusTick {
         self.counters.kernel_drops = count;
     }
 
+    /// The last snapshot couldn't be handed to control (its ring was full): counted in the next one.
+    pub fn snapshot_dropped(&mut self) {
+        self.counters.snapshots_dropped += 1;
+    }
+
     /// Start tick `tick`, scheduled at `scheduled_ns`, woken at `now_ns`, with the newest batch from control. Call after
-    /// draining the socket. Returns the frames to send, in order; report each with [`Self::sent`].
+    /// draining the socket. Returns the frames to send, in order; report each with [`Self::sent`]. A command goes out
+    /// only inside the send window; stop frames go out whenever planned, since a late Disable is still the right one.
     pub fn begin(
         &mut self,
         tick: u64,
@@ -161,8 +199,7 @@ impl BusTick {
             if self.state == BusState::Active {
                 self.silent += 1;
                 if self.silent >= self.timing.silent_ticks {
-                    self.begin_stop(StopReason::ControlSilent, now_ns);
-                    self.plan_stop(now_ns);
+                    self.stop_now(StopReason::ControlSilent, now_ns);
                 }
             }
             return;
@@ -172,26 +209,23 @@ impl BusTick {
         for (slot, frame) in batch.frames().iter().enumerate() {
             let Some(frame) = frame else { continue };
             let Some(drive) = self.drives.get(slot).copied().flatten() else {
-                self.begin_stop(StopReason::BadBatch { slot }, now_ns);
-                self.plan_stop(now_ns);
+                self.stop_now(StopReason::BadBatch { slot }, now_ns);
                 return;
             };
-            match echo_of(frame) {
-                Some((kind, target)) if target == drive.device => {
-                    let stale = drive
-                        .fresh_ns
-                        .is_none_or(|at| now_ns.saturating_sub(at) > self.timing.feedback_limit_ns);
-                    if matches!(kind, EchoKind::Mit) && stale {
-                        self.begin_stop(StopReason::ExpiredFeedback { slot }, now_ns);
-                        self.plan_stop(now_ns);
-                        return;
-                    }
-                }
-                _ => {
-                    self.begin_stop(StopReason::BadBatch { slot }, now_ns);
-                    self.plan_stop(now_ns);
-                    return;
-                }
+            let Some((kind, target)) = echo_of(frame) else {
+                self.stop_now(StopReason::BadBatch { slot }, now_ns);
+                return;
+            };
+            if target != drive.device {
+                self.stop_now(StopReason::BadBatch { slot }, now_ns);
+                return;
+            }
+            let stale = drive
+                .fresh_ns
+                .is_none_or(|at| now_ns.saturating_sub(at) > self.timing.feedback_limit_ns);
+            if matches!(kind, EchoKind::Mit) && stale {
+                self.stop_now(StopReason::ExpiredFeedback { slot }, now_ns);
+                return;
             }
         }
         for (slot, frame) in batch.frames().iter().enumerate() {
@@ -205,8 +239,14 @@ impl BusTick {
         }
     }
 
-    /// While stopping: Disable to every drive not yet confirmed, and reporting off once, after the Disables. Once the
-    /// confirm window has passed, stopped.
+    fn stop_now(&mut self, reason: StopReason, now_ns: u64) {
+        self.begin_stop(reason, now_ns);
+        self.plan_stop(now_ns);
+    }
+
+    /// While stopping: Disable to every drive not yet confirmed, then reporting off to each drive once its post-Disable
+    /// silence is over (a drive drops every frame in it, PLAN.md item 2 Silence windows), until the socket takes it.
+    /// Once the confirm window has passed, stopped.
     fn plan_stop(&mut self, now_ns: u64) {
         let BusState::Stopping { since_ns } = self.state else {
             return;
@@ -226,16 +266,19 @@ impl BusTick {
                 });
             }
         }
-        if self.reporting_off_due {
-            self.reporting_off_due = false;
-            for (slot, d) in self.drives.iter().enumerate() {
-                if let Some(d) = d {
-                    self.sends.push(Send {
-                        slot,
-                        kind: SendKind::ReportingOff,
-                        frame: encode::active_reporting(d.device, Reporting::Off),
-                    });
-                }
+        for (slot, d) in self.drives.iter().enumerate() {
+            if let Some(d) = d
+                && !d.reporting_off_sent
+                && now_ns
+                    >= d.confirmed_ns
+                        .unwrap_or(since_ns)
+                        .saturating_add(self.timing.disable_silence_ns)
+            {
+                self.sends.push(Send {
+                    slot,
+                    kind: SendKind::ReportingOff,
+                    frame: encode::active_reporting(d.device, Reporting::Off),
+                });
             }
         }
     }
@@ -246,19 +289,24 @@ impl BusTick {
         }
         self.stop = Some(reason);
         self.state = BusState::Stopping { since_ns: now_ns };
-        self.reporting_off_due = true;
         for d in self.drives.iter_mut().flatten() {
             d.stop = StopOutcome::NeverSent;
+            d.confirmed_ns = None;
+            d.reporting_off_sent = false;
         }
     }
 
-    fn latch(&mut self, reason: StopReason) {
-        if self.state != BusState::Stopped {
-            if !matches!(self.state, BusState::Stopping { .. }) {
-                self.stop = Some(reason);
+    /// A bus error that leaves nothing to send on: stopped now, whatever the bus was doing. The first such error is
+    /// kept in every later snapshot.
+    fn latch(&mut self, error: BusError) {
+        self.bus_error.get_or_insert(error);
+        if matches!(self.state, BusState::Idle | BusState::Active) {
+            self.stop = Some(StopReason::Bus(error));
+            for d in self.drives.iter_mut().flatten() {
+                d.stop = StopOutcome::NeverSent;
             }
-            self.state = BusState::Stopped;
         }
+        self.state = BusState::Stopped;
     }
 
     /// What became of send `index` of this tick's list. A command's status window opens only if the socket took it.
@@ -296,15 +344,18 @@ impl BusTick {
         let Some(d) = self.drives.get_mut(send.slot).and_then(Option::as_mut) else {
             return;
         };
-        if send.kind == SendKind::Disable && d.stop == StopOutcome::NeverSent {
-            d.stop = StopOutcome::Sent;
+        match send.kind {
+            SendKind::Disable if d.stop == StopOutcome::NeverSent => d.stop = StopOutcome::Sent,
+            SendKind::ReportingOff => d.reporting_off_sent = true,
+            SendKind::Disable | SendKind::Command => {}
         }
         if expects_status {
             d.outstanding = Some(Outstanding {
                 tick,
                 deadline_ns,
-                disable: matches!(kind, Some(EchoKind::Disable)),
-                matched: false,
+                stop_disable: send.kind == SendKind::Disable,
+                counts_missed: !matches!(kind, Some(EchoKind::Enable | EchoKind::Disable)),
+                reply: Reply::Waiting,
                 counted: false,
             });
         }
@@ -316,7 +367,18 @@ impl BusTick {
             self.counters.error_frames += 1;
             let error = classify(frame.id, &frame.data);
             if error.latches() {
-                self.latch(StopReason::Bus(error));
+                self.latch(error);
+            }
+            match error {
+                BusError::ErrorPassive => self.error_passive = true,
+                BusError::ErrorActive => self.error_passive = false,
+                BusError::BusOff
+                | BusError::ErrorWarning
+                | BusError::RxOverflow
+                | BusError::TxTimeout
+                | BusError::InterfaceDown
+                | BusError::InterfaceGone
+                | BusError::Other(_) => {}
             }
             return;
         }
@@ -325,6 +387,12 @@ impl BusTick {
             return;
         }
         match decode(frame.id, frame.payload()) {
+            // The codec names frames only another sender could have put on the bus.
+            Err(
+                DecodeError::OtherHost { .. }
+                | DecodeError::ForeignType { .. }
+                | DecodeError::ForeignWrite { .. },
+            ) => self.counters.foreign_host += 1,
             Err(_) => self.counters.undecodable += 1,
             Ok(Inbound::Echo(_)) => {
                 if frame.direction == Direction::TxEcho {
@@ -335,15 +403,15 @@ impl BusTick {
             }
             Ok(Inbound::Status(status)) => self.on_status(read_ns, status, true),
             Ok(Inbound::Report(status)) => self.on_status(read_ns, status, false),
-            Ok(Inbound::Fault { device, .. }) => match self.slot_of(device) {
-                Some(d) => d.fault_seen = true,
+            Ok(Inbound::Fault { device, faults, .. }) => match self.slot_of(device) {
+                // Warnings alone aren't a fault (the codec: non-zero fault bytes mean faulted).
+                Some(d) => d.fault_seen |= faults != [0; 4],
                 None => self.counters.unexpected += 1,
             },
-            Ok(Inbound::Version { header, .. }) => {
-                if self.slot_of(header.device).is_none() {
-                    self.counters.unexpected += 1;
-                }
-            }
+            Ok(Inbound::Version { header, .. }) => match self.slot_of(header.device) {
+                Some(d) => d.fault_seen |= !header.faults.is_empty(),
+                None => self.counters.unexpected += 1,
+            },
             Ok(Inbound::Identity { device, .. } | Inbound::Param { device, .. }) => {
                 if self.slot_of(device).is_none() {
                     self.counters.unexpected += 1;
@@ -354,6 +422,8 @@ impl BusTick {
 
     fn on_status(&mut self, read_ns: u64, status: Status, answer: bool) {
         let device = status.header.device;
+        let tick = self.tick;
+        let unordered = self.unordered;
         let Some(d) = self
             .drives
             .iter_mut()
@@ -370,22 +440,28 @@ impl BusTick {
         if !answer {
             return;
         }
-        match d.outstanding.as_mut() {
-            // The shell drains before it sends, so anything read now came after the outstanding command went out.
-            Some(o) if o.matched => self.counters.duplicate += 1,
-            Some(o) => {
-                o.matched = true;
-                d.fresh_ns = Some(read_ns);
-                if read_ns <= o.deadline_ns {
-                    d.answered = o.tick == self.tick;
-                } else {
-                    self.counters.late += 1;
-                }
-                if o.disable && status.header.mode == Mode::Reset {
-                    d.stop = StopOutcome::Confirmed;
-                }
+        let Some(o) = d.outstanding.as_mut().filter(|_| !unordered) else {
+            self.counters.unsolicited += 1;
+            return;
+        };
+        if o.reply == Reply::Waiting {
+            d.fresh_ns = Some(read_ns);
+            if read_ns <= o.deadline_ns {
+                o.reply = Reply::OnTime;
+                d.answered = o.tick == tick;
+            } else {
+                o.reply = Reply::Late;
+                self.counters.late += 1;
             }
-            _ => self.counters.unsolicited += 1,
+        } else if o.tick == tick {
+            self.counters.duplicate += 1;
+        } else {
+            self.counters.unsolicited += 1;
+        }
+        // Any Reset after the stop's Disable confirms it, even behind an earlier status still in flight.
+        if o.stop_disable && status.header.mode == Mode::Reset && d.stop != StopOutcome::Confirmed {
+            d.stop = StopOutcome::Confirmed;
+            d.confirmed_ns = Some(read_ns);
         }
     }
 
@@ -396,13 +472,16 @@ impl BusTick {
             .find(|d| d.device == device)
     }
 
-    /// End the tick at `now_ns` (the collect deadline): count commands still unanswered and return the snapshot.
+    /// End the tick at `now_ns` (the collect deadline): count commands not answered by the deadline and return the
+    /// snapshot.
     pub fn end(&mut self, now_ns: u64) -> Snapshot {
         let tick = self.tick;
+        self.unordered = false;
         for d in self.drives.iter_mut().flatten() {
             if let Some(o) = d.outstanding.as_mut()
                 && o.tick == tick
-                && !o.matched
+                && o.counts_missed
+                && o.reply != Reply::OnTime
                 && !o.counted
             {
                 o.counted = true;
@@ -410,16 +489,24 @@ impl BusTick {
             }
         }
         if let BusState::Stopping { since_ns } = self.state {
-            let all_confirmed = self
+            let all_done = self
                 .drives
                 .iter()
                 .flatten()
-                .all(|d| d.stop == StopOutcome::Confirmed);
-            if all_confirmed || now_ns.saturating_sub(since_ns) >= self.timing.stop_confirm_ns {
+                .all(|d| d.stop == StopOutcome::Confirmed && d.reporting_off_sent);
+            if all_done || now_ns.saturating_sub(since_ns) >= self.timing.stop_confirm_ns {
                 self.state = BusState::Stopped;
             }
         }
-        let mut snap = Snapshot::new(tick, self.state, self.stop, self.counters);
+        let healthy = self.bus_error.is_none() && !self.error_passive;
+        let mut snap = Snapshot::new(
+            tick,
+            self.state,
+            self.stop,
+            self.bus_error,
+            healthy,
+            self.counters,
+        );
         for (slot, d) in self.drives.iter().enumerate() {
             if let Some(d) = d {
                 snap.set(
@@ -431,6 +518,7 @@ impl BusTick {
                         answered: d.answered,
                         fault_seen: d.fault_seen,
                         stop: d.stop,
+                        reporting_off_sent: d.reporting_off_sent,
                     },
                 );
             }
@@ -443,6 +531,14 @@ impl BusTick {
 fn echo_of(frame: &Frame) -> Option<(EchoKind, DeviceId)> {
     match decode(frame.id(), &frame.data()) {
         Ok(Inbound::Echo(echo)) => Some((echo.kind, echo.target)),
-        _ => None,
+        Ok(
+            Inbound::Identity { .. }
+            | Inbound::Status(_)
+            | Inbound::Report(_)
+            | Inbound::Fault { .. }
+            | Inbound::Version { .. }
+            | Inbound::Param { .. },
+        )
+        | Err(_) => None,
     }
 }
