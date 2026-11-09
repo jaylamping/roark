@@ -9,5 +9,7 @@ cad/**/*.[sS][tT][lL] filter=lfs diff=lfs merge=lfs -text
 cad/**/*.3[mM][fF] filter=lfs diff=lfs merge=lfs -text
 cad/**/*.[gG][cC][oO][dD][eE] filter=lfs diff=lfs merge=lfs -text
 cad/**/*.[xX]_[tT] filter=lfs diff=lfs merge=lfs -text
+cad/**/*.[xX]_[bB] filter=lfs diff=lfs merge=lfs -text
 cad/**/*.[iI][gG][sS] filter=lfs diff=lfs merge=lfs -text
 cad/**/*.[iI][gG][eE][sS] filter=lfs diff=lfs merge=lfs -text
+cad/**/*.[pP][dD][fF] filter=lfs diff=lfs merge=lfs -text
