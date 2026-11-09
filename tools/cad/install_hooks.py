@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Install the repo's git hooks (pre-commit, pre-push) into this clone.
 
-    python tools/cad/install_hooks.py            install or update
-    python tools/cad/install_hooks.py --check    exit 1 if they are missing or out of date
+    python3 tools/cad/install_hooks.py            install or update
+    python3 tools/cad/install_hooks.py --check    exit 1 if they are missing or out of date
 
-pre-commit: tools/cad/hooks/pre_commit.py (staged sizes; layout + writer lock when CAD is staged).
-pre-push:   tools/cad/hooks/pre_push.py (pushed sizes, LFS budget), then `git lfs pre-push`
-            (fails if Git LFS is missing), then <hook>.local if present.
-Does not set core.hooksPath. Git LFS's own hook is replaced (ours runs it; a copy is kept as
-<hook>.lfs-orig); any other existing hook is kept as <hook>.local and still runs after ours.
+pre-commit: tools/cad/hooks/pre_commit.py (staged sizes; layout + writer lock when CAD is staged),
+            then <hook>.local if present.
+pre-push:   tools/cad/hooks/pre_push.py (pushed sizes, LFS budget), then <hook>.local if present,
+            then `git lfs pre-push` (fails if Git LFS is missing), so nothing is uploaded for a
+            push a check refuses.
+Does not set core.hooksPath. Git LFS's own stock pre-push hook (only the git-lfs presence check
+and `git lfs pre-push "$@"`) is replaced, since ours runs it; a copy is kept as pre-push.lfs-orig.
+Any other existing hook, including one that runs git lfs among other things, is kept as
+<hook>.local and still runs.
 Run it once per clone (the CAD workstation, any laptop that commits CAD); re-run after `git lfs install`.
 """
 
@@ -22,7 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gitlfs import REPO_ROOT, git
 
-MARK = "# repo-cad-hooks v1"
+MARK = "# repo-cad-hooks v2"
 
 FIND_PY = """for c in python3 python py; do
   if command -v "$c" >/dev/null 2>&1 && "$c" -c "import sys; sys.exit(sys.version_info < (3, 9))" >/dev/null 2>&1; then
@@ -50,18 +54,28 @@ exit 0
 {MARK}
 {FIND_PY}input=$(cat)
 printf '%s\\n' "$input" | "$PY" "$TOP/tools/cad/hooks/pre_push.py" "$@" || exit 1
-# Git LFS must upload the objects, or the remote gets pointers with no content.
+if [ -x "$HOOKS/pre-push.local" ]; then
+  printf '%s\\n' "$input" | "$HOOKS/pre-push.local" "$@" || exit 1
+fi
+# Last, once every check has passed: Git LFS must upload the objects, or the remote gets
+# pointers with no content.
 if ! command -v git-lfs >/dev/null 2>&1; then
   echo "cad hooks: git-lfs not found; install Git LFS before pushing (https://git-lfs.com)" >&2
   exit 1
 fi
 printf '%s\\n' "$input" | git lfs pre-push "$@" || exit 1
-if [ -x "$HOOKS/pre-push.local" ]; then
-  printf '%s\\n' "$input" | "$HOOKS/pre-push.local" "$@" || exit 1
-fi
 exit 0
 """,
 }
+
+
+def is_stock_lfs_hook(name: str, text: str) -> bool:
+    """Git LFS's own pre-push hook: nothing but the git-lfs presence check and `git lfs pre-push "$@"`."""
+    if name != "pre-push":
+        return False
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip() and not ln.strip().startswith("#")]
+    rest = [ln for ln in lines if not ln.startswith("command -v git-lfs")]
+    return rest == ['git lfs pre-push "$@"']
 
 
 def hooks_dir(root: Path = REPO_ROOT) -> Path:
@@ -79,9 +93,12 @@ def install(root: Path = REPO_ROOT) -> list[str]:
             old = path.read_text(encoding="utf-8", errors="replace")
             if "-cad-hooks v" in old:
                 pass  # an older version of ours: overwrite
-            elif "git lfs" in old and len(old) < 1024:
+            elif is_stock_lfs_hook(name, old):
                 # Git LFS's own hook: ours already runs `git lfs pre-push`; keep a copy that does not run
-                path.replace(d / f"{name}.lfs-orig")
+                orig = d / f"{name}.lfs-orig"
+                if orig.exists() and orig.read_text(encoding="utf-8", errors="replace") != old:
+                    raise SystemExit(f"{orig} already exists and differs; merge them by hand")
+                path.replace(orig)
                 done.append(
                     f"replaced Git LFS's {name} hook (ours runs git lfs; copy in {name}.lfs-orig)"
                 )
