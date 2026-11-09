@@ -17,9 +17,7 @@ use telemetry::{BusRecorder, Epoch, TickBatch};
 use crate::error_frame::BusError;
 use crate::sys::{self, SO_RCVBUFFORCE, SO_RXQ_OVFL, SO_TIMESTAMPNS_NEW};
 use crate::tick::BusTick;
-use crate::types::{
-    BusState, CommandBatch, ConfigError, Drain, SendKind, SendOutcome, Snapshot, Timing,
-};
+use crate::types::{BusState, CommandBatch, ConfigError, Drain, SendOutcome, Snapshot, Timing};
 
 /// The most frames a tick's drain may find before the send. More than that queued means the thread can't tell what the
 /// bus said in time, so it stops (1 Mbit/s carries about 8,000 frames a second: 32 a tick at 250 Hz).
@@ -327,8 +325,8 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         );
         let send_by = scheduled + Duration::from_nanos(timing.send_window_ns);
         for (index, send) in sends.iter().enumerate() {
-            // Only commands expire: a late Disable is still the right one (can.md section 2).
-            let outcome = if send.kind == SendKind::Command && mono_now() > send_by {
+            // A Disable or reporting off never expires: late, it is still the right one (can.md section 2).
+            let outcome = if send.expires && mono_now() > send_by {
                 SendOutcome::Expired
             } else {
                 match write(socket, &send.frame) {
