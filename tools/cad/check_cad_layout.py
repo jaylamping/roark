@@ -486,7 +486,7 @@ def check_repo(root: Path = REPO_ROOT) -> Report:
     cad_ext = {e.lower() for e in layout["cadExtensions"]}
     scratch = {s.lower() for s in layout["scratchFolders"]} | {".checkpoints"}
     never_tracked = re.compile(
-        r"(^~\$|Zone\.Identifier$|^\.cad-writer\.lock$|^desktop\.ini$|^Thumbs\.db$)",
+        r"(^~\$|Zone\.Identifier$|^\.cad-writer\.lock(\..*)?$|^desktop\.ini$|^Thumbs\.db$)",
         re.IGNORECASE,
     )
     cad_blobs = {}
