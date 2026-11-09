@@ -1,5 +1,231 @@
 {
   "version": 1,
   "description": "Where each STEP/STL in cad/exports/ came from. Written by tools/cad/record_export.py; checked by tools/cad/check_cad_layout.py (a changed source makes its export stale). Paths are relative to cad/.",
-  "exports": []
+  "exports": [
+    {
+      "export": "exports/forearm/forearm_fork_left.stl",
+      "source": "forearm/forearm_fork_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, SolidWorks default quality",
+      "sourceSha256": "5e9355028cb6e955d0a7aa1507c3e14f3bc811b0568ea57e584aaf8cc1c58971",
+      "exportSha256": "1e683dffcd8baf2e099aee46286f1523b50aa599f1586b2a19f31192e338dc1c",
+      "recorded": "2026-11-09T08:14:05Z"
+    },
+    {
+      "export": "exports/forearm/forearm_rs00_coupling_left.step",
+      "source": "forearm/forearm_rs00_coupling_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214, mm",
+      "sourceSha256": "20b821bc30a409dbeb581fd07cd5516070abdd2c817e5bb559ab49676204bf6e",
+      "exportSha256": "92590456fd0179694503c7c09fecceab73159169790754ae08449c27fbd2baad",
+      "recorded": "2026-11-09T08:14:05Z"
+    },
+    {
+      "export": "exports/forearm/forearm_rs00_coupling_left.stl",
+      "source": "forearm/forearm_rs00_coupling_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, SolidWorks default quality",
+      "sourceSha256": "20b821bc30a409dbeb581fd07cd5516070abdd2c817e5bb559ab49676204bf6e",
+      "exportSha256": "204701a85d1fe5955d230188958f624314e3d88874ca534c2d3d8a9aab0dc9bf",
+      "recorded": "2026-11-09T08:14:05Z"
+    },
+    {
+      "export": "exports/forearm/forearm_rs00_ring_left.step",
+      "source": "forearm/forearm_rs00_ring_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214, mm",
+      "sourceSha256": "3d414646985689488a27bfe72840d85b6cc6d4c97e262d8403b7193204350ec4",
+      "exportSha256": "f52e04517d8a5a736f9557bc2e1a394d96ebe1fc9b5fc0d9721723404c48f260",
+      "recorded": "2026-11-09T08:14:06Z"
+    },
+    {
+      "export": "exports/forearm/forearm_rs00_ring_left.stl",
+      "source": "forearm/forearm_rs00_ring_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, SolidWorks default quality",
+      "sourceSha256": "3d414646985689488a27bfe72840d85b6cc6d4c97e262d8403b7193204350ec4",
+      "exportSha256": "e1254dd1145548f3bd99b509d83465dd5546d11003ad044c5e16445cce527cac",
+      "recorded": "2026-11-09T08:14:06Z"
+    },
+    {
+      "export": "exports/forearm/forearm_sleeve_left.step",
+      "source": "forearm/forearm_sleeve_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214, mm",
+      "sourceSha256": "e186897aec4803cfd3dfb415b98870a5ae325e1dbb61a48f465b5ae7b82a5552",
+      "exportSha256": "74cc884740bfb3e89b071df4922197ec96e61d3b19bbeb07a755e80d18516572",
+      "recorded": "2026-11-09T08:14:06Z"
+    },
+    {
+      "export": "exports/forearm/forearm_sleeve_left.stl",
+      "source": "forearm/forearm_sleeve_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, SolidWorks default quality",
+      "sourceSha256": "e186897aec4803cfd3dfb415b98870a5ae325e1dbb61a48f465b5ae7b82a5552",
+      "exportSha256": "5264657d08b977361323e5340637da4cf56592b5b0fae0727182906c617aa483",
+      "recorded": "2026-11-09T08:14:06Z"
+    },
+    {
+      "export": "exports/forearm/forearm_tube_left.step",
+      "source": "forearm/forearm_tube_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214, mm",
+      "sourceSha256": "58d581f3733a32cc45c40ce47387386f958361551bfd407bd1a912a20646b970",
+      "exportSha256": "995d303a903cb328a14a7f1002425cbbd40037a059ab3970633e22ee335823b0",
+      "recorded": "2026-11-09T08:14:06Z"
+    },
+    {
+      "export": "exports/forearm/forearm_tube_left.stl",
+      "source": "forearm/forearm_tube_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, SolidWorks default quality",
+      "sourceSha256": "58d581f3733a32cc45c40ce47387386f958361551bfd407bd1a912a20646b970",
+      "exportSha256": "9f98b04d1fd9897a50646169539e8541c652cdea516d27a40d9bcbf961995d74",
+      "recorded": "2026-11-09T08:14:07Z"
+    },
+    {
+      "export": "exports/forearm/forearm_wrist_cap_left.step",
+      "source": "forearm/forearm_wrist_cap_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214, mm",
+      "sourceSha256": "ec17c6d3b719a68aaa85cd53b593577af009e702e8bbf3ea1e6b3e543b39e1ff",
+      "exportSha256": "c8cd17166de9ff8c3478e72905417ce83928cca18adda05aa6bfd5c2716cea32",
+      "recorded": "2026-11-09T08:14:07Z"
+    },
+    {
+      "export": "exports/forearm/forearm_wrist_cap_left.stl",
+      "source": "forearm/forearm_wrist_cap_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, SolidWorks default quality",
+      "sourceSha256": "ec17c6d3b719a68aaa85cd53b593577af009e702e8bbf3ea1e6b3e543b39e1ff",
+      "exportSha256": "3644e57cde174dae32ac2e64c66bd2b6f27dde4ad739fd15510915a9be6e44e0",
+      "recorded": "2026-11-09T08:14:07Z"
+    },
+    {
+      "export": "exports/forearm/forearm_wrist_flange_left.step",
+      "source": "forearm/forearm_wrist_flange_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214, mm",
+      "sourceSha256": "8f0b75db002d640cc8e72ec50899907426450620f9b187c75d8d224c4fa0ed2f",
+      "exportSha256": "26790c4eee4452001b167a852e3b425c44539674a387a186fd740274ca1d87d6",
+      "recorded": "2026-11-09T08:14:07Z"
+    },
+    {
+      "export": "exports/forearm/forearm_wrist_flange_left.stl",
+      "source": "forearm/forearm_wrist_flange_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, SolidWorks default quality",
+      "sourceSha256": "8f0b75db002d640cc8e72ec50899907426450620f9b187c75d8d224c4fa0ed2f",
+      "exportSha256": "c50970a5f6c481b7943481d9d3bdac0dc91c8fba922320f4b181866a4d6986a5",
+      "recorded": "2026-11-09T08:14:07Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_elbow_ring_left.step",
+      "source": "upper-arm/upper_arm_elbow_ring_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214, mm",
+      "sourceSha256": "b04fe5b90df62f38171dd5b64e51c050e9e1d6f0e4b5d5fe573ee7be2d5ace07",
+      "exportSha256": "b2c9d091e764f394c60754f021f4c5c06ec40ecb6bd4144ce696f22cfef9d64b",
+      "recorded": "2026-11-09T08:14:08Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_elbow_ring_left.stl",
+      "source": "upper-arm/upper_arm_elbow_ring_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, SolidWorks default quality",
+      "sourceSha256": "b04fe5b90df62f38171dd5b64e51c050e9e1d6f0e4b5d5fe573ee7be2d5ace07",
+      "exportSha256": "8182258ea5a225ad9c55969ec5acd2ac49b463fe629487a255c65c4cbc20fc9c",
+      "recorded": "2026-11-09T08:14:08Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_hub_left.step",
+      "source": "upper-arm/upper_arm_hub_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214, mm",
+      "sourceSha256": "7b857f61855fb2a65fd4e6d73981605c4b9f12747af1e5abcfd2a75bc5ddcb0b",
+      "exportSha256": "754194c3b98f1b0a076fcbf759a9b36f5c1a748759c419fb03ccf5e3fee55df2",
+      "recorded": "2026-11-09T08:14:08Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_hub_left.stl",
+      "source": "upper-arm/upper_arm_hub_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, SolidWorks default quality",
+      "sourceSha256": "7b857f61855fb2a65fd4e6d73981605c4b9f12747af1e5abcfd2a75bc5ddcb0b",
+      "exportSha256": "1519a1196d44d46383fe5e8713c1fbd12a5627ae3e31e911df8cb12ad7c4e008",
+      "recorded": "2026-11-09T08:14:08Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_loop_clip_left.step",
+      "source": "upper-arm/upper_arm_loop_clip_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214, mm",
+      "sourceSha256": "da7faacc1fc0a29d6dc01cbc99d4f72e019be48e2e3e10b775398b23683f0c9e",
+      "exportSha256": "9e6761abdc5535f214727932a4c93f615db2340aa5493054d3cec292475f30cc",
+      "recorded": "2026-11-09T08:14:08Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_loop_clip_left.stl",
+      "source": "upper-arm/upper_arm_loop_clip_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, SolidWorks default quality",
+      "sourceSha256": "da7faacc1fc0a29d6dc01cbc99d4f72e019be48e2e3e10b775398b23683f0c9e",
+      "exportSha256": "1ac92b6e1b7ad532a5f5899449e44c05b5f75f604b67aa54e3457ff2f08f88c8",
+      "recorded": "2026-11-09T08:14:09Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_shell_back_left.step",
+      "source": "upper-arm/upper_arm_shell_back_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214, mm",
+      "sourceSha256": "5cb71041a1f937fe2b8990a87399dca868fd14b5f43c47f9c2773f9885945692",
+      "exportSha256": "de35470c58d140098a9bdbbe52539c21c8f1563cfa0e7dffa81b1d3dd64ef741",
+      "recorded": "2026-11-09T08:14:09Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_shell_back_left.stl",
+      "source": "upper-arm/upper_arm_shell_back_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, SolidWorks default quality",
+      "sourceSha256": "5cb71041a1f937fe2b8990a87399dca868fd14b5f43c47f9c2773f9885945692",
+      "exportSha256": "534bfd33e54a6c873ed159f0095a34f24aaea15a0d2566607aaf70b49abedfa6",
+      "recorded": "2026-11-09T08:14:09Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_shell_front_left.step",
+      "source": "upper-arm/upper_arm_shell_front_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214, mm",
+      "sourceSha256": "41ec5b8896cfb57d3cfc6fff6e8efea5759f5f4893ddd62debb38b6a204cc66b",
+      "exportSha256": "1300225d6293a73d39179983eaa593759d91905672c7433838c1b75e9ca67212",
+      "recorded": "2026-11-09T08:14:09Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_shell_front_left.stl",
+      "source": "upper-arm/upper_arm_shell_front_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, SolidWorks default quality",
+      "sourceSha256": "41ec5b8896cfb57d3cfc6fff6e8efea5759f5f4893ddd62debb38b6a204cc66b",
+      "exportSha256": "f02934bdda1c60e1908e70edb4fefe41c7a32fa323197ad4f53aebe0c00b146c",
+      "recorded": "2026-11-09T08:14:09Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_spring_carrier_left.step",
+      "source": "upper-arm/upper_arm_spring_carrier_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214, mm",
+      "sourceSha256": "678619b46ccfa2cdec11e6196cfd62b0bf9b534e3f6eb762ae329c0a7d67206e",
+      "exportSha256": "807bbd39dfe20ec00dfc97555e07df95c6387a61dd95be7e04028638f0d7f33e",
+      "recorded": "2026-11-09T08:14:10Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_spring_carrier_left.stl",
+      "source": "upper-arm/upper_arm_spring_carrier_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, SolidWorks default quality",
+      "sourceSha256": "678619b46ccfa2cdec11e6196cfd62b0bf9b534e3f6eb762ae329c0a7d67206e",
+      "exportSha256": "98f40ca54fd7981821e341ff05a78d60b5cf310e5449c9db27caf65f0957c4fd",
+      "recorded": "2026-11-09T08:14:10Z"
+    }
+  ]
 }

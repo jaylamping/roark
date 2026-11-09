@@ -65,6 +65,8 @@ def repo(tmp_path: Path) -> Path:
         f"cad/manifests/{p.name}": p.read_text(encoding="utf-8")
         for p in ccl.LAYOUT_PATH.parent.glob("*.json")
     }
+    # the real rules, but no export records: the real records name files this throwaway repo doesn't have
+    manifests["cad/manifests/exports.json"] = json.dumps({"version": 1, "exports": []})
     build(
         tmp_path,
         {
