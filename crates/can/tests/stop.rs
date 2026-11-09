@@ -12,6 +12,7 @@ use common::{
     stop_of,
 };
 use robstride::{Mode, encode};
+use telemetry::FrameRecord;
 
 /// Guards: safety - a hung control thread lets the drives time out: only a fresh batch is sent, and two ticks without
 /// one stop the bus (PLAN.md item 3).
@@ -103,21 +104,42 @@ fn only_reset_after_disable_confirms_a_stop() {
 
 /// Guards: safety - a thread that wakes past its send window stops an active bus at once instead of sending motion, and
 /// sends the Disables on that same tick: a late Disable is still the right one. An idle bus has nothing to stop: the
-/// missed deadline is counted and nothing is sent (PLAN.md item 3).
+/// missed deadline is counted, and of its batch only the Disables and reporting off go out, late as they are (can.md
+/// section 2), while the rest is held (PLAN.md item 3).
 #[test]
 fn a_late_wake_stops_the_bus() {
     let mut bus = bus();
-    // Idle, tick 0 woken 2 ms late with an Enable: counted, nothing sent, still idle.
-    let late_enable = batch(0, &[Some(encode::enable(id(101))), None]);
-    assert!(bus.begin(0, 2 * MS, 0, Some(&late_enable)).is_empty());
+    // Idle, tick 0 woken 2 ms late with an Enable to one drive and a Disable to the other: the Disable goes, the
+    // Enable is held, and the bus stays idle.
+    let mixed = batch(
+        0,
+        &[
+            Some(encode::enable(id(101))),
+            Some(encode::disable(id(102))),
+        ],
+    );
+    assert_eq!(
+        bus.begin(0, 2 * MS, 0, Some(&mixed))
+            .iter()
+            .collect::<Vec<_>>(),
+        [Send {
+            slot: 1,
+            kind: SendKind::Command,
+            frame: encode::disable(id(102)),
+            expires: false,
+        }]
+    );
     let snap = bus.end(deadline(0));
+    let c = snap.counters;
     assert_eq!(
         (
             state_of(&snap),
             stop_of(&snap),
-            snap.counters.missed_deadlines
+            c.missed_deadlines,
+            c.held_batches,
+            c.stale_ticks
         ),
-        (LimbState::Idle, None, 1)
+        (LimbState::Idle, None, 1, 1, 0)
     );
     run_tick(
         &mut bus,
@@ -179,29 +201,30 @@ fn only_consecutive_silent_ticks_stop_the_bus() {
 }
 
 /// Guards: safety - ticks a stalled thread slept through are each a missed deadline and stop an active bus as a late
-/// wake would, Disables on the next tick it runs; an idle bus only counts them; none skipped is no news (PLAN.md item
-/// 3: missed deadlines are counted, never skipped silently).
+/// wake would, Disables on the next tick it runs; an idle bus counts them and, as for a late wake, holds that tick's
+/// commands; none skipped is no news (PLAN.md item 3: missed deadlines are counted, never skipped silently).
 #[test]
 fn skipped_ticks_are_missed_deadlines_and_stop_the_bus() {
     let mut bus = bus();
     run_tick(&mut bus, 0, None, &[]);
     let _ = bus.end(deadline(0));
-    // Idle: counted, nothing to stop, and the next batch still goes out.
+    // Idle: counted, nothing to stop, and the Enable held for that tick only.
     bus.skipped(2);
-    let enable = batch(3, &[Some(encode::enable(id(101))), None]);
-    let sent = run_tick(&mut bus, 3, Some(&enable), &[]);
-    assert_eq!(sent, [(0, SendKind::Command)]);
+    let enable = |tick| batch(tick, &[Some(encode::enable(id(101))), None]);
+    assert_eq!(run_tick(&mut bus, 3, Some(&enable(3)), &[]), []);
     let snap = bus.end(deadline(3));
     assert_eq!(
         (
             state_of(&snap),
             stop_of(&snap),
-            snap.counters.missed_deadlines
+            snap.counters.missed_deadlines,
+            snap.counters.held_batches
         ),
-        (LimbState::Active, None, 2)
+        (LimbState::Idle, None, 2, 1)
     );
     bus.skipped(0);
-    run_tick(&mut bus, 4, Some(&batch(4, &[None, None])), &[]);
+    let sent = run_tick(&mut bus, 4, Some(&enable(4)), &[]);
+    assert_eq!(sent, [(0, SendKind::Command)]);
     let snap = bus.end(deadline(4));
     assert_eq!(
         (state_of(&snap), snap.counters.missed_deadlines),
@@ -257,6 +280,17 @@ fn bus_off_latches_stopped() {
         state_of(&bus.end(PERIOD + PERIOD * 6 / 10)),
         LimbState::Stopped
     );
+
+    // Any socket failure latches, whatever its error: a socket that can't send can't stop the drives either.
+    for error in [BusError::TxTimeout, BusError::Other(0x08)] {
+        let mut bus = common::bus();
+        bus.lost_bus(error);
+        let snap = bus.end(0);
+        assert_eq!(
+            (state_of(&snap), snap.bus_error),
+            (LimbState::Stopped, Some(error))
+        );
+    }
 }
 
 /// Enable both drives at tick 0 and stop at tick 1; returns the stop's first sends.
@@ -394,8 +428,8 @@ fn reporting_off_follows_each_drives_own_confirmation() {
 }
 
 /// Guards: safety - a drive confirmed late in the stop window still gets its reporting off once its silence is over:
-/// Disables end with the window, the stop runs on only while a confirmed drive waits, and at most until the window, the
-/// silence and a period have passed (PLAN.md item 2 Exit: reporting persists across host processes otherwise).
+/// Disables end with the window, and the stop runs on only while a confirmed drive waits for its reporting off
+/// (PLAN.md item 2 Exit: reporting persists across host processes otherwise).
 #[test]
 fn a_drive_confirmed_late_still_gets_reporting_off() {
     let mut bus = bus();
@@ -532,13 +566,18 @@ fn a_backlog_stops_and_its_unordered_reads_confirm_nothing() {
 
 /// Guards: safety - a drain that read more than the shell may stops an active bus, but having emptied the socket it
 /// orders the reads again: a Reset after the send confirms. On an idle bus nothing is enabled, so a backlog stops
-/// nothing (PLAN.md item 3).
+/// nothing, but no Enable goes out on a tick whose reads can't be trusted (PLAN.md item 3).
 #[test]
 fn an_emptied_backlog_stops_but_orders_the_reads_again() {
     let mut bus = bus();
     bus.drained(Drain::Backlog);
-    assert_eq!(run_tick(&mut bus, 0, None, &[]), []);
-    assert_eq!(state_of(&bus.end(deadline(0))), LimbState::Idle);
+    let enable = batch(0, &[Some(encode::enable(id(101))), None]);
+    assert_eq!(run_tick(&mut bus, 0, Some(&enable), &[]), []);
+    let snap = bus.end(deadline(0));
+    assert_eq!(
+        (state_of(&snap), snap.counters.held_batches),
+        (LimbState::Idle, 1)
+    );
     run_tick(
         &mut bus,
         1,
@@ -557,4 +596,135 @@ fn an_emptied_backlog_stops_but_orders_the_reads_again() {
     bus.drained(Drain::Backlog);
     run_tick(&mut bus, 3, None, &[(MS, status(101, Mode::Reset))]);
     assert_eq!(at(&bus.end(deadline(3)), 0).stop, StopOutcome::Confirmed);
+}
+
+/// Guards: safety - a stop asked for is never lost to a backlog: on an idle bus, whichever came first and whichever way
+/// the drain ended, the requested stop is taken and no Enable goes out (PLAN.md item 6: a stop is always accepted).
+#[test]
+fn a_backlog_never_swallows_a_requested_stop() {
+    for drain in [Drain::Backlog, Drain::Unemptied] {
+        for stop_first in [false, true] {
+            let mut bus = bus();
+            if stop_first {
+                bus.request_stop();
+                bus.drained(drain);
+            } else {
+                bus.drained(drain);
+                bus.request_stop();
+            }
+            let enable = batch(0, &[Some(encode::enable(id(101))), None]);
+            assert_eq!(
+                run_tick(&mut bus, 0, Some(&enable), &[]),
+                [(0, SendKind::Disable), (1, SendKind::Disable)],
+                "{drain:?}, stop first: {stop_first}"
+            );
+            assert_eq!(stop_of(&bus.end(deadline(0))), Some(StopReason::Requested));
+        }
+    }
+}
+
+/// Run ticks from `from` with no batch, at most 100, until the bus is stopped: every Disable taken by the socket, every
+/// reporting off given `outcome`, and each of `replies` (tick, offset, frame) read in its tick. Returns each reporting
+/// off planned, as (tick, slot), and the snapshot that showed the bus stopped, if one did.
+fn stop_until_stopped(
+    bus: &mut BusTick,
+    from: u64,
+    replies: &[(u64, u64, FrameRecord)],
+    outcome: SendOutcome,
+) -> (Vec<(u64, usize)>, Option<can::Snapshot>) {
+    let mut offs = vec![];
+    for tick in from..from + 100 {
+        let start = tick * PERIOD;
+        let list = bus.begin(tick, start, start, None);
+        for (index, send) in list.iter().enumerate() {
+            if send.kind == SendKind::ReportingOff {
+                offs.push((tick, send.slot));
+                bus.sent(index, outcome, start);
+            } else {
+                bus.sent(index, SendOutcome::Sent, start);
+            }
+        }
+        for (_, offset, frame) in replies.iter().filter(|(t, _, _)| *t == tick) {
+            bus.on_frame(start + offset, frame);
+        }
+        let snap = bus.end(deadline(tick));
+        if state_of(&snap) == LimbState::Stopped {
+            return (offs, Some(snap));
+        }
+    }
+    (offs, None)
+}
+
+/// Both drives enabled at tick 0, then a stop asked for and begun 0.1 ms into tick 1, off the tick's start; drive 102
+/// confirms at once.
+fn stopped_off_tick() -> BusTick {
+    let mut bus = bus();
+    let enable = batch(
+        0,
+        &[Some(encode::enable(id(101))), Some(encode::enable(id(102)))],
+    );
+    run_tick(
+        &mut bus,
+        0,
+        Some(&enable),
+        &[(MS, status(101, Mode::Run)), (MS, status(102, Mode::Run))],
+    );
+    let _ = bus.end(deadline(0));
+    bus.request_stop();
+    let list = bus.begin(1, PERIOD + MS / 10, PERIOD, None);
+    for index in 0..list.len() {
+        bus.sent(index, SendOutcome::Sent, PERIOD + MS / 10);
+    }
+    bus.on_frame(PERIOD + MS, &status(102, Mode::Reset));
+    let _ = bus.end(deadline(1));
+    bus
+}
+
+/// Guards: safety - a drive confirmed by a Reset read just after the stop window still gets its reporting off, even
+/// when it falls due after the window, the silence and a period from the stop's start: the stop at 4.1 ms, drive 101's
+/// Reset read at 106.1 ms (2 ms after the last Disable), its reporting off due at 156.1 ms and sent at tick 40, 160 ms
+/// (PLAN.md item 2 Exit: reporting persists across host processes otherwise; replies take 1.4 to 10.3 ms).
+#[test]
+fn a_reset_read_after_the_window_still_gets_reporting_off() {
+    let mut bus = stopped_off_tick();
+    let reset = status(101, Mode::Reset);
+    let (offs, snap) = stop_until_stopped(
+        &mut bus,
+        2,
+        &[(26, 2 * MS + MS / 10, reset)],
+        SendOutcome::Sent,
+    );
+    assert_eq!(offs, [(14, 1), (40, 0)]);
+    let snap = snap.expect("the stop ends");
+    assert!(
+        snap.drives()
+            .all(|d| d.stop == StopOutcome::Confirmed && d.reporting_off_sent),
+        "{snap:?}"
+    );
+}
+
+/// Guards: safety - a reporting off the queue keeps refusing doesn't hold a stop open: once it has been tried and a
+/// period has passed since it fell due, the bus is stopped, with the reporting off recorded as not sent (PLAN.md item
+/// 2 Stop: a full queue drops the frame and counts it).
+#[test]
+fn a_reporting_off_never_taken_ends_the_stop() {
+    let mut bus = stopped_off_tick();
+    let reset = status(101, Mode::Reset);
+    let (offs, snap) = stop_until_stopped(
+        &mut bus,
+        2,
+        &[(26, 2 * MS + MS / 10, reset)],
+        SendOutcome::QueueFull,
+    );
+    let snap = snap.expect("the stop ends");
+    assert_eq!(
+        offs.iter()
+            .filter(|(_, slot)| *slot == 0)
+            .map(|(t, _)| *t)
+            .collect::<Vec<_>>(),
+        [40],
+        "tried once, inside its period"
+    );
+    assert_eq!(snap.tick, 40);
+    assert!(snap.drives().all(|d| !d.reporting_off_sent), "{snap:?}");
 }
