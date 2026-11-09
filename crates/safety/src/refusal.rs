@@ -1,7 +1,7 @@
 //! Why preflight refused a drive, and what the operator reads about it (safety.md section 5): the rule, the joint, what
 //! was measured, what was expected, and what to do.
 
-use can::{SendOutcome, SlowRefusal};
+use can::{SlowRefusal, Unsent};
 use robstride::{CanTimeout, ParamValue, StatusFaults, Uid, Volts};
 use skeleton::Window;
 
@@ -58,7 +58,7 @@ pub enum Unanswered {
     /// [`crate::ANSWER_WITHIN_NS`].
     TimedOut,
     /// The socket didn't take it.
-    NotSent(SendOutcome),
+    NotSent(Unsent),
     /// The bus layer refused it.
     Refused(SlowRefusal),
     /// The drive answered a read with "can't read it".
@@ -250,10 +250,18 @@ impl Unanswered {
             Self::TimedOut | Self::ReadRefused | Self::WrongAnswer => {
                 "Check the drive's power and cable, then run preflight again"
             }
-            Self::NotSent(_) => "The bus was too busy to send it: run preflight again",
+            Self::NotSent(Unsent::Expired | Unsent::QueueFull) => {
+                "The bus was too busy to send it: run preflight again"
+            }
+            Self::NotSent(Unsent::Failed) => {
+                "The bus failed: check the adapter and cable, then restart the runtime"
+            }
             Self::Refused(refusal) => match refusal {
                 SlowRefusal::LimbStopped | SlowRefusal::LimbNotIdle => {
                     "The limb is stopped or running: clear it, then run preflight again"
+                }
+                SlowRefusal::CommandUnanswered => {
+                    "A command to the drive was still waiting for its answer: run preflight again"
                 }
                 SlowRefusal::ControlSilent => {
                     "The control thread fell silent: find why in the runtime's log before anything else"

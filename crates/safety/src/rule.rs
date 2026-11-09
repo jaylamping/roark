@@ -68,8 +68,8 @@ impl RuleId {
         }
     }
 
-    /// The rule behind a stop the bus layer made on its own, or `None` for [`StopReason::Requested`], whose cause is
-    /// whoever asked (the operator, or a rule the control thread checks).
+    /// The rule behind a stop the bus layer made on its own, or `None` for [`StopReason::Requested`] and
+    /// [`StopReason::LimbRequested`], whose cause is whoever asked (the operator, or a rule the control thread checks).
     #[must_use]
     pub const fn of_stop(reason: StopReason) -> Option<Self> {
         match reason {
@@ -82,7 +82,7 @@ impl RuleId {
                 Some(Self::HostHang)
             }
             StopReason::Backlog | StopReason::Bus(_) => Some(Self::HostBus),
-            StopReason::Requested => None,
+            StopReason::Requested | StopReason::LimbRequested => None,
         }
     }
 }

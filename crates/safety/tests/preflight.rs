@@ -4,7 +4,7 @@
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
-use can::{DriveView, SendOutcome, SlowKind, SlowOutcome, SlowRefusal};
+use can::{DriveView, SlowKind, SlowOutcome, SlowRefusal, Unsent};
 use common::{joint, quiet, seen, skeleton, status};
 use robstride::{
     Amps, CanTimeout, Damper, Mode, NewtonMeters, Param, ParamOutcome, ParamValue, RadPerSec,
@@ -543,8 +543,8 @@ fn a_request_without_a_usable_answer_refuses_under_its_rule() {
     let failures = [
         (SlowOutcome::TimedOut, Unanswered::TimedOut),
         (
-            SlowOutcome::NotSent(SendOutcome::QueueFull),
-            Unanswered::NotSent(SendOutcome::QueueFull),
+            SlowOutcome::NotSent(Unsent::QueueFull),
+            Unanswered::NotSent(Unsent::QueueFull),
         ),
         (
             SlowOutcome::Refused(SlowRefusal::LimbStopped),
