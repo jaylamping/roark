@@ -306,8 +306,8 @@ pub struct DriveView {
     pub fault_seen: bool,
     /// Commands in a row it left unanswered by the collect deadline.
     pub misses: u32,
-    /// The last of this host's frames to it read back from the socket: the evidence a frame reached the controller
-    /// (never that it reached the drive).
+    /// The last of this host's frames to it of a kind a batch carries, read back from the socket: the evidence a frame
+    /// reached the controller (never that it reached the drive). Slow requests' echoes aren't kept here.
     pub last_echo: Option<EchoSeen>,
     /// What the current or last stop achieved for it.
     pub stop: StopOutcome,

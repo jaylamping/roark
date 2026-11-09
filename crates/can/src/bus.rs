@@ -16,7 +16,7 @@ use socketcan::{CanDataFrame, CanSocket, EmbeddedFrame, ExtendedId, Socket, Sock
 use telemetry::{BusInfo, BusRecorder, Epoch, TickBatch, TimestampSource};
 
 use crate::error_frame::BusError;
-use crate::slow::{SlowOutcome, SlowRequest, SlowResult};
+use crate::slow::{SlowOutcome, SlowRefusal, SlowRequest, SlowResult};
 use crate::sys;
 use crate::tick::BusTick;
 use crate::timing::Timing;
@@ -530,8 +530,9 @@ fn take(clock: &Clock, tick: &mut BusTick, batch: &mut TickBatch, received: sys:
     let _ = batch.push(received.frame);
 }
 
-/// Queue the slow requests that fit, send one if the tick allows, and hand every result back. A full result ring
-/// drops the result and counts it; the requester times out.
+/// Hand back the results the tick already holds (freeing their slots), queue the slow requests that fit, send one if
+/// the tick allows, and hand every new result back. A full result ring drops the result and counts it; the requester
+/// times out.
 fn slow(
     socket: &CanSocket,
     clock: &Clock,
@@ -539,6 +540,7 @@ fn slow(
     requests: &mut Consumer<SlowRequest>,
     results: &mut Producer<SlowResult>,
 ) -> io::Result<()> {
+    hand_back(tick, results);
     // Bounded by the ring: a refused request takes no slot, so room alone wouldn't end the loop.
     for _ in 0..requests.buffer().capacity() {
         if tick.slow_room() == 0 {
@@ -548,14 +550,7 @@ fn slow(
             break;
         };
         if let Err(refusal) = tick.submit(request) {
-            let refused = SlowResult {
-                tag: request.tag,
-                slot: request.slot,
-                outcome: SlowOutcome::Refused(refusal),
-            };
-            if results.push(refused).is_err() {
-                tick.slow_result_dropped();
-            }
+            refuse(tick, results, request, refusal);
         }
     }
     let mut failed = Ok(());
@@ -579,8 +574,8 @@ fn hand_back(tick: &mut BusTick, results: &mut Producer<SlowResult>) {
     }
 }
 
-/// The thread is ending: every slow request still held or still in the ring gets its one result (can.md section 2:
-/// none goes unanswered). A drop here can't be counted in a snapshot; the requester times out.
+/// The thread is ending: every slow request still held or still in the ring gets its one result (crates/can/README.md,
+/// Slow requests). A drop here can't be counted in a snapshot; the requester times out.
 fn end_slow(
     tick: &mut BusTick,
     requests: &mut Consumer<SlowRequest>,
@@ -592,14 +587,24 @@ fn end_slow(
         let Ok(request) = requests.pop() else {
             break;
         };
-        let refused = SlowResult {
-            tag: request.tag,
-            slot: request.slot,
-            outcome: SlowOutcome::Refused(refusal),
-        };
-        if results.push(refused).is_err() {
-            tick.slow_result_dropped();
-        }
+        refuse(tick, results, request, refusal);
+    }
+}
+
+/// Request `request`'s one result, a refusal, onto control's ring; a full ring drops it and counts it.
+fn refuse(
+    tick: &mut BusTick,
+    results: &mut Producer<SlowResult>,
+    request: SlowRequest,
+    refusal: SlowRefusal,
+) {
+    let refused = SlowResult {
+        tag: request.tag,
+        slot: request.slot,
+        outcome: SlowOutcome::Refused(refusal),
+    };
+    if results.push(refused).is_err() {
+        tick.slow_result_dropped();
     }
 }
 

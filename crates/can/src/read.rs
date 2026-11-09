@@ -5,7 +5,7 @@ use robstride::{DecodeError, DeviceId, Inbound, Mode, Status, decode};
 use telemetry::{Direction, FrameRecord};
 
 use crate::error_frame::{classify, controller_passive};
-use crate::tick::{BusTick, DriveState, Reply};
+use crate::tick::{BusTick, DriveState, Reply, batch_may_carry};
 use crate::types::{EchoSeen, LimbState, Observed, StopOutcome};
 
 impl BusTick {
@@ -48,7 +48,10 @@ impl BusTick {
             Ok(Inbound::Echo(echo)) => {
                 if frame.direction == Direction::TxEcho {
                     self.counters.echoes += 1;
-                    if let Some(d) = self.slot_of(echo.target) {
+                    // Only the tick's own kinds of frame: a slow request's echo never hides the enable sequence's.
+                    if batch_may_carry(echo.kind)
+                        && let Some(d) = self.slot_of(echo.target)
+                    {
                         d.last_echo = Some(EchoSeen {
                             kind: echo.kind,
                             read_ns,

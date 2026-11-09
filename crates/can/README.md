@@ -77,11 +77,14 @@ after the collect deadline and only while its reply fits before the next tick st
 quarter period by default, provisional until the real adapter is measured), so the next drain reads the reply and it
 never lands among the tick's command replies. A read is answered by its drive's reply naming its register, get-ID by
 its type-0 reply, and a write by any status from the drive while the write is in flight, which proves nothing about the
-value: preflight reads every write back. Writes go only to drives of an idle limb (`LimbNotIdle`), where no command is
-outstanding for that status to be mistaken for. Each request gets exactly one result: its answer, `TimedOut` (no reply
-by the next tick's start), `NotSent`, or `Refused`, including when the thread ends with it pending (`end_slow`:
-`Ended`, or `BusFailed`). Nothing is retried. A request for a drive whose limb is stopping, stopped or due to stop (a
-stop asked for and not yet taken, or what the veto stops on: a fault, a drop out of Run, too many misses), while
+value: preflight reads every write back. A fault or mode that status shows counts like any status's. Writes go only to
+drives of an idle limb (`LimbNotIdle`) with no command of the tick still unanswered (`CommandUnanswered`: an idle
+limb's batch may carry a Disable or the `run_mode` write), so that status can't be a command's reply. A slow frame's
+echo isn't kept as the drive's `last_echo`. Each request gets exactly one result: its answer, `TimedOut` (no reply by
+the next tick's start), `NotSent`, or `Refused`, including when the thread ends with it pending (`end_slow`: `Ended`,
+or `BusFailed`). Nothing is retried. A request for a drive whose limb is stopping, stopped or due to stop (a stop asked
+for and not yet taken, or what the veto stops on, on any drive of the limb: a fault, a drop out of Run, too many
+misses), while
 control has been silent for the silent-tick limit (counted with every limb idle too), or on a failed bus is refused,
 and one already queued is cancelled before it goes, so slow traffic never keeps a drive alive past a stop
 (`canTimeout` counts from any frame).
@@ -122,9 +125,11 @@ the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture
 
 Build a `BusTick` with the bus's drives in slot order, each with its limb, then per tick: empty the socket, feeding
 each frame to `on_frame`, and report how the drain went with `drained`; `begin`, write each send and report it with
-`sent`; feed every frame read with `on_frame`; and `end` for the snapshot. `request_stop` and `stop_limb` ask for a stop
-at the next `begin`, `skipped` counts ticks a stall slept through, and `lost_bus` latches every limb stopped when the
-socket fails. On Linux, `spawn` runs exactly that on a socket.
+`sent`; feed every frame read with `on_frame`; and `end` for the snapshot. In the slack after `end`: take the results
+already held with `take_slow_result`, `submit` new requests while `slow_room` allows, send what `slow_send` returns and
+report it with `slow_sent`, then take the new results; when the thread ends, `end_slow` and take what is left.
+`request_stop` and `stop_limb` ask for a stop at the next `begin`, `skipped` counts ticks a stall slept through, and
+`lost_bus` latches every limb stopped when the socket fails. On Linux, `spawn` runs exactly that on a socket.
 
 ```rust
 use can::{BusDrive, BusTick, CommandBatch, LimbState, SendOutcome, Timing};

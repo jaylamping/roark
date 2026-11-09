@@ -406,7 +406,7 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
 
 /// Guards: safety - every bus thread ticks on the one schedule the runtime gives it: a thread started after tick 0
 /// begins at the first tick not yet due, numbered from that origin, instead of waking late and stopping its limbs
-/// (step 7 design D1: one schedule for every bus and control).
+/// (PLAN.md item 3: a thread that wakes late stops at once; missed deadlines are counted, never skipped silently).
 #[test]
 fn a_bus_started_after_the_schedule_joins_it() {
     const LATE_BUS: &str = "can1";
@@ -464,7 +464,7 @@ fn a_bus_started_after_the_schedule_joins_it() {
 
 /// Guards: protocol - slow requests reach a drive on `vcan` and come back in the slack while control's empty batches
 /// keep the bus alive: get-ID returns the drive's UID, an allowlisted write is answered, and reading it back returns
-/// the value written (step 7 design D3; PLAN.md item 6 preflight reads every write back).
+/// the value written (PLAN.md item 3: parameter traffic only in the slack; item 6: preflight reads every write back).
 #[test]
 fn slow_requests_reach_a_drive_on_vcan_and_come_back() {
     const SLOW_BUS: &str = "can0";
@@ -524,8 +524,12 @@ fn slow_requests_reach_a_drive_on_vcan_and_come_back() {
         let mut tag = 0;
         let mut retries = 0;
         while step < steps.len() {
-            // Play control: an empty batch for every next tick.
-            let snap = next_snapshot(&mut snapshots, end).unwrap();
+            // Play control: an empty batch for the tick after the newest snapshot, so a late wake of this thread never
+            // answers an old tick.
+            let mut snap = next_snapshot(&mut snapshots, end).unwrap();
+            while let Ok(newer) = snapshots.pop() {
+                snap = newer;
+            }
             let batch = CommandBatch::new(snap.tick + 1, epoch.ns(Instant::now()) + 3 * period);
             assert!(commands_tx.push(batch).is_ok());
             let (kind, expected) = steps[step];
@@ -542,10 +546,10 @@ fn slow_requests_reach_a_drive_on_vcan_and_come_back() {
             {
                 assert_eq!((got, slot), (tag, 0));
                 asked = false;
-                // Until the drive is up and control has been heard, a get-ID may time out or be refused as control
-                // silent; ask again, a few times at most.
-                let early = step == 0
-                    && retries < 5
+                // Until the drive is up a get-ID may time out, and a stall of this thread can leave control silent for
+                // a tick at any step; ask again, a few times at most in the whole run.
+                let early = retries < 5
+                    && (step == 0 || outcome == SlowOutcome::Refused(SlowRefusal::ControlSilent))
                     && matches!(
                         outcome,
                         SlowOutcome::TimedOut | SlowOutcome::Refused(SlowRefusal::ControlSilent)

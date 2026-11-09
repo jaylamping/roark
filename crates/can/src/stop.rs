@@ -121,6 +121,17 @@ impl BusTick {
         }
     }
 
+    /// The first stop any drive of limb `limb` is due for, so a slow request is refused for the whole limb the veto will
+    /// stop, not only for the drive that shows it.
+    pub(crate) fn limb_stop_due(&self, limb: usize) -> Option<StopReason> {
+        self.drives
+            .iter()
+            .enumerate()
+            .filter_map(|(slot, d)| d.as_ref().map(|d| (slot, d)))
+            .filter(|(_, d)| d.limb == limb)
+            .find_map(|(slot, d)| self.stop_due(slot, d))
+    }
+
     /// The stop frames of every stopping limb, every Disable ahead of every reporting off (PLAN.md item 2 Stop:
     /// Disable to every affected drive, then reporting off), so a full queue never costs a Disable for a reporting off.
     /// Disables go to each drive not yet confirmed, inside the confirm window; reporting off to each confirmed drive

@@ -6,14 +6,14 @@
 //! Each request gets exactly one result: its reply, timed out, not sent, or refused, including when the bus thread ends
 //! with it pending. The bus layer never retries one. A write is answered by an ordinary status with no register in it,
 //! so its result says only that the drive answered; a read-back is what proves the value. Writes go only to drives of
-//! an idle limb, where no command is outstanding for that status to be mistaken for. A request for a drive whose limb is
-//! stopping, stopped or due to stop (the veto's own checks: a fault, a drop out of Run, too many misses), while control
-//! is silent, or on a failed bus is refused, and one already queued is cancelled before it goes, so slow traffic never
-//! keeps a drive alive (`canTimeout` counts from any frame).
+//! an idle limb with no command of the tick still unanswered, so that status can't be a command's reply. A request for
+//! a drive whose limb is stopping, stopped or due to stop (the veto's own checks on any drive of the limb: a fault, a
+//! drop out of Run, too many misses), while control is silent, or on a failed bus is refused, and one already queued is
+//! cancelled before it goes, so slow traffic never keeps a drive alive (`canTimeout` counts from any frame).
 
 use robstride::{Frame, Param, ParamOutcome, Uid, Write, encode};
 
-use crate::tick::BusTick;
+use crate::tick::{BusTick, Reply};
 use crate::types::{LimbState, SendOutcome};
 
 /// Slow requests a bus holds at once, queued, in flight or with a result not yet taken.
@@ -64,9 +64,20 @@ pub enum SlowOutcome {
     /// Sent, but no reply was read by the next tick's start.
     TimedOut,
     /// The socket didn't take it.
-    NotSent(SendOutcome),
+    NotSent(Unsent),
     /// Never sent.
     Refused(SlowRefusal),
+}
+
+/// Why the socket didn't take a slow frame.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Unsent {
+    /// Past its time (never in the slack today, which sends only what still fits).
+    Expired,
+    /// The adapter's queue was full.
+    QueueFull,
+    /// The write failed, and the bus with it.
+    Failed,
 }
 
 /// Why a slow request isn't sent.
@@ -78,12 +89,15 @@ pub enum SlowRefusal {
     /// A write built for another drive.
     #[error("the write is for another drive")]
     WrongTarget,
-    /// The drive's limb is stopping or stopped, or the drive shows what stops it at the next send.
-    #[error("the drive's limb is stopping or stopped")]
+    /// The drive's limb is stopping or stopped, or a drive of the limb shows what stops it at the next send.
+    #[error("the drive's limb is stopping, stopped or due to stop")]
     LimbStopped,
     /// A write to a drive whose limb isn't idle: its status answer could pass for a command's reply.
     #[error("writes go only to drives of an idle limb")]
     LimbNotIdle,
+    /// A write to a drive with a command of the tick still unanswered: a late reply could pass for the write's answer.
+    #[error("a command to the drive is still unanswered")]
+    CommandUnanswered,
     /// Control has sent no fresh batch for the silent-tick limit.
     #[error("control is silent")]
     ControlSilent,
@@ -212,9 +226,17 @@ impl BusTick {
                     e.state = SlowState::Waiting;
                 }
             }
-            SendOutcome::Expired | SendOutcome::QueueFull | SendOutcome::Failed => {
+            SendOutcome::Expired => {
+                self.counters.tx_expired += 1;
+                self.finish_slow(i, SlowOutcome::NotSent(Unsent::Expired));
+            }
+            SendOutcome::QueueFull => {
                 self.counters.tx_dropped += 1;
-                self.finish_slow(i, SlowOutcome::NotSent(outcome));
+                self.finish_slow(i, SlowOutcome::NotSent(Unsent::QueueFull));
+            }
+            SendOutcome::Failed => {
+                self.counters.tx_dropped += 1;
+                self.finish_slow(i, SlowOutcome::NotSent(Unsent::Failed));
             }
         }
     }
@@ -353,16 +375,20 @@ impl BusTick {
             && limb.is_some_and(|l| {
                 l.pending.is_none() && matches!(l.state, LimbState::Idle | LimbState::Active)
             });
-        if !running || self.stop_due(request.slot, &drive).is_some() {
+        if !running || self.limb_stop_due(drive.limb).is_some() {
             return Err(SlowRefusal::LimbStopped);
         }
         if self.silent >= self.timing.silent_ticks {
             return Err(SlowRefusal::ControlSilent);
         }
-        if let SlowKind::Write(_) = request.kind
-            && limb.is_none_or(|l| l.state != LimbState::Idle)
-        {
-            return Err(SlowRefusal::LimbNotIdle);
+        if let SlowKind::Write(_) = request.kind {
+            if limb.is_none_or(|l| l.state != LimbState::Idle) {
+                return Err(SlowRefusal::LimbNotIdle);
+            }
+            // An idle limb's batch may still carry a Disable or the run_mode write.
+            if drive.outstanding.is_some_and(|o| o.reply == Reply::Waiting) {
+                return Err(SlowRefusal::CommandUnanswered);
+            }
         }
         Ok(())
     }

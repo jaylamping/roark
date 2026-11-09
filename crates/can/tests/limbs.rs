@@ -1,5 +1,5 @@
 //! Limbs on one bus: each runs and stops on its own, the check before every send stops a limb on what the drain just
-//! read, and an operator's clear re-arms a stopped limb (PLAN.md item 6, step 7 design D1 and D2).
+//! read, and an operator's clear re-arms a stopped limb (PLAN.md item 6).
 
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
@@ -11,28 +11,10 @@ use can::{
 };
 use common::{
     MS, PERIOD, at, batch, deadline, error_frame, hold, id, record, run_tick, status, status_frame,
+    two_limbs,
 };
 use robstride::{EchoKind, Mode, StatusFault, StatusFaults, encode};
 use telemetry::Direction;
-
-/// Drive 101 in limb 0 and drive 102 in limb 1, at 250 Hz.
-#[expect(
-    clippy::unwrap_used,
-    reason = "test helper: two drives in two limbs fit"
-)]
-fn two_limbs() -> BusTick {
-    let drives = [
-        BusDrive {
-            device: id(101),
-            limb: 0,
-        },
-        BusDrive {
-            device: id(102),
-            limb: 1,
-        },
-    ];
-    BusTick::new(&drives, Timing::at_hz(250)).unwrap()
-}
 
 #[expect(clippy::unwrap_used, reason = "test helper: the limbs asked for exist")]
 fn limb(snap: &Snapshot, limb: usize) -> (LimbState, Option<StopReason>) {

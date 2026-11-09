@@ -573,7 +573,7 @@ impl BusTick {
 /// other writes, reporting on and queries each need sequencing a per-tick batch can't give (PLAN.md item 2: Set Zero
 /// only with the limb stopped, set-ID only with one drive answering); a set-ID would also leave the drive table on the
 /// old ID.
-fn batch_may_carry(kind: EchoKind) -> bool {
+pub(crate) fn batch_may_carry(kind: EchoKind) -> bool {
     matches!(
         kind,
         EchoKind::Mit

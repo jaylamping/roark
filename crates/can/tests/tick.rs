@@ -1,6 +1,7 @@
 //! The bus tick without a socket: frames in and out as values, time stepped by hand (testing.md rule 6). Replies,
 //! freshness, faults, batch checks and configuration; the stop path is in `stop.rs`.
 
+#[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
 use can::{

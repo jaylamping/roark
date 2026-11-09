@@ -116,7 +116,7 @@ impl Timing {
                 period_ns,
             })
         } else if self.slow_reply_ns == 0
-            || collect_ns.saturating_add(self.slow_reply_ns) > period_ns
+            || collect_ns.saturating_add(self.slow_reply_ns) >= period_ns
         {
             Err(TimingError::SlowReply {
                 slow_reply_ns: self.slow_reply_ns,
@@ -199,10 +199,10 @@ pub enum TimingError {
         /// The period.
         period_ns: u64,
     },
-    /// The slow reply window is zero or doesn't fit between the collect deadline and the next tick, so no slow request
-    /// could go.
+    /// The slow reply window is zero or fills the whole slack between the collect deadline and the next tick, so no
+    /// slow request could go: the shell sends only after the deadline.
     #[error(
-        "slow_reply_ns {slow_reply_ns} must be above zero and fit between collect_ns {collect_ns} and the period {period_ns}"
+        "slow_reply_ns {slow_reply_ns} must be above zero and shorter than the slack between collect_ns {collect_ns} and the period {period_ns}"
     )]
     SlowReply {
         /// The slow reply window.
