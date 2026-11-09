@@ -71,8 +71,8 @@ export = "exports/upper-arm/upper_arm_shell_front_left.stl"
 up = [0, 0, 1]
 hidden_by = ["exports/upper-arm/upper_arm_shell_back_left.stl", "exports/upper-arm/upper_arm_elbow_ring_left.stl", "exports/upper-arm/upper_arm_hub_left.stl", "exports/upper-arm/upper_arm_spring_carrier_left.stl"]
 settings = { sparse_infill_density = "50%", wall_loops = "4" }
-visible_support_mm2 = 84
-visible_support_reason = "insert-hole ceilings and fuse-pocket faces inside the closed shell, reachable by a ray only through the seam (draft 3 value; re-check after the halves rebuild)"
+visible_support_mm2 = 84.5
+visible_support_reason = "84.0 mm2 of insert-hole ceilings and fuse-pocket faces inside the closed shell, reachable by a ray only through the seam (support check on the rebuilt halves, 2026-11-09)"
 
 [[part]]
 name = "upper_arm_shell_back_left"
@@ -81,7 +81,7 @@ up = [0, 0, -1]
 hidden_by = ["exports/upper-arm/upper_arm_shell_front_left.stl", "exports/upper-arm/upper_arm_elbow_ring_left.stl", "exports/upper-arm/upper_arm_hub_left.stl", "exports/upper-arm/upper_arm_spring_carrier_left.stl"]
 settings = { sparse_infill_density = "50%", wall_loops = "4" }
 visible_support_mm2 = 0.5
-visible_support_reason = "0.4 mm2 at the seam edge, Y 254.8 (draft 3 value; re-check after the halves rebuild)"
+visible_support_reason = "0.4 mm2 at the seam edge, Y 254.8 (support check on the rebuilt halves, 2026-11-09)"
 
 [[part]]
 name = "upper_arm_elbow_ring_left"
@@ -97,7 +97,7 @@ up = [0, -1, 0]
 hidden_by = ["exports/upper-arm/upper_arm_shell_front_left.stl", "exports/upper-arm/upper_arm_shell_back_left.stl", "exports/upper-arm/upper_arm_elbow_ring_left.stl", "exports/upper-arm/upper_arm_spring_carrier_left.stl"]
 settings = { sparse_infill_density = "50%" }
 visible_support_mm2 = 183
-visible_support_reason = "lug faces under the spigot, inside the closed arm (draft 3 value; re-check after the halves rebuild)"
+visible_support_reason = "182.5 mm2 of lug faces under the spigot, inside the closed arm (support check, 2026-11-09)"
 
 [[part]]
 name = "upper_arm_loop_clip_left"
