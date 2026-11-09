@@ -18,8 +18,11 @@ pub enum BusError {
     TxTimeout,
     /// The interface is down (`ENETDOWN`). Latched.
     InterfaceDown,
-    /// The interface is gone (`ENODEV`). Latched.
+    /// The interface is gone (`ENODEV`, `ENXIO`). Latched.
     InterfaceGone,
+    /// Any other socket error, by errno (0 when there is none, such as a short read). Latched: the socket can't be
+    /// trusted after it.
+    Socket(i32),
     /// Any other error class, as its bits.
     Other(u32),
 }
@@ -30,7 +33,7 @@ impl BusError {
     pub const fn latches(self) -> bool {
         matches!(
             self,
-            Self::BusOff | Self::InterfaceDown | Self::InterfaceGone
+            Self::BusOff | Self::InterfaceDown | Self::InterfaceGone | Self::Socket(_)
         )
     }
 }

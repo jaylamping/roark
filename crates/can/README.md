@@ -8,7 +8,8 @@ delivers, and publishes what each drive last said and how fresh it is (PLAN item
 Each tick, on the monotonic clock:
 
 1. **Wake** at the tick's scheduled start (`clock_nanosleep`, absolute). Waking later than the send window is a missed
-   deadline and stops the bus.
+   deadline and stops the bus; ticks a stall slept through are skipped, each counted as a missed deadline, and stop the
+   bus the same way.
 2. **Drain** the socket to empty, so what is read after the send came after the backlog. It is not a strict barrier:
    a frame landing between the drain and the write counts as after it, which is still evidence of the drive then.
 3. **Plan** with `BusTick::begin`: the newest `CommandBatch` from control, only if it is for this tick and unexpired.
@@ -45,7 +46,10 @@ error-passive.
 a drive table past `MAX_DRIVES` and timing that breaks its promises (`Timing::check`: for one, three periods must fit
 inside the drives' 50 ms timeout, so the rate is at least 61 Hz). The Linux shell (`spawn`) owns the socket: it
 opens only `vcan` until the real adapter is supported (PLAN step 8), takes every ID (no kernel filter), and reads each
-frame with its kernel timestamp, its direction and the overflow count in one `recvmsg`.
+frame with its kernel timestamp, its direction and the overflow count in one `recvmsg`. `spawn` returns the receive
+buffer the kernel actually gave (`Spawned::receive_buffer_bytes`) for the runtime's startup log. Each tick's recorded
+batch is `valid` while the snapshot is `healthy`, and a snapshot control's full ring can't take is counted
+(`snapshots_dropped`). Setting `exit` on an active bus stops its drives first.
 
 ## Must never
 

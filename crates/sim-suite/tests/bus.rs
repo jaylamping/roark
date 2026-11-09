@@ -9,7 +9,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use can::{BusConfig, BusLinks, BusState, CommandBatch, Snapshot, StopOutcome, Timing};
+use can::{
+    BusConfig, BusLinks, BusRunError, BusState, CommandBatch, Snapshot, StopOutcome, StopReason,
+    Timing,
+};
 use robstride::{
     DeviceId, Drive, Frame, Inbound, MitCommand, Mode, Model, NewtonMeters, NmPerRad, NmSecPerRad,
     RadPerSec, Radians, Uid, decode, encode,
@@ -25,7 +28,7 @@ use telemetry::{
 /// A bus no other sim test uses.
 const BUS: &str = "can2";
 /// Slow enough that the test thread, playing control, makes every tick on a loaded machine.
-const HZ: u64 = 50;
+const HZ: u64 = 100;
 const HOLD_TICKS: usize = 50;
 /// The marker sent until `candump` has it, so the capture is known to cover the whole run.
 const MARKER: u16 = 0x7AB;
@@ -163,7 +166,8 @@ fn next_snapshot(snapshots: &mut rtrb::Consumer<Snapshot>, end: Instant) -> Opti
 }
 
 /// Play control for the whole run, one batch per tick for the tick after the snapshot just read: enable both drives
-/// until both report Run, hold for `HOLD_TICKS`, then go silent and see the bus stop with both drives confirming Reset.
+/// until both report Run, hold for `HOLD_TICKS`, then set `exit` as the runtime does at shutdown and see the bus stop
+/// the drives: both confirm Reset and take active reporting off.
 #[expect(
     clippy::unwrap_used,
     reason = "test helper: a missing snapshot fails the test"
@@ -172,6 +176,7 @@ fn play_control(
     commands_tx: &mut rtrb::Producer<CommandBatch>,
     snapshots: &mut rtrb::Consumer<Snapshot>,
     epoch: Epoch,
+    exit: &AtomicBool,
 ) {
     // Play control: one batch per tick, for the tick after the snapshot just read.
     let end = Instant::now() + Duration::from_secs(20);
@@ -214,24 +219,152 @@ fn play_control(
         "answered {answered} of {}",
         2 * HOLD_TICKS
     );
-    // Control goes silent: within two ticks the bus stops, and both drives confirm Reset.
-    let silent_at = snap.tick;
-    while !matches!(snap.state, BusState::Stopping { .. } | BusState::Stopped) {
-        snap = next_snapshot(snapshots, end).unwrap();
-    }
-    assert!(
-        snap.tick <= silent_at + 2,
-        "stopped at tick {} after silence at {silent_at}",
-        snap.tick
-    );
+    // Shutdown while active: the thread stops the drives before it returns.
+    exit.store(true, Ordering::Release);
     while snap.state != BusState::Stopped {
         snap = next_snapshot(snapshots, end).unwrap();
     }
+    assert_eq!(snap.stop, Some(StopReason::Requested));
     assert!(
-        snap.drives().all(|d| d.stop == StopOutcome::Confirmed),
+        snap.drives()
+            .all(|d| d.stop == StopOutcome::Confirmed && d.reporting_off_sent),
         "{snap:?}"
     );
+    assert!(snap.healthy && snap.bus_error.is_none(), "{snap:?}");
     assert_eq!(snap.counters.foreign_host, 0);
+}
+
+/// Sets both stop flags when dropped, including while a failed assertion unwinds.
+struct Shutdown<'a>(&'a AtomicBool, Arc<AtomicBool>);
+
+impl Drop for Shutdown<'_> {
+    fn drop(&mut self) {
+        self.0.store(true, Ordering::Release);
+        self.1.store(true, Ordering::Release);
+    }
+}
+
+/// Guards: safety - the bus layer opens nothing but `vcan` until the real adapter's checks exist, so a sim test or a
+/// mistaken name can't put frames on a real bus (PLAN step 8; testing.md rule 8).
+#[test]
+fn spawn_refuses_anything_but_vcan() {
+    let root = std::env::temp_dir().join(format!("sim-suite-refuse-{}", std::process::id()));
+    for (start_s, bus, vcan_kind_read) in
+        [(1, "lo", true), (2, "nosuchbus0", false), (3, "-v", false)]
+    {
+        let (_, commands) = rtrb::RingBuffer::new(1);
+        let (snapshots, _) = rtrb::RingBuffer::new(1);
+        // A session directory is named by its start time, so each case starts at its own second.
+        let session = Session::start(&root, info(), start_s * 1_000_000_000).unwrap();
+        let (recording, mut buses) = Recording::new(session, 1);
+        let refused = can::spawn(
+            BusConfig {
+                name: bus.to_owned(),
+                drives: vec![id(11)],
+                timing: Timing::at_hz(HZ),
+            },
+            BusLinks {
+                commands,
+                snapshots,
+                recorder: buses.remove(0),
+                epoch: recording.epoch(),
+                exit: Arc::new(AtomicBool::new(false)),
+            },
+        );
+        let kind = match &refused {
+            Err(BusRunError::NotVcan { .. }) => Some(true),
+            Err(BusRunError::Unchecked { .. }) => Some(false),
+            _ => None,
+        };
+        assert_eq!(kind, Some(vcan_kind_read), "{bus}: {refused:?}");
+    }
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Guards: protocol - nothing the bus thread handles disappears silently: a snapshot control's full ring can't take is
+/// counted, and frames the exit tick's drain read are still recorded (can.md section 2 "every drop counted";
+/// logging.md section 8.2).
+#[test]
+fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
+    const IDLE_BUS: &str = "can3";
+    const LAST: u16 = 0x123;
+    ensure_vcan(IDLE_BUS).unwrap();
+    let root = std::env::temp_dir().join(format!("sim-suite-idle-{}", std::process::id()));
+    let mut info = info();
+    info.buses[0].name = IDLE_BUS.to_owned();
+    let session = Session::start(&root, info, 1_000_000_000).unwrap();
+    let session_dir = session.dir().to_owned();
+    let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
+    let epoch = recording.epoch();
+    let recorder = Recorder::spawn(recording).unwrap();
+    let (_commands_tx, commands) = rtrb::RingBuffer::new(1);
+    // Room for one snapshot: while the test doesn't read, every later one is dropped.
+    let (snapshots_tx, mut snapshots) = rtrb::RingBuffer::new(1);
+    let exit = Arc::new(AtomicBool::new(false));
+    let bus = can::spawn(
+        BusConfig {
+            name: IDLE_BUS.to_owned(),
+            drives: vec![id(11)],
+            timing: Timing::at_hz(HZ),
+        },
+        BusLinks {
+            commands,
+            snapshots: snapshots_tx,
+            recorder: buses.remove(0),
+            epoch,
+            exit: Arc::clone(&exit),
+        },
+    )
+    .unwrap();
+    let _shutdown = Shutdown(&AtomicBool::new(false), Arc::clone(&exit));
+
+    // Read a snapshot only every few periods, until one counts the drops in between.
+    let end = Instant::now() + Duration::from_secs(10);
+    let mut last_read = Instant::now();
+    let dropped = loop {
+        assert!(Instant::now() < end, "no snapshot counted a drop");
+        if last_read.elapsed() < Duration::from_millis(30) {
+            std::thread::yield_now();
+            continue;
+        }
+        last_read = Instant::now();
+        if let Ok(s) = snapshots.pop()
+            && s.counters.snapshots_dropped > 0
+        {
+            break s;
+        }
+    };
+    assert_eq!(dropped.state, BusState::Idle);
+
+    // Right after a snapshot the thread sleeps until its next tick: a frame sent now is read by that tick's drain,
+    // which is where the thread sees `exit` and returns.
+    let next = next_snapshot(&mut snapshots, end).unwrap();
+    let frame = CanDataFrame::new(StandardId::new(LAST).unwrap(), &[7; 8]).unwrap();
+    CanSocket::open(IDLE_BUS)
+        .unwrap()
+        .write_frame(&frame)
+        .unwrap();
+    exit.store(true, Ordering::Release);
+    let done = bus.thread.join().unwrap();
+    assert!(done.error.is_none(), "{:?}", done.error);
+    assert_eq!(
+        done.last.map(|s| s.tick),
+        Some(next.tick),
+        "returned on the next tick's drain"
+    );
+    recorder.close(vec![done.recorder]).unwrap();
+
+    let bytes = std::fs::read(session_dir.join("0000.mcap")).unwrap();
+    let mut seen = false;
+    for message in mcap::MessageStream::new(&bytes).unwrap() {
+        let message = message.unwrap();
+        if message.channel.topic == format!("/can/{IDLE_BUS}/frames") {
+            let frames: Frames = serde_json::from_slice(&message.data).unwrap();
+            seen |= frames.frames.iter().any(|f| f.id == u32::from(LAST));
+        }
+    }
+    assert!(seen, "the exit drain's frame is in the recording");
+    let _ = std::fs::remove_dir_all(&root);
 }
 
 /// Guards: safety - the bus loop runs PLAN.md item 3's tick on a real socket: enable, hold, and a control stop that
@@ -247,7 +380,10 @@ fn the_bus_loop_runs_against_sim_drive_and_its_recording_matches_candump() {
 
     // The drives.
     let stop_sim = AtomicBool::new(false);
+    let exit = Arc::new(AtomicBool::new(false));
     std::thread::scope(|scope| {
+        // A failed assertion still stops the drives' thread and the bus, so the test fails instead of hanging.
+        let _shutdown = Shutdown(&stop_sim, Arc::clone(&exit));
         let sim = scope.spawn(|| {
             let mut drives = [
                 SimDrive::new(Drive::new(id(11), Model::Rs03), Uid([1; 8]), 5),
@@ -265,7 +401,6 @@ fn the_bus_loop_runs_against_sim_drive_and_its_recording_matches_candump() {
         let recorder = Recorder::spawn(recording).unwrap();
         let (mut commands_tx, commands_rx) = rtrb::RingBuffer::new(4);
         let (snapshots_tx, mut snapshots) = rtrb::RingBuffer::new(64);
-        let exit = Arc::new(AtomicBool::new(false));
         let bus = can::spawn(
             BusConfig {
                 name: BUS.to_owned(),
@@ -281,11 +416,11 @@ fn the_bus_loop_runs_against_sim_drive_and_its_recording_matches_candump() {
             },
         )
         .unwrap();
+        assert!(bus.receive_buffer_bytes > 0);
 
-        play_control(&mut commands_tx, &mut snapshots, epoch);
+        play_control(&mut commands_tx, &mut snapshots, epoch, &exit);
 
-        exit.store(true, Ordering::Release);
-        let done = bus.join().unwrap();
+        let done = bus.thread.join().unwrap();
         assert!(done.error.is_none(), "{:?}", done.error);
         recorder.close(vec![done.recorder]).unwrap();
         stop_sim.store(true, Ordering::Release);
@@ -343,7 +478,12 @@ fn compare(mcap: &Path, captured: &[Line]) {
             continue;
         }
         let frames: Frames = serde_json::from_slice(&message.data).unwrap();
-        assert_eq!(frames.omitted, 0);
+        assert_eq!(
+            (frames.omitted, frames.valid),
+            (0, true),
+            "tick {}",
+            frames.tick
+        );
         recorded.extend(frames.frames);
     }
     // Each hold tick alone puts two commands and two replies on the bus.

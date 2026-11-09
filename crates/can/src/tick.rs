@@ -158,6 +158,15 @@ impl BusTick {
         self.counters.kernel_drops = count;
     }
 
+    /// `count` ticks went by without running (the thread stalled past them): each a missed deadline, and the bus stops
+    /// as for a late wake (PLAN.md item 3: missed deadlines are counted, never skipped silently).
+    pub fn skipped(&mut self, count: u64, now_ns: u64) {
+        if count > 0 {
+            self.counters.missed_deadlines += count;
+            self.begin_stop(StopReason::LateWake, now_ns);
+        }
+    }
+
     /// The last snapshot couldn't be handed to control (its ring was full): counted in the next one.
     pub fn snapshot_dropped(&mut self) {
         self.counters.snapshots_dropped += 1;
@@ -392,6 +401,7 @@ impl BusTick {
                 | BusError::TxTimeout
                 | BusError::InterfaceDown
                 | BusError::InterfaceGone
+                | BusError::Socket(_)
                 | BusError::Other(_) => {}
             }
             return;
