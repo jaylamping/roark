@@ -22,7 +22,7 @@
 - Rating to lay out for: **60 A continuous, under 90 A peak.** A 2 oz outer pour carries about 30 A in 10.5 mm at 20 °C
   rise (IPC-2221B, external), and about 27.5 mm carries 60 A. So the 60 A path (BAT, SW_D, MID, VBUS) needs about 27.5 mm
   of outer copper in total (one layer, or L1 plus L6 stitched with vias), and each 30 A port leg about 10.5 mm in total.
-  No bars. Pour widths on the routed board (2026-11-09): BAT 27 mm on L1; VBUS 24 mm on L6 (signal vias pass through it under the meter block, 0.25 mm clearance) plus about 3–7 mm on L1;
+  No bars. Pour widths on the routed board (2026-11-09): BAT 27 mm on L1; VBUS 24 mm on L6 where no via passes; under the meter block signal vias pass through it (each clears a 1.1 mm hole at 0.25 mm clearance, an E-stop via 3.6 mm at 1.5 mm), and at the RUN_P via the L6 pour is down to about 22 mm with no L1 copper alongside, so VBUS is under its 27.5 mm target there; elsewhere L1 adds about 3–7 mm;
   MID 23 mm on L6 plus up to 27 mm on L1; SW_D 22 mm on L6 plus 13 mm on L1; port legs about 5 mm on each outer layer. **Open before fab:** BAT (27 mm, L1 only) and the port legs (about 10 mm
   in total) sit just under their targets: widen them or mirror BAT on L6. The two 0.5 oz GND planes return 60 A across
   about 90 mm (about 0.8 mOhm, about 3 W spread over the board). By IPC-2221B's internal curve the two planes alone rise
@@ -53,7 +53,10 @@
   - About 50 × 0.3 mm vias per tab, at the pad edge and under it, filled and capped (free at 6 layers) so they
     don't wick solder on the hot plate.
   - L6: bare copper (no mask, OSP) 15 × 15 mm under each FET, for the insulating gap pad. Nothing else on L6 inside
-    the heatsink zone except those pads and GND fill.
+    the heatsink zone except those pads and GND fill. **Open (Joey's call):** the routed board breaks this rule: the
+    VBUS spine and the signal vias through it sit on L6 inside the heatsink zone. Under the gap pad they are insulated
+    from the heatsink by the pad and the mask, so either the rule becomes "masked copper allowed, bare copper only at the
+    FET pads", or the spine and the vias move out of the zone.
   - Heatsink holes HS1 (0, 286) and HS2 (0, 204), M3, no copper within 2 mm; the MID pour flows around HS1.
   - Keep all four bank FETs inside the upper fan footprint (|X| ≤ 20, Y 264–304).
   - Check with a coupon or quick FEM; a clip-on heatsink per bank is the fallback.
@@ -163,9 +166,14 @@ thrashed again (about 2,800 violations after six passes) and is not used; shuffl
   push-and-shove:
   - port meter and eFuse blocks, about 30: V_L taps (U19–U24 pin 13 to U11–U16 pin 8 and the C51/C56/C71/C76 pads),
     EN_L, TMR_L, ISCP/IWRN_L, CSP/INP_L, D_L2;
-  - latch block round U8, about 12, E-stop class: EN_A, FLT_A, BST_A, CSN/CSP_A, MID, TMR_A, L_B;
-  - 4 GND pins on U13 and U15; BRK_P/BRK_PG at U7; G2; the CL comparator taps (CL_HY, CL_OUT, CL_SENSE); CWD, FB_CTL,
-    MID_Z, VB_Z; SHL4_N at R99.
+  - latch block round U8, about 12, by class (layout/open_nets.csv): E-stop (1.5 mm to 54 V) EN_A, FLT_A, L_B; 54 V
+    MID; riding on 54 V BST_A, CSN_A, CSP_A; signal TMR_A;
+  - 54 V and 54 V-riding, local: BRK_P/BRK_PG at U7, G2 at Q2/R2, SHL4_N at R99, D_L2 at U12;
+  - signal and GND: 4 GND pins on U13 and U15; the CL comparator taps (CL_HY, CL_OUT, CL_SENSE); CWD, FB_CTL, MID_Z, VB_Z.
+- The committed board predates the latch keep-out in schematic/tools/grid_route.py and route_checks.py checks 4 and 5:
+  it has BAT copper on the inner layers under the latch block, and an E-stop RUN_P via inside the L6 VBUS pour
+  outline (about X −5, Y 253). Re-route on a KiCad machine (schematic/tools/build_board.sh from `route`) before hand
+  finishing; the counts above will change.
 - Kelvin pairs to re-route as tight pairs: SHL2 (0 % paired), SHL4 (25 %), SHL6 (33 %) and SH9 (8 %).
 - Estimate in KiCad's interactive router: about 3–4 h for the connections, plus 1–2 h for the four Kelvin pairs.
 - The step-by-step checklist, with a picture per group: [layout/HAND_FINISH.md](layout/HAND_FINISH.md).

@@ -1,6 +1,7 @@
 # Hand finishing the rev B5 board
 
-The scripts leave **59 open connections on 44 nets** (2026-11-09). DRC and route_checks are clean as it stands.
+The scripts leave **59 open connections on 44 nets** (2026-11-09). DRC is clean as it stands; route_checks now fails it
+on the latch keep-out (checks 4 and 5), so re-route first ([LAYOUT_RULES.md](../LAYOUT_RULES.md), "Hand finishing").
 What's left is blocked by copper already in place, so it needs KiCad's push-and-shove router. Expect about 3–4 h for the
 connections plus 1–2 h for the Kelvin pairs. The full list is [open_nets.csv](open_nets.csv), and the background is in
 [LAYOUT_RULES.md](../LAYOUT_RULES.md), "Hand finishing".

@@ -26,6 +26,11 @@ def rides(n):
     """54 V copper, or copper riding on a 54 V node (a gate or bootstrap on its source, a sense tap on VBUS)"""
     return is_hv(n) or dom(n) is not None
 import os
+# The latch block (tools/place.py, option A), floorplan mm (X0, X1, Y0, Y1). LAYOUT_RULES: no 54 V copper on L2-L5 under
+# it, so no 54 V inner track or via there. latch_page() gives KiCad page mm (place.py: page X = X + 150, page Y = 440 - Y).
+LATCH=(-48.0,-31.0,254.0,310.5)
+def latch_page():
+    X0,X1,Y0,Y1=LATCH; return (X0+150,X1+150,440-Y1,440-Y0)
 # The board gets an acrylic conformal coat after bring-up (Joey, 2026-11-09; IPC-2221B Table 6-1, 51-100 V: A5/A7 0.13 mm,
 # B4 0.13 mm, against B2 0.6 mm and A6 0.5 mm uncoated), so the 0.6 mm domain rule is the 0.2 mm default. The E-stop
 # 1.5 mm rule and the hole keep-outs don't change. MARENGO_COATED=0 checks the bare-board rule.

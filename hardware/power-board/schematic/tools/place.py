@@ -3,7 +3,7 @@
 Run with KiCad's Python: <kicad python> tools/place.py <net.net> <out.kicad_pcb> <placement.json>
 Board coordinates follow the floorplan: X -50..50 (robot's left = +X), Y 170..340 (up). No routing."""
 import os,sys,json
-sys.path.insert(0,os.path.dirname(__file__)); from sx import *
+sys.path.insert(0,os.path.dirname(__file__)); from sx import *; import domains
 import pcbnew
 FPDIR=os.environ.get('KICAD_FP') or next((p for p in ('/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints/','C:/Program Files/KiCad/10.0/share/kicad/footprints/') if os.path.isdir(p)),None)
 assert FPDIR,'set KICAD_FP to the KiCad footprints folder'
@@ -44,7 +44,7 @@ if WIDE:
     # option A: the control blocks spread to about 50 % fill. The latch and soft start take the left edge (J20 fixed there,
     # the M3 hole reserved), bank B's controller takes the latch's old column, and a new low-voltage band along the new
     # bottom edge takes the 12 V distribution (next to its Micro-Fit outputs) and the watchdog
-    BLK.update(soft=(-48.0,-11.0,311.0,328.4),latch=(-48.0,-31.0,254.0,310.5),bankctl=(-30.5,-17.8,268.0,310.5),lv=(-48.0,48.0,YB+11.0,200.5))
+    BLK.update(soft=(-48.0,-11.0,311.0,328.4),latch=domains.LATCH,bankctl=(-30.5,-17.8,268.0,310.5),lv=(-48.0,48.0,YB+11.0,200.5))
     put('lv','U17 C30 R47 D18 TP9 R44 R45 C37 D6 D13')
     put('lv','U25 R128 R129 R130 R131 Q21 C80 C81 D41 R67'); put('lv',PF)
 RES={}; PFIX={}
@@ -180,7 +180,6 @@ def maxrects(W,H,items,occ=(),GAP=GAP):
 # spacing margins (tools/domains.py): courtyards touch (about 0.3-0.5 mm pad to pad between 0603s), which breaks the
 # 0.6 mm rule between 54 V domains and the 1.5 mm E-stop rule. Parts with a pad riding on 54 V get 0.3 mm more on each
 # side, E-stop parts 0.6 mm; a block that then overflows is packed without them (tools/hv_spacing.py moves what's left)
-import domains
 def margin(fp):
     ns=[p.GetNetname() for p in fp.Pads()]
     if any(domains.is_estop(n) for n in ns): return 1.2

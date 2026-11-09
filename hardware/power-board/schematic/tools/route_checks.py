@@ -8,6 +8,8 @@
   separately: the package sets those, not the routing.
   3. Kelvin sense pairs: each SH*_P / SH*_N pair runs as a tight pair; reports the length of each leg and the share of
      the P leg that lies within 1.0 mm of the N leg.
+  4. No 54 V track, via or pour on the inner layers under the latch block (tools/domains.py LATCH).
+  5. No E-stop via inside a 54 V zone outline on any layer.
 Run with KiCad's Python: <kicad python> tools/route_checks.py <board.kicad_pcb>   (exit 1 on a routing violation)"""
 import re,sys
 import pcbnew
@@ -86,6 +88,25 @@ print('1/2. clearance violations (routing):',len(bad))
 for r in bad: print('   ',r)
 print('   inside one footprint (package-set, review only):',len(pkg))
 for r in pkg[:20]: print('   ',r)
+# ---- 4. no 54 V copper on the inner layers under the latch block (LAYOUT_RULES; tools/domains.py LATCH)
+lx0,lx1,ly0,ly1=domains.latch_page()
+LR=pcbnew.BOX2I(pcbnew.VECTOR2I(mm(lx0),mm(ly0)),pcbnew.VECTOR2L(mm(lx1-lx0),mm(ly1-ly0)))
+latch=[(b.GetLayerName(L),n,lab,pos(s_)) for L in LAYERS if L not in OUTER for n,_,s_,lab,ref in byL[L]
+       if HV(n) and not ref and s_.BBox().Intersects(LR) and (lab.startswith('zone') or s_.Collide(pcbnew.SHAPE_RECT(LR),0))]
+print('4. 54 V inner copper under the latch block:',len(latch))
+for r in latch: print('   ',r)
+# ---- 5. no E-stop via inside a 54 V zone outline on any layer: the refill clears 1.5 mm round it, but the via then sits
+# in a hole in the 54 V pour with no ground guard between (LAYOUT_RULES, E-stop rule)
+esv=[]
+for t in b.GetTracks():
+    if t.GetClass()!='PCB_VIA' or t.GetNetname() not in ESTOP: continue
+    for z in b.Zones():
+        if z.GetIsRuleArea() or not HV(z.GetNetname()): continue
+        if any(z.IsOnLayer(L) for L in LAYERS) and z.Outline().Contains(t.GetPosition()):
+            esv.append((t.GetNetname(),z.GetNetname(),b.GetLayerName(z.GetFirstLayer()),pos(t.GetEffectiveShape(pcbnew.F_Cu))))
+print('5. E-stop vias inside a 54 V zone outline:',len(esv))
+for r in esv: print('   ',r)
+bad+=latch+esv
 # ---- Kelvin pairs
 tr={}
 for t in b.GetTracks():

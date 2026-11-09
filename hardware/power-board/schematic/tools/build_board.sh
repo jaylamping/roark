@@ -5,8 +5,8 @@
 # The work dir needs net.net (kicad-cli sch export netlist). Each stage's output is the next one's input:
 #   place  -> placed.kicad_pcb          (tools/place.py)
 #   power  -> base.kicad_pcb            (route_power, hv_spacing, gnd_fanout, route_u1) + copper.json
-#   route  -> routes.json               (tools/grid_route.py, plain Python, about an hour)
-#   import -> routed.kicad_pcb + drc.json + checks.txt (route_import, kicad-cli DRC with the project rules, route_checks)
+#   route  -> routed.kicad_pcb + drc.json + open_nets.csv + checks.txt (tools/route_stages.sh, a few hours)
+#   import -> the same checks on an existing routed.kicad_pcb (route_stages.sh with CHECKS_ONLY=1)
 set -uo pipefail
 W=$(cd "$1" && (pwd -W 2>/dev/null || pwd)); FROM=${2:-place}   # pwd -W: a Windows path for the Windows Pythons
 ROOT=$(cd "$(dirname "$0")/.." && pwd); LAYOUT="$ROOT/../layout"
@@ -29,23 +29,9 @@ if run power; then
   [ -s "$W/copper.json" ] || { echo 'power stage failed'; exit 1; }
   [ "${STOP:-}" = power ] && exit 0   # STOP=power: build the base board only
 fi
-if run route; then
-  "$PY" -u tools/grid_route.py "$W/copper.json" "$W/routes.json" > "$W/route.log" 2>&1; grep -E '^done|Traceback' "$W/route.log" | cut -c1-400
-  [ -s "$W/routes.json" ] || { echo 'routing failed'; exit 1; }
-fi
-if run import; then
-  "$KP" tools/route_import.py "$W/base.kicad_pcb" "$W/routes.json" "$W/routed.kicad_pcb" 2>&1 | q | cut -c1-300
-  # The project and rules share the board's base name, so DRC uses the board's rules. The schematic goes in under the
-  # board's name and the name the project file gives its top sheet, so parity has a sheet either way.
-  cp "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/routed.kicad_pro" && cp "$LAYOUT/marengo_pdu_revb.kicad_dru" "$W/routed.kicad_dru" \
-    && cp "$ROOT/marengo_pdu_revb.kicad_sch" "$W/routed.kicad_sch" && cp "$ROOT/marengo_pdu_revb.kicad_sch" "$W/marengo_pdu_revb.kicad_sch" \
-    || { echo 'copying the project files failed'; exit 1; }
-  rm -f "$W/drc.json"
-  "$KC" pcb drc --format json --schematic-parity -o "$W/drc.json" "$W/routed.kicad_pcb" > "$W/drc.log" 2>&1
-  [ -s "$W/drc.json" ] || { echo 'DRC wrote no report:'; cat "$W/drc.log"; exit 1; }
-  if grep -qi 'failed to fetch schematic' "$W/drc.log"; then echo 'DRC skipped the schematic parity check:'; cat "$W/drc.log"; exit 1; fi
-  "$PY" -c "import json,collections,sys;d=json.load(open(sys.argv[1]));print('DRC',dict(collections.Counter(v['type'] for v in d['violations'])),'unconnected',len(d['unconnected_items']),'parity',len(d.get('schematic_parity',[])))" "$W/drc.json"
-  "$KP" tools/route_checks.py "$W/routed.kicad_pcb" > "$W/checks.txt" 2>&1; rc=$?
-  q < "$W/checks.txt" | grep -v '^    ('
-  [ "$rc" = 0 ] || { echo "route_checks failed (exit $rc)"; exit "$rc"; }
+# The signal routing is staged (tools/route_stages.sh: five locked stages on base.kicad_pcb, route_fixes, patch_route,
+# DRC with parity, open nets, route_checks); a single grid_route.py pass over every net doesn't reach the committed board.
+if run route || run import; then
+  [ "$FROM" = import ] && export CHECKS_ONLY=1   # import: only check the work dir's routed.kicad_pcb
+  bash tools/route_stages.sh "$W" || exit $?
 fi
