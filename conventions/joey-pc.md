@@ -16,7 +16,7 @@ the week of 2026-11-05 came from those shared pieces, not from design work:
 The rules below cut the shared state down to what can't be split, and make the rest visible. They are written so a future
 job runner can take them over without changing the files they use.
 
-## 1. One worktree and one SolidWorks instance per thread
+## 1. One worktree and up to two SolidWorks instances per thread
 
 - **Worktree:** each thread works in its own worktree of the roark clone, never in `J:\code\roark` itself (that one stays on
   `main` for Joey):
@@ -29,9 +29,12 @@ job runner can take them over without changing the files they use.
   `<session>` is a short name for the thread (`left-arm`, `power-board`), lower case with `-`. A thread that doesn't need
   the CAD content sets `GIT_LFS_SKIP_SMUDGE=1` for the `worktree add` and pulls only what it needs later
   ([cad.md section 7](cad.md#7-clones-and-bandwidth)); worktrees share the clone's LFS store, so content is downloaded once.
-- **SolidWorks:** one long-lived instance per thread through `tools/solidworks/sw_instance.py`
-  ([RULES.md](../tools/solidworks/RULES.md)); never attach to another thread's instance and never close one you didn't
-  start. Launches steal focus, so keep them few.
+- **SolidWorks:** up to two long-lived instances per thread through `tools/solidworks/sw_instance.py`
+  ([RULES.md](../tools/solidworks/RULES.md)): one for modelling and, while a long study runs, one for FEA, so a 25-minute
+  sweep doesn't block modelling (Joey, 2026-11-09, until the FEA queue in section 3 exists). Claim the FEA instance as its own
+  session, `<session>-fea` (section 2), so both PIDs are on record. Never attach to another thread's instance and never close
+  one you didn't start. Each launch steals focus and takes about 1.5 GB, so start the second one only for a long study and
+  close it when the study ends.
 - **CAD writer lock:** [cad.md section 6](cad.md#6-writer-lock-hooks-and-lfs-budget) still applies inside a worktree that more
   than one session uses. With one worktree per thread it is uncontested, but take it anyway: the hooks check it.
 - **Hooks:** never run a hook installer from a worktree; `install_hooks.py` installs for every worktree of the clone. The
