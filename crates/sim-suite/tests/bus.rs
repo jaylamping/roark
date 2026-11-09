@@ -527,7 +527,9 @@ fn slow_requests_reach_a_drive_on_vcan_and_come_back() {
             // Play control: an empty batch for the tick after the newest snapshot, so a late wake of this thread never
             // answers an old tick.
             let mut snap = next_snapshot(&mut snapshots, end).unwrap();
-            while let Ok(newer) = snapshots.pop() {
+            // At most the ring's worth: the bus publishes once a period, so this never chases it.
+            for _ in 0..snapshots.buffer().capacity() {
+                let Ok(newer) = snapshots.pop() else { break };
                 snap = newer;
             }
             let batch = CommandBatch::new(snap.tick + 1, epoch.ns(Instant::now()) + 3 * period);
@@ -548,13 +550,10 @@ fn slow_requests_reach_a_drive_on_vcan_and_come_back() {
                 asked = false;
                 // Until the drive is up a get-ID may time out, and a stall of this thread can leave control silent for
                 // a tick at any step; ask again, a few times at most in the whole run.
-                let early = retries < 5
-                    && (step == 0 || outcome == SlowOutcome::Refused(SlowRefusal::ControlSilent))
-                    && matches!(
-                        outcome,
-                        SlowOutcome::TimedOut | SlowOutcome::Refused(SlowRefusal::ControlSilent)
-                    );
-                if early {
+                let retry = retries < 5
+                    && (outcome == SlowOutcome::Refused(SlowRefusal::ControlSilent)
+                        || (step == 0 && outcome == SlowOutcome::TimedOut));
+                if retry {
                     retries += 1;
                 } else {
                     assert_eq!(outcome, expected, "step {step}");

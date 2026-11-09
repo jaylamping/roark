@@ -75,7 +75,7 @@ impl Timing {
     /// Whether this timing keeps the tick's promises: a send window inside the collect window inside the period, at
     /// least a period of feedback but less than the drives' timeout, a stop window that fits the post-Disable silence and a
     /// tick to send reporting off after it, silence counts of at least one that fire before the drives' timeout, and a
-    /// slow reply window that fits between the collect deadline and the next tick.
+    /// slow reply window that ends before the next tick starts.
     ///
     /// # Errors
     /// The first rule it breaks.

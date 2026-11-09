@@ -206,7 +206,7 @@ pub struct LimbView {
     pub generation: u32,
 }
 
-/// The last of this host's frames to a drive read back from the socket.
+/// The last of this host's frames to a drive of a kind a batch carries, read back from the socket.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct EchoSeen {
     /// What it was.

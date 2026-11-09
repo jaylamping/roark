@@ -613,7 +613,7 @@ pub(crate) fn batch_may_carry(kind: EchoKind) -> bool {
 }
 
 /// What a host frame is and whom it targets, read back through the codec (so the ID layout stays in `robstride`).
-fn echo_of(frame: &Frame) -> Option<(EchoKind, DeviceId)> {
+pub(crate) fn echo_of(frame: &Frame) -> Option<(EchoKind, DeviceId)> {
     match decode(frame.id(), &frame.data()) {
         Ok(Inbound::Echo(echo)) => Some((echo.kind, echo.target)),
         Ok(

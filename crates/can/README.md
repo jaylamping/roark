@@ -32,7 +32,8 @@ Each tick, on the monotonic clock:
    one. A full queue drops the frame and counts it; it is never retried within the tick.
 6. **Collect** until the collect deadline (about 60 % of the period), feeding each frame to `on_frame`.
 7. **Publish** the `Snapshot` (`end`) to control and hand every frame of the tick to the recorder.
-8. **Slack:** send at most one slow request (`slow_send`), then hand control every slow result.
+8. **Slack:** hand control the results already held, take new requests, send at most one (`slow_send`), then hand
+   control the new results.
 
 A drive's status read after a command the socket took is its **fresh** status, and it **answered** the tick if read by
 the collect deadline. That is evidence the drive is there and what state it was in, never an acknowledgement: there
@@ -44,9 +45,8 @@ Disable no Reset has answered (a Disable sent again keeps the first one's window
 (50 ms) after an Enable while the drive hasn't shown Run: the drive may take 10 ms to reach Run, and goes silent after a
 Disable (PLAN item 2 Silence windows). A lost Disable therefore can't leave a running drive's silence uncounted.
 `silent_ticks` and `silence_misses` must be at least one and must stop a limb before the drives' own timeout, or the bus
-is refused at startup. Each drive's last echo of this host's frame
-to it (`last_echo`: its kind and when it was read) is kept, for the enable sequence's "reporting-off echo plus one
-tick".
+is refused at startup. Each drive's last echo of this host's frames of a kind a batch carries (`last_echo`: its kind
+and when it was read) is kept, for the enable sequence's "reporting-off echo plus one tick".
 
 A limb stop (`stop_limb`, named `LimbRequested`; the check above; expired feedback) stops that limb; a bus stop (`request_stop`, control
 silent, a late wake, a bad batch, or a backlog) stops every limb. A stopping limb sends Disable to each of its drives,
@@ -81,8 +81,9 @@ never lands among the tick's command replies. A read is answered by its drive's 
 its type-0 reply, and a write by any status from the drive while the write is in flight, which proves nothing about the
 value: preflight reads every write back. A fault or mode that status shows counts like any status's. Writes go only to
 drives of an idle limb (`LimbNotIdle`) with no command of the tick still unanswered (`CommandUnanswered`: an idle
-limb's batch may carry a Disable or the `run_mode` write), so that status can't be a command's reply. A slow frame's
-echo isn't kept as the drive's `last_echo`. Each request gets exactly one result: its answer, `TimedOut` (no reply by
+limb's batch may carry a Disable or the `run_mode` write; an earlier tick's command is late or lost and doesn't hold
+writes off), so that status can't be a command's reply. The `run_mode` = MIT write goes only in control's batch
+(`BatchOnly`), so a slow frame's echo is never of a kind kept as the drive's `last_echo`. Each request gets exactly one result: its answer, `TimedOut` (no reply by
 the next tick's start), `NotSent`, or `Refused`, including when the thread ends with it pending (`end_slow`: `Ended`,
 or `BusFailed`). Nothing is retried. A request for a drive whose limb is stopping, stopped or due to stop (a stop asked
 for and not yet taken, or what the veto stops on, on any drive of the limb: a fault, a drop out of Run, too many
