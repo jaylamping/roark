@@ -40,6 +40,10 @@ pub struct Timing {
     /// Consecutive commands a drive may leave unanswered by the collect deadline before its limb stops (PLAN.md item 6
     /// Silence row: three).
     pub silence_misses: u32,
+    /// How long a slow request's reply may take: one goes only if it is sent this long before the next tick starts, so
+    /// the next drain reads its reply. A quarter period by default: provisional, to be measured on the real adapter
+    /// (PLAN step 8).
+    pub slow_reply_ns: u64,
 }
 
 impl Timing {
@@ -61,6 +65,7 @@ impl Timing {
             disable_silence_ns: 50_000_000,
             silent_ticks: 2,
             silence_misses: 3,
+            slow_reply_ns: period_ns / 4,
         }
     }
 
@@ -100,6 +105,14 @@ impl Timing {
             Err(TimingError::NoSilentTicks)
         } else if self.silence_misses == 0 {
             Err(TimingError::NoSilenceMisses)
+        } else if self.slow_reply_ns == 0
+            || collect_ns.saturating_add(self.slow_reply_ns) > period_ns
+        {
+            Err(TimingError::SlowReply {
+                slow_reply_ns: self.slow_reply_ns,
+                collect_ns,
+                period_ns,
+            })
         } else {
             Ok(())
         }
@@ -160,6 +173,19 @@ pub enum TimingError {
     /// `silence_misses` is zero.
     #[error("silence_misses must be at least 1")]
     NoSilenceMisses,
+    /// The slow reply window is zero or doesn't fit between the collect deadline and the next tick, so no slow request
+    /// could go.
+    #[error(
+        "slow_reply_ns {slow_reply_ns} must be above zero and fit between collect_ns {collect_ns} and the period {period_ns}"
+    )]
+    SlowReply {
+        /// The slow reply window.
+        slow_reply_ns: u64,
+        /// The collect deadline.
+        collect_ns: u64,
+        /// The period.
+        period_ns: u64,
+    },
 }
 
 /// One tick's commands from control: at most one encoded frame per drive slot (the drive's place in the bus's table).
@@ -475,6 +501,8 @@ pub struct Counters {
     pub kernel_drops: u32,
     /// Snapshots control's ring was too full to take.
     pub snapshots_dropped: u64,
+    /// Slow results control's ring was too full to take.
+    pub slow_results_dropped: u64,
 }
 
 /// The bus at the end of a tick, for control and the safety layer.

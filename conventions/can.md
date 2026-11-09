@@ -118,6 +118,10 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
 - **Only an operator clear re-arms,** and only a stopped limb whose drives are known disabled (confirmed in Reset, or sent
   nothing for longer than the drive timeout). A latched bus error is never re-armed in place: the bus thread and socket
   are rebuilt. Nothing in the bus layer re-arms itself.
+- **Slow requests ride in the slack,** one in flight per bus, sent after the collect deadline only when the reply fits
+  before the next tick, and never to a stopping or stopped limb or while control is silent. **Why:** a parameter read
+  must not crowd out a command or have its reply mistaken for one, and since `canTimeout` counts from any frame, slow
+  traffic must never keep a stopped drive alive.
 - **One schedule for every bus.** Every bus thread and the control thread tick from the one origin the runtime picks, so
   tick n is the same instant everywhere.
 

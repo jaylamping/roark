@@ -16,6 +16,7 @@ use socketcan::{CanDataFrame, CanSocket, EmbeddedFrame, ExtendedId, Socket, Sock
 use telemetry::{BusRecorder, Epoch, TickBatch};
 
 use crate::error_frame::BusError;
+use crate::slow::{SlowOutcome, SlowRequest, SlowResult};
 use crate::sys::{self, SO_RCVBUFFORCE, SO_RXQ_OVFL, SO_TIMESTAMPNS_NEW};
 use crate::tick::BusTick;
 use crate::types::{BusDrive, CommandBatch, ConfigError, Drain, SendOutcome, Snapshot, Timing};
@@ -97,6 +98,11 @@ pub struct Spawned {
 pub struct BusLinks {
     /// Command batches from control; the newest one each tick is used.
     pub commands: Consumer<CommandBatch>,
+    /// Slow requests from control (parameter reads, allowlisted writes, get-ID), queued as room frees up.
+    pub requests: Consumer<SlowRequest>,
+    /// Each slow request's one result. When the ring is full the result is dropped and counted
+    /// (`Counters::slow_results_dropped`), and the requester times out.
+    pub results: Producer<SlowResult>,
     /// Snapshots out. When control falls behind and the ring is full, the newest is dropped and counted
     /// (`Counters::snapshots_dropped`), so control must keep up.
     pub snapshots: Producer<Snapshot>,
@@ -372,6 +378,17 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         if exit.error.is_some() && snap.stopped() {
             break;
         }
+        // The slack after the collect deadline: control's slow requests, one exchange at a time.
+        if let Err(e) = slow(
+            socket,
+            &clock,
+            &mut tick,
+            &mut links.requests,
+            &mut links.results,
+        ) {
+            tick.lost_bus(bus_error(&e));
+            exit.error.get_or_insert(e);
+        }
         // The next tick is the first not yet due; any skipped were missed deadlines, and this late tick has already
         // stopped the bus.
         let due = mono_now().saturating_duration_since(clock.start).as_nanos()
@@ -454,6 +471,46 @@ fn take(clock: &Clock, tick: &mut BusTick, batch: &mut TickBatch, received: sys:
 }
 
 /// Write one frame, once. A full queue drops it (never retried, can.md section 2); a lost interface is an error.
+/// Queue the slow requests that fit, send one if the tick allows, and hand every result back. A full result ring
+/// drops the result and counts it; the requester times out.
+fn slow(
+    socket: &CanSocket,
+    clock: &Clock,
+    tick: &mut BusTick,
+    requests: &mut Consumer<SlowRequest>,
+    results: &mut Producer<SlowResult>,
+) -> io::Result<()> {
+    while tick.slow_room() > 0 {
+        let Ok(request) = requests.pop() else {
+            break;
+        };
+        if let Err(refusal) = tick.submit(request) {
+            let refused = SlowResult {
+                tag: request.tag,
+                slot: request.slot,
+                outcome: SlowOutcome::Refused(refusal),
+            };
+            if results.push(refused).is_err() {
+                tick.slow_result_dropped();
+            }
+        }
+    }
+    let mut failed = Ok(());
+    if let Some(frame) = tick.slow_send(clock.ns(mono_now())) {
+        let outcome = write(socket, &frame).unwrap_or_else(|e| {
+            failed = Err(e);
+            SendOutcome::Failed
+        });
+        tick.slow_sent(outcome, clock.ns(mono_now()));
+    }
+    while let Some(result) = tick.take_slow_result() {
+        if results.push(result).is_err() {
+            tick.slow_result_dropped();
+        }
+    }
+    failed
+}
+
 fn write(socket: &CanSocket, frame: &Frame) -> io::Result<SendOutcome> {
     let Some(id) = ExtendedId::new(frame.id()) else {
         return Ok(SendOutcome::Failed);

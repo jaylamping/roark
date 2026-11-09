@@ -67,11 +67,20 @@ impl BusTick {
                 Some(d) => d.fault_seen |= !header.faults.is_empty(),
                 None => self.counters.unexpected += 1,
             },
-            Ok(Inbound::Identity { device, .. } | Inbound::Param { device, .. }) => {
-                if self.slot_of(device).is_none() {
-                    self.counters.unexpected += 1;
-                }
-            }
+            Ok(Inbound::Param {
+                device,
+                param,
+                outcome,
+            }) => match self.slot_index(device) {
+                Some(slot) if self.slow_read_reply(slot, param, outcome) => {}
+                Some(_) => self.counters.unsolicited += 1,
+                None => self.counters.unexpected += 1,
+            },
+            Ok(Inbound::Identity { device, uid }) => match self.slot_index(device) {
+                Some(slot) if self.slow_identity_reply(slot, uid) => {}
+                Some(_) => self.counters.unsolicited += 1,
+                None => self.counters.unexpected += 1,
+            },
         }
     }
 
@@ -106,6 +115,19 @@ impl BusTick {
         if !answer {
             return;
         }
+        let slot = self.slot_index(device);
+        // A status while a write is in flight to the drive answers the write, not a command.
+        if slot.is_some_and(|slot| self.slow_write_reply(slot)) {
+            return;
+        }
+        let Some(d) = self
+            .drives
+            .iter_mut()
+            .flatten()
+            .find(|d| d.device == device)
+        else {
+            return;
+        };
         let Some(o) = d.outstanding.as_mut().filter(|_| !unordered) else {
             self.counters.unsolicited += 1;
             return;
@@ -130,6 +152,12 @@ impl BusTick {
             d.stop = StopOutcome::Confirmed;
             d.confirmed_ns = Some(read_ns);
         }
+    }
+
+    fn slot_index(&self, device: DeviceId) -> Option<usize> {
+        self.drives
+            .iter()
+            .position(|d| d.is_some_and(|d| d.device == device))
     }
 
     fn slot_of(&mut self, device: DeviceId) -> Option<&mut DriveState> {

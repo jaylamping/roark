@@ -16,6 +16,7 @@ use robstride::encode::Reporting;
 use robstride::{DeviceId, EchoKind, Frame, Inbound, Param, ParamValue, RunMode, decode};
 
 use crate::error_frame::BusError;
+use crate::slow::{SLOW_SLOTS, SlowEntry};
 use crate::types::{
     BusDrive, CommandBatch, ConfigError, Counters, Drain, DriveView, EchoSeen, LimbState, LimbView,
     MAX_DRIVES, NoSuchLimb, Observed, Send, SendKind, SendList, SendOutcome, Snapshot, StopOutcome,
@@ -109,6 +110,8 @@ pub struct BusTick {
     pub(crate) tick: u64,
     pub(crate) scheduled_ns: u64,
     pub(crate) sends: SendList,
+    pub(crate) slow: [Option<SlowEntry>; SLOW_SLOTS],
+    pub(crate) slow_seq: u64,
 }
 
 impl BusTick {
@@ -168,6 +171,8 @@ impl BusTick {
             tick: 0,
             scheduled_ns: 0,
             sends: SendList::EMPTY,
+            slow: [None; SLOW_SLOTS],
+            slow_seq: 0,
         })
     }
 
@@ -256,6 +261,7 @@ impl BusTick {
         for d in self.drives.iter_mut().flatten() {
             d.answered = false;
         }
+        self.time_out_slow();
         if now_ns > scheduled_ns.saturating_add(self.timing.send_window_ns) {
             self.counters.missed_deadlines += 1;
             self.stop_all(StopReason::LateWake, now_ns);
@@ -301,16 +307,15 @@ impl BusTick {
             if batch.is_some() {
                 self.counters.stale_ticks += 1;
             }
+            // Counted with every limb idle too: silent control also cancels slow requests.
+            self.silent = self.silent.saturating_add(1);
             let active = self
                 .limbs
                 .iter()
                 .flatten()
                 .any(|l| l.state == LimbState::Active);
-            if active {
-                self.silent += 1;
-                if self.silent >= self.timing.silent_ticks {
-                    self.stop_all(StopReason::ControlSilent, now_ns);
-                }
+            if active && self.silent >= self.timing.silent_ticks {
+                self.stop_all(StopReason::ControlSilent, now_ns);
             }
             return None;
         };

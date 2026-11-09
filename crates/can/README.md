@@ -32,6 +32,7 @@ Each tick, on the monotonic clock:
    one. A full queue drops the frame and counts it; it is never retried within the tick.
 6. **Collect** until the collect deadline (about 60 % of the period), feeding each frame to `on_frame`.
 7. **Publish** the `Snapshot` (`end`) to control and hand every frame of the tick to the recorder.
+8. **Slack:** send at most one slow request (`slow_send`), then hand control every slow result.
 
 A drive's status read after a command the socket took is its **fresh** status, and it **answered** the tick if read by
 the collect deadline. That is evidence the drive is there and what state it was in, never an acknowledgement: there
@@ -63,6 +64,18 @@ every drive in it is known disabled: confirmed in Reset by the stop, or sent not
 timeout plus a period since the socket took its last frame (stamped when it was written, so a late Disable counts from
 when it went). Each drive needs a fresh preflight before it is enabled again; that is the safety layer's.
 
+**Slow requests** (`submit`) are parameter reads, the codec's allowlisted writes and get-ID, for preflight and the
+once-a-second reads; they never ride in a batch. A bus holds `SLOW_SLOTS` of them and has at most one in flight, sent
+after the collect deadline and only while its reply fits before the next tick starts (`Timing::slow_reply_ns`, a
+quarter period by default, provisional until the real adapter is measured), so the next drain reads the reply and it
+never lands among the tick's command replies. A read is answered by its drive's reply naming its register, get-ID by
+its type-0 reply, and a write by the drive's next status, which proves nothing about the value: preflight reads every
+write back. Each request gets exactly one result: its answer, `TimedOut` (no reply by the next tick's start),
+`NotSent`, or `Refused`. Nothing is retried. A request for a drive in a stopping or stopped limb, while control has
+been silent for the silent-tick limit (counted with every limb idle too), or on a failed bus is refused, and one
+already queued is cancelled before it goes, so slow traffic never keeps a drive alive past a stop (`canTimeout`
+counts from any frame).
+
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
 a drive table past `MAX_DRIVES`, a limb index past it, and timing that breaks its promises (`Timing::check`: for one, three periods must fit
 inside the drives' 50 ms timeout, so the rate is at least 61 Hz). The Linux shell (`spawn`) owns the socket: it
@@ -76,13 +89,15 @@ batch is `valid` while the snapshot is `healthy`, and a snapshot control's full 
 
 Send a command late, retry one, or re-send a stale batch. Treat a TX echo or any traffic as proof a drive is alive.
 Allocate, lock, log or wait without a deadline in the tick, or take a lock shared with non-realtime code. Let anyone
-but the runtime transmit. Undo a stop on its own: a stopping or stopped limb gets none of control's frames until the
-operator's `rearm`, and a latched bus error stays latched. Open an interface that isn't `vcan`.
+but the runtime transmit. Retry a slow request, or send one to a stopped limb or while control is silent. Undo a stop
+on its own: a stopping or stopped limb gets none of control's frames until the operator's `rearm`, and a latched bus
+error stays latched. Open an interface that isn't `vcan`.
 
 ## Talks to
 
 `robstride` for the frames (it builds them, this crate only sends `Frame`s) and `telemetry` for the recording: each
-tick's frames go to a `BusRecorder`. Control is on the other side of two `rtrb` queues, batches in and snapshots out.
+tick's frames go to a `BusRecorder`. Control is on the other side of `rtrb` queues: batches and slow requests in, snapshots and slow
+results out; a full outgoing ring drops and counts (`snapshots_dropped`, `slow_results_dropped`).
 The runtime that wires those up doesn't exist yet; the sim suite drives the shell against `sim-drive` on `vcan`. See
 the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
 

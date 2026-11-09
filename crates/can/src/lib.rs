@@ -5,6 +5,7 @@
 mod bus;
 mod error_frame;
 mod read;
+mod slow;
 mod stop;
 #[cfg(target_os = "linux")]
 #[expect(
@@ -19,6 +20,7 @@ mod types;
 pub use bus::{BusConfig, BusExit, BusLinks, BusRunError, DRAIN_MAX, Spawned, spawn};
 
 pub use error_frame::{BusError, classify};
+pub use slow::{SLOW_SLOTS, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, SlowResult};
 pub use tick::BusTick;
 pub use types::{
     BusDrive, CommandBatch, ConfigError, Counters, DRIVE_TIMEOUT_NS, Drain, DriveView, EchoSeen,
