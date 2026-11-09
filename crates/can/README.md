@@ -107,7 +107,7 @@ record of that socket, from the same constants `open` applies, and `spawn` retur
 actually gave (`Spawned::receive_buffer_bytes`) for the runtime's startup log. Each tick's recorded batch is `valid`
 while the bus is healthy, the exit tick's included, and a snapshot control's full ring can't take is counted
 (`snapshots_dropped`). Any write error but a full queue loses the bus, as a read error does. Setting `exit` while a
-limb is running or stopping stops the bus first.
+limb is running or stopping stops the bus first, and the thread returns once control's ring has taken the snapshot that shows it, or after 100 ticks without that, with it in `BusExit::last`.
 
 Not yet: the `/can/<bus>/tx_intent` record of every frame handed to the socket or not sent, with the reason
 (logging.md section 8.2), and the per-run tick duration and jitter (rust.md section 6). Both come with the runtime,
