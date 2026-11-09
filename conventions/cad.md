@@ -103,14 +103,47 @@ the SHA-256 of both (for an LFS file, the `oid` in its pointer). The check warns
 (stale) or an export has no entry, and fails when an export no longer matches its entry. **Why:** an export that silently
 drifts from its part is how a print or a URDF ends up built from the wrong geometry.
 
-## 6. Clones and bandwidth
+## 6. Writer lock, hooks and LFS budget
+
+**Writer lock.** Several sessions share the one checkout on Joey-PC. Before a session opens SolidWorks to change anything in
+`cad/`, it takes the lock and names itself in that shell:
+
+```bash
+python tools/cad/cad_lock.py acquire <name>      # then: export CAD_WRITER=<name>  (PowerShell: $env:CAD_WRITER = "<name>")
+python tools/cad/cad_lock.py release <name>      # after the commit
+```
+
+Hold it too while switching branches, resetting or pulling in that checkout. The pre-commit hook refuses a commit that touches
+CAD unless `CAD_WRITER` holds the lock. A lock untouched for 4 hours is stale: make sure that session has stopped and closed
+its SolidWorks, then `acquire <name> --take-stale`. An unreadable lock, or a leftover `.recover` guard from a crashed takeover,
+is cleared by hand. **Why:** two sessions saving into one tree, or one committing while another is mid-save, corrupt
+assemblies in ways that only show when someone opens them.
+
+**Hooks.** Install once per clone that commits CAD, and again after `git lfs install`:
+
+```bash
+python tools/cad/install_hooks.py
+```
+
+pre-commit checks staged sizes and, when CAD is staged, the lock and the `--repo` layout. pre-push checks the pushed sizes and
+the LFS budget for all refs of the push together, then runs `git lfs pre-push`, and fails if Git LFS is missing. Another
+existing hook is kept as `<hook>.local` and still runs. CI repeats the size and layout checks, so a `--no-verify` commit is
+still caught at the PR.
+
+**LFS budget.** The pre-push hook fails a push that adds more than 300 MB of new LFS data, takes the month past 1 GB, or takes
+storage past 9 GB ([cad/manifests/lfs-budget.json](../cad/manifests/lfs-budget.json)). With Joey's OK for that push, set
+`CAD_BUDGET_OK=1`. `python tools/cad/lfs_budget.py report` shows the totals. It counts what local history can see and dates
+objects by commit, so it is a lower bound: objects from deleted branches or rewritten history are still billed. Check the
+real figure on GitHub (Settings, Billing, Git LFS) at the start of each month.
+
+## 7. Clones and bandwidth
 
 Every LFS download counts against the 10 GiB a month. CI checks out without LFS content, and every check here reads sizes from
 the pointer files. A plain `git clone` on a machine with Git LFS installed downloads all of it, so clone with
 `GIT_LFS_SKIP_SMUDGE=1 git clone ...` unless you need the CAD, then fetch only what you need:
 `git lfs pull --include "cad/shoulder/**"`.
 
-## 7. Backup
+## 8. Backup
 
 `_wip/`, `_sim/` and `_archive/` exist only on Joey-PC. Git is not their backup: they are covered by Joey-PC's own backup, or
 the design is promoted before it would hurt to lose it.
