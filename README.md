@@ -17,12 +17,14 @@ five CAN buses, plus a simulated drive, agent tools and an operator UI.
 - [TENETS.md](TENETS.md): how everything should work.
 - [PLAN.md](PLAN.md): what gets built, in order.
 - [conventions/](conventions/): how code, config, tests and procedures are written and reviewed.
-- Hardware, CAD and the legacy software live in the reference repo, [jaylamping/marengo](https://github.com/jaylamping/marengo).
+- [cad/](cad/): the robot's CAD, versioned through Git LFS ([conventions/cad.md](conventions/cad.md)).
+- Hardware docs and the legacy software live in the reference repo, [jaylamping/marengo](https://github.com/jaylamping/marengo).
 
 ## Build and check
 
 The toolchain is pinned in `rust-toolchain.toml`; `rustup` installs it on first use. The checks also need
-[cargo-nextest](https://nexte.st), [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) and Python 3.
+[cargo-nextest](https://nexte.st), [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) and Python 3. Working on `cad/` also needs
+[Git LFS](https://git-lfs.com) (`git lfs install` once per machine).
 
 ```bash
 cargo install --locked cargo-nextest cargo-deny
