@@ -208,7 +208,7 @@ fn expired_feedback_stops_only_its_limb() {
 
 /// Guards: safety - replies missed while a drive is between its Enable and its first Run status aren't counted for
 /// [`ENABLE_TO_RUN_NS`]; after a Disable they aren't counted for `stop_confirm_ns`, nor at all once a Reset confirms
-/// the drive off; once Run is seen after an Enable they count again (PLAN.md item 2 Silence windows; item 6 Silence row:
+/// the drive off, even after another Disable; a Run status doesn't confirm it; once Run is seen after an Enable they count again (PLAN.md item 2 Silence windows; item 6 Silence row:
 /// a silent disabled drive is offline, not a fault).
 #[test]
 fn misses_in_the_enable_and_post_disable_windows_are_not_counted() {
@@ -246,12 +246,18 @@ fn misses_in_the_enable_and_post_disable_windows_are_not_counted() {
         &[(MS, status(101, Mode::Reset)), (MS, status(102, Mode::Run))],
     );
     let _ = bus.end(deadline(2));
+    // Disabled again at tick 3, unanswered: still offline, so still never counted.
     let quiet_until = 3 + 2 * bus.timing().stop_confirm_ns / PERIOD + misses;
     for tick in 3..quiet_until {
+        let to_101 = if tick == 3 {
+            encode::disable(id(101))
+        } else {
+            write
+        };
         let sent = run_tick(
             &mut bus,
             tick,
-            Some(&batch(tick, &[Some(write), Some(hold(102))])),
+            Some(&batch(tick, &[Some(to_101), Some(hold(102))])),
             &[(MS, status(102, Mode::Run))],
         );
         assert_eq!(
@@ -278,8 +284,8 @@ fn misses_in_the_enable_and_post_disable_windows_are_not_counted() {
     let stopped_at = silent_until_stopped(&mut bus, tick + 1, tick + 1, misses, hold(101));
     assert_eq!(stopped_at, tick + 1 + misses);
 
-    // A Disable with no Reset read after it (lost, or its replies dropped): counted again from the first send
-    // `stop_confirm_ns` after it, and a Disable sent again doesn't restart that window.
+    // A Disable with no Reset read after it (lost, answered still in Run, then silent): counted again from the first
+    // send `stop_confirm_ns` after it, and a Disable sent again doesn't restart that window.
     let mut bus = two_limbs();
     running(&mut bus);
     for tick in 2..4 {
@@ -290,7 +296,7 @@ fn misses_in_the_enable_and_post_disable_windows_are_not_counted() {
                 tick,
                 &[Some(encode::disable(id(101))), Some(hold(102))],
             )),
-            &[(MS, status(102, Mode::Run))],
+            &[(MS, status(101, Mode::Run)), (MS, status(102, Mode::Run))],
         );
         let _ = bus.end(deadline(tick));
     }
@@ -749,7 +755,7 @@ fn a_confirmed_limb_rearms_at_once() {
     assert_eq!(bus.rearm(0, deadline(tick)), Ok(()));
 }
 
-/// Guards: safety - a bad batch arriving in the tick its bus's last running limb stops has no limb left to stop, so it is
+/// Guards: protocol - a bad batch arriving in the tick its bus's last running limb stops has no limb left to stop, so it is
 /// counted as refused rather than lost (logging.md section 4: nothing fails in silence).
 #[test]
 fn a_bad_batch_as_the_last_limb_stops_is_counted() {

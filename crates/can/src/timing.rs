@@ -175,8 +175,8 @@ pub enum TimingError {
     /// `silence_misses` is zero, or so many that the drives' timeout passes first (the count would never stop a limb).
     /// The limb stops at the tick after the last miss, so the count plus one periods must stay under the timeout.
     #[error(
-        "silence_misses {silence_misses} must be at least 1, and that many periods of {period_ns} ns plus one under the \
-         drives' {DRIVE_TIMEOUT_NS} ns timeout"
+        "silence_misses {silence_misses} must be at least 1, and that many periods of {period_ns} ns plus one more \
+         period (the tick that stops the limb) under the drives' {DRIVE_TIMEOUT_NS} ns timeout"
     )]
     SilenceMisses {
         /// The count.

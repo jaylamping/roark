@@ -30,10 +30,11 @@ pub(crate) struct Outstanding {
     pub(crate) deadline_ns: u64,
     /// A stop's Disable: a Reset status after it confirms the stop.
     pub(crate) stop_disable: bool,
-    /// Whether a missing status counts as unanswered. Not for Enable or Disable; not for anything sent to a drive this
-    /// host never enabled or saw reach Reset after its Disable (a silent disabled drive is offline, not a fault: PLAN.md
-    /// item 6 Silence row); not in the [`Timing::stop_confirm_ns`] after a Disable no Reset has confirmed yet; and not in
-    /// the enable-to-Run window, up to [`ENABLE_TO_RUN_NS`] after the Enable (PLAN.md item 2 Silence windows).
+    /// Whether a missing status counts as unanswered. Not for Enable or Disable; not for anything sent to a drive in
+    /// `Off`, never enabled since start or its limb's clear or seen in Reset after this host's Disable, which a later
+    /// Disable doesn't change (a silent disabled drive is offline, not a fault: PLAN.md item 6 Silence row); not in the
+    /// [`Timing::stop_confirm_ns`] after a Disable to an enabled drive that no Reset has answered yet; and not in the
+    /// enable-to-Run window, up to [`ENABLE_TO_RUN_NS`] after the Enable (PLAN.md item 2 Silence windows).
     pub(crate) counts_missed: bool,
     pub(crate) reply: Reply,
     pub(crate) counted: bool,
@@ -79,6 +80,40 @@ pub(crate) enum Off {
     Sent,
 }
 
+impl Phase {
+    /// The phase after the socket took a frame of `kind` at `sent_ns`. An Enable to a drive not already enabling or
+    /// enabled starts its enable-to-Run window. A Disable to an enabling or enabled drive starts the post-Disable window;
+    /// one sent again keeps the first one's window, so Disables sent every tick can't hold misses off; and one to a drive
+    /// in `Off` leaves it there, offline, since it was never enabled or already reported Reset.
+    pub(crate) const fn after_send(self, kind: Option<EchoKind>, sent_ns: u64) -> Self {
+        match (kind, self) {
+            (Some(EchoKind::Enable), Self::Off | Self::Disabled { .. }) => {
+                Self::Enabling { since_ns: sent_ns }
+            }
+            (Some(EchoKind::Disable), Self::Enabling { .. } | Self::Running | Self::LeftRun) => {
+                Self::Disabled { since_ns: sent_ns }
+            }
+            (Some(EchoKind::Enable), Self::Enabling { .. } | Self::Running | Self::LeftRun)
+            | (Some(EchoKind::Disable), Self::Off | Self::Disabled { .. })
+            | (
+                Some(
+                    EchoKind::Mit
+                    | EchoKind::SetZero
+                    | EchoKind::SetId { .. }
+                    | EchoKind::ParamRead(_)
+                    | EchoKind::ParamWrite { .. }
+                    | EchoKind::Reporting(_)
+                    | EchoKind::GetId
+                    | EchoKind::VersionQuery
+                    | EchoKind::FaultClear,
+                )
+                | None,
+                _,
+            ) => self,
+        }
+    }
+}
+
 impl DriveState {
     /// What a status header's mode says about the drive's run, from a status, a report or a version reply alike. Run
     /// after an Enable is the drive running, counted only from an ordered read while its limb is active; any other mode
@@ -100,13 +135,14 @@ impl DriveState {
     }
 }
 
-/// Where a drive is between this host's Enable and Disable.
+/// Where a drive is in this host's Enable and Disable: what its silence means.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Phase {
     /// Never enabled since start or the limb's last clear, or reported Reset after this host's Disable.
     Off,
-    /// A Disable was taken at `since_ns` and no Reset has been read since. Its misses count again once the post-Disable
-    /// silence window has passed, so a lost Disable can't leave a running drive uncounted.
+    /// A Disable was taken at `since_ns` while the drive was enabling or enabled, and no Reset has been read since. Its
+    /// misses count again once [`Timing::stop_confirm_ns`] has passed, so a lost Disable can't leave a running drive
+    /// uncounted.
     Disabled {
         /// When the socket took the Disable.
         since_ns: u64,
@@ -550,20 +586,12 @@ impl BusTick {
             Phase::Enabling { since_ns } => sent_ns.saturating_sub(since_ns) >= ENABLE_TO_RUN_NS,
             Phase::Running | Phase::LeftRun => true,
         };
-        match kind {
-            Some(EchoKind::Enable) if matches!(d.phase, Phase::Off | Phase::Disabled { .. }) => {
-                d.phase = Phase::Enabling { since_ns: sent_ns };
-                d.misses = 0;
-            }
-            // A repeated Disable keeps the first one's window, so Disables sent every tick can't hold misses off.
-            Some(EchoKind::Disable) if matches!(d.phase, Phase::Disabled { .. }) => {}
-            Some(EchoKind::Disable) => {
-                // Disabled on purpose: its Reset reply is no surprise, and its silence is no fault until the window has
-                // passed with no Reset read. The miss count stays for the snapshot; the next Enable starts it afresh.
-                d.phase = Phase::Disabled { since_ns: sent_ns };
-            }
-            _ => {}
+        let phase = d.phase.after_send(kind, sent_ns);
+        if matches!(phase, Phase::Enabling { .. }) && !matches!(d.phase, Phase::Enabling { .. }) {
+            // A fresh Enable starts the count afresh; until then it stays for the snapshot.
+            d.misses = 0;
         }
+        d.phase = phase;
         match send.kind {
             SendKind::Disable if d.stop == StopOutcome::NeverSent => d.stop = StopOutcome::Sent,
             SendKind::ReportingOff => d.off = Off::Sent,
