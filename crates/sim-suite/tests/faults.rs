@@ -74,6 +74,30 @@ fn send(
     assert!(commands.push(batch).is_ok());
 }
 
+/// Send Enables to both drives until both report Run; the last snapshot.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: the bus publishes until the deadline"
+)]
+fn enable_both(
+    send: &mut impl FnMut(&Snapshot, [Option<Frame>; 2]),
+    snapshots: &mut rtrb::Consumer<Snapshot>,
+    end: Instant,
+) -> Snapshot {
+    let mut snap = next_snapshot(snapshots, end).unwrap();
+    while !snap.drives().all(|d| {
+        d.observed
+            .is_some_and(|o| o.status.header.mode == Mode::Run)
+    }) {
+        send(
+            &snap,
+            [Some(encode::enable(id(101))), Some(encode::enable(id(102)))],
+        );
+        snap = next_snapshot(snapshots, end).unwrap();
+    }
+    snap
+}
+
 /// Guards: safety - a fault injected into one drive on `vcan` is caught before the next send: within one tick of the
 /// bus thread reading it, that drive's limb is stopping with `DriveFault` and its Disable sent, control's next frame to
 /// it is refused, and the bus's other limb keeps getting commands and answering; the injection is reported as it
@@ -110,17 +134,7 @@ fn a_fault_injected_on_vcan_stops_only_its_limb() {
 
         // Play control: enable both until both run, then hold both, whatever the snapshots say.
         let end = Instant::now() + Duration::from_secs(10);
-        let mut snap = next_snapshot(&mut snapshots, end).unwrap();
-        while !snap.drives().all(|d| {
-            d.observed
-                .is_some_and(|o| o.status.header.mode == Mode::Run)
-        }) {
-            send(
-                &snap,
-                [Some(encode::enable(id(101))), Some(encode::enable(id(102)))],
-            );
-            snap = next_snapshot(&mut snapshots, end).unwrap();
-        }
+        let mut snap = enable_both(&mut send, &mut snapshots, end);
         // Hold until the bus thread has read the fault.
         let mut seen = None;
         let mut stopped = None;
@@ -157,14 +171,20 @@ fn a_fault_injected_on_vcan_stops_only_its_limb() {
             ),
             "{snap:?}"
         );
-        // Control learns of the stop only now, so its next frame to drive 101 is refused; limb 1 runs on.
+        // Control learns of the stop only now, so each of its next frames to drive 101 is refused; limb 1 runs on.
+        let refused_before = snap.counters.refused_frames;
         for _ in 0..5 {
             send(&snap, [Some(hold(101)), Some(hold(102))]);
             snap = next_snapshot(&mut snapshots, end).unwrap();
             assert_eq!(limbs(&snap)[1], (LimbState::Active, None), "{snap:?}");
             assert!(snap.drive(1).is_some_and(|d| d.answered), "{snap:?}");
         }
-        assert!(snap.counters.refused_frames >= 1, "{:?}", snap.counters);
+        assert_eq!(
+            snap.counters.refused_frames - refused_before,
+            5,
+            "{:?}",
+            snap.counters
+        );
         assert_ne!(
             snap.drive(0).map(|d| d.stop),
             Some(can::StopOutcome::NeverSent)

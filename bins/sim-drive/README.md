@@ -13,14 +13,17 @@ something that answers like the real drives before any real drive is enabled.
   puts every parameter back to its default (`canTimeout` 0); active reports go out on a fixed period while on. Every
   delay comes from the seed it's given, so a run replays exactly.
 - **The plant:** a first-order joint (`plant.rs`). In Run, the MIT law `kp (p_t - p) + kd (v_t - v) + t_ff` drives a
-  damper (`PLANT_DAMPING`, a sim value), so a target is reached with time constant `(PLANT_DAMPING + kd) / kp`; torque
+  damper (`plant_damping()`, a sim value), so a target is reached with time constant `(damping + kd) / kp`; torque
   stops at `limit_torque` and speed at `limit_spd`, the caps preflight writes. Out of Run the joint rests where it is.
   No inertia or gravity yet: those come from `config/dynamics.yaml` when a test needs them.
 - **Fault injection** (`Fault`, PLAN item 4): a silent drive, late, lost or doubled frames, fault bits, a mode the host
   didn't ask for, a register that reads out of window (VBUS, the damper), a temperature, a reboot mid-run, writes
   answered but not kept, and lost Disables. `inject` applies one now; `schedule` fires one on a `Trigger` (the drive's
-  nth MIT command, or a time), at most `FAULT_PLAN` at once. Every injection is recorded once (`take_injected`), so a
-  replay shows what was injected. A duplicate ID or a wrong UID needs no fault: build two drives with one ID, or one
+  nth MIT command, or a time: the drive is brought up to it, so timed faults land in time order), at most `FAULT_PLAN`
+  at once. Both refuse a fault the drive can't honour (`FaultRefused`: a `Late` past `MAX_LATE`, a temperature a
+  status can't carry, a register value of the wrong type, `OnMit(0)`). Transport faults apply as each frame falls due,
+  so they reach replies already waiting. Every injection is recorded once (`take_injected`), so a replay shows what was
+  injected. A duplicate ID or a wrong UID needs no fault: build two drives with one ID, or one
   with another UID.
 - **`serve`** (Linux) runs a set of `SimDrive`s on one bus's `vcan` socket until told to stop, handing each injection
   to its caller as it takes effect.

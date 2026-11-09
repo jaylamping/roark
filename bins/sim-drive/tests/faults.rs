@@ -10,7 +10,9 @@ use robstride::{
     CanTimeout, Celsius, Damper, Inbound, Mode, Model, Param, ParamOutcome, ParamValue,
     StatusFault, StatusFaults, Uid, Volts, Write, encode,
 };
-use sim_drive::{FAULT_PLAN, Fault, Injected, SimDrive, Trigger};
+use sim_drive::{
+    FAULT_PLAN, Fault, FaultRefused, Injected, MAX_LATE, MAX_TEMPERATURE_C, SimDrive, Trigger,
+};
 
 /// Drive 7, enabled and in Run by `t + 11 ms`, with every reply so far taken.
 fn running() -> (SimDrive, Instant) {
@@ -26,6 +28,37 @@ fn running() -> (SimDrive, Instant) {
         [Some(Mode::Run)]
     );
     (sim, up)
+}
+
+/// An MIT target of `position` with a stiff enough gain to move the joint.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper; the values are in the RS03's ranges"
+)]
+fn mit_to(position: f64) -> robstride::Frame {
+    let command = robstride::MitCommand {
+        position: robstride::Radians::new(position).unwrap(),
+        velocity: robstride::RadPerSec::new(0.0).unwrap(),
+        kp: robstride::NmPerRad::new(10.0).unwrap(),
+        kd: robstride::NmSecPerRad::new(1.0).unwrap(),
+        torque: robstride::NewtonMeters::new(0.0).unwrap(),
+    };
+    encode::mit(rs03(7), &command).unwrap()
+}
+
+/// The position in the first status.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper; the drive is an RS03 and answers with a status"
+)]
+fn position_of(inbound: &[Inbound]) -> f64 {
+    inbound
+        .iter()
+        .find_map(|i| match i {
+            Inbound::Status(s) => Some(s.feedback(Model::Rs03).unwrap().position.get()),
+            _ => None,
+        })
+        .unwrap()
 }
 
 /// What a status says: its mode, its fault bits and its temperature.
@@ -67,7 +100,7 @@ fn transport_faults_shape_the_replies() {
     let count = |sim: &mut SimDrive, at: Instant| ask(sim, at, neutral(7)).len();
 
     let (mut sim, t) = running();
-    sim.inject(t, Fault::Silent);
+    sim.inject(t, Fault::Silent).unwrap();
     assert_eq!(count(&mut sim, t), 0);
     assert_eq!(
         replies(&mut sim, t + ms(100)).len(),
@@ -76,7 +109,7 @@ fn transport_faults_shape_the_replies() {
     );
 
     let (mut sim, t) = running();
-    sim.inject(t, Fault::Late(ms(3)));
+    sim.inject(t, Fault::Late(ms(3))).unwrap();
     assert_eq!(count(&mut sim, t), 0);
     assert_eq!(
         replies(
@@ -89,26 +122,27 @@ fn transport_faults_shape_the_replies() {
     assert_eq!(replies(&mut sim, t + ms(3)).len(), 1);
 
     let (mut sim, t) = running();
-    sim.inject(t, Fault::Drop(2));
+    sim.inject(t, Fault::Drop(2)).unwrap();
     assert_eq!(
         [count(&mut sim, t), count(&mut sim, t), count(&mut sim, t)],
         [0, 0, 1]
     );
 
     let (mut sim, t) = running();
-    sim.inject(t, Fault::Duplicate(1));
+    sim.inject(t, Fault::Duplicate(1)).unwrap();
     assert_eq!([count(&mut sim, t), count(&mut sim, t)], [2, 1]);
 }
 
 /// Guards: safety - the drive-state faults show in every status from then on: fault bits, a mode the host didn't ask
-/// for (the drive really is in it, so `canTimeout` and the plant follow), and the temperature (PLAN item 4: fault
+/// for (the drive stays in it), and the temperature (PLAN item 4: fault
 /// bits, wrong mode; item 6 Faults, States and Temperature rows).
 #[test]
 fn state_faults_show_in_every_status() {
     let over: StatusFaults = [StatusFault::Overcurrent].into_iter().collect();
     let (mut sim, t) = running();
-    sim.inject(t, Fault::FaultBits(over));
-    sim.inject(t, Fault::Temperature(Celsius::new(61.0).unwrap()));
+    sim.inject(t, Fault::FaultBits(over)).unwrap();
+    sim.inject(t, Fault::Temperature(Celsius::new(61.0).unwrap()))
+        .unwrap();
     assert_eq!(
         status_of(&ask(&mut sim, t, neutral(7))),
         [(Mode::Run, over, 61.0)]
@@ -119,7 +153,7 @@ fn state_faults_show_in_every_status() {
     );
 
     let (mut sim, t) = running();
-    sim.inject(t, Fault::Mode(Mode::Reset));
+    sim.inject(t, Fault::Mode(Mode::Reset)).unwrap();
     assert_eq!(
         status_of(&ask(&mut sim, t, neutral(7))),
         [(Mode::Reset, StatusFaults::default(), 25.0)]
@@ -141,18 +175,20 @@ fn state_faults_show_in_every_status() {
 fn register_faults_are_what_preflight_reads_back() {
     let (mut sim, t) = running();
     let low = ParamValue::Volts(Volts::new(17.5).unwrap());
-    sim.inject(t, Fault::Param(Param::Vbus, low));
+    sim.inject(t, Fault::Param(Param::Vbus, low)).unwrap();
     sim.inject(
         t,
         Fault::Param(Param::Damper, ParamValue::Damper(Damper::ProtectionOff)),
-    );
+    )
+    .unwrap();
     assert_eq!(read(&mut sim, t, Param::Vbus), value(Param::Vbus, low));
     assert_eq!(
         read(&mut sim, t, Param::Damper),
         value(Param::Damper, ParamValue::Damper(Damper::ProtectionOff))
     );
 
-    sim.inject(t, Fault::IgnoreWrites(Param::CanTimeout));
+    sim.inject(t, Fault::IgnoreWrites(Param::CanTimeout))
+        .unwrap();
     let answered = ask(
         &mut sim,
         t,
@@ -174,7 +210,7 @@ fn register_faults_are_what_preflight_reads_back() {
         t,
         encode::param_write(&Write::can_timeout(rs03(7))),
     );
-    sim.inject(t, Fault::Reboot);
+    sim.inject(t, Fault::Reboot).unwrap();
     assert_eq!(
         ask(&mut sim, t, neutral(7))
             .iter()
@@ -188,12 +224,14 @@ fn register_faults_are_what_preflight_reads_back() {
     );
 }
 
-/// Guards: safety - a Disable the drive loses changes nothing: no reply, and the drive stays in Run, for exactly the
-/// count injected; the next Disable works (PLAN item 2 Stop: a stop records sent, confirmed or unconfirmed per drive).
+/// Guards: safety - a Disable the drive loses changes nothing: no reply, the drive stays in Run, and `canTimeout` keeps
+/// counting from the last frame it did take, so the drive's own timeout still backs up a stop whose Disables are lost;
+/// for exactly the count injected, then the next Disable works (PLAN item 2 Stop: a stop records sent, confirmed or
+/// unconfirmed per drive; item 6 drive layer).
 #[test]
 fn a_lost_disable_leaves_the_drive_running() {
     let (mut sim, t) = running();
-    sim.inject(t, Fault::IgnoreDisables(1));
+    sim.inject(t, Fault::IgnoreDisables(1)).unwrap();
     assert_eq!(ask(&mut sim, t, encode::disable(id(7))), []);
     assert_eq!(
         ask(&mut sim, t, neutral(7))
@@ -208,6 +246,168 @@ fn a_lost_disable_leaves_the_drive_running() {
             .map(mode_of)
             .collect::<Vec<_>>(),
         [Some(Mode::Reset)]
+    );
+
+    // canTimeout 50 ms from the last command at `t`; lost Disables at 20 and 40 ms don't restart it.
+    let (mut sim, t) = running();
+    let _ = ask(
+        &mut sim,
+        t,
+        encode::param_write(&Write::can_timeout(rs03(7))),
+    );
+    sim.inject(t, Fault::IgnoreDisables(2)).unwrap();
+    assert_eq!(ask(&mut sim, t + ms(20), encode::disable(id(7))), []);
+    assert_eq!(ask(&mut sim, t + ms(40), encode::disable(id(7))), []);
+    assert_eq!(
+        status_of(&ask(&mut sim, t + ms(51), neutral(7))),
+        [(Mode::Reset, StatusFaults::default(), 25.0)],
+        "timed out 50 ms after the last frame it took"
+    );
+}
+
+/// Guards: protocol - an injected fault reaches what the drive hasn't sent yet: a Silent or a Mode(Reset) injected
+/// between an Enable and its Run reply stops that reply, fault bits injected then show in it, and a Late delays a
+/// reply already waiting (PLAN item 4: the injected fault is what the bus sees from then on).
+#[test]
+fn faults_reach_replies_not_yet_sent() {
+    let over: StatusFaults = [StatusFault::Overcurrent].into_iter().collect();
+    // Seed 3's enable takes some milliseconds, so nothing is due at the Enable itself.
+    let enabling = || {
+        let mut sim = SimDrive::new(rs03(7), Uid([7; 8]), 3);
+        let t = Instant::now();
+        assert_eq!(ask(&mut sim, t, encode::enable(id(7))), [], "a delay");
+        (sim, t)
+    };
+    for (fault, expected) in [
+        (Fault::Silent, vec![]),
+        (Fault::Mode(Mode::Reset), vec![]),
+        (Fault::FaultBits(over), vec![(Mode::Run, over, 25.0)]),
+    ] {
+        let (mut sim, t) = enabling();
+        sim.inject(t, fault).unwrap();
+        assert_eq!(
+            status_of(&replies(&mut sim, t + ms(20))),
+            expected,
+            "{fault:?}"
+        );
+    }
+
+    // A reply queued before the Late, not yet sent, goes out late too.
+    let (mut sim, t) = running();
+    sim.receive(t, host(neutral(7)));
+    sim.inject(t, Fault::Late(ms(5))).unwrap();
+    assert_eq!(replies(&mut sim, t + ms(4)).len(), 0);
+    assert_eq!(replies(&mut sim, t + ms(5)).len(), 1);
+}
+
+/// Guards: protocol - timed faults land at their own times, in time order, however late the drive is stepped: a Mode
+/// fault holds the joint where it was then, and two faults due at once apply oldest first, as their record shows
+/// (logging.md section 3: the record matches what was applied).
+#[test]
+fn timed_faults_land_in_time_order() {
+    let (mut sim, t) = running();
+    assert_eq!(sim.schedule(Trigger::At(t + ms(20)), Fault::Reboot), Ok(()));
+    assert_eq!(sim.schedule(Trigger::At(t + ms(10)), Fault::Silent), Ok(()));
+    // Stepped once, past both: silent at 10 ms, then the reboot at 20 ms clears it.
+    assert_eq!(
+        ask(&mut sim, t + ms(30), neutral(7))
+            .iter()
+            .map(mode_of)
+            .collect::<Vec<_>>(),
+        [Some(Mode::Reset)]
+    );
+    let record: Vec<_> = std::iter::from_fn(|| sim.take_injected())
+        .map(|i| (i.at, i.fault))
+        .collect();
+    assert_eq!(
+        record,
+        [(t + ms(10), Fault::Silent), (t + ms(20), Fault::Reboot)]
+    );
+
+    // The joint moving toward a target stops when the drive drops to Reset at 10 ms, not when it is next stepped.
+    let target = mit_to(1.0);
+    let (mut late, t) = running();
+    let (mut on_time, _) = running();
+    for sim in [&mut late, &mut on_time] {
+        let _ = ask(sim, t, target);
+    }
+    assert_eq!(
+        late.schedule(Trigger::At(t + ms(10)), Fault::Mode(Mode::Reset)),
+        Ok(())
+    );
+    on_time
+        .inject(t + ms(10), Fault::Mode(Mode::Reset))
+        .unwrap();
+    let position = |sim: &mut SimDrive| position_of(&ask(sim, t + ms(200), neutral(7)));
+    let held = position(&mut on_time);
+    assert!(held > 0.01, "it moved first: {held}");
+    assert!((position(&mut late) - held).abs() < 1e-3, "{held}");
+}
+
+/// Guards: protocol - a fault the drive can't honour is refused and not recorded: a `Late` past `MAX_LATE`, a
+/// temperature a status can't carry, a register value of the wrong type, `OnMit(0)`; and writes ignored for any number
+/// of registers, or one register twice, all hold (logging.md section 3: what is recorded is what took effect).
+#[test]
+fn faults_the_drive_cant_honour_are_refused() {
+    let (mut sim, t) = running();
+    let rows = [
+        (
+            Fault::Late(MAX_LATE + Duration::from_micros(1)),
+            FaultRefused::TooLate,
+        ),
+        (
+            Fault::Temperature(Celsius::new(-0.1).unwrap()),
+            FaultRefused::Temperature,
+        ),
+        (
+            Fault::Temperature(Celsius::new(MAX_TEMPERATURE_C + 0.1).unwrap()),
+            FaultRefused::Temperature,
+        ),
+        (
+            Fault::Param(Param::Vbus, ParamValue::Damper(Damper::ProtectionOff)),
+            FaultRefused::WrongType(Param::Vbus),
+        ),
+    ];
+    for (fault, refused) in rows {
+        assert_eq!(sim.inject(t, fault), Err(refused), "{fault:?}");
+        assert_eq!(
+            sim.schedule(Trigger::At(t), fault),
+            Err(refused),
+            "{fault:?}"
+        );
+    }
+    assert_eq!(
+        sim.schedule(Trigger::OnMit(0), Fault::Silent),
+        Err(FaultRefused::OnMitZero)
+    );
+    assert_eq!(sim.inject(t, Fault::Late(MAX_LATE)), Ok(()), "at the limit");
+    assert_eq!(
+        sim.take_injected().map(|i| i.fault),
+        Some(Fault::Late(MAX_LATE))
+    );
+    assert_eq!(sim.take_injected(), None, "nothing refused was recorded");
+
+    let (mut sim, t) = running();
+    let params = [
+        Param::LimitTorque,
+        Param::LimitSpd,
+        Param::LimitCur,
+        Param::EpScanTime,
+        Param::LimitTorque,
+        Param::CanTimeout,
+    ];
+    for param in params {
+        sim.inject(t, Fault::IgnoreWrites(param)).unwrap();
+    }
+    let _ = ask(
+        &mut sim,
+        t,
+        encode::param_write(&Write::can_timeout(rs03(7))),
+    );
+    assert_eq!(
+        read(&mut sim, t, Param::CanTimeout),
+        value(Param::CanTimeout, ParamValue::CanTimeout(CanTimeout::OFF)),
+        "the sixth ignored register holds too"
     );
 }
 
@@ -262,14 +462,23 @@ fn scheduled_faults_fire_on_their_trigger_and_are_recorded() {
     );
     assert_eq!(sim.take_injected(), None);
 
-    // Injected now: recorded too.
-    sim.inject(t + ms(30), Fault::Reboot);
+    // Injected now: recorded too. The plan outlives the reboot.
+    assert_eq!(sim.schedule(Trigger::At(t + ms(40)), Fault::Silent), Ok(()));
+    sim.inject(t + ms(30), Fault::Reboot).unwrap();
     assert_eq!(sim.take_injected().map(|i| i.fault), Some(Fault::Reboot));
+    assert_eq!(
+        faults_at(&mut sim, t + ms(39)),
+        Some(StatusFaults::default())
+    );
+    assert_eq!(faults_at(&mut sim, t + ms(40)), None, "silent from 40 ms");
 
     // A bounded plan.
     let (mut sim, _) = running();
     for n in 0..u32::try_from(FAULT_PLAN).unwrap_or(u32::MAX) {
         assert_eq!(sim.schedule(Trigger::OnMit(n + 1), Fault::Drop(1)), Ok(()));
     }
-    assert!(sim.schedule(Trigger::OnMit(99), Fault::Drop(1)).is_err());
+    assert_eq!(
+        sim.schedule(Trigger::OnMit(99), Fault::Drop(1)),
+        Err(FaultRefused::PlanFull)
+    );
 }

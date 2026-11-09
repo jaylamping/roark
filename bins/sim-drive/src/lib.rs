@@ -4,8 +4,8 @@ mod fault;
 mod plant;
 mod sim;
 
-pub use fault::{FAULT_PLAN, Fault, Injected, PlanFull, Trigger};
-pub use plant::PLANT_DAMPING;
+pub use fault::{FAULT_PLAN, Fault, FaultRefused, Injected, MAX_LATE, MAX_TEMPERATURE_C, Trigger};
+pub use plant::plant_damping;
 pub use sim::SimDrive;
 
 #[cfg(target_os = "linux")]

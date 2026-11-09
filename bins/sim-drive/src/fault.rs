@@ -12,17 +12,21 @@ use robstride::{Celsius, DeviceId, Mode, Param, ParamValue, StatusFaults};
 
 /// Faults one drive holds scheduled at once.
 pub const FAULT_PLAN: usize = 8;
+/// The longest [`Fault::Late`]: twice the drives' 50 ms timeout, past which a reply is as good as lost to the host. The
+/// outbox holds that long of replies at the 250 Hz tick with reporting on.
+pub const MAX_LATE: Duration = Duration::from_millis(100);
+/// The highest temperature a type-2 status can carry, °C (§4.1.2: tenths of a degree in 16 bits).
+pub const MAX_TEMPERATURE_C: f64 = 6553.5;
 /// Injections a drive keeps until taken; past this the oldest stays and the newest is counted lost.
 pub(crate) const INJECTED_LOG: usize = 16;
-/// Registers one drive can be told to ignore writes to.
-pub(crate) const IGNORED_WRITES: usize = 4;
 
 /// Something a simulated drive does wrong.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Fault {
     /// Answers nothing from now on; it still acts on what it receives (until a reboot).
     Silent,
-    /// Every frame it sends from now on goes out this much later.
+    /// Every frame it sends from now on goes out this much later, up to [`MAX_LATE`]; frames already waiting to go are
+    /// delayed too.
     Late(Duration),
     /// The next this many frames it sends are lost.
     Drop(u32),
@@ -34,16 +38,17 @@ pub enum Fault {
     /// The drive is in this mode now, by itself (a drop to Reset while running, say): its plant and `canTimeout`
     /// follow.
     Mode(Mode),
-    /// The register reads this value from now on (VBUS out of its window, the damper off).
+    /// The register reads this value from now on (VBUS out of its window, the damper off). The value must be of the
+    /// register's type.
     Param(Param, ParamValue),
-    /// Every status and report from now on gives this temperature.
+    /// Every status and report from now on gives this temperature, 0 to [`MAX_TEMPERATURE_C`].
     Temperature(Celsius),
     /// Power off and on now ([`crate::SimDrive::power_cycle`]): every injected fault is cleared with the rest of
     /// the drive's state; the plan and the record stay.
     Reboot,
     /// Writes to this register are answered but not kept, so a read-back shows the old value.
     IgnoreWrites(Param),
-    /// The next this many Disables are lost: no reply, no change.
+    /// The next this many Disables are lost: no reply, no change, and not counted as received by `canTimeout`.
     IgnoreDisables(u32),
 }
 
@@ -51,9 +56,10 @@ pub enum Fault {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Trigger {
     /// As the drive takes its nth MIT command after the fault is scheduled, before answering it, so that command's
-    /// reply already shows the fault. Counted from 1.
+    /// reply already shows the fault. Counted from 1: 0 is refused.
     OnMit(u32),
-    /// At this time, or the first moment the drive is stepped after it.
+    /// At this time: the drive is brought up to it, the fault applied, then the drive goes on, however late it is
+    /// stepped. Several due at once fire in time order.
     At(Instant),
 }
 
@@ -68,13 +74,52 @@ pub struct Injected {
     pub fault: Fault,
 }
 
-/// The plan is full: nothing more can be scheduled until a fault fires.
+/// Why a fault isn't injected or scheduled. Nothing is recorded then.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
-#[error("the fault plan holds {FAULT_PLAN} faults already")]
-pub struct PlanFull;
+pub enum FaultRefused {
+    /// The plan is full: nothing more can be scheduled until a fault fires.
+    #[error("the fault plan holds {FAULT_PLAN} faults already")]
+    PlanFull,
+    /// `OnMit(0)`: MIT commands are counted from 1.
+    #[error("OnMit counts from 1")]
+    OnMitZero,
+    /// A `Late` past [`MAX_LATE`].
+    #[error("Late is at most {MAX_LATE:?}")]
+    TooLate,
+    /// A `Temperature` a status can't carry.
+    #[error("a status carries 0 to {MAX_TEMPERATURE_C} °C")]
+    Temperature,
+    /// A `Param` whose value isn't of the register's type.
+    #[error("{0:?} doesn't take that value")]
+    WrongType(Param),
+}
+
+impl Fault {
+    /// Whether the drive can honour it, but for a `Param`'s type, which the drive checks: what `inject` and `schedule`
+    /// check.
+    pub(crate) fn check(self) -> Result<(), FaultRefused> {
+        match self {
+            Self::Late(by) if by > MAX_LATE => Err(FaultRefused::TooLate),
+            Self::Temperature(c) if !(0.0..=MAX_TEMPERATURE_C).contains(&c.get()) => {
+                Err(FaultRefused::Temperature)
+            }
+            Self::Silent
+            | Self::Late(_)
+            | Self::Drop(_)
+            | Self::Duplicate(_)
+            | Self::FaultBits(_)
+            | Self::Mode(_)
+            | Self::Param(..)
+            | Self::Temperature(_)
+            | Self::Reboot
+            | Self::IgnoreWrites(_)
+            | Self::IgnoreDisables(_) => Ok(()),
+        }
+    }
+}
 
 /// The faults in effect on a drive now.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) struct Active {
     pub(crate) silent: bool,
     pub(crate) late: Duration,
@@ -82,13 +127,44 @@ pub(crate) struct Active {
     pub(crate) duplicate: u32,
     pub(crate) faults: StatusFaults,
     pub(crate) temperature: Option<Celsius>,
-    pub(crate) ignored_writes: [Option<Param>; IGNORED_WRITES],
+    /// One flag per register, in `Param::ALL` order: a set, so injecting one twice changes nothing.
+    pub(crate) ignored_writes: [bool; Param::ALL.len()],
     pub(crate) ignored_disables: u32,
+}
+
+impl Default for Active {
+    fn default() -> Self {
+        Self {
+            silent: false,
+            late: Duration::ZERO,
+            drop: 0,
+            duplicate: 0,
+            faults: StatusFaults::default(),
+            temperature: None,
+            ignored_writes: [false; Param::ALL.len()],
+            ignored_disables: 0,
+        }
+    }
 }
 
 impl Active {
     pub(crate) fn ignores_write(&self, param: Param) -> bool {
-        self.ignored_writes.contains(&Some(param))
+        Param::ALL
+            .iter()
+            .position(|p| *p == param)
+            .and_then(|i| self.ignored_writes.get(i))
+            .copied()
+            .unwrap_or(false)
+    }
+
+    pub(crate) fn ignore_writes(&mut self, param: Param) {
+        if let Some(flag) = Param::ALL
+            .iter()
+            .position(|p| *p == param)
+            .and_then(|i| self.ignored_writes.get_mut(i))
+        {
+            *flag = true;
+        }
     }
 }
 
@@ -110,29 +186,37 @@ impl Plan {
         lost: 0,
     };
 
-    pub(crate) fn schedule(&mut self, trigger: Trigger, fault: Fault) -> Result<(), PlanFull> {
+    pub(crate) fn schedule(&mut self, trigger: Trigger, fault: Fault) -> Result<(), FaultRefused> {
+        fault.check()?;
+        if trigger == Trigger::OnMit(0) {
+            return Err(FaultRefused::OnMitZero);
+        }
         let free = self
             .faults
             .iter_mut()
             .find(|f| f.is_none())
-            .ok_or(PlanFull)?;
+            .ok_or(FaultRefused::PlanFull)?;
         *free = Some((trigger, self.mits, fault));
         Ok(())
     }
 
-    /// The next fault due: by `now` for `At`, or on the current MIT count for `OnMit`. Taken out of the plan.
+    /// The next fault due by `now`, taken out of the plan: the earliest `At` at or before `now`, then any `OnMit`
+    /// whose count is reached (it fires at `now`), each in the order scheduled when tied.
     pub(crate) fn due(&mut self, now: Instant) -> Option<(Instant, Fault)> {
         let mits = self.mits;
-        let slot = self.faults.iter_mut().find(|f| match f {
-            Some((Trigger::At(at), _, _)) => *at <= now,
-            Some((Trigger::OnMit(n), from, _)) => mits.saturating_sub(*from) >= *n,
-            None => false,
-        })?;
-        let (trigger, _, fault) = slot.take()?;
-        let at = match trigger {
-            Trigger::At(at) => at,
-            Trigger::OnMit(_) => now,
-        };
+        let (i, at) = self
+            .faults
+            .iter()
+            .enumerate()
+            .filter_map(|(i, f)| match f {
+                Some((Trigger::At(at), _, _)) => (*at <= now).then_some((i, *at)),
+                Some((Trigger::OnMit(n), from, _)) => {
+                    (mits.saturating_sub(*from) >= *n).then_some((i, now))
+                }
+                None => None,
+            })
+            .min_by_key(|(i, at)| (*at, *i))?;
+        let (_, _, fault) = self.faults.get_mut(i)?.take()?;
         Some((at, fault))
     }
 

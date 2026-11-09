@@ -111,10 +111,8 @@ pub fn serve(
             while let Some(frame) = sim.pop_due(now) {
                 send(&socket, frame).map_err(io)?;
             }
-            while let Some(fault) = sim.take_injected() {
-                injected(fault);
-            }
         }
+        hand_over(drives, injected);
         let next = drives.iter().filter_map(SimDrive::next_event).min();
         let wait = next.map_or(MAX_WAIT, |at| at.saturating_duration_since(now));
         socket
@@ -136,7 +134,10 @@ pub fn serve(
             Err(e) if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) => {}
             Err(e) => return Err(io(e)),
         }
+        // A fault fired by a frame just received is handed over now, even if `stop` is set before the next pass.
+        hand_over(drives, injected);
     }
+    hand_over(drives, injected);
     Ok(())
 }
 
@@ -148,5 +149,14 @@ fn send(socket: &CanSocket, frame: DriveFrame) -> std::io::Result<()> {
     match socket.write_frame(&data) {
         Err(e) if e.raw_os_error() == Some(ENOBUFS) || e.kind() == ErrorKind::WouldBlock => Ok(()),
         other => other,
+    }
+}
+
+/// Every injection the drives have recorded, to `injected`, oldest first per drive.
+fn hand_over(drives: &mut [SimDrive], injected: &mut dyn FnMut(Injected)) {
+    for sim in drives.iter_mut() {
+        while let Some(fault) = sim.take_injected() {
+            injected(fault);
+        }
     }
 }
