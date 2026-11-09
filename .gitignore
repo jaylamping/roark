@@ -14,3 +14,6 @@ cad/**/*.[sS][tT][eE]
 # Windows download markers left by copies from WSL or a browser
 *Zone.Identifier
 __pycache__/
+# The CAD writer lock and its temp files (tools/cad/cad_lock.py)
+cad/.cad-writer.lock
+cad/.cad-writer.lock.*
