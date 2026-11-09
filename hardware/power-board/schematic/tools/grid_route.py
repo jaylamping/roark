@@ -10,7 +10,7 @@ sequential maze router:
   - a cell is usable when its distance to other nets' copper keeps the rules: track half-width + 0.2 mm, or + 0.6 mm to
     54 V copper on the outer layers (IPC-2221B), + 0.2 mm to holes, + 0.4 mm to the board edge. A via (0.6/0.3) needs the
     same on all four layers;
-  - classes: signals 0.2 mm, GND and 54 V nets 0.25 mm (sense and divider taps off 0.5 mm-pitch pins; the current is in the pours),
+  - classes: signals 0.2 mm, low-voltage supply rails (RAILS) 0.4 mm, GND and 54 V nets 0.25 mm (sense and divider taps off 0.5 mm-pitch pins; the current is in the pours),
     12 V distribution 0.6 mm (W12).
 Output: routes.json (tracks as polylines per layer with width, vias) for tools/route_import.py, plus a list of what failed.
 Usage: python tools/grid_route.py <copper.json> <routes.json>"""
@@ -25,7 +25,7 @@ NETS=sorted({it['net'] for it in D['items'] if it['net']}|{h['net'] for h in D['
 NID={n:i+1 for i,n in enumerate(NETS)}
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import domains   # the net classes route_checks.py tests
 import stack   # the 6-layer stack: layer index = position in stack.NAMES
-P12={'/+12V_RAW','/+12V','/+12V_JET','/+12V_PI','/SPARE_SW','/SPARE_ON','/SP_SW1'}
+P12={'/+12V_RAW','/+12V','/+12V_JET','/+12V_PI','/+12V_FAN','/SPARE_SW','/SPARE_ON','/SP_SW1'}
 HV=np.zeros(len(NETS)+1,bool); ES=np.zeros(len(NETS)+1,bool)
 for n,i in NID.items(): HV[i]=domains.is_hv(n); ES[i]=domains.is_estop(n)
 # voltage domains (tools/domains.py): 0 = ground-referenced; copper riding on one 54 V node shares a domain; a 54 V net
@@ -36,7 +36,7 @@ for n,i in NID.items(): HV[i]=domains.is_hv(n); ES[i]=domains.is_estop(n)
 DOMN={None:0}; DOM=np.zeros(len(NETS)+1,np.int32)
 for n,i in NID.items():
     k=domains.dom(n) or (n if HV[i] else None); DOM[i]=DOMN.setdefault(k,len(DOMN))
-RAILS={'/+3V3_PI','/VCTL','/+5V','/+3V3'}   # low-voltage supply rails: 0.4 mm trunks
+RAILS={'/+3V3_PI','/VCTL'}   # low-voltage supply rails: 0.4 mm trunks
 def width(n): return W12 if n in P12 else 0.4 if n in RAILS else 0.25 if (n=='GND' or HV[NID[n]]) else 0.2   # 54 V taps carry no current: the pours do
 def g(x,y): return ((x-X0)/RES,(y-Y0)/RES)
 # ---- rasterize
