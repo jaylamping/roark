@@ -302,28 +302,30 @@ def test_hook_install_keeps_other_hooks(repo: Path) -> None:
     assert install_hooks.is_stock_lfs_hook("pre-push", '#!/bin/sh\ngit lfs pre-push "$@"\n./secret-scan.sh\n') is False
 
 
-@pytest.mark.skipif(shutil.which("sh") is None, reason="needs a POSIX shell")
+@pytest.mark.skipif(shutil.which("sh") is None, reason="needs a POSIX shell (Git for Windows ships one)")
 def test_installed_pre_push_runs_checks_then_local_then_lfs(repo: Path, tmp_path_factory: pytest.TempPathFactory) -> None:
     """Guards: bug - a chained local hook skipped the Git LFS upload, and LFS uploaded before a check refused the push (CAD process review, 2026-11-08; PR 16 review)."""
     install_hooks.install(repo)
     hooks = repo / ".git" / "hooks"
     bin_dir = tmp_path_factory.mktemp("bin")
     log = bin_dir / "log"
-    (bin_dir / "git-lfs").write_text(f'#!/bin/sh\necho "lfs $* $(cat)" >> {log}\n')
+    # Quoted forward-slash paths, so Git for Windows' sh reads them as well as a Linux sh does.
+    sh_log, sh_bin = log.as_posix(), bin_dir.as_posix()
+    (bin_dir / "git-lfs").write_text(f'#!/bin/sh\necho "lfs $* $(cat)" >> "{sh_log}"\n')
     (bin_dir / "git-lfs").chmod(0o755)
-    real_git = shutil.which("git")
+    real_git = Path(shutil.which("git")).as_posix()
     (bin_dir / "git").write_text(
-        f'#!/bin/sh\nif [ "$1" = lfs ]; then shift; exec {bin_dir}/git-lfs "$@"; fi\nexec {real_git} "$@"\n'
+        f'#!/bin/sh\nif [ "$1" = lfs ]; then shift; exec "{sh_bin}/git-lfs" "$@"; fi\nexec "{real_git}" "$@"\n'
     )
     (bin_dir / "git").chmod(0o755)
-    (hooks / "pre-push.local").write_text(f'#!/bin/sh\necho "local $(cat)" >> {log}\nexit $LOCAL_EXIT\n')
+    (hooks / "pre-push.local").write_text(f'#!/bin/sh\necho "local $(cat)" >> "{sh_log}"\nexit $LOCAL_EXIT\n')
     (hooks / "pre-push.local").chmod(0o755)
     shutil.copytree(Path(__file__).resolve().parents[1], repo / "tools", ignore=shutil.ignore_patterns("__pycache__"))
     tip = git(repo, "rev-parse", "HEAD").strip()
     stdin = f"refs/heads/main {tip} refs/heads/main {gitlfs.ZERO}\n"
 
     def push(local_exit: int) -> int:
-        env = dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}", LOCAL_EXIT=str(local_exit))
+        env = dict(os.environ, PATH=f"{bin_dir}{os.pathsep}{os.environ['PATH']}", LOCAL_EXIT=str(local_exit))
         env.pop("CAD_BUDGET_OK", None)
         return subprocess.run(
             ["sh", str(hooks / "pre-push"), "origin", "url"], cwd=repo, input=stdin, text=True, env=env, check=False
@@ -339,7 +341,7 @@ def test_installed_pre_push_runs_checks_then_local_then_lfs(repo: Path, tmp_path
 def test_worktree_without_the_cad_tools_still_commits_and_pushes(
     tmp_path: Path,
 ) -> None:
-    """Guards: bug - hooks installed from one worktree failed every commit in worktrees whose branch had no tools/cad/hooks (Joey-PC, 2026-11-09)."""
+    """Guards: bug - hooks installed from one worktree failed every commit in worktrees whose branch had no tools/cad/hooks (Joey-PC, 2026-11-09); install now refuses in a linked worktree."""
     main, remote, wt = tmp_path / "main", tmp_path / "remote", tmp_path / "board"
     main.mkdir()
     remote.mkdir()
@@ -350,6 +352,8 @@ def test_worktree_without_the_cad_tools_still_commits_and_pushes(
     git(remote, "init", "-q", "--bare")
     git(main, "remote", "add", "up", str(remote))
     git(main, "worktree", "add", "-q", "-b", "board", str(wt))
+    with pytest.raises(SystemExit, match="main checkout"):
+        install_hooks.install(wt)  # one session must not rewrite every worktree's hooks
     (wt / "board.txt").write_text("net list\n")
     git(wt, "add", "-A")
     env = dict(

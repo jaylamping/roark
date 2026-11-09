@@ -9,7 +9,8 @@ pre-commit: tools/cad/hooks/pre_commit.py (staged sizes; layout + writer lock wh
 pre-push:   tools/cad/hooks/pre_push.py (pushed sizes, LFS budget), then <hook>.local if present,
             then `git lfs pre-push` (fails if Git LFS is missing), so nothing is uploaded for a
             push a check refuses.
-Does not set core.hooksPath, so every worktree of the clone shares these hooks; a worktree whose
+Run it from the main checkout: it refuses in a linked worktree, since the hooks it writes are
+shared by every worktree of the clone. Does not set core.hooksPath; a worktree whose
 checkout has no tools/cad/hooks skips the CAD checks with a warning (pre-push still runs Git LFS).
 Git LFS's own stock pre-push hook (only the git-lfs presence check and `git lfs pre-push "$@"`)
 is replaced, since ours runs it; a copy is kept as pre-push.lfs-orig. Any other existing hook,
@@ -100,7 +101,21 @@ def hooks_dir(root: Path = REPO_ROOT) -> Path:
     return p if p.is_absolute() else root / p
 
 
+def linked_worktree(root: Path = REPO_ROOT) -> bool:
+    """True in a `git worktree add` checkout: its git dir is not the clone's common dir."""
+    paths = []
+    for flag in ("--git-dir", "--git-common-dir"):
+        p = Path(git("rev-parse", flag, root=root).decode().strip())
+        paths.append((p if p.is_absolute() else root / p).resolve())
+    return paths[0] != paths[1]
+
+
 def install(root: Path = REPO_ROOT) -> list[str]:
+    if linked_worktree(root):
+        raise SystemExit(
+            "cad hooks: this is a linked worktree, and the hooks are shared by every worktree of the clone; "
+            "run install_hooks.py from the main checkout"
+        )
     d = hooks_dir(root)
     d.mkdir(parents=True, exist_ok=True)
     done = []
