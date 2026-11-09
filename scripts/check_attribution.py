@@ -29,9 +29,14 @@ PATTERNS = [
 # Agent tools commit as these identities unless told otherwise.
 BAD_IDENTITY = re.compile(r"noreply@anthropic\.com|@users\.noreply\.anthropic|noreply@openai\.com", re.I)
 
-HOOK = """#!/bin/sh
-# Installed by scripts/check_attribution.py install.
-exec python3 "$(git rev-parse --show-toplevel)/scripts/check_attribution.py" commit-msg "$1"
+HOOK_MARK = "# Installed by scripts/check_attribution.py install."
+
+# A branch from before this script has no copy of it; the hook skips there and CI checks the push.
+HOOK = f"""#!/bin/sh
+{HOOK_MARK}
+CHECK="$(git rev-parse --show-toplevel)/scripts/check_attribution.py"
+[ -f "$CHECK" ] || exit 0
+exec python3 "$CHECK" commit-msg "$1"
 """
 
 
@@ -74,7 +79,7 @@ def install() -> None:
         hook = ROOT / hook
     hook.mkdir(parents=True, exist_ok=True)
     target = hook / "commit-msg"
-    if target.exists() and target.read_text() != HOOK:
+    if target.exists() and HOOK_MARK not in target.read_text():
         sys.exit(f"{target} exists and is not ours; merge it by hand")
     target.write_text(HOOK)
     target.chmod(0o755)
