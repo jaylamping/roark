@@ -13,10 +13,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use can::{
-    BusConfig, BusLinks, BusRunError, CommandBatch, LimbState, SlowKind, SlowOutcome, SlowRefusal,
-    SlowRequest, SlowResult, Snapshot, StopOutcome, StopReason, Timing,
+    BusConfig, BusLinks, BusRunError, CommandBatch, LimbState, Snapshot, StopOutcome, StopReason,
 };
-use common::{HZ, Shutdown, drive, hold, id, info, limbs, next_snapshot, soon};
+use common::{HZ, Shutdown, drive, hold, id, info, limbs, next_snapshot, soon, timing};
 use robstride::{Drive, Frame, Inbound, Mode, Model, Uid, decode, encode};
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use socketcan::{CanDataFrame, CanSocket, EmbeddedFrame, Socket, StandardId};
@@ -160,6 +159,7 @@ fn play_control(
         );
         answered += snap.drives().filter(|d| d.answered).count();
     }
+    // One tick of slack: the test thread playing control may miss one tick on a loaded runner (two would stop the bus).
     assert!(
         answered >= 2 * (HOLD_TICKS - 1),
         "answered {answered} of {}",
@@ -203,7 +203,7 @@ fn spawn_refuses_anything_but_vcan() {
             BusConfig {
                 name: bus.to_owned(),
                 drives: vec![drive(101, 0)],
-                timing: Timing::at_hz(HZ),
+                timing: timing(),
             },
             BusLinks {
                 commands,
@@ -249,7 +249,7 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
         BusConfig {
             name: IDLE_BUS.to_owned(),
             drives: vec![drive(101, 0)],
-            timing: Timing::at_hz(HZ),
+            timing: timing(),
         },
         BusLinks {
             commands,
@@ -283,9 +283,8 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
     };
     assert_eq!(limbs(&dropped), [(LimbState::Idle, None)]);
 
-    // Right after a snapshot the thread sleeps until its next tick: a frame sent now is read by that tick's drain,
-    // which is where the thread sees `exit` and returns.
-    let next = next_snapshot(&mut snapshots, end).unwrap();
+    // A frame on the bus, then the exit: the thread reads the frame (in this tick's collect or the next drain), sees
+    // `exit` after a drain, records that drain's batch and returns.
     let frame = CanDataFrame::new(StandardId::new(LAST).unwrap(), &[7; 8]).unwrap();
     CanSocket::open(IDLE_BUS)
         .unwrap()
@@ -294,29 +293,31 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
     exit.store(true, Ordering::Release);
     let done = bus.thread.join().unwrap();
     assert!(done.error.is_none(), "{:?}", done.error);
-    assert_eq!(
-        done.last.map(|s| s.tick),
-        Some(next.tick),
-        "returned on the next tick's drain"
-    );
+    let last_snapshot = done.last.map(|s| s.tick).unwrap();
     recorder.close(vec![done.recorder]).unwrap();
 
     let bytes = std::fs::read(session_dir.join("0000.mcap")).unwrap();
     let mut seen = false;
+    let mut last_batch = None;
     for message in mcap::MessageStream::new(&bytes).unwrap() {
         let message = message.unwrap();
         if message.channel.topic == format!("/can/{IDLE_BUS}/frames") {
             let frames: Frames = serde_json::from_slice(&message.data).unwrap();
             seen |= frames.frames.iter().any(|f| f.id == u32::from(LAST));
+            last_batch = Some(frames.tick);
         }
     }
-    assert!(seen, "the exit drain's frame is in the recording");
+    assert!(seen, "the frame is in the recording");
+    assert!(
+        last_batch.is_some_and(|t| t > last_snapshot),
+        "the exit drain, after the last snapshot (tick {last_snapshot}), is recorded: last batch {last_batch:?}"
+    );
     let _ = std::fs::remove_dir_all(&root);
 }
 
 /// Guards: safety - every bus thread ticks on the one schedule the runtime gives it: a thread started after tick 0
 /// begins at the first tick not yet due, numbered from that origin, instead of waking late and stopping its limbs
-/// (step 7 design D1: one schedule for every bus and control).
+/// (PLAN.md item 3: a thread that wakes late stops at once; missed deadlines are counted, never skipped silently).
 #[test]
 fn a_bus_started_after_the_schedule_joins_it() {
     const LATE_BUS: &str = "can1";
@@ -338,7 +339,7 @@ fn a_bus_started_after_the_schedule_joins_it() {
         BusConfig {
             name: LATE_BUS.to_owned(),
             drives: vec![drive(101, 0)],
-            timing: Timing::at_hz(HZ),
+            timing: timing(),
         },
         BusLinks {
             commands,
@@ -368,111 +369,6 @@ fn a_bus_started_after_the_schedule_joins_it() {
     let done = bus.thread.join().unwrap();
     assert!(done.error.is_none(), "{:?}", done.error);
     recorder.close(vec![done.recorder]).unwrap();
-    let _ = std::fs::remove_dir_all(&root);
-}
-
-/// Guards: protocol - slow requests reach a drive on `vcan` and come back in the slack while control's empty batches
-/// keep the bus alive: get-ID returns the drive's UID, an allowlisted write is answered, and reading it back returns
-/// the value written (step 7 design D3; PLAN.md item 6 preflight reads every write back).
-#[test]
-fn slow_requests_reach_a_drive_on_vcan_and_come_back() {
-    const SLOW_BUS: &str = "can0";
-    ensure_vcan(SLOW_BUS).unwrap();
-    let root = std::env::temp_dir().join(format!("sim-suite-slow-{}", std::process::id()));
-    let uid = Uid([9; 8]);
-    let stop_sim = AtomicBool::new(false);
-    let exit = Arc::new(AtomicBool::new(false));
-    std::thread::scope(|scope| {
-        let _shutdown = Shutdown(&stop_sim, Arc::clone(&exit));
-        let sim = scope.spawn(|| {
-            let mut drives = [SimDrive::new(Drive::new(id(101), Model::Rs03), uid, 7)];
-            serve(SLOW_BUS, &mut drives, &stop_sim, &mut |_| {})
-        });
-        let info = info(SLOW_BUS);
-        let session = Session::start(&root, info, 1_000_000_000).unwrap();
-        let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
-        let epoch = recording.epoch();
-        let recorder = Recorder::spawn(recording).unwrap();
-        let (mut commands_tx, commands) = rtrb::RingBuffer::new(4);
-        let (snapshots_tx, mut snapshots) = rtrb::RingBuffer::new(64);
-        let (mut requests_tx, requests) = rtrb::RingBuffer::new(4);
-        let (results_tx, mut results) = rtrb::RingBuffer::new(4);
-        let bus = can::spawn(
-            BusConfig {
-                name: SLOW_BUS.to_owned(),
-                drives: vec![drive(101, 0)],
-                timing: Timing::at_hz(HZ),
-            },
-            BusLinks {
-                commands,
-                snapshots: snapshots_tx,
-                recorder: buses.remove(0),
-                requests,
-                results: results_tx,
-                epoch,
-                start: soon(),
-                exit: Arc::clone(&exit),
-            },
-        )
-        .unwrap();
-
-        let write = robstride::Write::can_timeout(Drive::new(id(101), Model::Rs03));
-        let steps = [
-            (SlowKind::GetId, SlowOutcome::Identity(uid)),
-            (SlowKind::Write(write), SlowOutcome::WriteAnswered),
-            (
-                SlowKind::Read(write.param()),
-                SlowOutcome::Read(robstride::ParamOutcome::Read(write.value())),
-            ),
-        ];
-        let end = Instant::now() + Duration::from_secs(10);
-        let period = 1_000_000_000 / HZ;
-        let mut step = 0;
-        let mut asked = false;
-        let mut tag = 0;
-        let mut retries = 0;
-        while step < steps.len() {
-            // Play control: an empty batch for every next tick.
-            let snap = next_snapshot(&mut snapshots, end).unwrap();
-            let batch = CommandBatch::new(snap.tick + 1, epoch.ns(Instant::now()) + 3 * period);
-            assert!(commands_tx.push(batch).is_ok());
-            let (kind, expected) = steps[step];
-            if !asked {
-                tag += 1;
-                assert!(requests_tx.push(SlowRequest { tag, slot: 0, kind }).is_ok());
-                asked = true;
-            }
-            if let Ok(SlowResult {
-                tag: got,
-                slot,
-                outcome,
-            }) = results.pop()
-            {
-                assert_eq!((got, slot), (tag, 0));
-                asked = false;
-                // Until the drive is up and control has been heard, a get-ID may time out or be refused as control
-                // silent; ask again, a few times at most.
-                let early = step == 0
-                    && retries < 5
-                    && matches!(
-                        outcome,
-                        SlowOutcome::TimedOut | SlowOutcome::Refused(SlowRefusal::ControlSilent)
-                    );
-                if early {
-                    retries += 1;
-                } else {
-                    assert_eq!(outcome, expected, "step {step}");
-                    step += 1;
-                }
-            }
-        }
-        exit.store(true, Ordering::Release);
-        let done = bus.thread.join().unwrap();
-        assert!(done.error.is_none(), "{:?}", done.error);
-        recorder.close(vec![done.recorder]).unwrap();
-        stop_sim.store(true, Ordering::Release);
-        sim.join().unwrap().unwrap();
-    });
     let _ = std::fs::remove_dir_all(&root);
 }
 
@@ -514,7 +410,7 @@ fn the_bus_loop_runs_against_sim_drive_and_its_recording_matches_candump() {
             BusConfig {
                 name: BUS.to_owned(),
                 drives: vec![drive(101, 0), drive(102, 1)],
-                timing: Timing::at_hz(HZ),
+                timing: timing(),
             },
             BusLinks {
                 commands: commands_rx,

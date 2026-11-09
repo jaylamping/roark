@@ -11,7 +11,8 @@ use robstride::{
     StatusFault, StatusFaults, Uid, Volts, Write, encode,
 };
 use sim_drive::{
-    FAULT_PLAN, Fault, FaultRefused, Injected, MAX_LATE, MAX_TEMPERATURE_C, SimDrive, Trigger,
+    FAULT_PLAN, Fault, FaultRefused, INJECTED_LOG, Injected, MAX_LATE, MAX_TEMPERATURE_C, SimDrive,
+    Trigger,
 };
 
 /// Drive 7, enabled and in Run by `t + 11 ms`, with every reply so far taken.
@@ -94,7 +95,8 @@ fn value(param: Param, v: ParamValue) -> Vec<Inbound> {
 
 /// Guards: protocol - the transport faults shape what goes on the bus and nothing else: a silent drive answers nothing,
 /// a late one answers after the delay, dropped replies are lost and duplicated ones come twice, each for exactly the
-/// count injected (PLAN item 4: silent drive, late, dropped and duplicated frames).
+/// count injected; a duplicate's second copy is a frame like any other, so a drive gone silent doesn't send it (PLAN
+/// item 4: silent drive, late, dropped and duplicated frames).
 #[test]
 fn transport_faults_shape_the_replies() {
     let count = |sim: &mut SimDrive, at: Instant| ask(sim, at, neutral(7)).len();
@@ -131,6 +133,13 @@ fn transport_faults_shape_the_replies() {
     let (mut sim, t) = running();
     sim.inject(t, Fault::Duplicate(1)).unwrap();
     assert_eq!([count(&mut sim, t), count(&mut sim, t)], [2, 1]);
+
+    let (mut sim, t) = running();
+    sim.inject(t, Fault::Duplicate(1)).unwrap();
+    sim.receive(t, host(neutral(7)));
+    assert!(sim.pop_due(t).is_some(), "the first copy");
+    sim.inject(t, Fault::Silent).unwrap();
+    assert_eq!(replies(&mut sim, t + ms(10)).len(), 0, "no second copy");
 }
 
 /// Guards: safety - the drive-state faults show in every status from then on: fault bits, a mode the host didn't ask
@@ -170,7 +179,8 @@ fn state_faults_show_in_every_status() {
 
 /// Guards: safety - the faults preflight must catch: a register that reads out of window (VBUS, the damper), a write
 /// the drive answers but doesn't keep (the read-back shows the old value), and a reboot mid-run that puts every
-/// register back to its default (PLAN item 4: VBUS out of range, read-back mismatch, reboot mid-run; item 6 drive layer).
+/// register back to its default; the joint's position register reads where the joint is unless a value is injected
+/// (PLAN item 4: VBUS out of range, read-back mismatch, reboot mid-run; item 6 drive layer).
 #[test]
 fn register_faults_are_what_preflight_reads_back() {
     let (mut sim, t) = running();
@@ -201,6 +211,30 @@ fn register_faults_are_what_preflight_reads_back() {
     assert_eq!(
         read(&mut sim, t, Param::CanTimeout),
         value(Param::CanTimeout, ParamValue::CanTimeout(CanTimeout::OFF))
+    );
+
+    // The joint's position reads as it is now; an injected value holds instead.
+    let (mut sim, t) = running();
+    let _ = ask(&mut sim, t, mit_to(1.0));
+    let moved = position_of(&ask(&mut sim, t + ms(100), mit_to(1.0)));
+    assert!(moved > 0.1, "{moved}");
+    let read_back = match read(&mut sim, t + ms(100), Param::MechPos).as_slice() {
+        [
+            Inbound::Param {
+                outcome: ParamOutcome::Read(ParamValue::Radians(p)),
+                ..
+            },
+        ] => Some(p.get()),
+        _ => None,
+    }
+    .unwrap();
+    assert!((read_back - moved).abs() < 1e-3, "{read_back} {moved}");
+    let stuck = ParamValue::Radians(robstride::Radians::new(-2.0).unwrap());
+    sim.inject(t + ms(100), Fault::Param(Param::MechPos, stuck))
+        .unwrap();
+    assert_eq!(
+        read(&mut sim, t + ms(200), Param::MechPos),
+        value(Param::MechPos, stuck)
     );
 
     // A reboot: Reset, and the written register back to its default.
@@ -298,11 +332,27 @@ fn faults_reach_replies_not_yet_sent() {
     sim.inject(t, Fault::Late(ms(5))).unwrap();
     assert_eq!(replies(&mut sim, t + ms(4)).len(), 0);
     assert_eq!(replies(&mut sim, t + ms(5)).len(), 1);
+
+    // A reboot loses what wasn't due yet; what was due went out before the power went.
+    let (mut sim, t) = running();
+    sim.inject(t, Fault::Late(ms(5))).unwrap();
+    sim.receive(t, host(neutral(7)));
+    assert_eq!(replies(&mut sim, t).len(), 0, "held until 5 ms");
+    sim.inject(t + ms(1), Fault::Reboot).unwrap();
+    assert_eq!(replies(&mut sim, t + ms(10)).len(), 0, "lost in the reboot");
+    let (mut sim, t) = running();
+    sim.receive(t, host(neutral(7)));
+    sim.inject(t + ms(1), Fault::Reboot).unwrap();
+    assert_eq!(
+        status_of(&replies(&mut sim, t + ms(1))),
+        [(Mode::Run, StatusFaults::default(), 25.0)],
+        "due before the reboot"
+    );
 }
 
 /// Guards: protocol - timed faults land at their own times, in time order, however late the drive is stepped: a Mode
-/// fault holds the joint where it was then, and two faults due at once apply oldest first, as their record shows
-/// (logging.md section 3: the record matches what was applied).
+/// fault holds the joint where it was then, a Mode(Run) starts `canTimeout` counting then, and two faults due at once
+/// apply oldest first, as their record shows (logging.md section 3: the record matches what was applied).
 #[test]
 fn timed_faults_land_in_time_order() {
     let (mut sim, t) = running();
@@ -342,10 +392,40 @@ fn timed_faults_land_in_time_order() {
     let held = position(&mut on_time);
     assert!(held > 0.01, "it moved first: {held}");
     assert!((position(&mut late) - held).abs() < 1e-3, "{held}");
+
+    // A drive in Reset, canTimeout written and reporting on at `t`, put in Run by a fault at 100 ms: it times out
+    // 50 ms after that, not at once. The reports show the mode without a command restarting the count.
+    let mut sim = SimDrive::new(rs03(7), Uid([7; 8]), 11);
+    let t = Instant::now();
+    let _ = ask(
+        &mut sim,
+        t,
+        encode::param_write(&Write::can_timeout(rs03(7))),
+    );
+    let _ = ask(
+        &mut sim,
+        t,
+        encode::active_reporting(id(7), robstride::Reporting::On),
+    );
+    assert_eq!(
+        sim.schedule(Trigger::At(t + ms(100)), Fault::Mode(Mode::Run)),
+        Ok(())
+    );
+    let modes: Vec<_> = replies(&mut sim, t + ms(160)).iter().map(mode_of).collect();
+    let (run, reset) = (Some(Mode::Run), Some(Mode::Reset));
+    assert_eq!(
+        modes,
+        [
+            reset, reset, reset, reset, reset, reset, reset, reset, reset, run, run, run, run, run,
+            reset, reset
+        ],
+        "reports at 10 to 160 ms"
+    );
 }
 
 /// Guards: protocol - a fault the drive can't honour is refused and not recorded: a `Late` past `MAX_LATE`, a
-/// temperature a status can't carry, a register value of the wrong type, `OnMit(0)`; and writes ignored for any number
+/// temperature a status can't carry, a register value of the wrong type, `OnMit(0)`, a time the drive is already past;
+/// and writes ignored for any number
 /// of registers, or one register twice, all hold (logging.md section 3: what is recorded is what took effect).
 #[test]
 fn faults_the_drive_cant_honour_are_refused() {
@@ -380,6 +460,11 @@ fn faults_the_drive_cant_honour_are_refused() {
         sim.schedule(Trigger::OnMit(0), Fault::Silent),
         Err(FaultRefused::OnMitZero)
     );
+    let before = t.checked_sub(Duration::from_micros(1)).unwrap();
+    assert_eq!(
+        sim.schedule(Trigger::At(before), Fault::Silent),
+        Err(FaultRefused::Past)
+    );
     assert_eq!(sim.inject(t, Fault::Late(MAX_LATE)), Ok(()), "at the limit");
     assert_eq!(
         sim.take_injected().map(|i| i.fault),
@@ -413,7 +498,8 @@ fn faults_the_drive_cant_honour_are_refused() {
 
 /// Guards: protocol - a scheduled fault fires exactly when its trigger says, on the nth MIT command (that command's
 /// reply already shows it) or at a time, and every injection is recorded once with its time, drive and fault, so a
-/// replay shows what was injected (logging.md section 3: injected faults recorded as injected). The plan is bounded.
+/// replay shows what was injected (logging.md section 3: injected faults recorded as injected). The plan and the
+/// record are bounded, and what the record has no room for is counted.
 #[test]
 fn scheduled_faults_fire_on_their_trigger_and_are_recorded() {
     let over: StatusFaults = [StatusFault::Overcurrent].into_iter().collect();
@@ -481,4 +567,19 @@ fn scheduled_faults_fire_on_their_trigger_and_are_recorded() {
         sim.schedule(Trigger::OnMit(99), Fault::Drop(1)),
         Err(FaultRefused::PlanFull)
     );
+
+    // A bounded record: past INJECTED_LOG untaken, the oldest stay and the newest is counted lost.
+    let (mut sim, t) = running();
+    for n in 0..=INJECTED_LOG {
+        let n = u32::try_from(n).unwrap();
+        sim.inject(t, Fault::Drop(n)).unwrap();
+    }
+    assert_eq!(sim.injections_lost(), 1);
+    let kept: Vec<_> = std::iter::from_fn(|| sim.take_injected())
+        .map(|i| i.fault)
+        .collect();
+    let first: Vec<_> = (0..INJECTED_LOG)
+        .map(|n| Fault::Drop(u32::try_from(n).unwrap()))
+        .collect();
+    assert_eq!(kept, first, "oldest first");
 }

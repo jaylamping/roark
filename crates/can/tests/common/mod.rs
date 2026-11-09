@@ -168,3 +168,22 @@ pub(crate) fn error_frame(class: u32, crtl: u8) -> FrameRecord {
     f.error = true;
     f
 }
+
+/// Drive 101 in limb 0 and drive 102 in limb 1, at 250 Hz.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: two drives in two limbs fit"
+)]
+pub(crate) fn two_limbs() -> BusTick {
+    let drives = [
+        BusDrive {
+            device: id(101),
+            limb: 0,
+        },
+        BusDrive {
+            device: id(102),
+            limb: 1,
+        },
+    ];
+    BusTick::new(&drives, Timing::at_hz(250)).unwrap()
+}

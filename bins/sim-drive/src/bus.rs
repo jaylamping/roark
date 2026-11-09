@@ -105,19 +105,29 @@ pub fn serve(
         source,
     };
     let socket = CanSocket::open(bus).map_err(io)?;
+    let served = pump(&socket, drives, stop, injected).map_err(io);
+    // Whatever fired before a stop or a socket error is still handed over.
+    hand_over(drives, injected);
+    served
+}
+
+fn pump(
+    socket: &CanSocket,
+    drives: &mut [SimDrive],
+    stop: &AtomicBool,
+    injected: &mut dyn FnMut(Injected),
+) -> std::io::Result<()> {
     while !stop.load(Ordering::Relaxed) {
         let now = Instant::now();
         for sim in drives.iter_mut() {
             while let Some(frame) = sim.pop_due(now) {
-                send(&socket, frame).map_err(io)?;
+                send(socket, frame)?;
             }
         }
         hand_over(drives, injected);
         let next = drives.iter().filter_map(SimDrive::next_event).min();
         let wait = next.map_or(MAX_WAIT, |at| at.saturating_duration_since(now));
-        socket
-            .set_read_timeout(wait.clamp(MIN_WAIT, MAX_WAIT))
-            .map_err(io)?;
+        socket.set_read_timeout(wait.clamp(MIN_WAIT, MAX_WAIT))?;
         match socket.read_frame() {
             Ok(CanFrame::Data(frame)) => {
                 let Id::Extended(id) = frame.id() else {
@@ -132,12 +142,9 @@ pub fn serve(
             }
             Ok(CanFrame::Remote(_) | CanFrame::Error(_)) => {}
             Err(e) if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) => {}
-            Err(e) => return Err(io(e)),
+            Err(e) => return Err(e),
         }
-        // A fault fired by a frame just received is handed over now, even if `stop` is set before the next pass.
-        hand_over(drives, injected);
     }
-    hand_over(drives, injected);
     Ok(())
 }
 

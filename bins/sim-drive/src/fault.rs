@@ -18,7 +18,7 @@ pub const MAX_LATE: Duration = Duration::from_millis(100);
 /// The highest temperature a type-2 status can carry, °C (§4.1.2: tenths of a degree in 16 bits).
 pub const MAX_TEMPERATURE_C: f64 = 6553.5;
 /// Injections a drive keeps until taken; past this the oldest stays and the newest is counted lost.
-pub(crate) const INJECTED_LOG: usize = 16;
+pub const INJECTED_LOG: usize = 16;
 
 /// Something a simulated drive does wrong.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -43,8 +43,8 @@ pub enum Fault {
     Param(Param, ParamValue),
     /// Every status and report from now on gives this temperature, 0 to [`MAX_TEMPERATURE_C`].
     Temperature(Celsius),
-    /// Power off and on now ([`crate::SimDrive::power_cycle`]): every injected fault is cleared with the rest of
-    /// the drive's state; the plan and the record stay.
+    /// Power off and on now: Reset, every register back to its default (`canTimeout` 0), reporting off, frames not yet
+    /// due lost, and every injected fault cleared. The joint stays where it is; the plan and the record stay.
     Reboot,
     /// Writes to this register are answered but not kept, so a read-back shows the old value.
     IgnoreWrites(Param),
@@ -59,7 +59,8 @@ pub enum Trigger {
     /// reply already shows the fault. Counted from 1: 0 is refused.
     OnMit(u32),
     /// At this time: the drive is brought up to it, the fault applied, then the drive goes on, however late it is
-    /// stepped. Several due at once fire in time order.
+    /// stepped. Several due at once fire in time order, and in the order scheduled when tied. A time the drive has
+    /// already been stepped past is refused.
     At(Instant),
 }
 
@@ -83,6 +84,9 @@ pub enum FaultRefused {
     /// `OnMit(0)`: MIT commands are counted from 1.
     #[error("OnMit counts from 1")]
     OnMitZero,
+    /// An `At` time the drive has already been stepped past: it can't take effect then any more.
+    #[error("the drive is already past that time")]
+    Past,
     /// A `Late` past [`MAX_LATE`].
     #[error("Late is at most {MAX_LATE:?}")]
     TooLate,
@@ -95,8 +99,7 @@ pub enum FaultRefused {
 }
 
 impl Fault {
-    /// Whether the drive can honour it, but for a `Param`'s type, which the drive checks: what `inject` and `schedule`
-    /// check.
+    /// Whether any drive can honour it: a `Param`'s type is the drive's to check.
     pub(crate) fn check(self) -> Result<(), FaultRefused> {
         match self {
             Self::Late(by) if by > MAX_LATE => Err(FaultRefused::TooLate),
@@ -119,7 +122,7 @@ impl Fault {
 }
 
 /// The faults in effect on a drive now.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Active {
     pub(crate) silent: bool,
     pub(crate) late: Duration,
@@ -129,65 +132,51 @@ pub(crate) struct Active {
     pub(crate) temperature: Option<Celsius>,
     /// One flag per register, in `Param::ALL` order: a set, so injecting one twice changes nothing.
     pub(crate) ignored_writes: [bool; Param::ALL.len()],
+    /// One flag per register, in `Param::ALL` order: an injected value, which a register the joint moves keeps.
+    pub(crate) injected_params: [bool; Param::ALL.len()],
     pub(crate) ignored_disables: u32,
 }
 
-impl Default for Active {
-    fn default() -> Self {
-        Self {
-            silent: false,
-            late: Duration::ZERO,
-            drop: 0,
-            duplicate: 0,
-            faults: StatusFaults::default(),
-            temperature: None,
-            ignored_writes: [false; Param::ALL.len()],
-            ignored_disables: 0,
-        }
-    }
+/// Whether `param`'s flag is set in `flags`, a table in `Param::ALL` order.
+pub(crate) fn flagged(flags: &[bool; Param::ALL.len()], param: Param) -> bool {
+    Param::ALL
+        .iter()
+        .zip(flags)
+        .any(|(p, flag)| *p == param && *flag)
 }
 
-impl Active {
-    pub(crate) fn ignores_write(&self, param: Param) -> bool {
-        Param::ALL
-            .iter()
-            .position(|p| *p == param)
-            .and_then(|i| self.ignored_writes.get(i))
-            .copied()
-            .unwrap_or(false)
-    }
-
-    pub(crate) fn ignore_writes(&mut self, param: Param) {
-        if let Some(flag) = Param::ALL
-            .iter()
-            .position(|p| *p == param)
-            .and_then(|i| self.ignored_writes.get_mut(i))
-        {
+/// Set `param`'s flag in `flags`, a table in `Param::ALL` order.
+pub(crate) fn flag(flags: &mut [bool; Param::ALL.len()], param: Param) {
+    for (p, flag) in Param::ALL.iter().zip(flags) {
+        if *p == param {
             *flag = true;
         }
     }
 }
 
-/// The scheduled faults and the record of what fired, kept across a reboot.
+/// A scheduled fault, with the MIT count when it was scheduled (for `OnMit`) and its place in the order scheduled.
 #[derive(Clone, Copy, Debug)]
+pub(crate) struct Scheduled {
+    trigger: Trigger,
+    mits_then: u32,
+    seq: u64,
+    fault: Fault,
+}
+
+/// The scheduled faults and the record of what fired, kept across a reboot.
+#[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Plan {
-    /// Each with its MIT count when scheduled, for `OnMit`.
-    pub(crate) faults: [Option<(Trigger, u32, Fault)>; FAULT_PLAN],
+    faults: [Option<Scheduled>; FAULT_PLAN],
     pub(crate) mits: u32,
-    pub(crate) log: [Option<Injected>; INJECTED_LOG],
+    /// Each with its place in the order recorded, so a slot freed and reused never jumps the queue.
+    log: [Option<(u64, Injected)>; INJECTED_LOG],
+    seq: u64,
     pub(crate) lost: u64,
 }
 
 impl Plan {
-    pub(crate) const EMPTY: Self = Self {
-        faults: [None; FAULT_PLAN],
-        mits: 0,
-        log: [None; INJECTED_LOG],
-        lost: 0,
-    };
-
+    /// Schedule `fault`, already checked by the drive.
     pub(crate) fn schedule(&mut self, trigger: Trigger, fault: Fault) -> Result<(), FaultRefused> {
-        fault.check()?;
         if trigger == Trigger::OnMit(0) {
             return Err(FaultRefused::OnMitZero);
         }
@@ -196,7 +185,13 @@ impl Plan {
             .iter_mut()
             .find(|f| f.is_none())
             .ok_or(FaultRefused::PlanFull)?;
-        *free = Some((trigger, self.mits, fault));
+        *free = Some(Scheduled {
+            trigger,
+            mits_then: self.mits,
+            seq: self.seq,
+            fault,
+        });
+        self.seq += 1;
         Ok(())
     }
 
@@ -204,19 +199,19 @@ impl Plan {
     /// whose count is reached (it fires at `now`), each in the order scheduled when tied.
     pub(crate) fn due(&mut self, now: Instant) -> Option<(Instant, Fault)> {
         let mits = self.mits;
-        let (i, at) = self
+        let (slot, at, _) = self
             .faults
-            .iter()
-            .enumerate()
-            .filter_map(|(i, f)| match f {
-                Some((Trigger::At(at), _, _)) => (*at <= now).then_some((i, *at)),
-                Some((Trigger::OnMit(n), from, _)) => {
-                    (mits.saturating_sub(*from) >= *n).then_some((i, now))
-                }
-                None => None,
+            .iter_mut()
+            .filter_map(|slot| {
+                let s = (*slot)?;
+                let at = match s.trigger {
+                    Trigger::At(at) => (at <= now).then_some(at),
+                    Trigger::OnMit(n) => (mits.saturating_sub(s.mits_then) >= n).then_some(now),
+                }?;
+                Some((slot, at, s.seq))
             })
-            .min_by_key(|(i, at)| (*at, *i))?;
-        let (_, _, fault) = self.faults.get_mut(i)?.take()?;
+            .min_by_key(|(_, at, seq)| (*at, *seq))?;
+        let fault = slot.take()?.fault;
         Some((at, fault))
     }
 
@@ -225,8 +220,8 @@ impl Plan {
         self.faults
             .iter()
             .flatten()
-            .filter_map(|(trigger, _, _)| match trigger {
-                Trigger::At(at) => Some(*at),
+            .filter_map(|s| match s.trigger {
+                Trigger::At(at) => Some(at),
                 Trigger::OnMit(_) => None,
             })
             .min()
@@ -234,17 +229,21 @@ impl Plan {
 
     pub(crate) fn record(&mut self, injected: Injected) {
         match self.log.iter_mut().find(|e| e.is_none()) {
-            Some(slot) => *slot = Some(injected),
+            Some(slot) => {
+                *slot = Some((self.seq, injected));
+                self.seq += 1;
+            }
             None => self.lost += 1,
         }
     }
 
+    /// The oldest injection not yet taken: earliest in time, then first recorded.
     pub(crate) fn take(&mut self) -> Option<Injected> {
         let slot = self
             .log
             .iter_mut()
             .filter(|e| e.is_some())
-            .min_by_key(|e| e.map(|i| i.at))?;
-        slot.take()
+            .min_by_key(|e| e.map(|(seq, i)| (i.at, seq)))?;
+        slot.take().map(|(_, injected)| injected)
     }
 }

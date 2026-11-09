@@ -11,7 +11,7 @@ use robstride::{
     Inbound, MitCommand, Model, NewtonMeters, NmPerRad, NmSecPerRad, RadPerSec, Radians, Uid,
     Write, encode,
 };
-use sim_drive::{SimDrive, plant_damping};
+use sim_drive::SimDrive;
 
 /// Drive 9, enabled and in Run by `t + 11 ms`.
 fn running() -> (SimDrive, Instant) {
@@ -56,8 +56,9 @@ fn joint(sim: &mut SimDrive, at: Instant, frame: robstride::Frame) -> (f64, f64,
     (f.position.get(), f.velocity.get(), f.torque.get())
 }
 
+/// The sim joint's damping, N·m·s/rad: a sim value (`plant.rs`), restated so the expected motion is worked out here.
 fn damping() -> f64 {
-    plant_damping().get()
+    1.0
 }
 
 /// What a zero reads back as through the 16-bit MIT feedback encoding.
@@ -151,7 +152,8 @@ fn the_joint_moves_only_in_run() {
 
 /// Guards: safety - the caps preflight writes are the caps the joint obeys: torque never past `limit_torque` and speed
 /// never past `limit_spd`, a stiff gain settling under them and a negative cap giving no torque (PLAN item 6 drive
-/// layer: the three caps).
+/// layer: the torque and speed caps; that a drive holds them in MIT mode is the sim's assumption until a bench capture
+/// shows it).
 #[test]
 fn the_written_caps_bound_the_joint() {
     let far = |sim: &mut SimDrive, at| joint(sim, at, mit(3.0, 500.0, 0.0));
@@ -202,4 +204,32 @@ fn the_written_caps_bound_the_joint() {
         near(torque, 0.0, ZERO) && near(v, 0.0, ZERO) && near(p_later, p, 1e-3),
         "{p} {p_later} {v} {torque}"
     );
+}
+
+/// Guards: protocol - an active report shows the joint as it was when the report fell due, not when the drive was next
+/// stepped: reports read late still trace the joint's path (PLAN item 4 Plant; RobStride manual §4.1.11).
+#[test]
+fn reports_show_the_joint_when_they_fall_due() {
+    let (kp, kd) = (10.0, 1.0);
+    let tau = (damping() + kd) / kp;
+    let (mut sim, t) = running();
+    sim.receive(
+        t,
+        host(encode::active_reporting(id(9), robstride::Reporting::On)),
+    );
+    joint(&mut sim, t, mit(1.0, kp, kd));
+    let positions: Vec<f64> = replies(&mut sim, t + ms(50))
+        .iter()
+        .filter_map(|i| match i {
+            Inbound::Report(s) => Some(s.feedback(Model::Rs03).unwrap().position.get()),
+            _ => None,
+        })
+        .collect();
+    let expected: Vec<f64> = (1..=5)
+        .map(|n| 1.0 - (-f64::from(n) * 0.01 / tau).exp())
+        .collect();
+    assert_eq!(positions.len(), expected.len(), "{positions:?}");
+    for (got, want) in positions.iter().zip(&expected) {
+        assert!(near(*got, *want, 0.005), "{positions:?} {expected:?}");
+    }
 }

@@ -35,7 +35,7 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
 
 | Piece | Owns | Talks to | Must never |
 |---|---|---|---|
-| `runtime` bus threads | One CAN socket each, that bus's drive state | `robstride` codec, `safety`, rtrb queues | Allocate, lock, log or wait without a deadline in the tick |
+| `runtime` bus threads | One CAN socket each, that bus's drive state, each limb's stop latch (`can`'s `BusTick`) | `robstride` codec, `safety`, rtrb queues | Allocate, lock, log or wait without a deadline in the tick |
 | `safety` | Preflight results, fault latches, limit checks | Bus threads, `control` | Be bypassed: every command to a drive passes it |
 | `control` | The active control mode per limb | `safety`, `dynamics` | Talk to a socket |
 | `api` server | The one external interface | Clients over the network; the realtime side over queues | Block the realtime side, or write hardware facts |

@@ -48,6 +48,23 @@ const CRTL_RX_PASSIVE: u8 = 0x10;
 const CRTL_TX_PASSIVE: u8 = 0x20;
 const CRTL_ACTIVE: u8 = 0x40;
 
+/// Whether an error frame says the controller is error-passive (true) or below it, warning or active (false); `None`
+/// when it says nothing about the controller's state (no controller class, or only an overflow bit). Read apart from
+/// [`classify`], since one frame can carry a state change beside a more severe flag.
+#[must_use]
+pub(crate) fn controller_passive(class: u32, data: [u8; 8]) -> Option<bool> {
+    let [_, crtl, ..] = data;
+    if class & CRTL == 0 {
+        None
+    } else if crtl & (CRTL_RX_PASSIVE | CRTL_TX_PASSIVE) != 0 {
+        Some(true)
+    } else if crtl & (CRTL_RX_WARNING | CRTL_TX_WARNING | CRTL_ACTIVE) != 0 {
+        Some(false)
+    } else {
+        None
+    }
+}
+
 /// The most severe error an error frame carries: `class` is its ID without `CAN_ERR_FLAG`, `data` its bytes.
 #[must_use]
 pub fn classify(class: u32, data: &[u8; 8]) -> BusError {

@@ -1,16 +1,17 @@
 //! Slow requests: parameter reads, allowlisted writes and get-ID, one in flight per bus, sent in the slack after the
-//! collect deadline only when the reply fits before the next tick starts (step 7 design D3).
+//! collect deadline only when the reply fits before the next tick starts (PLAN.md item 3: parameter traffic only in the slack).
 
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
 use can::{
-    BusDrive, BusTick, ConfigError, DRIVE_TIMEOUT_NS, LimbState, RearmRefused, SLOW_SLOTS,
-    SendOutcome, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, SlowResult, Timing, TimingError,
+    BusTick, ConfigError, DRIVE_TIMEOUT_NS, LimbState, RearmRefused, SLOW_SLOTS, SendOutcome,
+    SlowKind, SlowOutcome, SlowRefusal, SlowRequest, SlowResult, StopReason, Timing, TimingError,
+    Unsent,
 };
 use common::{
-    MS, PERIOD, batch, bus, deadline, drive, error_frame, id, one_limb, record, run_tick, status,
-    status_frame,
+    MS, PERIOD, at, batch, bus, deadline, drive, error_frame, id, one_limb, record, run_tick,
+    status, status_frame, stop_of, two_limbs,
 };
 use robstride::drive as wire;
 use robstride::{
@@ -39,25 +40,6 @@ fn param_reply(n: u8, param: Param, value: ParamValue) -> telemetry::FrameRecord
     record(f.id(), f.data(), Direction::TxOther)
 }
 
-/// Drive 101 in limb 0 and drive 102 in limb 1, at 250 Hz.
-#[expect(
-    clippy::unwrap_used,
-    reason = "test helper: two drives in two limbs fit"
-)]
-fn two_limbs() -> BusTick {
-    let drives = [
-        BusDrive {
-            device: id(101),
-            limb: 0,
-        },
-        BusDrive {
-            device: id(102),
-            limb: 1,
-        },
-    ];
-    BusTick::new(&drives, Timing::at_hz(250)).unwrap()
-}
-
 /// Tick `tick` with control alive (an empty batch) and nothing sent, ended at its collect deadline.
 fn quiet_tick(bus: &mut BusTick, tick: u64) {
     run_tick(bus, tick, Some(&batch(tick, &[])), &[]);
@@ -71,7 +53,7 @@ fn last_chance(bus: &BusTick, tick: u64) -> u64 {
 
 /// Guards: protocol - one slow exchange in flight per bus, sent only after the collect deadline and only while its reply
 /// fits before the next tick's send; a read is answered only by its drive's reply naming its register, and the others
-/// queued wait their turn in order (step 7 design D3: budget and matching).
+/// queued wait their turn in order (PLAN.md item 3: parameter traffic only in the slack; `api` contract: crates/can/README.md, Slow requests).
 #[test]
 fn a_read_goes_alone_in_the_slack_and_only_its_register_answers_it() {
     let mut bus = bus();
@@ -132,21 +114,24 @@ fn a_read_goes_alone_in_the_slack_and_only_its_register_answers_it() {
 
 /// Guards: protocol - a slow request is never retried by the bus layer: one the socket doesn't take is reported not
 /// sent, and one with no reply by the next tick's start is reported timed out, its late reply answering nothing
-/// (step 7 design D3: deadline).
+/// (`api` contract: crates/can/README.md, Slow requests: one result, never retried).
 #[test]
 fn a_slow_request_is_reported_once_and_never_retried() {
     let mut bus = bus();
     quiet_tick(&mut bus, 0);
     assert_eq!(bus.submit(read(1, 0, Param::CanTimeout)), Ok(()));
     assert_eq!(bus.submit(read(2, 0, Param::RunMode)), Ok(()));
-    assert!(bus.slow_send(deadline(0)).is_some());
+    assert_eq!(
+        bus.slow_send(deadline(0)),
+        Some(encode::param_read(id(101), Param::CanTimeout))
+    );
     bus.slow_sent(SendOutcome::QueueFull, deadline(0));
     assert_eq!(
         bus.take_slow_result(),
         Some(SlowResult {
             tag: 1,
             slot: 0,
-            outcome: SlowOutcome::NotSent(SendOutcome::QueueFull),
+            outcome: SlowOutcome::NotSent(Unsent::QueueFull),
         })
     );
     assert_eq!(
@@ -176,8 +161,8 @@ fn a_slow_request_is_reported_once_and_never_retried() {
 }
 
 /// Guards: protocol - get-ID is answered by the drive's type-0 reply with its UID, and a write by its drive's next
-/// status, which answers only the write: it isn't a duplicate or unsolicited command reply, and it proves nothing about
-/// the value (step 7 design D3: a write is proven only by reading it back).
+/// status, which answers only the write: it isn't a duplicate or unsolicited command reply, it proves nothing about the
+/// value, and a fault it shows is latched like any status's. A slow frame's echo doesn't replace the drive's last echo (PLAN.md item 6: preflight reads every write back).
 #[test]
 fn get_id_and_a_write_are_answered_by_their_own_replies() {
     let mut bus = bus();
@@ -191,8 +176,14 @@ fn get_id_and_a_write_are_answered_by_their_own_replies() {
         }),
         Ok(())
     );
-    assert_eq!(bus.slow_send(deadline(0)), Some(encode::get_id(id(102))));
+    let get_id = encode::get_id(id(102));
+    assert_eq!(bus.slow_send(deadline(0)), Some(get_id));
     bus.slow_sent(SendOutcome::Sent, deadline(0));
+    // Its echo isn't the drive's last echo: that is kept for the tick's own frames.
+    bus.on_frame(
+        deadline(0) + MS / 8,
+        &record(get_id.id(), get_id.data(), Direction::TxEcho),
+    );
     let reply = wire::identity(id(102), uid);
     bus.on_frame(
         PERIOD - MS,
@@ -222,7 +213,8 @@ fn get_id_and_a_write_are_answered_by_their_own_replies() {
         Some(encode::param_write(&write))
     );
     bus.slow_sent(SendOutcome::Sent, deadline(1));
-    bus.on_frame(2 * PERIOD - MS, &status(101, Mode::Reset));
+    // The answer shows a fault: it answers the write, and the fault is latched all the same.
+    bus.on_frame(2 * PERIOD - MS, &faulted(101, Mode::Reset));
     assert_eq!(
         bus.take_slow_result(),
         Some(SlowResult {
@@ -231,15 +223,22 @@ fn get_id_and_a_write_are_answered_by_their_own_replies() {
             outcome: SlowOutcome::WriteAnswered,
         })
     );
+    assert_eq!(
+        bus.submit(read(9, 0, Param::CanTimeout)),
+        Err(SlowRefusal::LimbStopped)
+    );
     run_tick(&mut bus, 2, Some(&batch(2, &[])), &[]);
     let snap = bus.end(deadline(2));
     assert_eq!((snap.counters.unsolicited, snap.counters.duplicate), (0, 0));
+    assert_eq!(snap.counters.echoes, 1);
+    assert_eq!(at(&snap, 1).last_echo, None);
+    assert_eq!(stop_of(&snap), Some(StopReason::DriveFault { slot: 0 }));
 }
 
 /// Guards: safety - slow requests never keep a drive alive past a stop or a silent control thread: one for a drive in
 /// a stopping or stopped limb, or while control is silent (even with every limb idle, as during preflight), or on a
 /// failed bus, is refused, and one already queued is cancelled before it goes, while the bus's other limb is served
-/// (step 7 design D3: keeping drives alive; canTimeout counts from any frame).
+/// (PLAN.md item 6: a stop latches; `canTimeout` counts from any frame).
 #[test]
 fn a_stop_or_silent_control_refuses_and_cancels_slow_requests() {
     // Limb 0 stops: refused for it, served for limb 1, and its queued request cancelled.
@@ -331,15 +330,26 @@ fn slow_requests_name_a_drive_on_the_bus_and_the_queue_is_bounded() {
         bus.submit(read(99, 0, Param::CanTimeout)),
         Err(SlowRefusal::QueueFull)
     );
-    assert!(bus.slow_send(deadline(0)).is_some());
+    assert_eq!(
+        bus.slow_send(deadline(0)),
+        Some(encode::param_read(id(101), Param::CanTimeout))
+    );
     bus.slow_sent(SendOutcome::Failed, deadline(0));
     assert_eq!(bus.slow_room(), 0, "a result not yet taken holds its slot");
-    assert!(bus.take_slow_result().is_some());
+    assert_eq!(
+        bus.take_slow_result(),
+        Some(SlowResult {
+            tag: 0,
+            slot: 0,
+            outcome: SlowOutcome::NotSent(Unsent::Failed),
+        })
+    );
     assert_eq!(bus.slow_room(), 1);
 }
 
-/// Guards: number - a slow reply window that can't fit between the collect deadline and the next tick, or is zero, is
-/// refused at startup; one that just fits is not (step 7 design D3: budget).
+/// Guards: number - a slow reply window that fills the whole slack between the collect deadline and the next tick
+/// (the shell sends only after the deadline, so nothing could go), or is zero, is refused at startup; one a nanosecond
+/// shorter is not (PLAN.md item 3: parameter traffic only in the slack).
 #[test]
 fn a_slow_reply_window_past_the_slack_is_refused() {
     let base = Timing::at_hz(250);
@@ -354,14 +364,14 @@ fn a_slow_reply_window_past_the_slack_is_refused() {
             }),
         ),
         (
-            slack + 1,
+            slack,
             Some(TimingError::SlowReply {
-                slow_reply_ns: slack + 1,
+                slow_reply_ns: slack,
                 collect_ns: base.collect_ns,
                 period_ns: base.period_ns,
             }),
         ),
-        (slack, None),
+        (slack - 1, None),
     ];
     for (slow_reply_ns, refused) in rows {
         let timing = Timing {
@@ -384,9 +394,10 @@ fn faulted(n: u8, mode: Mode) -> telemetry::FrameRecord {
 }
 
 /// Guards: safety - a slow frame is a send, so the slack refuses what the veto would stop at the next send: a fault
-/// read in the collect, or a stop asked for and not yet taken, refuses the drive's request at once; and a write goes
-/// only to a drive of an idle limb, so its status answer can't pass for a running drive's command reply (can.md
-/// section 2: check before every send; step 7 design D3).
+/// read in the collect on any drive of the limb, or a stop asked for and not yet taken, refuses the request at once;
+/// and a write goes only to a drive of an idle limb with no command unanswered, so its status answer can't pass for a
+/// command's reply (can.md
+/// section 2: check before every send).
 #[test]
 fn the_slack_refuses_what_the_veto_would_stop_and_writes_to_a_running_limb() {
     let mut bus = two_limbs();
@@ -397,6 +408,15 @@ fn the_slack_refuses_what_the_veto_would_stop_and_writes_to_a_running_limb() {
         Err(SlowRefusal::LimbStopped)
     );
     assert_eq!(bus.submit(read(2, 1, Param::Vbus)), Ok(()));
+
+    // The veto stops the whole limb, so a fault on one drive refuses its limb-mate's request too.
+    let mut bus = common::bus();
+    quiet_tick(&mut bus, 0);
+    bus.on_frame(deadline(0) - MS, &faulted(101, Mode::Reset));
+    assert_eq!(
+        bus.submit(read(1, 1, Param::Vbus)),
+        Err(SlowRefusal::LimbStopped)
+    );
 
     let mut bus = two_limbs();
     quiet_tick(&mut bus, 0);
@@ -425,11 +445,26 @@ fn the_slack_refuses_what_the_veto_would_stop_and_writes_to_a_running_limb() {
     assert_eq!(bus.submit(write(4, 101)), Err(SlowRefusal::LimbNotIdle));
     assert_eq!(bus.submit(read(5, 0, Param::Vbus)), Ok(()), "a read may go");
     assert_eq!(bus.submit(write(6, 102)), Ok(()));
+
+    // An idle limb's drive with a batch Disable still unanswered: a late reply could pass for the write's answer.
+    let mut bus = two_limbs();
+    run_tick(
+        &mut bus,
+        0,
+        Some(&batch(0, &[None, Some(encode::disable(id(102)))])),
+        &[],
+    );
+    let _ = bus.end(deadline(0));
+    assert_eq!(
+        bus.submit(write(7, 102)),
+        Err(SlowRefusal::CommandUnanswered)
+    );
+    assert_eq!(bus.submit(read(8, 1, Param::Vbus)), Ok(()), "a read may go");
 }
 
 /// Guards: protocol - every request gets exactly one result when the bus thread ends with it held: one in flight has
 /// timed out, a queued one is refused (`Ended`, or `BusFailed` on a failed bus), and a result not yet taken is kept
-/// (step 7 design D3: results; `BusLinks::results`).
+/// (`api` contract: crates/can/README.md, Slow requests; `BusLinks::results`).
 #[test]
 fn every_request_held_gets_its_result_when_the_thread_ends() {
     for (bus_failed, refusal) in [(false, SlowRefusal::Ended), (true, SlowRefusal::BusFailed)] {
@@ -439,7 +474,10 @@ fn every_request_held_gets_its_result_when_the_thread_ends() {
             assert_eq!(bus.submit(read(tag, 1, Param::Vbus)), Ok(()));
         }
         // Tag 1 answered and not taken, tag 2 in flight, tag 3 queued.
-        assert!(bus.slow_send(deadline(0)).is_some());
+        assert_eq!(
+            bus.slow_send(deadline(0)),
+            Some(encode::param_read(id(102), Param::Vbus))
+        );
         bus.slow_sent(SendOutcome::Sent, deadline(0));
         bus.on_frame(
             deadline(0) + MS / 4,
@@ -450,7 +488,10 @@ fn every_request_held_gets_its_result_when_the_thread_ends() {
             ),
         );
         quiet_tick(&mut bus, 1);
-        assert!(bus.slow_send(deadline(1)).is_some());
+        assert_eq!(
+            bus.slow_send(deadline(1)),
+            Some(encode::param_read(id(102), Param::Vbus))
+        );
         bus.slow_sent(SendOutcome::Sent, deadline(1));
         if bus_failed {
             bus.on_frame(deadline(1) + 1, &error_frame(0x40, 0));
@@ -486,7 +527,10 @@ fn a_slow_send_holds_off_the_rearm() {
     quiet_tick(&mut bus, 0);
     assert_eq!(bus.submit(read(1, 0, Param::Vbus)), Ok(()));
     let slow_at = deadline(0) + MS / 2;
-    assert!(bus.slow_send(slow_at).is_some());
+    assert_eq!(
+        bus.slow_send(slow_at),
+        Some(encode::param_read(id(101), Param::Vbus))
+    );
     bus.slow_sent(SendOutcome::Sent, slow_at);
     assert_eq!(bus.stop_limb(0), Ok(()));
     // Every Disable is refused by the socket, so the slow read stays the last frame the drive was sent.
