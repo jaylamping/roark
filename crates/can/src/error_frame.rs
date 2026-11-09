@@ -10,7 +10,8 @@ pub enum BusError {
     ErrorPassive,
     /// The controller passed the error-warning level (`CAN_ERR_CRTL_RX_WARNING` or `_TX_WARNING`).
     ErrorWarning,
-    /// The controller is back to error-active (`CAN_ERR_CRTL_ACTIVE`): not an error, it ends `ErrorPassive`.
+    /// The controller is back to error-active (`CAN_ERR_CRTL_ACTIVE`): not an error. It ends error-passive, as a
+    /// warning does (a recovery to below passive).
     ErrorActive,
     /// The controller's receive buffer overflowed (`CAN_ERR_CRTL_RX_OVERFLOW`).
     RxOverflow,
@@ -28,7 +29,8 @@ pub enum BusError {
 }
 
 impl BusError {
-    /// Whether this error stops the bus for good (PLAN.md item 6 Bus-off row).
+    /// Whether an error frame carrying this error stops the bus for good (PLAN.md item 6 Bus-off row). A socket failure
+    /// always does ([`BusTick::lost_bus`](crate::BusTick::lost_bus)).
     #[must_use]
     pub const fn latches(self) -> bool {
         matches!(
@@ -53,10 +55,8 @@ const CRTL_ACTIVE: u8 = 0x40;
 /// [`classify`], since one frame can carry a state change beside a more severe flag.
 #[must_use]
 pub(crate) fn controller_passive(class: u32, data: [u8; 8]) -> Option<bool> {
-    let [_, crtl, ..] = data;
-    if class & CRTL == 0 {
-        None
-    } else if crtl & (CRTL_RX_PASSIVE | CRTL_TX_PASSIVE) != 0 {
+    let crtl = controller_byte(class, data);
+    if crtl & (CRTL_RX_PASSIVE | CRTL_TX_PASSIVE) != 0 {
         Some(true)
     } else if crtl & (CRTL_RX_WARNING | CRTL_TX_WARNING | CRTL_ACTIVE) != 0 {
         Some(false)
@@ -65,11 +65,16 @@ pub(crate) fn controller_passive(class: u32, data: [u8; 8]) -> Option<bool> {
     }
 }
 
+/// The controller byte (`data[1]`), counted only when the frame says it carries one; 0 otherwise.
+const fn controller_byte(class: u32, data: [u8; 8]) -> u8 {
+    let [_, crtl, ..] = data;
+    if class & CRTL == 0 { 0 } else { crtl }
+}
+
 /// The most severe error an error frame carries: `class` is its ID without `CAN_ERR_FLAG`, `data` its bytes.
 #[must_use]
 pub fn classify(class: u32, data: &[u8; 8]) -> BusError {
-    // The controller byte counts only when the frame says it carries one.
-    let crtl = if class & CRTL == 0 { 0 } else { data[1] };
+    let crtl = controller_byte(class, *data);
     if class & BUSOFF != 0 {
         BusError::BusOff
     } else if crtl & (CRTL_RX_PASSIVE | CRTL_TX_PASSIVE) != 0 {

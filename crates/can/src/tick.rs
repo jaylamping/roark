@@ -64,8 +64,19 @@ pub(crate) struct DriveState {
     pub(crate) stop: StopOutcome,
     /// When this stop's Disable was confirmed.
     pub(crate) confirmed_ns: Option<u64>,
-    /// Whether this stop's reporting-off was taken by the socket.
-    pub(crate) reporting_off_sent: bool,
+    /// This stop's reporting off.
+    pub(crate) off: Off,
+}
+
+/// Where a stop's reporting off to one drive is.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Off {
+    /// Not planned yet.
+    Untried,
+    /// Planned, not yet taken by the socket.
+    Tried,
+    /// Taken by the socket.
+    Sent,
 }
 
 impl DriveState {
@@ -130,6 +141,10 @@ pub struct BusTick {
     pub(crate) limbs: [Option<Limb>; MAX_DRIVES],
     /// A stop of the whole bus, taken at the next tick's start.
     pub(crate) pending_stop: Option<StopReason>,
+    /// The last drain read past its limit or left frames queued: what it said can't be known in time.
+    backlog: bool,
+    /// Ticks that went by without running since the last `begin` ([`Self::skipped`]).
+    skipped_since: u64,
     pub(crate) bus_error: Option<BusError>,
     pub(crate) error_passive: bool,
     /// Reads may predate this tick's sends: the last drain left frames queued, and none since has emptied the socket.
@@ -187,7 +202,7 @@ impl BusTick {
                 last_echo: None,
                 stop: StopOutcome::None,
                 confirmed_ns: None,
-                reporting_off_sent: false,
+                off: Off::Untried,
             });
         }
         Ok(Self {
@@ -195,6 +210,8 @@ impl BusTick {
             drives: table,
             limbs,
             pending_stop: None,
+            backlog: false,
+            skipped_since: 0,
             bus_error: None,
             error_passive: false,
             unordered: false,
@@ -233,8 +250,9 @@ impl BusTick {
     }
 
     /// How this tick's drain ended: call it after the drain (its frames already fed to [`Self::on_frame`]), before
-    /// [`Self::begin`]. A backlog stops every active limb at this tick's start. Reads stay unordered from a drain that
-    /// left frames queued until a drain empties the socket.
+    /// [`Self::begin`]. A backlog stops every active limb at this tick's start, and the tick sends only its batch's
+    /// Disables and reporting off (see [`Self::begin`]). Reads stay unordered from a drain that left frames queued
+    /// until a drain empties the socket.
     ///
     /// The frames of the drain itself are ordered unless an earlier drain left the socket unemptied: the socket is a
     /// queue, and the last drain emptied it before the last tick's sends, so whatever this drain reads came after them.
@@ -243,23 +261,22 @@ impl BusTick {
         match drain {
             Drain::Emptied => self.unordered = false,
             Drain::Backlog => {
-                self.pending_stop.get_or_insert(StopReason::Backlog);
+                self.backlog = true;
                 self.unordered = false;
             }
             Drain::Unemptied => {
-                self.pending_stop.get_or_insert(StopReason::Backlog);
+                self.backlog = true;
                 self.unordered = true;
             }
         }
     }
 
-    /// The socket failed with `error` (interface down or gone, or any other socket error): every limb latches stopped.
-    /// There is no bus to send a stop on; the drives time out on their own (`canTimeout`). An error that doesn't latch
-    /// ([`BusError::latches`]) changes nothing here: it isn't a lost bus.
+    /// The socket failed with `error`: every limb latches stopped, whatever the error, since a socket that can't send
+    /// can't stop the drives either (fail closed, safety.md section 2). There is no bus to send a stop on; the drives
+    /// time out on their own (`canTimeout`). Error frames come through [`Self::on_frame`] instead, where only bus-off
+    /// latches.
     pub fn lost_bus(&mut self, error: BusError) {
-        if error.latches() {
-            self.latch(error);
-        }
+        self.latch(error);
     }
 
     /// The socket's overflow counter, the last value the shell saw (`SO_RXQ_OVFL` comes only on frames queued after a
@@ -269,12 +286,12 @@ impl BusTick {
     }
 
     /// `count` ticks went by without running (the thread stalled past them): each a missed deadline (PLAN.md item 3:
-    /// missed deadlines are counted, never skipped silently). As for a late wake, every active limb stops, at the next
-    /// `begin`; an idle limb has nothing to stop.
+    /// missed deadlines are counted, never skipped silently). The next `begin` treats it as a late wake: every active
+    /// limb stops, and the tick sends only its batch's Disables and reporting off.
     pub fn skipped(&mut self, count: u64) {
         if count > 0 {
             self.counters.missed_deadlines += count;
-            self.pending_stop.get_or_insert(StopReason::LateWake);
+            self.skipped_since += count;
         }
     }
 
@@ -301,9 +318,11 @@ impl BusTick {
     /// with [`Self::sent`]. Each send says whether it expires ([`Send::expires`]): a command goes out only inside the
     /// send window, while a Disable or active reporting off goes out late too, whoever planned it.
     ///
-    /// A stop asked for before the tick (the whole bus's or one limb's) is taken first, so it keeps its reason. A wake
-    /// past the send window is a missed deadline, counted whatever the limbs are doing: every active limb stops, an idle
-    /// one has nothing to stop, and no batch is sent that tick. Then, before anything is planned, a drive of an idle or
+    /// A stop asked for before the tick (the whole bus's or one limb's) is taken first, so it keeps its reason. A backlog
+    /// in the drain, a wake past the send window (a missed deadline, counted whatever the limbs are doing) or ticks a
+    /// stall slept through stop every active limb; an idle one has nothing to stop. That tick only the batch's Disables
+    /// and reporting off go, right late or not, and the rest is held back (`held_batches`), so nothing is enabled on a
+    /// tick whose reads can't be trusted. Then, before anything is planned, a drive of an idle or
     /// active limb that the drain or an earlier read showed faulted, out of Run after running, or silent too long stops
     /// its limb, so no command (Enable included) reaches it this tick.
     pub fn begin(
@@ -319,7 +338,7 @@ impl BusTick {
         for d in self.drives.iter_mut().flatten() {
             d.answered = false;
         }
-        // A stop asked for before this tick began came first, so it keeps its reason over a late wake.
+        // A stop asked for before this tick began came first, so it keeps its reason over a backlog or a late wake.
         if let Some(reason) = self.pending_stop.take() {
             self.stop_bus(reason, now_ns);
         }
@@ -327,22 +346,21 @@ impl BusTick {
         // only limb stops now is still checked whole, and its frames for that limb are refused one by one.
         let takes_batches = self.any_running();
         self.take_pending_limb_stops(now_ns);
-        let late = now_ns > scheduled_ns.saturating_add(self.timing.send_window_ns);
-        if late {
+        let backlog = std::mem::take(&mut self.backlog);
+        let stalled = std::mem::take(&mut self.skipped_since) > 0;
+        let woke_late = now_ns > scheduled_ns.saturating_add(self.timing.send_window_ns);
+        if woke_late {
             self.counters.missed_deadlines += 1;
+        }
+        if backlog {
+            self.stop_bus(StopReason::Backlog, now_ns);
+        } else if woke_late || stalled {
             self.stop_bus(StopReason::LateWake, now_ns);
         }
+        // On a tick whose reads can't be trusted or that woke too late, only the batch's Disables and reporting off go.
+        let hold = backlog || woke_late || stalled;
         self.veto(now_ns);
-        let accepted = if late {
-            if batch.is_some() {
-                if self.any_running() {
-                    self.counters.stale_ticks += 1;
-                } else {
-                    self.counters.refused_batches += 1;
-                }
-            }
-            None
-        } else if takes_batches {
+        let accepted = if takes_batches {
             self.check_batch(tick, now_ns, batch)
         } else {
             if batch.is_some() {
@@ -352,7 +370,7 @@ impl BusTick {
         };
         self.plan_stops(now_ns);
         if let Some(batch) = accepted {
-            self.push_commands(&batch);
+            self.push_commands(&batch, hold);
         }
         self.sends
     }
@@ -433,7 +451,9 @@ impl BusTick {
     }
 
     /// The batch's frames for limbs still idle or active; those for a stopping or stopped limb are dropped and counted.
-    fn push_commands(&mut self, batch: &CommandBatch) {
+    /// With `hold`, only its Disables and reporting off.
+    fn push_commands(&mut self, batch: &CommandBatch, hold: bool) {
+        let mut held_back = false;
         for (slot, frame) in batch.frames().iter().enumerate() {
             let (Some(frame), Some(drive)) = (frame, self.drives.get(slot).copied().flatten())
             else {
@@ -453,12 +473,19 @@ impl BusTick {
                 echo_of(frame),
                 Some((EchoKind::Disable | EchoKind::Reporting(Reporting::Off), _))
             );
+            if hold && !late_ok {
+                held_back = true;
+                continue;
+            }
             self.sends.push(Send {
                 slot,
                 kind: SendKind::Command,
                 frame: *frame,
                 expires: !late_ok,
             });
+        }
+        if held_back {
+            self.counters.held_batches += 1;
         }
     }
 
@@ -515,7 +542,7 @@ impl BusTick {
         }
         match send.kind {
             SendKind::Disable if d.stop == StopOutcome::NeverSent => d.stop = StopOutcome::Sent,
-            SendKind::ReportingOff => d.reporting_off_sent = true,
+            SendKind::ReportingOff => d.off = Off::Sent,
             SendKind::Disable | SendKind::Command => {}
         }
         if expects_status {
@@ -579,7 +606,7 @@ impl BusTick {
                         misses: d.misses,
                         last_echo: d.last_echo,
                         stop: d.stop,
-                        reporting_off_sent: d.reporting_off_sent,
+                        reporting_off_sent: d.off == Off::Sent,
                     },
                 );
             }

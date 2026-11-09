@@ -11,7 +11,7 @@
 use robstride::encode::{self, Reporting};
 
 use crate::error_frame::BusError;
-use crate::tick::{BusTick, Phase};
+use crate::tick::{BusTick, Off, Phase};
 use crate::timing::DRIVE_TIMEOUT_NS;
 use crate::types::{LimbState, MAX_DRIVES, RearmRefused, Send, SendKind, StopOutcome, StopReason};
 
@@ -24,8 +24,8 @@ impl BusTick {
     }
 
     /// A stop of the whole bus taken at a tick's start. A late wake or a backlog stops every active limb: an idle limb
-    /// has nothing enabled to stop (its batch frames that tick go out late as expired, or not at all). Any other
-    /// reason stops every limb.
+    /// has nothing enabled to stop (that tick only its batch's Disables and reporting off go). Any other reason stops
+    /// every limb.
     pub(crate) fn stop_bus(&mut self, reason: StopReason, now_ns: u64) {
         match reason {
             StopReason::LateWake | StopReason::Backlog => {
@@ -67,7 +67,7 @@ impl BusTick {
         for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {
             d.stop = StopOutcome::NeverSent;
             d.confirmed_ns = None;
-            d.reporting_off_sent = false;
+            d.off = Off::Untried;
         }
     }
 
@@ -155,13 +155,15 @@ impl BusTick {
                 });
             }
         }
-        for (slot, d) in self.drives.iter().enumerate() {
+        let silence = self.timing.disable_silence_ns;
+        for (slot, d) in self.drives.iter_mut().enumerate() {
             if let Some(d) = d
                 && flag(&stopping, d.limb)
-                && !d.reporting_off_sent
+                && d.off != Off::Sent
                 && d.confirmed_ns
-                    .is_some_and(|at| now_ns >= at.saturating_add(self.timing.disable_silence_ns))
+                    .is_some_and(|at| now_ns >= at.saturating_add(silence))
             {
+                d.off = Off::Tried;
                 self.sends.push(Send {
                     slot,
                     kind: SendKind::ReportingOff,
@@ -174,26 +176,31 @@ impl BusTick {
 
     /// Whether limb `limb`'s stop, begun at `since_ns`, is over at `now_ns`. Disables go out for the confirm window; a
     /// drive confirmed in it (or by a Reset read just after it) still gets its reporting off once its silence is over,
-    /// so the stop runs on past the window while one waits, at most until the window, the silence and a period have
-    /// passed: a drive confirmed at the window's end is then a tick past its silence. The one place this is decided,
-    /// for planning at `begin` and settling at `end`.
+    /// so the stop runs on past the window while one waits. Each confirmed drive waits until its reporting off has been
+    /// planned at least once and a period has passed since it fell due, so a drive confirmed at the window's end still
+    /// gets it, and a reporting off the queue keeps refusing ends the stop a period later. The one place this is
+    /// decided, for planning at `begin` and settling at `end`.
     pub(crate) fn stop_over(&self, limb: usize, since_ns: u64, now_ns: u64) -> bool {
-        let elapsed = now_ns.saturating_sub(since_ns);
-        if elapsed < self.timing.stop_confirm_ns {
+        if now_ns.saturating_sub(since_ns) < self.timing.stop_confirm_ns {
             return false;
         }
+        let last_chance = self
+            .timing
+            .disable_silence_ns
+            .saturating_add(self.timing.period_ns);
         let waiting = self
             .drives
             .iter()
             .flatten()
             .filter(|d| d.limb == limb)
-            .any(|d| d.confirmed_ns.is_some() && !d.reporting_off_sent);
-        let cap = self
-            .timing
-            .stop_confirm_ns
-            .saturating_add(self.timing.disable_silence_ns)
-            .saturating_add(self.timing.period_ns);
-        !waiting || elapsed >= cap
+            .any(|d| {
+                d.confirmed_ns.is_some_and(|at| match d.off {
+                    Off::Untried => true,
+                    Off::Tried => now_ns < at.saturating_add(last_chance),
+                    Off::Sent => false,
+                })
+            });
+        !waiting
     }
 
     /// At the tick's end: a stopping limb whose drives have all confirmed and taken reporting off, or whose stop is
@@ -210,7 +217,7 @@ impl BusTick {
                 .iter()
                 .flatten()
                 .filter(|d| d.limb == limb)
-                .all(|d| d.stop == StopOutcome::Confirmed && d.reporting_off_sent);
+                .all(|d| d.stop == StopOutcome::Confirmed && d.off == Off::Sent);
             if (all_done || self.stop_over(limb, since_ns, now_ns))
                 && let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut)
             {
@@ -278,7 +285,7 @@ impl BusTick {
         for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {
             d.stop = StopOutcome::None;
             d.confirmed_ns = None;
-            d.reporting_off_sent = false;
+            d.off = Off::Untried;
             d.fault_seen = false;
             d.misses = 0;
             d.phase = Phase::Off;

@@ -55,10 +55,10 @@ impl CommandBatch {
 pub enum Drain {
     /// It emptied the socket: what is read from here on came after the backlog.
     Emptied,
-    /// It emptied the socket but read more frames than the shell may before a send: the bus stops, since what it said
-    /// can't be known in time.
+    /// It emptied the socket but read more frames than the shell may before a send: what it said can't be known in time,
+    /// so every active limb stops and the tick sends only its batch's Disables and reporting off.
     Backlog,
-    /// It gave up with frames still queued: the bus stops, and until a drain empties the socket its statuses may
+    /// It gave up with frames still queued: as for `Backlog`, and until a drain empties the socket its statuses may
     /// predate the sends. They still show each drive's mode and faults, but answer nothing and confirm nothing.
     Unemptied,
 }
@@ -347,6 +347,9 @@ pub struct Counters {
     pub stale_ticks: u64,
     /// Batches refused because every limb was stopping or stopped, a bad one included once no limb was left to stop.
     pub refused_batches: u64,
+    /// Batches whose Disables and reporting off alone were sent, the rest held back, for a backlog or a late wake that
+    /// tick.
+    pub held_batches: u64,
     /// Frames of a fresh batch dropped because their limb was stopping or stopped.
     pub refused_frames: u64,
     /// Ticks the thread woke for after their send window.

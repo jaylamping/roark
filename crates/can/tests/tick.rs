@@ -365,7 +365,7 @@ fn foreign_frames_are_counted() {
 }
 
 /// Guards: number - the drive table is fixed-size; a bus with more drives than it holds is refused at startup, never
-/// truncated (rust.md section 6).
+/// truncated, and so is a drive listed twice, whose second slot could never be answered (rust.md section 6).
 #[test]
 fn too_many_drives_is_refused() {
     let ids: Vec<_> = (101..=100 + u8::try_from(MAX_DRIVES + 1).unwrap_or(u8::MAX))
@@ -741,8 +741,8 @@ fn silence_counts_must_fire_before_the_drive_timeout() {
 }
 
 /// Guards: protocol - error frames are read by severity from the kernel's bits, and error-passive marks the bus
-/// unhealthy (the recording's `valid`) until the controller reports error-active again (linux/can/error.h; logging.md
-/// section 8.2).
+/// unhealthy (the recording's `valid`) until the controller reports error-warning or error-active again
+/// (linux/can/error.h; logging.md section 8.2).
 #[test]
 fn error_frames_are_classified_and_passive_marks_the_bus_unhealthy() {
     let rows = [

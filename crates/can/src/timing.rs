@@ -3,13 +3,9 @@
 
 use robstride::CanTimeout;
 
-/// The drives' own command timeout, the `canTimeout` the host writes ([`CanTimeout::RUNTIME`], in 50 µs steps): three
-/// periods of feedback must fit inside it (PLAN.md item 3 Timing).
-#[expect(
-    clippy::as_conversions,
-    reason = "u32 to u64 widens losslessly, and u64::from isn't const"
-)]
-pub const DRIVE_TIMEOUT_NS: u64 = CanTimeout::RUNTIME.ticks() as u64 * 50_000;
+/// The drives' own command timeout, the `canTimeout` the host writes ([`CanTimeout::RUNTIME`]): three periods of
+/// feedback must fit inside it (PLAN.md item 3 Timing).
+pub const DRIVE_TIMEOUT_NS: u64 = CanTimeout::RUNTIME.nanos();
 
 /// How long a drive may take from an Enable the socket took to its first Run status before its missed replies count
 /// again (PLAN.md item 2 Enable one drive: measured 1.4 to 10.3 ms, refuse after 50 ms).
@@ -22,16 +18,16 @@ pub const ENABLE_TO_RUN_NS: u64 = 50_000_000;
 pub struct Timing {
     /// One tick.
     pub period_ns: u64,
-    /// How late after its scheduled start a tick may still send a command. Waking later is a missed deadline and a
-    /// stop. A quarter period by default: provisional, to be tuned on the real adapter (PLAN step 8).
+    /// How late after its scheduled start a tick may still send a command. Waking later is a missed deadline: it stops
+    /// every active limb, and the tick sends only its batch's Disables and reporting off. A quarter period by default: provisional, to be tuned on the real adapter (PLAN step 8).
     pub send_window_ns: u64,
     /// When the tick stops collecting replies, from its scheduled start (about 60 % of the period, PLAN.md item 3).
     pub collect_ns: u64,
     /// The oldest a drive's last fresh status may be when motion is sent to it (three periods: 12 ms at 250 Hz, PLAN.md
     /// item 6 Silence row).
     pub feedback_limit_ns: u64,
-    /// How long a stop waits for each drive's Disable to be confirmed and its reporting-off sent before it records the
-    /// rest as unconfirmed, and how long after a Disable a drive's missed replies aren't counted while no Reset has
+    /// How long a stop sends Disables for each drive's Disable to be confirmed (drives unconfirmed by then stay so; one
+    /// confirmed in it still gets its reporting off after its silence), and how long after a Disable a drive's missed replies aren't counted while no Reset has
     /// answered it (100 ms, PLAN.md item 2 Silence windows).
     pub stop_confirm_ns: u64,
     /// How long a drive drops frames after a Disable; its reporting-off waits this long after its confirmation, and a
