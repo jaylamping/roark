@@ -8,7 +8,7 @@ from sk import *
 
 m = 1e-3
 BASE = {'X': 'Right Plane', 'Y': 'Top Plane', 'Z': 'Front Plane'}
-MID, BLIND, THRU_ALL = 6, 0, 1
+MID, BLIND, THRU_ALL, UP_TO_NEXT = 6, 0, 1, 2
 
 
 def vol(d):
@@ -77,7 +77,7 @@ def sw_app():
 def feat(d, sk, name, depth, cut, mode=BLIND, want=None, lo=1.0, flip_side=False):
     """Extrude (cut=False) or cut a sketch. depth > 0 one way; tries both directions and keeps the one whose
     feature faces lie on the 'want' side: want = (axis_index, sign) relative to the sketch plane coordinate.
-    mode MID = mid-plane (depth total), THRU_ALL = through all both sides."""
+    mode MID = mid-plane (depth total), THRU_ALL = through all both sides, UP_TO_NEXT = to the first face met."""
     fm = d.FeatureManager
     tries = (False,) if mode in (MID,) else (False, True)
     for rev in tries:

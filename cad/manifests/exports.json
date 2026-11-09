@@ -178,36 +178,36 @@
       "source": "upper-arm/upper_arm_shell_back_left.SLDPRT",
       "config": "Default",
       "settings": "STEP AP214, mm",
-      "sourceSha256": "5cb71041a1f937fe2b8990a87399dca868fd14b5f43c47f9c2773f9885945692",
-      "exportSha256": "de35470c58d140098a9bdbbe52539c21c8f1563cfa0e7dffa81b1d3dd64ef741",
-      "recorded": "2026-11-09T08:14:09Z"
+      "sourceSha256": "0d13dafd4ab85f5cd679614816fe70aa39a44181385a2349c1f1667206cd6175",
+      "exportSha256": "6ab6a304e811e6e412c90df1f5bd27d396bf83d146bbb9f58e6c77b3b924089f",
+      "recorded": "2026-11-09T09:20:38Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_shell_back_left.stl",
       "source": "upper-arm/upper_arm_shell_back_left.SLDPRT",
       "config": "Default",
       "settings": "STL binary, mm, SolidWorks default quality",
-      "sourceSha256": "5cb71041a1f937fe2b8990a87399dca868fd14b5f43c47f9c2773f9885945692",
-      "exportSha256": "534bfd33e54a6c873ed159f0095a34f24aaea15a0d2566607aaf70b49abedfa6",
-      "recorded": "2026-11-09T08:14:09Z"
+      "sourceSha256": "0d13dafd4ab85f5cd679614816fe70aa39a44181385a2349c1f1667206cd6175",
+      "exportSha256": "a6bb3df39027bd1f8ff6bf2fec97208f4042da7e6840940efaac2b730b5e00ce",
+      "recorded": "2026-11-09T09:20:38Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_shell_front_left.step",
       "source": "upper-arm/upper_arm_shell_front_left.SLDPRT",
       "config": "Default",
       "settings": "STEP AP214, mm",
-      "sourceSha256": "41ec5b8896cfb57d3cfc6fff6e8efea5759f5f4893ddd62debb38b6a204cc66b",
-      "exportSha256": "1300225d6293a73d39179983eaa593759d91905672c7433838c1b75e9ca67212",
-      "recorded": "2026-11-09T08:14:09Z"
+      "sourceSha256": "32b6dfdd973a837bc6047e3f42dfcc481f402197cd65a98c03682805e9fb89a2",
+      "exportSha256": "87671a5cc695541601ed4fd79b9eac56b04454c8109c300f1bde2a0574fbca37",
+      "recorded": "2026-11-09T09:20:37Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_shell_front_left.stl",
       "source": "upper-arm/upper_arm_shell_front_left.SLDPRT",
       "config": "Default",
       "settings": "STL binary, mm, SolidWorks default quality",
-      "sourceSha256": "41ec5b8896cfb57d3cfc6fff6e8efea5759f5f4893ddd62debb38b6a204cc66b",
-      "exportSha256": "f02934bdda1c60e1908e70edb4fefe41c7a32fa323197ad4f53aebe0c00b146c",
-      "recorded": "2026-11-09T08:14:09Z"
+      "sourceSha256": "32b6dfdd973a837bc6047e3f42dfcc481f402197cd65a98c03682805e9fb89a2",
+      "exportSha256": "cb8a38af85b92019cf4933b7afdb594c8173379742b24367d0bba6e0195e439d",
+      "recorded": "2026-11-09T09:20:37Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_spring_carrier_left.step",

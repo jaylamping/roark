@@ -92,7 +92,9 @@ Y_FLARE = 242.0                 # ring / halves boundary plane under the tube fl
 RING_PIN_Y, RING_PIN_Z = 246.5, (29.6, -17.6)     # ring pin screws: ring OD surface along Z at this Y
 RING_PIN_X = (158.5,)           # one pin from the back (lower half): no holes in the front skin; two side by side hit the ring end faces
 SLOT_Z = (-9.5, 18.0)            # ring top slot (trunk port to the elbow RS02), widened from the master's -7.5..16.3
-Y_SKIRT = 240.0                 # RS02-side skirt trimmed above its down-facing tip (no support on visible skin)
+Y_SKIRT = Y_FLARE + CL          # RS02-side skirt trimmed on the ring/halves plane: one lower edge across X, no step at the
+                                # ring end (the draft 3 step at Y 240 was the lateral-case hot spot); also clears its down-facing tip
+POST_FILLET = 2.0               # post-root fillet where the seam and lug posts meet the skin
 Y_TIP = 236.5                   # below this the flare skins feather out tangent to the ring OD: trimmed
 RING_COL = (158.5, CY + 50.0)
 # seam posts 23 mm off the tube axis: a vertical post nearer the wall pokes out through the curved outer skin.
@@ -129,6 +131,46 @@ def cyl_z(d, name, pts, r, z, depth, cut, sign):
     if cut:
         return feat(d, s.feat, name, depth, cut, want=(2, sign, z))
     return feat(d, s.feat, name, depth, cut, mode=MID)
+
+
+def post(d, name, q, z, sign, check_side=True, r=POST_R):
+    """Seam or lug post from Z = z toward sign, up to the skin it meets: the end follows the inner skin (no flat top
+    left in the cavity, no slivers), so the root is one clean curve for the fillet."""
+    pl = plane(d, 'Z', z, name + '_P')
+    with Sk(d, pl, name) as s:
+        s.circle((q[0], q[1], z), r)      # a true cylinder: its root is one smooth curve for the fillet
+    return feat(d, s.feat, name, 1.0, False, mode=UP_TO_NEXT, want=(2, sign, z) if check_side else None)
+
+
+def post_root_fillets(d, names, sign, r=POST_FILLET, z0=Z0):
+    """Fillet where each post meets the skin (the edges of its faces lying wholly beyond its start plane z0), one
+    feature per post at the largest radius from r down that builds. Returns {post: radius}."""
+    got = {}
+    for n in names:
+        edges, seen = [], set()
+        for face in (d.FeatureByName(n).GetFaces or []):
+            for e in (face.GetEdges or []):
+                cp = e.GetCurveParams3
+                zs = [cp.StartPoint[2] * 1000.0, cp.EndPoint[2] * 1000.0]
+                key = tuple(round(v * 1000.0, 3) for v in tuple(cp.StartPoint)[:3] + tuple(cp.EndPoint)[:3])
+                if all(sign * (z - z0) > 1.0 for z in zs) and key not in seen:
+                    seen.add(key)
+                    edges.append(e)
+        for rr in [x for x in (2.0, 1.75, 1.5, 1.25, 1.0, 0.75, 0.5) if x <= r]:
+            d.ClearSelection2(True)
+            for e in edges:
+                e.Select4(True, NUL)
+            v0 = vol(d)
+            fe = d.FeatureManager.FeatureFillet3(3, rr / 1000.0, 0, 0, 0, 0, 0, NUL, NUL, NUL, NUL, NUL, NUL, NUL)
+            if fe is not None:
+                fe.Name = n + '_ROOT_FILLET'
+                got[n] = rr
+                print(f'  {n} root fillet r {rr} on {len(edges)} edges, +{vol(d) - v0:.1f} mm3', flush=True)
+                break
+        else:
+            got[n] = 0.0
+            print(f'  {n}: NO root fillet ({len(edges)} edges; none of the radii builds)', flush=True)
+    return got
 
 
 def bosses_z(d, name, pts, r, z, depth, sign):
@@ -265,10 +307,11 @@ def half(upper):
         box_cut(d, 'UPPER_SIDE', 'Z', Z0, 1, [(100, 150, Z0), (240, 150, Z0), (240, 340, Z0), (100, 340, Z0)])
     print('  bodies', bodies(d), flush=True)
     if upper:
-        for i, (q, zt) in enumerate(zip(TUBE_COLS, COL_TOP)):
-            cyl_z(d, f'SEAM_BOSS{i}', [q], POST_R, Z0, zt - Z0, False, 1)
-        for i, (q, zt) in enumerate(zip(HUB_COLS, LUG_TOP)):
-            cyl_z(d, f'LUG_BOSS{i}', [q], POST_R, Z0 + LUG['hz'] + CL, zt - (Z0 + LUG['hz'] + CL), False, 1)
+        for i, q in enumerate(TUBE_COLS):
+            post(d, f'SEAM_BOSS{i}', q, Z0, 1)
+        for i, q in enumerate(HUB_COLS):
+            post(d, f'LUG_BOSS{i}', q, Z0 + LUG['hz'] + CL, 1)
+        post_root_fillets(d, [f'SEAM_BOSS{i}' for i in range(len(TUBE_COLS))] + [f'LUG_BOSS{i}' for i in range(len(HUB_COLS))], 1, z0=Z0 + LUG['hz'] + CL)
         cyl_z(d, 'SEAM_INSERTS', TUBE_COLS, 2.0, Z0 - 0.01, 7.0, True, 1)
         cyl_z(d, 'SEAM_PILOT', TUBE_COLS, 1.6, Z0 + 6.9, 3.6, True, 1)          # M3 x 30 tips past the insert
         cyl_z(d, 'LUG_INSERTS', HUB_COLS, 2.0, Z0 + LUG['hz'] + CL - 0.01, 7.0, True, 1)
@@ -276,6 +319,8 @@ def half(upper):
 
         cyl_z(d, 'SEAM_PIN_SOCKET', TUBE_COLS, 2.95, Z0 - 0.01, 1.4, True, 1)
     else:
+        # back posts stay flat-ended 0.25 mm into the skin: the counterbore floor is the post end, and a post run down
+        # to the skin would leave a 0.5 mm wall round the 6.5 counterbore (draft 4 check)
         for i, (q, zb) in enumerate(zip(TUBE_COLS, COL_BOT)):
             cyl_z(d, f'SEAM_COLUMN{i}', [q], POST_R, Z0, Z0 - zb, False, -1)
         for i, (q, zb) in enumerate(zip(HUB_COLS, LUG_BOT)):
@@ -404,12 +449,48 @@ def clip():
     finish(d, p, 'clip')
 
 
-def fea_model(slit_on=False):
+def ring_kerf(d):
+    """Cut the ring free of the halves along the printed parts' clearances, so the contact FEA can put no-penetration
+    contact on that interface: the flare plane (Y_FLARE..+CL outside the ring circle), the radial gap above it
+    (r R_RING..R_RING+CL), and the end gaps (X xa..x0 and x1..xb: below the flare plane, and inside the pocket above it).
+    The ring pin becomes a hole through both bodies, for a pin connector."""
+    xa, xb = LUG['x0'] - 1.15, LUG['x1'] + 1.15
+    x0, x1 = LUG['x0'] - 1, LUG['x1'] + 1
+    xm = (xa + xb) / 2
+    yk = Y_FLARE + CL / 2
+    h = math.sqrt(R_RING ** 2 - (yk - CY) ** 2)
+    pk = plane(d, 'Y', yk, 'KERF_FLARE_P')
+    with Sk(d, pk, 'KERF_FLARE') as s:
+        s.poly([(xa, yk, CZ + h), (xb, yk, CZ + h), (xb, yk, 130.0), (xa, yk, 130.0)])
+        s.poly([(xa, yk, -120.0), (xb, yk, -120.0), (xb, yk, CZ - h), (xa, yk, CZ - h)])
+    feat(d, s.feat, 'KERF_FLARE', CL, True, mode=MID, lo=0.01)
+    px = plane(d, 'X', xm, 'KERF_RADIAL_P')
+    r1, r2 = R_RING, R_RING + CL
+    b1, b2 = math.acos((Y_FLARE - CY) / r1), math.acos((Y_FLARE - CY) / r2)
+    arc1 = [(xm, CY + r1 * math.cos(b), CZ + r1 * math.sin(b)) for b in np.linspace(-b1, b1, 90)]
+    arc2 = [(xm, CY + r2 * math.cos(b), CZ + r2 * math.sin(b)) for b in np.linspace(b2, -b2, 90)]
+    with Sk(d, px, 'KERF_RADIAL') as s:
+        s.poly(arc1 + arc2)
+    feat(d, s.feat, 'KERF_RADIAL', xb - xa, True, mode=MID, lo=0.01)
+    yc = Y_FLARE + CL
+    bc = math.acos((yc - CY) / r2)
+    top = [(CY + r2 * math.cos(b), CZ + r2 * math.sin(b)) for b in np.linspace(-bc, bc, 90)]
+    for nm, (u0, u1) in (('KERF_END_IN', (xa, x0)), ('KERF_END_OUT', (x1, xb))):
+        um = (u0 + u1) / 2
+        pe = plane(d, 'X', um, nm + '_P')
+        with Sk(d, pe, nm) as s:
+            s.poly([(um, 150.0, -120.0), (um, yc, -120.0)] + [(um, y, z) for y, z in top] + [(um, yc, 130.0), (um, 150.0, 130.0)])
+        feat(d, s.feat, nm, u1 - u0, True, mode=MID, lo=0.01)
+    cyl_z(d, 'RING_PIN_HOLE', [(x, RING_PIN_Y) for x in RING_PIN_X], 1.7, -34.0, 22.0, True, 1)
+    print('  ring kerf bodies', bodies(d), flush=True)
+
+
+def fea_model(slit_on=False, contact=False):
     """One body for the seam FEA: the master with the hub lightening and the seam columns, and a 0.2 mm slit on the
     seam plane through the tube walls everywhere except the bolted column footprints and the hub lugs. Ring and hub
     stay bonded (they bear in their pockets; the screws only locate them)."""
     SIM.mkdir(parents=True, exist_ok=True)
-    p = str(SIM / ('UA_CLAM.SLDPRT' if slit_on else 'UA_CLAM_BONDED.SLDPRT'))
+    p = str(SIM / ('UA_CLAM_CONTACT.SLDPRT' if contact else 'UA_CLAM.SLDPRT' if slit_on else 'UA_CLAM_BONDED.SLDPRT'))
     shutil.copy(MASTER, p)
     e, w = L(), L()
     d = sw.OpenDoc6(p, 1, 1, '', e, w)
@@ -428,10 +509,11 @@ def fea_model(slit_on=False):
             A = [c + math.radians(a) for a in range(-20, 21, 5)]
             s.poly([(TX + 19 * math.cos(a), 315.86, TZ + 19 * math.sin(a)) for a in A] + [(TX + 29 * math.cos(a), 315.86, TZ + 29 * math.sin(a)) for a in A[::-1]])
     feat(d, s.feat, 'WINDOWS', 8.0, True, want=(1, 1, 315.86))
-    for i, (q, zt) in enumerate(zip(TUBE_COLS, COL_TOP)):
-        cyl_z(d, f'SEAM_BOSS{i}', [q], POST_R, Z0, zt - Z0, False, 1)
+    for i, q in enumerate(TUBE_COLS):
+        post(d, f'SEAM_BOSS{i}', q, Z0, 1)
     for i, (q, zb) in enumerate(zip(TUBE_COLS, COL_BOT)):
         cyl_z(d, f'SEAM_COLUMN{i}', [q], POST_R, Z0, Z0 - zb, False, -1)
+    post_root_fillets(d, [f'SEAM_BOSS{i}' for i in range(len(TUBE_COLS))], 1)
     # the trims the printed parts have: RS02-side skirt below Y_SKIRT, ring flare tips below Y_TIP, widened port slot
     xb = LUG['x1'] + 1.15
     rx = plane(d, 'X', (xb + 214.0) / 2, 'SKIRT_TIP_P')
@@ -446,6 +528,8 @@ def fea_model(slit_on=False):
         s.poly([(xm, Y_TIP, 130)] + arc + [(xm, Y_TIP, -120), (xm, 100, -120), (xm, 100, 130)])
     feat(d, s.feat, 'RING_TIP', LUG['x1'] - LUG['x0'] + 2.3, True, mode=MID)
     rect_z(d, 'PORT_SLOT', 148.0, 169.0, 238.0, 254.0, (SLOT_Z[0] + SLOT_Z[1]) / 2, SLOT_Z[1] - SLOT_Z[0], cut=True)
+    if contact:
+        ring_kerf(d)
     if not slit_on:
         d.ForceRebuild3(False); print('  bodies', bodies(d), flush=True); d.Save3(1, e, w); sw.CloseDoc(d.GetTitle)
         return
@@ -469,7 +553,7 @@ def fea_model(slit_on=False):
 
 
 if __name__ == '__main__':
-    jobs = dict(ring=ring, hub=hub, clip=clip, fea=fea_model, fea_slit=lambda: fea_model(True), upper=lambda: half(True), lower=lambda: half(False))
+    jobs = dict(ring=ring, hub=hub, clip=clip, fea=fea_model, fea_slit=lambda: fea_model(True), fea_contact=lambda: fea_model(contact=True), upper=lambda: half(True), lower=lambda: half(False))
     for k in sys.argv[1:] or jobs:
         print('==', k, flush=True)
         jobs[k]()

@@ -97,6 +97,7 @@ WHITELIST['ua_lower'] = {'thin': [{'box': ((151.2, 252.2, -7.5), (152.0, 253.1, 
                                    {'box': ((143.6, 276.2, -20.2), (145.0, 279.0, -18.6)), 'reason': 'same counterbore exit, Y 278 post'},
                                    {'box': ((196.0, 259.8, -17.6), (197.4, 264.2, -15.0)), 'reason': 'same counterbore exit, +X side'},
                                    {'box': ((196.0, 276.2, -20.2), (197.4, 279.0, -18.6)), 'reason': 'same counterbore exit, +X side, Y 278 post'},
+                                   {'box': ((151.5, 244.3, -21.9), (166.6, 245.0, -21.1)), 'reason': 'oblique exit of the Ø3.4 ring-pin hole (X 158.5, Y 246.5) through the ring-pocket face (r 44.35 about the elbow axis): a wedge of about 3 mm2 at the hole mouth, under the ring, inside the closed arm, not a free blade'},
                                    {'box': ((145.5, 267.8, -20.6), (148.6, 270.6, -19.0)), 'reason': 'acute lip where the Ø7.2 RS00-branch exit (along X) leaves the back wall, which leans 51 deg: a wedge under 1 mm2 at the bottom of the hole mouth, not a free blade'}], 'corners': [dict(c, reason=c['reason'].replace('under the cover', 'now inside the closed shell, not visible')) for c in WHITELIST['upper_arm']['corners'][3:5]]}
 
 WHITELIST['elbow_carrier'] = WHITELIST['elbow_carrier_strength'] = WHITELIST['carrier']  # same mesh as the arm carrier
