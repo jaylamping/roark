@@ -14,6 +14,7 @@ Hashes are of the real content (for an LFS pointer, its oid), so it works in any
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -23,13 +24,18 @@ from gitlfs import REPO_ROOT, content_sha256
 
 CAD_ROOT = REPO_ROOT / "cad"
 EXPORTS_PATH = CAD_ROOT / "manifests" / "exports.json"
+EXPORT_SUFFIXES = {".step", ".stp", ".stl"}
+SCRATCH = {"_wip", "_sim", "_archive", ".checkpoints"}
 
 
 def cad_rel(arg: str, cad_root: Path = CAD_ROOT) -> str:
     p = Path(arg)
     if not p.is_absolute():
         p = (cad_root.parent / p) if p.parts and p.parts[0] == "cad" else (cad_root / p)
-    return p.resolve().relative_to(cad_root.resolve()).as_posix()
+    try:
+        return p.resolve().relative_to(cad_root.resolve()).as_posix()
+    except ValueError:
+        raise SystemExit(f"{arg}: outside cad/") from None
 
 
 def record(
@@ -41,8 +47,16 @@ def record(
     manifest: Path = EXPORTS_PATH,
 ) -> dict:
     exp, src = cad_rel(export, cad_root), cad_rel(source, cad_root)
-    if not exp.startswith("exports/"):
+    exp_parts = Path(exp).parts
+    if len(exp_parts) < 3 or exp_parts[0] != "exports":
         raise SystemExit(f"{exp}: exports live under cad/exports/<region>/")
+    if Path(exp).suffix.lower() not in EXPORT_SUFFIXES:
+        raise SystemExit(f"{exp}: only STEP and STL exports are recorded")
+    src_parts = [x.lower() for x in Path(src).parts]
+    if SCRATCH & set(src_parts) or src_parts[0] == "exports":
+        raise SystemExit(
+            f"{src}: the source must be a promoted file, not a scratch file or an export"
+        )
     for rel in (exp, src):
         if not (cad_root / rel).is_file():
             raise SystemExit(f"not found: cad/{rel}")
@@ -59,9 +73,11 @@ def record(
     entries = [e for e in data.get("exports", []) if e["export"].lower() != exp.lower()]
     entries.append(entry)
     data["exports"] = sorted(entries, key=lambda e: e["export"].lower())
-    with manifest.open("w", encoding="utf-8", newline="\n") as fh:
+    tmp = manifest.with_name(f"{manifest.name}.{os.getpid()}.tmp")
+    with tmp.open("w", encoding="utf-8", newline="\n") as fh:
         json.dump(data, fh, indent=2)
         fh.write("\n")
+    os.replace(tmp, manifest)  # an interrupted write never leaves half a manifest
     return entry
 
 
