@@ -21,6 +21,10 @@ use crate::types::{
     BusState, CommandBatch, ConfigError, Drain, SendList, SendOutcome, Snapshot, Timing,
 };
 
+/// The ticks a stopped bus waits after `exit` for control's ring to take its Stopped snapshot before the thread returns
+/// anyway with that snapshot in [`BusExit::last`]: a control that has stopped reading must not hold the join (and the
+/// recorder's close) forever. A dropped consumer ends the wait at once.
+const EXIT_WAIT_TICKS: u32 = 100;
 /// The most frames a tick's drain may find before the send. More than that queued means the thread can't tell what the
 /// bus said in time, so it stops (1 Mbit/s carries about 8,000 frames a second: 32 a tick at 250 Hz).
 const DRAIN_MAX: usize = 256;
@@ -140,7 +144,9 @@ pub struct BusLinks {
     pub recorder: BusRecorder,
     /// The session's monotonic zero.
     pub epoch: Epoch,
-    /// Set to end the thread: an active bus stops its drives first, then the thread returns.
+    /// Set to end the thread: an active bus stops its drives first, then the thread returns once control's ring has
+    /// taken the Stopped snapshot, or after `EXIT_WAIT_TICKS` ticks without that (the last snapshot is then
+    /// [`BusExit::last`]).
     pub exit: Arc<AtomicBool>,
 }
 
@@ -328,8 +334,10 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         }
     };
     let mut n: u64 = 0;
-    // Whether a Stopped snapshot reached control's ring: `outcome.last` is the last one taken, published or not.
-    let mut shown_stopped = false;
+    // Whether a Stopped snapshot reached control's ring (`outcome.last` is the last one made, taken or not), and the
+    // ticks a stopped bus has waited for that since `exit`.
+    let mut ring_took_stopped = false;
+    let mut exit_waits: u32 = 0;
     loop {
         let due = clock.at(n, timing.period_ns);
         if let Err(e) = clock.sleep_until(due) {
@@ -356,8 +364,9 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             lose(&mut tick, &mut outcome, e);
         }
         if links.exit.load(Ordering::Acquire) {
-            // Done once nothing needs stopping and control has seen where the bus ended: idle, or stopped in a
-            // snapshot control's ring took. A bus this drain stopped (a latched error) runs on to publish it.
+            // Done once nothing needs stopping and control's ring has the end: idle, or stopped in a snapshot the ring
+            // took, or (a control that stopped reading) `EXIT_WAIT_TICKS` of waiting for that. A bus this drain stopped
+            // (a latched error) runs on to publish it.
             match tick.state() {
                 BusState::Idle => {
                     // The frames this drain read are still recorded, with the health they left the bus in.
@@ -365,12 +374,16 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
                     outcome.recorder.record(batch);
                     break;
                 }
-                BusState::Stopped if shown_stopped => {
+                BusState::Stopped
+                    if ring_took_stopped
+                        || exit_waits >= EXIT_WAIT_TICKS
+                        || links.snapshots.is_abandoned() =>
+                {
                     batch.valid = tick.healthy();
                     outcome.recorder.record(batch);
                     break;
                 }
-                BusState::Stopped => {}
+                BusState::Stopped => exit_waits += 1,
                 BusState::Active | BusState::Stopping { .. } => tick.request_stop(),
             }
         }
@@ -396,7 +409,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             // Control's ring is full: it keeps its older snapshots and this one is lost, counted in the next.
             tick.snapshot_dropped();
         } else if snap.state == BusState::Stopped {
-            shown_stopped = true;
+            ring_took_stopped = true;
         }
         outcome.recorder.record(batch);
         outcome.last = Some(snap);
