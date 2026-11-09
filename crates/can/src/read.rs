@@ -102,6 +102,12 @@ impl BusTick {
             return;
         };
         d.observed = Some(Observed { status, read_ns });
+        // A later status in another mode takes the fresh one back: it can't be accepted again by a Run that follows.
+        if d.fresh_status
+            .is_some_and(|f| f.status.header.mode != status.header.mode)
+        {
+            d.fresh_status = None;
+        }
         if !status.header.faults.is_empty() {
             d.fault_seen = true;
         }
