@@ -67,9 +67,11 @@ the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture
 
 ## Using it
 
-Build a `BusTick` with the bus's drives in slot order, then per tick: `begin`, write each send and report it with
-`sent`, feed every frame read with `on_frame`, and `end` for the snapshot. On Linux, `spawn` runs exactly that on a
-socket.
+Build a `BusTick` with the bus's drives in slot order, then per tick: empty the socket, feeding each frame to `on_frame`,
+and report how the drain went with `drained`; `begin`, write each send and report it with `sent`; feed every frame read
+with `on_frame`; and `end` for the snapshot. `request_stop` asks for a stop at the next `begin`, `skipped` counts ticks a
+stall slept through, and `lost_bus` latches the bus stopped when the socket fails. On Linux, `spawn` runs exactly that
+on a socket.
 
 ```rust
 use can::{BusState, BusTick, CommandBatch, SendOutcome, Timing};

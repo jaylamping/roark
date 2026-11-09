@@ -1,17 +1,23 @@
 //! What crosses the bus thread's seams: command batches in, snapshots out, all fixed-size and `Copy` so the rings never
 //! allocate (rust.md section 6).
 
-use robstride::{DeviceId, Frame, Status};
+use robstride::{CanTimeout, DeviceId, Frame, Status};
 
 use crate::error_frame::BusError;
 
 /// The most drives one bus holds. The skeleton puts at most seven on a bus; a bus with more is refused at startup.
 pub const MAX_DRIVES: usize = 8;
-/// The most frames one tick sends: a command per drive, or a Disable and a reporting-off per drive while stopping.
+/// Room for the frames one tick sends. A tick sends at most one frame per drive (a command, or while stopping a Disable
+/// or a reporting off, never both); twice that is headroom, and a tick that plans past it is a bug in this crate.
 pub const MAX_SENDS: usize = 2 * MAX_DRIVES;
 
-/// The drives' own command timeout: three periods of feedback must fit inside it (PLAN.md item 3 Timing).
-pub const DRIVE_TIMEOUT_NS: u64 = 50_000_000;
+/// The drives' own command timeout, the `canTimeout` the host writes ([`CanTimeout::RUNTIME`], in 50 µs steps): three
+/// periods of feedback must fit inside it (PLAN.md item 3 Timing).
+#[expect(
+    clippy::as_conversions,
+    reason = "u32 to u64 widens losslessly, and u64::from isn't const"
+)]
+pub const DRIVE_TIMEOUT_NS: u64 = CanTimeout::RUNTIME.ticks() as u64 * 50_000;
 
 /// The tick's timing, in nanoseconds on the monotonic clock (`u64`, not `Duration`: the bus tick's exception,
 /// units-and-frames.md section 5). [`BusTick::new`](crate::BusTick::new) refuses timing that
@@ -176,7 +182,8 @@ impl CommandBatch {
         }
     }
 
-    /// Put `frame` in `slot`; false if the slot is out of range.
+    /// Put `frame` in `slot`; false if the slot is out of range (the frame is then not in the batch).
+    #[must_use]
     pub fn set(&mut self, slot: usize, frame: Frame) -> bool {
         self.frames
             .get_mut(slot)
@@ -254,8 +261,12 @@ impl SendList {
         len: 0,
     };
 
+    /// Add a send. Planning past [`MAX_SENDS`] is this crate's bug, so it ends the process rather than drop a frame
+    /// that may be a Disable (rust.md section 4).
     pub(crate) fn push(&mut self, send: Send) {
-        if let Some(slot) = self.sends.get_mut(self.len) {
+        let slot = self.sends.get_mut(self.len);
+        assert!(slot.is_some(), "a tick planned more than {MAX_SENDS} sends");
+        if let Some(slot) = slot {
             *slot = Some(send);
             self.len += 1;
         }
@@ -286,7 +297,7 @@ impl SendList {
 /// Where a bus is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BusState {
-    /// Nothing enabled or commanded since start; no batches needed.
+    /// Nothing enabled and no motion sent since start; no batches needed.
     Idle,
     /// It has sent an Enable or MIT frame, so it needs a fresh batch every tick.
     Active,
@@ -473,6 +484,9 @@ pub enum ConfigError {
     /// More drives than [`MAX_DRIVES`].
     #[error("{0} drives on one bus; the bus table holds {MAX_DRIVES}")]
     TooManyDrives(usize),
+    /// The same drive listed twice.
+    #[error("drive {0:?} is listed twice")]
+    DuplicateDrive(DeviceId),
     /// Timing [`Timing::check`] refuses.
     #[error("bad timing: {0}")]
     Timing(TimingError),
