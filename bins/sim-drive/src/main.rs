@@ -76,7 +76,8 @@ mod linux {
                     let stop = &stop;
                     std::thread::Builder::new()
                         .name(format!("sim-{bus}"))
-                        .spawn_scoped(scope, move || serve(bus, &mut drives, stop))
+                        // The binary schedules no faults, so nothing is ever injected.
+                        .spawn_scoped(scope, move || serve(bus, &mut drives, stop, &mut |_| {}))
                         .map_err(|e| e.to_string())
                 })
                 .collect::<Result<_, _>>()?;

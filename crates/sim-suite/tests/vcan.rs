@@ -81,7 +81,7 @@ fn only_vcan_is_served() {
         Uid([0; 8]),
         0,
     )];
-    let refused = serve("lo", &mut drives, &stop);
+    let refused = serve("lo", &mut drives, &stop, &mut |_| {});
     assert!(
         matches!(refused, Err(ServeError::NotVcan(NotVcan::OtherKind { .. }))),
         "{refused:?}"
@@ -97,7 +97,7 @@ fn a_drive_on_vcan_answers_the_host() {
     let stop = AtomicBool::new(false);
     let host = host_socket(BUS);
     std::thread::scope(|scope| {
-        let sim = scope.spawn(|| serve(BUS, &mut drives, &stop));
+        let sim = scope.spawn(|| serve(BUS, &mut drives, &stop, &mut |_| {}));
 
         // The sim thread may not have its socket open yet: ask until it answers, for at most a second.
         let started = Instant::now();

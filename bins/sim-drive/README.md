@@ -12,13 +12,25 @@ something that answers like the real drives before any real drive is enabled.
   blackout some time after a Set Zero on an enabled drive. `canTimeout` drops an enabled drive to Reset; `power_cycle`
   puts every parameter back to its default (`canTimeout` 0); active reports go out on a fixed period while on. Every
   delay comes from the seed it's given, so a run replays exactly.
-- **`serve`** (Linux) runs a set of `SimDrive`s on one bus's `vcan` socket until told to stop.
+- **The plant:** a first-order joint (`plant.rs`). In Run, the MIT law `kp (p_t - p) + kd (v_t - v) + t_ff` drives a
+  damper (`PLANT_DAMPING`, a sim value), so a target is reached with time constant `(PLANT_DAMPING + kd) / kp`; torque
+  stops at `limit_torque` and speed at `limit_spd`, the caps preflight writes. Out of Run the joint rests where it is.
+  No inertia or gravity yet: those come from `config/dynamics.yaml` when a test needs them.
+- **Fault injection** (`Fault`, PLAN item 4): a silent drive, late, lost or doubled frames, fault bits, a mode the host
+  didn't ask for, a register that reads out of window (VBUS, the damper), a temperature, a reboot mid-run, writes
+  answered but not kept, and lost Disables. `inject` applies one now; `schedule` fires one on a `Trigger` (the drive's
+  nth MIT command, or a time), at most `FAULT_PLAN` at once. Every injection is recorded once (`take_injected`), so a
+  replay shows what was injected. A duplicate ID or a wrong UID needs no fault: build two drives with one ID, or one
+  with another UID.
+- **`serve`** (Linux) runs a set of `SimDrive`s on one bus's `vcan` socket until told to stop, handing each injection
+  to its caller as it takes effect.
 - **The `sim-drive` binary** simulates every drive the skeleton puts on each bus, one thread per bus.
 
 Where neither the manuals nor a bench capture says what a drive does, the sim says so in a comment: it answers nothing to
 set-ID, the version query or the reporting switch, and most parameter defaults are sim values. An RS00 answers no
-status until its MIT scales are settled (PLAN item 2); `dropped` counts what it couldn't send. The plant holds position:
-MIT targets move nothing yet.
+status until its MIT scales are settled (PLAN item 2); `dropped` counts what it couldn't send. A fault bit leaves the
+mode as it is: no capture says a drive changes mode on a fault. Bus-level faults (bus-off, an interface going away) are
+the bus's, not a drive's.
 
 ## Must never
 

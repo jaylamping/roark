@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use robstride::drive::{self, DriveFrame};
 use socketcan::{CanDataFrame, CanFrame, CanSocket, EmbeddedFrame, ExtendedId, Id, Socket};
 
-use crate::SimDrive;
+use crate::{Injected, SimDrive};
 
 /// The longest the loop blocks on a read, so it notices `stop` and frames falling due.
 const MAX_WAIT: Duration = Duration::from_millis(5);
@@ -87,11 +87,18 @@ pub fn ensure_vcan(bus: &str) -> Result<(), NotVcan> {
 }
 
 /// Serve `drives` on `bus` until `stop` is set: each host frame goes to the drive it targets, and each drive's frames go
-/// out when they fall due. Frames that aren't host commands (other drives' replies, garbage) are ignored.
+/// out when they fall due. Frames that aren't host commands (other drives' replies, garbage) are ignored. Every fault
+/// injected into a drive, scheduled before serving or fired on its trigger, is handed to `injected` as it takes
+/// effect, for the recording's `/fault_injected` (logging.md section 3).
 ///
 /// # Errors
 /// [`ServeError`] if `bus` isn't `vcan` or its socket fails.
-pub fn serve(bus: &str, drives: &mut [SimDrive], stop: &AtomicBool) -> Result<(), ServeError> {
+pub fn serve(
+    bus: &str,
+    drives: &mut [SimDrive],
+    stop: &AtomicBool,
+    injected: &mut dyn FnMut(Injected),
+) -> Result<(), ServeError> {
     ensure_vcan(bus)?;
     let io = |source| ServeError::Socket {
         bus: bus.to_owned(),
@@ -103,6 +110,9 @@ pub fn serve(bus: &str, drives: &mut [SimDrive], stop: &AtomicBool) -> Result<()
         for sim in drives.iter_mut() {
             while let Some(frame) = sim.pop_due(now) {
                 send(&socket, frame).map_err(io)?;
+            }
+            while let Some(fault) = sim.take_injected() {
+                injected(fault);
             }
         }
         let next = drives.iter().filter_map(SimDrive::next_event).min();

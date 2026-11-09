@@ -2,6 +2,9 @@
 //! against an independent `candump -L -x` capture of the same bus (logging.md section 8.6).
 #![cfg(target_os = "linux")]
 
+#[expect(dead_code, reason = "each test file uses some of the shared helpers")]
+mod common;
+
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -10,89 +13,21 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use can::{
-    BusConfig, BusDrive, BusLinks, BusRunError, CommandBatch, LimbState, SlowKind, SlowOutcome,
-    SlowRefusal, SlowRequest, SlowResult, Snapshot, StopOutcome, StopReason, Timing,
+    BusConfig, BusLinks, BusRunError, CommandBatch, LimbState, SlowKind, SlowOutcome, SlowRefusal,
+    SlowRequest, SlowResult, Snapshot, StopOutcome, StopReason, Timing,
 };
-use robstride::{
-    DeviceId, Drive, Frame, Inbound, MitCommand, Mode, Model, NewtonMeters, NmPerRad, NmSecPerRad,
-    RadPerSec, Radians, Uid, decode, encode,
-};
+use common::{HZ, Shutdown, drive, hold, id, info, limbs, next_snapshot, soon};
+use robstride::{Drive, Frame, Inbound, Mode, Model, Uid, decode, encode};
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use socketcan::{CanDataFrame, CanSocket, EmbeddedFrame, Socket, StandardId};
 use telemetry::wire::Frames;
-use telemetry::{
-    BusInfo, Direction, Epoch, Recorder, Recording, Session, SessionInfo, SkeletonRef, Stage,
-    TimestampSource,
-};
+use telemetry::{Direction, Epoch, Recorder, Recording, Session};
 
 /// A bus no other sim test uses.
 const BUS: &str = "can2";
-/// Slow enough that the test thread, playing control, makes every tick on a loaded machine.
-const HZ: u64 = 100;
 const HOLD_TICKS: usize = 50;
 /// The marker sent until `candump` has it, so the capture is known to cover the whole run.
 const MARKER: u16 = 0x7AB;
-
-#[expect(
-    clippy::unwrap_used,
-    reason = "test helper: IDs here are constants in range"
-)]
-fn id(n: u8) -> DeviceId {
-    DeviceId::new(u64::from(n)).unwrap()
-}
-
-/// Drive `n` in limb `limb`.
-fn drive(n: u8, limb: usize) -> BusDrive {
-    BusDrive {
-        device: id(n),
-        limb,
-    }
-}
-
-/// Every limb's state and stop.
-fn limbs(snap: &Snapshot) -> Vec<(LimbState, Option<StopReason>)> {
-    snap.limbs().map(|(_, l)| (l.state, l.stop)).collect()
-}
-
-/// A schedule that starts two periods from now, as the runtime's does.
-fn soon() -> Instant {
-    Instant::now() + Duration::from_nanos(2 * 1_000_000_000 / HZ)
-}
-
-#[expect(
-    clippy::unwrap_used,
-    reason = "test helper: a hold command is in range"
-)]
-fn hold(n: u8) -> Frame {
-    let command = MitCommand {
-        position: Radians::new(0.0).unwrap(),
-        velocity: RadPerSec::new(0.0).unwrap(),
-        kp: NmPerRad::new(5.0).unwrap(),
-        kd: NmSecPerRad::new(0.5).unwrap(),
-        torque: NewtonMeters::new(0.0).unwrap(),
-    };
-    encode::mit(Drive::new(id(n), Model::Rs03), &command).unwrap()
-}
-
-fn info() -> SessionInfo {
-    SessionInfo {
-        git_revision: "test".to_owned(),
-        operator: "sim-suite".to_owned(),
-        stage: Stage::Vcan,
-        skeleton: SkeletonRef {
-            path: "inline".to_owned(),
-            sha256: "00".repeat(32),
-        },
-        buses: vec![BusInfo {
-            name: BUS.to_owned(),
-            bitrate: 1_000_000,
-            timestamps: TimestampSource::Software,
-            receive_filters: Vec::new(),
-            error_filter: u32::MAX,
-            adapter_firmware: None,
-        }],
-    }
-}
 
 struct Candump {
     child: Child,
@@ -170,17 +105,6 @@ fn parse(line: &str) -> Line {
             .collect(),
         local: flag == "T",
     }
-}
-
-/// The snapshot for the next tick, waiting at most a second.
-fn next_snapshot(snapshots: &mut rtrb::Consumer<Snapshot>, end: Instant) -> Option<Snapshot> {
-    while Instant::now() < end {
-        if let Ok(s) = snapshots.pop() {
-            return Some(s);
-        }
-        std::thread::yield_now();
-    }
-    None
 }
 
 /// Play control for the whole run, one batch per tick for the tick after the snapshot just read: enable both drives
@@ -262,16 +186,6 @@ fn play_control(
     assert_eq!(snap.counters.foreign_host, 0);
 }
 
-/// Sets both stop flags when dropped, including while a failed assertion unwinds.
-struct Shutdown<'a>(&'a AtomicBool, Arc<AtomicBool>);
-
-impl Drop for Shutdown<'_> {
-    fn drop(&mut self) {
-        self.0.store(true, Ordering::Release);
-        self.1.store(true, Ordering::Release);
-    }
-}
-
 /// Guards: safety - the bus layer opens nothing but `vcan` until the real adapter's checks exist, so a sim test or a
 /// mistaken name can't put frames on a real bus (PLAN step 8; testing.md rule 8).
 #[test]
@@ -283,7 +197,7 @@ fn spawn_refuses_anything_but_vcan() {
         let (_, commands) = rtrb::RingBuffer::new(1);
         let (snapshots, _) = rtrb::RingBuffer::new(1);
         // A session directory is named by its start time, so each case starts at its own second.
-        let session = Session::start(&root, info(), start_s * 1_000_000_000).unwrap();
+        let session = Session::start(&root, info(BUS), start_s * 1_000_000_000).unwrap();
         let (recording, mut buses) = Recording::new(session, 1);
         let refused = can::spawn(
             BusConfig {
@@ -321,8 +235,7 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
     const LAST: u16 = 0x123;
     ensure_vcan(IDLE_BUS).unwrap();
     let root = std::env::temp_dir().join(format!("sim-suite-idle-{}", std::process::id()));
-    let mut info = info();
-    info.buses[0].name = IDLE_BUS.to_owned();
+    let info = info(IDLE_BUS);
     let session = Session::start(&root, info, 1_000_000_000).unwrap();
     let session_dir = session.dir().to_owned();
     let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
@@ -410,8 +323,7 @@ fn a_bus_started_after_the_schedule_joins_it() {
     const BEHIND: u64 = 100;
     ensure_vcan(LATE_BUS).unwrap();
     let root = std::env::temp_dir().join(format!("sim-suite-late-{}", std::process::id()));
-    let mut info = info();
-    info.buses[0].name = LATE_BUS.to_owned();
+    let info = info(LATE_BUS);
     let session = Session::start(&root, info, 1_000_000_000).unwrap();
     let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
     let epoch = recording.epoch();
@@ -474,10 +386,9 @@ fn slow_requests_reach_a_drive_on_vcan_and_come_back() {
         let _shutdown = Shutdown(&stop_sim, Arc::clone(&exit));
         let sim = scope.spawn(|| {
             let mut drives = [SimDrive::new(Drive::new(id(101), Model::Rs03), uid, 7)];
-            serve(SLOW_BUS, &mut drives, &stop_sim)
+            serve(SLOW_BUS, &mut drives, &stop_sim, &mut |_| {})
         });
-        let mut info = info();
-        info.buses[0].name = SLOW_BUS.to_owned();
+        let info = info(SLOW_BUS);
         let session = Session::start(&root, info, 1_000_000_000).unwrap();
         let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
         let epoch = recording.epoch();
@@ -587,12 +498,12 @@ fn the_bus_loop_runs_against_sim_drive_and_its_recording_matches_candump() {
                 SimDrive::new(Drive::new(id(101), Model::Rs03), Uid([1; 8]), 5),
                 SimDrive::new(Drive::new(id(102), Model::Rs03), Uid([2; 8]), 6),
             ];
-            serve(BUS, &mut drives, &stop_sim)
+            serve(BUS, &mut drives, &stop_sim, &mut |_| {})
         });
         let dump = candump(&dir);
 
         // The recorder and the bus.
-        let session = Session::start(&dir, info(), 1_794_178_885_000_000_000).unwrap();
+        let session = Session::start(&dir, info(BUS), 1_794_178_885_000_000_000).unwrap();
         let session_dir = session.dir().to_owned();
         let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
         let epoch = recording.epoch();
