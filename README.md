@@ -23,8 +23,8 @@ five CAN buses, plus a simulated drive, agent tools and an operator UI.
 ## Build and check
 
 The toolchain is pinned in `rust-toolchain.toml`; `rustup` installs it on first use. The checks also need
-[cargo-nextest](https://nexte.st), [cargo-deny](https://github.com/EmbarkStudios/cargo-deny) and Python 3. Working on `cad/` also needs
-[Git LFS](https://git-lfs.com) (`git lfs install` once per machine).
+[cargo-nextest](https://nexte.st), [cargo-deny](https://github.com/EmbarkStudios/cargo-deny), Python 3 and pytest. Working on `cad/`
+also needs [Git LFS](https://git-lfs.com) (`git lfs install` once per machine).
 
 ```bash
 cargo install --locked cargo-nextest cargo-deny

@@ -55,7 +55,7 @@ the file name, not the folder. A region folder is created when its first file is
 ```
 cad/
   robot.SLDASM                root robot assembly
-  # body regions: native parts and assemblies only
+  # body regions: native parts and assemblies, plus .md notes
   torso/  waist/  shoulder/  upper-arm/  elbow/  forearm/  hand/  hip/  leg/  head/  neck/  shell/
   arm/                        whole-arm assemblies only
   fixtures/                   test stands, jigs and rigs (not part of the robot)
@@ -83,7 +83,30 @@ cad/
 Lower case, words joined by `_`, no robot name (tenet 7). A region whose folder has a hyphen uses `_` in file names:
 `upper-arm/upper_arm_link_left.SLDPRT`.
 
-## 5. Clones and bandwidth
+## 5. Layout check and export records
+
+`python3 tools/cad/check_cad_layout.py` checks the folder on disk (scratch included); `--repo` checks what git tracks, from the
+index, against the rules in the index, so it works without LFS content and checks a commit by its own rules. [scripts/check.sh](../scripts/check.sh) and CI
+run `--repo` and the tests in `tools/cad/`. The rules it reads live in
+[cad/manifests/cad-layout.json](../cad/manifests/cad-layout.json) (folders, file types, version-copy pattern, review limits)
+and [cad/manifests/cad-conventions.json](../cad/manifests/cad-conventions.json) (names). Add a region there and in section 3
+before creating its folder.
+
+It fails on: a loose file at the top of `cad/`, an unknown top-level folder or a folder name not in lower case; a file type
+outside its folder's list in `cad-layout.json`; FEA output outside `_sim/`; a version copy (`_v2`, `_revC`, `_final`, `(2)`,
+`Copy of`) in a region, export, print or drawing folder; a review file outside `reviews/<region>/<YYYYMMDD>_<topic>/` or over
+the review file limit; a missing or malformed `exports.json`; and, in `--repo`, a CAD file outside `cad/`, a CAD file
+committed as a plain blob instead of through LFS, two paths that differ only in case, or any tracked file in a scratch folder,
+lock file or Explorer file. It warns on names that break section 4 (case, region prefix, robot name), review files and packets
+over the warning limits, and packets with no `Pinned commit:` line. The limits are `reviewLimits` in `cad-layout.json`.
+
+**Export records.** Each STEP/STL in `exports/` has an entry in
+[cad/manifests/exports.json](../cad/manifests/exports.json): the export, its source part, configuration, export settings, and
+the SHA-256 of both (for an LFS file, the `oid` in its pointer). The check warns when the source changed after the export
+(stale) or an export has no entry, and fails when an export no longer matches its entry. **Why:** an export that silently
+drifts from its part is how a print or a URDF ends up built from the wrong geometry.
+
+## 6. Clones and bandwidth
 
 Install [Git LFS](https://git-lfs.com) and run `git lfs install` once per machine before adding anything under `cad/`. Without
 it, `git add` stores a CAD file as a plain blob, in history for good.
@@ -93,7 +116,7 @@ the pointer files. A plain `git clone` on a machine with Git LFS installed downl
 `GIT_LFS_SKIP_SMUDGE=1 git clone ...` unless you need the CAD, then fetch only what you need:
 `git lfs pull --include "cad/shoulder/**"`.
 
-## 6. Backup
+## 7. Backup
 
 `_wip/`, `_sim/` and `_archive/` exist only on Joey-PC. Git is not their backup: they are covered by Joey-PC's own backup, or
 the design is promoted before it would hurt to lose it.
