@@ -80,7 +80,7 @@ skeleton   (types and loader, no I/O beyond reading the file; reads robstride's 
 api       (message types; used by runtime, ui bridge, mcp, robot-cli)
 telemetry (leaf for producers: takes events, depends on nothing above; can hands it each tick's frames)
 
-can --> robstride, telemetry
+can --> robstride, telemetry        safety --> can, robstride, skeleton
 
 sim-drive (bin) --> robstride, skeleton        sim-suite (tests only) --> can, sim-drive, robstride, telemetry
 ```

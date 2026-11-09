@@ -316,7 +316,7 @@ The panel found the **drive layer doesn't exist** in the old code. This stack bu
 - **Drive:** `offline` (no reply) → `seen` (answers; UID matches once commissioned) → `checked` (preflight passed since this
   power-up) → `enabled` (Run mode seen) → `faulted` (latched). Silence, a reset-mode reply or a reboot drops the drive back to
   `seen` and drops its preflight.
-- **Limb:** `idle` → `enabled` → `stopping` → `faulted`. **Robot:** bus-off or a lost bus faults every active run.
+- **Limb:** `idle` → `enabling` (preflight and the enable sequence) → `enabled` → `stopping` → `faulted`. **Robot:** bus-off or a lost bus faults every active run.
 - Every transition is an event with its cause.
 - **Enable is per joint set.** An operator enables named joints. Each must be `checked`; joints not named stay offline and block
   nothing (tenet 1). Joints mechanically carried by an enabled joint are named too. Losing a named joint after enable stops the
@@ -328,22 +328,24 @@ The panel found the **drive layer doesn't exist** in the old code. This stack bu
 
 Each rule names what it protects and the failure it covers. A rule that protects nothing nameable goes.
 
-| Layer | Rule | Protects | Failure covered |
-|---|---|---|---|
-| Drive | `canTimeout` 0x7028: write 1000 (50 ms; unit 50 µs, 20000 = 1 s, 0 = off) at every runtime start and after any reboot; read back before every enable; refuse unless it reads exactly 1000. The right-arm drives read 600 today; rewrite them | Every drive and its limb | Pi crash, hang, killed process, lost bus: the drive goes limp 50 ms after the last command. It does not hold position; the arm drops onto the pad |
-| Drive | `limit_torque` 0x700B, `limit_cur` 0x7018, `limit_spd` 0x7017: write min(skeleton cap, plan or test cap), read back before enable | Drive and the printed parts on that joint | Host bug commanding too much. **Caveat:** the manuals describe `limit_spd` as a position-mode limit and `limit_cur` as a velocity/position-mode limit. Whether any of the three bounds MIT mode is unproven: test on a loose drive before relying on it, and until then treat it as host-only in that mode |
-| Drive | Damper 0x702A: read only, never written. The default 0 means the post-power-off anti-backdrive protection is **on**; 1 turns it off. Refuse enable unless it reads 0 | Drive and gearbox | Arm back-driving the drive when power is off |
-| Host | Preflight: VBUS 0x701C inside the skeleton's window (bench 22 to 26 V; this is a bench window, not the battery's), no fault bits, the three caps and `canTimeout` read back as written | Every drive | Wrong settings, wrong supply, drive already faulted |
-| Host | VBUS while running: read 0x701C in the slack at least once a second per drive; stop outside the window | Drives and supply | Supply sag or regen overvoltage |
-| Host | Silence: while a limb is enabled, stop it after 3 consecutive missed replies (12 ms at 250 Hz) or when any reply age passes 12 ms. A silent disabled drive is `offline`, not a fault | The limb's drives and parts | Lost drive, cable, power cycle |
-| Host | Faults: stop on any fault bit. A latched stop clears only by an operator `clear` through `api`; a drive fault bit clears only by power-cycling that drive, then full preflight | Everything on that limb | Drive fault; never auto-clear and retry |
-| Host | Limits: soft limits inside every hard stop (§1). Total commanded torque per joint, kp·(q_des − q) + kd·(dq_des − dq) + τ_ff, is predicted from the latest reply and refused above the joint's torque cap; backed by the drive's own limit once proven in MIT mode | Printed parts, hard stops | Bad target, gain or feed-forward |
-| Host | Sign: no gravity feed-forward on a joint until its direction is verified by a small torque-only pulse with the link supported, checked against the skeleton. Feed-forward runs only on a chain whose every joint answers with a verified direction | Arm and parts | Feed-forward pushing the wrong way |
-| Host | Temperature: pause at 60 °C (rest pose, torque off if the pose allows) until 45 °C; stop at 75 °C | Drive windings | Overheating (drive's own protection is far higher) |
-| Host | Hang: see item 3 (stale batches, watchdog, no auto-enable) | All drives | Hung control thread keeping drives fed |
-| Host | Bus-off (latched on the first error frame, even if the adapter restarts itself), interface down or gone (`ENODEV`, `ENETDOWN`): stop every active run; the drives on that bus time out | All limbs | Lost bus, wiring fault or unplugged adapter |
-| Host | Pi health: read `vcgencmd get_throttled` once a second; refuse enable while under-voltage or throttling is active, and log it if it starts during a run | Control timing | A browned-out or throttled Pi missing ticks |
-| Host | Logging: if the session log can't open or the disk is full, refuse the next enable; never stop a running motion for it | The record (tenet 6) | Disk full or slow |
+| Layer | ID | Rule | Protects | Failure covered |
+|---|---|---|---|---|
+| Drive | `drive.can_timeout` | `canTimeout` 0x7028: write 1000 (50 ms; unit 50 µs, 20000 = 1 s, 0 = off) at every runtime start and after any reboot; read back before every enable; refuse unless it reads exactly 1000. The right-arm drives read 600 today; rewrite them | Every drive and its limb | Pi crash, hang, killed process, lost bus: the drive goes limp 50 ms after the last command. It does not hold position; the arm drops onto the pad |
+| Drive | `drive.caps` | `limit_torque` 0x700B, `limit_cur` 0x7018, `limit_spd` 0x7017: write min(skeleton cap, plan or test cap), read back before enable | Drive and the printed parts on that joint | Host bug commanding too much. **Caveat:** the manuals describe `limit_spd` as a position-mode limit and `limit_cur` as a velocity/position-mode limit. Whether any of the three bounds MIT mode is unproven: test on a loose drive before relying on it, and until then treat it as host-only in that mode |
+| Drive | `drive.damper` | Damper 0x702A: read only, never written. The default 0 means the post-power-off anti-backdrive protection is **on**; 1 turns it off. Refuse enable unless it reads 0 | Drive and gearbox | Arm back-driving the drive when power is off |
+| Host | `host.preflight` | Preflight: VBUS 0x701C inside the skeleton's window (bench 22 to 26 V; this is a bench window, not the battery's), no fault bits, the drive not already in Run, the three caps and `canTimeout` read back as written | Every drive | Wrong settings, wrong supply, drive already faulted |
+| Host | `host.vbus` | VBUS while running: read 0x701C in the slack at least once a second per drive; stop outside the window | Drives and supply | Supply sag or regen overvoltage |
+| Host | `host.silence` | Silence: while a limb is enabled, stop it after 3 consecutive missed replies (12 ms at 250 Hz) or when any reply age passes 12 ms. A silent disabled drive is `offline`, not a fault | The limb's drives and parts | Lost drive, cable, power cycle |
+| Host | `host.fault` | Faults: stop on any fault bit. A latched stop clears only by an operator `clear` through `api`; a drive fault bit clears only by power-cycling that drive, then full preflight | Everything on that limb | Drive fault; never auto-clear and retry |
+| Host | `host.mode` | Mode: a drive seen in Run after its Enable that reports any other mode by itself, or that shows no Run within 50 ms of its Enable (item 2), stops its limb and drops its preflight | The limb's drives and parts | A drive dropping to Reset mid-run (`canTimeout` fired, a reboot or brown-out) or never reaching Run |
+| Host | `host.identity` | Identity: once commissioned, a drive whose UID (type 0) isn't the skeleton's is refused enable on that limb (item 3, Scan and identity). An ID the skeleton puts on another bus joins this row with the scan (step 8) | Every drive on that limb | A swapped or re-IDed drive answering on the expected ID |
+| Host | `host.soft_limit`, `host.total_torque` | Limits: soft limits inside every hard stop (§1). Total commanded torque per joint, kp·(q_des − q) + kd·(dq_des − dq) + τ_ff, is predicted from the latest reply and refused above the joint's torque cap; backed by the drive's own limit once proven in MIT mode | Printed parts, hard stops | Bad target, gain or feed-forward |
+| Host | `host.sign` | Sign: no gravity feed-forward on a joint until its direction is verified by a small torque-only pulse with the link supported, checked against the skeleton. Feed-forward runs only on a chain whose every joint answers with a verified direction | Arm and parts | Feed-forward pushing the wrong way |
+| Host | `host.temperature` | Temperature: pause at 60 °C (rest pose, torque off if the pose allows) until 45 °C; stop at 75 °C | Drive windings | Overheating (drive's own protection is far higher) |
+| Host | `host.hang` | Hang: see item 3 (stale or malformed batches, a late wake, watchdog, no auto-enable) | All drives | Hung control thread keeping drives fed |
+| Host | `host.bus` | Bus-off (latched on the first error frame, even if the adapter restarts itself), interface down or gone (`ENODEV`, `ENETDOWN`), or more frames queued than a tick can read: stop every active run; the drives on that bus time out | All limbs | Lost bus, wiring fault or unplugged adapter |
+| Host | `host.pi_health` | Pi health: read `vcgencmd get_throttled` once a second; refuse enable while under-voltage or throttling is active, and log it if it starts during a run | Control timing | A browned-out or throttled Pi missing ticks |
+| Host | `host.logging` | Logging: if the session log can't open or the disk is full, refuse the next enable; never stop a running motion for it | The record (tenet 6) | Disk full or slow |
 
 **Done when** preflight refuses an enable for each of: `canTimeout` ≠ 1000, a cap mismatch, damper ≠ 0, VBUS outside the window,
 any fault bit; proven on `vcan` and once on a real drive.

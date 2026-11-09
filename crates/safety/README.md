@@ -1,0 +1,64 @@
+# safety
+
+The host's half of PLAN item 6 (tenet 3) as plain functions and plain state: no I/O, time passed in. The runtime's
+control thread runs it; the bus layer (`can`) does the pre-send veto, and this crate names its stops.
+
+## What it does
+
+- **Rule IDs** (`RuleId`): one per row of PLAN item 6's rule table, the same string in the table, the code, the tests'
+  `Guards:` lines and every event (safety.md section 2). `RuleId::of_stop` names the rule behind each of the bus
+  layer's own stops; a requested stop carries its asker's `Cause`.
+- **Preflight** (`Preflight`): for one drive, over its bus's slow requests one at a time: get-ID and the UID check,
+  write `canTimeout` 1000 and the skeleton's three caps, then read all four back with the damper and VBUS. A fault or
+  Run in any status since it began, a fault since the last clear, or no status at all refuses. Only a pass makes a
+  `PreflightPassed`. Each `Refusal` names its rule, the measured and the expected value, and what the operator does
+  about it (safety.md section 5). A null cap or an unwired joint refuses before anything is sent.
+- **The enable sequence** (`Enabling`): takes a `PreflightPassed` by value, so an enable without a preflight doesn't
+  compile and one preflight enables once. Reporting off, its echo plus one tick, Enable, Run within 50 ms, then
+  `run_mode` = MIT, one frame per tick in control's batch. A failure after the Enable is planned means the limb must be
+  stopped (`Enabling::enable_planned`), not just refused.
+- **States** (`DriveState`, `LimbState`): PLAN item 6's machines as transition functions. An event a state doesn't
+  take returns `None` and changes nothing.
+
+Not here yet: the per-tick rules that need the skeleton (soft limits, total torque, temperature, VBUS while running)
+come with their sim tests (step 7 design, PR 5).
+
+## Must never
+
+- Do I/O, read a clock, or keep hidden state: every input is an argument (safety.md section 3).
+- Allow on an unknown: an unanswered request, an answer of the wrong kind, a null value or a stale status refuses.
+- Offer a way past a rule: no flag, mode or setting skips preflight or a check (safety.md section 4).
+
+## Talks to
+
+- `can`: reads its `DriveView`s and slow results, names its `StopReason`s, and builds the `SlowKind`s preflight asks.
+- `robstride`: the frames and writes the enable sequence and preflight use, and the values they compare.
+- `skeleton`: each joint's caps, UID and bus, and the VBUS window.
+
+Its place among the other crates is in the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
+
+## Using it
+
+A refusal says what was measured and what was expected, under its rule's ID; a stop the bus layer made is named by
+its rule.
+
+```rust
+use robstride::CanTimeout;
+use safety::{Refusal, RuleId};
+
+let refusal = Refusal::CanTimeout { read: CanTimeout::from_ticks(0) };
+assert_eq!(refusal.rule(), RuleId::DriveCanTimeout);
+assert_eq!(
+    refusal.message("left_elbow_pitch"),
+    "refused (drive.can_timeout): left_elbow_pitch canTimeout reads 0, expected 1000"
+);
+assert_eq!(
+    RuleId::of_stop(can::StopReason::DriveFault { slot: 0 }),
+    Some(RuleId::HostFault)
+);
+```
+
+The control thread runs one `Preflight` per named drive: `poll` with the drive's latest view gives a `Step`; it submits
+each `Step::Submit` to the drive's bus and hands the result to `answered`, until `Step::Passed` (or `Step::Refused`).
+The `PreflightPassed` goes to `Enabling::new`, whose `step` gives each tick's frame for the batch until
+`Next::Enabled`.

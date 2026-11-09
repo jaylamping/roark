@@ -1,0 +1,104 @@
+//! The rule IDs (safety.md section 2): one per row of PLAN item 6's rule table, the same string in the table, the code,
+//! each test's `Guards:` line, every event the rule emits and the operator's fault display.
+
+use can::StopReason;
+
+/// A safety rule, by its PLAN item 6 row.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum RuleId {
+    /// `canTimeout` written 1000 and read back exactly that before every enable.
+    DriveCanTimeout,
+    /// The three caps written from the skeleton and read back as written.
+    DriveCaps,
+    /// The damper reads 0, protection on.
+    DriveDamper,
+    /// Preflight's own checks: VBUS inside the skeleton's window, no fault bits, the drive not already running.
+    HostPreflight,
+    /// The drive's UID matches the skeleton's, once commissioned.
+    HostIdentity,
+    /// VBUS inside the window while running.
+    HostVbus,
+    /// A drive that stops answering, or answers too late, stops its limb.
+    HostSilence,
+    /// Any fault bit stops the limb.
+    HostFault,
+    /// A drive that leaves Run by itself, or never reaches it after its Enable, stops its limb.
+    HostMode,
+    /// Soft limits inside every hard stop.
+    HostSoftLimit,
+    /// The predicted total torque under the joint's cap.
+    HostTotalTorque,
+    /// No gravity feed-forward until the joint's sign is verified.
+    HostSign,
+    /// Pause at 60 °C, stop at 75 °C.
+    HostTemperature,
+    /// A hung, late or broken control side lets the drives time out.
+    HostHang,
+    /// Bus-off, an interface down or gone, or a bus the thread can't keep up with.
+    HostBus,
+    /// Under-voltage or throttling on the Pi refuses enable.
+    HostPiHealth,
+    /// A session log that can't be written refuses the next enable.
+    HostLogging,
+}
+
+impl RuleId {
+    /// The ID as written in PLAN item 6, the logs and the UI.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::DriveCanTimeout => "drive.can_timeout",
+            Self::DriveCaps => "drive.caps",
+            Self::DriveDamper => "drive.damper",
+            Self::HostPreflight => "host.preflight",
+            Self::HostIdentity => "host.identity",
+            Self::HostVbus => "host.vbus",
+            Self::HostSilence => "host.silence",
+            Self::HostFault => "host.fault",
+            Self::HostMode => "host.mode",
+            Self::HostSoftLimit => "host.soft_limit",
+            Self::HostTotalTorque => "host.total_torque",
+            Self::HostSign => "host.sign",
+            Self::HostTemperature => "host.temperature",
+            Self::HostHang => "host.hang",
+            Self::HostBus => "host.bus",
+            Self::HostPiHealth => "host.pi_health",
+            Self::HostLogging => "host.logging",
+        }
+    }
+
+    /// The rule behind a stop the bus layer made on its own, or `None` for [`StopReason::Requested`], whose cause is
+    /// whoever asked (the operator, or a rule the control thread checks).
+    #[must_use]
+    pub const fn of_stop(reason: StopReason) -> Option<Self> {
+        match reason {
+            StopReason::DriveFault { .. } => Some(Self::HostFault),
+            StopReason::DriveMode { .. } => Some(Self::HostMode),
+            StopReason::DriveSilent { .. } | StopReason::ExpiredFeedback { .. } => {
+                Some(Self::HostSilence)
+            }
+            StopReason::ControlSilent | StopReason::LateWake | StopReason::BadBatch { .. } => {
+                Some(Self::HostHang)
+            }
+            StopReason::Backlog | StopReason::Bus(_) => Some(Self::HostBus),
+            StopReason::Requested => None,
+        }
+    }
+}
+
+impl core::fmt::Display for RuleId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// Why a limb stopped: a rule, or someone asking.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Cause {
+    /// A rule's verdict.
+    Rule(RuleId),
+    /// An operator's or client's `stop`.
+    Operator,
+    /// The runtime is exiting.
+    Shutdown,
+}
