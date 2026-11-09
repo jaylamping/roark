@@ -108,7 +108,9 @@ def test_a_type_change_to_a_large_file_is_checked(repo: Path) -> None:
     git(repo, "add", "-A")
     assert cfs.staged(repo) == [(150_000_000, "cad/shoulder/link.SLDPRT")]
     git(repo, "commit", "-qm", "type change")
-    assert cfs.pushed(["origin/main..HEAD"], repo) == [(150_000_000, "cad/shoulder/link.SLDPRT")]
+    assert cfs.pushed(["origin/main..HEAD"], repo) == [
+        (150_000_000, "cad/shoulder/link.SLDPRT")
+    ]
 
 
 def test_content_added_in_a_merge_commit_is_checked(repo: Path) -> None:
@@ -283,7 +285,9 @@ def test_repo_mode_rejects_cad_outside_cad_plain_blobs_and_tracked_scratch(
         {
             "docs/part.step": "",
             "cad/shoulder/shoulder_raw.SLDPRT": "not a pointer",
-            "cad/shoulder/shoulder_fake.SLDPRT": pointer(1, "not-a-sha").replace("size 1", "size -1"),
+            "cad/shoulder/shoulder_fake.SLDPRT": pointer(1, "not-a-sha").replace(
+                "size 1", "size -1"
+            ),
             "cad/_wip/x/notes.md": "",
             "cad/.cad-writer.lock": "{}",
             "cad/shoulder/Thumbs.db": "",
@@ -352,25 +356,43 @@ def stage_exports(repo: Path, manifest: str | None, files: dict[str, str]) -> li
         (
             [record(sourceSha256="9" * 64)],
             {EXPORT: pointer(1000, "5" * 64)},
-            [f"WARN cad/{EXPORT}: stale: {SOURCE} changed after this export; re-export and record it"],
+            [
+                f"WARN cad/{EXPORT}: stale: {SOURCE} changed after this export; re-export and record it"
+            ],
         ),
         (
             [record(exportSha256="7" * 64)],
             {EXPORT: pointer(1000, "5" * 64)},
-            [f"cad/{EXPORT}: changed since it was recorded; run tools/cad/record_export.py again"],
+            [
+                f"cad/{EXPORT}: changed since it was recorded; run tools/cad/record_export.py again"
+            ],
         ),
-        ([record()], {}, [f"cad/{EXPORT}: listed in manifests/exports.json but missing"]),
+        (
+            [record()],
+            {},
+            [f"cad/{EXPORT}: listed in manifests/exports.json but missing"],
+        ),
         (
             [record(source="shoulder/gone.SLDPRT")],
             {EXPORT: pointer(1000, "5" * 64)},
-            [f"cad/{EXPORT}: source shoulder/gone.SLDPRT is gone; re-export from the current part or delete the export"],
+            [
+                f"cad/{EXPORT}: source shoulder/gone.SLDPRT is gone; re-export from the current part or delete the export"
+            ],
         ),
         (
             [],
             {EXPORT: pointer(1000, "5" * 64)},
-            [f"WARN cad/{EXPORT}: no source recorded; run tools/cad/record_export.py EXPORT SOURCE"],
+            [
+                f"WARN cad/{EXPORT}: no source recorded; run tools/cad/record_export.py EXPORT SOURCE"
+            ],
         ),
-        ([{"export": EXPORT}], {}, ["cad/manifests/exports.json: entry 0 is missing source, sourceSha256, exportSha256"]),
+        (
+            [{"export": EXPORT}],
+            {},
+            [
+                "cad/manifests/exports.json: entry 0 is missing source, sourceSha256, exportSha256"
+            ],
+        ),
     ],
 )
 def test_export_records(repo: Path, entries: list, files: dict, expected: list) -> None:
@@ -412,4 +434,6 @@ def test_lfs_pointer_parsing() -> None:
     assert gitlfs.parse_pointer(pointer(42, "c" * 64).encode()) == ("c" * 64, 42)
     assert gitlfs.parse_pointer(b"not a pointer") is None
     assert gitlfs.parse_pointer(pointer(42, "not-a-sha").encode()) is None
-    assert gitlfs.parse_pointer(pointer(42, "c" * 64).replace("42", "-1").encode()) is None
+    assert (
+        gitlfs.parse_pointer(pointer(42, "c" * 64).replace("42", "-1").encode()) is None
+    )
