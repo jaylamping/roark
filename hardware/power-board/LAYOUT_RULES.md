@@ -9,17 +9,20 @@
   Micro-Fit outputs (now at Y 175); the latch and soft start widened to the left edge. Power path, banks, heatsink and ports
   kept their coordinates. M3 holes at X ±46, Y 174 / 265 / 336.
 - **Single-sided: every part on the front face.** The rear has 6 mm to the carrier, and a back-side part would need a second reflow pass (Joey, 2026-11-07).
-- **6 layers, 1.6 mm, 1 oz outer / 0.5 oz inner, OSP** (2026-11-09: JLC quoted $44 for 5, against $96.47 for 4 layers with
-  2 oz outer; the thermal vias are filled and capped at no charge). [tools/stack.py](schematic/tools/stack.py) holds the
+- **6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, OSP** (Joey, 2026-11-09: JLC quoted $82.80 for 5, against $96.47 for
+  4 layers with 2 oz outer and $44.00 for 6 layers with 1 oz; the thermal vias are filled and capped at no charge). 2 oz
+  outer was chosen over 1 oz plus soldered copper bars: no bar parts or bar soldering, and the VBUS spine can stay on L6
+  beside the heatsink pads. [tools/stack.py](schematic/tools/stack.py) holds the
   stack for the tools:
   - L1 (F.Cu): parts, positive pours, short escapes.
   - L2 (In1): solid GND, unbroken under the banks, the absorber, the bus caps and the port FETs.
   - L3, L4 (In2, In3): signals between the two GND planes (Kelvin pairs, gates, UVLO), GND fill elsewhere.
   - L5 (In4): solid GND, the second return plane.
   - L6 (B.Cu): positive mirrors, the bare heatsink pads, GND wherever the positive path isn't.
-- Rating to lay out for: **60 A continuous, under 90 A peak.** 1 oz pours alone carry about 18 A per layer in 10.5 mm, so
-  the 60 A path and the 30 A port legs run on soldered copper bars ("Power path"). The two 0.5 oz GND planes return 60 A
-  across about 90 mm (about 0.8 mOhm, about 3 W spread over the board). At layer changes, use about 1 A per 0.3 mm via.
+- Rating to lay out for: **60 A continuous, under 90 A peak.** A 2 oz outer pour carries about 30 A in 10.5 mm at 20 °C
+  rise (IPC-2221B, external), so the 60 A path (BAT, SW_D, MID, VBUS) needs at least 10.5 mm on both L1 and L6, stitched
+  together, and each 30 A port leg needs at least 10.5 mm on one outer layer (or split across both). No bars. The two
+  0.5 oz GND planes return 60 A across about 90 mm (about 0.8 mOhm, about 3 W spread over the board). At layer changes, use about 1 A per 0.3 mm via.
 
 ## Power path
 

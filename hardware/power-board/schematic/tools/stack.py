@@ -1,12 +1,12 @@
 """The rev B5 main board's layer stack (2026-11-09: 6 layers, cheaper at JLC than 4 layers with 2 oz outer), shared by the
 plain-Python router and the KiCad-Python tools. Layer index = position in NAMES; routes.json and copper.json use it.
-  L1 F.Cu  : parts, power pours, short escapes (1 oz)
+  L1 F.Cu  : parts, power pours, short escapes (2 oz)
   L2 In1   : solid GND (0.5 oz)
   L3 In2   : signal (Kelvin pairs, gates, UVLO run here between two GND planes)
   L4 In3   : signal
   L5 In4   : solid GND
-  L6 B.Cu  : power mirrors, heatsink pads, GND fill (1 oz)
-The 60 A path is carried by soldered copper bars, not the 1 oz pours (LAYOUT_RULES.md, "Power path")."""
+  L6 B.Cu  : power mirrors, heatsink pads, GND fill (2 oz)
+The 60 A path runs on the 2 oz outer pours, L1 and L6 together (LAYOUT_RULES.md)."""
 NL=6
 NAMES=['F.Cu','In1.Cu','In2.Cu','In3.Cu','In4.Cu','B.Cu']
 OUTER={0,5}        # IPC-2221B external layers
