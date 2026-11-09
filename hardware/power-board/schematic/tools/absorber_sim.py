@@ -7,7 +7,8 @@ are a conductance that falls to zero over T_OFF starting at T_OPEN, the time the
 No pack exists yet, so L and R_LOOP are assumptions: 0.5 uH is the planning value, 1 uH the pessimistic one."""
 import ctypes,os,sys,tempfile
 DLL=sys.argv[1] if len(sys.argv)>1 else 'C:/Program Files/KiCad/10.0/bin/ngspice.dll'
-os.add_dll_directory(os.path.dirname(DLL)); ng=ctypes.CDLL(DLL)
+if hasattr(os,'add_dll_directory'): os.add_dll_directory(os.path.dirname(DLL))
+ng=ctypes.CDLL(DLL)
 OUT=ctypes.CFUNCTYPE(ctypes.c_int,ctypes.c_char_p,ctypes.c_int,ctypes.c_void_p)
 NUL=ctypes.CFUNCTYPE(ctypes.c_int,ctypes.c_int,ctypes.c_bool,ctypes.c_bool,ctypes.c_int,ctypes.c_void_p)
 pf=OUT(lambda s,i,u:0); ef=NUL(lambda *a:0); ng.ngSpice_Init(pf,pf,ef,None,None,None,None)
@@ -177,6 +178,7 @@ def rtrip(L,C,esr,t_open,tf,rl,lbar,labs,cdr,cbat):
     r=sim(rnet(L,C,esr,rl,lbar,labs,cdr,cbat,sw),'v(bat) i(ll) v(bx)',f'{t_open+tf+60e-6:.3e}')
     MOD=MODT.format(bv=64.4,rd=0.01)
     return max(x[1] for x in r),max(x[5] for x in r)
+FAILED=[]   # a corner that did not run is a failure: a maximum over the rest would understate the stress
 print();print('Rev B5 layout: real turn-off (tf), absorber loop LABS, pack-entry ceramics CBAT, bank A drain ceramics CDR; 8 cans, all corners:')
 for labs in (3e-9,5e-9):
     for cbat,cdr in ((1e-12,4.4e-6),(8.8e-6,4.4e-6),(8.8e-6,8.8e-6)):
@@ -186,7 +188,7 @@ for labs in (3e-9,5e-9):
                 for rl in (0.1,0.05):
                     for t_open in (8.8e-6,17.5e-6):
                         try: v,vd=rtrip(L,8*37.6e-6,0.045/8,t_open,tf,rl,2e-9,labs,cdr,cbat); w=max(w,v); wd=max(wd,vd)
-                        except Exception: pass
+                        except Exception as e: FAILED.append((labs,cbat,cdr,tf,L,rl,t_open,repr(e)))
         print(f'  LABS {labs*1e9:.0f} nH, CBAT {cbat*1e6:3.1f} uF, CDR {cdr*1e6:3.1f} uF: BAT {w:5.1f} V, bank A drain {wd:5.1f} V'+('   <- fitted' if (cbat,cdr)==(8.8e-6,4.4e-6) else ''))
 # extracted from the routed copper by tools/absorber_loop.py (pass LABS_NH / LBAR_NH to override)
 import os
@@ -197,5 +199,9 @@ for tf in (50e-9,200e-9):
         for rl in (0.1,0.05):
             for t_open in (8.8e-6,17.5e-6):
                 try: v,vd=rtrip(L,8*37.6e-6,0.045/8,t_open,tf,rl,lbar,labs,4.4e-6,8.8e-6); w=max(w,v); wd=max(wd,vd)
-                except Exception: pass
+                except Exception as e: FAILED.append(('extracted',tf,L,rl,t_open,repr(e)))
 print(f'\nExtracted loop: LABS {labs*1e9:.2f} nH, LBAR {lbar*1e9:.2f} nH, fitted ceramics, all corners: BAT {w:5.1f} V, bank A drain {wd:5.1f} V')
+if FAILED:
+    print(f'\n{len(FAILED)} corner(s) did not run, so the maxima above are not worst cases:')
+    for f in FAILED: print('  ',f)
+    sys.exit(1)

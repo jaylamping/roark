@@ -23,6 +23,7 @@ Read the page for the area you're touching before you write code. New to CAN? St
 | [remote-access.md](remote-access.md) | Connecting over Tailscale: tags, policy in git, SSH, agent keys, the UI, offline fallback |
 | [typescript.md](typescript.md) | The operator UI and other TypeScript clients |
 | [git.md](git.md) | Branches, commits, pull requests and review |
+| [cad.md](cad.md) | CAD files in git: what is versioned, Git LFS, the size limit, folder layout and names |
 | [docs.md](docs.md) | Which doc holds what, and how docs are written and kept true |
 
 Each page explains the reason behind its rules. If a rule is wrong, change it on purpose in a PR, with the reason. Don't work

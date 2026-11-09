@@ -131,7 +131,7 @@ What this means:
   in one tight cluster over solid GND. **Add about 4.4 µF of 100 V X7R (2 × 2.2 µF 1210) right at each bank A drain to GND.**
 - With a bus bar between the absorber and the banks (options B and C), BAT is protected but the bank FETs avalanche on every
   bus-short trip. That needs a TVS clamp at the bank drain. It is one more reason for D.
-- To do: fold this into tools/absorber_sim.py, rerun at the extracted layout values, and update the layout rules.
+- To do: fold this into schematic/tools/absorber_sim.py, rerun at the extracted layout values, and update the layout rules.
 
 **2. Port short (port_sim).** Extra drain inductance between the bus caps and the port FET:
 
@@ -176,11 +176,11 @@ The FETs, board and stencils don't change. The two 2.2 µF drain capacitors (opt
 | Mounting | the board's 6 × M3 holes at X ±46, Y 174 / 265 / 336; the heatsink hangs off the board on its own 2 × M3 (HS1, HS2; insulated by the pad); nothing is bolted to the frame through the heatsink |
 | Airflow | along the fins, parallel to the board's long side (Y). **Minimum about 1 m/s over the fins.** One 40 mm intake (5–8 CFM) ducted across a 70 × 20 mm fin section gives about 2–3 m/s |
 | Fins' clear space | 20 mm free beyond the fin tips; the air inlet and outlet at the heatsink's short ends kept open |
-| Cable exits | top edge (Y 340): pack 8 AWG pair (X 1 and 15), brake Mini-Fit pairs (X 29, 37, 18 AWG), 12 V converter pigtail J24 (X −41 to −19, 18 AWG). Left and right edges (X ±45): limb pigtails, 14 AWG pairs at Y 209–249. Bottom edge (Y 175): Pi GH 7-pin (X −31, 26–28 AWG), Micro-Fit 12 V outputs (X −19 to 18, 18–20 AWG) |
+| Cable exits | top edge (Y 340): pack 8 AWG pair (X 1 and 15), brake Mini-Fit pairs (X 29, 37, 18 AWG), 12 V converter pigtail J24 (X −41 to −19, 18 AWG). Left and right edges (X ±45): limb pigtails at Y 209–249, 16 AWG pairs for the arms, waist and aux, 14 AWG for the unfitted legs. Bottom edge (Y 175): Pi GH 8-pin (X −31, 26–28 AWG), Micro-Fit 12 V outputs (X −19 to 18, 18–20 AWG) |
 | Keep-outs | pack lead bend: X −5..25, Y 315–340 above the front face (8 AWG at R15, 7 mm OD). Back side outside the heatsink: THT pins up to 2.5 mm proud. 6 mm around each M3 hole |
 
-**STEP for placement:** [cad/reference/power_board_package.step](../../cad/reference/power_board_package.step) (Git LFS, 58 MB; rebuilt by
-tools/package_step.py). It's an assembly with:
+**STEP for placement:** [marengo_pdu_revb_package.step](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/pdb/design/layout/marengo_pdu_revb_package.step) (still in marengo, Git LFS, 58 MB; rebuilt by
+schematic/tools/package_step.py). It's an assembly with:
 - the board with every KiCad 3D model, plus approximate blocks for the Micro-Fit and Mini-Fit headers, which have no
   model;
 - the 120 × 69 × 36 mm finned heatsink (27 fins, tapped holes) and its thermal pad;
