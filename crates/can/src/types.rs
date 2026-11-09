@@ -153,7 +153,9 @@ pub enum TimingError {
 }
 
 /// One tick's commands from control: at most one encoded frame per drive slot (the drive's place in the bus's table).
-/// Frames come only from `robstride::encode`, so the transmit allowlist holds here too.
+/// Frames come only from `robstride::encode`, which builds only allowlisted frames. A batch may carry only motion,
+/// Enable, Disable, active reporting off and the `run_mode` = MIT write; the tick refuses anything else as a bad batch,
+/// since Set Zero, set-ID and other parameter traffic need sequencing a per-tick batch can't give (PLAN.md item 2).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CommandBatch {
     /// The tick it is for. A batch for any other tick is stale and never sent.
@@ -309,7 +311,8 @@ pub enum StopReason {
         /// That drive's slot.
         slot: usize,
     },
-    /// A batch's frame didn't target its slot's drive, or sat in a slot with no drive: a bug upstream.
+    /// A batch's frame didn't target its slot's drive, sat in a slot with no drive, or was a kind a batch may not carry
+    /// ([`CommandBatch`]): a bug upstream.
     BadBatch {
         /// The slot.
         slot: usize,

@@ -9,7 +9,10 @@
 //! acknowledgement.
 
 use robstride::encode::{self, Reporting};
-use robstride::{DecodeError, DeviceId, EchoKind, Frame, Inbound, Mode, Status, decode};
+use robstride::{
+    DecodeError, DeviceId, EchoKind, Frame, Inbound, Mode, Param, ParamValue, RunMode, Status,
+    decode,
+};
 use telemetry::{Direction, FrameRecord};
 
 use crate::error_frame::{BusError, classify};
@@ -221,7 +224,7 @@ impl BusTick {
                 self.stop_now(StopReason::BadBatch { slot }, now_ns);
                 return;
             };
-            if target != drive.device {
+            if target != drive.device || !batch_may_carry(kind) {
                 self.stop_now(StopReason::BadBatch { slot }, now_ns);
                 return;
             }
@@ -535,6 +538,25 @@ impl BusTick {
         }
         snap
     }
+}
+
+/// Whether control's batch may carry a frame of this kind: motion, Enable, Disable, and the enable sequence's active
+/// reporting off and `run_mode` = MIT write (PLAN.md item 2 Enable one drive). Set Zero, set-ID, parameter reads and
+/// other writes, reporting on and queries each need sequencing a per-tick batch can't give (PLAN.md item 2: Set Zero
+/// only with the limb stopped, set-ID only with one drive answering); a set-ID would also leave the drive table on the
+/// old ID.
+fn batch_may_carry(kind: EchoKind) -> bool {
+    matches!(
+        kind,
+        EchoKind::Mit
+            | EchoKind::Enable
+            | EchoKind::Disable
+            | EchoKind::Reporting(Reporting::Off)
+            | EchoKind::ParamWrite {
+                param: Param::RunMode,
+                value: ParamValue::RunMode(RunMode::Mit),
+            }
+    )
 }
 
 /// What a host frame is and whom it targets, read back through the codec (so the ID layout stays in `robstride`).

@@ -8,10 +8,11 @@ use can::{
     StopOutcome, StopReason, Timing, TimingError, classify,
 };
 use common::{
-    MS, PERIOD, at, batch, bus, deadline, error_frame, hold, id, record, report_frame, run_tick,
-    status, status_frame,
+    MS, PERIOD, at, batch, bus, deadline, drive, error_frame, hold, id, record, report_frame,
+    run_tick, status, status_frame,
 };
-use robstride::{Mode, StatusFault, encode};
+use robstride::encode::{self, Reporting};
+use robstride::{Mode, Param, StatusFault, Write};
 use telemetry::Direction;
 
 /// Guards: protocol - a status read after a drive's submitted command is its fresh answer; before, it's not
@@ -405,8 +406,9 @@ fn reply_counters_follow_the_deadline_not_the_read_order() {
 }
 
 /// Guards: safety - a batch is checked whole before any of it is sent: a frame aimed at another drive, a frame in a
-/// slot with no drive, or motion to a drive never heard from sends nothing and stops the bus with the exact reason
-/// (PLAN.md item 3, item 6 Silence row).
+/// slot with no drive, motion to a drive never heard from, or a frame a batch may not carry (Set Zero, set-ID, parameter
+/// reads and other writes, reporting on, queries: each needs sequencing a tick can't give, PLAN.md item 2) sends
+/// nothing and stops the bus with the exact reason (PLAN.md item 3, item 6 Silence row).
 #[test]
 fn a_bad_batch_sends_nothing_and_names_the_slot() {
     let rows = [
@@ -434,6 +436,36 @@ fn a_bad_batch_sends_nothing_and_names_the_slot() {
             StopReason::ExpiredFeedback { slot: 0 },
         ),
     ];
+    let not_for_a_batch = [
+        ("set zero", encode::set_zero(id(101))),
+        ("set id", encode::set_id(id(101), id(104))),
+        (
+            "parameter read",
+            encode::param_read(id(101), Param::RunMode),
+        ),
+        (
+            "timeout write",
+            encode::param_write(&Write::can_timeout(drive(101))),
+        ),
+        (
+            "speed target write",
+            encode::param_write(&Write::speed_target_zero(drive(101))),
+        ),
+        (
+            "reporting on",
+            encode::active_reporting(id(101), Reporting::On),
+        ),
+        ("version query", encode::version_query(id(101))),
+        ("get id", encode::get_id(id(101))),
+    ]
+    .map(|(name, frame)| {
+        (
+            name,
+            [Some(frame), None, None],
+            StopReason::BadBatch { slot: 0 },
+        )
+    });
+    let rows = rows.into_iter().chain(not_for_a_batch);
     for (name, frames, reason) in rows {
         let mut bus = bus();
         let sent = run_tick(&mut bus, 0, Some(&batch(0, &frames)), &[]);
@@ -443,6 +475,23 @@ fn a_bad_batch_sends_nothing_and_names_the_slot() {
         );
         assert_eq!(bus.end(deadline(0)).stop, Some(reason), "{name}");
     }
+}
+
+/// Guards: protocol - the enable sequence's own frames go out in a batch: active reporting off before the Enable, and
+/// `run_mode` = MIT once the drive is in Run (PLAN.md item 2 Enable one drive).
+#[test]
+fn a_batch_carries_the_enable_sequence() {
+    let mut bus = bus();
+    let b = batch(
+        0,
+        &[
+            Some(encode::active_reporting(id(101), Reporting::Off)),
+            Some(encode::param_write(&Write::mit_mode(drive(102)))),
+        ],
+    );
+    let sent = run_tick(&mut bus, 0, Some(&b), &[]);
+    assert_eq!(sent, [(0, SendKind::Command), (1, SendKind::Command)]);
+    assert_eq!(bus.end(deadline(0)).stop, None);
 }
 
 /// Guards: number - feedback exactly three periods old still carries motion; one nanosecond more stops (PLAN.md item 3:

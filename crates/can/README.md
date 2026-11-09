@@ -12,8 +12,10 @@ Each tick, on the monotonic clock (the steps the bus thread's shell runs around 
 2. **Drain** the socket to empty, so what is read after the send came after the backlog. It is not a strict barrier:
    a frame landing between the drain and the write counts as after it, which is still evidence of the drive then.
 3. **Plan** with `BusTick::begin`: the newest `CommandBatch` from control, only if it is for this tick and unexpired.
-   A stale or missing batch sends nothing; two silent ticks on an active bus stop it. An MIT frame to a drive whose
-   fresh status is older than three periods is refused and stops the bus.
+   A stale or missing batch sends nothing; two silent ticks on an active bus stop it. A batch carries only motion,
+   Enable, Disable and the enable sequence's reporting off and `run_mode` = MIT write; anything else (Set Zero, set-ID,
+   other parameter traffic) is a bad batch and stops the bus. An MIT frame to a drive whose fresh status is older than
+   three periods is refused and stops the bus.
 4. **Send** each planned frame once and feed the outcome back (`sent`). A command goes out only before the send
    window closes; a Disable or reporting off goes out even late, whoever planned it, since late it is still the right
    one. A full queue drops the frame and counts it; it is never retried within the tick.
