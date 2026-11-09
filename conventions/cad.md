@@ -57,7 +57,7 @@ the file name, not the folder. A region folder is created when its first file is
 ```
 cad/
   robot.SLDASM                root robot assembly
-  # body regions: native parts and assemblies only
+  # body regions: native parts and assemblies, plus .md notes
   torso/  waist/  shoulder/  upper-arm/  elbow/  forearm/  hand/  hip/  leg/  head/  neck/  shell/
   arm/                        whole-arm assemblies only
   fixtures/                   test stands, jigs and rigs (not part of the robot)
@@ -87,19 +87,20 @@ Lower case, words joined by `_`, no robot name (tenet 7). A region whose folder 
 
 ## 5. Layout check and export records
 
-`python tools/cad/check_cad_layout.py` checks the folder on disk (scratch included); `--repo` checks what git tracks, from the
-index, so it works without LFS content and sees exactly what a commit holds. [scripts/check.sh](../scripts/check.sh) and CI
+`python3 tools/cad/check_cad_layout.py` checks the folder on disk (scratch included); `--repo` checks what git tracks, from the
+index, against the rules in the index, so it works without LFS content and checks a commit by its own rules. [scripts/check.sh](../scripts/check.sh) and CI
 run `--repo` and the tests in `tools/cad/`. The rules it reads live in
 [cad/manifests/cad-layout.json](../cad/manifests/cad-layout.json) (folders, file types, version-copy pattern, review limits)
 and [cad/manifests/cad-conventions.json](../cad/manifests/cad-conventions.json) (names). Add a region there and in section 3
 before creating its folder.
 
-It fails on: a loose file at the top of `cad/` or an unknown top-level folder; a file type outside its folder's list (region
-folders hold SLDPRT, SLDASM and `.md` notes, `arm/` only assemblies, `prints/` 3MF and G-code); FEA output outside `_sim/`; a
-version copy (`_v2`, `_revC`, `_final`, `(2)`, `Copy of`) in a region, export, print or drawing folder; a review file outside
-`reviews/<region>/<YYYYMMDD>_<topic>/` or over 10 MB; and, in `--repo`, a CAD file outside `cad/`, a CAD file committed as a
-plain blob instead of through LFS, or any tracked file in a scratch folder. It warns on names that break section 4, review
-files over 2 MB, packets over 15 MB or 10 images, and packets with no `Pinned commit:` line.
+It fails on: a loose file at the top of `cad/`, an unknown top-level folder or a folder name not in lower case; a file type
+outside its folder's list in `cad-layout.json`; FEA output outside `_sim/`; a version copy (`_v2`, `_revC`, `_final`, `(2)`,
+`Copy of`) in a region, export, print or drawing folder; a review file outside `reviews/<region>/<YYYYMMDD>_<topic>/` or over
+the review file limit; a missing or malformed `exports.json`; and, in `--repo`, a CAD file outside `cad/`, a CAD file
+committed as a plain blob instead of through LFS, two paths that differ only in case, or any tracked file in a scratch folder,
+lock file or Explorer file. It warns on names that break section 4 (case, region prefix, robot name), review files and packets
+over the warning limits, and packets with no `Pinned commit:` line. The limits are `reviewLimits` in `cad-layout.json`.
 
 **Export records.** Each STEP/STL in `exports/` has an entry in
 [cad/manifests/exports.json](../cad/manifests/exports.json): the export, its source part, configuration, export settings, and

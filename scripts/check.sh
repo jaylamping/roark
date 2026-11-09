@@ -18,7 +18,7 @@ python3 scripts/check_rules.py count
 # the machine it came from.
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   python3 tools/check_file_sizes.py
-  python3 tools/cad/check_cad_layout.py --repo --quiet
+  python3 tools/cad/check_cad_layout.py --repo
 else
   echo "file size and CAD layout checks: not a git checkout, skipped"
 fi
