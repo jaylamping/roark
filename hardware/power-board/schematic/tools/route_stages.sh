@@ -9,7 +9,7 @@ set -uo pipefail
 W=$(cd "$1" && (pwd -W 2>/dev/null || pwd)); ROOT=$(cd "$(dirname "$0")/.." && pwd); LAYOUT="$ROOT/../layout"
 KP="/c/Program Files/KiCad/10.0/bin/python.exe"; KC="/c/Program Files/KiCad/10.0/bin/kicad-cli.exe"
 [ -x "$KP" ] || { KP=/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3; KC=/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli; }
-PY=$(command -v python3 || command -v python)
+PY=python3; "$PY" -c "" 2>/dev/null || PY=python  # a python3 that fails (the Windows Store stub) falls back
 export MSYS_NO_PATHCONV=1; cd "$ROOT"; q() { grep -v 'memory leak\|GetWidth called' || true; }
 die() { echo "$*"; exit 1; }
 CRIT='/(SH\w*_[PN]|UVLO|GATE|GATE_A|GA1|GA2|G1|G2|G1PD_A|BRK_GATE|PRE_G|CL_G|G_L\d|GPU_L\d|GPD_L\d)$'
