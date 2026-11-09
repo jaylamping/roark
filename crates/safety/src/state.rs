@@ -9,7 +9,7 @@ use crate::rule::Cause;
 pub enum DriveState {
     /// No reply since start, a bus loss, or silence while disabled.
     Offline,
-    /// Answers (and its UID matches, once commissioned); no preflight in hand.
+    /// Answers; no preflight in hand. Its identity is preflight's to check, not this state's.
     Seen,
     /// Preflight passed and not yet used.
     Checked,
@@ -22,7 +22,7 @@ pub enum DriveState {
 /// What happened to a drive.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DriveEvent {
-    /// It answered a request.
+    /// It answered a request: a slow request or a command.
     Answered,
     /// Its preflight passed.
     PreflightPassed,
@@ -47,45 +47,52 @@ pub enum DriveEvent {
 impl DriveState {
     /// The state after `event`, or `None` if this state doesn't take it.
     #[must_use]
-    #[expect(
-        clippy::match_same_arms,
-        reason = "one transition per arm, so each reads against PLAN item 6"
-    )]
     pub const fn on(self, event: DriveEvent) -> Option<Self> {
         use DriveEvent as E;
-        Some(match (self, event) {
-            // A fault latches from anywhere and only a clear lets go of it.
-            (_, E::Fault) => Self::Faulted,
-            (Self::Faulted, E::Cleared) => Self::Seen,
-            (Self::Faulted, _) => return None,
-            (_, E::BusLost) => Self::Offline,
-            (Self::Offline | Self::Seen, E::Answered) => Self::Seen,
-            (Self::Checked, E::Answered) => Self::Checked,
-            (Self::Seen, E::PreflightPassed) => Self::Checked,
-            (Self::Seen | Self::Checked, E::PreflightRefused) => Self::Seen,
-            (Self::Checked, E::RunSeen) => Self::Enabled,
+        use DriveState::{Checked, Enabled, Faulted, Offline, Seen};
+        match event {
+            // A fault latches from anywhere, and only a clear lets go of it.
+            E::Fault => Some(Faulted),
+            E::Cleared => match self {
+                Faulted => Some(Seen),
+                Offline | Seen | Checked | Enabled => None,
+            },
+            E::BusLost => match self {
+                Offline | Seen | Checked | Enabled => Some(Offline),
+                Faulted => None,
+            },
+            // An answer shows the drive is there; it proves nothing new to a checked or enabled one.
+            E::Answered => match self {
+                Offline | Seen => Some(Seen),
+                Checked | Enabled => Some(self),
+                Faulted => None,
+            },
+            // Preflight runs again before every enable, so a checked drive takes a new verdict too.
+            E::PreflightPassed => match self {
+                Seen | Checked => Some(Checked),
+                Offline | Enabled | Faulted => None,
+            },
+            E::PreflightRefused => match self {
+                Seen | Checked => Some(Seen),
+                Offline | Enabled | Faulted => None,
+            },
+            // Only a checked drive enables: preflight can't be skipped.
+            E::RunSeen => match self {
+                Checked => Some(Enabled),
+                Offline | Seen | Enabled | Faulted => None,
+            },
             // Disabled, or dropped out of Run: the preflight is spent or void either way.
-            (Self::Checked | Self::Enabled, E::Disabled | E::LeftRun) => Self::Seen,
+            E::Disabled | E::LeftRun => match self {
+                Checked | Enabled => Some(Seen),
+                Offline | Seen | Faulted => None,
+            },
             // PLAN item 6: silence drops an enabled drive to seen; a silent disabled drive is offline.
-            (Self::Enabled, E::Silent) => Self::Seen,
-            (Self::Seen | Self::Checked, E::Silent) => Self::Offline,
-            (
-                Self::Offline,
-                E::PreflightPassed
-                | E::PreflightRefused
-                | E::RunSeen
-                | E::Disabled
-                | E::LeftRun
-                | E::Silent
-                | E::Cleared,
-            )
-            | (Self::Seen, E::RunSeen | E::Disabled | E::LeftRun | E::Cleared)
-            | (Self::Checked, E::PreflightPassed | E::Cleared)
-            | (
-                Self::Enabled,
-                E::Answered | E::PreflightPassed | E::PreflightRefused | E::RunSeen | E::Cleared,
-            ) => return None,
-        })
+            E::Silent => match self {
+                Enabled => Some(Seen),
+                Seen | Checked => Some(Offline),
+                Offline | Faulted => None,
+            },
+        }
     }
 }
 
@@ -124,27 +131,36 @@ pub enum LimbEvent {
 impl LimbState {
     /// The state after `event`, or `None` if this state doesn't take it.
     #[must_use]
-    #[expect(
-        clippy::match_same_arms,
-        reason = "one transition per arm, so each reads against PLAN item 6"
-    )]
     pub const fn on(self, event: LimbEvent) -> Option<Self> {
         use LimbEvent as E;
-        Some(match (self, event) {
-            (Self::Idle, E::Enable) => Self::Enabling,
-            (Self::Enabling, E::Enabled) => Self::Enabled,
-            (Self::Enabling, E::Refused) => Self::Idle,
-            // A drive of an idle limb faulting stops it too: the bus layer vetoes idle limbs as well.
-            (Self::Idle | Self::Enabling | Self::Enabled, E::Stop(cause)) => Self::Stopping(cause),
-            (Self::Stopping(cause), E::Settled) => Self::Faulted(cause),
-            (Self::Faulted(_), E::Cleared) => Self::Idle,
-            (Self::Idle, E::Enabled | E::Refused | E::Settled | E::Cleared)
-            | (Self::Enabling, E::Enable | E::Settled | E::Cleared)
-            | (Self::Enabled, E::Enable | E::Enabled | E::Refused | E::Settled | E::Cleared)
-            | (Self::Stopping(_), E::Enable | E::Enabled | E::Refused | E::Stop(_) | E::Cleared)
-            | (Self::Faulted(_), E::Enable | E::Enabled | E::Refused | E::Stop(_) | E::Settled) => {
-                return None;
-            }
-        })
+        use LimbState::{Enabled, Enabling, Faulted, Idle, Stopping};
+        match event {
+            E::Enable => match self {
+                Idle => Some(Enabling),
+                Enabling | Enabled | Stopping(_) | Faulted(_) => None,
+            },
+            E::Enabled => match self {
+                Enabling => Some(Enabled),
+                Idle | Enabled | Stopping(_) | Faulted(_) => None,
+            },
+            E::Refused => match self {
+                Enabling => Some(Idle),
+                Idle | Enabled | Stopping(_) | Faulted(_) => None,
+            },
+            // A drive of an idle limb faulting stops it too: the bus layer vetoes idle limbs as well. The first cause
+            // is kept.
+            E::Stop(cause) => match self {
+                Idle | Enabling | Enabled => Some(Stopping(cause)),
+                Stopping(_) | Faulted(_) => None,
+            },
+            E::Settled => match self {
+                Stopping(cause) => Some(Faulted(cause)),
+                Idle | Enabling | Enabled | Faulted(_) => None,
+            },
+            E::Cleared => match self {
+                Faulted(_) => Some(Idle),
+                Idle | Enabling | Enabled | Stopping(_) => None,
+            },
+        }
     }
 }

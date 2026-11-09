@@ -7,8 +7,8 @@ use can::DriveView;
 use can::SlowKind;
 use common::{echoed, joint, quiet, seen, skeleton, status};
 use robstride::{
-    CanTimeout, Damper, EchoKind, Mode, Param, ParamOutcome, ParamValue, Reporting, StatusFault,
-    StatusFaults, Uid, Volts, Write, encode,
+    CanTimeout, Damper, EchoKind, Mode, Param, ParamOutcome, ParamValue, Reporting, RunMode,
+    StatusFault, StatusFaults, Uid, Volts, Write, encode,
 };
 use safety::{
     EnableFailure, Enabling, Next, Preflight, PreflightPassed, RUN_WITHIN_NS, RuleId, Step, Target,
@@ -71,6 +71,23 @@ fn to_enable(t0: u64) -> (Enabling, DriveView) {
     let _ = enabling.step(&echo, 2, t0 + 2 * PERIOD);
     assert!(enabling.enable_planned());
     (enabling, echo)
+}
+
+/// The echo of the `run_mode` = MIT write.
+const MIT: EchoKind = EchoKind::ParamWrite {
+    param: Param::RunMode,
+    value: ParamValue::RunMode(RunMode::Mit),
+};
+
+/// [`to_enable`] carried on: a Run read just after the Enable, and the MIT write planned in the tick after it, at the
+/// returned time; and that Run's view.
+fn to_mit(t0: u64) -> (Enabling, DriveView, u64) {
+    let (mut enabling, echo) = to_enable(t0);
+    let enable_at = t0 + 2 * PERIOD;
+    let run = with_status(echo, Mode::Run, enable_at + 1);
+    let mit_at = enable_at + PERIOD;
+    assert!(matches!(enabling.step(&run, 3, mit_at), Next::Send(_)));
+    (enabling, run, mit_at)
 }
 
 /// `echo` with a status in `mode` read at `read_ns`.
@@ -139,13 +156,29 @@ fn the_enable_sequence_runs_its_steps_in_order() {
         Next::Wait
     );
     let run = with_status(echo, Mode::Run, enable_at + 2);
+    let mit_at = enable_at + 3 * PERIOD;
     assert_eq!(
-        enabling.step(&run, 106, enable_at + 3 * PERIOD),
+        enabling.step(&run, 106, mit_at),
         Next::Send(encode::param_write(&Write::mit_mode(drive)))
     );
     assert_eq!(
-        enabling.step(&run, 107, enable_at + 4 * PERIOD),
-        Next::Enabled
+        enabling.step(&run, 107, mit_at + PERIOD),
+        Next::Wait,
+        "the MIT write not yet read back"
+    );
+    let early = echoed(run, MIT, mit_at - 1);
+    assert_eq!(
+        enabling.step(&early, 108, mit_at + 2 * PERIOD),
+        Next::Wait,
+        "an MIT echo from before"
+    );
+    let mit = echoed(run, MIT, mit_at + 10);
+    assert_eq!(enabling.step(&mit, 109, mit_at + 3 * PERIOD), Next::Enabled);
+    assert!(enabling.enable_planned());
+    assert_eq!(
+        enabling.step(&mit, 110, mit_at + 4 * PERIOD),
+        Next::Enabled,
+        "it stays enabled"
     );
 }
 
@@ -181,6 +214,15 @@ fn the_enable_sequence_gives_up_on_no_run_or_a_fault() {
     );
     assert!(slow.enable_planned(), "so the limb is stopped");
     assert_eq!(EnableFailure::NoRun { last: None }.rule(), RuleId::HostMode);
+    // A Run read after its window, however the ticks fall, is too late.
+    let (mut late, _) = to_enable(t0);
+    let late_run = with_status(echo, Mode::Run, enable_at + RUN_WITHIN_NS + 1);
+    assert_eq!(
+        late.step(&late_run, 3, enable_at + RUN_WITHIN_NS + 1),
+        Next::Failed(EnableFailure::NoRun {
+            last: Some(Mode::Run)
+        })
+    );
 
     let mut deaf = Enabling::new(passed(), t0);
     let _ = deaf.step(&quiet(), 0, t0);
@@ -190,13 +232,23 @@ fn the_enable_sequence_gives_up_on_no_run_or_a_fault() {
         Next::Failed(EnableFailure::NoEcho)
     );
     assert!(!deaf.enable_planned(), "nothing to stop");
+    let mut slow_echo = Enabling::new(passed(), t0);
+    let _ = slow_echo.step(&quiet(), 0, t0);
+    let late_echo = echoed(
+        quiet(),
+        EchoKind::Reporting(Reporting::Off),
+        t0 + RUN_WITHIN_NS + 1,
+    );
+    assert_eq!(
+        slow_echo.step(&late_echo, 1, t0 + RUN_WITHIN_NS + 1),
+        Next::Failed(EnableFailure::NoEcho),
+        "an echo read after its window"
+    );
+    assert_eq!(EnableFailure::NoEcho.rule(), RuleId::HostBus);
 
     let over: StatusFaults = [StatusFault::Overcurrent].into_iter().collect();
     let (mut faulted, _) = to_enable(t0);
-    let fault = DriveView {
-        fault_seen: false,
-        ..seen(status(Mode::Reset, over, enable_at + 1))
-    };
+    let fault = seen(status(Mode::Reset, over, enable_at + 1));
     assert_eq!(
         faulted.step(&fault, 3, enable_at + PERIOD),
         Next::Failed(EnableFailure::Faults { bits: over })
@@ -218,4 +270,34 @@ fn the_enable_sequence_gives_up_on_no_run_or_a_fault() {
         EnableFailure::Faults { bits: over }.rule(),
         RuleId::HostFault
     );
+}
+
+/// Guards: safety - `host.bus`: a drive whose `run_mode` = MIT write isn't read back within 50 ms of being planned is
+/// never handed to control: the drive may not be in MIT mode, and since its Enable went out the limb is stopped.
+#[test]
+fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
+    let t0 = 100 * PERIOD;
+    let (mut deaf, run, mit_at) = to_mit(t0);
+    assert_eq!(deaf.step(&run, 4, mit_at + RUN_WITHIN_NS), Next::Wait);
+    assert_eq!(
+        deaf.step(&run, 5, mit_at + RUN_WITHIN_NS + 1),
+        Next::Failed(EnableFailure::NoModeEcho)
+    );
+    assert!(deaf.enable_planned(), "so the limb is stopped");
+
+    let (mut late, run, mit_at) = to_mit(t0);
+    let late_echo = echoed(run, MIT, mit_at + RUN_WITHIN_NS + 1);
+    assert_eq!(
+        late.step(&late_echo, 4, mit_at + RUN_WITHIN_NS + 1),
+        Next::Failed(EnableFailure::NoModeEcho),
+        "an echo read after its window"
+    );
+    let (mut on_time, run, mit_at) = to_mit(t0);
+    let echo = echoed(run, MIT, mit_at + RUN_WITHIN_NS);
+    assert_eq!(
+        on_time.step(&echo, 4, mit_at + RUN_WITHIN_NS),
+        Next::Enabled,
+        "at 50 ms"
+    );
+    assert_eq!(EnableFailure::NoModeEcho.rule(), RuleId::HostBus);
 }

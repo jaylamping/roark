@@ -16,6 +16,10 @@ fn drive_states_follow_plan_item_6() {
         (Checked, D::PreflightRefused, Some(Seen)),
         (Checked, D::RunSeen, Some(Enabled)),
         (Checked, D::Answered, Some(Checked)),
+        (Enabled, D::Answered, Some(Enabled)),
+        // Preflight runs again before every enable: a checked drive takes the new verdict.
+        (Checked, D::PreflightPassed, Some(Checked)),
+        (Enabled, D::PreflightPassed, None),
         (Enabled, D::LeftRun, Some(Seen)),
         (Enabled, D::Silent, Some(Seen)),
         (Enabled, D::Disabled, Some(Seen)),

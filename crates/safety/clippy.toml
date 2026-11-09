@@ -1,0 +1,14 @@
+# Realtime crate (rust.md section 2): the workspace rules plus the bans on reading the clock and sleeping, because
+# every rule takes time passed in (safety.md section 3). Keep the shared part in step with the root clippy.toml.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-indexing-slicing-in-tests = true
+doc-valid-idents = ["RobStride", "SocketCAN", ".."]
+
+disallowed-methods = [
+  { path = "std::panic::catch_unwind", reason = "we run panic = abort; a caught panic leaves a half-alive process" },
+  { path = "std::sync::mpsc::channel", reason = "unbounded; use a bounded queue so overload is visible" },
+  { path = "std::time::Instant::now", reason = "time is passed in to the tick so tests can step it" },
+  { path = "std::time::SystemTime::now", reason = "wall clock is for logs only, and not in the tick" },
+  { path = "std::thread::sleep", reason = "the shell's absolute sleep owns timing; the tick never waits" },
+]

@@ -10,16 +10,37 @@ use robstride::{
     Amps, CanTimeout, Damper, Mode, NewtonMeters, Param, ParamOutcome, ParamValue, RadPerSec,
     StatusFault, StatusFaults, Uid, Volts,
 };
-use safety::{CapKind, Exchange, Preflight, Refusal, RuleId, Step, Target, Unanswered};
+use safety::{
+    ANSWER_WITHIN_NS, CapKind, Exchange, Preflight, Refusal, Register, RuleId, Step, Target,
+    Unanswered,
+};
 
 /// The fixture's UID for `arm_joint_one`.
 const UID: Uid = Uid([0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]);
 
+#[expect(
+    clippy::panic,
+    reason = "test helper; preflight asks only its own registers"
+)]
+fn register(param: Param) -> Register {
+    [
+        Register::CanTimeout,
+        Register::LimitTorque,
+        Register::LimitCur,
+        Register::LimitSpd,
+        Register::Damper,
+        Register::Vbus,
+    ]
+    .into_iter()
+    .find(|r| r.param() == param)
+    .unwrap_or_else(|| panic!("{param:?} isn't preflight's"))
+}
+
 fn exchange_of(kind: SlowKind) -> Exchange {
     match kind {
         SlowKind::GetId => Exchange::Identity,
-        SlowKind::Write(w) => Exchange::Write(w.param()),
-        SlowKind::Read(p) => Exchange::Read(p),
+        SlowKind::Write(w) => Exchange::Write(register(w.param())),
+        SlowKind::Read(p) => Exchange::Read(register(p)),
     }
 }
 
@@ -51,7 +72,7 @@ impl Drive {
 
     fn reading(param: Param, value: ParamValue) -> Self {
         Self::answering(
-            Exchange::Read(param),
+            Exchange::Read(register(param)),
             SlowOutcome::Read(ParamOutcome::Read(value)),
         )
     }
@@ -114,7 +135,15 @@ fn run(n: usize, drive: &Drive) -> (Result<(), Refusal>, Vec<(Param, ParamValue)
         }
         preflight.answered(outcome);
     }
-    (Err(Refusal::NoStatus), written)
+    unreachable_end()
+}
+
+#[expect(
+    clippy::panic,
+    reason = "test helper; a preflight that never ends fails the test"
+)]
+fn unreachable_end() -> ! {
+    panic!("preflight never ended")
 }
 
 #[expect(
@@ -166,12 +195,11 @@ fn can_timeout_must_read_back_exactly_1000() {
         );
         if let Err(refusal) = verdict {
             assert_eq!(refusal.rule(), RuleId::DriveCanTimeout);
-            assert!(
-                refusal
-                    .message("arm_joint_one")
-                    .contains(&format!("canTimeout reads {ticks}, expected 1000")),
-                "{}",
-                refusal.message("arm_joint_one")
+            assert_eq!(
+                refusal.message("arm_joint_one"),
+                format!(
+                    "refused (drive.can_timeout): arm_joint_one canTimeout reads {ticks}, expected 1000"
+                )
             );
         }
     }
@@ -210,7 +238,7 @@ fn the_caps_are_written_from_the_skeleton_and_read_back_as_written() {
         assert_eq!(
             verdict,
             Err(Refusal::Cap {
-                param,
+                register: register(param),
                 written,
                 read
             }),
@@ -222,7 +250,7 @@ fn the_caps_are_written_from_the_skeleton_and_read_back_as_written() {
     assert_eq!(
         verdict,
         Err(Refusal::NoAnswer {
-            exchange: Exchange::Read(Param::LimitTorque),
+            exchange: Exchange::Read(Register::LimitTorque),
             how: Unanswered::WrongAnswer
         })
     );
@@ -230,16 +258,82 @@ fn the_caps_are_written_from_the_skeleton_and_read_back_as_written() {
     let (verdict, written) = run(1, &Drive::honest());
     assert_eq!(verdict, Err(Refusal::CapUnset(CapKind::Torque)));
     assert_eq!(written, [], "nothing sent");
+
     for refusal in [
         Refusal::CapUnset(CapKind::Torque),
+        Refusal::CapOutOfRange {
+            cap: CapKind::Speed,
+            value: 21.0,
+            max: 20.0,
+        },
         Refusal::Cap {
-            param: Param::LimitCur,
+            register: Register::LimitCur,
             written: current(12.0),
             read: current(1.0),
         },
     ] {
         assert_eq!(refusal.rule(), RuleId::DriveCaps);
     }
+}
+
+/// Guards: safety - `drive.caps`: a cap outside what the drive's model can be set to refuses before anything is sent,
+/// naming the skeleton's value and the model's highest (RS03: 60 N·m, 43 A, 20 rad/s; the model's highest passes).
+#[test]
+fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
+    let skeleton = skeleton();
+    let rs03 = joint(&skeleton, 0);
+    let target = |joint: &skeleton::Joint| Target::new(joint, &skeleton.power).map(|_| ());
+    let at_max = skeleton::Joint {
+        torque_cap_nm: NewtonMeters::new(60.0),
+        current_cap_a: Amps::new(43.0),
+        speed_cap_rad_s: RadPerSec::new(20.0),
+        ..rs03.clone()
+    };
+    assert_eq!(target(&at_max), Ok(()));
+    for (joint, cap, value, max) in [
+        (
+            skeleton::Joint {
+                torque_cap_nm: NewtonMeters::new(60.5),
+                ..rs03.clone()
+            },
+            CapKind::Torque,
+            60.5,
+            60.0,
+        ),
+        (
+            skeleton::Joint {
+                current_cap_a: Amps::new(43.5),
+                ..rs03.clone()
+            },
+            CapKind::Current,
+            43.5,
+            43.0,
+        ),
+        (
+            skeleton::Joint {
+                speed_cap_rad_s: RadPerSec::new(20.5),
+                ..rs03.clone()
+            },
+            CapKind::Speed,
+            20.5,
+            20.0,
+        ),
+    ] {
+        assert_eq!(
+            target(&joint),
+            Err(Refusal::CapOutOfRange { cap, value, max }),
+            "{cap:?}"
+        );
+    }
+    assert_eq!(
+        Refusal::CapOutOfRange {
+            cap: CapKind::Torque,
+            value: 60.5,
+            max: 60.0
+        }
+        .message("arm_joint_one"),
+        "refused (drive.caps): arm_joint_one torque_cap_nm is 60.5 in the skeleton, expected 0 to 60 for its drive"
+    );
 }
 
 /// Guards: safety - `drive.damper`: preflight refuses unless the damper reads 0, protection on (PLAN item 6 drive layer).
@@ -293,7 +387,11 @@ fn preflight_refuses_vbus_out_of_window_a_fault_and_a_running_drive() {
         ..Drive::honest()
     };
     for (drive, expected) in [
-        (with(Some((Mode::Reset, over))), Err(Refusal::FaultSeen)),
+        // A fault in a status during preflight is named by its bits (the bus latches `fault_seen` with it).
+        (
+            with(Some((Mode::Reset, over))),
+            Err(Refusal::Faults { bits: over }),
+        ),
         (
             with(Some((Mode::Run, StatusFaults::default()))),
             Err(Refusal::AlreadyRunning),
@@ -309,7 +407,8 @@ fn preflight_refuses_vbus_out_of_window_a_fault_and_a_running_drive() {
             },
             Err(Refusal::FaultSeen),
         ),
-        // A status from before preflight began says nothing about the drive now: neither its Run nor its faults count.
+        // A status from before preflight began says nothing about the drive now: its Run doesn't count, and its
+        // fault counts only through the latch.
         (
             Drive {
                 before: seen(status(Mode::Run, StatusFaults::default(), 500)),
@@ -317,20 +416,24 @@ fn preflight_refuses_vbus_out_of_window_a_fault_and_a_running_drive() {
             },
             Ok(()),
         ),
+        (
+            Drive {
+                before: seen(status(Mode::Reset, over, 500)),
+                ..Drive::honest()
+            },
+            Err(Refusal::FaultSeen),
+        ),
     ] {
         assert_eq!(run(0, &drive).0, expected);
     }
     assert_eq!(run(2, &Drive::honest()).0, Err(Refusal::Unwired), "no bus");
-    // A fault only in the latest status, with nothing latched yet, is named by its bits.
+    // The latest status's bits are named even with the latch set, as the bus sets it.
     let skeleton = skeleton();
     let mut preflight = Preflight::start(
         Target::new(&joint(&skeleton, 0), &skeleton.power).unwrap(),
         1_000,
     );
-    let faulted = DriveView {
-        fault_seen: false,
-        ..seen(status(Mode::Reset, over, 2_000))
-    };
+    let faulted = seen(status(Mode::Reset, over, 2_000));
     assert_eq!(
         preflight.poll(&faulted, 3_000),
         Step::Refused(Refusal::Faults { bits: over })
@@ -350,7 +453,7 @@ fn preflight_refuses_vbus_out_of_window_a_fault_and_a_running_drive() {
 }
 
 /// Guards: safety - `host.identity`: once the skeleton has a drive's UID, preflight refuses a drive that answers with
-/// another; before commissioning (UID null) any answer passes (PLAN item 3, Scan and identity).
+/// another; before commissioning (UID null) any UID passes (PLAN item 3, Scan and identity).
 #[test]
 fn the_uid_must_match_once_commissioned() {
     let other = Uid([9; 8]);
@@ -363,11 +466,8 @@ fn the_uid_must_match_once_commissioned() {
             expected: UID
         })
     );
-    // The fixture's second joint has no UID yet; it is refused for its null cap, not its UID.
-    assert_eq!(
-        run(1, &answer(other)).0,
-        Err(Refusal::CapUnset(CapKind::Torque))
-    );
+    // The fixture's fourth joint has every cap but no UID yet: any UID passes.
+    assert_eq!(run(3, &answer(other)).0, Ok(()));
     assert_eq!(
         Refusal::Uid {
             read: other,
@@ -384,16 +484,22 @@ fn the_uid_must_match_once_commissioned() {
 fn a_request_without_a_usable_answer_refuses_under_its_rule() {
     let exchanges = [
         (Exchange::Identity, RuleId::HostIdentity),
-        (Exchange::Write(Param::CanTimeout), RuleId::DriveCanTimeout),
-        (Exchange::Write(Param::LimitTorque), RuleId::DriveCaps),
-        (Exchange::Write(Param::LimitCur), RuleId::DriveCaps),
-        (Exchange::Write(Param::LimitSpd), RuleId::DriveCaps),
-        (Exchange::Read(Param::CanTimeout), RuleId::DriveCanTimeout),
-        (Exchange::Read(Param::LimitTorque), RuleId::DriveCaps),
-        (Exchange::Read(Param::LimitCur), RuleId::DriveCaps),
-        (Exchange::Read(Param::LimitSpd), RuleId::DriveCaps),
-        (Exchange::Read(Param::Damper), RuleId::DriveDamper),
-        (Exchange::Read(Param::Vbus), RuleId::HostPreflight),
+        (
+            Exchange::Write(Register::CanTimeout),
+            RuleId::DriveCanTimeout,
+        ),
+        (Exchange::Write(Register::LimitTorque), RuleId::DriveCaps),
+        (Exchange::Write(Register::LimitCur), RuleId::DriveCaps),
+        (Exchange::Write(Register::LimitSpd), RuleId::DriveCaps),
+        (
+            Exchange::Read(Register::CanTimeout),
+            RuleId::DriveCanTimeout,
+        ),
+        (Exchange::Read(Register::LimitTorque), RuleId::DriveCaps),
+        (Exchange::Read(Register::LimitCur), RuleId::DriveCaps),
+        (Exchange::Read(Register::LimitSpd), RuleId::DriveCaps),
+        (Exchange::Read(Register::Damper), RuleId::DriveDamper),
+        (Exchange::Read(Register::Vbus), RuleId::HostPreflight),
     ];
     let failures = [
         (SlowOutcome::TimedOut, Unanswered::TimedOut),
@@ -430,7 +536,7 @@ fn a_request_without_a_usable_answer_refuses_under_its_rule() {
             "{exchange:?}"
         );
     }
-    let read = Exchange::Read(Param::Vbus);
+    let read = Exchange::Read(Register::Vbus);
     assert_eq!(
         run(
             0,
@@ -442,4 +548,23 @@ fn a_request_without_a_usable_answer_refuses_under_its_rule() {
             how: Unanswered::ReadRefused
         })
     );
+}
+
+/// Guards: safety - fail closed (safety.md section 3): a request with no result within its window refuses preflight,
+/// whatever the bus does with it, and an answer that comes after doesn't undo the refusal.
+#[test]
+fn a_request_with_no_result_in_time_refuses() {
+    let skeleton = skeleton();
+    let target = Target::new(&joint(&skeleton, 0), &skeleton.power).unwrap();
+    let view = quiet();
+    let mut preflight = Preflight::start(target, 1_000);
+    assert_eq!(preflight.poll(&view, 2_000), Step::Submit(SlowKind::GetId));
+    assert_eq!(preflight.poll(&view, 2_000 + ANSWER_WITHIN_NS), Step::Wait);
+    let refused = Step::Refused(Refusal::NoAnswer {
+        exchange: Exchange::Identity,
+        how: Unanswered::TimedOut,
+    });
+    assert_eq!(preflight.poll(&view, 2_001 + ANSWER_WITHIN_NS), refused);
+    preflight.answered(SlowOutcome::Identity(UID));
+    assert_eq!(preflight.poll(&view, 2_002 + ANSWER_WITHIN_NS), refused);
 }

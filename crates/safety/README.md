@@ -8,15 +8,20 @@ control thread runs it; the bus layer (`can`) does the pre-send veto, and this c
 - **Rule IDs** (`RuleId`): one per row of PLAN item 6's rule table, the same string in the table, the code, the tests'
   `Guards:` lines and every event (safety.md section 2). `RuleId::of_stop` names the rule behind each of the bus
   layer's own stops; a requested stop carries its asker's `Cause`.
-- **Preflight** (`Preflight`): for one drive, over its bus's slow requests one at a time: get-ID and the UID check,
-  write `canTimeout` 1000 and the skeleton's three caps, then read all four back with the damper and VBUS. A fault or
-  Run in any status since it began, a fault since the last clear, or no status at all refuses. Only a pass makes a
-  `PreflightPassed`. Each `Refusal` names its rule, the measured and the expected value, and what the operator does
-  about it (safety.md section 5). A null cap or an unwired joint refuses before anything is sent.
+- **Preflight** (`Preflight`): for one drive, over its bus's slow requests one at a time (each an `Exchange` on a
+  `Register`): get-ID and the UID check, write `canTimeout` 1000 and the skeleton's three caps, then read all four back
+  with the damper and VBUS. Fault bits or Run in the latest status since it began, a fault latched since the last
+  clear, no status at all, or a request with no result within `ANSWER_WITHIN_NS` (1 s) refuses. Only a pass makes a
+  `PreflightPassed`, which proves the drive was right then; the runtime enables from it at once and runs preflight
+  again for every enable. Each `Refusal` names its rule, the measured and the expected value, and what the operator does
+  about it (safety.md section 5). A null cap, a cap the drive's model can't take, or an unwired joint refuses before
+  anything is sent.
 - **The enable sequence** (`Enabling`): takes a `PreflightPassed` by value, so an enable without a preflight doesn't
   compile and one preflight enables once. Reporting off, its echo plus one tick, Enable, Run within 50 ms, then
-  `run_mode` = MIT, one frame per tick in control's batch. A failure after the Enable is planned means the limb must be
-  stopped (`Enabling::enable_planned`), not just refused.
+  `run_mode` = MIT and its echo within 50 ms, one frame per tick in control's batch; each reply counts only if it was
+  read inside its step's window (`RUN_WITHIN_NS`). Only `Next::Enabled` lets control command the drive. A failure
+  after the Enable is planned means the limb must be stopped (`Enabling::enable_planned`), not just refused; each
+  `EnableFailure` has its operator line and remedy too.
 - **States** (`DriveState`, `LimbState`): PLAN item 6's machines as transition functions. An event a state doesn't
   take returns `None` and changes nothing.
 
@@ -26,7 +31,8 @@ come with their sim tests (step 7 design, PR 5).
 ## Must never
 
 - Do I/O, read a clock, or keep hidden state: every input is an argument (safety.md section 3).
-- Allow on an unknown: an unanswered request, an answer of the wrong kind, a null value or a stale status refuses.
+- Allow on an unknown: an unanswered or late request, an answer of the wrong kind, a null value or a stale status
+  refuses.
 - Offer a way past a rule: no flag, mode or setting skips preflight or a check (safety.md section 4).
 
 ## Talks to

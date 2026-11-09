@@ -9,14 +9,14 @@ use robstride::{
 use skeleton::{Joint, Skeleton};
 
 /// One arm on one bus. `arm_joint_one` is fully set; `arm_joint_two` leaves its torque cap null; `arm_joint_three` has
-/// no bus yet.
+/// no bus yet; `arm_joint_four` has every cap and no UID.
 pub(crate) const FIXTURE: &str = "\
 schema: 1
 name: test_robot
 power:
   source: bench_24v
   vbus_v: [22.0, 26.0]
-  current_budget_a: 25.0
+  current_budget_a: 40.0
 buses:
   bus0:
     bitrate_bps: 1000000
@@ -64,6 +64,19 @@ limbs:
         torque_cap_nm: 5.0
         current_cap_a: 10.0
         speed_cap_rad_s: 2.0
+      - name: arm_joint_four
+        actuator: rs02
+        bus: bus0
+        id: 104
+        uid: null
+        direction: null
+        zero_rad: null
+        reference_pose: null
+        hard_rad: null
+        soft_rad: null
+        torque_cap_nm: 5.0
+        current_cap_a: 10.0
+        speed_cap_rad_s: 2.0
   right_arm:
     joints: []
   waist:
@@ -81,7 +94,7 @@ pub(crate) fn skeleton() -> Skeleton {
 
 #[expect(
     clippy::unwrap_used,
-    reason = "test helper; the fixture has three joints"
+    reason = "test helper; the fixture has four joints"
 )]
 pub(crate) fn joint(skeleton: &Skeleton, n: usize) -> Joint {
     skeleton

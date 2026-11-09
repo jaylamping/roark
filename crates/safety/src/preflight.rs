@@ -4,31 +4,92 @@
 //! preflight doesn't compile (rust.md section 3).
 //!
 //! A write is answered by a plain status that names no register (`robstride` `param_write`), so a write proves nothing
-//! until its read-back. Every unknown fails closed: a request not answered, an answer of the wrong kind, a value the
-//! skeleton leaves null.
+//! until its read-back. Every unknown fails closed: a request not answered in time, an answer of the wrong kind, a value
+//! the skeleton leaves null.
 
-use can::{DriveView, SendOutcome, SlowKind, SlowOutcome, SlowRefusal};
+use can::{DriveView, SlowKind, SlowOutcome};
 use robstride::{
-    CanTimeout, Damper, Drive, Mode, Param, ParamOutcome, ParamValue, StatusFaults, Uid, Volts,
-    Write,
+    Amps, CanTimeout, Damper, Drive, Mode, NewtonMeters, Param, ParamOutcome, ParamValue,
+    RadPerSec, Uid, Volts, Write,
 };
 use skeleton::{Joint, Power, Window};
 
+use crate::refusal::{CapKind, Refusal, Unanswered};
 use crate::rule::RuleId;
+
+/// How long preflight waits for one request's result before refusing. A bus serves one slow request a tick, so at
+/// 250 Hz a full bus (`can::MAX_DRIVES` drives, each asking one at a time) answers every drive's request within 8 ticks;
+/// a second is far past that and bounds only a result the bus dropped.
+pub const ANSWER_WITHIN_NS: u64 = 1_000_000_000;
+
+/// The registers preflight writes or reads.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Register {
+    /// `canTimeout` 0x7028.
+    CanTimeout,
+    /// `limit_torque` 0x700B.
+    LimitTorque,
+    /// `limit_cur` 0x7018.
+    LimitCur,
+    /// `limit_spd` 0x7017.
+    LimitSpd,
+    /// `damper` 0x702A, read only.
+    Damper,
+    /// `VBUS` 0x701C, read only.
+    Vbus,
+}
+
+impl Register {
+    /// The drive's register.
+    #[must_use]
+    pub const fn param(self) -> Param {
+        match self {
+            Self::CanTimeout => Param::CanTimeout,
+            Self::LimitTorque => Param::LimitTorque,
+            Self::LimitCur => Param::LimitCur,
+            Self::LimitSpd => Param::LimitSpd,
+            Self::Damper => Param::Damper,
+            Self::Vbus => Param::Vbus,
+        }
+    }
+
+    /// The register's name in the manual, for the operator.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::CanTimeout => "canTimeout",
+            Self::LimitTorque => "limit_torque",
+            Self::LimitCur => "limit_cur",
+            Self::LimitSpd => "limit_spd",
+            Self::Damper => "damper",
+            Self::Vbus => "VBUS",
+        }
+    }
+
+    /// The rule the register serves.
+    const fn rule(self) -> RuleId {
+        match self {
+            Self::CanTimeout => RuleId::DriveCanTimeout,
+            Self::LimitTorque | Self::LimitCur | Self::LimitSpd => RuleId::DriveCaps,
+            Self::Damper => RuleId::DriveDamper,
+            Self::Vbus => RuleId::HostPreflight,
+        }
+    }
+}
 
 /// The exchanges, in order: identity first, every write, then every read-back.
 const EXCHANGES: [Exchange; 11] = [
     Exchange::Identity,
-    Exchange::Write(Param::CanTimeout),
-    Exchange::Write(Param::LimitTorque),
-    Exchange::Write(Param::LimitCur),
-    Exchange::Write(Param::LimitSpd),
-    Exchange::Read(Param::CanTimeout),
-    Exchange::Read(Param::LimitTorque),
-    Exchange::Read(Param::LimitCur),
-    Exchange::Read(Param::LimitSpd),
-    Exchange::Read(Param::Damper),
-    Exchange::Read(Param::Vbus),
+    Exchange::Write(Register::CanTimeout),
+    Exchange::Write(Register::LimitTorque),
+    Exchange::Write(Register::LimitCur),
+    Exchange::Write(Register::LimitSpd),
+    Exchange::Read(Register::CanTimeout),
+    Exchange::Read(Register::LimitTorque),
+    Exchange::Read(Register::LimitCur),
+    Exchange::Read(Register::LimitSpd),
+    Exchange::Read(Register::Damper),
+    Exchange::Read(Register::Vbus),
 ];
 
 /// One of preflight's slow requests.
@@ -37,211 +98,26 @@ pub enum Exchange {
     /// Get-ID (type 0), for the UID.
     Identity,
     /// A write of this register.
-    Write(Param),
+    Write(Register),
     /// A read of this register.
-    Read(Param),
+    Read(Register),
 }
 
 impl Exchange {
     /// The rule a failed exchange falls under.
-    const fn rule(self) -> RuleId {
+    pub(crate) const fn rule(self) -> RuleId {
         match self {
             Self::Identity => RuleId::HostIdentity,
-            Self::Write(param) | Self::Read(param) => match param {
-                Param::CanTimeout => RuleId::DriveCanTimeout,
-                Param::LimitTorque | Param::LimitCur | Param::LimitSpd => RuleId::DriveCaps,
-                Param::Damper => RuleId::DriveDamper,
-                _ => RuleId::HostPreflight,
-            },
-        }
-    }
-}
-
-/// A cap the skeleton gives each joint.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CapKind {
-    /// `torque_cap_nm`, written to `limit_torque`.
-    Torque,
-    /// `current_cap_a`, written to `limit_cur`.
-    Current,
-    /// `speed_cap_rad_s`, written to `limit_spd`.
-    Speed,
-}
-
-impl CapKind {
-    /// The skeleton field.
-    #[must_use]
-    pub const fn field(self) -> &'static str {
-        match self {
-            Self::Torque => "torque_cap_nm",
-            Self::Current => "current_cap_a",
-            Self::Speed => "speed_cap_rad_s",
-        }
-    }
-}
-
-/// How a request went unanswered.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Unanswered {
-    /// No reply within its window.
-    TimedOut,
-    /// The socket didn't take it.
-    NotSent(SendOutcome),
-    /// The bus layer refused it.
-    Refused(SlowRefusal),
-    /// The drive answered a read with "can't read it".
-    ReadRefused,
-    /// An answer of another kind, or a value of another type, than the request asks for.
-    WrongAnswer,
-}
-
-/// Why preflight refused a drive. Each names what was measured and what was expected (safety.md section 5);
-/// [`Refusal::message`] says it for the operator, with the joint.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Refusal {
-    /// The skeleton has no value for this cap: null is not permission (PLAN item 1).
-    CapUnset(CapKind),
-    /// The skeleton's cap is outside what the drive's model can be set to.
-    CapOutOfRange(CapKind),
-    /// The joint has no bus: it is offline and can't be enabled.
-    Unwired,
-    /// A request got no usable answer.
-    NoAnswer {
-        /// The request.
-        exchange: Exchange,
-        /// What happened instead.
-        how: Unanswered,
-    },
-    /// The drive's UID isn't the skeleton's.
-    Uid {
-        /// What it said.
-        read: Uid,
-        /// What the skeleton says.
-        expected: Uid,
-    },
-    /// `canTimeout` read back other than 1000.
-    CanTimeout {
-        /// What it read.
-        read: CanTimeout,
-    },
-    /// A cap read back other than written.
-    Cap {
-        /// The register.
-        param: Param,
-        /// What was written.
-        written: ParamValue,
-        /// What it read.
-        read: ParamValue,
-    },
-    /// The damper reads 1: the anti-backdrive protection is off.
-    DamperOff,
-    /// VBUS outside the skeleton's window.
-    Vbus {
-        /// What it read.
-        read: Volts,
-        /// The window.
-        window: Window<Volts>,
-    },
-    /// A status since preflight began carried fault bits.
-    Faults {
-        /// The bits.
-        bits: StatusFaults,
-    },
-    /// A fault was seen since start or the limb's last clear (fault bits clear only by power-cycling the drive, then a
-    /// clear).
-    FaultSeen,
-    /// The drive was already in Run: something other than this host's enable sequence put it there.
-    AlreadyRunning,
-    /// No status came back during preflight, so its faults and mode are unknown.
-    NoStatus,
-}
-
-impl Refusal {
-    /// The rule it falls under.
-    #[must_use]
-    pub const fn rule(&self) -> RuleId {
-        match self {
-            Self::CapUnset(_) | Self::CapOutOfRange(_) | Self::Cap { .. } => RuleId::DriveCaps,
-            Self::CanTimeout { .. } => RuleId::DriveCanTimeout,
-            Self::DamperOff => RuleId::DriveDamper,
-            Self::Uid { .. } => RuleId::HostIdentity,
-            Self::NoAnswer { exchange, .. } => exchange.rule(),
-            Self::Unwired
-            | Self::Vbus { .. }
-            | Self::Faults { .. }
-            | Self::FaultSeen
-            | Self::AlreadyRunning
-            | Self::NoStatus => RuleId::HostPreflight,
+            Self::Write(register) | Self::Read(register) => register.rule(),
         }
     }
 
-    /// The operator's line: the rule, the joint, what was measured and what was expected.
-    #[must_use]
-    pub fn message(&self, joint: &str) -> String {
-        let what = match self {
-            Self::CapUnset(cap) => format!("{} is null in the skeleton", cap.field()),
-            Self::CapOutOfRange(cap) => {
-                format!(
-                    "{} is outside what its drive model can be set to",
-                    cap.field()
-                )
-            }
-            Self::Unwired => "has no bus in the skeleton".to_owned(),
-            Self::NoAnswer { exchange, how } => {
-                format!("{exchange:?} got no usable answer: {how:?}")
-            }
-            Self::Uid { read, expected } => format!("UID reads {read:?}, expected {expected:?}"),
-            Self::CanTimeout { read } => format!(
-                "canTimeout reads {}, expected {}",
-                read.ticks(),
-                CanTimeout::RUNTIME.ticks()
-            ),
-            Self::Cap {
-                param,
-                written,
-                read,
-            } => format!("{param:?} reads {read:?}, written {written:?}"),
-            Self::DamperOff => "damper reads 1 (protection off), expected 0".to_owned(),
-            Self::Vbus { read, window } => format!(
-                "VBUS reads {:.2} V, expected {:.2} to {:.2} V",
-                read.get(),
-                window.lower.get(),
-                window.upper.get()
-            ),
-            Self::Faults { bits } => format!("reports faults {bits:?}, expected none"),
-            Self::FaultSeen => "had a fault since the last clear".to_owned(),
-            Self::AlreadyRunning => "is already in Run, expected Reset".to_owned(),
-            Self::NoStatus => "sent no status during preflight".to_owned(),
-        };
-        format!("refused ({}): {joint} {what}", self.rule())
-    }
-
-    /// What the operator does about it (safety.md section 5).
-    #[must_use]
-    pub const fn remedy(&self) -> &'static str {
+    /// What it asked, for the operator.
+    pub(crate) fn describe(self) -> String {
         match self {
-            Self::CapUnset(_) | Self::CapOutOfRange(_) | Self::Unwired => {
-                "Agree the value with the hardware side and put it in the skeleton"
-            }
-            Self::NoAnswer { .. } | Self::NoStatus => {
-                "Check the drive's power and cable, then run preflight again"
-            }
-            Self::Uid { .. } => {
-                "A different drive answers on this ID: check which drive is wired here before anything else"
-            }
-            Self::CanTimeout { .. } | Self::Cap { .. } => {
-                "Run preflight again; if it reads wrong twice, the drive isn't keeping writes: stop and investigate"
-            }
-            Self::DamperOff => {
-                "Set the damper back to 0 with the vendor tool; this stack never writes it"
-            }
-            Self::Vbus { .. } => "Check the supply voltage and wiring",
-            Self::Faults { .. } | Self::FaultSeen => {
-                "Find the fault's cause, power-cycle the drive, clear the limb, then run preflight again"
-            }
-            Self::AlreadyRunning => {
-                "Find what enabled it; power-cycle the drive, then run preflight again"
-            }
+            Self::Identity => "get-ID".to_owned(),
+            Self::Write(register) => format!("the write of {}", register.name()),
+            Self::Read(register) => format!("the read of {}", register.name()),
         }
     }
 }
@@ -251,8 +127,10 @@ impl Refusal {
 pub struct Target {
     drive: Drive,
     uid: Option<Uid>,
-    /// `canTimeout`, `limit_torque`, `limit_cur`, `limit_spd`, in [`EXCHANGES`] order.
-    writes: [Write; 4],
+    can_timeout: Write,
+    torque: Write,
+    current: Write,
+    speed: Write,
     vbus: Window<Volts>,
 }
 
@@ -267,27 +145,27 @@ impl Target {
             return Err(Refusal::Unwired);
         }
         let drive = Drive::new(joint.id, joint.actuator);
-        let torque = joint
+        let ranges = drive.model().ranges();
+        let torque: NewtonMeters = joint
             .torque_cap_nm
             .ok_or(Refusal::CapUnset(CapKind::Torque))?;
-        let current = joint
+        let current: Amps = joint
             .current_cap_a
             .ok_or(Refusal::CapUnset(CapKind::Current))?;
-        let speed = joint
+        let speed: RadPerSec = joint
             .speed_cap_rad_s
             .ok_or(Refusal::CapUnset(CapKind::Speed))?;
-        let writes = [
-            Write::can_timeout(drive),
-            Write::limit_torque(drive, torque)
-                .map_err(|_| Refusal::CapOutOfRange(CapKind::Torque))?,
-            Write::limit_cur(drive, current)
-                .map_err(|_| Refusal::CapOutOfRange(CapKind::Current))?,
-            Write::limit_spd(drive, speed).map_err(|_| Refusal::CapOutOfRange(CapKind::Speed))?,
-        ];
+        let out = |cap, value: f64, max: f64| Refusal::CapOutOfRange { cap, value, max };
         Ok(Self {
             drive,
             uid: joint.uid,
-            writes,
+            can_timeout: Write::can_timeout(drive),
+            torque: Write::limit_torque(drive, torque)
+                .map_err(|_| out(CapKind::Torque, torque.get(), ranges.torque_max.get()))?,
+            current: Write::limit_cur(drive, current)
+                .map_err(|_| out(CapKind::Current, current.get(), ranges.current_max.get()))?,
+            speed: Write::limit_spd(drive, speed)
+                .map_err(|_| out(CapKind::Speed, speed.get(), ranges.speed_max.get()))?,
             vbus: power.vbus_v,
         })
     }
@@ -298,13 +176,20 @@ impl Target {
         self.drive
     }
 
-    fn write(&self, param: Param) -> Option<Write> {
-        self.writes.iter().copied().find(|w| w.param() == param)
+    const fn write(&self, register: Register) -> Option<Write> {
+        match register {
+            Register::CanTimeout => Some(self.can_timeout),
+            Register::LimitTorque => Some(self.torque),
+            Register::LimitCur => Some(self.current),
+            Register::LimitSpd => Some(self.speed),
+            Register::Damper | Register::Vbus => None,
+        }
     }
 }
 
-/// Proof that one drive passed preflight. Only [`Preflight`] makes one, and the enable sequence takes it by value, so
-/// it enables at most once.
+/// Proof that one drive passed preflight. Only [`Preflight`] makes one, once, and the enable sequence takes it by value,
+/// so one preflight enables at most once. It is fresh only while nothing has happened to the drive since: the runtime
+/// starts the enable sequence in the tick it gets the proof, and drops the proof on any drive event first.
 #[derive(Debug, PartialEq, Eq)]
 pub struct PreflightPassed {
     drive: Drive,
@@ -318,7 +203,7 @@ impl PreflightPassed {
         self.drive
     }
 
-    /// When the last check passed, monotonic.
+    /// When the last check passed, monotonic, for the event log.
     #[must_use]
     pub const fn at_ns(&self) -> u64 {
         self.at_ns
@@ -342,17 +227,18 @@ pub enum Step {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum State {
-    /// The next exchange, and whether it is in flight.
+    /// The next exchange, and when it was submitted if it is in flight.
     Asking {
         next: usize,
-        in_flight: bool,
+        submitted_ns: Option<u64>,
     },
     Refused(Refusal),
     Spent,
 }
 
-/// One drive's preflight, run by the control thread over the drive's bus's slow requests.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/// One drive's preflight, run by the control thread over the drive's bus's slow requests. Not `Copy` or `Clone`: a copy
+/// could give a second proof.
+#[derive(Debug, PartialEq)]
 pub struct Preflight {
     target: Target,
     started_ns: u64,
@@ -368,7 +254,7 @@ impl Preflight {
             started_ns: now_ns,
             state: State::Asking {
                 next: 0,
-                in_flight: false,
+                submitted_ns: None,
             },
         }
     }
@@ -379,7 +265,9 @@ impl Preflight {
         self.target.drive
     }
 
-    /// The next step, given the drive's latest view and the time. A fault or Run seen at any point refuses at once.
+    /// The next step, given the drive's latest view and the time. A fault in the latest status or latched since the
+    /// last clear, or Run in the latest status since preflight began, refuses at once; so does a request with no
+    /// result within [`ANSWER_WITHIN_NS`].
     pub fn poll(&mut self, view: &DriveView, now_ns: u64) -> Step {
         if let State::Asking { .. } = self.state
             && let Some(refusal) = self.status_refusal(view)
@@ -387,13 +275,22 @@ impl Preflight {
             self.state = State::Refused(refusal);
         }
         match self.state {
-            State::Asking { next, in_flight } => match EXCHANGES.get(next) {
-                Some(_) if in_flight => Step::Wait,
-                Some(&exchange) => match self.kind(exchange) {
+            State::Asking { next, submitted_ns } => match (EXCHANGES.get(next), submitted_ns) {
+                (Some(&exchange), Some(at)) => {
+                    if now_ns.saturating_sub(at) > ANSWER_WITHIN_NS {
+                        self.refuse(Refusal::NoAnswer {
+                            exchange,
+                            how: Unanswered::TimedOut,
+                        })
+                    } else {
+                        Step::Wait
+                    }
+                }
+                (Some(&exchange), None) => match self.kind(exchange) {
                     Some(kind) => {
                         self.state = State::Asking {
                             next,
-                            in_flight: true,
+                            submitted_ns: Some(now_ns),
                         };
                         Step::Submit(kind)
                     }
@@ -402,14 +299,14 @@ impl Preflight {
                         how: Unanswered::WrongAnswer,
                     }),
                 },
-                None if self.fresh(view) => {
+                (None, _) if self.fresh(view) => {
                     self.state = State::Spent;
                     Step::Passed(PreflightPassed {
                         drive: self.target.drive,
                         at_ns: now_ns,
                     })
                 }
-                None => self.refuse(Refusal::NoStatus),
+                (None, _) => self.refuse(Refusal::NoStatus),
             },
             State::Refused(refusal) => Step::Refused(refusal),
             State::Spent => Step::Spent,
@@ -420,7 +317,7 @@ impl Preflight {
     pub fn answered(&mut self, outcome: SlowOutcome) {
         let State::Asking {
             next,
-            in_flight: true,
+            submitted_ns: Some(_),
         } = self.state
         else {
             return;
@@ -431,7 +328,7 @@ impl Preflight {
         self.state = match self.check(exchange, outcome) {
             Ok(()) => State::Asking {
                 next: next + 1,
-                in_flight: false,
+                submitted_ns: None,
             },
             Err(refusal) => State::Refused(refusal),
         };
@@ -442,11 +339,14 @@ impl Preflight {
         Step::Refused(refusal)
     }
 
-    fn kind(&self, exchange: Exchange) -> Option<SlowKind> {
+    const fn kind(&self, exchange: Exchange) -> Option<SlowKind> {
         match exchange {
             Exchange::Identity => Some(SlowKind::GetId),
-            Exchange::Write(param) => self.target.write(param).map(SlowKind::Write),
-            Exchange::Read(param) => Some(SlowKind::Read(param)),
+            Exchange::Write(register) => match self.target.write(register) {
+                Some(write) => Some(SlowKind::Write(write)),
+                None => None,
+            },
+            Exchange::Read(register) => Some(SlowKind::Read(register.param())),
         }
     }
 
@@ -455,18 +355,23 @@ impl Preflight {
         view.observed.is_some_and(|o| o.read_ns >= self.started_ns)
     }
 
+    /// A refusal from what the drive's statuses show: the latest one's fault bits first, so the operator sees them,
+    /// then a fault latched since the last clear, then Run.
     fn status_refusal(&self, view: &DriveView) -> Option<Refusal> {
+        let latest = view.observed.filter(|o| o.read_ns >= self.started_ns);
+        if let Some(o) = latest
+            && !o.status.header.faults.is_empty()
+        {
+            return Some(Refusal::Faults {
+                bits: o.status.header.faults,
+            });
+        }
         if view.fault_seen {
             return Some(Refusal::FaultSeen);
         }
-        let observed = view.observed.filter(|o| o.read_ns >= self.started_ns)?;
-        let header = observed.status.header;
-        if !header.faults.is_empty() {
-            return Some(Refusal::Faults {
-                bits: header.faults,
-            });
-        }
-        (header.mode == Mode::Run).then_some(Refusal::AlreadyRunning)
+        latest
+            .is_some_and(|o| o.status.header.mode == Mode::Run)
+            .then_some(Refusal::AlreadyRunning)
     }
 
     fn check(&self, exchange: Exchange, outcome: SlowOutcome) -> Result<(), Refusal> {
@@ -483,8 +388,8 @@ impl Preflight {
                 Some(_) | None => Ok(()),
             },
             (Exchange::Write(_), SlowOutcome::WriteAnswered) => Ok(()),
-            (Exchange::Read(param), SlowOutcome::Read(ParamOutcome::Read(value))) => self
-                .read_back(param, value)
+            (Exchange::Read(register), SlowOutcome::Read(ParamOutcome::Read(value))) => self
+                .read_back(register, value)
                 .unwrap_or(Err(no_answer(Unanswered::WrongAnswer))),
             (
                 Exchange::Identity | Exchange::Write(_) | Exchange::Read(_),
@@ -494,41 +399,56 @@ impl Preflight {
     }
 
     /// The read-back check, or `None` for a value of another type than the register's.
-    fn read_back(&self, param: Param, value: ParamValue) -> Option<Result<(), Refusal>> {
-        Some(match (param, value) {
-            (Param::CanTimeout, ParamValue::CanTimeout(read)) => {
-                if read == CanTimeout::RUNTIME {
+    fn read_back(&self, register: Register, read: ParamValue) -> Option<Result<(), Refusal>> {
+        let as_written = |written: Write| {
+            if core::mem::discriminant(&read) != core::mem::discriminant(&written.value()) {
+                None
+            } else if read == written.value() {
+                Some(Ok(()))
+            } else {
+                Some(Err(Refusal::Cap {
+                    register,
+                    written: written.value(),
+                    read,
+                }))
+            }
+        };
+        match register {
+            Register::CanTimeout => {
+                let ParamValue::CanTimeout(read) = read else {
+                    return None;
+                };
+                Some(if read == CanTimeout::RUNTIME {
                     Ok(())
                 } else {
                     Err(Refusal::CanTimeout { read })
-                }
+                })
             }
-            (Param::LimitTorque | Param::LimitCur | Param::LimitSpd, read) => {
-                let written = self.target.write(param)?.value();
-                if core::mem::discriminant(&read) != core::mem::discriminant(&written) {
+            Register::LimitTorque => as_written(self.target.torque),
+            Register::LimitCur => as_written(self.target.current),
+            Register::LimitSpd => as_written(self.target.speed),
+            Register::Damper => {
+                let ParamValue::Damper(damper) = read else {
                     return None;
-                }
-                if read == written {
-                    Ok(())
-                } else {
-                    Err(Refusal::Cap {
-                        param,
-                        written,
-                        read,
-                    })
-                }
+                };
+                Some(match damper {
+                    Damper::ProtectionOn => Ok(()),
+                    Damper::ProtectionOff => Err(Refusal::DamperOff),
+                })
             }
-            (Param::Damper, ParamValue::Damper(Damper::ProtectionOn)) => Ok(()),
-            (Param::Damper, ParamValue::Damper(Damper::ProtectionOff)) => Err(Refusal::DamperOff),
-            (Param::Vbus, ParamValue::Volts(read)) => {
+            Register::Vbus => {
+                let ParamValue::Volts(read) = read else {
+                    return None;
+                };
                 let window = self.target.vbus;
-                if read.get() >= window.lower.get() && read.get() <= window.upper.get() {
-                    Ok(())
-                } else {
-                    Err(Refusal::Vbus { read, window })
-                }
+                Some(
+                    if read.get() >= window.lower.get() && read.get() <= window.upper.get() {
+                        Ok(())
+                    } else {
+                        Err(Refusal::Vbus { read, window })
+                    },
+                )
             }
-            _ => return None,
-        })
+        }
     }
 }
