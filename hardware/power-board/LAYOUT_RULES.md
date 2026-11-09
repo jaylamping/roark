@@ -144,11 +144,12 @@ The rest is finished by hand in KiCad, starting from the board with the power st
   that rule is the 0.2 mm default.
 - The open nets are in layout/open_nets.csv (tools/open_nets.py, from the DRC's unconnected items).
 
-Placement moves to make while finishing (the gate loops):
-- Each port's gate clamp pair (D23/D24, D26/D27, D29/D30, D32/D33, D35/D36, D38/D39) sits on the pigtail side of the
-  FET, about 15 mm from its gate pin. Move each pair to the gate pin; that puts the G_L loop under 10 mm.
-- Bank B's gate resistors R1/R2 (G1/G2) and bank A's R31/R32 (GA1/GA2) sit at their controllers. Move each to its FET's
-  gate pin.
+Gate parts (tools/place.py, 2026-11-09):
+- Each port's gate-source zener (D24, D27, D30, D33, D36, D39) sits at its FET's gate pin, between the meter and the FET.
+  Its G_L pad faces the gate and its V_L pad lines up with the source-pin via row. The series diode of each pair (D23 and
+  the rest) stays in the port block.
+- R1 (G1) and R31 (GA1) sit at Q1's and Q8's gate pins. R2 and R32 stay with their controllers: Q2's and Q9's gates have
+  no room, because the MID band, the SW_D strip and the 1.3 mm gap to Q1/Q8 fill it.
 - U1 stays at RS1 because the Kelvin rule needs it there, so GATE runs about 35 mm to Q1/Q2. GATE carries the
   LM5069's slow charge current and its fault pull-down; keep it on F.Cu over In1, with a GND return beside it.
 

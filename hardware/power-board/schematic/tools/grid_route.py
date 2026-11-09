@@ -35,7 +35,8 @@ for n,i in NID.items(): HV[i]=domains.is_hv(n); ES[i]=domains.is_estop(n)
 DOMN={None:0}; DOM=np.zeros(len(NETS)+1,np.int32)
 for n,i in NID.items():
     k=domains.dom(n) or (n if HV[i] else None); DOM[i]=DOMN.setdefault(k,len(DOMN))
-def width(n): return W12 if n in P12 else 0.25 if (n=='GND' or HV[NID[n]]) else 0.2   # 54 V taps carry no current: the pours do
+RAILS={'/+3V3_PI','/VCTL','/+5V','/+3V3'}   # low-voltage supply rails: 0.4 mm trunks
+def width(n): return W12 if n in P12 else 0.4 if n in RAILS else 0.25 if (n=='GND' or HV[NID[n]]) else 0.2   # 54 V taps carry no current: the pours do
 def g(x,y): return ((x-X0)/RES,(y-Y0)/RES)
 # ---- rasterize
 KEEP=-3; NONET=-4   # keep-outs; copper with no net (mounting-hole pads, connector pegs)
