@@ -270,10 +270,17 @@ impl Enabling {
                     param: Param::RunMode,
                     value: ParamValue::RunMode(RunMode::Mit),
                 };
-                // Strictly after the Enable's answer, so that one status never answers both frames.
-                let answer = fresh_since(view, since_ns)
-                    .filter(|a| a.read_ns > run_read_ns)
-                    .map(|a| a.mode);
+                // Strictly after the Enable's answer, so that one status never answers both frames. Any status after it
+                // in another mode is the drive leaving Run, fresh or not.
+                let left = view
+                    .observed
+                    .filter(|o| o.read_ns > run_read_ns && o.status.header.mode != Mode::Run)
+                    .map(|o| o.status.header.mode);
+                let answer = left.or_else(|| {
+                    fresh_since(view, since_ns)
+                        .filter(|a| a.read_ns > run_read_ns)
+                        .map(|a| a.mode)
+                });
                 match (answer, echoed(view, mit, since_ns), late(since_ns, now_ns)) {
                     (Some(Mode::Run), true, _) => (Stage::Enabled, Next::Enabled),
                     (Some(mode @ (Mode::Reset | Mode::Calibration)), _, _) => {
@@ -340,9 +347,9 @@ fn fresh_since(view: &DriveView, since_ns: u64) -> Option<Answer> {
     let fresh = view
         .fresh_status
         .filter(|o| in_window(o.read_ns, since_ns))?;
-    let contradicted = view.observed.is_some_and(|o| {
-        o.read_ns > fresh.read_ns && o.status.header.mode != fresh.status.header.mode
-    });
+    let contradicted = view
+        .observed
+        .is_some_and(|o| o.status.header.mode != fresh.status.header.mode);
     (!contradicted).then_some(Answer {
         mode: fresh.status.header.mode,
         read_ns: fresh.read_ns,

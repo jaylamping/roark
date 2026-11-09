@@ -15,10 +15,10 @@ use safety::{
     Target, Unanswered,
 };
 
-/// The fixture's UID for `arm_joint_one`.
 /// What the operator is told when control handed a result over late.
 const LATE_REMEDY: &str = "The runtime fell behind handing over the answer: check its log and the Pi's load, then run preflight again";
 
+/// The fixture's UID for `arm_joint_one`.
 const UID: Uid = Uid([0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]);
 
 #[expect(

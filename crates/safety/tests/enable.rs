@@ -376,7 +376,7 @@ fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
 /// Reset, and the Run that answered the Enable never also answers the `run_mode` = MIT write, however the ticks fall
 /// (PLAN item 2, Enable one drive).
 #[test]
-fn a_status_answers_one_frame_while_it_is_the_latest() {
+fn a_status_answers_one_frame_until_a_later_one_contradicts_it() {
     let t0 = 100 * PERIOD;
     let enable_at = t0 + 2 * PERIOD;
 
@@ -430,6 +430,36 @@ fn a_status_answers_one_frame_while_it_is_the_latest() {
         mit_at + 5,
     );
     assert_eq!(enabling.step(&answered, 5, mit_at + PERIOD), Next::Enabled);
+
+    // A Run, a Reset and a Run again: the first answer was taken back and the last answers nothing.
+    let (mut enabling, echo) = to_enable(t0);
+    let run_reset_run = DriveView {
+        fresh_status: None,
+        ..with_status(echo, Mode::Run, enable_at + 3)
+    };
+    assert_eq!(
+        enabling.step(&run_reset_run, 3, enable_at + PERIOD),
+        Next::Wait
+    );
+    assert_eq!(
+        enabling.step(&run_reset_run, 4, enable_at + RUN_WITHIN_NS + 1),
+        Next::Failed(EnableFailure::NoRun {
+            last: Some(Mode::Run)
+        })
+    );
+
+    // The write's answer is a Reset that isn't the fresh status: the drive left Run, and the sequence ends at once.
+    let (mut enabling, echo, mit_at) = to_mit(t0);
+    let left_run = DriveView {
+        fresh_status: None,
+        ..with_status(echo, Mode::Reset, mit_at + 20)
+    };
+    assert_eq!(
+        enabling.step(&left_run, 5, mit_at + PERIOD),
+        Next::Failed(EnableFailure::LeftRun {
+            last: Some(Mode::Reset)
+        })
+    );
 
     // The Enable's Run read at the very moment the MIT write is planned, then the write's echo and no further status.
     let (mut enabling, echo) = to_enable(t0);
