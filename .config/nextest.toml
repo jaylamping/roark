@@ -14,5 +14,5 @@ default-filter = "package(sim-suite)"
 can0 = { max-threads = 1 }
 
 [[profile.sim.overrides]]
-filter = "package(sim-suite) & (test(=slow_requests_reach_a_drive_on_vcan_and_come_back) | test(=a_fault_injected_on_vcan_stops_only_its_limb))"
+filter = "package(sim-suite) & (binary(slow) | binary(faults))"
 test-group = "can0"

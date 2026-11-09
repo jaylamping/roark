@@ -146,7 +146,7 @@ fn a_fault_injected_on_vcan_stops_only_its_limb() {
                 seen = Some(snap.tick);
             }
             if snap.limb(0).is_some_and(|l| l.state != LimbState::Active) {
-                stopped = Some(snap.tick);
+                stopped = Some((snap.tick, snap.drive(0).map(|d| d.stop)));
             }
             if seen.is_none() {
                 assert_eq!(
@@ -156,7 +156,13 @@ fn a_fault_injected_on_vcan_stops_only_its_limb() {
                 );
             }
         }
-        let (seen, stopped) = (seen.unwrap(), stopped.unwrap());
+        let (seen, (stopped, outcome)) = (seen.unwrap(), stopped.unwrap());
+        // The Disable went out in the tick that stopped the limb.
+        let disabled = [can::StopOutcome::Sent, can::StopOutcome::Confirmed];
+        assert!(
+            outcome.is_some_and(|o| disabled.contains(&o)),
+            "{outcome:?}"
+        );
         assert!(
             stopped <= seen + 1,
             "read at tick {seen}, stopped at {stopped}"
@@ -185,9 +191,11 @@ fn a_fault_injected_on_vcan_stops_only_its_limb() {
             "{:?}",
             snap.counters
         );
-        assert_ne!(
+        // The drive answered its Disable in Reset five ticks ago.
+        assert_eq!(
             snap.drive(0).map(|d| d.stop),
-            Some(can::StopOutcome::NeverSent)
+            Some(can::StopOutcome::Confirmed),
+            "{snap:?}"
         );
 
         let fired: Vec<_> = std::iter::from_fn(|| injected.pop().ok())

@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use robstride::drive::{self as wire, Command, DriveFrame, HostFrame};
 
-use crate::fault::{Active, Fault, FaultRefused, Injected, Plan, Trigger};
+use crate::fault::{Active, Fault, FaultRefused, Injected, Plan, Trigger, flag, flagged};
 use crate::plant::{Limits, Plant};
 use robstride::{
     Amps, Celsius, Damper, DeviceId, Drive, Feedback, Gain, Mode, NewtonMeters, Param, ParamValue,
@@ -46,8 +46,6 @@ pub struct SimDrive {
     silence: Option<(Instant, Instant)>,
     blackout: Option<(Instant, Instant)>,
     outbox: [Option<Queued>; OUTBOX],
-    /// The second copy of a duplicated frame, given by the next `pop_due`.
-    repeat: Option<DriveFrame>,
     /// The time the drive was last brought up to.
     stepped: Option<Instant>,
     rng: Rng,
@@ -66,14 +64,13 @@ impl SimDrive {
             params: defaults(drive),
             plant: Plant::AT_ZERO,
             active: Active::default(),
-            plan: Plan::EMPTY,
+            plan: Plan::default(),
             next_report: None,
             last_command: None,
             run_at: None,
             silence: None,
             blackout: None,
             outbox: [None; OUTBOX],
-            repeat: None,
             stepped: None,
             rng: Rng(seed),
             dropped: 0,
@@ -93,23 +90,31 @@ impl SimDrive {
         self.dropped
     }
 
-    /// Inject `fault` now, at `now`, and record it.
+    /// Inject `fault` at `now`, and record it: the drive is brought up to just before `now`, the fault applied, then
+    /// whatever falls due at `now` happens with the fault in effect.
     ///
     /// # Errors
     /// [`FaultRefused`] for a fault the drive can't honour; nothing is recorded then.
     pub fn inject(&mut self, now: Instant, fault: Fault) -> Result<(), FaultRefused> {
         self.check(fault)?;
-        self.advance(now);
+        self.advance_to(now, false);
         self.apply(now, fault);
+        self.advance(now);
         Ok(())
     }
 
     /// Schedule `fault` to fire on `trigger`.
     ///
     /// # Errors
-    /// [`FaultRefused`] for a fault the drive can't honour, `OnMit(0)`, or a full plan ([`crate::FAULT_PLAN`]).
+    /// [`FaultRefused`] for a fault the drive can't honour, `OnMit(0)`, an `At` the drive has already been stepped
+    /// past, or a full plan ([`crate::FAULT_PLAN`]).
     pub fn schedule(&mut self, trigger: Trigger, fault: Fault) -> Result<(), FaultRefused> {
         self.check(fault)?;
+        if let (Trigger::At(at), Some(stepped)) = (trigger, self.stepped)
+            && at < stepped
+        {
+            return Err(FaultRefused::Past);
+        }
         self.plan.schedule(trigger, fault)
     }
 
@@ -128,7 +133,7 @@ impl SimDrive {
         self.plan.take()
     }
 
-    /// Injections the record had no room for because they weren't taken.
+    /// Injections the record had no room for because they weren't taken ([`crate::INJECTED_LOG`]).
     #[must_use]
     pub const fn injections_lost(&self) -> u64 {
         self.plan.lost
@@ -153,32 +158,32 @@ impl SimDrive {
             Command::GetId => self.send(now, Some(wire::identity(self.id(), self.uid))),
             Command::Mit(codes) => {
                 self.plan.mits = self.plan.mits.saturating_add(1);
-                self.fire_due(now);
+                while let Some((at, fault)) = self.plan.due(now) {
+                    self.apply(at, fault);
+                }
                 // A model whose MIT scales aren't settled has no command to take: the joint stays put.
                 if self.mode == Mode::Run
                     && let Ok(command) = codes.command(self.drive.model())
                 {
-                    let limits = self.limits();
-                    self.plant.command(command, limits);
+                    self.plant.command(command);
                 }
-                self.send(now, self.status(self.mode));
+                self.send(now, self.status());
             }
             Command::Enable => match (self.mode, self.run_at) {
-                (Mode::Run, _) | (_, Some(_)) => self.send(now, self.status(self.mode)),
+                (Mode::Run, _) | (_, Some(_)) => self.send(now, self.status()),
                 // The Run status is built when Run is reached (`advance`), with the faults in effect then.
                 (Mode::Reset | Mode::Calibration, None) => {
                     self.run_at = Some(now + self.rng.between(ENABLE_DELAY_US));
                 }
             },
             Command::Disable | Command::FaultClear => {
-                self.mode = Mode::Reset;
-                self.run_at = None;
-                self.send(now, self.status(Mode::Reset));
+                self.set_mode(now, Mode::Reset);
+                self.send(now, self.status());
                 self.silence = Some((now, now + self.rng.between(DISABLE_SILENCE_US)));
             }
             Command::SetZero => {
                 self.plant.position = 0.0;
-                self.send(now, self.status(self.mode));
+                self.send(now, self.status());
                 if self.mode == Mode::Run {
                     let start = now + self.rng.between(ZERO_BLACKOUT_START_US);
                     self.blackout = Some((start, start + self.rng.between(ZERO_BLACKOUT_LEN_US)));
@@ -189,7 +194,7 @@ impl SimDrive {
             Command::VersionQuery => {}
             Command::ParamRead(param) => {
                 let reply = self
-                    .param(param)
+                    .read(param)
                     .and_then(|v| wire::param_value(self.id(), param, v).ok());
                 self.send(
                     now,
@@ -197,12 +202,12 @@ impl SimDrive {
                 );
             }
             Command::ParamWrite { param, value } => {
-                if !self.active.ignores_write(param)
+                if !flagged(&self.active.ignored_writes, param)
                     && let Some(slot) = self.params.iter_mut().find(|(p, _)| *p == param)
                 {
                     slot.1 = value;
                 }
-                self.send(now, self.status(self.mode));
+                self.send(now, self.status());
             }
             Command::Reporting(Reporting::On) => {
                 self.next_report = self.report_interval().map(|i| now + i);
@@ -213,12 +218,10 @@ impl SimDrive {
 
     /// The next frame due by `now`, earliest first. Injected transport faults apply here, as each frame falls due, so
     /// they reach frames already waiting: a silent drive sends nothing, a late one delays each frame once more by its
-    /// lateness, and lost or doubled frames go by count.
+    /// lateness, and lost or doubled frames go by count. A doubled frame's second copy waits in the outbox like any
+    /// other frame, so the faults in effect when it falls due apply to it too; it isn't doubled again.
     pub fn pop_due(&mut self, now: Instant) -> Option<DriveFrame> {
         self.advance(now);
-        if let Some(frame) = self.repeat.take() {
-            return Some(frame);
-        }
         loop {
             let slot = self
                 .outbox
@@ -232,8 +235,8 @@ impl SimDrive {
             if !queued.delayed && !self.active.late.is_zero() {
                 *slot = Some(Queued {
                     due: queued.due + self.active.late,
-                    frame: queued.frame,
                     delayed: true,
+                    ..queued
                 });
                 continue;
             }
@@ -241,9 +244,12 @@ impl SimDrive {
                 self.active.drop -= 1;
                 continue;
             }
-            if self.active.duplicate > 0 {
+            if !queued.copy && self.active.duplicate > 0 {
                 self.active.duplicate -= 1;
-                self.repeat = Some(queued.frame);
+                *slot = Some(Queued {
+                    copy: true,
+                    ..queued
+                });
             }
             return Some(queued.frame);
         }
@@ -261,60 +267,96 @@ impl SimDrive {
             .min()
     }
 
-    /// Power off and on: Reset, every parameter back to its default (`canTimeout` 0), reporting off, nothing in flight,
-    /// every injected fault cleared (PLAN item 4). The joint stays where it is, and the fault plan and its record are
-    /// the test's, so they stay too.
-    pub fn power_cycle(&mut self) {
+    /// Power off and on at `at`: Reset, every parameter back to its default (`canTimeout` 0), reporting off, every
+    /// injected fault cleared (PLAN item 4). Frames already due by `at` went out before the power went; the rest are
+    /// lost. The joint stays where it is, and the fault plan and its record are the test's, so they stay too.
+    fn reboot(&mut self, at: Instant) {
+        let mut outbox = [None; OUTBOX];
+        for (kept, queued) in outbox
+            .iter_mut()
+            .zip(self.outbox.iter().flatten().filter(|q| q.due <= at))
+        {
+            *kept = Some(*queued);
+        }
         *self = Self {
             rng: Rng(self.rng.next()),
             dropped: self.dropped,
             plant: self.plant.at_rest(),
             plan: self.plan,
             stepped: self.stepped,
+            outbox,
             ..Self::new(self.drive, self.uid, 0)
         };
     }
 
-    /// Bring the drive's state up to `now`, each event at its own time and in time order: an enable reaching Run (its
-    /// status sent then), `canTimeout` firing, a scheduled fault's time, with the joint moving in between; then reports
-    /// falling due.
+    /// Bring the drive up to `now`, with everything due at `now` too.
     fn advance(&mut self, now: Instant) {
-        // Each pass handles one event and clears it, so this ends; the bound only makes that plain.
-        for _ in 0..crate::FAULT_PLAN + 2 {
-            let since = self.stepped.unwrap_or(now);
-            let due = |at: Option<Instant>| at.filter(|at| *at <= now).map(|at| at.max(since));
-            let (run, timeout, fault) = (
-                due(self.run_at),
-                due(self.timeout_at()),
-                due(self.plan.next_at()),
-            );
-            let Some(at) = [run, timeout, fault].into_iter().flatten().min() else {
+        self.advance_to(now, true);
+    }
+
+    /// Bring the drive's state up to `now`, each event at its own time, in time order, with the joint moving in
+    /// between: a scheduled fault's time, an enable reaching Run (its status sent then), `canTimeout` firing, a report
+    /// falling due (built with the joint as it is then). Tied events go in that order, so a fault due with Run shows in
+    /// the Run status. Events at `now` itself happen only if `inclusive`.
+    fn advance_to(&mut self, now: Instant, inclusive: bool) {
+        // Faults fire once each; Run comes once per Enable, and a timeout once per Run reached (an Enable, or a Mode
+        // fault); the outbox holds no more reports than this. Reports still due past the bound are skipped and counted.
+        for _ in 0..2 * crate::FAULT_PLAN + 2 + OUTBOX {
+            let Some((at, event)) = self.next_due(now, inclusive) else {
                 break;
             };
             let limits = self.limits();
             self.plant.advance(at, self.mode == Mode::Run, limits);
             self.stepped = Some(at);
-            if run == Some(at) {
-                self.run_at = None;
-                self.mode = Mode::Run;
-                self.send(at, self.status(Mode::Run));
-            } else if timeout == Some(at) {
-                self.mode = Mode::Reset;
-            } else {
-                self.fire_due(at);
+            match event {
+                Event::Fault => {
+                    if let Some((_, fault)) = self.plan.due(at) {
+                        self.apply(at, fault);
+                    }
+                }
+                Event::Run => {
+                    self.run_at = None;
+                    self.mode = Mode::Run;
+                    self.send(at, self.status());
+                }
+                Event::Timeout => self.set_mode(at, Mode::Reset),
+                Event::Report => {
+                    if !in_window(self.blackout, at) {
+                        self.send(at, self.report());
+                    }
+                    self.next_report = self.report_interval().map(|i| at + i);
+                }
             }
+        }
+        while let Some(at) = self
+            .next_report
+            .filter(|at| *at < now || (inclusive && *at == now))
+        {
+            self.dropped += 1;
+            self.next_report = self.report_interval().map(|i| at + i);
         }
         let limits = self.limits();
         self.plant.advance(now, self.mode == Mode::Run, limits);
-        self.stepped = Some(now);
-        self.fire_due(now);
-        while let Some(at) = self.next_report.filter(|at| *at <= now) {
-            let report = self.report();
-            if !in_window(self.blackout, at) {
-                self.send(at, report);
-            }
-            self.next_report = self.report_interval().map(|i| at + i);
-        }
+        self.stepped = Some(self.stepped.map_or(now, |s| s.max(now)));
+    }
+
+    /// The earliest event due by `now` (before it, unless `inclusive`), and when, at the earliest the time last stepped to.
+    fn next_due(&self, now: Instant, inclusive: bool) -> Option<(Instant, Event)> {
+        let since = self.stepped.unwrap_or(now);
+        let due = |at: Option<Instant>| {
+            at.filter(|at| *at < now || (inclusive && *at == now))
+                .map(|at| at.max(since))
+        };
+        [
+            (due(self.plan.next_at()), Event::Fault),
+            (due(self.run_at), Event::Run),
+            (due(self.timeout_at()), Event::Timeout),
+            (due(self.next_report), Event::Report),
+        ]
+        .into_iter()
+        .filter_map(|(at, event)| Some((at?, event)))
+        // `min_by_key` keeps the first of equals: the order above breaks ties.
+        .min_by_key(|(at, _)| *at)
     }
 
     /// When `canTimeout` drops an enabled drive to Reset (PLAN item 6: the drive goes limp after the last command).
@@ -329,11 +371,16 @@ impl SimDrive {
         Some(self.last_command? + timeout)
     }
 
-    /// Fire every scheduled fault now due.
-    fn fire_due(&mut self, now: Instant) {
-        while let Some((at, fault)) = self.plan.due(now) {
-            self.apply(at, fault);
+    /// The drive is in `mode` from `at`, whatever put it there. Any pending Enable is forgotten; leaving Run leaves the
+    /// joint at rest, and reaching Run starts `canTimeout` counting from `at`.
+    fn set_mode(&mut self, at: Instant, mode: Mode) {
+        self.run_at = None;
+        if mode != Mode::Run {
+            self.plant = self.plant.at_rest();
+        } else if self.mode != Mode::Run {
+            self.last_command = Some(at);
         }
+        self.mode = mode;
     }
 
     /// Put `fault` in effect, recorded at `at`.
@@ -351,18 +398,16 @@ impl SimDrive {
             Fault::Duplicate(n) => a.duplicate = a.duplicate.saturating_add(n),
             Fault::FaultBits(faults) => a.faults = faults,
             Fault::Temperature(c) => a.temperature = Some(c),
-            Fault::IgnoreWrites(param) => a.ignore_writes(param),
+            Fault::IgnoreWrites(param) => flag(&mut a.ignored_writes, param),
             Fault::IgnoreDisables(n) => a.ignored_disables = a.ignored_disables.saturating_add(n),
-            Fault::Mode(mode) => {
-                self.mode = mode;
-                self.run_at = None;
-            }
+            Fault::Mode(mode) => self.set_mode(at, mode),
             Fault::Param(param, value) => {
+                flag(&mut a.injected_params, param);
                 if let Some(slot) = self.params.iter_mut().find(|(p, _)| *p == param) {
                     slot.1 = value;
                 }
             }
-            Fault::Reboot => self.power_cycle(),
+            Fault::Reboot => self.reboot(at),
         }
     }
 
@@ -409,31 +454,49 @@ impl SimDrive {
             .map(|(_, v)| *v)
     }
 
-    fn feedback(&self) -> Feedback {
-        let running = self.mode == Mode::Run;
-        let (velocity, torque) = if running {
-            (self.plant.velocity, self.plant.torque)
+    /// What a read of `param` answers: the joint's position and speed as they are now, unless a value was injected;
+    /// every other register as it holds.
+    fn read(&self, param: Param) -> Option<ParamValue> {
+        if flagged(&self.active.injected_params, param) {
+            return self.param(param);
+        }
+        match param {
+            Param::MechPos => Radians::new(self.plant.position).map(ParamValue::Radians),
+            Param::MechVel => RadPerSec::new(self.motion().0).map(ParamValue::RadPerSec),
+            _ => self.param(param),
+        }
+    }
+
+    /// The joint's velocity and torque now: zero out of Run.
+    fn motion(&self) -> (f64, f64) {
+        if self.mode == Mode::Run {
+            self.plant.motion(self.limits())
         } else {
             (0.0, 0.0)
-        };
-        Feedback {
-            position: lit(Radians::new(self.plant.position)),
-            velocity: lit(RadPerSec::new(velocity)),
-            torque: lit(NewtonMeters::new(torque)),
+        }
+    }
+
+    /// The joint as a status carries it, or `None` if a value isn't finite.
+    fn feedback(&self) -> Option<Feedback> {
+        let (velocity, torque) = self.motion();
+        Some(Feedback {
+            position: Radians::new(self.plant.position)?,
+            velocity: RadPerSec::new(velocity)?,
+            torque: NewtonMeters::new(torque)?,
             temperature: self
                 .active
                 .temperature
                 .unwrap_or_else(|| lit(Celsius::new(TEMPERATURE_C))),
-        }
+        })
     }
 
-    /// A type-2 status in `mode`, or `None` for a model the codec can't encode a status for.
-    fn status(&self, mode: Mode) -> Option<DriveFrame> {
-        wire::status(self.drive, mode, self.active.faults, &self.feedback()).ok()
+    /// A type-2 status in the drive's mode now, or `None` for a model the codec can't encode a status for.
+    fn status(&self) -> Option<DriveFrame> {
+        wire::status(self.drive, self.mode, self.active.faults, &self.feedback()?).ok()
     }
 
     fn report(&self) -> Option<DriveFrame> {
-        wire::report(self.drive, self.mode, self.active.faults, &self.feedback()).ok()
+        wire::report(self.drive, self.mode, self.active.faults, &self.feedback()?).ok()
     }
 
     /// Queue `frame` to go out at `due`; a frame that can't be built or queued is dropped and counted. Transport faults
@@ -446,6 +509,7 @@ impl SimDrive {
                     due,
                     frame,
                     delayed: false,
+                    copy: false,
                 });
             }
             (None, _) | (Some(_), None) => self.dropped += 1,
@@ -460,6 +524,17 @@ struct Queued {
     frame: DriveFrame,
     /// Already delayed by `Late` once.
     delayed: bool,
+    /// The second copy of a doubled frame.
+    copy: bool,
+}
+
+/// What [`SimDrive::advance_to`] handles next, in the order ties go.
+#[derive(Clone, Copy, Debug)]
+enum Event {
+    Fault,
+    Run,
+    Timeout,
+    Report,
 }
 
 fn in_window(window: Option<(Instant, Instant)>, now: Instant) -> bool {
