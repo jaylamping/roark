@@ -109,7 +109,7 @@ A thread asks for these by name and says why. It doesn't ask for anything on the
    ],
    "deny": [
      "Bash(git push origin main:*)", "Bash(git push origin HEAD:main:*)", "Bash(git push origin +main:*)",
-     "Bash(git push -f:*)", "Bash(git push origin --delete:*)"
+     "Bash(git push -f:*)", "Bash(git push -u origin main:*)", "Bash(git push origin --delete:*)"
    ]
    ```
 
