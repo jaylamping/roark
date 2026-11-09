@@ -51,7 +51,7 @@ is refused at startup. Each drive's last echo of this host's frames of a kind a 
 and when it was read) is kept, for the enable sequence's "reporting-off echo plus one tick".
 
 A limb stop (`stop_limb`, named `LimbRequested`; the check above; expired feedback) stops that limb; a bus stop (`request_stop`, control
-silent, a late wake, a bad batch, or a backlog) stops every limb. A stopping limb sends Disable to each of its drives,
+silent, a late wake, a bad batch, or a backlog) stops every active limb; an idle limb has nothing running, and a tick that woke late or read a backlog sends it only its batch's Disables and reporting off. A stopping limb sends Disable to each of its drives,
 re-sends it each tick to every drive that hasn't confirmed, and sends active reporting off to each confirmed drive once
 its post-Disable silence is over (50 ms after its confirmation), again each tick until the socket takes it. A drive
 confirms with a Reset-mode status read after the stop's Disable; one that never confirms is still getting a Disable
