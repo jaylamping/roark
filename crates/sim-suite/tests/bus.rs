@@ -76,7 +76,7 @@ fn candump(dir: &Path) -> Candump {
 }
 
 /// One captured frame: microseconds, ID, data, and whether candump marked it sent from this host.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct Line {
     us: u64,
     id: u32,
@@ -472,7 +472,8 @@ fn captured_run(log: &Path) -> Vec<Line> {
         .collect()
 }
 
-/// Every frame in the MCAP, in order, against the capture: same count, ID, data, direction class and microsecond.
+/// Every frame in the MCAP against the capture, in timestamp order: same count, ID, data, direction class and
+/// microsecond.
 #[expect(
     clippy::unwrap_used,
     reason = "test helper: an unreadable recording fails the test"
@@ -507,8 +508,15 @@ fn compare(mcap: &Path, captured: &[Line]) {
         recorded.len(),
         captured.len()
     );
-    for (r, c) in recorded.iter().zip(captured) {
-        let us = r.stamp.sec * 1_000_000 + u64::from(r.stamp.nsec / 1000);
+    // Each socket gets the bus's frames in its own order: a frame sent from sim-drive's socket and one sent from the
+    // bus thread's within a microsecond can reach candump and the bus thread the other way round. Both carry the
+    // kernel's timestamp, so both sides are compared in timestamp order (ties by ID and data, the same on both).
+    let us = |r: &telemetry::wire::Frame| r.stamp.sec * 1_000_000 + u64::from(r.stamp.nsec / 1000);
+    recorded.sort_by(|a, b| (us(a), a.id, &a.data).cmp(&(us(b), b.id, &b.data)));
+    let mut captured = captured.to_vec();
+    captured.sort_by(|a, b| (a.us, a.id, &a.data).cmp(&(b.us, b.id, &b.data)));
+    for (r, c) in recorded.iter().zip(&captured) {
+        let us = us(r);
         assert_eq!((r.id, &r.data, us), (c.id, &c.data, c.us), "{r:?} vs {c:?}");
         // On vcan everything is sent from this host: candump marks it T. The recorder tells ours from sim-drive's.
         assert_eq!(c.local, r.direction != Direction::Rx);
