@@ -13,8 +13,14 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
 cargo deny check
 python3 scripts/check_rules.py
 python3 scripts/check_rules.py count
-# No file of 100 MB or more, LFS pointers included (conventions/cad.md rule 5).
-python3 tools/check_file_sizes.py
-# The tracked CAD layout and the CAD tool tests (conventions/cad.md section 5).
-python3 tools/cad/check_cad_layout.py --repo --quiet
+# The file size limit, LFS pointers included (conventions/cad.md rule 5), and the tracked CAD layout (section 5). Both
+# read git's file list, so they run only in a git checkout: the dev box's copy has no .git, and the same tree was checked on
+# the machine it came from.
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  python3 tools/check_file_sizes.py
+  python3 tools/cad/check_cad_layout.py --repo --quiet
+else
+  echo "file size and CAD layout checks: not a git checkout, skipped"
+fi
+# The CAD tool tests.
 python3 -m pytest -q tools/cad

@@ -13,11 +13,11 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 LFS_HEADER = b"version https://git-lfs.github.com/spec/v1"
-MAX_FILE_BYTES = 100 * 1000 * 1000  # Joey's rule: no file of 100 MB or more
+MAX_FILE_BYTES = 100 * 1000 * 1000  # PLAN.md, Repo, toolchain, CI and deploy: the file size limit
 
 
 def git(*args: str, root: Path = REPO_ROOT, input_bytes: bytes | None = None) -> bytes:
-    # safe.directory: CI runs the checkout as a different user inside Docker.
+    # safe.directory: the checkout may belong to another user (a container or a copied tree).
     out = subprocess.run(
         ["git", "-c", f"safe.directory={root}", "-C", str(root), *args],
         input=input_bytes,
@@ -67,7 +67,8 @@ def content_sha256(path: Path) -> str:
 def blob_sizes(
     oids: list[str], root: Path = REPO_ROOT
 ) -> dict[str, tuple[int, tuple[str, int] | None]]:
-    """For git blob ids: (stored size, LFS pointer or None). Missing or non-blob ids are left out.
+    """For git object ids: (stored size, LFS pointer or None). Non-blob ids (gitlinks) are left out;
+    a missing object raises, so a size is never guessed.
 
     Sizes come from a cheap batch-check; only blobs small enough to be a pointer are read.
     """
@@ -84,6 +85,8 @@ def blob_sizes(
     small = []
     for line in out.decode().splitlines():
         parts = line.split()
+        if len(parts) == 2 and parts[1] == "missing":
+            raise LookupError(f"object {parts[0]} is not in this clone; its size can't be checked")
         if len(parts) == 3 and parts[1] == "blob":
             size = int(parts[2])
             result[parts[0]] = (size, None)
@@ -107,7 +110,8 @@ def blob_sizes(
 
 
 def real_blob_size(entry: tuple[int, tuple[str, int] | None] | None) -> int:
-    """Real size of a blob_sizes() entry: the pointer's size for LFS, else the stored size."""
+    """Real size of a blob_sizes() entry: the pointer's size for LFS, else the stored size.
+    None is a gitlink (a submodule commit), which stores no file."""
     if entry is None:
         return 0
     size, ptr = entry
@@ -116,16 +120,18 @@ def real_blob_size(entry: tuple[int, tuple[str, int] | None] | None) -> int:
 
 def changed_blobs(rev_args: list[str], root: Path = REPO_ROOT) -> list[tuple[str, str]]:
     """(blob id, path) for every file added or changed by the commits rev-list selects."""
-    found = []
+    found: list[tuple[str, str]] = []
+    if not rev_args:
+        return found  # nothing selected; a bare rev-list would fail with a usage error
     revs = git("rev-list", *rev_args, root=root).decode().split()
     for rev in revs:
         tree = git(
             "diff-tree",
-            "-m",  # merges too: content created in a merge is compared against each parent
+            "-m",  # merges too, against each parent: over-reports files a parent already had, never misses one
             "-r",
             "-z",
             "--no-commit-id",
-            "--diff-filter=ACMR",
+            "--diff-filter=ACMRT",  # T: a symlink replaced by a regular file
             "--root",
             rev,
             root=root,
