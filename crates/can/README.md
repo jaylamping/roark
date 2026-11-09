@@ -39,11 +39,13 @@ A drive's status read after a command the socket took is its **fresh** status, a
 the collect deadline. That is evidence the drive is there and what state it was in, never an acknowledgement: there
 are no sequence numbers to prove which command a status answers. Faults are never filtered: a status or report
 updates what the drive was seen saying, and any status, report, version reply or type-21 fault report with a fault set
-latches `fault_seen`. Missing replies aren't counted toward a drive's silence for an Enable or Disable, for anything
-sent to a drive this host never enabled or saw reach Reset after its Disable, for `stop_confirm_ns` (100 ms) after a
-Disable no Reset has answered (a Disable sent again keeps the first one's window), or for the first `ENABLE_TO_RUN_NS`
-(50 ms) after an Enable while the drive hasn't shown Run: the drive may take 10 ms to reach Run, and goes silent after a
-Disable (PLAN item 2 Silence windows). A lost Disable therefore can't leave a running drive's silence uncounted.
+latches `fault_seen`. Missing replies aren't counted toward a drive's silence for an Enable or Disable, or in the
+first `ENABLE_TO_RUN_NS` (50 ms) after an Enable while the drive hasn't shown Run: it may take 10 ms to reach Run. A
+drive never enabled since start or its limb's clear, or seen in Reset after this host's Disable, is offline, and nothing
+sent to it is counted until it is enabled again; another Disable doesn't change that. A Disable to an enabled drive
+holds counting off for `stop_confirm_ns` (100 ms), since the drive goes silent after it; a Disable sent again keeps
+the first one's window, and with no Reset read by then counting resumes (PLAN item 2 Silence windows). So a lost
+Disable can't leave a running drive's silence uncounted.
 `silent_ticks` and `silence_misses` must be at least one and must stop a limb before the drives' own timeout, or the bus
 is refused at startup. Each drive's last echo of this host's frames of a kind a batch carries (`last_echo`: its kind
 and when it was read) is kept, for the enable sequence's "reporting-off echo plus one tick".
