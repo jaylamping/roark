@@ -31,7 +31,8 @@ pub(crate) struct Received {
 #[repr(C, align(8))]
 struct ControlBuffer([u8; 128]);
 
-/// Read one frame without blocking. `Ok(None)` when nothing is queued.
+/// Read one frame without blocking. `Ok(None)` when nothing is queued; `Interrupted` when two signals in a row cut the
+/// read short.
 pub(crate) fn recv(fd: BorrowedFd<'_>) -> io::Result<Option<Received>> {
     // SAFETY: `can_frame` is plain old data; all-zero is a valid value.
     let mut frame: libc::can_frame = unsafe { zeroed() };
@@ -46,27 +47,27 @@ pub(crate) fn recv(fd: BorrowedFd<'_>) -> io::Result<Option<Received>> {
     msg.msg_iovlen = 1;
     msg.msg_control = control.0.as_mut_ptr().cast();
     msg.msg_controllen = control.0.len();
-    // A signal can interrupt even a non-blocking call; that is no news about the socket, so read again. Bounded: a
-    // second interruption in a row reads as nothing queued, and the caller's next read tries again.
-    let mut n = -1;
-    for _ in 0..2 {
+    // A signal can interrupt even a non-blocking call; that is no news about the socket, so read once more. A second
+    // interruption in a row comes back as `Interrupted`: whether frames are still queued isn't known, so the drain
+    // reports the socket unemptied.
+    let mut interrupted = false;
+    let n = loop {
+        msg.msg_controllen = control.0.len();
         // SAFETY: `fd` is an open socket for the borrow's lifetime; `msg` points at `iov` (one buffer the size of
         // `frame`) and `control`, all live and writable until the call returns.
-        n = unsafe { libc::recvmsg(fd.as_raw_fd(), &raw mut msg, libc::MSG_DONTWAIT) };
+        let n = unsafe { libc::recvmsg(fd.as_raw_fd(), &raw mut msg, libc::MSG_DONTWAIT) };
         if n >= 0 {
-            break;
+            break n;
         }
         let e = io::Error::last_os_error();
         if e.kind() == io::ErrorKind::WouldBlock {
             return Ok(None);
         }
-        if e.kind() != io::ErrorKind::Interrupted {
+        if e.kind() != io::ErrorKind::Interrupted || interrupted {
             return Err(e);
         }
-    }
-    if n < 0 {
-        return Ok(None);
-    }
+        interrupted = true;
+    };
     if usize::try_from(n).ok() != Some(size_of::<libc::can_frame>()) {
         // Not one whole frame: a kind, not a message, so the tick path never allocates.
         return Err(io::Error::from(io::ErrorKind::InvalidData));

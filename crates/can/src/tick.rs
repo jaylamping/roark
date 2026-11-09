@@ -142,6 +142,12 @@ impl BusTick {
         })
     }
 
+    /// Whether a bus error has latched (bus-off, or the socket failed): there is nothing to send on.
+    #[must_use]
+    pub(crate) fn bus_lost(&self) -> bool {
+        self.bus_error.is_some()
+    }
+
     /// The tick's timing.
     #[must_use]
     pub fn timing(&self) -> Timing {
@@ -200,14 +206,14 @@ impl BusTick {
 
     /// The bus's state now, between snapshots (the shell's exit check reads it after the drain).
     #[must_use]
-    pub fn state(&self) -> BusState {
+    pub(crate) fn state(&self) -> BusState {
         self.state
     }
 
     /// Whether the bus is healthy now: no latched bus error and not error-passive. The snapshot's `healthy` is this at
     /// `end`.
     #[must_use]
-    pub fn healthy(&self) -> bool {
+    pub(crate) fn healthy(&self) -> bool {
         self.bus_error.is_none() && !self.error_passive
     }
 
