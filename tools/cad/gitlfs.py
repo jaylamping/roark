@@ -15,7 +15,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OID = re.compile(r"[0-9a-f]{64}")
 LFS_HEADER = b"version https://git-lfs.github.com/spec/v1"
-MAX_FILE_BYTES = 100 * 1000 * 1000  # PLAN.md, Repo, toolchain, CI and deploy: the file size limit
+MAX_FILE_BYTES = (
+    100 * 1000 * 1000
+)  # PLAN.md, Repo, toolchain, CI and deploy: the file size limit
 
 
 def git(*args: str, root: Path = REPO_ROOT, input_bytes: bytes | None = None) -> bytes:
@@ -89,7 +91,9 @@ def blob_sizes(
     for line in out.decode().splitlines():
         parts = line.split()
         if len(parts) == 2 and parts[1] == "missing":
-            raise LookupError(f"object {parts[0]} is not in this clone; its size can't be checked")
+            raise LookupError(
+                f"object {parts[0]} is not in this clone; its size can't be checked"
+            )
         if len(parts) == 3 and parts[1] == "blob":
             size = int(parts[2])
             result[parts[0]] = (size, None)
