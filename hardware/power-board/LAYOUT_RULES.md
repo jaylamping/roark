@@ -1,0 +1,165 @@
+# Power board rev B: layout rules
+
+2026-11-07, rev B5. These rules come from the Opus round 5 layout review ([opus-review-r5/5-layout.md](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/pdb/design/opus-review-r5/5-layout.md)) and Joey's single-sided rule. They replace LAYOUT_NOTES.md, which still describes rev A. schematic/tools/place.py follows them.
+
+## Board
+
+- **100 × 170 mm** (option A, Joey 2026-11-07: the 100 × 150 placement packed the control blocks to 74–84 % and couldn't be
+  routed). The extra 20 mm are at the bottom (Y 170–190): the 12 V distribution and the watchdog moved there, next to the
+  Micro-Fit outputs (now at Y 175); the latch and soft start widened to the left edge. Power path, banks, heatsink and ports
+  kept their coordinates. M3 holes at X ±46, Y 174 / 265 / 336.
+- **Single-sided: every part on the front face.** The rear has 6 mm to the carrier, and a back-side part would need a second reflow pass (Joey, 2026-11-07).
+- 4 layers, 1.6 mm, **2 oz outer / 1 oz inner** (JLC's standard stackup; rev B5 thermal option D takes the FET heat into a heatsink, so the copper only carries current).
+  - L1: positive pours and parts.
+  - L2: solid GND, unbroken under the banks, the absorber, the bus caps and the port FETs.
+  - L3: GND in the return corridor (the second GND return plane), signals where needed.
+  - L4: positive mirror, with GND wherever the positive path isn't.
+- Rating to lay out for: **60 A continuous, under 90 A peak.** Keep at least 30 mm of effective main-path width on at least 3 layers, and at least 2 layers of GND return. At layer changes, use about 1 A per 0.3 mm via: 60 or more vias per main-path transition.
+
+## Power path
+
+- **Flow order down the board:** BAT pair (top edge) → absorber cluster and RS1 → bank A → bank B (under the upper fan) → bus caps → port breakers → limb pigtails. Remove the old B → A → B detour.
+- **Pack entry:** the BAT and GND 8 AWG pair (4.5 mm holes, 8 mm pads, 14 mm pitch; to an XT90) sits side by side on the top edge, in the frame's pack cable path. **Keep-out: no components in X −5..25, Y 315–340** (the leads run up the face and bend over the top edge at R15 from about Y 330); the pads sit in that strip. Solid connections to all four layers, no thermal reliefs. A cable-tie hole each side of the pair.
+- **Absorber cluster:**
+  - D7, D21 and the eight cans in one cluster at the BAT entry; R53 (the ABS_N to GND link) under the can stack.
+  - ABS and ABS_N are pours directly over unbroken L2.
+  - R53 is at least 5 mm wide, with 10 or more vias to L2 and L3.
+  - **Loop:** extracted from the routed copper by `schematic/tools/absorber_loop.py`: **LABS 5.4 nH**, LBAR 2.0 nH. Microstrip over In1
+    (h 0.21 mm) per segment, weighted by its share of the current, plus assumed part ESLs: 1.5 nH per SMC diode, 3 nH per
+    can, 1 nH for RS1. The ABS_N spine down to R53 is the largest term (about 2.4 nH), because R53 sits at the bottom of
+    the stack. 2 nH isn't reachable with these parts; the ceramics below take the fast edge instead.
+- **Pack-entry ceramics C89–C92** (4 × 4.7 µF 100 V 1210, BAT to GND, about 8.8 µF at 54 V bias): two between RS1 and D7,
+  two in the BAT arm by D1, GND pads via-gridded to In1. **Bank A drain ceramics C87/C88** (2 × 4.7 µF 100 V): beside
+  RS1's SW_D pad, GND vias to In1. absorber_sim (real turn-off, all corners): BAT 73.8–73.9 V, bank A drain 81–84 V,
+  with a 3–5 nH absorber loop; **at the extracted 5.4 / 2.0 nH: BAT 73.8 V, bank A drain 84.5 V** (100 V FETs).
+- **FET copper and the heatsink (option D, [THERMAL_OPTION.md](THERMAL_OPTION.md)):**
+  - 2.7 W per FET at 60 A goes down into a finned heatsink under the board (X −33..33, Y 200–305).
+  - About 50 × 0.3 mm vias per tab, at the pad edge and under it, tented on L4 and kept out of the paste aperture so they
+    don't wick solder on the hot plate.
+  - L4: bare copper (no mask, ENIG) 15 × 15 mm under each FET, for the insulating gap pad. Nothing else on L4 inside
+    the heatsink zone except those pads and GND fill.
+  - Heatsink holes HS1 (0, 286) and HS2 (0, 204), M3, no copper within 2 mm; the MID pour flows around HS1.
+  - Keep all four bank FETs inside the upper fan footprint (|X| ≤ 20, Y 264–304).
+  - Check with a coupon or quick FEM; a clip-on heatsink per bank is the fallback.
+- **Bus caps:**
+  - within 20 mm of bank B's source pins and of the port FET drains;
+  - C38 and the other 12.6 mm cans stay out of the fan-zone height limit (Z 61.5 ceiling at |X| ≤ 20).
+- **Port breakers:**
+  - each TPS48111 within 10 mm of its FET;
+  - PD → 22 Ω → gate at the gate pin;
+  - the 2.2 µF drain cap at the drain;
+  - the SK810L output clamp at the source;
+  - the shunt Kelvin pair runs to both the TPS48111 (VS, CS+ through 100 Ω, CS−) and the INA237.
+- **D2PAK-7 drain lead:** pin 4 (the centre lead) and the tab are the same drain but separate pads; a 0.5 mm track joins
+  them under the package body (it keeps 0.6 mm to pins 3 and 5). Pin 4 splits the source pins, so pins 2–3 reach the
+  source copper through vias at their outer ends into the L4 mirror. Pins 5–7 carry the source current on L1; three of
+  the five source leads are plenty for 30 A.
+- **Left limb ports** are the right ports' power row turned 180° (shunt, FET, output clamp, pigtail, meter), so every port
+  FET has its gate pin on the inner side and its source pins facing the pigtail.
+- **Brake headers J3/J25:** VBUS and CL_D run up the can column on L4 as 2 mm tracks (X 34.5 and 40.5).
+- **Limb outputs:** each limb's + and return are on one pigtail pair at the board edge, twisted from the exit. Add a strain-relief tie hole beside each pair.
+- **Brake headers J3/J25:** at the top edge. The −X pair runs above the board, not through the 6 mm gap behind it.
+
+## Sensing and gates
+
+- **RS1 and every shunt:**
+  - Kelvin traces from the inner edge of the sense pads, as a tight pair over GND, branching only at the ICs.
+  - Flare the current pours across the full pad width, with via arrays at the pad edge, not in the pad.
+  - 1 mm of 5.6 mm-wide copper inside the sense loop costs 8.8 % of U1's limit.
+- **Gate loops:**
+  - each driver within 10 mm of its FETs;
+  - the gate resistor at the gate pin;
+  - the gate return taken as its own trace from the source pin nearest the gate, running beside the gate trace;
+  - symmetric between the two FETs of a bank.
+- **Controllers at their shunts (2026-11-08):** schematic/tools/place.py fixes each controller next to its shunt, sense pins facing
+  the sense pads:
+  - U1 in the GND gap left of RS1, GATE toward Q8; UVLO leaves through a via under the body;
+  - U7 with its sense pins toward RS9;
+  - each port controller (U19–U24) straight under its shunt, with the meter (U11–U16) under the controller.
+  Routed controller legs (shunt pad to pin): U1 2.9/7.1 mm; port controllers 1.7–6.3 mm. Meter legs are 12–37 mm,
+  each as a pair beside the controller's.
+- **Critical nets are routed first by script and locked:**
+  - the nets: every Kelvin pair, the gate drives (GATE, GATE_A, GA1/GA2, G1/G2, G_L*, GPU/GPD_L*, BRK_GATE, PRE_G, CL_G)
+    and UVLO;
+  - schematic/tools/grid_route.py with `ONLY=<regex>`; `FONLY` makes them try F.Cu alone first (no via, so the solid In1 GND
+    plane lies under the whole run), falling back to all layers;
+  - the autorouter takes the rest, and schematic/tools/ses_import.py `LOCK=<regex>` keeps the pre-routes locked for hand finishing.
+
+## E-stop safety nets
+
+- Net class **ESTOP_SAFE:** RUN, RUN_A, RUN_B, RUN_P, UVLO, EN_A, FLT_A, FLT_D, LOOP_*, RST_*, L_B, L_E, L_PB, L_PC, MID_B, VB_B, INT_B, WDO_N, VWD.
+- At least 1.5 mm (2 mm preferred) to any BAT, SW_D, MID, VBUS, ABS, CL_D, BRK_*, SH* or V_L* copper, on all layers, with a GND guard trace or pour between them.
+- Why: 0.44 MΩ of leakage from 54 V into UVLO enables bank B by itself.
+- No 54 V plane on L2–L4 under the latch block.
+- Wash off the flux. The whole board is conformal-coated after bring-up (Clearance below; PRODUCTION_RUN step 10).
+- J20 (the loop connector) sits on the far side of the latch block from the converter soft start.
+
+## Clearance
+
+IPC-2221B Table 6-1, 51–100 V row (the values used here, from the standard's table; check against your copy): B1
+internal 0.1 mm; B2 external bare, up to 3050 m, 0.6 mm; B3 above 3050 m 1.5 mm; B4 external with permanent polymer
+coating 0.13 mm; A5 external with conformal coating over the assembly 0.13 mm; A6 external component lead or termination,
+uncoated, 0.5 mm; A7 the same, coated, 0.13 mm. So uncoated, the package-set pad pairs at 0.3–0.5 mm fail A6 as well as
+B2; coated, everything at 0.13 mm or more passes.
+
+**Coating: the board is conformal-coated (Joey, 2026-11-09).** The coat is acrylic (MG Chemicals 419D), applied after
+bring-up passes, with the connectors, test points, holes and heatsink pad masked (PRODUCTION_RUN step 10). The 54 V domain
+rule below is therefore the 0.2 mm default (IPC-2221B A5/A7, 0.13 mm); the tools run with `MARENGO_COATED=1`. The 1.5 mm
+E-stop rule and the hole keep-outs don't change. Without the coat it would be 0.6 mm on the outer layers, so a board
+that is never coated must not go on the pack.
+
+- **One rule table** ([schematic/tools/domains.py](schematic/tools/domains.py)), used by the router, the
+  placement spacing pass, the GND fanout and the checks (2026-11-08):
+  - E-stop nets (the ESTOP_SAFE list above) keep **1.5 mm** to the 54 V list (BAT, SW_D, MID, VBUS, ABS, ABS_N, CL_D,
+    BRK_*, SH*, V_L*, D_L*) on every layer.
+  - Copper on 54 V, or riding on a 54 V node (a gate or bootstrap on its source, a sense tap on VBUS), keeps **0.6 mm**
+    on the outer layers (0.2 mm inner) to every net of another voltage domain uncoated; the board is coated, so 0.2 mm
+    on all layers. Nets in one domain (a port's V_L, G_L,
+    GPD/GPU, BST, GC; bank B's MID with GA1/GA2 and BST_A; the VBUS taps) are tens of volts apart at most, so 0.2 mm.
+  - Everything else 0.2 mm.
+- **DRC rules** (layout/marengo_pdu_revb.kicad_dru; a later rule wins in KiCad):
+  - `estop_to_54v`: 1.5 mm from net class ESTOP to net class HV54 on every layer (classes set by
+    schematic/tools/handfinish_prep.py from schematic/tools/domains.py).
+  - **Fine-pitch footprints:** U1 and U7 (LM5069, MSOP-10 0.5 mm) and U2 (TPS7A4001, HVSSOP-8) put their own pads
+    0.15 mm apart, so **only clearances between copper that enters that IC's courtyard** (its own pads, and each pin's
+    first escape segment) drop to 0.15 mm:
+    `(rule fine_pitch_U1 (constraint clearance (min 0.15mm)) (condition "(A.memberOfFootprint('U1') && B.intersectsCourtyard('U1')) || (B.memberOfFootprint('U1') && A.intersectsCourtyard('U1')) || (A.intersectsCourtyard('U1') && B.intersectsCourtyard('U1'))"))`,
+    and the same for U2 and U7.
+  - Outside the courtyards, E-stop copper stays at 1.5 mm from 54 V, and 54 V domains at 0.2 mm (coated).
+    schematic/tools/route_checks.py tests the same scope.
+  - U1's UVLO pin sits between SH_P and the GND pins. schematic/tools/route_u1.py therefore draws U1's escapes as single straight
+    segments: SH_P and SH_N straight out to RS1, and UVLO inward to a via under the body.
+- **Holes:** no copper within 2 mm of the heatsink screw holes HS1/HS2 (the screw and the heatsink aren't insulated from
+  it), 0.6 mm round the tie holes and the M3 mounting pads (rule areas from schematic/tools/place.py).
+
+## Hand finishing (2026-11-08)
+
+The autorouters don't finish this board:
+- schematic/tools/grid_route.py stalls at about 100 open nets.
+- Freerouting 2.5 thrashed: 313 unrouted connections after pass 1, and 498 after pass 2.
+
+The rest is finished by hand in KiCad, starting from the board with the power stage and the locked critical pre-routes:
+- Net classes ESTOP, HV54 and P12 are set, and the DRC holds the E-stop rule.
+- Run `MARENGO_COATED=1 schematic/tools/route_checks.py` after each session. It is the authority for the 54 V domain rule; coated,
+  that rule is the 0.2 mm default.
+- The open nets are in layout/open_nets.csv (schematic/tools/open_nets.py, from the DRC's unconnected items).
+
+Placement moves to make while finishing (the gate loops):
+- Each port's gate clamp pair (D23/D24, D26/D27, D29/D30, D32/D33, D35/D36, D38/D39) sits on the pigtail side of the
+  FET, about 15 mm from its gate pin. Move each pair to the gate pin; that puts the G_L loop under 10 mm.
+- Bank B's gate resistors R1/R2 (G1/G2) and bank A's R31/R32 (GA1/GA2) sit at their controllers. Move each to its FET's
+  gate pin.
+- U1 stays at RS1 because the Kelvin rule needs it there, so GATE runs about 35 mm to Q1/Q2. GATE carries the
+  LM5069's slow charge current and its fault pull-down; keep it on F.Cu over In1, with a GND return beside it.
+
+## Air
+
+- Leave an air lane from each fan zone out to an edge (top or bottom). Keep the terminal-free edges clear.
+- RS1 and the busiest port shunts sit under or beside a fan.
+- At bring-up, measure case temperatures at 60 A for 10 min with the shell on.
+
+## Test
+
+- 3 GND test points, one per quadrant.
+- Scope-ground pad pairs (signal plus GND within 3 mm) at BAT, SW_D, MID, VBUS and ABS–ABS_N.
+- Pads on GATE, GATE_A, UVLO and FLT_A for the close-order test.

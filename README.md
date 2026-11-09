@@ -18,7 +18,8 @@ five CAN buses, plus a simulated drive, agent tools and an operator UI.
 - [PLAN.md](PLAN.md): what gets built, in order.
 - [conventions/](conventions/): how code, config, tests and procedures are written and reviewed.
 - [cad/](cad/): the robot's CAD, versioned through Git LFS ([conventions/cad.md](conventions/cad.md)).
-- Hardware docs and the legacy software live in the reference repo, [jaylamping/marengo](https://github.com/jaylamping/marengo).
+- The power board (schematic, layout, tools and docs) is in [hardware/power-board/](hardware/power-board/README.md).
+- The rest of the hardware docs and the legacy software live in the reference repo, [jaylamping/marengo](https://github.com/jaylamping/marengo).
 
 ## Build and check
 
