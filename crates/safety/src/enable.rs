@@ -3,7 +3,8 @@
 //! batch; no MIT frame is sent before Run is seen, and only [`Next::Enabled`] lets control command the drive. Each wait
 //! takes only a reply read inside its 50 ms window, however late the sequence is stepped.
 //!
-//! The runtime sends no slow request to a drive while it is enabling: the bus keeps only each drive's last echo, so a
+//! The runtime cancels the sequence on any event that voids its preflight (see [`PreflightPassed`]); the sequence
+//! itself checks only faults. It sends no slow request to a drive while it is enabling: the bus keeps only each drive's last echo, so a
 //! slow frame's echo would hide the sequence's own and the sequence would give up.
 //!
 //! Set Zero has no command in this stack yet. When it gets one, this sequence gains the "no Set Zero to this drive in

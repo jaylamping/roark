@@ -194,8 +194,11 @@ impl Target {
 }
 
 /// Proof that one drive passed preflight. Only [`Preflight`] makes one, once, and the enable sequence takes it by value,
-/// so one preflight enables at most once. It is fresh only while nothing has happened to the drive since: the runtime
-/// starts the enable sequence in the tick it gets the proof, and drops the proof on any drive event first.
+/// so one preflight enables at most once. It proves the drive was right when it was made, and stays true only until an
+/// event voids it: a stop, a fault, silence, a drop out of Run, a bus lost, a reboot or runtime restart, or a write to
+/// the drive from anything else (an ordinary reply doesn't). Keeping it fresh is the runtime's duty, not a time limit
+/// here: it starts the enable sequence in the tick it gets the proof, drops the proof or cancels the sequence on any such
+/// event, and runs preflight again for every enable.
 #[derive(Debug, PartialEq, Eq)]
 pub struct PreflightPassed {
     drive: Drive,
