@@ -40,6 +40,8 @@ class Router:
         self.byid = {UID(t): t for t in self.tracks + self.pads}
         self.idx = {}
         self.ignore = set()
+        if os.getenv('FCOST'):   # FCOST=<k>: a step on F.Cu costs k times more, so a net prefers the inner layers
+            k=float(os.getenv('FCOST')); self.step_cost=lambda net,L,p,q: k if L==CU[0] else 1.0
         self.collect_all = False   # escape_probe.py: free() lists every blocker instead of stopping at the first
         self.fine = []; self.fineshape = []
         for ref in os.getenv('FINE','U1,U2,U7,U8').split(','):   # the .kicad_dru fine-pitch courtyards
@@ -349,7 +351,7 @@ def main():
     edges=[]
     for i,u in enumerate(d['unconnected_items']):
         n,A=r.parse(u['items'][0]); _,B=r.parse(u['items'][1])
-        if not only.search(n) or n.startswith('/SH'): continue
+        if not only.search(n) or (n.startswith('/SH') and os.getenv('ALLOWSH')!='1'): continue   # Kelvin legs only on request
         if not A and B and u['items'][0]['description'].startswith('Zone'): A=r.zone_anchors(u['items'][0],B)
         if not B and A and u['items'][1]['description'].startswith('Zone'): B=r.zone_anchors(u['items'][1],A)
         if not A or not B: continue

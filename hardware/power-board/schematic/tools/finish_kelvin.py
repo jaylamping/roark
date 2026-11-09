@@ -60,12 +60,13 @@ def trial(inp,out,stem,reverse=False):
             else: connected += [(it[1],L) for L in RL]
     newN=[t for t in r.tracks[len(original):] if t.GetClass()=='PCB_TRACK']
     share=paired(P,newN); print('kelvin trial pairing',round(100*baseline,1),'to',round(100*share,1),flush=True)
-    if share<max(.50,baseline+.05): print('kelvin rejected: insufficient paired length',flush=True); return False
+    # KMIN: the pairing share a trial must reach (default 50 %)
+    if share<max(float(os.getenv('KMIN','.50')),baseline+.05): print('kelvin rejected: insufficient paired length',flush=True); return False
     for t in N: r.b.Remove(t)
     r.save(out); print('kelvin complete trial saved',out,flush=True); return True
 
 def main():
-    assert sys.argv[3] in ('/SHL2','/SHL4','/SHL6','/SH9')
+    assert sys.argv[3] in ('/SHL2','/SHL4','/SHL6','/SH9','/SH')
     if not trial(*sys.argv[1:4]): trial(*sys.argv[1:4],reverse=True)
 
 if __name__=='__main__':main()

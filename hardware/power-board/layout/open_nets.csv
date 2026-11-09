@@ -1,8 +1,7 @@
 net,class,open connections,parts
-/EN_A,ESTOP (1.5 mm to 54 V),2,U8
+/EN_A,ESTOP (1.5 mm to 54 V),2,R28 U8
 /V_L3,54 V,2,U13 U21
 /V_L6,54 V,2,U16 U24
-/BRK_PG,54 V,1,R51 U7
 /BST_A,rides 54 V,1,C28 U8
 /CSN_A,rides 54 V,1,U8
 /CSP_A,rides 54 V,1,U8

@@ -19,8 +19,8 @@ echo "ripped $(drc $W/a.kicad_pcb $W/d1.json)"
 # with finish_shove.py for whatever a group leaves open (for example "^/GPU_L2\$;^/V_L2\$;^/(GPD_L2|BST_L2)\$")
 ORDER=${ORDER:-"$TAP;$GATE"}; cur=$W/a.kicad_pcb; d=$W/d1.json; i=0
 IFS=';' read -ra GRP <<< "$ORDER"
-for g in "${GRP[@]}"; do i=$((i+1))
-  WINDOW=12 SECONDS=60 "$KP" -u $T/finish_route.py $cur $W/s$i.kicad_pcb $d "$g" 2>&1 | grep -E "^(CLOSED|LEFT)"
+for gg in "${GRP[@]}"; do i=$((i+1)); g=${gg%%@*}; fc=1; [ "$gg" != "$g" ] && fc=${gg#*@}   # "regex@k": FCOST=k for that group
+  FCOST=$fc WINDOW=12 SECONDS=60 "$KP" -u $T/finish_route.py $cur $W/s$i.kicad_pcb $d "$g" 2>&1 | grep -E "^(CLOSED|LEFT)"
   echo "step $i $(drc $W/s$i.kicad_pcb $W/s$i.json)"
   ATTEMPTS=2 "$KP" -u $T/finish_shove.py $W/s$i.kicad_pcb $W/s${i}b.kicad_pcb $W/s$i.json "$g" 2>&1 | grep -E "^(CLOSED)" | sed 's/^/shove /'
   echo "step ${i}b $(drc $W/s${i}b.kicad_pcb $W/s${i}b.json)"
