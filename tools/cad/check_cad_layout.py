@@ -2,17 +2,20 @@
 """Check the CAD tree against the layout rule in cad/manifests/cad-layout.json.
 
 Usage:
-    python tools/cad/check_cad_layout.py [CAD_ROOT] [--strict] [--quiet]
-    python tools/cad/check_cad_layout.py --repo [--strict] [--quiet]
+    python3 tools/cad/check_cad_layout.py [CAD_ROOT] [--strict] [--quiet]
+    python3 tools/cad/check_cad_layout.py --repo [--strict] [--quiet]
 
-CAD_ROOT defaults to the repo's cad/ folder.
+CAD_ROOT defaults to the repo's cad/ folder; its own manifests/exports.json is read.
 --repo checks what git tracks instead of a folder: CAD files outside cad/, tracked files in
-scratch folders, and the tracked part of cad/ (works in a clone without LFS content).
+scratch folders, and the tracked part of cad/ (works in a clone without LFS content). The
+rules and the export records are read from the index too, so it checks a commit against
+that commit's own rules.
 Exit code 0 = clean, 1 = layout errors (or warnings with --strict), 2 = bad usage.
-Stdlib only, so it runs on Windows, macOS and Linux without setup.
+Stdlib only (Python 3.9 or newer), so it runs on Windows, macOS and Linux without setup.
 
 Errors (break the rule):
-  - unknown top-level folder or loose top-level file
+  - unknown top-level folder or loose top-level file; a folder name not in lower case
+  - two tracked paths that differ only in case
   - forbidden folder names anywhere outside _archive (codex, task, task-2, _import*, old, ...)
   - native SolidWorks files outside a region folder, vendor/, or the scratch folders
   - a file type that does not belong in its folder (region folders hold SLDPRT/SLDASM/md;
@@ -25,11 +28,13 @@ Errors (break the rule):
     prints and drawings folders: keep one current file, history is in git
   - any file of 100 MB or more outside the scratch folders (real size, LFS pointers included)
   - a review file over 10 MB
-  - an export whose bytes no longer match cad/manifests/exports.json, or whose source is gone
-  - --repo: a CAD file tracked outside cad/, or any tracked file under _wip/_sim/_archive/.checkpoints
+  - an export whose bytes no longer match cad/manifests/exports.json, or whose source is gone;
+    a missing, unreadable or malformed exports.json
+  - --repo: a CAD file tracked outside cad/, or any tracked file under _wip/_sim/_archive/.checkpoints,
+    or a lock, download-marker or Windows Explorer file
 Warnings (should be fixed, do not fail without --strict):
-  - native file names that do not match cad/manifests/cad-conventions.json, or whose
-    region prefix does not match their region folder
+  - native and vendor model names that do not match cad/manifests/cad-conventions.json
+    (lower case, region prefix, no robot name)
   - .checkpoints folders (SolidWorks recreates them beside open parts; gitignored)
   - stale exports (source changed since the export was recorded) and exports with no record
   - review files over 2 MB, packets over 15 MB or 10 images, packets with no pinned commit
@@ -44,6 +49,7 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
+from typing import Union
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gitlfs import (
@@ -59,8 +65,8 @@ from gitlfs import (
 
 LAYOUT_PATH = REPO_ROOT / "cad" / "manifests" / "cad-layout.json"
 CONVENTIONS_PATH = REPO_ROOT / "cad" / "manifests" / "cad-conventions.json"
-EXPORTS_PATH = REPO_ROOT / "cad" / "manifests" / "exports.json"
 IMAGE_EXT = {".png", ".jpg", ".jpeg", ".svg"}
+EXPORT_KEYS = ("export", "source", "sourceSha256", "exportSha256")
 
 
 @dataclass
@@ -126,9 +132,13 @@ class Checker:
         self.ignore = [
             re.compile(p, re.IGNORECASE) for p in layout["ignoreFilePatterns"]
         ]
-        self.part_re = re.compile(conventions["partFilenamePattern"], re.IGNORECASE)
-        self.asm_re = re.compile(conventions["assemblyFilenamePattern"], re.IGNORECASE)
-        self.vendor_re = re.compile(conventions["vendorFilenamePattern"], re.IGNORECASE)
+        # Name patterns match the stem with the extension lower-cased: SolidWorks writes
+        # extensions in upper case, but the stem must be lower case (conventions/cad.md section 4).
+        self.part_re = re.compile(conventions["partFilenamePattern"])
+        self.asm_re = re.compile(conventions["assemblyFilenamePattern"])
+        self.vendor_re = re.compile(conventions["vendorFilenamePattern"])
+        self.vendor_name_ext = low(conventions["vendorNameExtensions"])
+        self.forbidden_tokens = low(conventions["forbiddenNameTokens"])
         self.exports = exports
         self.report = Report()
         self.packets: dict[str, list[tuple[PurePosixPath, int]]] = defaultdict(list)
@@ -153,11 +163,14 @@ class Checker:
             self.check_top_dir(d)
             self.check_dir_name(d)
         for rel, size in sorted(files):
-            if not self.ignored(rel.name):
+            in_checkpoints = any(p.lower() == ".checkpoints" for p in rel.parts[:-1])
+            if not self.ignored(rel.name) and not in_checkpoints:
                 self.check_file(rel, size)
         self.check_packets()
-        if self.exports is not None:
-            self.check_exports({rel.as_posix().lower() for rel, _ in files})
+        if self.exports is None:
+            self.report.error("manifests/exports.json", "missing; the export records can't be checked")
+        else:
+            self.check_exports({rel.as_posix() for rel, _ in files})
         return self.report
 
     # -- helpers -------------------------------------------------------------
@@ -168,7 +181,8 @@ class Checker:
         if len(rel.parts) != 1:
             return
         name = rel.parts[0].lower()
-        if name in self.regions or name in self.functions or name in self.scratch:
+        known = name in self.regions or name in self.functions or name in self.scratch
+        if known or any(p.search(name) for p in self.warn_dirs):
             return
         self.report.error(
             rel, "unknown top-level folder (not a region, function or scratch folder)"
@@ -180,6 +194,8 @@ class Checker:
         if parts[0].lower() == "_archive":
             return
         name = parts[-1]
+        if name != name.lower() and parts[0].lower() not in self.scratch:
+            self.report.error(rel, "folder names are lower case (git and Linux see a different folder)")
         if any(pat.search(name) for pat in self.forbidden):
             self.report.error(rel, f"forbidden folder name '{name}'")
         if any(pat.search(name) for pat in self.warn_dirs):
@@ -193,14 +209,17 @@ class Checker:
             )
 
     def check_native_name(self, rel: PurePosixPath, top: str) -> None:
-        name = rel.name
+        ext = rel.suffix.lower()
+        name = rel.stem + ext
+        tokens = set(rel.stem.lower().split("_"))
+        if tokens & self.forbidden_tokens:
+            self.report.warn(rel, "no robot name in file names (tenet 7)")
         if top == "vendor":
             if not self.vendor_re.search(name):
                 self.report.warn(
-                    rel, "vendor file name should be vendor_<mfg>_<part number>.*"
+                    rel, "vendor file name should be vendor_<maker>_<model>.<ext> (lower case)"
                 )
             return
-        ext = rel.suffix.lower()
         region = top.replace("-", "_")
         if ext == ".sldprt" and not self.part_re.search(name):
             self.report.warn(
@@ -211,7 +230,7 @@ class Checker:
                 rel,
                 f"assembly name should be {region}[_<name>]_asm.SLDASM (lower case)",
             )
-        elif not name.lower().startswith(region + "_"):
+        elif not name.startswith(region + "_"):
             self.report.warn(
                 rel, f"name should start with its region folder: {region}_..."
             )
@@ -224,7 +243,7 @@ class Checker:
         if top not in self.scratch and size >= MAX_FILE_BYTES:
             self.report.error(
                 rel,
-                f"{size / 1e6:.1f} MB: files of 100 MB or more can't go in git; move to _wip/ or _archive/",
+                f"{size / 1e6:.1f} MB: at or over the size limit ({MAX_FILE_BYTES / 1e6:g} MB); move to _wip/ or _archive/",
             )
         if len(parts) == 1:
             if rel.name.lower() not in self.root_files:
@@ -273,7 +292,7 @@ class Checker:
                 f"native SolidWorks file in {top}/ (move to a region folder or _wip/)",
             )
             return
-        if top == "vendor" and ext in self.native_ext:
+        if top == "vendor" and ext in self.vendor_name_ext:
             self.check_native_name(rel, top)
         allowed = rule.get("extensions")
         if allowed is not None and ext not in {e.lower() for e in allowed}:
@@ -344,9 +363,19 @@ class Checker:
     # -- exports manifest ----------------------------------------------------
     def check_exports(self, present: set[str]) -> None:
         recorded = set()
-        for entry in self.exports.get("exports", []):
+        entries = self.exports.get("exports") if isinstance(self.exports, dict) else None
+        if not isinstance(entries, list):
+            self.report.error("manifests/exports.json", "no 'exports' list")
+            return
+        for i, entry in enumerate(entries):
+            missing = [k for k in EXPORT_KEYS if not isinstance(entry, dict) or k not in entry]
+            if missing:
+                self.report.error(
+                    "manifests/exports.json", f"entry {i} is missing {', '.join(missing)}"
+                )
+                continue
             exp, src = entry["export"], entry["source"]
-            recorded.add(exp.lower())
+            recorded.add(exp)
             exp_sha, src_sha = self.source.sha256(exp), self.source.sha256(src)
             if exp_sha is None:
                 self.report.error(exp, "listed in manifests/exports.json but missing")
@@ -370,7 +399,7 @@ class Checker:
             p = PurePosixPath(rel)
             unrecorded = (
                 p.parts[0] == "exports"
-                and p.suffix in {".step", ".stp", ".stl"}
+                and p.suffix.lower() in {".step", ".stp", ".stl"}
                 and rel not in recorded
             )
             if unrecorded:
@@ -388,10 +417,9 @@ class DiskSource:
         self.root = root
 
     def read(self, rel: str) -> bytes | None:
-        try:
-            return (self.root / rel).read_bytes()
-        except OSError:
-            return None
+        """None only when the file doesn't exist; any other read failure raises."""
+        path = self.root / rel
+        return path.read_bytes() if path.is_file() else None
 
     def sha256(self, rel: str) -> str | None:
         path = self.root / rel
@@ -402,13 +430,11 @@ class IndexSource:
     """The staged (index) copy of files under cad/, i.e. exactly what a commit holds."""
 
     def __init__(self, blobs: dict[str, str], root: Path = REPO_ROOT) -> None:
-        self.blobs = {
-            k.lower(): v for k, v in blobs.items()
-        }  # cad-relative path -> blob id
+        self.blobs = dict(blobs)  # cad-relative path, exact case -> blob id
         self.root = root
 
     def read(self, rel: str) -> bytes | None:
-        blob = self.blobs.get(rel.lower())
+        blob = self.blobs.get(rel)
         return git("cat-file", "blob", blob, root=self.root) if blob else None
 
     def sha256(self, rel: str) -> str | None:
@@ -419,7 +445,7 @@ class IndexSource:
         return ptr[0] if ptr else hashlib.sha256(data).hexdigest()
 
 
-FileSource = DiskSource | IndexSource
+FileSource = Union[DiskSource, IndexSource]  # noqa: UP007 (evaluated at runtime; X | Y needs 3.10)
 
 
 # -- repo mode ---------------------------------------------------------------
@@ -433,23 +459,34 @@ def tracked_files(root: Path = REPO_ROOT) -> list[tuple[str, str]]:
     return out
 
 
-def check_repo(layout: dict, conventions: dict, root: Path = REPO_ROOT) -> Report:
+def check_repo(root: Path = REPO_ROOT) -> Report:
+    """Check the index against the rules in the index (a commit is checked by its own rules)."""
     entries = tracked_files(root)
+    rules = IndexSource({rel: blob for blob, rel in entries}, root)
+    layout = read_manifest(rules, "cad/manifests/cad-layout.json")
+    conventions = read_manifest(rules, "cad/manifests/cad-conventions.json")
+    if layout is None or conventions is None:
+        raise ValueError("cad/manifests/cad-layout.json or cad-conventions.json is not in the index")
     sizes = blob_sizes([b for b, _ in entries], root=root)
     cad_files = []
     report = Report()
     cad_ext = {e.lower() for e in layout["cadExtensions"]}
     scratch = {s.lower() for s in layout["scratchFolders"]} | {".checkpoints"}
     never_tracked = re.compile(
-        r"(^~\$|Zone\.Identifier$|^\.cad-writer\.lock$)", re.IGNORECASE
+        r"(^~\$|Zone\.Identifier$|^\.cad-writer\.lock$|^desktop\.ini$|^Thumbs\.db$)",
+        re.IGNORECASE,
     )
     cad_blobs = {}
+    seen_case: dict[str, str] = {}
     for blob, rel in entries:
+        other = seen_case.setdefault(rel.lower(), rel)
+        if other != rel:
+            report.error(rel, f"differs from {other} only in case; keep one")
         p = PurePosixPath(rel)
         if never_tracked.search(p.name):
             report.error(
                 rel,
-                "lock or download-marker file must not be tracked; git rm --cached it",
+                "lock, download-marker or Explorer file must not be tracked; git rm --cached it",
             )
             continue
         if scratch & {part.lower() for part in p.parts[:-1]}:
@@ -475,8 +512,11 @@ def check_repo(layout: dict, conventions: dict, root: Path = REPO_ROOT) -> Repor
                 "CAD file outside cad/ (CAD files live only in cad/; docs link there)",
             )
     source = IndexSource(cad_blobs, root)
-    manifest = source.read("manifests/exports.json")
-    exports = json.loads(manifest) if manifest else None
+    try:
+        exports = read_manifest(source, "manifests/exports.json")
+    except ValueError as err:
+        report.error("cad/manifests/exports.json", str(err))
+        exports = {"exports": []}
     checker = Checker(
         root / "cad",
         layout,
@@ -490,6 +530,20 @@ def check_repo(layout: dict, conventions: dict, root: Path = REPO_ROOT) -> Repor
     return report
 
 
+def read_manifest(source: FileSource, rel: str) -> dict | None:
+    """A JSON manifest, None if absent; ValueError if it can't be read as a JSON object."""
+    data = source.read(rel)
+    if data is None:
+        return None
+    try:
+        value = json.loads(data)
+    except (UnicodeDecodeError, json.JSONDecodeError) as err:
+        raise ValueError(f"not valid JSON: {err}") from err
+    if not isinstance(value, dict):
+        raise ValueError("not a JSON object")  # noqa: TRY004 (callers report every manifest problem as one kind)
+    return value
+
+
 def main(argv: list[str]) -> int:
     args = [a for a in argv if not a.startswith("--")]
     flags = {a for a in argv if a.startswith("--")}
@@ -497,16 +551,30 @@ def main(argv: list[str]) -> int:
     if unknown or len(args) > 1 or ("--repo" in flags and args):
         print(__doc__)
         return 2
-    layout, conventions = load_json(LAYOUT_PATH), load_json(CONVENTIONS_PATH)
     if "--repo" in flags:
-        report, where = check_repo(layout, conventions), "tracked files"
+        try:
+            report, where = check_repo(), "tracked files"
+        except ValueError as err:
+            print(f"ERROR {err}")
+            return 1
+        except KeyError as err:
+            print(f"ERROR cad/manifests: the staged rules have no {err} key")
+            return 1
     else:
+        layout, conventions = load_json(LAYOUT_PATH), load_json(CONVENTIONS_PATH)
         root = Path(args[0]) if args else REPO_ROOT / "cad"
         if not root.is_dir():
             print(f"CAD root not found: {root}")
             return 2
-        exports = load_json(EXPORTS_PATH) if EXPORTS_PATH.exists() else None
-        report = Checker(root, layout, conventions, exports=exports).run()
+        report = Report()
+        try:
+            exports = read_manifest(DiskSource(root), "manifests/exports.json")
+        except ValueError as err:
+            report.error("manifests/exports.json", str(err))
+            exports = {"exports": []}
+        checker = Checker(root, layout, conventions, exports=exports)
+        checker.report = report
+        report = checker.run()
         where = str(root)
     quiet = "--quiet" in flags
     for line in report.errors:
