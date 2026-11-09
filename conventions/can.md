@@ -111,7 +111,7 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
 ### Stops and the schedule
 
 - **A stop names its scope.** A fault, a drop out of Run, a silent drive or motion on expired feedback stops that drive's
-  limb; a late wake, a backlog, a bad batch, control going silent or a bus error stops every limb on the bus. **Why:** the
+  limb; a late wake, a backlog, a bad batch, control going silent or a bus error stops every active limb on the bus (an idle limb has nothing running to stop). **Why:** the
   affected limb stops ([architecture.md](architecture.md)), and the other arm on the same bus has done nothing wrong.
 - **Check before every send.** What the drain read before the send is checked before the tick's commands go out, so a
   fault read in the slack stops its limb on that tick, not the next ([safety.md section 3](safety.md#3-how-a-rule-is-written)).
