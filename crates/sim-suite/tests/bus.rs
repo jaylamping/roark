@@ -538,6 +538,14 @@ fn compare(mcap: &Path, captured: &[Line]) {
     }
 }
 
+/// Let real time go by with the bus thread running, without sleeping.
+fn pass(span: Duration) {
+    let end = Instant::now() + span;
+    while Instant::now() < end {
+        std::thread::yield_now();
+    }
+}
+
 /// An active bus told to exit with control's ring full: `drain` says whether control then reads again. Returns whether
 /// the thread was still running 200 ms after `exit`, the last snapshot it handed back, and whether it ended without an
 /// error.
@@ -589,9 +597,9 @@ fn exit_with_a_full_ring(drain: bool) -> (bool, Option<Snapshot>, bool) {
         let _ = enable_and_hold(&mut commands_tx, &mut snapshots, epoch);
 
         // Control stops reading; the ring fills; then the exit.
-        std::thread::sleep(Duration::from_millis(300));
+        pass(Duration::from_millis(300));
         exit.store(true, Ordering::Release);
-        std::thread::sleep(Duration::from_millis(200));
+        pass(Duration::from_millis(200));
         let running = !bus.thread.is_finished();
         if drain {
             let end = Instant::now() + Duration::from_secs(10);
