@@ -71,8 +71,8 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
 
 - **Every frame has a deadline** (its tick). A frame that can't go out by then is dropped and counted, never sent late.
   **Why:** a late motion command is a wrong motion command. ArduPilot's and libcanard's CAN drivers follow the same rule.
-  Stop frames (Disable, active reporting off) are the exception: they go out late rather than not at all, because a late
-  Disable is still the right one.
+  Disable and active reporting off are the exception, whether a stop or control planned them: they go out late rather
+  than not at all, because a late Disable is still the right one.
 - **No busy retry.** On `ENOBUFS` or `EAGAIN` the frame is dropped and counted, and the tick goes on. Never loop on
   `write` in the bus thread. Never raise `txqueuelen` to make `ENOBUFS` go away: it hides a bus problem (a linux-can thread
   traced exactly this to a duplicate sender).

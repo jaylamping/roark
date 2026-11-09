@@ -235,10 +235,15 @@ impl BusTick {
         }
         for (slot, frame) in batch.frames().iter().enumerate() {
             if let Some(frame) = frame {
+                let late_ok = matches!(
+                    echo_of(frame),
+                    Some((EchoKind::Disable | EchoKind::Reporting(Reporting::Off), _))
+                );
                 self.sends.push(Send {
                     slot,
                     kind: SendKind::Command,
                     frame: *frame,
+                    expires: !late_ok,
                 });
             }
         }
@@ -269,6 +274,7 @@ impl BusTick {
                     slot,
                     kind: SendKind::Disable,
                     frame: encode::disable(d.device),
+                    expires: false,
                 });
             }
         }
@@ -282,6 +288,7 @@ impl BusTick {
                     slot,
                     kind: SendKind::ReportingOff,
                     frame: encode::active_reporting(d.device, Reporting::Off),
+                    expires: false,
                 });
             }
         }

@@ -5,7 +5,7 @@ mod common;
 
 use can::{
     BusError, BusState, BusTick, CommandBatch, ConfigError, MAX_DRIVES, SendKind, SendOutcome,
-    StopOutcome, StopReason, Timing, classify,
+    StopOutcome, StopReason, Timing, TimingError, classify,
 };
 use common::{
     MS, PERIOD, at, batch, bus, deadline, error_frame, hold, id, record, report_frame, run_tick,
@@ -92,6 +92,55 @@ fn a_send_the_socket_did_not_take_cannot_be_answered() {
             "{outcome:?}"
         );
     }
+}
+
+/// Guards: safety - only a command expires with the send window: a Disable goes out late rather than not at all, whether
+/// control's batch or a stop planned it, and so does a stop's reporting off (can.md section 2 Every frame has a
+/// deadline).
+#[test]
+fn a_disable_never_expires_whoever_planned_it() {
+    let mut bus = bus();
+    let b = batch(
+        0,
+        &[
+            Some(encode::enable(id(101))),
+            Some(encode::disable(id(102))),
+        ],
+    );
+    let list = bus.begin(0, 0, 0, Some(&b));
+    let expiry: Vec<_> = list.iter().map(|s| (s.kind, s.expires)).collect();
+    assert_eq!(
+        expiry,
+        [(SendKind::Command, true), (SendKind::Command, false)]
+    );
+    for index in 0..list.len() {
+        bus.sent(index, SendOutcome::Sent);
+    }
+    bus.on_frame(MS, &status(101, Mode::Reset));
+    bus.on_frame(MS, &status(102, Mode::Reset));
+    let _ = bus.end(deadline(0));
+    // A stop: Disables now; reporting off once each confirmed drive's silence is over.
+    bus.request_stop();
+    let list = bus.begin(1, PERIOD, PERIOD, None);
+    assert!(
+        list.iter()
+            .all(|s| s.kind == SendKind::Disable && !s.expires)
+    );
+    for index in 0..list.len() {
+        bus.sent(index, SendOutcome::Sent);
+    }
+    bus.on_frame(PERIOD + MS, &status(101, Mode::Reset));
+    let _ = bus.end(deadline(1));
+    let later = 15 * PERIOD;
+    let list = bus.begin(15, later, later, None);
+    let sends: Vec<_> = list.iter().map(|s| (s.slot, s.kind, s.expires)).collect();
+    assert_eq!(
+        sends,
+        [
+            (1, SendKind::Disable, false),
+            (0, SendKind::ReportingOff, false)
+        ]
+    );
 }
 
 /// Guards: protocol - one status per command: a second is a duplicate, and a status after the collect deadline is a
@@ -421,21 +470,20 @@ fn the_feedback_limit_is_three_periods_inclusive() {
 #[test]
 fn timing_that_breaks_the_tick_is_refused() {
     let base = Timing::at_hz(250);
-    let window = "the send window must be non-zero and end by the collect deadline";
-    let collect = "the collect deadline must fall inside the period";
-    let feedback =
-        "the feedback limit must be at least a period and under the drives' 50 ms timeout";
-    let stop = "the stop window must outlast the post-Disable silence by a period";
     let fits = base.disable_silence_ns + base.period_ns;
+    let at_60 = Timing::at_hz(60);
     let rows = [
-        ("no rate", Timing::at_hz(0), Some("the period is zero")),
+        ("no rate", Timing::at_hz(0), Some(TimingError::NoPeriod)),
         (
             "no send window",
             Timing {
                 send_window_ns: 0,
                 ..base
             },
-            Some(window),
+            Some(TimingError::SendWindow {
+                send_window_ns: 0,
+                collect_ns: base.collect_ns,
+            }),
         ),
         (
             "send window past collect",
@@ -443,7 +491,10 @@ fn timing_that_breaks_the_tick_is_refused() {
                 send_window_ns: base.collect_ns + 1,
                 ..base
             },
-            Some(window),
+            Some(TimingError::SendWindow {
+                send_window_ns: base.collect_ns + 1,
+                collect_ns: base.collect_ns,
+            }),
         ),
         (
             "collect at the period",
@@ -451,7 +502,10 @@ fn timing_that_breaks_the_tick_is_refused() {
                 collect_ns: base.period_ns,
                 ..base
             },
-            Some(collect),
+            Some(TimingError::Collect {
+                collect_ns: base.period_ns,
+                period_ns: base.period_ns,
+            }),
         ),
         (
             "feedback under a period",
@@ -459,9 +513,19 @@ fn timing_that_breaks_the_tick_is_refused() {
                 feedback_limit_ns: base.period_ns - 1,
                 ..base
             },
-            Some(feedback),
+            Some(TimingError::FeedbackLimit {
+                feedback_limit_ns: base.period_ns - 1,
+                period_ns: base.period_ns,
+            }),
         ),
-        ("60 Hz", Timing::at_hz(60), Some(feedback)),
+        (
+            "60 Hz",
+            at_60,
+            Some(TimingError::FeedbackLimit {
+                feedback_limit_ns: 50_000_001,
+                period_ns: 16_666_667,
+            }),
+        ),
         ("61 Hz", Timing::at_hz(61), None),
         (
             "stop window too short",
@@ -469,7 +533,11 @@ fn timing_that_breaks_the_tick_is_refused() {
                 stop_confirm_ns: fits - 1,
                 ..base
             },
-            Some(stop),
+            Some(TimingError::StopWindow {
+                stop_confirm_ns: fits - 1,
+                disable_silence_ns: base.disable_silence_ns,
+                period_ns: base.period_ns,
+            }),
         ),
         (
             "stop window just fits",
@@ -485,7 +553,7 @@ fn timing_that_breaks_the_tick_is_refused() {
                 silent_ticks: 0,
                 ..base
             },
-            Some("silent_ticks must be at least 1"),
+            Some(TimingError::NoSilentTicks),
         ),
         ("250 Hz", base, None),
     ];

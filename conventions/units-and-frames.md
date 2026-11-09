@@ -102,7 +102,13 @@ The values and the loader's checks are in [PLAN item 1](../PLAN.md#1-the-skeleto
   period on every bus, and `Instant`/`Duration` arithmetic (seconds and nanoseconds normalised on every add and compare)
   measured 32 % slower: 57.3 against 43.5 ns for a two-drive tick on an M-series Mac, 2026-11-08. Nothing else gets the
   exception without a measurement of its own.
-- CAN frames carry the **kernel RX timestamp**, not the time the user-space code got round to reading them.
+- CAN frames carry the **kernel RX timestamp** in the recording, not the time the user-space code got round to reading
+  them. The bus tick matches replies and ages feedback on the monotonic time the bus thread read the frame instead
+  (can.md section 2), because the kernel's stamp is wall-clock and can step. Reading trails arrival by at most the gap
+  from the collect deadline to the close of the next tick's send window (period - collect + send window: 2.6 ms at
+  250 Hz); a later wake is a late wake and stops the bus. So a status can be that much older than its `fresh_ns`: the
+  three-period feedback limit is 12 to 14.6 ms of real age, well inside the drives' 50 ms timeout. The real adapter's
+  queue age is measured at PLAN step 8.
 - Durations in logs use the same suffix rule as everything else (`latency_us`, `age_ms`).
 
 ## 6. Identity

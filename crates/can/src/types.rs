@@ -65,25 +65,91 @@ impl Timing {
     ///
     /// # Errors
     /// The first rule it breaks.
-    pub const fn check(&self) -> Result<(), &'static str> {
-        if self.period_ns == 0 {
-            Err("the period is zero")
-        } else if self.send_window_ns == 0 || self.send_window_ns > self.collect_ns {
-            Err("the send window must be non-zero and end by the collect deadline")
-        } else if self.collect_ns >= self.period_ns {
-            Err("the collect deadline must fall inside the period")
-        } else if self.feedback_limit_ns < self.period_ns
-            || self.feedback_limit_ns >= DRIVE_TIMEOUT_NS
-        {
-            Err("the feedback limit must be at least a period and under the drives' 50 ms timeout")
-        } else if self.stop_confirm_ns < self.disable_silence_ns.saturating_add(self.period_ns) {
-            Err("the stop window must outlast the post-Disable silence by a period")
+    pub const fn check(&self) -> Result<(), TimingError> {
+        let (period_ns, send_window_ns, collect_ns) =
+            (self.period_ns, self.send_window_ns, self.collect_ns);
+        if period_ns == 0 {
+            Err(TimingError::NoPeriod)
+        } else if send_window_ns == 0 || send_window_ns > collect_ns {
+            Err(TimingError::SendWindow {
+                send_window_ns,
+                collect_ns,
+            })
+        } else if collect_ns >= period_ns {
+            Err(TimingError::Collect {
+                collect_ns,
+                period_ns,
+            })
+        } else if self.feedback_limit_ns < period_ns || self.feedback_limit_ns >= DRIVE_TIMEOUT_NS {
+            Err(TimingError::FeedbackLimit {
+                feedback_limit_ns: self.feedback_limit_ns,
+                period_ns,
+            })
+        } else if self.stop_confirm_ns < self.disable_silence_ns.saturating_add(period_ns) {
+            Err(TimingError::StopWindow {
+                stop_confirm_ns: self.stop_confirm_ns,
+                disable_silence_ns: self.disable_silence_ns,
+                period_ns,
+            })
         } else if self.silent_ticks == 0 {
-            Err("silent_ticks must be at least 1")
+            Err(TimingError::NoSilentTicks)
         } else {
             Ok(())
         }
     }
+}
+
+/// The rule a [`Timing`] breaks, with the values that break it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum TimingError {
+    /// The period is zero (a rate of 0 Hz).
+    #[error("the period is zero")]
+    NoPeriod,
+    /// The send window is zero or ends after the collect deadline.
+    #[error(
+        "send window {send_window_ns} ns must be non-zero and end by the collect deadline, {collect_ns} ns"
+    )]
+    SendWindow {
+        /// The send window.
+        send_window_ns: u64,
+        /// The collect deadline.
+        collect_ns: u64,
+    },
+    /// The collect deadline isn't inside the period.
+    #[error("collect deadline {collect_ns} ns must fall inside the period, {period_ns} ns")]
+    Collect {
+        /// The collect deadline.
+        collect_ns: u64,
+        /// The period.
+        period_ns: u64,
+    },
+    /// The feedback limit is under a period, or reaches the drives' timeout.
+    #[error(
+        "feedback limit {feedback_limit_ns} ns must be at least the period, {period_ns} ns, and under the drives' \
+         {DRIVE_TIMEOUT_NS} ns timeout"
+    )]
+    FeedbackLimit {
+        /// The feedback limit.
+        feedback_limit_ns: u64,
+        /// The period.
+        period_ns: u64,
+    },
+    /// The stop window can't fit the post-Disable silence and a tick to send reporting off after it.
+    #[error(
+        "stop window {stop_confirm_ns} ns must outlast the post-Disable silence, {disable_silence_ns} ns, by a period, \
+         {period_ns} ns"
+    )]
+    StopWindow {
+        /// The stop window.
+        stop_confirm_ns: u64,
+        /// The post-Disable silence.
+        disable_silence_ns: u64,
+        /// The period.
+        period_ns: u64,
+    },
+    /// `silent_ticks` is zero.
+    #[error("silent_ticks must be at least 1")]
+    NoSilentTicks,
 }
 
 /// One tick's commands from control: at most one encoded frame per drive slot (the drive's place in the bus's table).
@@ -154,6 +220,9 @@ pub struct Send {
     pub kind: SendKind,
     /// The frame.
     pub frame: Frame,
+    /// Whether it is dropped once the tick's send window has passed. Commands are; a Disable or active reporting off
+    /// never is, whoever planned it, since late it is still the right frame (can.md section 2).
+    pub expires: bool,
 }
 
 /// What became of a send.
@@ -164,7 +233,7 @@ pub enum SendOutcome {
     Sent,
     /// `ENOBUFS` or `EAGAIN`: dropped and counted, never retried.
     QueueFull,
-    /// A command whose send window had passed before the write: dropped and counted. Stop frames never expire.
+    /// A send whose window had passed before the write: dropped and counted. Only sends that [`Send::expires`] are.
     Expired,
     /// Any other write error.
     Failed,
@@ -286,7 +355,9 @@ pub struct DriveView {
     /// The last status or report read from it, answer or not: its mode and fault bits are never filtered out.
     pub observed: Option<Observed>,
     /// When its last fresh status was read: the first status after a command the socket took. Freshness, not
-    /// acknowledgement: the protocol has no sequence numbers, so which command a status answers can't be proven.
+    /// acknowledgement: the protocol has no sequence numbers, so which command a status answers can't be proven. Read
+    /// time, not arrival: it can trail the kernel's receipt by up to period - collect + send window
+    /// (units-and-frames.md section 5).
     pub fresh_ns: Option<u64>,
     /// Whether it answered this tick's command by the collect deadline.
     pub answered: bool,
@@ -401,5 +472,5 @@ pub enum ConfigError {
     TooManyDrives(usize),
     /// Timing [`Timing::check`] refuses.
     #[error("bad timing: {0}")]
-    Timing(&'static str),
+    Timing(TimingError),
 }

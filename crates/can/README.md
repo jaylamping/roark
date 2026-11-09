@@ -15,8 +15,8 @@ Each tick, on the monotonic clock (the steps the bus thread's shell runs around 
    A stale or missing batch sends nothing; two silent ticks on an active bus stop it. An MIT frame to a drive whose
    fresh status is older than three periods is refused and stops the bus.
 4. **Send** each planned frame once and feed the outcome back (`sent`). A command goes out only before the send
-   window closes; stop frames go out even late, since a late Disable is still the right one. A full queue drops the
-   frame and counts it; it is never retried within the tick.
+   window closes; a Disable or reporting off goes out even late, whoever planned it, since late it is still the right
+   one. A full queue drops the frame and counts it; it is never retried within the tick.
 5. **Collect** until the collect deadline (about 60 % of the period), feeding each frame to `on_frame`.
 6. **Publish** the `Snapshot` (`end`) to control and hand every frame of the tick to the recorder.
 
