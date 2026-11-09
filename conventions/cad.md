@@ -166,3 +166,9 @@ the pointer files. A plain `git clone` on a machine with Git LFS installed downl
 
 `_wip/`, `_sim/` and `_archive/` exist only on Joey-PC. Git is not their backup: they are covered by Joey-PC's own backup, or
 the design is promoted before it would hurt to lose it.
+
+## 9. Requirements, gate and print log
+
+Each printed part also has a requirements spec in its region folder, a pre-print gate report and a print log in
+`prints/<region>/`: [part-lifecycle.md](part-lifecycle.md). Sharing Joey-PC between sessions (worktrees, claims, the FEA
+queue): [joey-pc.md](joey-pc.md).
