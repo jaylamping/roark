@@ -9,7 +9,7 @@
 		(date "2026-11-06")
 		(rev "B-wip")
 		(company "marengo")
-		(comment 1 "Replaces the DVE0125V2NBC on J24. Main board: hardware/electrical/schematics/marengo_pdu_revb.")
+		(comment 1 "Replaces the DVE0125V2NBC on J24. Main board: hardware/power-board/schematic.")
 	)
 	(lib_symbols
 		(symbol "Connector_Generic:Conn_02x06_Odd_Even"
