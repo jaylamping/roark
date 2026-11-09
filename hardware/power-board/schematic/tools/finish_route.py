@@ -40,6 +40,7 @@ class Router:
         self.byid = {UID(t): t for t in self.tracks + self.pads}
         self.idx = {}
         self.ignore = set()
+        self.collect_all = False   # escape_probe.py: free() lists every blocker instead of stopping at the first
         self.fine = []; self.fineshape = []
         for ref in ('U1', 'U2', 'U7'):
             f = self.b.FindFootprintByReference(ref)
@@ -104,7 +105,7 @@ class Router:
         bb = self.bb(shape.BBox()); margin = 1.51
         query = (bb[0]-margin, bb[1]-margin, bb[2]+margin, bb[3]+margin)
         cy = self.incy(shape, bb)
-        seen = set()
+        seen = set(); hit = False
         for c in self.cells(query):
             for ob in self.idx.get((L,)+c, ()):
                 if id(ob) in seen: continue
@@ -115,18 +116,21 @@ class Router:
                 if (via and kind=='keepout_track') or (not via and kind=='keepout_via'): continue
                 if via and kind=='pad' and sh.Collide(shape, IU(.001)):
                     if diagnostics is not None: diagnostics.add((kind,n,uid,'pad touch'))
-                    return False
+                    if not self.collect_all: return False
+                    hit=True; continue
                 if via and kind=='via' and sh.Collide(shape, IU(.002)):
                     if diagnostics is not None: diagnostics.add((kind,n,uid,'via overlap'))
-                    return False
+                    if not self.collect_all: return False
+                    hit=True; continue
                 if n==net and not kind.startswith('keepout'): continue
                 if kind=='zone' and ((via and n=='/VBUS') or os.getenv('SOFTZ')=='1'): continue
                 cl = .001 if kind.startswith('keepout') else domains.clearance(net,n,L in OUT)
                 if not via and cy & ocy and not kind.startswith('keepout'): cl=min(cl,.15)
                 if sh.Collide(shape, IU(cl+MARGIN)):
                     if diagnostics is not None: diagnostics.add((kind,n,uid,cl))
-                    return False
-        return True
+                    if not self.collect_all: return False
+                    hit=True
+        return not hit
     def inside(self,p):
         a=self.bounds
         return a[0]<=p[0]<=a[2] and a[1]<=p[1]<=a[3]
