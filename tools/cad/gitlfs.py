@@ -8,10 +8,12 @@ without LFS content (CI, cloud sessions) as well as on Joey-PC.
 from __future__ import annotations
 
 import hashlib
+import re
 import subprocess
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+OID = re.compile(r"[0-9a-f]{64}")
 LFS_HEADER = b"version https://git-lfs.github.com/spec/v1"
 MAX_FILE_BYTES = 100 * 1000 * 1000  # PLAN.md, Repo, toolchain, CI and deploy: the file size limit
 
@@ -34,10 +36,11 @@ def parse_pointer(data: bytes) -> tuple[str, int] | None:
     oid, size = None, None
     for line in data.splitlines():
         if line.startswith(b"oid sha256:"):
-            oid = line.split(b":", 1)[1].strip().decode()
+            oid = line.split(b":", 1)[1].strip().decode("ascii", errors="replace")
         elif line.startswith(b"size "):
-            size = int(line.split()[1])
-    if oid is None or size is None:
+            text = line[5:].strip()
+            size = int(text) if text.isdigit() else None
+    if oid is None or size is None or not OID.fullmatch(oid):
         return None
     return oid, size
 

@@ -31,8 +31,7 @@
   ],
   "regionExtensionOverrides": {
     "arm": [
-      ".sldasm",
-      ".md"
+      ".sldasm"
     ]
   },
   "functionFolders": {
@@ -49,7 +48,11 @@
         ".stp",
         ".pdf",
         ".md",
-        ".png"
+        ".png",
+        ".x_t",
+        ".x_b",
+        ".igs",
+        ".iges"
       ]
     },
     "reference": {
@@ -61,7 +64,11 @@
         ".md",
         ".json",
         ".csv",
-        ".png"
+        ".png",
+        ".x_t",
+        ".x_b",
+        ".igs",
+        ".iges"
       ]
     },
     "exports": {
@@ -150,7 +157,8 @@
     ".gcode",
     ".x_t",
     ".igs",
-    ".iges"
+    ".iges",
+    ".x_b"
   ],
   "forbiddenFolderPatterns": [
     "^codex$",
@@ -161,7 +169,7 @@
     "^old$",
     "^solver_results$"
   ],
-  "versionSuffixPattern": "(_v\\d+(_|\\.)|_rev[a-z0-9]{1,3}(_left|_right)?\\.|_(final|copy|old|backup|test)(_left|_right)?\\.|\\s?\\(\\d+\\)\\.|^(copy|backup) of )",
+  "versionSuffixPattern": "(_v\\d+(_|\\.)|_rev[a-z0-9]{1,3}(_left|_right)?(_asm)?\\.|_(final|copy|old|backup)(_left|_right)?(_asm)?\\.|\\s?\\(\\d+\\)\\.|^(copy|backup)( \\(\\d+\\))? of )",
   "versionSuffixFolders": [
     "regions",
     "exports",
@@ -184,7 +192,7 @@
     "fileMaxBytes": 10000000,
     "packetWarnBytes": 15000000,
     "packetImagesWarn": 10,
-    "pinnedCommitPattern": "Pinned commit: [0-9a-f]{40}"
+    "pinnedCommitPattern": "Pinned commit: [0-9a-f]{40}(?![0-9a-f])"
   },
   "ignoreFilePatterns": [
     "^~\\$",
