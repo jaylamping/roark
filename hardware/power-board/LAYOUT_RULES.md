@@ -22,7 +22,7 @@
 - Rating to lay out for: **60 A continuous, under 90 A peak.** A 2 oz outer pour carries about 30 A in 10.5 mm at 20 °C
   rise (IPC-2221B, external), and about 27.5 mm carries 60 A. So the 60 A path (BAT, SW_D, MID, VBUS) needs about 27.5 mm
   of outer copper in total (one layer, or L1 plus L6 stitched with vias), and each 30 A port leg about 10.5 mm in total.
-  No bars. Pour widths on the routed board (2026-11-09): BAT 27 mm on L1; VBUS 25 mm on L6 plus about 3–7 mm on L1;
+  No bars. Pour widths on the routed board (2026-11-09): BAT 27 mm on L1; VBUS 24 mm on L6 (signal vias pass through it under the meter block, 0.25 mm clearance) plus about 3–7 mm on L1;
   MID 23 mm on L6 plus up to 27 mm on L1; SW_D 22 mm on L6 plus 13 mm on L1; port legs about 5 mm on each outer layer. The two
   0.5 oz GND planes return 60 A across about 90 mm (about 0.8 mOhm, about 3 W spread over the board). At layer changes, use about 1 A per 0.3 mm via.
 
@@ -142,11 +142,19 @@ that is never coated must not go on the pack.
 - **Holes:** no copper within 2 mm of the heatsink screw holes HS1/HS2 (the screw and the heatsink aren't insulated from
   it), 0.6 mm round the tie holes and the M3 mounting pads (rule areas from tools/place.py).
 
-## Hand finishing (2026-11-08)
+## Hand finishing (2026-11-09, 6 layers)
 
-The autorouters don't finish this board:
-- tools/grid_route.py stalls at about 100 open nets.
-- Freerouting 2.5 thrashed: 313 unrouted connections after pass 1, and 498 after pass 2.
+The autorouters don't finish this board. tools/route_stages.sh (critical nets, rails, the I2C/VCTL/RUN_P bus, the port
+meter nets, the rest, then tools/route_fixes.py) leaves **67 connections on 45 nets** open, with DRC clean (0 clearance
+violations, schematic parity 0) and route_checks clean. Freerouting 2.5 thrashed again (about 2,800 violations after six
+passes) and is not used.
+- The meter block sits over the L6 VBUS pour. Without vias through that pour (`SOFTV` in tools/grid_route.py) every
+  signal there was confined to F.Cu and the bus nets could not route at all; with them, 123 open connections became 67.
+- What is left: 7 GND pins on fine-pitch ICs (a stub and a via each); about 35 single connections in the port meter and
+  eFuse blocks (EN_L, TMR_L, ISCP/IWRN_L, CSP/INP_L, V_L taps); about 10 in the latch block round U8 (E-stop class:
+  EN_A, FLT_A, BST_A, CSN/CSP_A, MID taps); G2, BRK_P/BRK_PG, the CL comparator taps.
+- Kelvin pairs to re-route as tight pairs: SHL2 (0 % paired), SHL4 (25 %), SHL6 (33 %) and SH9 (8 %).
+- Estimate in KiCad's interactive router: about 3–5 h for the connections, plus 1–2 h for the four Kelvin pairs.
 
 The rest is finished by hand in KiCad, starting from the board with the power stage and the locked critical pre-routes:
 - Net classes ESTOP, HV54 and P12 are set, and the DRC holds the E-stop rule.

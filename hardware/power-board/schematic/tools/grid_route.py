@@ -54,6 +54,11 @@ NECK=0.25   # track width within the escape zone (all classes)
 W12=float(__import__("os").environ.get("W12","0.6"))   # 12 V distribution track width (2 oz outer: about 4 A at 20 K rise; the 12 A trunk is the +12V_RAW strip)
 own=[np.zeros((H,W),np.int32) for _ in range(stack.NL)]
 padown=[np.zeros((H,W),np.int32) for _ in range(stack.NL)]   # pads only, for the escape zones
+# SOFTV=<regex>: pours of these nets on the outer layers don't block vias (the pour is refilled round the via with the
+# full rule clearance, E-stop 1.5 mm included); tracks still treat them as copper. Used for the L6 VBUS pour under the
+# meter block, which otherwise leaves every signal there on F.Cu alone.
+SOFTV=re.compile(os.environ['SOFTV']) if os.environ.get('SOFTV') else None
+softz=[np.zeros((H,W),bool) for _ in range(stack.NL)]
 gndplane=np.zeros((H,W),bool)
 def fill(img_arr,poly,val):
     im=Image.new('I',(W,H),0); dr=ImageDraw.Draw(im); hole=[]
@@ -70,7 +75,7 @@ batches=defaultdict(list)
 for it in D['items']:
     v=KEEP if it['kind']=='keepout' else NID.get(it['net'],NONET)
     if it['kind']=='plane': batches[('plane',)].append(it['poly']); continue
-    batches[(it['layer'],v,it['kind']=='pad')].append(it['poly'])
+    batches[(it['layer'],v,it['kind']=='pad',bool(SOFTV and it['kind']=='zone' and SOFTV.match(it.get('net') or '')))].append(it['poly'])
 for key,pl in batches.items():
     im=Image.new('L',(W,H),0); dr=ImageDraw.Draw(im)
     for poly in pl:
@@ -85,6 +90,7 @@ for key,pl in batches.items():
     else:
         own[key[0]][m]=key[1]
         if key[2]: padown[key[0]][m]=key[1]
+        if key[3]: softz[key[0]][m]=True
 # exact pad distances: the 0.1 mm raster puts a pad edge up to ~0.07 mm off, which at 0.5 mm pin pitch is the whole
 # margin. Per layer: D1/N1 = distance (mm, cell centre to pad outline) and net of the nearest pad, D2 = distance to the
 # nearest pad of any other net; the foreign-pad distance for net v is D2 where N1 == v, else D1.
@@ -254,6 +260,15 @@ def fields(v,r0,r1,c0,c1,base_only=False):
             base=(dl>=hwm+cllv+M)&(dv>=hwm+clhv+M)&(dh>=hwm+0.25+M)&(de>=hwm+0.4)&(hvp_ok|(dvp>=hwm+HVCL+M))&es_ok
             ok[L]=(base&(px>=hwm+0.2+PM))|(base&(STUB[L][r0:r1,c0:c1]==v))|((onp==v)&(px>=hwm+0.2+PM))|((pd==v)&(px>=hwm+0.2+PM))|((pd==v)&padctr[L][r0:r1,c0:c1]); ESCM[L]=esc
         # vias always keep full clearance and never land on a pad (no via-in-pad: hand assembly)
+        sz=softz[L][r0:r1,c0:c1]
+        if SOFTV is not None and L in stack.OUTER and sz.any():   # soft pours: recompute the via distances without them
+            onp=np.where(sz&(d_==0),0,onp); fo=(onp!=0)&(onp!=v); od=DOM[np.clip(onp,0,None)]
+            fhv=fo&(((onp>0)&(od!=dv_)&((od!=0)|(dv_!=0)))|((onp==NONET)&(dv_!=0))); flv=fo&~fhv
+            fes=fo&(onp>0)&(ES[np.clip(onp,0,None)] if HV[v] else HV[np.clip(onp,0,None)]) if (HV[v] or ES[v]) else np.zeros(o.shape,bool)
+            des=ndimage.distance_transform_edt(~(fes|fesp))*RES if (fes|fesp).any() else np.full(o.shape,99.0)
+            es_vok=esce|(des>=0.3+1.5+M+0.05)
+            dl=ndimage.distance_transform_edt(~flv)*RES if flv.any() else np.full(o.shape,99.0)
+            dv=ndimage.distance_transform_edt(~fhv)*RES if fhv.any() else np.full(o.shape,99.0)
         dp=ndimage.distance_transform_edt(pd==0)*RES if (pd!=0).any() else np.full(o.shape,99.0)
         via_ok&=(dl>=0.3+cllv+M)&(dv>=0.3+clhv+M)&(dp>=0.3+M)&(px>=0.3+0.2+PM)&(hvp_ok|(dvp>=0.3+HVCL+M))&es_vok
     return ok,via_ok,ESCM
