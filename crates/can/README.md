@@ -11,8 +11,8 @@ Each tick, on the monotonic clock:
 1. **Wake** at the tick's scheduled start (`clock_nanosleep`, absolute). Tick numbers count from one origin the runtime
    gives every bus thread and the control thread (`BusLinks::start`), so tick n is the same instant on every bus; a
    thread started after the origin begins at the first tick not yet due. Waking later than the send window is a missed
-   deadline and stops the bus; ticks a stall slept through are skipped, each counted as a missed deadline, and stop the
-   bus the same way.
+   deadline; ticks a stall slept through are skipped, each counted as a missed deadline. Either stops every active limb
+   and sends only the batch's Disables and reporting off that tick.
 2. **Drain** the socket to empty, so what is read after the send came after the backlog. It is not a strict barrier:
    a frame landing between the drain and the write counts as after it, which is still evidence of the drive then.
 3. **Check** what the drain read, before anything is sent: a drive of an idle or active limb that shows a fault, has
@@ -55,14 +55,17 @@ its post-Disable silence is over (50 ms after its confirmation), again each tick
 confirms with a Reset-mode status read after the stop's Disable; one that never confirms is still getting a Disable
 every tick of the 100 ms confirm window, so it gets no reporting off. Every Disable goes out ahead of every reporting
 off. The limb is `Stopped` once every drive has confirmed and taken its reporting off, or once the window has passed
-and no confirmed drive still waits for its reporting off (at most the window, the 50 ms silence and a period). The
+and no confirmed drive still waits for its reporting off: each waits until its reporting off has been tried and a
+period has passed since it fell due. The
 first reason a limb stopped for stays in its `LimbView`.
 
-A late wake, ticks a stall slept through, or a backlog stop every active limb; an idle limb has nothing enabled, so
-it only counts the missed deadline. A late tick sends no batch.
+A late wake, ticks a stall slept through, or a backlog (a drain that read past its limit or left frames queued) stop
+every active limb; an idle limb has nothing enabled to stop. That tick only the batch's Disables and reporting off go,
+right late or not, and the rest is held back (`held_batches`), so nothing is enabled on a tick whose reads can't be
+trusted.
 
-A latched bus error (bus-off, interface down or gone, another socket error) sends nothing: there is no bus to send on, so every limb is
-`Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's
+A latched bus error (bus-off in an error frame, or any socket failure) sends nothing: there is no bus to send on, so every
+limb is `Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's
 `bus_error`, even if a stop was already under way; `healthy` is false while there is one or the controller is
 error-passive.
 
