@@ -115,11 +115,17 @@ impl BusTick {
     /// The drives this bus owns, in slot order (the skeleton's order), each with its limb.
     ///
     /// # Errors
-    /// [`ConfigError::TooManyDrives`] past [`MAX_DRIVES`]; [`ConfigError::LimbOutOfRange`] for a limb index past the
-    /// table; [`ConfigError::Timing`] for timing that [`Timing::check`] refuses.
+    /// [`ConfigError::TooManyDrives`] past [`MAX_DRIVES`]; [`ConfigError::DuplicateDrive`] for a drive listed twice;
+    /// [`ConfigError::LimbOutOfRange`] for a limb index past the table; [`ConfigError::Timing`] for timing that
+    /// [`Timing::check`] refuses.
     pub fn new(drives: &[BusDrive], timing: Timing) -> Result<Self, ConfigError> {
         if drives.len() > MAX_DRIVES {
             return Err(ConfigError::TooManyDrives(drives.len()));
+        }
+        for (i, drive) in drives.iter().enumerate() {
+            if drives.iter().skip(i + 1).any(|d| d.device == drive.device) {
+                return Err(ConfigError::DuplicateDrive(drive.device));
+            }
         }
         timing.check().map_err(ConfigError::Timing)?;
         let mut table = [None; MAX_DRIVES];
@@ -197,8 +203,13 @@ impl BusTick {
         Ok(())
     }
 
-    /// How this tick's drain ended: call it after the drain, before [`Self::begin`]. A backlog stops the bus at this
-    /// tick's start. Reads stay unordered from a drain that left frames queued until a drain empties the socket.
+    /// How this tick's drain ended: call it after the drain (its frames already fed to [`Self::on_frame`]), before
+    /// [`Self::begin`]. A backlog stops every active limb at this tick's start. Reads stay unordered from a drain that
+    /// left frames queued until a drain empties the socket.
+    ///
+    /// The frames of the drain itself are ordered unless an earlier drain left the socket unemptied: the socket is a
+    /// queue, and the last drain emptied it before the last tick's sends, so whatever this drain reads came after them.
+    /// Only what a drain leaves queued may predate the next sends, which is what `Unemptied` marks.
     pub fn drained(&mut self, drain: Drain) {
         match drain {
             Drain::Emptied => self.unordered = false,
@@ -213,10 +224,13 @@ impl BusTick {
         }
     }
 
-    /// The socket failed with `error` (interface down or gone): latch stopped. There is no bus to send a stop on; the
-    /// drives time out on their own (`canTimeout`).
+    /// The socket failed with `error` (interface down or gone, or any other socket error): every limb latches stopped.
+    /// There is no bus to send a stop on; the drives time out on their own (`canTimeout`). An error that doesn't latch
+    /// ([`BusError::latches`]) changes nothing here: it isn't a lost bus.
     pub fn lost_bus(&mut self, error: BusError) {
-        self.latch(error);
+        if error.latches() {
+            self.latch(error);
+        }
     }
 
     /// The socket's overflow counter, the last value the shell saw (`SO_RXQ_OVFL` comes only on frames queued after a
@@ -225,13 +239,27 @@ impl BusTick {
         self.counters.kernel_drops = count;
     }
 
-    /// `count` ticks went by without running (the thread stalled past them): each a missed deadline, and the bus stops
-    /// as for a late wake (PLAN.md item 3: missed deadlines are counted, never skipped silently).
-    pub fn skipped(&mut self, count: u64, now_ns: u64) {
+    /// `count` ticks went by without running (the thread stalled past them): each a missed deadline (PLAN.md item 3:
+    /// missed deadlines are counted, never skipped silently). As for a late wake, every active limb stops, at the next
+    /// `begin`; an idle limb has nothing to stop.
+    pub fn skipped(&mut self, count: u64) {
         if count > 0 {
             self.counters.missed_deadlines += count;
-            self.stop_all(StopReason::LateWake, now_ns);
+            self.pending_stop.get_or_insert(StopReason::LateWake);
         }
+    }
+
+    /// Whether every limb is idle or stopped now, so nothing needs stopping (the shell's exit check, after the drain).
+    #[must_use]
+    pub fn settled(&self) -> bool {
+        self.limbs.iter().flatten().all(|l| l.state.settled())
+    }
+
+    /// Whether the bus is healthy now: no latched bus error and not error-passive. The snapshot's `healthy` is this at
+    /// `end`.
+    #[must_use]
+    pub fn healthy(&self) -> bool {
+        self.bus_error.is_none() && !self.error_passive
     }
 
     /// The last snapshot couldn't be handed to control (its ring was full): counted in the next one.
@@ -240,9 +268,15 @@ impl BusTick {
     }
 
     /// Start tick `tick`, scheduled at `scheduled_ns`, woken at `now_ns`, with the newest batch from control. Call after
-    /// draining the socket. Returns the frames to send, in order, stop frames first; report each with [`Self::sent`].
-    /// Before anything is planned, a drive of an active limb that the drain showed faulted, out of Run after running,
-    /// or silent too long stops its limb, so no command reaches it this tick.
+    /// draining the socket and [`Self::drained`]. Returns the frames to send, in order, stop frames first; report each
+    /// with [`Self::sent`]. Each send says whether it expires ([`Send::expires`]): a command goes out only inside the
+    /// send window, while a Disable or active reporting off goes out late too, whoever planned it.
+    ///
+    /// A stop asked for before the tick (the whole bus's or one limb's) is taken first, so it keeps its reason. A wake
+    /// past the send window is a missed deadline, counted whatever the limbs are doing: every active limb stops, an idle
+    /// one has nothing to stop, and no batch is sent that tick. Then, before anything is planned, a drive of an idle or
+    /// active limb that the drain or an earlier read showed faulted, out of Run after running, or silent too long stops
+    /// its limb, so no command (Enable included) reaches it this tick.
     pub fn begin(
         &mut self,
         tick: u64,
@@ -256,16 +290,27 @@ impl BusTick {
         for d in self.drives.iter_mut().flatten() {
             d.answered = false;
         }
-        if now_ns > scheduled_ns.saturating_add(self.timing.send_window_ns) {
-            self.counters.missed_deadlines += 1;
-            self.stop_all(StopReason::LateWake, now_ns);
-        }
+        // A stop asked for before this tick began came first, so it keeps its reason over a late wake.
         if let Some(reason) = self.pending_stop.take() {
-            self.stop_all(reason, now_ns);
+            self.stop_bus(reason, now_ns);
         }
         self.take_pending_limb_stops(now_ns);
+        let late = now_ns > scheduled_ns.saturating_add(self.timing.send_window_ns);
+        if late {
+            self.counters.missed_deadlines += 1;
+            self.stop_bus(StopReason::LateWake, now_ns);
+        }
         self.veto(now_ns);
-        let accepted = if self.any_running() {
+        let accepted = if late {
+            if batch.is_some() {
+                if self.any_running() {
+                    self.counters.stale_ticks += 1;
+                } else {
+                    self.counters.refused_batches += 1;
+                }
+            }
+            None
+        } else if self.any_running() {
             self.check_batch(tick, now_ns, batch)
         } else {
             if batch.is_some() {
@@ -285,7 +330,7 @@ impl BusTick {
         self.limbs
             .iter()
             .flatten()
-            .any(|l| matches!(l.state, LimbState::Idle | LimbState::Active))
+            .any(|l| l.state.takes_commands())
     }
 
     /// The batch if it is fresh and sound. A frame aimed wrong, in a slot with no drive, or of a kind a batch may not
@@ -358,7 +403,7 @@ impl BusTick {
                 .get(drive.limb)
                 .copied()
                 .flatten()
-                .is_some_and(|l| matches!(l.state, LimbState::Idle | LimbState::Active));
+                .is_some_and(|l| l.state.takes_commands());
             if !running {
                 self.counters.refused_frames += 1;
                 continue;
@@ -397,11 +442,7 @@ impl BusTick {
         let expects_status = matches!(
             kind,
             Some(
-                EchoKind::Mit
-                    | EchoKind::Enable
-                    | EchoKind::Disable
-                    | EchoKind::SetZero
-                    | EchoKind::ParamWrite { .. }
+                EchoKind::Mit | EchoKind::Enable | EchoKind::Disable | EchoKind::ParamWrite { .. }
             )
         );
         let deadline_ns = self.scheduled_ns.saturating_add(self.timing.collect_ns);
@@ -465,7 +506,7 @@ impl BusTick {
             }
         }
         self.settle_stops(now_ns);
-        let healthy = self.bus_error.is_none() && !self.error_passive;
+        let healthy = self.healthy();
         let mut limbs = [None; MAX_DRIVES];
         for (view, limb) in limbs.iter_mut().zip(&self.limbs) {
             *view = limb.map(|l| LimbView {
