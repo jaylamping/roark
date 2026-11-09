@@ -469,6 +469,7 @@ fn the_slack_refuses_what_the_veto_would_stop_and_writes_to_a_running_limb() {
     );
     assert_eq!(bus.submit(read(8, 1, Param::Vbus)), Ok(()), "a read may go");
     // Only the tick's own command: by the next tick its reply is late or lost, and a lost one doesn't hold writes off.
+    // The cost, accepted: a reply more than a tick late can pass for this write's answer, so the read-back proves the value.
     quiet_tick(&mut bus, 1);
     assert_eq!(bus.submit(write(9, 102)), Ok(()));
 
