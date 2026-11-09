@@ -13,3 +13,10 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
 cargo deny check
 python3 scripts/check_rules.py
 python3 scripts/check_rules.py count
+# The file size limit, LFS pointers included (conventions/cad.md rule 5). It reads git's file list, so it runs only in a git
+# checkout: the dev box's copy has no .git, and the same tree was checked on the machine it came from.
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  python3 tools/check_file_sizes.py
+else
+  echo "file size check: not a git checkout, skipped"
+fi

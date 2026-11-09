@@ -1,1 +1,16 @@
 /target
+
+# CAD (conventions/cad.md). Scratch folders stay on Joey-PC; git holds only the design of record.
+cad/**/_wip/
+cad/**/_sim/
+cad/**/_archive/
+cad/**/.checkpoints/
+# SolidWorks lock files, backup copies and Simulation output
+~$*
+Backup of *
+Backup (*) of *
+*.[cC][wW][rR]
+cad/**/*.[sS][tT][eE]
+# Windows download markers left by copies from WSL or a browser
+*Zone.Identifier
+__pycache__/
