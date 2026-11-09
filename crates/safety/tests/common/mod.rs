@@ -147,6 +147,7 @@ pub(crate) fn quiet() -> DriveView {
         limb: 0,
         observed: None,
         fresh_ns: None,
+        fresh_status: None,
         answered: false,
         fault_seen: false,
         misses: 0,
@@ -161,6 +162,7 @@ pub(crate) fn seen(observed: Observed) -> DriveView {
     DriveView {
         observed: Some(observed),
         fresh_ns: Some(observed.read_ns),
+        fresh_status: Some(observed),
         fault_seen: !observed.status.header.faults.is_empty(),
         ..quiet()
     }

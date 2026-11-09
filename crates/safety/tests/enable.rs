@@ -3,8 +3,8 @@
 
 mod common;
 
-use can::DriveView;
 use can::SlowKind;
+use can::{DriveView, Observed};
 use common::{echoed, joint, quiet, seen, skeleton, status};
 use robstride::{
     CanTimeout, Damper, EchoKind, Mode, Param, ParamOutcome, ParamValue, Reporting, RunMode,
@@ -104,6 +104,15 @@ fn with_status(echo: DriveView, mode: Mode, read_ns: u64) -> DriveView {
     }
 }
 
+/// `view` with `fresh` as the drive's fresh status, whatever its latest is.
+fn fresh_was(view: DriveView, fresh: Observed) -> DriveView {
+    DriveView {
+        fresh_ns: Some(fresh.read_ns),
+        fresh_status: Some(fresh),
+        ..view
+    }
+}
+
 /// Guards: protocol - the enable sequence runs PLAN item 2's steps in order, one per tick: reporting off, its echo
 /// read back plus one tick, Enable, a Run status, then `run_mode` = MIT; only then is the drive enabled, so no MIT frame
 /// goes before Run is seen. An echo or a Run read before its step was planned doesn't count.
@@ -161,10 +170,10 @@ fn the_enable_sequence_runs_its_steps_in_order() {
         enabling.step(&reset, 105, enable_at + 2 * PERIOD),
         Next::Wait
     );
-    let not_fresh = DriveView {
-        fresh_ns: Some(enable_at - 1),
-        ..with_status(echo, Mode::Run, enable_at + 2)
-    };
+    let not_fresh = fresh_was(
+        with_status(echo, Mode::Run, enable_at + 2),
+        status(Mode::Run, StatusFaults::default(), enable_at - 1),
+    );
     assert_eq!(
         enabling.step(&not_fresh, 105, enable_at + 2 * PERIOD),
         Next::Wait,
@@ -362,9 +371,10 @@ fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
     );
 }
 
-/// Guards: safety - `host.mode`: a status answers one frame, and only while it is the drive's latest and the fresh one:
-/// a later status hides a fresh Run, a later Run doesn't stand in for a fresh Reset, and the Run that answered the
-/// Enable never also answers the `run_mode` = MIT write, however the ticks fall (PLAN item 2, Enable one drive).
+/// Guards: safety - `host.mode`: a status answers one frame, and only the fresh one: a later status that contradicts a
+/// fresh Run takes it back, a later duplicate or report that agrees leaves it, a later Run doesn't stand in for a fresh
+/// Reset, and the Run that answered the Enable never also answers the `run_mode` = MIT write, however the ticks fall
+/// (PLAN item 2, Enable one drive).
 #[test]
 fn a_status_answers_one_frame_while_it_is_the_latest() {
     let t0 = 100 * PERIOD;
@@ -372,10 +382,10 @@ fn a_status_answers_one_frame_while_it_is_the_latest() {
 
     // A fresh Reset, then a Run that answers nothing: no Run answered the Enable.
     let (mut enabling, echo) = to_enable(t0);
-    let reset_then_run = DriveView {
-        fresh_ns: Some(enable_at + 1),
-        ..with_status(echo, Mode::Run, enable_at + 2)
-    };
+    let reset_then_run = fresh_was(
+        with_status(echo, Mode::Run, enable_at + 2),
+        status(Mode::Reset, StatusFaults::default(), enable_at + 1),
+    );
     assert_eq!(
         enabling.step(&reset_then_run, 3, enable_at + PERIOD),
         Next::Wait
@@ -389,14 +399,37 @@ fn a_status_answers_one_frame_while_it_is_the_latest() {
 
     // A fresh Run, then a Reset that answers nothing: the Run is no longer the drive's word.
     let (mut enabling, echo) = to_enable(t0);
-    let run_then_reset = DriveView {
-        fresh_ns: Some(enable_at + 1),
-        ..with_status(echo, Mode::Reset, enable_at + 2)
-    };
+    let run_then_reset = fresh_was(
+        with_status(echo, Mode::Reset, enable_at + 2),
+        status(Mode::Run, StatusFaults::default(), enable_at + 1),
+    );
     assert_eq!(
         enabling.step(&run_then_reset, 3, enable_at + PERIOD),
         Next::Wait
     );
+
+    // A fresh Run, then a duplicate Run: the answer stands, and the sequence goes on to the write.
+    let (mut enabling, echo) = to_enable(t0);
+    let run_then_run = fresh_was(
+        with_status(echo, Mode::Run, enable_at + 2),
+        status(Mode::Run, StatusFaults::default(), enable_at + 1),
+    );
+    assert_eq!(
+        enabling.step(&run_then_run, 3, enable_at + PERIOD),
+        mit_write()
+    );
+
+    // The write's answer, then a duplicate Run read after it: still enabled, not a failure after 50 ms.
+    let (mut enabling, echo, mit_at) = to_mit(t0);
+    let answered = echoed(
+        fresh_was(
+            with_status(echo, Mode::Run, mit_at + 20),
+            status(Mode::Run, StatusFaults::default(), mit_at + 10),
+        ),
+        MIT,
+        mit_at + 5,
+    );
+    assert_eq!(enabling.step(&answered, 5, mit_at + PERIOD), Next::Enabled);
 
     // The Enable's Run read at the very moment the MIT write is planned, then the write's echo and no further status.
     let (mut enabling, echo) = to_enable(t0);
@@ -424,7 +457,7 @@ fn a_status_answers_one_frame_while_it_is_the_latest() {
     );
 }
 
-/// Guards: safety - the sequence that hands a drive to control checks it is stepped with that drive's view; another
+/// Guards: safety - `host.preflight`: the sequence that hands a drive to control checks it is stepped with that drive's view; another
 /// drive's ends it as a runtime bug, after the Enable with the limb to stop (PLAN item 2, Enable one drive).
 #[test]
 fn the_enable_sequence_refuses_another_drives_view() {
@@ -435,7 +468,10 @@ fn the_enable_sequence_refuses_another_drives_view() {
         device: other,
         ..echo
     };
-    let failure = EnableFailure::WrongView { view: other };
+    let failure = EnableFailure::WrongView {
+        view: other,
+        drive: common::id(101),
+    };
     assert_eq!(
         enabling.step(&wrong, 3, t0 + 3 * PERIOD),
         Next::Failed(failure)
@@ -444,6 +480,6 @@ fn the_enable_sequence_refuses_another_drives_view() {
     assert_eq!(failure.rule(), RuleId::HostPreflight);
     assert_eq!(
         failure.message("arm_joint_one"),
-        "enable failed (host.preflight): arm_joint_one was stepped with drive 102's view"
+        "enable failed (host.preflight): arm_joint_one was stepped with drive 102's view, expected drive 101's"
     );
 }

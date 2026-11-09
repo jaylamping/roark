@@ -348,7 +348,7 @@ impl Preflight {
     }
 
     /// The result of the request in flight, handed over at `now_ns`. A result with none in flight is ignored; one
-    /// handed over after [`ANSWER_WITHIN_NS`] refuses, as if none had come.
+    /// handed over after [`ANSWER_WITHIN_NS`] refuses as [`Unanswered::Late`]. Call it before [`poll`](Self::poll) in a tick: a poll first would refuse the same request as `TimedOut`.
     pub fn answered(&mut self, outcome: SlowOutcome, now_ns: u64) {
         let State::Asking {
             next,

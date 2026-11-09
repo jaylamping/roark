@@ -16,6 +16,9 @@ use safety::{
 };
 
 /// The fixture's UID for `arm_joint_one`.
+/// What the operator is told when control handed a result over late.
+const LATE_REMEDY: &str = "The runtime fell behind handing over the answer: check its log and the Pi's load, then run preflight again";
+
 const UID: Uid = Uid([0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]);
 
 #[expect(
@@ -684,7 +687,7 @@ fn a_request_with_no_result_in_time_refuses() {
         late.poll(&view, 2_001 + ANSWER_WITHIN_NS),
         Step::Refused(handed_late)
     );
-    assert!(handed_late.remedy().starts_with("The runtime fell behind"));
+    assert_eq!(handed_late.remedy(), LATE_REMEDY);
     let mut on_time = Preflight::start(target, 1_000);
     assert_eq!(on_time.poll(&view, 2_000), Step::Submit(SlowKind::GetId));
     on_time.answered(SlowOutcome::Identity(UID), 2_000 + ANSWER_WITHIN_NS);

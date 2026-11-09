@@ -6,7 +6,7 @@
 //! counts once a fresh status read after it still shows Run: the drive took a frame and stayed enabled.
 //!
 //! The runtime cancels the sequence on any event that voids its preflight (see [`PreflightPassed`]); the sequence
-//! itself checks only faults. It sends no slow request to a drive while it is enabling: the bus keeps only each drive's last echo, so a
+//! itself checks only that it is stepped with its drive's view and that the drive reports no fault. It sends no slow request to a drive while it is enabling: the bus keeps only each drive's last echo, so a
 //! slow frame's echo would hide the sequence's own and the sequence would give up.
 //!
 //! Set Zero has no command in this stack yet. When it gets one, this sequence gains the "no Set Zero to this drive in
@@ -47,6 +47,8 @@ pub enum EnableFailure {
     WrongView {
         /// The view's drive.
         view: DeviceId,
+        /// The drive the sequence is for.
+        drive: DeviceId,
     },
     /// A status since the sequence began carried fault bits, or a fault was seen since the limb's last clear (then the
     /// bits are those of the latest status, possibly none).
@@ -98,9 +100,11 @@ impl EnableFailure {
             Self::LeftRun { last: None } => {
                 "sent no status within 50 ms of the run_mode = MIT write, expected Run".to_owned()
             }
-            Self::WrongView { view } => {
-                format!("was stepped with drive {}'s view", view.get())
-            }
+            Self::WrongView { view, drive } => format!(
+                "was stepped with drive {}'s view, expected drive {}'s",
+                view.get(),
+                drive.get()
+            ),
             Self::Faults { bits } if bits.is_empty() => {
                 "had a fault since the last clear, expected none".to_owned()
             }
@@ -213,7 +217,10 @@ impl Enabling {
     pub fn step(&mut self, view: &DriveView, tick: u64, now_ns: u64) -> Next {
         if view.device != self.drive.id() && !matches!(self.stage, Stage::Failed { .. }) {
             self.stage = self
-                .failed(EnableFailure::WrongView { view: view.device })
+                .failed(EnableFailure::WrongView {
+                    view: view.device,
+                    drive: self.drive.id(),
+                })
                 .0;
         } else if let Some(bits) = self.faults(view) {
             self.stage = self.failed(EnableFailure::Faults { bits }).0;
@@ -326,16 +333,20 @@ struct Answer {
     read_ns: u64,
 }
 
-/// The fresh status (the first after a command the socket took) read inside the window of a step planned at `since_ns`,
-/// while it is still the drive's latest: the drive's answer to that step's frame, as near as the protocol can tell. A
-/// later status, fresh or not, hides it, and the step waits for the next.
+/// The fresh status (the first after a command the socket took) read inside the window of a step planned at `since_ns`:
+/// the drive's answer to that step's frame, as near as the protocol can tell. A later status that agrees with it (a
+/// duplicate, a report) leaves it standing; one that contradicts it takes it back, and the step waits.
 fn fresh_since(view: &DriveView, since_ns: u64) -> Option<Answer> {
-    view.observed
-        .filter(|o| view.fresh_ns == Some(o.read_ns) && in_window(o.read_ns, since_ns))
-        .map(|o| Answer {
-            mode: o.status.header.mode,
-            read_ns: o.read_ns,
-        })
+    let fresh = view
+        .fresh_status
+        .filter(|o| in_window(o.read_ns, since_ns))?;
+    let contradicted = view.observed.is_some_and(|o| {
+        o.read_ns > fresh.read_ns && o.status.header.mode != fresh.status.header.mode
+    });
+    (!contradicted).then_some(Answer {
+        mode: fresh.status.header.mode,
+        read_ns: fresh.read_ns,
+    })
 }
 
 /// The last mode reported since a step planned at `since_ns`, fresh or not, in or after its window.
