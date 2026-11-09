@@ -453,7 +453,7 @@ pub enum ConfigError {
         /// The limb it named.
         limb: usize,
     },
-    /// Timing [`Timing::check`] refuses.
+    /// Timing [`crate::Timing::check`] refuses.
     #[error("bad timing: {0}")]
     Timing(TimingError),
 }
