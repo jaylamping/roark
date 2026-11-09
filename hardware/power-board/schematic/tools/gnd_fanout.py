@@ -4,7 +4,11 @@ In1 is solid GND (and In2/L4 GND fills where they are free), so each GND pad nee
 already have a GND via within reach (power-stage via grids, in-pad vias) are skipped. Each via goes to the nearest free
 spot within 1.6 mm of the pad edge (0.25 mm grid): 0.25 mm from every other net on F.Cu and B.Cu (0.6 mm from 54 V copper, tools/domains.py), off every hole, and
 outside other nets' pours on every layer it passes through. The stub is 0.25 mm wide and must clear other nets' pads.
-Pads it can't serve (mostly fine-pitch IC pins) are listed; Freerouting connects those (GND is routable, never on In1).
+A second pass serves what is left (mostly fine-pitch IC pins): a 0.2 mm pad-to-pad link to a served GND pin of the same
+part within 1.3 mm, else a 0.2 mm dog-leg out along the pin's axis to a via up to about 2 mm further on, never within
+0.55 mm of any pad. A pad counts as served only if it has its own via or link, or a via was already there before this
+script ran (power-stage grids, in-pad vias); a via another pad just got never serves it by distance alone.
+Pads it can't serve are listed; the router connects those (GND is routable, never on In1).
 Run with KiCad's Python, in place: <kicad python> tools/gnd_fanout.py <board.kicad_pcb>"""
 import os,sys
 import pcbnew
@@ -37,13 +41,17 @@ def clear(item,layers):
             if zl==L and fp.OutlineCount() and fp.Collide(s,cl(z.GetNetname(),L)): return False
     return True
 VL=(pcbnew.F_Cu,pcbnew.In2_Cu,pcbnew.B_Cu)   # In1 is GND everywhere
+PRE=[t for t in TRK if t.GetClass()=='PCB_VIA' and t.GetNetCode()==g]   # GND vias already on the board
 def has_via(p):
     c=p.GetPosition(); r=max(p.GetSize(pcbnew.F_Cu).x,p.GetSize(pcbnew.F_Cu).y)//2+mm(1.0)
-    return any(t.GetClass()=='PCB_VIA' and t.GetNetCode()==g and (t.GetPosition()-c).EuclideanNorm()<=r for t in TRK)
-done=0; skip=0; fail=[]
+    return any((t.GetPosition()-c).EuclideanNorm()<=r for t in PRE)
+def name(p): return f'{p.GetParentFootprint().GetReference()}.{p.GetNumber()}'
+def key(p): c=p.GetPosition(); return (name(p),c.x,c.y)   # SWIG hands out a new wrapper per call, so not id()
+SERVED=set()   # key() of every pad with its own via or link, or an earlier via
+done=0; skip=0; joined=0; dogleg=0; fail=[]
 for p in PADS:
     if p.GetNetCode()!=g or not p.IsOnLayer(pcbnew.F_Cu) or p.HasHole(): continue
-    if has_via(p): skip+=1; continue
+    if has_via(p): skip+=1; SERVED.add(key(p)); continue
     c=p.GetPosition(); hw=p.GetSize(pcbnew.F_Cu).x//2; hh=p.GetSize(pcbnew.F_Cu).y//2
     if int(p.GetOrientationDegrees())%180: hw,hh=hh,hw
     best=None
@@ -61,25 +69,24 @@ for p in PADS:
             if not clear(tr,(pcbnew.F_Cu,)): continue
             best=(d,v,tr)
     if best:
-        _,v,tr=best; b.Add(v); b.Add(tr); TRK+=[v,tr]; done+=1
-    else: fail.append(f'{p.GetParentFootprint().GetReference()}.{p.GetNumber()}')
+        _,v,tr=best; b.Add(v); b.Add(tr); TRK+=[v,tr]; done+=1; SERVED.add(key(p))
+    else: fail.append(p)
 # second pass for what's left (mostly fine-pitch IC pins boxed in by their neighbours):
-#  - a GND pin next to another GND pin of the same part (within 1.3 mm) joins it pad to pad, if that one has a via;
-#  - otherwise a dog-leg: out of the pad along the pin's axis, away from the part's centre (0.5-2.5 mm past the pad
-#    edge), then to a via within 1.6 mm of that point
-def served(p):
-    return has_via(p) or any(t.GetClass()=='PCB_TRACK' and t.GetNetCode()==g and (t.GetStart()==p.GetPosition() or t.GetEnd()==p.GetPosition()) for t in TRK)
-for k in range(3):   # repeat: a pin joined to a served neighbour serves the next one
+#  - a GND pin next to another served GND pin of the same part (within 1.3 mm) joins it pad to pad;
+#  - otherwise (third round) a dog-leg: out of the pad along the pin's axis, away from the part's centre (0.5-2.5 mm past
+#    the pad edge), then to a via on a 0.25 mm grid up to 6 steps on (about 1.5 mm along an axis, 2.1 mm diagonally).
+#  A last round of joins follows the dog-legs, so a pin beside a dog-legged neighbour is served too.
+FPADS=[q for q in PADS if q.IsOnLayer(pcbnew.F_Cu)]
+for k in range(4):
     left=[]
-    for ref in fail:
-        r,n=ref.split('.'); f=b.FindFootprintByReference(r); p=next(q for q in f.Pads() if q.GetNumber()==n)
-        c=p.GetPosition(); ok=False
+    for p in fail:
+        f=p.GetParentFootprint(); c=p.GetPosition(); ok=False
         for q in f.Pads():
-            if q is p or q.GetNetCode()!=g or (q.GetPosition()-c).EuclideanNorm()>mm(1.3) or not served(q): continue
+            if key(q)==key(p) or q.GetNetCode()!=g or (q.GetPosition()-c).EuclideanNorm()>mm(1.3) or key(q) not in SERVED: continue
             tr=pcbnew.PCB_TRACK(b); tr.SetStart(c); tr.SetEnd(q.GetPosition()); tr.SetWidth(mm(0.2)); tr.SetLayer(pcbnew.F_Cu); tr.SetNet(G)
-            if clear(tr,(pcbnew.F_Cu,)): b.Add(tr); TRK.append(tr); ok=True; break
+            if clear(tr,(pcbnew.F_Cu,)): b.Add(tr); TRK.append(tr); ok=True; joined+=1; break
         if not ok and k==2:
-            fc=f.GetPosition(); d=c-fc; L=max(1.0,(d.x*d.x+d.y*d.y)**0.5)
+            fc=f.GetPosition(); d=c-fc
             ax=(1,0) if abs(d.x)>=abs(d.y) else (0,1); sg=1 if (d.x if ax[0] else d.y)>0 else -1
             ext=(p.GetSize(pcbnew.F_Cu).x if ax[0] else p.GetSize(pcbnew.F_Cu).y)//2
             if int(p.GetOrientationDegrees())%180: ext=(p.GetSize(pcbnew.F_Cu).y if ax[0] else p.GetSize(pcbnew.F_Cu).x)//2
@@ -93,7 +100,7 @@ for k in range(3):   # repeat: a pin joined to a served neighbour serves the nex
                         q=pcbnew.VECTOR2I(m.x+i*mm(0.25),m.y+j*mm(0.25)); dd=(i*i+j*j)**0.5+e
                         if best and dd>=best[0]: continue
                         if any(t.GetClass()=='PCB_VIA' and (t.GetPosition()-q).EuclideanNorm()<mm(0.8) for t in TRK): continue
-                        if any(pp.IsOnLayer(pcbnew.F_Cu) and pp.HitTest(q,mm(0.3)) for pp in f.Pads()): continue
+                        if any(pp.HitTest(q,mm(0.55)) for pp in FPADS): continue   # no via in or against any pad (hand assembly)
                         v=pcbnew.PCB_VIA(b); v.SetPosition(q); v.SetDrill(mm(0.3)); v.SetWidth(mm(0.6)); v.SetNet(G)
                         if not clear(v,VL): continue
                         t2=pcbnew.PCB_TRACK(b); t2.SetStart(m); t2.SetEnd(q); t2.SetWidth(mm(0.2)); t2.SetLayer(pcbnew.F_Cu); t2.SetNet(G)
@@ -102,9 +109,11 @@ for k in range(3):   # repeat: a pin joined to a served neighbour serves the nex
             if best:
                 for it in best[1:]:
                     if it: b.Add(it); TRK.append(it)
-                ok=True
-        if not ok: left.append(ref)
+                ok=True; dogleg+=1
+        if ok: SERVED.add(key(p))
+        else: left.append(p)
     fail=left
 pcbnew.ZONE_FILLER(b).Fill(b.Zones())
 b.Save(sys.argv[1])
-print(f'GND fanout: {done} vias added, {skip} pads already had one, {len(fail)} not served: {fail}')
+print(f'GND fanout: {done} vias added, {skip} pads already had one, {joined} pad-to-pad links, {dogleg} dog-legs, '
+      f'{len(fail)} not served: {[name(p) for p in fail]}')

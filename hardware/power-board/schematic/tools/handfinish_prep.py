@@ -11,7 +11,7 @@ import json,os,re,sys
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import domains
 pro,dru,netf=sys.argv[1:4]
 nets=sorted(set(re.findall(r'\(name "(/[^"]*)"\)',open(netf,encoding='utf-8').read())))
-P12=['/+12V_RAW','/+12V','/+12V_JET','/+12V_PI','/SPARE_SW','/SPARE_ON','/SP_SW1']
+P12=['/+12V_RAW','/+12V','/+12V_JET','/+12V_PI','/+12V_FAN','/SPARE_SW','/SPARE_ON','/SP_SW1']
 d=json.load(open(pro)); ns=d['net_settings']
 base=dict(ns['classes'][0])
 def cls(name,w,cl,color):
