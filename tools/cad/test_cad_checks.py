@@ -97,6 +97,7 @@ def test_size_limit_boundary() -> None:
     assert cfs.report([(limit, "a")], "t") == 1
 
 
+@pytest.mark.skipif(os.name == "nt", reason="needs symlinks, which Windows creates only with Developer Mode or admin; CI runs it")
 def test_a_type_change_to_a_large_file_is_checked(repo: Path) -> None:
     """Guards: bug - --staged and --range skipped a symlink replaced by a large file (status T) (PR 14 review, 2026-11-09)."""
     (repo / "cad" / "shoulder" / "link.SLDPRT").symlink_to("shoulder_a.SLDPRT")
@@ -291,10 +292,19 @@ def test_repo_mode_rejects_cad_outside_cad_plain_blobs_and_tracked_scratch(
             "cad/_wip/x/notes.md": "",
             "cad/.cad-writer.lock": "{}",
             "cad/shoulder/Thumbs.db": "",
-            "cad/shoulder/Shoulder_A.SLDPRT": pointer(1, "6" * 64),
         },
     )
     git(repo, "add", "-A", "-f")
+    # The case twin goes straight into the index: on a case-blind file system (Windows) writing it
+    # would only overwrite shoulder_a.SLDPRT.
+    twin = subprocess.run(
+        ["git", "-C", str(repo), "hash-object", "-w", "--stdin"],
+        input=pointer(1, "6" * 64),
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    git(repo, "update-index", "--add", "--cacheinfo", f"100644,{twin},cad/shoulder/Shoulder_A.SLDPRT")
     report = ccl.check_repo(repo)
     assert sorted(report.errors) == sorted(
         [
