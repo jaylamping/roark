@@ -200,6 +200,6 @@
     "^desktop\\.ini$",
     "^Thumbs\\.db$",
     "Zone\\.Identifier$",
-    "^\\.cad-writer\\.lock$"
+    "^\\.cad-writer\\.lock(\\..*)?$"
   ]
 }
