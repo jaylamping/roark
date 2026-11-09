@@ -14,8 +14,8 @@ something that answers like the real drives before any real drive is enabled.
   while on, each showing the joint as it was when it fell due. Every
   delay comes from the seed it's given, so a run replays exactly.
 - **The plant:** a first-order joint (`plant.rs`). In Run, the MIT law `kp (p_t - p) + kd (v_t - v) + t_ff` drives a
-  damper (1 N·m·s/rad, a sim value), so a target is reached with time constant `(damping + kd) / kp`; torque stops at
-  `limit_torque` and speed at `limit_spd`, the caps preflight writes. That a real drive holds those two caps in MIT mode
+  damper (`DAMPING` in `plant.rs`, 1 N·m·s/rad, a sim value), so a target is reached with time constant
+  `(DAMPING + kd) / kp`; torque stops at `limit_torque` and speed at `limit_spd`, the caps preflight writes. That a real drive holds those two caps in MIT mode
   is a sim assumption until a bench capture shows it (PLAN item 6). Out of Run the joint rests where it is. No inertia
   or gravity yet. A read of the position or speed register gives the joint as it is.
 - **Fault injection** (`Fault`, PLAN item 4): a silent drive, late, lost or doubled frames, fault bits, a mode the host

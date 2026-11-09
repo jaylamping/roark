@@ -583,3 +583,113 @@ fn scheduled_faults_fire_on_their_trigger_and_are_recorded() {
         .collect();
     assert_eq!(kept, first, "oldest first");
 }
+
+/// Guards: protocol - a reboot sends only what the transport faults in effect let out before it, whether or not the
+/// host read in between: nothing from a silent drive, nothing a lost or late frame held past the reboot, and both
+/// copies of a doubled frame (PLAN item 4: the injected fault is what the bus sees).
+#[test]
+fn a_reboot_sends_only_what_the_faults_let_out() {
+    for (fault, expected) in [
+        (Fault::Silent, 0),
+        (Fault::Drop(1), 0),
+        (Fault::Late(ms(5)), 0),
+        (Fault::Duplicate(1), 2),
+    ] {
+        for read_first in [false, true] {
+            let (mut sim, t) = running();
+            sim.inject(t, fault).unwrap();
+            sim.receive(t, host(neutral(7)));
+            let read = if read_first {
+                replies(&mut sim, t).len()
+            } else {
+                0
+            };
+            sim.inject(t + ms(1), Fault::Reboot).unwrap();
+            assert_eq!(
+                read + replies(&mut sim, t + ms(10)).len(),
+                expected,
+                "{fault:?}, read first: {read_first}"
+            );
+        }
+    }
+}
+
+/// Guards: protocol - one long step with reporting on runs every other event at its own time, however many reports
+/// fall in it: a Mode fault at 900 ms and the `canTimeout` 50 ms after it land then, and the reports the full outbox
+/// can't hold are counted (PLAN item 4).
+#[test]
+fn a_long_step_keeps_each_event_at_its_time() {
+    let mut sim = SimDrive::new(rs03(7), Uid([7; 8]), 11);
+    let t = Instant::now();
+    let _ = ask(
+        &mut sim,
+        t,
+        encode::param_write(&Write::can_timeout(rs03(7))),
+    );
+    let _ = ask(
+        &mut sim,
+        t,
+        encode::active_reporting(id(7), robstride::Reporting::On),
+    );
+    assert_eq!(
+        sim.schedule(Trigger::At(t + ms(900)), Fault::Mode(Mode::Run)),
+        Ok(())
+    );
+    let end = t + ms(1200);
+    let reports = replies(&mut sim, end);
+    assert_eq!(
+        sim.take_injected().map(|i| i.at),
+        Some(t + ms(900)),
+        "the fault at its own time"
+    );
+    // Reports every 10 ms from 10 to 1200 ms: the outbox holds the first 64, to 640 ms; the other 56 are dropped.
+    assert_eq!(reports.len(), 64);
+    assert!(reports.iter().all(|r| mode_of(r) == Some(Mode::Reset)));
+    assert_eq!(sim.dropped(), 56);
+    assert_eq!(
+        status_of(&ask(&mut sim, end, neutral(7))),
+        [(Mode::Reset, StatusFaults::default(), 25.0)],
+        "timed out at 950 ms"
+    );
+}
+
+/// Guards: protocol - the record and the plan keep the order things happened in when a slot is freed and reused: an
+/// injection recorded after one was taken comes after those still waiting at the same time, and a fault scheduled into
+/// a freed slot fires after one scheduled before it for the same time (logging.md section 3).
+#[test]
+fn freed_slots_keep_the_order() {
+    let (mut sim, t) = running();
+    sim.inject(t, Fault::Drop(1)).unwrap();
+    sim.inject(t, Fault::Drop(2)).unwrap();
+    assert_eq!(sim.take_injected().map(|i| i.fault), Some(Fault::Drop(1)));
+    sim.inject(t, Fault::Drop(3)).unwrap();
+    let rest: Vec<_> = std::iter::from_fn(|| sim.take_injected())
+        .map(|i| i.fault)
+        .collect();
+    assert_eq!(rest, [Fault::Drop(2), Fault::Drop(3)]);
+
+    let (mut sim, t) = running();
+    assert_eq!(sim.schedule(Trigger::At(t + ms(5)), Fault::Drop(1)), Ok(()));
+    assert_eq!(
+        sim.schedule(Trigger::At(t + ms(20)), Fault::Drop(2)),
+        Ok(())
+    );
+    let _ = replies(&mut sim, t + ms(10));
+    // The first slot is free again; the next fault takes it.
+    assert_eq!(
+        sim.schedule(Trigger::At(t + ms(20)), Fault::Drop(3)),
+        Ok(())
+    );
+    let _ = replies(&mut sim, t + ms(30));
+    let record: Vec<_> = std::iter::from_fn(|| sim.take_injected())
+        .map(|i| (i.at, i.fault))
+        .collect();
+    assert_eq!(
+        record,
+        [
+            (t + ms(5), Fault::Drop(1)),
+            (t + ms(20), Fault::Drop(2)),
+            (t + ms(20), Fault::Drop(3)),
+        ]
+    );
+}
