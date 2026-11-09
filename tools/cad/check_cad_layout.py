@@ -168,7 +168,9 @@ class Checker:
                 self.check_file(rel, size)
         self.check_packets()
         if self.exports is None:
-            self.report.error("manifests/exports.json", "missing; the export records can't be checked")
+            self.report.error(
+                "manifests/exports.json", "missing; the export records can't be checked"
+            )
         else:
             self.check_exports({rel.as_posix() for rel, _ in files})
         return self.report
@@ -195,7 +197,10 @@ class Checker:
             return
         name = parts[-1]
         if name != name.lower() and parts[0].lower() not in self.scratch:
-            self.report.error(rel, "folder names are lower case (git and Linux see a different folder)")
+            self.report.error(
+                rel,
+                "folder names are lower case (git and Linux see a different folder)",
+            )
         if any(pat.search(name) for pat in self.forbidden):
             self.report.error(rel, f"forbidden folder name '{name}'")
         if any(pat.search(name) for pat in self.warn_dirs):
@@ -217,7 +222,8 @@ class Checker:
         if top == "vendor":
             if not self.vendor_re.search(name):
                 self.report.warn(
-                    rel, "vendor file name should be vendor_<maker>_<model>.<ext> (lower case)"
+                    rel,
+                    "vendor file name should be vendor_<maker>_<model>.<ext> (lower case)",
                 )
             return
         region = top.replace("-", "_")
@@ -363,15 +369,20 @@ class Checker:
     # -- exports manifest ----------------------------------------------------
     def check_exports(self, present: set[str]) -> None:
         recorded = set()
-        entries = self.exports.get("exports") if isinstance(self.exports, dict) else None
+        entries = (
+            self.exports.get("exports") if isinstance(self.exports, dict) else None
+        )
         if not isinstance(entries, list):
             self.report.error("manifests/exports.json", "no 'exports' list")
             return
         for i, entry in enumerate(entries):
-            missing = [k for k in EXPORT_KEYS if not isinstance(entry, dict) or k not in entry]
+            missing = [
+                k for k in EXPORT_KEYS if not isinstance(entry, dict) or k not in entry
+            ]
             if missing:
                 self.report.error(
-                    "manifests/exports.json", f"entry {i} is missing {', '.join(missing)}"
+                    "manifests/exports.json",
+                    f"entry {i} is missing {', '.join(missing)}",
                 )
                 continue
             exp, src = entry["export"], entry["source"]
@@ -466,7 +477,9 @@ def check_repo(root: Path = REPO_ROOT) -> Report:
     layout = read_manifest(rules, "cad/manifests/cad-layout.json")
     conventions = read_manifest(rules, "cad/manifests/cad-conventions.json")
     if layout is None or conventions is None:
-        raise ValueError("cad/manifests/cad-layout.json or cad-conventions.json is not in the index")
+        raise ValueError(
+            "cad/manifests/cad-layout.json or cad-conventions.json is not in the index"
+        )
     sizes = blob_sizes([b for b, _ in entries], root=root)
     cad_files = []
     report = Report()
