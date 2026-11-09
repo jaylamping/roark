@@ -13,6 +13,7 @@ after bring-up. A separate buck board makes the 12 V and carries the 12 V output
 | Parts, bring-up steps, accepted risks | [REV_B_PARTS.md](REV_B_PARTS.md) |
 | Cost, ordering, assembly, coating | [PRODUCTION_RUN.md](PRODUCTION_RUN.md) |
 | Layout rules (spacing, E-stop, Kelvin, gates, hand finishing) | [LAYOUT_RULES.md](LAYOUT_RULES.md) |
+| Hand-finishing checklist (open connections by group, with pictures) | [layout/HAND_FINISH.md](layout/HAND_FINISH.md) |
 | Heatsink (option D) | [THERMAL_OPTION.md](THERMAL_OPTION.md) |
 | What rev B5 changed | [REVB5_CHANGES.md](REVB5_CHANGES.md) |
 | Bill of materials, two-set kit, DigiKey upload | [bom-rev-B.csv](bom-rev-B.csv), [kit-2sets.csv](kit-2sets.csv), [bom-digikey-upload.csv](bom-digikey-upload.csv) |

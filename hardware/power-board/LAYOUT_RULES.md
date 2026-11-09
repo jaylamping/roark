@@ -161,6 +161,7 @@ thrashed again (about 2,800 violations after six passes) and is not used; shuffl
     MID_Z, VB_Z; SHL4_N at R99.
 - Kelvin pairs to re-route as tight pairs: SHL2 (0 % paired), SHL4 (25 %), SHL6 (33 %) and SH9 (8 %).
 - Estimate in KiCad's interactive router: about 3–4 h for the connections, plus 1–2 h for the four Kelvin pairs.
+- The step-by-step checklist, with a picture per group: [layout/HAND_FINISH.md](layout/HAND_FINISH.md).
 
 The rest is finished by hand in KiCad, starting from the board with the power stage and the locked critical pre-routes:
 - Net classes ESTOP, HV54 and P12 are set, and the DRC holds the E-stop rule.
