@@ -409,6 +409,8 @@ for n in NETS:
 # Kelvin legs first (P before N), so they take the short direct paths before the board fills; then shortest nets first
 todo.sort(key=lambda t:(0 if KELV.match(t[1]) else 1, (0 if t[1].endswith('_P') else 1) if KELV.match(t[1]) else 0, t[0]))
 if ONLY: todo=[t for t in todo if re.match(ONLY,t[1])]; NEG=False
+if os.environ.get('SHUFFLE'):   # SHUFFLE=<seed>: random order after the Kelvin legs, to try several orders in parallel
+    import random; random.Random(int(os.environ['SHUFFLE'])).shuffle(todo); todo.sort(key=lambda t:0 if KELV.match(t[1]) else 1)
 print('nets to route',len(todo),flush=True)
 fails=[]; t0=time.time(); nconn=0; tries={}; queue=[n for _,n in todo]; nrip=0; ripped={}
 TMAX=float(os.environ.get('TMAX','3000'))   # wall-clock budget in s; whatever is still queued then is reported open

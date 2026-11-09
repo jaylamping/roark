@@ -3,7 +3,8 @@
 # for the next: 1 critical nets (Kelvin pairs, gate drives, UVLO), 2 low-voltage supply rails (0.4 mm trunks, 12 V 0.6 mm),
 # 3 the I2C bus, VCTL and RUN_P, 4 the port meter and eFuse nets, 5 everything else (sequential, rip-up, TMAX). Stages 3-5
 # may put vias through the L6 VBUS pour under the meter block (SOFTV; the pour refills round them at full clearance).
-# Then tools/route_fixes.py, DRC with the project rules, route_checks and the open-net list.
+# Then tools/route_fixes.py, tools/patch_route.py (short connections, exact geometry; the U8 latch block and the Kelvin
+# pairs are left for hand finishing), DRC with the project rules, route_checks and the open-net list.
 # Usage: tools/route_stages.sh <work dir>   (needs base.kicad_pcb and net.net; coated rules, tools/domains.py)
 set -uo pipefail
 W=$(cd "$1" && (pwd -W 2>/dev/null || pwd)); ROOT=$(cd "$(dirname "$0")/.." && pwd); LAYOUT="$ROOT/../layout"
@@ -25,7 +26,10 @@ stage() {   # stage <name> <in board> <out board> [ONLY regex] [FONLY regex] [TM
   stage bus s2.kicad_pcb s3.kicad_pcb "$BUS" '^$' 900 '/VBUS$'
   stage met s3.kicad_pcb s4.kicad_pcb "$MET" '^$' 1800 '/VBUS$'
   stage rest s4.kicad_pcb s5.kicad_pcb '' '^$' "${TMAX:-2400}" '/VBUS$'
-  "$KP" tools/route_fixes.py "$W/s5.kicad_pcb" "$W/routed.kicad_pcb" 2>&1 | q | tail -1
+  "$KP" tools/route_fixes.py "$W/s5.kicad_pcb" "$W/s6.kicad_pcb" 2>&1 | q | tail -1
+  cp "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/s6.kicad_pro"; cp "$LAYOUT/marengo_pdu_revb.kicad_dru" "$W/s6.kicad_dru"
+  "$KC" pcb drc --format json -o "$W/s6.drc.json" "$W/s6.kicad_pcb" >/dev/null 2>&1
+  SKIP='/(EN_A|FLT_A|BST_A|CSN_A|CSP_A|MID|L_B|SH\w*_[PN])$' "$KP" tools/patch_route.py "$W/s6.kicad_pcb" "$W/routed.kicad_pcb" "$W/s6.drc.json" 2>&1 | q | grep '^patch_route' | cut -c1-300
 }
 cp "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/routed.kicad_pro"; cp "$LAYOUT/marengo_pdu_revb.kicad_dru" "$W/routed.kicad_dru"
 "$KC" pcb drc --format json --schematic-parity -o "$W/drc.json" "$W/routed.kicad_pcb" >/dev/null 2>&1

@@ -145,16 +145,22 @@ that is never coated must not go on the pack.
 ## Hand finishing (2026-11-09, 6 layers)
 
 The autorouters don't finish this board. tools/route_stages.sh (critical nets, rails, the I2C/VCTL/RUN_P bus, the port
-meter nets, the rest, then tools/route_fixes.py) leaves **67 connections on 45 nets** open, with DRC clean (0 clearance
-violations, schematic parity 0) and route_checks clean. Freerouting 2.5 thrashed again (about 2,800 violations after six
-passes) and is not used.
+meter nets, the rest, tools/route_fixes.py, then tools/patch_route.py for short connections) leaves **59 connections on
+44 nets** open, with DRC clean (0 clearance violations, schematic parity 0) and route_checks clean. Freerouting 2.5
+thrashed again (about 2,800 violations after six passes) and is not used; shuffled net orders did no better.
 - The meter block sits over the L6 VBUS pour. Without vias through that pour (`SOFTV` in tools/grid_route.py) every
-  signal there was confined to F.Cu and the bus nets could not route at all; with them, 123 open connections became 67.
-- What is left: 7 GND pins on fine-pitch ICs (a stub and a via each); about 35 single connections in the port meter and
-  eFuse blocks (EN_L, TMR_L, ISCP/IWRN_L, CSP/INP_L, V_L taps); about 10 in the latch block round U8 (E-stop class:
-  EN_A, FLT_A, BST_A, CSN/CSP_A, MID taps); G2, BRK_P/BRK_PG, the CL comparator taps.
+  signal there was confined to F.Cu and the bus nets could not route at all; with them, 123 open connections became 67,
+  and patch_route.py closed 8 more. 94 signal and GND vias now pass through the VBUS pour, 27 of them in the 180–190 mm
+  band where the full 60 A flows: keep new vias out of that band when finishing, and move some out if it is easy.
+- What is left is blocked by copper already placed (neighbouring pins, Kelvin pads, GND vias), so it needs KiCad's
+  push-and-shove:
+  - port meter and eFuse blocks, about 30: V_L taps (U19–U24 pin 13 to U11–U16 pin 8 and the C51/C56/C71/C76 pads),
+    EN_L, TMR_L, ISCP/IWRN_L, CSP/INP_L, D_L2;
+  - latch block round U8, about 12, E-stop class: EN_A, FLT_A, BST_A, CSN/CSP_A, MID, TMR_A, L_B;
+  - 4 GND pins on U13 and U15; BRK_P/BRK_PG at U7; G2; the CL comparator taps (CL_HY, CL_OUT, CL_SENSE); CWD, FB_CTL,
+    MID_Z, VB_Z; SHL4_N at R99.
 - Kelvin pairs to re-route as tight pairs: SHL2 (0 % paired), SHL4 (25 %), SHL6 (33 %) and SH9 (8 %).
-- Estimate in KiCad's interactive router: about 3–5 h for the connections, plus 1–2 h for the four Kelvin pairs.
+- Estimate in KiCad's interactive router: about 3–4 h for the connections, plus 1–2 h for the four Kelvin pairs.
 
 The rest is finished by hand in KiCad, starting from the board with the power stage and the locked critical pre-routes:
 - Net classes ESTOP, HV54 and P12 are set, and the DRC holds the E-stop rule.
