@@ -20,8 +20,10 @@
   - L5 (In4): solid GND, the second return plane.
   - L6 (B.Cu): positive mirrors, the bare heatsink pads, GND wherever the positive path isn't.
 - Rating to lay out for: **60 A continuous, under 90 A peak.** A 2 oz outer pour carries about 30 A in 10.5 mm at 20 °C
-  rise (IPC-2221B, external), so the 60 A path (BAT, SW_D, MID, VBUS) needs at least 10.5 mm on both L1 and L6, stitched
-  together, and each 30 A port leg needs at least 10.5 mm on one outer layer (or split across both). No bars. The two
+  rise (IPC-2221B, external), and about 27.5 mm carries 60 A. So the 60 A path (BAT, SW_D, MID, VBUS) needs about 27.5 mm
+  of outer copper in total (one layer, or L1 plus L6 stitched with vias), and each 30 A port leg about 10.5 mm in total.
+  No bars. Pour widths on the routed board (2026-11-09): BAT 27 mm on L1; VBUS 25 mm on L6 plus about 3–7 mm on L1;
+  MID 23 mm on L6 plus up to 27 mm on L1; SW_D 22 mm on L6 plus 13 mm on L1; port legs about 5 mm on each outer layer. The two
   0.5 oz GND planes return 60 A across about 90 mm (about 0.8 mOhm, about 3 W spread over the board). At layer changes, use about 1 A per 0.3 mm via.
 
 ## Power path

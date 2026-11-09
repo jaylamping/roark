@@ -196,6 +196,6 @@ Coordinates are board/torso X and Y, with Z 0 at the board's bottom face.
 - **Bank B bus ceiling (9.4 mF) vs the drive interface requirement (20 mF).** These don't agree. Measure the drive
   capacitance per limb (already a bring-up open item) before the board is ordered.
 - **Copper:** since 2026-11-09 the board is 6 layers with 2 oz outer / 0.5 oz inner (no bars). A 2 oz outer pour carries
-  about 30 A in 10.5 mm at 20 °C rise (IPC-2221), so the 60 A path runs on L1 and L6 together and each 30 A port leg on
-  one outer layer ([LAYOUT_RULES.md](LAYOUT_RULES.md)). The heat path above goes down through the filled vias and is the
+  about 30 A in 10.5 mm and 60 A in about 27.5 mm at 20 °C rise (IPC-2221); the 60 A path and the 30 A port legs use L1
+  and L6 together ([LAYOUT_RULES.md](LAYOUT_RULES.md)). The heat path above goes down through the filled vias and is the
   same as on the 4-layer board. The two 0.5 oz GND planes return 60 A across about 90 mm, about 3 W spread over the board.
