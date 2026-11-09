@@ -14,6 +14,8 @@ limb currently on the bench (tenet 0).
    Mine the legacy code for facts and bench lessons
    ([RECONCILIATION.md](https://github.com/jaylamping/marengo/blob/main/review/sw-foundation-20261108/RECONCILIATION.md)),
    never as patterns. Nothing in this repo depends on or copies its structure.
+   CAD files and the process that versions them are the exception that moves here: they live in [cad/](cad/), brought over from marengo only when work needs
+   them ([conventions/cad.md](conventions/cad.md)).
 5. **Linux work** (`vcan`, SocketCAN, the sim suite, anything macOS can't run) goes to the dev box: run
    `scripts/devbox.sh doctor`, then `scripts/devbox.sh run <command>`. How it works and how to fix it: [docs/dev-box.md](docs/dev-box.md).
 
