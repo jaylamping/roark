@@ -184,20 +184,17 @@ fn next_snapshot(snapshots: &mut rtrb::Consumer<Snapshot>, end: Instant) -> Opti
     None
 }
 
-/// Play control for the whole run, one batch per tick for the tick after the snapshot just read: enable both drives
-/// until both report Run, hold for `HOLD_TICKS`, then set `exit` as the runtime does at shutdown and see the bus stop
-/// the drives: both confirm Reset and take active reporting off.
+/// Play control up to the hold: one batch per tick for the tick after the snapshot just read, enabling both drives
+/// until both report Run, then holding for `HOLD_TICKS`; the last snapshot.
 #[expect(
     clippy::unwrap_used,
     reason = "test helper: a missing snapshot fails the test"
 )]
-fn play_control(
+fn enable_and_hold(
     commands_tx: &mut rtrb::Producer<CommandBatch>,
     snapshots: &mut rtrb::Consumer<Snapshot>,
     epoch: Epoch,
-    exit: &AtomicBool,
-) {
-    // Play control: one batch per tick, for the tick after the snapshot just read.
+) -> Snapshot {
     let end = Instant::now() + Duration::from_secs(20);
     let period = 1_000_000_000 / HZ;
     let mut send = |snap: &Snapshot, frames: [Option<Frame>; 2]| {
@@ -243,6 +240,23 @@ fn play_control(
         "answered {answered} of {}",
         2 * HOLD_TICKS
     );
+    snap
+}
+
+/// Play control for the whole run: [`enable_and_hold`], then set `exit` as the runtime does at shutdown and see the
+/// bus stop the drives: both confirm Reset and take active reporting off.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: a missing snapshot fails the test"
+)]
+fn play_control(
+    commands_tx: &mut rtrb::Producer<CommandBatch>,
+    snapshots: &mut rtrb::Consumer<Snapshot>,
+    epoch: Epoch,
+    exit: &AtomicBool,
+) {
+    let end = Instant::now() + Duration::from_secs(20);
+    let mut snap = enable_and_hold(commands_tx, snapshots, epoch);
     // Shutdown while active: the thread stops the drives before it returns.
     exit.store(true, Ordering::Release);
     while !snap.stopped() {
@@ -609,4 +623,117 @@ fn compare(mcap: &Path, captured: &[Line]) {
             "{r:?}: our echoes are exactly the host frames"
         );
     }
+}
+
+/// Let real time go by with the bus thread running, without sleeping.
+fn pass(span: Duration) {
+    let end = Instant::now() + span;
+    while Instant::now() < end {
+        std::thread::yield_now();
+    }
+}
+
+/// An active bus told to exit with control's ring full: `drain` says whether control then reads again. Returns whether
+/// the thread was still running 200 ms after `exit`, the last snapshot it handed back, and whether it ended without an
+/// error.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: a missing snapshot or a failed join fails the test"
+)]
+fn exit_with_a_full_ring(drain: bool) -> (bool, Option<Snapshot>, bool) {
+    ensure_vcan(BUS).unwrap();
+    let dir = std::env::temp_dir().join(format!(
+        "sim-suite-full-ring-{}-{drain}",
+        std::process::id()
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let stop_sim = AtomicBool::new(false);
+    let exit = Arc::new(AtomicBool::new(false));
+    let out = std::thread::scope(|scope| {
+        let _shutdown = Shutdown(&stop_sim, Arc::clone(&exit));
+        let sim = scope.spawn(|| {
+            let mut drives = [
+                SimDrive::new(Drive::new(id(101), Model::Rs03), Uid([1; 8]), 7),
+                SimDrive::new(Drive::new(id(102), Model::Rs03), Uid([2; 8]), 8),
+            ];
+            serve(BUS, &mut drives, &stop_sim)
+        });
+        let session = Session::start(&dir, info(), 1_794_178_885_000_000_000).unwrap();
+        let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
+        let epoch = recording.epoch();
+        let recorder = Recorder::spawn(recording).unwrap();
+        let (mut commands_tx, commands_rx) = rtrb::RingBuffer::new(4);
+        // Small, so that a control that stops reading fills it in a few ticks.
+        let (snapshots_tx, mut snapshots) = rtrb::RingBuffer::new(4);
+        let bus = can::spawn(
+            BusConfig {
+                name: BUS.to_owned(),
+                drives: vec![drive(101, 0), drive(102, 1)],
+                timing: timing(),
+            },
+            BusLinks {
+                commands: commands_rx,
+                snapshots: snapshots_tx,
+                recorder: buses.remove(0),
+                epoch,
+                start: soon(),
+                exit: Arc::clone(&exit),
+            },
+        )
+        .unwrap();
+        let _ = enable_and_hold(&mut commands_tx, &mut snapshots, epoch);
+
+        // Control stops reading; the ring fills; then the exit.
+        pass(Duration::from_millis(300));
+        exit.store(true, Ordering::Release);
+        pass(Duration::from_millis(200));
+        let running = !bus.thread.is_finished();
+        if drain {
+            let end = Instant::now() + Duration::from_secs(10);
+            while !bus.thread.is_finished() {
+                assert!(Instant::now() < end, "the bus never ended");
+                let _ = snapshots.pop();
+                std::thread::yield_now();
+            }
+        } else {
+            // Never read again: the thread still has to end.
+            let end = Instant::now() + Duration::from_secs(10);
+            while !bus.thread.is_finished() {
+                assert!(Instant::now() < end, "the bus never ended");
+                std::thread::yield_now();
+            }
+        }
+        let done = bus.thread.join().unwrap();
+        let (last, clean) = (done.last, done.error.is_none());
+        recorder.close(vec![done.recorder]).unwrap();
+        stop_sim.store(true, Ordering::Release);
+        sim.join().unwrap().unwrap();
+        (running, last, clean)
+    });
+    let _ = std::fs::remove_dir_all(&dir);
+    out
+}
+
+/// Guards: protocol - a stopped bus told to exit does not return while control's ring is full and control may still
+/// read: control gets the Stopped snapshot first (can.md section 2 "every drop counted"; PLAN.md item 3 shutdown).
+#[test]
+fn a_stopped_bus_waits_for_a_ring_that_can_take_its_stopped_snapshot() {
+    let (running, last, clean) = exit_with_a_full_ring(true);
+    assert!(
+        running,
+        "the bus ended before control could read its Stopped snapshot"
+    );
+    assert!(clean);
+    assert!(last.is_some_and(|s| s.stopped()), "{last:?}");
+}
+
+/// Guards: safety - a control that never reads again cannot hold the bus thread's join (and the recorder's close)
+/// forever: the thread ends after its wait with the Stopped snapshot in its exit (PLAN.md item 3: a hung control
+/// thread must let the drives time out; rust.md section 12 shutdown).
+#[test]
+fn a_stopped_bus_ends_when_control_never_reads_again() {
+    let (_, last, clean) = exit_with_a_full_ring(false);
+    assert!(clean);
+    assert!(last.is_some_and(|s| s.stopped()), "{last:?}");
 }
