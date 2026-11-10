@@ -160,9 +160,9 @@ impl BusTick {
     }
 
     /// How this tick's drain ended: call it after the drain (its frames already fed to [`Self::on_frame`]), before
-    /// [`Self::begin`]. A backlog stops an active bus at this tick's start; an idle bus sends only its batch's Disables
-    /// and reporting off that tick (see [`Self::begin`]). Reads stay unordered from a drain that left frames queued
-    /// until a drain empties the socket.
+    /// [`Self::begin`]. A backlog stops an active bus at this tick's start and holds an idle bus's tick, which clears
+    /// the freshness this drain stamped (both in [`Self::begin`]). Reads stay unordered from a drain that left frames
+    /// queued until a drain empties the socket.
     ///
     /// The frames of the drain itself are ordered unless an earlier drain left the socket unemptied: the socket is a
     /// queue, and the last drain emptied it before the last tick's sends, so whatever this drain reads came after them.
@@ -233,10 +233,21 @@ impl BusTick {
     ///
     /// A stop asked for before the tick is taken first, so it keeps its reason. A backlog in the drain, then a wake past
     /// the send window (a missed deadline, counted in every state), stops an active bus. Neither stops an idle bus
-    /// (nothing enabled since start): that tick it sends only its batch's Disables and reporting off, which are right
-    /// late or not, and holds back the rest (`held_batches`), so nothing is enabled on a tick whose reads can't be
-    /// trusted; the batch checks still apply. Its drain read late or in a backlog, so no drive's status stays fresh
-    /// after it, and motion waits for a status read on a trusted tick (PLAN.md item 3).
+    /// (nothing enabled since start): its tick is **held** instead, since an untrusted tick holds an idle bus and
+    /// doesn't stop it (PLAN.md item 3). On a held tick, in this order:
+    ///
+    /// 1. The batch is checked as on any tick, against the freshness as the drain left it: a bad batch, or motion on
+    ///    feedback past the limit, stops the bus. Motion on feedback the drain stamped passes the check.
+    /// 2. Only the batch's Disables and reporting off are planned, which are right late or not; the rest, that motion
+    ///    included, is held back unsent (`held_batches`), so nothing is enabled or moved on a tick whose reads can't
+    ///    be trusted.
+    /// 3. Every drive's freshness is cleared once, here: the drain read late or past a backlog, so the real age of
+    ///    what it stamped can't be bounded. A status read after this tick's sends (a Disable it sends opens a reply)
+    ///    counts as fresh again, since the drain emptied the socket before them; after a drain that left frames
+    ///    queued ([`Drain::Unemptied`]) nothing counts until one empties it.
+    ///
+    /// So motion on a later tick to a drive with no fresh status read since is refused as expired feedback, which
+    /// stops the bus (PLAN.md item 6 Silence row).
     pub fn begin(
         &mut self,
         tick: u64,
@@ -275,7 +286,9 @@ impl BusTick {
                 }
                 self.plan_stop(now_ns);
             }
-            BusState::Idle | BusState::Active => {
+            // An active bus with a backlog or a late wake is stopping by now.
+            BusState::Active => self.plan_batch(tick, now_ns, batch, false),
+            BusState::Idle => {
                 let hold = backlog || late;
                 self.plan_batch(tick, now_ns, batch, hold);
                 if hold {

@@ -35,8 +35,8 @@ reach Run, and goes silent after a Disable (PLAN item 2 Silence windows).
 
 A drain that reads past its limit or leaves frames queued is a backlog: what it said can't be known in time, so it
 stops an active bus. As for a late wake, it doesn't stop an idle bus, which sends only its batch's Disables and
-reporting off that tick (`held_batches`); the batch checks still apply. On such a held tick no drive's status counts
-as fresh, so motion waits for a status read on a tick that can be trusted.
+reporting off that tick (`held_batches`); the batch checks still apply. That held tick then clears the freshness its
+own drain stamped, and a status read after its sends counts again; `BusTick::begin` states the rule in full.
 
 A stop (requested, control silent, a late wake, expired feedback, a bad batch, or a backlog) sends Disable to every
 drive, re-sends it each tick to every drive that hasn't confirmed, and sends active reporting off to each confirmed
