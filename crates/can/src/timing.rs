@@ -25,7 +25,8 @@ pub struct Timing {
     /// One tick.
     pub period_ns: u64,
     /// How late after its scheduled start a tick may still send a command. Waking later is a missed deadline: it stops
-    /// every active limb, and the tick sends only its batch's Disables and reporting off. A quarter period by default: provisional, to be tuned on the real adapter (PLAN step 8).
+    /// every active limb and holds the tick for every idle one ([`BusTick::begin`](crate::BusTick::begin)). A quarter
+    /// period by default: provisional, to be tuned on the real adapter (PLAN step 8).
     pub send_window_ns: u64,
     /// When the tick stops collecting replies, from its scheduled start (about 60 % of the period, PLAN.md item 3).
     pub collect_ns: u64,
@@ -184,9 +185,12 @@ impl Timing {
             .saturating_add(self.period_ns.saturating_mul(2))
     }
 
-    /// The most a frame is written after its tick's scheduled start: the send window, since a wake exactly at its close
-    /// isn't late. Motion passes its staleness check at the wake and goes out up to this much later; a stop's Disable
-    /// goes out up to this much after the tick that found control silent, or a drive's misses, was due.
+    /// The most a tick may wake after its scheduled start and still send: the send window, since a wake exactly at its
+    /// close isn't late. Motion passes its staleness check at the wake and, as a command that expires, is written by
+    /// the window's close or not at all. A stop's Disable is planned on a wake up to this much after the tick that
+    /// found control silent, or a drive's misses, was due, but never expires ([`Send::expires`](crate::Send::expires)):
+    /// it is written after that wake by the shell's wake-to-write time, which this bound leaves out and PLAN step 8
+    /// measures.
     const fn write_slack_ns(&self) -> u64 {
         self.send_window_ns
     }
@@ -292,7 +296,8 @@ pub enum TimingError {
         silent_ticks: u32,
         /// The period.
         period_ns: u64,
-        /// The send window: how late in its tick the stop's Disable may be written.
+        /// The send window: how late in its tick the wake that plans the stop's Disable may come. The write follows
+        /// it by the shell's wake-to-write time (PLAN step 8).
         write_slack_ns: u64,
     },
     /// `silence_misses` is zero.
@@ -309,7 +314,8 @@ pub enum TimingError {
         silence_misses: u32,
         /// The period.
         period_ns: u64,
-        /// The send window: how late in its tick the stop's Disable may be written.
+        /// The send window: how late in its tick the wake that plans the stop's Disable may come. The write follows
+        /// it by the shell's wake-to-write time (PLAN step 8).
         write_slack_ns: u64,
     },
     /// The slow reply window is zero or fills the whole slack between the collect deadline and the next tick, so no

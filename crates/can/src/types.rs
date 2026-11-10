@@ -57,7 +57,7 @@ pub enum Drain {
     /// It emptied the socket: what is read from here on came after the backlog.
     Emptied,
     /// It emptied the socket but read more frames than the shell may before a send: what it said can't be known in time,
-    /// so every active limb stops and the tick sends only its batch's Disables and reporting off.
+    /// so every active limb stops and the tick is held for every idle one ([`BusTick::begin`](crate::BusTick::begin)).
     Backlog,
     /// It gave up with frames still queued: as for `Backlog`, and until a drain empties the socket its statuses may
     /// predate the sends. They still show each drive's mode and faults, but answer nothing and confirm nothing.
@@ -294,9 +294,9 @@ pub struct DriveView {
     pub observed: Option<Observed>,
     /// When its last fresh status was read: the first status after a command the socket took. Freshness, not
     /// acknowledgement: the protocol has no sequence numbers, so which command a status answers can't be proven. Read
-    /// time, not arrival: it can trail the kernel's receipt by up to period - collect + send window
-    /// (units-and-frames.md section 5). Cleared, with `fresh_status`, for the drives of a limb still idle after an
-    /// untrusted tick (a late wake, a stall or a backlog), whose drain read too late to vouch for it.
+    /// time, not arrival: for every status motion is sent on, it trails the kernel's receipt by at most period -
+    /// collect + send window (units-and-frames.md section 5). A held tick clears it, with `fresh_status`, for the
+    /// drives of a limb still idle, after its batch checks ([`BusTick::begin`](crate::BusTick::begin)).
     pub fresh_ns: Option<u64>,
     /// The status `fresh_ns` is the read time of, kept when a later status of the same mode (a duplicate, a report, an
     /// unsolicited or earlier-tick status, a version reply) replaces `observed`, and dropped when a later one shows another

@@ -4,7 +4,7 @@
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
-use can::{CommandBatch, Drain, LimbState, Send, SendKind, StopOutcome, StopReason};
+use can::{CommandBatch, Drain, LimbState, Send, SendKind, SendOutcome, StopOutcome, StopReason};
 use common::{
     MS, PERIOD, at, batch, bus, deadline, hold, id, limb, run_tick, state_of, status, stop_of,
     two_limbs,
@@ -137,35 +137,69 @@ fn an_idle_bus_holds_all_but_disables_and_reporting_off_on_an_untrusted_tick() {
     }
 }
 
-/// Guards: safety - a status read in an idle limb's held tick leaves none of its drives fresh, so the first motion after
-/// it is refused as expired feedback rather than sent on a status whose real age the tick can't bound (PLAN.md item 3,
-/// item 6 Silence row; units-and-frames.md section 5).
+/// Guards: safety - an idle limb's held tick checks its batch against the freshness its drain stamped, holds any motion
+/// in it unsent without stopping, then clears that freshness; a status read after the tick's sends counts again unless
+/// the drain left frames queued. So motion on a later tick, before such a status, is refused as expired feedback
+/// rather than sent on a status whose real age the tick can't bound (PLAN.md item 3, item 6 Silence row;
+/// units-and-frames.md section 5).
 #[test]
-fn a_status_read_on_a_held_tick_carries_no_motion() {
-    let mut bus = bus();
-    // Idle: control disables drive 101 at tick 0, and its Reset is read only in tick 1's drain, woken 2 ms late.
-    let disable = batch(0, &[Some(encode::disable(id(101))), None]);
-    run_tick(&mut bus, 0, Some(&disable), &[]);
-    let _ = bus.end(deadline(0));
-    let woke = PERIOD + 2 * MS;
-    bus.on_frame(woke, &status(101, Mode::Reset));
-    let _ = bus.begin(1, woke, PERIOD, Some(&batch(1, &[])));
-    let snap = bus.end(deadline(1));
-    assert_eq!(
-        (
-            state_of(&snap),
-            at(&snap, 0).fresh_ns,
-            at(&snap, 0).fresh_status
-        ),
-        (LimbState::Idle, None, None)
-    );
-    // Tick 2, on time: by its read time the status is 2 ms old, but motion on it is refused and stops the bus.
-    let sent = run_tick(&mut bus, 2, Some(&batch(2, &[Some(hold(101)), None])), &[]);
-    assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Disable)]);
-    assert_eq!(
-        stop_of(&bus.end(deadline(2))),
-        Some(StopReason::ExpiredFeedback { slot: 0 })
-    );
+fn a_held_tick_clears_the_freshness_its_drain_stamped() {
+    // (row, woken at, drain, whether drive 102's Reset read after the held Disable counts)
+    let rows = [
+        ("late wake", PERIOD + 2 * MS, Drain::Emptied, true),
+        ("backlog", PERIOD, Drain::Backlog, true),
+        ("backlog left queued", PERIOD, Drain::Unemptied, false),
+    ];
+    for (name, woke, drain, counts) in rows {
+        let mut bus = bus();
+        // Idle: control disables both drives at tick 0; drive 101's Reset is read only in tick 1's drain.
+        let disable = [
+            Some(encode::disable(id(101))),
+            Some(encode::disable(id(102))),
+        ];
+        run_tick(&mut bus, 0, Some(&batch(0, &disable)), &[]);
+        let _ = bus.end(deadline(0));
+        bus.on_frame(woke, &status(101, Mode::Reset));
+        bus.drained(drain);
+        // The held tick's batch moves drive 101 on that status and disables drive 102: the motion passes its check
+        // and is held, not sent, and the limb doesn't stop; the Disable goes, and 102's Reset is read after it.
+        let held = batch(1, &[Some(hold(101)), Some(encode::disable(id(102)))]);
+        let list = bus.begin(1, woke, PERIOD, Some(&held));
+        let sent: Vec<_> = list.iter().map(|s| (s.slot, s.kind)).collect();
+        assert_eq!(sent, [(1, SendKind::Command)], "{name}");
+        bus.sent(0, SendOutcome::Sent, woke);
+        bus.on_frame(deadline(1), &status(102, Mode::Reset));
+        let snap = bus.end(deadline(1));
+        assert_eq!(
+            (state_of(&snap), stop_of(&snap), snap.counters.held_batches),
+            (LimbState::Idle, None, 1),
+            "{name}"
+        );
+        let fresh_102 = counts.then_some(deadline(1));
+        let (a, b) = (at(&snap, 0), at(&snap, 1));
+        assert_eq!(
+            (a.fresh_ns, a.fresh_status.is_some()),
+            (None, false),
+            "{name}"
+        );
+        assert_eq!(
+            (b.fresh_ns, b.fresh_status.map(|f| f.read_ns)),
+            (fresh_102, fresh_102),
+            "{name}"
+        );
+        // Tick 2, on time: drive 101's status is 4 ms old or less by read time, but motion on it stops the limb.
+        let sent = run_tick(&mut bus, 2, Some(&batch(2, &[Some(hold(101)), None])), &[]);
+        assert_eq!(
+            sent,
+            [(0, SendKind::Disable), (1, SendKind::Disable)],
+            "{name}"
+        );
+        assert_eq!(
+            stop_of(&bus.end(deadline(2))),
+            Some(StopReason::ExpiredFeedback { slot: 0 }),
+            "{name}"
+        );
+    }
 }
 
 /// Guards: safety - ticks a stalled thread slept through are each a missed deadline and stop an active limb as a late
