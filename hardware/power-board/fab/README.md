@@ -17,9 +17,9 @@ Upload `marengo_pdu_revb-gerbers.zip` (the 14 files of `gerbers/`). On the order
 | Thickness | 1.6 mm |
 | Copper | **2 oz outer, 0.5 oz inner** |
 | Surface finish | **OSP** |
-| Via covering | **Epoxy filled and capped (IPC-4761 type VII), all vias.** 971 of the 1,865 vias are in pads (the FET tabs' heat path, the power GND pads, the bare heatsink pads). If the form asks per drill size: 0.3 mm (1,862 vias) and 0.5 mm (2). The board setup says capping and filling yes, but the Gerbers do not carry it |
+| Via covering | **Epoxy filled and capped (IPC-4761 type VII), all vias.** 971 of the 1,865 vias are in pads (the FET tabs' heat path, the power GND pads, the bare heatsink pads). Via drills on the board: 0.3 mm (1,862), 0.4 mm (1, VBUS at X 186.0, Y 174.6) and 0.5 mm (2); if the form asks per drill size, tick all three. The board setup says capping and filling yes, but the Gerbers do not carry it |
 | Solder mask | both sides, any colour. **The ten large openings on the bottom (B.Mask) are intended:** bare copper pads for the heatsink's gap pad, each inside one FET's drain copper. Answer "keep as designed" if asked |
-| Silkscreen | top only carries text; bottom is empty |
+| Silkscreen | top carries the text. The bottom file prints nothing: it holds no drawn item, only the bottom mask openings plotted clear (KiCad's subtract-soldermask), 874 operations. Tell the fab "no bottom silkscreen" if the form asks |
 | Minimum track / space | **0.2 mm / 0.2 mm** (the fab's minimum for 2 oz outer copper); smallest drill 0.3 mm, smallest via pad 0.6 mm; inner-plane clearance 0.3 mm (0.25 mm at the VBUS pours on L3/L4) |
 | Stack | L1 parts and power pours, L2 GND, L3 and L4 signals with VBUS pours over the stem, L5 GND, L6 power mirrors and heatsink pads. Ask which prepreg sits between L1 and L2 and put it in schematic/tools/stack.py (the absorber loop was simulated for 0.21 mm and 0.10 mm) |
 | Stencil | frameless, top side, from `gerbers/marengo_pdu_revb-F_Paste.gtp` |
@@ -36,7 +36,7 @@ Upload `marengo_pdu_revb-gerbers.zip` (the 14 files of `gerbers/`). On the order
 | `gerbers/*-Edge_Cuts.gm1` | outline |
 | `gerbers/*-PTH.drl`, `-NPTH.drl` | Excellon drills, mm: 1,906 plated hits (1,865 vias and 41 pad holes), 12 unplated |
 | `marengo_pdu_revb-gerbers.zip` | the 14 files above |
-| `marengo_pdu_revb-pos.csv` | centre, rotation and side of the 244 machine-placeable parts (the board is hand-assembled; this is for a pick-and-place quote or a placement aid). 18 more parts are fitted by hand only: through-hole parts, wire pads, test points, the copper link |
+| `marengo_pdu_revb-pos.csv` | centre, rotation and side of 244 parts (the board is hand-assembled; this is for a pick-and-place quote or a placement aid). It includes the through-hole connectors and the fuse holder (J1, J3, J24, J25, F2), which are soldered by hand afterwards (PRODUCTION_RUN step 6). The 18 fitted parts not in it: the wire pads J8, J9, J10 and J27, the copper link R53, and 13 test points (TP1–TP3, TP5, TP6, TP10–TP17) |
 | `bom-jlc.csv` | Comment, Designator, Footprint, Quantity for the 262 fitted parts of one board |
 | `bom-digikey.csv` | order quantities for two sets with spares, value or manufacturer part number, references; from [kit-2sets.csv](../kit-2sets.csv), which also lists the buck board. Passives are given by value, size and rating, not by a distributor's part number: pick those in the cart |
 

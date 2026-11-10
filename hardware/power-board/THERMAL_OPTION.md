@@ -189,7 +189,7 @@ datasheets checked states the lead inductance (LD/LS). The 35 nH figure assumes 
 | Heatsink | Commodity extruded aluminium, **120 × 69 × 36 mm, 27 fins, 4.6 mm base** (sold by JVFYI and others on Amazon/AliExpress/eBay). Fitted as bought (no cut). Drill 2.5 mm and tap M3 at 82 mm spacing on the centre line (positions below) | $10–14 | $20–28 |
 | Thermal pad | **Henkel Bergquist GAP PAD TGP 3000 (Gap Pad 3000S30), 0.020 in (0.51 mm), 8 × 16 in sheet, part GP3000S30-0.020-02-0816**: 3.0 W/mK, fiberglass-reinforced, dielectric breakdown over 3000 Vac (ASTM D149), UL 94 V-0. Cut one 120 × 69 mm piece per set from the one sheet, in one piece. Stocked by DigiKey, Mouser, RS and Farnell. Not the ARCTIC TP-3 named before: it has no rated breakdown voltage | about $60 a sheet (both sets from one; to confirm in the cart) | about $60 |
 | Screws | 2 × M3 × 12 stainless pan head + 2 × M3 flat washers per set | $0.50 | $1 |
-| **Total** | | **about $21–27 per set** | **about $41–53** |
+| **Total** | | **about $11–15 per set plus the shared $60 sheet** | **about $81–89** |
 
 Hole positions in the heatsink base (bottom end at board Y 196.5): **7.5 mm and 89.5 mm from that end, on the centre line
 (X 0)**, matching HS2 (Y 204) and HS1 (Y 286). The commodity part has a fin on its centre line, so the tapped hole runs

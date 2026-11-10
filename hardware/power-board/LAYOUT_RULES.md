@@ -105,8 +105,9 @@
   - **Masked copper is allowed on L6 inside the heatsink zone; bare copper only at the FET pads** (the rule as the
     board meets it; Joey to confirm): the VBUS stem, the signal vias through it and GND fill lie under the gap pad,
     under solder mask. **What the insulation rests on:** the ten bare pads are on eight nets (SW_D twice, MID twice,
-    and the six port drains, each at VBUS behind its 2 mΩ shunt), and the heatsink floats. The
-    0.5 mm gap pad is then the only insulation between a bare pad and the heatsink: one puncture makes the heatsink
+    and the six port drains, each at VBUS behind its 2 mΩ shunt), and the heatsink is tied to GND only through 100 kΩ
+    (R139, so a puncture shows on TP17 instead of shorting the pack). The
+    0.5 mm gap pad is the only insulation between a bare pad and the heatsink: one puncture makes the heatsink
     live at that pad's potential, and a second one under a pad of another net joins the two through the heatsink
     (SW_D to MID bridges bank A; SW_D to a port drain bridges both banks). The pad is therefore specified with a
     rated breakdown voltage: Henkel Bergquist GAP PAD TGP 3000, 0.020 in, over 3000 Vac, fiberglass-reinforced, cut in
@@ -240,7 +241,7 @@ that is never coated must not go on the pack.
 - **Inner GND planes and fills (In1–In4): 0.3 mm zone clearance** (2026-11-09; `PLANE_CLEAR` in
   [schematic/tools/stack.py](schematic/tools/stack.py)). The zones were built with 0.6 mm, the old uncoated outer-layer
   value, and a row of vias at 0.85 mm pitch under a fine-pitch IC then cut the planes away completely. IPC-2221B B1
-  (internal conductors, 51–100 V) asks 0.1 mm. Measured on the routed board (2026-11-10): every via and all 40 plated
+  (internal conductors, 51–100 V) asks 0.1 mm. Measured on the routed board (2026-11-10): every via and all 41 plated
   pads keep their inner lands; a 0.6/0.3 mm via's drill is 0.45 mm from the GND planes (0.40 mm from the VBUS pours on
   In2/In3, whose clearance is 0.25 mm), and the 12 unplated holes (connector pegs) are 0.25 mm from the planes, the
   board's hole clearance. JLCPCB's capability page (read 2026-11-10) asks 0.2 mm from an inner-layer via hole to

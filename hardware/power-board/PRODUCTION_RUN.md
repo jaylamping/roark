@@ -17,7 +17,7 @@ so 5 + 5 bare boards are ordered and 2 + 2 are built. **All prices are estimates
 | JLC shipping, DHL | about $25–45 |
 | JLC prepaid duty (US DDP: 35 % on boards, 90 % on stencils) | about $51–57 |
 | **Total, 2 sets** | **about $470–515** |
-| Heatsink kit, thermal option D (chosen; [THERMAL_OPTION.md](THERMAL_OPTION.md)): 120 × 69 × 36 mm extruded heatsink (no cut), one 8 × 16 in sheet of Bergquist GAP PAD TGP 3000 0.020 in for both sets (about $60, to confirm in the cart; it replaces the unrated pad), 2 × M3, 2 sets | about $80–90 |
+| Heatsink kit, thermal option D (chosen; [THERMAL_OPTION.md](THERMAL_OPTION.md)): 120 × 69 × 36 mm extruded heatsink (no cut), one 8 × 16 in sheet of Bergquist GAP PAD TGP 3000 0.020 in for both sets (about $60, to confirm in the cart; it replaces the unrated pad), 2 × M3, 2 sets ([THERMAL_OPTION.md](THERMAL_OPTION.md) "Parts": $20–28 + $60 + $1) | about $81–89 |
 | Conformal coat (Joey chose coating, 2026-11-09): MG Chemicals 419D acrylic, 55 mL brush bottle, enough for both boards; Kapton tape for masking | about $10 |
 | Tools (section 6), one-off | about $110–200 |
 
@@ -76,8 +76,8 @@ Both boards are ordered as **two separate designs in one JLC order**, not one pa
 | TPS7A4001 (U2) | HVSSOP-8 with exposed pad | leaded already | hot plate |
 
 - **Fine-pitch leaded ICs are already in their most hand-friendly packages:** LM5069 (MSOP-10, its only package), INA237
-  (VSSOP-10), TPS48100/TPS48111 (VSSOP-19). The 0.15 mm gaps inside the U2 and U7 footprints are footprint geometry, not
-  a package choice.
+  (VSSOP-10), TPS48100/TPS48111 (VSSOP-19). Inside the U1, U2 and U7 footprints the narrowest pad-to-pad gap is 0.2 mm
+  (TI's land patterns, 2026-11-10); that is footprint geometry, not a package choice.
 - **Probe pads added** on BAT, SW_D, ABS, CL_D, V_L1–V_L3, PORT_FLT_N, WDO_N and +3V3_PI, on top of the existing GATE,
   GATE_A, UVLO, FLT_A, VCTL, RUN, VBUS, BRK_IN and MID pads and the three GND loops.
 - **Thermal relief:** solid connections only where current needs them (the power pads, the FET tabs, the pigtail and pack
@@ -187,7 +187,7 @@ Work on the buck board first; it's the practice run. Inspect and test between ev
 4. Inspect all the fine-pitch ICs, the VSON watchdog (look at the side fillets) and the FET tabs (solder flowed out to the
    pad edge). Rework with flux and the iron, or the hot-air gun.
 5. Wash off the flux (IPA and a brush) around U1, U7, U8 and the latch block, no-clean flux included, and let it dry
-   fully (warm air or 30 min). The ESTOP_SAFE nets need clean, dry board: U1 pin 2 (SH_P, 54 V) sits 0.15 mm from pin 3
+   fully (warm air or 30 min). The ESTOP_SAFE nets need clean, dry board: U1 pin 2 (SH_P, 54 V) sits 0.2 mm from pin 3
    (UVLO), and leakage of about 0.44–0.57 MΩ there closes bank B by itself (UVLO 33k to GND plus U1's 21 µA hysteresis
    sink against 54.6–57.5 V). Inspect the gap under magnification: no residue, no solder whisker. An unpowered ohmmeter
    check can't see it in-circuit (UVLO has 33k to GND and SH_P about 50 kΩ to GND through the MID bias and the absorber
