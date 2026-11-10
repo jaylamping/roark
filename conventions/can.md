@@ -124,7 +124,7 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   before the next tick starts, never on a tick whose reads can't be trusted, never to a limb the veto would stop or
   while control is silent, and writes only to an
   idle limb's drive with no command of that tick unanswered. Every request gets exactly one result, including when the
-  thread ends (a result control's full ring can't take is dropped, and counted until the last snapshot is out), and none is retried. **Why:** a parameter read must not crowd out a command, and a write's answer is a plain status, like a command's, so
+  thread ends, and none is retried. **Why:** a parameter read must not crowd out a command, and a write's answer is a plain status, like a command's, so
   a write goes only where that status is least likely to be taken for a command's reply; a reply more than a tick late still can be, so a write's result proves nothing about the value and preflight reads every write back. Since `canTimeout` counts from any frame, slow traffic must never keep a
   stopped drive alive.
 - **One schedule for every bus.** Every bus thread and the control thread tick from the one origin the runtime picks, so

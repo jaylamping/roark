@@ -14,7 +14,7 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   independent `candump -L -x` capture (needs `can-utils`).
 - `exit.rs`: a bus of two active limbs told to exit with control's snapshot ring full stops every limb and returns
   once the ring takes a snapshot with every limb stopped, once control drops the ring, or after its wait when control
-  never reads again. Its tests
+  never reads again; and a bus that ends counts the slow results control's ring can't take. Its tests
   share `can0`, one at a time (`.config/nextest.toml`).
 
 The bus loop's fault tests (PLAN item 4, "Done when") join it as the safety layer lands.

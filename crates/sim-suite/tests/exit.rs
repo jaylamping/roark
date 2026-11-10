@@ -1,6 +1,7 @@
 //! A bus with two active limbs told to exit while control's ring is full, on `vcan` against `sim-drive`: it stops every
 //! limb, and returns once control's ring takes a snapshot with every limb stopped, once control drops the ring, or after
-//! its wait when control never reads again. The helpers are `bus.rs`'s, small enough to copy until the sim suite has a shared module.
+//! its wait when control never reads again. And a bus that ends with slow results control's ring can't take counts
+//! them. The helpers are `bus.rs`'s, small enough to copy until the sim suite has a shared module.
 #![cfg(target_os = "linux")]
 
 use std::io;
@@ -10,11 +11,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use can::{
-    BusConfig, BusDrive, BusLinks, CommandBatch, LimbState, Snapshot, StopOutcome, StopReason,
-    Timing,
+    BusConfig, BusDrive, BusLinks, CommandBatch, LimbState, SlowKind, SlowOutcome, SlowRefusal,
+    SlowRequest, SlowResult, Snapshot, StopOutcome, StopReason, Timing,
 };
 use robstride::{
-    DeviceId, Drive, Frame, MitCommand, Mode, Model, NewtonMeters, NmPerRad, NmSecPerRad,
+    DeviceId, Drive, Frame, MitCommand, Mode, Model, NewtonMeters, NmPerRad, NmSecPerRad, Param,
     RadPerSec, Radians, Uid, encode,
 };
 use sim_drive::{SimDrive, ensure_vcan, serve};
@@ -513,4 +514,64 @@ fn a_bus_told_to_exit_ends_at_once_when_control_drops_its_ring() {
     let last = stopped_by_the_exit(&ended);
     // The thread ended at its first all-stopped snapshot, not after a wait for a reader that is gone.
     assert_eq!(last.tick, ended.stopped_at(&last));
+}
+
+/// Guards: protocol - nothing the bus thread handles disappears silently, its last slow results included: a bus told to
+/// exit gives every request still in its ring its one result, and those control's full ring can't take, after any
+/// snapshot could count them, are counted in what the thread hands back (can.md section 2: bounded everything, every
+/// drop counted and reported).
+#[test]
+fn a_bus_that_ends_counts_the_slow_results_control_cant_take() {
+    const ASKED: u32 = 3;
+    ensure_vcan(BUS).unwrap();
+    let dir = std::env::temp_dir().join(format!("sim-suite-slow-exit-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let session = Session::start(&dir, info(), 1_794_178_885_000_000_000).unwrap();
+    let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
+    let epoch = recording.epoch();
+    let recorder = Recorder::spawn(recording).unwrap();
+    let (mut requests_tx, requests) = rtrb::RingBuffer::new(4);
+    for tag in 1..=ASKED {
+        let request = SlowRequest {
+            tag,
+            slot: 0,
+            kind: SlowKind::Read(Param::Vbus),
+        };
+        assert!(requests_tx.push(request).is_ok());
+    }
+    // Room for one result, which control never takes.
+    let (results_tx, mut results) = rtrb::RingBuffer::new(1);
+    // Told to exit before it starts, with its only limb idle: it ends at its first drain, before any snapshot.
+    let bus = can::spawn(
+        BusConfig {
+            name: BUS.to_owned(),
+            drives: vec![drive(101, 0)],
+            timing: timing(),
+        },
+        BusLinks {
+            commands: rtrb::RingBuffer::new(1).1,
+            snapshots: rtrb::RingBuffer::new(1).0,
+            recorder: buses.remove(0),
+            epoch,
+            requests,
+            results: results_tx,
+            start: soon(),
+            exit: Arc::new(AtomicBool::new(true)),
+        },
+    )
+    .unwrap();
+    let done = bus.thread.join().unwrap();
+    assert!(done.error.is_none(), "{:?}", done.error);
+    assert_eq!(done.last.map(|s| s.tick), None);
+    assert_eq!(
+        results.pop().ok(),
+        Some(SlowResult {
+            tag: 1,
+            slot: 0,
+            outcome: SlowOutcome::Refused(SlowRefusal::Ended),
+        })
+    );
+    assert_eq!(done.slow_results_dropped, u64::from(ASKED - 1));
+    recorder.close(vec![done.recorder]).unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
 }

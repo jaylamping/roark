@@ -299,7 +299,8 @@ impl BusTick {
         refusal
     }
 
-    /// A slow result couldn't be handed to control (its ring was full): counted in the next snapshot.
+    /// A slow result couldn't be handed to control (its ring was full): counted in the next snapshot, and, for one
+    /// dropped after the last, in what the thread hands back when it ends (`BusExit::slow_results_dropped`).
     pub fn slow_result_dropped(&mut self) {
         self.counters.slow_results_dropped += 1;
     }

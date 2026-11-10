@@ -118,6 +118,10 @@ pub struct BusExit {
     /// the ring couldn't take counts itself in `counters.snapshots_dropped`, so a control that stopped reading still
     /// learns from here that it never got it.
     pub last: Option<Snapshot>,
+    /// Slow results control's ring couldn't take over the thread's whole run: `last`'s
+    /// `counters.slow_results_dropped` and those dropped after it, when the ending thread gave every request it still
+    /// held, or found in its ring, its one result.
+    pub slow_results_dropped: u64,
     /// The socket or clock error that ended it, if one did.
     pub error: Option<io::Error>,
 }
@@ -139,7 +143,8 @@ pub struct BusLinks {
     /// Slow requests from control (parameter reads, allowlisted writes, get-ID), queued as room frees up.
     pub requests: Consumer<SlowRequest>,
     /// Each slow request's one result. When the ring is full the result is dropped and counted
-    /// (`Counters::slow_results_dropped`), and the requester times out.
+    /// (`Counters::slow_results_dropped`, and in all at the end [`BusExit::slow_results_dropped`]), and the requester
+    /// times out.
     pub results: Producer<SlowResult>,
     /// Snapshots out. When control falls behind and the ring is full, the newest is dropped and counted
     /// (`Counters::snapshots_dropped`), so control must keep up.
@@ -157,7 +162,9 @@ pub struct BusLinks {
     /// ring has taken a snapshot with every limb stopped ([`Snapshot::stopped`]); control has dropped its end of the
     /// ring; or one stop window (`Timing::stop_confirm_ns`) of such snapshots, in ticks, has gone untaken (a control
     /// that stopped reading must not hold the join). It returns at the next tick's drain, so the frames still in the
-    /// socket are recorded, and the last snapshot made is [`BusExit::last`] in every case. A socket or clock error ends
+    /// socket are recorded and the reply to a slow request sent in the last slack still answers it; then every slow
+    /// request the thread holds or finds in its ring gets its one result. The last snapshot made is [`BusExit::last`]
+    /// in every case. A socket or clock error ends
     /// the thread without `exit`, once a snapshot with every limb stopped is made, taken or not; a clock that can't be
     /// read at the start ends it before any snapshot.
     pub exit: Arc<AtomicBool>,
@@ -392,13 +399,15 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
     let mut outcome = BusExit {
         recorder: links.recorder,
         last: None,
+        slow_results_dropped: 0,
         error: None,
     };
     let clock = match Clock::new(links.epoch, links.start) {
         Ok(clock) => clock,
         Err(e) => {
             outcome.error = Some(e);
-            end_slow(&mut tick, &mut links.requests, &mut links.results);
+            outcome.slow_results_dropped =
+                end_slow(&mut tick, &mut links.requests, &mut links.results);
             return outcome;
         }
     };
@@ -488,7 +497,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         leaving = exit_wait.done(&snap, taken, exiting, links.snapshots.is_abandoned());
         n += 1;
     }
-    end_slow(&mut tick, &mut links.requests, &mut links.results);
+    outcome.slow_results_dropped = end_slow(&mut tick, &mut links.requests, &mut links.results);
     outcome
 }
 
@@ -658,12 +667,13 @@ fn hand_back(tick: &mut BusTick, results: &mut Producer<SlowResult>) {
 }
 
 /// The thread is ending: every slow request still held or still in the ring gets its one result (crates/can/README.md,
-/// Slow requests). A drop here can't be counted in a snapshot; the requester times out.
+/// Slow requests). Returns every result dropped over the thread's run, these included, for [`BusExit`]: no snapshot
+/// comes after these; the requester times out.
 fn end_slow(
     tick: &mut BusTick,
     requests: &mut Consumer<SlowRequest>,
     results: &mut Producer<SlowResult>,
-) {
+) -> u64 {
     let refusal = tick.end_slow();
     hand_back(tick, results);
     for _ in 0..requests.buffer().capacity() {
@@ -672,6 +682,7 @@ fn end_slow(
         };
         refuse(tick, results, request, refusal);
     }
+    tick.counters.slow_results_dropped
 }
 
 /// Request `request`'s one result, a refusal, onto control's ring; a full ring drops it and counts it.
