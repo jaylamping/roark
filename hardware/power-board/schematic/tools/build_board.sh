@@ -16,8 +16,9 @@
 # The copper between the blocks comes from the routers, whose result depends on the order of the runs: a rebuild gives
 # the same blocks and hand-laid copper but not the same copper in between, and may leave connections open that the
 # committed board has closed by rip-up and re-route (tools/rrr.sh, rip_window.py). verify_board.sh says so.
-# The blocks, finish and verify stages were added on 2026-11-10 from the steps the routed board was made with; a full
-# rebuild through them has not been run yet.
+# A full rebuild (2026-11-10, about 70 minutes) reproduces the placement, pours, blocks, hand-laid copper and generated
+# items, and ends with 68 connections open on 27 nets and verify_board.sh failing: LAYOUT_RULES.md, "Exceptions and
+# hand-laid copper".
 set -uo pipefail
 W=$(cd "$1" && (pwd -W 2>/dev/null || pwd)); FROM=${2:-place}   # pwd -W: a Windows path for the Windows Pythons
 ROOT=$(cd "$(dirname "$0")/.." && pwd); LAYOUT="$ROOT/../layout"

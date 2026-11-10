@@ -354,10 +354,22 @@ the board by verify_board.sh:
 
 Everything else between the templates (the buses between the blocks, EN/INP/PORT_FLT_N runs, the J24 nets, the GND
 vias) was found by schematic/tools/finish_route.py, whose result depends on the order of the runs: a rebuild from the placement
-gives the same blocks but not the same copper in between. schematic/tools/build_board.sh now runs the whole sequence
-(placement, power stage, staged routing, blocks, hand-laid copper, finishing router, joint_fix, guards, heatsink pads,
-verify_board.sh); its last three stages were written from the steps the board was made with and have not been run as
-one rebuild yet.
+gives the same blocks but not the same copper in between. schematic/tools/build_board.sh runs the whole sequence
+(placement, power stage, staged routing, blocks, hand-laid copper, finishing router, joint_fix, BAT mirror, guards,
+heatsink pads, verify_board.sh).
+
+**A full rebuild was run on 2026-11-10** (scratch copy, about 70 minutes) and does not reproduce the committed board:
+- What it reproduces: the placement (one 0.14 mm courtyard overlap, TP7 against C39: latch_block.py's table places a
+  test point by its centre and loses its rotation), the pours and via arrays, the three designed blocks and the nine
+  hand-laid specs (the port, U8, latch and hand-laid checks all pass on it), the heatsink pads, the BAT mirror, every
+  pour floor.
+- What it does not: the routers' copper between the blocks. The finishing rounds stop at **68 open connections on
+  27 nets** (GND 14, I2C_SDA 7, PORT_FLT_N 6, VCTL 5, I2C_SCL 4, the port EN and INP runs, the clamp's comparator
+  nets), with 5 clearance violations, 68 dangling ends, FLT_A on In2 within 1.5 mm of the SH pair, a MID via under the
+  latch block, the SH pair 24 % paired against its 61 % floor, and 19 vias in the VBUS band against 18. The committed
+  board closed these by rip-up and re-route passes run by hand (rrr.sh, rip_window.py, lay_path.py) that are not in
+  the script. So the committed board file is the source of the routing; the build script is the source of everything
+  designed. verify_board.sh says which is which on any rebuild.
 
 Gate parts (schematic/tools/place.py, 2026-11-09):
 - Each port's gate-source zener (D24, D27, D30, D33, D36, D39) sits at its FET's gate pin, between the meter and the FET.
