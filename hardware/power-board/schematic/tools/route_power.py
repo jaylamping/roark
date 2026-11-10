@@ -147,6 +147,7 @@ for net,layer,(x0,x1,y0,y1),name in POURS:
         if x0<X<x1 and y0<Y<y1 and p.IsOnLayer(layer) and p.GetNetname() not in (net,''):
             bad.setdefault(name,set()).add(f'{r}.{p.GetNumber()}={p.GetNetname()}')
 for k,v in bad.items(): print('foreign pads in',k,':',' '.join(sorted(v)))
+import vbus_copper; vbus_copper.build(b)   # the stem's parallel copper: In2 / In3 pours and the widened L6 outline
 print('vias:',sum(n for _,n,_ in VIAS))
 pcbnew.ZONE_FILLER(b).Fill(b.Zones())
 b.Save(sys.argv[2]); print('saved',sys.argv[2])

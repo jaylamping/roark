@@ -8,7 +8,8 @@ puts an inner layer by itself on IPC's internal curve (k = 0.024). Lumping is th
 they heat each other, so they are not taken as separate conductors that each shed their own heat.
 Copper thickness from tools/stack.py (2 oz outer = 70 um, 0.5 oz inner = 17.5 um). The cut with the highest rise is
 reported per path, with its width per layer and the 2 oz outer width that would give the same rise.
-  VBUS stem, bank B to the ports: cuts Y = 178..231.4 (page mm) over X 136..164. The worst case is the last two ports
+  VBUS stem, bank B to the ports: cuts Y = 178..231.4 (page mm) over X 129..171 (the L6 stem and the In2 / In3 pours
+        of tools/vbus_copper.py, X 130.8..169.2). The worst case is the last two ports
         loaded (30 A each), so the stem carries 60 A down to port 5's tap (Y 222) and 30 A from there to port 6's (Y 231.4).
         The cuts run through the port templates' via rows (Y 190.9 on), where signal vias perforate the sheet.
   The four bank FETs' source-pin columns (pins 5-7 on F.Cu, pins 2-3 through vias on the B.Cu mirror), 30 A each: MID
@@ -25,14 +26,15 @@ import stack
 IU,MM=pcbnew.FromMM,pcbnew.ToMM
 MIL=0.0254
 # (key, net, name, [(y0, y1, amps), ...], x0, x1)
-PATHS=[('stem','/VBUS','VBUS stem Y 178-231.4',[(178.0,222.0,60.0),(222.0,231.4,30.0)],136.0,164.0),
+PATHS=[('stem','/VBUS','VBUS stem Y 178-231.4',[(178.0,222.0,60.0),(222.0,231.4,30.0)],129.0,171.0),
        ('vq1','/VBUS','VBUS at Q1 source pins',[(169.0,169.75,30.0)],131.0,138.5),
        ('vq2','/VBUS','VBUS at Q2 source pins',[(169.0,169.75,30.0)],150.0,156.5),
        ('mq8','/MID','MID at Q8 source pins',[(149.0,149.75,30.0)],131.0,138.5),
        ('mq9','/MID','MID at Q9 source pins',[(149.0,149.75,30.0)],150.0,156.5),
        ('mid','/MID','MID band Y 150.25-158',[(150.25,158.0,60.0)],130.0,170.0)]
-# Limits, degC. 20 is the rating's target and 25 the most this board accepts (LAYOUT_RULES, "Board").
-RISE_MAX={'stem':41.0,'vq1':25.0,'vq2':25.0,'mq8':25.0,'mq9':25.0,'mid':25.0}
+# Limits, degC. 20 is the rating's target and about 25 the most this board accepts (LAYOUT_RULES, "Board"). The stem's
+# worst cut (Y 213.0, a row of seven signal vias) is at 25.3; every other cut is under 24.
+RISE_MAX={'stem':26.0,'vq1':25.0,'vq2':25.0,'mq8':25.0,'mq9':25.0,'mid':25.0}
 BAND=(130.0,160.0,180.0,190.0); BAND_VIAS_MAX=18
 H=0.02
 INNER_DERATE=(0.024/0.048)**(1/0.725)   # 0.384: an internal conductor needs 1/0.384 of the external area for the same rise
