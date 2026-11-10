@@ -94,9 +94,11 @@ impl SimDrive {
     /// whatever falls due at `now` happens with the fault in effect.
     ///
     /// # Errors
-    /// [`FaultRefused`] for a fault the drive can't honour; nothing is recorded then.
+    /// [`FaultRefused`] for a fault the drive can't honour, or a `now` the drive has already been stepped past; nothing
+    /// is recorded then.
     pub fn inject(&mut self, now: Instant, fault: Fault) -> Result<(), FaultRefused> {
         self.check(fault)?;
+        self.check_time(now)?;
         self.advance_to(now, false);
         self.apply(now, fault);
         self.advance(now);
@@ -110,12 +112,18 @@ impl SimDrive {
     /// past, or a full plan ([`crate::FAULT_PLAN`]).
     pub fn schedule(&mut self, trigger: Trigger, fault: Fault) -> Result<(), FaultRefused> {
         self.check(fault)?;
-        if let (Trigger::At(at), Some(stepped)) = (trigger, self.stepped)
-            && at < stepped
-        {
-            return Err(FaultRefused::Past);
+        if let Trigger::At(at) = trigger {
+            self.check_time(at)?;
         }
         self.plan.schedule(trigger, fault)
+    }
+
+    /// Refuse a time the drive has already been stepped past: a fault can't take effect then any more.
+    fn check_time(&self, at: Instant) -> Result<(), FaultRefused> {
+        match self.stepped {
+            Some(stepped) if at < stepped => Err(FaultRefused::Past),
+            _ => Ok(()),
+        }
     }
 
     fn check(&self, fault: Fault) -> Result<(), FaultRefused> {

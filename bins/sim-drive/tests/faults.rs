@@ -17,8 +17,12 @@ use sim_drive::{
 
 /// Drive 7, enabled and in Run by `t + 11 ms`, with every reply so far taken.
 fn running() -> (SimDrive, Instant) {
+    running_from(Instant::now())
+}
+
+/// Drive 7, enabled at `t` and in Run by `t + 11 ms`, with every reply so far taken.
+fn running_from(t: Instant) -> (SimDrive, Instant) {
     let mut sim = SimDrive::new(rs03(7), Uid([7; 8]), 11);
-    let t = Instant::now();
     sim.receive(t, host(encode::enable(id(7))));
     let up = t + ms(11);
     assert_eq!(
@@ -393,8 +397,9 @@ fn timed_faults_land_in_time_order() {
 
     // The joint moving toward a target stops when the drive drops to Reset at 10 ms, not when it is next stepped.
     let target = mit_to(1.0);
-    let (mut late, t) = running();
-    let (mut on_time, _) = running();
+    let start = Instant::now();
+    let (mut late, t) = running_from(start);
+    let (mut on_time, _) = running_from(start);
     for sim in [&mut late, &mut on_time] {
         let _ = ask(sim, t, target);
     }
@@ -496,6 +501,7 @@ fn faults_the_drive_cant_honour_are_refused() {
         sim.schedule(Trigger::At(before), Fault::Silent),
         Err(FaultRefused::Past)
     );
+    assert_eq!(sim.inject(before, Fault::Silent), Err(FaultRefused::Past));
     assert_eq!(sim.inject(t, Fault::Late(MAX_LATE)), Ok(()), "at the limit");
     assert_eq!(
         sim.take_injected().map(|i| i.fault),

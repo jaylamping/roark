@@ -84,7 +84,7 @@ pub enum FaultRefused {
     /// `OnMit(0)`: MIT commands are counted from 1.
     #[error("OnMit counts from 1")]
     OnMitZero,
-    /// An `At` time the drive has already been stepped past: it can't take effect then any more.
+    /// A time the drive has already been stepped past (an injection's, or an `At`): it can't take effect then any more.
     #[error("the drive is already past that time")]
     Past,
     /// A `Late` past [`MAX_LATE`].

@@ -209,8 +209,9 @@ fn can_timeout_drops_an_enabled_drive_to_reset() {
 
     // A power cycle: Reset, and canTimeout back to 0.
     let (mut sim, t) = enabled(true);
-    sim.inject(t, sim_drive::Fault::Reboot).unwrap();
-    let read = ask(&mut sim, t, encode::param_read(id(5), Param::CanTimeout));
+    let up = t + ms(11);
+    sim.inject(up, sim_drive::Fault::Reboot).unwrap();
+    let read = ask(&mut sim, up, encode::param_read(id(5), Param::CanTimeout));
     let off = ParamOutcome::Read(ParamValue::CanTimeout(CanTimeout::OFF));
     assert_eq!(
         read,
