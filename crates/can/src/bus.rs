@@ -21,10 +21,6 @@ use crate::types::{
     BusState, CommandBatch, ConfigError, Drain, SendList, SendOutcome, Snapshot, Timing,
 };
 
-/// The ticks a stopped bus waits after `exit` for control's ring to take its Stopped snapshot before the thread returns
-/// anyway with that snapshot in [`BusExit::last`]: a control that has stopped reading must not hold the join (and the
-/// recorder's close) forever. A dropped consumer ends the wait at once.
-const EXIT_WAIT_TICKS: u32 = 100;
 /// The most frames a tick's drain may find before the send. More than that queued means the thread can't tell what the
 /// bus said in time, so it stops (1 Mbit/s carries about 8,000 frames a second: 32 a tick at 250 Hz).
 const DRAIN_MAX: usize = 256;
@@ -117,7 +113,9 @@ pub enum BusRunError {
 pub struct BusExit {
     /// The recorder producer, for `telemetry::Recording::close`.
     pub recorder: BusRecorder,
-    /// The last snapshot taken, whether or not control's ring took it.
+    /// The last snapshot made, whether or not control's ring took it; `None` if the thread ended before its first. One
+    /// the ring couldn't take counts itself in `counters.snapshots_dropped`, so a control that stopped reading still
+    /// learns from here that it never got it.
     pub last: Option<Snapshot>,
     /// The socket or clock error that ended it, if one did.
     pub error: Option<io::Error>,
@@ -144,9 +142,12 @@ pub struct BusLinks {
     pub recorder: BusRecorder,
     /// The session's monotonic zero.
     pub epoch: Epoch,
-    /// Set to end the thread: an active bus stops its drives first, then the thread returns once control's ring has
-    /// taken the Stopped snapshot, or after `EXIT_WAIT_TICKS` ticks without that (the last snapshot is then
-    /// [`BusExit::last`]).
+    /// Set to end the thread. An idle bus returns at once. Anything else is stopped first (an active or stopping bus
+    /// finishes its stop), and the thread returns at the first of three: control's ring has taken a Stopped snapshot;
+    /// control has dropped its end of the ring; or one stop window (`Timing::stop_confirm_ns`) of Stopped snapshots,
+    /// in ticks, has gone untaken (a control that stopped reading must not hold the join). The last snapshot made is
+    /// [`BusExit::last`] in every case. A socket or clock error ends the thread without `exit`, once its Stopped
+    /// snapshot is made, taken or not.
     pub exit: Arc<AtomicBool>,
 }
 
@@ -319,6 +320,18 @@ fn sleep_relative(span: Duration) {
     std::thread::sleep(span);
 }
 
+/// The Stopped snapshots a bus told to exit makes for a control's ring that takes none of them before the thread returns
+/// anyway: one stop window (`Timing::stop_confirm_ns`, 100 ms by default) in ticks of this bus, rounded up, at least
+/// one. The shutdown already gives the drives that window to confirm their Disables; a control that is alive reads its
+/// ring well inside one more, and one that isn't must not hold the join (and the recorder's close). Provisional, like
+/// the stop window itself: tuned with the rest of the timing on the real adapter (PLAN step 8).
+fn exit_wait_ticks(timing: Timing) -> u64 {
+    timing
+        .stop_confirm_ns
+        .div_ceil(timing.period_ns.max(1))
+        .max(1)
+}
+
 fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
     let timing = tick.timing();
     let mut outcome = BusExit {
@@ -333,11 +346,12 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             return outcome;
         }
     };
+    let exit_wait = exit_wait_ticks(timing);
     let mut n: u64 = 0;
     // Whether a Stopped snapshot reached control's ring (`outcome.last` is the last one made, taken or not), and the
-    // ticks a stopped bus has waited for that since `exit`.
+    // Stopped snapshots made since `exit` while it hadn't.
     let mut ring_took_stopped = false;
-    let mut exit_waits: u32 = 0;
+    let mut exit_waits: u64 = 0;
     loop {
         let due = clock.at(n, timing.period_ns);
         if let Err(e) = clock.sleep_until(due) {
@@ -363,10 +377,10 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         if let Err(e) = drain(socket, &clock, &mut tick, &mut batch) {
             lose(&mut tick, &mut outcome, e);
         }
-        if links.exit.load(Ordering::Acquire) {
-            // Done once nothing needs stopping and control's ring has the end: idle, or stopped in a snapshot the ring
-            // took, or (a control that stopped reading) `EXIT_WAIT_TICKS` of waiting for that. A bus this drain stopped
-            // (a latched error) runs on to publish it.
+        let exiting = links.exit.load(Ordering::Acquire);
+        if exiting {
+            // An idle bus has nothing to stop and no end to publish; anything enabled is stopped first. A stopped bus
+            // runs the tick to publish its snapshot, and the exit is decided after that.
             match tick.state() {
                 BusState::Idle => {
                     // The frames this drain read are still recorded, with the health they left the bus in.
@@ -374,17 +388,8 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
                     outcome.recorder.record(batch);
                     break;
                 }
-                BusState::Stopped
-                    if ring_took_stopped
-                        || exit_waits >= EXIT_WAIT_TICKS
-                        || links.snapshots.is_abandoned() =>
-                {
-                    batch.valid = tick.healthy();
-                    outcome.recorder.record(batch);
-                    break;
-                }
-                BusState::Stopped => exit_waits += 1,
                 BusState::Active | BusState::Stopping { .. } => tick.request_stop(),
+                BusState::Stopped => {}
             }
         }
         let command = newest(&mut links.commands);
@@ -403,18 +408,31 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         if let Err(e) = collect(socket, &clock, &mut tick, &mut batch, deadline) {
             lose(&mut tick, &mut outcome, e);
         }
-        let snap = tick.end(clock.ns(mono_now()));
+        let mut snap = tick.end(clock.ns(mono_now()));
         batch.valid = snap.healthy;
         if links.snapshots.push(snap).is_err() {
-            // Control's ring is full: it keeps its older snapshots and this one is lost, counted in the next.
+            // Control's ring is full: it keeps its older snapshots and this one is lost, counted in the next, and in the
+            // copy kept here, which may be the one `BusExit::last` hands back.
             tick.snapshot_dropped();
+            snap.counters.snapshots_dropped += 1;
         } else if snap.state == BusState::Stopped {
             ring_took_stopped = true;
         }
         outcome.recorder.record(batch);
         outcome.last = Some(snap);
-        if outcome.error.is_some() && snap.state == BusState::Stopped {
-            break;
+        if snap.state == BusState::Stopped {
+            // A socket or clock error ends the thread once it is published: there is no bus left to wait on. Otherwise
+            // `exit` ends it once control's ring has taken a Stopped snapshot, control has dropped its ring, or
+            // `exit_wait` Stopped snapshots have gone untaken.
+            if outcome.error.is_some() {
+                break;
+            }
+            if exiting {
+                exit_waits += 1;
+                if ring_took_stopped || links.snapshots.is_abandoned() || exit_waits >= exit_wait {
+                    break;
+                }
+            }
         }
         n += 1;
     }
