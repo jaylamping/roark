@@ -63,7 +63,7 @@ impl BusTick {
                     self.counters.echoes += 1;
                     // Only the tick's own kinds of frame: a slow request's echo never hides the enable sequence's.
                     if batch_may_carry(echo.kind)
-                        && let Some(d) = self.slot_of(echo.target)
+                        && let Some(d) = drive_of(&mut self.drives, echo.target)
                     {
                         d.last_echo = Some(EchoSeen {
                             kind: echo.kind,
@@ -76,7 +76,7 @@ impl BusTick {
             }
             Ok(Inbound::Status(status)) => self.on_status(read_ns, status, true),
             Ok(Inbound::Report(status)) => self.on_status(read_ns, status, false),
-            Ok(Inbound::Fault { device, faults, .. }) => match self.slot_of(device) {
+            Ok(Inbound::Fault { device, faults, .. }) => match drive_of(&mut self.drives, device) {
                 // Warnings alone aren't a fault (the codec: non-zero fault bytes mean faulted).
                 Some(d) => d.fault_seen |= faults != [0; 4],
                 None => self.counters.unexpected += 1,
@@ -191,10 +191,6 @@ impl BusTick {
         self.drives
             .iter()
             .position(|d| d.is_some_and(|d| d.device == device))
-    }
-
-    fn slot_of(&mut self, device: DeviceId) -> Option<&mut DriveState> {
-        drive_of(&mut self.drives, device)
     }
 }
 
