@@ -119,7 +119,12 @@ impl BusTick {
         }
         let limb = limbs.get(d.limb).copied().flatten().map(|l| l.state);
         let active = limb == Some(LimbState::Active);
-        let stopping = matches!(limb, Some(LimbState::Stopping { .. }));
+        // A Reset confirms only while the limb is stopping and inside the stop's reply allowance.
+        let replies_ns = self.timing.stop_replies_ns();
+        let confirms = matches!(
+            limb,
+            Some(LimbState::Stopping { since_ns }) if read_ns < since_ns.saturating_add(replies_ns)
+        );
         d.note_mode(status.header.mode, active, unordered);
         if !answer {
             return;
@@ -144,9 +149,10 @@ impl BusTick {
         } else {
             self.counters.unsolicited += 1;
         }
-        // Any Reset after the stop's Disable confirms it, even behind an earlier status still in flight. Once the limb
-        // is stopped nothing more is sent, so a confirmation then would record a reporting off that never comes.
-        if stopping
+        // Any Reset after the stop's Disable confirms it, even behind an earlier status still in flight, while the reply
+        // allowance is open. After it, or once the limb is stopped, it confirms nothing: the stop's end is bounded
+        // (`Timing::stop_max_ns`), and a confirmation then would record a reporting off that never comes.
+        if confirms
             && o.stop_disable
             && status.header.mode == Mode::Reset
             && d.stop != StopOutcome::Confirmed

@@ -64,19 +64,19 @@ pub(crate) struct DriveState {
     pub(crate) last_sent_ns: Option<u64>,
     pub(crate) last_echo: Option<EchoSeen>,
     pub(crate) stop: StopOutcome,
-    /// When this stop's Disable was confirmed.
+    /// When this stop's Disable was confirmed: set only with `stop` Confirmed, by a Reset read inside the stop's reply
+    /// allowance ([`Timing::stop_replies_ns`]).
     pub(crate) confirmed_ns: Option<u64>,
     /// This stop's reporting off.
     pub(crate) off: Off,
 }
 
-/// Where a stop's reporting off to one drive is.
+/// Where a stop's reporting off to one drive is. It is planned every tick from its due time until the socket takes it
+/// or the stop ends ([`BusTick::stop_over`]), so whether it was tried doesn't matter, only whether it was taken.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Off {
-    /// Not planned yet.
-    Untried,
-    /// Planned, not yet taken by the socket.
-    Tried,
+    /// Not taken by the socket yet.
+    Unsent,
     /// Taken by the socket.
     Sent,
 }
@@ -241,7 +241,7 @@ impl BusTick {
                 last_echo: None,
                 stop: StopOutcome::None,
                 confirmed_ns: None,
-                off: Off::Untried,
+                off: Off::Unsent,
             });
         }
         Ok(Self {

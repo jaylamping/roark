@@ -50,15 +50,22 @@ tick".
 
 A limb stop (`stop_limb`, named `LimbRequested`; the check above; expired feedback) stops that limb; a bus stop
 (`request_stop`, control silent, or a bad batch) stops every limb not already stopping or stopped; a late wake, a stall
-or a backlog stops every active limb (below). A stopping limb sends Disable to each of its drives,
-re-sends it each tick to every drive that hasn't confirmed, and sends active reporting off to each confirmed drive once
-its post-Disable silence is over (50 ms after its confirmation), again each tick until the socket takes it. A drive
-confirms with a Reset-mode status read after the stop's Disable; one that never confirms is still getting a Disable
-every tick of the 100 ms confirm window, so it gets no reporting off. Every Disable goes out ahead of every reporting
-off. The limb is `Stopped` once every drive has confirmed and taken its reporting off, or once the window has passed
-and no confirmed drive still waits for its reporting off: each waits until its reporting off has been tried and a
-period has passed since it fell due. The
-first reason a limb stopped for stays in its `LimbView`.
+or a backlog stops every active limb (below). A stopping limb follows PLAN item 2 Stop, every bound from `Timing`:
+
+- Disable to each of its drives not yet confirmed, every tick of the confirm window (`stop_confirm_ns`, 100 ms).
+- A drive confirms with a Reset-mode status read after the stop's Disable, inside the reply allowance
+  (`stop_replies_ns`: the window plus a period, so the reply to the window's last Disable still counts when the next
+  tick's drain reads it). A Reset read later confirms nothing: that drive stays unconfirmed and gets no reporting off,
+  as does one that never answers.
+- Active reporting off to each confirmed drive once its post-Disable silence is over (`disable_silence_ns`, 50 ms after
+  its confirmation), every tick until the socket takes it or the stop ends. Every Disable goes out ahead of every
+  reporting off.
+- The limb is `Stopped` once every drive has confirmed and the socket took its reporting off; otherwise not before the
+  reply allowance closes, and after it as soon as no confirmed drive's reporting off is unsent, or at the latest at
+  `stop_max_ns` (the allowance, the silence and two periods: 162 ms at 250 Hz), which gives the last drive that can
+  confirm at least two tries. A reporting off never taken is recorded unsent (`reporting_off_sent`).
+
+The first reason a limb stopped for stays in its `LimbView`.
 
 A late wake, ticks a stall slept through, or a backlog (a drain that read past its limit or left frames queued) stop
 every active limb; an idle limb has nothing enabled to stop. That tick only the batch's Disables and reporting off go,

@@ -167,7 +167,8 @@ pub enum LimbState {
     Idle,
     /// An Enable or MIT frame to one of its drives was sent, so the bus needs a fresh batch every tick.
     Active,
-    /// A stop is in progress: Disable to every unconfirmed drive each tick, its frames in batches refused.
+    /// A stop is in progress: Disables, then reporting off, its frames in batches refused; over by
+    /// `Timing::stop_max_ns` after `since_ns` at the latest.
     Stopping {
         /// When the stop began, monotonic.
         since_ns: u64,
@@ -263,10 +264,11 @@ pub enum StopOutcome {
     /// A stop happened but no Disable to this drive was taken by the socket (also every drive of a bus whose error
     /// left nothing to send on).
     NeverSent,
-    /// Disable was sent; no Reset-mode status read after it was counted (a read that may predate it, after a drain that
-    /// left frames queued, confirms nothing).
+    /// Disable was sent; no Reset-mode status read after it was counted: none came, one was read after the stop's reply
+    /// allowance (`Timing::stop_replies_ns`), or one may predate it (after a drain that left frames queued). Such a
+    /// drive gets no reporting off.
     Sent,
-    /// A Reset-mode status was read after a sent Disable.
+    /// A Reset-mode status was read after a sent Disable, inside the stop's reply allowance.
     Confirmed,
 }
 
@@ -310,7 +312,8 @@ pub struct DriveView {
     pub last_echo: Option<EchoSeen>,
     /// What the current or last stop achieved for it.
     pub stop: StopOutcome,
-    /// Whether the current or last stop's active reporting off was taken by the socket.
+    /// Whether the current or last stop's active reporting off was taken by the socket. False for a drive the stop never
+    /// confirmed, and for one whose reporting off the socket refused until the stop ended.
     pub reporting_off_sent: bool,
 }
 

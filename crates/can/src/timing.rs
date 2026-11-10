@@ -32,9 +32,10 @@ pub struct Timing {
     /// The oldest a drive's last fresh status may be when motion is sent to it (three periods: 12 ms at 250 Hz, PLAN.md
     /// item 6 Silence row).
     pub feedback_limit_ns: u64,
-    /// How long a stop sends Disables for each drive's Disable to be confirmed (drives unconfirmed by then stay so; one
-    /// confirmed in it still gets its reporting off after its silence); and the post-Disable silence window, in which
-    /// missed replies aren't counted (100 ms; PLAN.md item 2 Silence windows says which Disables open it).
+    /// How long a stop sends Disable to each of its drives not yet confirmed, from the stop's start (the reply to the
+    /// last of them may still confirm in [`Self::stop_replies_ns`]; the stop ends by [`Self::stop_max_ns`]); and the
+    /// post-Disable silence window, in which missed replies aren't counted (100 ms; PLAN.md item 2 Silence windows says
+    /// which Disables open it).
     pub stop_confirm_ns: u64,
     /// How long a drive drops frames after a Disable; its reporting-off waits this long after its confirmation, and a
     /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
@@ -143,6 +144,28 @@ impl Timing {
         } else {
             Ok(())
         }
+    }
+
+    /// How long after a stop's start a Reset still confirms a drive: the confirm window plus one period, the reply
+    /// allowance, since the reply to the window's last Disable is read at the latest by the next tick's drain. A Reset
+    /// read later confirms nothing, so its drive gets no reporting off. Provisional: Disable-to-Reset latency is
+    /// measured on the real adapter (PLAN step 8).
+    #[must_use]
+    pub const fn stop_replies_ns(&self) -> u64 {
+        self.stop_confirm_ns.saturating_add(self.period_ns)
+    }
+
+    /// The latest a stop ends, from its start: the reply allowance ([`Self::stop_replies_ns`]), the post-Disable
+    /// silence, and two periods. A drive confirmed just before the allowance closes has its reporting off due just
+    /// before the allowance plus the silence; from then to this bound is more than two periods, so on ticks that run on
+    /// time the last drive that can confirm is offered its reporting off at least twice. 162 ms at 250 Hz. A stop ends
+    /// sooner once every drive has confirmed and its reporting off was taken, or once the allowance has closed and no
+    /// confirmed drive's reporting off is still unsent; the bus tick decides it at each tick's start and end.
+    #[must_use]
+    pub const fn stop_max_ns(&self) -> u64 {
+        self.stop_replies_ns()
+            .saturating_add(self.disable_silence_ns)
+            .saturating_add(self.period_ns.saturating_mul(2))
     }
 
     /// The most a frame is written after its tick's scheduled start: the send window, since a wake exactly at its close

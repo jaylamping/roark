@@ -582,8 +582,10 @@ fn a_stopped_limb_is_rearmed_only_when_its_drives_are_known_disabled() {
         2 * PERIOD - MS,
         &record(faulted.id(), faulted.data(), Direction::TxOther),
     );
+    // Disables go out for the stop window; the stop ends when the reply allowance after it closes.
     let mut tick = 2;
-    let last_disable = loop {
+    let mut last_disable = 0;
+    loop {
         let sent = run_tick(
             &mut bus,
             tick,
@@ -591,16 +593,22 @@ fn a_stopped_limb_is_rearmed_only_when_its_drives_are_known_disabled() {
             &[(MS, status(102, Mode::Run))],
         );
         let snap = bus.end(deadline(tick));
-        if limb(&snap, 0).0 == LimbState::Stopped {
-            break (tick - 1) * PERIOD;
+        if sent.contains(&(0, SendKind::Disable)) {
+            assert_eq!(
+                sent,
+                [(0, SendKind::Disable), (1, SendKind::Command)],
+                "tick {tick}"
+            );
+            last_disable = tick * PERIOD;
+        } else {
+            assert_eq!(sent, [(1, SendKind::Command)], "tick {tick}");
         }
-        assert_eq!(
-            sent,
-            [(0, SendKind::Disable), (1, SendKind::Command)],
-            "tick {tick}"
-        );
+        if limb(&snap, 0).0 == LimbState::Stopped {
+            break;
+        }
         tick += 1;
-    };
+    }
+    tick += 1;
     let now = tick * PERIOD;
     assert_eq!(
         bus.rearm(0, now),
@@ -696,7 +704,8 @@ fn a_late_written_disable_holds_off_the_rearm() {
     assert_eq!(bus.stop_limb(0), Ok(()));
     // Drive 101 never answers; each tick's Disable to it is written `late`.
     let mut tick = 2;
-    let last_write = loop {
+    let mut last_write = 0;
+    loop {
         let start = tick * PERIOD;
         let list = bus.begin(
             tick,
@@ -704,19 +713,20 @@ fn a_late_written_disable_holds_off_the_rearm() {
             start,
             Some(&batch(tick, &[None, Some(hold(102))])),
         );
-        let mut disabled = false;
         for (index, send) in list.iter().enumerate() {
             let at = if send.slot == 0 { start + late } else { start };
-            disabled |= send.slot == 0;
+            if send.slot == 0 {
+                last_write = at;
+            }
             bus.sent(index, SendOutcome::Sent, at);
         }
         bus.on_frame(start + MS, &status(102, Mode::Run));
         let snap = bus.end(deadline(tick));
-        if limb(&snap, 0).0 == LimbState::Stopped && !disabled {
-            break (tick - 1) * PERIOD + late;
+        if limb(&snap, 0).0 == LimbState::Stopped {
+            break;
         }
         tick += 1;
-    };
+    }
     let quiet = DRIVE_TIMEOUT_NS + PERIOD;
     assert_eq!(
         bus.rearm(0, last_write - late + quiet),
