@@ -174,7 +174,12 @@ KEYS = [(0.4, 12.0, -37.8, -33.6), (0.4, 12.0, 33.6, 37.8), (33.6, 39.0, -6.0, 6
 NOTCHES = [(0.0, 12.4, -38.1, -30.0), (0.0, 12.4, 30.0, 38.1), (30.0, 39.3, -6.4, 6.4)]
 BEARS = ['y', 'y', 'z']           # which faces bear: Y-normal for the two side keys, Z-normal for the top one
 STUB = dict(x0=134.0, r_out=20.0, r_in=16.0)        # hollow inboard stub; 6808 (Ø40 / Ø52 x 7) on X 134-141
-STOP = dict(r0=29.5, r1=36.5, lug_phi=90.0, lug_span=60.0, travel=124.0, depth=6.0)   # 5 mm rim outside the slot
+STOP = dict(r0=29.5, r1=36.5, lug_phi=90.0, lug_span=60.0, travel=124.0, depth=6.0)   # the printed lug (commit b3f3984), kept for STOP_KIND 'lug'
+STOP_KIND = os.environ.get('STOP_KIND', 'lug')        # Joey 2026-11-10: printed lug, rated to the RS02's 17 N.m
+# Stop as a steel dowel (Ø8 x 15 hardened, h6): the printed lug's root fails the 889 N back-driven stop (FEA SF 0.88). The
+# pin sits at r 35 on the drum's inboard end, 9 mm in a printed socket (boss inside the drum, stopping short of the RS02
+# back), 5 mm proud into a slot in the inboard cheek whose ends are R4.1, conformal with it. Ø3 knock-out hole behind it.
+PIN = dict(r=35.0, phi=90.0, d=8.0, proud=5.0, embed=9.0, hole=8.15, boss=8.0)   # 5 mm rim outside the slot
 CAP = dict(r=38.3, recess=1.5, pocket=3.0)       # inboard cap Ø76.6 over a 3 mm pocket: the flat bundle coils at r 22-35 in one layer (seat inside the R6 rim round)
 OUT_HOLES = [(12.0, 30.0 + 60.0 * k) for k in range(6)]          # 6 x M4 on Ø24
 OUT_PINS = [(12.0, 120.0 * k) for k in range(3)]                  # 3 printed Ø3.95 x 8.7 pins (organic_parts.py) in Ø4.05 holes, into the RS02 output's Ø4 pin holes on Ø24
@@ -238,20 +243,29 @@ def upper_details(d):
     # outboard end wall thickened to X 193.9: the RS02 housing face (r 22.5-39) stops on it, 0.2 mm axial play to the ring
     x_revolve(d, 'RS02_STOP', [(RS02_X['front'] + 0.2, 22.5), (DRUM['x1'] - 2.0, 22.5), (DRUM['x1'] - 2.0, DRUM['r'] - 1.0), (RS02_X['front'] + 0.2, DRUM['r'] - 1.0)])
     # hard stop: a lug on the drum's inboard end, running in a slot in the inboard cheek
-    arc_band(d, 'STOP_LUG', STOP['r0'], STOP['r1'], STOP['lug_phi'] - STOP['lug_span'] / 2, STOP['lug_phi'] + STOP['lug_span'] / 2,
-             DRUM['x0'] - STOP['depth'], DRUM['x0'] + 1.5, cut=False)
-    # backing behind the lug: the 3 mm end wall alone bends under the 889 N stop load (FEA SF 0.55); 4.6 mm more wall over
-    # the lug's sector, inside the bay (the harness enters the stub from the top, away from it)
-    arc_band(d, 'LUG_BACKING', STUB['r_out'], DRUM['r'] - SHELL_T + 0.05, STOP['lug_phi'] - 40.0, STOP['lug_phi'] + 40.0,
-             DRUM['x0'] + SHELL_T - 0.1, DRUM['x0'] + SHELL_T + 4.6, cut=False)
-    # R1 root fillets on the lug (a sharp root is a stress singularity under the 889 N stop load); the slot mouth is relieved for them
-    def at_lug_root(p):
-        r = math.hypot(p[1] - CY, p[2] - CZ)
-        ph = math.degrees(math.atan2(-(p[2] - CZ), p[1] - CY)) % 360
-        return abs(p[0] - DRUM['x0']) < 0.05 and STOP['r0'] - 0.1 < r < STOP['r1'] + 0.1 and STOP['lug_phi'] - STOP['lug_span'] / 2 - 0.5 < ph < STOP['lug_phi'] + STOP['lug_span'] / 2 + 0.5
-    root = edges_where(d, at_lug_root)
-    print('  lug root edges', len(root), flush=True)
-    fillet_edges(d, root, (2.0, 1.5, 1.0), 'LUG_ROOT')
+    if STOP_KIND == 'lug':
+        arc_band(d, 'STOP_LUG', STOP['r0'], STOP['r1'], STOP['lug_phi'] - STOP['lug_span'] / 2, STOP['lug_phi'] + STOP['lug_span'] / 2,
+                 DRUM['x0'] - STOP['depth'], DRUM['x0'] + 1.5, cut=False)
+        # backing behind the lug: the 3 mm end wall alone bends under the 889 N stop load (FEA SF 0.55); 4.6 mm more wall over
+        # the lug's sector, inside the bay (the harness enters the stub from the top, away from it)
+        arc_band(d, 'LUG_BACKING', STUB['r_out'], DRUM['r'] - SHELL_T + 0.05, STOP['lug_phi'] - 40.0, STOP['lug_phi'] + 40.0,
+                 DRUM['x0'] + SHELL_T - 0.1, DRUM['x0'] + SHELL_T + 4.6, cut=False)
+        # R1 root fillets on the lug (a sharp root is a stress singularity under the 889 N stop load); the slot mouth is relieved for them
+        def at_lug_root(p):
+            r = math.hypot(p[1] - CY, p[2] - CZ)
+            ph = math.degrees(math.atan2(-(p[2] - CZ), p[1] - CY)) % 360
+            return abs(p[0] - DRUM['x0']) < 0.05 and STOP['r0'] - 0.1 < r < STOP['r1'] + 0.1 and STOP['lug_phi'] - STOP['lug_span'] / 2 - 0.5 < ph < STOP['lug_phi'] + STOP['lug_span'] / 2 + 0.5
+        root = edges_where(d, at_lug_root)
+        print('  lug root edges', len(root), flush=True)
+        fillet_edges(d, root, (2.0, 1.5, 1.0), 'LUG_ROOT')
+    else:
+        # backing behind the pin over the same sector, and a boss round the socket inside the drum (ends 0.3 short of the RS02 back)
+        arc_band(d, 'LUG_BACKING', STUB['r_out'], DRUM['r'] - SHELL_T + 0.05, STOP['lug_phi'] - 40.0, STOP['lug_phi'] + 40.0,
+                 DRUM['x0'] + SHELL_T - 0.1, DRUM['x0'] + SHELL_T + 4.6, cut=False)
+        px, pz = P(PIN['r'], PIN['phi'])
+        x_holes(d, 'PIN_BOSS', [(px, pz)], PIN['boss'], DRUM['x0'] + SHELL_T - 0.1, DRUM['x0'] + PIN['embed'] + 1.0, cut=False)
+        x_holes(d, 'PIN_SOCKET', [(px, pz)], PIN['hole'] / 2, DRUM['x0'] - 1.0, DRUM['x0'] + PIN['embed'])
+        x_holes(d, 'PIN_KNOCKOUT', [(px, pz)], 1.5, DRUM['x0'] + PIN['embed'] - 0.5, DRUM['x0'] + PIN['embed'] + 2.0)
     # the rib meets the drum wall in a concave corner on both faces: R1.5
     rib_c = edges_where(d, lambda p: abs(math.hypot(p[1] - CY, p[2] - CZ) - (DRUM['r'] - SHELL_T)) < 0.1 and abs(p[0] - RIB[1]) < 0.05)   # ring side only: on the back face it left slivers at the neck opening
     print('  rib corner edges', len(rib_c), flush=True)
@@ -281,17 +295,28 @@ def fore_details(d):
     with Sk(d, plane(d, 'Z', CZ, 'POCKET_DROP_P'), 'POCKET_DROP') as s:     # flush with the pocket floor: no step for a sliver
         s.poly([(ix[0] + 1.5, CY - 36.0, CZ), (ix[0] + CAP['recess'] + CAP['pocket'], CY - 36.0, CZ), (ix[0] + CAP['recess'] + CAP['pocket'], 150.0, CZ), (ix[0] + 1.5, 150.0, CZ)])
     feat(d, s.feat, 'POCKET_DROP', 10.0, True, mode=MID)
-    # stop slot: the lug's path over 0-124 deg plus its span (forearm frame: a drum point at phi sits at phi - flex)
-    lo = STOP['lug_phi'] - STOP['travel'] - STOP['lug_span'] / 2
-    hi = STOP['lug_phi'] + STOP['lug_span'] / 2
-    arc_band(d, 'STOP_SLOT', STOP['r0'] - 0.5, STOP['r1'] + 0.5, lo, hi, ix[1] - STOP['depth'] - 0.5, ix[1] + 0.5, cut=True)
-    # relief at the slot mouth for the lug's R2 root fillets: 2.2 mm wider over the last 2.6 mm
-    d_ = math.degrees(1.1 / STOP['r0'])
-    arc_band(d, 'SLOT_MOUTH', STOP['r0'] - 1.6, STOP['r1'] + 0.5,   # inner edge r 27.9, 1.9 mm off the 6808 bore
-             lo - d_, hi + d_, ix[1] - 2.1, ix[1] + 0.5, cut=True)   # relief 2.6 deep: worst-case axial stack (+-0.3) keeps contact off the R2 root
-    d2 = math.degrees(2.2 / STOP['r0'])                   # the slot ends get the full 2.2 mm for the R2 fillets on the lug's end edges
-    arc_band(d, 'SLOT_END_LO', STOP['r0'] - 1.6, STOP['r1'] + 0.5, lo - d2, lo + 2.0, ix[1] - 2.1, ix[1] + 0.5, cut=True)
-    arc_band(d, 'SLOT_END_HI', STOP['r0'] - 1.6, STOP['r1'] + 0.5, hi - 2.0, hi + d2, ix[1] - 2.1, ix[1] + 0.5, cut=True)
+    if STOP_KIND == 'lug':
+        # stop slot: the lug's path over 0-124 deg plus its span (forearm frame: a drum point at phi sits at phi - flex)
+        lo = STOP['lug_phi'] - STOP['travel'] - STOP['lug_span'] / 2
+        hi = STOP['lug_phi'] + STOP['lug_span'] / 2
+        arc_band(d, 'STOP_SLOT', STOP['r0'] - 0.5, STOP['r1'] + 0.5, lo, hi, ix[1] - STOP['depth'] - 0.5, ix[1] + 0.5, cut=True)
+        # relief at the slot mouth for the lug's R2 root fillets: 2.2 mm wider over the last 2.6 mm
+        d_ = math.degrees(1.1 / STOP['r0'])
+        arc_band(d, 'SLOT_MOUTH', STOP['r0'] - 1.6, STOP['r1'] + 0.5,   # inner edge r 27.9, 1.9 mm off the 6808 bore
+                 lo - d_, hi + d_, ix[1] - 2.1, ix[1] + 0.5, cut=True)   # relief 2.6 deep: worst-case axial stack (+-0.3) keeps contact off the R2 root
+        d2 = math.degrees(2.2 / STOP['r0'])                   # the slot ends get the full 2.2 mm for the R2 fillets on the lug's end edges
+        arc_band(d, 'SLOT_END_LO', STOP['r0'] - 1.6, STOP['r1'] + 0.5, lo - d2, lo + 2.0, ix[1] - 2.1, ix[1] + 0.5, cut=True)
+        arc_band(d, 'SLOT_END_HI', STOP['r0'] - 1.6, STOP['r1'] + 0.5, hi - 2.0, hi + d2, ix[1] - 2.1, ix[1] + 0.5, cut=True)
+    else:
+        # slot for the dowel: its path over 0-124 deg, with R4.1 ends where it stops (forearm frame: drum phi sits at phi - flex)
+        lo, hi = PIN['phi'] - STOP['travel'], PIN['phi']
+        w = PIN['d'] / 2 + 0.1
+        arc_band(d, 'STOP_SLOT', PIN['r'] - w, PIN['r'] + w, lo, hi, ix[1] - PIN['proud'] - 0.5, ix[1] + 0.5, cut=True)
+        with Sk(d, plane(d, 'X', ix[1] - PIN['proud'] / 2, 'SLOT_ENDS_P'), 'SLOT_ENDS') as s_:
+            for a_ in (lo, hi):
+                y_, z_ = P(PIN['r'], a_)
+                s_.circle((ix[1] - PIN['proud'] / 2, y_, z_), w)
+        feat(d, s_.feat, 'SLOT_ENDS', PIN['proud'] + 1.0, True, mode=MID, lo=0.01)
 
 
 def yaw_interface(d):

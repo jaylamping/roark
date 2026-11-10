@@ -353,7 +353,7 @@ def fea_upper():
     the lug end faces carry the stop load where the slot end bears (X 135.7-139.4)."""
     sim = CAD / '_sim' / 'upper-arm'
     sim.mkdir(parents=True, exist_ok=True)
-    p = sim / 'UA_ORGANIC_BONDED_v12.SLDPRT'
+    p = sim / 'UA_ORGANIC_BONDED_v14.SLDPRT'
     shutil.copy(M.OUT['upper'], p)
     e, w = L(), L()
     d = sw.OpenDoc6(str(p), 1, 1, '', e, w)

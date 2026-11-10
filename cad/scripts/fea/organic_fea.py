@@ -13,7 +13,7 @@ import sys
 
 from p3_fea import CASES, F, GOLD, PARTS, CY, CZ, I, cyl, pl, run, VARIANT, pythoncom
 
-PARTS['organic'] = F / os.environ.get('ORG_MODEL', 'UA_ORGANIC_BONDED_v12.SLDPRT')   # v4: ring chamfer as printed; v3: ring joined only through its dogs, lug root fillets
+PARTS['organic'] = F / os.environ.get('ORG_MODEL', 'UA_ORGANIC_BONDED_v14.SLDPRT')   # v4: ring chamfer as printed; v3: ring joined only through its dogs, lug root fillets
 FG, MG = 62.0, 17.2
 SEAT = cyl(35.9, [129, 295, -35, 212, 304, 47])
 RS02 = cyl(32.75, [156, 170, -30, 163.5, 250, 42])      # ring bore only: no rigid tie to the drum
