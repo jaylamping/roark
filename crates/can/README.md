@@ -58,7 +58,7 @@ while the bus is healthy, the exit tick's included, and a snapshot control's ful
 (`snapshots_dropped`). Ticks a stall slept through are each a missed deadline, and stop an active bus. Any write error
 but a full queue loses the bus, as a read error does. Setting `exit` on an idle bus ends the thread at once; on any other it stops the drives first, then ends the thread
 once control has its Stopped snapshot, or can't or won't take it (`BusLinks::exit` says when), with the last snapshot
-in `BusExit::last`. A socket or clock error ends the thread as soon as its Stopped snapshot is made, without waiting
+in `BusExit::last`; the next tick's drain is still recorded, so the stop's last echoes are in the recording. A socket or clock error ends the thread as soon as its Stopped snapshot is made, without waiting
 for control.
 
 Not yet: the `/can/<bus>/tx_intent` record of every frame handed to the socket or not sent, with the reason

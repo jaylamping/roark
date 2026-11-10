@@ -217,9 +217,11 @@ impl BusTick {
         self.bus_error.is_none() && !self.error_passive
     }
 
-    /// The last snapshot couldn't be handed to control (its ring was full): counted in the next one.
-    pub fn snapshot_dropped(&mut self) {
+    /// Control's ring couldn't take `snap`, this tick's snapshot (it was full): counted in `snap`, which the caller
+    /// keeps (it may be the last snapshot the bus hands back), and in every later one.
+    pub fn snapshot_dropped(&mut self, snap: &mut Snapshot) {
         self.counters.snapshots_dropped += 1;
+        snap.counters.snapshots_dropped = self.counters.snapshots_dropped;
     }
 
     /// Start tick `tick`, scheduled at `scheduled_ns`, woken at `now_ns`, with the newest batch from control. Call after
