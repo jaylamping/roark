@@ -3,6 +3,7 @@
 mod fault;
 mod outbox;
 mod plant;
+mod rng;
 mod sim;
 
 pub use fault::{

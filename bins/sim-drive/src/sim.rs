@@ -8,6 +8,7 @@ use robstride::drive::{self as wire, Command, DriveFrame, HostFrame};
 use crate::fault::{Active, Fault, FaultRefused, Injected, Plan, Trigger, flag, flagged};
 use crate::outbox::{OUTBOX, Outbox};
 use crate::plant::{Limits, Motion, Plant};
+use crate::rng::Rng;
 use robstride::{
     Amps, Celsius, Damper, DeviceId, Drive, Feedback, Gain, Mode, NewtonMeters, Param, ParamValue,
     RadPerSec, RadPerSecSq, Radians, ReportInterval, Reporting, RunMode, Uid, Volts, ZeroSta,
@@ -164,7 +165,9 @@ impl SimDrive {
         }
         self.last_command = Some(now);
         match frame.command {
-            Command::GetId => self.send(now, Some(wire::identity(self.id(), self.uid))),
+            Command::GetId => self
+                .outbox
+                .send(now, Some(wire::identity(self.id(), self.uid))),
             Command::Mit(codes) => {
                 self.plan.mits = self.plan.mits.saturating_add(1);
                 while let Some((at, fault)) = self.plan.due(now) {
@@ -176,10 +179,10 @@ impl SimDrive {
                 {
                     self.plant.command(command);
                 }
-                self.send(now, self.status());
+                self.outbox.send(now, self.status());
             }
             Command::Enable => match (self.mode, self.run_at) {
-                (Mode::Run, _) | (_, Some(_)) => self.send(now, self.status()),
+                (Mode::Run, _) | (_, Some(_)) => self.outbox.send(now, self.status()),
                 // The Run status is built when Run is reached (`advance`), with the faults in effect then.
                 (Mode::Reset | Mode::Calibration, None) => {
                     self.run_at = Some(now + self.rng.between(ENABLE_DELAY_US));
@@ -187,12 +190,12 @@ impl SimDrive {
             },
             Command::Disable | Command::FaultClear => {
                 self.set_mode(now, Mode::Reset);
-                self.send(now, self.status());
+                self.outbox.send(now, self.status());
                 self.silence = Some((now, now + self.rng.between(DISABLE_SILENCE_US)));
             }
             Command::SetZero => {
                 self.plant.set_position(lit(Radians::new(0.0)));
-                self.send(now, self.status());
+                self.outbox.send(now, self.status());
                 if self.mode == Mode::Run {
                     let start = now + self.rng.between(ZERO_BLACKOUT_START_US);
                     self.blackout = Some((start, start + self.rng.between(ZERO_BLACKOUT_LEN_US)));
@@ -205,7 +208,7 @@ impl SimDrive {
                 let reply = self
                     .read(param)
                     .and_then(|v| wire::param_value(self.id(), param, v).ok());
-                self.send(
+                self.outbox.send(
                     now,
                     Some(reply.unwrap_or_else(|| wire::param_refused(self.id(), param))),
                 );
@@ -216,7 +219,7 @@ impl SimDrive {
                 {
                     slot.1 = value;
                 }
-                self.send(now, self.status());
+                self.outbox.send(now, self.status());
             }
             Command::Reporting(Reporting::On) => {
                 self.next_report = self.report_interval().map(|i| now + i);
@@ -313,12 +316,12 @@ impl SimDrive {
                 Event::Run => {
                     self.run_at = None;
                     self.mode = Mode::Run;
-                    self.send(at, self.status());
+                    self.outbox.send(at, self.status());
                 }
                 Event::Timeout => self.set_mode(at, Mode::Reset),
                 Event::Report => {
                     if !in_window(self.blackout, at) {
-                        self.send(at, self.report());
+                        self.outbox.send(at, self.report());
                     }
                     self.next_report = self.report_interval().map(|i| at + i);
                 }
@@ -528,11 +531,6 @@ impl SimDrive {
     fn report(&self) -> Option<DriveFrame> {
         wire::report(self.drive, self.mode, self.active.faults, &self.feedback()?).ok()
     }
-
-    /// Queue `frame` to go out at `due`; a frame that can't be built or queued is dropped and counted.
-    fn send(&mut self, due: Instant, frame: Option<DriveFrame>) {
-        self.outbox.send(due, frame);
-    }
 }
 
 /// What [`SimDrive::advance_to`] handles next, in the order ties go.
@@ -595,23 +593,4 @@ fn defaults(drive: Drive) -> [(Param, ParamValue); Param::ALL.len()] {
 )]
 fn lit<T>(value: Option<T>) -> T {
     value.expect("a finite literal")
-}
-
-/// `SplitMix64`: small, seeded, and the same on every machine, so a sim run replays exactly.
-#[derive(Debug)]
-struct Rng(u64);
-
-impl Rng {
-    fn next(&mut self) -> u64 {
-        self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        let mut z = self.0;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        z ^ (z >> 31)
-    }
-
-    /// A span between `lo` and `hi` microseconds, inclusive.
-    fn between(&mut self, (lo, hi): (u64, u64)) -> Duration {
-        Duration::from_micros(lo + self.next() % (hi - lo + 1))
-    }
 }
