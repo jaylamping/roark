@@ -131,9 +131,11 @@ impl Timing {
         }
     }
 
-    /// The most a frame is written after its tick's scheduled start: the send window, since a wake exactly at its close
-    /// isn't late. Motion passes its staleness check at the wake and goes out up to this much later; a stop's Disable
-    /// goes out up to this much after the tick that found control silent was due.
+    /// The most a tick may wake after its scheduled start and still send: the send window, since a wake exactly at its
+    /// close isn't late. Motion passes its staleness check at the wake and, as a command that expires, is written by
+    /// the window's close or not at all. A stop's Disable is planned on a wake up to this much after the tick that
+    /// found control silent was due, but never expires ([`Send::expires`]): it is written after that wake by the
+    /// shell's wake-to-write time, which this bound leaves out and PLAN step 8 measures.
     const fn write_slack_ns(&self) -> u64 {
         self.send_window_ns
     }
@@ -229,7 +231,8 @@ pub enum TimingError {
         silent_ticks: u32,
         /// The period.
         period_ns: u64,
-        /// The send window: how late in its tick the stop's Disable may be written.
+        /// The send window: how late in its tick the wake that plans the stop's Disable may come. The write follows
+        /// it by the shell's wake-to-write time (PLAN step 8).
         write_slack_ns: u64,
     },
 }
