@@ -1,24 +1,28 @@
 (version 1)
 # Fine-pitch ICs whose footprint puts pads 0.15 mm apart: U1 and U7 (LM5069, MSOP-10 0.5 mm) and U2 (TPS7A4001,
-# HVSSOP-8 0.65 mm with its large pads); U8 (TPS48100 VSSOP-19 0.5 mm, latch controller) added by Joey 2026-11-09, whose
-# E-stop pins EN_A/FLT_A sit 0.5 mm from its 54 V pins, so inside U8's courtyard E-stop copper may come within 0.15 mm of 54 V. Only clearances between copper that enters the IC's courtyard (its own pads, and
-# the first escape segment of each pin, drawn straight out of the courtyard) drop to 0.15 mm; everything else keeps the defaults, and
-# the 54 V (0.6 mm) and E-stop/UVLO (1.5 mm) spacing is checked by tools/route_checks.py and tools/hv_spacing.py.
-# tools/grid_route.py routes to the same rule (FINE, courtyard boxes).
+# HVSSOP-8 0.65 mm with its large pads). Only clearances between copper that enters the IC's courtyard (its own pads, and
+# the first escape segment of each pin, drawn straight out of the courtyard) drop to 0.15 mm; everything else keeps the
+# defaults. U8 (TPS48100) had the same rule until 2026-11-10; turned with its E-stop row north and its 54 V row south
+# (schematic/tools/u8_block.py) it doesn't need one, so the 1.5 mm E-stop rule holds inside its courtyard too.
+# The rules apply on F.Cu only (where the pads are) and never to a pour: a courtyard test is true for anything under the
+# courtyard on any layer, and for a whole pour that touches it, so without these two limits the inner planes and the
+# GND fill came within 0.15 mm of tracks that pass under or leave the courtyard (found by route_checks.py, 2026-11-10).
+# The 54 V domain spacing is checked by tools/route_checks.py and tools/hv_spacing.py; tools/grid_route.py and
+# tools/finish_route.py route to the same rule (FINE, courtyards).
 # E-stop safety nets keep 1.5 mm to 54 V copper on every layer (LAYOUT_RULES.md, schematic/tools/domains.py); the fine-pitch
 # rules below come later in this file, so they win inside U1/U2/U7's courtyards
 (rule estop_to_54v
   (constraint clearance (min 1.5mm))
   (condition "A.hasNetclass('ESTOP') && B.hasNetclass('HV54')"))
 (rule fine_pitch_U1
+  (layer "F.Cu")
   (constraint clearance (min 0.15mm))
-  (condition "(A.memberOfFootprint('U1') && B.intersectsCourtyard('U1')) || (B.memberOfFootprint('U1') && A.intersectsCourtyard('U1')) || (A.intersectsCourtyard('U1') && B.intersectsCourtyard('U1'))"))
+  (condition "A.Type != 'Zone' && B.Type != 'Zone' && ((A.memberOfFootprint('U1') && B.intersectsCourtyard('U1')) || (B.memberOfFootprint('U1') && A.intersectsCourtyard('U1')) || (A.intersectsCourtyard('U1') && B.intersectsCourtyard('U1')))"))
 (rule fine_pitch_U2
+  (layer "F.Cu")
   (constraint clearance (min 0.15mm))
-  (condition "(A.memberOfFootprint('U2') && B.intersectsCourtyard('U2')) || (B.memberOfFootprint('U2') && A.intersectsCourtyard('U2')) || (A.intersectsCourtyard('U2') && B.intersectsCourtyard('U2'))"))
+  (condition "A.Type != 'Zone' && B.Type != 'Zone' && ((A.memberOfFootprint('U2') && B.intersectsCourtyard('U2')) || (B.memberOfFootprint('U2') && A.intersectsCourtyard('U2')) || (A.intersectsCourtyard('U2') && B.intersectsCourtyard('U2')))"))
 (rule fine_pitch_U7
+  (layer "F.Cu")
   (constraint clearance (min 0.15mm))
-  (condition "(A.memberOfFootprint('U7') && B.intersectsCourtyard('U7')) || (B.memberOfFootprint('U7') && A.intersectsCourtyard('U7')) || (A.intersectsCourtyard('U7') && B.intersectsCourtyard('U7'))"))
-(rule fine_pitch_U8
-  (constraint clearance (min 0.15mm))
-  (condition "(A.memberOfFootprint('U8') && B.intersectsCourtyard('U8')) || (B.memberOfFootprint('U8') && A.intersectsCourtyard('U8')) || (A.intersectsCourtyard('U8') && B.intersectsCourtyard('U8'))"))
+  (condition "A.Type != 'Zone' && B.Type != 'Zone' && ((A.memberOfFootprint('U7') && B.intersectsCourtyard('U7')) || (B.memberOfFootprint('U7') && A.intersectsCourtyard('U7')) || (A.intersectsCourtyard('U7') && B.intersectsCourtyard('U7')))"))

@@ -44,7 +44,7 @@ class Router:
             k=float(os.getenv('FCOST')); self.step_cost=lambda net,L,p,q: k if L==CU[0] else 1.0
         self.collect_all = False   # escape_probe.py: free() lists every blocker instead of stopping at the first
         self.fine = []; self.fineshape = []
-        for ref in os.getenv('FINE','U1,U2,U7,U8').split(','):   # the .kicad_dru fine-pitch courtyards
+        for ref in os.getenv('FINE','U1,U2,U7').split(','):   # the .kicad_dru fine-pitch courtyards
             f = self.b.FindFootprintByReference(ref)
             self.fine.append(self.bb(f.GetCourtyard(pcbnew.F_CrtYd).BBox()))
             self.fineshape.append(pcbnew.SHAPE_POLY_SET(f.GetCourtyard(pcbnew.F_CrtYd)))
@@ -78,7 +78,8 @@ class Router:
     @staticmethod
     def bb(b): return MM(b.GetLeft()), MM(b.GetTop()), MM(b.GetRight()), MM(b.GetBottom())
     def incy(self, shape, bb):
-        """the fine-pitch courtyards (U1/U2/U7) the copper itself enters, as the .kicad_dru intersectsCourtyard() tests;
+        """the fine-pitch courtyards (U1/U2/U7) the copper itself enters, as the .kicad_dru intersectsCourtyard() tests
+        (the callers ask on F.Cu only, and never for a pour, as the rules do);
         a bounding-box overlap alone would relax the clearance for a long diagonal that only passes near the courtyard"""
         out = set()
         for i, f in enumerate(self.fine):
@@ -94,7 +95,7 @@ class Router:
             for y in range(math.floor(bb[1]/2), math.floor(bb[3]/2)+1): yield x, y
     def add(self, L, net, shape, kind, uid):
         bb = self.bb(shape.BBox())
-        cy = self.incy(shape, bb)
+        cy = self.incy(shape, bb) if L == CU[0] and kind != 'zone' else set()   # the .kicad_dru scope: F.Cu, never a pour
         ob = (net, shape, kind, bb, cy, uid)
         for c in self.cells(bb): self.idx.setdefault((L,)+c, []).append(ob)
     @staticmethod
@@ -106,7 +107,7 @@ class Router:
     def free(self, net, L, shape, via=False, diagnostics=None):
         bb = self.bb(shape.BBox()); margin = 1.51
         query = (bb[0]-margin, bb[1]-margin, bb[2]+margin, bb[3]+margin)
-        cy = self.incy(shape, bb)
+        cy = self.incy(shape, bb) if L == CU[0] else set()
         seen = set(); hit = False
         for c in self.cells(query):
             for ob in self.idx.get((L,)+c, ()):

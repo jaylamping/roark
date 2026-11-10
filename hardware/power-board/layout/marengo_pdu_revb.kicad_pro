@@ -321,7 +321,7 @@
         "microvia_drill": 0.1,
         "name": "HV54",
         "pcb_color": "rgb(255, 64, 0)",
-        "priority": 1,
+        "priority": 2,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.25,
         "tuning_profile": "",
@@ -340,7 +340,7 @@
         "microvia_drill": 0.1,
         "name": "P12",
         "pcb_color": "rgb(255, 200, 0)",
-        "priority": 1,
+        "priority": 3,
         "schematic_color": "rgba(0, 0, 0, 0.000)",
         "track_width": 0.6,
         "tuning_profile": "",
@@ -355,22 +355,6 @@
     "net_colors": {},
     "netclass_assignments": null,
     "netclass_patterns": [
-      {
-        "netclass": "P12",
-        "pattern": "/+12V"
-      },
-      {
-        "netclass": "P12",
-        "pattern": "/+12V_JET"
-      },
-      {
-        "netclass": "P12",
-        "pattern": "/+12V_PI"
-      },
-      {
-        "netclass": "P12",
-        "pattern": "/+12V_RAW"
-      },
       {
         "netclass": "HV54",
         "pattern": "/ABS"
@@ -585,14 +569,6 @@
       },
       {
         "netclass": "HV54",
-        "pattern": "/SHSP_N"
-      },
-      {
-        "netclass": "HV54",
-        "pattern": "/SHSP_P"
-      },
-      {
-        "netclass": "HV54",
         "pattern": "/SH_N"
       },
       {
@@ -600,16 +576,8 @@
         "pattern": "/SH_P"
       },
       {
-        "netclass": "P12",
-        "pattern": "/SPARE_ON"
-      },
-      {
-        "netclass": "P12",
-        "pattern": "/SPARE_SW"
-      },
-      {
-        "netclass": "P12",
-        "pattern": "/SP_SW1"
+        "netclass": "ESTOP",
+        "pattern": "/SP_ENR"
       },
       {
         "netclass": "HV54",

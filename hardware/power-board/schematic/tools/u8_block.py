@@ -76,7 +76,7 @@ ITEMS=[
  # ---- E-stop and logic row (north), F.Cu
  ('t','/EN_A','F',[(173.32,147.0),(173.32,146.5),(173.1,145.9)]), ('t','/EN_A','F',[(172.32,147.0),(172.32,146.5),(172.6,145.9)]),
  ('t','/EN_A','F',[(171.4,145.625),(173.0,145.625)]),
- ('t','/FLT_A','F',[(171.32,147.0),(171.32,146.4),(170.9,146.4),(170.6,146.1),(170.6,141.4),(169.95,140.9),(169.75,140.75)]),
+ ('t','/FLT_A','F',[(171.32,147.0),(171.32,146.35),(170.9,146.35),(170.6,146.05),(170.6,141.4),(169.95,140.9),(169.75,140.75)]),   # the jog keeps 0.2 mm to pin 6 (GND): no fine-pitch rule at U8
  ('t','/RUN_A','F',[(170.65,140.55),(171.4,141.3),(171.4,143.7)]),
  ('t','/TMR_A','F',[(169.32,147.0),(169.32,146.5),(168.9,146.1),(168.4,145.8)]),
  ('t','/TMR_A','F',[(167.9,145.525),(167.4,145.525),(167.4,142.9),(167.8,142.525),(168.0,142.525)]),
@@ -107,21 +107,62 @@ ITEMS=[
  ('t','/GA2','F',[(167.95,157.0),(167.9,159.4),(168.5,159.95)]),
  ('t','/ABS','F',[(173.6,169.6),(174.6,168.6),(175.4,166.6)],0.25),
 ]
-def lay(b):
-    new=[]
+def prims():
+    """ITEMS as primitives: ('v', net, (x,y)) and ('t', net, layer, a, c, width)"""
+    out=[]
     for it in ITEMS:
-        ni=b.FindNet(it[1]); assert ni,it[1]
-        if it[0]=='v':
-            v=pcbnew.PCB_VIA(b); v.SetPosition(V(it[2])); v.SetWidth(IU(.6)); v.SetDrill(IU(.3)); v.SetNet(ni)
-            v.SetViaType(pcbnew.VIATYPE_THROUGH); v.SetLayerPair(CU[0],CU[5]); new.append(v)
+        if it[0]=='v': out.append(('v',it[1],it[2]))
         else:
             w=it[4] if len(it)>4 else (.25 if it[1] in ('GND','/MID') else .2)
-            for a,c in zip(it[3],it[3][1:]):
-                t=pcbnew.PCB_TRACK(b); t.SetStart(V(a)); t.SetEnd(V(c)); t.SetWidth(IU(w)); t.SetLayer(LAY[it[2]]); t.SetNet(ni); new.append(t)
+            out+=[('t',it[1],LAY[it[2]],a,c,w) for a,c in zip(it[3],it[3][1:])]
+    return out
+def make(b,p):
+    if p[0]=='v':
+        v=pcbnew.PCB_VIA(b); v.SetPosition(V(p[2])); v.SetWidth(IU(.6)); v.SetDrill(IU(.3)); v.SetNet(b.FindNet(p[1]))
+        v.SetViaType(pcbnew.VIATYPE_THROUGH); v.SetLayerPair(CU[0],CU[5]); return v
+    t=pcbnew.PCB_TRACK(b); t.SetStart(V(p[3])); t.SetEnd(V(p[4])); t.SetWidth(IU(p[5])); t.SetLayer(p[2]); t.SetNet(b.FindNet(p[1])); return t
+def lay(b):
+    new=[make(b,p) for p in prims()]
     for t in new: t.SetLocked(True); b.Add(t)
     return len(new)
+# The block's own nets: on these the board's locked copper inside WIN must equal ITEMS (MODE=check). GND, MID, ABS and
+# the SH pair continue outside the block and are only tested for missing primitives.
+OWN=LOCAL|{'/FLT_A','/RUN_A','/GATE_A','/GA2'}
+def key(t):
+    r=lambda p:(round(MM(p.x),3),round(MM(p.y),3))
+    if t.GetClass()=='PCB_VIA': return ('v',t.GetNetname(),r(t.GetPosition()))
+    return ('t',t.GetNetname(),t.GetLayer())+tuple(sorted((r(t.GetStart()),r(t.GetEnd()))))+(round(MM(t.GetWidth()),3),)
+def pkey(p):
+    r=lambda q:(round(q[0],3),round(q[1],3))
+    return ('v',p[1],r(p[2])) if p[0]=='v' else ('t',p[1],p[2])+tuple(sorted((r(p[3]),r(p[4]))))+(round(p[5],3),)
+def diff(b):
+    """(ITEMS primitives missing from the board, locked F.Cu copper of the block's own nets inside WIN that ITEMS doesn't
+    have)"""
+    want={pkey(p):p for p in prims()}; have={}
+    for t in b.GetTracks(): have.setdefault(key(t),t)
+    missing=[p for q,p in want.items() if q not in have]
+    stale=[t for q,t in have.items() if q not in want and t.IsLocked() and t.GetNetname() in OWN and t.GetClass()!='PCB_VIA'
+           and t.GetLayer()==CU[0] and inwin(t.GetStart()) and inwin(t.GetEnd())
+           and not ({xy(t.GetStart()),xy(t.GetEnd())}&KEEPVIA)]   # the kept stubs at the kept vias (TP11's)
+    return missing,stale
+def sync(b,dry=False):
+    missing,stale=diff(b)
+    for p in missing: print('   U8 block missing:',p[1],[b.GetLayerName(p[2])]+list(p[3:]) if p[0]=='t' else p[2])
+    for t in stale: print('   U8 block stale:',key(t)[1],key(t)[3:])
+    if not dry:
+        new=[make(b,p) for p in missing]
+        for t in stale: b.Remove(t)
+        for t in new: t.SetLocked(True); b.Add(t)
+    return len(missing),len(stale)
 if __name__=='__main__':
     b=pcbnew.LoadBoard(sys.argv[1]); fps={f.GetReference():f for f in b.GetFootprints()}
+    mode=os.environ.get('MODE','stamp')
+    if mode in ('check','sync'):
+        # MODE=check: exit 1 if the board's U8 block copper differs from ITEMS; MODE=sync: add what is missing and remove
+        # the stale locked copper of the block's own nets, nothing else
+        m,s_=sync(b,dry=mode=='check'); print(f'U8 block {mode}: {m} primitives missing, {s_} stale')
+        if mode=='sync': pcbnew.ZONE_FILLER(b).Fill(b.Zones()); b.Save(sys.argv[2])
+        sys.exit(1 if mode=='check' and (m or s_) else 0)
     place(fps); kill=rip(b); print('placed',len(PLACE),'ripping',len(kill),flush=True)
     for t in kill: b.Remove(t)
     if os.environ.get('ROUTE','1')=='1': print('laid',lay(b))

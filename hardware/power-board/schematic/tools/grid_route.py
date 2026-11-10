@@ -103,7 +103,7 @@ LATCHM[max(0,int(math.floor((_ly0-Y0)/RES))):max(0,int(math.ceil((_ly1-Y0)/RES))
 # exact pad distances: the 0.1 mm raster puts a pad edge up to ~0.07 mm off, which at 0.5 mm pin pitch is the whole
 # margin. Per layer: D1/N1 = distance (mm, cell centre to pad outline) and net of the nearest pad, D2 = distance to the
 # nearest pad of any other net; the foreign-pad distance for net v is D2 where N1 == v, else D1.
-FINE={'U1','U2','U7','U8'}   # LM5069 MSOP-10, TPS7A4001 HVSSOP-8 and U8 TPS48100 VSSOP-19 (Joey 2026-11-09): pads 0.15 mm apart, so 0.15 mm to their pads inside their courtyard only (layout/*.kicad_dru)
+FINE={'U1','U2','U7'}   # LM5069 MSOP-10 and TPS7A4001 HVSSOP-8: pads 0.15 mm apart, so 0.15 mm to their pads inside their courtyard only (layout/*.kicad_dru)
 PM=0.03   # margin on exact pad clearances (polyline vertices sit on cell centres, so the geometry is exact)
 D1=[np.full((H,W),99.0) for _ in range(stack.NL)]; D2=[np.full((H,W),99.0) for _ in range(stack.NL)]; N1=[np.zeros((H,W),np.int32) for _ in range(stack.NL)]
 padctr=[np.zeros((H,W),bool) for _ in range(stack.NL)]

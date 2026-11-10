@@ -15,7 +15,7 @@ P12=['/+12V_RAW','/+12V','/+12V_JET','/+12V_PI','/+12V_FAN','/SPARE_SW','/SPARE_
 d=json.load(open(pro)); ns=d['net_settings']
 base=dict(ns['classes'][0])
 def cls(name,w,cl,color):
-    c=dict(base); c.update(name=name,track_width=w,clearance=cl,pcb_color=color,priority=len(ns['classes'])); return c
+    c=dict(base); c.update(name=name,track_width=w,clearance=cl,pcb_color=color,priority={'ESTOP':1,'HV54':2,'P12':3}[name]); return c
 ns['classes']=[ns['classes'][0]]+[cls('ESTOP',0.2,0.2,'rgb(255, 0, 255)'),cls('HV54',0.25,0.2,'rgb(255, 64, 0)'),cls('P12',0.6,0.2,'rgb(255, 200, 0)')]
 pat=[]
 for n in nets:
@@ -23,8 +23,8 @@ for n in nets:
     elif domains.is_hv(n): pat.append(dict(netclass='HV54',pattern=n))
     elif n in P12: pat.append(dict(netclass='P12',pattern=n))
 ns['netclass_patterns']=pat; ns['netclass_assignments']=None
-json.dump(d,open(pro,'w'),indent=2)
-s=open(dru).read()
+json.dump(d,open(pro,'w',newline=chr(10)),indent=2)   # LF on every platform, so the file doesn't change wholesale
+s=open(dru,newline='').read()
 RULE="""# E-stop safety nets keep 1.5 mm to 54 V copper on every layer (LAYOUT_RULES.md, tools/domains.py); the fine-pitch
 # rules below come later in this file, so they win inside U1/U2/U7's courtyards
 (rule estop_to_54v
@@ -33,5 +33,5 @@ RULE="""# E-stop safety nets keep 1.5 mm to 54 V copper on every layer (LAYOUT_R
 """
 if 'estop_to_54v' not in s:
     k=s.find('(rule '); s=s[:k]+RULE+s[k:]
-open(dru,'w').write(s)
+open(dru,'w',newline='').write(s)
 print('classes',[c['name'] for c in ns['classes']],'patterns',len(pat))

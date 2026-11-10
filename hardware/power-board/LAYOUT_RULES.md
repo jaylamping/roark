@@ -107,7 +107,7 @@
 
 ## E-stop safety nets
 
-- Net class **ESTOP_SAFE:** RUN, RUN_A, RUN_B, RUN_P, UVLO, EN_A, FLT_A, FLT_D, LOOP_*, RST_*, L_B, L_E, L_PB, L_PC, MID_B, VB_B, INT_B, WDO_N, VWD.
+- Net class **ESTOP_SAFE:** RUN, RUN_A, RUN_B, RUN_P, SP_ENR, UVLO, EN_A, FLT_A, FLT_D, LOOP_*, RST_*, L_B, L_E, L_PB, L_PC, MID_B, VB_B, INT_B, WDO_N, VWD.
 - At least 1.5 mm (2 mm preferred) to any BAT, SW_D, MID, VBUS, ABS, CL_D, BRK_*, SH* or V_L* copper, on all layers, with a GND guard trace or pour between them.
 - Why: 0.44 MΩ of leakage from 54 V into UVLO enables bank B by itself.
 - No 54 V copper on L2–L5 under the latch block.
@@ -150,14 +150,18 @@ that is never coated must not go on the pack.
   - `estop_to_54v`: 1.5 mm from net class ESTOP to net class HV54 on every layer (classes set by
     schematic/tools/handfinish_prep.py from schematic/tools/domains.py).
   - **Fine-pitch footprints:** U1 and U7 (LM5069, MSOP-10 0.5 mm) and U2 (TPS7A4001, HVSSOP-8) put their own pads
-    0.15 mm apart, so **only clearances between copper that enters that IC's courtyard** (its own pads, and each pin's
-    first escape segment) drop to 0.15 mm:
-    `(rule fine_pitch_U1 (constraint clearance (min 0.15mm)) (condition "(A.memberOfFootprint('U1') && B.intersectsCourtyard('U1')) || (B.memberOfFootprint('U1') && A.intersectsCourtyard('U1')) || (A.intersectsCourtyard('U1') && B.intersectsCourtyard('U1'))"))`,
-    and the same for U2, U7 and U8. U8 (TPS48100, VSSOP-19 0.5 mm, the latch controller) was added by Joey on 2026-11-09: its
-    E-stop pins (EN_A, FLT_A) sit 0.5 mm from its 54 V pins, so inside U8's courtyard only, E-stop copper may also come within
-    0.15 mm of 54 V copper. Outside that courtyard the 1.5 mm rule stands.
+    0.15 mm apart, so **only clearances between F.Cu pads, tracks and vias that enter that IC's courtyard** (its own
+    pads, and each pin's first escape segment) drop to 0.15 mm:
+    `(rule fine_pitch_U1 (layer "F.Cu") (constraint clearance (min 0.15mm)) (condition "A.Type != 'Zone' && B.Type != 'Zone' && ((A.memberOfFootprint('U1') && B.intersectsCourtyard('U1')) || (B.memberOfFootprint('U1') && A.intersectsCourtyard('U1')) || (A.intersectsCourtyard('U1') && B.intersectsCourtyard('U1')))"))`,
+    and the same for U2 and U7. The rule is limited to F.Cu and never applies to a pour (2026-11-10): KiCad's courtyard
+    test is true for copper under the courtyard on any layer and for a whole pour that touches it, so before that
+    limit the inner planes and the GND fill came within 0.15 mm of tracks passing under or leaving these courtyards.
+  - **U8 has no fine-pitch rule** (removed 2026-11-10). It had one from 2026-11-09, which also let E-stop copper come
+    within 0.15 mm of 54 V copper inside its courtyard. Since U8 was turned (E-stop row north, 54 V row south,
+    schematic/tools/u8_block.py) nothing needs it: its pads are 0.2 mm apart, and DRC is clean with the 1.5 mm
+    E-stop rule and the 0.2 mm default inside U8's courtyard.
   - Outside the courtyards, E-stop copper stays at 1.5 mm from 54 V, and 54 V domains at 0.2 mm (coated).
-    schematic/tools/route_checks.py tests the same scope.
+    schematic/tools/route_checks.py tests the same scope, on the real shapes.
   - U1's UVLO pin sits between SH_P and the GND pins. schematic/tools/route_u1.py therefore draws U1's escapes as single straight
     segments: SH_P and SH_N straight out to RS1, and UVLO inward to a via under the body.
 - **Holes:** no copper within 2 mm of the heatsink screw holes HS1/HS2 (the screw and the heatsink aren't insulated from
@@ -217,7 +221,7 @@ Rule exceptions on this board, each tested or bounded by a check:
 | 2 | G2 has 3 vias (gate nets: 2) | (149.9, 160.19), (130.2, 167.0), (125.6, 139.8) | accepted in the project thread, 2026-11-10; to confirm at the review | route_checks 8 (domains.GATE_VIA_OK) |
 | 3 | GATE_A has 3 vias, one inside the MID outline at Q8's gate (132.0, 141.46) | from the staged routing, unchanged | not yet reviewed | route_checks 7, 8 |
 | 4 | GA2 has a via inside the MID outline, in the pour's dead tip beside U8 beyond the tabs | (167.95, 157.0); the old board had TMR_A's via in the same tip | not yet reviewed | route_checks 7 |
-| 5 | Fine-pitch courtyards: 0.15 mm inside U1, U2, U7 and U8; inside U8's also between E-stop and 54 V copper | .kicad_dru | Joey, 2026-11-09 (U8), as recorded under Clearance | DRC, route_checks 1/2 |
+| 5 | Fine-pitch courtyards: 0.15 mm between F.Cu pads, tracks and vias inside U1's, U2's and U7's courtyards (not pours, not inner layers). U8's rule is removed | .kicad_dru | in force; U8's removed 2026-11-10 | DRC, route_checks 1/2 |
 | 6 | Inner GND planes and fills at 0.3 mm zone clearance (outer fills 0.6 mm) | In1-In4 | accepted in the project thread, 2026-11-10; to confirm at the review | route_checks 6 |
 | 7 | Signal and GND vias pass through the L6 VBUS sheet: 142 inside VBUS pour outlines (126 before this routing), 18 of them in the band X 130-160, Y 180-190 (24 before) | under the meter blocks | band rule: no new ones | pour_width.py (neck 18.9 mm, unchanged) |
 | 8 | Masked copper (the VBUS sheet and those vias) inside the heatsink zone on L6 | X -33..33, Y 200-305 | open, Joey's call (FET copper, above) | none |
