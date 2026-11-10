@@ -185,3 +185,5 @@ These apply to every printed structural part of the robot; links repeat only wha
 - Lateral case does not pass in the draft 3 one-body model (1.17 bulk at the ring/skirt corner); contact model and corner fix
   next (draft 3 README).
 - RS02 meshes in arm coordinates for `mates`; the evidence file for draft 3.
+- Which `[print]` settings are the system preset's values (`preset`), so the gate doesn't require Bambu Studio to flag
+  them; `layer_height = "0.2"` probably is.

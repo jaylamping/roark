@@ -84,6 +84,14 @@ def test_3mf_with_no_flagged_overrides_fails(tmp_path: Path) -> None:
     assert gate.check_3mf(tmp_path / "bad.3mf", spec, part).status == gate.FAIL
     write_3mf(tmp_path / "infill.3mf", {**GOOD_SETTINGS, "sparse_infill_density": "15%"})
     assert gate.check_3mf(tmp_path / "infill.3mf", spec, part).status == gate.FAIL
+    # some keys flagged, one spec key not: Bambu Studio still resets that one
+    write_3mf(tmp_path / "partial.3mf", {**GOOD_SETTINGS, "different_settings_to_system": ["wall_loops", "", ""]})
+    c = gate.check_3mf(tmp_path / "partial.3mf", spec, part)
+    assert (c.status, c.detail[0]) == (gate.FAIL, "sparse_infill_density = '50%' is not flagged in "
+                                       "different_settings_to_system: Bambu Studio will reset it on open")
+    # unless the spec says that value is the system preset's
+    c = gate.check_3mf(tmp_path / "partial.3mf", {**spec, "print": {**spec["print"], "preset": ["sparse_infill_density"]}}, part)
+    assert (c.status, c.detail[0]) == (gate.PASS, "sparse_infill_density = '50%', the system preset value (spec `preset`)")
 
 
 def test_evidence_for_an_older_export_or_below_the_pass_mark_fails(tmp_path: Path) -> None:

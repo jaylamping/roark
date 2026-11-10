@@ -73,6 +73,7 @@ colour = "white"
 plate = "Cool Plate Super Tack"
 visible_support_mm2 = 0
 settings = { layer_height = "0.2", support_type = "tree(auto)" }   # Bambu Studio project keys and values
+preset = ["layer_height"]            # settings whose value is the system preset's, so Bambu Studio doesn't flag them
 
 [[part]]
 name = "upper_arm_shell_front_left"  # file stem; the 3MF is prints/<region>/<name>.3mf
@@ -133,11 +134,10 @@ fails when:
 | Mesh ([mesh_check.py](../tools/cad/mesh_check.py)) | not one watertight body; an unlisted vertex sharper than 150°, knife edge, wall under 0.6 mm over 0.5 mm², or surface step over 0.03 mm over 1 mm² | spikes, slivers, then notches reached Joey (2026-11-07) |
 | Support on visible faces ([part_checks.py](../tools/cad/part_checks.py)) | support touches more visible outer area than the spec allows | rough upper-arm skin, trapped cavity support (2026-11-08) |
 | Interference | a `mates` mesh overlaps the part by more than 0.05 mm | RS02 tab lip about 1 mm into the upper arm (2026-11-08) |
-| 3MF settings | material or a spec setting differs, or no overrides are flagged in `different_settings_to_system` | infill reset to 15% on open (2026-11-07) |
+| 3MF settings | material or a spec setting differs, or a spec setting isn't flagged in `different_settings_to_system` (unless the spec lists it in `preset`) | infill reset to 15% on open (2026-11-07) |
 | Evidence | a load case has no result, isn't converged or is under its pass mark; access isn't recorded; any source changed | stale or singular FEA reported as passes (2026-11-07) |
 
-It warns (without failing) when a 3MF setting the spec asks for isn't flagged, when a part has no `mates`, and for each
-print-log lesson that matches the part (section 4).
+It warns (without failing) when a part has no `mates`, and for each print-log lesson that matches the part (section 4).
 
 Mesh exceptions are reviewed spots, never a way to pass: they go in
 [cad/manifests/mesh-whitelist.json](../cad/manifests/mesh-whitelist.json), keyed by part name, each with a reason, added only

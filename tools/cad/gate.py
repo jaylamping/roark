@@ -114,16 +114,19 @@ def first(v):
 
 
 def check_3mf(path: Path, spec: dict, part: dict) -> Check:
-    """Values the spec asks for, the material, and that the overrides are flagged in different_settings_to_system:
-    Bambu Studio reloads system defaults for any key not flagged there (infill came back as 15%, 2026-11-07)."""
-    want = {**spec.get("print", {}).get("settings", {}), **part.get("settings", {})}
-    material = part.get("material", spec.get("print", {}).get("material"))
+    """Values the spec asks for, the material, and that each of those settings is flagged in different_settings_to_system:
+    Bambu Studio reloads system defaults for any key not flagged there (infill came back as 15%, 2026-11-07). A setting
+    whose value is the system preset's isn't flagged by Bambu Studio; the spec names those keys in `preset`."""
+    pr = spec.get("print", {})
+    want = {**pr.get("settings", {}), **part.get("settings", {})}
+    preset = set(pr.get("preset", [])) | set(part.get("preset", []))
+    material = part.get("material", pr.get("material"))
     try:
         ps = settings_of(path)
     except (KeyError, zipfile.BadZipFile, json.JSONDecodeError) as e:
         return Check("3MF settings", FAIL, [f"can't read project settings: {e}"])
     flagged = {k for entry in ps.get("different_settings_to_system", []) for k in str(entry).split(";") if k}
-    bad, warn = [], []
+    bad, ok = [], []
     if not flagged:
         bad.append("different_settings_to_system is empty: Bambu Studio will reset every setting to the system preset")
     if material and str(first(ps.get("filament_type", ""))).upper() != material.upper():
@@ -132,10 +135,12 @@ def check_3mf(path: Path, spec: dict, part: dict) -> Check:
         got = first(ps.get(k))
         if got is None or str(got) != str(v):
             bad.append(f"{k} = {got!r}, spec says {v!r}")
+        elif k in preset:
+            ok.append(f"{k} = {v!r}, the system preset value (spec `preset`)")
         elif k not in flagged:
-            warn.append(f"{k} = {v!r} is not flagged; fine only if it is the system preset value")
-    status = FAIL if bad else (WARN if warn else PASS)
-    return Check("3MF settings", status, bad + warn or [f"{len(want)} settings match, {len(flagged)} keys flagged"])
+            bad.append(f"{k} = {v!r} is not flagged in different_settings_to_system: Bambu Studio will reset it on open")
+    return Check("3MF settings", FAIL if bad else PASS,
+                 bad + ok + [f"{len(want)} settings match, {len(flagged)} keys flagged"])
 
 
 def check_evidence(cad: Path, spec: dict, part: dict) -> Check:
