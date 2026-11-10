@@ -16,6 +16,11 @@ Concept B ("muscle belly", 195 mm, marengo [`forearm/concepts/`](https://github.
 | Wrist cap | `forearm_wrist_cap_left` | 6.5 g | Holds the lower 6808 from below. 3 × M3 into the sleeve inserts. Yaw stop lug. |
 | Wrist flange | `forearm_wrist_flange_left` | 18.6 g | Turns with the tube. Spigot seats on the tube end. Hand pattern: 6 inserts on Ø50, Ø35 pilot. Yaw stop tab: ±170°. |
 
+The one-piece fork B (`forearm_fork_left`) is not the chosen design: the recommendation in
+[Print orientation](#print-orientation-one-piece-fork-vs-clamshell-2026-11-08) is the clamshell, and the one-piece fork is
+not printed. It is in this folder as the forearm work's reference geometry: the fork FEA below was run on it, and the
+clamshell is this fork split on X 170.49.
+
 Bought parts are in marengo [`BUY_ORDER.md`](https://github.com/jaylamping/marengo/blob/31324dd4/hardware/designs/left-arm/BUY_ORDER.md) section 6. Whole forearm with the RS00: 779 g, CoM 102.3 mm below the elbow axis (100% infill CAD estimate; marengo [`testing/CALIBRATION_LOOP.md`](https://github.com/jaylamping/marengo/blob/31324dd4/hardware/designs/left-arm/testing/CALIBRATION_LOOP.md) section 14).
 
 Section drawing with the cable route: marengo [`forearm/forearm_A_section.png`](https://github.com/jaylamping/marengo/blob/31324dd4/hardware/designs/left-arm/forearm/forearm_A_section.png).
@@ -115,7 +120,9 @@ Before the fix, the peaks sat on those sharp corners and grew with mesh refineme
 | Lateral, el 2.0 | 7.61 | 4.03 | Inboard root |
 | P90 back-driven onto the 0° stop, el 2.0 | 1.91 | 2.06 | Near the stop patch (X 138, Y 174) / inboard root |
 
-The 1.6 mesh agrees with the 2.0 mesh within 2%. The 1.3 runs and the stop case at 1.6 are still running, and will be added to this table. All cases pass the sustained target (1.5 / 1.25) and the stop target (1.5 / 1.25).
+The 1.6 mesh agrees with the 2.0 mesh within 2%. The el 1.3 runs and the stop case at el 1.6 are not in this table, and
+no result for them is recorded in this repo (2026-11-10). All cases above pass the sustained target (1.5 / 1.25) and the
+stop target (1.5 / 1.25).
 
 ## Open items
 
