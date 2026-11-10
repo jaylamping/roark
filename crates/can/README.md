@@ -36,8 +36,8 @@ Each tick, on the monotonic clock:
    records only that the frame wasn't taken and never latches.
 6. **Collect** until the collect deadline (about 60 % of the period), feeding each frame to `on_frame`.
 7. **Publish** the `Snapshot` (`end`) to control and hand every frame of the tick to the recorder.
-8. **Slack:** hand control the results already held, take new requests, send at most one (`slow_send`), then hand
-   control the new results.
+8. **Slack:** hand control the results already held, take new requests, send at most one (`slow_send`; none on a held
+   tick), then hand control the new results.
 
 A drive's status read after a command the socket took is its **fresh** status, and it **answered** the tick if read by
 the collect deadline. That is evidence the drive is there and what state it was in, never an acknowledgement: there
@@ -93,7 +93,8 @@ when it went). Each drive needs a fresh preflight before it is enabled again; th
 once-a-second reads; they never ride in a batch. A bus holds `SLOW_SLOTS` of them and has at most one in flight, sent
 after the collect deadline and only while its reply fits before the next tick starts (`Timing::slow_reply_ns`, a
 quarter period by default, provisional until the real adapter is measured), so the next drain reads the reply and it
-never lands among the tick's command replies. A read is answered by its drive's reply naming its register, get-ID by
+never lands among the tick's command replies. A held tick (a late wake, a stall or a backlog, above) sends none: its
+reads can't be trusted and its slack isn't known, so a queued request waits for a trusted tick. A read is answered by its drive's reply naming its register, get-ID by
 its type-0 reply, and a write by any status from the drive while the write is in flight, which proves nothing about the
 value: preflight reads every write back. A fault or mode that status shows counts like any status's. Writes go only to
 drives of an idle limb (`LimbNotIdle`) with no command of the tick still unanswered (`CommandUnanswered`: an idle

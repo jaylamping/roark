@@ -202,6 +202,9 @@ pub struct BusTick {
     pub(crate) tick: u64,
     pub(crate) scheduled_ns: u64,
     pub(crate) sends: SendList,
+    /// The last tick that woke late, followed a stall or read a backlog: only its batch's Disables and reporting off
+    /// went, and no slow frame goes in its slack.
+    pub(crate) held_tick: Option<u64>,
     pub(crate) slow: [Option<SlowEntry>; SLOW_SLOTS],
     pub(crate) slow_seq: u64,
 }
@@ -271,6 +274,7 @@ impl BusTick {
             tick: 0,
             scheduled_ns: 0,
             sends: SendList::EMPTY,
+            held_tick: None,
             slow: [None; SLOW_SLOTS],
             slow_seq: 0,
         })
@@ -395,7 +399,7 @@ impl BusTick {
     /// in the drain, a wake past the send window (a missed deadline, counted whatever the limbs are doing) or ticks a
     /// stall slept through stop every active limb; an idle one has nothing to stop. That tick only the batch's Disables
     /// and reporting off go, right late or not, and the rest is held back (`held_batches`), so nothing is enabled on a
-    /// tick whose reads can't be trusted; the batch checks still apply. Then, before anything is planned, a drive of an
+    /// tick whose reads can't be trusted; the batch checks still apply, and no slow request goes in its slack. Then, before anything is planned, a drive of an
     /// idle or active limb that the drain or an earlier read showed faulted, out of Run after running, or silent too
     /// long stops its limb, so no command (Enable included) reaches it this tick. After planning an untrusted tick, no
     /// drive of a limb still idle keeps a fresh status, so motion waits for a status read on a trusted tick (PLAN.md
@@ -435,6 +439,9 @@ impl BusTick {
         }
         // On a tick whose reads can't be trusted or that woke too late, only the batch's Disables and reporting off go.
         let hold = backlog || woke_late || stalled;
+        if hold {
+            self.held_tick = Some(tick);
+        }
         self.veto(now_ns);
         let accepted = if takes_batches {
             self.check_batch(tick, now_ns, batch)

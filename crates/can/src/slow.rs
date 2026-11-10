@@ -10,7 +10,9 @@
 //! more than a tick late can still be taken for the write's answer, which is why the read-back proves the value). A request for
 //! a drive whose limb is stopping, stopped or due to stop (the veto's own checks on any drive of the limb: a fault, a
 //! drop out of Run, too many misses), while control is silent, or on a failed bus is refused, and one already queued is
-//! cancelled before it goes, so slow traffic never keeps a drive alive (`canTimeout` counts from any frame).
+//! cancelled before it goes, so slow traffic never keeps a drive alive (`canTimeout` counts from any frame). A held tick
+//! (a late wake, a stall or a backlog) sends none: its reads can't be trusted and its slack isn't known, so a queued
+//! request waits for a trusted tick.
 
 use robstride::{EchoKind, Frame, Param, ParamOutcome, Uid, Write, encode};
 
@@ -161,9 +163,9 @@ impl BusTick {
         self.slow.iter().filter(|e| e.is_none()).count()
     }
 
-    /// The slow frame to send now, at `now_ns`, if one may go: after this tick's collect deadline, with nothing in
-    /// flight, and early enough for the reply to be read before the next tick starts. Queued requests that may no
-    /// longer go are cancelled first. Report what the socket did with [`Self::slow_sent`].
+    /// The slow frame to send now, at `now_ns`, if one may go: on a tick that wasn't held, after its collect deadline,
+    /// with nothing in flight, and early enough for the reply to be read before the next tick starts. Queued requests
+    /// that may no longer go are cancelled first; the rest wait. Report what the socket did with [`Self::slow_sent`].
     pub fn slow_send(&mut self, now_ns: u64) -> Option<Frame> {
         for i in 0..SLOW_SLOTS {
             let Some(entry) = self.slow.get(i).copied().flatten() else {
@@ -182,7 +184,8 @@ impl BusTick {
             .any(|e| matches!(e.state, SlowState::Sending | SlowState::Waiting));
         let after_collect = now_ns >= self.scheduled_ns.saturating_add(self.timing.collect_ns);
         let next_tick = self.scheduled_ns.saturating_add(self.timing.period_ns);
-        if in_flight
+        if self.held_tick == Some(self.tick)
+            || in_flight
             || !after_collect
             || now_ns.saturating_add(self.timing.slow_reply_ns) > next_tick
         {

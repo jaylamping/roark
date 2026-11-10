@@ -5,8 +5,8 @@
 mod common;
 
 use can::{
-    BusTick, DRIVE_TIMEOUT_NS, LimbState, RearmRefused, SLOW_SLOTS, SendOutcome, SlowKind,
-    SlowOutcome, SlowRefusal, SlowRequest, SlowResult, StopReason, Unsent,
+    BusTick, DRIVE_TIMEOUT_NS, Drain, LimbState, RearmRefused, SLOW_SLOTS, SendOutcome, SlowKind,
+    SlowOutcome, SlowRefusal, SlowRequest, SlowResult, StopReason, Timing, Unsent,
 };
 use common::{
     MS, PERIOD, at, batch, bus, deadline, drive, error_frame, id, record, run_tick, status,
@@ -353,6 +353,37 @@ fn slow_requests_name_a_drive_on_the_bus_and_the_queue_is_bounded() {
         })
     );
     assert_eq!(bus.slow_room(), 1);
+}
+
+/// Guards: safety - a held tick (a late wake, a stall or a backlog) sends nothing but its batch's Disables and
+/// reporting off, slow frames included: the request waits, queued, and goes in the next trusted tick's slack (can.md
+/// section 2: slow requests never on a tick whose reads can't be trusted; PLAN.md item 3).
+#[test]
+fn a_held_tick_sends_no_slow_request() {
+    let late = Timing::at_hz(250).send_window_ns + 1;
+    // (cause, how late tick 1 wakes, ticks the stall slept through, how its drain went)
+    let causes = [
+        ("late wake", late, 0, Drain::Emptied),
+        ("stall", 0, 1, Drain::Emptied),
+        ("backlog", 0, 0, Drain::Backlog),
+    ];
+    for (name, woke_after, skipped, drain) in causes {
+        let mut bus = two_limbs();
+        quiet_tick(&mut bus, 0);
+        assert_eq!(bus.submit(read(1, 1, Param::Vbus)), Ok(()));
+        bus.skipped(skipped);
+        bus.drained(drain);
+        let _ = bus.begin(1, PERIOD + woke_after, PERIOD, Some(&batch(1, &[])));
+        let _ = bus.end(deadline(1));
+        assert_eq!(bus.slow_send(deadline(1)), None, "{name}");
+        assert_eq!(bus.take_slow_result(), None, "{name}: still queued");
+        quiet_tick(&mut bus, 2);
+        assert_eq!(
+            bus.slow_send(deadline(2)),
+            Some(encode::param_read(id(102), Param::Vbus)),
+            "{name}"
+        );
+    }
 }
 
 /// Drive `n`'s status in `mode` showing an overcurrent fault.
