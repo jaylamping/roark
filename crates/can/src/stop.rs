@@ -10,6 +10,7 @@
 //! windows), every tick until the socket takes it. A drive that never confirms gets no reporting off. When the stop
 //! ends is decided in one place, [`BusTick::stop_over`], bounded by [`Timing::stop_max_ns`](crate::Timing::stop_max_ns).
 
+use robstride::EchoKind;
 use robstride::encode::{self, Reporting};
 
 use crate::error_frame::BusError;
@@ -103,12 +104,13 @@ impl BusTick {
                 && now_ns.saturating_sub(since_ns) < confirm_ns
                 && !d.stop.confirmed()
             {
-                self.sends.push(Send {
+                let send = Send {
                     slot,
                     kind: SendKind::Disable,
                     frame: encode::disable(d.device),
                     expires: false,
-                });
+                };
+                self.planned.push(send, EchoKind::Disable);
             }
         }
     }
@@ -126,12 +128,13 @@ impl BusTick {
                 } = d.stop
                 && now_ns >= at_ns.saturating_add(silence)
             {
-                self.sends.push(Send {
+                let send = Send {
                     slot,
                     kind: SendKind::ReportingOff,
                     frame: encode::active_reporting(d.device, Reporting::Off),
                     expires: false,
-                });
+                };
+                self.planned.push(send, EchoKind::Reporting(Reporting::Off));
             }
         }
     }

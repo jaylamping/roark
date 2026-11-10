@@ -6,7 +6,7 @@ use telemetry::{Direction, FrameRecord};
 
 use crate::error_frame::{BusError, classify, controller_passive};
 use crate::tick::{BusTick, DriveState, DriveStop, Off, Reply, limb_state};
-use crate::types::{EchoSeen, LimbState, Observed};
+use crate::types::{EchoSeen, LimbState, MAX_DRIVES, Observed};
 
 impl BusTick {
     /// One frame read at `read_ns`, before the send (draining) or after it.
@@ -78,14 +78,12 @@ impl BusTick {
                 None => self.counters.unexpected += 1,
             },
             Ok(Inbound::Version { header, .. }) => {
-                let unordered = self.unordered;
-                let limbs = self.limbs;
-                match self.slot_of(header.device) {
+                match drive_of(&mut self.drives, header.device) {
                     // A version reply carries the status header too: its faults and its mode count like a status's.
                     Some(d) => {
                         d.fault_seen |= !header.faults.is_empty();
-                        let active = limb_state(&limbs, d.limb) == Some(LimbState::Active);
-                        d.note_mode(header.mode, active, unordered);
+                        let active = limb_state(&self.limbs, d.limb) == Some(LimbState::Active);
+                        d.note_mode(header.mode, active, self.unordered);
                     }
                     None => self.counters.unexpected += 1,
                 }
@@ -99,16 +97,9 @@ impl BusTick {
     }
 
     fn on_status(&mut self, read_ns: u64, status: Status, answer: bool) {
-        let device = status.header.device;
         let tick = self.tick;
         let unordered = self.unordered;
-        let limbs = self.limbs;
-        let Some(d) = self
-            .drives
-            .iter_mut()
-            .flatten()
-            .find(|d| d.device == device)
-        else {
+        let Some(d) = drive_of(&mut self.drives, status.header.device) else {
             self.counters.unexpected += 1;
             return;
         };
@@ -116,7 +107,7 @@ impl BusTick {
         if !status.header.faults.is_empty() {
             d.fault_seen = true;
         }
-        let limb = limb_state(&limbs, d.limb);
+        let limb = limb_state(&self.limbs, d.limb);
         let active = limb == Some(LimbState::Active);
         // A Reset confirms only while the limb is stopping and inside the stop's reply allowance.
         let replies_ns = self.timing.stop_replies_ns();
@@ -160,9 +151,14 @@ impl BusTick {
     }
 
     fn slot_of(&mut self, device: DeviceId) -> Option<&mut DriveState> {
-        self.drives
-            .iter_mut()
-            .flatten()
-            .find(|d| d.device == device)
+        drive_of(&mut self.drives, device)
     }
+}
+
+/// The drive `device` in the table: over the table rather than the tick, so the limb table can be read beside it.
+fn drive_of(
+    drives: &mut [Option<DriveState>; MAX_DRIVES],
+    device: DeviceId,
+) -> Option<&mut DriveState> {
+    drives.iter_mut().flatten().find(|d| d.device == device)
 }

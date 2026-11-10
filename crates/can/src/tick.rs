@@ -21,8 +21,8 @@ use crate::error_frame::BusError;
 use crate::timing::{ENABLE_TO_RUN_NS, Timing};
 use crate::types::{
     BusDrive, CommandBatch, ConfigError, Counters, Drain, DriveView, EchoSeen, LimbState, LimbView,
-    MAX_DRIVES, NoSuchLimb, Observed, Send, SendKind, SendList, SendOutcome, Snapshot, StopOutcome,
-    StopReason,
+    MAX_DRIVES, MAX_SENDS, NoSuchLimb, Observed, Send, SendKind, SendList, SendOutcome, Snapshot,
+    StopOutcome, StopReason,
 };
 
 /// A command the socket took, waiting for its status.
@@ -206,6 +206,41 @@ enum Taken {
     Expired,
 }
 
+/// This tick's sends, and what each one is, set when it is planned so [`BusTick::sent`] needn't decode it.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Planned {
+    pub(crate) sends: SendList,
+    kinds: [Option<EchoKind>; MAX_SENDS],
+}
+
+impl Planned {
+    const EMPTY: Self = Self {
+        sends: SendList::EMPTY,
+        kinds: [None; MAX_SENDS],
+    };
+
+    /// Plan `send`, a frame of `kind`, as the next send.
+    pub(crate) fn push(&mut self, send: Send, kind: EchoKind) {
+        if let Some(k) = self.kinds.get_mut(self.sends.len()) {
+            *k = Some(kind);
+        }
+        self.sends.push(send);
+    }
+
+    fn get(&self, index: usize) -> Option<(Send, Option<EchoKind>)> {
+        let send = self.sends.get(index)?;
+        Some((send, self.kinds.get(index).copied().flatten()))
+    }
+}
+
+/// A batch for this tick that passed its checks: how it was taken, and each slot's frame kind, decoded once.
+#[derive(Clone, Copy, Debug)]
+struct Accepted<'b> {
+    batch: &'b CommandBatch,
+    taken: Taken,
+    kinds: [Option<EchoKind>; MAX_DRIVES],
+}
+
 /// Which of a batch's frames a pass over it plans: its Disables go ahead of the stops' reporting off, the rest after.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Part {
@@ -249,7 +284,7 @@ pub struct BusTick {
     pub(crate) silent: u32,
     pub(crate) tick: u64,
     pub(crate) scheduled_ns: u64,
-    pub(crate) sends: SendList,
+    pub(crate) planned: Planned,
 }
 
 impl BusTick {
@@ -314,7 +349,7 @@ impl BusTick {
             silent: 0,
             tick: 0,
             scheduled_ns: 0,
-            sends: SendList::EMPTY,
+            planned: Planned::EMPTY,
         })
     }
 
@@ -464,7 +499,7 @@ impl BusTick {
     ) -> SendList {
         self.tick = tick;
         self.scheduled_ns = scheduled_ns;
-        self.sends = SendList::EMPTY;
+        self.planned = Planned::EMPTY;
         for d in self.drives.iter_mut().flatten() {
             d.answered = false;
         }
@@ -503,12 +538,12 @@ impl BusTick {
         // frames never costs a Disable (PLAN.md item 2 Stop): the stops' Disables, the batch's, the stops' reporting
         // off, then the rest of the batch.
         self.plan_stop_disables(now_ns);
-        if let Some((batch, taken)) = accepted {
+        if let Some(accepted) = accepted {
             // An expired batch was counted stale already; its Disables and reporting off still go, the rest is dropped.
-            let hold = hold || taken == Taken::Expired;
-            self.push_commands(&batch, hold, Part::Disables);
+            let hold = hold || accepted.taken == Taken::Expired;
+            self.push_commands(&accepted, hold, Part::Disables);
             self.plan_stop_reporting_off(now_ns);
-            if self.push_commands(&batch, hold, Part::Rest) && taken == Taken::Fresh {
+            if self.push_commands(&accepted, hold, Part::Rest) && accepted.taken == Taken::Fresh {
                 self.counters.held_batches += 1;
             }
         } else {
@@ -517,16 +552,15 @@ impl BusTick {
         if hold {
             self.forget_fresh();
         }
-        self.sends
+        self.planned.sends
     }
 
     /// Step 3 of a held tick ([`Self::begin`]): clear the freshness of every drive in a limb that takes commands, which
     /// by then means one still idle, the active ones having stopped. Stopping and stopped limbs take no motion, and a
     /// re-arm clears theirs.
     fn forget_fresh(&mut self) {
-        let limbs = self.limbs;
         for d in self.drives.iter_mut().flatten() {
-            let held = limb_state(&limbs, d.limb).is_some_and(LimbState::takes_commands);
+            let held = limb_state(&self.limbs, d.limb).is_some_and(LimbState::takes_commands);
             if held {
                 d.fresh_ns = None;
                 d.fresh_status = None;
@@ -547,12 +581,12 @@ impl BusTick {
     /// one for this tick still yields its Disables and reporting off, which are right late or not (can.md section 2).
     /// A frame aimed wrong, in a slot with no drive, or of a kind a batch may not carry is a bug upstream and stops the
     /// whole bus; motion on expired feedback in a fresh batch stops that drive's limb.
-    fn check_batch(
+    fn check_batch<'b>(
         &mut self,
         tick: u64,
         now_ns: u64,
-        batch: Option<&CommandBatch>,
-    ) -> Option<(CommandBatch, Taken)> {
+        batch: Option<&'b CommandBatch>,
+    ) -> Option<Accepted<'b>> {
         let this_tick = batch.filter(|b| b.tick == tick);
         if this_tick.is_some_and(|b| b.expires_ns > now_ns) {
             self.silent = 0;
@@ -578,36 +612,43 @@ impl BusTick {
         } else {
             Taken::Expired
         };
-        // Check the whole batch before sending any of it.
-        for (slot, frame) in batch.frames().iter().enumerate() {
+        // Check the whole batch before sending any of it, decoding each frame once.
+        let mut kinds = [None; MAX_DRIVES];
+        for (slot, (frame, kind)) in batch.frames().iter().zip(&mut kinds).enumerate() {
             let Some(frame) = frame else { continue };
-            let Some(drive) = self.drives.get(slot).copied().flatten() else {
-                self.bad_batch(slot, now_ns);
-                return None;
-            };
-            let Some((kind, target)) = echo_of(frame) else {
-                self.bad_batch(slot, now_ns);
-                return None;
-            };
-            if target != drive.device || !batch_may_carry(kind) {
-                self.bad_batch(slot, now_ns);
-                return None;
+            let device = self
+                .drives
+                .get(slot)
+                .and_then(Option::as_ref)
+                .map(|d| d.device);
+            match (device, echo_of(frame)) {
+                (Some(device), Some((k, target))) if target == device && batch_may_carry(k) => {
+                    *kind = Some(k);
+                }
+                _ => {
+                    self.bad_batch(slot, now_ns);
+                    return None;
+                }
             }
         }
-        for (slot, frame) in batch.frames().iter().enumerate() {
-            let (Some(frame), Some(drive), Taken::Fresh) =
-                (frame, self.drives.get(slot).copied().flatten(), taken)
-            else {
-                continue;
-            };
-            let stale = drive
-                .fresh_ns
-                .is_none_or(|at| now_ns.saturating_sub(at) > self.timing.feedback_limit_ns);
-            if matches!(echo_of(frame), Some((EchoKind::Mit, _))) && stale {
-                self.stop_limb_now(drive.limb, StopReason::ExpiredFeedback { slot }, now_ns);
+        if taken == Taken::Fresh {
+            for (slot, kind) in kinds.iter().enumerate() {
+                let Some(d) = self.drives.get(slot).and_then(Option::as_ref) else {
+                    continue;
+                };
+                let stale = d
+                    .fresh_ns
+                    .is_none_or(|at| now_ns.saturating_sub(at) > self.timing.feedback_limit_ns);
+                if *kind == Some(EchoKind::Mit) && stale {
+                    self.stop_limb_now(d.limb, StopReason::ExpiredFeedback { slot }, now_ns);
+                }
             }
         }
-        Some((*batch, taken))
+        Some(Accepted {
+            batch,
+            taken,
+            kinds,
+        })
     }
 
     /// A bad batch stops every limb. If this tick's stops already took the last idle or active one, there is nothing left
@@ -622,39 +663,47 @@ impl BusTick {
     /// The batch's frames in `part` for limbs still idle or active; those for a stopping or stopped limb are dropped,
     /// and counted in the pass over the rest. With `hold`, only its Disables and reporting off; returns whether
     /// anything else was held back.
-    fn push_commands(&mut self, batch: &CommandBatch, hold: bool, part: Part) -> bool {
+    fn push_commands(&mut self, accepted: &Accepted<'_>, hold: bool, part: Part) -> bool {
         let mut held_back = false;
-        for (slot, frame) in batch.frames().iter().enumerate() {
-            let (Some(frame), Some(drive)) = (frame, self.drives.get(slot).copied().flatten())
-            else {
+        let frames = accepted.batch.frames().iter().zip(accepted.kinds);
+        for (slot, (frame, kind)) in frames.enumerate() {
+            let (Some(frame), Some(kind), Some(limb)) = (
+                frame,
+                kind,
+                self.drives
+                    .get(slot)
+                    .and_then(Option::as_ref)
+                    .map(|d| d.limb),
+            ) else {
                 continue;
             };
-            let running =
-                limb_state(&self.limbs, drive.limb).is_some_and(LimbState::takes_commands);
+            let running = limb_state(&self.limbs, limb).is_some_and(LimbState::takes_commands);
             if !running {
                 if part == Part::Rest {
                     self.counters.refused_frames += 1;
                 }
                 continue;
             }
-            let kind = echo_of(frame).map(|(kind, _)| kind);
-            if (kind == Some(EchoKind::Disable)) != (part == Part::Disables) {
+            if (kind == EchoKind::Disable) != (part == Part::Disables) {
                 continue;
             }
             let late_ok = matches!(
                 kind,
-                Some(EchoKind::Disable | EchoKind::Reporting(Reporting::Off))
+                EchoKind::Disable | EchoKind::Reporting(Reporting::Off)
             );
             if hold && !late_ok {
                 held_back = true;
                 continue;
             }
-            self.sends.push(Send {
-                slot,
-                kind: SendKind::Command,
-                frame: *frame,
-                expires: !late_ok,
-            });
+            self.planned.push(
+                Send {
+                    slot,
+                    kind: SendKind::Command,
+                    frame: *frame,
+                    expires: !late_ok,
+                },
+                kind,
+            );
         }
         held_back
     }
@@ -663,7 +712,7 @@ impl BusTick {
     /// the socket took it. A refused send is only counted: [`SendOutcome::Failed`] never latches, so a socket write
     /// failure other than a full queue must also go to [`Self::lost_bus`].
     pub fn sent(&mut self, index: usize, outcome: SendOutcome, sent_ns: u64) {
-        let Some(send) = self.sends.get(index) else {
+        let Some((send, kind)) = self.planned.get(index) else {
             return;
         };
         match outcome {
@@ -677,7 +726,6 @@ impl BusTick {
                 return;
             }
         }
-        let kind = echo_of(&send.frame).map(|(kind, _)| kind);
         let expects_status = matches!(
             kind,
             Some(
