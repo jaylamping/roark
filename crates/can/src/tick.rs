@@ -206,6 +206,13 @@ enum Taken {
     Expired,
 }
 
+/// Which of a batch's frames a pass over it plans: its Disables go ahead of the stops' reporting off, the rest after.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Part {
+    Disables,
+    Rest,
+}
+
 /// One limb's run state on this bus.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Limb {
@@ -422,7 +429,8 @@ impl BusTick {
     }
 
     /// Start tick `tick`, scheduled at `scheduled_ns`, woken at `now_ns`, with the newest batch from control. Call after
-    /// draining the socket and [`Self::drained`]. Returns the frames to send, in order, stop frames first; report each
+    /// draining the socket and [`Self::drained`]. Returns the frames to send, in order: every Disable (the stops', then
+    /// the batch's), then every reporting off (the stops', then the batch's), then the rest of the batch; report each
     /// with [`Self::sent`]. Each send says whether it expires ([`Send::expires`]): a command goes out only inside the
     /// send window, while a Disable or active reporting off goes out late too, whoever planned it.
     ///
@@ -491,18 +499,20 @@ impl BusTick {
             None
         };
         self.settle_stops(now_ns);
-        self.plan_stops(now_ns);
-        match accepted {
-            Some((batch, Taken::Fresh)) => {
-                if self.push_commands(&batch, hold) {
-                    self.counters.held_batches += 1;
-                }
+        // Every Disable goes ahead of every reporting off, whoever planned it, so a queue that fills after the first
+        // frames never costs a Disable (PLAN.md item 2 Stop): the stops' Disables, the batch's, the stops' reporting
+        // off, then the rest of the batch.
+        self.plan_stop_disables(now_ns);
+        if let Some((batch, taken)) = accepted {
+            // An expired batch was counted stale already; its Disables and reporting off still go, the rest is dropped.
+            let hold = hold || taken == Taken::Expired;
+            self.push_commands(&batch, hold, Part::Disables);
+            self.plan_stop_reporting_off(now_ns);
+            if self.push_commands(&batch, hold, Part::Rest) && taken == Taken::Fresh {
+                self.counters.held_batches += 1;
             }
-            // Counted stale already; its Disables and reporting off still go, the rest is dropped.
-            Some((batch, Taken::Expired)) => {
-                self.push_commands(&batch, true);
-            }
-            None => {}
+        } else {
+            self.plan_stop_reporting_off(now_ns);
         }
         if hold {
             self.forget_fresh();
@@ -609,9 +619,10 @@ impl BusTick {
         self.stop_all(StopReason::BadBatch { slot }, now_ns);
     }
 
-    /// The batch's frames for limbs still idle or active; those for a stopping or stopped limb are dropped and counted.
-    /// With `hold`, only its Disables and reporting off; returns whether anything else was held back.
-    fn push_commands(&mut self, batch: &CommandBatch, hold: bool) -> bool {
+    /// The batch's frames in `part` for limbs still idle or active; those for a stopping or stopped limb are dropped,
+    /// and counted in the pass over the rest. With `hold`, only its Disables and reporting off; returns whether
+    /// anything else was held back.
+    fn push_commands(&mut self, batch: &CommandBatch, hold: bool, part: Part) -> bool {
         let mut held_back = false;
         for (slot, frame) in batch.frames().iter().enumerate() {
             let (Some(frame), Some(drive)) = (frame, self.drives.get(slot).copied().flatten())
@@ -621,12 +632,18 @@ impl BusTick {
             let running =
                 limb_state(&self.limbs, drive.limb).is_some_and(LimbState::takes_commands);
             if !running {
-                self.counters.refused_frames += 1;
+                if part == Part::Rest {
+                    self.counters.refused_frames += 1;
+                }
+                continue;
+            }
+            let kind = echo_of(frame).map(|(kind, _)| kind);
+            if (kind == Some(EchoKind::Disable)) != (part == Part::Disables) {
                 continue;
             }
             let late_ok = matches!(
-                echo_of(frame),
-                Some((EchoKind::Disable | EchoKind::Reporting(Reporting::Off), _))
+                kind,
+                Some(EchoKind::Disable | EchoKind::Reporting(Reporting::Off))
             );
             if hold && !late_ok {
                 held_back = true;

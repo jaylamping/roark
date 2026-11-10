@@ -92,12 +92,10 @@ impl BusTick {
         }
     }
 
-    /// The stop frames of every stopping limb, every Disable ahead of every reporting off (PLAN.md item 2 Stop:
-    /// Disable to every affected drive, then reporting off), so a full queue never costs a Disable for a reporting off.
-    /// Disables go to each drive not yet confirmed, inside the confirm window; reporting off to each confirmed drive
-    /// whose silence is over, every tick until the socket takes it. Called after [`Self::settle_stops`], so a limb
-    /// whose stop is over is stopped and sends nothing.
-    pub(crate) fn plan_stops(&mut self, now_ns: u64) {
+    /// Every stopping limb's Disables: to each drive not yet confirmed, inside the confirm window. Planned after
+    /// [`Self::settle_stops`], so a limb whose stop is over is stopped and sends nothing, and ahead of every reporting
+    /// off ([`Self::begin`] has the order).
+    pub(crate) fn plan_stop_disables(&mut self, now_ns: u64) {
         let confirm_ns = self.timing.stop_confirm_ns;
         for (slot, d) in self.drives.iter().enumerate() {
             if let Some(d) = d
@@ -113,6 +111,11 @@ impl BusTick {
                 });
             }
         }
+    }
+
+    /// Every stopping limb's reporting off: to each confirmed drive whose silence is over, every tick until the socket
+    /// takes it.
+    pub(crate) fn plan_stop_reporting_off(&mut self, now_ns: u64) {
         let silence = self.timing.disable_silence_ns;
         for (slot, d) in self.drives.iter().enumerate() {
             if let Some(d) = d

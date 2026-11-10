@@ -61,8 +61,9 @@ or a backlog stops every active limb (below). A stopping limb follows PLAN item 
   withdraws it: the drive gets Disable again while the window lasts, and counts as unconfirmed for the stop's end and
   the re-arm.
 - Active reporting off to each confirmed drive once its post-Disable silence is over (`disable_silence_ns`, 50 ms after
-  its confirmation), every tick until the socket takes it or the stop ends. Every Disable goes out ahead of every
-  reporting off.
+  its confirmation), every tick until the socket takes it or the stop ends. Every Disable, a stop's or one in
+  control's batch, goes out ahead of every reporting off, so a queue that fills after the first frames costs a
+  reporting off before it costs a Disable.
 - The limb is `Stopped` once every drive has confirmed and the socket took its reporting off; otherwise not before the
   reply allowance closes, and after it as soon as no confirmed drive's reporting off is unsent, or at the latest at
   `stop_max_ns` (the allowance, the silence and two periods: 162 ms at 250 Hz), which gives the last drive that can
