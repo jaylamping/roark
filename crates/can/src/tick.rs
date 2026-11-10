@@ -413,8 +413,8 @@ impl BusTick {
     /// Start tick `tick`, scheduled at `scheduled_ns`, woken at `now_ns`, with the newest batch from control. Call after
     /// draining the socket and [`Self::drained`]. Returns the frames to send, in order: every Disable (the stops', then
     /// the batch's), then every reporting off (the stops', then the batch's), then the rest of the batch; report each
-    /// with [`Self::sent`]. Each send says whether it expires ([`Send::expires`]): a command goes out only inside the
-    /// send window, while a Disable or active reporting off goes out late too, whoever planned it.
+    /// with [`Self::sent`]. Each send says whether it expires ([`Send::expires`](crate::Send::expires)): a command goes
+    /// out only inside the send window, while a Disable or active reporting off goes out late too, whoever planned it.
     ///
     /// A stop asked for before the tick (the whole bus's or one limb's) is taken first, so it keeps its reason. A backlog
     /// in the drain, a wake past the send window (a missed deadline, counted whatever the limbs are doing) or ticks a
