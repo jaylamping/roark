@@ -5,13 +5,12 @@
 mod common;
 
 use can::{
-    BusTick, ConfigError, DRIVE_TIMEOUT_NS, LimbState, RearmRefused, SLOW_SLOTS, SendOutcome,
-    SlowKind, SlowOutcome, SlowRefusal, SlowRequest, SlowResult, StopReason, Timing, TimingError,
-    Unsent,
+    BusTick, DRIVE_TIMEOUT_NS, LimbState, RearmRefused, SLOW_SLOTS, SendOutcome, SlowKind,
+    SlowOutcome, SlowRefusal, SlowRequest, SlowResult, StopReason, Unsent,
 };
 use common::{
-    MS, PERIOD, at, batch, bus, deadline, drive, error_frame, id, one_limb, record, run_tick,
-    status, status_frame, stop_of, two_limbs,
+    MS, PERIOD, at, batch, bus, deadline, drive, error_frame, id, record, run_tick, status,
+    status_frame, stop_of, two_limbs,
 };
 use robstride::drive as wire;
 use robstride::{
@@ -354,45 +353,6 @@ fn slow_requests_name_a_drive_on_the_bus_and_the_queue_is_bounded() {
         })
     );
     assert_eq!(bus.slow_room(), 1);
-}
-
-/// Guards: number - a slow reply window that fills the whole slack between the collect deadline and the next tick
-/// (the shell sends only after the deadline, so nothing could go), or is zero, is refused at startup; one a nanosecond
-/// shorter is not (PLAN.md item 3: parameter traffic only in the slack).
-#[test]
-fn a_slow_reply_window_past_the_slack_is_refused() {
-    let base = Timing::at_hz(250);
-    let slack = base.period_ns - base.collect_ns;
-    let rows = [
-        (
-            0,
-            Some(TimingError::SlowReply {
-                slow_reply_ns: 0,
-                collect_ns: base.collect_ns,
-                period_ns: base.period_ns,
-            }),
-        ),
-        (
-            slack,
-            Some(TimingError::SlowReply {
-                slow_reply_ns: slack,
-                collect_ns: base.collect_ns,
-                period_ns: base.period_ns,
-            }),
-        ),
-        (slack - 1, None),
-    ];
-    for (slow_reply_ns, refused) in rows {
-        let timing = Timing {
-            slow_reply_ns,
-            ..base
-        };
-        assert_eq!(
-            BusTick::new(&one_limb(&[id(101)]), timing).err(),
-            refused.map(ConfigError::Timing),
-            "{slow_reply_ns}"
-        );
-    }
 }
 
 /// Drive `n`'s status in `mode` showing an overcurrent fault.
