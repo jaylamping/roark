@@ -57,21 +57,25 @@ pub enum SlowOutcome {
     WriteAnswered,
     /// Sent, but no reply was read by the next tick's start.
     TimedOut,
-    /// The socket didn't take it.
+    /// Not sent: it expired queued, or the socket didn't take it. [`Unsent`] says which, and where it is counted.
     NotSent(Unsent),
     /// Never sent.
     Refused(SlowRefusal),
 }
 
-/// Why the socket didn't take a slow frame.
+/// Why a slow request wasn't sent.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Unsent {
-    /// Past its time: still queued [`Timing::slow_queue_ticks`](crate::Timing::slow_queue_ticks) ticks after the tick
-    /// it was submitted in, with no slack in them that let it go.
+    /// Past its time, from either of two places. Still queued
+    /// [`Timing::slow_queue_ticks`](crate::Timing::slow_queue_ticks) ticks after the tick it was submitted in, with no
+    /// slack in them that let it go, it expires as a slack opens and never reaches the socket ([`BusTick::open_slack`],
+    /// counted in `slow_expired`). Or the shell reports its frame expired instead of writing it ([`BusTick::slow_sent`]
+    /// with [`SendOutcome::Expired`], counted in `tx_expired`); the Linux shell never does, since a slow frame has no
+    /// send window.
     Expired,
-    /// The adapter's queue was full.
+    /// The adapter's queue was full (counted in `tx_dropped`).
     QueueFull,
-    /// The write failed, and the bus with it.
+    /// The write failed, and the bus with it (counted in `tx_dropped`).
     Failed,
 }
 

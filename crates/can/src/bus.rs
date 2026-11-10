@@ -121,6 +121,10 @@ pub struct BusExit {
     /// `counters.slow_results_dropped` and those dropped after it, when the ending thread gave every request it still
     /// held, or found in its ring, its one result.
     pub slow_results_dropped: u64,
+    /// Slow requests that expired unsent over the thread's whole run: `last`'s `counters.slow_expired` and those that
+    /// expired after it, in the slack of the tick that made it, which no later snapshot carries when the thread leaves
+    /// at the next drain.
+    pub slow_expired: u64,
     /// The first socket or clock error the thread met, if any. Most end the thread; one after the snapshot that
     /// decided its exit ([`BusLinks::exit`]), in the sleep or drain of the tick it returns at, is reported too, though
     /// it returns there all the same. No snapshot is made after it, so `last` is then the
@@ -308,6 +312,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         recorder: links.recorder,
         last: None,
         slow_results_dropped: 0,
+        slow_expired: 0,
         error: None,
     };
     let clock = match Clock::new(links.epoch, links.start) {
@@ -406,6 +411,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
     }
     outcome.slow_results_dropped =
         slack::end_slow(&mut tick, &mut links.requests, &mut links.results);
+    outcome.slow_expired = tick.counters.slow_expired;
     outcome
 }
 
