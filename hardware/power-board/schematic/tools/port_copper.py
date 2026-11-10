@@ -6,16 +6,18 @@ The plan, pin by pin (eFuse U, top row = 54 V side facing the shunt, bottom row 
   19 ISCP    inward, west under the pin ends to R1 (upper lane)
   18 CSP     inward, west to R0 (lower lane)
   17 SHL_N   F.Cu from the shunt's N pad, under the shunt body beside P; inward to a via, In2 west to join P
-  15 GPU     outward, outer lane of the channel under the shunt, round R5 to R4
-  14 GPD     outward, inner lane, straight into R5 (the 22 R at the pin channel)
+  15 GPU     outward, outer lane of the channel under the shunt, into R4 (100k) at the top of the corridor
+  14 GPD     outward, inner lane, down the corridor's west side to R5 (the 22 R, at the gate pin)
   13 V_L     inward to a via; In3 east past the BST via, south to the V_L via at the gate zener and the meter's pin 8
   12 BST     inward to a via (In3 to the bootstrap cap)
   1 EN, 3 INP, 5 PORT_FLT_N, 2/6/7/10 GND: inward, one row of vias under the body at 0.85 mm pitch (In3 from there)
   8 IWRN, 9 TMR: outward to two vias between the eFuse and the meter
 The Kelvin pair runs on In2 down the west side of the eFuse (P outside, N inside, 0.6 mm apart), feeds R0/C2 (P) and
 R1 (N) through one via each, turns east between the eFuse and the meter and ends in a via per leg at meter pins 10/9.
-Gate: R5 (GPD) and R4 (GPU) share the G node, which runs down the corridor east of the eFuse to the gate zener and the
-gate pin (F.Cu, 9 mm); a via on it feeds the slew network (D0, C4, R6) right of the FET on In3."""
+Gate: R4 (GPU, 100k) and R5 (GPD, 22 R) stand in the corridor east of the eFuse, R5 at the bottom with its G pad 3.2 mm
+from the gate pin (pad centre to the pin's end; 3.8 mm of F.Cu track, with the zener on the same line). GPD runs down
+the west side of the corridor to R5, R4's G pad down the east side. A via on the gate line feeds the slew network (D0,
+C4, R6) right of the FET on In3. Until 2026-11-10 both resistors sat at the pin channel, 7.5 mm from the gate."""
 import pcbnew, port_template as PT
 IU=pcbnew.FromMM
 ITEMS=[
@@ -36,11 +38,11 @@ ITEMS=[
  ('t','ISCP','F',[(163.25,192.6),(163.25,193.3),(160.5,193.3)]),
  ('t','CSP','F',[(163.75,192.6),(163.75,193.75),(161.2,193.75),(160.6,194.3)]),
  # ---- gate drive
- ('t','GPU','F',[(165.25,191.6),(165.25,190.62),(169.5,190.62),(169.9,191.02),(169.9,195.7),(169.5,196.12),(169.2,196.12)]),
- ('t','GPD','F',[(165.75,191.6),(165.75,191.02),(168.7,191.02),(169.0,191.3)]),   # ends inside R5's pad, not on its edge
- ('t','G','F',[(169.0,193.07),(169.0,194.47)]),
- ('t','G','F',[(169.0,193.77),(168.0,193.77),(168.0,198.2),(172.09,198.2),(172.09,198.9)]),   # starts on the R4-R5 link's centre line (a start at 168.8 only touched it at a tangent point)
- ('t','G','F',[(168.95,198.2),(168.95,199.1)]),
+ ('t','GPU','F',[(165.25,191.6),(165.25,190.62),(169.0,190.62),(169.0,193.15)]),   # outer lane of the channel, down into R4
+ ('t','GPD','F',[(165.75,191.6),(165.75,191.02),(167.6,191.02),(168.0,191.42),(168.0,195.9),(168.3,196.2),(169.0,196.2)]),   # inner lane, down the west side of the corridor to R5
+ ('t','G','F',[(169.0,194.8),(169.9,194.8),(169.9,198.2)]),   # R4's G pad, down the east side of the corridor
+ ('t','G','F',[(169.0,197.85),(169.0,198.2)]),                # R5's G pad onto the gate line
+ ('t','G','F',[(168.95,199.1),(168.95,198.2),(172.09,198.2),(172.09,198.9)]),   # zener, gate line, gate pin
  ('t','G','F',[(170.7,198.2),(170.7,197.35)]), ('v','G',(170.7,197.35)),
  ('t','G','3',[(170.7,197.35),(171.55,196.5),(181.2,196.5),(181.4,196.3),(181.4,194.2),(182.0,193.6),(184.6,193.6),(184.6,193.65)]),
  ('v','G',(184.6,193.65)), ('t','G','F',[(184.6,193.65),(185.5,192.8)]),

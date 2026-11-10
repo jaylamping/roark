@@ -22,8 +22,8 @@ PLACE={'R0':((160.275,195.295),(160.275,196.12)),   # SHL_P - CSP, P pad down be
        'R1':((160.275,192.245),(160.275,193.07)),   # ISCP - SHL_N, N pad up, ISCP pad down at the upper lane
        'R2':((190.445,195.065),(189.62,195.065)),   # IWRN - GND
        'R3':((190.445,196.615),(189.62,196.615)),   # TMR - GND
-       'R4':((169.0,195.295),(169.0,196.12)),       # GPU - G, G pad up beside R5's
-       'R5':((169.0,192.245),(169.0,191.42)),       # GPD - G, GPD pad up at the pin channel
+       'R4':((169.0,193.975),(169.0,193.15)),       # GPU (100k, the slow pull-up) - G: GPU pad up, at the pin channel
+       'R5':((169.0,197.025),(169.0,196.2)),        # GPD (22 R) - G: G pad down, 3.2 mm from the gate pin
        'R6':((184.1,187.9),(183.275,187.9)),       # GC - GND, above C4
        'C0':((187.285,188.025),(187.285,188.8)),    # TMR
        'C1':((190.445,191.965),(189.67,191.965)),   # BST - V_L
@@ -89,6 +89,8 @@ if __name__=='__main__':
         # MODE=check: exit 1 if the board's template copper differs from port_copper.ITEMS (no output file needed);
         # MODE=sync: add the missing template copper and remove stale locked copper of the ports' own nets, nothing else
         import port_copper
+        if mode=='sync':
+            for k in ports: place(b,k)   # the template's part positions too (a part that already sits there doesn't move)
         m,s=port_copper.sync(b,ports,FPS,dry=mode=='check')
         print(f'port template {mode}: {m} primitives missing, {s} stale')
         if mode=='sync': pcbnew.ZONE_FILLER(b).Fill(b.Zones()); b.Save(sys.argv[2])
