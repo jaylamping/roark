@@ -358,7 +358,7 @@ pub struct Counters {
     /// Batches whose Disables and reporting off alone were sent, the rest held back, for a backlog or a late wake that
     /// tick.
     pub held_batches: u64,
-    /// Frames of a fresh batch dropped because their limb was stopping or stopped.
+    /// Frames of a batch for this tick, fresh or expired, dropped because their limb was stopping or stopped.
     pub refused_frames: u64,
     /// Ticks that woke past their send window, plus each tick a stalled thread never ran
     /// ([`BusTick::skipped`](crate::BusTick::skipped)).

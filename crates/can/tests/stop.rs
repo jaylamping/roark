@@ -9,16 +9,16 @@ use can::{
     Timing,
 };
 use common::{
-    MS, PERIOD, at, batch, bus, deadline, error_frame, hold, id, run_tick, state_of, status,
-    stop_of,
+    MS, PERIOD, at, batch, bus, deadline, error_frame, hold, id, run_tick, running, state_of,
+    status, stop_of, two_limbs,
 };
 use robstride::Mode;
 use robstride::encode;
 
 /// Guards: safety - a hung control thread lets the drives time out: a batch for another tick is never sent, and of a
 /// batch for this tick past its expiry only the Disables and reporting off go, late as they are, while its commands are
-/// dropped; either counts the tick stale, and two ticks without a fresh batch stop the bus (PLAN.md item 3; can.md
-/// section 2 Transmit).
+/// dropped, and its frames for a stopping limb are refused; either counts the tick stale, and two ticks without a fresh
+/// batch stop the bus (PLAN.md item 3; can.md section 2 Transmit).
 #[test]
 fn a_stale_batch_is_never_sent_and_two_silent_ticks_stop_the_bus() {
     let mut bus = bus();
@@ -52,6 +52,24 @@ fn a_stale_batch_is_never_sent_and_two_silent_ticks_stop_the_bus() {
     assert_eq!(snap.counters.stale_ticks, 2);
     assert!(matches!(state_of(&snap), LimbState::Stopping { .. }));
     assert_eq!(stop_of(&snap), Some(StopReason::ControlSilent));
+
+    // With two limbs, an expired batch's frame for a stopping limb is refused and counted as a fresh batch's is, while
+    // its Disable for the other limb still goes.
+    let mut bus = two_limbs();
+    running(&mut bus);
+    assert_eq!(bus.stop_limb(0), Ok(()));
+    let mut expired = CommandBatch::new(2, 2 * PERIOD);
+    assert!(expired.set(0, encode::disable(id(101))));
+    assert!(expired.set(1, encode::disable(id(102))));
+    assert_eq!(
+        run_tick(&mut bus, 2, Some(&expired), &[]),
+        [(0, SendKind::Disable), (1, SendKind::Command)]
+    );
+    let snap = bus.end(deadline(2));
+    assert_eq!(
+        (snap.counters.stale_ticks, snap.counters.refused_frames),
+        (1, 1)
+    );
 }
 
 /// Guards: safety - a stop is confirmed only by a Reset-mode status read after a submitted Disable; an old Run reply
