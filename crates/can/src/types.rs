@@ -98,7 +98,10 @@ pub enum SendOutcome {
     QueueFull,
     /// A send whose window had passed before the write: dropped and counted. Only sends that [`Send::expires`] are.
     Expired,
-    /// Any other write error, or a send not tried because the bus was already lost (nothing to send on).
+    /// Not taken for any other reason: a socket write error, a frame the shell couldn't build, or a send not tried
+    /// because the bus was already lost (nothing to send on). It records only that the frame wasn't taken and never
+    /// latches: a socket write error other than a full queue must also go to
+    /// [`BusTick::lost_bus`](crate::BusTick::lost_bus), which does.
     Failed,
 }
 
@@ -183,15 +186,6 @@ impl LimbState {
             Self::Stopping { .. } | Self::Stopped => false,
         }
     }
-
-    /// Whether nothing on the limb needs stopping: idle (nothing enabled) or stopped.
-    #[must_use]
-    pub const fn settled(self) -> bool {
-        match self {
-            Self::Idle | Self::Stopped => true,
-            Self::Active | Self::Stopping { .. } => false,
-        }
-    }
 }
 
 /// One limb in a snapshot.
@@ -221,7 +215,7 @@ pub struct EchoSeen {
 pub enum StopReason {
     /// No fresh batch for `Timing::silent_ticks` ticks while a limb was active (PLAN.md item 3).
     ControlSilent,
-    /// The thread woke after its send window (PLAN.md item 3).
+    /// The thread woke after its send window, or a stall skipped ticks, whatever its feedback's age (PLAN.md item 3).
     LateWake,
     /// A batch carried motion for a drive whose last fresh status was too old.
     ExpiredFeedback {
@@ -297,7 +291,8 @@ pub struct DriveView {
     /// When its last fresh status was read: the first status after a command the socket took. Freshness, not
     /// acknowledgement: the protocol has no sequence numbers, so which command a status answers can't be proven. Read
     /// time, not arrival: it can trail the kernel's receipt by up to period - collect + send window
-    /// (units-and-frames.md section 5).
+    /// (units-and-frames.md section 5). Cleared, with `fresh_status`, for the drives of a limb still idle after an
+    /// untrusted tick (a late wake, a stall or a backlog), whose drain read too late to vouch for it.
     pub fresh_ns: Option<u64>,
     /// The status `fresh_ns` is the read time of, kept when a later status of the same mode (a duplicate, a report, an
     /// unsolicited or earlier-tick status, a version reply) replaces `observed`, and dropped when a later one shows another
@@ -372,7 +367,8 @@ pub struct Counters {
 pub struct Snapshot {
     /// The tick.
     pub tick: u64,
-    /// The first bus error that latched (bus-off, interface down or gone), even if the bus was already stopping.
+    /// The first bus error that latched (bus-off from an error frame, or any socket failure passed to `lost_bus`), even
+    /// if a limb was already stopping.
     pub bus_error: Option<BusError>,
     /// No latched bus error and not error-passive: the recording's `valid` flag (logging.md section 8.2).
     pub healthy: bool,
@@ -412,12 +408,6 @@ impl Snapshot {
             .iter()
             .enumerate()
             .filter_map(|(i, l)| l.as_ref().map(|l| (i, l)))
-    }
-
-    /// Whether every limb is idle or stopped: nothing on this bus is running or still stopping.
-    #[must_use]
-    pub fn settled(&self) -> bool {
-        self.limbs().all(|(_, l)| l.state.settled())
     }
 
     /// Whether every limb is stopped.

@@ -15,20 +15,28 @@
 ## 2. Commits
 
 - **Subject line:** `area: imperative summary`, under about 72 characters: `can: stop the limb after three missed replies`.
-  The area is the crate, `ui`, `config`, `deploy`, `docs` or `conventions`. (Tokio, ArduPilot and PX4 all use an area
+  The area is the crate, `ui`, `config`, `deploy`, `docs`, `conventions`, `cad` or `power-board`. (Tokio, ArduPilot and PX4 all use an area
   prefix, so `git log` filters by area.)
 - **Body:** why the change is needed and anything a reviewer can't see in the diff (the bench session, the manual page, the
   bug). Wrap around 72 columns.
 - **One logical change per commit.** Formatting-only changes go in their own commit.
 - No generated files, build output, logs, MCAP sessions or secrets in git. Large bench logs live outside the repo; commits
-  cite them by session ID.
+  cite them by session ID. One exception: a hardware design of record (the power board's KiCad schematic and board, their
+  renders and BOMs) is committed beside the generator that writes it, because the board is hand-finished after generation
+  and the fab order is made from those files.
 - **Describe the change, not the conversation.** Commit messages and PR descriptions say what the change does and why the
   code needs it. They don't say who asked for it ("Joey asked for...", "per the chat"), retell the discussion that led to it,
   or link chat threads or agent sessions. Name a person only when they're the source of a fact ("measured by Joey on the bench,
   session 2026-11-12T19:04Z").
 - **No AI attribution.** No `Co-Authored-By:` lines for AI tools, no agent session links, no "Generated with ..." footers, in
   commits or PR descriptions. Who or what typed a change isn't part of the change; the PR description's Confidence section is
-  where an author says which parts need a closer look.
+  where an author says which parts need a closer look. The repo is public, and a session link opens the chat it came from.
+- **Commit as a person.** Agent tools commit as their own identity (`noreply@anthropic.com` and the like) unless told
+  otherwise; set `git config user.name` and `user.email` first. `.claude/settings.json` turns off Claude Code's
+  attribution and sets the identity at session start.
+- **Checked twice.** `scripts/check_attribution.py` is a `commit-msg` hook (`python3 scripts/check_attribution.py install`,
+  once per clone) and a CI job (`.github/workflows/attribution.yml`) that fails a push or PR whose commits or description
+  carry a trailer, session link, footer or AI identity.
 
 **Why:** `git log` and `git blame` are how the next person (or agent) learns why a line exists. "fix stuff" teaches nothing.
 
@@ -51,7 +59,7 @@
   The repo's PR template (`.github/pull_request_template.md`) has these headings.
 - **Self-review first.** Read your own diff on GitHub before asking anyone else to. Most review comments are things the
   author would have caught (Drake's checklist says it covers about 80 % of comments).
-- **Size:** if a PR passes about 400 changed lines of code (generated files and data don't count), say why in the description;
+- **Size:** if a PR passes about 400 changed lines of code (generated files, data and files moved unchanged don't count), say why in the description;
   past 1,000, split it. (Drake caps PRs at 1,500.)
 - **Lockfile-only updates** (`cargo update`, a package bump) go in their own PR, and the reviewer reads the lockfile diff.
 - **CI green before review.** Don't ask for review on red. Never weaken a lint, test or CI step to get green
@@ -72,7 +80,7 @@
 - Work on a branch, open a PR, never push to `main`.
 - Run the local check command before every push ([rust.md section 13](rust.md#13-ci-gates)).
 - Keep the PR to what was asked. Spotted something else? Note it in the PR description or open an issue, don't fold it in.
-- No AI attribution in commits or PRs (section 2), whatever your tool's defaults say.
+- No AI attribution in commits or PRs (section 2), whatever your tool's defaults say. PR comments too: no footers or session links there either.
 
 ## Sources
 

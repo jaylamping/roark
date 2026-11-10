@@ -13,7 +13,9 @@
 //! are planned in `stop.rs`.
 
 use robstride::encode::Reporting;
-use robstride::{DeviceId, EchoKind, Frame, Inbound, Mode, Param, ParamValue, RunMode, decode};
+use robstride::{
+    DecodeError, DeviceId, EchoKind, Frame, Inbound, Mode, Param, ParamValue, RunMode, decode,
+};
 
 use crate::error_frame::BusError;
 use crate::timing::{ENABLE_TO_RUN_NS, Timing};
@@ -318,9 +320,10 @@ impl BusTick {
     }
 
     /// The socket failed with `error`: every limb latches stopped, whatever the error, since a socket that can't send
-    /// can't stop the drives either (fail closed, safety.md section 2). There is no bus to send a stop on; the drives
-    /// time out on their own (`canTimeout`). Error frames come through [`Self::on_frame`] instead, where only bus-off
-    /// latches.
+    /// can't stop the drives either (fail closed, safety.md section 3). Every socket read or write failure other than a
+    /// full queue comes here (PLAN.md item 6 Bus-off row); a failed write is also reported to [`Self::sent`], which
+    /// only counts it. There is no bus to send a stop on; the drives time out on their own (`canTimeout`). Error frames
+    /// come through [`Self::on_frame`] instead, where only bus-off latches.
     pub fn lost_bus(&mut self, error: BusError) {
         self.latch(error);
     }
@@ -341,12 +344,6 @@ impl BusTick {
         }
     }
 
-    /// Whether every limb is idle or stopped now, so nothing needs stopping (the shell's exit check, after the drain).
-    #[must_use]
-    pub(crate) fn settled(&self) -> bool {
-        self.limbs.iter().flatten().all(|l| l.state.settled())
-    }
-
     /// Whether every limb is idle: nothing was ever enabled, or every limb was re-armed.
     #[must_use]
     pub(crate) fn all_idle(&self) -> bool {
@@ -356,15 +353,6 @@ impl BusTick {
             .all(|l| l.state == LimbState::Idle)
     }
 
-    /// Whether `snap` shows every limb in the state it is in now.
-    #[must_use]
-    pub(crate) fn shown_in(&self, snap: &Snapshot) -> bool {
-        self.limbs
-            .iter()
-            .enumerate()
-            .all(|(i, l)| l.map(|l| l.state) == snap.limb(i).map(|v| v.state))
-    }
-
     /// Whether the bus is healthy now: no latched bus error and not error-passive. The snapshot's `healthy` is this at
     /// `end`.
     #[must_use]
@@ -372,9 +360,11 @@ impl BusTick {
         self.bus_error.is_none() && !self.error_passive
     }
 
-    /// The last snapshot couldn't be handed to control (its ring was full): counted in the next one.
-    pub fn snapshot_dropped(&mut self) {
+    /// Control's ring couldn't take `snap`, this tick's snapshot (it was full): counted in `snap`, which the caller
+    /// keeps (it may be the last snapshot the bus hands back), and in every later one.
+    pub fn snapshot_dropped(&mut self, snap: &mut Snapshot) {
         self.counters.snapshots_dropped += 1;
+        snap.counters.snapshots_dropped = self.counters.snapshots_dropped;
     }
 
     /// Start tick `tick`, scheduled at `scheduled_ns`, woken at `now_ns`, with the newest batch from control. Call after
@@ -386,9 +376,11 @@ impl BusTick {
     /// in the drain, a wake past the send window (a missed deadline, counted whatever the limbs are doing) or ticks a
     /// stall slept through stop every active limb; an idle one has nothing to stop. That tick only the batch's Disables
     /// and reporting off go, right late or not, and the rest is held back (`held_batches`), so nothing is enabled on a
-    /// tick whose reads can't be trusted. Then, before anything is planned, a drive of an idle or
-    /// active limb that the drain or an earlier read showed faulted, out of Run after running, or silent too long stops
-    /// its limb, so no command (Enable included) reaches it this tick.
+    /// tick whose reads can't be trusted; the batch checks still apply. Then, before anything is planned, a drive of an
+    /// idle or active limb that the drain or an earlier read showed faulted, out of Run after running, or silent too
+    /// long stops its limb, so no command (Enable included) reaches it this tick. After planning an untrusted tick, no
+    /// drive of a limb still idle keeps a fresh status, so motion waits for a status read on a trusted tick (PLAN.md
+    /// item 3).
     pub fn begin(
         &mut self,
         tick: u64,
@@ -436,7 +428,29 @@ impl BusTick {
         if let Some(batch) = accepted {
             self.push_commands(&batch, hold);
         }
+        if hold {
+            self.forget_fresh();
+        }
         self.sends
+    }
+
+    /// After an untrusted tick's planning: no drive of a held limb (one still idle, the active ones having stopped)
+    /// keeps a fresh status, since the drain read too late or too much to bound its real age; motion to it waits for a
+    /// status read on a trusted tick (units-and-frames.md section 5). Stopping and stopped limbs take no motion, and a
+    /// re-arm clears theirs.
+    fn forget_fresh(&mut self) {
+        let limbs = self.limbs;
+        for d in self.drives.iter_mut().flatten() {
+            let held = limbs
+                .get(d.limb)
+                .copied()
+                .flatten()
+                .is_some_and(|l| l.state.takes_commands());
+            if held {
+                d.fresh_ns = None;
+                d.fresh_status = None;
+            }
+        }
     }
 
     /// Whether any limb is idle or active, so a batch could carry something.
@@ -554,7 +568,8 @@ impl BusTick {
     }
 
     /// What became of send `index` of this tick's list, written at `sent_ns`. A command's status window opens only if
-    /// the socket took it.
+    /// the socket took it. A refused send is only counted: [`SendOutcome::Failed`] never latches, so a socket write
+    /// failure other than a full queue must also go to [`Self::lost_bus`].
     pub fn sent(&mut self, index: usize, outcome: SendOutcome, sent_ns: u64) {
         let Some(send) = self.sends.get(index) else {
             return;
@@ -703,6 +718,18 @@ fn echo_of(frame: &Frame) -> Option<(EchoKind, DeviceId)> {
             | Inbound::Version { .. }
             | Inbound::Param { .. },
         )
-        | Err(_) => None,
+        | Err(
+            DecodeError::IdTooWide(_)
+            | DecodeError::BadLength { .. }
+            | DecodeError::UnknownType { .. }
+            | DecodeError::BadDeviceId { .. }
+            | DecodeError::ReservedMode { .. }
+            | DecodeError::UnknownParam { .. }
+            | DecodeError::BadParamValue { .. }
+            | DecodeError::UnexpectedData { .. }
+            | DecodeError::OtherHost { .. }
+            | DecodeError::ForeignType { .. }
+            | DecodeError::ForeignWrite { .. },
+        ) => None,
     }
 }

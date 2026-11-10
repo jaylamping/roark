@@ -4,7 +4,7 @@
 use robstride::{DecodeError, DeviceId, Inbound, Mode, Status, decode};
 use telemetry::{Direction, FrameRecord};
 
-use crate::error_frame::{classify, controller_passive};
+use crate::error_frame::{BusError, classify, controller_passive};
 use crate::tick::{BusTick, DriveState, Reply};
 use crate::types::{EchoSeen, LimbState, Observed, StopOutcome};
 
@@ -13,9 +13,21 @@ impl BusTick {
     pub fn on_frame(&mut self, read_ns: u64, frame: &FrameRecord) {
         if frame.error {
             self.counters.error_frames += 1;
+            // Of what an error frame can say, only bus-off stops the bus for good: the adapter may restart the bus by
+            // itself (PLAN.md item 3, item 6 Bus-off row). The interface errors come from the socket, through
+            // `lost_bus`; the controller's state is read below.
             let error = classify(frame.id, &frame.data);
-            if error.latches() {
-                self.latch(error);
+            match error {
+                BusError::BusOff => self.latch(error),
+                BusError::ErrorPassive
+                | BusError::ErrorWarning
+                | BusError::ErrorActive
+                | BusError::RxOverflow
+                | BusError::TxTimeout
+                | BusError::InterfaceDown
+                | BusError::InterfaceGone
+                | BusError::Socket(_)
+                | BusError::Other(_) => {}
             }
             // The controller's state, read on its own: a frame can carry it beside a more severe flag (passive back
             // to warning together with an overflow), and warning after passive is a recovery.

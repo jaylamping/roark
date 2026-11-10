@@ -1,17 +1,18 @@
 //! The stop path without a socket: what a stop sends, what confirms it, and when it is over (PLAN.md item 2 Stop, item 3).
+//! Ticks the bus can't trust are in `untrusted.rs`.
 
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
 use can::{
-    BusError, BusTick, CommandBatch, Drain, LimbState, Send, SendKind, SendOutcome, StopOutcome,
-    StopReason,
+    BusError, BusTick, CommandBatch, LimbState, SendKind, SendOutcome, StopOutcome, StopReason,
 };
 use common::{
     MS, PERIOD, at, batch, bus, deadline, error_frame, hold, id, run_tick, state_of, status,
     stop_of,
 };
-use robstride::{Mode, encode};
+use robstride::Mode;
+use robstride::encode;
 use telemetry::FrameRecord;
 
 /// Guards: safety - a hung control thread lets the drives time out: only a fresh batch is sent, and two ticks without
@@ -102,72 +103,6 @@ fn only_reset_after_disable_confirms_a_stop() {
     );
 }
 
-/// Guards: safety - a thread that wakes past its send window stops an active bus at once instead of sending motion, and
-/// sends the Disables on that same tick: a late Disable is still the right one. An idle bus has nothing to stop: the
-/// missed deadline is counted, and of its batch only the Disables and reporting off go out, late as they are (can.md
-/// section 2), while the rest is held (PLAN.md item 3).
-#[test]
-fn a_late_wake_stops_the_bus() {
-    let mut bus = bus();
-    // Idle, tick 0 woken 2 ms late with an Enable to one drive and a Disable to the other: the Disable goes, the
-    // Enable is held, and the bus stays idle.
-    let mixed = batch(
-        0,
-        &[
-            Some(encode::enable(id(101))),
-            Some(encode::disable(id(102))),
-        ],
-    );
-    assert_eq!(
-        bus.begin(0, 2 * MS, 0, Some(&mixed))
-            .iter()
-            .collect::<Vec<_>>(),
-        [Send {
-            slot: 1,
-            kind: SendKind::Command,
-            frame: encode::disable(id(102)),
-            expires: false,
-        }]
-    );
-    let snap = bus.end(deadline(0));
-    let c = snap.counters;
-    assert_eq!(
-        (
-            state_of(&snap),
-            stop_of(&snap),
-            c.missed_deadlines,
-            c.held_batches,
-            c.stale_ticks
-        ),
-        (LimbState::Idle, None, 1, 1, 0)
-    );
-    run_tick(
-        &mut bus,
-        0,
-        Some(&batch(0, &[Some(encode::enable(id(101))), None])),
-        &[],
-    );
-    let _ = bus.end(PERIOD * 6 / 10);
-    // Tick 5 was due at 20 ms; the thread wakes at 33 ms with a fresh batch enabling the other drive.
-    let mut fresh = CommandBatch::new(5, 40 * MS);
-    assert!(fresh.set(1, encode::enable(id(102))));
-    let list = bus.begin(5, 33 * MS, 5 * PERIOD, Some(&fresh));
-    let disable = |slot, n| Send {
-        slot,
-        kind: SendKind::Disable,
-        frame: encode::disable(id(n)),
-        expires: false,
-    };
-    assert_eq!(
-        list.iter().collect::<Vec<_>>(),
-        [disable(0, 101), disable(1, 102)]
-    );
-    let snap = bus.end(34 * MS);
-    assert_eq!(stop_of(&snap), Some(StopReason::LateWake));
-    // The idle tick's and this one's.
-    assert_eq!(snap.counters.missed_deadlines, 2);
-}
-
 /// Guards: safety - control going silent stops an active bus after two consecutive ticks without a fresh batch, a
 /// missing batch counting like a stale one; a fresh batch in between starts the count again (PLAN.md item 3).
 #[test]
@@ -200,49 +135,8 @@ fn only_consecutive_silent_ticks_stop_the_bus() {
     );
 }
 
-/// Guards: safety - ticks a stalled thread slept through are each a missed deadline and stop an active bus as a late
-/// wake would, Disables on the next tick it runs; an idle bus counts them and, as for a late wake, holds that tick's
-/// commands; none skipped is no news (PLAN.md item 3: missed deadlines are counted, never skipped silently).
-#[test]
-fn skipped_ticks_are_missed_deadlines_and_stop_the_bus() {
-    let mut bus = bus();
-    run_tick(&mut bus, 0, None, &[]);
-    let _ = bus.end(deadline(0));
-    // Idle: counted, nothing to stop, and the Enable held for that tick only.
-    bus.skipped(2);
-    let enable = |tick| batch(tick, &[Some(encode::enable(id(101))), None]);
-    assert_eq!(run_tick(&mut bus, 3, Some(&enable(3)), &[]), []);
-    let snap = bus.end(deadline(3));
-    assert_eq!(
-        (
-            state_of(&snap),
-            stop_of(&snap),
-            snap.counters.missed_deadlines,
-            snap.counters.held_batches
-        ),
-        (LimbState::Idle, None, 2, 1)
-    );
-    bus.skipped(0);
-    let sent = run_tick(&mut bus, 4, Some(&enable(4)), &[]);
-    assert_eq!(sent, [(0, SendKind::Command)]);
-    let snap = bus.end(deadline(4));
-    assert_eq!(
-        (state_of(&snap), snap.counters.missed_deadlines),
-        (LimbState::Active, 2)
-    );
-    // The thread wakes after tick 4 to find ticks 5 to 7 already past: tick 8 runs on time, as a stop.
-    bus.skipped(3);
-    let sent = run_tick(&mut bus, 8, Some(&batch(8, &[None, None])), &[]);
-    assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Disable)]);
-    let snap = bus.end(deadline(8));
-    assert_eq!(
-        (stop_of(&snap), snap.counters.missed_deadlines),
-        (Some(StopReason::LateWake), 5)
-    );
-}
-
-/// Guards: safety - bus-off is latched on the first error frame and nothing later clears it (PLAN.md item 3, item 6
-/// Bus-off row).
+/// Guards: safety - bus-off is latched on the first error frame, and so is any socket failure passed to `lost_bus`;
+/// nothing later clears it (PLAN.md item 3, item 6 Bus-off row).
 #[test]
 fn bus_off_latches_stopped() {
     let mut bus = bus();
@@ -281,14 +175,41 @@ fn bus_off_latches_stopped() {
         LimbState::Stopped
     );
 
-    // Any socket failure latches, whatever its error: a socket that can't send can't stop the drives either.
-    for error in [BusError::TxTimeout, BusError::Other(0x08)] {
+    // Any socket failure latches, whatever its error: a socket that can't send can't stop the drives either. On an
+    // active bus it ends the run at once, and nothing more is sent.
+    for error in [
+        BusError::TxTimeout,
+        BusError::Other(0x08),
+        BusError::InterfaceGone,
+        BusError::Socket(5),
+    ] {
         let mut bus = common::bus();
         bus.lost_bus(error);
         let snap = bus.end(0);
         assert_eq!(
             (state_of(&snap), snap.bus_error),
             (LimbState::Stopped, Some(error))
+        );
+        let mut bus = common::bus();
+        let enable = batch(0, &[Some(encode::enable(id(101))), None]);
+        run_tick(&mut bus, 0, Some(&enable), &[(MS, status(101, Mode::Run))]);
+        assert_eq!(state_of(&bus.end(deadline(0))), LimbState::Active);
+        bus.lost_bus(error);
+        let enable = batch(1, &[Some(encode::enable(id(101))), None]);
+        assert_eq!(run_tick(&mut bus, 1, Some(&enable), &[]), [], "{error:?}");
+        let snap = bus.end(deadline(1));
+        assert_eq!(
+            (state_of(&snap), stop_of(&snap), snap.bus_error),
+            (
+                LimbState::Stopped,
+                Some(StopReason::Bus(error)),
+                Some(error)
+            ),
+            "{error:?}"
+        );
+        assert!(
+            snap.drives().all(|d| d.stop == StopOutcome::NeverSent),
+            "{snap:?}"
         );
     }
 }
@@ -475,7 +396,7 @@ fn a_drive_confirmed_late_still_gets_reporting_off() {
 }
 
 /// Guards: safety - a bus error during a stop is kept for the safety layer even though the stop's reason stays what
-/// started it (PLAN.md item 6: bus-off or a lost bus faults every active run).
+/// started it (PLAN.md item 6 Bus-off row: bus-off or a socket failure faults every active run).
 #[test]
 fn a_bus_error_during_a_stop_is_kept() {
     let mut bus = bus();
@@ -515,112 +436,6 @@ fn a_disable_from_control_is_not_a_stop() {
         (stop_of(&snap), at(&snap, 0).stop),
         (None, StopOutcome::None)
     );
-}
-
-/// Guards: safety - a backlog stops the bus without hiding an earlier reason, and once a drain leaves frames queued the
-/// statuses read answer and confirm nothing, since they may predate the Disables, until a drain empties the socket
-/// (PLAN.md item 3).
-#[test]
-fn a_backlog_stops_and_its_unordered_reads_confirm_nothing() {
-    let mut bus = bus();
-    let enable = batch(
-        0,
-        &[Some(encode::enable(id(101))), Some(encode::enable(id(102)))],
-    );
-    run_tick(
-        &mut bus,
-        0,
-        Some(&enable),
-        &[(MS, status(101, Mode::Run)), (MS, status(102, Mode::Run))],
-    );
-    let _ = bus.end(deadline(0));
-    bus.request_stop();
-    bus.drained(Drain::Unemptied);
-    // An old Reset status still queued from before the enable is read after the Disables.
-    run_tick(&mut bus, 1, None, &[(MS, status(101, Mode::Reset))]);
-    let snap = bus.end(deadline(1));
-    assert_eq!(stop_of(&snap), Some(StopReason::Requested));
-    assert_eq!(
-        at(&snap, 0).stop,
-        StopOutcome::Sent,
-        "not confirmed by a frame that may predate the Disable"
-    );
-    assert_eq!(
-        at(&snap, 0).observed.map(|o| o.status.header.mode),
-        Some(Mode::Reset),
-        "but still seen"
-    );
-    // The next tick's drain reads another queued Reset and again leaves frames: still unordered.
-    bus.on_frame(2 * PERIOD, &status(101, Mode::Reset));
-    bus.drained(Drain::Unemptied);
-    run_tick(&mut bus, 2, None, &[(MS, status(101, Mode::Reset))]);
-    assert_eq!(at(&bus.end(deadline(2)), 0).stop, StopOutcome::Sent);
-    // The drain that empties the socket still read backlog, so its frames confirm nothing; what comes after the send
-    // does: the re-sent Disable's Reset confirms.
-    bus.on_frame(3 * PERIOD, &status(101, Mode::Reset));
-    bus.drained(Drain::Emptied);
-    assert_eq!(at(&bus.end(3 * PERIOD), 0).stop, StopOutcome::Sent);
-    run_tick(&mut bus, 3, None, &[(MS, status(101, Mode::Reset))]);
-    assert_eq!(at(&bus.end(deadline(3)), 0).stop, StopOutcome::Confirmed);
-}
-
-/// Guards: safety - a drain that read more than the shell may stops an active bus, but having emptied the socket it
-/// orders the reads again: a Reset after the send confirms. On an idle bus nothing is enabled, so a backlog stops
-/// nothing, but no Enable goes out on a tick whose reads can't be trusted (PLAN.md item 3).
-#[test]
-fn an_emptied_backlog_stops_but_orders_the_reads_again() {
-    let mut bus = bus();
-    bus.drained(Drain::Backlog);
-    let enable = batch(0, &[Some(encode::enable(id(101))), None]);
-    assert_eq!(run_tick(&mut bus, 0, Some(&enable), &[]), []);
-    let snap = bus.end(deadline(0));
-    assert_eq!(
-        (state_of(&snap), snap.counters.held_batches),
-        (LimbState::Idle, 1)
-    );
-    run_tick(
-        &mut bus,
-        1,
-        Some(&batch(1, &[Some(encode::enable(id(101))), None])),
-        &[(MS, status(101, Mode::Run))],
-    );
-    let _ = bus.end(deadline(1));
-    bus.drained(Drain::Backlog);
-    let sent = run_tick(&mut bus, 2, Some(&batch(2, &[Some(hold(101)), None])), &[]);
-    assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Disable)]);
-    let snap = bus.end(deadline(2));
-    assert_eq!(
-        (stop_of(&snap), at(&snap, 0).stop),
-        (Some(StopReason::Backlog), StopOutcome::Sent)
-    );
-    bus.drained(Drain::Backlog);
-    run_tick(&mut bus, 3, None, &[(MS, status(101, Mode::Reset))]);
-    assert_eq!(at(&bus.end(deadline(3)), 0).stop, StopOutcome::Confirmed);
-}
-
-/// Guards: safety - a stop asked for is never lost to a backlog: on an idle bus, whichever came first and whichever way
-/// the drain ended, the requested stop is taken and no Enable goes out (PLAN.md item 6: a stop is always accepted).
-#[test]
-fn a_backlog_never_swallows_a_requested_stop() {
-    for drain in [Drain::Backlog, Drain::Unemptied] {
-        for stop_first in [false, true] {
-            let mut bus = bus();
-            if stop_first {
-                bus.request_stop();
-                bus.drained(drain);
-            } else {
-                bus.drained(drain);
-                bus.request_stop();
-            }
-            let enable = batch(0, &[Some(encode::enable(id(101))), None]);
-            assert_eq!(
-                run_tick(&mut bus, 0, Some(&enable), &[]),
-                [(0, SendKind::Disable), (1, SendKind::Disable)],
-                "{drain:?}, stop first: {stop_first}"
-            );
-            assert_eq!(stop_of(&bus.end(deadline(0))), Some(StopReason::Requested));
-        }
-    }
 }
 
 /// Run ticks from `from` with no batch, at most 100, until the bus is stopped: every Disable taken by the socket, every

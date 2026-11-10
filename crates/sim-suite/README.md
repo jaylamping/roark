@@ -12,6 +12,10 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
 - `bus.rs`: `can::spawn` refuses anything that isn't `vcan`, and the bus thread runs two simulated drives through
   enable, hold and a shutdown stop, recorded by `telemetry`; the recording is checked frame by frame against an
   independent `candump -L -x` capture (needs `can-utils`).
+- `exit.rs`: a bus of two active limbs told to exit with control's snapshot ring full stops every limb and returns
+  once the ring takes a snapshot with every limb stopped, once control drops the ring, or after its wait when control
+  never reads again. Its tests
+  share `can0`, one at a time (`.config/nextest.toml`).
 
 The bus loop's fault tests (PLAN item 4, "Done when") join it as the safety layer lands.
 
