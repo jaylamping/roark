@@ -36,9 +36,11 @@ job runner can take them over without changing the files they use.
   one you didn't start. Each launch steals focus and takes about 1.5 GB, so start the second one only for a long study and
   close it when the study ends.
 - **CAD writer lock:** [cad.md section 6](cad.md#6-writer-lock-hooks-and-lfs-budget) still applies inside a worktree that more
-  than one session uses. With one worktree per thread it is uncontested, but take it anyway: the hooks check it.
-- **Hooks:** never run a hook installer from a worktree; `install_hooks.py` installs for every worktree of the clone. The
-  hooks skip the CAD checks in a worktree without `tools/cad/hooks/` ([cad.md section 6](cad.md#6-writer-lock-hooks-and-lfs-budget)).
+  than one session uses. With one worktree per thread it is uncontested, but take it anyway. The CAD hooks check it where
+  they are installed; after setup step 5 (section 4) the shared clone has none, so there nothing checks it until they are
+  installed from the main checkout.
+- **Hooks:** never run a hook installer from a worktree (`install_hooks.py` refuses in one); the hooks are shared by every
+  worktree of the clone. The hooks skip the CAD checks in a worktree without `tools/cad/hooks/` ([cad.md section 6](cad.md#6-writer-lock-hooks-and-lfs-budget)).
 
 ## 2. Claims and heartbeats
 
@@ -81,8 +83,12 @@ To build first on the upper-arm contact FEA, which is the next large study.
 ## 4. What threads may run, and what needs Joey
 
 **Routine (allowed in the PC's Claude Code settings, no prompt):** read-only git; `git add`, `git commit`, `git push` to a
-branch other than `main`; `git fetch`, `git pull`, `git switch`, `git worktree add`; `git lfs` commands; `git config
---worktree`; the CAD tools in `tools/cad/` and `tools/pc/claims.py`. These are reversible and every change still lands by PR.
+branch other than `main`; `git fetch`, `git pull`, `git switch`, `git worktree add`; `git lfs pull`, `fetch`, `ls-files`
+and `status`; `git config --worktree`; the CAD tools in `tools/cad/` except `cad_lock.py acquire`; `tools/pc/claims.py`.
+These are reversible and every change still lands by PR. Each allow line is the narrowest prefix that covers what threads
+run, because a rule matches anything that starts with it: `git lfs:*` would also allow `git lfs install` (shared hooks)
+and `git lfs prune` (the shared LFS store). `cad_lock.py acquire` asks every time, since the same command with
+`--take-stale` takes over another session's lock; the prompt shows which it is.
 
 **Needs Joey at the keyboard (or his OK in the thread, then he runs it):**
 
@@ -90,7 +96,8 @@ branch other than `main`; `git fetch`, `git pull`, `git switch`, `git worktree a
   `git clean` anywhere);
 - anything that writes to `main` directly;
 - installing software or Python packages;
-- changing shared git config or hooks (`git config` without `--worktree`, `install_hooks.py`, anything in `.git/hooks`);
+- changing shared git config or hooks (`git config` without `--worktree`, `install_hooks.py`, `git lfs install`, anything
+  in `.git/hooks`);
 - closing or killing another session's SolidWorks, or taking over a stale CAD lock (`--take-stale`);
 - a push over the LFS budget (`CAD_BUDGET_OK=1`);
 - system settings, drivers, scheduled tasks.
@@ -107,26 +114,37 @@ A thread asks for these by name and says why. It doesn't ask for anything on the
    "allow": [
      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)", "Bash(git branch:*)",
      "Bash(git fetch:*)", "Bash(git pull:*)", "Bash(git switch:*)", "Bash(git add:*)", "Bash(git commit:*)",
-     "Bash(git push:*)", "Bash(git worktree add:*)", "Bash(git worktree list:*)", "Bash(git lfs:*)",
+     "Bash(git push:*)", "Bash(git worktree add:*)", "Bash(git worktree list:*)",
+     "Bash(git lfs pull:*)", "Bash(git lfs fetch:*)", "Bash(git lfs ls-files:*)", "Bash(git lfs status:*)",
      "Bash(git config --worktree:*)",
      "Bash(python tools/cad/gate.py:*)", "Bash(python tools/cad/check_cad_layout.py:*)",
      "Bash(python tools/cad/check_sw_refs.py:*)", "Bash(python tools/cad/record_export.py:*)",
-     "Bash(python tools/cad/cad_lock.py:*)", "Bash(python tools/cad/lfs_budget.py:*)",
+     "Bash(python tools/cad/cad_lock.py status:*)", "Bash(python tools/cad/cad_lock.py check:*)",
+     "Bash(python tools/cad/cad_lock.py refresh:*)", "Bash(python tools/cad/cad_lock.py release:*)",
+     "Bash(python tools/cad/lfs_budget.py:*)",
      "Bash(python tools/check_file_sizes.py:*)", "Bash(python tools/pc/claims.py:*)"
    ],
    "deny": [
      "Bash(git push origin main:*)", "Bash(git push origin HEAD:main:*)", "Bash(git push origin +main:*)",
-     "Bash(git push -f:*)", "Bash(git push -u origin main:*)", "Bash(git push origin --delete:*)"
+     "Bash(git push -f:*)", "Bash(git push -u origin main:*)", "Bash(git push origin --delete:*)",
+     "Bash(git push --force-with-lease origin main:*)", "Bash(git push --force-with-lease origin HEAD:main:*)"
    ]
    ```
 
    Deny rules win over allow rules. There is no deny line for `--force`: as a prefix it would also block the
-   `--force-with-lease` the settings already allow. GitHub's protection on `main` is the real guard; these deny lines only
-   stop the attempt early. If the prompts that keep appearing name the PowerShell tool instead of Bash, add the same lines
-   with `PowerShell(` in place of `Bash(`.
+   `--force-with-lease` the settings already allow. The deny lines catch only the spellings listed; a push to `main` with
+   other flags before the refspec still matches `git push:*`. **GitHub's protection on `main` is the only real guard**;
+   these lines just stop the common attempts early. If the prompts that keep appearing name the PowerShell tool instead of
+   Bash, add the same lines with `PowerShell(` in place of `Bash(`.
 3. Install the gate's mesh libraries once: `python -m pip install numpy scipy trimesh rtree`.
-4. If not done yet, restore the roark hooks the arm thread's install replaced: in `J:\code\roark\.git\hooks`, delete
-   `pre-commit` and rename `pre-push.lfs-orig` back to `pre-push`.
-5. Restart the "Joey-PC (code)" Remote Control server so it reloads the settings.
+4. Turn on per-worktree git config: `git -C J:/code/roark config extensions.worktreeConfig true`. Without it,
+   `git config --worktree` refuses in a clone with several worktrees, and in a clone with one it writes the shared
+   `.git/config`.
+5. If not done yet, put back Git LFS's stock hooks in place of the CAD hooks the arm thread's install wrote: in
+   `J:\code\roark\.git\hooks`, delete `pre-commit` and rename `pre-push.lfs-orig` (Git LFS's own hook, kept by
+   `install_hooks.py`) back to `pre-push`. After this the shared clone runs no CAD hooks, so the writer lock is not
+   hook-checked there until the CAD hooks are installed from the main checkout
+   ([cad.md section 6](cad.md#6-writer-lock-hooks-and-lfs-budget)).
+6. Restart the "Joey-PC (code)" Remote Control server so it reloads the settings.
 
 After a week, count the approvals that still got stuck and trim the lists.
