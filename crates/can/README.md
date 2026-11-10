@@ -55,8 +55,9 @@ or a backlog stops every active limb (below). A stopping limb follows PLAN item 
 
 - Disable to each of its drives not yet confirmed, every tick of the confirm window (`stop_confirm_ns`, 100 ms).
 - A drive confirms with a Reset-mode status read after the stop's Disable, inside the reply allowance
-  (`stop_replies_ns`: the window plus a period, so the reply to the window's last Disable still counts when the next
-  tick's drain reads it). A Reset read later confirms nothing: that drive stays unconfirmed and gets no reporting off,
+  (`stop_replies_ns`: the window, a period and the send window, so the reply to the window's last Disable still
+  counts when the next tick's drain reads it, however late inside their send windows that tick and the stop's first
+  woke). A Reset read later confirms nothing: that drive stays unconfirmed and gets no reporting off,
   as does one that never answers. A status, report or version reply in any other mode read after a confirmation
   withdraws it: the drive gets Disable again while the window lasts, and counts as unconfirmed for the stop's end and
   the re-arm.
@@ -66,8 +67,9 @@ or a backlog stops every active limb (below). A stopping limb follows PLAN item 
   reporting off before it costs a Disable.
 - The limb is `Stopped` once every drive has confirmed and the socket took its reporting off; otherwise not before the
   reply allowance closes, and after it as soon as no confirmed drive's reporting off is unsent, or at the latest at
-  `stop_max_ns` (the allowance, the silence and two periods: 162 ms at 250 Hz), which gives the last drive that can
-  confirm at least two tries. A reporting off never taken is recorded unsent (`reporting_off_sent`).
+  `stop_max_ns` (the allowance, the silence, two periods and the send window; PLAN item 2 Stop gives it at 250 Hz),
+  which gives the last drive that can confirm at least two tries on ticks that wake inside their send windows. A
+  reporting off never taken is recorded unsent (`reporting_off_sent`).
 
 The first reason a limb stopped for stays in its `LimbView`.
 

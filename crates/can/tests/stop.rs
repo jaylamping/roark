@@ -330,14 +330,15 @@ struct Row {
 }
 
 /// Guards: safety - a stop's end is bounded whenever its drives confirm (rust.md section 4: a limit on everything).
-/// Disables go to each unconfirmed drive for the 100 ms window; a Reset read by the reply allowance (the window plus a
-/// period) confirms, one read later doesn't and its drive gets no reporting off; a status in another mode read after a
-/// confirmation withdraws it, so its drive gets Disables again inside the window and counts as unconfirmed; each
-/// confirmed drive's reporting off is planned every tick from 50 ms after its confirmation until the socket takes it,
-/// every Disable ahead of it; the stop ends once every drive confirmed and took it, else once the allowance has closed
-/// and no confirmed drive's reporting off is unsent, and at the latest 162 ms after it began, a reporting off never
-/// taken recorded unsent (PLAN.md item 2 Stop and Exit: reporting persists across host processes otherwise; Silence
-/// windows).
+/// Disables go to each unconfirmed drive for the 100 ms window; a Reset read by the reply allowance (the window, a
+/// period and the send window) confirms, one read later doesn't and its drive gets no reporting off; a status in
+/// another mode read after a confirmation withdraws it, so its drive gets Disables again inside the window and counts
+/// as unconfirmed; each confirmed drive's reporting off is planned every tick from 50 ms after its confirmation until
+/// the socket takes it, every Disable ahead of it; the stop ends once every drive confirmed and took it, else once the
+/// allowance has closed and no confirmed drive's reporting off is unsent, and at the latest `Timing::stop_max_ns` after
+/// it began, a reporting off never taken recorded unsent, the last drive that can confirm offered it at least twice;
+/// both promises hold for ticks that wake late inside their send windows (PLAN.md item 2 Stop and Exit: reporting
+/// persists across host processes otherwise; Silence windows).
 #[test]
 #[expect(
     clippy::too_many_lines,
@@ -345,13 +346,15 @@ struct Row {
 )]
 fn the_stop_ends_by_its_bound_whenever_drives_confirm() {
     use StopOutcome::{Confirmed, Sent};
-    // The stop begins at tick 1, 4 ms: Disables at ticks 1 to 25 (to 96 ms, under 4 + 100), confirmations read
-    // before 108 ms (tick 27's start), the bound at 166 ms (tick 41's collect deadline).
+    // At 250 Hz the allowance is 100 + 4 + 1 ms and the bound 105 + 50 + 8 + 1 ms. A stop that begins at tick 1's
+    // start, 4 ms, sends Disables at ticks 1 to 25 (the last at 100 ms, under 4 + 100), counts confirmations read
+    // before 109 ms (inside tick 27's send window) and ends by 168 ms (tick 42's start).
     let timing = Timing::at_hz(250);
     assert_eq!(
         (timing.stop_replies_ns(), timing.stop_max_ns()),
-        (104 * MS, 162 * MS)
+        (105 * MS, 164 * MS)
     );
+    let closes = PERIOD + timing.stop_replies_ns();
     let reset = |slot, at| (slot, at, Mode::Reset);
     let rows = [
         Row {
@@ -400,7 +403,7 @@ fn the_stop_ends_by_its_bound_whenever_drives_confirm() {
         },
         Row {
             name: "a Reset read as the allowance closes confirms nothing",
-            reads: vec![reset(1, 5 * MS), reset(0, 108 * MS)],
+            reads: vec![reset(1, 5 * MS), reset(0, closes)],
             wakes: vec![],
             takes: [Takes::Always, Takes::Always],
             stopped_in: 27,
@@ -427,12 +430,43 @@ fn the_stop_ends_by_its_bound_whenever_drives_confirm() {
         },
         Row {
             name: "the last drive that can confirm, its reporting off never taken: two tries, stopped at the bound",
-            reads: vec![reset(1, 5 * MS), reset(0, deadline(26))],
+            reads: vec![reset(1, 5 * MS), reset(0, closes - 1)],
             wakes: vec![],
             takes: [Takes::Never, Takes::Always],
-            stopped_in: 41,
+            stopped_in: 42,
             expected: [
                 (25, vec![40, 41], Confirmed, false),
+                (1, vec![14], Confirmed, true),
+            ],
+        },
+        // A stop whose tick wakes half a millisecond late begins at 4.5 ms: its Disables go while a tick wakes before
+        // 104.5 ms, so tick 26 sends the last, and its reply, read in tick 27's drain as that tick wakes at the close
+        // of its send window, is inside the allowance (109.5 ms).
+        Row {
+            name: "the last Disable's Reset, read in a next drain that wakes late, after a stop that began late",
+            reads: vec![reset(1, 5 * MS), reset(0, 109 * MS - MS / 10)],
+            wakes: vec![(1, 4 * MS + MS / 2), (27, 109 * MS)],
+            takes: [Takes::Always, Takes::Always],
+            stopped_in: 40,
+            expected: [
+                (26, vec![40], Confirmed, true),
+                (1, vec![14], Confirmed, true),
+            ],
+        },
+        // The same confirmation, its reporting off due at 158.9 ms: ticks 40 and 41 offer it, and tick 42, waking late
+        // inside its window at 168.5 ms, finds the bound (4.5 + 164 ms) reached.
+        Row {
+            name: "the same drive, its reporting off never taken: two tries under wake jitter, stopped at the bound",
+            reads: vec![reset(1, 5 * MS), reset(0, 109 * MS - MS / 10)],
+            wakes: vec![
+                (1, 4 * MS + MS / 2),
+                (27, 109 * MS),
+                (42, 168 * MS + MS / 2),
+            ],
+            takes: [Takes::Never, Takes::Always],
+            stopped_in: 42,
+            expected: [
+                (26, vec![40, 41], Confirmed, false),
                 (1, vec![14], Confirmed, true),
             ],
         },

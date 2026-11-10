@@ -3,12 +3,13 @@
 //!
 //! A stop sends Disable to every drive of the limb not yet confirmed, re-sent each tick of the confirm window
 //! ([`Timing::stop_confirm_ns`](crate::Timing::stop_confirm_ns)). A drive confirms with a Reset read after the stop's
-//! Disable inside the reply allowance ([`Timing::stop_replies_ns`](crate::Timing::stop_replies_ns): the window plus a
-//! period, for the reply to its last Disable); a Reset read later confirms nothing, and any other mode read after a
-//! confirmation withdraws it (`DriveState::note_mode`). Each confirmed drive is sent active reporting off once the
-//! post-Disable silence after its confirmation is over (a drive drops every frame in it, PLAN.md item 2 Silence
-//! windows), every tick until the socket takes it. A drive that never confirms gets no reporting off. When the stop
-//! ends is decided in one place, [`BusTick::stop_over`], bounded by [`Timing::stop_max_ns`](crate::Timing::stop_max_ns).
+//! Disable inside the reply allowance ([`Timing::stop_replies_ns`](crate::Timing::stop_replies_ns): the window, a
+//! period and the send window, for the reply to its last Disable); a Reset read later confirms nothing, and any other
+//! mode read after a confirmation withdraws it (`DriveState::note_mode`). Each confirmed drive is sent active reporting
+//! off once the post-Disable silence after its confirmation is over (a drive drops every frame in it, PLAN.md item 2
+//! Silence windows), every tick until the socket takes it. A drive that never confirms gets no reporting off. When the
+//! stop ends is decided in one place, [`BusTick::stop_over`], bounded by
+//! [`Timing::stop_max_ns`](crate::Timing::stop_max_ns).
 
 use robstride::EchoKind;
 use robstride::encode::{self, Reporting};

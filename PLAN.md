@@ -204,9 +204,10 @@ The legacy code holds real bench lessons. Copy them into the codec's docs and te
   drive's answer before the next, then active reporting off. A lost bus never delays stops on healthy buses. Pre-steps
   (SpeedTarget 0x700A = 0, a neutral MIT frame) are allowed only if they don't delay Disable. Each stop records what was
   achieved per drive: sent, confirmed by a fresh reply, or unconfirmed. A stop is bounded: Disables for 100 ms, a
-  Reset read up to a period after that still confirms (the reply to the last Disable), each confirmed drive's reporting
-  off goes once its post-Disable silence is over, and the stop ends at the latest two periods after the last
-  confirmation's silence could end (162 ms at 250 Hz, `can::Timing::stop_max_ns`). The period of reply allowance is
+  Reset read up to a period and a send window after that still confirms (the reply to the last Disable, read by a
+  next tick that may wake late inside its send window), each confirmed drive's reporting off goes once its
+  post-Disable silence is over, and the stop ends at the latest two periods and a send window after the last
+  confirmation's silence could end (164 ms at 250 Hz, `can::Timing::stop_max_ns`). The period of reply allowance is
   provisional until Disable-to-Reset latency is measured on the real adapter (step 8).
 - **Exit:** Stop, then active reporting off to every drive; reporting persists across host processes otherwise.
 - **Set Zero:** only with the limb stopped. After a Set Zero on an enabled drive, it goes silent 511 to 614 ms later for 45 to 66 ms
