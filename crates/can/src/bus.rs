@@ -625,9 +625,9 @@ fn take(clock: &Clock, tick: &mut BusTick, batch: &mut TickBatch, received: sys:
     let _ = batch.push(received.frame);
 }
 
-/// Hand back the results the tick already holds (freeing their slots), queue the slow requests that fit, send one if
-/// the tick allows, and hand every new result back. A full result ring drops the result and counts it; the requester
-/// times out.
+/// Open the slack (cancelling and expiring queued requests), hand back the results the tick holds (freeing their
+/// slots), queue the slow requests that fit, send one if the tick allows, and hand every new result back. A full
+/// result ring drops the result and counts it; the requester times out.
 fn slow(
     socket: &CanSocket,
     clock: &Clock,
@@ -635,6 +635,7 @@ fn slow(
     requests: &mut Consumer<SlowRequest>,
     results: &mut Producer<SlowResult>,
 ) -> io::Result<()> {
+    tick.open_slack();
     hand_back(tick, results);
     // Bounded by the ring: a refused request takes no slot, so room alone wouldn't end the loop.
     for _ in 0..requests.buffer().capacity() {

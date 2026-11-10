@@ -76,7 +76,8 @@ pub enum SlowOutcome {
 /// Why the socket didn't take a slow frame.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Unsent {
-    /// Past its time (never in the slack today, which sends only what still fits).
+    /// Past its time: still queued [`Timing::slow_queue_ticks`](crate::Timing::slow_queue_ticks) ticks after the tick
+    /// it was submitted in, with no slack in them that let it go.
     Expired,
     /// The adapter's queue was full.
     QueueFull,
@@ -123,6 +124,8 @@ pub enum SlowRefusal {
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct SlowEntry {
     seq: u64,
+    /// The tick it was submitted in, for [`Timing::slow_queue_ticks`](crate::Timing::slow_queue_ticks).
+    submitted_tick: u64,
     request: SlowRequest,
     state: SlowState,
 }
@@ -151,6 +154,7 @@ impl BusTick {
             .ok_or(SlowRefusal::QueueFull)?;
         *free = Some(SlowEntry {
             seq: self.slow_seq,
+            submitted_tick: self.tick,
             request,
             state: SlowState::Queued,
         });
@@ -164,20 +168,35 @@ impl BusTick {
         self.slow.iter().filter(|e| e.is_none()).count()
     }
 
-    /// The slow frame to send now, at `now_ns`, if one may go: on a tick that wasn't held, after its collect deadline,
-    /// with nothing in flight, and early enough for the reply to be read before the next tick starts. Queued requests
-    /// that may no longer go are cancelled first; the rest wait. Report what the socket did with [`Self::slow_sent`].
-    pub fn slow_send(&mut self, now_ns: u64) -> Option<Frame> {
+    /// Open the tick's slack, after [`Self::end`] and before anything else in it, so what it ends is handed back with
+    /// the slack's first results and its slots are free for the slack's new requests. A queued request that may no
+    /// longer go is cancelled ([`SlowOutcome::Refused`]); one still queued [`Timing::slow_queue_ticks`] ticks after the
+    /// tick it was submitted in expires ([`Unsent::Expired`], counted in `slow_expired`).
+    ///
+    /// [`Timing::slow_queue_ticks`]: crate::Timing::slow_queue_ticks
+    pub fn open_slack(&mut self) {
         for i in 0..SLOW_SLOTS {
             let Some(entry) = self.slow.get(i).copied().flatten() else {
                 continue;
             };
-            if matches!(entry.state, SlowState::Queued)
-                && let Err(refusal) = self.slow_refusal(&entry.request)
-            {
+            if !matches!(entry.state, SlowState::Queued) {
+                continue;
+            }
+            if let Err(refusal) = self.slow_refusal(&entry.request) {
                 self.finish_slow(i, SlowOutcome::Refused(refusal));
+            } else if self.tick.saturating_sub(entry.submitted_tick) >= self.timing.slow_queue_ticks
+            {
+                self.counters.slow_expired += 1;
+                self.finish_slow(i, SlowOutcome::NotSent(Unsent::Expired));
             }
         }
+    }
+
+    /// The slow frame to send now, at `now_ns`, if one may go: on a tick that wasn't held, after its collect deadline,
+    /// with nothing in flight, and early enough for the reply to be read before the next tick starts; the oldest queued
+    /// request goes. [`Self::open_slack`] has cancelled those that may no longer go; one found refused here all the
+    /// same is cancelled and nothing goes. Report what the socket did with [`Self::slow_sent`].
+    pub fn slow_send(&mut self, now_ns: u64) -> Option<Frame> {
         let in_flight = self
             .slow
             .iter()
@@ -199,6 +218,10 @@ impl BusTick {
             .filter_map(|(i, e)| e.map(|e| (i, e)))
             .filter(|(_, e)| matches!(e.state, SlowState::Queued))
             .min_by_key(|(_, e)| e.seq)?;
+        if let Err(refusal) = self.slow_refusal(&entry.request) {
+            self.finish_slow(i, SlowOutcome::Refused(refusal));
+            return None;
+        }
         let device = self
             .drives
             .get(entry.request.slot)
@@ -260,6 +283,7 @@ impl BusTick {
                     seq,
                     request,
                     state: SlowState::Done(outcome),
+                    ..
                 }) => Some((
                     i,
                     *seq,
