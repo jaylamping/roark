@@ -109,12 +109,12 @@ The values and the loader's checks are in [PLAN item 1](../PLAN.md#1-the-skeleto
   them. The bus tick matches replies and ages feedback on the monotonic time the bus thread read the frame instead
   (can.md section 2), because the kernel's stamp is wall-clock and can step. For every status motion is sent on,
   reading trailed arrival by at most the gap from the collect deadline to the close of the next tick's send window
-  (period - collect + send window: 2.6 ms at 250 Hz): a later wake or a drain backlog stops an active bus, and on an
-  idle bus holds the tick, which sends no motion and clears the freshness its drain stamped (`can::BusTick::begin`
-  states the rule). The motion frame goes out up to a send window (1 ms at 250 Hz) after its staleness check at the
-  wake. So at 250 Hz the three-period feedback limit allows at most 12 + 2.6 + 1 = 15.6 ms of real age when the frame
-  is written, well inside the drives' 50 ms timeout, and `Timing::check` refuses any timing whose limit plus that lag
-  and slack reaches it. The real adapter's queue age is measured at PLAN step 8.
+  (period - collect + send window: 2.6 ms at 250 Hz): a later wake or a drain backlog stops every active limb, and
+  holds the tick for every idle one, which sends it no motion and clears the freshness its drain stamped
+  (`can::BusTick::begin` states the rule). The motion frame goes out up to a send window (1 ms at 250 Hz) after its
+  staleness check at the wake. So at 250 Hz the three-period feedback limit allows at most 12 + 2.6 + 1 = 15.6 ms of
+  real age when the frame is written, well inside the drives' 50 ms timeout, and `Timing::check` refuses any timing
+  whose limit plus that lag and slack reaches it. The real adapter's queue age is measured at PLAN step 8.
 - Durations in logs use the same suffix rule as everything else (`latency_us`, `age_ms`).
 
 ## 6. Identity

@@ -1,241 +1,16 @@
 //! What crosses the bus thread's seams: command batches in, snapshots out, all fixed-size and `Copy` so the rings never
 //! allocate (rust.md section 6).
 
-use robstride::{CanTimeout, DeviceId, Frame, Status};
+use robstride::{DeviceId, EchoKind, Frame, Status};
 
 use crate::error_frame::BusError;
+use crate::timing::TimingError;
 
 /// The most drives one bus holds. The skeleton puts at most seven on a bus; a bus with more is refused at startup.
 pub const MAX_DRIVES: usize = 8;
 /// Room for the frames one tick sends. A tick sends at most one frame per drive (a command, or while stopping a Disable
 /// or a reporting off, never both); twice that is headroom, and a tick that plans past it is a bug in this crate.
 pub const MAX_SENDS: usize = 2 * MAX_DRIVES;
-
-/// The drives' own command timeout, the `canTimeout` the host writes ([`CanTimeout::RUNTIME`], PLAN.md item 6). The age
-/// of the feedback motion is written on (units-and-frames.md section 5) and the span of control silence that stops a bus
-/// (safety.md section 4) must each stay under it ([`Timing::check`]).
-pub const DRIVE_TIMEOUT_NS: u64 = match CanTimeout::RUNTIME.nanos() {
-    Some(ns) => ns,
-    // Evaluated at compile time: a RUNTIME that turned the timeout off fails the build, it never runs.
-    None => panic!("canTimeout RUNTIME must be a timeout, not off"),
-};
-
-/// The tick's timing, in nanoseconds on the monotonic clock (`u64`, not `Duration`: the bus tick's exception,
-/// units-and-frames.md section 5). [`BusTick::new`](crate::BusTick::new) refuses timing that
-/// [`Timing::check`] doesn't pass.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Timing {
-    /// One tick.
-    pub period_ns: u64,
-    /// How late after its scheduled start a tick may still send a command. Waking later is a missed deadline: it stops an
-    /// active bus and holds an idle one's tick ([`BusTick::begin`](crate::BusTick::begin)). A quarter period by
-    /// default: provisional, to be tuned on the real adapter (PLAN step 8).
-    pub send_window_ns: u64,
-    /// When the tick stops collecting replies, from its scheduled start (about 60 % of the period, PLAN.md item 3).
-    pub collect_ns: u64,
-    /// The oldest a drive's last fresh status may be when motion is sent to it (three periods: 12 ms at 250 Hz, PLAN.md
-    /// item 6 Silence row).
-    pub feedback_limit_ns: u64,
-    /// How long a stop re-sends Disable to each drive not yet confirmed (100 ms, PLAN.md item 2 Silence windows). A
-    /// Reset read while the bus is still stopping confirms a drive even after it, and a confirmed drive still gets its
-    /// reporting off after its silence.
-    pub stop_confirm_ns: u64,
-    /// How long a drive drops frames after a Disable; its reporting-off waits this long after its confirmation, and a
-    /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
-    pub disable_silence_ns: u64,
-    /// Ticks without a fresh batch that stop an active bus (PLAN.md item 3: two).
-    pub silent_ticks: u32,
-}
-
-impl Timing {
-    /// The defaults at `hz` ticks a second (250 by default, PLAN.md item 3), the period rounded up to a whole
-    /// nanosecond so the rate is never above `hz`. A rate [`Self::check`] refuses (0, or one slow enough that three
-    /// periods plus the write slack and the read lag reach the drives' timeout) gives timing it refuses.
-    #[must_use]
-    pub const fn at_hz(hz: u64) -> Self {
-        let period_ns = match hz {
-            0 => 0,
-            hz => 1_000_000_000_u64.div_ceil(hz),
-        };
-        Self {
-            period_ns,
-            send_window_ns: period_ns / 4,
-            collect_ns: period_ns * 6 / 10,
-            feedback_limit_ns: 3 * period_ns,
-            stop_confirm_ns: 100_000_000,
-            disable_silence_ns: 50_000_000,
-            silent_ticks: 2,
-        }
-    }
-
-    /// Whether this timing keeps the tick's promises: a send window inside the collect window inside the period; at
-    /// least a period of feedback, with the feedback limit plus the write slack plus the read lag (the oldest a status
-    /// motion is written on can really be, units-and-frames.md section 5) under the drives' timeout; a stop window that
-    /// fits the post-Disable silence and a tick to send reporting off after it; and at least one silent tick, with the
-    /// silent ticks plus the write slack (from the last command to the stop's Disable) under the drives' timeout, so a
-    /// silent control is stopped before the drives give up on it.
-    ///
-    /// # Errors
-    /// The first rule it breaks.
-    pub const fn check(&self) -> Result<(), TimingError> {
-        let (period_ns, send_window_ns, collect_ns) =
-            (self.period_ns, self.send_window_ns, self.collect_ns);
-        if period_ns == 0 {
-            Err(TimingError::NoPeriod)
-        } else if send_window_ns == 0 || send_window_ns > collect_ns {
-            Err(TimingError::SendWindow {
-                send_window_ns,
-                collect_ns,
-            })
-        } else if collect_ns >= period_ns {
-            Err(TimingError::Collect {
-                collect_ns,
-                period_ns,
-            })
-        } else if self.feedback_limit_ns < period_ns {
-            Err(TimingError::FeedbackLimit {
-                feedback_limit_ns: self.feedback_limit_ns,
-                period_ns,
-            })
-        } else if self
-            .feedback_limit_ns
-            .saturating_add(self.write_slack_ns())
-            .saturating_add(self.read_lag_ns())
-            >= DRIVE_TIMEOUT_NS
-        {
-            Err(TimingError::FeedbackAge {
-                feedback_limit_ns: self.feedback_limit_ns,
-                write_slack_ns: self.write_slack_ns(),
-                read_lag_ns: self.read_lag_ns(),
-            })
-        } else if self.stop_confirm_ns < self.disable_silence_ns.saturating_add(period_ns) {
-            Err(TimingError::StopWindow {
-                stop_confirm_ns: self.stop_confirm_ns,
-                disable_silence_ns: self.disable_silence_ns,
-                period_ns,
-            })
-        } else if self.silent_ticks == 0 {
-            Err(TimingError::NoSilentTicks)
-        } else if widen(self.silent_ticks)
-            .saturating_mul(period_ns)
-            .saturating_add(self.write_slack_ns())
-            >= DRIVE_TIMEOUT_NS
-        {
-            Err(TimingError::SilentTicks {
-                silent_ticks: self.silent_ticks,
-                period_ns,
-                write_slack_ns: self.write_slack_ns(),
-            })
-        } else {
-            Ok(())
-        }
-    }
-
-    /// The most a tick may wake after its scheduled start and still send: the send window, since a wake exactly at its
-    /// close isn't late. Motion passes its staleness check at the wake and, as a command that expires, is written by
-    /// the window's close or not at all. A stop's Disable is planned on a wake up to this much after the tick that
-    /// found control silent was due, but never expires ([`Send::expires`]): it is written after that wake by the
-    /// shell's wake-to-write time, which this bound leaves out and PLAN step 8 measures.
-    const fn write_slack_ns(&self) -> u64 {
-        self.send_window_ns
-    }
-
-    /// The most a status motion is sent on was read after its arrival: from the collect deadline to the close of the
-    /// next tick's send window (units-and-frames.md section 5).
-    const fn read_lag_ns(&self) -> u64 {
-        self.period_ns
-            .saturating_sub(self.collect_ns)
-            .saturating_add(self.send_window_ns)
-    }
-}
-
-#[expect(
-    clippy::as_conversions,
-    reason = "u32 to u64 widens losslessly, and u64::from isn't const"
-)]
-const fn widen(n: u32) -> u64 {
-    n as u64
-}
-
-/// The rule a [`Timing`] breaks, with the values that break it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
-pub enum TimingError {
-    /// The period is zero (a rate of 0 Hz).
-    #[error("the period is zero")]
-    NoPeriod,
-    /// The send window is zero or ends after the collect deadline.
-    #[error(
-        "send window {send_window_ns} ns must be non-zero and end by the collect deadline, {collect_ns} ns"
-    )]
-    SendWindow {
-        /// The send window.
-        send_window_ns: u64,
-        /// The collect deadline.
-        collect_ns: u64,
-    },
-    /// The collect deadline isn't inside the period.
-    #[error("collect deadline {collect_ns} ns must fall inside the period, {period_ns} ns")]
-    Collect {
-        /// The collect deadline.
-        collect_ns: u64,
-        /// The period.
-        period_ns: u64,
-    },
-    /// The feedback limit is under a period.
-    #[error("feedback limit {feedback_limit_ns} ns must be at least the period, {period_ns} ns")]
-    FeedbackLimit {
-        /// The feedback limit.
-        feedback_limit_ns: u64,
-        /// The period.
-        period_ns: u64,
-    },
-    /// The feedback limit plus the write slack plus the read lag reaches the drives' timeout: motion could be written
-    /// on a status older, in real age, than the drive's own patience.
-    #[error(
-        "feedback limit {feedback_limit_ns} ns plus write slack {write_slack_ns} ns plus read lag {read_lag_ns} ns \
-         must be under the drives' {DRIVE_TIMEOUT_NS} ns timeout"
-    )]
-    FeedbackAge {
-        /// The feedback limit.
-        feedback_limit_ns: u64,
-        /// The send window: how long after the staleness check, at the wake, the frame may be written.
-        write_slack_ns: u64,
-        /// Period - collect + send window: how long after its arrival a status may be read.
-        read_lag_ns: u64,
-    },
-    /// The stop window can't fit the post-Disable silence and a tick to send reporting off after it.
-    #[error(
-        "stop window {stop_confirm_ns} ns must outlast the post-Disable silence, {disable_silence_ns} ns, by a period, \
-         {period_ns} ns"
-    )]
-    StopWindow {
-        /// The stop window.
-        stop_confirm_ns: u64,
-        /// The post-Disable silence.
-        disable_silence_ns: u64,
-        /// The period.
-        period_ns: u64,
-    },
-    /// `silent_ticks` is zero.
-    #[error("silent_ticks must be at least 1")]
-    NoSilentTicks,
-    /// `silent_ticks` periods plus the write slack reach the drives' timeout: the bus would stop a silent control only
-    /// after the drives had given up on their own, or never (safety.md section 4: no config value turns a protection
-    /// off).
-    #[error(
-        "{silent_ticks} silent ticks of {period_ns} ns plus write slack {write_slack_ns} ns must span less than the \
-         drives' {DRIVE_TIMEOUT_NS} ns timeout"
-    )]
-    SilentTicks {
-        /// The silent ticks.
-        silent_ticks: u32,
-        /// The period.
-        period_ns: u64,
-        /// The send window: how late in its tick the wake that plans the stop's Disable may come. The write follows
-        /// it by the shell's wake-to-write time (PLAN step 8).
-        write_slack_ns: u64,
-    },
-}
 
 /// One tick's commands from control: at most one encoded frame per drive slot (the drive's place in the bus's table).
 /// Frames come only from `robstride::encode`, which builds only allowlisted frames. A batch may carry only motion,
@@ -245,7 +20,8 @@ pub enum TimingError {
 pub struct CommandBatch {
     /// The tick it is for. A batch for any other tick is stale and never sent.
     pub tick: u64,
-    /// After this monotonic time it is expired and never sent.
+    /// After this monotonic time it is expired: its commands are never sent, while its Disables and active reporting
+    /// off still go if it is for this tick, since late they are still the right frames (can.md section 2).
     pub expires_ns: u64,
     frames: [Option<Frame>; MAX_DRIVES],
 }
@@ -281,7 +57,7 @@ pub enum Drain {
     /// It emptied the socket: what is read from here on came after the backlog.
     Emptied,
     /// It emptied the socket but read more frames than the shell may before a send: what it said can't be known in time,
-    /// so an active bus stops and an idle one's tick is held ([`BusTick::begin`](crate::BusTick::begin)).
+    /// so every active limb stops and the tick is held for every idle one ([`BusTick::begin`](crate::BusTick::begin)).
     Backlog,
     /// It gave up with frames still queued: as for `Backlog`, and until a drain empties the socket its statuses may
     /// predate the sends. They still show each drive's mode and faults, but answer nothing and confirm nothing.
@@ -376,31 +152,92 @@ impl SendList {
     }
 }
 
-/// Where a bus is.
+/// One drive on a bus and the limb it belongs to: the limb's index among the skeleton's limbs on this bus, from 0.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BusState {
-    /// Nothing enabled and no motion sent since start; no batches needed.
+pub struct BusDrive {
+    /// The drive.
+    pub device: DeviceId,
+    /// Its limb on this bus, below [`MAX_DRIVES`].
+    pub limb: usize,
+}
+
+/// Where one limb on a bus is. Each limb runs and stops on its own; a stop of the whole bus stops every limb not
+/// already stopping or stopped, and a late wake or a backlog every active one ([`StopReason`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LimbState {
+    /// Nothing enabled or commanded since start or the last re-arm; no batches needed.
     Idle,
-    /// It has sent an Enable or MIT frame, so it needs a fresh batch every tick.
+    /// An Enable or MIT frame to one of its drives was sent, so the bus needs a fresh batch every tick.
     Active,
-    /// A stop is in progress: Disable to every unconfirmed drive each tick, batches refused.
+    /// A stop is in progress: Disables, then reporting off, its frames in batches refused; over by
+    /// `Timing::stop_max_ns` after `since_ns` at the latest.
     Stopping {
         /// When the stop began, monotonic.
         since_ns: u64,
     },
-    /// Stopped, latched: nothing in this crate leaves it. Clearing is the safety layer's, through preflight.
+    /// Stopped, latched: only an operator's clear re-arms it ([`BusTick::rearm`](crate::BusTick::rearm)).
     Stopped,
 }
 
-/// Why a bus stopped.
+impl LimbState {
+    /// Whether the limb takes control's commands: idle or active. Every check that gates a command on the limb asks
+    /// this, so a new state has to say here whether it does.
+    #[must_use]
+    pub const fn takes_commands(self) -> bool {
+        match self {
+            Self::Idle | Self::Active => true,
+            Self::Stopping { .. } | Self::Stopped => false,
+        }
+    }
+}
+
+/// One limb in a snapshot.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LimbView {
+    /// Where it is.
+    pub state: LimbState,
+    /// Why it stopped, if it has since its last re-arm.
+    pub stop: Option<StopReason>,
+    /// How many times it has been re-armed: fault history and stop outcomes count from the last one.
+    pub generation: u32,
+}
+
+/// The last of this host's frames to a drive read back from the socket.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct EchoSeen {
+    /// What it was.
+    pub kind: EchoKind,
+    /// When it was read, monotonic.
+    pub read_ns: u64,
+}
+
+/// Why a limb stopped. `ExpiredFeedback`, `DriveFault`, `DriveMode`, `DriveSilent` and `LimbRequested`
+/// (`BusTick::stop_limb`) stop only that limb; `LateWake` and `Backlog` stop every active limb; the rest, `Requested`
+/// (`BusTick::request_stop`) and `BadBatch` included, stop every limb on the bus.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StopReason {
-    /// No fresh batch for `Timing::silent_ticks` ticks while active (PLAN.md item 3).
+    /// No fresh batch for `Timing::silent_ticks` ticks while a limb was active (PLAN.md item 3).
     ControlSilent,
-    /// The thread woke after its send window, whatever its feedback's age (PLAN.md item 3).
+    /// The thread woke after its send window, or a stall skipped ticks, whatever its feedback's age (PLAN.md item 3).
     LateWake,
     /// A batch carried motion for a drive whose last fresh status was too old.
     ExpiredFeedback {
+        /// That drive's slot.
+        slot: usize,
+    },
+    /// A drive of an idle or active limb reported a fault, read before the send (PLAN.md item 6 Faults row).
+    DriveFault {
+        /// That drive's slot.
+        slot: usize,
+    },
+    /// A drive seen in Run after its Enable later reported another mode with no Disable from this host (PLAN.md item 6
+    /// States). A drive this host never enabled isn't watched here: preflight refuses one found already in Run.
+    DriveMode {
+        /// That drive's slot.
+        slot: usize,
+    },
+    /// A drive left `Timing::silence_misses` commands in a row unanswered (PLAN.md item 6 Silence row).
+    DriveSilent {
         /// That drive's slot.
         slot: usize,
     },
@@ -412,8 +249,10 @@ pub enum StopReason {
     },
     /// More frames were queued before the send than the tick may read.
     Backlog,
-    /// Asked for by the runtime or a test.
+    /// Asked for by the runtime or a test, for the whole bus.
     Requested,
+    /// Asked for by the runtime or a test, for this limb alone.
+    LimbRequested,
     /// The bus itself failed.
     Bus(BusError),
 }
@@ -427,10 +266,14 @@ pub enum StopOutcome {
     /// A stop happened but no Disable to this drive was taken by the socket (also every drive of a bus whose error
     /// left nothing to send on).
     NeverSent,
-    /// Disable was sent; no Reset-mode status read after it was counted (a read that may predate it, after a drain that
-    /// left frames queued, confirms nothing).
+    /// Disable was sent; no Reset-mode status read after it was counted: none came, one was read after the stop's reply
+    /// allowance (`Timing::stop_replies_ns`), or one may predate it (after a drain that left frames queued). Also a
+    /// drive that was confirmed and then showed another mode: that withdraws the confirmation. A drive never confirmed
+    /// gets no reporting off; one whose confirmation was withdrawn may have had it already. Either way re-arming waits
+    /// for it to go quiet past its timeout.
     Sent,
-    /// A Reset-mode status was read after a sent Disable.
+    /// A Reset-mode status was read after a sent Disable, inside the stop's reply allowance, and no status, report or
+    /// version reply in another mode since.
     Confirmed,
 }
 
@@ -448,29 +291,47 @@ pub struct Observed {
 pub struct DriveView {
     /// The drive.
     pub device: DeviceId,
-    /// The last status or report read from it, answer or not: its mode and fault bits are never filtered out.
+    /// Its limb on this bus.
+    pub limb: usize,
+    /// The last status or report read from it, answer or not: its mode and fault bits are never filtered out. A version
+    /// reply isn't kept here: its mode and faults go only to the stop logic and `fault_seen`, so a version reply read
+    /// since can have shown another mode than this one.
     pub observed: Option<Observed>,
     /// When its last fresh status was read: the first status after a command the socket took. Freshness, not
     /// acknowledgement: the protocol has no sequence numbers, so which command a status answers can't be proven. Read
     /// time, not arrival: for every status motion is sent on, it trails the kernel's receipt by at most period -
-    /// collect + send window (units-and-frames.md section 5). An idle bus's held tick clears it after its batch
-    /// checks ([`BusTick::begin`](crate::BusTick::begin)).
+    /// collect + send window (units-and-frames.md section 5). A held tick clears it, with `fresh_status`, for the
+    /// drives of a limb still idle, after its batch checks ([`BusTick::begin`](crate::BusTick::begin)).
     pub fresh_ns: Option<u64>,
+    /// The status `fresh_ns` is the read time of, kept while later frames show the same mode (a duplicate, a report, an
+    /// unsolicited or earlier-tick status replacing `observed`, or a version reply), and dropped when a later one, a
+    /// version reply included, shows another mode, which supersedes it. Read the last status's mode from `observed`
+    /// (which a version reply doesn't update) and faults from `fault_seen`, never from this; `fresh_ns` stays the age
+    /// of the last fresh reply either way.
+    pub fresh_status: Option<Observed>,
     /// Whether it answered this tick's command by the collect deadline.
     pub answered: bool,
-    /// Any fault bit or fault report seen since start. Sticky.
+    /// Any fault bit or fault report seen since start or its limb's last re-arm. Sticky until then.
     pub fault_seen: bool,
+    /// Commands in a row it left unanswered by the collect deadline.
+    pub misses: u32,
+    /// The last of this host's frames to it read back from the socket: the evidence a frame reached the controller
+    /// (never that it reached the drive).
+    pub last_echo: Option<EchoSeen>,
     /// What the current or last stop achieved for it.
     pub stop: StopOutcome,
-    /// Whether the current or last stop's active reporting off was taken by the socket.
+    /// Whether the current or last stop's active reporting off was taken by the socket, for a drive whose confirmation
+    /// still stands. False for a drive the stop never confirmed, for one whose reporting off the socket refused until
+    /// the stop ended, and for one whose confirmation was withdrawn (`stop` back to `Sent`), even if the socket took its
+    /// reporting off before that.
     pub reporting_off_sent: bool,
 }
 
 /// Per-bus counts since start.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Counters {
-    /// Commands the socket took that got no status by the collect deadline. Not Enable or Disable: a drive may take
-    /// 10 ms to reach Run, and goes silent after a Disable (PLAN.md item 2 Silence windows).
+    /// Commands the socket took that got no status by the collect deadline, counted only where a miss counts toward
+    /// `Timing::silence_misses`: not an Enable or a Disable, and nothing inside PLAN.md item 2's Silence windows.
     pub unanswered: u64,
     /// Statuses for a command after its tick's collect deadline.
     pub late: u64,
@@ -493,14 +354,17 @@ pub struct Counters {
     pub tx_dropped: u64,
     /// Sends dropped because their window had passed.
     pub tx_expired: u64,
-    /// Ticks handed a stale or expired batch.
+    /// Ticks handed a stale or expired batch (an expired one for the tick still sends its Disables and reporting off).
     pub stale_ticks: u64,
-    /// Batches refused while stopping or stopped.
+    /// Batches refused because every limb was stopping or stopped, a bad one included once no limb was left to stop.
     pub refused_batches: u64,
-    /// Batches an idle bus sent only the Disables and reporting off of, holding back the rest, for a backlog or a late
-    /// wake that tick.
+    /// Batches whose Disables and reporting off alone were sent, the rest held back, for a backlog or a late wake that
+    /// tick.
     pub held_batches: u64,
-    /// Ticks that woke past their send window, plus each tick a stalled thread never ran ([`BusTick::skipped`](crate::BusTick::skipped)).
+    /// Frames of a batch for this tick, fresh or expired, dropped because their limb was stopping or stopped.
+    pub refused_frames: u64,
+    /// Ticks that woke past their send window, plus each tick a stalled thread never ran
+    /// ([`BusTick::skipped`](crate::BusTick::skipped)).
     pub missed_deadlines: u64,
     /// The socket's overflow counter (`SO_RXQ_OVFL`), the last value seen.
     pub kernel_drops: u32,
@@ -513,38 +377,53 @@ pub struct Counters {
 pub struct Snapshot {
     /// The tick.
     pub tick: u64,
-    /// The bus's state after it.
-    pub state: BusState,
-    /// Why it stopped, if it has.
-    pub stop: Option<StopReason>,
     /// The first bus error that latched (bus-off from an error frame, or any socket failure passed to `lost_bus`), even
-    /// if the bus was already stopping.
+    /// if a limb was already stopping.
     pub bus_error: Option<BusError>,
     /// No latched bus error and not error-passive: the recording's `valid` flag (logging.md section 8.2).
     pub healthy: bool,
     /// Counts since start.
     pub counters: Counters,
+    limbs: [Option<LimbView>; MAX_DRIVES],
     drives: [Option<DriveView>; MAX_DRIVES],
 }
 
 impl Snapshot {
     pub(crate) fn new(
         tick: u64,
-        state: BusState,
-        stop: Option<StopReason>,
         bus_error: Option<BusError>,
         healthy: bool,
         counters: Counters,
+        limbs: &[Option<LimbView>; MAX_DRIVES],
     ) -> Self {
         Self {
             tick,
-            state,
-            stop,
             bus_error,
             healthy,
             counters,
+            limbs: *limbs,
             drives: [None; MAX_DRIVES],
         }
+    }
+
+    /// Limb `limb` on this bus.
+    #[must_use]
+    pub fn limb(&self, limb: usize) -> Option<&LimbView> {
+        self.limbs.get(limb).and_then(Option::as_ref)
+    }
+
+    /// Every limb on this bus, with its index.
+    pub fn limbs(&self) -> impl Iterator<Item = (usize, &LimbView)> + '_ {
+        self.limbs
+            .iter()
+            .enumerate()
+            .filter_map(|(i, l)| l.as_ref().map(|l| (i, l)))
+    }
+
+    /// Whether every limb is stopped.
+    #[must_use]
+    pub fn stopped(&self) -> bool {
+        self.limbs().all(|(_, l)| l.state == LimbState::Stopped)
     }
 
     pub(crate) fn set(&mut self, slot: usize, view: DriveView) {
@@ -571,10 +450,47 @@ pub enum ConfigError {
     /// More drives than [`MAX_DRIVES`].
     #[error("{0} drives on one bus; the bus table holds {MAX_DRIVES}")]
     TooManyDrives(usize),
-    /// The same drive listed twice.
+    /// The same drive listed twice: every status would go to its first slot.
     #[error("drive {0:?} is listed twice")]
     DuplicateDrive(DeviceId),
-    /// Timing [`Timing::check`] refuses.
+    /// A drive's limb index is past the table.
+    #[error(
+        "the drive in slot {slot} is in limb {limb}; limbs on one bus are numbered below {MAX_DRIVES}"
+    )]
+    LimbOutOfRange {
+        /// The drive's slot.
+        slot: usize,
+        /// The limb it named.
+        limb: usize,
+    },
+    /// Timing [`crate::Timing::check`] refuses.
     #[error("bad timing: {0}")]
     Timing(TimingError),
+}
+
+/// A limb index that isn't on this bus.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("limb {0} isn't on this bus")]
+pub struct NoSuchLimb(pub usize);
+
+/// Why a limb can't be re-armed yet.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum RearmRefused {
+    /// No drive on this bus is in that limb.
+    #[error("no limb {0} on this bus")]
+    NoSuchLimb(usize),
+    /// The bus itself failed; only a new bus thread and socket bring it back.
+    #[error("the bus failed ({0:?}); it comes back only with a new bus thread")]
+    BusFailed(BusError),
+    /// The limb is running or still stopping: only a stopped limb is re-armed.
+    #[error("limb {0} isn't stopped")]
+    NotStopped(usize),
+    /// A drive is neither confirmed in Reset nor silent long enough to have timed out.
+    #[error(
+        "the drive in slot {slot} isn't confirmed disabled and hasn't been quiet past its timeout"
+    )]
+    DriveNotQuiet {
+        /// That drive's slot.
+        slot: usize,
+    },
 }

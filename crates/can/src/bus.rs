@@ -8,8 +8,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant, SystemTime};
 
+use nix::sys::time::TimeSpec;
 use nix::time::{ClockId, ClockNanosleepFlags, clock_gettime, clock_nanosleep};
-use robstride::{DeviceId, Frame};
+use robstride::Frame;
 use rtrb::{Consumer, Producer};
 use socketcan::{CanDataFrame, CanSocket, EmbeddedFrame, ExtendedId, Socket, SocketOptions};
 use telemetry::{BusInfo, BusRecorder, Epoch, TickBatch, TimestampSource};
@@ -17,9 +18,8 @@ use telemetry::{BusInfo, BusRecorder, Epoch, TickBatch, TimestampSource};
 use crate::error_frame::BusError;
 use crate::sys;
 use crate::tick::BusTick;
-use crate::types::{
-    BusState, CommandBatch, ConfigError, Drain, SendList, SendOutcome, Snapshot, Timing,
-};
+use crate::timing::Timing;
+use crate::types::{BusDrive, CommandBatch, ConfigError, Drain, SendList, SendOutcome, Snapshot};
 
 /// The most frames a tick's drain may find before the send. More than that queued means the thread can't tell what the
 /// bus said in time, so it stops (1 Mbit/s carries about 8,000 frames a second: 32 a tick at 250 Hz).
@@ -57,8 +57,8 @@ pub fn bus_info(bus: &str, bitrate: u32) -> BusInfo {
 pub struct BusConfig {
     /// The interface, as the skeleton names it.
     pub name: String,
-    /// The drives the skeleton puts on it, in slot order.
-    pub drives: Vec<DeviceId>,
+    /// The drives the skeleton puts on it, in slot order, each with its limb's index on this bus.
+    pub drives: Vec<BusDrive>,
     /// The tick.
     pub timing: Timing,
 }
@@ -119,8 +119,8 @@ pub struct BusExit {
     pub last: Option<Snapshot>,
     /// The first socket or clock error the thread met, if any. Most end the thread; one in the sleep or drain of the
     /// tick it returns at after deciding its exit ([`BusLinks::exit`]) is reported too, though it returns there all the
-    /// same. That tick makes no snapshot, so `last` is then the Stopped snapshot that decided the exit, made before
-    /// the error and healthy as far as it knew.
+    /// same. That tick makes no snapshot, so `last` is then the snapshot with every limb stopped that decided the
+    /// exit, made before the error and healthy as far as it knew.
     pub error: Option<io::Error>,
 }
 
@@ -145,13 +145,18 @@ pub struct BusLinks {
     pub recorder: BusRecorder,
     /// The session's monotonic zero.
     pub epoch: Epoch,
-    /// Set to end the thread. An idle bus returns at once. Anything else is stopped first (an active or stopping bus
-    /// finishes its stop), and the thread returns at the first of three: control's ring has taken a Stopped snapshot;
-    /// control has dropped its end of the ring; or one stop window (`Timing::stop_confirm_ns`) of Stopped snapshots,
-    /// in ticks, has gone untaken (a control that stopped reading must not hold the join). It returns at the next
-    /// tick's drain, so the frames still in the socket are recorded, and the last snapshot made is [`BusExit::last`]
-    /// in every case. A socket or clock error ends the thread without `exit`, once its Stopped snapshot is made, taken
-    /// or not; a clock that can't be read at the start ends it before any snapshot.
+    /// Tick 0's start, shared by every bus thread and the control thread so their tick numbers name the same instant.
+    /// A thread started after it begins at the first tick not yet due.
+    pub start: Instant,
+    /// Set to end the thread. A bus whose limbs are all idle returns at once. Any other is stopped first: every limb
+    /// not already stopping or stopped is stopped (an idle one too, so every drive gets its Disable and reporting off,
+    /// PLAN.md item 2 Exit), a stopping one finishes its stop. Then the thread returns at the first of three: control's
+    /// ring has taken a snapshot with every limb stopped ([`Snapshot::stopped`]); control has dropped its end of the
+    /// ring; or one stop window (`Timing::stop_confirm_ns`) of such snapshots, in ticks, has gone untaken (a control
+    /// that stopped reading must not hold the join). It returns at the next tick's drain, so the frames still in the
+    /// socket are recorded, and the last snapshot made is [`BusExit::last`] in every case. A socket or clock error ends
+    /// the thread without `exit`, once a snapshot with every limb stopped is made, taken or not; a clock that can't be
+    /// read at the start ends it before any snapshot.
     pub exit: Arc<AtomicBool>,
 }
 
@@ -245,16 +250,22 @@ fn is_vcan(bus: &str) -> Result<bool, String> {
 /// The bus's clocks: the loop's schedule on `CLOCK_MONOTONIC` (absolute sleeps) and the session's epoch for stamps.
 struct Clock {
     start: Instant,
-    start_ts: nix::sys::time::TimeSpec,
+    start_ts: TimeSpec,
     epoch: Epoch,
 }
 
 impl Clock {
-    fn new(epoch: Epoch) -> io::Result<Self> {
-        // Two reads of one clock: the sleep base first, so the schedule's base is never before it. A gap between the
-        // reads makes every wake measure that much early, never late.
-        let start_ts = clock_gettime(ClockId::CLOCK_MONOTONIC).map_err(io::Error::from)?;
-        let start = mono_now();
+    /// The schedule from `start`, read against `CLOCK_MONOTONIC` (which `Instant` is on Linux) once, now.
+    fn new(epoch: Epoch, start: Instant) -> io::Result<Self> {
+        // Two reads of one clock: the sleep base first, so the gap between them makes every wake measure early, never
+        // late.
+        let now_ts = clock_gettime(ClockId::CLOCK_MONOTONIC).map_err(io::Error::from)?;
+        let now = mono_now();
+        let start_ts = if start >= now {
+            now_ts + TimeSpec::from_duration(start.duration_since(now))
+        } else {
+            now_ts - TimeSpec::from_duration(now.duration_since(start))
+        };
         Ok(Self {
             start,
             start_ts,
@@ -265,7 +276,7 @@ impl Clock {
     /// Sleep until `at` on the monotonic clock, absolute, so a slow tick never shifts the next.
     fn sleep_until(&self, at: Instant) -> io::Result<()> {
         let offset = at.saturating_duration_since(self.start);
-        let target = self.start_ts + nix::sys::time::TimeSpec::from_duration(offset);
+        let target = self.start_ts + TimeSpec::from_duration(offset);
         loop {
             match clock_nanosleep(
                 ClockId::CLOCK_MONOTONIC,
@@ -283,6 +294,12 @@ impl Clock {
     fn tick_at(&self, now: Instant, period_ns: u64) -> u64 {
         let elapsed = now.saturating_duration_since(self.start).as_nanos();
         u64::try_from(elapsed / u128::from(period_ns)).unwrap_or(u64::MAX)
+    }
+
+    /// The first tick whose start hasn't passed: 0 when the thread starts before the schedule does.
+    fn first_due(&self, period_ns: u64) -> u64 {
+        let behind = mono_now().saturating_duration_since(self.start).as_nanos();
+        u64::try_from(behind.div_ceil(u128::from(period_ns))).unwrap_or(u64::MAX)
     }
 
     /// Tick `n`'s scheduled start.
@@ -324,10 +341,10 @@ fn sleep_relative(span: Duration) {
     std::thread::sleep(span);
 }
 
-/// A bus told to exit waits for control's ring to take a Stopped snapshot, but not for ever.
+/// A bus told to exit waits for control's ring to take a snapshot with every limb stopped, but not for ever.
 struct ExitWait {
-    /// The Stopped snapshots made after `exit` that the ring may leave untaken before the thread returns anyway: one
-    /// stop window (`Timing::stop_confirm_ns`, 100 ms by default) in ticks of this bus, rounded up; `Timing::check`
+    /// The all-stopped snapshots made after `exit` that the ring may leave untaken before the thread returns anyway:
+    /// one stop window (`Timing::stop_confirm_ns`, 100 ms by default) in ticks of this bus, rounded up; `Timing::check`
     /// makes the window at least a period, so at least one. The shutdown already gives the drives that window to
     /// confirm their Disables; a control that is alive reads its ring well inside one more, and one that isn't must not
     /// hold the join (and the recorder's close). Provisional, like the stop window itself: tuned with the rest of the
@@ -335,7 +352,7 @@ struct ExitWait {
     limit: u64,
     /// Those made so far.
     untaken: u64,
-    /// Whether the ring has taken a Stopped snapshot, before `exit` or after.
+    /// Whether the ring has taken an all-stopped snapshot, before `exit` or after.
     took_stopped: bool,
 }
 
@@ -349,9 +366,10 @@ impl ExitWait {
     }
 
     /// After each snapshot's push (`taken` if the ring took it): whether a bus told to exit is done, because the ring
-    /// has taken a Stopped snapshot, control has dropped the ring, or `limit` Stopped snapshots have gone untaken.
+    /// has taken a snapshot with every limb stopped, control has dropped the ring, or `limit` such snapshots have gone
+    /// untaken.
     fn done(&mut self, snap: &Snapshot, taken: bool, exiting: bool, abandoned: bool) -> bool {
-        if snap.state != BusState::Stopped {
+        if !snap.stopped() {
             return false;
         }
         self.took_stopped |= taken;
@@ -373,17 +391,17 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         last: None,
         error: None,
     };
-    let clock = match Clock::new(links.epoch) {
+    let clock = match Clock::new(links.epoch, links.start) {
         Ok(clock) => clock,
         Err(e) => {
             outcome.error = Some(e);
             return outcome;
         }
     };
+    let mut n = clock.first_due(timing.period_ns);
     let mut exit_wait = ExitWait::new(timing);
     // Set once the exit is decided, after a tick's snapshot is published; the thread returns at the next tick's drain.
     let mut leaving = false;
-    let mut n: u64 = 0;
     loop {
         let due = clock.at(n, timing.period_ns);
         if let Err(e) = clock.sleep_until(due) {
@@ -410,26 +428,18 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             lose(&mut tick, &mut outcome, e);
         }
         let exiting = links.exit.load(Ordering::Acquire);
-        let leave = leaving
-            || (exiting
-                && match tick.state() {
-                    // Nothing enabled since start: nothing to stop.
-                    BusState::Idle => true,
-                    // Anything enabled is stopped first; the exit is decided once a Stopped snapshot is published.
-                    BusState::Active | BusState::Stopping { .. } => {
-                        tick.request_stop();
-                        false
-                    }
-                    // Already stopped: decided at this tick's snapshot.
-                    BusState::Stopped => false,
-                });
-        if leave {
+        if leaving || (exiting && tick.all_idle()) {
             // The frames this drain read are still recorded, with the health they left the bus in: for a bus leaving
             // after its stop, the echoes of a last send the previous tick wrote after its collect deadline, which only
             // reach the recording by being read back.
             batch.valid = tick.healthy();
             outcome.recorder.record(batch);
             break;
+        }
+        if exiting {
+            // Every limb not already stopping or stopped is stopped first; the exit is decided once a snapshot with
+            // every limb stopped is published.
+            tick.request_stop();
         }
         let command = newest(&mut links.commands);
         // Planned against the tick's own schedule: a wake past its send window is a missed deadline.
@@ -440,7 +450,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             command.as_ref(),
         );
         let send_by = scheduled + Duration::from_nanos(timing.send_window_ns);
-        send_all(socket, &mut tick, &mut outcome, &sends, send_by);
+        send_all(socket, &clock, &mut tick, &mut outcome, &sends, send_by);
 
         // Collect until the deadline.
         let deadline = scheduled + Duration::from_nanos(timing.collect_ns);
@@ -456,9 +466,9 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         }
         outcome.recorder.record(batch);
         outcome.last = Some(snap);
-        if outcome.error.is_some() && snap.state == BusState::Stopped {
-            // A socket or clock error ends the thread once its Stopped snapshot is made, taken or not: there is no bus
-            // left to wait on.
+        if outcome.error.is_some() && snap.stopped() {
+            // A socket or clock error ends the thread once a snapshot with every limb stopped is made, taken or not:
+            // there is no bus left to wait on.
             break;
         }
         leaving = exit_wait.done(&snap, taken, exiting, links.snapshots.is_abandoned());
@@ -471,6 +481,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
 /// a bus-off) the rest aren't tried: there is no bus to send on. A failed clock alone doesn't stop the writes.
 fn send_all(
     socket: &CanSocket,
+    clock: &Clock,
     tick: &mut BusTick,
     outcome: &mut BusExit,
     sends: &SendList,
@@ -491,7 +502,7 @@ fn send_all(
                 }
             }
         };
-        tick.sent(index, result);
+        tick.sent(index, result, clock.ns(mono_now()));
     }
 }
 

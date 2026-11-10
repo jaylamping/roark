@@ -47,7 +47,9 @@ test with one search. It's the same idea as an error code in an API.
 ## 4. Faults latch; nothing bypasses
 
 - **A stop latches.** It clears only through the operator `clear` described in PLAN item 6, which is logged with who and
-  when. Software never clears a fault and retries.
+  when. Software never clears a fault and retries. A limb's stop is latched in its bus thread (`can`'s `BusTick`), the
+  only place that sees every frame; `clear` reaches it through `BusTick::rearm`, which refuses until every drive in the
+  limb is known disabled.
 - **No bypass switches.** No `--force`, `--skip-preflight`, `SAFETY_OFF` env var, debug build that skips checks, or "bench
   mode" that loosens a rule. **Why:** a bypass that exists will be used at the worst moment, often by an agent trying to get
   a run to pass. A test that needs a different limit uses a skeleton fixture; a test that needs faults uses `sim-drive`.
