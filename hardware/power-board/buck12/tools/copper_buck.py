@@ -3,9 +3,10 @@
     (to J1's pins), VIN and VOUT, GND fills on F.Cu, In2, In3 and B.Cu, solid GND planes on In1 (under the hot loop: the
     loop closes through it, 0.21 mm below L1) and In4;
   - vias: GND under every capacitor and FET return, VIN in Q1's drain tab (heat to the B.Cu VIN mirror), the F/B mirror ties;
-  - hand-laid tracks: the gate drive (HO on In2 straight down under the bootstrap cap, LO on In3: U1's pin order and the FET
-    gates cross once, LAYOUT_RULES), the SW pin's path to the SW node, the bootstrap loop, VCC, ILIM, and the current-carrying
-    small nets (SP_SW1, SPARE_SW, SPARE_ON, the eFuse supplies).
+  - hand-laid tracks: the gate drive (HO on F.Cu straight down from pin 18 to Q1's gate beside the SW pin's track, LO on In3:
+    U1's pin order and the FET gates cross once, LAYOUT_RULES), the SW pin's path to the SW node, the bootstrap loop (BST on
+    In2), VCC, ILIM (In2, crossing LO once), the meters' Kelvin pairs (both legs on In2), and the current-carrying small nets
+    (SP_SW1, SPARE_SW, SPARE_ON, the eFuse supplies).
 Everything here is locked and named (zones BUCK_*); a re-run removes the previous set first. Board mm (page mm = board mm +
 ORIGIN). MODE=check: exit 1 when the board's designed copper differs from this file."""
 import os,sys
@@ -20,13 +21,13 @@ def p(x,y): return (round(x+O[0],4),round(y+O[1],4))
 PLANE=stack.PLANE_CLEAR
 # (name, net, layer, priority, clearance mm, polygon in board mm)
 ZONES=[
- ('VIN_P_F','/VIN_P','F',3,0.2,[(9.4,4.3),(16.3,4.3),(16.3,7.0),(11.0,7.0),(11.0,11.0),(17.8,11.0),(17.8,21.6),(1.5,21.6),(1.5,11.0),(9.4,11.0)]),
- ('VIN_P_B','/VIN_P','B',3,0.2,[(9.4,4.3),(15.7,4.3),(15.7,21.6),(9.4,21.6)]),   # X <= 15.7: 1.5 mm from J1's SP_EN pin (tools/spacing_buck.py)
+ ('VIN_P_F','/VIN_P','F',3,0.2,[(9.4,4.3),(16.0,4.3),(16.0,7.0),(11.0,7.0),(11.0,11.0),(16.6,11.0),(17.8,12.2),(17.8,21.6),(1.5,21.6),(1.5,11.0),(9.4,11.0)]),   # stepped back from J1 pin 9 (SP_EN): 1.7 mm
+ ('VIN_P_B','/VIN_P','B',3,0.2,[(9.4,4.3),(15.5,4.3),(15.5,21.6),(9.4,21.6)]),   # X <= 15.5: SP_EN (J1 pin 9) keeps 1.7 mm (tools/spacing_buck.py)
  ('VIN_F','/VIN','F',3,0.2,[(19.4,13.9),(29.0,13.9),(29.0,22.1),(34.3,22.1),(34.3,27.5),(29.0,27.5),(29.0,39.2),(11.0,39.2),(11.0,30.3),(19.4,30.3)]),
  ('VIN_B','/VIN','B',3,0.2,[(19.4,13.9),(29.0,13.9),(29.0,21.9),(34.3,21.9),(34.3,28.1),(29.0,28.1),(29.0,39.2),(11.0,39.2),(11.0,30.3),(19.4,30.3)]),
  ('SW_F','/SW','F',3,0.2,[(36.1,22.3),(41.2,22.3),(41.2,28.5),(43.6,30.7),(43.6,33.6),(34.0,33.6),(34.0,30.7),(34.95,28.5),(34.95,23.65),(36.1,23.65)]),
- ('VOUT_F','/VOUT','F',3,0.2,[(31.3,36.9),(53.6,36.9),(53.6,41.5),(49.3,41.5),(49.3,42.9),(31.3,42.9)]),
- ('VOUT_B','/VOUT','B',3,0.2,[(31.3,36.9),(49.0,36.9),(49.0,42.9),(31.3,42.9)]),
+ ('VOUT_F','/VOUT','F',3,0.2,[(31.3,36.9),(47.0,36.9),(47.0,35.0),(52.6,35.0),(52.6,36.9),(53.6,36.9),(53.6,41.5),(49.3,41.5),(49.3,42.9),(31.3,42.9)]),   # up to Y 35 above RS1's SH12_P cut-out
+ ('VOUT_B','/VOUT','B',3,0.2,[(31.3,36.9),(47.0,36.9),(47.0,35.0),(52.6,35.0),(52.6,42.9),(31.3,42.9)]),   # past RS1's sense cut-out (X 50), tied to F.Cu at X 50.6-51.8
  ('P12_F','/+12V','F',3,0.2,[(2.0,46.8),(48.9,46.8),(48.9,44.5),(52.4,44.5),(52.4,48.1),(49.3,48.1),(49.3,50.8),(41.0,50.8),(41.0,61.4),(2.0,61.4)]),
  ('JET_F','/+12V_JET','F',3,0.2,[(10.3,62.6),(12.9,62.6),(12.9,78.4),(10.3,78.4)]),
  ('PI_F','/+12V_PI','F',3,0.2,[(20.1,62.6),(22.7,62.6),(22.7,78.4),(20.1,78.4)]),
@@ -60,10 +61,11 @@ VIAS=[
  # VIN_P: F/B ties at C1 and L1
  *[('/VIN_P',v) for v in ((13.4,12.0),(15.0,12.0),(13.4,13.6),(14.4,20.6),(13.0,19.0))],
  # VOUT: F/B ties under the caps and at L2
- *[('/VOUT',(x,37.8)) for x in (32.4,44.9,46.6,48.3)],*[('/VOUT',(x,40.5)) for x in (32.0,45.0,48.4)],
+ *[('/VOUT',(x,37.8)) for x in (32.4,44.9,46.6,48.3)],*[('/VOUT',(x,40.5)) for x in (32.0,45.0,48.4)],('/VOUT',(50.6,35.9)),('/VOUT',(51.8,35.9)),('/VOUT',(51.8,37.3)),
  # gate drive, bootstrap and ILIM vias
- ('/SH12_P',(50.23,39.87)),('/SH12_P',(54.3,37.1)),('/SH12_N',(52.77,46.73)),('/SH12_N',(55.35,36.3)),('GND',(57.3,36.7)),('/+3V3_PI',(58.2,37.0)),
- ('/SHSP_P',(56.27,59.53)),('/SHSP_P',(59.1,48.0)),('GND',(58.7,50.0)),('/+3V3_PI',(57.9,51.9)),
+ ('/SH12_P',(50.23,39.87)),('/SH12_P',(54.6,36.6)),('/SH12_N',(52.77,46.73)),('/SH12_N',(55.6,36.5)),('GND',(57.3,36.7)),('/+3V3_PI',(58.2,37.0)),
+ ('/SHSP_P',(56.27,59.53)),('/SHSP_P',(59.1,48.0)),('/SHSP_N',(53.73,52.67)),('/SHSP_N',(58.7,49.0)),('GND',(55.6,50.45)),('/+3V3_PI',(57.9,51.9)),
+ ('/SP_EN',(41.6,51.4)),   # SP_EN's In2 run ends here (tracks below)
  ('GND',(37.08,4.25)),('GND',(50.4,48.6)),   # C23's return (U4's supply cap)   # C15's return: the analog row's F.Cu GND fill is an island there
  ('/LO',(32.75,16.25)),('/LO',(43.4,21.7)),('/BST',(34.6,16.35)),('/BST',(37.4,17.4)),('/ILIM',(42.4,19.5)),('/ILIM',(30.2,16.4)),
 ]
@@ -81,24 +83,29 @@ TRACKS=[
  # VCC to C16 and PGND to its via and C16's return
  ('/VCC','F',0.2,[(33.4,15.15),(33.4,15.7)]), ('/VCC','F',0.25,[(33.4,15.7),(33.75,16.05),(33.75,17.6),(34.1,17.9)]),
  ('GND','F',0.2,[(32.4,15.15),(32.4,15.45),(31.95,15.9)]), ('GND','F',0.3,[(31.95,15.9),(31.8,16.1),(32.2,17.7)]),
- # ILIM: R6 to U1 pin 11 on In2, C18 at the pin
- ('/ILIM','F',0.2,[(42.4,18.42),(42.4,19.5)]), ('/ILIM','2',0.2,[(42.4,19.5),(41.3,20.6),(30.6,20.6),(30.2,20.2),(30.2,16.4)]),
+ # ILIM: R6 to U1 pin 11 on In2 at Y 18.3, between BST (In2) and LO (In3): it crosses LO once and never runs over it; C18 at the pin
+ ('/ILIM','F',0.2,[(42.4,18.42),(42.4,19.5)]), ('/ILIM','2',0.2,[(42.4,19.5),(41.2,18.3),(31.0,18.3),(30.2,17.5),(30.2,16.4)]),
  ('/ILIM','F',0.2,[(30.2,16.4),(30.2,15.38)]), ('/ILIM','F',0.2,[(30.2,15.38),(31.3,14.25),(32.0,14.25)]),
  # eFuse supplies (4 A class) from the +12V pour
  ('/+12V','F',0.8,[(41.0,58.9),(44.3,58.9),(44.3,57.0)]), ('/+12V','F',0.5,[(44.3,57.0),(45.05,57.0)]), ('/+12V','F',0.6,[(33.05,61.0),(33.05,67.0),(36.2,67.0)]), ('/+12V','F',0.5,[(36.2,67.0),(37.05,67.0)]), ('/+12V','F',0.5,[(33.05,64.6),(34.225,64.6)]),
  ('/+12V','F',0.5,[(36.2,67.0),(36.2,69.4),(36.75,69.8)]),
  # SPARE_ON eFuse enable divider (R16 from +12V, R17 to GND) above the feed
  ('/SPON_EN','F',0.2,[(35.775,62.8),(35.775,66.25),(37.05,66.25)]),
- # meters: Kelvin taps from the shunts' sense pads (via in pad), P on In2 and N on In3 to RS1's meter U2; RS2's N under U4's body,
- # P on In2 up the right edge; the meters' GND, bus and supply pins fanned out to vias
- ('/SH12_P','2',0.2,[(50.23,39.87),(51.5,38.6),(52.8,37.1),(54.3,37.1)]), ('/SH12_P','F',0.2,[(54.3,37.1),(55.0,37.8),(55.0,38.3)]),
- ('/SH12_N','3',0.2,[(52.77,46.73),(53.9,45.6),(53.9,38.0),(55.35,38.0),(55.35,36.3)]), ('/SH12_N','F',0.2,[(55.35,36.3),(55.5,36.7),(55.5,38.3)]),
+ # meters: Kelvin pairs from the shunts' sense pads (via in pad), both legs on In2 (between the In1 GND plane and the In3 GND fill),
+ # 0.6 mm centre to centre from where they meet to the vias at the meter's pins (tools/kelvin_buck.py measures the pairing);
+ # the meters' GND, bus and supply pins fanned out to vias
+ ('/SH12_P','2',0.2,[(50.23,39.87),(53.3,39.87),(53.3,37.9),(54.6,36.6)]), ('/SH12_P','F',0.2,[(54.6,36.6),(55.0,37.0),(55.0,38.3)]),
+ ('/SH12_N','2',0.2,[(52.77,46.73),(53.9,45.6),(53.9,38.2),(55.6,36.5)]), ('/SH12_N','F',0.2,[(55.6,36.5),(55.5,36.9),(55.5,38.3)]),
  ('GND','F',0.2,[(56.5,38.3),(56.5,37.3),(57.0,36.9),(57.3,36.7)]),
  ('/+3V3_PI','F',0.2,[(57.0,38.3),(57.0,37.7),(57.9,37.7),(58.2,37.0)]),
- ('/SHSP_N','F',0.2,[(53.73,52.67),(53.73,52.1),(54.6,51.2),(54.6,49.0),(56.6,49.0)]),
- ('/SHSP_P','2',0.2,[(56.27,59.53),(59.3,56.5),(59.3,48.6),(59.1,48.0)]), ('/SHSP_P','F',0.2,[(59.1,48.0),(58.4,48.5),(57.6,48.5)]),
- ('/SPARE_SW','F',0.2,[(56.6,49.5),(55.3,49.5),(55.3,51.6),(55.64,51.97)]), ('GND','F',0.2,[(57.6,50.0),(58.3,50.0),(58.7,50.0)]),
+ ('/SHSP_N','2',0.2,[(53.73,52.67),(58.1,52.67),(58.7,52.07),(58.7,49.0)]), ('/SHSP_N','F',0.2,[(58.7,49.0),(57.6,49.0)]),
+ ('/SHSP_P','2',0.2,[(56.27,59.53),(59.3,56.5),(59.3,48.6),(59.1,48.0)]), ('/SHSP_P','F',0.2,[(59.1,48.0),(58.1,48.0),(57.6,48.5)]),
+ ('/SPARE_SW','F',0.2,[(56.6,49.5),(54.6,49.5),(54.6,51.6),(55.0,52.0),(55.0,52.3)]), ('GND','F',0.2,[(56.8,50.0),(56.2,50.0),(55.6,50.45)]),
  ('/+3V3_PI','F',0.2,[(57.6,50.5),(57.9,50.5),(57.9,51.9)]),
+ # SP_EN (E-stop class, tools/hv_buck.py SP_MIN 1.7 mm from 54 V copper): J1 pin 9 on In2 below J1's row, down the corridor
+ # between the VIN via column (X 22.6) and Q1's drain vias (X 30), diagonally under the output caps to U3's enable (R14)
+ ('/SP_EN','2',0.2,[(18.0,8.68),(18.0,9.4),(19.2,10.6),(25.6,10.6),(26.3,11.3),(26.3,38.5),(33.85,44.95),(33.85,47.25),(38.0,51.4),(41.6,51.4)]),   # straight down through the output caps' GND via row
+ ('/SP_EN','F',0.2,[(41.6,51.4),(41.675,53.5)]), ('/SP_EN','F',0.2,[(41.675,53.5),(44.425,56.25),(45.05,56.25)]),
  # SP_SW1: U3 out to C27, D4 and RS2; SPARE_SW: RS2 down the right edge to J5; SPARE_ON: U5 out between D5's pads to J6
  ('/SP_SW1','F',0.25,[(46.95,57.25),(48.0,57.25)]), ('/SP_SW1','F',1.0,[(48.0,57.25),(48.0,63.6)]), ('/SP_SW1','F',1.0,[(48.0,61.3),(52.4,61.3),(54.36,59.4)]),
  ('/SPARE_SW','F',1.2,[(55.64,53.12),(58.3,53.12),(58.3,69.0),(57.6,69.7),(52.92,69.7)]),

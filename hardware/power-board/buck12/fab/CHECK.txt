@@ -1,11 +1,11 @@
 ok   J:/code/roark-wt/buck/hardware/power-board/buck12/fab/gerbers exists
 ok   gerbers/ holds the 12 Gerber and 2 drill files: missing [], extra []
-ok   F_Cu.gtl: parses (format, units, end of file), 15459 operations, function "Copper,L1,Top" (expected Copper,L1,Top)
-ok   In1_Cu.g1: parses (format, units, end of file), 5206 operations, function "Copper,L2,Inr" (expected Copper,L2,Inr)
-ok   In2_Cu.g2: parses (format, units, end of file), 6480 operations, function "Copper,L3,Inr" (expected Copper,L3,Inr)
-ok   In3_Cu.g3: parses (format, units, end of file), 6299 operations, function "Copper,L4,Inr" (expected Copper,L4,Inr)
-ok   In4_Cu.g4: parses (format, units, end of file), 5206 operations, function "Copper,L5,Inr" (expected Copper,L5,Inr)
-ok   B_Cu.gbl: parses (format, units, end of file), 7910 operations, function "Copper,L6,Bot" (expected Copper,L6,Bot)
+ok   F_Cu.gtl: parses (format, units, end of file), 15207 operations, function "Copper,L1,Top" (expected Copper,L1,Top)
+ok   In1_Cu.g1: parses (format, units, end of file), 5348 operations, function "Copper,L2,Inr" (expected Copper,L2,Inr)
+ok   In2_Cu.g2: parses (format, units, end of file), 6425 operations, function "Copper,L3,Inr" (expected Copper,L3,Inr)
+ok   In3_Cu.g3: parses (format, units, end of file), 6443 operations, function "Copper,L4,Inr" (expected Copper,L4,Inr)
+ok   In4_Cu.g4: parses (format, units, end of file), 5348 operations, function "Copper,L5,Inr" (expected Copper,L5,Inr)
+ok   B_Cu.gbl: parses (format, units, end of file), 7861 operations, function "Copper,L6,Bot" (expected Copper,L6,Bot)
 ok   F_Mask.gts: parses (format, units, end of file), 247 operations, function "Soldermask,Top" (expected Soldermask,Top)
 ok   B_Mask.gbs: parses (format, units, end of file), 40 operations, function "Soldermask,Bot" (expected Soldermask,Bot)
 ok   F_Silkscreen.gto: parses (format, units, end of file), 5645 operations, function "Legend,Top" (expected Legend,Top)
@@ -14,7 +14,7 @@ ok   F_Paste.gtp: parses (format, units, end of file), 213 operations, function 
 ok   Edge_Cuts.gm1: parses (format, units, end of file), 5 operations, function "Profile,NP" (expected Profile,NP)
 ok   copper layers: 6 Gerbers for a board with 6 copper layers
 ok   outline: Gerber 60.00 x 85.00 mm, board 60.10 x 85.10 mm, expected 60 x 85
-ok   plated holes: file 160 hits {0.2: 4, 0.3: 132, 1.02: 24}; board 160 (vias and plated pads) {0.2: 4, 0.3: 132, 1.02: 24}
+ok   plated holes: file 167 hits {0.2: 4, 0.3: 139, 1.02: 24}; board 167 (vias and plated pads) {0.2: 4, 0.3: 139, 1.02: 24}
 ok   unplated holes: file 16 hits {1.02: 12, 3.2: 4}; board 16 {1.02: 12, 3.2: 4}
 ok   B.Mask: 0 heatsink openings on the board, 0 filled regions in the Gerber; openings without a region of the same area and centroid []; other regions []
 ok   the position file exists
@@ -26,5 +26,5 @@ ok   bom-digikey.csv exists
 ok   bom-digikey.csv: 73 references, the board has 73 fitted parts: missing [], extra []
 ok   zip: 14 files, identical to gerbers/
 ok   BOARD.sha256 exists
-ok   the package was made from this board file (sha256 fd80095ddbf01059..., recorded fd80095ddbf01059...): if not, run tools/fab_package.sh again
+ok   the package was made from this board file (sha256 fff66a8263058e0d..., recorded fff66a8263058e0d...): if not, run tools/fab_package.sh again
 fab_check fails 0

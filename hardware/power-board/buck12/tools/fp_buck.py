@@ -18,6 +18,11 @@ def rename(t,old,new,descr):
 # C24: wider pads
 t=rename(rd('CP_Elec_10x10.5'),'CP_Elec_10x10.5','CP_Elec_10x10.5_ZA','CP_Elec_10x10.5 with 4.2 mm wide pads for Panasonic EEH-ZA (V version: support terminals beside the main ones)')
 assert t.count('(size 4.4 2.5)')==2; t=t.replace('(size 4.4 2.5)','(size 4.4 4.2)')
+# the courtyard's pad extensions (stock: +/-1.5 mm, for 2.5 mm pads) follow the wider pads: +/-2.1 mm + 0.25 = +/-2.35 mm
+def crt(m):
+    return re.sub(r'\((start|end) (-?[\d.]+) (-?)1\.5\)',lambda q:f'({q.group(1)} {q.group(2)} {q.group(3)}2.35)',m.group(0))
+t,n=re.subn(r'\(fp_line\s*\(start [^()]*\)\s*\(end [^()]*\)[^()]*\(stroke[^()]*\([^()]*\)[^()]*\([^()]*\)[^()]*\)\s*\(layer "F\.CrtYd"\)',crt,t)
+assert n==14 and t.count('2.35)')==16, (n,t.count('2.35)'))   # 14 courtyard lines, 16 ends at +/-1.5
 wr('CP_Elec_10x10.5_ZA',t)
 # C2: 12.5 mm can on Chemi-Con's land
 t=rename(rd('CP_Elec_10x10'),'CP_Elec_10x10','CP_Elec_12.5x13.5_ChemiCon','Aluminium electrolytic 12.5 x 13.5 mm (Chemi-Con MVH J-case), Chemi-Con land: 5.7 x 2.5 mm pads, 4.0 mm gap')
@@ -28,8 +33,6 @@ head,sep,rest=t.partition('\t(pad ')
 body='\t(pad '+rest
 # graphics (fp_line/fp_circle/fp_arc/fp_poly points) scale; pads are set explicitly below
 head=re.sub(r'\((start|end|center|mid|xy) (-?[\d.]+) (-?[\d.]+)\)',scale,head)
-body=re.sub(r'\(at -?[\d.]+ 0\)\s*\(size [\d.]+ [\d.]+\)',lambda m:m.group(0),body)
-pads=re.findall(r'\t\(pad "(\d)"',body)
 body=re.sub(r'(\(pad "1"[\s\S]*?)\(at -?[\d.]+ 0\)([\s\S]*?)\(size [\d.]+ [\d.]+\)',r'\1(at -4.85 0)\2(size 5.7 2.5)',body,count=1)
 body=re.sub(r'(\(pad "2"[\s\S]*?)\(at -?[\d.]+ 0\)([\s\S]*?)\(size [\d.]+ [\d.]+\)',r'\1(at 4.85 0)\2(size 5.7 2.5)',body,count=1)
 t=head+body

@@ -1,6 +1,6 @@
 """place_buck.py net.net template.kicad_pcb out.kicad_pcb (KiCad Python): the buck board, placed by design.
 Starts from the main board file (template) for its stackup, layer set and design settings, removes every item, then
-lays the 60 x 85 mm outline, four M3 holes, the bare test pads and every part of the netlist at PLACE (board mm from the
+lays the 60 x 85 mm outline, four M3 holes with copper keep-outs (KO_H1..4), the bare test pads and every part of the netlist at PLACE (board mm from the
 board's top-left corner; page mm = board mm + ORIGIN), with its pad nets, value and attributes from the netlist.
 Prints courtyard overlaps and parts outside the board; exit 1 on either."""
 import os,sys
@@ -47,6 +47,7 @@ PLACE={
  'D5':(40.0,72.6,0),
 }
 HOLES=[(3.5,3.5),(56.5,3.5),(3.5,81.5),(56.5,81.5)]
+KO_R=3.8   # copper keep-out radius round each hole (KO_H1..4)
 # bare test pads (not in the schematic, so not in the BOM: copper only, "TP_" + what they carry), board mm
 TPADS={'TPV1':('/VIN',23.5,38.0),'TPV2':('/SW',46.5,29.7),'TPV3':('/VOUT',47.8,38.8),'TPV4':('/+12V',20.0,54.0),
        'TPV5':('GND',47.0,32.5),'TPV6':('GND',26.0,54.0),'TPV7':('/EN',57.5,17.0),'TPV8':('/VCC',44.6,10.4),
@@ -102,6 +103,16 @@ if __name__=='__main__':
     for k,(x,y) in enumerate(HOLES,1):
         f=PRE[f'H{k}']; f.SetReference(f'H{k}'); f.SetValue('M3'); f.SetFPID(pcbnew.LIB_ID('MountingHole','MountingHole_3.2mm_M3'))
         f.SetBoardOnly(True); f.SetExcludedFromBOM(True); f.SetExcludedFromPosFiles(True); b.Add(f); put(f,x,y,0)
+    # copper keep-outs round the holes, every copper layer (no tracks, vias or fills): the holes are not bonded to the
+    # frame, and the screw head, washer or standoff (up to 7 mm across) must touch no copper. 3.8 mm radius, as the main
+    # board's M3 holes (../../schematic/tools/place.py: 3.2 mm pad + 0.6 mm)
+    import math
+    for k,(x,y) in enumerate(HOLES,1):
+        z=pcbnew.ZONE(b); z.SetIsRuleArea(True); z.SetDoNotAllowZoneFills(True); z.SetDoNotAllowTracks(True); z.SetDoNotAllowVias(True)
+        z.SetDoNotAllowPads(False); z.SetDoNotAllowFootprints(False); z.SetLayerSet(pcbnew.LSET.AllCuMask()); z.SetZoneName(f'KO_H{k}')
+        o=z.Outline(); o.NewOutline(); r=KO_R/math.cos(math.pi/32)   # the 32-gon's flats sit at KO_R
+        for i in range(32): o.Append(P(x+r*math.cos(i*math.pi/16),y+r*math.sin(i*math.pi/16)))
+        z.SetLocked(True); b.Add(z)
     for ref,(nm,x,y) in TPADS.items():
         f=PRE[ref]; f.SetReference(ref); f.SetValue('TP '+nm.lstrip('/')); f.SetFPID(pcbnew.LIB_ID('TestPoint','TestPoint_Pad_D1.5mm'))
         f.SetBoardOnly(True); f.SetExcludedFromBOM(True); f.SetExcludedFromPosFiles(True)

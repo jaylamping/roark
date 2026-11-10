@@ -3,7 +3,10 @@
 # board next to the schematic and the project in a temp dir, refills the zones with the project rules there, and runs:
 #   kicad-cli DRC with parity     every violation type fails, except the cosmetic silkscreen ones in ALLOW; any parity issue
 #                                 and any open connection fail; a report that is missing, stale or has no parity key fails
-#   tools/spacing_buck.py         SP_EN (E-stop class on the main board) 1.5 mm from the 54 V copper; no other E-stop net here
+#   tools/spacing_buck.py         SP_EN (E-stop class on the main board) 1.7 mm (the 1.5 mm rule plus etch tolerance) from the
+#                                 54 V copper (tools/hv_buck.py); no other E-stop net here; fails when it compared nothing
+#   tools/kelvin_buck.py          both Kelvin pairs traced sense pad to meter pin, on one inner layer, paired over their floor
+#   tools/holes_buck.py           a copper keep-out on every layer round each M3 hole, and no copper inside it
 #   ../../schematic/tools/joint_check.py   every joint has 0.1 mm of real copper overlap
 #   tools/copper_buck.py MODE=check        the designed copper equals the script
 #   tools/pour_buck.py            the 12 A, 5 A and input paths under their temperature-rise limits
@@ -48,6 +51,8 @@ sys.exit(1 if hard or par or un else 0)
 PYEOF
 run() { local label=$1; shift; "$@" > "$W/tool.txt" 2>&1; local rc=$?; q < "$W/tool.txt"; [ "$rc" = 0 ] || { echo "FAIL: $label (exit $rc)"; fail=1; }; }
 run spacing_buck "$KP" "$B/tools/spacing_buck.py" "$W/marengo_buck12.kicad_pcb"
+run kelvin_buck "$KP" "$B/tools/kelvin_buck.py" "$W/marengo_buck12.kicad_pcb"
+run holes_buck "$KP" "$B/tools/holes_buck.py" "$W/marengo_buck12.kicad_pcb"
 run joint_check "$KP" "$T/joint_check.py" "$W/marengo_buck12.kicad_pcb"
 MODE=check run 'designed copper differs from copper_buck.py' "$KP" "$B/tools/copper_buck.py" "$W/marengo_buck12.kicad_pcb"
 run pour_buck "$KP" "$B/tools/pour_buck.py" "$W/marengo_buck12.kicad_pcb"

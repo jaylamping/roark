@@ -17,9 +17,12 @@ KP="/c/Program Files/KiCad/10.0/bin/python.exe"; KC="/c/Program Files/KiCad/10.0
 [ -x "$KP" ] || { KP=/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3; KC=/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli; }
 PY=python3; "$PY" -c "" 2>/dev/null || PY=python
 export MSYS_NO_PATHCONV=1 FINE=U1
-# the routers treat the buck's 54 V copper as the 54 V list (domains.py's what-if switch), so SP_EN, an E-stop-class net, keeps
-# 1.5 mm to it as on the main board (tools/spacing_buck.py checks the result)
-export MARENGO_HV_EXTRA=VIN_P,VIN,VIN_C,SW,HO,BST,BST_R,ILIM,EN,ON_N
+# the routers treat the buck's 54 V copper (tools/hv_buck.py, the one list) as the 54 V list (domains.py's what-if switch),
+# so SP_EN, an E-stop-class net, keeps hv_buck.SP_MIN (1.7 mm: the main board's 1.5 mm rule plus etch tolerance) to it
+# (tools/spacing_buck.py checks the result)
+MARENGO_HV_EXTRA=$("$PY" "$B/tools/hv_buck.py") && [ -n "$MARENGO_HV_EXTRA" ] || { echo 'hv_buck.py gave no net list'; exit 1; }
+MARENGO_ESTOP_GAP=$("$PY" -c "import sys;sys.path.insert(0,sys.argv[1]);import hv_buck;print(hv_buck.SP_MIN)" "$B/tools") || { echo 'hv_buck.py gave no SP_MIN'; exit 1; }
+export MARENGO_HV_EXTRA MARENGO_ESTOP_GAP
 q() { grep -v 'memory leak\|GetWidth called\|image handler\|Exception ignored\|OSError'; }
 die() { echo "$*"; exit 1; }
 step() {   # step <label> <output or -> <command...>
@@ -50,6 +53,8 @@ for r in 1 2 3 4 5 6; do
   (cd "$T" && step "route round $r" "$W/r$r.kicad_pcb" env SECONDS=40 COMPONENTS=1 "$KP" finish_route.py "$W/d$r/marengo_buck12.kicad_pcb" "$W/r$r.kicad_pcb" "$W/d$r/drc.json") || exit 1
   cur="$W/r$r.kicad_pcb"
 done
-(cd "$T" && step islands "$W/islands.kicad_pcb" "$KP" finish_ground_islands.py "$W/d$r/marengo_buck12.kicad_pcb" "$W/islands.kicad_pcb") || exit 1
+# the islands step starts from the last round's board, refilled (when the loop ran out of rounds, $cur is newer than d$r)
+drc "$cur" "$W/dlast"; echo "after routing: $(opens "$W/dlast") open"
+(cd "$T" && step islands "$W/islands.kicad_pcb" "$KP" finish_ground_islands.py "$W/dlast/marengo_buck12.kicad_pcb" "$W/islands.kicad_pcb") || exit 1
 drc "$W/islands.kicad_pcb" "$W/final"; echo "final: $(opens "$W/final") connections open"
 bash "$B/tools/verify_buck.sh" "$W/final/marengo_buck12.kicad_pcb"

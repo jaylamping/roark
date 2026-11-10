@@ -10,8 +10,8 @@ IU,MM=pcbnew.FromMM,pcbnew.ToMM
 O=(30.0,30.0); H=0.02
 # (key, net, name, cut axis ('y': cuts are horizontal lines at each Y; 'x': vertical lines at each X), from, to, span lo, span hi, amps, limit degC)
 PATHS=[
- ('vout','/VOUT','VOUT, L2 to RS1 (12 A)','x',44.0,49.5,34.0,44.0,12.0,20.0),
- ('p12','/+12V','+12V, RS1 into the distribution pour (12 A)','x',42.0,48.5,44.0,62.0,12.0,20.0),
+ ('vout','/VOUT','VOUT, L2 to RS1 (12 A)','x',44.0,51.1,33.0,44.0,12.0,20.0),   # to RS1.1's left edge (X 51.12)
+ ('p12','/+12V','+12V, RS1 into the distribution pour (12 A)','x',42.0,49.8,44.0,62.0,12.0,20.0),   # to RS1.4's left edge (X 49.85)
  ('sw','/SW','SW node, Q2 to L2 (12 A)','y',27.6,30.9,33.0,44.0,12.0,20.0),
  ('vin','/VIN','VIN, L1 to the input caps and Q1 (3.5 A at 36 V, 126 W in)','x',22.0,28.5,12.0,40.0,3.5,10.0),
  ('vinp','/VIN_P','VIN_P, J1 to the filter (3.5 A)','y',7.2,10.8,8.0,17.0,3.5,10.0),

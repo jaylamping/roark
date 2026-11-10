@@ -16,6 +16,9 @@ def is_estop(n): return n in {'/'+x for x in ESTOP_NAMES} or bool(re.match(r'/(L
 import os
 # MARENGO_HV_EXTRA=BAT_F,BAT_CTL,...: a what-if for tools/route_checks.py, treating these nets as 54 V copper too
 HV_EXTRA={'/'+x for x in os.environ.get('MARENGO_HV_EXTRA','').split(',') if x}
+# MARENGO_ESTOP_GAP=1.7: the E-stop-to-54 V distance the routers keep (default the rule, 1.5 mm); the buck board's build
+# keeps 1.7 mm (buck12/tools/hv_buck.py SP_MIN)
+ESTOP_GAP=float(os.environ.get('MARENGO_ESTOP_GAP','1.5'))
 def is_hv(n):
     return (bool(re.match(r'/(BAT|SW_D|MID|VBUS|ABS|ABS_N|CL_D|VS_A|CSP_A|CSN_A)$|/(BRK_|SH|V_L|D_L)',n)) or n in HV_EXTRA) and not is_estop(n) and not n.startswith('/SH12')
 DOMRE=[('BAT',r'/(BAT|SW_D|SH_[PN]|SH9_[PN]|BRK_D|CSP_A|CSN_A|VS_A)$'),('MID',r'/(MID|GA1|GA2|GATE_A|BST_A|G1PD_A)$'),
@@ -72,7 +75,7 @@ COATED=os.environ.get('MARENGO_COATED','1')=='1'
 def clearance(a,b,outer):
     """required copper clearance (mm) between nets a and b on an outer (True) or inner layer"""
     if a==b: return 0.0
-    if (is_estop(a) and is_hv(b)) or (is_estop(b) and is_hv(a)): return 1.5   # the rule's net list; 54 V-riding nets get 0.6 below
+    if (is_estop(a) and is_hv(b)) or (is_estop(b) and is_hv(a)): return ESTOP_GAP   # the rule's net list; 54 V-riding nets get 0.6 below
     if latch_leak(a,b): return 1.5   # the latch supply chain against the leakage-sensitive E-stop nets
     if (rides(a) or rides(b)) and not (dom(a) and dom(a)==dom(b)): return 0.6 if (outer and not COATED) else 0.2
     return 0.2
