@@ -6,13 +6,15 @@
 //! A write is answered by a plain status that names no register (`robstride` `param_write`), so a write proves nothing
 //! until its read-back. Every unknown fails closed: a request not answered in time, an answer of the wrong kind, a value
 //! the skeleton leaves null.
-
+//!
+//! Preflight is stepped with what its drive's bus last showed ([`Seen`]): a view of any other drive, by ID or by bus,
+//! refuses, and so does a limb that isn't idle, or that stopped or was cleared since preflight began.
 //!
 //! Times here (`now_ns`, `read_ns`, `at_ns`) are nanoseconds on the runtime's monotonic epoch, the clock the bus layer
 //! stamps its views with (`telemetry::Epoch`); a bare `u64` like the bus layer's own, so they compare with its fields
 //! as is.
 
-use can::{DriveView, SlowKind, SlowOutcome};
+use can::{DriveView, LimbState, SlowKind, SlowOutcome};
 use robstride::{
     Amps, CanTimeout, Damper, Drive, Mode, NewtonMeters, Param, ParamOutcome, ParamValue,
     RadPerSec, Uid, Volts, Write,
@@ -21,6 +23,7 @@ use skeleton::{Joint, Power, Window};
 
 use crate::refusal::{CapKind, JointFact, Refusal, Unanswered};
 use crate::rule::RuleId;
+use crate::seen::{DriveAddress, Seen};
 
 /// How long preflight waits for one request's result before refusing. A bus sends at most one slow request a tick, in
 /// the slack of a tick that wasn't held, and gives each its result by the next tick's start, so a full bus
@@ -138,6 +141,7 @@ impl Exchange {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Target {
     drive: Drive,
+    address: DriveAddress,
     uid: Option<Uid>,
     can_timeout: Write,
     torque: Write,
@@ -154,9 +158,13 @@ impl Target {
     /// settled, [`Refusal::CapUnset`] for a null cap, [`Refusal::FactUnset`] for a null direction, zero or hard limits,
     /// [`Refusal::CapOutOfRange`] for a cap its model can't take.
     pub fn new(joint: &Joint, power: &Power) -> Result<Self, Refusal> {
-        if joint.bus.is_none() {
-            return Err(Refusal::Unwired);
-        }
+        // The skeleton holds every bus name to the kernel's limit, so a name that doesn't fit an address is one no
+        // parsed skeleton has: no bus this host can open, so the joint is offline.
+        let address = joint
+            .bus
+            .as_ref()
+            .and_then(|bus| DriveAddress::new(bus, joint.id))
+            .ok_or(Refusal::Unwired)?;
         let drive = Drive::new(joint.id, joint.actuator);
         // Control can't command a model whose MIT frame isn't settled, so it isn't enabled (PLAN item 2).
         if drive.model().mit_scales().is_err() {
@@ -184,6 +192,7 @@ impl Target {
         let out = |cap, value: f64, max: f64| Refusal::CapOutOfRange { cap, value, max };
         Ok(Self {
             drive,
+            address,
             uid: joint.uid,
             can_timeout: Write::can_timeout(drive),
             torque: Write::limit_torque(drive, torque)
@@ -200,6 +209,12 @@ impl Target {
     #[must_use]
     pub const fn drive(&self) -> Drive {
         self.drive
+    }
+
+    /// The drive's bus and ID.
+    #[must_use]
+    pub const fn address(&self) -> DriveAddress {
+        self.address
     }
 
     const fn write(&self, register: Register) -> Option<Write> {
@@ -220,10 +235,14 @@ impl Target {
 /// here: it runs preflight for every named drive of the enable first, and starts their enable sequences in the tick the
 /// last proof comes (the bus refuses slow writes to a limb that isn't idle, so a drive enabled early would refuse its
 /// limb-mates' preflights); it drops every proof or cancels every sequence on any such event, and runs preflight again
-/// for every enable.
+/// for every enable. It carries the drive's bus and ID and its limb's `generation`, so the enable sequence ends by
+/// itself on the voiding events its snapshots show: a stop or clear of the limb, a fault, another drive's view.
 #[derive(Debug, PartialEq, Eq)]
 pub struct PreflightPassed {
     drive: Drive,
+    address: DriveAddress,
+    /// The limb's `generation` throughout: a clear since would void the proof.
+    generation: u32,
     at_ns: u64,
 }
 
@@ -232,6 +251,17 @@ impl PreflightPassed {
     #[must_use]
     pub const fn drive(&self) -> Drive {
         self.drive
+    }
+
+    /// Its bus and ID.
+    #[must_use]
+    pub const fn address(&self) -> DriveAddress {
+        self.address
+    }
+
+    /// Its limb's `generation` while preflight ran.
+    pub(crate) const fn generation(&self) -> u32 {
+        self.generation
     }
 
     /// When the last check passed, monotonic, for the event log.
@@ -273,6 +303,8 @@ enum State {
 pub struct Preflight {
     target: Target,
     started_ns: u64,
+    /// The limb's `generation` at the first poll.
+    generation: Option<u32>,
     state: State,
 }
 
@@ -283,6 +315,7 @@ impl Preflight {
         Self {
             target,
             started_ns: now_ns,
+            generation: None,
             state: State::Asking {
                 next: 0,
                 submitted_ns: None,
@@ -296,17 +329,33 @@ impl Preflight {
         self.target.drive
     }
 
-    /// The next step, given the drive's latest view and the time. A fault in the latest status or latched since the
-    /// last clear, or any mode but Reset in the latest status since preflight began, refuses at once; so does a request
-    /// with no result within [`ANSWER_WITHIN_NS`], and a view of another drive.
-    pub fn poll(&mut self, view: &DriveView, now_ns: u64) -> Step {
+    /// The next step, given what the drive's bus last showed of it and the time. A view of another drive (by ID or by
+    /// bus), a fault in the latest status or latched since the last clear, any mode but Reset in the latest status
+    /// since preflight began, or a limb that isn't idle or that stopped or was cleared since the first poll, refuses at
+    /// once; so does a request with no result within [`ANSWER_WITHIN_NS`].
+    pub fn poll(&mut self, seen: Seen<'_>, now_ns: u64) -> Step {
+        let view = seen.view;
         if let State::Asking { .. } = self.state {
-            if view.device != self.target.drive.id() {
-                self.state = State::Refused(Refusal::WrongView {
-                    view: view.device,
-                    drive: self.target.drive.id(),
-                });
+            let generation = *self.generation.get_or_insert(seen.limb.generation);
+            // The drive's own faults and mode before the limb's state, so a stop the bus made for them is named by
+            // its own rule.
+            let refusal = if !self.target.address.is(seen.bus, view.device) {
+                Some(Refusal::WrongView {
+                    view: seen.address(),
+                    drive: self.target.address,
+                })
             } else if let Some(refusal) = self.status_refusal(view) {
+                Some(refusal)
+            } else if !seen.limb.state.takes_commands() || seen.limb.generation != generation {
+                Some(Refusal::LimbStopped {
+                    stop: seen.limb.stop,
+                })
+            } else if seen.limb.state == LimbState::Active {
+                Some(Refusal::LimbActive)
+            } else {
+                None
+            };
+            if let Some(refusal) = refusal {
                 self.state = State::Refused(refusal);
             }
         }
@@ -339,6 +388,8 @@ impl Preflight {
                     self.state = State::Spent;
                     Step::Passed(PreflightPassed {
                         drive: self.target.drive,
+                        address: self.target.address,
+                        generation: self.generation.unwrap_or(seen.limb.generation),
                         at_ns: now_ns,
                     })
                 }

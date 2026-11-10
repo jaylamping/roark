@@ -6,20 +6,24 @@
 //! counts once a fresh status read after it still shows Run: the drive took a frame and stayed enabled.
 //!
 //! The runtime cancels the sequence on any event that voids its preflight (see [`PreflightPassed`]); the sequence
-//! itself checks only that it is stepped with its drive's view and that the drive reports no fault. It sends no slow request to a drive while it is enabling: the bus keeps only each drive's last echo, so a
-//! slow frame's echo would hide the sequence's own and the sequence would give up.
+//! itself checks, at every step, that it is stepped with its own drive on its own bus ([`Seen`]), that the drive
+//! reports no fault, and that its limb hasn't stopped or been cleared since preflight: each of those ends it. It sends
+//! no slow request to a drive while it is enabling: the bus keeps only each drive's last echo, so a slow frame's echo
+//! would hide the sequence's own and the sequence would give up.
 //!
 //! Set Zero has no command in this stack yet. When it gets one, this sequence gains the "no Set Zero to this drive in
 //! the last 800 ms" step before Enable.
 
-use can::DriveView;
+use can::{DriveView, StopReason};
 use robstride::{
-    DeviceId, Drive, EchoKind, Frame, Mode, Param, ParamValue, Reporting, RunMode, StatusFaults,
-    Write, encode,
+    Drive, EchoKind, Frame, Mode, Param, ParamValue, Reporting, RunMode, StatusFaults, Write,
+    encode,
 };
 
 use crate::preflight::PreflightPassed;
+use crate::refusal::stopped_by;
 use crate::rule::RuleId;
+use crate::seen::{DriveAddress, Seen};
 
 /// How long each step has for its reply after its frame is planned: Run after the Enable (PLAN item 2, "refuse after
 /// 50 ms"; 1.4 to 10.3 ms measured), and the echo of the reporting off and of the `run_mode` write. The bus layer's
@@ -44,12 +48,18 @@ pub enum EnableFailure {
         /// The last mode the drive reported.
         last: Option<Mode>,
     },
-    /// The sequence was handed another drive's view: a runtime bug.
+    /// The sequence was handed another drive's view, by ID or by bus: a runtime bug.
     WrongView {
         /// The view's drive.
-        view: DeviceId,
+        view: DriveAddress,
         /// The drive the sequence is for.
-        drive: DeviceId,
+        drive: DriveAddress,
+    },
+    /// The drive's limb is stopping or stopped, or was cleared, since its preflight: the proof no longer holds, and the
+    /// bus sends the limb none of the sequence's frames.
+    LimbStopped {
+        /// Why the limb stopped, if the snapshot still says.
+        stop: Option<StopReason>,
     },
     /// A status since the sequence began carried fault bits, or a fault was seen since the limb's last clear (then the
     /// bits are those of the latest status, possibly none).
@@ -65,7 +75,7 @@ impl EnableFailure {
     pub const fn rule(self) -> RuleId {
         match self {
             Self::NoEcho | Self::NoModeEcho => RuleId::HostBus,
-            Self::WrongView { .. } => RuleId::HostPreflight,
+            Self::WrongView { .. } | Self::LimbStopped { .. } => RuleId::HostPreflight,
             Self::NoRun { .. } | Self::LeftRun { .. } => RuleId::HostMode,
             Self::Faults { .. } => RuleId::HostFault,
         }
@@ -101,10 +111,12 @@ impl EnableFailure {
             Self::LeftRun { last: None } => {
                 "sent no status within 50 ms of the run_mode = MIT write, expected Run".to_owned()
             }
-            Self::WrongView { view, drive } => format!(
-                "was stepped with drive {}'s view, expected drive {}'s",
-                view.get(),
-                drive.get()
+            Self::WrongView { view, drive } => {
+                format!("was stepped with {view}'s view, expected {drive}'s")
+            }
+            Self::LimbStopped { stop } => format!(
+                "found its limb stopped or cleared since its preflight{}, expected it running",
+                stopped_by(stop)
             ),
             Self::Faults { bits } if bits.is_empty() => {
                 "had a fault since the last clear, expected none".to_owned()
@@ -127,6 +139,9 @@ impl EnableFailure {
                 "Frames aren't reaching the adapter: check the bus and the runtime's log, clear the limb, then run preflight and enable again"
             }
             Self::WrongView { .. } => "A runtime bug: stop and report it with the log",
+            Self::LimbStopped { .. } => {
+                "Find why the limb stopped in the log, clear the limb, then run preflight and enable again"
+            }
             Self::NoRun { .. } | Self::LeftRun { .. } => {
                 "Check the drive's power and fault state, clear the limb, then run preflight and enable again"
             }
@@ -178,6 +193,9 @@ enum Stage {
 #[derive(Debug, PartialEq, Eq)]
 pub struct Enabling {
     drive: Drive,
+    address: DriveAddress,
+    /// The limb's `generation` while preflight ran: a clear since voids the proof.
+    generation: u32,
     stage: Stage,
     started_ns: u64,
 }
@@ -192,6 +210,8 @@ impl Enabling {
     pub const fn new(passed: PreflightPassed, now_ns: u64) -> Self {
         Self {
             drive: passed.drive(),
+            address: passed.address(),
+            generation: passed.generation(),
             stage: Stage::ReportingOff,
             started_ns: now_ns,
         }
@@ -213,18 +233,13 @@ impl Enabling {
         }
     }
 
-    /// The step for tick `tick`'s batch, planned at `now_ns` (the runtime's monotonic epoch, as the view's times) from the
-    /// drive's latest view.
-    pub fn step(&mut self, view: &DriveView, tick: u64, now_ns: u64) -> Next {
-        if view.device != self.drive.id() && !matches!(self.stage, Stage::Failed { .. }) {
-            self.stage = self
-                .failed(EnableFailure::WrongView {
-                    view: view.device,
-                    drive: self.drive.id(),
-                })
-                .0;
-        } else if let Some(bits) = self.faults(view) {
-            self.stage = self.failed(EnableFailure::Faults { bits }).0;
+    /// The step for tick `tick`'s batch, planned at `now_ns` (the runtime's monotonic epoch, as the view's times) from
+    /// what the drive's bus last showed of it. Another drive's view (by ID or by bus), a fault, or a limb stopping,
+    /// stopped or cleared since preflight ends the sequence at any step but a failure.
+    pub fn step(&mut self, seen: Seen<'_>, tick: u64, now_ns: u64) -> Next {
+        let view = seen.view;
+        if let Some(failure) = self.voided(seen) {
+            self.stage = self.failed(failure).0;
         }
         let (stage, next) = match self.stage {
             Stage::ReportingOff => (
@@ -274,7 +289,7 @@ impl Enabling {
                 // Strictly after the Enable's answer, so that one status never answers both frames. The drive's latest
                 // status, if it is after that and in another mode, is the drive leaving Run, fresh or not. A Reset hidden
                 // by a later Run in one snapshot is the bus layer's to catch: it latches the drop out of Run and stops
-                // the limb, and the stop's Reset then ends this.
+                // the limb, which ends this at the next step (`LimbStopped`).
                 let left = view
                     .observed
                     .filter(|o| o.read_ns > run_read_ns && o.status.header.mode != Mode::Run)
@@ -320,10 +335,30 @@ impl Enabling {
         )
     }
 
-    fn faults(&self, view: &DriveView) -> Option<StatusFaults> {
+    /// What ends the sequence whatever its step: another drive's view, a fault, or the limb stopped or cleared since
+    /// preflight; a fault first, so a stop the bus made for it is named by its own rule. `None` once it has failed: the
+    /// first failure stands.
+    fn voided(&self, seen: Seen<'_>) -> Option<EnableFailure> {
         if let Stage::Failed { .. } = self.stage {
             return None;
         }
+        if !self.address.is(seen.bus, seen.view.device) {
+            return Some(EnableFailure::WrongView {
+                view: seen.address(),
+                drive: self.address,
+            });
+        }
+        if let Some(bits) = self.faults(seen.view) {
+            return Some(EnableFailure::Faults { bits });
+        }
+        (!seen.limb.state.takes_commands() || seen.limb.generation != self.generation).then_some(
+            EnableFailure::LimbStopped {
+                stop: seen.limb.stop,
+            },
+        )
+    }
+
+    fn faults(&self, view: &DriveView) -> Option<StatusFaults> {
         let bits = view
             .observed
             .filter(|o| o.read_ns >= self.started_ns)

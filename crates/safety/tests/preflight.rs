@@ -4,15 +4,15 @@
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
-use can::{DriveView, SlowKind, SlowOutcome, SlowRefusal, Unsent};
-use common::{joint, quiet, seen, skeleton, status};
+use can::{DriveView, LimbState, LimbView, SlowKind, SlowOutcome, SlowRefusal, StopReason, Unsent};
+use common::{BUS0, IDLE, joint, on, quiet, seen, shown, skeleton, status};
 use robstride::{
     Amps, CanTimeout, Damper, Mode, NewtonMeters, Param, ParamOutcome, ParamValue, RadPerSec,
     StatusFault, StatusFaults, Uid, Volts,
 };
 use safety::{
-    ANSWER_WITHIN_NS, CapKind, Exchange, JointFact, Preflight, Refusal, Register, RuleId, Step,
-    Target, Unanswered,
+    ANSWER_WITHIN_NS, CapKind, DriveAddress, Exchange, JointFact, Preflight, Refusal, Register,
+    RuleId, Step, Target, Unanswered,
 };
 
 /// What the operator is told when control handed a result over late.
@@ -103,18 +103,22 @@ fn run(n: usize, drive: &Drive) -> (Result<(), Refusal>, Vec<(Param, ParamValue)
         now += PERIOD;
         // The row's views are drive 101's; joint `n`'s drive may have another ID.
         view.device = target.drive().id();
-        let kind = match preflight.poll(&view, now) {
+        let kind = match preflight.poll(shown(&view), now) {
             Step::Submit(kind) => kind,
             Step::Passed(passed) => {
                 assert_eq!(passed.drive(), target.drive());
-                assert_eq!(preflight.poll(&view, now), Step::Spent, "proof given once");
+                assert_eq!(
+                    preflight.poll(shown(&view), now),
+                    Step::Spent,
+                    "proof given once"
+                );
                 return (Ok(()), written);
             }
             Step::Refused(refusal) => return (Err(refusal), written),
             step @ (Step::Wait | Step::Spent) => return (Err(refusal_for(&step)), written),
         };
         assert_eq!(
-            preflight.poll(&view, now),
+            preflight.poll(shown(&view), now),
             Step::Wait,
             "one request at a time"
         );
@@ -528,7 +532,7 @@ fn preflight_refuses_vbus_out_of_window_a_fault_and_a_running_drive() {
     );
     let faulted = seen(status(Mode::Reset, over, 2_000));
     assert_eq!(
-        preflight.poll(&faulted, 3_000),
+        preflight.poll(shown(&faulted), 3_000),
         Step::Refused(Refusal::Faults { bits: over })
     );
     for refusal in [
@@ -667,49 +671,121 @@ fn a_request_with_no_result_in_time_refuses() {
     let target = Target::new(&joint(&skeleton, 0), &skeleton.power).unwrap();
     let view = quiet();
     let mut preflight = Preflight::start(target, 1_000);
-    assert_eq!(preflight.poll(&view, 2_000), Step::Submit(SlowKind::GetId));
-    assert_eq!(preflight.poll(&view, 2_000 + ANSWER_WITHIN_NS), Step::Wait);
+    assert_eq!(
+        preflight.poll(shown(&view), 2_000),
+        Step::Submit(SlowKind::GetId)
+    );
+    assert_eq!(
+        preflight.poll(shown(&view), 2_000 + ANSWER_WITHIN_NS),
+        Step::Wait
+    );
     let refused = Step::Refused(Refusal::NoAnswer {
         exchange: Exchange::Identity,
         how: Unanswered::TimedOut,
     });
-    assert_eq!(preflight.poll(&view, 2_001 + ANSWER_WITHIN_NS), refused);
+    assert_eq!(
+        preflight.poll(shown(&view), 2_001 + ANSWER_WITHIN_NS),
+        refused
+    );
     preflight.answered(SlowOutcome::Identity(UID), 2_002 + ANSWER_WITHIN_NS);
-    assert_eq!(preflight.poll(&view, 2_002 + ANSWER_WITHIN_NS), refused);
+    assert_eq!(
+        preflight.poll(shown(&view), 2_002 + ANSWER_WITHIN_NS),
+        refused
+    );
 
     // A result handed over late, with no poll in between, refuses as late (control fell behind); one at exactly 1 s
     // counts.
     let mut late = Preflight::start(target, 1_000);
-    assert_eq!(late.poll(&view, 2_000), Step::Submit(SlowKind::GetId));
+    assert_eq!(
+        late.poll(shown(&view), 2_000),
+        Step::Submit(SlowKind::GetId)
+    );
     late.answered(SlowOutcome::Identity(UID), 2_001 + ANSWER_WITHIN_NS);
     let handed_late = Refusal::NoAnswer {
         exchange: Exchange::Identity,
         how: Unanswered::Late,
     };
     assert_eq!(
-        late.poll(&view, 2_001 + ANSWER_WITHIN_NS),
+        late.poll(shown(&view), 2_001 + ANSWER_WITHIN_NS),
         Step::Refused(handed_late)
     );
     assert_eq!(handed_late.remedy(), LATE_REMEDY);
     let mut on_time = Preflight::start(target, 1_000);
-    assert_eq!(on_time.poll(&view, 2_000), Step::Submit(SlowKind::GetId));
+    assert_eq!(
+        on_time.poll(shown(&view), 2_000),
+        Step::Submit(SlowKind::GetId)
+    );
     on_time.answered(SlowOutcome::Identity(UID), 2_000 + ANSWER_WITHIN_NS);
     assert!(matches!(
-        on_time.poll(&view, 2_000 + ANSWER_WITHIN_NS),
+        on_time.poll(shown(&view), 2_000 + ANSWER_WITHIN_NS),
         Step::Submit(SlowKind::Write(_))
     ));
+}
 
-    // Another drive's view: a runtime bug, refused before anything is asked.
-    let mut crossed = Preflight::start(target, 1_000);
-    let other = can::DriveView {
+/// Guards: safety - `host.preflight`: preflight checks at every poll that it is shown its own drive on its own bus,
+/// and that the drive's limb is idle and hasn't stopped or been cleared since the first poll. Another drive's view
+/// (another ID, or the same ID on another bus) is a runtime bug; an enabled limb, or one that stopped or was cleared
+/// mid-preflight (idle again, but what was checked before may predate the stop), refuses too (PLAN item 6 Preflight
+/// row).
+#[test]
+fn preflight_refuses_another_drives_view_or_a_limb_not_idle() {
+    let skeleton = skeleton();
+    let target = Target::new(&joint(&skeleton, 0), &skeleton.power).unwrap();
+    let (view, bus1) = (quiet(), common::bus(1));
+    let other = DriveView {
         device: common::id(102),
         ..view
     };
+    let limb = |state, stop, generation| LimbView {
+        state,
+        stop,
+        generation,
+    };
+    let stop = Some(StopReason::Requested);
+    let limbs = [
+        (limb(LimbState::Active, None, 0), Refusal::LimbActive),
+        (
+            limb(LimbState::Stopping { since_ns: 1_500 }, stop, 0),
+            Refusal::LimbStopped { stop },
+        ),
+        (
+            limb(LimbState::Idle, None, 1),
+            Refusal::LimbStopped { stop: None },
+        ),
+    ];
+    let wrong = |bus, n| Refusal::WrongView {
+        view: DriveAddress::new(bus, common::id(n)).unwrap(),
+        drive: target.address(),
+    };
+    let mut rows = vec![
+        (shown(&other), wrong(&BUS0, 102)),
+        (on(&bus1, &view, &IDLE), wrong(&bus1, 101)),
+    ];
+    for (limb, refusal) in &limbs {
+        rows.push((on(&BUS0, &view, limb), *refusal));
+    }
+    for (seen, refusal) in rows {
+        let mut preflight = Preflight::start(target, 1_000);
+        assert_eq!(
+            preflight.poll(shown(&view), 2_000),
+            Step::Submit(SlowKind::GetId)
+        );
+        preflight.answered(SlowOutcome::Identity(UID), 3_000);
+        assert_eq!(
+            preflight.poll(seen, 3_000),
+            Step::Refused(refusal),
+            "{refusal:?}"
+        );
+        assert_eq!(refusal.rule(), RuleId::HostPreflight);
+    }
     assert_eq!(
-        crossed.poll(&other, 2_000),
-        Step::Refused(Refusal::WrongView {
-            view: common::id(102),
-            drive: common::id(101),
-        })
+        wrong(&bus1, 101).message("arm_joint_one"),
+        "refused (host.preflight): arm_joint_one was checked against drive 101 on bus1's view, expected drive 101 on \
+         bus0's"
+    );
+    assert_eq!(
+        Refusal::LimbStopped { stop: None }.message("arm_joint_one"),
+        "refused (host.preflight): arm_joint_one found its limb stopped or cleared since preflight began, expected it \
+         idle throughout"
     );
 }

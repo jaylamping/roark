@@ -1,12 +1,13 @@
 //! Why preflight refused a drive, and what the operator reads about it (safety.md section 5): the rule, the joint, what
 //! was measured, what was expected, and what to do.
 
-use can::{SlowRefusal, Unsent};
-use robstride::{CanTimeout, DeviceId, Mode, Model, ParamValue, StatusFaults, Uid, Volts};
+use can::{SlowRefusal, StopReason, Unsent};
+use robstride::{CanTimeout, Mode, Model, ParamValue, StatusFaults, Uid, Volts};
 use skeleton::Window;
 
 use crate::preflight::{Exchange, Register};
 use crate::rule::RuleId;
+use crate::seen::DriveAddress;
 
 /// A cap the skeleton gives each joint.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -94,12 +95,20 @@ pub enum Refusal {
     Unwired,
     /// The joint's drive model has no settled MIT scales, so control can't command it.
     UnvouchedModel(Model),
-    /// Preflight was handed another drive's view: a runtime bug.
+    /// Preflight was handed another drive's view, by ID or by bus: a runtime bug.
     WrongView {
         /// The view's drive.
-        view: DeviceId,
+        view: DriveAddress,
         /// Preflight's drive.
-        drive: DeviceId,
+        drive: DriveAddress,
+    },
+    /// The drive's limb is enabled: preflight writes only to a drive of an idle limb, and the bus refuses the rest.
+    LimbActive,
+    /// The drive's limb is stopping or stopped, or was cleared, since preflight began: the checks so far may predate
+    /// the stop and say nothing about the drive after it.
+    LimbStopped {
+        /// Why the limb stopped, if the snapshot still says.
+        stop: Option<StopReason>,
     },
     /// A request got no usable answer.
     NoAnswer {
@@ -169,6 +178,8 @@ impl Refusal {
             Self::Unwired
             | Self::UnvouchedModel(_)
             | Self::WrongView { .. }
+            | Self::LimbActive
+            | Self::LimbStopped { .. }
             | Self::FactUnset(_)
             | Self::Vbus { .. }
             | Self::Faults { .. }
@@ -202,10 +213,13 @@ impl Refusal {
                     "is a {model:?}, whose MIT scales aren't settled, expected a model they are for"
                 )
             }
-            Self::WrongView { view, drive } => format!(
-                "was checked against drive {}'s view, expected drive {}'s",
-                view.get(),
-                drive.get()
+            Self::WrongView { view, drive } => {
+                format!("was checked against {view}'s view, expected {drive}'s")
+            }
+            Self::LimbActive => "is in an enabled limb, expected the limb idle".to_owned(),
+            Self::LimbStopped { stop } => format!(
+                "found its limb stopped or cleared since preflight began{}, expected it idle throughout",
+                stopped_by(*stop)
             ),
             Self::NoAnswer { exchange, how } => {
                 format!("got no usable answer to {}: {how:?}", exchange.describe())
@@ -266,6 +280,12 @@ impl Refusal {
                 "Settle the model's MIT scales on the bench (PLAN item 2) before enabling it"
             }
             Self::WrongView { .. } => "A runtime bug: stop and report it with the log",
+            Self::LimbActive => {
+                "A joint of the limb is enabled: disable the limb, then run every joint's preflight before enabling any"
+            }
+            Self::LimbStopped { .. } => {
+                "Find why the limb stopped in the log, clear the limb, then run preflight again"
+            }
             Self::NoAnswer { how, .. } => how.remedy(),
             Self::NoStatus => "Check the drive's power and cable, then run preflight again",
             Self::Uid { .. } => {
@@ -329,6 +349,18 @@ impl Unanswered {
                 }
             },
         }
+    }
+}
+
+/// What stopped a limb, for an operator's line: the rule behind the stop where it has one (safety.md section 2), or
+/// that it was asked for; nothing when the snapshot no longer says.
+pub(crate) fn stopped_by(stop: Option<StopReason>) -> String {
+    match stop {
+        Some(reason) => match RuleId::of_stop(reason) {
+            Some(rule) => format!(" ({rule}: {reason:?})"),
+            None => format!(" ({reason:?})"),
+        },
+        None => String::new(),
     }
 }
 

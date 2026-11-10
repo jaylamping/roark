@@ -15,13 +15,13 @@ use can::{
 use common::{HZ, drive, id, info, next_snapshot, soon, timing};
 use robstride::{Drive, Mode, Model, Uid};
 use safety::{
-    EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal, RuleId, Step, Target,
+    EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal, RuleId, Seen, Step, Target,
 };
 use sim_drive::{Fault, SimDrive, ensure_vcan, serve};
 use telemetry::{Epoch, Recorder, Recording, Session};
 
-/// Shared with the slow-request and fault tests, which nextest runs apart from these (`.config/nextest.toml`, group
-/// `can0`).
+/// Shared with the exit, slow-request and fault tests, which nextest runs one at a time with these
+/// (`.config/nextest.toml`, group `can0`).
 const BUS: &str = "can0";
 /// The UID the skeleton below gives drive 101.
 const UID: Uid = Uid([0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]);
@@ -123,6 +123,8 @@ fn attempt(uid: Uid, start: Option<Fault>, after: After) -> Ended {
     let skeleton = skeleton::parse(SKELETON).unwrap();
     let joint = skeleton.limbs.first().unwrap().joints.first().unwrap();
     let target = Target::new(joint, &skeleton.power).unwrap();
+    let bus_name = joint.bus.clone().unwrap();
+    assert_eq!(bus_name.as_str(), BUS);
     let ended = std::thread::scope(|scope| {
         let _stop = Stop(&passed, &stop_sim, Arc::clone(&exit));
         let sim = scope.spawn(|| {
@@ -173,7 +175,7 @@ fn attempt(uid: Uid, start: Option<Fault>, after: After) -> Ended {
         let ended = loop {
             let snap = newest(&mut snapshots, end);
             let now = epoch.ns(Instant::now());
-            let view = *snap.drive(0).unwrap();
+            let seen = Seen::of(&bus_name, &snap, 0).unwrap();
             let mut batch = batch_after(&snap, epoch);
             if !serving {
                 if let Ok(result) = results.pop() {
@@ -215,7 +217,7 @@ fn attempt(uid: Uid, start: Option<Fault>, after: After) -> Ended {
                         assert_eq!(result.tag, tag, "one request at a time");
                         preflight.answered(result.outcome, now);
                     }
-                    match preflight.poll(&view, now) {
+                    match preflight.poll(seen, now) {
                         Step::Submit(kind) => {
                             tag += 1;
                             let request = SlowRequest { tag, slot: 0, kind };
@@ -235,7 +237,7 @@ fn attempt(uid: Uid, start: Option<Fault>, after: After) -> Ended {
                     (Some(Phase::Enabling(Enabling::new(proof, now))), None)
                 }
                 Phase::Handing(proof) => (Some(Phase::Handing(proof)), None),
-                Phase::Enabling(mut enabling) => match enabling.step(&view, snap.tick + 1, now) {
+                Phase::Enabling(mut enabling) => match enabling.step(seen, snap.tick + 1, now) {
                     Next::Send(frame) => {
                         assert!(batch.set(0, frame));
                         (Some(Phase::Enabling(enabling)), None)

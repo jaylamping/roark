@@ -13,7 +13,8 @@ pub enum RuleId {
     /// The damper reads 0, protection on.
     DriveDamper,
     /// Preflight's own checks: VBUS inside the skeleton's window, no fault bits, the drive in Reset, the joint's
-    /// direction, zero and hard limits set, and its model's MIT scales settled.
+    /// direction, zero and hard limits set, and its model's MIT scales settled. The enable sequence reports under it
+    /// too when its proof no longer holds; PLAN item 6's Preflight row says when.
     HostPreflight,
     /// The drive's UID matches the skeleton's, once commissioned.
     HostIdentity,

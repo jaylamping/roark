@@ -1,14 +1,17 @@
 //! Shared helpers: a small skeleton fixture (never the live skeleton, testing.md rule 3) and drive views as the bus
 //! layer would publish them.
 
-use can::{DriveView, EchoSeen, Observed, StopOutcome};
+use std::sync::LazyLock;
+
+use can::{DriveView, EchoSeen, LimbState, LimbView, Observed, StopOutcome};
 use robstride::{
     Celsius, DeviceId, EchoKind, Feedback, Inbound, Mode, NewtonMeters, RadPerSec, Radians,
     StatusFaults, decode, drive,
 };
-use skeleton::{Joint, Skeleton};
+use safety::Seen;
+use skeleton::{BusName, Joint, Skeleton};
 
-/// One arm on one bus. `arm_joint_one` is fully set (direction, zero and hard limits too); `arm_joint_two` leaves its
+/// One arm on `bus0`, and `bus1` with no joints. `arm_joint_one` is fully set (direction, zero and hard limits too); `arm_joint_two` leaves its
 /// torque cap null; `arm_joint_three` has no bus yet; `arm_joint_four` has every cap, a direction, a zero and hard
 /// limits, and no UID.
 pub(crate) const FIXTURE: &str = "\
@@ -20,6 +23,10 @@ power:
   current_budget_a: 40.0
 buses:
   bus0:
+    bitrate_bps: 1000000
+    sample_point: 0.75
+    adapter_serial: null
+  bus1:
     bitrate_bps: 1000000
     sample_point: 0.75
     adapter_serial: null
@@ -174,4 +181,30 @@ pub(crate) fn echoed(view: DriveView, kind: EchoKind, read_ns: u64) -> DriveView
         last_echo: Some(EchoSeen { kind, read_ns }),
         ..view
     }
+}
+
+/// The fixture's bus `n`: `bus0` holds every wired joint, `bus1` none.
+#[expect(clippy::unwrap_used, reason = "test helper; the fixture has two buses")]
+pub(crate) fn bus(n: usize) -> BusName {
+    skeleton().buses.get(n).unwrap().name.clone()
+}
+
+/// `bus0`, which the fixture's wired joints are on.
+pub(crate) static BUS0: LazyLock<BusName> = LazyLock::new(|| bus(0));
+
+/// A limb as a snapshot shows it before anything is enabled: idle, never stopped or cleared.
+pub(crate) const IDLE: LimbView = LimbView {
+    state: LimbState::Idle,
+    stop: None,
+    generation: 0,
+};
+
+/// `view` as `bus0`'s snapshot shows it, its limb idle.
+pub(crate) fn shown(view: &DriveView) -> Seen<'_> {
+    on(&BUS0, view, &IDLE)
+}
+
+/// `view` as `bus`'s snapshot shows it, its limb `limb`.
+pub(crate) fn on<'a>(bus: &'a BusName, view: &'a DriveView, limb: &'a LimbView) -> Seen<'a> {
+    Seen { bus, view, limb }
 }

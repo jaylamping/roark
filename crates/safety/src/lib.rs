@@ -5,6 +5,7 @@ mod enable;
 mod preflight;
 mod refusal;
 mod rule;
+mod seen;
 mod state;
 
 pub use enable::{EnableFailure, Enabling, Next, RUN_WITHIN_NS};
@@ -13,4 +14,5 @@ pub use preflight::{
 };
 pub use refusal::{CapKind, JointFact, Refusal, Unanswered};
 pub use rule::{Cause, RuleId};
+pub use seen::{DriveAddress, Seen};
 pub use state::{DriveEvent, DriveState, LimbEvent, LimbState};
