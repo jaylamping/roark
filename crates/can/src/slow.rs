@@ -409,20 +409,22 @@ impl BusTick {
         if self.bus_error.is_some() {
             return Err(SlowRefusal::BusFailed);
         }
-        let limb = self.limbs.get(drive.limb).and_then(Option::as_ref);
+        let Some(limb) = self.limbs.get(drive.limb).and_then(Option::as_ref) else {
+            return Err(SlowRefusal::LimbStopped);
+        };
         // A stop asked for but not yet taken counts: it is taken at the next tick's start, before any send.
-        let running = self.pending_stop.is_none()
-            && limb.is_some_and(|l| {
-                l.pending.is_none() && matches!(l.state, LimbState::Idle | LimbState::Active)
-            });
-        if !running || self.limb_stop_due(drive.limb).is_some() {
+        if self.pending_stop.is_some()
+            || limb.pending.is_some()
+            || !limb.state.takes_commands()
+            || self.limb_stop_due(drive.limb).is_some()
+        {
             return Err(SlowRefusal::LimbStopped);
         }
         if self.silent >= self.timing.silent_ticks {
             return Err(SlowRefusal::ControlSilent);
         }
         if let SlowKind::Write(_) = request.kind {
-            if limb.is_none_or(|l| l.state != LimbState::Idle) {
+            if limb.state != LimbState::Idle {
                 return Err(SlowRefusal::LimbNotIdle);
             }
             // An idle limb's batch may still carry a Disable or the run_mode write. Only this tick's: an earlier one's
