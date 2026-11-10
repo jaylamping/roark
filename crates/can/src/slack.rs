@@ -4,7 +4,8 @@
 use rtrb::{Consumer, Producer};
 use socketcan::CanSocket;
 
-use crate::bus::{BusExit, Clock, lose, mono_now, write};
+use crate::bus::{BusExit, lose, write};
+use crate::clock::{Clock, mono_now};
 use crate::slow::{SlowOutcome, SlowRefusal, SlowRequest, SlowResult};
 use crate::tick::BusTick;
 use crate::types::SendOutcome;
