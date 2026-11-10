@@ -202,8 +202,7 @@ impl BusTick {
         let device = self
             .drives
             .get(entry.request.slot)
-            .copied()
-            .flatten()?
+            .and_then(Option::as_ref)?
             .device;
         let frame = match entry.request.kind {
             SlowKind::Read(param) => encode::param_read(device, param),
@@ -368,8 +367,7 @@ impl BusTick {
         let drive = self
             .drives
             .get(request.slot)
-            .copied()
-            .flatten()
+            .and_then(Option::as_ref)
             .ok_or(SlowRefusal::NoSuchSlot)?;
         if let SlowKind::Write(write) = request.kind {
             if write.target() != drive.device {
@@ -387,7 +385,7 @@ impl BusTick {
         if self.bus_error.is_some() {
             return Err(SlowRefusal::BusFailed);
         }
-        let limb = self.limbs.get(drive.limb).copied().flatten();
+        let limb = self.limbs.get(drive.limb).and_then(Option::as_ref);
         // A stop asked for but not yet taken counts: it is taken at the next tick's start, before any send.
         let running = self.pending_stop.is_none()
             && limb.is_some_and(|l| {
