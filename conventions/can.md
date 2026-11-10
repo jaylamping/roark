@@ -113,8 +113,10 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
 ### Stops and the schedule
 
 - **A stop names its scope.** A fault, a drop out of Run, a silent drive or motion on expired feedback stops that drive's
-  limb; a late wake, a backlog, a bad batch, control going silent or a bus error stops every active limb on the bus (an idle limb has nothing running to stop). **Why:** the
-  affected limb stops ([architecture.md](architecture.md)), and the other arm on the same bus has done nothing wrong.
+  limb; a bad batch, control going silent, an operator's bus stop or a bus error stops every limb on the bus not already
+  stopping or stopped; a late wake or a backlog stops every active limb on the bus (an idle limb has nothing running to
+  stop). **Why:** the affected limb stops ([architecture.md](architecture.md)), and the other arm on the same bus has
+  done nothing wrong; a batch or a bus that can't be trusted is trusted for no limb.
 - **Check before every send.** What the drain read before the send is checked before the tick's commands go out, so a
   fault read in the slack stops its limb on that tick, not the next ([safety.md section 3](safety.md#3-how-a-rule-is-written)).
 - **Only an operator clear re-arms,** and only a stopped limb whose drives are known disabled (confirmed in Reset, or sent
