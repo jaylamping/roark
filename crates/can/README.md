@@ -23,9 +23,10 @@ Each tick, on the monotonic clock:
    its Reset answer is expected. A drive this host never enabled isn't watched for mode: preflight refuses one found
    already in Run.
 4. **Plan** with `BusTick::begin`: the newest `CommandBatch` from control, only if it is for this tick and unexpired.
-   A stale or missing batch sends nothing; two silent ticks while a limb runs stop the bus. A batch carries only motion,
-   Enable, Disable and the enable sequence's reporting off and `run_mode` = MIT write; anything else (Set Zero, set-ID,
-   other parameter traffic) is a bad batch and stops the bus. An MIT frame to a drive whose fresh status is older than
+   A batch for another tick, or a missing one, sends nothing; one for this tick past its expiry sends only its Disables
+   and reporting off. Either is a silent tick, and two silent ticks while a limb runs stop the bus. A batch for this
+   tick, expired or not, carries only motion, Enable, Disable and the enable sequence's reporting off and `run_mode` =
+   MIT write; anything else (Set Zero, set-ID, other parameter traffic) is a bad batch and stops the bus. An MIT frame to a drive whose fresh status is older than
    three periods is refused and stops its limb. A batch's frames for a stopping or stopped limb are dropped and counted
    (`refused_frames`); the other limbs' frames still go.
 5. **Send** each planned frame once and feed the outcome back (`sent`). A command goes out only before the send

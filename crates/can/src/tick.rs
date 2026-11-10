@@ -161,6 +161,15 @@ impl Phase {
     }
 }
 
+/// How a batch for this tick was taken.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Taken {
+    /// Unexpired: all of it goes, but for what a held tick holds back.
+    Fresh,
+    /// Past its expiry: counted stale, and only its Disables and reporting off go.
+    Expired,
+}
+
 /// One limb's run state on this bus.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Limb {
@@ -430,8 +439,17 @@ impl BusTick {
             None
         };
         self.plan_stops(now_ns);
-        if let Some(batch) = accepted {
-            self.push_commands(&batch, hold);
+        match accepted {
+            Some((batch, Taken::Fresh)) => {
+                if self.push_commands(&batch, hold) {
+                    self.counters.held_batches += 1;
+                }
+            }
+            // Counted stale already; its Disables and reporting off still go, the rest is dropped.
+            Some((batch, Taken::Expired)) => {
+                self.push_commands(&batch, true);
+            }
+            None => {}
         }
         if hold {
             self.forget_fresh();
@@ -466,16 +484,21 @@ impl BusTick {
             .any(|l| l.state.takes_commands())
     }
 
-    /// The batch if it is fresh and sound. A frame aimed wrong, in a slot with no drive, or of a kind a batch may not
-    /// carry is a bug upstream and stops the whole bus; motion on expired feedback stops that drive's limb.
+    /// The batch for this tick if it is sound, and whether it is fresh. A batch for another tick, or past its expiry,
+    /// counts the tick stale and toward control's silence; one for another tick is not used at all, while an expired
+    /// one for this tick still yields its Disables and reporting off, which are right late or not (can.md section 2).
+    /// A frame aimed wrong, in a slot with no drive, or of a kind a batch may not carry is a bug upstream and stops the
+    /// whole bus; motion on expired feedback in a fresh batch stops that drive's limb.
     fn check_batch(
         &mut self,
         tick: u64,
         now_ns: u64,
         batch: Option<&CommandBatch>,
-    ) -> Option<CommandBatch> {
-        let fresh = batch.filter(|b| b.tick == tick && b.expires_ns > now_ns);
-        let Some(batch) = fresh else {
+    ) -> Option<(CommandBatch, Taken)> {
+        let this_tick = batch.filter(|b| b.tick == tick);
+        if this_tick.is_some_and(|b| b.expires_ns > now_ns) {
+            self.silent = 0;
+        } else {
             if batch.is_some() {
                 self.counters.stale_ticks += 1;
             }
@@ -490,9 +513,13 @@ impl BusTick {
                     self.stop_all(StopReason::ControlSilent, now_ns);
                 }
             }
-            return None;
+        }
+        let batch = this_tick?;
+        let taken = if batch.expires_ns > now_ns {
+            Taken::Fresh
+        } else {
+            Taken::Expired
         };
-        self.silent = 0;
         // Check the whole batch before sending any of it.
         for (slot, frame) in batch.frames().iter().enumerate() {
             let Some(frame) = frame else { continue };
@@ -510,7 +537,8 @@ impl BusTick {
             }
         }
         for (slot, frame) in batch.frames().iter().enumerate() {
-            let (Some(frame), Some(drive)) = (frame, self.drives.get(slot).copied().flatten())
+            let (Some(frame), Some(drive), Taken::Fresh) =
+                (frame, self.drives.get(slot).copied().flatten(), taken)
             else {
                 continue;
             };
@@ -521,7 +549,7 @@ impl BusTick {
                 self.stop_limb_now(drive.limb, StopReason::ExpiredFeedback { slot }, now_ns);
             }
         }
-        Some(*batch)
+        Some((*batch, taken))
     }
 
     /// A bad batch stops every limb. If this tick's stops already took the last idle or active one, there is nothing left
@@ -534,8 +562,8 @@ impl BusTick {
     }
 
     /// The batch's frames for limbs still idle or active; those for a stopping or stopped limb are dropped and counted.
-    /// With `hold`, only its Disables and reporting off.
-    fn push_commands(&mut self, batch: &CommandBatch, hold: bool) {
+    /// With `hold`, only its Disables and reporting off; returns whether anything else was held back.
+    fn push_commands(&mut self, batch: &CommandBatch, hold: bool) -> bool {
         let mut held_back = false;
         for (slot, frame) in batch.frames().iter().enumerate() {
             let (Some(frame), Some(drive)) = (frame, self.drives.get(slot).copied().flatten())
@@ -567,9 +595,7 @@ impl BusTick {
                 expires: !late_ok,
             });
         }
-        if held_back {
-            self.counters.held_batches += 1;
-        }
+        held_back
     }
 
     /// What became of send `index` of this tick's list, written at `sent_ns`. A command's status window opens only if

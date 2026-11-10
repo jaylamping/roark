@@ -20,7 +20,8 @@ pub const MAX_SENDS: usize = 2 * MAX_DRIVES;
 pub struct CommandBatch {
     /// The tick it is for. A batch for any other tick is stale and never sent.
     pub tick: u64,
-    /// After this monotonic time it is expired and never sent.
+    /// After this monotonic time it is expired: its commands are never sent, while its Disables and active reporting
+    /// off still go if it is for this tick, since late they are still the right frames (can.md section 2).
     pub expires_ns: u64,
     frames: [Option<Frame>; MAX_DRIVES],
 }
@@ -344,7 +345,7 @@ pub struct Counters {
     pub tx_dropped: u64,
     /// Sends dropped because their window had passed.
     pub tx_expired: u64,
-    /// Ticks handed a stale or expired batch.
+    /// Ticks handed a stale or expired batch (an expired one for the tick still sends its Disables and reporting off).
     pub stale_ticks: u64,
     /// Batches refused because every limb was stopping or stopped, a bad one included once no limb was left to stop.
     pub refused_batches: u64,

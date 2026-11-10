@@ -15,8 +15,10 @@ use common::{
 use robstride::Mode;
 use robstride::encode;
 
-/// Guards: safety - a hung control thread lets the drives time out: only a fresh batch is sent, and two ticks without
-/// one stop the bus (PLAN.md item 3).
+/// Guards: safety - a hung control thread lets the drives time out: a batch for another tick is never sent, and of a
+/// batch for this tick past its expiry only the Disables and reporting off go, late as they are, while its commands are
+/// dropped; either counts the tick stale, and two ticks without a fresh batch stop the bus (PLAN.md item 3; can.md
+/// section 2 Transmit).
 #[test]
 fn a_stale_batch_is_never_sent_and_two_silent_ticks_stop_the_bus() {
     let mut bus = bus();
@@ -27,16 +29,24 @@ fn a_stale_batch_is_never_sent_and_two_silent_ticks_stop_the_bus() {
     run_tick(&mut bus, 0, Some(&enable), &[]);
     let _ = bus.end(PERIOD * 6 / 10);
 
-    // Tick 1 is handed a batch for tick 0 that hasn't expired: nothing goes out.
+    // Tick 1 is handed its own batch, already expired at the wake: the hold is dropped, the Disable still goes.
+    let mut expired = CommandBatch::new(1, PERIOD);
+    assert!(expired.set(0, hold(101)));
+    assert!(expired.set(1, encode::disable(id(102))));
+    assert_eq!(
+        run_tick(&mut bus, 1, Some(&expired), &[]),
+        [(1, SendKind::Command)]
+    );
+    let snap = bus.end(deadline(1));
+    assert_eq!(
+        (state_of(&snap), snap.counters.stale_ticks),
+        (LimbState::Active, 1)
+    );
+    // Tick 2 is handed a batch for tick 0 that hasn't expired: nothing of it goes out, and the bus has now gone two
+    // ticks without a fresh batch, so it stops: Disable to each drive (reporting off waits out the silence).
     let mut old_tick = CommandBatch::new(0, 10 * PERIOD);
     assert!(old_tick.set(0, hold(101)));
-    assert_eq!(run_tick(&mut bus, 1, Some(&old_tick), &[]), []);
-    assert_eq!(bus.end(deadline(1)).counters.stale_ticks, 1);
-    // Tick 2 is handed a batch for tick 2 that has already expired: nothing goes out, and the bus has now gone two
-    // ticks without a fresh batch, so it stops: Disable to each drive (reporting off waits out the silence).
-    let mut expired = CommandBatch::new(2, 2 * PERIOD);
-    assert!(expired.set(0, hold(101)));
-    let sent = run_tick(&mut bus, 2, Some(&expired), &[]);
+    let sent = run_tick(&mut bus, 2, Some(&old_tick), &[]);
     assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Disable)]);
     let snap = bus.end(deadline(2));
     assert_eq!(snap.counters.stale_ticks, 2);

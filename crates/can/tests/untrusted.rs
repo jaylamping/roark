@@ -53,19 +53,30 @@ fn a_late_wake_stops_the_bus() {
 
 /// Guards: safety - a late wake, ticks a stall slept through, or a drain backlog doesn't stop an idle limb, but on that
 /// tick only its batch's Disables and reporting off go out, late as they are (can.md section 2), and the rest is held,
-/// so nothing is enabled on a tick whose reads can't be trusted; the missed deadlines are counted (PLAN.md item 3).
+/// so nothing is enabled on a tick whose reads can't be trusted; the missed deadlines are counted. A wake so late that
+/// the batch has expired still sends them, counting the batch stale rather than held (PLAN.md item 3).
 #[test]
 fn an_idle_bus_holds_all_but_disables_and_reporting_off_on_an_untrusted_tick() {
     let off = encode::active_reporting(id(102), Reporting::Off);
     let disable = encode::disable(id(102));
-    // (name, ticks skipped, woken at, drain, the frame that still goes, missed deadlines)
+    // (name, ticks skipped, woken at, drain, the frame that still goes, missed deadlines, held, stale)
     let rows = [
-        ("late wake", 0, 2 * MS, Drain::Emptied, disable, 1),
-        ("stall", 2, 0, Drain::Emptied, disable, 2),
-        ("backlog", 0, 0, Drain::Backlog, off, 0),
-        ("backlog left queued", 0, 0, Drain::Unemptied, off, 0),
+        ("late wake", 0, 2 * MS, Drain::Emptied, disable, 1, 1, 0),
+        (
+            "late wake past the batch's expiry",
+            0,
+            PERIOD + MS,
+            Drain::Emptied,
+            disable,
+            1,
+            0,
+            1,
+        ),
+        ("stall", 2, 0, Drain::Emptied, disable, 2, 1, 0),
+        ("backlog", 0, 0, Drain::Backlog, off, 0, 1, 0),
+        ("backlog left queued", 0, 0, Drain::Unemptied, off, 0, 1, 0),
     ];
-    for (name, skipped, woke, drain, kept, missed) in rows {
+    for (name, skipped, woke, drain, kept, missed, held, stale) in rows {
         let mut bus = bus();
         bus.skipped(skipped);
         bus.drained(drain);
@@ -87,9 +98,10 @@ fn an_idle_bus_holds_all_but_disables_and_reporting_off_on_an_untrusted_tick() {
                 state_of(&snap),
                 stop_of(&snap),
                 c.missed_deadlines,
-                c.held_batches
+                c.held_batches,
+                c.stale_ticks
             ),
-            (LimbState::Idle, None, missed, 1),
+            (LimbState::Idle, None, missed, held, stale),
             "{name}"
         );
     }
