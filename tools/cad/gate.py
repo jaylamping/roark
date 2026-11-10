@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import sys
 import time
@@ -146,16 +147,40 @@ def check_3mf(path: Path, spec: dict, part: dict) -> Check:
                  bad + ok + [f"{len(want)} settings match, {len(flagged)} keys flagged"])
 
 
+PASS_MARKS = ("bulk_sf", "layer_sf")
+
+
+def load_case_sha256(lc: dict) -> str:
+    """The hash an evidence file records for each load case it ran: everything that defines the load (`id`, `what` and any
+    other key), not the pass marks or the `parts` it applies to, so raising a mark doesn't need a new study. Study scripts
+    import this to write `load_cases` in their evidence file."""
+    body = {k: v for k, v in lc.items() if k not in (*PASS_MARKS, "parts")}
+    return hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
+
+
+def finite(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
 def check_evidence(cad: Path, spec: dict, part: dict) -> Check:
-    """Load cases and the assembly checks, recorded against the export as it is now: an FEA of an older export is stale
-    (old or singular numbers were once reported as passes, 2026-11-07)."""
+    """Load cases and the assembly checks, recorded against the export and the load cases as they are now: an FEA of an
+    older export or another load is stale (old or singular numbers were once reported as passes, 2026-11-07)."""
+    name = "evidence (load cases, access)"
     rel = part.get("evidence", spec.get("evidence"))
     if not rel:
-        return Check("evidence (load cases, access)", FAIL, ["no evidence file named in the spec"])
+        return Check(name, FAIL, ["no evidence file named in the spec"])
     ev_path = cad / rel
     if not ev_path.is_file():
-        return Check("evidence (load cases, access)", FAIL, [f"missing: cad/{rel}"])
-    ev = json.loads(ev_path.read_text(encoding="utf-8"))
+        return Check(name, FAIL, [f"missing: cad/{rel}"])
+    try:
+        ev = json.loads(ev_path.read_text(encoding="utf-8"))
+        bad, ok = evidence_findings(cad, spec, part, rel, ev)
+    except (ValueError, TypeError, AttributeError, KeyError) as e:  # malformed JSON or rows of the wrong shape
+        return Check(name, FAIL, [f"cad/{rel} can't be read as evidence: {type(e).__name__}: {e}"])
+    return Check(name, FAIL if bad else PASS, bad + ok)
+
+
+def evidence_findings(cad: Path, spec: dict, part: dict, rel: str, ev: dict) -> tuple[list[str], list[str]]:
     name, bad, ok = part["name"], [], []
     sources = ev.get("sources", {})
     if part["export"] not in sources:
@@ -166,19 +191,37 @@ def check_evidence(cad: Path, spec: dict, part: dict) -> Check:
             bad.append(f"source cad/{src} no longer exists")
         elif content_sha256(f) != sha:
             bad.append(f"stale: cad/{src} changed since this evidence was recorded")
+    link_exports = sorted({p["export"] for p in spec.get("part", [])} - set(sources))
+    recorded = ev.get("load_cases", {})
+    if not spec.get("load_case"):
+        bad.append("the spec lists no load cases")
     for lc in spec.get("load_case", []):
         if lc.get("parts") and name not in lc["parts"]:
             continue
+        marks = [k for k in PASS_MARKS if k in lc]
+        if not marks:
+            bad.append(f"{lc['id']}: the spec gives no pass mark (bulk_sf or layer_sf)")
+        for key in marks:
+            if not finite(lc[key]) or lc[key] <= 0:
+                bad.append(f"{lc['id']}: the spec's {key} = {lc[key]!r} is not a positive finite number")
         rows = [r for r in ev.get("fea", []) if r.get("case") == lc["id"] and r.get("part") in (name, "*")]
         if not rows:
             bad.append(f"{lc['id']}: no FEA result")
             continue
+        if recorded.get(lc["id"]) != load_case_sha256(lc):
+            bad.append(f"{lc['id']}: the evidence was not recorded for this load case as the spec now states it "
+                       "(load_cases hash missing or different); run the study again")
+        if any(r.get("part") == "*" for r in rows) and link_exports:
+            bad.append(f"{lc['id']}: whole-link result, but its sources leave out {', '.join(link_exports)}")
         if not all(r.get("converged") is True for r in rows):
             bad.append(f"{lc['id']}: mesh convergence not shown (converged must be true)")
-        for key in ("bulk_sf", "layer_sf"):
-            if key in lc:
-                got = min(float(r.get(key, 0)) for r in rows)
-                (ok if got >= lc[key] else bad).append(f"{lc['id']}: {key} {got:g} (pass {lc[key]:g})")
+        for key in marks:
+            got = [r.get(key) for r in rows]
+            if not all(finite(g) for g in got):
+                bad.append(f"{lc['id']}: {key} {got} is not a finite number in every result")
+            elif finite(lc[key]):
+                low = min(got)
+                (ok if low >= lc[key] else bad).append(f"{lc['id']}: {key} {low:g} (pass {lc[key]:g})")
     acc = [r for r in ev.get("access", []) if r.get("part") == name]
     if not acc:
         bad.append("no insertion-path and driver-access record")
@@ -188,7 +231,7 @@ def check_evidence(cad: Path, spec: dict, part: dict) -> Check:
                 bad.append(f"access: {key} is {r.get(key)!r} ({r.get('notes', '')})")
         if r.get("insertion_clear") is True and r.get("screws_reachable") is True:
             ok.append(f"access: insertion clear, screws reachable ({r.get('method', 'method not given')})")
-    return Check("evidence (load cases, access)", FAIL if bad else PASS, bad + ok)
+    return bad, ok
 
 
 def load_whitelist(cad: Path, name: str) -> dict:
@@ -232,11 +275,15 @@ def mesh_checks(cad: Path, spec: dict, part: dict, p: dict[str, str]) -> list[Ch
         return [Check("mesh, support and interference", FAIL, ["not run: no export content"])]
     load = lambda rel: trimesh.load(str(cad / rel), force="mesh")  # noqa: E731
     m = load(p["export"])
-    wl = load_whitelist(cad, part["name"])
-    ok, rep = mesh_check.check(m, part["name"], bodies=wl.get("bodies", 1), corners=wl.get("corners", ()),
-                               folds=wl.get("folds", ()), thin=wl.get("thin", ()), revolve=wl.get("revolve"))
-    out = [Check("mesh (bodies, sharp vertices, knife edges, thin walls, surface deviation)", PASS if ok else FAIL,
-                 rep.strip().splitlines()[2:-1])]
+    mesh_name = "mesh (bodies, sharp vertices, knife edges, thin walls, surface deviation)"
+    try:
+        wl = load_whitelist(cad, part["name"])
+        ok, rep = mesh_check.check(m, part["name"], bodies=wl.get("bodies", 1), corners=wl.get("corners", ()),
+                                   folds=wl.get("folds", ()), thin=wl.get("thin", ()), revolve=wl.get("revolve"))
+        out = [Check(mesh_name, PASS if ok else FAIL, rep.strip().splitlines()[2:-1])]
+    except (ValueError, TypeError, AttributeError, KeyError) as e:  # malformed whitelist JSON or entry
+        out = [Check(mesh_name, FAIL, [f"not run: cad/{WHITELIST} or its entry for {part['name']} is malformed: "
+                                        f"{type(e).__name__}: {e}"])]
 
     hide = [load(r) for r in part.get("hidden_by", []) if has_content(cad / r)]
     ref = trimesh.util.concatenate([m, *hide]) if hide else None

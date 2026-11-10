@@ -39,6 +39,8 @@ up = [0, 0, 1]
 # Test link
 """
 
+G90 = {"id": "G90", "what": "arm horizontal", "bulk_sf": 2.0, "layer_sf": 1.25}
+
 GOOD_SETTINGS = {
     "filament_type": ["PETG"],
     "wall_loops": "6",
@@ -56,6 +58,7 @@ def write_3mf(path: Path, settings: dict) -> None:
 def evidence(cad: Path, **over) -> dict:
     ev = {
         "sources": {"exports/upper-arm/upper_arm_test_left.stl": content_sha256(cad / "exports/upper-arm/upper_arm_test_left.stl")},
+        "load_cases": {"G90": gate.load_case_sha256(G90)},
         "fea": [{"case": "G90", "part": "*", "bulk_sf": 3.1, "layer_sf": 7.0, "converged": True}],
         "access": [{"part": "upper_arm_test_left", "insertion_clear": True, "screws_reachable": True, "method": "test"}],
     }
@@ -112,6 +115,41 @@ def test_evidence_for_an_older_export_or_below_the_pass_mark_fails(tmp_path: Pat
     ev.write_text(json.dumps(evidence(cad)))
     (cad / part["export"]).write_text("solid y\nendsolid y\n")
     assert gate.check_evidence(cad, spec, part).status == gate.FAIL
+
+
+def test_evidence_must_match_the_load_cases_and_be_well_formed(tmp_path: Path) -> None:
+    """Guards: bug - stale and singular FEA numbers were reported as passes (2026-11-07): evidence for another load, a
+    whole-link result that left out a part, a missing pass mark or a non-finite number must not pass either."""
+    cad = tmp_path / "cad"
+    make_link(cad)
+    _, spec, part = gate.find_part(cad, "upper_arm_test_left")
+    ev = cad / spec["evidence"]
+    heavier = {**spec, "load_case": [{**G90, "what": "arm horizontal, 10 kg"}]}
+    assert gate.check_evidence(cad, heavier, part).detail[0] == (
+        "G90: the evidence was not recorded for this load case as the spec now states it (load_cases hash missing or "
+        "different); run the study again")
+    assert gate.check_evidence(cad, {**spec, "load_case": [{**G90, "bulk_sf": 2.5}]}, part).status == gate.PASS
+    other_half = {"name": "upper_arm_test_back_left", "export": "exports/upper-arm/upper_arm_test_back_left.stl"}
+    two_parts = {**spec, "part": [part, other_half]}
+    assert gate.check_evidence(cad, two_parts, part).detail[0] == (
+        "G90: whole-link result, but its sources leave out exports/upper-arm/upper_arm_test_back_left.stl")
+    no_mark = {k: v for k, v in G90.items() if k not in ("bulk_sf", "layer_sf")}
+    assert gate.check_evidence(cad, {**spec, "load_case": [no_mark]}, part).detail[0] == (
+        "G90: the spec gives no pass mark (bulk_sf or layer_sf)")
+    assert gate.check_evidence(cad, {**spec, "load_case": []}, part).detail[0] == "the spec lists no load cases"
+    for value, shown in ((float("nan"), "nan"), (float("inf"), "inf"), (None, "None")):
+        rows = [{"case": "G90", "part": "*", "bulk_sf": 3.1, "layer_sf": 7.0, "converged": True},
+                {"case": "G90", "part": "upper_arm_test_left", "bulk_sf": value, "layer_sf": 7.0, "converged": True}]
+        ev.write_text(json.dumps(evidence(cad, fea=rows)))
+        c = gate.check_evidence(cad, spec, part)
+        assert (c.status, c.detail[0]) == (gate.FAIL, f"G90: bulk_sf [3.1, {shown}] is not a finite number in every result")
+    ev.write_text('{"sources": ')
+    c = gate.check_evidence(cad, spec, part)
+    assert c.status == gate.FAIL
+    assert c.detail[0].startswith(f"cad/{spec['evidence']} can't be read as evidence: JSONDecodeError: ")
+    ev.write_text(json.dumps(evidence(cad, fea=[{"case": "G90", "part": "*"}, "not a row"])))
+    c = gate.check_evidence(cad, spec, part)
+    assert c.detail == [f"cad/{spec['evidence']} can't be read as evidence: AttributeError: 'str' object has no attribute 'get'"]
 
 
 def test_verify_needs_a_current_passing_report_for_every_3mf(tmp_path: Path) -> None:

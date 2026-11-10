@@ -95,6 +95,7 @@ the study:
 ```json
 {
   "sources": {"exports/upper-arm/upper_arm_shell_front_left.stl": "<sha256 of the export the study used>"},
+  "load_cases": {"G90": "<gate.load_case_sha256 of the spec's G90 table>"},
   "fea": [
     {"case": "G90", "part": "upper_arm_shell_front_left", "bulk_sf": 3.10, "layer_sf": 7.0, "converged": true,
      "note": "el 2.0 vs 1.6 within 2 %"}
@@ -109,7 +110,13 @@ the study:
 - `sources` lists every export the study used, with the hash of its real content (`gitlfs.content_sha256`, the LFS oid). If
   any of them has changed since, the evidence is stale and the gate fails. **Why:** numbers from an older geometry were
   reported as passes.
-- `part` is a part name, or `"*"` for a result on the whole link model.
+- `load_cases` holds, for each case the study ran, the hash of the spec's `[[load_case]]` table as it ran it
+  (`gate.load_case_sha256`: every key but the pass marks and `parts`). A case whose load or description changed since is
+  stale. **Why:** an FEA of 5 kg must not pass a spec that now says 10 kg under the same `id`.
+- `part` is a part name, or `"*"` for a result on the whole link model. A `"*"` result needs every `[[part]]` export of
+  the spec in `sources`, so a change to any part of the link makes it stale.
+- Safety factors are finite numbers; NaN, infinity or a missing value fails. Every load case in the spec has at least one
+  pass mark (`bulk_sf` or `layer_sf`), and a spec with no load cases fails.
 - `converged` is true only when the result held on a finer mesh (say within 5 %), and a peak at a load patch, fixture edge or
   sharp re-entrant corner has been excluded or fixed. A singular peak is not a result.
 - `access`: the part can go in along its path in assembly order, and every screw head reaches its seat with a driver that
@@ -135,7 +142,7 @@ It runs on Joey-PC (or anywhere with the LFS content and `pip install numpy scip
 | Support on visible faces ([part_checks.py](../tools/cad/part_checks.py)) | support touches more visible outer area than the spec allows | rough upper-arm skin, trapped cavity support (2026-11-08) |
 | Interference | a `mates` mesh overlaps the part by more than 0.05 mm | RS02 tab lip about 1 mm into the upper arm (2026-11-08) |
 | 3MF settings | material or a spec setting differs, or a spec setting isn't flagged in `different_settings_to_system` (unless the spec lists it in `preset`) | infill reset to 15% on open (2026-11-07) |
-| Evidence | a load case has no result, isn't converged or is under its pass mark; access isn't recorded; any source changed | stale or singular FEA reported as passes (2026-11-07) |
+| Evidence | a load case has no result, isn't converged, is under its pass mark or was run for another load; access isn't recorded; any source changed; the file doesn't parse | stale or singular FEA reported as passes (2026-11-07) |
 
 It warns (without failing) when a part has no `mates`, and for each print-log lesson that matches the part (section 4). A
 print log that doesn't parse fails the gate and `--verify`, since its lessons would otherwise be skipped unseen.
