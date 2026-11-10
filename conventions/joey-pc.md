@@ -53,8 +53,12 @@ python tools/pc/claims.py who 12345                                  # whose Sol
 python tools/pc/claims.py release left-arm                           # when done, after closing your SolidWorks
 ```
 
-- A claim refuses a worktree or SolidWorks PID that another live session holds. A claim silent for 15 minutes no longer
-  blocks anyone, but **don't close its SolidWorks**: that still needs its owner or Joey (section 4).
+- `claim` and `beat` refuse a worktree or SolidWorks PID that another live session holds, so a session that went quiet and
+  comes back doesn't take back what someone claimed meanwhile. The one exception is a thread's FEA instance:
+  `<session>-fea` may share `<session>`'s worktree, never its PID. A claim silent for 15 minutes no longer blocks anyone,
+  but **don't close its SolidWorks**: that still needs its owner or Joey (section 4).
+- A claim file that can't be read blocks every `claim` and `beat` (it may be a live session's) until it is checked and
+  deleted by hand, which needs Joey (section 4).
 - **Long jobs beat.** A script that runs longer than a few minutes calls `beat` between steps (each FEA case, each export).
 - **The owning thread checks back.** Before it starts a long job, the cloud thread schedules a check for after the job's
   expected end. If the job's claim is STALE when it checks, the thread resumes from the last saved step (scripts save after

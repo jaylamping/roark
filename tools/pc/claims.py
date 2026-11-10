@@ -10,7 +10,11 @@ same file. Stdlib only.
     python tools/pc/claims.py list [--stale MINUTES]                        # default 15
     python tools/pc/claims.py who <worktree path or SolidWorks PID>
 
-The folder is C:\\Temp\\roark-claims on Windows, ~/.roark-claims elsewhere, or ROARK_CLAIMS_DIR.
+claim, beat and release run inside a short mutex (claims.mutex in the folder, created exclusively), so a check and the
+write that depends on it can't interleave with another session's. claim and beat refuse a worktree or SolidWorks PID that
+another live session holds; `<session>-fea`, a thread's second SolidWorks instance, may share its parent's worktree. A
+claim file that can't be read blocks every claim and beat until it is checked and deleted by hand: it may be a live
+session's. The folder is C:\\Temp\\roark-claims on Windows, ~/.roark-claims elsewhere, or ROARK_CLAIMS_DIR.
 """
 
 from __future__ import annotations
@@ -18,12 +22,18 @@ from __future__ import annotations
 import json
 import os
 import re
+import secrets
 import sys
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 STALE_MIN = 15.0
 NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
+FEA = "-fea"
+MUTEX = "claims.mutex"
+MUTEX_WAIT_S = 5.0
 
 
 def claims_dir() -> Path:
@@ -41,13 +51,23 @@ def norm(path: str) -> str:
     return os.path.normcase(os.path.abspath(path)).rstrip("\\/")
 
 
+def claim_file(d: Path, session: str) -> Path:
+    """The session's file. The name is checked first, so no subcommand can reach a file outside the claims folder."""
+    if not NAME.fullmatch(session):
+        raise SystemExit(f"session name {session!r}: lower case letters, digits and '-' only")
+    return d / f"{session}.json"
+
+
 def load_all(d: Path) -> list[dict]:
     out = []
     for f in sorted(d.glob("*.json")) if d.is_dir() else []:
         try:
-            out.append(json.loads(f.read_text(encoding="utf-8")))
-        except (OSError, json.JSONDecodeError):
-            out.append({"session": f.stem, "broken": True, "beat": 0})
+            c = json.loads(f.read_text(encoding="utf-8"))
+            if not isinstance(c, dict) or not isinstance(c.get("beat"), (int, float)):
+                raise ValueError("not a claim")
+            out.append(c)
+        except (OSError, ValueError):
+            out.append({"session": f.stem, "broken": True, "file": str(f), "beat": 0})
     return out
 
 
@@ -58,42 +78,93 @@ def write(d: Path, c: dict) -> None:
     os.replace(tmp, d / f"{c['session']}.json")  # atomic: a reader never sees half a file
 
 
+@contextmanager
+def mutex(d: Path) -> Iterator[None]:
+    """One claims change at a time. A mutex left by a crashed command is deleted by hand, as cad_lock.py's is."""
+    d.mkdir(parents=True, exist_ok=True)
+    guard, token = d / MUTEX, secrets.token_hex(8)
+    deadline = time.monotonic() + MUTEX_WAIT_S
+    while True:
+        try:
+            fd = os.open(guard, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+            break
+        except FileExistsError:
+            if time.monotonic() >= deadline:
+                raise SystemExit(f"{guard} is present: another claims command is running, or one crashed. "
+                                 "If none is running, delete it by hand and retry.") from None
+            time.sleep(0.05)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(token)
+    try:
+        yield
+    finally:
+        try:
+            mine = guard.read_text(encoding="utf-8") == token
+        except OSError:
+            mine = False
+        if mine:  # only ever remove our own mutex
+            guard.unlink(missing_ok=True)
+
+
 def age_min(c: dict, t: float) -> float:
     return (t - float(c.get("beat", 0))) / 60.0
 
 
-def claim(d: Path, session: str, worktree: str, sw_pid: int | None, status: str, t: float, stale: float = STALE_MIN) -> dict:
-    if not NAME.fullmatch(session):
-        raise SystemExit(f"session name {session!r}: lower case letters, digits and '-' only")
-    wt = norm(worktree)
+def siblings(a: str, b: str) -> bool:
+    """A thread's FEA instance, `<session>-fea`, works in its parent's worktree (joey-pc.md section 1)."""
+    return a == b + FEA or b == a + FEA
+
+
+def refuse_conflicts(d: Path, session: str, wt: str, sw_pid: int | None, t: float, stale: float) -> None:
     for c in load_all(d):
-        if c.get("session") == session or age_min(c, t) > stale:
+        if c.get("session") == session:
             continue
-        if c.get("worktree") == wt:
+        if c.get("broken"):
+            raise SystemExit(f"claim file {c['file']} can't be read; it may be a live session's. "
+                             "Check it and delete it by hand.")
+        if age_min(c, t) > stale:
+            continue
+        if c.get("worktree") == wt and not siblings(session, c["session"]):
             raise SystemExit(f"{wt} is claimed by {c['session']} (last beat {age_min(c, t):.0f} min ago)")
         if sw_pid and c.get("sw_pid") == sw_pid:
             raise SystemExit(f"SolidWorks PID {sw_pid} is claimed by {c['session']}")
-    c = {"session": session, "worktree": wt, "sw_pid": sw_pid, "status": status, "started": t, "beat": t}
-    write(d, c)
+
+
+def claim(d: Path, session: str, worktree: str, sw_pid: int | None, status: str, t: float, stale: float = STALE_MIN) -> dict:
+    claim_file(d, session)
+    wt = norm(worktree)
+    with mutex(d):
+        refuse_conflicts(d, session, wt, sw_pid, t, stale)
+        c = {"session": session, "worktree": wt, "sw_pid": sw_pid, "status": status, "started": t, "beat": t}
+        write(d, c)
     return c
 
 
-def beat(d: Path, session: str, status: str | None, sw_pid: int | None, t: float) -> dict:
-    f = d / f"{session}.json"
-    if not f.is_file():
-        raise SystemExit(f"{session} has no claim; run claim first")
-    c = json.loads(f.read_text(encoding="utf-8"))
-    c["beat"] = t
-    if status is not None:
-        c["status"] = status
-    if sw_pid is not None:
-        c["sw_pid"] = sw_pid
-    write(d, c)
+def beat(d: Path, session: str, status: str | None, sw_pid: int | None, t: float, stale: float = STALE_MIN) -> dict:
+    """Refreshes a claim. Refuses, as claim does, when another live session now holds its worktree or PID: a session that
+    went stale and resumes doesn't take back what someone else claimed meanwhile."""
+    f = claim_file(d, session)
+    with mutex(d):
+        if not f.is_file():
+            raise SystemExit(f"{session} has no claim; run claim first")
+        try:
+            c = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            raise SystemExit(f"claim file {f} can't be read ({e}); check it and delete it by hand") from None
+        pid = c.get("sw_pid") if sw_pid is None else sw_pid
+        refuse_conflicts(d, session, c.get("worktree", ""), pid, t, stale)
+        c["beat"] = t
+        c["sw_pid"] = pid
+        if status is not None:
+            c["status"] = status
+        write(d, c)
     return c
 
 
 def release(d: Path, session: str) -> None:
-    (d / f"{session}.json").unlink(missing_ok=True)
+    f = claim_file(d, session)
+    with mutex(d):
+        f.unlink(missing_ok=True)
 
 
 def who(d: Path, what: str) -> list[dict]:
@@ -130,7 +201,7 @@ def main(argv: list[str]) -> int:
     if cmd == "claim" and len(pos) == 2 and "--worktree" in opts:
         print(json.dumps(claim(d, pos[1], opts["--worktree"], pid, opts.get("--status", ""), now(), stale)))
     elif cmd == "beat" and len(pos) == 2:
-        beat(d, pos[1], opts.get("--status"), pid, now())
+        beat(d, pos[1], opts.get("--status"), pid, now(), stale)
     elif cmd == "release" and len(pos) == 2:
         release(d, pos[1])
     elif cmd == "list" and len(pos) == 1:
