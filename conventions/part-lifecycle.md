@@ -145,6 +145,14 @@ fails when:
 | 3MF settings | material or a spec setting differs, or a spec setting isn't flagged in `different_settings_to_system` (unless the spec lists it in `preset`) | infill reset to 15% on open (2026-11-07) |
 | Evidence | a load case has no result, isn't converged, is under its pass mark or was run for another load; access isn't recorded; any source changed; the file doesn't parse | stale or singular FEA reported as passes (2026-11-07) |
 
+**What the 3MF check does not cover yet** (open, to be settled from a real printed Bambu Studio 3MF; every report says so
+in its 3MF row):
+
+- The material is read from the first filament slot only. On a plate with several filaments, which slot the part prints
+  with isn't checked.
+- Only the project settings are read. That the 3MF holds the current export, plated in the spec's `up` orientation, isn't
+  checked: re-export without re-slicing and the settings still pass.
+
 It warns (without failing) when a part has no `mates`, and for each print-log lesson that matches the part (section 4). A
 print log that doesn't parse fails the gate and `--verify`, since its lessons would otherwise be skipped unseen.
 

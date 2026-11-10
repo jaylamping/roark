@@ -118,6 +118,13 @@ def first(v):
     return v[0] if isinstance(v, list) and v else v
 
 
+# Open until settled from a real printed Bambu Studio 3MF (part-lifecycle.md section 3): where a multi-filament plate
+# records the slot an object prints with, and how to compare the plated model and its transform with the export.
+NOT_COVERED_3MF = ("not checked, so a PASS does not cover them: which filament slot the part prints with (the material "
+                   "is read from the first slot only), and that the 3MF holds the export's geometry in the spec's "
+                   "orientation")
+
+
 def check_3mf(path: Path, spec: dict, part: dict) -> Check:
     """Values the spec asks for, the material, and that each of those settings is flagged in different_settings_to_system:
     Bambu Studio reloads system defaults for any key not flagged there (infill came back as 15%, 2026-11-07). A setting
@@ -145,7 +152,7 @@ def check_3mf(path: Path, spec: dict, part: dict) -> Check:
         elif k not in flagged:
             bad.append(f"{k} = {v!r} is not flagged in different_settings_to_system: Bambu Studio will reset it on open")
     return Check("3MF settings", FAIL if bad else PASS,
-                 bad + ok + [f"{len(want)} settings match, {len(flagged)} keys flagged"])
+                 bad + ok + [f"{len(want)} settings match, {len(flagged)} keys flagged", NOT_COVERED_3MF])
 
 
 PASS_MARKS = ("bulk_sf", "layer_sf")
