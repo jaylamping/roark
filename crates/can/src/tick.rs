@@ -173,8 +173,10 @@ impl BusTick {
     }
 
     /// The socket failed with `error`: latch stopped, whatever the error, since a socket that can't send can't stop the
-    /// drives either (fail closed, safety.md section 3). There is no bus to send a stop on; the drives time out on
-    /// their own (`canTimeout`). Error frames come through [`Self::on_frame`] instead, where only bus-off latches.
+    /// drives either (fail closed, safety.md section 3). Every socket read or write failure other than a full queue
+    /// comes here (PLAN.md item 6 Bus-off row); a failed write is also reported to [`Self::sent`], which only counts it.
+    /// There is no bus to send a stop on; the drives time out on their own (`canTimeout`). Error frames come through
+    /// [`Self::on_frame`] instead, where only bus-off latches.
     pub fn lost_bus(&mut self, error: BusError) {
         self.latch(error);
     }
@@ -405,7 +407,9 @@ impl BusTick {
         self.state = BusState::Stopped;
     }
 
-    /// What became of send `index` of this tick's list. A command's status window opens only if the socket took it.
+    /// What became of send `index` of this tick's list. A command's status window opens only if the socket took it. A
+    /// refused send is only counted: [`SendOutcome::Failed`] never latches, so a socket write failure other than a full
+    /// queue must also go to [`Self::lost_bus`].
     pub fn sent(&mut self, index: usize, outcome: SendOutcome) {
         let Some(send) = self.sends.get(index) else {
             return;

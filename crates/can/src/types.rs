@@ -293,7 +293,9 @@ pub enum SendOutcome {
     QueueFull,
     /// A send whose window had passed before the write: dropped and counted. Only sends that [`Send::expires`] are.
     Expired,
-    /// Any other write error.
+    /// Not taken for any other reason: a socket write error, or a frame the shell couldn't build. It records only that
+    /// the frame wasn't taken and never latches: a socket write error other than a full queue must also go to
+    /// [`BusTick::lost_bus`](crate::BusTick::lost_bus), which does.
     Failed,
 }
 

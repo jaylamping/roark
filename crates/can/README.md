@@ -18,7 +18,9 @@ Each tick, on the monotonic clock (the steps the bus thread's shell runs around 
    three periods is refused and stops the bus.
 4. **Send** each planned frame once and feed the outcome back (`sent`). A command goes out only before the send
    window closes; a Disable or reporting off goes out even late, whoever planned it, since late it is still the right
-   one. A full queue drops the frame and counts it; it is never retried within the tick.
+   one. A full queue drops the frame and counts it; it is never retried within the tick. Any other socket write
+   failure goes to `lost_bus`, which latches the bus stopped, as well as to `sent` as `Failed`; `Failed` on its own
+   records only that the frame wasn't taken and never latches.
 5. **Collect** until the collect deadline (about 60 % of the period), feeding each frame to `on_frame`.
 6. **Publish** the `Snapshot` (`end`) to control and hand every frame of the tick to the recorder.
 
