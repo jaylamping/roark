@@ -553,18 +553,46 @@ fn a_limb_past_the_table_is_refused() {
     );
 }
 
-/// Guards: protocol - a bad batch arriving in the tick its bus's last running limb stops has no limb left to stop, so it is
-/// counted as refused rather than lost (logging.md section 4: nothing fails in silence).
+/// Guards: protocol - a batch with no limb left to take it is counted as refused rather than lost: one handed to a bus
+/// whose every limb is stopping or stopped, and a bad one arriving in the tick the last running limb stops, which has
+/// no limb left to stop (logging.md section 4: nothing fails in silence).
 #[test]
-fn a_bad_batch_as_the_last_limb_stops_is_counted() {
-    let mut bus = two_limbs();
-    running(&mut bus);
-    assert_eq!(bus.stop_limb(0), Ok(()));
-    assert_eq!(bus.stop_limb(1), Ok(()));
-    // Slot 0 carries a frame for drive 102: aimed wrong.
-    let sent = run_tick(&mut bus, 2, Some(&batch(2, &[Some(hold(102)), None])), &[]);
-    assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Disable)]);
-    let snap = bus.end(deadline(2));
-    assert_eq!(snap.counters.refused_batches, 1);
-    assert_eq!(limb(&snap, 0).1, Some(StopReason::LimbRequested));
+fn a_batch_no_limb_can_take_is_counted() {
+    // (name, the tick's batch: sound, or with slot 0 aimed at drive 102, and whether the limbs stopped a tick before)
+    let rows = [
+        ("a bad batch as the last limb stops", Some(hold(102)), false),
+        (
+            "a sound batch to a bus with every limb stopping",
+            Some(hold(101)),
+            true,
+        ),
+    ];
+    for (name, slot0, stopped_before) in rows {
+        let mut bus = two_limbs();
+        running(&mut bus);
+        assert_eq!(bus.stop_limb(0), Ok(()));
+        assert_eq!(bus.stop_limb(1), Ok(()));
+        let mut tick = 2;
+        if stopped_before {
+            run_tick(&mut bus, tick, None, &[]);
+            let _ = bus.end(deadline(tick));
+            tick += 1;
+        }
+        let sent = run_tick(&mut bus, tick, Some(&batch(tick, &[slot0, None])), &[]);
+        assert_eq!(
+            sent,
+            [(0, SendKind::Disable), (1, SendKind::Disable)],
+            "{name}"
+        );
+        let snap = bus.end(deadline(tick));
+        assert_eq!(
+            (
+                snap.counters.refused_batches,
+                snap.counters.refused_frames,
+                limb(&snap, 0).1
+            ),
+            (1, 0, Some(StopReason::LimbRequested)),
+            "{name}"
+        );
+    }
 }

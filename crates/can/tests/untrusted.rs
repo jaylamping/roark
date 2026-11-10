@@ -5,13 +5,17 @@
 mod common;
 
 use can::{CommandBatch, Drain, LimbState, Send, SendKind, StopOutcome, StopReason};
-use common::{MS, PERIOD, at, batch, bus, deadline, hold, id, run_tick, state_of, status, stop_of};
+use common::{
+    MS, PERIOD, at, batch, bus, deadline, hold, id, limb, run_tick, state_of, status, stop_of,
+    two_limbs,
+};
 use robstride::Mode;
 use robstride::encode::{self, Reporting};
 
 /// Guards: safety - a thread that wakes past its send window stops an active limb at once instead of sending motion, and
 /// sends the Disables on that same tick: a late Disable is still the right one. The missed deadline is counted. A late
-/// tick's stop keeps the reason that came first: a requested stop, then a backlog in its drain (PLAN.md item 3).
+/// tick's stop keeps the reason that came first: a requested stop, then a backlog in its drain. Only the active limbs
+/// stop: an idle limb on the same bus holds (PLAN.md item 3; can.md section 2, a stop names its scope).
 #[test]
 fn a_late_wake_stops_the_bus() {
     let mut bus = bus();
@@ -49,6 +53,32 @@ fn a_late_wake_stops_the_bus() {
         let _ = bus.begin(1, PERIOD + 2 * MS, PERIOD, None);
         assert_eq!(stop_of(&bus.end(deadline(1))), Some(reason));
     }
+
+    // With one limb active and one idle, a late wake stops only the active one: the idle one holds its Enable.
+    let mut bus = two_limbs();
+    run_tick(
+        &mut bus,
+        0,
+        Some(&late_enable),
+        &[(MS, status(101, Mode::Run))],
+    );
+    let _ = bus.end(deadline(0));
+    let both = batch(1, &[Some(hold(101)), Some(encode::enable(id(102)))]);
+    assert_eq!(
+        bus.begin(1, PERIOD + 2 * MS, PERIOD, Some(&both))
+            .iter()
+            .collect::<Vec<_>>(),
+        [disable(0, 101)]
+    );
+    let snap = bus.end(deadline(1));
+    assert!(matches!(
+        limb(&snap, 0),
+        (LimbState::Stopping { .. }, Some(StopReason::LateWake))
+    ));
+    assert_eq!(
+        (limb(&snap, 1), snap.counters.held_batches),
+        ((LimbState::Idle, None), 1)
+    );
 }
 
 /// Guards: safety - a late wake, ticks a stall slept through, or a drain backlog doesn't stop an idle limb, but on that
