@@ -1,13 +1,14 @@
-//! A stopped bus told to exit while control's ring is full, on `vcan` against `sim-drive`: it waits for control to read
-//! its Stopped snapshot, and a control that never reads again doesn't hold its join. The helpers are `bus.rs`'s, small
-//! enough to copy until the sim suite has a shared module.
+//! An active bus told to exit while control's ring is full, on `vcan` against `sim-drive`: it stops its drives, and
+//! returns once control's ring takes its Stopped snapshot, once control drops the ring, or after its wait when control
+//! never reads again. The helpers are `bus.rs`'s, small enough to copy until the sim suite has a shared module.
 #![cfg(target_os = "linux")]
 
+use std::io;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use can::{BusConfig, BusLinks, BusState, CommandBatch, Snapshot, Timing};
+use can::{BusConfig, BusLinks, BusState, CommandBatch, Snapshot, StopReason, Timing};
 use robstride::{
     DeviceId, Drive, Frame, MitCommand, Mode, Model, NewtonMeters, NmPerRad, NmSecPerRad,
     RadPerSec, Radians, Uid, encode,
@@ -15,22 +16,36 @@ use robstride::{
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use telemetry::{Epoch, Recorder, Recording, Session, SessionInfo, SkeletonRef, Stage};
 
-/// Shared with the slow-request and fault tests (`.config/nextest.toml`, group `can0`).
+/// Shared by the tests in this file, one at a time (`.config/nextest.toml`, group `can0`).
 const BUS: &str = "can0";
 /// Slow enough that the test thread, playing control, makes every tick on a loaded machine.
 const HZ: u64 = 100;
+const PERIOD_NS: u64 = 1_000_000_000 / HZ;
 const HOLD_TICKS: usize = 50;
+/// Control's snapshot ring: small, so a control that stops reading fills it in a few ticks.
+const RING: usize = 4;
+/// `RING`, counted in ticks: the ring holds one snapshot a tick.
+const RING_TICKS: u64 = 4;
+/// The stop window, long next to the stop these drives need (they confirm the first Disable and take their reporting
+/// off after the 50 ms post-Disable silence, a few ticks), so a bus that waits one window after its stop can't be
+/// mistaken for one that didn't.
+const STOP_WINDOW_NS: u64 = 500_000_000;
+/// The Stopped snapshots a bus makes for a ring that takes none before it returns: one stop window in ticks
+/// (`BusLinks::exit`).
+const EXIT_WAIT: u64 = STOP_WINDOW_NS / PERIOD_NS;
 
-/// The tick at `HZ`, with the send window stretched to the collect deadline: these tests check the loop and its
-/// recording, not the wake budget, so a test thread that wakes a few milliseconds late on a loaded runner is not a
-/// late wake (the tick tests cover that).
+/// The tick at `HZ`, with the send window stretched to the collect deadline (these tests check the exit, not the wake
+/// budget, so a test thread that wakes a few milliseconds late on a loaded runner is not a late wake; the tick tests
+/// cover that), and the stop window at `STOP_WINDOW_NS`.
 fn timing() -> Timing {
     let at_hz = Timing::at_hz(HZ);
     Timing {
         send_window_ns: at_hz.collect_ns,
+        stop_confirm_ns: STOP_WINDOW_NS,
         ..at_hz
     }
 }
+
 #[expect(
     clippy::unwrap_used,
     reason = "test helper: IDs here are constants in range"
@@ -67,7 +82,7 @@ fn info() -> SessionInfo {
     }
 }
 
-/// The snapshot for the next tick, waiting at most a second.
+/// The snapshot for the next tick, waiting at most until `end`.
 fn next_snapshot(snapshots: &mut rtrb::Consumer<Snapshot>, end: Instant) -> Option<Snapshot> {
     while Instant::now() < end {
         if let Ok(s) = snapshots.pop() {
@@ -88,6 +103,27 @@ impl Drop for Shutdown<'_> {
     }
 }
 
+/// Push control's batch for `tick`, good for three periods from now: long enough to reach its tick, never long enough
+/// to be sent late.
+fn push_batch(
+    commands_tx: &mut rtrb::Producer<CommandBatch>,
+    epoch: Epoch,
+    tick: u64,
+    frames: [Option<Frame>; 2],
+) {
+    let mut batch = CommandBatch::new(tick, epoch.ns(Instant::now()) + 3 * PERIOD_NS);
+    for (slot, frame) in frames.into_iter().enumerate() {
+        if let Some(frame) = frame {
+            assert!(batch.set(slot, frame));
+        }
+    }
+    assert!(commands_tx.push(batch).is_ok());
+}
+
+fn holds() -> [Option<Frame>; 2] {
+    [Some(hold(101)), Some(hold(102))]
+}
+
 /// Play control up to the hold: one batch per tick for the tick after the snapshot just read, enabling both drives
 /// until both report Run, then holding for `HOLD_TICKS`; the last snapshot.
 #[expect(
@@ -100,24 +136,14 @@ fn enable_and_hold(
     epoch: Epoch,
 ) -> Snapshot {
     let end = Instant::now() + Duration::from_secs(20);
-    let period = 1_000_000_000 / HZ;
-    let mut send = |snap: &Snapshot, frames: [Option<Frame>; 2]| {
-        let tick = snap.tick + 1;
-        // Good for three periods from now: long enough to reach its tick, never long enough to be sent late.
-        let mut batch = CommandBatch::new(tick, epoch.ns(Instant::now()) + 3 * period);
-        for (slot, frame) in frames.into_iter().enumerate() {
-            if let Some(frame) = frame {
-                assert!(batch.set(slot, frame));
-            }
-        }
-        assert!(commands_tx.push(batch).is_ok());
-    };
     // Enable both, until both report Run.
     let mut snap = next_snapshot(snapshots, end).unwrap();
     let mut enabled = false;
     while !enabled {
-        send(
-            &snap,
+        push_batch(
+            commands_tx,
+            epoch,
+            snap.tick + 1,
             [Some(encode::enable(id(101))), Some(encode::enable(id(102)))],
         );
         snap = next_snapshot(snapshots, end).unwrap();
@@ -129,7 +155,7 @@ fn enable_and_hold(
     // Hold: every drive answers every tick.
     let mut answered = 0;
     for _ in 0..HOLD_TICKS {
-        send(&snap, [Some(hold(101)), Some(hold(102))]);
+        push_batch(commands_tx, epoch, snap.tick + 1, holds());
         snap = next_snapshot(snapshots, end).unwrap();
         assert_eq!(snap.state, BusState::Active, "{snap:?}");
         answered += snap.drives().filter(|d| d.answered).count();
@@ -143,32 +169,47 @@ fn enable_and_hold(
     snap
 }
 
-/// Let real time go by with the bus thread running, without sleeping.
-fn pass(span: Duration) {
-    let end = Instant::now() + span;
-    while Instant::now() < end {
-        std::thread::yield_now();
-    }
+/// What control does once `exit` is set.
+#[derive(Clone, Copy, Debug)]
+enum After {
+    /// Reads its ring again.
+    Reads,
+    /// Never reads again, but keeps the ring.
+    NeverReads,
+    /// Drops its end of the ring.
+    DropsRing,
 }
 
-/// An active bus told to exit with control's ring full: `drain` says whether control then reads again. Returns whether
-/// the thread was still running 200 ms after `exit`, the last snapshot it handed back, and whether it ended without an
-/// error.
+/// How a run ended.
+struct Ended {
+    /// The last snapshot control read while holding.
+    held: Snapshot,
+    /// Every snapshot control read after the hold, in order: while reading again, and what was left in the ring once
+    /// the thread ended (none if control dropped it).
+    read: Vec<Snapshot>,
+    /// The thread's `BusExit::last`.
+    last: Option<Snapshot>,
+    /// The thread's `BusExit::error`.
+    error: Option<io::Error>,
+}
+
+/// Enable and hold both drives, then keep sending a fresh hold every tick while no longer reading, until control's
+/// ring is full; then set `exit` with the bus still active, and do `after`.
 #[expect(
     clippy::unwrap_used,
     reason = "test helper: a missing snapshot or a failed join fails the test"
 )]
-fn exit_with_a_full_ring(drain: bool) -> (bool, Option<Snapshot>, bool) {
+fn exit_with_a_full_ring(after: After) -> Ended {
     ensure_vcan(BUS).unwrap();
     let dir = std::env::temp_dir().join(format!(
-        "sim-suite-full-ring-{}-{drain}",
+        "sim-suite-full-ring-{}-{after:?}",
         std::process::id()
     ));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let stop_sim = AtomicBool::new(false);
     let exit = Arc::new(AtomicBool::new(false));
-    let out = std::thread::scope(|scope| {
+    let ended = std::thread::scope(|scope| {
         let _shutdown = Shutdown(&stop_sim, Arc::clone(&exit));
         let sim = scope.spawn(|| {
             let mut drives = [
@@ -182,8 +223,7 @@ fn exit_with_a_full_ring(drain: bool) -> (bool, Option<Snapshot>, bool) {
         let epoch = recording.epoch();
         let recorder = Recorder::spawn(recording).unwrap();
         let (mut commands_tx, commands_rx) = rtrb::RingBuffer::new(4);
-        // Small, so that a control that stops reading fills it in a few ticks.
-        let (snapshots_tx, mut snapshots) = rtrb::RingBuffer::new(4);
+        let (snapshots_tx, mut snapshots) = rtrb::RingBuffer::new(RING);
         let bus = can::spawn(
             BusConfig {
                 name: BUS.to_owned(),
@@ -199,58 +239,152 @@ fn exit_with_a_full_ring(drain: bool) -> (bool, Option<Snapshot>, bool) {
             },
         )
         .unwrap();
-        let _ = enable_and_hold(&mut commands_tx, &mut snapshots, epoch);
+        let held = enable_and_hold(&mut commands_tx, &mut snapshots, epoch);
 
-        // Control stops reading; the ring fills; then the exit.
-        pass(Duration::from_millis(300));
+        // Control stops reading but keeps the drives held: the bus publishes one snapshot a tick, so the ring's count
+        // says which tick has ended, and the next batch is for the tick after it.
+        let end = Instant::now() + Duration::from_secs(10);
+        let mut queued = 0;
+        while queued < RING {
+            push_batch(
+                &mut commands_tx,
+                epoch,
+                held.tick + u64::try_from(queued).unwrap() + 1,
+                holds(),
+            );
+            while snapshots.slots() == queued {
+                assert!(Instant::now() < end, "the bus published nothing");
+                std::thread::yield_now();
+            }
+            queued = snapshots.slots();
+        }
         exit.store(true, Ordering::Release);
-        pass(Duration::from_millis(200));
-        let running = !bus.thread.is_finished();
-        if drain {
-            let end = Instant::now() + Duration::from_secs(10);
-            while !bus.thread.is_finished() {
-                assert!(Instant::now() < end, "the bus never ended");
-                let _ = snapshots.pop();
-                std::thread::yield_now();
+
+        let mut read = Vec::new();
+        let mut snapshots = match after {
+            After::DropsRing => {
+                drop(snapshots);
+                None
             }
-        } else {
-            // Never read again: the thread still has to end.
-            let end = Instant::now() + Duration::from_secs(10);
-            while !bus.thread.is_finished() {
-                assert!(Instant::now() < end, "the bus never ended");
-                std::thread::yield_now();
+            After::Reads | After::NeverReads => Some(snapshots),
+        };
+        let end = Instant::now() + Duration::from_secs(10);
+        while !bus.thread.is_finished() {
+            assert!(Instant::now() < end, "the bus never ended");
+            if let (After::Reads, Some(ring)) = (after, snapshots.as_mut())
+                && let Ok(s) = ring.pop()
+            {
+                read.push(s);
+                continue;
             }
+            std::thread::yield_now();
         }
         let done = bus.thread.join().unwrap();
-        let (last, clean) = (done.last, done.error.is_none());
+        if let Some(ring) = snapshots.as_mut() {
+            while let Ok(s) = ring.pop() {
+                read.push(s);
+            }
+        }
         recorder.close(vec![done.recorder]).unwrap();
         stop_sim.store(true, Ordering::Release);
         sim.join().unwrap().unwrap();
-        (running, last, clean)
+        Ended {
+            held,
+            read,
+            last: done.last,
+            error: done.error,
+        }
     });
     let _ = std::fs::remove_dir_all(&dir);
-    out
+    ended
 }
 
-/// Guards: protocol - a stopped bus told to exit does not return while control's ring is full and control may still
-/// read: control gets the Stopped snapshot first (can.md section 2 "every drop counted"; PLAN.md item 3 shutdown).
+/// What every run shares: no error, and a last snapshot that is Stopped by the exit's own stop (an active bus told to
+/// exit, not one control's silence had already stopped).
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: no last snapshot fails the test"
+)]
+fn stopped_by_the_exit(ended: &Ended) -> Snapshot {
+    assert!(ended.error.is_none(), "{:?}", ended.error);
+    let last = ended.last.unwrap();
+    assert_eq!(last.state, BusState::Stopped, "{last:?}");
+    assert_eq!(last.stop, Some(StopReason::Requested), "{last:?}");
+    assert_eq!(last.bus_error, None, "{last:?}");
+    last
+}
+
+/// The ring full of the ticks after the hold, every one active: control kept the drives held until `exit`.
+fn full_of_active_ticks(ended: &Ended) {
+    let queued: Vec<(u64, BusState)> = ended
+        .read
+        .iter()
+        .take(RING)
+        .map(|s| (s.tick, s.state))
+        .collect();
+    let expected: Vec<(u64, BusState)> = (1..=RING_TICKS)
+        .map(|k| (ended.held.tick + k, BusState::Active))
+        .collect();
+    assert_eq!(queued, expected);
+}
+
+/// Guards: protocol - a bus told to exit hands control its end: control's ring gets a Stopped snapshot, and the thread
+/// returns on the tick it does, with that snapshot as `BusExit::last`, not after a wait meant for a control that
+/// stopped reading (can.md section 2 Receive, "the drop is counted and reported"; rust.md section 5, every thread's
+/// explicit stop path).
 #[test]
-fn a_stopped_bus_waits_for_a_ring_that_can_take_its_stopped_snapshot() {
-    let (running, last, clean) = exit_with_a_full_ring(true);
-    assert!(
-        running,
-        "the bus ended before control could read its Stopped snapshot"
-    );
-    assert!(clean);
-    assert_eq!(last.map(|s| s.state), Some(BusState::Stopped));
+fn a_bus_told_to_exit_returns_once_controls_ring_takes_its_stopped_snapshot() {
+    let ended = exit_with_a_full_ring(After::Reads);
+    let last = stopped_by_the_exit(&ended);
+    full_of_active_ticks(&ended);
+    let first_stopped = ended
+        .read
+        .iter()
+        .position(|s| s.state == BusState::Stopped)
+        .expect("control read a Stopped snapshot");
+    // The first Stopped snapshot the ring took is the last one made: had the thread gone on waiting, control would
+    // have read more after it.
+    assert_eq!(first_stopped + 1, ended.read.len(), "{:?}", ended.read);
+    assert_eq!(ended.read.last(), Some(&last));
 }
 
 /// Guards: safety - a control that never reads again cannot hold the bus thread's join (and the recorder's close)
-/// forever: the thread ends after its wait with the Stopped snapshot in its exit (PLAN.md item 3: a hung control
-/// thread must let the drives time out; rust.md section 12 shutdown).
+/// forever: the thread ends after one stop window of untaken Stopped snapshots, and its last snapshot counts its own
+/// drop (PLAN.md item 3, "A hung control thread must let the drives time out"; rust.md section 5, every thread's
+/// explicit stop path; can.md section 2 Receive, "the drop is counted and reported").
 #[test]
-fn a_stopped_bus_ends_when_control_never_reads_again() {
-    let (_, last, clean) = exit_with_a_full_ring(false);
-    assert!(clean);
-    assert_eq!(last.map(|s| s.state), Some(BusState::Stopped));
+fn a_bus_told_to_exit_ends_when_control_never_reads_again() {
+    let ended = exit_with_a_full_ring(After::NeverReads);
+    let last = stopped_by_the_exit(&ended);
+    full_of_active_ticks(&ended);
+    assert_eq!(ended.read.len(), RING, "{:?}", ended.read);
+    let taken = *ended.read.last().expect("the full ring");
+    let ticks = last.tick - taken.tick;
+    // At least one Stopping snapshot, then the wait's Stopped ones, each a tick of its own.
+    assert!(ticks > EXIT_WAIT, "{ticks} ticks after the ring filled");
+    // Every snapshot made after the ring filled was dropped, the last included. That is one a tick, except for a tick
+    // a stalled thread never ran, which makes none and counts as a missed deadline: so the count is exact when no
+    // deadline was missed, and never more than that many short otherwise.
+    let dropped = last.counters.snapshots_dropped - taken.counters.snapshots_dropped;
+    let missed = last.counters.missed_deadlines - taken.counters.missed_deadlines;
+    assert!(
+        dropped <= ticks && dropped + missed >= ticks,
+        "{dropped} dropped in {ticks} ticks, {missed} missed deadlines"
+    );
+}
+
+/// Guards: safety - a control that drops its end of the ring cannot hold the bus thread's join: told to exit, the thread
+/// stops its drives and ends at its first Stopped snapshot, without waiting the stop window for a reader that is gone
+/// (PLAN.md item 3, "A hung control thread must let the drives time out"; rust.md section 5, every thread's explicit
+/// stop path).
+#[test]
+fn a_bus_told_to_exit_ends_at_once_when_control_drops_its_ring() {
+    let ended = exit_with_a_full_ring(After::DropsRing);
+    let last = stopped_by_the_exit(&ended);
+    // The ring filled `RING` ticks after the hold; the drives' stop takes a few more. A wait would add `EXIT_WAIT`.
+    let ticks = last.tick - ended.held.tick;
+    assert!(
+        ticks < RING_TICKS + EXIT_WAIT,
+        "{ticks} ticks after the hold"
+    );
 }
