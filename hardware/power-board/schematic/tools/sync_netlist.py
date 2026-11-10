@@ -3,7 +3,9 @@ schematic's netlist without touching placement or copper, so KiCad's schematic-p
   - every footprint's value, Datasheet field and attributes (exclude from BOM, DNP) from its symbol;
   - every pad's net from the netlist, and no net where the schematic has none (a pad whose net changes is listed, and
     the copper touching it is removed: re-route);
-  - footprints with no symbol (mounting holes, heatsink and tie holes) marked "not in schematic".
+  - footprints with no symbol that are mounting holes (footprint MountingHole_*: the M3 holes, the heatsink holes HS1/HS2
+    and the cable-tie holes) marked "not in schematic"; any other footprint with no symbol is reported and not marked:
+    it is a part the schematic lost (or a leftover), and the script exits 1 so it is looked at, not hidden from parity.
 tools/place.py sets the same on a rebuilt board."""
 import os,sys
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); from sx import *
@@ -47,10 +49,14 @@ if __name__=='__main__':
         for t in tracks:
             if t.GetNetname()!=want and t.GetNetname() and any(t.IsOnLayer(L) and p.IsOnLayer(L) and t.GetEffectiveShape(L).Collide(p.GetEffectiveShape(L),0) for L in (pcbnew.F_Cu,pcbnew.In1_Cu,pcbnew.In2_Cu,pcbnew.In3_Cu,pcbnew.In4_Cu,pcbnew.B_Cu)) and t not in kill: kill.append(t)
     for t in kill: b.Remove(t)
-    extra=[r for r in fps if r not in seen]
+    MECH=lambda f: f.GetFPID().GetLibItemName().wx_str().startswith('MountingHole')
+    extra=[r for r in fps if r not in seen and MECH(fps[r])]
+    lost=[r for r in fps if r not in seen and not MECH(fps[r])]
     for r in extra: fps[r].SetBoardOnly(True)
     b.Save(sys.argv[3])
-    print('values',nval,'datasheets',nfield,'attributes',nattr,'board-only',len(extra),sorted(extra))
+    print('values',nval,'datasheets',nfield,'attributes',nattr,'board-only (mounting holes)',len(extra),sorted(extra))
+    if lost: print('FAIL: footprints with no symbol that are not mounting holes (not marked board-only):',sorted(lost))
     print('pad nets changed',len(moved))
     for m in moved: print('   ',m)
     print('tracks removed at those pads',len(kill))
+    sys.exit(1 if lost else 0)
