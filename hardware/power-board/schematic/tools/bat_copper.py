@@ -15,8 +15,15 @@ GRID=(148.2,157.6,119.0,122.2,1.8,1.6) # X0, X1, Y0, Y1, pitch along X, row pitc
                                        # offset by half a pitch and the holes keep 0.6 mm of GND plane between them (at 1.0 mm they merge into a slot)
 def ingrid(p): return GRID[0]-.01<=MM(p.x)<=GRID[1]+.01 and GRID[2]-.01<=MM(p.y)<=GRID[3]+.01
 if __name__=='__main__':
-    r=FR.Router(sys.argv[1]); b=r.b; KL=stack.kicad_layers(pcbnew); net=b.FindNet('/BAT')
-    old=[z for z in b.Zones() if z.GetZoneName()=='BAT_L6_MIRROR']+[t for t in r.tracks if t.GetClass()=='PCB_VIA' and t.GetNetname()=='/BAT' and t.IsLocked() and ingrid(t.GetPosition())]
+    # the old mirror and its vias come off first, and the Router is built on the board without them: built with them, it
+    # finds every grid point blocked by the old via standing there, and a second run left the mirror with no vias
+    import tempfile
+    b0=pcbnew.LoadBoard(sys.argv[1])
+    old=[z for z in b0.Zones() if z.GetZoneName()=='BAT_L6_MIRROR']+[t for t in b0.GetTracks() if t.GetClass()=='PCB_VIA' and t.GetNetname()=='/BAT' and t.IsLocked() and ingrid(t.GetPosition())]
+    nold=len(old)
+    for t in old: b0.Remove(t)
+    tmp=os.path.join(tempfile.mkdtemp(),'bat_copper_in.kicad_pcb'); b0.Save(tmp)
+    r=FR.Router(tmp); b=r.b; KL=stack.kicad_layers(pcbnew); net=b.FindNet('/BAT')
     pts=[]; y=GRID[2]; row=0
     while y<=GRID[3]+1e-9:
         x=GRID[0]+(GRID[4]/2 if row%2 else 0)
@@ -32,7 +39,7 @@ if __name__=='__main__':
     for p in pts:
         v=pcbnew.PCB_VIA(b); v.SetPosition(FR.V(p)); v.SetWidth(IU(.6)); v.SetDrill(IU(.3)); v.SetNet(net)
         v.SetViaType(pcbnew.VIATYPE_THROUGH); v.SetLayerPair(KL[0],KL[5]); v.SetLocked(True); new.append(v)
-    for t in old: b.Remove(t)
     b.Add(z)
     for v in new: b.Add(v)
-    r.save(sys.argv[2]); print('BAT L6 mirror',MIRROR,'with',len(new),'vias north of RS1 (replaced',len(old),'old items)')
+    r.save(sys.argv[2]); print('BAT L6 mirror',MIRROR,'with',len(new),'vias north of RS1 (replaced',nold,'old items)')
+    if not new: print('FAIL: no BAT via found a legal place in GRID'); sys.exit(1)
