@@ -1,6 +1,9 @@
 #!/bin/bash
 # fab_package.sh : write the order package for the main board into ../fab/ from the committed board file
-# (../layout/marengo_pdu_revb.kicad_pcb, as refilled by tools/verify_board.sh) and check it against the board:
+# (../layout/marengo_pdu_revb.kicad_pcb). The Gerbers are plotted from a copy of it whose zones kicad-cli has refilled
+# with the project's rules (the .kicad_dru: the 1.5 mm E-stop and latch-supply rules, the fine-pitch rules), exactly as
+# tools/verify_board.sh refills the copy it checks; the pcbnew zone filler the scripts use ignores the .kicad_dru, so the
+# fills saved in the board file are never what is plotted. Then the package is checked against the board:
 #   gerbers/   12 Gerber files (6 copper, 2 mask, 2 silkscreen, top paste, outline) and 2 Excellon drill files
 #   marengo_pdu_revb-gerbers.zip   the same 14 files, for the fab's upload form
 #   marengo_pdu_revb-pos.csv       positions of the fitted parts (top side; mm, board origin as in the Gerbers)
@@ -8,8 +11,9 @@
 #   bom-digikey.csv                Quantity (for two sets with spares), Value / MPN, Reference designators: from ../kit-2sets.csv
 #   BOARD.sha256                   the hash of the board file the package was made from
 #   CHECK.txt                      tools/fab_check.py's comparison of the files with the board
-# Nothing is ordered or uploaded. Run tools/verify_board.sh first: this script does not refill or change the board.
+# Nothing is ordered or uploaded. The board file itself is not changed. Run tools/verify_board.sh afterwards.
 set -uo pipefail
+
 wp() { (cd "$1" && (pwd -W 2>/dev/null || pwd)); }
 ROOT=$(wp "$(dirname "$0")/.."); PB=$(wp "$ROOT/.."); B="$PB/layout/marengo_pdu_revb.kicad_pcb"; OUT="$PB/fab"
 KP="/c/Program Files/KiCad/10.0/bin/python.exe"; KC="/c/Program Files/KiCad/10.0/bin/kicad-cli.exe"
@@ -17,15 +21,23 @@ KP="/c/Program Files/KiCad/10.0/bin/python.exe"; KC="/c/Program Files/KiCad/10.0
 PY=python3; "$PY" -c "" 2>/dev/null || PY=python
 export MSYS_NO_PATHCONV=1
 rm -rf "$OUT/gerbers"; mkdir -p "$OUT/gerbers"
+# the refilled copy: board, project and rules under one name in a temp dir, refilled and saved by kicad-cli's DRC run
+RF=$(mktemp -d); RF=$(cd "$RF" && (pwd -W 2>/dev/null || pwd)); trap 'rm -rf "$RF"' EXIT
+cp "$B" "$RF/marengo_pdu_revb.kicad_pcb" && cp "$PB/layout/marengo_pdu_revb.kicad_pro" "$RF/marengo_pdu_revb.kicad_pro" && cp "$PB/layout/marengo_pdu_revb.kicad_dru" "$RF/marengo_pdu_revb.kicad_dru" || { echo 'copying the board failed'; exit 1; }
+"$KC" pcb drc --refill-zones --save-board --format json -o "$RF/drc.json" "$RF/marengo_pdu_revb.kicad_pcb" > "$RF/drc.log" 2>&1; rc=$?
+# kicad-cli exits 0 also with violations (no --exit-code-violations); a missing report or a parse error is a failure
+{ [ "$rc" = 0 ] && [ -s "$RF/drc.json" ]; } || { cat "$RF/drc.log"; echo "refill failed (kicad-cli exit $rc)"; exit 1; }
+if grep -qi 'error' "$RF/drc.log"; then cat "$RF/drc.log"; echo 'refill: kicad-cli reported an error (a malformed .kicad_dru is ignored silently otherwise)'; exit 1; fi
+P="$RF/marengo_pdu_revb.kicad_pcb"
 LAYERS=F.Cu,In1.Cu,In2.Cu,In3.Cu,In4.Cu,B.Cu,F.Mask,B.Mask,F.SilkS,B.SilkS,F.Paste,Edge.Cuts
-"$KC" pcb export gerbers -l "$LAYERS" --subtract-soldermask --no-netlist -o "$OUT/gerbers/" "$B" > "$OUT/export.log" 2>&1 || { cat "$OUT/export.log"; echo 'gerber export failed'; exit 1; }
-"$KC" pcb export drill --format excellon --excellon-units mm --excellon-separate-th --generate-map --map-format gerberx2 -o "$OUT/gerbers/" "$B" >> "$OUT/export.log" 2>&1 || { cat "$OUT/export.log"; echo 'drill export failed'; exit 1; }
+"$KC" pcb export gerbers -l "$LAYERS" --subtract-soldermask --no-netlist -o "$OUT/gerbers/" "$P" > "$OUT/export.log" 2>&1 || { cat "$OUT/export.log"; echo 'gerber export failed'; exit 1; }
+"$KC" pcb export drill --format excellon --excellon-units mm --excellon-separate-th --generate-map --map-format gerberx2 -o "$OUT/gerbers/" "$P" >> "$OUT/export.log" 2>&1 || { cat "$OUT/export.log"; echo 'drill export failed'; exit 1; }
 rm -f "$OUT"/gerbers/*-drl_map.gbr "$OUT"/gerbers/*.gbrjob
-"$KC" pcb export pos --format csv --units mm --side front --exclude-dnp -o "$OUT/marengo_pdu_revb-pos.csv" "$B" >> "$OUT/export.log" 2>&1 || { cat "$OUT/export.log"; echo 'position export failed'; exit 1; }
+"$KC" pcb export pos --format csv --units mm --side front --exclude-dnp -o "$OUT/marengo_pdu_revb-pos.csv" "$P" >> "$OUT/export.log" 2>&1 || { cat "$OUT/export.log"; echo 'position export failed'; exit 1; }
 rm -f "$OUT/export.log"
 # the files carry no creation date, so a re-run on an unchanged board gives identical files
-sed -i -e '/^%TF.CreationDate/d' -e 's/ date [0-9T: +-]*[*]$/*/' "$OUT"/gerbers/*.g*
-sed -i -e 's/ date [0-9T: +-]*$//' -e '/TF.CreationDate/d' "$OUT"/gerbers/*.drl
+for f in "$OUT"/gerbers/*.g*; do sed -e '/^%TF.CreationDate/d' -e 's/ date [0-9T: +-]*[*]$/*/' "$f" > "$f.sedtmp" && mv "$f.sedtmp" "$f" || exit 1; done
+for f in "$OUT"/gerbers/*.drl; do sed -e 's/ date [0-9T: +-]*$//' -e '/TF.CreationDate/d' "$f" > "$f.sedtmp" && mv "$f.sedtmp" "$f" || exit 1; done
 "$PY" - "$PB" <<'PYEOF'
 import csv,sys,zipfile,os,glob
 PB=sys.argv[1]; out=PB+'/fab'

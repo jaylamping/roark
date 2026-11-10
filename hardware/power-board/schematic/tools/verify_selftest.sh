@@ -79,7 +79,9 @@ sed 's/(constraint clearance (min 1.5mm))$/(constraint clearance (min 1.5mm)/' "
 "$PY" -I "$T/check.py" "$T" "$W/real/net.net" "$W/baddru/x.kicad_pro" > "$W/k3.txt" 2>&1 && { echo '   NOT CAUGHT: check.py passed a malformed rules file'; bad=1; }
 expect 'check.py: a rules file that does not parse (kicad-cli drops it silently)' "$W/k3.txt" "^FAIL .kicad_dru is well formed"
 mkdir -p "$W/pb/buck12"; cp "$PB/bom-rev-B.csv" "$PB/kit-2sets.csv" "$W/pb/"; cp "$PB/buck12/bom-buck12.csv" "$W/pb/buck12/"
-sed -i 's/6 +3V3_PI, 7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA/6 GND, 7 +3V3_PI, 8 SDA, 9 GND, 10 SCL, 11 SP_EN, 12 GND/' "$W/pb/bom-rev-B.csv" "$W/pb/kit-2sets.csv" "$W/pb/buck12/bom-buck12.csv"
+for f in "$W/pb/bom-rev-B.csv" "$W/pb/kit-2sets.csv" "$W/pb/buck12/bom-buck12.csv"; do   # no sed -i: GNU and BSD differ
+  sed 's/6 +3V3_PI, 7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA/6 GND, 7 +3V3_PI, 8 SDA, 9 GND, 10 SCL, 11 SP_EN, 12 GND/' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+done
 "$PY" -I "$T/bom_check.py" "$T" "$W/real/net.net" "$W/pb" "$W/real/buck.net" > "$W/k2.txt" 2>&1 && { echo '   NOT CAUGHT: bom_check exit 0'; bad=1; }
 expect 'bom_check: the old J24 pinout rows' "$W/k2.txt" "^FAIL bom-rev-B.csv" "^FAIL kit-2sets.csv main J24" "^FAIL bom-buck12.csv" "^FAIL kit-2sets.csv buck J1"
 
