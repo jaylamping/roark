@@ -1,18 +1,8 @@
-//! Slow requests: parameter reads, allowlisted writes and get-ID, for preflight and the once-a-second reads. They share
-//! the bus with the tick's commands, so they go one at a time, in the slack after the collect deadline, and only when
-//! the reply can be back before the next tick's send: the next drain reads it, so it never lands among the tick's
-//! command replies.
-//!
-//! Each request gets exactly one result: its reply, timed out, not sent, or refused, including when the bus thread ends
-//! with it pending. The bus layer never retries one. A write is answered by an ordinary status with no register in it,
-//! so its result says only that the drive answered. Writes go only to drives of an idle limb with no command of the
-//! tick still unanswered, where that status is least likely to be mixed up with a command's reply; a late status can
-//! still be, either way (crates/can/README.md, Slow requests), so a read-back is what proves the value. A request for
-//! a drive whose limb is stopping, stopped or due to stop (the veto's own checks on any drive of the limb: a fault, a
-//! drop out of Run, too many misses), while control is silent, or on a failed bus is refused, and one already queued is
-//! cancelled before it goes, so slow traffic never keeps a drive alive (`canTimeout` counts from any frame). A held tick
-//! (a late wake, a stall or a backlog) sends none: its reads can't be trusted and its slack isn't known, so a queued
-//! request waits for a trusted tick.
+//! Slow requests: parameter reads, allowlisted writes and get-ID, for preflight and the once-a-second reads. Each waits
+//! in one of [`SLOW_SLOTS`], is cancelled or expired as a slack opens ([`BusTick::open_slack`]), goes alone in the slack
+//! after the collect deadline ([`BusTick::slow_send`]), is answered or timed out by the next tick's start, and ends in
+//! one [`SlowResult`]. Which requests are refused, what answers each kind and what a write's answer proves are in
+//! crates/can/README.md, Slow requests; the rule is conventions/can.md section 2.
 
 use robstride::{EchoKind, Frame, Param, ParamOutcome, Uid, Write, encode};
 
@@ -76,7 +66,8 @@ pub enum SlowOutcome {
 /// Why the socket didn't take a slow frame.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Unsent {
-    /// Past its time (never in the slack today, which sends only what still fits).
+    /// Past its time: still queued [`Timing::slow_queue_ticks`](crate::Timing::slow_queue_ticks) ticks after the tick
+    /// it was submitted in, with no slack in them that let it go.
     Expired,
     /// The adapter's queue was full.
     QueueFull,
@@ -123,6 +114,8 @@ pub enum SlowRefusal {
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct SlowEntry {
     seq: u64,
+    /// The tick it was submitted in, for [`Timing::slow_queue_ticks`](crate::Timing::slow_queue_ticks).
+    submitted_tick: u64,
     request: SlowRequest,
     state: SlowState,
 }
@@ -135,6 +128,16 @@ enum SlowState {
     /// The socket took it; the reply is due by the next tick's start.
     Waiting,
     Done(SlowOutcome),
+}
+
+impl SlowState {
+    /// Handed to the shell or taken by the socket, with no result yet: the one exchange a bus has in flight.
+    const fn in_flight(self) -> bool {
+        match self {
+            Self::Sending | Self::Waiting => true,
+            Self::Queued | Self::Done(_) => false,
+        }
+    }
 }
 
 impl BusTick {
@@ -151,6 +154,7 @@ impl BusTick {
             .ok_or(SlowRefusal::QueueFull)?;
         *free = Some(SlowEntry {
             seq: self.slow_seq,
+            submitted_tick: self.tick,
             request,
             state: SlowState::Queued,
         });
@@ -164,28 +168,39 @@ impl BusTick {
         self.slow.iter().filter(|e| e.is_none()).count()
     }
 
-    /// The slow frame to send now, at `now_ns`, if one may go: on a tick that wasn't held, after its collect deadline,
-    /// with nothing in flight, and early enough for the reply to be read before the next tick starts. Queued requests
-    /// that may no longer go are cancelled first; the rest wait. Report what the socket did with [`Self::slow_sent`].
-    pub fn slow_send(&mut self, now_ns: u64) -> Option<Frame> {
+    /// Open the tick's slack, after [`Self::end`] and before anything else in it, so what it ends is handed back with
+    /// the slack's first results and its slots are free for the slack's new requests. A queued request that may no
+    /// longer go is cancelled ([`SlowOutcome::Refused`]); one still queued [`Timing::slow_queue_ticks`] ticks after the
+    /// tick it was submitted in expires ([`Unsent::Expired`], counted in `slow_expired`).
+    ///
+    /// [`Timing::slow_queue_ticks`]: crate::Timing::slow_queue_ticks
+    pub fn open_slack(&mut self) {
         for i in 0..SLOW_SLOTS {
             let Some(entry) = self.slow.get(i).copied().flatten() else {
                 continue;
             };
-            if matches!(entry.state, SlowState::Queued)
-                && let Err(refusal) = self.slow_refusal(&entry.request)
-            {
+            if !matches!(entry.state, SlowState::Queued) {
+                continue;
+            }
+            if let Err(refusal) = self.slow_refusal(&entry.request) {
                 self.finish_slow(i, SlowOutcome::Refused(refusal));
+            } else if self.tick.saturating_sub(entry.submitted_tick) >= self.timing.slow_queue_ticks
+            {
+                self.counters.slow_expired += 1;
+                self.finish_slow(i, SlowOutcome::NotSent(Unsent::Expired));
             }
         }
-        let in_flight = self
-            .slow
-            .iter()
-            .flatten()
-            .any(|e| matches!(e.state, SlowState::Sending | SlowState::Waiting));
+    }
+
+    /// The slow frame to send now, at `now_ns`, if one may go: on a tick that wasn't held, after its collect deadline,
+    /// with nothing in flight, and early enough for the reply to be read before the next tick starts; the oldest queued
+    /// request goes. [`Self::open_slack`] has cancelled those that may no longer go; one found refused here all the
+    /// same is cancelled and nothing goes. Report what the socket did with [`Self::slow_sent`].
+    pub fn slow_send(&mut self, now_ns: u64) -> Option<Frame> {
+        let in_flight = self.slow.iter().flatten().any(|e| e.state.in_flight());
         let after_collect = now_ns >= self.scheduled_ns.saturating_add(self.timing.collect_ns);
         let next_tick = self.scheduled_ns.saturating_add(self.timing.period_ns);
-        if self.held_tick == Some(self.tick)
+        if self.held
             || in_flight
             || !after_collect
             || now_ns.saturating_add(self.timing.slow_reply_ns) > next_tick
@@ -199,6 +214,10 @@ impl BusTick {
             .filter_map(|(i, e)| e.map(|e| (i, e)))
             .filter(|(_, e)| matches!(e.state, SlowState::Queued))
             .min_by_key(|(_, e)| e.seq)?;
+        if let Err(refusal) = self.slow_refusal(&entry.request) {
+            self.finish_slow(i, SlowOutcome::Refused(refusal));
+            return None;
+        }
         let device = self
             .drives
             .get(entry.request.slot)
@@ -255,21 +274,18 @@ impl BusTick {
             .slow
             .iter()
             .enumerate()
-            .filter_map(|(i, e)| match e {
-                Some(SlowEntry {
-                    seq,
-                    request,
-                    state: SlowState::Done(outcome),
-                }) => Some((
-                    i,
-                    *seq,
-                    SlowResult {
-                        tag: request.tag,
-                        slot: request.slot,
-                        outcome: *outcome,
-                    },
-                )),
-                Some(_) | None => None,
+            .filter_map(|(i, e)| {
+                let e = e.as_ref()?;
+                let outcome = match e.state {
+                    SlowState::Done(outcome) => outcome,
+                    SlowState::Queued | SlowState::Sending | SlowState::Waiting => return None,
+                };
+                let result = SlowResult {
+                    tag: e.request.tag,
+                    slot: e.request.slot,
+                    outcome,
+                };
+                Some((i, e.seq, result))
             })
             .min_by_key(|(_, seq, _)| *seq)
             .map(|(i, _, r)| (i, r))?;
@@ -307,9 +323,7 @@ impl BusTick {
 
     /// At a tick's start: a slow request still unanswered has timed out.
     pub(crate) fn time_out_slow(&mut self) {
-        if let Some(i) =
-            self.slow_index(|e| matches!(e.state, SlowState::Sending | SlowState::Waiting))
-        {
+        if let Some(i) = self.slow_index(|e| e.state.in_flight()) {
             self.finish_slow(i, SlowOutcome::TimedOut);
         }
     }
@@ -385,20 +399,22 @@ impl BusTick {
         if self.bus_error.is_some() {
             return Err(SlowRefusal::BusFailed);
         }
-        let limb = self.limbs.get(drive.limb).and_then(Option::as_ref);
+        let Some(limb) = self.limbs.get(drive.limb).and_then(Option::as_ref) else {
+            return Err(SlowRefusal::LimbStopped);
+        };
         // A stop asked for but not yet taken counts: it is taken at the next tick's start, before any send.
-        let running = self.pending_stop.is_none()
-            && limb.is_some_and(|l| {
-                l.pending.is_none() && matches!(l.state, LimbState::Idle | LimbState::Active)
-            });
-        if !running || self.limb_stop_due(drive.limb).is_some() {
+        if self.pending_stop.is_some()
+            || limb.pending.is_some()
+            || !limb.state.takes_commands()
+            || self.limb_stop_due(drive.limb).is_some()
+        {
             return Err(SlowRefusal::LimbStopped);
         }
         if self.silent >= self.timing.silent_ticks {
             return Err(SlowRefusal::ControlSilent);
         }
         if let SlowKind::Write(_) = request.kind {
-            if limb.is_none_or(|l| l.state != LimbState::Idle) {
+            if limb.state != LimbState::Idle {
                 return Err(SlowRefusal::LimbNotIdle);
             }
             // An idle limb's batch may still carry a Disable or the run_mode write. Only this tick's: an earlier one's

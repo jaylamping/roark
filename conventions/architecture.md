@@ -49,8 +49,8 @@ The queues between the control thread and each bus thread, all bounded `rtrb` ri
 
 | Ring | From → to | When full |
 |---|---|---|
-| Command batches | control → bus | The bus takes the newest each tick; a stale or missing batch sends nothing |
-| Slow requests (parameter reads, allowlisted writes, get-ID) | control → bus | The bus takes them only as its slots free up |
+| Command batches | control → bus | Control's push fails and that batch is never sent. The bus empties the ring each tick and takes the newest; a batch for another tick, or none, sends nothing, and an expired one for the tick sends only its Disables and reporting off |
+| Slow requests (parameter reads, allowlisted writes, get-ID) | control → bus | Control's push fails and that request gets no result. The bus takes them only as its slots free up |
 | Slow results, one per request | bus → control | Dropped and counted (`slow_results_dropped`); the requester times out |
 | Snapshots | bus → control | The newest is dropped and counted (`snapshots_dropped`) |
 | Recorded frames | bus → telemetry | Counted in the recording as a loss, never blocking the tick |

@@ -374,6 +374,8 @@ pub struct Counters {
     pub snapshots_dropped: u64,
     /// Slow results control's ring was too full to take.
     pub slow_results_dropped: u64,
+    /// Slow requests that expired unsent, queued for `Timing::slow_queue_ticks` ticks.
+    pub slow_expired: u64,
 }
 
 /// The bus at the end of a tick, for control and the safety layer.
