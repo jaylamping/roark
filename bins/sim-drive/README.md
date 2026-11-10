@@ -9,16 +9,34 @@ something that answers like the real drives before any real drive is enabled.
   (`pop_due`), with the time passed in by the caller (testing.md rule 6). It answers each host frame the way the manuals
   say a drive does, with the delays measured on the bench (PLAN [item 2](https://github.com/jaylamping/roark/blob/main/PLAN.md#2-lift-the-hard-won-knowledge-first) and
   [item 4](https://github.com/jaylamping/roark/blob/main/PLAN.md#4-simulated-drives-on-vcan)): the wait from Enable to Run, the silence after a Disable, and the
-  blackout some time after a Set Zero on an enabled drive. `canTimeout` drops an enabled drive to Reset; `power_cycle`
-  puts every parameter back to its default (`canTimeout` 0); active reports go out on a fixed period while on. Every
+  blackout some time after a Set Zero on an enabled drive. `canTimeout` drops an enabled drive to Reset; a reboot
+  (`Fault::Reboot`) puts every parameter back to its default (`canTimeout` 0); active reports go out on a fixed period
+  while on, each showing the joint as it was when it fell due. Every
   delay comes from the seed it's given, so a run replays exactly.
-- **`serve`** (Linux) runs a set of `SimDrive`s on one bus's `vcan` socket until told to stop.
+- **The plant:** a first-order joint (`plant.rs`). In Run, the MIT law `kp (p_t - p) + kd (v_t - v) + t_ff` drives a
+  damper (`DAMPING` in `plant.rs`, 1 N·m·s/rad, a sim value), so a target is reached with time constant
+  `(DAMPING + kd) / kp`; torque stops at `limit_torque` and speed at `limit_spd`, the caps preflight writes. That a real drive holds those two caps in MIT mode
+  is a sim assumption until a bench capture shows it (PLAN item 6). Out of Run the joint rests where it is. No inertia
+  or gravity yet. A read of the position or speed register gives the joint as it is, unless a value was injected.
+- **Fault injection** (`Fault`, PLAN item 4): a silent drive, late, lost or doubled frames, fault bits, a mode the host
+  didn't ask for, a register that reads out of window (VBUS, the damper), a temperature, a reboot mid-run, writes
+  answered but not kept, and lost Disables. `inject` applies one now; `schedule` fires one on a `Trigger` (the drive's
+  nth MIT command, or a time: the drive is brought up to it, so timed faults land in time order), at most `FAULT_PLAN`
+  at once. Both refuse a fault the drive can't honour (`FaultRefused`: a `Late` past `MAX_LATE`, a temperature a
+  status can't carry, a register value of the wrong type) and a time the drive is already past; `schedule` also
+  refuses `OnMit(0)`. Transport faults apply as each frame falls due, so they reach replies already waiting but never
+  a frame due before they fired, however seldom the host reads. Every injection is recorded once (`take_injected`, up
+  to `INJECTED_LOG` untaken; `injections_lost` counts the rest), so a replay shows what was injected. A duplicate ID or a wrong UID needs no fault: build two drives with one ID, or one
+  with another UID.
+- **`serve`** (Linux) runs a set of `SimDrive`s on one bus's `vcan` socket until told to stop, handing each injection
+  to its caller as it takes effect.
 - **The `sim-drive` binary** simulates every drive the skeleton puts on each bus, one thread per bus.
 
 Where neither the manuals nor a bench capture says what a drive does, the sim says so in a comment: it answers nothing to
 set-ID, the version query or the reporting switch, and most parameter defaults are sim values. An RS00 answers no
-status until its MIT scales are settled (PLAN item 2); `dropped` counts what it couldn't send. The plant holds position:
-MIT targets move nothing yet.
+status until its MIT scales are settled (PLAN item 2); `dropped` counts what it couldn't send. A fault bit leaves the
+mode as it is: no capture says a drive changes mode on a fault. Bus-level faults (bus-off, an interface going away) are
+the bus's, not a drive's.
 
 ## Must never
 

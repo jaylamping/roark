@@ -11,15 +11,20 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   the kernel.
 - `bus.rs`: `can::spawn` refuses anything that isn't `vcan`, and the bus thread runs two simulated drives through
   enable, hold and a shutdown stop, recorded by `telemetry`; the recording is checked frame by frame against an
-  independent `candump -L -x` capture (needs `can-utils`); and slow requests go to a simulated drive and come back in
-  the slack.
+  independent `candump -L -x` capture (needs `can-utils`). Also a thread started after the schedule joining it.
+- `slow.rs`: slow requests (get-ID, a write, its read-back) reaching a drive and coming back.
+- `faults.rs`: a fault injected into one drive is caught by the bus thread before the next send, stopping only that
+  drive's limb; a drive gone silent, and one that also loses its Disable, stop their limb for the silence. The rest of
+  the fault tests (PLAN item 4, "Done when") join them as the safety layer lands.
 - `exit.rs`: a bus of two active limbs told to exit with control's snapshot ring full stops every limb and returns
   once the ring takes a snapshot with every limb stopped, once control drops the ring, or after its wait when control
   never reads again, each time at the next tick's drain; a bus of two stopping limbs with no time to collect records
   its last reporting off through that drain; and a bus that ends counts the slow results control's ring can't take.
-  Its tests and `bus.rs`'s slow-request test share `can0`, one at a time (`.config/nextest.toml`).
 
-The bus loop's fault tests (PLAN item 4, "Done when") join it as the safety layer lands.
+Every frame on a bus reaches every socket on it, so two tests that run at the same time never share a bus. Each test
+on `can1` to `can4` has its bus to itself; the tests in `exit.rs`, `slow.rs` and `faults.rs` all use `can0` and run one
+at a time (nextest's `can0` test group, `.config/nextest.toml`). A new test either takes a bus no other test uses or
+joins that group.
 
 nextest's default profile leaves this crate out, so `scripts/check.sh` stays runnable on any machine; the `sim` profile
 runs only this crate.

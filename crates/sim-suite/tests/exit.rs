@@ -2,8 +2,11 @@
 //! limb, and returns once control's ring takes a snapshot with every limb stopped, once control drops the ring, or after
 //! its wait when control never reads again. Both stopping, with no time to collect: the stops' last echoes reach the
 //! recording through the drain it returns at. And a bus that ends with slow results control's ring can't take counts
-//! them. The helpers are `bus.rs`'s, small enough to copy until the sim suite has a shared module.
+//! them.
 #![cfg(target_os = "linux")]
+
+#[expect(dead_code, reason = "each test file uses some of the shared helpers")]
+mod common;
 
 use std::io;
 use std::path::Path;
@@ -12,21 +15,17 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use can::{
-    BusConfig, BusDrive, BusLinks, CommandBatch, LimbState, SlowKind, SlowOutcome, SlowRefusal,
-    SlowRequest, SlowResult, Snapshot, StopOutcome, StopReason, Timing,
+    BusConfig, BusLinks, CommandBatch, LimbState, SlowKind, SlowOutcome, SlowRefusal, SlowRequest,
+    SlowResult, Snapshot, StopOutcome, StopReason, Timing,
 };
-use robstride::{
-    DeviceId, Drive, Frame, MitCommand, Mode, Model, NewtonMeters, NmPerRad, NmSecPerRad, Param,
-    RadPerSec, Radians, Reporting, Uid, encode,
-};
+use common::{HZ, Shutdown, drive, hold, id, info, next_snapshot, soon};
+use robstride::{Drive, Frame, Mode, Model, Param, Reporting, Uid, encode};
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use telemetry::wire::{self, Frames, Stamp};
-use telemetry::{Direction, Epoch, Recorder, Recording, Session, SessionInfo, SkeletonRef, Stage};
+use telemetry::{Direction, Epoch, Recorder, Recording, Session};
 
 /// Shared by the tests in this file, one at a time (`.config/nextest.toml`, group `can0`).
 const BUS: &str = "can0";
-/// Slow enough that the test thread, playing control, makes every tick on a loaded machine.
-const HZ: u64 = 100;
 const PERIOD_NS: u64 = Timing::at_hz(HZ).period_ns;
 const HOLD_TICKS: usize = 50;
 /// Control's snapshot ring: small, so a control that stops reading fills it in a few ticks.
@@ -41,15 +40,11 @@ const STOP_WINDOW_NS: u64 = 505_000_000;
 /// up (`BusLinks::exit`).
 const EXIT_WAIT: u64 = STOP_WINDOW_NS.div_ceil(PERIOD_NS);
 
-/// The tick at `HZ`, with the send window stretched to the collect deadline (these tests check the exit, not the wake
-/// budget, so a test thread that wakes a few milliseconds late on a loaded runner is not a late wake; the tick tests
-/// cover that), and the stop window at `STOP_WINDOW_NS`.
+/// The suite's tick ([`common::timing`]), with the stop window at `STOP_WINDOW_NS`.
 fn timing() -> Timing {
-    let at_hz = Timing::at_hz(HZ);
     Timing {
-        send_window_ns: at_hz.collect_ns,
         stop_confirm_ns: STOP_WINDOW_NS,
-        ..at_hz
+        ..common::timing()
     }
 }
 
@@ -70,79 +65,9 @@ fn no_collect_timing() -> Timing {
     }
 }
 
-#[expect(
-    clippy::unwrap_used,
-    reason = "test helper: IDs here are constants in range"
-)]
-fn id(n: u8) -> DeviceId {
-    DeviceId::new(u64::from(n)).unwrap()
-}
-
-#[expect(
-    clippy::unwrap_used,
-    reason = "test helper: a hold command is in range"
-)]
-fn hold(n: u8) -> Frame {
-    let command = MitCommand {
-        position: Radians::new(0.0).unwrap(),
-        velocity: RadPerSec::new(0.0).unwrap(),
-        kp: NmPerRad::new(5.0).unwrap(),
-        kd: NmSecPerRad::new(0.5).unwrap(),
-        torque: NewtonMeters::new(0.0).unwrap(),
-    };
-    encode::mit(Drive::new(id(n), Model::Rs03), &command).unwrap()
-}
-
-/// Drive `n` in limb `limb`.
-fn drive(n: u8, limb: usize) -> BusDrive {
-    BusDrive {
-        device: id(n),
-        limb,
-    }
-}
-
-/// A schedule that starts two periods from now, as the runtime's does.
-fn soon() -> Instant {
-    Instant::now() + Duration::from_nanos(2 * PERIOD_NS)
-}
-
 /// Every limb's state in `snap`.
 fn states(snap: &Snapshot) -> Vec<LimbState> {
     snap.limbs().map(|(_, l)| l.state).collect()
-}
-
-fn info() -> SessionInfo {
-    SessionInfo {
-        git_revision: "test".to_owned(),
-        operator: "sim-suite".to_owned(),
-        stage: Stage::Vcan,
-        skeleton: SkeletonRef {
-            path: "inline".to_owned(),
-            sha256: "00".repeat(32),
-        },
-        buses: vec![can::bus_info(BUS, 1_000_000)],
-    }
-}
-
-/// The snapshot for the next tick, waiting at most until `end`.
-fn next_snapshot(snapshots: &mut rtrb::Consumer<Snapshot>, end: Instant) -> Option<Snapshot> {
-    while Instant::now() < end {
-        if let Ok(s) = snapshots.pop() {
-            return Some(s);
-        }
-        std::thread::yield_now();
-    }
-    None
-}
-
-/// Sets both stop flags when dropped, including while a failed assertion unwinds.
-struct Shutdown<'a>(&'a AtomicBool, Arc<AtomicBool>);
-
-impl Drop for Shutdown<'_> {
-    fn drop(&mut self) {
-        self.0.store(true, Ordering::Release);
-        self.1.store(true, Ordering::Release);
-    }
 }
 
 /// Push control's batch for `tick`, good for three periods from now: long enough to reach its tick, never long enough
@@ -392,9 +317,9 @@ fn run_bus(label: &str, timing: Timing, control: impl FnOnce(Control<'_>) -> Pla
                 SimDrive::new(Drive::new(id(101), Model::Rs03), Uid([1; 8]), 7),
                 SimDrive::new(Drive::new(id(102), Model::Rs03), Uid([2; 8]), 8),
             ];
-            serve(BUS, &mut drives, &stop_sim)
+            serve(BUS, &mut drives, &stop_sim, &mut |_| {})
         });
-        let session = Session::start(&dir, info(), 1_794_178_885_000_000_000).unwrap();
+        let session = Session::start(&dir, info(BUS), 1_794_178_885_000_000_000).unwrap();
         let session_dir = session.dir().to_owned();
         let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
         let epoch = recording.epoch();
@@ -650,7 +575,7 @@ fn a_bus_that_ends_counts_the_slow_results_control_cant_take() {
     ensure_vcan(BUS).unwrap();
     let dir = std::env::temp_dir().join(format!("sim-suite-slow-exit-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
-    let session = Session::start(&dir, info(), 1_794_178_885_000_000_000).unwrap();
+    let session = Session::start(&dir, info(BUS), 1_794_178_885_000_000_000).unwrap();
     let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
     let epoch = recording.epoch();
     let recorder = Recorder::spawn(recording).unwrap();

@@ -13,7 +13,8 @@ default-filter = "package(sim-suite)"
 [test-groups]
 can0 = { max-threads = 1 }
 
-# Every sim test on `can0`: the exit tests and the slow-request round trip.
+# Every sim test on `can0`: the exit tests, the slow-request round trip and the fault tests. Each other bus (`can1` to
+# `can4`) has one test of its own, which may run beside these.
 [[profile.sim.overrides]]
-filter = "package(sim-suite) & (binary(exit) | test(=slow_requests_reach_a_drive_on_vcan_and_come_back))"
+filter = "package(sim-suite) & (binary(exit) | binary(slow) | binary(faults))"
 test-group = "can0"

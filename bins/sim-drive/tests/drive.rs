@@ -1,78 +1,15 @@
 //! The simulated drive against what the real ones do (PLAN items 2 and 4): its replies to each host frame, the timing
 //! windows the bus layer and safety must survive, and `canTimeout`. Time is passed in; nothing sleeps (testing.md rule 6).
 
-use std::time::{Duration, Instant};
+mod common;
 
-use robstride::drive::{self, HostFrame};
+use std::time::Instant;
+
+use common::{ask, host, id, mode_of, ms, neutral, replies, rs03};
 use robstride::{
-    CanTimeout, DeviceId, Drive, Frame, Inbound, Mode, Model, Param, ParamOutcome, ParamValue,
-    Reporting, Uid, Write, decode, encode,
+    CanTimeout, Inbound, Mode, Param, ParamOutcome, ParamValue, Reporting, Uid, Write, encode,
 };
 use sim_drive::SimDrive;
-
-#[expect(
-    clippy::unwrap_used,
-    reason = "test helper; clippy allows unwrap only inside #[test] bodies"
-)]
-fn id(n: u8) -> DeviceId {
-    DeviceId::new(u64::from(n)).unwrap()
-}
-
-fn ms(n: u64) -> Duration {
-    Duration::from_millis(n)
-}
-
-#[expect(
-    clippy::unwrap_used,
-    reason = "test helper; clippy allows unwrap only inside #[test] bodies"
-)]
-fn host(frame: Frame) -> HostFrame {
-    drive::command(frame.id(), &frame.data()).unwrap().unwrap()
-}
-
-/// Every frame due by `now`, decoded as the host reads it.
-#[expect(
-    clippy::unwrap_used,
-    reason = "test helper; clippy allows unwrap only inside #[test] bodies"
-)]
-fn replies(sim: &mut SimDrive, now: Instant) -> Vec<Inbound> {
-    std::iter::from_fn(|| sim.pop_due(now))
-        .map(|f| decode(f.id(), &f.data()).unwrap())
-        .collect()
-}
-
-fn mode_of(inbound: &Inbound) -> Option<Mode> {
-    match inbound {
-        Inbound::Status(s) | Inbound::Report(s) => Some(s.header.mode),
-        _ => None,
-    }
-}
-
-/// Send `frame` at `now` and return what is due straight away.
-fn ask(sim: &mut SimDrive, now: Instant, frame: Frame) -> Vec<Inbound> {
-    sim.receive(now, host(frame));
-    replies(sim, now)
-}
-
-fn rs03(n: u8) -> Drive {
-    Drive::new(id(n), Model::Rs03)
-}
-
-/// A neutral MIT command to drive `n`: it changes nothing, and its status reply shows the mode.
-#[expect(
-    clippy::unwrap_used,
-    reason = "test helper; clippy allows unwrap only inside #[test] bodies"
-)]
-fn neutral(n: u8) -> Frame {
-    let zero = robstride::MitCommand {
-        position: robstride::Radians::new(0.0).unwrap(),
-        velocity: robstride::RadPerSec::new(0.0).unwrap(),
-        kp: robstride::NmPerRad::new(0.0).unwrap(),
-        kd: robstride::NmSecPerRad::new(0.0).unwrap(),
-        torque: robstride::NewtonMeters::new(0.0).unwrap(),
-    };
-    encode::mit(rs03(n), &zero).unwrap()
-}
 
 /// Guards: protocol - the simulated drive answers each host frame the way the manuals say a drive does: identity to
 /// type 0, a type-2 status to MIT, enable, disable, set zero and type-18 writes, a type-17 reply holding the value last
@@ -272,8 +209,9 @@ fn can_timeout_drops_an_enabled_drive_to_reset() {
 
     // A power cycle: Reset, and canTimeout back to 0.
     let (mut sim, t) = enabled(true);
-    sim.power_cycle();
-    let read = ask(&mut sim, t, encode::param_read(id(5), Param::CanTimeout));
+    let up = t + ms(11);
+    sim.inject(up, sim_drive::Fault::Reboot).unwrap();
+    let read = ask(&mut sim, up, encode::param_read(id(5), Param::CanTimeout));
     let off = ParamOutcome::Read(ParamValue::CanTimeout(CanTimeout::OFF));
     assert_eq!(
         read,
