@@ -154,27 +154,51 @@ fn a_late_written_disable_holds_off_the_rearm() {
 }
 
 /// Guards: safety - a limb whose drives all confirmed Reset re-arms as soon as it is stopped, with no wait: a confirmed
-/// drive is known disabled (PLAN.md item 6: operator clear).
+/// drive is known disabled. A drive seen in another mode after its confirmation isn't: its confirmation is withdrawn
+/// and the re-arm waits until it has been sent nothing for the drive timeout (PLAN.md item 6: operator clear;
+/// safety.md section 4: refused until every drive in the limb is known disabled).
 #[test]
-fn a_confirmed_limb_rearms_at_once() {
-    let mut bus = two_limbs();
-    running(&mut bus);
-    assert_eq!(bus.stop_limb(0), Ok(()));
-    let mut tick = 2;
-    loop {
+fn a_confirmed_limb_rearms_at_once_unless_a_drive_left_reset() {
+    for seen_running in [false, true] {
+        let mut bus = two_limbs();
+        running(&mut bus);
+        assert_eq!(bus.stop_limb(0), Ok(()));
+        let mut tick = 2;
+        loop {
+            run_tick(
+                &mut bus,
+                tick,
+                Some(&batch(tick, &[None, Some(hold(102))])),
+                &[(MS, status(101, Mode::Reset)), (MS, status(102, Mode::Run))],
+            );
+            let snap = bus.end(deadline(tick));
+            if limb(&snap, 0).0 == LimbState::Stopped {
+                assert_eq!(at(&snap, 0).stop, StopOutcome::Confirmed);
+                break;
+            }
+            tick += 1;
+        }
+        if !seen_running {
+            // Its reporting off went out this very tick.
+            assert_eq!(bus.rearm(0, deadline(tick)), Ok(()));
+            continue;
+        }
+        // Its reporting off, the last frame sent to it, went at this tick's start; the next tick reads it in Run.
+        let last_sent = tick * PERIOD;
+        tick += 1;
         run_tick(
             &mut bus,
             tick,
             Some(&batch(tick, &[None, Some(hold(102))])),
-            &[(MS, status(101, Mode::Reset)), (MS, status(102, Mode::Run))],
+            &[(MS, status(101, Mode::Run)), (MS, status(102, Mode::Run))],
         );
         let snap = bus.end(deadline(tick));
-        if limb(&snap, 0).0 == LimbState::Stopped {
-            assert_eq!(at(&snap, 0).stop, StopOutcome::Confirmed);
-            break;
-        }
-        tick += 1;
+        assert_eq!(at(&snap, 0).stop, StopOutcome::Sent);
+        let quiet = last_sent + DRIVE_TIMEOUT_NS + PERIOD;
+        assert_eq!(
+            bus.rearm(0, quiet - 1),
+            Err(RearmRefused::DriveNotQuiet { slot: 0 })
+        );
+        assert_eq!(bus.rearm(0, quiet), Ok(()));
     }
-    // Its reporting off went out this very tick.
-    assert_eq!(bus.rearm(0, deadline(tick)), Ok(()));
 }
