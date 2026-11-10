@@ -169,30 +169,27 @@ impl Phase {
     /// to a drive not already enabling or enabled starts its enable-to-Run window; a Disable to an enabling or enabled
     /// drive starts its post-Disable window. Any other send, a Disable sent again or one to a drive in `Off` included,
     /// leaves the phase as it is, so Disables sent every tick can't hold misses off.
-    pub(crate) const fn after_send(self, kind: Option<EchoKind>, sent_ns: u64) -> Self {
+    pub(crate) const fn after_send(self, kind: EchoKind, sent_ns: u64) -> Self {
         match kind {
-            Some(EchoKind::Enable) => match self {
+            EchoKind::Enable => match self {
                 Self::Off | Self::Disabled { .. } => Self::Enabling { since_ns: sent_ns },
                 Self::Enabling { .. } | Self::Running | Self::LeftRun => self,
             },
-            Some(EchoKind::Disable) => match self {
+            EchoKind::Disable => match self {
                 Self::Enabling { .. } | Self::Running | Self::LeftRun => {
                     Self::Disabled { since_ns: sent_ns }
                 }
                 Self::Off | Self::Disabled { .. } => self,
             },
-            Some(
-                EchoKind::Mit
-                | EchoKind::SetZero
-                | EchoKind::SetId { .. }
-                | EchoKind::ParamRead(_)
-                | EchoKind::ParamWrite { .. }
-                | EchoKind::Reporting(_)
-                | EchoKind::GetId
-                | EchoKind::VersionQuery
-                | EchoKind::FaultClear,
-            )
-            | None => self,
+            EchoKind::Mit
+            | EchoKind::SetZero
+            | EchoKind::SetId { .. }
+            | EchoKind::ParamRead(_)
+            | EchoKind::ParamWrite { .. }
+            | EchoKind::Reporting(_)
+            | EchoKind::GetId
+            | EchoKind::VersionQuery
+            | EchoKind::FaultClear => self,
         }
     }
 }
@@ -532,9 +529,7 @@ impl BusTick {
         }
         let expects_status = matches!(
             kind,
-            Some(
-                EchoKind::Mit | EchoKind::Enable | EchoKind::Disable | EchoKind::ParamWrite { .. }
-            )
+            EchoKind::Mit | EchoKind::Enable | EchoKind::Disable | EchoKind::ParamWrite { .. }
         );
         let deadline_ns = self.scheduled_ns.saturating_add(self.timing.collect_ns);
         let quiet_ns = self.timing.stop_confirm_ns;
@@ -577,13 +572,13 @@ impl BusTick {
                 deadline_ns,
                 stop_disable: send.kind == SendKind::Disable,
                 counts_missed: counts_missed
-                    && !matches!(kind, Some(EchoKind::Enable | EchoKind::Disable)),
+                    && !matches!(kind, EchoKind::Enable | EchoKind::Disable),
                 reply: Reply::Waiting,
                 counted: false,
             });
         }
         let limb = d.limb;
-        if matches!(kind, Some(EchoKind::Mit | EchoKind::Enable))
+        if matches!(kind, EchoKind::Mit | EchoKind::Enable)
             && let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut)
             && l.state == LimbState::Idle
         {
