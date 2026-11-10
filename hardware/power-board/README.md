@@ -29,7 +29,7 @@ schematic/tools/render_export.py and render_routed.py.
 | Board build pipeline (placement, power stage, routing, checks) | [schematic/tools/build_board.sh](schematic/tools/build_board.sh) |
 | Harness interface, cable exits | [layout/HARNESS_INTERFACE.md](layout/HARNESS_INTERFACE.md) |
 | Package STEP for placing the board in the torso | [marengo_pdu_revb_package.step](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/pdb/design/layout/marengo_pdu_revb_package.step), still in marengo; it moves to `cad/reference/` when CAD work needs it |
-| 12 V buck board (schematic) | [buck12/](buck12/) |
+| 12 V buck board (schematic, layout, order package) | [buck12/](buck12/), layout rules and bring-up: [buck12/BUCK_LAYOUT.md](buck12/BUCK_LAYOUT.md) |
 
 History stays in [jaylamping/marengo](https://github.com/jaylamping/marengo/tree/main/hardware/electrical): rev A,
 the review rounds, the rationale log and the floorplan studies. The pack and harness docs are there too.
