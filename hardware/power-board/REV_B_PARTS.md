@@ -57,7 +57,7 @@ Budget:
 
 **Buck board** (separate small board on the -X rail, bolted with a thermal pad where the DVE sat):
 - **Controller and power train:** LM5146 at 400 kHz, Q1 BSC070N10NS5, Q2 BSC040N10NS5, Coilcraft XAL1010-682 (6.8 µH, 8.9 mΩ, 21.8 A Isat), 5 × 22 µF out.
-- **Input:** SK810L reverse crowbar, 1 µF, XAL7030 2.2 µH filter, 47 µF aluminium (EEE-TK2A470AQ) damping, 5 × 2.2 µF hot-loop ceramics.
+- **Input:** SK810L reverse crowbar, 1 µF, XAL7030 2.2 µH filter, 47 µF aluminium (Chemi-Con EMVH101ARA470MKE0S, 12.5 mm) damping, 5 × 2.2 µF hot-loop ceramics.
 - **Valley current limit** at about 12–13 A hot. **UVLO** 30.2 V on, 27.2 V off: below the 30.5 V worst sag at 90 A from a 38 V pack.
 - **Loss and efficiency:** about 4 W at 12 A (about 97 %).
 - **Why separate:** heat goes to the frame, switching noise stays away from the meters and the latch, and the main board has no pour budget left.
@@ -93,7 +93,7 @@ Main-board side, unchanged:
 The 54 V input faces and sits next to GND only, and so does SP_EN: a short between facing or neighbouring contacts trips U7 or turns SPARE_SW off. check.py tests both, and buck12/check_buck.py checks J1 against the same list. SDA and SCL lose a GND between them; at 100 kHz over 300 mm that's accepted.
 
 **DVE: no longer a fallback (split S1).** The buck board now carries the 12 V distribution and has no 12 V input, and J24 carries I2C and SP_EN where the DVE's +VOUT pins were, so a DVE and its old adapter can't plug in. A fallback would need a 12 V input on the buck board and a new adapter pinout. For reference, the part: Murata DVE0125V2NBC, 25 A, input UVLO fixed at 32–36 V on and 30–34 V off. Its adapter board had:
-- 47 µF 100 V EEE-TK2A470AQ plus 1 µF on the input;
+- 47 µF 100 V Chemi-Con EMVH101ARA470MKE0S plus 1 µF on the input;
 - SK810L reverse crowbar;
 - 100 µF 25 V hybrid plus 10 µF and 1 µF on the output;
 - a strain-relief clamp.
