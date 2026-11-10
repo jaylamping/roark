@@ -219,7 +219,9 @@ impl SimDrive {
     /// The next frame due by `now`, earliest first. Injected transport faults apply here, as each frame falls due, so
     /// they reach frames already waiting: a silent drive sends nothing, a late one delays each frame once more by its
     /// lateness, and lost or doubled frames go by count. A doubled frame's second copy waits in the outbox like any
-    /// other frame, so the faults in effect when it falls due apply to it too; it isn't doubled again.
+    /// other frame, so the faults in effect when it falls due apply to it too; it isn't doubled again. The exception is
+    /// a frame a reboot let out (it was due before the power went, [`Fault::Reboot`]): it went out then, so no fault
+    /// injected after the reboot reaches it.
     pub fn pop_due(&mut self, now: Instant) -> Option<DriveFrame> {
         self.advance(now);
         self.next_out(now).map(|q| q.frame)
@@ -322,8 +324,10 @@ impl SimDrive {
     /// the Run status. Events at `now` itself happen only if `inclusive`.
     fn advance_to(&mut self, now: Instant, inclusive: bool) {
         // Faults fire once each; Run comes once per Enable, and a timeout once per Run reached (an Enable, or a Mode
-        // fault). Reports go one at a time while the outbox has room, at most `OUTBOX` of them a step; past that, the
-        // reports before the next other event are skipped in one go and counted, as the full outbox would drop them.
+        // fault). Reports go one at a time while the outbox has room, at most `OUTBOX` of them a step reaching it;
+        // past that, the reports before the next other event are skipped in one go and counted, as the full outbox
+        // would drop them. A report in the Set Zero blackout reaches nothing and takes no room, and there are at most
+        // the blackout's length over the report interval, plus one, of those.
         let mut events = 0;
         let mut reports = 0;
         while let Some((at, event)) = self.next_due(now, inclusive, true) {
@@ -337,7 +341,9 @@ impl SimDrive {
                     self.skip_reports(at, interval, until);
                     continue;
                 }
-                reports += 1;
+                if !in_window(self.blackout, at) {
+                    reports += 1;
+                }
             } else {
                 events += 1;
                 if events > 2 * crate::FAULT_PLAN + 2 {
