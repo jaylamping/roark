@@ -1,5 +1,5 @@
-//! Helpers shared by the tick's test files: a two-drive bus at 250 Hz, frames as `vcan` delivers them, and one tick run
-//! by hand.
+//! Helpers shared by the tick's test files: a two-drive bus at 250 Hz in one limb or two, frames as `vcan` delivers
+//! them, and one tick run by hand.
 
 use can::{
     BusDrive, BusTick, CommandBatch, LimbState, SendKind, SendOutcome, Snapshot, StopReason, Timing,
@@ -167,4 +167,52 @@ pub(crate) fn error_frame(class: u32, crtl: u8) -> FrameRecord {
     let mut f = record(class, [0, crtl, 0, 0, 0, 0, 0, 0], Direction::Rx);
     f.error = true;
     f
+}
+
+/// Drive 101 in limb 0 and drive 102 in limb 1, at 250 Hz.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: two drives in two limbs fit"
+)]
+pub(crate) fn two_limbs() -> BusTick {
+    let drives = [
+        BusDrive {
+            device: id(101),
+            limb: 0,
+        },
+        BusDrive {
+            device: id(102),
+            limb: 1,
+        },
+    ];
+    BusTick::new(&drives, Timing::at_hz(250)).unwrap()
+}
+
+/// Limb `limb`'s state and stop.
+#[expect(clippy::unwrap_used, reason = "test helper: the limbs asked for exist")]
+pub(crate) fn limb(snap: &Snapshot, limb: usize) -> (LimbState, Option<StopReason>) {
+    let l = snap.limb(limb).unwrap();
+    (l.state, l.stop)
+}
+
+/// Both drives enabled at tick 0 and answering in Run, then held at tick 1 with both answering.
+pub(crate) fn running(bus: &mut BusTick) {
+    let enable = batch(
+        0,
+        &[Some(encode::enable(id(101))), Some(encode::enable(id(102)))],
+    );
+    run_tick(
+        bus,
+        0,
+        Some(&enable),
+        &[(MS, status(101, Mode::Run)), (MS, status(102, Mode::Run))],
+    );
+    let _ = bus.end(deadline(0));
+    run_tick(
+        bus,
+        1,
+        Some(&batch(1, &[Some(hold(101)), Some(hold(102))])),
+        &[(MS, status(101, Mode::Run)), (MS, status(102, Mode::Run))],
+    );
+    let _ = bus.end(deadline(1));
 }
