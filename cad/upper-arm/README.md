@@ -1,8 +1,28 @@
 # Upper arm clamshell, left
 
-Draft 3, 2026-11-08.
+Draft 4, 2026-11-09. Only the front and back halves changed from draft 3 (2026-11-08); the ring, hub, loop clip and
+carrier are as in draft 3.
 
-Status: **the mesh gate passes and the support check is done. The governing lateral case does not yet pass in the FEA model** (see Checks). The two-reviewer gate is still to come, so don't print yet.
+Status: **the gate, support, slice and FEA results below are draft 3 results, awaiting a rerun on the draft 4 halves.** On
+draft 3 the mesh gate passed and the support check was done, but the governing lateral case did not pass in the FEA model
+(see Checks). The two-reviewer gate is still to come, so don't print yet.
+
+## Changes from draft 3
+
+From `ua_parts.py` (commit 886117b):
+
+- **Skirt trim on the ring plane.** The RS02-side skirt outboard of the ring is trimmed at Y 242.1 (`Y_SKIRT`, the ring /
+  halves plane at Y 242 plus the 0.1 mm clearance) instead of Y 240. The halves now have one lower edge across X, with no
+  step at the ring end, where the draft 3 lateral-case minimum sat. The cut still removes the skirt's down-facing tip.
+- **Post-root fillets.** The front half's four seam posts and two hub-lug posts are true cylinders run up to the skin they
+  meet, with a fillet at the root: 2 mm (`POST_FILLET`), stepping down to 0.5 mm where a larger one won't build, and none
+  if no radius builds. The radius each post got is printed by the build and not recorded in the repo. The back-half posts
+  are unchanged: flat-ended 0.25 mm into the skin, because a post run down to the skin would leave a 0.5 mm wall round the
+  Ø6.5 counterbore.
+- **Ring kerf, FEA model only.** `ua_parts.py fea_contact` builds a model with the ring cut free of the halves along their
+  printed clearances and the ring-pin hole through both bodies, for the contact FEA. The printed parts don't change.
+- **Mesh whitelist.** One new back-half entry: the oblique exit of the Ø3.4 ring-pin hole through the ring-pocket face, a
+  wedge of about 3 mm² under the ring, inside the closed arm.
 
 ## Files
 
@@ -25,7 +45,7 @@ In `cad/scripts/arm/`. They run on Joey-PC with SolidWorks and Bambu Studio inst
 
 ```
 python ua_parts.py ring hub upper lower clip   # cut the parts from the master, save them and their exports
-python ua_parts.py fea                         # one-body FEA model, into cad/_sim/upper-arm/
+python ua_parts.py fea fea_contact             # bonded and ring-contact FEA models, into cad/_sim/upper-arm/
 python ua_gate_run.py                          # mesh gate + support check, into cad/_wip/arm-gate/
 python ua_slice.py                             # Bambu Studio slices and grams, into cad/_wip/arm-slices/
 ```
@@ -36,21 +56,25 @@ python ua_slice.py                             # Bambu Studio slices and grams, 
 - `build.py` + `p2_seed.json`: the Bambu Studio project builder. The seed is the reviewed P2 L04B print project with its mesh
   removed, so every setting is the P2 process (PETG, 0.2 mm).
 - `mesh_check.py` + `mesh_whitelist.py`: the mesh gate and its reviewed exceptions. `support_check.py`: support on visible faces.
+- `cad/scripts/fea/`, run from the repo root: `p3_fea.py` solves a linear static case in SolidWorks Simulation and reports
+  bulk and print-layer SF; `ua_fea.py` holds the bonded cases and `ua_fea_contact.py` the ring-contact cases;
+  `fea_parts.py` reads the saved nodal stresses per printed part.
 - After `ua_parts.py` rewrites an export, record it: `python tools/cad/record_export.py exports/upper-arm/<file> upper-arm/<part>.SLDPRT --config Default --settings "..."`.
 
 ## Parts and printed mass
 
-Sliced in Bambu Studio with the P2 process: PETG, 0.2 mm, `ua_slice.py`.
+Sliced in Bambu Studio with the P2 process: PETG, 0.2 mm, `ua_slice.py`. **The grams are draft 3 results.** The front and
+back halves have not been sliced since the draft 4 rebuild; the ring, hub and clip are unchanged.
 
 | Part | What it is | Print | Sliced |
 | --- | --- | --- | --- |
-| Front half | Half above the seam (Z > 6). Four Ø7.5 seam posts and two hub-lug posts, with Ruthex inserts, M3 × 30 pilots and Ø5.9 pin sockets. Fuse pockets from the master | Seam face down. 4 walls, 50%, with 6 walls and 100% on the posts, the hub band (Y 286–303) and the ring capture | **55.6 g** |
+| Front half | Half above the seam (Z > 6). Four Ø7.5 seam posts and two hub-lug posts with root fillets, Ruthex inserts, M3 × 30 pilots and Ø5.9 pin sockets. Fuse pockets from the master | Seam face down. 4 walls, 50%, with 6 walls and 100% on the posts, the hub band (Y 286–303) and the ring capture | **55.6 g** |
 | Back half | Half below the seam. Matching posts with Ø5.5 × 1.2 pins and counterbores. Ø10 trunk entry through the back wall below the hub, with a tie boss. Ø6.8 RS00-branch exit at Y 270 through the back-inboard wall, with a tie boss | Seam face down. Same settings | **53.5 g** |
 | Ring | RS02 seat ring, X 150.8–166.2, keeping the master hoop OD (cut at r 44.25). It takes the skin flare below Y 242 and has a top slot widened to Z −9.5..18. One M3 insert on the back OD at Y 246.5 | 6 walls, 100% | **32.3 g** |
 | Hub | Hub disc: a 4 mm plate at the yaw RS02 face with six windows, the old tube floor opened, a spigot r 28–35.8, and two seam lugs rooted in the spigot | RS02 face down. 6 walls, 50%, with 100% on the plate, the bosses and the spigot | **63.4 g** |
 | Loop clip | Elbow back-loop saddle for the **unchanged** carrier: a 3 mm foot, and two crush-ribbed spigots in the carrier's Ø9.4 screw-access bores at 44° and 84° | Standing on its flat end. **No support** | **7.7 g** |
 
-**Total: 204.7 g sliced for the four arm parts.** The one-piece db71b23b arm sliced at 229.0 g on the same process, and weighed **202 g** on the scale. That is 10.7% lighter, so expect **about 180 g**, plus the 7.7 g clip.
+**Total, draft 3: 204.7 g sliced for the four arm parts.** The one-piece db71b23b arm sliced at 229.0 g on the same process, and weighed **202 g** on the scale. That is 10.7% lighter, so expect **about 180 g**, plus the 7.7 g clip.
 
 The parts are small and thin, so 6 walls plus shells make them nearly solid; dropping the halves to 4 walls saved little. The real savings came from the hub plate (6 → 4 mm), the windows and the floor opening.
 
@@ -60,7 +84,7 @@ The parts are small and thin, so 6 walls plus shells make them nearly solid; dro
 - **Seam posts:**
   - At X 147.5 and 193.5 (23 mm off the tube axis), Y 262 and 278.
   - Each lower post ends 0.25 mm into the inner skin at its centre. Nearer the wall, a vertical post pokes out through the curved outer skin, which the first draft did.
-  - Upper posts run up to the upper skin.
+  - Upper posts run up to the upper skin, with a root fillet (draft 4).
   - M3 × 30 from below, through a counterbore whose floor is the post end.
 - **Hub lugs:** posts at X 147.5 / 193.5, Y 292, with M3 × 40.
 - **Ring pin:** one M3 × 12 along Z from the back, at (X 158.5, Y 246.5), into a ring insert.
@@ -86,7 +110,11 @@ Every screw head is on the back (lower, −Z) half. The front (upper) half has n
 
 ## Checks
 
-**Mesh gate:** `ua_gate_run.py`, with `mesh_check.py` and the whitelist in `mesh_whitelist.py`. All five parts pass.
+Every result in this section was taken on draft 3 and awaits a rerun on the draft 4 halves, except where a draft 4 result
+is cited with where it is recorded. The draft 3 gate and FEA data are in the review packet
+[`reviews/upper-arm/20261108_clamshell-draft3/`](../reviews/upper-arm/20261108_clamshell-draft3/README.md).
+
+**Mesh gate:** `ua_gate_run.py`, with `mesh_check.py` and the whitelist in `mesh_whitelist.py`. Draft 3: all five parts pass.
 
 The whitelist holds:
 - the master's own reviewed spots;
@@ -95,7 +123,7 @@ The whitelist holds:
 
 Each entry carries its reason.
 
-**Support on visible faces** (`support_check.py`, judged against the assembled arm):
+**Support on visible faces** (`support_check.py`, judged against the assembled arm), draft 3:
 
 | Part | Visible faces needing support |
 | --- | --- |
@@ -105,9 +133,10 @@ Each entry carries its reason.
 | Hub | None visible. The 183 mm² it flags are the lug faces under the spigot, inside the closed arm |
 | Clip | Prints with support off. Its overhangs are the short spigot cantilevers, hidden in the bores |
 
-The RS02-side skirt is trimmed above Y 240; its tip was the one visible down-facing band.
+In draft 3 the RS02-side skirt was trimmed above Y 240, because its tip was the one visible down-facing band. Draft 4
+trims it at Y 242.1, which also removes that tip.
 
-**Seam FEA** (`ua_fea.py`, in marengo with the FEA scripts; not brought over yet):
+**Seam FEA, draft 3** (`ua_fea.py`, run in marengo; the script is now in `cad/scripts/fea/`):
 
 - **Model:** the db71b23b cases on a one-body model of the clamshell geometry: hub lightening, posts, skirt and ring trims, widened slot.
   - Load: remote load on the six carrier-screw holes in the ring.
@@ -123,7 +152,8 @@ The RS02-side skirt is trimmed above Y 240; its tip was the one visible down-fac
 
 - **Joint load:** at most about 65 N of shear per side and under 30 N of opening.
 - **Joint capacity:** two M3 posts per side at roughly 300 N preload after PETG creep, plus two Ø5.5 pins. The joint stays closed with margin.
-- **Weakest spot:** LC2's 1.98 sits where the Y 262 upper post meets the upper skin, a square junction at 3 mm mesh. A 2 mm fillet there should lift it above 2. It is the next CAD change.
+- **Weakest spot:** LC2's 1.98 sits where the Y 262 upper post meets the upper skin, a square junction at 3 mm mesh. Draft
+  4 adds the post-root fillet there; LC2 has not been rerun on it.
 - One-piece db71b23b on its own fixture, for reference:
 
 | Case | SF |
@@ -132,7 +162,7 @@ The RS02-side skirt is trimmed above Y 240; its tip was the one visible down-fac
 | LC1C | 2.56 |
 | LC2 | 4.24 |
 
-**Governing case** (Joey: arm straight, 5 kg at the hand about 0.5 m from the shoulder pitch, plus self-weight):
+**Governing case, draft 3** (Joey: arm straight, 5 kg at the hand about 0.5 m from the shoulder pitch, plus self-weight):
 
 - **Load at the elbow point:** 62 N along gravity plus 17.2 N·m, which gives 24 N·m at the hub face.
 - **Sweep:** shoulder pitch 0/45/90/135/180°, gravity g = (0, −cos θ, −sin θ) in the arm frame. Lateral is gravity along ±X, with the moment about Z.
@@ -149,18 +179,27 @@ The RS02-side skirt is trimmed above Y 240; its tip was the one visible down-fac
 | **Lateral +X** | 2.14 / 3.55 | **1.17** / 3.95 | 1.69 / 9.3 | 21 / 10.9 | 0.97, 0.04 |
 | **Lateral −X** | 2.14 / 2.43 | **1.17 / 0.93** | 1.69 / **0.99** | 21 / 10.6 | 0.88, 0.04 |
 
-**Pitch sweep:** passes. The minimum is 3.10 bulk at 90°, above the 2.0 creep mark. The seam carries almost nothing in pitch.
+**Pitch sweep, draft 3:** passes. The minimum is 3.10 bulk at 90°, above the 2.0 creep mark. The seam carries almost nothing in pitch.
 
-**Lateral: does not pass in this model.** The minimum is at (166.4, 240.0, ±22.5), the re-entrant corner where the ring's +X end face meets the RS02-side skirt trim (Y 240).
+**Lateral, draft 3: does not pass in this model.** The minimum is at (166.4, 240.0, ±22.5), the re-entrant corner where the ring's +X end face meets the RS02-side skirt trim (Y 240).
 
 - **Why the model may overstate it:** the one-body model bonds the ring to the halves there. In the real parts that boundary is a 0.15 mm gap, and the load goes through:
   - the pocket contact;
   - the flare faces at Y 242;
   - the ring pin.
 - **What it does show:** the lateral moment, about 19 N·m at that section, has to cross the ring-to-halves interface. That interface is not verified.
-- **Next:** a contact model (no-penetration between the ring and the halves, with the pin bonded), plus a geometry fix at that corner:
+- **Next, as planned after draft 3:** a contact model (no-penetration between the ring and the halves, with the pin bonded), plus a geometry fix at that corner:
   - match the skirt trim and the ring flare tip at one Y, so there is no step at X 166.35;
   - put a 3 mm radius on the corner.
+- **Where draft 4 stands on it:**
+  - The skirt trim now matches the ring plane (Y 242.1), so the step is gone. The 3 mm corner radius is not in the code.
+  - The contact model is built by `ua_parts.py fea_contact` and solved by `ua_fea_contact.py`, with the ring pin as a pin
+    connector. No contact result is recorded in the repo.
+  - On the bonded model the ring's end face still meets the halves at a re-entrant edge along X 166.35, Y 242.1. The
+    comment above `KERF_EDGE` in [`cad/scripts/fea/fea_parts.py`](../scripts/fea/fea_parts.py) records that the peak on
+    that edge grows with mesh refinement in the lateral case (front layer SF 1.72 / 1.62 / 1.16 at 3 / 2 / 1.5 mm), and
+    treats it as a model artefact: in the printed parts it is the 0.1 mm kerf. `fea_parts.py` leaves out nodes within
+    3 mm of it. No per-part draft 4 table is recorded.
 
 ## Elbow back loop
 
@@ -185,5 +224,4 @@ The RS02-side skirt is trimmed above Y 240; its tip was the one visible down-fac
 ## Not in this draft
 
 - Splice cradle: the splice sits loose in the tube, tied to the trunk relief.
-- The 2 mm fillet at the upper post roots.
 - Two-reviewer gate.
