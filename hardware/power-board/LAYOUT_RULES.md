@@ -359,8 +359,9 @@ gives the same blocks but not the same copper in between. schematic/tools/build_
 heatsink pads, verify_board.sh).
 
 **A full rebuild was run on 2026-11-10** (scratch copy, about 70 minutes) and does not reproduce the committed board:
-- What it reproduces: the placement (one 0.14 mm courtyard overlap, TP7 against C39: latch_block.py's table places a
-  test point by its centre and loses its rotation), the pours and via arrays, the three designed blocks and the nine
+- What it reproduces: the placement (that run had one 0.14 mm courtyard overlap, TP7 against C39, because
+  latch_block.py's table lost a test point's rotation; the table now carries each part's rotation and place.py
+  reports 0 overlaps), the pours and via arrays, the three designed blocks and the nine
   hand-laid specs (the port, U8, latch and hand-laid checks all pass on it), the heatsink pads, the BAT mirror, every
   pour floor.
 - What it does not: the routers' copper between the blocks. The finishing rounds stop at **68 open connections on
