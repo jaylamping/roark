@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use robstride::drive::{self as wire, Command, DriveFrame, HostFrame};
 
 use crate::fault::{Active, Fault, FaultRefused, Injected, Plan, Trigger, flag, flagged};
+use crate::outbox::{OUTBOX, Outbox};
 use crate::plant::{Limits, Plant};
 use robstride::{
     Amps, Celsius, Damper, DeviceId, Drive, Feedback, Gain, Mode, NewtonMeters, Param, ParamValue,
@@ -21,9 +22,6 @@ const ZERO_BLACKOUT_START_US: (u64, u64) = (511_000, 614_000);
 const ZERO_BLACKOUT_LEN_US: (u64, u64) = (45_000, 66_000);
 /// The temperature every status reports. A sim value, not a measurement.
 const TEMPERATURE_C: f64 = 25.0;
-/// Frames waiting for their due time: [`crate::MAX_LATE`] of command replies at the 250 Hz tick with reports on every
-/// 10 ms, and room to spare. A full outbox drops the frame and counts it.
-const OUTBOX: usize = 64;
 
 /// One simulated RobStride drive.
 #[derive(Debug)]
@@ -33,7 +31,7 @@ pub struct SimDrive {
     mode: Mode,
     params: [(Param, ParamValue); Param::ALL.len()],
     plant: Plant,
-    /// Injected faults in effect now; a reboot clears them.
+    /// Injected faults in effect now, but for the transport faults (the outbox's); a reboot clears them.
     active: Active,
     /// Scheduled faults and the record of injections; a reboot keeps them.
     plan: Plan,
@@ -45,11 +43,10 @@ pub struct SimDrive {
     /// Windows in which every frame is dropped: post-Disable silence, then the Set Zero blackout.
     silence: Option<(Instant, Instant)>,
     blackout: Option<(Instant, Instant)>,
-    outbox: [Option<Queued>; OUTBOX],
+    outbox: Outbox,
     /// The latest time the drive has been brought up to: its one clock, the plant's too.
     stepped: Option<Instant>,
     rng: Rng,
-    dropped: u64,
 }
 
 impl SimDrive {
@@ -70,10 +67,9 @@ impl SimDrive {
             run_at: None,
             silence: None,
             blackout: None,
-            outbox: [None; OUTBOX],
+            outbox: Outbox::EMPTY,
             stepped: None,
             rng: Rng(seed),
-            dropped: 0,
         }
     }
 
@@ -87,7 +83,7 @@ impl SimDrive {
     /// scales aren't settled).
     #[must_use]
     pub const fn dropped(&self) -> u64 {
-        self.dropped
+        self.outbox.dropped()
     }
 
     /// Inject `fault` at `now`, and record it: the drive is brought up to just before `now`, the fault applied, then
@@ -224,62 +220,23 @@ impl SimDrive {
         }
     }
 
-    /// The next frame due by `now`, earliest first. Injected transport faults apply here, as each frame falls due, so
-    /// they reach frames already waiting: a silent drive sends nothing, a late one delays each frame once more by its
-    /// lateness, and lost or doubled frames go by count. A doubled frame's second copy waits in the outbox like any
-    /// other frame, so the faults in effect when it falls due apply to it too; it isn't doubled again. The exception is
-    /// a frame a reboot let out (it was due before the power went, [`Fault::Reboot`]): it went out then, so no fault
-    /// injected after the reboot reaches it.
+    /// The next frame gone out by `now`, earliest first. Injected transport faults apply to each frame as it falls due,
+    /// so they reach frames already waiting and never one due before they took effect, however seldom the host reads: a
+    /// silent drive sends nothing, a late one holds each frame once more by its lateness, lost frames go by count, and a
+    /// doubled frame's second copy goes out with the first and isn't doubled again.
     pub fn pop_due(&mut self, now: Instant) -> Option<DriveFrame> {
         self.advance(now);
-        self.next_out(now).map(|q| q.frame)
-    }
-
-    /// The next frame due by `now` that the injected transport faults let out ([`Self::pop_due`]), taken out of the
-    /// outbox.
-    fn next_out(&mut self, now: Instant) -> Option<Queued> {
-        loop {
-            let slot = self
-                .outbox
-                .iter_mut()
-                .filter(|s| s.is_some_and(|q| q.due <= now))
-                .min_by_key(|s| s.map(|q| q.due))?;
-            let queued = slot.take()?;
-            if queued.gone {
-                return Some(queued);
-            }
-            if self.active.silent {
-                continue;
-            }
-            if !queued.delayed && !self.active.late.is_zero() {
-                *slot = Some(Queued {
-                    due: queued.due + self.active.late,
-                    delayed: true,
-                    ..queued
-                });
-                continue;
-            }
-            if self.active.drop > 0 {
-                self.active.drop -= 1;
-                continue;
-            }
-            if !queued.copy && self.active.duplicate > 0 {
-                self.active.duplicate -= 1;
-                *slot = Some(Queued {
-                    copy: true,
-                    ..queued
-                });
-            }
-            return Some(queued);
-        }
+        self.outbox.pop(now)
     }
 
     /// When something next happens without a frame arriving: a reply or report falls due, an enable reaches Run,
     /// `canTimeout` fires, or a scheduled fault's time comes. The caller waits at most until then.
     #[must_use]
     pub fn next_event(&self) -> Option<Instant> {
-        let due = self.outbox.iter().flatten().map(|q| q.due);
-        due.chain(self.next_report)
+        self.outbox
+            .next_due()
+            .into_iter()
+            .chain(self.next_report)
             .chain(self.run_at)
             .chain(self.timeout_at())
             .chain(self.plan.next_at())
@@ -287,36 +244,17 @@ impl SimDrive {
     }
 
     /// Power off and on at `at`: Reset, every parameter back to its default (`canTimeout` 0), reporting off, every
-    /// injected fault cleared (PLAN item 4). Frames already due by `at` went out before the power went; the rest are
-    /// lost. What went out is what the transport faults in effect let out, so a silent drive sent nothing and a late one
-    /// only what its lateness let go by `at`. The joint stays where it is, and the fault plan and its record are the
+    /// injected fault cleared (PLAN item 4). Frames due by `at` went out before the power went, as the transport faults
+    /// in effect let them; the rest are lost. The joint stays where it is, and the fault plan and its record are the
     /// test's, so they stay too.
     fn reboot(&mut self, at: Instant) {
-        let mut outbox = [None; OUTBOX];
-        let mut free = outbox.iter_mut();
-        let mut dropped = self.dropped;
-        // Each pass takes a frame out, delays it once or doubles it once, so at most three passes per frame.
-        for _ in 0..3 * OUTBOX {
-            let Some(queued) = self.next_out(at) else {
-                break;
-            };
-            match free.next() {
-                Some(slot) => {
-                    *slot = Some(Queued {
-                        gone: true,
-                        ..queued
-                    });
-                }
-                None => dropped += 1,
-            }
-        }
+        self.outbox.power_off(at);
         *self = Self {
             rng: Rng(self.rng.next()),
-            dropped,
             plant: self.plant.at_rest(),
             plan: self.plan,
             stepped: self.stepped,
-            outbox,
+            outbox: self.outbox,
             ..Self::new(self.drive, self.uid, 0)
         };
     }
@@ -328,8 +266,9 @@ impl SimDrive {
 
     /// Bring the drive's state up to `now`, each event at its own time, in time order, with the joint moving in
     /// between: a scheduled fault's time, an enable reaching Run (its status sent then), `canTimeout` firing, a report
-    /// falling due (built with the joint as it is then). Tied events go in that order, so a fault due with Run shows in
-    /// the Run status. Events at `now` itself happen only if `inclusive`.
+    /// falling due (built with the joint as it is then); and the outbox settled up to each, so a transport fault reaches
+    /// only frames due at or after its time. Tied events go in that order, so a fault due with Run shows in the Run
+    /// status. Events at `now` itself happen only if `inclusive`.
     fn advance_to(&mut self, now: Instant, inclusive: bool) {
         // Faults fire once each; Run comes once per Enable, and a timeout once per Run reached (an Enable, or a Mode
         // fault). Reports go one at a time while the outbox has room, at most `OUTBOX` of them a step reaching it;
@@ -339,9 +278,10 @@ impl SimDrive {
         let mut events = 0;
         let mut reports = 0;
         while let Some((at, event)) = self.next_due(now, inclusive, true) {
+            self.outbox.settle(at, false);
             if matches!(event, Event::Report) {
                 if let Some(interval) = self.report_interval()
-                    && (reports >= OUTBOX || self.outbox.iter().all(Option::is_some))
+                    && (reports >= OUTBOX || self.outbox.is_full())
                 {
                     let until = self
                         .next_due(now, inclusive, false)
@@ -384,6 +324,7 @@ impl SimDrive {
         {
             self.skip_reports(at, interval, (now, inclusive));
         }
+        self.outbox.settle(now, inclusive);
         self.step_to(now);
     }
 
@@ -426,9 +367,8 @@ impl SimDrive {
         let silent = self.blackout.map_or(0, |(start, end)| {
             before(end).min(count) - before(start).min(count)
         });
-        self.dropped = self
-            .dropped
-            .saturating_add(u64::try_from(count - silent).unwrap_or(u64::MAX));
+        self.outbox
+            .count_dropped(u64::try_from(count - silent).unwrap_or(u64::MAX));
         let skipped = u64::try_from(step * count).unwrap_or(u64::MAX);
         self.next_report = first.checked_add(Duration::from_nanos(skipped));
     }
@@ -483,12 +423,12 @@ impl SimDrive {
             device: self.id(),
             fault,
         });
-        let a = &mut self.active;
+        let (a, t) = (&mut self.active, &mut self.outbox.faults);
         match fault {
-            Fault::Silent => a.silent = true,
-            Fault::Late(by) => a.late = by,
-            Fault::Drop(n) => a.drop = a.drop.saturating_add(n),
-            Fault::Duplicate(n) => a.duplicate = a.duplicate.saturating_add(n),
+            Fault::Silent => t.silent = true,
+            Fault::Late(by) => t.late = by,
+            Fault::Drop(n) => t.drop = t.drop.saturating_add(n),
+            Fault::Duplicate(n) => t.duplicate = t.duplicate.saturating_add(n),
             Fault::FaultBits(faults) => a.faults = faults,
             Fault::Temperature(c) => a.temperature = Some(c),
             Fault::IgnoreWrites(param) => flag(&mut a.ignored_writes, param),
@@ -592,36 +532,10 @@ impl SimDrive {
         wire::report(self.drive, self.mode, self.active.faults, &self.feedback()?).ok()
     }
 
-    /// Queue `frame` to go out at `due`; a frame that can't be built or queued is dropped and counted. Transport faults
-    /// apply when it falls due ([`Self::pop_due`]).
+    /// Queue `frame` to go out at `due`; a frame that can't be built or queued is dropped and counted.
     fn send(&mut self, due: Instant, frame: Option<DriveFrame>) {
-        let free = self.outbox.iter_mut().find(|s| s.is_none());
-        match (frame, free) {
-            (Some(frame), Some(slot)) => {
-                *slot = Some(Queued {
-                    due,
-                    frame,
-                    delayed: false,
-                    copy: false,
-                    gone: false,
-                });
-            }
-            (None, _) | (Some(_), None) => self.dropped += 1,
-        }
+        self.outbox.send(due, frame);
     }
-}
-
-/// A frame waiting to go out.
-#[derive(Clone, Copy, Debug)]
-struct Queued {
-    due: Instant,
-    frame: DriveFrame,
-    /// Already delayed by `Late` once.
-    delayed: bool,
-    /// The second copy of a doubled frame.
-    copy: bool,
-    /// Went out before a reboot, so no fault injected after it reaches the frame.
-    gone: bool,
 }
 
 /// What [`SimDrive::advance_to`] handles next, in the order ties go.

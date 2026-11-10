@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 mod fault;
+mod outbox;
 mod plant;
 mod sim;
 

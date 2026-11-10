@@ -121,13 +121,9 @@ impl Fault {
     }
 }
 
-/// The faults in effect on a drive now.
+/// The faults in effect on a drive now, but for the transport faults, which the outbox holds.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Active {
-    pub(crate) silent: bool,
-    pub(crate) late: Duration,
-    pub(crate) drop: u32,
-    pub(crate) duplicate: u32,
     pub(crate) faults: StatusFaults,
     pub(crate) temperature: Option<Celsius>,
     /// One flag per register, in `Param::ALL` order: a set, so injecting one twice changes nothing.
