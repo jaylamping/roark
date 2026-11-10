@@ -28,7 +28,8 @@ pub struct Timing {
     /// One tick.
     pub period_ns: u64,
     /// How late after its scheduled start a tick may still send a command. Waking later is a missed deadline: it stops an
-    /// active bus, and an idle one sends only its batch's Disables and reporting off that tick. A quarter period by default: provisional, to be tuned on the real adapter (PLAN step 8).
+    /// active bus and holds an idle one's tick ([`BusTick::begin`](crate::BusTick::begin)). A quarter period by
+    /// default: provisional, to be tuned on the real adapter (PLAN step 8).
     pub send_window_ns: u64,
     /// When the tick stops collecting replies, from its scheduled start (about 60 % of the period, PLAN.md item 3).
     pub collect_ns: u64,
@@ -277,7 +278,7 @@ pub enum Drain {
     /// It emptied the socket: what is read from here on came after the backlog.
     Emptied,
     /// It emptied the socket but read more frames than the shell may before a send: what it said can't be known in time,
-    /// so an active bus stops and an idle one sends only its batch's Disables and reporting off that tick.
+    /// so an active bus stops and an idle one's tick is held ([`BusTick::begin`](crate::BusTick::begin)).
     Backlog,
     /// It gave up with frames still queued: as for `Backlog`, and until a drain empties the socket its statuses may
     /// predate the sends. They still show each drive's mode and faults, but answer nothing and confirm nothing.
@@ -447,9 +448,9 @@ pub struct DriveView {
     pub observed: Option<Observed>,
     /// When its last fresh status was read: the first status after a command the socket took. Freshness, not
     /// acknowledgement: the protocol has no sequence numbers, so which command a status answers can't be proven. Read
-    /// time, not arrival: it can trail the kernel's receipt by up to period - collect + send window
-    /// (units-and-frames.md section 5). Cleared on an idle bus's held tick (a late wake or a backlog), whose drain read
-    /// too late to vouch for it.
+    /// time, not arrival: for every status motion is sent on, it trails the kernel's receipt by at most period -
+    /// collect + send window (units-and-frames.md section 5). An idle bus's held tick clears it after its batch
+    /// checks ([`BusTick::begin`](crate::BusTick::begin)).
     pub fresh_ns: Option<u64>,
     /// Whether it answered this tick's command by the collect deadline.
     pub answered: bool,
