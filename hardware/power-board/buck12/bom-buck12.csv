@@ -7,7 +7,7 @@
 "C15","47nF X7R","Capacitor_SMD:C_0603_1608Metric","1",""
 "C16","2.2uF 25V X7R","Capacitor_SMD:C_0805_2012Metric","1",""
 "C17,C22,C23,C26,C29","100nF 50V X7R","Capacitor_SMD:C_0603_1608Metric","5",""
-"C18","100pF C0G","Capacitor_SMD:C_0603_1608Metric","1",""
+"C18","15pF 100V C0G","Capacitor_SMD:C_0603_1608Metric","1",""
 "C19","1nF C0G","Capacitor_SMD:C_0603_1608Metric","1",""
 "C20","4.7nF C0G","Capacitor_SMD:C_0603_1608Metric","1",""
 "C21","10pF C0G","Capacitor_SMD:C_0603_1608Metric","1",""

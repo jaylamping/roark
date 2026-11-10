@@ -130,7 +130,7 @@
 "buck","C15","47nF X7R","C_0603_1608Metric","1","2","2","4","KEMET","C0603C473K5RACTU","399-C0603C473K5RACTUCT-ND","Voltage not in value string: 50 V X7R chosen (SS pin)."
 "buck","C16","2.2uF 25V X7R","C_0805_2012Metric","1","2","0","2","KEMET","C0805C225K3RACTU","399-C0805C225K3RACTUCT-ND",""
 "buck","C17,C22,C23,C26,C29","100nF 50V X7R","C_0603_1608Metric","5","10","0","10","KEMET","C0603C104K5RACTU","399-C0603C104K5RACTUCT-ND",""
-"buck","C18","100pF C0G","C_0603_1608Metric","1","2","0","2","KEMET","C0603C101J5GACTU","399-C0603C101J5GACTUCT-ND","Voltage not in value string: 50 V C0G chosen; node is low-voltage."
+"buck","C18","15pF 100V C0G","C_0603_1608Metric","1","2","0","2","KEMET","C0603C150J1GACTU","399-C0603C150J1GACTUCT-ND","ILIM filter: the node swings with SW up to VIN (54.6 V), so 100 V C0G; 15 pF x 402R = 6.0 ns (LM5146: about 6 ns)."
 "buck","C19","1nF C0G","C_0603_1608Metric","1","2","2","4","KEMET","C0603C102J5GACTU","399-C0603C102J5GACTUCT-ND","Voltage not in value string: 50 V C0G chosen; node is low-voltage."
 "buck","C20","4.7nF C0G","C_0603_1608Metric","1","2","0","2","KEMET","C0603C472J5GACTU","399-C0603C472J5GACTUCT-ND","Voltage not in value string: 50 V C0G chosen; node is low-voltage."
 "buck","C21","10pF C0G","C_0603_1608Metric","1","2","2","4","KEMET","C0603C100J5GACTU","399-C0603C100J5GACTUCT-ND","Voltage not in value string: 50 V C0G chosen; node is low-voltage."
