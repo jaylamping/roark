@@ -162,5 +162,15 @@ if len(sys.argv)>3:
     for cname,test in (('ESTOP',domains.is_estop),('HV54',domains.is_hv)):
         have={p_['pattern'] for p_ in pat if p_['netclass']==cname}; want={'/'+x for x in nets if test('/'+x)}
         ok(have==want,f'.kicad_pro net class {cname} equals tools/domains.py: missing {sorted(want-have)}, extra {sorted(have-want)}')
+    dru=open(sys.argv[3][:-len('kicad_pro')]+'kicad_dru',encoding='utf-8').read().replace('\r','')
+    # kicad-cli drops a malformed rules file without a word, and the fill then runs on the defaults: the file must parse
+    import re as _re
+    body=_re.sub(r'#[^\n]*','',dru); depth=0; okp=True
+    for ch in _re.sub(r'"[^"]*"','""',body):
+        depth+=ch=='('; depth-=ch==')'; okp=okp and depth>=0
+    rules=_re.findall(r'\(rule (\w+)',body)
+    ok(okp and depth==0 and body.count('(constraint ')==len(rules)==body.count('(condition ') and rules==['estop_to_54v','latch_supply_leak','estop_at_U1'],
+       f'.kicad_dru is well formed: balanced, one constraint and one condition per rule, rules {rules}')
+    ok(domains.leak_rule() in dru,'.kicad_dru rule latch_supply_leak equals tools/domains.py leak_rule() (LATCH_SUPPLY against LEAK_SENSITIVE, 1.5 mm)')
 print('audited',cnt[0]); print('FAILS',len(fail))
 sys.exit(1 if fail else 0)

@@ -7,7 +7,8 @@
 #   place  -> placed.kicad_pcb          tools/place.py (takes the blocks' part positions from port_template.py, u8_block.py)
 #   power  -> base.kicad_pcb            route_power (with vbus_copper), hv_spacing (with estop_guards), gnd_fanout, route_u1
 #   route  -> routed.kicad_pcb          tools/route_stages.sh, a few hours; its route_checks run is a report here
-#   blocks -> blocks.kicad_pcb          port_template.py (rip and stamp the six ports), u8_block.py (the same for U8),
+#   blocks -> blocks.kicad_pcb          port_template.py (rip and stamp the six ports), u8_block.py and latch_block.py (the
+#                                       same for U8 and the latch supply),
 #                                       then lay_path.py @hand_laid.specs (exit 1 if a spec is blocked)
 #   finish -> finished.kicad_pcb        finish_route.py round by round until a round closes nothing, joint_fix.py,
 #                                       bat_copper.py, estop_guards.py, a kicad-cli refill, heatsink_pads.py
@@ -64,7 +65,8 @@ if run blocks; then
   [ -s "$W/routed.kicad_pcb" ] || die "no routed.kicad_pcb in $W"
   rm -f "$W/b1.kicad_pcb" "$W/b2.kicad_pcb" "$W/blocks.kicad_pcb"
   "$KP" tools/port_template.py "$W/routed.kicad_pcb" "$W/b1.kicad_pcb" 2>&1 | q | tail -8; [ -s "$W/b1.kicad_pcb" ] || die 'port_template failed'
-  "$KP" tools/u8_block.py "$W/b1.kicad_pcb" "$W/b2.kicad_pcb" 2>&1 | q | tail -2; [ -s "$W/b2.kicad_pcb" ] || die 'u8_block failed'
+  "$KP" tools/u8_block.py "$W/b1.kicad_pcb" "$W/b1b.kicad_pcb" 2>&1 | q | tail -2; [ -s "$W/b1b.kicad_pcb" ] || die 'u8_block failed'
+  "$KP" tools/latch_block.py "$W/b1b.kicad_pcb" "$W/b2.kicad_pcb" 2>&1 | q | tail -2; [ -s "$W/b2.kicad_pcb" ] || die 'latch_block failed'
   # the pours refill round the hand-laid copper, so a pour is not an obstacle for it (SOFTZ=1)
   SOFTZ=1 LOCK=1 "$KP" tools/lay_path.py "$W/b2.kicad_pcb" "$W/blocks.kicad_pcb" @tools/hand_laid.specs > "$W/hand_laid.txt" 2>&1; rc=$?
   q < "$W/hand_laid.txt" | cut -c1-200

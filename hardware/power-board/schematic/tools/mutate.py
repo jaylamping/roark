@@ -6,7 +6,8 @@ tools/verify_selftest.sh, which then expects each check to fail on it. Nothing h
             4    a /GATE track (rides on VBUS, not on the 54 V list) on In2 under the latch block;
             7    G2's via in the MID mirror moved 0.3 mm (the count per net stays the same);
             8    three vias on /PRE_G, and GATE_A's via at TP11 moved 0.35 mm;
-            9    a stale guard area ESTOP_GUARD_U8_1 at U8's old position.
+            9    a stale guard area ESTOP_GUARD_U8_1 at U8's old position;
+            10   a BAT_CTL stub within 1.5 mm of MID_B and L_B copper.
   copper  breaks the copper checks: on port 2, R4's branch of the gate node pulled back to a tangent touch with the
           gate line (joint_check, port_template MODE=check); U8's FLT_A jog moved (u8_block MODE=check); a via of another net in the VBUS band and a 12 mm
           no-fill slot across the VBUS stem (pour_width).
@@ -46,6 +47,7 @@ if kind=='rules':
         if spot: break
     track('/GATE',CU[2],spot,(spot[0]+1,spot[1]))
     find_via('/G2',(149.9,160.19)).SetPosition(V((150.2,160.19)))
+    track('/BAT_CTL',CU[0],(115.6,140.1),(115.6,140.7))   # check 10: the latch supply 0.6 mm from R49's MID_B pad and 0.7 mm from L_B
     for p in ((120.0,300.0),(121.0,300.0),(122.0,300.0)): via('/PRE_G',p)
     find_via('/GATE_A',(168.55,164.75)).SetPosition(V((168.55,165.1)))
     k=pcbnew.ZONE(b); k.SetIsRuleArea(True); k.SetDoNotAllowZoneFills(True); k.SetDoNotAllowTracks(False); k.SetDoNotAllowVias(False)

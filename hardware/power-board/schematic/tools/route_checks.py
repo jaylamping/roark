@@ -12,15 +12,14 @@
   3. Kelvin sense pairs: for each SH*_P / SH*_N pair, the length of each leg and the share of the pair's whole length
      (both legs) that runs within 1.0 mm, centre to centre on the same layer, of the other leg. Fails below
      tools/domains.py KELVIN_FLOOR.
-  4. No track, via, pad or pour of a 54 V net, or of a net riding on 54 V, on the inner layers under the latch block
-     (tools/domains.py LATCH).
+  4. No track, via, pad or pour of a 54 V net, of a net riding on 54 V, or of the latch's supply chain (BAT_F, BAT_R,
+     BAT_CTL) on the inner layers under the latch block (tools/domains.py LATCH).
   5. No E-stop via inside a 54 V zone outline on any layer.
   6. The inner GND planes and fills (In1-In4) have tools/stack.py PLANE_CLEAR as their zone clearance.
   7. Vias of another net inside a MID pour outline: only the ones at the coordinates in tools/domains.py MID_VIA_OK.
   8. Gate-drive nets take at most 2 vias; a net listed in tools/domains.py GATE_VIA_OK may have exactly its listed vias.
   9. The F.Cu E-stop guard areas (ESTOP_GUARD_*) are the set tools/estop_guards.py generates from the pads.
- 10. The latch's 54 V supply chain within 1.5 mm of a leakage-sensitive E-stop net (tools/domains.py): counted, and
-     failed above LEAK_PAIRS_MAX (an open item that may only shrink; LEAK_LIST=1 lists the pairs).
+ 10. The latch's 54 V supply chain keeps 1.5 mm to the leakage-sensitive E-stop nets (tools/domains.py): no pair closer.
 Run with KiCad's Python: <kicad python> tools/route_checks.py <board.kicad_pcb>   (exit 1 on a violation)"""
 import re,sys,math,collections
 import pcbnew
@@ -130,8 +129,8 @@ for r in pkg[:20]: print('   ',r)
 lx0,lx1,ly0,ly1=domains.latch_page()
 LR=pcbnew.BOX2I(pcbnew.VECTOR2I(mm(lx0),mm(ly0)),pcbnew.VECTOR2L(mm(lx1-lx0),mm(ly1-ly0))); LRS=pcbnew.SHAPE_RECT(LR)
 latch=[(b.GetLayerName(L),n,lab,pos(s_)) for L in LAYERS if L not in OUTER for n,_,s_,lab,ref,cy in byL[L]
-       if RIDES(n) and s_.BBox().Intersects(LR) and coll(s_,LRS,0)]
-print('4. 54 V or 54 V-riding inner copper (track, via, pad, pour) under the latch block:',len(latch))
+       if (RIDES(n) or n in domains.LATCH_SUPPLY) and s_.BBox().Intersects(LR) and coll(s_,LRS,0)]
+print('4. 54 V, 54 V-riding or latch-supply inner copper (track, via, pad, pour) under the latch block:',len(latch))
 for r in latch: print('   ',r)
 # ---- 5. no E-stop via inside a 54 V zone outline on any layer: the refill clears 1.5 mm round it, but the via then sits
 # in a hole in the 54 V pour with no ground guard between (LAYOUT_RULES, E-stop rule)
@@ -177,10 +176,11 @@ gw,gs=estop_guards.diff(b)
 print('9. E-stop guard areas: missing or misplaced',len(gw),'stale',len(gs))
 for r in gw: print('    missing/misplaced',r)
 for r in gs: print('    stale',r)
-# ---- 10. the latch's own 54 V supply chain against the leakage-sensitive E-stop nets (tools/domains.py): an open item,
-# held to its count so it can only shrink
+# ---- 10. the latch's own 54 V supply chain against the leakage-sensitive E-stop nets (tools/domains.py): none within
+# 1.5 mm (the same pairs also fail checks 1/2 through domains.clearance; this line names them as a group)
 lbad=[('latch supply pairs',len(leak),'over the ceiling',domains.LEAK_PAIRS_MAX)] if len(leak)>domains.LEAK_PAIRS_MAX else []
-print(f'10. latch supply (BAT_F, BAT_R, BAT_CTL) within 1.5 mm of a leakage-sensitive E-stop net: {len(leak)} item pairs (open item; ceiling {domains.LEAK_PAIRS_MAX})',dict(sorted(collections.Counter((r[1],r[4]) for r in leak).items())))
+print(f'10. latch supply (BAT_F, BAT_R, BAT_CTL) within 1.5 mm of a leakage-sensitive E-stop net: {len(leak)} item pairs (allowed {domains.LEAK_PAIRS_MAX})',dict(sorted(collections.Counter((r[1],r[4]) for r in leak).items())))
+for r in leak[:20]: print('   ',r)
 if __import__('os').environ.get('LEAK_LIST'):
     for r in leak: print('   ',r)
 bad+=latch+esv+pl+mbad+gbad+gw+gs+lbad

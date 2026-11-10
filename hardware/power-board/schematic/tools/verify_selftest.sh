@@ -35,6 +35,7 @@ expect 'check 4: 54 V-riding net under the latch block' "$W/rules.txt" "'In2\.Cu
 expect 'check 7: excepted via pinned to its position' "$W/rules.txt" "\('/G2', \(150\.2, 160\.19\), 'not a listed exception'\)"
 expect 'check 8: PRE_G is a gate net; GATE_A via off its position' "$W/rules.txt" "\('/PRE_G', 3, 'vias, allowed', 2\)" "\('/GATE_A', 3, 'vias; not at a listed position:', \[\(168\.55, 165\.1\)\]\)"
 expect 'check 9: stale E-stop guard' "$W/rules.txt" "stale ESTOP_GUARD_U8_1"
+expect 'check 10: latch supply near a leakage-sensitive net' "$W/rules.txt" "^10\. .*: [1-9][0-9]* item pairs"
 
 echo '--- the copper checks on the "copper" copy'
 "$KP" "$T/mutate.py" "$BASE" "$W/copper.kicad_pcb" copper 2>&1 | q
@@ -73,6 +74,10 @@ d['net_settings']['netclass_patterns']=[x for x in p if x['pattern']!='/SP_ENR']
 PYEOF
 "$PY" -I "$T/check.py" "$T" "$W/real/net.net" "$W/noestop.kicad_pro" > "$W/k1.txt" 2>&1 && { echo '   NOT CAUGHT: check.py exit 0'; bad=1; }
 expect 'check.py: ESTOP class against domains.py' "$W/k1.txt" "^FAIL .kicad_pro net class ESTOP equals tools/domains.py: missing \['/SP_ENR'\]"
+mkdir -p "$W/baddru"; cp "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/baddru/x.kicad_pro"
+sed 's/(constraint clearance (min 1.5mm))$/(constraint clearance (min 1.5mm)/' "$LAYOUT/marengo_pdu_revb.kicad_dru" > "$W/baddru/x.kicad_dru"   # two parentheses lost
+"$PY" -I "$T/check.py" "$T" "$W/real/net.net" "$W/baddru/x.kicad_pro" > "$W/k3.txt" 2>&1 && { echo '   NOT CAUGHT: check.py passed a malformed rules file'; bad=1; }
+expect 'check.py: a rules file that does not parse (kicad-cli drops it silently)' "$W/k3.txt" "^FAIL .kicad_dru is well formed"
 mkdir -p "$W/pb/buck12"; cp "$PB/bom-rev-B.csv" "$PB/kit-2sets.csv" "$W/pb/"; cp "$PB/buck12/bom-buck12.csv" "$W/pb/buck12/"
 sed -i 's/6 +3V3_PI, 7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA/6 GND, 7 +3V3_PI, 8 SDA, 9 GND, 10 SCL, 11 SP_EN, 12 GND/' "$W/pb/bom-rev-B.csv" "$W/pb/kit-2sets.csv" "$W/pb/buck12/bom-buck12.csv"
 "$PY" -I "$T/bom_check.py" "$T" "$W/real/net.net" "$W/pb" "$W/real/buck.net" > "$W/k2.txt" 2>&1 && { echo '   NOT CAUGHT: bom_check exit 0'; bad=1; }

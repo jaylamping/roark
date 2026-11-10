@@ -29,20 +29,23 @@ def dom(n):
 def rides(n):
     """54 V copper, or copper riding on a 54 V node (a gate or bootstrap on its source, a sense tap on VBUS)"""
     return is_hv(n) or dom(n) is not None
-# The latch's own 54 V supply chain (BAT -> F1 -> BAT_F -> 22R -> BAT_R -> ES1D -> BAT_CTL -> U2) lies inside the latch
-# block, among the E-stop nets, so it is not on the 54 V list (599 item pairs would break the 1.5 mm rule). Most E-stop
-# nets fail safe under leakage from it or need under 70 kOhm to matter; these are the ones that leakage from 54 V could
-# push toward "run" at over 100 kOhm (LAYOUT_RULES.md, "Leakage from the latch supply": the table net by net):
+# The latch's own 54 V supply chain (BAT -> F1 -> BAT_F -> 22R -> BAT_R -> ES1D -> BAT_CTL -> U2) lies at the latch
+# block, so it is not on the 54 V list (the fail-safe E-stop nets may pass it at 0.2 mm). These E-stop nets are the ones
+# that leakage from 54 V could push toward "run" at over 100 kOhm (LAYOUT_RULES.md, "Leakage from the latch supply": the
+# table net by net), and they keep 1.5 mm to the chain on every layer:
 #   L_B, RST_C  0.47-0.56 MOhm turns the seal-in NPN on: the latch sets without a reset press
 #   MID_B       20 MOhm reports "MID healthy" and releases the reset interlock
 #   RUN_A, EN_A 4.3 MOhm enables bank A;  RUN_B, UVLO, FLT_D  0.44-0.7 MOhm enables bank B
-# They should keep 1.5 mm to the chain. On the routed board 135 item pairs don't (the chain's parts stand courtyard to
-# courtyard with Q5, R48 and R16), and clearing them means re-placing the latch block, which is open (exception 11).
-# tools/route_checks.py check 10 counts the pairs and fails above LEAK_PAIRS_MAX, so the count can only go down; the
-# routers keep the 0.2 mm default here until the block is re-laid.
+# tools/latch_block.py places the chain and L_B's parts so that this holds; clearance() gives the routers and
+# tools/route_checks.py the 1.5 mm, the .kicad_dru rule latch_supply_leak (leak_rule() below; tools/handfinish_prep.py
+# writes it, tools/check.py compares) gives it to KiCad's DRC and fill, and route_checks check 10 counts the pairs: 0.
 LATCH_SUPPLY={'/BAT_F','/BAT_R','/BAT_CTL'}
 LEAK_SENSITIVE={'/L_B','/RST_C','/MID_B','/RUN_A','/EN_A','/RUN_B','/UVLO','/FLT_D'}
-LEAK_PAIRS_MAX=135
+LEAK_PAIRS_MAX=0
+def leak_rule():
+    """the .kicad_dru rule for the two lists, exactly as tools/handfinish_prep.py writes it"""
+    sup=' || '.join(f"A.NetName == '{n}'" for n in sorted(LATCH_SUPPLY)); sen=' || '.join(f"B.NetName == '{n}'" for n in sorted(LEAK_SENSITIVE))
+    return f'(rule latch_supply_leak\n  (constraint clearance (min 1.5mm))\n  (condition "({sup}) && ({sen})"))\n'
 def latch_leak(a,b):
     """one net on the latch's supply chain, the other a leakage-sensitive E-stop net"""
     return (a in LATCH_SUPPLY and b in LEAK_SENSITIVE) or (b in LATCH_SUPPLY and a in LEAK_SENSITIVE)
@@ -59,6 +62,7 @@ def clearance(a,b,outer):
     """required copper clearance (mm) between nets a and b on an outer (True) or inner layer"""
     if a==b: return 0.0
     if (is_estop(a) and is_hv(b)) or (is_estop(b) and is_hv(a)): return 1.5   # the rule's net list; 54 V-riding nets get 0.6 below
+    if latch_leak(a,b): return 1.5   # the latch supply chain against the leakage-sensitive E-stop nets
     if (rides(a) or rides(b)) and not (dom(a) and dom(a)==dom(b)): return 0.6 if (outer and not COATED) else 0.2
     return 0.2
 # Documented exceptions (LAYOUT_RULES.md, "Exceptions and hand-laid copper"), tested by tools/route_checks.py checks 7 and 8.

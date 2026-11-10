@@ -147,8 +147,8 @@ def place_at(fp,X,Y,rot=0,back=False):
 FIX.update({r:(X,Y,rot,False) for r,(X,Y,rot) in PFIX.items()})
 # the small parts of each port sit at the designed template positions (tools/port_template.py PLACE, page mm, placed
 # after the packing below), so they aren't packed
-import port_template as PT, u8_block
-TEMPLATE={PT.refs(k)[role] for k in PORT for role in PT.PLACE}|set(u8_block.PLACE)   # U8's block: tools/u8_block.py
+import port_template as PT, u8_block, latch_block
+TEMPLATE={PT.refs(k)[role] for k in PORT for role in PT.PLACE}|set(u8_block.PLACE)|set(latch_block.PLACE)|set(latch_block.PLACE_ALL)   # U8's block: tools/u8_block.py; the latch supply: tools/latch_block.py
 # single parts moved by hand after the packing (page mm: courtyard centre, pad 1): C81, the watchdog's CWD cap, beside
 # U25's pin 2 (the packer had put it 20 mm away)
 MOVED={'C81':((101.6,246.0),(101.6,246.775))}
@@ -238,7 +238,7 @@ for blk,(X0,X1,Y0,Y1) in BLK.items():
     else: rep[blk]=pack(blk,X0,X1,Y0,Y1,refs)
 PT.FPS.update(fps)
 for k in PORT: PT.place(b,k)   # page mm = this file's P(): X+150, 440-Y
-u8_block.place(fps); u8_block.place(fps,MOVED)
+u8_block.place(fps); u8_block.place(fps,MOVED); latch_block.place(fps)
 # J20 (JST GH horizontal, E-stop loop) must open toward the -X edge (KO_estop); maxrects only knows its box, so turn it 180
 # about the courtyard centre, which keeps the box
 if round(fps['J20'].GetOrientationDegrees())==90: fps['J20'].Rotate(bbox(fps['J20']).GetCenter(),pcbnew.EDA_ANGLE(180,pcbnew.DEGREES_T))

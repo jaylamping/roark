@@ -7,7 +7,7 @@
 #   tools/open_nets.py          more than OPEN_MAX open connections fails (default 0)
 #   tools/route_checks.py       spacing by domain, latch block, E-stop vias and guards, excepted vias, Kelvin floors
 #   tools/joint_check.py        every joint has 0.1 mm of real copper overlap
-#   tools/port_template.py, tools/u8_block.py and tools/lay_path.py @hand_laid.specs with MODE=check
+#   tools/port_template.py, tools/u8_block.py, tools/latch_block.py and tools/lay_path.py @hand_laid.specs with MODE=check
 #                               the designed blocks' and the hand-laid copper equal the scripts
 #   tools/pour_width.py         60 A pours: temperature rise at the narrowest cut, vias in the VBUS band
 #   tools/heatsink_pads.py MODE=check   the bare B.Mask openings under the FET tabs are the generated set
@@ -71,6 +71,7 @@ run() {   # run <label> <command...>: print the tool's output, fail on a non-zer
 run joint_check "$KP" "$ROOT/tools/joint_check.py" "$W/verify.kicad_pcb"
 MODE=check run 'port template copper differs from port_copper.py' "$KP" "$ROOT/tools/port_template.py" "$W/verify.kicad_pcb"
 MODE=check run 'U8 block copper differs from u8_block.py' "$KP" "$ROOT/tools/u8_block.py" "$W/verify.kicad_pcb"
+MODE=check run 'latch block copper differs from latch_block.py' "$KP" "$ROOT/tools/latch_block.py" "$W/verify.kicad_pcb"
 MODE=check run 'hand-laid copper differs from hand_laid.specs' "$KP" "$ROOT/tools/lay_path.py" "$W/verify.kicad_pcb" "@$ROOT/tools/hand_laid.specs"
 run pour_width "$KP" "$ROOT/tools/pour_width.py" "$W/verify.kicad_pcb"
 MODE=check run 'heatsink pad openings differ from heatsink_pads.py' "$KP" "$ROOT/tools/heatsink_pads.py" "$W/verify.kicad_pcb"

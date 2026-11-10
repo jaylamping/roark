@@ -33,5 +33,15 @@ RULE="""# E-stop safety nets keep 1.5 mm to 54 V copper on every layer (LAYOUT_R
 """
 if 'estop_to_54v' not in s:
     k=s.find('(rule '); s=s[:k]+RULE+s[k:]
+# the latch supply's leak rule, from domains.py's lists; it goes ahead of U1's package rule
+NL=chr(10)
+LEAKHDR=("# The latch supply chain keeps 1.5 mm to the leakage-sensitive E-stop nets (schematic/tools/domains.py LATCH_SUPPLY,"+NL+
+         "# LEAK_SENSITIVE; LAYOUT_RULES.md, Leakage from the latch supply). Written by schematic/tools/handfinish_prep.py."+NL)
+s=s.replace(LEAKHDR,'')
+k=s.find('(rule latch_supply_leak')
+if k>=0: s=s[:k]+s[s.index('))'+NL,k)+3:]
+k=s.find('# U1 (LM5069)'); k=len(s) if k<0 else k
+if k==len(s) and not s.endswith(NL): s+=NL
+s=s[:k]+LEAKHDR+domains.leak_rule()+s[k:]
 open(dru,'w',newline='').write(s)
 print('classes',[c['name'] for c in ns['classes']],'patterns',len(pat))
