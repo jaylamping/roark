@@ -30,7 +30,7 @@ echo '--- route_checks.py on the "rules" copy'
 "$KP" "$T/route_checks.py" "$W/rules.kicad_pcb" > "$W/rules.txt" 2>&1; rc=$?
 [ "$rc" != 0 ] && echo "   route_checks exit $rc" || { echo '   NOT CAUGHT: route_checks exit 0'; bad=1; }
 expect 'checks 1/2: a 0.2 mm pair, at U8 with no courtyard relaxation' "$W/rules.txt" "'/EN_A', 'track'.*'GND', 'U8\.2'.*<0\.2 mm"
-expect 'check 3: Kelvin floor' "$W/rules.txt" "\('/SHL3', '.*paired, floor 56"
+expect 'check 3: Kelvin floor' "$W/rules.txt" "\('/SHL3', '.*paired, floor 57"
 expect 'check 4: 54 V-riding net under the latch block' "$W/rules.txt" "'In2\.Cu', '/GATE', 'track'"
 expect 'check 7: excepted via pinned to its position' "$W/rules.txt" "\('/G2', \(150\.2, 160\.19\), 'not a listed exception'\)"
 expect 'check 8: PRE_G is a gate net; GATE_A via off its position' "$W/rules.txt" "\('/PRE_G', 3, 'vias, allowed', 2\)" "\('/GATE_A', 3, 'vias; not at a listed position:', \[\(168\.55, 165\.1\)\]\)"

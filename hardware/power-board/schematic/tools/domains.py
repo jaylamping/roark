@@ -80,7 +80,10 @@ GATE_VIA_OK={'/G2':[(149.9,160.19),(130.2,167.0),(125.6,139.8)],'/GATE_A':[(132.
 def via_listed(p,table,net):
     """is the via at p (page mm) one of the net's documented ones?"""
     return any(abs(p[0]-q[0])<=VIA_TOL and abs(p[1]-q[1])<=VIA_TOL for q in table.get(net,()))
-# Kelvin pairs: the least share (percent) of the pair's whole length, both legs, that runs within 1.0 mm (centre to
-# centre, same layer) of the other leg. tools/route_checks.py check 3 fails below it. The floors are the routed board's
-# values of 2026-11-10 rounded down: a re-route may not make a pair worse. SH9 is exception 9 in LAYOUT_RULES.
-KELVIN_FLOOR={'/SH':61,'/SH9':9,'/SHL1':56,'/SHL2':56,'/SHL3':56,'/SHL4':56,'/SHL5':56,'/SHL6':56}
+# Kelvin pairs: the least share (percent) of both legs' length, measured from the shunt's sense pads to the IC pins
+# (tools/route_checks.py check 3), that runs within 1.0 mm (centre to centre, same layer) of the other leg. The floors are
+# the routed board's values of 2026-11-10 rounded down: a re-route may not make a pair worse.
+# A Kelvin leg ends at IC pins; these parts count as ends too: R61 and R62 are the 0R links from the SH pair into U8's
+# CS pins (CSP_A, CSN_A), so the pair's run to them is part of the pair.
+KELVIN_ENDS={'/SH_P':('R61',),'/SH_N':('R62',)}
+KELVIN_FLOOR={'/SH':86,'/SH9':66,'/SHL1':57,'/SHL2':57,'/SHL3':57,'/SHL4':57,'/SHL5':57,'/SHL6':57}

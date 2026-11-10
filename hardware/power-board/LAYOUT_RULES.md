@@ -285,8 +285,8 @@ How the board got there:
     3.2 mm from the gate pin (3.8 mm of F.Cu track, the zener on the same line); R4's gate pad is 5.9 mm away. One
     In3 link goes to the slew diode right of the FET;
   - Kelvin pair on In2 down the west side of the eFuse, P outside and N inside at 0.6 mm, feeding R0/C2 and R1 through one
-    via each and ending at the meter's pins 10/9: 56 % of both legs' length paired on all six ports (72 % of P, 46 %
-    of N, centre to centre within 1.0 mm; the earlier "76 %" counted P only, edge to edge);
+    via each and ending at the meter's pins 10/9: 58 % of both legs' length paired on all six ports (79 % of P, 44 %
+    of N, centre to centre within 1.0 mm, sense pad to IC pin);
   - the sense resistors, the bootstrap and the timer/limit parts keep one In2/In3 lane each across the FET's pin row.
   - Port 2's meter reads D_L2 on pin 8 (deliberate: schematic/gen/gen.py and check.py), so its tap is laid by hand on B.Cu
     to the L6 drain mirror instead of the template's V_L tap.
@@ -296,7 +296,7 @@ How the board got there:
   (54 V) and the ABS spine (54 V), 7 mm apart, so its E-stop pins could not leave sideways at 1.5 mm. U8 is turned so
   the logic row faces north and the 54 V row south; R27, R28, TP13, R36, C29 and R37 sit north of it, every 54 V part
   south. EN_A and FLT_A run from the pins on F.Cu with no via. The SH pair runs on In2 down the middle of the column
-  to R61/R62 (62 % of both legs paired).
+  to R61/R62 (87 % of both legs paired, RS1 to U1 and to R61/R62).
 - **Latch supply block** (schematic/tools/latch_block.py, `MODE=check` / `MODE=sync`): "Leakage from the latch supply"
   above. tools/place.py takes the whole latch group's positions from it.
 - **VBUS stem copper** (schematic/tools/vbus_copper.py), the **BAT mirror** (bat_copper.py), the **bare heatsink pads** (heatsink_pads.py) and the **E-stop
@@ -320,8 +320,13 @@ and ABS_N under it on the inner layers, and G2's In3 run cannot reach the tee be
 between. Moving R2 there would need the MID tap, R34 and TP14 moved first; the result would be about 30 mm with the
 same 3 vias (the In3 run still has to change to In2 south of the tee), so it is shorter but takes no fewer vias.
 
-Kelvin pairs still poorly paired: **SH9 (9 %)**. RS9's N sense pad is on the far side of its BAT pad from U7, so N has to
-pass under that pad on In2 while P stays on F.Cu; a better pair needs RS9 or U7 moved.
+**Kelvin pairs** (route_checks check 3 measures each leg from the shunt's sense pads to the IC pins it serves; a
+branch that ends at a filter or decoupling part is not part of the pair): SH (RS1 to U1 and to U8's links) 87 %,
+the six port pairs 58 %, SH9 (RS9 to U7) 66 %. SH9 was 8 %: its N leg ran on In2 and its P leg on F.Cu. A 2512 Kelvin
+shunt has its two sense pads at opposite ends, so one leg has to cross the part: N now leaves its pad under the
+shunt, crosses to the P end on In2 (6 mm) and comes up beside P's pad, and from there the two run side by side on
+F.Cu, 0.5 to 0.57 mm apart, to U7's pins (hand_laid.specs). P is paired over its whole length; N's unpaired half is
+the crossing. RS9 and U7 did not have to move: F2's holder fills the space west of U7 and the BAT arm the space north.
 
 ## Exceptions and hand-laid copper
 
@@ -337,7 +342,7 @@ Rule exceptions and open items on this board, each tested or bounded by a check:
 | 6 | Inner GND planes and fills at 0.3 mm zone clearance (outer fills 0.6 mm); the VBUS pours on In2/In3 at 0.25 mm | In1-In4 | accepted in the project thread, 2026-11-10 | route_checks 6 |
 | 7 | Signal and GND vias pass through the L6 VBUS stem, 18 of them in the band X 130-160, Y 180-190 | under the meter blocks and the port blocks | band rule: no new ones | pour_width.py (18 at most; the stem's rise) |
 | 8 | Masked copper (the VBUS stem, the vias through it, GND fill) inside the heatsink zone on L6; bare copper only at the ten FET pads, under an insulating pad that is the only insulation there | X -33..33, Y 200-305 | the rule as the board meets it; the pad is specified (GAP PAD TGP 3000, 0.020 in, over 3000 Vac) and the heatsink is tied to GND through 100 kΩ with a test point (R139, TP17, J27) | heatsink_pads.py MODE=check, DRC's solder-mask bridge check |
-| 9 | SH9 Kelvin pair 9 % paired | RS9 to U7 | open: needs RS9 or U7 moved | route_checks 3 (floor 9 %) |
+| 9 | Kelvin pairs are paired over 58 % (ports), 66 % (SH9) and 87 % (SH) of their length, not all of it: a 2512 Kelvin shunt's sense pads are at opposite ends, so one leg crosses the part alone | each shunt | by construction | route_checks 3 (floors 57, 66, 86 %) |
 | 10 | VBUS stem 25.3 °C at its worst cut (target 20 °C, about 25 accepted); port legs 20.2–21.2 °C (at their 10.5 mm target, bounded by the pads) | Board, above | accepted as measured; BAT (12.2 °C) and the GND return (18.5 °C) are no longer open | pour_width.py floors for every path |
 | 11 | The fail-safe E-stop nets (RUN, LOOP_RET, L_PB, L_E, L_PC, RUN_P, VB_B, INT_B, RST_SRC, RST_IN) keep 0.2 mm, not 1.5 mm, to the latch supply chain, which is at 54 V but not on the 54 V list | latch block | by the leakage table ("Leakage from the latch supply"); the leakage-sensitive nets keep 1.5 mm (0 pairs closer) | route_checks 1/2 and 10, DRC `latch_supply_leak` |
 | 12 | The 100k gate pull-up resistor R4 is 5.9 mm from the gate pin (rule: gate resistor at the gate pin); the 22 Ω R5 is at 3.2 mm | each port | kept: the corridor holds one 0603 column, and 100 kΩ swamps the track | port_template.py MODE=check |

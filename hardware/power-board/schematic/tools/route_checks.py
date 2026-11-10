@@ -9,9 +9,10 @@
      "Inside" is tested on the real shapes against the courtyard polygon. A pour never gets this, and is tested in
      tiles, island by island.
      Pairs inside one footprint are listed separately: the package sets those, not the routing.
-  3. Kelvin sense pairs: for each SH*_P / SH*_N pair, the length of each leg and the share of the pair's whole length
-     (both legs) that runs within 1.0 mm, centre to centre on the same layer, of the other leg. Fails below
-     tools/domains.py KELVIN_FLOOR.
+  3. Kelvin sense pairs: for each SH*_P / SH*_N pair, each leg from the shunt's sense pad to the IC pins it serves (a
+     branch that ends at a filter or decoupling part is not counted), its length, and the share of both legs' length
+     that runs within 1.0 mm, centre to centre on the same layer, of the other leg. Fails below tools/domains.py
+     KELVIN_FLOOR.
   4. No track, via, pad or pour of a 54 V net, of a net riding on 54 V, or of the latch's supply chain (BAT_F, BAT_R,
      BAT_CTL) on the inner layers under the latch block (tools/domains.py LATCH).
   5. No E-stop via inside a 54 V zone outline on any layer.
@@ -192,6 +193,40 @@ def ptseg(p,a,c):
 tr={}
 for t in b.GetTracks():
     if t.GetClass()=='PCB_TRACK': tr.setdefault(t.GetNetname(),[]).append((t.GetLayer(),(MM(t.GetStart().x),MM(t.GetStart().y)),(MM(t.GetEnd().x),MM(t.GetEnd().y))))
+PADS_BY_NET={}
+for p_ in b.GetPads(): PADS_BY_NET.setdefault(p_.GetNetname(),[]).append(p_)
+def sense_path(net):
+    """the net's tracks that lie on the way from a shunt's sense pad (RS*) to an IC's pin (U*): the Kelvin leg itself.
+    Branches that end at a filter or decoupling part (C20 on SH9_P, the port's R0/C2) are not part of the pair
+    ("branching only at the ICs"). Shortest paths over the track graph; a track end on another track's middle joins it."""
+    import heapq
+    T=tr[net]; R=lambda q:(round(q[0],2),round(q[1],2)); adj={}
+    def edge(u,v,w,i):
+        adj.setdefault(u,[]).append((v,w,i)); adj.setdefault(v,[]).append((u,w,i))
+    for i,(L,s_,e_) in enumerate(T): edge(R(s_),R(e_),math.dist(s_,e_),i)
+    for i,(L,s_,e_) in enumerate(T):          # T-joins
+        for q in (s_,e_):
+            for j,(L2,s2,e2) in enumerate(T):
+                if j!=i and L2==L and ptseg(q,s2,e2)<0.02 and R(q) not in (R(s2),R(e2)):
+                    edge(R(q),R(s2),math.dist(q,s2),j); edge(R(q),R(e2),math.dist(q,e2),j)
+    src=[]; dst=[]
+    for pd in PADS_BY_NET.get(net,[]):
+        ref=pd.GetParentFootprint().GetReference(); node=('pad',ref,pd.GetNumber())
+        for u in list(adj):
+            if isinstance(u[0],float) and pd.HitTest(pcbnew.VECTOR2I(mm(u[0]),mm(u[1]))): edge(node,u,0.0,-1)
+        if ref.startswith('RS'): src.append(node)
+        elif ref.startswith('U') or ref in domains.KELVIN_ENDS.get(net,()): dst.append(node)
+    dist={u:0.0 for u in src}; prev={}; heap=[(0.0,repr(u),u) for u in src]; heapq.heapify(heap)
+    while heap:
+        d,_,u=heapq.heappop(heap)
+        if d>dist.get(u,1e30): continue
+        for v,w,i in adj.get(u,()):
+            if d+w<dist.get(v,1e30)-1e-9: dist[v]=d+w; prev[v]=(u,i); heapq.heappush(heap,(d+w,repr(v),v))
+    used=set()
+    for t in dst:
+        while t in prev: u,i=prev[t]; used.add(i); t=u
+    used.discard(-1)
+    return [T[i] for i in sorted(used)] if used else T
 def near(A,B):
     """(length of A, length of A within 1.0 mm centre to centre of B on the same layer), sampled every 0.25 mm"""
     tot=nr=0.0
@@ -201,12 +236,12 @@ def near(A,B):
             q=(s[0]+(e[0]-s[0])*(i+0.5)/k,s[1]+(e[1]-s[1])*(i+0.5)/k)
             if any(L2==L and ptseg(q,s2,e2)<=1.0 for L2,s2,e2 in B): nr+=ln/k
     return tot,nr
-print('3. Kelvin pairs: leg lengths (mm); share of each leg, and of both together, within 1.0 mm of the other leg; floor')
+print('3. Kelvin pairs, sense pad to IC pin: leg lengths (mm); share of each leg, and of both together, within 1.0 mm of the other leg; floor')
 kbad=[]
 for n in sorted(tr):
     m=re.match(r'(/SH\w*)_P$',n)
     if not m or m.group(1)+'_N' not in tr: continue
-    P,Nn=tr[n],tr[m.group(1)+'_N']; lp,np_=near(P,Nn); ln,nn=near(Nn,P); both=100*(np_+nn)/max(lp+ln,1e-9)
+    P,Nn=sense_path(n),sense_path(m.group(1)+'_N'); lp,np_=near(P,Nn); ln,nn=near(Nn,P); both=100*(np_+nn)/max(lp+ln,1e-9)
     fl=domains.KELVIN_FLOOR.get(m.group(1))
     if fl is None: kbad.append((m.group(1),'no floor in domains.KELVIN_FLOOR'))
     elif both<fl: kbad.append((m.group(1),f'{both:.1f} % paired, floor {fl} %'))
