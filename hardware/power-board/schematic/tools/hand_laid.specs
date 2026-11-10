@@ -1,0 +1,15 @@
+# hand_laid.specs: the copper laid from hand-specified coordinates (LAYOUT_RULES.md, "Exceptions and hand-laid copper"),
+# one tools/lay_path.py SPEC per line, page mm. tools/build_board.sh lays these after the designed blocks
+# (port_template.py, u8_block.py) and before tools/finish_route.py closes the rest.
+# D_L2 tap to U12 pin 8 (port 2's meter reads the port input)
+/D_L2=F:134.0,190.6 134.4,190.6 134.8,190.2 134.8,190.05;v:134.8,190.05;B:134.8,190.05 134.1,190.75 133.6,191.3 130.8,191.3 130.0,192.1 130.0,193.5 129.4,194.3
+# G2: Q2's gate through the L6 MID mirror, In3 west under Q1, In2 north to R2 (exceptions 1 and 2)
+/G2=F:150.95,160.19 149.9,160.19;v:149.9,160.19;3:149.9,160.19 149.9,159.2 140.2,159.2 132.4,165.6 131.0,167.0 130.2,167.0;v:130.2,167.0;2:130.2,167.0 130.2,162.6 131.8,161.0 131.8,147.0 125.6,139.8;v:125.6,139.8;F:125.6,139.8 124.79,139.25
+# I2C_SCL exit under port 2's meter (port 5's is the router's now)
+/I2C_SCL=2:135.5,189.4 135.8,189.1 140.8,189.1
+# at U25 (watchdog), to free its CWD pin
+/L_E=F:102.95,247.75 102.95,249.2 103.5,249.75 104.65,249.75
+/CWD=F:104.195,247.6 104.3,248.0 104.5,248.35;v:104.5,248.35
+/VWD=F:103.65,247.75 103.65,248.3 104.0,249.05 105.0,249.05 105.45,248.6 105.75,248.15
+# GND island link
+GND=F:161.0,236.8 161.4,237.0

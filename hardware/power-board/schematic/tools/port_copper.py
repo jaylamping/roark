@@ -18,7 +18,8 @@ Gate: R4 (GPU, 100k) and R5 (GPD, 22 R) stand in the corridor east of the eFuse,
 from the gate pin (pad centre to the pin's end; 3.8 mm of F.Cu track, with the zener on the same line). GPD runs down
 the west side of the corridor to R5, R4's G pad down the east side. A via on the gate line feeds the slew network (D0,
 C4, R6) right of the FET on In3. Until 2026-11-10 both resistors sat at the pin channel, 7.5 mm from the gate."""
-import pcbnew, port_template as PT
+import pcbnew, blocks, port_template as PT
+from blocks import make,key,pkey
 IU=pcbnew.FromMM
 ITEMS=[
  # ---- Kelvin P
@@ -104,23 +105,10 @@ def prims(b,k,fps,roles=None):
             w=it[4] if len(it)>4 else (.25 if it[1]=='GND' else .2)
             out+=[('t',net,LAY[it[2]],PT.T(k,a),PT.T(k,c),w) for a,c in zip(it[3],it[3][1:])]
     return out
-def make(b,p):
-    if p[0]=='v':
-        v=pcbnew.PCB_VIA(b); v.SetPosition(PT.V(p[2])); v.SetWidth(IU(.6)); v.SetDrill(IU(.3)); v.SetNet(b.FindNet(p[1]))
-        v.SetViaType(pcbnew.VIATYPE_THROUGH); v.SetLayerPair(PT.F,PT.B); return v
-    t=pcbnew.PCB_TRACK(b); t.SetStart(PT.V(p[3])); t.SetEnd(PT.V(p[4])); t.SetWidth(IU(p[5])); t.SetLayer(p[2]); t.SetNet(b.FindNet(p[1])); return t
 def lay(b,k,fps):
     new=[make(b,p) for p in prims(b,k,fps)]
     for t in new: t.SetLocked(True); b.Add(t)
     print(f'port {k}: template copper {len(new)} items')
-def key(t):
-    """a board track or via in the form prims() gives, rounded to 1 um; a track's ends in sorted order"""
-    r=lambda p:(round(pcbnew.ToMM(p.x),3),round(pcbnew.ToMM(p.y),3))
-    if t.GetClass()=='PCB_VIA': return ('v',t.GetNetname(),r(t.GetPosition()))
-    return ('t',t.GetNetname(),t.GetLayer())+tuple(sorted((r(t.GetStart()),r(t.GetEnd()))))+(round(pcbnew.ToMM(t.GetWidth()),3),)
-def pkey(p):
-    r=lambda q:(round(q[0],3),round(q[1],3))
-    return ('v',p[1],r(p[2])) if p[0]=='v' else ('t',p[1],p[2])+tuple(sorted((r(p[3]),r(p[4]))))+(round(p[5],3),)
 def diff(b,k,fps):
     """the board against the template for port k: (template primitives missing from the board, locked copper of the
     port's own nets inside the block that the template doesn't have)"""

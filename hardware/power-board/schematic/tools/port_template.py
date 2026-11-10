@@ -7,7 +7,7 @@ other ports. What the template leaves (the runs from its vias to parts outside t
 tools/place.py holds the same part positions (PFIX), so a rebuild lands on this placement."""
 import os,sys,re,math
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
-import pcbnew, domains, stack
+import pcbnew, domains, stack, blocks
 IU,MM=pcbnew.FromMM,pcbnew.ToMM
 CU=stack.kicad_layers(pcbnew); F,I2,I3,B=CU[0],CU[2],CU[3],CU[5]
 PORT={1:('RS2','U11','C21','U19','Q15',68,50,23),2:('RS3','U12','C22','U20','Q16',78,55,26),3:('RS4','U13','C23','U21','Q17',88,60,29),
@@ -41,19 +41,8 @@ def refs(k):
     d={f'R{i}':f'R{r0+i}' for i in range(7)}; d.update({f'C{i}':f'C{c0+i}' for i in range(5)}); d.update(D0=f'D{d0}',D1=f'D{d0+1}',D2=f'D{d0+2}',CD=cd,RS=rs,INA=ina,U=u,Q=q)
     return d
 def place(b,k):
-    R=refs(k); moved=[]
-    for role,(c,p1) in PLACE.items():
-        fp=FPS[R[role]]; c_=T(k,c); p_=T(k,p1); best=None
-        for rot in (0,90,180,270):
-            fp.SetOrientationDegrees(rot); fp.SetPosition(V(c_))
-            bb=fp.GetCourtyard(pcbnew.F_CrtYd).BBox().GetCenter(); fp.Move(pcbnew.VECTOR2I(IU(c_[0])-bb.x,IU(c_[1])-bb.y))
-            q=next(p for p in fp.Pads() if p.GetNumber()=='1').GetPosition(); d=math.hypot(MM(q.x)-p_[0],MM(q.y)-p_[1])
-            if best is None or d<best[0]: best=(d,rot)
-        fp.SetOrientationDegrees(best[1]); fp.SetPosition(V(c_))
-        bb=fp.GetCourtyard(pcbnew.F_CrtYd).BBox().GetCenter(); fp.Move(pcbnew.VECTOR2I(IU(c_[0])-bb.x,IU(c_[1])-bb.y))
-        assert best[0]<0.06,(R[role],best)
-        moved.append(fp)
-    return moved
+    R=refs(k)
+    for role,(c,p1) in PLACE.items(): blocks.place_fp(FPS[R[role]],T(k,c),T(k,p1))
 # ---- rip: the port's own nets everywhere; every net's copper in the control column and in the part field right of the FET
 def portnets(k): return re.compile(rf'^/((EN|INP|CSP|ISCP|IWRN|TMR|GC|BST|GPU|GPD|G)_L{k}|SHL{k}_[PN])$')
 WIN=(158.4,192.9,186.45,204.05)   # the port block, template mm

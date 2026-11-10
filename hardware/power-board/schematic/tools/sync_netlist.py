@@ -1,7 +1,8 @@
 """sync_netlist.py net.net in.kicad_pcb out.kicad_pcb (KiCad Python): bring an existing board back in line with the
 schematic's netlist without touching placement or copper, so KiCad's schematic-parity check is clean:
   - every footprint's value, Datasheet field and attributes (exclude from BOM, DNP) from its symbol;
-  - every pad's net from the netlist (a pad whose net changes is listed, and the copper touching it is removed: re-route);
+  - every pad's net from the netlist, and no net where the schematic has none (a pad whose net changes is listed, and
+    the copper touching it is removed: re-route);
   - footprints with no symbol (mounting holes, heatsink and tie holes) marked "not in schematic".
 tools/place.py sets the same on a rebuilt board."""
 import os,sys
@@ -37,6 +38,7 @@ if __name__=='__main__':
                 if want and ni is None: ni=pcbnew.NETINFO_ITEM(b,want); b.Add(ni)
                 moved.append((ref,p.GetNumber(),p.GetNetname(),want))
                 if ni: p.SetNet(ni)
+                else: p.SetNetCode(0)   # no net in the schematic: the pad must not keep its old one
     # copper that touches a re-netted pad now shorts two nets: remove it (the rest of that route is left dangling for
     # tools/prune_dangling.py, and the pad's new net for tools/finish_route.py)
     tracks=list(b.GetTracks()); kill=[]

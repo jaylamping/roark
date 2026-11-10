@@ -11,7 +11,8 @@ copper: the E-stop nets on F.Cu, the SH Kelvin pair on In2 down the middle of th
 the gate drive on F.Cu, GA2's last leg. finish_route.py closes what is left (GND vias, the decoupling GNDs)."""
 import os,sys,math
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
-import pcbnew, stack
+import pcbnew, stack, blocks
+from blocks import make,key,pkey
 IU,MM=pcbnew.FromMM,pcbnew.ToMM
 CU=stack.kicad_layers(pcbnew); LAY={'F':CU[0],'2':CU[2],'3':CU[3],'B':CU[5]}
 def V(p): return pcbnew.VECTOR2I(IU(p[0]),IU(p[1]))
@@ -37,17 +38,7 @@ PLACE={'U8':((171.07,149.6),(173.32,147.4)),
  'TP15':((173.6,169.6),None)}              # ABS
 def place(fps,table=None):
     """put each footprint of the table (default: this block's PLACE) with its courtyard centre and pad 1 where given"""
-    for ref,(c,p1) in (table or PLACE).items():
-        fp=fps[ref]; best=None
-        for rot in (0,90,180,270):
-            fp.SetOrientationDegrees(rot); fp.SetPosition(V(c))
-            bb=fp.GetCourtyard(pcbnew.F_CrtYd).BBox().GetCenter(); fp.Move(pcbnew.VECTOR2I(IU(c[0])-bb.x,IU(c[1])-bb.y))
-            if p1 is None: best=(0,rot); break
-            q=next(p for p in fp.Pads() if p.GetNumber()=='1').GetPosition(); d=math.hypot(MM(q.x)-p1[0],MM(q.y)-p1[1])
-            if best is None or d<best[0]: best=(d,rot)
-        fp.SetOrientationDegrees(best[1]); fp.SetPosition(V(c))
-        bb=fp.GetCourtyard(pcbnew.F_CrtYd).BBox().GetCenter(); fp.Move(pcbnew.VECTOR2I(IU(c[0])-bb.x,IU(c[1])-bb.y))
-        assert best[0]<0.06,(ref,best)
+    for ref,(c,p1) in (table or PLACE).items(): blocks.place_fp(fps[ref],c,p1)
 WIN=(167.2,174.7,139.0,170.6)
 LOCAL={'/'+n for n in 'ISCP_A TMR_A VS_A BST_A CSP_A CSN_A G1PD_A EN_A'.split()}
 KEEPVIA={(170.65,140.55),(169.75,140.75),(168.55,158.85),(168.55,164.75)}   # RUN_A, FLT_A, GATE_A (two)
@@ -116,11 +107,6 @@ def prims():
             w=it[4] if len(it)>4 else (.25 if it[1] in ('GND','/MID') else .2)
             out+=[('t',it[1],LAY[it[2]],a,c,w) for a,c in zip(it[3],it[3][1:])]
     return out
-def make(b,p):
-    if p[0]=='v':
-        v=pcbnew.PCB_VIA(b); v.SetPosition(V(p[2])); v.SetWidth(IU(.6)); v.SetDrill(IU(.3)); v.SetNet(b.FindNet(p[1]))
-        v.SetViaType(pcbnew.VIATYPE_THROUGH); v.SetLayerPair(CU[0],CU[5]); return v
-    t=pcbnew.PCB_TRACK(b); t.SetStart(V(p[3])); t.SetEnd(V(p[4])); t.SetWidth(IU(p[5])); t.SetLayer(p[2]); t.SetNet(b.FindNet(p[1])); return t
 def lay(b):
     new=[make(b,p) for p in prims()]
     for t in new: t.SetLocked(True); b.Add(t)
@@ -128,13 +114,6 @@ def lay(b):
 # The block's own nets: on these the board's locked copper inside WIN must equal ITEMS (MODE=check). GND, MID, ABS and
 # the SH pair continue outside the block and are only tested for missing primitives.
 OWN=LOCAL|{'/FLT_A','/RUN_A','/GATE_A','/GA2'}
-def key(t):
-    r=lambda p:(round(MM(p.x),3),round(MM(p.y),3))
-    if t.GetClass()=='PCB_VIA': return ('v',t.GetNetname(),r(t.GetPosition()))
-    return ('t',t.GetNetname(),t.GetLayer())+tuple(sorted((r(t.GetStart()),r(t.GetEnd()))))+(round(MM(t.GetWidth()),3),)
-def pkey(p):
-    r=lambda q:(round(q[0],3),round(q[1],3))
-    return ('v',p[1],r(p[2])) if p[0]=='v' else ('t',p[1],p[2])+tuple(sorted((r(p[3]),r(p[4]))))+(round(p[5],3),)
 def diff(b):
     """(ITEMS primitives missing from the board, locked F.Cu copper of the block's own nets inside WIN that ITEMS doesn't
     have)"""

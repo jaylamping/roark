@@ -4,7 +4,9 @@ via rules). Each SPEC is  NET=<item>;<item>;...  with items
   F|2|3|B:x,y x,y ...   a track on F.Cu / In2.Cu / In3.Cu / B.Cu through the points (page mm)
   v:x,y                 a 0.6/0.3 mm via
 A spec that fails a check is reported with what blocks it and nothing of it is added (DRY=1 only reports).
-LOCK=1 locks what was added. Zones are refilled on save; run the kicad-cli DRC after."""
+LOCK=1 locks what was added. A SPEC argument @file reads one SPEC per line from the file (tools/hand_laid.specs holds
+this board's). MODE=check only tests that every primitive of the specs is on the board. Exit 1 if any spec was blocked
+(or, with MODE=check, missing). Zones are refilled on save; run the kicad-cli DRC after."""
 import os,sys
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
 import finish_route as FR, pcbnew
@@ -31,8 +33,21 @@ def check(r,net,items):
                 if not r.seg(net,it[1],a,c,dg): bad.append(('seg',a,c,sorted({(k[0],k[1],str(k[3])) for k in dg})))
     return bad
 if __name__=='__main__':
-    r=FR.Router(sys.argv[1]); n=0; fail=0
-    for spec in sys.argv[3:]:
+    n=0; fail=0; specs=[]
+    for a in sys.argv[2 if os.getenv('MODE')=='check' else 3:]:   # @file: one SPEC per line, # comments (MODE=check takes no output file)
+        specs+=[l.strip() for l in open(a[1:],encoding='utf-8') if l.strip() and not l.lstrip().startswith('#')] if a.startswith('@') else [a]
+    if os.getenv('MODE')=='check':   # every primitive of the specs is on the board (no output file needed)
+        import blocks
+        b=pcbnew.LoadBoard(sys.argv[1]); have={blocks.key(t) for t in b.GetTracks()}; miss=0
+        for spec in specs:
+            net,items=parse(spec)
+            for it in items:
+                ps=[('v',net,it[1])] if it[0]=='v' else [('t',net,it[1],a,c,FR.Router.width(net)) for a,c in zip(it[2],it[2][1:])]
+                for p in ps:
+                    if blocks.pkey(p) not in have: miss+=1; print('   hand-laid copper missing:',net,p[2:] if p[0]=='v' else (b.GetLayerName(p[2]),)+p[3:])
+        print('hand-laid copper check:',len(specs),'specs,',miss,'primitives missing'); sys.exit(1 if miss else 0)
+    r=FR.Router(sys.argv[1])
+    for spec in specs:
         net,items=parse(spec); bad=check(r,net,items)
         if bad:
             fail+=1; print('BLOCKED',net)
@@ -45,3 +60,4 @@ if __name__=='__main__':
             print('LAID',net)
     if os.getenv('DRY')!='1': r.save(sys.argv[2])
     print('added',n,'blocked',fail)
+    sys.exit(1 if fail else 0)   # a blocked spec is a failure: nothing downstream may take the board as complete
