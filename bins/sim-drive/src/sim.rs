@@ -426,13 +426,12 @@ impl SimDrive {
         self.next_report = first.checked_add(Duration::from_nanos(skipped));
     }
 
-    /// The earliest event due by `now` (before it, unless `inclusive`), and when, at the earliest the time last stepped to;
-    /// reports only if `reports`.
+    /// The earliest event due by `now` (before it, unless `inclusive`), and when, at the earliest the time last stepped to
+    /// (a drive never stepped takes each at its own time); reports only if `reports`.
     fn next_due(&self, now: Instant, inclusive: bool, reports: bool) -> Option<(Instant, Event)> {
-        let since = self.stepped.unwrap_or(now);
         let due = |at: Option<Instant>| {
             at.filter(|at| *at < now || (inclusive && *at == now))
-                .map(|at| at.max(since))
+                .map(|at| self.stepped.map_or(at, |stepped| at.max(stepped)))
         };
         [
             (due(self.plan.next_at()), Event::Fault),

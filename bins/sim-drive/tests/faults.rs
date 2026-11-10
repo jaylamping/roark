@@ -371,7 +371,8 @@ fn faults_reach_replies_not_yet_sent() {
     }
 }
 
-/// Guards: protocol - timed faults land at their own times, in time order, however late the drive is stepped: a Mode
+/// Guards: protocol - timed faults land at their own times, in time order, however late the drive is stepped (even
+/// first stepped after them): a Mode
 /// fault holds the joint where it was then, a Mode(Run) starts `canTimeout` counting then, and two faults due at once
 /// apply oldest first, as their record shows (logging.md section 3: the record matches what was applied).
 #[test]
@@ -414,6 +415,29 @@ fn timed_faults_land_in_time_order() {
     let held = position(&mut on_time);
     assert!(held > 0.01, "it moved first: {held}");
     assert!((position(&mut late) - held).abs() < 1e-3, "{held}");
+
+    // Scheduled on a drive not yet stepped, faults still land at their own times, not at its first step: canTimeout
+    // written at `t` and Run at 10 ms, so by the first step at 70 ms it has timed out.
+    let mut sim = SimDrive::new(rs03(7), Uid([7; 8]), 11);
+    let t = Instant::now();
+    let runtime = Fault::Param(
+        Param::CanTimeout,
+        ParamValue::CanTimeout(CanTimeout::RUNTIME),
+    );
+    assert_eq!(sim.schedule(Trigger::At(t), runtime), Ok(()));
+    assert_eq!(
+        sim.schedule(Trigger::At(t + ms(10)), Fault::Mode(Mode::Run)),
+        Ok(())
+    );
+    assert_eq!(
+        status_of(&ask(&mut sim, t + ms(70), neutral(7))),
+        [(Mode::Reset, StatusFaults::default(), 25.0)],
+        "timed out at 60 ms"
+    );
+    let record: Vec<_> = std::iter::from_fn(|| sim.take_injected())
+        .map(|i| (i.at, i.fault))
+        .collect();
+    assert_eq!(record, [(t, runtime), (t + ms(10), Fault::Mode(Mode::Run))]);
 
     // A drive in Reset, canTimeout written and reporting on at `t`, put in Run by a fault: it times out 50 ms after
     // that, not at once. The reports show the mode without a command restarting the count.
