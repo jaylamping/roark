@@ -67,8 +67,9 @@ if run blocks; then
   "$KP" tools/port_template.py "$W/routed.kicad_pcb" "$W/b1.kicad_pcb" 2>&1 | q | tail -8; [ -s "$W/b1.kicad_pcb" ] || die 'port_template failed'
   "$KP" tools/u8_block.py "$W/b1.kicad_pcb" "$W/b1b.kicad_pcb" 2>&1 | q | tail -2; [ -s "$W/b1b.kicad_pcb" ] || die 'u8_block failed'
   "$KP" tools/latch_block.py "$W/b1b.kicad_pcb" "$W/b2.kicad_pcb" 2>&1 | q | tail -2; [ -s "$W/b2.kicad_pcb" ] || die 'latch_block failed'
-  # the pours refill round the hand-laid copper, so a pour is not an obstacle for it (SOFTZ=1)
-  SOFTZ=1 LOCK=1 "$KP" tools/lay_path.py "$W/b2.kicad_pcb" "$W/blocks.kicad_pcb" @tools/hand_laid.specs > "$W/hand_laid.txt" 2>&1; rc=$?
+  # the pours refill round the hand-laid copper, so a pour is not an obstacle for it (SOFTZ=1); router copper in its
+  # way is ripped for finish_route.py to lay again (RIP=1): the routers' result differs from run to run
+  SOFTZ=1 LOCK=1 RIP=1 "$KP" tools/lay_path.py "$W/b2.kicad_pcb" "$W/blocks.kicad_pcb" @tools/hand_laid.specs > "$W/hand_laid.txt" 2>&1; rc=$?
   q < "$W/hand_laid.txt" | cut -c1-200
   [ "$rc" = 0 ] && [ -s "$W/blocks.kicad_pcb" ] || die "hand-laid copper blocked (lay_path exit $rc): fix tools/hand_laid.specs or what blocks it"
 fi
