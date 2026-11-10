@@ -137,7 +137,8 @@ It runs on Joey-PC (or anywhere with the LFS content and `pip install numpy scip
 | 3MF settings | material or a spec setting differs, or a spec setting isn't flagged in `different_settings_to_system` (unless the spec lists it in `preset`) | infill reset to 15% on open (2026-11-07) |
 | Evidence | a load case has no result, isn't converged or is under its pass mark; access isn't recorded; any source changed | stale or singular FEA reported as passes (2026-11-07) |
 
-It warns (without failing) when a part has no `mates`, and for each print-log lesson that matches the part (section 4).
+It warns (without failing) when a part has no `mates`, and for each print-log lesson that matches the part (section 4). A
+print log that doesn't parse fails the gate and `--verify`, since its lessons would otherwise be skipped unseen.
 
 Mesh exceptions are reviewed spots, never a way to pass: they go in
 [cad/manifests/mesh-whitelist.json](../cad/manifests/mesh-whitelist.json), keyed by part name, each with a reason, added only

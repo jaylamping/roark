@@ -270,23 +270,28 @@ def mesh_checks(cad: Path, spec: dict, part: dict, p: dict[str, str]) -> list[Ch
     return out
 
 
-def lessons(cad: Path) -> list[tuple[str, dict]]:
-    out = []
-    for f in sorted(cad.glob("prints/*/*_prints.md")):
+def lessons(cad: Path) -> tuple[list[tuple[str, dict]], list[str]]:
+    """Every `[[lesson]]` in the print logs, and one error per print log that can't be read: its lessons are unknown, so
+    no part may be told that none apply."""
+    out, errors = [], []
+    for f in sorted(cad.glob("prints/**/*_prints.md")):
+        src = f.relative_to(cad).as_posix()
         try:
-            fm = front_matter(f)
-        except ValueError:
-            continue
-        out += [(f.relative_to(cad).as_posix(), les) for les in fm.get("lesson", [])]
-    return out
+            out += [(src, les) for les in front_matter(f).get("lesson", [])]
+        except ValueError as e:  # tomllib.TOMLDecodeError is a ValueError
+            errors.append(f"cad/{src} can't be read, so its lessons are unknown: {e}")
+    return out, errors
 
 
 def check_lessons(cad: Path, spec: dict, part: dict) -> Check:
     """Lessons from earlier prints whose `applies_to` words match this part, its region or its mating parts."""
     material = part.get("material", spec.get("print", {}).get("material", ""))
     hay = " ".join([part["name"], spec["region"], material, *part.get("mates", []), *spec.get("interfaces", [])]).lower()
+    found, errors = lessons(cad)
+    if errors:
+        return Check("lessons from earlier prints", FAIL, errors)
     hits = [f"{les.get('text', '')} (cad/{src}{', allowance ' + str(les['allowance_mm']) + ' mm' if 'allowance_mm' in les else ''})"
-            for src, les in lessons(cad) if any(w.lower() in hay for w in les.get("applies_to", []))]
+            for src, les in found if any(w.lower() in hay for w in les.get("applies_to", []))]
     return Check("lessons from earlier prints", WARN if hits else PASS, hits or ["none apply"])
 
 
@@ -336,8 +341,9 @@ INPUT = re.compile(r"^- Input ([a-z0-9 ]+): (\S+) \(sha256 (\S+)\)$")
 
 def verify(cad: Path) -> list[str]:
     """Every 3MF under cad/prints/ (any depth, any case of `.3mf`) has a gate report beside it that passed for exactly the
-    inputs it records. Stdlib only and reads LFS pointers, so CI can run it without the CAD content."""
-    errors = []
+    inputs it records, and every print log parses. Stdlib only and reads LFS pointers, so CI can run it without the CAD
+    content."""
+    errors = lessons(cad)[1]
     prints = cad / "prints"
     for mf in sorted(f for f in prints.rglob("*") if f.is_file() and f.suffix.lower() == ".3mf"):
         rel = mf.relative_to(cad).as_posix()

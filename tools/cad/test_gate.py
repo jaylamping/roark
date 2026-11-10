@@ -178,6 +178,24 @@ def test_verify_needs_a_current_passing_report_for_every_3mf(tmp_path: Path) -> 
                                 "tools/cad/gate.py other"]
 
 
+def test_a_print_log_that_does_not_parse_fails_instead_of_hiding_its_lessons(tmp_path: Path) -> None:
+    """Guards: bug - a print log with a TOML typo was skipped, and the gate reported that no lessons apply (found
+    2026-11-10)."""
+    cad = tmp_path / "cad"
+    make_link(cad)
+    _, spec, part = gate.find_part(cad, "upper_arm_test_left")
+    log = cad / "prints/upper-arm/upper_arm_prints.md"
+    log.parent.mkdir(parents=True)
+    log.write_text('+++\n[[lesson]]\nid = "tab"\napplies_to = ["upper-arm"]\ntext = "check the tab"\n+++\n')
+    c = gate.check_lessons(cad, spec, part)
+    assert (c.status, c.detail) == (gate.WARN, ["check the tab (cad/prints/upper-arm/upper_arm_prints.md)"])
+    log.write_text('+++\n[[lesson]]\nid = "tab\n+++\n')
+    c = gate.check_lessons(cad, spec, part)
+    assert c.status == gate.FAIL
+    assert c.detail[0].startswith("cad/prints/upper-arm/upper_arm_prints.md can't be read, so its lessons are unknown: ")
+    assert gate.verify(cad) == c.detail
+
+
 def write(p: Path, text: str) -> Path:
     p.write_text(text)
     return p
