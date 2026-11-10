@@ -6,11 +6,13 @@
   3. Outline: the Edge.Cuts Gerber's extents are the board's (100 x 170 mm).
   4. Drill files: the plated file's hit count equals the board's vias plus plated pad holes, tool by tool; the unplated
      file's equals the unplated pad holes.
-  5. B.Mask carries the ten heatsink openings: its drawn area is at least the generated openings' area.
-  6. The position file lists every fitted top-side part of the board once; the two BOM files cover the fitted parts.
+  5. B.Mask carries the ten heatsink openings: each opening drawn on the board is a filled region in the Gerber with the
+     same area (0.5 %) at the same centroid (0.05 mm), and the Gerber has no other region.
+  6. The position file lists every fitted top-side part of the board once, each at the board's X/Y (0.01 mm), rotation
+     (0.1 degree) and side; the two BOM files cover the fitted parts.
   7. The zip holds exactly the files in gerbers/.
   8. BOARD.sha256 is the board file's hash: the package is not older than the board.
-Exit 1 on any difference."""
+Exit 1 on any difference, and when gerbers/ or a file is missing."""
 import sys,os,re,glob,csv,zipfile,collections
 import pcbnew
 MM=pcbnew.ToMM
@@ -22,6 +24,7 @@ stem='marengo_pdu_revb'
 EXPECT={'F_Cu.gtl':'Copper,L1,Top','In1_Cu.g1':'Copper,L2,Inr','In2_Cu.g2':'Copper,L3,Inr','In3_Cu.g3':'Copper,L4,Inr','In4_Cu.g4':'Copper,L5,Inr',
         'B_Cu.gbl':'Copper,L6,Bot','F_Mask.gts':'Soldermask,Top','B_Mask.gbs':'Soldermask,Bot','F_Silkscreen.gto':'Legend,Top',
         'B_Silkscreen.gbo':'Legend,Bot','F_Paste.gtp':'Paste,Top','Edge_Cuts.gm1':'Profile,NP'}
+ok(os.path.isdir(G),f'{G} exists')
 files={os.path.basename(f) for f in glob.glob(G+'/*')}
 want={f'{stem}-{k}' for k in EXPECT}|{f'{stem}-PTH.drl',f'{stem}-NPTH.drl'}
 ok(files==want,f'gerbers/ holds the 12 Gerber and 2 drill files: missing {sorted(want-files)}, extra {sorted(files-want)}')
@@ -69,14 +72,49 @@ ok(gp==dict(bp),f'plated holes: file {sum(gp.values())} hits {dict(sorted(gp.ite
 ok(gn==dict(bn),f'unplated holes: file {sum(gn.values())} hits {dict(sorted(gn.items()))}; board {sum(bn.values())} {dict(sorted(bn.items()))}')
 # B.Mask: the ten heatsink openings are drawn (regions G36/G37 in the file: the board-level shapes are the only polygons there)
 t=open(f'{G}/{stem}-B_Mask.gbs',encoding='utf-8',errors='replace').read() if os.path.exists(f'{G}/{stem}-B_Mask.gbs') else ''
-nshape=len([d for d in b.GetDrawings() if d.GetClass()=='PCB_SHAPE' and d.GetLayer()==pcbnew.B_Mask])
-ok(nshape==10 and t.count('G36*')>=10,f'B.Mask: {nshape} heatsink openings on the board, {t.count("G36*")} filled regions in the Gerber')
+def regions(t):
+    """[(area mm2, centroid x, centroid y)] of the G36..G37 regions (straight segments; Y as in the file)"""
+    fs=re.search(r'%FSLAX(\d)(\d)Y(\d)(\d)\*%',t); dec=int(fs.group(2)) if fs else 6; out=[]
+    for body in re.findall(r'G36\*(.*?)G37\*',t,flags=re.S):
+        if re.search(r'G0[23]\*',body): out.append((None,None,None)); continue   # an arc: not measured, fails below
+        pts=[(int(x)/10**dec,int(y)/10**dec) for x,y in re.findall(r'X(-?\d+)Y(-?\d+)D0[12]\*',body)]
+        a=cx=cy=0.0
+        for (x0,y0),(x1,y1) in zip(pts,pts[1:]+pts[:1]):
+            c=x0*y1-x1*y0; a+=c; cx+=(x0+x1)*c; cy+=(y0+y1)*c
+        a/=2; out.append((abs(a),cx/(6*a) if a else 0,cy/(6*a) if a else 0))
+    return out
+shapes=[d for d in b.GetDrawings() if d.GetClass()=='PCB_SHAPE' and d.GetLayer()==pcbnew.B_Mask]
+want=[]
+for d in shapes:
+    ps=d.GetPolyShape(); c=ps.Outline(0).Centre() if hasattr(ps.Outline(0),'Centre') else None
+    o=ps.Outline(0); pts=[(MM(o.CPoint(i).x),MM(o.CPoint(i).y)) for i in range(o.PointCount())]
+    a=cx=cy=0.0
+    for (x0,y0),(x1,y1) in zip(pts,pts[1:]+pts[:1]):
+        k=x0*y1-x1*y0; a+=k; cx+=(x0+x1)*k; cy+=(y0+y1)*k
+    a/=2; want.append((abs(a),cx/(6*a),-cy/(6*a)))   # the Gerber's Y is the page Y negated
+got=regions(t); left=list(got); miss=[]
+for a,x,y in want:
+    m=[g for g in left if g[0] is not None and abs(g[0]-a)<=0.005*a and abs(g[1]-x)<=0.05 and abs(g[2]-y)<=0.05]
+    if m: left.remove(m[0])
+    else: miss.append((round(a,1),round(x,2),round(-y,2)))
+ok(len(shapes)==10 and not miss and not left,f'B.Mask: {len(shapes)} heatsink openings on the board, {len(got)} filled regions in the Gerber; openings without a region of the same area and centroid {miss}; other regions {[(round(g[0],1) if g[0] else "arc") for g in left]}')
 # position file and BOMs
 fitted={f.GetReference() for f in b.GetFootprints() if not f.IsDNP() and not f.IsBoardOnly() and any(p.GetNumber() for p in f.Pads())}
-pos=[r[0] for r in list(csv.reader(open(out+f'/{stem}-pos.csv',encoding='utf-8')))[1:]] if os.path.exists(out+f'/{stem}-pos.csv') else []
+ok(os.path.exists(out+f'/{stem}-pos.csv'),'the position file exists')
+prow=list(csv.reader(open(out+f'/{stem}-pos.csv',encoding='utf-8')))[1:] if os.path.exists(out+f'/{stem}-pos.csv') else []
+pos=[r[0] for r in prow]
 smt={f.GetReference() for f in b.GetFootprints() if f.GetReference() in fitted and not f.IsFlipped() and not f.IsExcludedFromPosFiles()}
 ok(len(pos)==len(set(pos)) and set(pos)==smt,f'position file: {len(pos)} parts, each once; the board has {len(smt)} fitted top-side parts that a machine places ({len(fitted)-len(smt)} more are fitted by hand: through-hole parts, wire pads, test points, the copper link): missing {sorted(smt-set(pos))[:6]}, extra {sorted(set(pos)-smt)[:6]}')
+fpb={f.GetReference():f for f in b.GetFootprints()}; off=[]
+for r in prow:
+    f=fpb.get(r[0])
+    if f is None: continue
+    x,y=MM(f.GetPosition().x),-MM(f.GetPosition().y); rot=f.GetOrientationDegrees()%360; side='bottom' if f.IsFlipped() else 'top'
+    dr=abs((float(r[5])-rot+180)%360-180)
+    if abs(float(r[3])-x)>0.01 or abs(float(r[4])-y)>0.01 or dr>0.1 or r[6]!=side: off.append((r[0],r[3:7],(round(x,3),round(y,3),rot,side)))
+ok(prow and not off,f'position file: X, Y, rotation and side of each part equal the board\'s: {len(off)} differ {off[:4]}')
 for name,col in (('bom-jlc.csv',1),('bom-digikey.csv',2)):
+    ok(os.path.exists(out+'/'+name),f'{name} exists')
     refs=[x for r in list(csv.reader(open(out+'/'+name,encoding='utf-8')))[1:] for x in r[col].split(',') if re.match(r'[A-Z]+\d+$',x)] if os.path.exists(out+'/'+name) else []
     ok(set(refs)==fitted and len(refs)==len(set(refs)),f'{name}: {len(refs)} references, the board has {len(fitted)} fitted parts: missing {sorted(fitted-set(refs))[:6]}, extra {sorted(set(refs)-fitted)[:6]}')
 z=out+f'/{stem}-gerbers.zip'
@@ -86,6 +124,7 @@ if os.path.exists(z):
     ok(names==files and same,f'zip: {len(names)} files, identical to gerbers/')
 else: ok(False,'zip missing')
 import hashlib
+ok(os.path.exists(out+'/BOARD.sha256'),'BOARD.sha256 exists')
 sha=hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest(); rec=open(out+'/BOARD.sha256').read().split()[0] if os.path.exists(out+'/BOARD.sha256') else None
 ok(rec==sha,f'the package was made from this board file (sha256 {sha[:16]}..., recorded {str(rec)[:16]}...): if not, run tools/fab_package.sh again')
 print('fab_check fails',len(fail)); sys.exit(1 if fail else 0)
