@@ -17,6 +17,9 @@ reported per path, with its width per layer and the 2 oz outer width that would 
         so each is taken by itself (an earlier version measured the cut at Y 150.0, on the pour's outline, and reported
         the two MID columns together as a "21.1 mm MID band").
   MID band between the two FET rows: cuts Y = 150.25..158 over X 130..170, 60 A.
+  BAT pour from the pack pad to RS1: cuts Y = 110..122 over X 146..177, 60 A.
+  GND return from the ports to the pack's GND pad: cuts Y = 112..186 across the whole board, every layer, 60 A.
+  The six port output legs (V_L, FET source pins to the pigtail pad): cuts along X, 30 A each.
 Also counted: vias of other nets in the VBUS band X 130-160, Y 180-190 (tools/finish_route.py puts no new ones there).
 Exit 1 when a path's rise is over its limit (RISE_MAX, degC) or the band holds more than BAND_VIAS_MAX vias.
 Boards given together are printed one after the other for a before/after comparison (the exit code is the last one's)."""
@@ -31,10 +34,19 @@ PATHS=[('stem','/VBUS','VBUS stem Y 178-231.4',[(178.0,222.0,60.0),(222.0,231.4,
        ('vq2','/VBUS','VBUS at Q2 source pins',[(169.0,169.75,30.0)],150.0,156.5),
        ('mq8','/MID','MID at Q8 source pins',[(149.0,149.75,30.0)],131.0,138.5),
        ('mq9','/MID','MID at Q9 source pins',[(149.0,149.75,30.0)],150.0,156.5),
-       ('mid','/MID','MID band Y 150.25-158',[(150.25,158.0,60.0)],130.0,170.0)]
+       ('mid','/MID','MID band Y 150.25-158',[(150.25,158.0,60.0)],130.0,170.0),
+       ('bat','/BAT','BAT pour, pack pad to RS1 (Y 110-122)',[(110.0,122.0,60.0)],146.0,177.0),
+       ('gnd','GND','GND return, ports to the pack pad (Y 112-186, every layer)',[(112.0,186.0,60.0)],100.0,200.0)]
+# the six port output legs, FET source pins to the pigtail pad: cuts along X (a 7th field 'x' swaps the axes: the spans
+# are X ranges and the last two numbers the Y range). Right ports as drawn, left ports turned 180 degrees.
+for k in range(1,7):
+    r=(k-1)//2
+    if k%2: PATHS.append((f'vl{k}',f'/V_L{k}',f'port {k} output leg V_L{k} (X 181-192.5)',[(181.0,192.5,30.0)],197.5+17.5*r,204.5+17.5*r,'x'))
+    else:   PATHS.append((f'vl{k}',f'/V_L{k}',f'port {k} output leg V_L{k} (X 107.5-119)',[(107.5,119.0,30.0)],186.0+17.5*r,193.0+17.5*r,'x'))
 # Limits, degC. 20 is the rating's target and about 25 the most this board accepts (LAYOUT_RULES, "Board"). The stem's
 # worst cut (Y 213.0, a row of seven signal vias) is at 25.3; every other cut is under 24.
-RISE_MAX={'stem':26.0,'vq1':25.0,'vq2':25.0,'mq8':25.0,'mq9':25.0,'mid':25.0}
+RISE_MAX={'stem':26.0,'vq1':25.0,'vq2':25.0,'mq8':25.0,'mq9':25.0,'mid':25.0,'bat':15.0,'gnd':21.0}
+RISE_MAX.update({f'vl{k}':22.0 for k in range(1,7)})   # the legs are at their 10.5 mm target: 20.2-21.2 degC
 BAND=(130.0,160.0,180.0,190.0); BAND_VIAS_MAX=18
 H=0.02
 INNER_DERATE=(0.024/0.048)**(1/0.725)   # 0.384: an internal conductor needs 1/0.384 of the external area for the same rise
@@ -49,7 +61,8 @@ def outer_equiv(widths):
     return area_eq(widths)*MIL/(stack.CU_UM[0]/25.4)
 def measure(path):
     b=pcbnew.LoadBoard(path); KL=stack.kicad_layers(pcbnew); out=[]
-    for key,net,name,spans,x0,x1 in PATHS:
+    for key,net,name,spans,x0,x1,*ax in PATHS:
+        swap=bool(ax) and ax[0]=='x'   # cuts along X: a vertical strip at each X, spanning Y x0..x1
         zs=[z for z in b.Zones() if not z.GetIsRuleArea() and z.GetNetname()==net]
         fills={i:[z.GetFilledPolysList(L) for z in zs if z.IsOnLayer(L)] for i,L in enumerate(KL)}
         worst=None
@@ -57,7 +70,7 @@ def measure(path):
             y=y0
             while y<=y1+1e-9:
                 strip=pcbnew.SHAPE_POLY_SET(); strip.NewOutline()
-                for px,py in ((x0,y-H/2),(x1,y-H/2),(x1,y+H/2),(x0,y+H/2)): strip.Append(IU(px),IU(py))
+                for px,py in ((x0,y-H/2),(x1,y-H/2),(x1,y+H/2),(x0,y+H/2)): strip.Append(*((IU(py),IU(px)) if swap else (IU(px),IU(py))))
                 w={}
                 for i,ps in fills.items():
                     a=0.0
@@ -66,9 +79,9 @@ def measure(path):
                     w[i]=a/IU(1)**2/H
                 r=rise(w,amps)
                 if worst is None or r>worst[0]: worst=(r,y,amps,w)
-                if os.environ.get('PROFILE'): print(f'      {net} Y {y:.2f} {amps:.0f} A: '+', '.join(f'{stack.NAMES[i]} {v:.2f}' for i,v in w.items() if v>0.05)+f'; rise {r:.1f}')
+                if os.environ.get('PROFILE'): print(f'      {net} {"X" if swap else "Y"} {y:.2f} {amps:.0f} A: '+', '.join(f'{stack.NAMES[i]} {v:.2f}' for i,v in w.items() if v>0.05)+f'; rise {r:.1f}')
                 y+=0.25
-        out.append((key,name,worst))
+        out.append((key,name,worst,'X' if swap else 'Y'))
     bx0,bx1,by0,by1=BAND
     nv=sum(1 for t in b.GetTracks() if t.GetClass()=='PCB_VIA' and t.GetNetname()!='/VBUS'
            and bx0<=MM(t.GetPosition().x)<=bx1 and by0<=MM(t.GetPosition().y)<=by1)
@@ -77,10 +90,10 @@ if __name__=='__main__':
     bad=0
     for p in sys.argv[1:]:
         print(p); res,nv=measure(p); bad=0
-        for key,name,(r,y,amps,w) in res:
+        for key,name,(r,y,amps,w),axn in res:
             lay=', '.join(f'{stack.NAMES[i]} {v:.1f}' for i,v in w.items() if v>0.05)
             ok=r<=RISE_MAX[key]; bad+=not ok
-            print(f'   {name}: worst cut Y {y:.2f} at {amps:.0f} A: {lay} mm; as one 2 oz outer layer {outer_equiv(w):.1f} mm; rise {r:.1f} degC (limit {RISE_MAX[key]:.0f}) {"ok" if ok else "FAIL"}')
+            print(f'   {name}: worst cut {axn} {y:.2f} at {amps:.0f} A: {lay} mm; as one 2 oz outer layer {outer_equiv(w):.1f} mm; rise {r:.1f} degC (limit {RISE_MAX[key]:.0f}) {"ok" if ok else "FAIL"}')
         ok=nv<=BAND_VIAS_MAX; bad+=not ok
         print(f'   vias of other nets in the VBUS band X {BAND[0]:.0f}-{BAND[1]:.0f}, Y {BAND[2]:.0f}-{BAND[3]:.0f}: {nv} (limit {BAND_VIAS_MAX}) {"ok" if ok else "FAIL"}')
     sys.exit(1 if bad else 0)

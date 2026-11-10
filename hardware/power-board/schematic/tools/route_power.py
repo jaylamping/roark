@@ -89,7 +89,11 @@ vias('/SW_D',-1.4,3.1,301.4,303.4,pitch=0.9)                                    
 vias('/MID',-9.8,-1.6,271.0,280.6); vias('/MID',8.0,16.6,271.0,280.6)            # under the bank B tabs
 vias('/MID',-16.0,-13.0,282.6,289.4); vias('/MID',2.8,5.8,282.6,289.4)           # band between the banks (clear of HS1 at 0,286)
 vias('/MID',-18.0,-17.6,297.27,298.54,pitch=1.27); vias('/MID',1.2,1.2,297.27,298.54,pitch=1.27)   # pins 2-3 islands
-vias('/VBUS',-16.9,16.9,267.0,269.6,pitch=1.3); vias('/VBUS',-26.0,-18.0,266.9,266.9,pitch=1.0); vias('/VBUS',18.0,26.0,266.9,266.9,pitch=1.0)   # bank B sources and bus caps to L6
+# bank B sources and bus caps to L6: three rows at 2.6 mm pitch, the middle one offset by half a pitch, and the side rows
+# at 2.0 mm. At 1.3 and 1.0 mm (until 2026-11-10) the vias' clearance holes merged into a slot 53 mm long across all four
+# inner layers, and the 60 A GND return had 31 mm of each plane left there (tools/pour_width.py, GND return).
+vias('/VBUS',-16.9,16.9,267.0,267.0,pitch=2.6); vias('/VBUS',-15.6,15.6,268.3,268.3,pitch=2.6); vias('/VBUS',-16.9,16.9,269.6,269.6,pitch=2.6)
+vias('/VBUS',-26.0,-18.0,266.9,266.9,pitch=2.0); vias('/VBUS',18.0,26.0,266.9,266.9,pitch=2.0)
 vias('/VBUS',-18.0,-17.6,277.27,278.54,pitch=1.27); vias('/VBUS',1.2,1.2,277.27,278.54,pitch=1.27)
 for k,Y1,s in PORTS:
     Y0=Y1-17.5; T=lambda r:turn(s,Y0,Y1,r)

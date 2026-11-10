@@ -10,7 +10,7 @@
 #   blocks -> blocks.kicad_pcb          port_template.py (rip and stamp the six ports), u8_block.py (the same for U8),
 #                                       then lay_path.py @hand_laid.specs (exit 1 if a spec is blocked)
 #   finish -> finished.kicad_pcb        finish_route.py round by round until a round closes nothing, joint_fix.py,
-#                                       estop_guards.py, a kicad-cli refill, heatsink_pads.py
+#                                       bat_copper.py, estop_guards.py, a kicad-cli refill, heatsink_pads.py
 #   verify -> tools/verify_board.sh on finished.kicad_pcb: the build's exit code
 # The copper between the blocks comes from the routers, whose result depends on the order of the runs: a rebuild gives
 # the same blocks and hand-laid copper but not the same copper in between, and may leave connections open that the
@@ -82,7 +82,8 @@ if run finish; then
     q < "$W/finish$round.txt" | tail -1 | cut -c1-200; cp "$W/f2.kicad_pcb" "$W/f.kicad_pcb"
   done
   "$KP" tools/joint_fix.py "$W/f.kicad_pcb" "$W/f2.kicad_pcb" 2>&1 | q | tail -1; [ -s "$W/f2.kicad_pcb" ] || die 'joint_fix wrote no board'
-  "$KP" tools/estop_guards.py "$W/f2.kicad_pcb" "$W/f.kicad_pcb" 2>&1 | q | tail -1
+  "$KP" tools/bat_copper.py "$W/f2.kicad_pcb" "$W/f3.kicad_pcb" 2>&1 | q | tail -1; [ -s "$W/f3.kicad_pcb" ] || die 'bat_copper wrote no board'
+  "$KP" tools/estop_guards.py "$W/f3.kicad_pcb" "$W/f.kicad_pcb" 2>&1 | q | tail -1
   refill "$W/f.kicad_pcb" "$W/f.kicad_pcb"
   "$KP" tools/heatsink_pads.py "$W/f.kicad_pcb" "$W/finished.kicad_pcb" 2>&1 | q | tail -1
   [ -s "$W/finished.kicad_pcb" ] || die 'finish stage failed'
