@@ -272,9 +272,9 @@ impl Enabling {
                     value: ParamValue::RunMode(RunMode::Mit),
                 };
                 // Strictly after the Enable's answer, so that one status never answers both frames. The drive's latest
-                // status, if it is after that and in another mode, is the drive leaving Run, fresh or not. (A Reset
-                // hidden by a later Run in one snapshot is the bus layer's latch, and this ends in `LeftRun` after the
-                // window.)
+                // status, if it is after that and in another mode, is the drive leaving Run, fresh or not. A Reset hidden
+                // by a later Run in one snapshot is the bus layer's to catch: it latches the drop out of Run and stops
+                // the limb, and the stop's Reset then ends this.
                 let left = view
                     .observed
                     .filter(|o| o.read_ns > run_read_ns && o.status.header.mode != Mode::Run)
@@ -282,20 +282,24 @@ impl Enabling {
                 let answer = fresh_since(view, since_ns)
                     .filter(|a| a.read_ns > run_read_ns)
                     .map(|a| a.mode);
-                match (
-                    left.or(answer),
-                    echoed(view, mit, since_ns),
-                    late(since_ns, now_ns),
-                ) {
-                    (Some(Mode::Run), true, _) => (Stage::Enabled, Next::Enabled),
-                    (Some(mode @ (Mode::Reset | Mode::Calibration)), _, _) => {
-                        self.failed(EnableFailure::LeftRun { last: Some(mode) })
+                if let Some(mode) = left {
+                    self.failed(EnableFailure::LeftRun { last: Some(mode) })
+                } else {
+                    match (answer, echoed(view, mit, since_ns), late(since_ns, now_ns)) {
+                        (Some(Mode::Run), true, _) => (Stage::Enabled, Next::Enabled),
+                        // A fresh answer in another mode with no later status: not a view the bus builds (the answer
+                        // is then the latest status, caught above), but it is the drive leaving Run all the same.
+                        (Some(mode @ (Mode::Reset | Mode::Calibration)), _, _) => {
+                            self.failed(EnableFailure::LeftRun { last: Some(mode) })
+                        }
+                        (Some(Mode::Run) | None, _, false) => (self.stage, Next::Wait),
+                        (None, true, true) => self.failed(EnableFailure::LeftRun {
+                            last: mode_since(view, since_ns),
+                        }),
+                        (Some(Mode::Run) | None, false, true) => {
+                            self.failed(EnableFailure::NoModeEcho)
+                        }
                     }
-                    (Some(Mode::Run) | None, _, false) => (self.stage, Next::Wait),
-                    (None, true, true) => self.failed(EnableFailure::LeftRun {
-                        last: mode_since(view, since_ns),
-                    }),
-                    (Some(Mode::Run) | None, false, true) => self.failed(EnableFailure::NoModeEcho),
                 }
             }
             Stage::Enabled => (self.stage, Next::Enabled),
