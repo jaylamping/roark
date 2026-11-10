@@ -43,8 +43,9 @@ nothing.
    being pushed; [scripts/check.sh](../scripts/check.sh) and CI run the working-tree check on every PR. Simplify or split a
    file that large, or keep it in `_wip/`. **Why:** GitHub rejects plain files of 100 MiB, and one large LFS file eats the
    quota. CI sees a file only after the push has uploaded it, so CI alone can't save the quota: check before pushing.
-6. **Prints:** commit the exact 3MF that was printed, its G-code and the settings checklist, overwriting the previous print of
-   that part. **Why:** the G-code is the true record of the print; Bambu Studio has changed saved 3MF settings on open.
+6. **Prints:** commit the exact 3MF that was printed, its G-code, the settings checklist and its passing gate report
+   ([part-lifecycle.md section 3](part-lifecycle.md#3-pre-print-gate); CI fails a 3MF without one), overwriting the previous
+   print of that part. **Why:** the G-code is the true record of the print; Bambu Studio has changed saved 3MF settings on open.
 7. **Reviews** pin the exact design they reviewed: commit the CAD first, then the packet, whose markdown carries a
    `Pinned commit: <full 40-character SHA>` line and links files by `https://github.com/jaylamping/roark/blob/<sha>/cad/...`.
    A packet holds markdown, key renders (each under about 2 MB) and small data; raw logs, prompts and bulky data stay in

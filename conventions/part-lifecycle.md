@@ -11,8 +11,10 @@ Every printed structural part of the robot goes through three files, kept in `ca
 | Gate report | `cad/prints/<region>/<part>_gate.md` | by `tools/cad/gate.py`, before a 3MF is printed or reviewed | Joey, reviewers, CI |
 | Print log | `cad/prints/<region>/<link>_prints.md` | after each print, by the design thread | the next design pass, the gate |
 
-All three are markdown with a TOML block between `+++` lines at the top: people read the markdown, tools read the TOML.
-They hold no code and no tool-specific state, so another tool can read the same files later.
+All three are markdown. The spec and the print log carry a TOML block between `+++` lines at the top: people read the
+markdown, tools read the TOML. The gate report, which only `gate.py` writes, carries its inputs as `- Input <role>: <path>
+(sha256 <hash>)` lines instead, which `--verify` reads. They hold no code and no tool-specific state, so another tool can
+read the same files later.
 
 **Why:** on the left arm (2026-11-05 to 11-09) most rework came from three places. Requirements arrived after CAD had
 started (the 5 kg sweep, the hand bay, clean outer skin), and each forced a redo. Checks were bolted on one at a time, each
@@ -139,7 +141,7 @@ fails when:
 |---|---|---|
 | Requirements agreed | the spec is not `agreed` | three mid-design redos on the forearm |
 | Files present | the export, the 3MF or the picture sheet (`<part>_sheet.png`, all sides including the bed side) is missing | defects missed by single-view checks |
-| Mesh ([mesh_check.py](../tools/cad/mesh_check.py)) | not one watertight body; an unlisted vertex sharper than 150°, knife edge, wall under 0.6 mm over 0.5 mm², or surface step over 0.03 mm over 1 mm² | spikes, slivers, then notches reached Joey (2026-11-07) |
+| Mesh ([mesh_check.py](../tools/cad/mesh_check.py)) | not one watertight body; an unlisted vertex sharper than 150°, knife edge, wall under 0.6 mm over 0.5 mm²; for a part with a `revolve` whitelist entry, a surface step over 0.03 mm over 1 mm² | spikes, slivers, then notches reached Joey (2026-11-07) |
 | Support on visible faces ([part_checks.py](../tools/cad/part_checks.py)) | support touches more visible outer area than the spec allows, an allowance has no reason, or a `hidden_by` mesh is missing | rough upper-arm skin, trapped cavity support (2026-11-08) |
 | Interference | a `mates` mesh overlaps the part by more than 0.05 mm | RS02 tab lip about 1 mm into the upper arm (2026-11-08) |
 | 3MF settings | material or a spec setting differs, or a spec setting isn't flagged in `different_settings_to_system` (unless the spec lists it in `preset`) | infill reset to 15% on open (2026-11-07) |
