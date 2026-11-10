@@ -558,7 +558,18 @@ impl BusTick {
         match (send.kind, &mut d.stop) {
             (SendKind::Disable, stop @ DriveStop::NeverSent) => *stop = DriveStop::Sent,
             (SendKind::ReportingOff, DriveStop::Confirmed { off, .. }) => *off = Off::Sent,
-            (SendKind::Disable | SendKind::ReportingOff | SendKind::Command, _) => {}
+            (
+                SendKind::Disable,
+                DriveStop::None | DriveStop::Sent | DriveStop::Confirmed { .. },
+            )
+            | (SendKind::ReportingOff, DriveStop::None | DriveStop::NeverSent | DriveStop::Sent)
+            | (
+                SendKind::Command,
+                DriveStop::None
+                | DriveStop::NeverSent
+                | DriveStop::Sent
+                | DriveStop::Confirmed { .. },
+            ) => {}
         }
         if expects_status {
             d.outstanding = Some(Outstanding {
