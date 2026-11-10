@@ -345,6 +345,16 @@ I2C or holds the converter off. One set of I2C pull-ups only (the Pi's). Pigtail
 Ground: the buck board's ground meets this board's at J24 and again through the Pi (its 12 V return on buck board J3, and
 J21's GND). If the J3 return opens, the Pi buck's return falls back through J21's one GND pin: route the J21 cable beside
 the pigtail and check the J3 return crimp at assembly.''',(300,1035),150)
+# ---------- heatsink tie (2026-11-10), appended so earlier refs keep their numbers ----------
+head('5d. Heatsink tie: the FET heatsink to GND through 100k, with a test point',(300,1120))
+g=Grid(s,310,1140,20.32,30.48,420)
+g.R('100k','HSINK','GND',R1206); nic(s,'Connector:TestPoint',s.nref('TP'),'TP HSINK',g.at(),'TestPoint:TestPoint_Pad_D2.0mm',{'1':'HSINK'})
+conn(1,'Heatsink lug wire: to a ring lug under a heatsink screw',(400,1140),'Connector_Wire:SolderWire-0.5sqmm_1x01_D0.9mm_OD2.1mm',['HSINK'],ref='J27')   # J25 is taken by hand (HS50 B)
+wnote('''The heatsink under the board sits on an insulating gap pad over ten bare FET pads on eight nets (THERMAL_OPTION.md,
+"Insulation under the heatsink"). Left floating, a first puncture of the pad would go unseen, and the heatsink would ride on
+the FET drains' edges through about 170 pF. 100k (1206, 200 V working: 54 V across it is 29 mW) holds it at GND and makes a
+puncture show as a voltage on TP HSINK: over 1 V for any leak under 5 MOhm from 54 V. Not a hard tie: a puncture under a
+bank A tab would then short the pack ahead of both banks. A wire from the pad to a ring lug under a heatsink screw.''',(300,1165),150)
 writelib()
 s.write([('/'+ROOT,'1')])
 print('ok',{k:v for k,v in s.refc.items() if not k.startswith('#')})

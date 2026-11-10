@@ -6692,6 +6692,135 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Connector_Generic:Conn_01x01"
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "J"
+				(at 0 2.54 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "Conn_01x01"
+				(at 0 -2.54 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Datasheet" ""
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Description" "Generic connector, single row, 01x01, script generated (kicad-library-utils/schlib/autogen/connector/)"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "connector"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_fp_filters" "Connector*:*_1x??_*"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(symbol "Conn_01x01_1_1"
+				(rectangle
+					(start -1.27 1.27)
+					(end 1.27 -1.27)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type background)
+					)
+				)
+				(rectangle
+					(start -1.27 0.127)
+					(end 0 -0.127)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(pin passive line
+					(at -5.08 0 0)
+					(length 3.81)
+					(name "Pin_1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 	)
 	(text "1. Battery in and E-stop bank B (LM5069-1, two FETs). Bank A, in series ahead of it, is block 7"
 		(exclude_from_sim no)
@@ -65251,6 +65380,378 @@
 			(justify left top)
 		)
 		(uuid "918b22bf-4b98-5b64-b15b-d6167998c9f1")
+	)
+	(text "5d. Heatsink tie: the FET heatsink to GND through 100k, with a test point"
+		(exclude_from_sim no)
+		(at 300 1120 0)
+		(effects
+			(font
+				(size 2 2)
+				(bold yes)
+			)
+			(justify left top)
+		)
+		(uuid "409f35d0-2f5f-58df-b841-b6f50dd7a9a4")
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 309.88 1140.46 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "84027da0-37a0-5fbd-a818-5824cb525afb")
+		(property "Reference" "R139"
+			(at 312.42 1139.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "100k"
+			(at 312.42 1141.73 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Resistor_SMD:R_1206_3216Metric"
+			(at 309.88 1140.46 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 309.88 1140.46 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 309.88 1140.46 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "8198a8a8-682d-5fb1-8a38-77d4efcb4867")
+		)
+		(pin "2"
+			(uuid "439e9d1d-a827-57df-b9fe-a580f33bdd49")
+		)
+		(instances
+			(project "marengo_pdu_revb"
+				(path "/4f491891-0d70-55da-8cdc-5f706f605109"
+					(reference "R139")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 309.88 1136.65)
+			(xy 309.88 1134.11)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ed63e519-a82b-5021-bb7e-94c414a7507f")
+	)
+	(label "HSINK"
+		(at 309.88 1134.11 90)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "4e2356b3-38eb-55c4-9df6-2a8bdb4179ac")
+	)
+	(wire
+		(pts
+			(xy 309.88 1144.27)
+			(xy 309.88 1146.81)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6f4e4aa7-a7ec-57f2-809c-cdde758d882e")
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 309.88 1146.81 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(dnp no)
+		(uuid "a943ba8d-a1d9-5b26-8275-7ce578fb353b")
+		(property "Reference" "#PWR217"
+			(at 313.69 1145.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 313.69 1148.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 309.88 1146.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 309.88 1146.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 309.88 1146.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "66a315a9-8841-51b8-8528-6202cff28c6a")
+		)
+		(instances
+			(project "marengo_pdu_revb"
+				(path "/4f491891-0d70-55da-8cdc-5f706f605109"
+					(reference "#PWR217")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Connector:TestPoint")
+		(at 330.2 1140.46 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "58a01c2f-ee8c-5a71-9aac-af4bf11d983d")
+		(property "Reference" "TP17"
+			(at 325.12 1129.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "TP HSINK"
+			(at 325.12 1151.89 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "TestPoint:TestPoint_Pad_D2.0mm"
+			(at 330.2 1140.46 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 330.2 1140.46 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 330.2 1140.46 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "e96a55e1-6093-5948-bf7f-066272540b31")
+		)
+		(instances
+			(project "marengo_pdu_revb"
+				(path "/4f491891-0d70-55da-8cdc-5f706f605109"
+					(reference "TP17")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 330.2 1140.46)
+			(xy 330.2 1145.54)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c2913601-9eb4-5974-ad7d-867178c44b48")
+	)
+	(label "HSINK"
+		(at 330.2 1145.54 270)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "8c74dcba-cde8-5c79-b7cf-0c880afcd24f")
+	)
+	(symbol
+		(lib_id "Connector_Generic:Conn_01x01")
+		(at 400.05 1140.46 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "f1e9d608-7bac-5eac-9cc2-dfb04d0cf132")
+		(property "Reference" "J27"
+			(at 394.97 1129.03 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "Heatsink lug wire: to a ring lug under a heatsink screw"
+			(at 394.97 1151.89 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Connector_Wire:SolderWire-0.5sqmm_1x01_D0.9mm_OD2.1mm"
+			(at 400.05 1140.46 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 400.05 1140.46 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 400.05 1140.46 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "960adb3b-8986-578e-b54c-45d4b3104d02")
+		)
+		(instances
+			(project "marengo_pdu_revb"
+				(path "/4f491891-0d70-55da-8cdc-5f706f605109"
+					(reference "J27")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(wire
+		(pts
+			(xy 394.97 1140.46)
+			(xy 389.89 1140.46)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b70c3e0c-291b-5b52-a538-fa217dae9309")
+	)
+	(label "HSINK"
+		(at 389.89 1140.46 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "432db7f4-a14b-590a-b8ea-50394b3c7b4d")
+	)
+	(text "The heatsink under the board sits on an insulating gap pad over ten bare FET pads on eight nets (THERMAL_OPTION.md,\n\"Insulation under the heatsink\"). Left floating, a first puncture of the pad would go unseen, and the heatsink would ride on\nthe FET drains' edges through about 170 pF. 100k (1206, 200 V working: 54 V across it is 29 mW) holds it at GND and makes a\npuncture show as a voltage on TP HSINK: over 1 V for any leak under 5 MOhm from 54 V. Not a hard tie: a puncture under a\nbank A tab would then short the pack ahead of both banks. A wire from the pad to a ring lug under a heatsink screw."
+		(exclude_from_sim no)
+		(at 300 1165 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left top)
+		)
+		(uuid "2f4d2a5c-c3f8-555a-b39e-72c5c927b539")
 	)
 	(sheet_instances
 		(path "/"

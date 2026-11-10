@@ -151,7 +151,10 @@ import port_template as PT, u8_block, latch_block
 TEMPLATE={PT.refs(k)[role] for k in PORT for role in PT.PLACE}|set(u8_block.PLACE)|set(latch_block.PLACE)|set(latch_block.PLACE_ALL)   # U8's block: tools/u8_block.py; the latch supply: tools/latch_block.py
 # single parts moved by hand after the packing (page mm: courtyard centre, pad 1): C81, the watchdog's CWD cap, beside
 # U25's pin 2 (the packer had put it 20 mm away)
-MOVED={'C81':((101.6,246.0),(101.6,246.775))}
+MOVED={'C81':((101.6,246.0),(101.6,246.775)),
+       # the heatsink tie (2026-11-10), south of the heatsink's edge at page Y 243.5: the lug wire's pad (a through hole,
+       # so outside the heatsink), its test point and the 100k to GND; tools/add_parts.py put them on the routed board
+       'J27':((150.0,246.2),None), 'TP17':((146.2,245.8),None), 'R139':((154.4,246.2),(152.94,246.2))}
 TEMPLATE|=set(MOVED)
 for r in TEMPLATE: G.pop(r,None)
 for r in FIX: G.pop(r,None)

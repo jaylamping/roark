@@ -2,7 +2,8 @@
 against the netlists.
   1. bom-rev-B.csv is exactly what tools/bom.py writes from the main netlist (and buck12/bom-buck12.csv from the buck
      netlist, when it is given).
-  2. kit-2sets.csv's rows for the pigtail connectors (main J24, buck J1) carry the netlist's value text.
+  2. kit-2sets.csv lists every fitted part of each board once, each row's counts follow its references, and its rows
+     for the pigtail connectors (main J24, buck J1) carry the netlist's value text.
   3. The pinout written in the pigtail connector's value ("1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 +3V3_PI, ...") is the
      netlist's: each listed pin is on the net the text names.
 Exit 1 on any difference."""
@@ -45,6 +46,11 @@ for label,netf,bomf,board,rx,alias in (('main',sys.argv[2],PB+'/bom-rev-B.csv','
     want=bom_rows(N); have=read_csv(bomf)
     diff=[(i+1,h,w) for i,(h,w) in enumerate(zip(have,want)) if h!=w]
     ok(have==want,f'{bomf.split("/")[-1]} equals tools/bom.py on the {label} netlist'+(f': line {diff[0][0]} has {diff[0][1][:2]}, netlist gives {diff[0][2][:2]}' if diff else '' if have==want else f': {len(have)} rows, netlist gives {len(want)}'))
+    # the kit lists every fitted part of this board once, and each row's counts follow its references
+    fitted={r for r,c in comp.items() if not any(str(get(p_,'name')[1])=='dnp' for p_ in getall(c,'property'))}
+    krows=[r for r in kit if len(r)>5 and r[0]==board]; kref=[x for r in krows for x in r[1].split(',')]
+    wrong=[r[1][:24] for r in krows if not (len(r[1].split(','))==int(r[4]) and int(r[5])==2*int(r[4]))]
+    ok(set(kref)==fitted and len(kref)==len(set(kref)) and not wrong,f'kit-2sets.csv {board} rows cover the fitted parts of the {label} netlist: missing {sorted(fitted-set(kref))[:8]}, extra {sorted(set(kref)-fitted)[:8]}, rows with wrong counts {wrong[:5]}')
     j=[r for r,c in comp.items() if re.match(rx,str(get(c,'value')[1]))]
     ok(len(j)==1,f'{label}: one pigtail connector ({j})')
     if len(j)!=1: continue

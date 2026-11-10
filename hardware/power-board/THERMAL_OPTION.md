@@ -109,7 +109,8 @@ Layout for D (done since stage 1):
 - Bare bottom copper (solder mask off, OSP) under each FET: the 15 × 15 mm square cut down to the FET's own drain copper
   (schematic/tools/heatsink_pads.py): 139 mm² at bank A, 143–145 mm² at bank B, 110–114 mm² at the ports.
 - Two M3 holes for the heatsink, HS1 (0, 286) and HS2 (0, 204), non-plated with a copper keep-out around each; the screw
-  heads sit on solder mask and the heatsink floats (insulated by the pad; see "Insulation under the heatsink").
+  heads sit on solder mask; the heatsink is insulated by the pad and tied to GND through 100 kΩ by a lug wire (see
+  "Insulation under the heatsink").
 - No THT pins inside the heatsink footprint: on the 100 × 170 board the Micro-Fit pins are at Y 175 and F2's pins start at
   Y 319 (F2 is pinned there), so the 120 mm heatsink fits as bought at Y 196.5–316.5.
 
@@ -130,17 +131,19 @@ pad is the only insulation between a bare pad and the aluminium.
 - **What one puncture does:** the heatsink takes that pad's potential. Nothing else happens, and nothing shows it.
   A second puncture under a pad of another net joins the two through the aluminium: SW_D to MID bridges bank A,
   MID to a port drain bridges bank B, SW_D to a port drain bridges both banks and U1.
-- **Heatsink potential: tie it to GND through a resistor, don't leave it floating.** Recommended: 100 kΩ (0603 is
-  enough: 29 mW with 54 V across it) from a ring lug under one heatsink screw to GND, with a test point on the
-  heatsink side. Reasons: (1) a first puncture then shows as a voltage on that test point (over 1 V with any leak
-  under 5 MΩ from 54 V), so it can be found at bring-up and at service instead of waiting for the second; (2) the
-  heatsink has about 17 pF to each pad (140 mm², 0.5 mm, εr 7), about 170 pF in all, and floating it rides on the FET
-  drains' edges and radiates; the resistor holds it at ground for anything slower than about 20 µs; (3) it drains
-  static. A hard tie to GND is worse: a first puncture under SW_D would then be a dead short on the pack, ahead of both
-  banks, with only the BMS to clear it. The resistor needs one part and one pad that the board does not have yet (a
-  schematic change: a 100 kΩ and a test point on a net HS, and a solder pad or a plated hole for the lug's wire near
-  HS1). Until then the heatsink floats as built; the insulation check at bring-up is a megohmmeter or a 50 V supply
-  through 100 kΩ from the heatsink to GND with the pack connected and the latch off, reading under 1 V.
+- **Heatsink potential: tied to GND through 100 kΩ, with a test point (on the board since 2026-11-10).** R139
+  (100 kΩ, 1206, 200 V working voltage; 54 V across it is 29 mW against 250 mW) joins the net HSINK to GND; TP17 is
+  the test point; J27 is a solder pad (0.9 mm hole) for a wire to a ring lug under one heatsink screw. All three sit
+  just south of the heatsink's edge (page Y 246), because J27 is a through hole and no through-hole joint may sit
+  under the heatsink. Reasons: (1) a first puncture now shows as a voltage on TP17 (over 1 V with any leak under 5 MΩ
+  from 54 V), so it can be found at bring-up and at service instead of waiting for the second; (2) the heatsink has
+  about 17 pF to each pad (140 mm², 0.5 mm, εr 7), about 170 pF in all, and floating it would ride on the FET drains'
+  edges and radiate; the resistor holds it at ground for anything slower than about 20 µs; (3) it drains static. A
+  hard tie to GND would be worse: a first puncture under SW_D would then be a dead short on the pack, ahead of both
+  banks, with only the BMS to clear it.
+- **Check at bring-up and at service:** with the pack connected and the latch off, TP17 reads under 1 V to GND. With
+  the lug wire lifted, a megohmmeter or a 50 V supply through 100 kΩ from the heatsink to each bare-pad net shows no
+  conduction.
 
 ## Simulation effects
 
