@@ -137,6 +137,13 @@ that is never coated must not go on the pack.
     on all layers. Nets in one domain (a port's V_L, G_L,
     GPD/GPU, BST, GC; bank B's MID with GA1/GA2 and BST_A; the VBUS taps) are tens of volts apart at most, so 0.2 mm.
   - Everything else 0.2 mm.
+- **Inner GND planes and fills (In1–In4): 0.3 mm zone clearance** (2026-11-09; `PLANE_CLEAR` in
+  [schematic/tools/stack.py](schematic/tools/stack.py)). The zones were built with 0.6 mm, the old uncoated outer-layer
+  value, and a row of vias at 0.85 mm pitch under a fine-pitch IC then cut the planes away completely. IPC-2221B B1
+  (internal conductors, 51–100 V) asks 0.1 mm. With 0.3 mm a 0.6/0.3 mm via keeps 0.45 mm from its drill to the plane
+  and a pad without an inner land 0.3 mm (check against the fab's hole-to-inner-copper minimum when ordering). The
+  outer GND fills keep 0.6 mm. schematic/tools/route_power.py builds the zones with it, schematic/tools/plane_clearance.py sets it
+  on a routed board, and route_checks.py check 6 tests it.
 - **DRC rules** (layout/marengo_pdu_revb.kicad_dru; a later rule wins in KiCad):
   - `estop_to_54v`: 1.5 mm from net class ESTOP to net class HV54 on every layer (classes set by
     schematic/tools/handfinish_prep.py from schematic/tools/domains.py).

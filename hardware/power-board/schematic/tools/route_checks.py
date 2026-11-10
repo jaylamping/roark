@@ -10,6 +10,7 @@
      the P leg that lies within 1.0 mm of the N leg.
   4. No 54 V track, via or pour on the inner layers under the latch block (tools/domains.py LATCH).
   5. No E-stop via inside a 54 V zone outline on any layer.
+  6. The inner GND planes and fills (In1-In4) have tools/stack.py PLANE_CLEAR as their zone clearance.
 Run with KiCad's Python: <kicad python> tools/route_checks.py <board.kicad_pcb>   (exit 1 on a routing violation)"""
 import re,sys
 import pcbnew
@@ -106,7 +107,16 @@ for t in b.GetTracks():
             esv.append((t.GetNetname(),z.GetNetname(),b.GetLayerName(z.GetFirstLayer()),pos(t.GetEffectiveShape(pcbnew.F_Cu))))
 print('5. E-stop vias inside a 54 V zone outline:',len(esv))
 for r in esv: print('   ',r)
-bad+=latch+esv
+# ---- 6. the inner GND planes and fills carry stack.PLANE_CLEAR as their zone clearance (solid under the via rows)
+def zclr(z):
+    c=z.GetLocalClearance()
+    c=c.value() if hasattr(c,'value') else c
+    return round(pcbnew.ToMM(c or 0),3)
+pl=[(b.GetLayerName(z.GetFirstLayer()),zclr(z)) for z in b.Zones() if not z.GetIsRuleArea() and z.GetNetname()=='GND'
+    and z.GetFirstLayer() in LAYERS[1:-1] and zclr(z)!=stack.PLANE_CLEAR]
+print(f'6. inner GND zones not at {stack.PLANE_CLEAR} mm clearance:',len(pl))
+for r in pl: print('   ',r)
+bad+=latch+esv+pl
 # ---- Kelvin pairs
 tr={}
 for t in b.GetTracks():

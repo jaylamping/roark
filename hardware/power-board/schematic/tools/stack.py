@@ -19,6 +19,12 @@ assert OUTER<=set(ROUTABLE) and set(COST)==set(ROUTABLE)
 # higher spike, so the model keeps the old 4-layer 0.2104 mm (JLC04161H-7628) until JLC confirms the 2 oz 6-layer stack.
 # JLC's 1 oz 6-layer 1.6 mm stack uses one sheet of 2313 prepreg, about 0.1 mm; 2 oz outer copper may use thicker prepreg.
 H_L1_L2=0.2104e-3
+# Zone clearance of the GND planes and fills on the four inner layers (In1-In4), mm. 0.6 mm (the old uncoated outer-layer
+# rule) cut the planes away under every fine-pitch via row; 0.3 mm keeps them solid there. IPC-2221B B1 (internal
+# conductors, 51-100 V) asks 0.1 mm. A 0.6/0.3 mm via then has 0.45 mm from its drill to the plane, and a pad without an
+# inner land 0.3 mm. tools/route_power.py builds the zones with it, tools/plane_clearance.py sets it on a routed
+# board, tools/route_checks.py check 6 tests it. The outer GND fills keep 0.6 mm.
+PLANE_CLEAR=0.3
 def kicad_layers(pcbnew):
     """pcbnew layer IDs in index order"""
     L=[pcbnew.F_Cu,pcbnew.In1_Cu,pcbnew.In2_Cu,pcbnew.In3_Cu,pcbnew.In4_Cu,pcbnew.B_Cu]

@@ -70,8 +70,8 @@ for k,Y1,s in PORTS:
     zone(f'/D_L{k}',L1,[T((16.4,20.7,Y1-3.83,Y1-1.73))],5,name=f'D_L{k}')
     zone(f'/V_L{k}',L1,[T((26.6,47.3,Y0+0.1,Y0+5.3)),T((43.0,47.3,Y0+5.3,Y0+7.3))],5,name=f'V_L{k}')
 # ---------------- inner GND planes ----------------
-for L in PLANES: zone('GND',L,[(-49.6,49.6,YB+0.4,339.6)],0,clear=0.6,name='GND '+b.GetLayerName(L))
-for L in FILLS: zone('GND',L,[(-49.6,49.6,YB+0.4,339.6)],0,clear=0.6,name='GND '+b.GetLayerName(L)+' fill')   # signal layers: refilled round the signals
+for L in PLANES: zone('GND',L,[(-49.6,49.6,YB+0.4,339.6)],0,clear=stack.PLANE_CLEAR,name='GND '+b.GetLayerName(L))
+for L in FILLS: zone('GND',L,[(-49.6,49.6,YB+0.4,339.6)],0,clear=stack.PLANE_CLEAR,name='GND '+b.GetLayerName(L)+' fill')   # signal layers: refilled round the signals
 # ---------------- L6: mirrors under the FETs (heatsink pads), VBUS sheet, GND fill ----------------
 zone('/SW_D',L6,[(-11.0,-0.3,290.2,303.6),(7.0,17.8,290.2,303.6),(-11.0,17.8,300.2,304.6)],5,name='SW_D L6')   # bridged above the pins
 zone('/MID',L6,[(-18.4,18.0,270.2,290.0),(-18.4,-12.3,290.0,299.4),(0.7,5.7,290.0,299.4)],4,name='MID L6')
