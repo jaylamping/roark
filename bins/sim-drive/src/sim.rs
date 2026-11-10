@@ -46,7 +46,7 @@ pub struct SimDrive {
     silence: Option<(Instant, Instant)>,
     blackout: Option<(Instant, Instant)>,
     outbox: [Option<Queued>; OUTBOX],
-    /// The time the drive was last brought up to.
+    /// The latest time the drive has been brought up to: its one clock, the plant's too.
     stepped: Option<Instant>,
     rng: Rng,
     dropped: u64,
@@ -358,9 +358,7 @@ impl SimDrive {
                     break;
                 }
             }
-            let limits = self.limits();
-            self.plant.advance(at, self.mode == Mode::Run, limits);
-            self.stepped = Some(at);
+            self.step_to(at);
             match event {
                 Event::Fault => {
                     if let Some((_, fault)) = self.plan.due(at) {
@@ -386,9 +384,18 @@ impl SimDrive {
         {
             self.skip_reports(at, interval, (now, inclusive));
         }
+        self.step_to(now);
+    }
+
+    /// Move the joint up to `at` and mark the drive stepped there. A time behind the last step moves nothing and leaves
+    /// the mark where it is: the drive keeps one clock, and it only goes forward.
+    fn step_to(&mut self, at: Instant) {
+        let dt = self
+            .stepped
+            .map_or(Duration::ZERO, |s| at.saturating_duration_since(s));
         let limits = self.limits();
-        self.plant.advance(now, self.mode == Mode::Run, limits);
-        self.stepped = Some(self.stepped.map_or(now, |s| s.max(now)));
+        self.plant.advance(dt, self.mode == Mode::Run, limits);
+        self.stepped = Some(self.stepped.map_or(at, |s| s.max(at)));
     }
 
     /// The next report's time, if it is due by `now`.

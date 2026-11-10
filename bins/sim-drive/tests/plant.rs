@@ -69,7 +69,8 @@ fn near(got: f64, want: f64, within: f64) -> bool {
 }
 
 /// Guards: number - an MIT target moves the joint as a first-order plant: from rest toward the target with time
-/// constant (damping + kd) / kp, settling on it, with the reported torque what the gains give (PLAN item 4 Plant;
+/// constant (damping + kd) / kp, settling on it, with the reported torque what the gains give, however the frames that
+/// step it are stamped (PLAN item 4 Plant;
 /// the MIT law in the RobStride manual §4.1.2).
 #[test]
 fn an_mit_target_moves_the_joint_toward_it() {
@@ -95,6 +96,17 @@ fn an_mit_target_moves_the_joint_toward_it() {
     assert!(
         near(v2, 0.0, 0.05) && near(torque2, 0.0, 0.1),
         "{v2} {torque2}"
+    );
+
+    // A frame stamped before the drive's last step moves the joint neither back nor twice: each span is covered once.
+    let (mut sim, t) = running();
+    joint(&mut sim, t, mit(1.0, kp, kd));
+    joint(&mut sim, t + tau / 2, mit(1.0, kp, kd));
+    joint(&mut sim, t, mit(1.0, kp, kd));
+    let (p, _, _) = joint(&mut sim, t + tau, mit(1.0, kp, kd));
+    assert!(
+        near(p, 1.0 - (-1.0_f64).exp(), 0.01),
+        "one time constant: {p}"
     );
 }
 

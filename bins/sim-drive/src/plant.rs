@@ -3,7 +3,7 @@
 //! The torque stops at `limit_torque` and the speed at `limit_spd`, and both at what the model's MIT feedback can carry.
 //! That the drive holds those two caps in MIT mode is a sim assumption: no bench capture shows it yet (PLAN item 6).
 
-use std::time::Instant;
+use std::time::Duration;
 
 use robstride::MitCommand;
 
@@ -19,20 +19,18 @@ pub(crate) struct Limits {
     pub(crate) position: (f64, f64),
 }
 
-/// The joint: where it is, the MIT command it follows (only while the drive is in Run), and the time it was brought
-/// up to. Velocity and torque follow from those, so a reply built at any moment shows the joint as it is then.
+/// The joint: where it is, and the MIT command it follows (only while the drive is in Run). Velocity and torque follow
+/// from those, so a reply built at any moment shows the joint as it is then. The drive keeps the time.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Plant {
     pub(crate) position: f64,
     target: Option<MitCommand>,
-    at: Option<Instant>,
 }
 
 impl Plant {
     pub(crate) const AT_ZERO: Self = Self {
         position: 0.0,
         target: None,
-        at: None,
     };
 
     /// The same joint, at rest where it is, following nothing: a drive leaving Run, or rebooting, doesn't move it.
@@ -40,22 +38,19 @@ impl Plant {
         Self {
             position: self.position,
             target: None,
-            at: self.at,
         }
     }
 
-    /// Move the joint up to `now`. Only a drive in Run drives it; otherwise it rests where it is and forgets its target.
-    pub(crate) fn advance(&mut self, now: Instant, running: bool, limits: Limits) {
-        let from = self.at.map_or(now, |at| at.min(now));
-        self.at = Some(now.max(from));
+    /// Move the joint on by `dt`. Only a drive in Run drives it; otherwise it rests where it is and forgets its target.
+    pub(crate) fn advance(&mut self, dt: Duration, running: bool, limits: Limits) {
         let Some(command) = self.target.filter(|_| running) else {
             self.target = None;
             return;
         };
-        self.step(&command, (now - from).as_secs_f64(), limits);
+        self.step(&command, dt.as_secs_f64(), limits);
     }
 
-    /// A new MIT command, taken at the time last advanced to.
+    /// A new MIT command, taken where the joint was last advanced to.
     pub(crate) const fn command(&mut self, command: MitCommand) {
         self.target = Some(command);
     }
