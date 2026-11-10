@@ -1,5 +1,5 @@
-//! What crosses the bus thread's seams: command batches in, snapshots out, all fixed-size and `Copy` so the rings never
-//! allocate (rust.md section 6).
+//! What crosses the bus thread's seams: command batches in, snapshots out (slow requests and results are in `slow`), all
+//! fixed-size and `Copy` so the rings never allocate (rust.md section 6).
 
 use robstride::{DeviceId, EchoKind, Frame, Status};
 
@@ -165,7 +165,8 @@ pub struct BusDrive {
 /// already stopping or stopped, and a late wake or a backlog every active one ([`StopReason`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LimbState {
-    /// Nothing enabled or commanded since start or the last re-arm; no batches needed.
+    /// Nothing enabled or commanded since start or the last re-arm; no batches needed, though slow requests are refused
+    /// while control is silent.
     Idle,
     /// An Enable or MIT frame to one of its drives was sent, so the bus needs a fresh batch every tick.
     Active,
@@ -202,7 +203,7 @@ pub struct LimbView {
     pub generation: u32,
 }
 
-/// The last of this host's frames to a drive read back from the socket.
+/// The last of this host's frames to a drive of a kind a batch carries, read back from the socket.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct EchoSeen {
     /// What it was.
@@ -315,8 +316,8 @@ pub struct DriveView {
     pub fault_seen: bool,
     /// Commands in a row it left unanswered by the collect deadline.
     pub misses: u32,
-    /// The last of this host's frames to it read back from the socket: the evidence a frame reached the controller
-    /// (never that it reached the drive).
+    /// The last of this host's frames to it of a kind a batch carries, read back from the socket: the evidence a frame
+    /// reached the controller (never that it reached the drive). Slow requests' echoes aren't kept here.
     pub last_echo: Option<EchoSeen>,
     /// What the current or last stop achieved for it.
     pub stop: StopOutcome,
@@ -337,8 +338,9 @@ pub struct Counters {
     pub late: u64,
     /// A second status for one command within its tick.
     pub duplicate: u64,
-    /// Statuses from this bus's drives that answer nothing: no command outstanding, a status after the command was
-    /// answered in an earlier tick, or a read that may predate the send.
+    /// Frames from this bus's drives that answer nothing: a status with no command outstanding, after the command was
+    /// answered in an earlier tick, or read when it may predate the send; a parameter or identity reply with no slow
+    /// request waiting for it.
     pub unsolicited: u64,
     /// Frames from a device this bus doesn't own.
     pub unexpected: u64,
@@ -370,6 +372,10 @@ pub struct Counters {
     pub kernel_drops: u32,
     /// Snapshots control's ring was too full to take.
     pub snapshots_dropped: u64,
+    /// Slow results control's ring was too full to take.
+    pub slow_results_dropped: u64,
+    /// Slow requests that expired unsent, queued for `Timing::slow_queue_ticks` ticks.
+    pub slow_expired: u64,
 }
 
 /// The bus at the end of a tick, for control and the safety layer.

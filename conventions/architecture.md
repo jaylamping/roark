@@ -44,6 +44,17 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
 | `robot-cli disable` | Nothing | The bus directly, after `runtime` has exited | Run while `runtime` is alive |
 | `sim-drive` | Simulated drive state | `vcan` through the same `robstride` codec (its drive side, `robstride::drive`) | Be linked into `runtime`, or open an interface that isn't `vcan` |
 
+The queues between the control thread and each bus thread, all bounded `rtrb` rings made before the first tick
+(`can::BusLinks`):
+
+| Ring | From → to | When full |
+|---|---|---|
+| Command batches | control → bus | Control's push fails and that batch is never sent. The bus empties the ring each tick and takes the newest; a batch for another tick, or none, sends nothing, and an expired one for the tick sends only its Disables and reporting off |
+| Slow requests (parameter reads, allowlisted writes, get-ID) | control → bus | Control's push fails and that request gets no result. The bus takes them only as its slots free up |
+| Slow results, one per request | bus → control | Dropped and counted (`slow_results_dropped`); the requester times out |
+| Snapshots | bus → control | The newest is dropped and counted (`snapshots_dropped`) |
+| Recorded frames | bus → telemetry | Counted in the recording as a loss, never blocking the tick |
+
 ## 2. Process boundaries are failure domains
 
 - **One process owns motion.** Only `runtime` transmits on CAN (tenet 5). Every other process can crash, hang or be restarted

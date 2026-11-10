@@ -42,10 +42,22 @@ pub struct Timing {
     /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
     pub disable_silence_ns: u64,
     /// Ticks without a fresh batch, while a limb is active, that stop every limb on the bus (PLAN.md item 3: two).
+    /// Counted on every tick, whatever the limbs are doing: past it, slow requests are refused.
     pub silent_ticks: u32,
     /// Consecutive commands a drive may leave unanswered by the collect deadline before its limb stops (PLAN.md item 6
     /// Silence row: three).
     pub silence_misses: u32,
+    /// How long a slow request's reply may take: one goes only if it is sent this long before the next tick starts, so
+    /// the next drain reads its reply. A quarter period by default: provisional, to be measured on the real adapter
+    /// (PLAN step 8).
+    pub slow_reply_ns: u64,
+    /// How many slacks a slow request may go in, N: one submitted in tick T may be sent in T's slack or those of the
+    /// next N - 1 ticks, and one still unsent expires as tick T + N's slack opens, so a run of held ticks or of slacks
+    /// opened too late can't keep it for good (rust.md section 4: a limit on everything).
+    /// The ticks covering 100 ms by default, rounded up (25 at 250 Hz): at every rate whose defaults [`Self::check`]
+    /// passes (86 Hz and up) that is more than [`SLOW_SLOTS`](crate::SLOW_SLOTS) ticks, so a full queue, sent one a
+    /// tick, drains before its last request expires.
+    pub slow_queue_ticks: u64,
 }
 
 impl Timing {
@@ -67,6 +79,11 @@ impl Timing {
             disable_silence_ns: 50_000_000,
             silent_ticks: 2,
             silence_misses: 3,
+            slow_reply_ns: period_ns / 4,
+            slow_queue_ticks: match period_ns {
+                0 => 0,
+                period_ns => 100_000_000_u64.div_ceil(period_ns),
+            },
         }
     }
 
@@ -84,7 +101,10 @@ impl Timing {
     ///   control is stopped before the drives give up on it;
     /// - at least one missed reply ([`TimingError::NoSilenceMisses`]), with the misses plus the tick that stops on them
     ///   plus the write slack (from the first unanswered command to the stop's Disable) under the drives' timeout
-    ///   ([`TimingError::SilenceMisses`]), so a silent drive's limb is stopped before the drives give up.
+    ///   ([`TimingError::SilenceMisses`]), so a silent drive's limb is stopped before the drives give up;
+    /// - a slow reply window of at least one nanosecond that, from the collect deadline, ends before the next tick
+    ///   starts ([`TimingError::SlowReply`]);
+    /// - a slow queue limit of at least one tick ([`TimingError::NoSlowQueueTicks`]).
     ///
     /// # Errors
     /// The first rule it breaks.
@@ -142,6 +162,16 @@ impl Timing {
                 period_ns,
                 write_slack_ns: self.write_slack_ns(),
             })
+        } else if self.slow_reply_ns == 0
+            || collect_ns.saturating_add(self.slow_reply_ns) >= period_ns
+        {
+            Err(TimingError::SlowReply {
+                slow_reply_ns: self.slow_reply_ns,
+                collect_ns,
+                period_ns,
+            })
+        } else if self.slow_queue_ticks == 0 {
+            Err(TimingError::NoSlowQueueTicks)
         } else {
             Ok(())
         }
@@ -310,4 +340,22 @@ pub enum TimingError {
         /// it by the shell's wake-to-write time (PLAN step 8).
         write_slack_ns: u64,
     },
+    /// The slow reply window is zero or fills the whole slack between the collect deadline and the next tick, so no
+    /// slow request could go: the shell sends only after the deadline.
+    #[error(
+        "slow_reply_ns {slow_reply_ns} must be above zero and shorter than the slack between collect_ns {collect_ns} and the period {period_ns}"
+    )]
+    SlowReply {
+        /// The slow reply window.
+        slow_reply_ns: u64,
+        /// The collect deadline.
+        collect_ns: u64,
+        /// The period.
+        period_ns: u64,
+    },
+    /// `slow_queue_ticks` is zero. A request submitted in its tick's slack, after it opened, as the shell submits them,
+    /// would still go in that slack and expire at the next, as with one; but one submitted earlier in its tick, before
+    /// that tick's slack opened, would expire there unsent.
+    #[error("slow_queue_ticks must be at least 1")]
+    NoSlowQueueTicks,
 }

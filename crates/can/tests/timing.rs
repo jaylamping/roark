@@ -10,9 +10,12 @@ use common::{id, one_limb};
 /// Guards: safety - timing that breaks the tick's promises is refused at startup, never quietly replaced, one row per
 /// rule and its boundary, the silence counts apart (`silence_counts_must_fire_before_the_drive_timeout`): a feedback
 /// limit that with the write slack and the read lag reaches the drives' 50 ms timeout is refused (units-and-frames.md
-/// section 5); a stop window must fit the post-Disable silence and a tick to send reporting off; and the slowest rate
-/// the defaults allow is 86 Hz, since at 85 Hz three misses, the tick that stops on them and the write slack reach the
-/// timeout (safety.md: invalid configuration is an error; PLAN.md item 3).
+/// section 5); a stop window must fit the post-Disable silence and a tick to send reporting off; a slow reply window
+/// must be non-zero and end, from the collect deadline, before the next tick (the shell sends slow requests only after
+/// the deadline, so a window that fills the slack lets nothing go); a slow request may wait queued at least a tick; and
+/// the slowest rate the defaults allow is 86 Hz, since at 85 Hz three misses, the tick that stops on them and the write
+/// slack reach the timeout (safety.md: invalid configuration is an error; PLAN.md item 3: parameter traffic only in the
+/// slack).
 #[test]
 #[expect(
     clippy::too_many_lines,
@@ -118,6 +121,46 @@ fn timing_that_breaks_the_tick_is_refused() {
                 ..base
             },
             None,
+        ),
+        (
+            "no slow reply window",
+            Timing {
+                slow_reply_ns: 0,
+                ..base
+            },
+            Some(TimingError::SlowReply {
+                slow_reply_ns: 0,
+                collect_ns: base.collect_ns,
+                period_ns: base.period_ns,
+            }),
+        ),
+        (
+            "slow reply window fills the slack",
+            Timing {
+                slow_reply_ns: base.period_ns - base.collect_ns,
+                ..base
+            },
+            Some(TimingError::SlowReply {
+                slow_reply_ns: base.period_ns - base.collect_ns,
+                collect_ns: base.collect_ns,
+                period_ns: base.period_ns,
+            }),
+        ),
+        (
+            "slow reply window just fits the slack",
+            Timing {
+                slow_reply_ns: base.period_ns - base.collect_ns - 1,
+                ..base
+            },
+            None,
+        ),
+        (
+            "no tick a slow request may wait queued",
+            Timing {
+                slow_queue_ticks: 0,
+                ..base
+            },
+            Some(TimingError::NoSlowQueueTicks),
         ),
         ("250 Hz", base, None),
     ];

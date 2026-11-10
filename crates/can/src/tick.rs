@@ -18,6 +18,7 @@ use robstride::{DeviceId, EchoKind, Mode};
 
 use crate::batch::Planned;
 use crate::error_frame::BusError;
+use crate::slow::{SLOW_SLOTS, SlowEntry};
 use crate::timing::{ENABLE_TO_RUN_NS, Timing};
 use crate::types::{
     BusDrive, CommandBatch, ConfigError, Counters, Drain, DriveView, EchoSeen, LimbState, LimbView,
@@ -212,6 +213,10 @@ pub(crate) fn limb_state(limbs: &[Option<Limb>; MAX_DRIVES], limb: usize) -> Opt
 
 /// One bus's drives, their limbs, and the tick logic over them.
 #[derive(Debug)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent facts about the bus and this tick's reads, each set on its own, not one state"
+)]
 pub struct BusTick {
     pub(crate) timing: Timing,
     pub(crate) drives: [Option<DriveState>; MAX_DRIVES],
@@ -231,6 +236,11 @@ pub struct BusTick {
     pub(crate) tick: u64,
     pub(crate) scheduled_ns: u64,
     pub(crate) planned: Planned,
+    /// This tick woke late, followed a stall or read a backlog: only its batch's Disables and reporting off went, and
+    /// no slow frame goes in its slack.
+    pub(crate) held: bool,
+    pub(crate) slow: [Option<SlowEntry>; SLOW_SLOTS],
+    pub(crate) slow_seq: u64,
 }
 
 impl BusTick {
@@ -296,6 +306,9 @@ impl BusTick {
             tick: 0,
             scheduled_ns: 0,
             planned: Planned::EMPTY,
+            held: false,
+            slow: [None; SLOW_SLOTS],
+            slow_seq: 0,
         })
     }
 
@@ -430,7 +443,7 @@ impl BusTick {
     ///    check.
     /// 2. Only the batch's Disables and reporting off are planned, which are right late or not; the rest, that motion
     ///    included, is held back unsent (`held_batches`), so nothing is enabled or moved on a tick whose reads can't
-    ///    be trusted.
+    ///    be trusted. No slow request goes in its slack.
     /// 3. The freshness of every drive in a limb still idle is cleared once, here: the drain read late or past a
     ///    backlog, so the real age of what it stamped can't be bounded. A status read after this tick's sends (a
     ///    Disable it sends opens a reply) counts as fresh again, since the drain emptied the socket before them; after
@@ -451,6 +464,7 @@ impl BusTick {
         for d in self.drives.iter_mut().flatten() {
             d.answered = false;
         }
+        self.time_out_slow();
         // A stop asked for before this tick began came first, so it keeps its reason over a backlog or a late wake.
         if let Some(reason) = self.pending_stop.take() {
             self.stop_all(reason, now_ns);
@@ -472,9 +486,12 @@ impl BusTick {
         }
         // On a tick whose reads can't be trusted or that woke too late, only the batch's Disables and reporting off go.
         let hold = backlog || woke_late || stalled;
+        self.held = hold;
         self.veto(now_ns);
+        // Control's silence counts on every tick: with nothing to stop it still refuses slow requests after a re-arm.
+        let fresh = self.note_control(tick, now_ns, batch);
         let accepted = if takes_batches {
-            self.check_batch(tick, now_ns, batch)
+            self.check_batch(tick, now_ns, batch, fresh)
         } else {
             if batch.is_some() {
                 self.counters.refused_batches += 1;

@@ -82,9 +82,10 @@ impl BusTick {
         }
     }
 
-    /// The batch for this tick if it is sound, and whether it is fresh. A batch for another tick, or past its expiry,
-    /// counts the tick stale and toward control's silence; one for another tick is not used at all, while an expired
-    /// one for this tick still yields its Disables and reporting off, which are right late or not (can.md section 2).
+    /// The batch for this tick if it is sound, and whether it is fresh, as [`Self::note_control`] found it (`fresh`). A
+    /// batch for another tick, or past its expiry, counts the tick stale, and control's silence past its limit with a
+    /// limb active stops every limb; one for another tick is not used at all, while an expired one for this tick still
+    /// yields its Disables and reporting off, which are right late or not (can.md section 2).
     /// A frame aimed wrong, in a slot with no drive, or of a kind a batch may not carry is a bug upstream and stops the
     /// whole bus; motion on expired feedback in a fresh batch stops that drive's limb.
     pub(crate) fn check_batch<'b>(
@@ -92,11 +93,10 @@ impl BusTick {
         tick: u64,
         now_ns: u64,
         batch: Option<&'b CommandBatch>,
+        fresh: bool,
     ) -> Option<Accepted<'b>> {
         let this_tick = batch.filter(|b| b.tick == tick);
-        if this_tick.is_some_and(|b| b.expires_ns > now_ns) {
-            self.silent = 0;
-        } else {
+        if !fresh {
             if batch.is_some() {
                 self.counters.stale_ticks += 1;
             }
@@ -105,19 +105,12 @@ impl BusTick {
                 .iter()
                 .flatten()
                 .any(|l| l.state == LimbState::Active);
-            if active {
-                self.silent += 1;
-                if self.silent >= self.timing.silent_ticks {
-                    self.stop_all(StopReason::ControlSilent, now_ns);
-                }
+            if active && self.silent >= self.timing.silent_ticks {
+                self.stop_all(StopReason::ControlSilent, now_ns);
             }
         }
         let batch = this_tick?;
-        let taken = if batch.expires_ns > now_ns {
-            Taken::Fresh
-        } else {
-            Taken::Expired
-        };
+        let taken = if fresh { Taken::Fresh } else { Taken::Expired };
         // Check the whole batch before sending any of it, decoding each frame once.
         let mut kinds = [None; MAX_DRIVES];
         for (slot, (frame, kind)) in batch.frames().iter().zip(&mut kinds).enumerate() {
@@ -155,6 +148,25 @@ impl BusTick {
             taken,
             kinds,
         })
+    }
+
+    /// Count control's silence on every tick, whatever the limbs are doing: a fresh batch (for this tick and unexpired)
+    /// ends it, anything else adds a silent tick. Returns whether the batch was fresh, for [`Self::check_batch`], which
+    /// alone stops on the count; with every limb stopping or stopped it is kept so that a re-armed limb's slow requests
+    /// are refused while control is still silent.
+    pub(crate) fn note_control(
+        &mut self,
+        tick: u64,
+        now_ns: u64,
+        batch: Option<&CommandBatch>,
+    ) -> bool {
+        let fresh = batch.is_some_and(|b| b.tick == tick && b.expires_ns > now_ns);
+        self.silent = if fresh {
+            0
+        } else {
+            self.silent.saturating_add(1)
+        };
+        fresh
     }
 
     /// A bad batch stops every limb. If this tick's stops already took the last idle or active one, there is nothing left
@@ -220,7 +232,7 @@ impl BusTick {
 /// other writes, reporting on and queries each need sequencing a per-tick batch can't give (PLAN.md item 2: Set Zero
 /// only with the limb stopped, set-ID only with one drive answering); a set-ID would also leave the drive table on the
 /// old ID.
-fn batch_may_carry(kind: EchoKind) -> bool {
+pub(crate) fn batch_may_carry(kind: EchoKind) -> bool {
     matches!(
         kind,
         EchoKind::Mit

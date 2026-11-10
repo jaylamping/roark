@@ -36,6 +36,8 @@ Each tick, on the monotonic clock:
    records only that the frame wasn't taken and never latches.
 6. **Collect** until the collect deadline (about 60 % of the period), feeding each frame to `on_frame`.
 7. **Publish** the `Snapshot` (`end`) to control and hand every frame of the tick to the recorder.
+8. **Slack:** cancel and expire queued requests (`open_slack`), hand control the results held, take new requests,
+   send at most one (`slow_send`; none on a held tick), then hand control the new results.
 
 A drive's status read after a command the socket took is its **fresh** status, and it **answered** the tick if read by
 the collect deadline. That is evidence the drive is there and what state it was in, never an acknowledgement: there
@@ -46,8 +48,8 @@ Silence windows of PLAN item 2, which say which drives and Disables they cover: 
 (`ENABLE_TO_RUN_NS`, 50 ms, while the drive hasn't shown Run), the post-Disable window (`stop_confirm_ns`, 100 ms),
 and a drive that is offline (here: never enabled since start or its limb's clear, or seen in Reset after this host's
 Disable).
-Each drive's last echo of this host's frame to it (`last_echo`: its kind and when it was read) is kept, for the enable sequence's "reporting-off echo plus one
-tick".
+Each drive's last echo of this host's frames to it of a kind a batch carries (`last_echo`: its kind and when it was
+read) is kept, for the enable sequence's "reporting-off echo plus one tick".
 
 A limb stop (`stop_limb`, named `LimbRequested`; the check above; expired feedback) stops that limb; a bus stop
 (`request_stop`, control silent, or a bad batch) stops every limb not already stopping or stopped; a late wake, a stall
@@ -96,6 +98,37 @@ the drives' 50 ms timeout plus a period since the socket took its last frame (st
 Disable counts from when it went). Each drive needs a fresh preflight before it is enabled again; that is the safety
 layer's.
 
+**Slow requests** (`submit`) are parameter reads, the codec's allowlisted writes and get-ID, for preflight and the
+once-a-second reads; they never ride in a batch. A bus holds `SLOW_SLOTS` of them and has at most one in flight, sent
+after the collect deadline and only while its reply fits before the next tick starts (`Timing::slow_reply_ns`, a quarter
+period by default, provisional until the real adapter is measured), so a reply on time is read in the next tick's drain,
+before that tick's sends (a late one is below). A held tick (a late wake, a stall or a backlog, above) sends none: its
+reads can't be trusted and its slack isn't known, so a queued request waits for a trusted tick, but not for good: one
+still queued `Timing::slow_queue_ticks` ticks after the tick it was submitted in expires as that tick's slack opens
+(`NotSent(Expired)`, counted in `slow_expired`). A read is answered by its drive's reply naming its register, get-ID by
+its type-0 reply, and a write by any status from the drive while the write is in flight; a fault or mode that status
+shows counts like any status's.
+
+A write's answer proves nothing about the value, and preflight reads every write back, because a status names no
+register and can't be told from a command's reply. Writes go only where a mix-up is least likely: to drives of an idle
+limb (`LimbNotIdle`) with no command of the tick still unanswered (`CommandUnanswered`: an idle limb's batch may carry
+a Disable or the `run_mode` write; an earlier tick's command is late or lost and doesn't hold writes off). A late
+status can still land either way. A command's reply more than a tick late, read while the write is in flight, is taken
+for the write's answer. A write's own status read after its timeout (the next tick's start) is taken for that tick's
+command's reply, as fresh evidence of the drive from just before that tick's sends; it can't wrongly confirm a stop
+(`on_status` in `read.rs` has the argument). A read's answer can be late the same way: a reply to a read that timed
+out, read while a newer read of the same register on the same drive is in flight, is taken for the newer read's
+answer, so its value can be about a tick stale, and the newer read's own reply is then counted `unsolicited`.
+
+The `run_mode` = MIT write goes only in control's batch (`BatchOnly`), so a slow frame's echo is never of a kind kept as
+the drive's `last_echo`. Each request gets exactly one result: its answer, `TimedOut` (no reply by the next tick's
+start), `NotSent` (the socket didn't take it, or it expired queued), or `Refused`, including when the thread ends with
+it pending (`end_slow`: `Ended`, or `BusFailed`). Nothing is retried. A request for a drive whose limb is stopping,
+stopped or due to stop (a stop asked for and not yet taken, or what the veto stops on, on any drive of the limb: a
+fault, a drop out of Run, too many misses), while control has been silent for the silent-tick limit (counted on every
+tick, with every limb idle or stopped too), or on a failed bus is refused, and one already queued is cancelled as the
+next slack opens, so slow traffic never keeps a drive alive past a stop (`canTimeout` counts from any frame).
+
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
 a drive table past `MAX_DRIVES`, a drive listed twice, a limb index past the table, and timing that breaks its
 promises (`Timing::check`, whose doc lists every rule). For one, the feedback limit plus the write slack (the send
@@ -113,6 +146,9 @@ while the bus is healthy, the exit tick's included, and a snapshot control's ful
 whose limbs are all idle ends the thread at once; on any other it stops every limb first, then ends the thread once
 control has a snapshot with every limb stopped, or can't or won't take it (`BusLinks::exit` says when), with the last
 snapshot in `BusExit::last`; the next tick's drain is still recorded, so the stop's last echoes are in the recording.
+As it ends, every slow request it holds or finds in its ring gets its result, and `BusExit::slow_results_dropped`
+counts every result control's ring couldn't take, and `BusExit::slow_expired` every request that expired queued, those
+after the last snapshot included.
 A socket or clock error ends the thread as soon as a snapshot with every limb stopped is made, without waiting for
 control.
 
@@ -130,24 +166,27 @@ which owns the recording's channels and the metrics, before step 8 measures late
 
 Send a command late, retry one, or re-send a stale batch. Treat a TX echo or any traffic as proof a drive is alive.
 Allocate, lock, log or wait without a deadline in the tick, or take a lock shared with non-realtime code. Let anyone
-but the runtime transmit. Undo a stop on its own: a stopping or stopped limb gets none of control's frames until the
-operator's `rearm`, and a latched bus error stays latched. Open an interface that isn't `vcan` before the real
-adapter's checks exist (PLAN step 8).
+but the runtime transmit. Retry a slow request, or send one to a stopped limb or while control is silent. Undo a stop
+on its own: a stopping or stopped limb gets none of control's frames until the operator's `rearm`, and a latched bus
+error stays latched. Open an interface that isn't `vcan` before the real adapter's checks exist (PLAN step 8).
 
 ## Talks to
 
 `robstride` for the frames (it builds them, this crate only sends `Frame`s) and `telemetry` for the recording: each
-tick's frames go to a `BusRecorder`. Control is on the other side of two `rtrb` queues, batches in and snapshots out.
+tick's frames go to a `BusRecorder`. Control is on the other side of `rtrb` queues: batches and slow requests in, snapshots and slow
+results out; a full outgoing ring drops and counts (`snapshots_dropped`, `slow_results_dropped`).
 The runtime that wires those up doesn't exist yet; the sim suite drives the shell against `sim-drive` on `vcan`. See
 the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
 
 ## Using it
 
-Build a `BusTick` with the bus's drives in slot order, each with its limb, then per tick: empty the socket, feeding
-each frame to `on_frame`, and report how the drain went with `drained`; `begin`, write each send and report it with
-`sent`; feed every frame read with `on_frame`; and `end` for the snapshot. `request_stop` and `stop_limb` ask for a stop
-at the next `begin`, `skipped` counts ticks a stall slept through, and `lost_bus` latches every limb stopped when the
-socket fails. On Linux, `spawn` runs exactly that on a socket.
+Build a `BusTick` with the bus's drives in slot order, each with its limb, then per tick: empty the socket, feeding each
+frame to `on_frame`, and report how the drain went with `drained`; `begin`, write each send and report it with `sent`;
+feed every frame read with `on_frame`; and `end` for the snapshot. In the slack after `end`: `open_slack`, take the
+results held with `take_slow_result`, `submit` new requests while `slow_room` allows, send what `slow_send` returns and
+report it with `slow_sent`, then take the new results; when the thread ends, `end_slow` and take what is left.
+`request_stop` and `stop_limb` ask for a stop at the next `begin`, `skipped` counts ticks a stall slept through, and
+`lost_bus` latches every limb stopped when the socket fails. On Linux, `spawn` runs exactly that on a socket.
 
 ```rust
 use can::{BusDrive, BusTick, CommandBatch, LimbState, SendOutcome, Timing};

@@ -17,7 +17,7 @@ use robstride::EchoKind;
 use robstride::encode::{self, Reporting};
 
 use crate::error_frame::BusError;
-use crate::tick::{BusTick, DriveStop, Off, Phase, limb_state};
+use crate::tick::{BusTick, DriveState, DriveStop, Off, Phase, limb_state};
 use crate::timing::DRIVE_TIMEOUT_NS;
 use crate::types::{LimbState, RearmRefused, Send, SendKind, StopReason};
 
@@ -81,19 +81,35 @@ impl BusTick {
             if !takes_commands {
                 continue;
             }
-            let reason = if d.fault_seen {
-                Some(StopReason::DriveFault { slot })
-            } else if d.phase == Phase::LeftRun {
-                Some(StopReason::DriveMode { slot })
-            } else if d.misses >= self.timing.silence_misses {
-                Some(StopReason::DriveSilent { slot })
-            } else {
-                None
-            };
-            if let Some(reason) = reason {
+            if let Some(reason) = self.stop_due(slot, &d) {
                 self.stop_limb_now(d.limb, reason, now_ns);
             }
         }
+    }
+
+    /// Why the drive in `slot` must stop its limb, if it must: a fault, a drop out of Run, or too many misses. The veto
+    /// acts on it before the tick's sends, and a slow request is refused for it (slow traffic is a send too).
+    pub(crate) fn stop_due(&self, slot: usize, d: &DriveState) -> Option<StopReason> {
+        if d.fault_seen {
+            Some(StopReason::DriveFault { slot })
+        } else if d.phase == Phase::LeftRun {
+            Some(StopReason::DriveMode { slot })
+        } else if d.misses >= self.timing.silence_misses {
+            Some(StopReason::DriveSilent { slot })
+        } else {
+            None
+        }
+    }
+
+    /// The first stop any drive of limb `limb` is due for, so a slow request is refused for the whole limb the veto will
+    /// stop, not only for the drive that shows it.
+    pub(crate) fn limb_stop_due(&self, limb: usize) -> Option<StopReason> {
+        self.drives
+            .iter()
+            .enumerate()
+            .filter_map(|(slot, d)| d.as_ref().map(|d| (slot, d)))
+            .filter(|(_, d)| d.limb == limb)
+            .find_map(|(slot, d)| self.stop_due(slot, d))
     }
 
     /// Every stopping limb's Disables: to each drive not yet confirmed, inside the confirm window. Planned after

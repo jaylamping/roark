@@ -4,6 +4,7 @@
 use robstride::{DecodeError, DeviceId, Inbound, Mode, Status, decode};
 use telemetry::{Direction, FrameRecord};
 
+use crate::batch::batch_may_carry;
 use crate::error_frame::{BusError, classify, controller_passive};
 use crate::tick::{BusTick, DriveState, DriveStop, Off, Reply, limb_state};
 use crate::types::{EchoSeen, LimbState, MAX_DRIVES, Observed};
@@ -60,7 +61,10 @@ impl BusTick {
             Ok(Inbound::Echo(echo)) => {
                 if frame.direction == Direction::TxEcho {
                     self.counters.echoes += 1;
-                    if let Some(d) = drive_of(&mut self.drives, echo.target) {
+                    // Only the tick's own kinds of frame: a slow request's echo never hides the enable sequence's.
+                    if batch_may_carry(echo.kind)
+                        && let Some(d) = drive_of(&mut self.drives, echo.target)
+                    {
                         d.last_echo = Some(EchoSeen {
                             kind: echo.kind,
                             read_ns,
@@ -88,19 +92,40 @@ impl BusTick {
                     None => self.counters.unexpected += 1,
                 }
             }
-            Ok(Inbound::Identity { device, .. } | Inbound::Param { device, .. }) => {
-                if drive_of(&mut self.drives, device).is_none() {
-                    self.counters.unexpected += 1;
+            Ok(Inbound::Param {
+                device,
+                param,
+                outcome,
+            }) => match self.slot_index(device) {
+                Some(slot) => {
+                    if !self.slow_read_reply(slot, param, outcome) {
+                        self.counters.unsolicited += 1;
+                    }
                 }
-            }
+                None => self.counters.unexpected += 1,
+            },
+            Ok(Inbound::Identity { device, uid }) => match self.slot_index(device) {
+                Some(slot) => {
+                    if !self.slow_identity_reply(slot, uid) {
+                        self.counters.unsolicited += 1;
+                    }
+                }
+                None => self.counters.unexpected += 1,
+            },
         }
     }
 
     fn on_status(&mut self, read_ns: u64, status: Status, answer: bool) {
         let tick = self.tick;
         let unordered = self.unordered;
-        let Some(d) = drive_of(&mut self.drives, status.header.device) else {
+        let Some(slot) = self.slot_index(status.header.device) else {
             self.counters.unexpected += 1;
+            return;
+        };
+        // A status while a write is in flight to the drive answers the write, not a command. Its faults and mode are
+        // taken below all the same.
+        let answers_write = answer && self.slow_write_reply(slot);
+        let Some(d) = self.drives.get_mut(slot).and_then(Option::as_mut) else {
             return;
         };
         d.observed = Some(Observed { status, read_ns });
@@ -116,9 +141,16 @@ impl BusTick {
             Some(LimbState::Stopping { since_ns }) if read_ns < since_ns.saturating_add(replies_ns)
         );
         d.note_mode(status.header.mode, active, unordered);
-        if !answer {
+        if !answer || answers_write {
             return;
         }
+        // A write's own status read after it timed out (at this tick's start) lands below, as the reply to this tick's
+        // command (crates/can/README.md, Slow requests). It is a real status of the drive from just before this tick's
+        // sends, so it can't confirm a stop that isn't so: the write went only to a drive of an idle limb with no stop
+        // due, so nothing has been sent to the drive since; a Reset in it shows the drive disabled, and a limb that
+        // starts stopping this tick sends it no Enable, so it is still disabled when the stop's Disable arrives. Only a
+        // status that also outlived an Enable on a later tick could, which is the read order `BusTick::drained`
+        // assumes for every status.
         let Some(o) = d.outstanding.as_mut().filter(|_| !unordered) else {
             self.counters.unsolicited += 1;
             return;
@@ -148,6 +180,12 @@ impl BusTick {
                 off: Off::Unsent,
             };
         }
+    }
+
+    fn slot_index(&self, device: DeviceId) -> Option<usize> {
+        self.drives
+            .iter()
+            .position(|d| d.as_ref().is_some_and(|d| d.device == device))
     }
 }
 
