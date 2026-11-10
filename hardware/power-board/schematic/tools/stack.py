@@ -15,6 +15,7 @@ GNDPLANE={1,4}     # never routed; they join GND for connectivity
 ROUTABLE=[i for i in range(NL) if i not in GNDPLANE]
 COST={0:1.0,2:1.0,3:1.05,5:1.1}   # grid_route.py step cost per routable layer: the inner signal layers sit between GND planes
 assert OUTER<=set(ROUTABLE) and set(COST)==set(ROUTABLE)
+CU_UM=[70.0,17.5,17.5,17.5,17.5,70.0]   # finished copper per layer, um: 2 oz outer, 0.5 oz inner (tools/pour_width.py)
 # L1 to L2 dielectric, for the absorber loop model (absorber_loop.py): a larger h gives a larger loop inductance and a
 # higher spike, so the model keeps the old 4-layer 0.2104 mm (JLC04161H-7628) until JLC confirms the 2 oz 6-layer stack.
 # JLC's 1 oz 6-layer 1.6 mm stack uses one sheet of 2313 prepreg, about 0.1 mm; 2 oz outer copper may use thicker prepreg.

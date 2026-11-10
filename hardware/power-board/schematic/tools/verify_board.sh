@@ -2,48 +2,82 @@
 # verify_board.sh [board.kicad_pcb] : the full check set on a routed board (default: ../layout/marengo_pdu_revb.kicad_pcb).
 # Copies the board next to a copy of the schematic and the project rules in a temp dir, so KiCad's schematic-parity check
 # can read the netlist (run in layout/ it only prints "Failed to fetch schematic netlist" and checks nothing), refills
-# the zones with the project rules there, and runs: DRC with parity, tools/open_nets.py, tools/route_checks.py,
-# tools/joint_check.py, tools/port_template.py MODE=check, tools/check.py.
-# Exit 1 if parity was skipped, on any parity item, clearance/short/courtyard violation, or a failed route_checks or
-# check.py. Open connections are reported, not failed: OPEN_MAX=<n> makes more than n an error.
+# the zones with the project rules there, and runs:
+#   kicad-cli DRC with parity   every violation type fails, except the ones in ALLOW below
+#   tools/open_nets.py          more than OPEN_MAX open connections fails (default 0)
+#   tools/route_checks.py       spacing by domain, latch block, E-stop vias and guards, excepted vias, Kelvin floors
+#   tools/joint_check.py        every joint has 0.1 mm of real copper overlap
+#   tools/port_template.py and tools/u8_block.py with MODE=check   the designed blocks' copper equals the scripts
+#   tools/pour_width.py         60 A pours: temperature rise at the narrowest cut, vias in the VBUS band
+#   tools/check.py              the netlist, and the project's ESTOP / HV54 net classes against tools/domains.py
+#   tools/bom_check.py          the BOM files and the kit's J24 / J1 pinout rows against the two netlists
+# Exit 1 on any failure, and also when kicad-cli exits non-zero, when the DRC report is missing, older than this run or
+# has no schematic_parity key, or when the parity check was skipped.
 # The board file itself is not changed. KEEP=<dir> keeps the work files there.
 set -uo pipefail
 wp() { (cd "$1" && (pwd -W 2>/dev/null || pwd)); }   # a Windows path for the Windows Pythons
-ROOT=$(wp "$(dirname "$0")/.."); LAYOUT=$(wp "$ROOT/../layout")
+ROOT=$(wp "$(dirname "$0")/.."); LAYOUT=$(wp "$ROOT/../layout"); PB=$(wp "$ROOT/..")
 B=${1:-$LAYOUT/marengo_pdu_revb.kicad_pcb}; B=$(wp "$(dirname "$B")")/$(basename "$B")
-KP="/c/Program Files/KiCad/10.0/bin/python.exe"; KC="/c/Program Files/KiCad/10.0/bin/kicad-cli.exe"
-[ -x "$KP" ] || { KP=/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3; KC=/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli; }
+KP="/c/Program Files/KiCad/10.0/bin/python.exe"; KCLI="/c/Program Files/KiCad/10.0/bin/kicad-cli.exe"
+[ -x "$KP" ] || { KP=/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3; KCLI=/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli; }
+KC=${KC:-$KCLI}   # KC=<program>: tools/verify_selftest.sh puts a failing stand-in here for the DRC run only
 PY=python3; "$PY" -c "" 2>/dev/null || PY=python
 export MSYS_NO_PATHCONV=1
+q() { grep -v 'memory leak\|GetWidth called\|image handler'; }
 W=${KEEP:-$(mktemp -d)}; mkdir -p "$W"; W=$(cd "$W" && (pwd -W 2>/dev/null || pwd))
+rm -f "$W/drc.json" "$W/net.net" "$W/buck.net"; : > "$W/.start"
 cp "$B" "$W/verify.kicad_pcb" && cp "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/verify.kicad_pro" && cp "$LAYOUT/marengo_pdu_revb.kicad_dru" "$W/verify.kicad_dru" \
   && cp "$ROOT/marengo_pdu_revb.kicad_sch" "$W/verify.kicad_sch" && cp "$ROOT/marengo_pdu_revb.kicad_sch" "$W/marengo_pdu_revb.kicad_sch" \
   && cp "$ROOT/marengo_revb.kicad_sym" "$ROOT/sym-lib-table" "$ROOT/fp-lib-table" "$W/" && cp -r "$ROOT/marengo_revb.pretty" "$W/" || { echo 'copying the project files failed'; exit 1; }
-"$KC" pcb drc --refill-zones --save-board --format json --schematic-parity -o "$W/drc.json" "$W/verify.kicad_pcb" > "$W/drc.log" 2>&1
-[ -s "$W/drc.json" ] || { cat "$W/drc.log"; echo 'DRC wrote no report'; exit 1; }
-if grep -qi 'failed to fetch schematic' "$W/drc.log"; then cat "$W/drc.log"; echo 'FAIL: the schematic parity check did not run'; exit 1; fi
 fail=0
-"$PY" - "$W/drc.json" "${OPEN_MAX:-}" <<'PYEOF' || fail=1
+"$KC" pcb drc --refill-zones --save-board --severity-all --format json --schematic-parity -o "$W/drc.json" "$W/verify.kicad_pcb" > "$W/drc.log" 2>&1; rc=$?
+[ "$rc" = 0 ] || { cat "$W/drc.log"; echo "FAIL: kicad-cli pcb drc exited $rc"; fail=1; }
+[ -s "$W/drc.json" ] || { cat "$W/drc.log"; echo 'FAIL: DRC wrote no report'; exit 1; }
+[ "$W/drc.json" -nt "$W/.start" ] || { echo 'FAIL: the DRC report is older than this run'; exit 1; }
+if grep -qi 'failed to fetch schematic' "$W/drc.log"; then cat "$W/drc.log"; echo 'FAIL: the schematic parity check did not run'; exit 1; fi
+"$PY" - "$W/drc.json" "${OPEN_MAX:-0}" <<'PYEOF' || fail=1
 import json,collections,sys
-d=json.load(open(sys.argv[1])); v=collections.Counter(x['type'] for x in d['violations'] if not x['type'].startswith('silk'))
-par=d.get('schematic_parity',[]); un=len(d['unconnected_items'])
-print('DRC',dict(v),'unconnected',un,'parity',len(par))
+# DRC violation types that do not fail the board. Everything else does, whatever KiCad adds later.
+ALLOW={
+ 'silk_overlap':        'cosmetic: reference texts overlap on the dense blocks; the assembly drawing carries the references',
+ 'silk_over_copper':    'cosmetic: the fab clips silkscreen at pads',
+ 'silk_edge_clearance': 'cosmetic: connector outlines drawn to the board edge',
+}
+d=json.load(open(sys.argv[1])); v=collections.Counter(x['type'] for x in d['violations'])
+if 'schematic_parity' not in d: print('FAIL: the DRC report has no schematic_parity key (parity was not checked)'); sys.exit(1)
+par=d['schematic_parity']; un=len(d['unconnected_items'])
+hard={k:n for k,n in v.items() if k not in ALLOW}
+print('DRC violations',dict(hard),'allowed',{k:n for k,n in v.items() if k in ALLOW},'unconnected',un,'parity',len(par))
+for x in d['violations']:
+    if x['type'] in hard: print('   ',x['type'],x['description'][:100],[(i['description'][:50],i['pos']['x'],i['pos']['y']) for i in x['items']][:2])
 for x in par[:20]: print('   parity:',x['type'],x['description'][:110],x['items'][0]['description'][:40] if x['items'] else '')
-hard=[k for k in v if k in ('clearance','shorting_items','courtyards_overlap','hole_clearance','hole_to_hole','tracks_crossing','copper_edge_clearance','zones_intersect')]
-bad=bool(hard) or bool(par) or (sys.argv[2]!='' and un>int(sys.argv[2]))
-if hard: print('FAIL: DRC',{k:v[k] for k in hard})
+if hard: print('FAIL: DRC',hard)
 if par: print('FAIL: schematic parity',len(par))
-sys.exit(1 if bad else 0)
+if un>int(sys.argv[2]): print(f'FAIL: {un} open connections (OPEN_MAX={sys.argv[2]})')
+sys.exit(1 if hard or par or un>int(sys.argv[2]) else 0)
 PYEOF
-"$PY" "$ROOT/tools/open_nets.py" "$W/drc.json" "$W/open_nets.csv" || fail=1
+"$PY" "$ROOT/tools/open_nets.py" "$W/drc.json" "$W/open_nets.csv" || { echo 'FAIL: open_nets.py'; fail=1; }
 "$KP" "$ROOT/tools/route_checks.py" "$W/verify.kicad_pcb" > "$W/checks.txt" 2>&1; rc=$?
-grep -v 'memory leak\|GetWidth called\|image handler' "$W/checks.txt" | grep -v '^    (' || true
-[ "$rc" = 0 ] || { echo "FAIL: route_checks (exit $rc)"; fail=1; }
-# every joint has real copper overlap (KiCad's connectivity accepts a tangent touch), and the six ports' own nets equal the template
-"$KP" "$ROOT/tools/joint_check.py" "$W/verify.kicad_pcb" 2>&1 | grep -v 'memory leak\|GetWidth called\|image handler'; [ "${PIPESTATUS[0]}" = 0 ] || { echo 'FAIL: joint_check'; fail=1; }
-MODE=check "$KP" "$ROOT/tools/port_template.py" "$W/verify.kicad_pcb" 2>&1 | grep -v 'memory leak\|GetWidth called\|image handler'; [ "${PIPESTATUS[0]}" = 0 ] || { echo 'FAIL: port template copper differs from port_copper.py'; fail=1; }
-"$KC" sch export netlist --format kicadsexpr -o "$W/net.net" "$ROOT/marengo_pdu_revb.kicad_sch" >/dev/null 2>&1
-"$PY" -I "$ROOT/tools/check.py" "$ROOT/tools" "$W/net.net" | grep -E '^FAIL|^FAILS|^audited'
-"$PY" -I "$ROOT/tools/check.py" "$ROOT/tools" "$W/net.net" | grep -q '^FAILS 0' || { echo 'FAIL: check.py'; fail=1; }
+q < "$W/checks.txt" | grep -v '^    (' || true
+[ "$rc" = 0 ] || { grep '^    (' "$W/checks.txt" | head -40; echo "FAIL: route_checks (exit $rc)"; fail=1; }
+run() {   # run <label> <command...>: print the tool's output, fail on a non-zero exit
+  local label=$1; shift
+  "$@" > "$W/tool.txt" 2>&1; local rc=$?
+  q < "$W/tool.txt"
+  [ "$rc" = 0 ] || { echo "FAIL: $label (exit $rc)"; fail=1; }
+}
+run joint_check "$KP" "$ROOT/tools/joint_check.py" "$W/verify.kicad_pcb"
+MODE=check run 'port template copper differs from port_copper.py' "$KP" "$ROOT/tools/port_template.py" "$W/verify.kicad_pcb"
+MODE=check run 'U8 block copper differs from u8_block.py' "$KP" "$ROOT/tools/u8_block.py" "$W/verify.kicad_pcb"
+run pour_width "$KP" "$ROOT/tools/pour_width.py" "$W/verify.kicad_pcb"
+"$KCLI" sch export netlist --format kicadsexpr -o "$W/net.net" "$ROOT/marengo_pdu_revb.kicad_sch" > "$W/net.log" 2>&1; rc=$?
+if [ "$rc" != 0 ] || [ ! -s "$W/net.net" ]; then cat "$W/net.log"; echo "FAIL: netlist export (exit $rc)"; fail=1
+else
+  "$PY" -I "$ROOT/tools/check.py" "$ROOT/tools" "$W/net.net" "$LAYOUT/marengo_pdu_revb.kicad_pro" > "$W/check.txt" 2>&1; rc=$?
+  grep -E '^FAIL|^FAILS|^audited|Error|Traceback' "$W/check.txt"
+  { [ "$rc" = 0 ] && grep -q '^FAILS 0' "$W/check.txt"; } || { echo "FAIL: check.py (exit $rc)"; fail=1; }
+  "$KCLI" sch export netlist --format kicadsexpr -o "$W/buck.net" "$PB/buck12/marengo_buck12.kicad_sch" > "$W/bucknet.log" 2>&1 || { cat "$W/bucknet.log"; echo 'FAIL: buck netlist export'; fail=1; }
+  run bom_check "$PY" -I "$ROOT/tools/bom_check.py" "$ROOT/tools" "$W/net.net" "$PB" "$W/buck.net"
+fi
 echo "work files: $W"
 [ "$fail" = 0 ] && echo 'verify_board: PASS' || { echo 'verify_board: FAIL'; exit 1; }
