@@ -395,8 +395,9 @@ fn faulted(n: u8, mode: Mode) -> telemetry::FrameRecord {
 
 /// Guards: safety - a slow frame is a send, so the slack refuses what the veto would stop at the next send: a fault
 /// read in the collect on any drive of the limb, or a stop asked for and not yet taken, refuses the request at once;
-/// and a write goes only to a drive of an idle limb with no command of that tick unanswered, so its status answer can't
-/// pass for a command's reply (can.md section 2; crates/can/README.md, slow requests: check before every send).
+/// and a write goes only to a drive of an idle limb with no command of that tick unanswered, where its status answer
+/// is least likely to be taken for a command's reply (a late status still can be, either way, so the read-back proves
+/// the value; crates/can/README.md, Slow requests; can.md section 2: check before every send).
 #[test]
 fn the_slack_refuses_what_the_veto_would_stop_and_writes_to_a_running_limb() {
     let mut bus = two_limbs();

@@ -5,9 +5,9 @@
 //!
 //! Each request gets exactly one result: its reply, timed out, not sent, or refused, including when the bus thread ends
 //! with it pending. The bus layer never retries one. A write is answered by an ordinary status with no register in it,
-//! so its result says only that the drive answered; a read-back is what proves the value. Writes go only to drives of
-//! an idle limb with no command of the tick still unanswered, so that status is unlikely to be a command's reply (a reply
-//! more than a tick late can still be taken for the write's answer, which is why the read-back proves the value). A request for
+//! so its result says only that the drive answered. Writes go only to drives of an idle limb with no command of the
+//! tick still unanswered, where that status is least likely to be mixed up with a command's reply; a late status can
+//! still be, either way (crates/can/README.md, Slow requests), so a read-back is what proves the value. A request for
 //! a drive whose limb is stopping, stopped or due to stop (the veto's own checks on any drive of the limb: a fault, a
 //! drop out of Run, too many misses), while control is silent, or on a failed bus is refused, and one already queued is
 //! cancelled before it goes, so slow traffic never keeps a drive alive (`canTimeout` counts from any frame). A held tick
@@ -374,7 +374,8 @@ impl BusTick {
             if write.target() != drive.device {
                 return Err(SlowRefusal::WrongTarget);
             }
-            // Judged from the write itself, not a decode of its frame: a write that didn't round-trip must not pass.
+            // A write of a kind control's batch carries (the enable sequence's `run_mode` = MIT) would leave its echo
+            // as the drive's `last_echo`, which keeps only those kinds for the enable sequence.
             if batch_may_carry(EchoKind::ParamWrite {
                 param: write.param(),
                 value: write.value(),

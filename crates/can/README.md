@@ -94,20 +94,27 @@ once-a-second reads; they never ride in a batch. A bus holds `SLOW_SLOTS` of the
 after the collect deadline and only while its reply fits before the next tick starts (`Timing::slow_reply_ns`, a
 quarter period by default, provisional until the real adapter is measured), so the next drain reads the reply and it
 never lands among the tick's command replies. A held tick (a late wake, a stall or a backlog, above) sends none: its
-reads can't be trusted and its slack isn't known, so a queued request waits for a trusted tick. A read is answered by its drive's reply naming its register, get-ID by
-its type-0 reply, and a write by any status from the drive while the write is in flight, which proves nothing about the
-value: preflight reads every write back. A fault or mode that status shows counts like any status's. Writes go only to
-drives of an idle limb (`LimbNotIdle`) with no command of the tick still unanswered (`CommandUnanswered`: an idle
-limb's batch may carry a Disable or the `run_mode` write; an earlier tick's command is late or lost and doesn't hold
-writes off), so that status is unlikely to be a command's reply (a reply more than a tick late can still be taken for the write's answer, which is why the read-back proves the value). The `run_mode` = MIT write goes only in control's batch
-(`BatchOnly`), so a slow frame's echo is never of a kind kept as the drive's `last_echo`. Each request gets exactly one result: its answer, `TimedOut` (no reply by
-the next tick's start), `NotSent`, or `Refused`, including when the thread ends with it pending (`end_slow`: `Ended`,
-or `BusFailed`). Nothing is retried. A request for a drive whose limb is stopping, stopped or due to stop (a stop asked
-for and not yet taken, or what the veto stops on, on any drive of the limb: a fault, a drop out of Run, too many
-misses), while
-control has been silent for the silent-tick limit (counted with every limb idle too), or on a failed bus is refused,
-and one already queued is cancelled before it goes, so slow traffic never keeps a drive alive past a stop
-(`canTimeout` counts from any frame).
+reads can't be trusted and its slack isn't known, so a queued request waits for a trusted tick. A read is answered by
+its drive's reply naming its register, get-ID by its type-0 reply, and a write by any status from the drive while the
+write is in flight; a fault or mode that status shows counts like any status's.
+
+A write's answer proves nothing about the value, and preflight reads every write back, because a status names no
+register and can't be told from a command's reply. Writes go only where a mix-up is least likely: to drives of an idle
+limb (`LimbNotIdle`) with no command of the tick still unanswered (`CommandUnanswered`: an idle limb's batch may carry
+a Disable or the `run_mode` write; an earlier tick's command is late or lost and doesn't hold writes off). A late
+status can still land either way. A command's reply more than a tick late, read while the write is in flight, is taken
+for the write's answer. A write's own status read after its timeout (the next tick's start) is taken for that tick's
+command's reply, as fresh evidence of the drive from just before that tick's sends; it can't wrongly confirm a stop
+(`on_status` in `read.rs` has the argument).
+
+The `run_mode` = MIT write goes only in control's batch (`BatchOnly`), so a slow frame's echo is never of a kind kept as
+the drive's `last_echo`. Each request gets exactly one result: its answer, `TimedOut` (no reply by the next tick's
+start), `NotSent`, or `Refused`, including when the thread ends with it pending (`end_slow`: `Ended`, or `BusFailed`).
+Nothing is retried. A request for a drive whose limb is stopping, stopped or due to stop (a stop asked for and not yet
+taken, or what the veto stops on, on any drive of the limb: a fault, a drop out of Run, too many misses), while control
+has been silent for the silent-tick limit (counted with every limb idle too), or on a failed bus is refused, and one
+already queued is cancelled before it goes, so slow traffic never keeps a drive alive past a stop (`canTimeout` counts
+from any frame).
 
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
 a drive table past `MAX_DRIVES`, a drive listed twice, a limb index past the table, and timing that breaks its
