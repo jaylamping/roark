@@ -304,7 +304,8 @@ Every PR, before merge:
 4. `cargo deny check`
 5. Shape checks, one small script (`scripts/check_rules.py`): crate dependencies only point the way
    [architecture.md](architecture.md) section 3 allows (read from `cargo metadata`), no source file passes 800 lines,
-   every test names what it guards, and every crate's README has the shape section 11 asks for
+   every test names what it guards, and every crate's README has the shape section 11 asks for; then the file size
+   limit (`tools/check_file_sizes.py`, [cad.md](cad.md) rule 5)
 6. Release build for `aarch64-unknown-linux-gnu`
 7. The sim-drive suite on `vcan`: fault injection and the tick-timing budget (section 6)
 

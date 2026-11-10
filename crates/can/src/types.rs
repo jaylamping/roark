@@ -11,9 +11,14 @@ pub const MAX_DRIVES: usize = 8;
 /// or a reporting off, never both); twice that is headroom, and a tick that plans past it is a bug in this crate.
 pub const MAX_SENDS: usize = 2 * MAX_DRIVES;
 
-/// The drives' own command timeout, the `canTimeout` the host writes ([`CanTimeout::RUNTIME`]): three periods of
-/// feedback must fit inside it (PLAN.md item 3 Timing).
-pub const DRIVE_TIMEOUT_NS: u64 = CanTimeout::RUNTIME.nanos();
+/// The drives' own command timeout, the `canTimeout` the host writes ([`CanTimeout::RUNTIME`], PLAN.md item 6). The age
+/// of the feedback motion is written on (units-and-frames.md section 5) and the span of control silence that stops a bus
+/// (safety.md section 4) must each stay under it ([`Timing::check`]).
+pub const DRIVE_TIMEOUT_NS: u64 = match CanTimeout::RUNTIME.nanos() {
+    Some(ns) => ns,
+    // Evaluated at compile time: a RUNTIME that turned the timeout off fails the build, it never runs.
+    None => panic!("canTimeout RUNTIME must be a timeout, not off"),
+};
 
 /// The tick's timing, in nanoseconds on the monotonic clock (`u64`, not `Duration`: the bus tick's exception,
 /// units-and-frames.md section 5). [`BusTick::new`](crate::BusTick::new) refuses timing that
@@ -30,8 +35,9 @@ pub struct Timing {
     /// The oldest a drive's last fresh status may be when motion is sent to it (three periods: 12 ms at 250 Hz, PLAN.md
     /// item 6 Silence row).
     pub feedback_limit_ns: u64,
-    /// How long a stop sends Disables for each drive's Disable to be confirmed (100 ms, PLAN.md item 2 Silence windows);
-    /// drives unconfirmed by then stay so. A drive confirmed in it still gets its reporting off after its silence.
+    /// How long a stop re-sends Disable to each drive not yet confirmed (100 ms, PLAN.md item 2 Silence windows). A
+    /// Reset read while the bus is still stopping confirms a drive even after it, and a confirmed drive still gets its
+    /// reporting off after its silence.
     pub stop_confirm_ns: u64,
     /// How long a drive drops frames after a Disable; its reporting-off waits this long after its confirmation, and a
     /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
@@ -42,8 +48,8 @@ pub struct Timing {
 
 impl Timing {
     /// The defaults at `hz` ticks a second (250 by default, PLAN.md item 3), the period rounded up to a whole
-    /// nanosecond so the rate is never above `hz`. A rate [`Self::check`] refuses (0, or below 61 Hz, where three
-    /// periods reach the drives' timeout) gives timing it refuses.
+    /// nanosecond so the rate is never above `hz`. A rate [`Self::check`] refuses (0, or one slow enough that three
+    /// periods plus the write slack and the read lag reach the drives' timeout) gives timing it refuses.
     #[must_use]
     pub const fn at_hz(hz: u64) -> Self {
         let period_ns = match hz {
@@ -61,9 +67,12 @@ impl Timing {
         }
     }
 
-    /// Whether this timing keeps the tick's promises: a send window inside the collect window inside the period, at
-    /// least a period of feedback but less than the drives' timeout, a stop window that fits the post-Disable silence and a
-    /// tick to send reporting off after it.
+    /// Whether this timing keeps the tick's promises: a send window inside the collect window inside the period; at
+    /// least a period of feedback, with the feedback limit plus the write slack plus the read lag (the oldest a status
+    /// motion is written on can really be, units-and-frames.md section 5) under the drives' timeout; a stop window that
+    /// fits the post-Disable silence and a tick to send reporting off after it; and at least one silent tick, with the
+    /// silent ticks plus the write slack (from the last command to the stop's Disable) under the drives' timeout, so a
+    /// silent control is stopped before the drives give up on it.
     ///
     /// # Errors
     /// The first rule it breaks.
@@ -82,10 +91,21 @@ impl Timing {
                 collect_ns,
                 period_ns,
             })
-        } else if self.feedback_limit_ns < period_ns || self.feedback_limit_ns >= DRIVE_TIMEOUT_NS {
+        } else if self.feedback_limit_ns < period_ns {
             Err(TimingError::FeedbackLimit {
                 feedback_limit_ns: self.feedback_limit_ns,
                 period_ns,
+            })
+        } else if self
+            .feedback_limit_ns
+            .saturating_add(self.write_slack_ns())
+            .saturating_add(self.read_lag_ns())
+            >= DRIVE_TIMEOUT_NS
+        {
+            Err(TimingError::FeedbackAge {
+                feedback_limit_ns: self.feedback_limit_ns,
+                write_slack_ns: self.write_slack_ns(),
+                read_lag_ns: self.read_lag_ns(),
             })
         } else if self.stop_confirm_ns < self.disable_silence_ns.saturating_add(period_ns) {
             Err(TimingError::StopWindow {
@@ -95,10 +115,43 @@ impl Timing {
             })
         } else if self.silent_ticks == 0 {
             Err(TimingError::NoSilentTicks)
+        } else if widen(self.silent_ticks)
+            .saturating_mul(period_ns)
+            .saturating_add(self.write_slack_ns())
+            >= DRIVE_TIMEOUT_NS
+        {
+            Err(TimingError::SilentTicks {
+                silent_ticks: self.silent_ticks,
+                period_ns,
+                write_slack_ns: self.write_slack_ns(),
+            })
         } else {
             Ok(())
         }
     }
+
+    /// The most a frame is written after its tick's scheduled start: the send window, since a wake exactly at its close
+    /// isn't late. Motion passes its staleness check at the wake and goes out up to this much later; a stop's Disable
+    /// goes out up to this much after the tick that found control silent was due.
+    const fn write_slack_ns(&self) -> u64 {
+        self.send_window_ns
+    }
+
+    /// The most a status motion is sent on was read after its arrival: from the collect deadline to the close of the
+    /// next tick's send window (units-and-frames.md section 5).
+    const fn read_lag_ns(&self) -> u64 {
+        self.period_ns
+            .saturating_sub(self.collect_ns)
+            .saturating_add(self.send_window_ns)
+    }
+}
+
+#[expect(
+    clippy::as_conversions,
+    reason = "u32 to u64 widens losslessly, and u64::from isn't const"
+)]
+const fn widen(n: u32) -> u64 {
+    n as u64
 }
 
 /// The rule a [`Timing`] breaks, with the values that break it.
@@ -125,16 +178,27 @@ pub enum TimingError {
         /// The period.
         period_ns: u64,
     },
-    /// The feedback limit is under a period, or reaches the drives' timeout.
-    #[error(
-        "feedback limit {feedback_limit_ns} ns must be at least the period, {period_ns} ns, and under the drives' \
-         {DRIVE_TIMEOUT_NS} ns timeout"
-    )]
+    /// The feedback limit is under a period.
+    #[error("feedback limit {feedback_limit_ns} ns must be at least the period, {period_ns} ns")]
     FeedbackLimit {
         /// The feedback limit.
         feedback_limit_ns: u64,
         /// The period.
         period_ns: u64,
+    },
+    /// The feedback limit plus the write slack plus the read lag reaches the drives' timeout: motion could be written
+    /// on a status older, in real age, than the drive's own patience.
+    #[error(
+        "feedback limit {feedback_limit_ns} ns plus write slack {write_slack_ns} ns plus read lag {read_lag_ns} ns \
+         must be under the drives' {DRIVE_TIMEOUT_NS} ns timeout"
+    )]
+    FeedbackAge {
+        /// The feedback limit.
+        feedback_limit_ns: u64,
+        /// The send window: how long after the staleness check, at the wake, the frame may be written.
+        write_slack_ns: u64,
+        /// Period - collect + send window: how long after its arrival a status may be read.
+        read_lag_ns: u64,
     },
     /// The stop window can't fit the post-Disable silence and a tick to send reporting off after it.
     #[error(
@@ -152,6 +216,21 @@ pub enum TimingError {
     /// `silent_ticks` is zero.
     #[error("silent_ticks must be at least 1")]
     NoSilentTicks,
+    /// `silent_ticks` periods plus the write slack reach the drives' timeout: the bus would stop a silent control only
+    /// after the drives had given up on their own, or never (safety.md section 4: no config value turns a protection
+    /// off).
+    #[error(
+        "{silent_ticks} silent ticks of {period_ns} ns plus write slack {write_slack_ns} ns must span less than the \
+         drives' {DRIVE_TIMEOUT_NS} ns timeout"
+    )]
+    SilentTicks {
+        /// The silent ticks.
+        silent_ticks: u32,
+        /// The period.
+        period_ns: u64,
+        /// The send window: how late in its tick the stop's Disable may be written.
+        write_slack_ns: u64,
+    },
 }
 
 /// One tick's commands from control: at most one encoded frame per drive slot (the drive's place in the bus's table).
@@ -240,7 +319,10 @@ pub enum SendOutcome {
     QueueFull,
     /// A send whose window had passed before the write: dropped and counted. Only sends that [`Send::expires`] are.
     Expired,
-    /// Any other write error, or a send not tried because the bus was already lost (nothing to send on).
+    /// Not taken for any other reason: a socket write error, a frame the shell couldn't build, or a send not tried
+    /// because the bus was already lost (nothing to send on). It records only that the frame wasn't taken and never
+    /// latches: a socket write error other than a full queue must also go to
+    /// [`BusTick::lost_bus`](crate::BusTick::lost_bus), which does.
     Failed,
 }
 
@@ -311,7 +393,7 @@ pub enum BusState {
 pub enum StopReason {
     /// No fresh batch for `Timing::silent_ticks` ticks while active (PLAN.md item 3).
     ControlSilent,
-    /// The thread woke after its send window (PLAN.md item 3).
+    /// The thread woke after its send window, whatever its feedback's age (PLAN.md item 3).
     LateWake,
     /// A batch carried motion for a drive whose last fresh status was too old.
     ExpiredFeedback {
@@ -367,7 +449,8 @@ pub struct DriveView {
     /// When its last fresh status was read: the first status after a command the socket took. Freshness, not
     /// acknowledgement: the protocol has no sequence numbers, so which command a status answers can't be proven. Read
     /// time, not arrival: it can trail the kernel's receipt by up to period - collect + send window
-    /// (units-and-frames.md section 5).
+    /// (units-and-frames.md section 5). Cleared on an idle bus's held tick (a late wake or a backlog), whose drain read
+    /// too late to vouch for it.
     pub fresh_ns: Option<u64>,
     /// Whether it answered this tick's command by the collect deadline.
     pub answered: bool,
@@ -430,7 +513,8 @@ pub struct Snapshot {
     pub state: BusState,
     /// Why it stopped, if it has.
     pub stop: Option<StopReason>,
-    /// The first bus error that latched (bus-off, interface down or gone, another socket error), even if the bus was already stopping.
+    /// The first bus error that latched (bus-off from an error frame, or any socket failure passed to `lost_bus`), even
+    /// if the bus was already stopping.
     pub bus_error: Option<BusError>,
     /// No latched bus error and not error-passive: the recording's `valid` flag (logging.md section 8.2).
     pub healthy: bool,

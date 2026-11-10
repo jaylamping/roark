@@ -8,8 +8,9 @@ delivers, and publishes what each drive last said and how fresh it is (PLAN item
 Each tick, on the monotonic clock:
 
 1. **Wake** at the tick's scheduled start (`clock_nanosleep`, absolute). Waking later than the send window is a missed
-   deadline: it stops an active bus, and an idle bus sends only its batch's Disables and reporting off that tick. Ticks
-   a stall slept through are skipped, each counted as a missed deadline, and treated the same way.
+   deadline: it stops an active bus. It doesn't stop an idle bus, which sends only its batch's Disables and reporting
+   off that tick and holds the rest; the batch checks in step 3 still apply. Ticks a stall slept through are skipped,
+   each counted as a missed deadline, and treated the same way.
 2. **Drain** the socket to empty, so what is read after the send came after the backlog. It is not a strict barrier:
    a frame landing between the drain and the write counts as after it, which is still evidence of the drive then.
 3. **Plan** with `BusTick::begin`: the newest `CommandBatch` from control, only if it is for this tick and unexpired.
@@ -19,7 +20,9 @@ Each tick, on the monotonic clock:
    three periods is refused and stops the bus.
 4. **Send** each planned frame once and feed the outcome back (`sent`). A command goes out only before the send
    window closes; a Disable or reporting off goes out even late, whoever planned it, since late it is still the right
-   one. A full queue drops the frame and counts it; it is never retried within the tick.
+   one. A full queue drops the frame and counts it; it is never retried within the tick. Any other socket write
+   failure goes to `lost_bus`, which latches the bus stopped, as well as to `sent` as `Failed`; `Failed` on its own
+   records only that the frame wasn't taken and never latches.
 5. **Collect** until the collect deadline (about 60 % of the period), feeding each frame to `on_frame`.
 6. **Publish** the `Snapshot` (`end`) to control and hand every frame of the tick to the recorder.
 
@@ -31,35 +34,42 @@ latches `fault_seen`. Missing replies to Enable and Disable aren't counted as un
 reach Run, and goes silent after a Disable (PLAN item 2 Silence windows).
 
 A drain that reads past its limit or leaves frames queued is a backlog: what it said can't be known in time, so it
-stops an active bus, and an idle bus sends only its batch's Disables and reporting off that tick, as for a late wake
-(`held_batches`).
+stops an active bus. As for a late wake, it doesn't stop an idle bus, which sends only its batch's Disables and
+reporting off that tick (`held_batches`); the batch checks still apply. On such a held tick no drive's status counts
+as fresh, so motion waits for a status read on a tick that can be trusted.
 
 A stop (requested, control silent, a late wake, expired feedback, a bad batch, or a backlog) sends Disable to every
 drive, re-sends it each tick to every drive that hasn't confirmed, and sends active reporting off to each confirmed
-drive once its post-Disable silence is over (50 ms after its confirmation), again each tick until the socket takes it.
-A drive confirms with a Reset-mode status read after the stop's Disable; one that never confirms is still getting a
-Disable every tick, so it gets no reporting off. Disables go out for 100 ms; the bus is `Stopped` once every drive
-has confirmed and taken its reporting off, or once the 100 ms have passed and no confirmed drive still waits for its
-reporting off. A drive waits until its reporting off has been tried and a period has passed since it fell due.
+drive once its post-Disable silence is over (50 ms after its confirmation). A drive confirms with a Reset-mode status
+read after the stop's Disable, at any point while the bus is still stopping; one that never confirms is still getting
+a Disable every tick, so it gets no reporting off. Disables go out for 100 ms, and inside them a reporting off the
+socket refuses is tried again each tick. After them the stop runs on only while a confirmed drive's reporting off is
+untried, or tried but less than a period past its due time; so one that falls due after the 100 ms is tried only
+until a period past its due time, typically once, and one the socket refuses is recorded unsent. The bus is `Stopped`
+once every drive has confirmed and taken its reporting off, or once the 100 ms have passed and no confirmed drive's
+reporting off is still untried or inside that period.
 
 A latched bus error (bus-off in an error frame, or any socket failure) sends nothing: there is no bus to send on, so the
-bus is `Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's
-`bus_error`, even if a stop was already under way; `healthy` is false while there is one or the controller is
+bus is `Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every
+snapshot's `bus_error`, even if a stop was already under way; `healthy` is false while there is one or the controller is
 error-passive.
 
-`BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
-a drive table past `MAX_DRIVES` and timing that breaks its promises (`Timing::check`: for one, three periods must fit
-inside the drives' 50 ms timeout, so the rate is at least 61 Hz). The Linux shell (`spawn`) owns the socket: it
-opens only `vcan` until the real adapter is supported (PLAN step 8), takes every ID (no kernel filter), and reads each
-frame with its kernel timestamp, its direction and the overflow count in one `recvmsg`. `bus_info` is the session's
-record of that socket, from the same constants `open` applies, and `spawn` returns the receive buffer the kernel
-actually gave (`Spawned::receive_buffer_bytes`) for the runtime's startup log. Each tick's recorded batch is `valid`
-while the bus is healthy, the exit tick's included, and a snapshot control's full ring can't take is counted
-(`snapshots_dropped`). Ticks a stall slept through are each a missed deadline, and stop an active bus. Any write error
-but a full queue loses the bus, as a read error does. Setting `exit` on an idle bus ends the thread at once; on any other it stops the drives first, then ends the thread
-once control has its Stopped snapshot, or can't or won't take it (`BusLinks::exit` says when), with the last snapshot
-in `BusExit::last`; the next tick's drain is still recorded, so the stop's last echoes are in the recording. A socket or clock error ends the thread as soon as its Stopped snapshot is made, without waiting
-for control.
+`BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses a
+drive table past `MAX_DRIVES` and timing that breaks its promises (`Timing::check`). For one, the feedback limit plus
+the write slack (the send window: how long after its check a frame may go out) plus the most a read trails arrival must
+stay under the drives' 50 ms timeout, which sets the slowest rate the default timing allows; and the silent ticks that
+stop a bus, plus the write slack, must span less than that timeout. The Linux shell (`spawn`) owns the socket: it opens
+only `vcan` until the real adapter is supported (PLAN step 8), takes every ID (no kernel filter), and reads each frame
+with its kernel timestamp, its direction and the overflow count in one `recvmsg`. `bus_info` is the session's record of
+that socket, from the same constants `open` applies, and `spawn` returns the receive buffer the kernel actually gave
+(`Spawned::receive_buffer_bytes`) for the runtime's startup log. Each tick's recorded batch is `valid` while the bus is
+healthy, the exit tick's included, and a snapshot control's full ring can't take is counted (`snapshots_dropped`). Ticks
+a stall slept through are each a missed deadline, and stop an active bus. Any write error but a full queue loses the
+bus, as a read error does. Setting `exit` on an idle bus ends the thread at once; on any other it stops the drives
+first, then ends the thread once control has its Stopped snapshot, or can't or won't take it (`BusLinks::exit` says
+when), with the last snapshot in `BusExit::last`; the next tick's drain is still recorded, so the stop's last echoes are
+in the recording. A socket or clock error ends the thread as soon as its Stopped snapshot is made, without waiting for
+control.
 
 Not yet: the `/can/<bus>/tx_intent` record of every frame handed to the socket or not sent, with the reason
 (logging.md section 8.2), and the per-run tick duration and jitter (rust.md section 6). Both come with the runtime,

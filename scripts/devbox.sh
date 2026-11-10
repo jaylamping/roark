@@ -91,10 +91,11 @@ rustup run "\$(sed -n 's/^channel *= *"\(.*\)".*/\1/p' ~/$remote/rust-toolchain.
     || echo "pinned toolchain not installed (or no copy yet: run '$0 sync')"
 command -v cargo-nextest >/dev/null || echo "cargo-nextest missing"
 command -v cargo-deny >/dev/null || echo "cargo-deny missing"
+python3 -m pytest --version >/dev/null 2>&1 || echo "pytest missing (apt-get install python3-pytest)"
 EOF
     )
     [ -z "$report" ] || bad "the box is missing pieces:" "$report" "Rebuild steps: docs/dev-box.md, 'Rebuilding the box'."
-    ok "vcan $buses up; pinned Rust, nextest and cargo-deny installed"
+    ok "vcan $buses up; pinned Rust, nextest, cargo-deny and pytest installed"
     echo "ready: $0 run ./scripts/check.sh"
 }
 

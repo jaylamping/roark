@@ -115,6 +115,8 @@ it lives once, as `name:` in the skeleton. The architecture map, with owners and
   CAN link files), `docs/`, `conventions/`.
 - **Toolchain and lints:** per [conventions/rust.md](conventions/rust.md). Target `aarch64-unknown-linux-gnu`, 64-bit Raspberry
   Pi OS, kernel 6.1 or newer (gs_usb hardware timestamps).
+- **File size limit:** no file of 100 MB (100,000,000 bytes) or more in git, LFS files included (Joey, 2026-11-08).
+  `tools/check_file_sizes.py` holds it as `MAX_FILE_BYTES`; [cad.md](conventions/cad.md) rule 5 says how it's checked.
 - **CI on every PR:** the gates in rust.md, including the `vcan` fault tests. If hosted runners can't load `vcan`, those tests run
   on a self-hosted runner or the Pi, never skipped silently. No hardware in CI.
 - **Deploy:** cross-build, install to `/opt/robot/releases/<rev>` with an atomic `current` symlink; config in `/etc/robot`;
@@ -227,9 +229,11 @@ Per [can-stack-for-marengo.md](https://github.com/jaylamping/marengo/blob/main/h
   collect replies until a deadline inside the period (start at about 60 %, tune by measurement), publish a snapshot with each
   joint's reply age. Parameter traffic only in the slack. **250 Hz default** per bus, a runtime argument rather than a skeleton
   fact; 300 Hz only if measured.
-- **Timing is a worst-case budget.** At 250 Hz three periods are 12 ms, inside the drives' 50 ms timeout. A thread that wakes
-  late with expired feedback stops at once; it doesn't wait three more ticks. Missed deadlines are counted, never skipped
-  silently.
+- **Timing is a worst-case budget.** At 250 Hz three periods are 12 ms, inside the drives' 50 ms timeout. Any wake past its
+  send window, or a backlog in the drain (more frames queued than it may read before the send), stops an active bus at
+  once; it doesn't wait for the feedback to expire. Neither stops an idle bus: that tick it sends only Disables and
+  reporting off and holds the rest, and the batch checks (a bad batch, motion on stale feedback) still stop it. Missed
+  deadlines are counted, never skipped silently.
 - **Rust:** `socketcan` 4.0 (blocking socket, netlink, candump log format). No async runtime in the loop. Realtime rules are in
   [rust.md](conventions/rust.md).
 - **Codec:** our own, no I/O, a typed frame table transcribed from the manuals, per-model scales as constants in `robstride`
@@ -341,7 +345,7 @@ Each rule names what it protects and the failure it covers. A rule that protects
 | Host | Sign: no gravity feed-forward on a joint until its direction is verified by a small torque-only pulse with the link supported, checked against the skeleton. Feed-forward runs only on a chain whose every joint answers with a verified direction | Arm and parts | Feed-forward pushing the wrong way |
 | Host | Temperature: pause at 60 °C (rest pose, torque off if the pose allows) until 45 °C; stop at 75 °C | Drive windings | Overheating (drive's own protection is far higher) |
 | Host | Hang: see item 3 (stale batches, watchdog, no auto-enable) | All drives | Hung control thread keeping drives fed |
-| Host | Bus-off (latched on the first error frame, even if the adapter restarts itself), interface down or gone (`ENODEV`, `ENETDOWN`): stop every active run; the drives on that bus time out | All limbs | Lost bus, wiring fault or unplugged adapter |
+| Host | Bus-off (latched on the first error frame, even if the adapter restarts itself), or any socket read or write failure other than a full queue (interface down or gone, `ENETDOWN`, `ENODEV`, included): stop every active run; the drives on that bus time out | All limbs | Lost bus, wiring fault or unplugged adapter |
 | Host | Pi health: read `vcgencmd get_throttled` once a second; refuse enable while under-voltage or throttling is active, and log it if it starts during a run | Control timing | A browned-out or throttled Pi missing ticks |
 | Host | Logging: if the session log can't open or the disk is full, refuse the next enable; never stop a running motion for it | The record (tenet 6) | Disk full or slow |
 
@@ -384,7 +388,7 @@ stays on the Pi or storage, referenced by hash. **Done when** C0 to C2 pass atte
 
 Not built before milestone 4; when it is, the sim drive gains a power-board model first. Requirements:
 [STATUS.md, power board section](https://github.com/jaylamping/marengo/blob/main/hardware/STATUS.md#power-board-and-battery-what-software-must-do) and
-[REV_B_PARTS.md](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/pdb/REV_B_PARTS.md#accepted-risks-and-software-requirements-joey-2026-11-07-rev-b5-rows-marked):
+[REV_B_PARTS.md](hardware/power-board/REV_B_PARTS.md#accepted-risks-and-software-requirements-joey-2026-11-07-rev-b5-rows-marked):
 
 - Heartbeat toggled every 50 to 100 ms from the same health decision that feeds the systemd watchdog, never from its own timer;
   a falling edge at least every 270 ms or the latch drops and needs a manual reset.

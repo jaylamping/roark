@@ -182,8 +182,10 @@ impl BusTick {
     }
 
     /// The socket failed with `error`: latch stopped, whatever the error, since a socket that can't send can't stop the
-    /// drives either (fail closed, safety.md section 2). There is no bus to send a stop on; the drives time out on
-    /// their own (`canTimeout`). Error frames come through [`Self::on_frame`] instead, where only bus-off latches.
+    /// drives either (fail closed, safety.md section 3). Every socket read or write failure other than a full queue
+    /// comes here (PLAN.md item 6 Bus-off row); a failed write is also reported to [`Self::sent`], which only counts it.
+    /// There is no bus to send a stop on; the drives time out on their own (`canTimeout`). Error frames come through
+    /// [`Self::on_frame`] instead, where only bus-off latches.
     pub fn lost_bus(&mut self, error: BusError) {
         self.latch(error);
     }
@@ -230,10 +232,11 @@ impl BusTick {
     /// Disable or active reporting off goes out late too, whoever planned it, since late it is still the right frame.
     ///
     /// A stop asked for before the tick is taken first, so it keeps its reason. A backlog in the drain, then a wake past
-    /// the send window (a missed deadline, counted in every state), stops an active bus. An idle bus (nothing enabled
-    /// since start) has nothing to stop: that tick it sends only its batch's Disables and reporting off, which are
-    /// right late or not, and holds back the rest (`held_batches`), so nothing is enabled on a tick whose reads can't
-    /// be trusted (PLAN.md item 3 stops a late wake for its limbs' sake).
+    /// the send window (a missed deadline, counted in every state), stops an active bus. Neither stops an idle bus
+    /// (nothing enabled since start): that tick it sends only its batch's Disables and reporting off, which are right
+    /// late or not, and holds back the rest (`held_batches`), so nothing is enabled on a tick whose reads can't be
+    /// trusted; the batch checks still apply. Its drain read late or in a backlog, so no drive's status stays fresh
+    /// after it, and motion waits for a status read on a trusted tick (PLAN.md item 3).
     pub fn begin(
         &mut self,
         tick: u64,
@@ -273,7 +276,13 @@ impl BusTick {
                 self.plan_stop(now_ns);
             }
             BusState::Idle | BusState::Active => {
-                self.plan_batch(tick, now_ns, batch, backlog || late);
+                let hold = backlog || late;
+                self.plan_batch(tick, now_ns, batch, hold);
+                if hold {
+                    for d in self.drives.iter_mut().flatten() {
+                        d.fresh_ns = None;
+                    }
+                }
             }
         }
         self.sends
@@ -349,9 +358,9 @@ impl BusTick {
 
     /// While stopping: inside the confirm window, Disable to every drive not yet confirmed; and reporting off to each
     /// confirmed drive once the post-Disable silence after its confirmation is over (a drive drops every frame in it,
-    /// PLAN.md item 2 Silence windows), until the socket takes it. A drive that never confirms is sent a Disable every
-    /// tick of the window, so it never leaves its silence and gets no reporting off. Stopped once the window has passed
-    /// and no confirmed drive still waits for its reporting off ([`Self::stop_over`]).
+    /// PLAN.md item 2 Silence windows), planned again each tick the stop runs on until the socket takes it. A drive that
+    /// never confirms is sent a Disable every tick of the window, so it never leaves its silence and gets no reporting
+    /// off. Stopped once [`Self::stop_over`] says so.
     fn plan_stop(&mut self, now_ns: u64) {
         let BusState::Stopping { since_ns } = self.state else {
             return;
@@ -392,11 +401,11 @@ impl BusTick {
         }
     }
 
-    /// Whether a stop that began at `since_ns` is over at `now_ns`. Disables go out for the confirm window; a drive
-    /// confirmed in it (or by a Reset read just after it) still gets its reporting off once its silence is over, so
-    /// the stop runs on past the window while one waits. Each confirmed drive waits until its reporting off has been
-    /// planned at least once and a period has passed since it fell due, so a drive confirmed at the window's end still
-    /// gets it, and a reporting off the queue keeps refusing ends the stop a period later.
+    /// Whether a stop that began at `since_ns` is over at `now_ns`: never inside the confirm window. After it, the stop
+    /// runs on while a confirmed drive's reporting off is untried, or tried but less than a period past its due time
+    /// (its confirmation plus the silence), so a drive confirmed late, even by a Reset read after the window, still
+    /// gets it. A reporting off that falls due after the window is therefore tried only until a period past its due
+    /// time, typically once; one the socket refuses is recorded unsent.
     fn stop_over(&self, since_ns: u64, now_ns: u64) -> bool {
         if now_ns.saturating_sub(since_ns) < self.timing.stop_confirm_ns {
             return false;
@@ -441,7 +450,9 @@ impl BusTick {
         self.state = BusState::Stopped;
     }
 
-    /// What became of send `index` of this tick's list. A command's status window opens only if the socket took it.
+    /// What became of send `index` of this tick's list. A command's status window opens only if the socket took it. A
+    /// refused send is only counted: [`SendOutcome::Failed`] never latches, so a socket write failure other than a full
+    /// queue must also go to [`Self::lost_bus`].
     pub fn sent(&mut self, index: usize, outcome: SendOutcome) {
         let Some(send) = self.sends.get(index) else {
             return;
@@ -493,9 +504,21 @@ impl BusTick {
     pub fn on_frame(&mut self, read_ns: u64, frame: &FrameRecord) {
         if frame.error {
             self.counters.error_frames += 1;
+            // Of what an error frame can say, only bus-off stops the bus for good: the adapter may restart the bus by
+            // itself (PLAN.md item 3, item 6 Bus-off row). The interface errors come from the socket, through
+            // `lost_bus`; the controller's state is read below.
             let error = classify(frame.id, &frame.data);
-            if error.latches() {
-                self.latch(error);
+            match error {
+                BusError::BusOff => self.latch(error),
+                BusError::ErrorPassive
+                | BusError::ErrorWarning
+                | BusError::ErrorActive
+                | BusError::RxOverflow
+                | BusError::TxTimeout
+                | BusError::InterfaceDown
+                | BusError::InterfaceGone
+                | BusError::Socket(_)
+                | BusError::Other(_) => {}
             }
             // The controller's state, read on its own: a frame can carry it beside a more severe flag (passive back
             // to warning together with an overflow), and warning after passive is a recovery.
@@ -694,6 +717,18 @@ fn echo_of(frame: &Frame) -> Option<(EchoKind, DeviceId)> {
             | Inbound::Version { .. }
             | Inbound::Param { .. },
         )
-        | Err(_) => None,
+        | Err(
+            DecodeError::IdTooWide(_)
+            | DecodeError::BadLength { .. }
+            | DecodeError::UnknownType { .. }
+            | DecodeError::BadDeviceId { .. }
+            | DecodeError::ReservedMode { .. }
+            | DecodeError::UnknownParam { .. }
+            | DecodeError::BadParamValue { .. }
+            | DecodeError::UnexpectedData { .. }
+            | DecodeError::OtherHost { .. }
+            | DecodeError::ForeignType { .. }
+            | DecodeError::ForeignWrite { .. },
+        ) => None,
     }
 }
