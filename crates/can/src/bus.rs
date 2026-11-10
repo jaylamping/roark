@@ -117,7 +117,10 @@ pub struct BusExit {
     /// the ring couldn't take counts itself in `counters.snapshots_dropped`, so a control that stopped reading still
     /// learns from here that it never got it.
     pub last: Option<Snapshot>,
-    /// The socket or clock error that ended it, if one did.
+    /// The first socket or clock error the thread met, if any. Most end the thread; one in the sleep or drain of the
+    /// tick it returns at after deciding its exit ([`BusLinks::exit`]) is reported too, though it returns there all the
+    /// same. That tick makes no snapshot, so `last` is then the snapshot with every limb stopped that decided the
+    /// exit, made before the error and healthy as far as it knew.
     pub error: Option<io::Error>,
 }
 
@@ -342,7 +345,7 @@ fn sleep_relative(span: Duration) {
 struct ExitWait {
     /// The all-stopped snapshots made after `exit` that the ring may leave untaken before the thread returns anyway:
     /// one stop window (`Timing::stop_confirm_ns`, 100 ms by default) in ticks of this bus, rounded up; `Timing::check`
-    /// makes the window longer than a period, so at least one. The shutdown already gives the drives that window to
+    /// makes the window at least a period, so at least one. The shutdown already gives the drives that window to
     /// confirm their Disables; a control that is alive reads its ring well inside one more, and one that isn't must not
     /// hold the join (and the recorder's close). Provisional, like the stop window itself: tuned with the rest of the
     /// timing on the real adapter (PLAN step 8).

@@ -304,9 +304,9 @@ impl BusTick {
     }
 
     /// How this tick's drain ended: call it after the drain (its frames already fed to [`Self::on_frame`]), before
-    /// [`Self::begin`]. A backlog stops every active limb at this tick's start, and the tick sends only its batch's
-    /// Disables and reporting off (see [`Self::begin`]). Reads stay unordered from a drain that left frames queued
-    /// until a drain empties the socket.
+    /// [`Self::begin`]. A backlog stops every active limb at this tick's start and holds the tick for every idle one,
+    /// which clears the freshness this drain stamped (both in [`Self::begin`]). Reads stay unordered from a drain that
+    /// left frames queued until a drain empties the socket.
     ///
     /// The frames of the drain itself are ordered unless an earlier drain left the socket unemptied: the socket is a
     /// queue, and the last drain emptied it before the last tick's sends, so whatever this drain reads came after them.
@@ -350,7 +350,7 @@ impl BusTick {
 
     /// `count` ticks went by without running (the thread stalled past them): each a missed deadline (PLAN.md item 3:
     /// missed deadlines are counted, never skipped silently). The next `begin` treats it as a late wake: every active
-    /// limb stops, and the tick sends only its batch's Disables and reporting off.
+    /// limb stops, and the tick is held for every idle one (both in [`Self::begin`]).
     pub fn skipped(&mut self, count: u64) {
         if count > 0 {
             self.counters.missed_deadlines += count;
@@ -388,13 +388,25 @@ impl BusTick {
     ///
     /// A stop asked for before the tick (the whole bus's or one limb's) is taken first, so it keeps its reason. A backlog
     /// in the drain, a wake past the send window (a missed deadline, counted whatever the limbs are doing) or ticks a
-    /// stall slept through stop every active limb; an idle one has nothing to stop. That tick only the batch's Disables
-    /// and reporting off go, right late or not, and the rest is held back (`held_batches`), so nothing is enabled on a
-    /// tick whose reads can't be trusted; the batch checks still apply. Then, before anything is planned, a drive of an
-    /// idle or active limb that the drain or an earlier read showed faulted, out of Run after running, or silent too
-    /// long stops its limb, so no command (Enable included) reaches it this tick. After planning an untrusted tick, no
-    /// drive of a limb still idle keeps a fresh status, so motion waits for a status read on a trusted tick (PLAN.md
-    /// item 3).
+    /// stall slept through ([`Self::skipped`]) stop every active limb. None of them stops an idle limb (nothing enabled
+    /// since start or its clear): the tick is **held** for it instead, since an untrusted tick holds an idle limb and
+    /// doesn't stop it (PLAN.md item 3). Then, before anything is planned, a drive of an idle or active limb that the
+    /// drain or an earlier read showed faulted, out of Run after running, or silent too long stops its limb, so no
+    /// command (Enable included) reaches it this tick. On a held tick, in this order:
+    ///
+    /// 1. The batch is checked as on any tick, against the freshness as the drain left it: a bad batch stops every
+    ///    limb, and motion on feedback past the limit stops its limb. Motion on feedback the drain stamped passes the
+    ///    check.
+    /// 2. Only the batch's Disables and reporting off are planned, which are right late or not; the rest, that motion
+    ///    included, is held back unsent (`held_batches`), so nothing is enabled or moved on a tick whose reads can't
+    ///    be trusted.
+    /// 3. The freshness of every drive in a limb still idle is cleared once, here: the drain read late or past a
+    ///    backlog, so the real age of what it stamped can't be bounded. A status read after this tick's sends (a
+    ///    Disable it sends opens a reply) counts as fresh again, since the drain emptied the socket before them; after
+    ///    a drain that left frames queued ([`Drain::Unemptied`]) nothing counts until one empties it.
+    ///
+    /// So motion on a later tick to a drive with no fresh status read since is refused as expired feedback, which
+    /// stops its limb (PLAN.md item 6 Silence row).
     pub fn begin(
         &mut self,
         tick: u64,
@@ -457,9 +469,8 @@ impl BusTick {
         self.sends
     }
 
-    /// After an untrusted tick's planning: no drive of a held limb (one still idle, the active ones having stopped)
-    /// keeps a fresh status, since the drain read too late or too much to bound its real age; motion to it waits for a
-    /// status read on a trusted tick (units-and-frames.md section 5). Stopping and stopped limbs take no motion, and a
+    /// Step 3 of a held tick ([`Self::begin`]): clear the freshness of every drive in a limb that takes commands, which
+    /// by then means one still idle, the active ones having stopped. Stopping and stopped limbs take no motion, and a
     /// re-arm clears theirs.
     fn forget_fresh(&mut self) {
         let limbs = self.limbs;
