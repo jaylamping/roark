@@ -556,10 +556,11 @@ fn the_feedback_limit_is_three_periods_inclusive() {
 }
 
 /// Guards: safety - timing that breaks the tick's promises is refused at startup, never quietly replaced, one row per
-/// rule and its boundary: a feedback limit whose span plus the read lag reaches the drives' 50 ms timeout is refused
-/// (73 Hz by default) and 74 Hz is not; a stop window must fit the post-Disable silence and a tick to send reporting
-/// off; and silent ticks spanning the drives' timeout, which would leave a silent control unstopped, are refused
-/// (safety.md: invalid configuration is an error, and no config value turns a protection off; PLAN.md item 3).
+/// rule and its boundary: a feedback limit that with the write slack and the read lag reaches the drives' 50 ms timeout
+/// is refused (78 Hz by default) and 79 Hz is not; a stop window must fit the post-Disable silence and a tick to send
+/// reporting off; and silent ticks that with the write slack reach the drives' timeout, which would leave a silent
+/// control unstopped until the drives give up, are refused (safety.md: invalid configuration is an error, and no config
+/// value turns a protection off; PLAN.md item 3; units-and-frames.md section 5).
 #[test]
 #[expect(
     clippy::too_many_lines,
@@ -568,8 +569,8 @@ fn the_feedback_limit_is_three_periods_inclusive() {
 fn timing_that_breaks_the_tick_is_refused() {
     let base = Timing::at_hz(250);
     let fits = base.disable_silence_ns + base.period_ns;
-    // Period - collect + send window at 250 Hz: 4 - 2.4 + 1 ms.
-    let lag = 2_600_000;
+    // At 250 Hz the write slack is the 1 ms send window, and the read lag period - collect + send window, 4 - 2.4 + 1 ms.
+    let (slack, lag) = (1_000_000, 2_600_000);
     let rows = [
         ("no rate", Timing::at_hz(0), Some(TimingError::NoPeriod)),
         (
@@ -617,33 +618,35 @@ fn timing_that_breaks_the_tick_is_refused() {
             }),
         ),
         (
-            "feedback plus lag reaches the timeout",
+            "feedback plus slack and lag reaches the timeout",
             Timing {
-                feedback_limit_ns: DRIVE_TIMEOUT_NS - lag,
+                feedback_limit_ns: DRIVE_TIMEOUT_NS - slack - lag,
                 ..base
             },
             Some(TimingError::FeedbackAge {
-                feedback_limit_ns: 47_400_000,
+                feedback_limit_ns: 46_400_000,
+                write_slack_ns: slack,
                 read_lag_ns: lag,
             }),
         ),
         (
-            "feedback plus lag just under the timeout",
+            "feedback plus slack and lag just under the timeout",
             Timing {
-                feedback_limit_ns: DRIVE_TIMEOUT_NS - lag - 1,
+                feedback_limit_ns: DRIVE_TIMEOUT_NS - slack - lag - 1,
                 ..base
             },
             None,
         ),
         (
-            "73 Hz",
-            Timing::at_hz(73),
+            "78 Hz",
+            Timing::at_hz(78),
             Some(TimingError::FeedbackAge {
-                feedback_limit_ns: 41_095_893,
-                read_lag_ns: 8_904_110,
+                feedback_limit_ns: 38_461_539,
+                write_slack_ns: 3_205_128,
+                read_lag_ns: 8_333_334,
             }),
         ),
-        ("74 Hz", Timing::at_hz(74), None),
+        ("79 Hz", Timing::at_hz(79), None),
         (
             "stop window too short",
             Timing {
@@ -681,12 +684,35 @@ fn timing_that_breaks_the_tick_is_refused() {
             Some(TimingError::SilentTicks {
                 silent_ticks: 13,
                 period_ns: base.period_ns,
+                write_slack_ns: slack,
             }),
         ),
         (
-            "silent ticks just inside the timeout",
+            "a tick fewer fits",
             Timing {
                 silent_ticks: 12,
+                ..base
+            },
+            None,
+        ),
+        (
+            "the send window alone tips 48 ms of silent ticks to exactly the timeout",
+            Timing {
+                silent_ticks: 12,
+                send_window_ns: 2_000_000,
+                ..base
+            },
+            Some(TimingError::SilentTicks {
+                silent_ticks: 12,
+                period_ns: base.period_ns,
+                write_slack_ns: 2_000_000,
+            }),
+        ),
+        (
+            "a send window one ns shorter fits",
+            Timing {
+                silent_ticks: 12,
+                send_window_ns: 1_999_999,
                 ..base
             },
             None,
@@ -700,6 +726,7 @@ fn timing_that_breaks_the_tick_is_refused() {
             Some(TimingError::SilentTicks {
                 silent_ticks: u32::MAX,
                 period_ns: base.period_ns,
+                write_slack_ns: slack,
             }),
         ),
         ("250 Hz", base, None),
