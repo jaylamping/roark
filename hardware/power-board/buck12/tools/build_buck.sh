@@ -17,6 +17,9 @@ KP="/c/Program Files/KiCad/10.0/bin/python.exe"; KC="/c/Program Files/KiCad/10.0
 [ -x "$KP" ] || { KP=/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3; KC=/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli; }
 PY=python3; "$PY" -c "" 2>/dev/null || PY=python
 export MSYS_NO_PATHCONV=1 FINE=U1
+# the routers treat the buck's 54 V copper as the 54 V list (domains.py's what-if switch), so SP_EN, an E-stop-class net, keeps
+# 1.5 mm to it as on the main board (tools/spacing_buck.py checks the result)
+export MARENGO_HV_EXTRA=VIN_P,VIN,VIN_C,SW,HO,BST,BST_R,ILIM,EN,ON_N
 q() { grep -v 'memory leak\|GetWidth called\|image handler\|Exception ignored\|OSError'; }
 die() { echo "$*"; exit 1; }
 step() {   # step <label> <output or -> <command...>
