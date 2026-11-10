@@ -180,8 +180,8 @@ from it does, net by net (values from schematic/gen/gen.py; leakage pulls a net 
 
 | Net | Impedance to ground or its driver | Leakage pushes it toward | Leakage resistance at which it matters | Spacing to the supply chain |
 |---|---|---|---|---|
-| RUN | 1.13 kΩ (1.2 k ∥ 20 k) | run | 48 kΩ sets the latch (RUN 1.25 V turns Q5 on, loop closed); 10 kΩ holds both banks on with the loop open | 0.2 mm |
-| LOOP_RET | driven through 680 Ω while the loop is closed; open with the button pressed | run (it re-feeds Q4's emitter past the button) | 43 kΩ keeps the latch set through a press; 27 kΩ keeps bank A on, 9 kΩ both banks | 0.2 mm |
+| **RUN** | 1.13 kΩ (1.2 k ∥ 20 k) | **run** | **48 kΩ** sets the latch (RUN 1.25 V turns Q5 on, loop closed); **10 kΩ holds both banks on with the loop open** | **1.5 mm** |
+| **LOOP_RET** | driven through 680 Ω while the loop is closed; open with the button pressed | **run** (it re-feeds Q4's emitter past the button) | **43 kΩ keeps the latch set through a press**; 27 kΩ keeps bank A on, 9 kΩ both banks | **1.5 mm** |
 | L_PB (Q4 base) | 100 kΩ to LOOP_RET, 10 kΩ to Q5's collector | stop (lifts the PNP's base) | under 38 kΩ causes a false stop | 0.2 mm |
 | L_E, L_PC (Q5 emitter, collector) | the watchdog switch; 10 kΩ | stop | none toward run | 0.2 mm |
 | RUN_P | about 5.3 kΩ (six port dividers) | run, ports only (the banks stay off) | 67 kΩ | 0.2 mm |
@@ -193,10 +193,15 @@ from it does, net by net (values from schematic/gen/gen.py; leakage pulls a net 
 | **MID_B** (Q11 base) | 220 kΩ | **run** (reports "MID healthy") | **20 MΩ** releases the reset interlock | **1.5 mm** |
 | **RUN_A, EN_A** | 110 kΩ | **run** (bank A only) | **4.3 MΩ** | **1.5 mm** |
 | **RUN_B, UVLO, FLT_D** | 55 kΩ / 33 kΩ | **run** (bank B only) | **0.44–0.7 MΩ** | **1.5 mm** |
+| **SP_ENR, SP_EN** (the buck board's SPARE_SW enable, J24 pin 9) | SP_ENR: 100 kΩ to RUN, and through the BAV19W into SP_EN; SP_EN: the 68 kΩ pull-down on the buck board | **run** (SPARE_SW on, which must drop on E-stop) | **about 1.5 MΩ** at SP_ENR, **about 3 MΩ** at SP_EN (U3's EN at its 1.2 V threshold) | **1.5 mm** |
 
-No single leakage path keeps power on through a pressed E-stop: the PNP loses its supply, and the two banks take RUN
-through separate diodes. The nets in bold are the ones where leakage in the megohm range removes one of those layers
-or re-arms the latch, so they keep 1.5 mm to BAT_F, BAT_R and BAT_CTL on every layer
+Every net whose row leaks toward "run" and keeps something powered (the latch, a bank, or SPARE_SW) is in bold and keeps
+1.5 mm to BAT_F, BAT_R and BAT_CTL on every layer: RUN and LOOP_RET included, since about 10 kΩ on RUN, or 43 kΩ / 9 kΩ
+on LOOP_RET, would hold the latch or the banks on with the loop open. Those values are far below what flux residue gives,
+but the circuit does not make them fail-safe, so the spacing does (2026-11-10: D22 moved 0.73 mm east, TP2 0.32 mm
+west and 0.1 mm south, U2's pin 5 to pin 8 tie pulled in to X 114.75, and RUN, RUN_P, VB_Z and MID_Z re-routed round D22;
+0 pairs closer). The nets left at 0.2 mm (L_PB, L_E, L_PC, RUN_P, VB_B, INT_B, RST_SRC, RST_IN) leak toward "stop", or
+toward the ports only with both banks off (RUN_P), or need a saturated transistor (RST_SRC)
 ([schematic/tools/domains.py](schematic/tools/domains.py) LATCH_SUPPLY and LEAK_SENSITIVE; the .kicad_dru rule
 `latch_supply_leak`; route_checks checks 1/2 and 10). As packed, 135 item pairs were closer: R59 and D8 stood
 courtyard to courtyard with Q5, R48 and the RUN_B track, and L_B ran 17 mm south past U2's BAT_CTL pins. The supply
@@ -361,7 +366,7 @@ Rule exceptions and open items on this board, each tested or bounded by a check:
 | 8 | Masked copper (the VBUS stem, the vias through it, GND fill) inside the heatsink zone on L6; bare copper only at the ten FET pads, under an insulating pad that is the only insulation there | X -33..33, Y 200-305 | the rule as the board meets it; the pad is specified (GAP PAD TGP 3000, 0.020 in, over 3000 Vac) and the heatsink is tied to GND through 100 kΩ with a test point (R139, TP17, J27) | heatsink_pads.py MODE=check, DRC's solder-mask bridge check |
 | 9 | Kelvin pairs are paired over 58 % (ports), 66 % (SH9) and 87 % (SH) of their length, not all of it: a 2512 Kelvin shunt's sense pads are at opposite ends, so one leg crosses the part alone | each shunt | by construction | route_checks 3 (floors 57, 66, 86 %) |
 | 10 | VBUS stem 25.3 °C at its worst cut (target 20 °C, about 25 accepted); port legs 20.2–21.2 °C (at their 10.5 mm target, bounded by the pads) | Board, above | accepted as measured; BAT (12.2 °C) and the GND return (18.5 °C) are no longer open | pour_width.py floors for every path |
-| 11 | The fail-safe E-stop nets (RUN, LOOP_RET, L_PB, L_E, L_PC, RUN_P, VB_B, INT_B, RST_SRC, RST_IN) keep 0.2 mm, not 1.5 mm, to the latch supply chain, which is at 54 V but not on the 54 V list | latch block | by the leakage table ("Leakage from the latch supply"); the leakage-sensitive nets keep 1.5 mm (0 pairs closer) | route_checks 1/2 and 10, DRC `latch_supply_leak` |
+| 11 | The fail-safe E-stop nets (L_PB, L_E, L_PC, RUN_P, VB_B, INT_B, RST_SRC, RST_IN) keep 0.2 mm, not 1.5 mm, to the latch supply chain, which is at 54 V but not on the 54 V list | latch block | by the leakage table ("Leakage from the latch supply"); the leakage-sensitive nets keep 1.5 mm (0 pairs closer) | route_checks 1/2 and 10, DRC `latch_supply_leak` |
 | 12 | The 100k gate pull-up resistor R4 is 5.9 mm from the gate pin (rule: gate resistor at the gate pin); the 22 Ω R5 is at 3.2 mm | each port | kept: the corridor holds one 0603 column, and 100 kΩ swamps the track | port_template.py MODE=check |
 | 13 | R2 sits at the GATE tee beside R1, 28.5 mm from Q2's gate, and R32 at its controller, not at Q9's gate | bank A and B | kept: no room at the gates (Gate parts, below) | hand_laid.specs check (G2) |
 

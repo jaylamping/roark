@@ -11,7 +11,7 @@
 # LEAK_SENSITIVE; LAYOUT_RULES.md, Leakage from the latch supply). Written by schematic/tools/handfinish_prep.py.
 (rule latch_supply_leak
   (constraint clearance (min 1.5mm))
-  (condition "(A.NetName == '/BAT_CTL' || A.NetName == '/BAT_F' || A.NetName == '/BAT_R') && (B.NetName == '/EN_A' || B.NetName == '/FLT_D' || B.NetName == '/L_B' || B.NetName == '/MID_B' || B.NetName == '/RST_C' || B.NetName == '/RUN_A' || B.NetName == '/RUN_B' || B.NetName == '/UVLO')"))
+  (condition "(A.NetName == '/BAT_CTL' || A.NetName == '/BAT_F' || A.NetName == '/BAT_R') && (B.NetName == '/EN_A' || B.NetName == '/FLT_D' || B.NetName == '/LOOP_RET' || B.NetName == '/L_B' || B.NetName == '/MID_B' || B.NetName == '/RST_C' || B.NetName == '/RUN' || B.NetName == '/RUN_A' || B.NetName == '/RUN_B' || B.NetName == '/SP_EN' || B.NetName == '/SP_ENR' || B.NetName == '/UVLO')"))
 # U1 (LM5069): the UVLO pin (E-stop class) is pin 3, 0.2 mm from SH_P on pin 2 and 0.7 mm from SH_N on pin 1 (54 V
 # class). The package sets that, so between F.Cu pads, tracks and vias inside U1's courtyard the 1.5 mm rule gives way to
 # the 0.2 mm default. Never a pour, never another layer. This rule comes later in the file, so it wins there.

@@ -36,11 +36,14 @@ def rides(n):
 #   L_B, RST_C  0.47-0.56 MOhm turns the seal-in NPN on: the latch sets without a reset press
 #   MID_B       20 MOhm reports "MID healthy" and releases the reset interlock
 #   RUN_A, EN_A 4.3 MOhm enables bank A;  RUN_B, UVLO, FLT_D  0.44-0.7 MOhm enables bank B
+#   RUN         48 kOhm sets the latch, 10 kOhm holds both banks on with the loop open
+#   LOOP_RET    43 kOhm keeps the latch set through a press, 9 kOhm both banks
+#   SP_ENR, SP_EN  about 1.5 / 3 MOhm turns SPARE_SW on (the buck board's U3 EN, 68 kOhm pull-down) during an E-stop
 # tools/latch_block.py places the chain and L_B's parts so that this holds; clearance() gives the routers and
 # tools/route_checks.py the 1.5 mm, the .kicad_dru rule latch_supply_leak (leak_rule() below; tools/handfinish_prep.py
 # writes it, tools/check.py compares) gives it to KiCad's DRC and fill, and route_checks check 10 counts the pairs: 0.
 LATCH_SUPPLY={'/BAT_F','/BAT_R','/BAT_CTL'}
-LEAK_SENSITIVE={'/L_B','/RST_C','/MID_B','/RUN_A','/EN_A','/RUN_B','/UVLO','/FLT_D'}
+LEAK_SENSITIVE={'/L_B','/RST_C','/MID_B','/RUN_A','/EN_A','/RUN_B','/UVLO','/FLT_D','/RUN','/LOOP_RET','/SP_ENR','/SP_EN'}
 LEAK_PAIRS_MAX=0
 def leak_rule():
     """the .kicad_dru rule for the two lists, exactly as tools/handfinish_prep.py writes it"""

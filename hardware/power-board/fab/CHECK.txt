@@ -1,10 +1,10 @@
 ok   gerbers/ holds the 12 Gerber and 2 drill files: missing [], extra []
-ok   F_Cu.gtl: parses (format, units, end of file), 44417 operations, function "Copper,L1,Top" (expected Copper,L1,Top)
-ok   In1_Cu.g1: parses (format, units, end of file), 35600 operations, function "Copper,L2,Inr" (expected Copper,L2,Inr)
-ok   In2_Cu.g2: parses (format, units, end of file), 58068 operations, function "Copper,L3,Inr" (expected Copper,L3,Inr)
-ok   In3_Cu.g3: parses (format, units, end of file), 52064 operations, function "Copper,L4,Inr" (expected Copper,L4,Inr)
-ok   In4_Cu.g4: parses (format, units, end of file), 35600 operations, function "Copper,L5,Inr" (expected Copper,L5,Inr)
-ok   B_Cu.gbl: parses (format, units, end of file), 40200 operations, function "Copper,L6,Bot" (expected Copper,L6,Bot)
+ok   F_Cu.gtl: parses (format, units, end of file), 44454 operations, function "Copper,L1,Top" (expected Copper,L1,Top)
+ok   In1_Cu.g1: parses (format, units, end of file), 35599 operations, function "Copper,L2,Inr" (expected Copper,L2,Inr)
+ok   In2_Cu.g2: parses (format, units, end of file), 58043 operations, function "Copper,L3,Inr" (expected Copper,L3,Inr)
+ok   In3_Cu.g3: parses (format, units, end of file), 52110 operations, function "Copper,L4,Inr" (expected Copper,L4,Inr)
+ok   In4_Cu.g4: parses (format, units, end of file), 35599 operations, function "Copper,L5,Inr" (expected Copper,L5,Inr)
+ok   B_Cu.gbl: parses (format, units, end of file), 40153 operations, function "Copper,L6,Bot" (expected Copper,L6,Bot)
 ok   F_Mask.gts: parses (format, units, end of file), 1025 operations, function "Soldermask,Top" (expected Soldermask,Top)
 ok   B_Mask.gbs: parses (format, units, end of file), 874 operations, function "Soldermask,Bot" (expected Soldermask,Bot)
 ok   F_Silkscreen.gto: parses (format, units, end of file), 28920 operations, function "Legend,Top" (expected Legend,Top)
@@ -20,5 +20,5 @@ ok   position file: 244 parts, each once; the board has 244 fitted top-side part
 ok   bom-jlc.csv: 262 references, the board has 262 fitted parts: missing [], extra []
 ok   bom-digikey.csv: 262 references, the board has 262 fitted parts: missing [], extra []
 ok   zip: 14 files, identical to gerbers/
-ok   the package was made from this board file (sha256 e5c5e244aac6c57d..., recorded e5c5e244aac6c57d...): if not, run tools/fab_package.sh again
+ok   the package was made from this board file (sha256 7c7d348b50a42a37..., recorded 7c7d348b50a42a37...): if not, run tools/fab_package.sh again
 fab_check fails 0
