@@ -98,10 +98,11 @@ The values and the loader's checks are in [PLAN item 1](../PLAN.md#1-the-skeleto
   ([architecture.md section 7](architecture.md#7-time)).
 - **The bus tick's exception:** `can::BusTick` and the types it hands control (`Timing`, `CommandBatch`, `Snapshot`) carry
   times and spans as `u64` nanoseconds on the session's monotonic `Epoch`, every name ending `_ns`, the same clock the
-  recorder's `mono_ns` uses. The bus thread converts its `Instant`s once, at that seam. **Why:** the tick runs every
-  period on every bus, and `Instant`/`Duration` arithmetic (seconds and nanoseconds normalised on every add and compare)
-  measured 32 % slower: 57.3 against 43.5 ns for a two-drive tick on an M-series Mac, 2026-11-08. Nothing else gets the
-  exception without a measurement of its own.
+  recorder's `mono_ns` uses. The bus thread converts its `Instant`s once, at that seam. `robstride::CanTimeout::nanos`
+  gives the drives' timeout in the same `u64` nanoseconds, so the tick checks its timing against it. **Why:** the tick
+  runs every period on every bus, and `Instant`/`Duration` arithmetic (seconds and nanoseconds normalised on every add
+  and compare) measured 32 % slower: 57.3 against 43.5 ns for a two-drive tick on an M-series Mac, 2026-11-08. Nothing
+  else gets the exception without a measurement of its own.
 - CAN frames carry the **kernel RX timestamp** in the recording, not the time the user-space code got round to reading
   them. The bus tick matches replies and ages feedback on the monotonic time the bus thread read the frame instead
   (can.md section 2), because the kernel's stamp is wall-clock and can step. On an active bus, reading trails arrival by

@@ -13,7 +13,11 @@ pub const MAX_SENDS: usize = 2 * MAX_DRIVES;
 
 /// The drives' own command timeout, the `canTimeout` the host writes ([`CanTimeout::RUNTIME`]): the feedback limit plus
 /// the read lag, and the ticks of control silence that stop a bus, must each fit inside it (PLAN.md item 3 Timing).
-pub const DRIVE_TIMEOUT_NS: u64 = CanTimeout::RUNTIME.nanos();
+pub const DRIVE_TIMEOUT_NS: u64 = match CanTimeout::RUNTIME.nanos() {
+    Some(ns) => ns,
+    // RUNTIME is never OFF; were it, 0 would make `Timing::check` refuse every timing, so the bus could never run.
+    None => 0,
+};
 
 /// The tick's timing, in nanoseconds on the monotonic clock (`u64`, not `Duration`: the bus tick's exception,
 /// units-and-frames.md section 5). [`BusTick::new`](crate::BusTick::new) refuses timing that
