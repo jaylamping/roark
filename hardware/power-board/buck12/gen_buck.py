@@ -21,7 +21,7 @@ nic(s,'Connector_Generic:Conn_02x06_Odd_Even','J1','J24 mate: 1-2 +VIN, 3-4 GND,
     {'1':'VIN_P','2':'VIN_P','3':'GND','4':'GND','5':'ON_N','6':'+3V3_PI','7':'GND','8':'GND','9':'SP_EN','10':'GND','11':'I2C_SCL','12':'I2C_SDA'})
 g=Grid(s,80,50,17,30,300)
 g.D('SK810L-TP','VIN_P','GND',SMC); g.C('1uF 100V X7R','VIN_P','GND',C1210); g.L('2.2uH XAL7030-222MEC','VIN_P','VIN','Inductor_SMD:L_Coilcraft_XAL7030-222')
-g.CP('47uF 100V EEE-TK2A470AQ','VIN','GND','Capacitor_SMD:CP_Elec_10x10'); g.C('2.2uF 100V X7R','VIN','GND',C1210,k=5); g.C('100nF 100V X7R','VIN','GND',C603)
+g.CP('47uF 100V EEE-TK2A470AQ','VIN','GND','Capacitor_SMD:CP_Elec_10x10'); g.C('2.2uF 100V X7R','VIN','GND',C1210,k=5); g.C('100nF 100V X7R','VIN','GND',C805)
 g.F('VIN_P'); g.F('VIN'); g.F('GND')
 nic(s,LIBN+':LM5146','U1','LM5146RGYR',(120,140),'Package_DFN_QFN:Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias',
     {'1':'EN','2':'RT','3':'SS','4':'COMP','5':'FB','6':'GND','7':None,'8':'GND','9':None,'10':None,'11':'ILIM','12':'GND','13':'LO','14':'VCC','15':'GND','16':None,'17':'BST','18':'HO','19':'SW','20':'VIN_C','21':'GND'},ds='https://www.ti.com/lit/ds/symlink/lm5146.pdf')
@@ -30,7 +30,7 @@ nfet5(s,'Q2','BSC040N10NS5ATMA1',(200,160),'SW','LO','GND'); s.refc['Q']=2
 g=Grid(s,230,100,17,30,330)
 g.L('6.8uH XAL1010-682MED','SW','VOUT','Inductor_SMD:L_Coilcraft_XAL1010-XXX'); g.C('22uF 25V X7R','VOUT','GND',C1210,k=5); g.F('VOUT')
 g=Grid(s,160,190,15,30,330)
-g.R('2.2R','VIN','VIN_C',R603); g.C('100nF 100V X7R','VIN_C','GND',C603); g.F('VIN_C'); g.R('300k 1%','VIN','EN',R1206); g.R('12.4k 1%','EN','GND',R603)
+g.R('2.2R','VIN','VIN_C',R603); g.C('100nF 100V X7R','VIN_C','GND',C805); g.F('VIN_C'); g.R('300k 1%','VIN','EN',R1206); g.R('12.4k 1%','EN','GND',R603)
 g.R('24.9k 1%','RT','GND'); g.C('47nF X7R','SS','GND'); g.C('2.2uF 25V X7R','VCC','GND',C805); g.D('BAT46W','VCC','VOUT')
 g.nl(); g.R('2.2R','SW','BST_R',R603); g.C('100nF 25V X7R','BST','BST_R',C603); g.R('402R 1%','ILIM','SW'); g.C('100pF C0G','ILIM','GND')
 g.R('0R (loop injection)','VOUT','VOUT_S',R603); g.R('21k 1%','VOUT_S','FB'); g.R('1.5k 1%','FB','GND')
