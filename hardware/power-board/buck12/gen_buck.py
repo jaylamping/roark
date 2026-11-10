@@ -8,6 +8,7 @@ import kit
 kit.PROJ='marengo_buck12'; kit.LIBNAME='marengo_buck12'
 from kit import *
 LIBN=kit.LIBNAME
+wfile(OUT+'/fp-lib-table').write('(fp_lib_table\n\t(version 7)\n\t(lib (name "marengo_buck12")(type "KiCad")(uri "${KIPRJMOD}/marengo_buck12.pretty")(options "")(descr "buck board footprints (tools/fp_buck.py)"))\n)\n')
 wfile(OUT+'/sym-lib-table').write('(sym_lib_table\n\t(version 7)\n\t(lib (name "marengo_buck12")(type "KiCad")(uri "${KIPRJMOD}/marengo_buck12.kicad_sym")(options "")(descr "buck board symbols"))\n)\n')
 s=Sheet('buck12','marengo 12 V buck board (rev B5)','A1',comment='On the J24 pigtail (split S1 pinout). Main board: hardware/power-board/schematic.')
 s.file='marengo_buck12.kicad_sch'
@@ -21,7 +22,7 @@ nic(s,'Connector_Generic:Conn_02x06_Odd_Even','J1','J24 mate: 1-2 +VIN, 3-4 GND,
     {'1':'VIN_P','2':'VIN_P','3':'GND','4':'GND','5':'ON_N','6':'+3V3_PI','7':'GND','8':'GND','9':'SP_EN','10':'GND','11':'I2C_SCL','12':'I2C_SDA'})
 g=Grid(s,80,50,17,30,300)
 g.D('SK810L-TP','VIN_P','GND',SMC); g.C('1uF 100V X7R','VIN_P','GND',C1210); g.L('2.2uH XAL7030-222MEC','VIN_P','VIN','Inductor_SMD:L_Coilcraft_XAL7030-222')
-g.CP('47uF 100V EEE-TK2A470AQ','VIN','GND','Capacitor_SMD:CP_Elec_10x10'); g.C('2.2uF 100V X7R','VIN','GND',C1210,k=5); g.C('100nF 100V X7R','VIN','GND',C805)
+g.CP('47uF 100V EMVH101ARA470MKE0S','VIN','GND','marengo_buck12:CP_Elec_12.5x13.5_ChemiCon'); g.C('2.2uF 100V X7R','VIN','GND',C1210,k=5); g.C('100nF 100V X7R','VIN','GND',C805)
 g.F('VIN_P'); g.F('VIN'); g.F('GND')
 nic(s,LIBN+':LM5146','U1','LM5146RGYR',(120,140),'Package_DFN_QFN:Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias',
     {'1':'EN','2':'RT','3':'SS','4':'COMP','5':'FB','6':'GND','7':None,'8':'GND','9':None,'10':None,'11':'ILIM','12':'GND','13':'LO','14':'VCC','15':'GND','16':None,'17':'BST','18':'HO','19':'SW','20':'VIN_C','21':'GND'},ds='https://www.ti.com/lit/ds/symlink/lm5146.pdf')
@@ -37,7 +38,7 @@ g.R('0R (loop injection)','VOUT','VOUT_S',R603); g.R('21k 1%','VOUT_S','FB'); g.
 g.nl(); g.R('100R','VOUT_S','FB_Z'); g.C('1nF C0G','FB_Z','FB'); g.R('8.06k 1%','COMP','COMP_Z'); g.C('4.7nF C0G','COMP_Z','FB',C603); g.C('10pF C0G','COMP','FB')
 g.R('220k','VIN','ON_N',R1206); g.R('10k','ON_N','ON_B')
 Q('Transistor_BJT:Q_NPN_BEC','MMBT3904',(320,250),'ON_B','GND','EN')
-wnote('''Input: SK810L crowbar (a reversed pigtail clamps at about 1 V; U7 on the main board limits and times out), 1 uF at the connector, 2.2 uH filter, 47 uF aluminium (0.42 Ohm ESR damps the filter and the pigtail), 5 x 2.2 uF hot-loop ceramics at Q1. tools/absorber_sim.py (main board) runs the bank-trip spike through U7, F2, the pigtail and this filter.
+wnote('''Input: SK810L crowbar (a reversed pigtail clamps at about 1 V; U7 on the main board limits and times out), 1 uF at the connector, 2.2 uH filter, 47 uF aluminium (Chemi-Con MVH, 12.5 mm can, 0.33 Ohm ESR damps the filter and the pigtail: 24 dB of margin against the converter's input impedance at 30 V, 158 W), 5 x 2.2 uF hot-loop ceramics at Q1. tools/absorber_sim.py (main board) runs the bank-trip spike through U7, F2, the pigtail and this filter.
 UVLO: 300k / 12.4k: on at 30.2 V, off at 27.2 V (10 uA hysteresis current). Below the 30.5 V worst sag at 90 A from a 38 V pack, so motor load can't brown out compute before the BMS does; the Pi still shuts down on its load-aware threshold.
 ON/OFF: the main board's 2N7002 pulls pin 5 low through 220R when U7's PGD is good. Pin 5 open: 220k from VIN biases the NPN, which holds EN low (off). Pin 5 low: NPN off, EN rises: on. Pin 5 idles at about 2.7 V, like the DVE's.
 Power train (TI design 2 uprated): 400 kHz (RT 24.9k), 6.8 uH 8.9 mOhm 21.8 A Isat, 3.3 A ripple; Q1 BSC070N10NS5 (low Qgd), Q2 BSC040N10NS5. Valley limit by Q2 RDS(on): 200 uA x 402R / 4.5 mOhm = 18 A cold, about 12-13 A hot: over the 11.6 A ceiling, under the 19-21 A of the inductor. Hiccup on overload.
@@ -62,7 +63,7 @@ nic(s,LIBN+':TPS259541DSG','U5','TPS259541DSGR',(40,460),EF,{'1':'SPON_DV','2':'
 nic(s,'Connector_Generic:Conn_01x02',s.nref('J'),'SPARE_ON, always on',(90,460),MF2,{'1':'SPARE_ON','2':'GND'})
 g=Grid(s,240,350,17,30,400)
 for o,f in (('+12V_JET','5A 32V 0466005'),('+12V_PI','5A 32V 0466005'),('+12V_FAN','2A 32V 0466002')): g.two('Device:Fuse','F',f,'+12V',o,'Fuse:Fuse_1206_3216Metric')
-g.C('100nF','+3V3_PI','GND',C603,k=2); g.CP('330uF 25V EEH-ZA1E331V','+12V','GND','Capacitor_SMD:CP_Elec_10x10.5'); g.Z('SMBJ15A','+12V','GND','Diode_SMD:D_SMB')
+g.C('100nF','+3V3_PI','GND',C603,k=2); g.CP('330uF 25V EEH-ZA1E331V','+12V','GND','marengo_buck12:CP_Elec_10x10.5_ZA'); g.Z('SMBJ15A','+12V','GND','Diode_SMD:D_SMB')
 g.nl(); g.R('68k','SP_EN','GND',R603); g.R('499R 1%','SP_ILM','GND',R603); g.C('3.3nF C0G','SP_DV','GND',C603); g.C('100nF 25V','+12V','GND',C603); g.C('22uF 25V','SP_SW1','GND',C1210); g.D('B340A-13-F','SP_SW1','GND','Diode_SMD:D_SMA')
 g.nl(); g.R('100k','+12V','SPON_EN',R603); g.R('33k','SPON_EN','GND',R603); g.R('1.02k 1%','SPON_ILM','GND',R603); g.C('3.3nF C0G','SPON_DV','GND',C603); g.C('100nF 25V','+12V','GND',C603); g.D('B340A-13-F','SPARE_ON','GND','Diode_SMD:D_SMA')
 g.F('+12V'); g.F('+3V3_PI'); g.F('SP_EN')
