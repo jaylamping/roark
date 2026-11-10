@@ -24,26 +24,27 @@ enum Taken {
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Planned {
     pub(crate) sends: SendList,
-    kinds: [Option<EchoKind>; MAX_SENDS],
+    /// The kind of each planned send; past the planned ones a filler that [`Self::get`] never returns.
+    kinds: [EchoKind; MAX_SENDS],
 }
 
 impl Planned {
     pub(crate) const EMPTY: Self = Self {
         sends: SendList::EMPTY,
-        kinds: [None; MAX_SENDS],
+        kinds: [EchoKind::Disable; MAX_SENDS],
     };
 
     /// Plan `send`, a frame of `kind`, as the next send.
     pub(crate) fn push(&mut self, send: Send, kind: EchoKind) {
         if let Some(k) = self.kinds.get_mut(self.sends.len()) {
-            *k = Some(kind);
+            *k = kind;
         }
         self.sends.push(send);
     }
 
-    pub(crate) fn get(&self, index: usize) -> Option<(Send, Option<EchoKind>)> {
+    pub(crate) fn get(&self, index: usize) -> Option<(Send, EchoKind)> {
         let send = self.sends.get(index)?;
-        Some((send, self.kinds.get(index).copied().flatten()))
+        Some((send, *self.kinds.get(index)?))
     }
 }
 
@@ -63,22 +64,21 @@ enum Part {
 }
 
 impl BusTick {
-    /// Plan this tick's sends after the stops are settled: every Disable goes ahead of every reporting off, whoever
-    /// planned it, so a queue that fills after the first frames never costs a Disable (PLAN.md item 2 Stop): the
-    /// stops' Disables, the batch's, the stops' reporting off, then the rest of the batch. With `hold`, of the batch
-    /// only its Disables and reporting off.
+    /// Plan this tick's sends after the stops are settled, in the order [`Self::begin`] gives. With `hold`, of the
+    /// batch only its Disables and reporting off.
     pub(crate) fn plan_sends(&mut self, accepted: Option<Accepted<'_>>, hold: bool, now_ns: u64) {
+        // An expired batch was counted stale already; its Disables and reporting off still go, the rest is dropped.
+        let hold = hold || accepted.is_some_and(|a| a.taken == Taken::Expired);
         self.plan_stop_disables(now_ns);
-        if let Some(accepted) = accepted {
-            // An expired batch was counted stale already; its Disables and reporting off still go, the rest is dropped.
-            let hold = hold || accepted.taken == Taken::Expired;
-            self.push_commands(&accepted, hold, Part::Disables);
-            self.plan_stop_reporting_off(now_ns);
-            if self.push_commands(&accepted, hold, Part::Rest) && accepted.taken == Taken::Fresh {
-                self.counters.held_batches += 1;
-            }
-        } else {
-            self.plan_stop_reporting_off(now_ns);
+        if let Some(accepted) = &accepted {
+            self.push_commands(accepted, hold, Part::Disables);
+        }
+        self.plan_stop_reporting_off(now_ns);
+        if let Some(accepted) = &accepted
+            && self.push_commands(accepted, hold, Part::Rest)
+            && accepted.taken == Taken::Fresh
+        {
+            self.counters.held_batches += 1;
         }
     }
 

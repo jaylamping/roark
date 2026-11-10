@@ -517,9 +517,9 @@ fn a_stop_reaches_every_drive_of_its_limb_and_no_other() {
 }
 
 /// Guards: safety - every Disable goes out ahead of every reporting off, whoever planned it: a stopping limb's Disables,
-/// then the Disables in control's batch for another limb, then the stop's reporting off, then the rest of the batch, so
-/// a queue that fills after the first frame never costs a Disable for a reporting off (PLAN.md item 2 Stop: Disable to
-/// every affected drive, then reporting off).
+/// then the Disables in control's batch for another limb, then the stop's reporting off, then the rest of the batch in
+/// slot order, its reporting off among it, so a queue that fills after the first frame never costs a Disable for a
+/// reporting off (PLAN.md item 2 Stop: Disable to every affected drive, then reporting off).
 #[test]
 fn every_disable_goes_ahead_of_every_reporting_off() {
     // Limb 0 is drives 101 and 104, limb 1 drives 102 and 103.
@@ -560,6 +560,18 @@ fn every_disable_goes_ahead_of_every_reporting_off() {
             (3, SendKind::Disable),
             (1, SendKind::Command),
             (0, SendKind::ReportingOff),
+            (2, SendKind::Command),
+        ]
+    );
+    let _ = bus.end(deadline(14));
+    // A reporting off in the batch keeps its slot, behind a lower slot's motion.
+    let off = encode::active_reporting(id(103), robstride::encode::Reporting::Off);
+    let later = batch(15, &[None, Some(hold(102)), Some(off), None]);
+    assert_eq!(
+        run_tick(&mut bus, 15, Some(&later), &[]),
+        [
+            (3, SendKind::Disable),
+            (1, SendKind::Command),
             (2, SendKind::Command),
         ]
     );

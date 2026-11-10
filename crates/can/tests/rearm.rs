@@ -194,6 +194,7 @@ fn a_confirmed_limb_rearms_at_once_unless_a_drive_left_reset() {
         );
         let snap = bus.end(deadline(tick));
         assert_eq!(at(&snap, 0).stop, StopOutcome::Sent);
+        assert!(!at(&snap, 0).reporting_off_sent);
         let quiet = last_sent + DRIVE_TIMEOUT_NS + PERIOD;
         assert_eq!(
             bus.rearm(0, quiet - 1),
