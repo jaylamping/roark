@@ -311,17 +311,34 @@ How the board got there:
   them VCTL, +3V3_PI, UVLO, SH9_P and GATE_A's via at R31) had under 0.1 mm of overlap. All were bridged
   (schematic/tools/joint_fix.py); joint_check.py fails on any such joint that holds a net together.
 
-**G2** (Q2's gate to R2) stays under exceptions 1 and 2. Q2's gate pin lies in a 1.7 mm slot between Q1's tab and Q2's
-own pins, under the MID band on L1 and over the MID mirror on L6, so G2 can only leave through a via in the L6 MID
-mirror. It takes that via at (149.9, 160.19), In3 west under Q1, a second via at (130.2, 167.0) outside the pours, In2
-north and a third via at R2: 55.8 mm, 3 vias. **R2 beside R1 at the GATE tee was tried on 2026-11-10 and does not fit as
-it stands:** the free site west of R1 (X 128.8–130.4, Y 158.7–162.0) is crossed by a MID track on F.Cu, with BRK_IN
-and ABS_N under it on the inner layers, and G2's In3 run cannot reach the tee because two 54 V tracks on In3 lie
-between. Moving R2 there would need the MID tap, R34 and TP14 moved first; the result would be about 30 mm with the
-same 3 vias (the In3 run still has to change to In2 south of the tee), so it is shorter but takes no fewer vias.
+**G2** (Q2's gate to R2): 28.5 mm with 2 vias since 2026-11-10 (55.8 mm and 3 before). R2 now sits at the GATE tee, just
+south-west of R1 (R34 moved 1.66 mm west to make room; schematic/tools/bank_block.py holds the group's positions for a
+rebuild). G2 takes its via at (149.9, 160.19), runs on In3 west under Q1 to a second via at (130.15, 167.35), outside
+every pour, and then 3.8 mm on F.Cu past TP14 to R2. The tee's leg from R1 to R2 is 2.4 mm.
+**The via through the L6 MID mirror stays (exception 1), and this is why.** Q2's gate pin lies in a slot 1.7 mm wide
+between Q1's tab and Q2's own pins. On L6 the whole slot is inside the MID mirror, which is Q1's and Q2's drain copper
+under their tabs, so any via at the gate pin passes through it. The only way out without a via is on F.Cu along the
+slot, and both ends of the slot are closed by 60 A copper on L1: the MID band to the north (and the SW_D strip beyond
+it), the VBUS bar to the south, with the middle bus cap standing on the same line. A track across either would cut
+that pour in two at the seam between the two FET pairs. One 0.6 mm via with 0.25 mm of clearance in the mirror costs
+1.1 mm of a 36 mm wide pour, south of its narrowest cut. So the via is the smaller cost and is kept; the check pins
+it to its coordinates and finish_route.py now refuses any other via of another net inside a MID outline.
 
-**Kelvin pairs** (route_checks check 3 measures each leg from the shunt's sense pads to the IC pins it serves; a
-branch that ends at a filter or decoupling part is not part of the pair): SH (RS1 to U1 and to U8's links) 87 %,
+**Kelvin pairs.** The measure changed on 2026-11-10, so the numbers below are not comparable with earlier reports
+without this table. Before, check 3 took every track of the P and N nets. Now it takes each leg from the shunt's sense
+pads to the IC pins it serves (for SH also to R61/R62, the 0 Ω links into U8); a branch that ends at a filter or
+decoupling part is not part of the pair. Both measures count the share of both legs' length within 1.0 mm, centre to
+centre on the same layer, of the other leg.
+
+| Pair | Old measure, before the SH9 re-lay | Old measure, now | New measure, now | Floor (new measure) |
+|---|---|---|---|---|
+| SH (RS1 to U1 and U8) | 61.7 % | 61.7 % | 86.6 % | 86 % |
+| SHL1–SHL6 (ports) | 56.1 % | 56.1 % | 57.8 % | 57 % |
+| SH9 (RS9 to U7) | 9.4 % | 49.6 % | 66.3 % | 66 % |
+
+The difference for SH is a 48 mm branch of SH_P that is not on the way to an IC's sense pin; for SH9 it is the 8.4 mm
+branch from U7's pin to its decoupling capacitor C20, which cannot move closer because F2's holder stands beside U7.
+In short: SH (RS1 to U1 and to U8's links) 87 %,
 the six port pairs 58 %, SH9 (RS9 to U7) 66 %. SH9 was 8 %: its N leg ran on In2 and its P leg on F.Cu. A 2512 Kelvin
 shunt has its two sense pads at opposite ends, so one leg has to cross the part: N now leaves its pad under the
 shunt, crosses to the P end on In2 (6 mm) and comes up beside P's pad, and from there the two run side by side on
@@ -334,8 +351,8 @@ Rule exceptions and open items on this board, each tested or bounded by a check:
 
 | # | Exception | Where | Status | Held by |
 |---|---|---|---|---|
-| 1 | G2 has a via through the L6 MID mirror | (149.9, 160.19), at Q2's gate | accepted in the project thread, 2026-11-10; the review asked to try R2 at the tee, which did not fit (above) | route_checks 7: the via is pinned to its coordinates (domains.MID_VIA_OK) |
-| 2 | G2 has 3 vias (gate nets: 2) and is 55.8 mm long | (149.9, 160.19), (130.2, 167.0), (125.6, 139.8) | as 1 | route_checks 8: exactly these three (domains.GATE_VIA_OK) |
+| 1 | G2 has one via through the L6 MID mirror | (149.9, 160.19), at Q2's gate | kept: the only other ways out cross the L1 MID band or the VBUS bar (Routing state, G2) | route_checks 7: the via is pinned to its coordinates (domains.MID_VIA_OK); finish_route.py lays no other |
+| 2 | (closed 2026-11-10) G2 had 3 vias and 55.8 mm; with R2 at the gate tee it has 2 vias and 28.5 mm | | closed | route_checks 8 (2 vias for every gate net but GATE_A) |
 | 3 | GATE_A has 3 vias, one inside the MID outline at Q8's gate | (132.0, 141.46), (168.55, 158.85), (168.55, 164.75) | from the staged routing; not changed | route_checks 7, 8: pinned |
 | 4 | GA2 has a via inside the MID outline, in the pour's dead tip beside U8 beyond the tabs | (167.95, 157.0) | not changed | route_checks 7: pinned |
 | 5 | U1's UVLO pin (E-stop) is 0.2 mm from its SH_P pin: inside U1's courtyard, F.Cu pads, tracks and vias keep 0.2 mm instead of 1.5 mm. No clearance under 0.2 mm is left anywhere (the fine-pitch rules are removed, pads at TI's land-pattern widths) | .kicad_dru `estop_at_U1` | package-set; in force | DRC, route_checks 1/2 |
@@ -346,7 +363,7 @@ Rule exceptions and open items on this board, each tested or bounded by a check:
 | 10 | VBUS stem 25.3 °C at its worst cut (target 20 °C, about 25 accepted); port legs 20.2–21.2 °C (at their 10.5 mm target, bounded by the pads) | Board, above | accepted as measured; BAT (12.2 °C) and the GND return (18.5 °C) are no longer open | pour_width.py floors for every path |
 | 11 | The fail-safe E-stop nets (RUN, LOOP_RET, L_PB, L_E, L_PC, RUN_P, VB_B, INT_B, RST_SRC, RST_IN) keep 0.2 mm, not 1.5 mm, to the latch supply chain, which is at 54 V but not on the 54 V list | latch block | by the leakage table ("Leakage from the latch supply"); the leakage-sensitive nets keep 1.5 mm (0 pairs closer) | route_checks 1/2 and 10, DRC `latch_supply_leak` |
 | 12 | The 100k gate pull-up resistor R4 is 5.9 mm from the gate pin (rule: gate resistor at the gate pin); the 22 Ω R5 is at 3.2 mm | each port | kept: the corridor holds one 0603 column, and 100 kΩ swamps the track | port_template.py MODE=check |
-| 13 | R2 and R32 sit at their controllers, not at Q2's and Q9's gates | bank A and B | kept: no room at the gates (Gate parts, below; R2 at the tee tried, above) | none |
+| 13 | R2 sits at the GATE tee beside R1, 28.5 mm from Q2's gate, and R32 at its controller, not at Q9's gate | bank A and B | kept: no room at the gates (Gate parts, below) | hand_laid.specs check (G2) |
 
 Copper laid from hand-specified coordinates rather than found by a router. All of it is in scripts and checked against
 the board by verify_board.sh:
@@ -382,8 +399,9 @@ Gate parts (schematic/tools/place.py, 2026-11-09):
 - Each port's gate-source zener (D24, D27, D30, D33, D36, D39) sits at its FET's gate pin, between the meter and the FET.
   Its G_L pad faces the gate and its V_L pad lines up with the source-pin via row. The series diode of each pair (D23 and
   the rest) stays in the port block.
-- R1 (G1) and R31 (GA1) sit at Q1's and Q8's gate pins. R2 and R32 stay with their controllers: Q2's and Q9's gates have
-  no room, because the MID band, the SW_D strip and the 1.3 mm gap to Q1/Q8 fill it.
+- R1 (G1) and R31 (GA1) sit at Q1's and Q8's gate pins. R2 sits at the GATE tee beside R1 (2026-11-10) and R32 stays
+  with its controller: Q2's and Q9's gates have no room, because the MID band, the SW_D strip and the 1.3 mm gap to
+  Q1/Q8 fill it.
 - U1 stays at RS1 because the Kelvin rule needs it there, so GATE runs about 35 mm to Q1/Q2. GATE carries the
   LM5069's slow charge current and its fault pull-down; keep it on F.Cu over In1, with a GND return beside it.
 

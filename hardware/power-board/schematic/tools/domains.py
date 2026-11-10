@@ -72,11 +72,11 @@ def clearance(a,b,outer):
 # between Q1's tab and Q2's pins; accepted in the project thread on 2026-11-10, to be confirmed at the review).
 VIA_TOL=0.05
 MID_VIA_OK={'/VBUS':[(151.2,161.46),(151.2,162.73),(132.0,162.73)],'/GATE_A':[(132.0,141.46)],'/GA2':[(167.95,157.0)],'/G2':[(149.9,160.19)]}
-# Gate-drive nets (LAYOUT_RULES "Critical nets") take at most 2 vias. G2 may take 3 (same exception) and GATE_A has 3
-# from the staged routing: for those two, every via must be one of the listed ones.
+# Gate-drive nets (LAYOUT_RULES "Critical nets") take at most 2 vias. GATE_A has 3 from the staged routing: every one of
+# its vias must be one of the listed ones. (G2 had 3 until R2 moved to the gate tee, 2026-11-10; it now has 2.)
 GATE_RE=r'/((G|GPD|GPU|BST)_L\d|GATE|GATE_A|GA[12]|G[12]|G1PD_A|BST_A|BRK_GATE|BRK_G1|PRE_G|CL_G)$'
 GATE_VIAS_MAX=2
-GATE_VIA_OK={'/G2':[(149.9,160.19),(130.2,167.0),(125.6,139.8)],'/GATE_A':[(132.0,141.46),(168.55,158.85),(168.55,164.75)]}
+GATE_VIA_OK={'/GATE_A':[(132.0,141.46),(168.55,158.85),(168.55,164.75)]}
 def via_listed(p,table,net):
     """is the via at p (page mm) one of the net's documented ones?"""
     return any(abs(p[0]-q[0])<=VIA_TOL and abs(p[1]-q[1])<=VIA_TOL for q in table.get(net,()))

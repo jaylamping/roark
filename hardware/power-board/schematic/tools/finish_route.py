@@ -74,6 +74,7 @@ class Router:
                         self.add(L, z.GetNetname(), one, 'zone', UID(z))
         self.zones = zones
         self.hvzones = [z for z in zones if not z.GetIsRuleArea() and domains.is_hv(z.GetNetname())]
+        self.midzones = [z for z in zones if not z.GetIsRuleArea() and z.GetNetname() == '/MID']
 
     @staticmethod
     def bb(b): return MM(b.GetLeft()), MM(b.GetTop()), MM(b.GetRight()), MM(b.GetBottom())
@@ -154,6 +155,8 @@ class Router:
         if hasattr(self,'via_filter') and not self.via_filter(net,p): return False
         if self.in_latch(net,(p[0]-.3,p[1]-.3,p[0]+.3,p[1]+.3)): return False   # a via is inner copper too
         if domains.is_estop(net) and any(z.Outline().Contains(V(p)) for z in self.hvzones): return False   # route_checks 5
+        # route_checks 7: no via of another net inside a MID pour outline, except the listed ones (domains.MID_VIA_OK)
+        if net != '/MID' and not domains.via_listed(p, domains.MID_VIA_OK, net) and any(z.Outline().Contains(V(p)) for z in self.midzones): return False
         sh=pcbnew.SHAPE_CIRCLE(V(p),IU(.3))
         return all(self.free(net,L,sh,via=True) for L in CU)
     @staticmethod
