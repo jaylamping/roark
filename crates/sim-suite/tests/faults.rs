@@ -195,7 +195,8 @@ fn a_fault_injected_on_vcan_stops_only_its_limb() {
             snap.counters
         );
         // The drive answered the stop's first Disable in Reset, read well inside the stop's reply allowance
-        // (`stop_replies_ns`: the confirm window plus a period, more than these five ticks), so the stop confirmed it.
+        // (`Timing::stop_replies_ns`, far more than these five ticks), so the stop confirmed it.
+        assert!(6 * timing().period_ns < timing().stop_replies_ns());
         assert_eq!(
             snap.drive(0).map(|d| d.stop),
             Some(can::StopOutcome::Confirmed),
