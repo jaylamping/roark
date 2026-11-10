@@ -160,9 +160,10 @@ fn expired_feedback_stops_only_its_limb() {
 }
 
 /// Guards: safety - replies missed while a drive is between its Enable and its first Run status aren't counted for
-/// [`ENABLE_TO_RUN_NS`]; after a Disable they aren't counted for `stop_confirm_ns`, nor at all once a Reset confirms
-/// the drive off, even after another Disable; a Run status doesn't confirm it; once Run is seen after an Enable they count again (PLAN.md item 2 Silence windows; item 6 Silence row:
-/// a silent disabled drive is offline, not a fault).
+/// [`ENABLE_TO_RUN_NS`]; after a Disable they aren't counted at all once a Reset confirms the drive off, even after
+/// another Disable, and count again once Run is seen after an Enable; after a Disable no Reset answered (a Run status
+/// doesn't confirm it) they aren't counted for `stop_confirm_ns`, which a Disable sent again doesn't restart (PLAN.md
+/// item 2 Silence windows; item 6 Silence row: a silent disabled drive is offline, not a fault).
 #[test]
 fn misses_in_the_enable_and_post_disable_windows_are_not_counted() {
     // The enable sequence's run_mode write needs no fresh feedback, so it can go unanswered in either window.
