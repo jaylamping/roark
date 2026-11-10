@@ -187,3 +187,4 @@ These apply to every printed structural part of the robot; links repeat only wha
 - RS02 meshes in arm coordinates for `mates`; the evidence file for draft 3.
 - Which `[print]` settings are the system preset's values (`preset`), so the gate doesn't require Bambu Studio to flag
   them; `layer_height = "0.2"` probably is.
+- Which load cases apply to the 7.7 g loop clip: no `[[load_case]]` sets `parts`, so as written all eight do.
