@@ -488,11 +488,11 @@ impl BusTick {
         let hold = backlog || woke_late || stalled;
         self.held = hold;
         self.veto(now_ns);
+        // Control's silence counts on every tick: with nothing to stop it still refuses slow requests after a re-arm.
+        let fresh = self.note_control(tick, now_ns, batch);
         let accepted = if takes_batches {
-            self.check_batch(tick, now_ns, batch)
+            self.check_batch(tick, now_ns, batch, fresh)
         } else {
-            // Nothing to stop, but control's silence still counts: it refuses slow requests after a re-arm.
-            self.note_control(tick, now_ns, batch);
             if batch.is_some() {
                 self.counters.refused_batches += 1;
             }
