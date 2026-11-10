@@ -50,8 +50,8 @@ pub struct Timing {
 
 impl Timing {
     /// The defaults at `hz` ticks a second (250 by default, PLAN.md item 3), the period rounded up to a whole
-    /// nanosecond so the rate is never above `hz`. A rate [`Self::check`] refuses (0, or one slow enough that three
-    /// periods plus the write slack and the read lag reach the drives' timeout) gives timing it refuses.
+    /// nanosecond so the rate is never above `hz`. At a rate too slow or zero the result is timing [`Self::check`]
+    /// refuses; its doc lists the rules.
     #[must_use]
     pub const fn at_hz(hz: u64) -> Self {
         let period_ns = match hz {

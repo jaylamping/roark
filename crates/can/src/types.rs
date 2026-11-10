@@ -161,7 +161,8 @@ pub struct BusDrive {
     pub limb: usize,
 }
 
-/// Where one limb on a bus is. Each limb runs and stops on its own; a stop of the whole bus stops every limb.
+/// Where one limb on a bus is. Each limb runs and stops on its own; a stop of the whole bus stops every limb not
+/// already stopping or stopped, and a late wake or a backlog every active one ([`StopReason`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LimbState {
     /// Nothing enabled or commanded since start or the last re-arm; no batches needed.
@@ -291,7 +292,9 @@ pub struct DriveView {
     pub device: DeviceId,
     /// Its limb on this bus.
     pub limb: usize,
-    /// The last status or report read from it, answer or not: its mode and fault bits are never filtered out.
+    /// The last status or report read from it, answer or not: its mode and fault bits are never filtered out. A version
+    /// reply isn't kept here: its mode and faults go only to the stop logic and `fault_seen`, so a version reply read
+    /// since can have shown another mode than this one.
     pub observed: Option<Observed>,
     /// When its last fresh status was read: the first status after a command the socket took. Freshness, not
     /// acknowledgement: the protocol has no sequence numbers, so which command a status answers can't be proven. Read
@@ -299,10 +302,11 @@ pub struct DriveView {
     /// collect + send window (units-and-frames.md section 5). A held tick clears it, with `fresh_status`, for the
     /// drives of a limb still idle, after its batch checks ([`BusTick::begin`](crate::BusTick::begin)).
     pub fresh_ns: Option<u64>,
-    /// The status `fresh_ns` is the read time of, kept when a later status of the same mode (a duplicate, a report, an
-    /// unsolicited or earlier-tick status, a version reply) replaces `observed`, and dropped when a later one shows another
-    /// mode, which supersedes it. Read mode and faults from `observed` and `fault_seen`, never from this; `fresh_ns`
-    /// stays the age of the last fresh reply either way.
+    /// The status `fresh_ns` is the read time of, kept while later frames show the same mode (a duplicate, a report, an
+    /// unsolicited or earlier-tick status replacing `observed`, or a version reply), and dropped when a later one, a
+    /// version reply included, shows another mode, which supersedes it. Read the last status's mode from `observed`
+    /// (which a version reply doesn't update) and faults from `fault_seen`, never from this; `fresh_ns` stays the age
+    /// of the last fresh reply either way.
     pub fresh_status: Option<Observed>,
     /// Whether it answered this tick's command by the collect deadline.
     pub answered: bool,
