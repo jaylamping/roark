@@ -282,7 +282,7 @@ for k in range(6):
     g.nl()
     refs+=[g.R('100k',f'GPU_{t}',f'G_{t}'),g.R('22R',f'GPD_{t}',f'G_{t}',R603),g.D('BAV19W',f'GC_{t}',f'G_{t}')]
     g.C('100nF 100V X7R',f'GC_{t}','GND',C805); refs.append(f"C{s.refc['C']}")
-    refs+=[g.R('10M',f'GC_{t}','GND',R603),g.Z('BZT52C15',f'G_{t}',f'V_{t}'),g.R('22k','RUN_P',f'EN_{t}'),g.R('10k',f'EN_{t}','GND'),g.R('100k','RUN_P',f'INP_{t}'),g.D('SK810L-TP',f'V_{t}','GND',SMC)]
+    refs+=[g.R('10M',f'GC_{t}','GND','Resistor_SMD:R_0805_2012Metric'),g.Z('BZT52C15',f'G_{t}',f'V_{t}'),g.R('22k','RUN_P',f'EN_{t}'),g.R('10k',f'EN_{t}','GND'),g.R('100k','RUN_P',f'INP_{t}'),g.D('SK810L-TP',f'V_{t}','GND',SMC)]
     if K in PORTDNP:
         for r in refs: dnp(r)
 wnote('''Why: a hard limb short used to latch the whole bus (U1 trips in under 0.4 ms, long before a 20 A fuse melts). Each port now opens itself first.

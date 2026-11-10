@@ -166,7 +166,7 @@
 
 ## E-stop safety nets
 
-- Net class **ESTOP_SAFE:** RUN, RUN_A, RUN_B, RUN_P, SP_ENR, UVLO, EN_A, FLT_A, FLT_D, LOOP_*, RST_*, L_B, L_E, L_PB, L_PC, MID_B, VB_B, INT_B, WDO_N, VWD.
+- Net class **ESTOP_SAFE:** RUN, RUN_A, RUN_B, RUN_P, SP_ENR, SP_EN (since 2026-11-10: SPARE_SW's enable must drop on E-stop; BRK_F was re-routed off the gap between J24's rows, and SP_EN on In3 away from BRK_IN and BRK_D, so 0 pairs are closer), UVLO, EN_A, FLT_A, FLT_D, LOOP_*, RST_*, L_B, L_E, L_PB, L_PC, MID_B, VB_B, INT_B, WDO_N, VWD.
 - At least 1.5 mm (2 mm preferred) to any BAT, SW_D, MID, VBUS, ABS, CL_D, BRK_*, SH*, V_L*, VS_A, CSP_A or CSN_A copper, on all layers, with a GND guard trace or pour between them.
 - Why: 0.44 MΩ of leakage from 54 V into UVLO enables bank B by itself.
 - No 54 V copper on L2–L5 under the latch block.

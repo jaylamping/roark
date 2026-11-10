@@ -585,6 +585,10 @@
       },
       {
         "netclass": "ESTOP",
+        "pattern": "/SP_EN"
+      },
+      {
+        "netclass": "ESTOP",
         "pattern": "/SP_ENR"
       },
       {

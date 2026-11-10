@@ -11,7 +11,7 @@ tools/route_checks.py / hv_spacing.py / gnd_fanout.py (KiCad's Python), so the r
     IPC-2221B B2, 51-100 V) applies only between different domains where one side is 54 V.
 """
 import re
-ESTOP_NAMES='RUN RUN_A RUN_B RUN_P SP_ENR UVLO EN_A FLT_A FLT_D L_B L_E L_PB L_PC MID_B VB_B INT_B WDO_N VWD'.split()
+ESTOP_NAMES='RUN RUN_A RUN_B RUN_P SP_ENR SP_EN UVLO EN_A FLT_A FLT_D L_B L_E L_PB L_PC MID_B VB_B INT_B WDO_N VWD'.split()
 def is_estop(n): return n in {'/'+x for x in ESTOP_NAMES} or bool(re.match(r'/(LOOP_|RST_)',n))
 import os
 # MARENGO_HV_EXTRA=BAT_F,BAT_CTL,...: a what-if for tools/route_checks.py, treating these nets as 54 V copper too
