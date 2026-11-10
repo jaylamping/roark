@@ -20,6 +20,11 @@ const DISABLE_SILENCE_US: (u64, u64) = (0, 50_000);
 /// A Set Zero on an enabled drive: silent 511 to 614 ms later, for 45 to 66 ms (PLAN item 2).
 const ZERO_BLACKOUT_START_US: (u64, u64) = (511_000, 614_000);
 const ZERO_BLACKOUT_LEN_US: (u64, u64) = (45_000, 66_000);
+/// The most events besides reports that one step of the drive can meet: each scheduled fault fires once
+/// ([`crate::FAULT_PLAN`]); Run is reached once without a fault (the drive is in Run already, or reaches it from the one
+/// Enable pending, which only a frame sets and only out of Run) and once per `Mode(Run)` fault; and each stay in Run
+/// times out at most once. So `FAULT_PLAN` faults, one Run, and `FAULT_PLAN + 1` timeouts.
+const STEP_EVENTS: usize = 2 * crate::FAULT_PLAN + 2;
 /// The temperature every status reports. A sim value, not a measurement.
 const TEMPERATURE_C: f64 = 25.0;
 
@@ -270,8 +275,7 @@ impl SimDrive {
     /// only frames due at or after its time. Tied events go in that order, so a fault due with Run shows in the Run
     /// status. Events at `now` itself happen only if `inclusive`.
     fn advance_to(&mut self, now: Instant, inclusive: bool) {
-        // Faults fire once each; Run comes once per Enable, and a timeout once per Run reached (an Enable, or a Mode
-        // fault). Reports go one at a time while the outbox has room, at most `OUTBOX` of them a step reaching it;
+        // Other events are at most `STEP_EVENTS`. Reports go one at a time while the outbox has room, at most `OUTBOX` of them a step reaching it;
         // past that, the reports before the next other event are skipped in one go and counted, as the full outbox
         // would drop them. A report in the Set Zero blackout reaches nothing and takes no room, and there are at most
         // the blackout's length over the report interval, plus one, of those.
@@ -294,9 +298,10 @@ impl SimDrive {
                 }
             } else {
                 events += 1;
-                if events > 2 * crate::FAULT_PLAN + 2 {
-                    break;
-                }
+                assert!(
+                    events <= STEP_EVENTS,
+                    "a step met more than {STEP_EVENTS} events besides reports"
+                );
             }
             self.step_to(at);
             match event {
@@ -319,11 +324,6 @@ impl SimDrive {
                 }
             }
         }
-        if let (Some(at), Some(interval)) =
-            (self.next_due_report(now, inclusive), self.report_interval())
-        {
-            self.skip_reports(at, interval, (now, inclusive));
-        }
         self.outbox.settle(now, inclusive);
         self.step_to(now);
     }
@@ -337,12 +337,6 @@ impl SimDrive {
         let limits = self.limits();
         self.plant.advance(dt, self.mode == Mode::Run, limits);
         self.stepped = Some(self.stepped.map_or(at, |s| s.max(at)));
-    }
-
-    /// The next report's time, if it is due by `now`.
-    fn next_due_report(&self, now: Instant, inclusive: bool) -> Option<Instant> {
-        self.next_report
-            .filter(|at| *at < now || (inclusive && *at == now))
     }
 
     /// Skip the reports every `interval` from `first` to before `until` (or at it, if inclusive): each one not in the
