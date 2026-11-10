@@ -123,7 +123,11 @@ fps={}
 for c in getall(get(N,'components'),'comp'):
     ref=str(get(c,'ref')[1]); f=str(get(c,'footprint')[1]); lib,name=f.split(':')
     fp=pcbnew.FootprintLoad(os.path.join(HERE,'marengo_revb.pretty') if lib=='marengo_revb' else FPDIR+lib+'.pretty',name)
-    fp.SetReference(ref); fp.SetValue(str(get(c,'value')[1])[:40]); fp.SetFPID(pcbnew.LIB_ID(lib,name))
+    fp.SetReference(ref); fp.SetValue(str(get(c,'value')[1])); fp.SetFPID(pcbnew.LIB_ID(lib,name))
+    # value, datasheet and attributes as on the symbol, so KiCad's schematic-parity check is clean (tools/sync_netlist.py
+    # does the same on an existing board)
+    ds=get(c,'datasheet'); fp.SetField('Datasheet',str(ds[1]) if ds and len(ds)>1 else '')
+    fp.SetExcludedFromBOM(any(str(get(p,'name')[1])=='exclude_from_bom' for p in getall(c,'property')))
     for pad in fp.Pads():
         ni=nets.get((ref,pad.GetNumber()))
         if ni: pad.SetNet(ni)
@@ -250,14 +254,14 @@ seg(pcbnew.Edge_Cuts,(-50,340),(50,YB),0.1)
 for sx_ in (-1,1):
     for Y in (YB+4,265,336):
         h=pcbnew.FootprintLoad(FPDIR+'MountingHole.pretty','MountingHole_3.2mm_M3_Pad'); h.SetReference(f'H{len([f for f in b.GetFootprints() if f.GetReference().startswith("H")])+1}')
-        b.Add(h); h.SetPosition(P(sx_*46,Y))
+        h.SetBoardOnly(True); b.Add(h); h.SetPosition(P(sx_*46,Y))
 TIE=[(-7.0,336.0),(23.0,336.0)]+[(s*45.0,Y-8.75) for s in (-1,1) for Y in (244.7,227.2,209.7)]  # one hole per pair: the tie loops through it and round the board edge
 for k,(X,Y) in enumerate(HSINK):
-    h=pcbnew.FootprintLoad(FPDIR+'MountingHole.pretty','MountingHole_3.2mm_M3'); h.SetReference(f'HS{k+1}'); b.Add(h); h.SetPosition(P(X,Y))
+    h=pcbnew.FootprintLoad(FPDIR+'MountingHole.pretty','MountingHole_3.2mm_M3'); h.SetReference(f'HS{k+1}'); h.SetBoardOnly(True); b.Add(h); h.SetPosition(P(X,Y))
 for X,Y in TIE:
     for d in (0,):
         h=pcbnew.FootprintLoad(FPDIR+'MountingHole.pretty','MountingHole_2.2mm_M2'); h.SetReference(f'TH{len([f for f in b.GetFootprints() if f.GetReference().startswith("TH")])+1}')
-        b.Add(h); h.SetPosition(P(X,Y))
+        h.SetBoardOnly(True); b.Add(h); h.SetPosition(P(X,Y))
 # copper keep-outs round the holes (rule areas, all copper layers): heatsink screws HS1/HS2 no copper within 2 mm of the
 # hole (LAYOUT_RULES.md, the screw and the heatsink are not insulated from it); tie holes and the M3 mounting pads
 # 0.6 mm (54 V pours and tracks otherwise close to 0.25 mm, IPC-2221B 0.6 mm for 51-100 V)

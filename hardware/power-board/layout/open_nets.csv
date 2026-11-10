@@ -1,7 +1,5 @@
 net,class,open connections,parts
-/I2C_SDA,signal,2,
+/I2C_SCL,signal,3,U12
 /CWD,signal,1,C81 U25
-/D_L2,54 V,1,U12
 /G2,rides 54 V,1,Q2 R2
-/I2C_SCL,signal,1,U15
 GND,GND,1,
