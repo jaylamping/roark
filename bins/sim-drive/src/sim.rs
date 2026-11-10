@@ -7,7 +7,7 @@ use robstride::drive::{self as wire, Command, DriveFrame, HostFrame};
 
 use crate::fault::{Active, Fault, FaultRefused, Injected, Plan, Trigger, flag, flagged};
 use crate::outbox::{OUTBOX, Outbox};
-use crate::plant::{Limits, Plant};
+use crate::plant::{Limits, Motion, Plant};
 use robstride::{
     Amps, Celsius, Damper, DeviceId, Drive, Feedback, Gain, Mode, NewtonMeters, Param, ParamValue,
     RadPerSec, RadPerSecSq, Radians, ReportInterval, Reporting, RunMode, Uid, Volts, ZeroSta,
@@ -64,7 +64,7 @@ impl SimDrive {
             uid,
             mode: Mode::Reset,
             params: defaults(drive),
-            plant: Plant::AT_ZERO,
+            plant: Plant::resting_at(lit(Radians::new(0.0))),
             active: Active::default(),
             plan: Plan::default(),
             next_report: None,
@@ -191,7 +191,7 @@ impl SimDrive {
                 self.silence = Some((now, now + self.rng.between(DISABLE_SILENCE_US)));
             }
             Command::SetZero => {
-                self.plant.position = 0.0;
+                self.plant.set_position(lit(Radians::new(0.0)));
                 self.send(now, self.status());
                 if self.mode == Mode::Run {
                     let start = now + self.rng.between(ZERO_BLACKOUT_START_US);
@@ -439,32 +439,39 @@ impl SimDrive {
     }
 
     /// The joint's bounds: the caps written to the drive (a negative one, which only an injected register can hold,
-    /// as zero), and what its MIT feedback can carry. The registers keep what was written, for read-back.
+    /// as zero), and what its MIT feedback can carry. The registers keep what was written, for read-back. A model whose
+    /// MIT scales aren't settled has no status, so its joint never moves either.
     fn limits(&self) -> Limits {
+        self.caps().unwrap_or_else(|| {
+            let zero = lit(Radians::new(0.0));
+            Limits {
+                torque: lit(NewtonMeters::new(0.0)),
+                speed: lit(RadPerSec::new(0.0)),
+                position: (zero, zero),
+            }
+        })
+    }
+
+    /// The joint's bounds, or `None` for a model whose MIT scales aren't settled.
+    fn caps(&self) -> Option<Limits> {
         let ranges = self.drive.model().ranges();
+        let scales = self.drive.model().mit_scales().ok()?;
         let torque = match self.param(Param::LimitTorque) {
-            Some(ParamValue::NewtonMeters(t)) => t.get(),
-            _ => ranges.torque_max.get(),
-        }
-        .max(0.0);
+            Some(ParamValue::NewtonMeters(t)) => t,
+            _ => ranges.torque_max,
+        };
         let speed = match self.param(Param::LimitSpd) {
-            Some(ParamValue::RadPerSec(v)) => v.get(),
-            _ => ranges.speed_max.get(),
-        }
-        .max(0.0);
-        match self.drive.model().mit_scales() {
-            Ok(s) => Limits {
-                torque: torque.min(s.torque.max()),
-                speed: speed.min(s.velocity.max()),
-                position: (s.position.min(), s.position.max()),
-            },
-            // No status for a model whose scales aren't settled, so the joint never moves either.
-            Err(_) => Limits {
-                torque: 0.0,
-                speed: 0.0,
-                position: (0.0, 0.0),
-            },
-        }
+            Some(ParamValue::RadPerSec(v)) => v,
+            _ => ranges.speed_max,
+        };
+        Some(Limits {
+            torque: NewtonMeters::new(torque.get().max(0.0).min(scales.torque.max()))?,
+            speed: RadPerSec::new(speed.get().max(0.0).min(scales.velocity.max()))?,
+            position: (
+                Radians::new(scales.position.min())?,
+                Radians::new(scales.position.max())?,
+            ),
+        })
     }
 
     fn report_interval(&self) -> Option<Duration> {
@@ -488,28 +495,24 @@ impl SimDrive {
             return self.param(param);
         }
         match param {
-            Param::MechPos => Radians::new(self.plant.position).map(ParamValue::Radians),
-            Param::MechVel => RadPerSec::new(self.motion().0).map(ParamValue::RadPerSec),
+            Param::MechPos => Some(ParamValue::Radians(self.plant.position())),
+            Param::MechVel => self.motion().map(|m| ParamValue::RadPerSec(m.velocity)),
             _ => self.param(param),
         }
     }
 
-    /// The joint's velocity and torque now: zero out of Run.
-    fn motion(&self) -> (f64, f64) {
-        if self.mode == Mode::Run {
-            self.plant.motion(self.limits())
-        } else {
-            (0.0, 0.0)
-        }
+    /// The joint's velocity and torque now: zero out of Run. `None` if a value isn't finite.
+    fn motion(&self) -> Option<Motion> {
+        self.plant.motion(self.mode == Mode::Run, self.limits())
     }
 
     /// The joint as a status carries it, or `None` if a value isn't finite.
     fn feedback(&self) -> Option<Feedback> {
-        let (velocity, torque) = self.motion();
+        let motion = self.motion()?;
         Some(Feedback {
-            position: Radians::new(self.plant.position)?,
-            velocity: RadPerSec::new(velocity)?,
-            torque: NewtonMeters::new(torque)?,
+            position: self.plant.position(),
+            velocity: motion.velocity,
+            torque: motion.torque,
             temperature: self
                 .active
                 .temperature
