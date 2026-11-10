@@ -83,40 +83,6 @@ pub(crate) enum Off {
     Sent,
 }
 
-impl Phase {
-    /// The phase after the socket took a frame of `kind` at `sent_ns`. An Enable to a drive not already enabling or
-    /// enabled starts its enable-to-Run window. A Disable to an enabling or enabled drive starts the post-Disable window;
-    /// one sent again keeps the first one's window, so Disables sent every tick can't hold misses off; and one to a drive
-    /// in `Off` leaves it there, offline, since it was never enabled or already reported Reset.
-    pub(crate) const fn after_send(self, kind: Option<EchoKind>, sent_ns: u64) -> Self {
-        match (kind, self) {
-            (Some(EchoKind::Enable), Self::Off | Self::Disabled { .. }) => {
-                Self::Enabling { since_ns: sent_ns }
-            }
-            (Some(EchoKind::Disable), Self::Enabling { .. } | Self::Running | Self::LeftRun) => {
-                Self::Disabled { since_ns: sent_ns }
-            }
-            (Some(EchoKind::Enable), Self::Enabling { .. } | Self::Running | Self::LeftRun)
-            | (Some(EchoKind::Disable), Self::Off | Self::Disabled { .. })
-            | (
-                Some(
-                    EchoKind::Mit
-                    | EchoKind::SetZero
-                    | EchoKind::SetId { .. }
-                    | EchoKind::ParamRead(_)
-                    | EchoKind::ParamWrite { .. }
-                    | EchoKind::Reporting(_)
-                    | EchoKind::GetId
-                    | EchoKind::VersionQuery
-                    | EchoKind::FaultClear,
-                )
-                | None,
-                _,
-            ) => self,
-        }
-    }
-}
-
 impl DriveState {
     /// What a status header's mode says about the drive's run, from a status, a report or a version reply alike. Run
     /// after an Enable is the drive running, counted only from an ordered read while its limb is active; any other mode
@@ -162,6 +128,40 @@ pub(crate) enum Phase {
     /// It reported another mode after running, without a Disable from this host: its limb stops before the next send.
     /// Latched when the status is read, so a later status can't hide it.
     LeftRun,
+}
+
+impl Phase {
+    /// The phase after the socket took a frame of `kind` at `sent_ns`. An Enable to a drive not already enabling or
+    /// enabled starts its enable-to-Run window. A Disable to an enabling or enabled drive starts the post-Disable window;
+    /// one sent again keeps the first one's window, so Disables sent every tick can't hold misses off; and one to a drive
+    /// in `Off` leaves it there, offline, since it was never enabled or already reported Reset. Nothing else changes the
+    /// phase.
+    pub(crate) const fn after_send(self, kind: Option<EchoKind>, sent_ns: u64) -> Self {
+        match kind {
+            Some(EchoKind::Enable) => match self {
+                Self::Off | Self::Disabled { .. } => Self::Enabling { since_ns: sent_ns },
+                Self::Enabling { .. } | Self::Running | Self::LeftRun => self,
+            },
+            Some(EchoKind::Disable) => match self {
+                Self::Enabling { .. } | Self::Running | Self::LeftRun => {
+                    Self::Disabled { since_ns: sent_ns }
+                }
+                Self::Off | Self::Disabled { .. } => self,
+            },
+            Some(
+                EchoKind::Mit
+                | EchoKind::SetZero
+                | EchoKind::SetId { .. }
+                | EchoKind::ParamRead(_)
+                | EchoKind::ParamWrite { .. }
+                | EchoKind::Reporting(_)
+                | EchoKind::GetId
+                | EchoKind::VersionQuery
+                | EchoKind::FaultClear,
+            )
+            | None => self,
+        }
+    }
 }
 
 /// One limb's run state on this bus.
