@@ -19,8 +19,12 @@ pub enum BusError {
     TxTimeout,
     /// The interface is down (`ENETDOWN`), from the socket. Latched, as is any error passed to `BusTick::lost_bus`.
     InterfaceDown,
-    /// The interface is gone (`ENODEV`), from the socket. Latched, as is any error passed to `BusTick::lost_bus`.
+    /// The interface is gone (`ENODEV`, `ENXIO`), from the socket. Latched, as is any error passed to
+    /// `BusTick::lost_bus`.
     InterfaceGone,
+    /// Any other socket error, by errno (0 when there is none, such as a short read), from the socket. Latched, as is
+    /// any error passed to `BusTick::lost_bus`: the socket can't be trusted after it.
+    Socket(i32),
     /// Any other error class, as its bits.
     Other(u32),
 }

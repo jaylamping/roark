@@ -143,25 +143,23 @@ fn a_late_wake_stops_the_bus() {
     }
 }
 
-/// Guards: safety - a late wake or a drain backlog doesn't stop an idle bus, but on that tick only its batch's Disables
-/// and reporting off go out, late as they are (can.md section 2), and the rest is held, so nothing is enabled on a tick
-/// whose reads can't be trusted (PLAN.md item 3).
+/// Guards: safety - a late wake, ticks a stall slept through, or a drain backlog doesn't stop an idle bus, but on that
+/// tick only its batch's Disables and reporting off go out, late as they are (can.md section 2), and the rest is held,
+/// so nothing is enabled on a tick whose reads can't be trusted; the missed deadlines are counted (PLAN.md item 3).
 #[test]
 fn an_idle_bus_holds_all_but_disables_and_reporting_off_on_an_untrusted_tick() {
     let off = encode::active_reporting(id(102), Reporting::Off);
+    let disable = encode::disable(id(102));
+    // (name, ticks skipped, woken at, drain, the frame that still goes, missed deadlines)
     let rows = [
-        (
-            "late wake",
-            2 * MS,
-            Drain::Emptied,
-            encode::disable(id(102)),
-            1,
-        ),
-        ("backlog", 0, Drain::Backlog, off, 0),
-        ("backlog left queued", 0, Drain::Unemptied, off, 0),
+        ("late wake", 0, 2 * MS, Drain::Emptied, disable, 1),
+        ("stall", 2, 0, Drain::Emptied, disable, 2),
+        ("backlog", 0, 0, Drain::Backlog, off, 0),
+        ("backlog left queued", 0, 0, Drain::Unemptied, off, 0),
     ];
-    for (name, woke, drain, kept, missed) in rows {
+    for (name, skipped, woke, drain, kept, missed) in rows {
         let mut bus = bus();
+        bus.skipped(skipped);
         bus.drained(drain);
         let b = batch(0, &[Some(encode::enable(id(101))), Some(kept)]);
         assert_eq!(
@@ -272,6 +270,35 @@ fn only_consecutive_silent_ticks_stop_the_bus() {
     assert_eq!(bus.end(deadline(4)).stop, Some(StopReason::ControlSilent));
 }
 
+/// Guards: safety - ticks a stalled thread slept through are each a missed deadline and stop an active bus as a late
+/// wake would, Disables on the next tick it runs; none skipped is no news (PLAN.md item 3: missed deadlines are counted,
+/// never skipped silently). An idle bus's hold on a stall is in the hold table above.
+#[test]
+fn skipped_ticks_are_missed_deadlines_and_stop_the_bus() {
+    let mut bus = bus();
+    let enable = batch(0, &[Some(encode::enable(id(101))), None]);
+    run_tick(&mut bus, 0, Some(&enable), &[(MS, status(101, Mode::Run))]);
+    let _ = bus.end(deadline(0));
+    bus.skipped(0);
+    let sent = run_tick(
+        &mut bus,
+        1,
+        Some(&batch(1, &[Some(hold(101)), None])),
+        &[(MS, status(101, Mode::Run))],
+    );
+    assert_eq!(sent, [(0, SendKind::Command)]);
+    assert_eq!(bus.end(deadline(1)).counters.missed_deadlines, 0);
+    // The thread wakes after tick 1 to find ticks 2 to 4 already past: tick 5 runs on time, as a stop.
+    bus.skipped(3);
+    let sent = run_tick(&mut bus, 5, Some(&batch(5, &[None, None])), &[]);
+    assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Disable)]);
+    let snap = bus.end(deadline(5));
+    assert_eq!(
+        (snap.stop, snap.counters.missed_deadlines),
+        (Some(StopReason::LateWake), 3)
+    );
+}
+
 /// Guards: safety - bus-off is latched on the first error frame, and so is any socket failure passed to `lost_bus`;
 /// nothing later clears it (PLAN.md item 3, item 6 Bus-off row).
 #[test]
@@ -315,6 +342,7 @@ fn bus_off_latches_stopped() {
         BusError::TxTimeout,
         BusError::Other(0x08),
         BusError::InterfaceGone,
+        BusError::Socket(5),
     ] {
         let mut bus = common::bus();
         bus.lost_bus(error);

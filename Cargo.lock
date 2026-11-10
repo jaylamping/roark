@@ -81,7 +81,11 @@ checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 name = "can"
 version = "0.1.0"
 dependencies = [
+ "libc",
+ "nix",
  "robstride",
+ "rtrb",
+ "socketcan",
  "telemetry",
  "thiserror",
 ]
@@ -559,9 +563,14 @@ dependencies = [
 name = "sim-suite"
 version = "0.1.0"
 dependencies = [
+ "can",
+ "mcap",
  "robstride",
+ "rtrb",
+ "serde_json",
  "sim-drive",
  "socketcan",
+ "telemetry",
 ]
 
 [[package]]

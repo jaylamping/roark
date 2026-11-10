@@ -323,8 +323,9 @@ pub enum SendOutcome {
     QueueFull,
     /// A send whose window had passed before the write: dropped and counted. Only sends that [`Send::expires`] are.
     Expired,
-    /// Not taken for any other reason: a socket write error, or a frame the shell couldn't build. It records only that
-    /// the frame wasn't taken and never latches: a socket write error other than a full queue must also go to
+    /// Not taken for any other reason: a socket write error, a frame the shell couldn't build, or a send not tried
+    /// because the bus was already lost (nothing to send on). It records only that the frame wasn't taken and never
+    /// latches: a socket write error other than a full queue must also go to
     /// [`BusTick::lost_bus`](crate::BusTick::lost_bus), which does.
     Failed,
 }
@@ -488,7 +489,7 @@ pub struct Counters {
     pub undecodable: u64,
     /// Error frames.
     pub error_frames: u64,
-    /// Sends the socket refused (`ENOBUFS`, `EAGAIN`, other errors).
+    /// Sends the socket refused (`ENOBUFS`, `EAGAIN`, other errors), and sends not tried once the bus was lost.
     pub tx_dropped: u64,
     /// Sends dropped because their window had passed.
     pub tx_expired: u64,
@@ -499,7 +500,7 @@ pub struct Counters {
     /// Batches an idle bus sent only the Disables and reporting off of, holding back the rest, for a backlog or a late
     /// wake that tick.
     pub held_batches: u64,
-    /// Ticks the thread woke for after their send window.
+    /// Ticks that woke past their send window, plus each tick a stalled thread never ran ([`BusTick::skipped`](crate::BusTick::skipped)).
     pub missed_deadlines: u64,
     /// The socket's overflow counter (`SO_RXQ_OVFL`), the last value seen.
     pub kernel_drops: u32,

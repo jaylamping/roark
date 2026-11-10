@@ -79,6 +79,8 @@ pub struct BusTick {
     pending_stop: Option<StopReason>,
     /// The last drain read past its limit or left frames queued: what it said can't be known in time.
     backlog: bool,
+    /// Ticks that went by without running since the last `begin` ([`Self::skipped`]).
+    skipped_since: u64,
     bus_error: Option<BusError>,
     error_passive: bool,
     /// Reads may predate this tick's sends: the last drain left frames queued, and none since has emptied the socket.
@@ -128,6 +130,7 @@ impl BusTick {
             stop: None,
             pending_stop: None,
             backlog: false,
+            skipped_since: 0,
             bus_error: None,
             error_passive: false,
             unordered: false,
@@ -137,6 +140,12 @@ impl BusTick {
             scheduled_ns: 0,
             sends: SendList::EMPTY,
         })
+    }
+
+    /// Whether a bus error has latched (bus-off, or the socket failed): there is nothing to send on.
+    #[must_use]
+    pub(crate) fn bus_lost(&self) -> bool {
+        self.bus_error.is_some()
     }
 
     /// The tick's timing.
@@ -187,9 +196,34 @@ impl BusTick {
         self.counters.kernel_drops = count;
     }
 
-    /// The last snapshot couldn't be handed to control (its ring was full): counted in the next one.
-    pub fn snapshot_dropped(&mut self) {
+    /// `count` ticks went by without running (the thread stalled past them): each a missed deadline (PLAN.md item 3:
+    /// missed deadlines are counted, never skipped silently). The next `begin` treats it as a late wake: an active bus
+    /// stops, and an idle one's tick is held (both in [`Self::begin`]).
+    pub fn skipped(&mut self, count: u64) {
+        if count > 0 {
+            self.counters.missed_deadlines += count;
+            self.skipped_since += count;
+        }
+    }
+
+    /// The bus's state now, between snapshots (the shell's exit check reads it after the drain).
+    #[must_use]
+    pub(crate) fn state(&self) -> BusState {
+        self.state
+    }
+
+    /// Whether the bus is healthy now: no latched bus error and not error-passive. The snapshot's `healthy` is this at
+    /// `end`.
+    #[must_use]
+    pub(crate) fn healthy(&self) -> bool {
+        self.bus_error.is_none() && !self.error_passive
+    }
+
+    /// Control's ring couldn't take `snap`, this tick's snapshot (it was full): counted in `snap`, which the caller
+    /// keeps (it may be the last snapshot the bus hands back), and in every later one.
+    pub fn snapshot_dropped(&mut self, snap: &mut Snapshot) {
         self.counters.snapshots_dropped += 1;
+        snap.counters.snapshots_dropped = self.counters.snapshots_dropped;
     }
 
     /// Start tick `tick`, scheduled at `scheduled_ns`, woken at `now_ns`, with the newest batch from control. Call after
@@ -198,7 +232,8 @@ impl BusTick {
     /// Disable or active reporting off goes out late too, whoever planned it, since late it is still the right frame.
     ///
     /// A stop asked for before the tick is taken first, so it keeps its reason. A backlog in the drain, then a wake past
-    /// the send window (a missed deadline, counted in every state), stops an active bus. Neither stops an idle bus
+    /// the send window (a missed deadline, counted in every state) or ticks a stall slept through ([`Self::skipped`]),
+    /// stops an active bus. Neither stops an idle bus
     /// (nothing enabled since start): its tick is **held** instead, since an untrusted tick holds an idle bus and
     /// doesn't stop it (PLAN.md item 3). On a held tick, in this order:
     ///
@@ -232,10 +267,12 @@ impl BusTick {
             self.begin_stop(reason, now_ns);
         }
         let backlog = std::mem::take(&mut self.backlog);
-        let late = now_ns > scheduled_ns.saturating_add(self.timing.send_window_ns);
-        if late {
+        let stalled = std::mem::take(&mut self.skipped_since) > 0;
+        let woke_late = now_ns > scheduled_ns.saturating_add(self.timing.send_window_ns);
+        if woke_late {
             self.counters.missed_deadlines += 1;
         }
+        let late = woke_late || stalled;
         if self.state == BusState::Active {
             if backlog {
                 self.begin_stop(StopReason::Backlog, now_ns);
@@ -494,6 +531,7 @@ impl BusTick {
                 | BusError::TxTimeout
                 | BusError::InterfaceDown
                 | BusError::InterfaceGone
+                | BusError::Socket(_)
                 | BusError::Other(_) => {}
             }
             // The controller's state, read on its own: a frame can carry it beside a more severe flag (passive back
@@ -633,7 +671,7 @@ impl BusTick {
                 self.state = BusState::Stopped;
             }
         }
-        let healthy = self.bus_error.is_none() && !self.error_passive;
+        let healthy = self.healthy();
         let mut snap = Snapshot::new(
             tick,
             self.state,

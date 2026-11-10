@@ -8,3 +8,11 @@ default-filter = "not package(sim-suite)"
 
 [profile.sim]
 default-filter = "package(sim-suite)"
+
+# Tests that share a vcan bus run one at a time: frames on one bus reach every socket on it.
+[test-groups]
+can0 = { max-threads = 1 }
+
+[[profile.sim.overrides]]
+filter = "package(sim-suite) & binary(exit)"
+test-group = "can0"

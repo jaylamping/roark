@@ -14,7 +14,9 @@ robstride = { path = "crates/robstride" }
 sim-drive = { path = "bins/sim-drive" }
 skeleton = { path = "crates/skeleton" }
 telemetry = { path = "crates/telemetry" }
+libc = { version = "0.2.191", default-features = false }
 mcap = { version = "0.26.0", default-features = false, features = ["zstd"] }
+nix = { version = "0.31.3", default-features = false, features = ["poll", "signal", "socket", "time"] }
 rtrb = { version = "0.4.1", default-features = false }
 saphyr-parser = { version = "0.3.3", default-features = false }
 schemars = { version = "1.2.3", default-features = false, features = ["derive", "std"] }
