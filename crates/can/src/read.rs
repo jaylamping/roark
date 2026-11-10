@@ -190,7 +190,7 @@ impl BusTick {
     fn slot_index(&self, device: DeviceId) -> Option<usize> {
         self.drives
             .iter()
-            .position(|d| d.is_some_and(|d| d.device == device))
+            .position(|d| d.as_ref().is_some_and(|d| d.device == device))
     }
 }
 
