@@ -63,7 +63,7 @@ pub enum Unanswered {
     TimedOut,
     /// A result came, but control handed it over after [`crate::ANSWER_WITHIN_NS`]: the runtime fell behind.
     Late,
-    /// The socket didn't take it.
+    /// The bus didn't send it: the socket didn't take it, or it expired queued.
     NotSent(Unsent),
     /// The bus layer refused it.
     Refused(SlowRefusal),
@@ -321,8 +321,11 @@ impl Unanswered {
             Self::WrongAnswer => {
                 "Another frame answered in its place: check for a second drive or tool on the bus, then run preflight again"
             }
-            Self::NotSent(Unsent::Expired | Unsent::QueueFull) => {
+            Self::NotSent(Unsent::QueueFull) => {
                 "The bus was too busy to send it: run preflight again"
+            }
+            Self::NotSent(Unsent::Expired) => {
+                "The bus thread fell behind and never had time to send it: check the runtime's log and the Pi's load, then run preflight again"
             }
             Self::NotSent(Unsent::Failed) => {
                 "The bus failed: check the adapter and cable, then restart the runtime"

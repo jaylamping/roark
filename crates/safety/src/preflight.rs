@@ -28,8 +28,9 @@ use crate::seen::{DriveAddress, Seen};
 /// How long preflight waits for one request's result before refusing. A bus sends at most one slow request a tick, in
 /// the slack of a tick that wasn't held, and gives each its result by the next tick's start, so a full bus
 /// (`can::MAX_DRIVES` drives, each asking one at a time) answers every drive's request within `MAX_DRIVES` trusted
-/// ticks: under 100 ms even at the slowest rate `can::Timing::check` allows. A second is far past that and bounds a
-/// run of held ticks, a result control's ring dropped (`slow_results_dropped`), or one control handed over late.
+/// ticks: under 100 ms even at the slowest rate `can::Timing::check` allows. A request that a run of held ticks keeps
+/// queued ends in `can::Unsent::Expired` after `can::Timing::slow_queue_ticks`, also well inside this wait. A second is
+/// far past both and bounds a result control's ring dropped (`slow_results_dropped`), or one control handed over late.
 pub const ANSWER_WITHIN_NS: u64 = 1_000_000_000;
 
 /// Whether a request submitted at `at_ns` has had longer than [`ANSWER_WITHIN_NS`] by `now_ns`.
