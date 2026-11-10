@@ -239,6 +239,45 @@ def write(p: Path, text: str) -> Path:
     return p
 
 
+def test_mesh_check_rejects_the_defects_that_reached_prints(tmp_path: Path) -> None:
+    """Guards: bug - spikes, slivers and notches reached printed parts before each mesh check existed (2026-11-07); a listed
+    spot passes only where the whitelist names it."""
+    trimesh = pytest.importorskip("trimesh")
+    pytest.importorskip("scipy")
+    import mesh_check
+
+    box = lambda size, at=(0, 0, 0): trimesh.creation.box(size, trimesh.transformations.translation_matrix(at))  # noqa: E731
+    hull = lambda pts: trimesh.convex.convex_hull(pts)  # noqa: E731
+    open_box = box((20, 20, 20))
+    open_box.update_faces(open_box.face_normals[:, 2] < 0.5)  # lid removed
+    cube = [[x, y, z] for x in (0, 10) for y in (0, 10) for z in (0, 10)]
+    spike = hull(cube + [[5, 5, 30]])  # a 20 mm pyramid on a 10 mm cube: about 250 deg defect at the tip
+    wedge = hull([[0, 0, 0], [40, 0, 0], [40, 0, 5], [0, 20, 0], [40, 20, 0], [40, 20, 5]])  # 7 deg knife along Y
+    plate = box((20, 20, 0.4))
+    corner = {"pt": [5, 5, 30], "reason": "test"}
+    cases = [
+        # (what, mesh, whitelist, failing checks)
+        ("clean box", box((20, 20, 20)), {}, set()),
+        ("two bodies", trimesh.util.concatenate([box((10, 10, 10)), box((10, 10, 10), (30, 0, 0))]), {}, {"bodies"}),
+        ("two bodies, listed", trimesh.util.concatenate([box((10, 10, 10)), box((10, 10, 10), (30, 0, 0))]),
+         {"bodies": 2}, set()),
+        ("open box", open_box, {}, {"bodies", "sharp vertices"}),  # not watertight; the rim corners are open too
+        ("spike", spike, {}, {"sharp vertices"}),
+        ("spike, listed", spike, {"corners": [corner]}, set()),
+        ("knife edge", wedge, {}, {"sharp vertices", "knife edges"}),
+        ("knife edge, listed", wedge, {"corners": [{"pt": [0, 0, 0], "reason": "test"}, {"pt": [0, 20, 0], "reason": "test"}],
+                                       "folds": [{"pt": [0, y, 0], "reason": "test"} for y in range(0, 21, 2)]}, set()),
+        ("thin wall", plate, {}, {"walls thinner"}),
+        ("thin wall, listed", plate, {"thin": [{"box": [[-11, -11, -1], [11, 11, 1]], "reason": "test"}]}, set()),
+    ]
+    for what, mesh, wl, failing in cases:
+        ok, rep = mesh_check.check(mesh, what, bodies=wl.get("bodies", 1), corners=wl.get("corners", ()),
+                                   folds=wl.get("folds", ()), thin=wl.get("thin", ()))
+        failed = {k for k in ("bodies", "sharp vertices", "knife edges", "walls thinner")
+                  for line in rep.splitlines() if line.startswith("[FAIL]") and k in line}
+        assert (ok, failed) == (not failing, failing), f"{what}\n{rep}"
+
+
 def test_support_on_a_visible_face_is_found(tmp_path: Path) -> None:
     """Guards: bug - the one-piece upper arm printed with supported, rough outer skin (2026-11-08)."""
     trimesh = pytest.importorskip("trimesh")
@@ -248,7 +287,7 @@ def test_support_on_a_visible_face_is_found(tmp_path: Path) -> None:
     box = lambda size, at: trimesh.creation.box(size, trimesh.transformations.translation_matrix(at))  # noqa: E731
     t = trimesh.util.concatenate([box((10, 10, 25), (0, 0, 12.5)), box((10, 10, 5), (-10, 0, 22.5)), box((10, 10, 5), (10, 0, 22.5))])
     areas, _, _ = part_checks.support(t, [0, 0, 1])
-    assert areas["outer_mm2"] >= 190  # 2 x 10 x 10 mm under the cap arms
+    assert areas["outer_mm2"] == 200.0  # 2 x 10 x 10 mm under the cap arms
     areas, _, _ = part_checks.support(t, [0, 0, -1])  # cap down: nothing hangs
     assert areas["outer_mm2"] == 0
 
