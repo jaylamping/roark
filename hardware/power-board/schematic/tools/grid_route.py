@@ -27,8 +27,8 @@ sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import domains   
 import stack   # the 6-layer stack: layer index = position in stack.NAMES
 stack.check_json(D,sys.argv[1])
 P12={'/+12V_RAW','/+12V','/+12V_JET','/+12V_PI','/+12V_FAN','/SPARE_SW','/SPARE_ON','/SP_SW1'}
-HV=np.zeros(len(NETS)+1,bool); ES=np.zeros(len(NETS)+1,bool)
-for n,i in NID.items(): HV[i]=domains.is_hv(n); ES[i]=domains.is_estop(n)
+HV=np.zeros(len(NETS)+1,bool); ES=np.zeros(len(NETS)+1,bool); LB=np.zeros(len(NETS)+1,bool)
+for n,i in NID.items(): HV[i]=domains.is_hv(n); ES[i]=domains.is_estop(n); LB[i]=domains.latch_inner_banned(n)
 # voltage domains (tools/domains.py): 0 = ground-referenced; copper riding on one 54 V node shares a domain; a 54 V net
 # outside every domain is a domain of its own. 0.6 mm (outer layers) between different domains where one isn't 0,
 # 0.2 mm otherwise; E-stop nets keep 1.5 mm to 54 V nets on every layer. Close to the routed net's own pads (escape
@@ -268,7 +268,7 @@ def fields(v,r0,r1,c0,c1,base_only=False):
             hwm=np.where(esc,min(hw,NECK/2),hw)   # neck-down to NECK within the escape zone
             base=(dl>=hwm+cllv+M)&(dv>=hwm+clhv+M)&(dh>=hwm+0.25+M)&(de>=hwm+0.4)&(hvp_ok|(dvp>=hwm+HVCL+M))&es_ok
             ok[L]=(base&(px>=hwm+0.2+PM))|(base&(STUB[L][r0:r1,c0:c1]==v))|((onp==v)&(px>=hwm+0.2+PM))|((pd==v)&(px>=hwm+0.2+PM))|((pd==v)&padctr[L][r0:r1,c0:c1]); ESCM[L]=esc
-            if hv and not outer: ok[L]&=~LATCHM[r0:r1,c0:c1]
+            if LB[v] and not outer: ok[L]&=~LATCHM[r0:r1,c0:c1]   # route_checks check 4's set
         # vias always keep full clearance and never land on a pad (no via-in-pad: hand assembly)
         sz=softz[L][r0:r1,c0:c1]&~hardc[L][r0:r1,c0:c1]
         if SOFTV is not None and L==stack.NL-1 and not (ES[v] or HV[v]) and sz.any():   # soft pours: recompute the via distances without them
@@ -281,7 +281,7 @@ def fields(v,r0,r1,c0,c1,base_only=False):
             dv=ndimage.distance_transform_edt(~fhv)*RES if fhv.any() else np.full(o.shape,99.0)
         dp=ndimage.distance_transform_edt(pd==0)*RES if (pd!=0).any() else np.full(o.shape,99.0)
         via_ok&=(dl>=0.3+cllv+M)&(dv>=0.3+clhv+M)&(dp>=0.3+M)&(px>=0.3+0.2+PM)&(hvp_ok|(dvp>=0.3+HVCL+M))&es_vok
-    if hv: via_ok&=~LATCHM[r0:r1,c0:c1]   # a via is inner copper too
+    if LB[v]: via_ok&=~LATCHM[r0:r1,c0:c1]   # a via is inner copper too
     return ok,via_ok,ESCM
 # ONLY=<regex>: route only the matching nets (the critical pre-routes: Kelvin pairs, gate drives, UVLO), sequentially.
 # FONLY=<regex>: those nets try F.Cu alone first (no via, so the In1 GND plane lies straight under the whole run), and fall

@@ -10,6 +10,7 @@ import sys,math
 import pcbnew
 from sx import parse,get,getall
 from finish_route import UID,XY,CU,RL,IU
+import domains
 
 def ident(x):
     u=get(x,'uuid'); return str(u[1]) if u else None
@@ -34,7 +35,7 @@ bad=[]; nv=0
 for t in added:
     if t.GetClass()=='PCB_VIA':
         nv+=1; x,y=XY(t.GetPosition())
-        if 130<=x<=160 and 180<=y<=190: bad.append(('band',UID(t)))
+        if domains.in_vbus_band((x,y)): bad.append(('band',UID(t)))
         if abs(pcbnew.ToMM(t.GetWidth(CU[0]))-.6)>1e-6 or abs(pcbnew.ToMM(t.GetDrillValue())-.3)>1e-6: bad.append(('via size',UID(t)))
         for p in np:
             if any(p.IsOnLayer(L) and p.GetEffectiveShape(L).Collide(t.GetEffectiveShape(L),IU(.000001)) for L in CU): bad.append(('via touching pad',UID(t),p.GetParentFootprint().GetReference(),p.GetNumber()))

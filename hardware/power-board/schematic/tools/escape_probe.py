@@ -16,7 +16,7 @@ for i in range(-int(R*10),int(R*10)+1,2):
     for j in range(-int(R*10),int(R*10)+1,2):
         p=(round(px+i/10,2),round(py+j/10,2)); d=math.dist(p,(px,py))
         if d>R or d<.5: continue
-        if not r.inside(p) or (130<=p[0]<=160 and 180<=p[1]<=190) or r.in_latch(n,(p[0]-.3,p[1]-.3,p[0]+.3,p[1]+.3)): continue
+        if not r.inside(p) or domains.in_vbus_band(p) or r.in_latch(n,(p[0]-.3,p[1]-.3,p[0]+.3,p[1]+.3)): continue
         dg=set(); sh=pcbnew.SHAPE_CIRCLE(FR.V(p),FR.IU(.3))
         for L in FR.CU: r.free(n,L,sh,via=True,diagnostics=dg)
         if len(dg)>12: continue

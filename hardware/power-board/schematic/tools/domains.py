@@ -57,6 +57,14 @@ def latch_leak(a,b):
 LATCH=(-48.0,-31.0,254.0,310.5)
 def latch_page():
     X0,X1,Y0,Y1=LATCH; return (X0+150,X1+150,440-Y1,440-Y0)
+def latch_inner_banned(n):
+    """copper that may not be on an inner layer under the latch block: 54 V, riding on 54 V, or the latch's own supply chain
+    (route_checks check 4; the routers hold the same set)"""
+    return rides(n) or n in LATCH_SUPPLY
+# The VBUS band (page mm X0, X1, Y0, Y1): the 60 A stem's full width between the bank FETs and the ports, X 130 to the
+# stem's east edge at 169.2. The routers put no via of another net in it; tools/pour_width.py counts the ones there.
+VBUS_BAND=(130.0,169.2,180.0,190.0)
+def in_vbus_band(p): return VBUS_BAND[0]<=p[0]<=VBUS_BAND[1] and VBUS_BAND[2]<=p[1]<=VBUS_BAND[3]
 # The board gets an acrylic conformal coat after bring-up (Joey, 2026-11-09; IPC-2221B Table 6-1, 51-100 V: A5/A7 0.13 mm,
 # B4 0.13 mm, against B2 0.6 mm and A6 0.5 mm uncoated), so the 0.6 mm domain rule is the 0.2 mm default. The E-stop
 # 1.5 mm rule and the hole keep-outs don't change. MARENGO_COATED=0 checks the bare-board rule.

@@ -20,12 +20,13 @@ reported per path, with its width per layer and the 2 oz outer width that would 
   BAT pour from the pack pad to RS1: cuts Y = 110..122 over X 146..177, 60 A.
   GND return from the ports to the pack's GND pad: cuts Y = 112..186 across the whole board, every layer, 60 A.
   The six port output legs (V_L, FET source pins to the pigtail pad): cuts along X, 30 A each.
-Also counted: vias of other nets in the VBUS band X 130-160, Y 180-190 (tools/finish_route.py puts no new ones there).
+Also counted: vias of other nets in the VBUS band (tools/domains.py VBUS_BAND, X 130-169.2, Y 180-190: the stem's full
+width; tools/finish_route.py puts no new ones there).
 Exit 1 when a path's rise is over its limit (RISE_MAX, degC) or the band holds more than BAND_VIAS_MAX vias.
 Boards given together are printed one after the other for a before/after comparison (the exit code is the last one's)."""
 import os,sys,pcbnew
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
-import stack
+import stack, domains
 IU,MM=pcbnew.FromMM,pcbnew.ToMM
 MIL=0.0254
 # (key, net, name, [(y0, y1, amps), ...], x0, x1)
@@ -47,7 +48,9 @@ for k in range(1,7):
 # worst cut (Y 213.0, a row of seven signal vias) is at 25.3; every other cut is under 24.
 RISE_MAX={'stem':26.0,'vq1':25.0,'vq2':25.0,'mq8':25.0,'mq9':25.0,'mid':25.0,'bat':15.0,'gnd':21.0}
 RISE_MAX.update({f'vl{k}':22.0 for k in range(1,7)})   # the legs are at their 10.5 mm target: 20.2-21.2 degC
-BAND=(130.0,160.0,180.0,190.0); BAND_VIAS_MAX=18
+# the band reaches the stem's east edge (X 169.2) since 2026-11-10: 26 vias there, 24 of them GND in three 2 x 4 groups
+# (X 137.9-138.9, 149.5-150.5, 161.1-162.1), plus V_L2 and I2C_SCL; the stem's worst cut above counts their holes
+BAND=domains.VBUS_BAND; BAND_VIAS_MAX=26
 H=0.02
 INNER_DERATE=(0.024/0.048)**(1/0.725)   # 0.384: an internal conductor needs 1/0.384 of the external area for the same rise
 def area_eq(widths):
@@ -95,5 +98,5 @@ if __name__=='__main__':
             ok=r<=RISE_MAX[key]; bad+=not ok
             print(f'   {name}: worst cut {axn} {y:.2f} at {amps:.0f} A: {lay} mm; as one 2 oz outer layer {outer_equiv(w):.1f} mm; rise {r:.1f} degC (limit {RISE_MAX[key]:.0f}) {"ok" if ok else "FAIL"}')
         ok=nv<=BAND_VIAS_MAX; bad+=not ok
-        print(f'   vias of other nets in the VBUS band X {BAND[0]:.0f}-{BAND[1]:.0f}, Y {BAND[2]:.0f}-{BAND[3]:.0f}: {nv} (limit {BAND_VIAS_MAX}) {"ok" if ok else "FAIL"}')
+        print(f'   vias of other nets in the VBUS band X {BAND[0]:.0f}-{BAND[1]:.1f}, Y {BAND[2]:.0f}-{BAND[3]:.0f}: {nv} (limit {BAND_VIAS_MAX}) {"ok" if ok else "FAIL"}')
     sys.exit(1 if bad else 0)

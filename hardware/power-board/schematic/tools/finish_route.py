@@ -140,8 +140,9 @@ class Router:
         return a[0]<=p[0]<=a[2] and a[1]<=p[1]<=a[3]
     @staticmethod
     def in_latch(net,box):
-        """54 V copper whose bbox (x0,y0,x1,y1) touches the latch block (domains.LATCH): banned on the inner layers"""
-        if not domains.is_hv(net): return False
+        """54 V copper, copper riding on 54 V or the latch supply chain, whose bbox (x0,y0,x1,y1) touches the latch block
+        (domains.LATCH): banned on the inner layers, the same set as route_checks check 4"""
+        if not domains.latch_inner_banned(net): return False
         lx0,lx1,ly0,ly1=domains.latch_page()
         return box[2]>=lx0 and box[0]<=lx1 and box[3]>=ly0 and box[1]<=ly1
     def seg(self,net,L,a,c,diag=None):
@@ -151,7 +152,7 @@ class Router:
         sh=pcbnew.SHAPE_SEGMENT(V(a),V(c),IU(self.width(net)))
         return self.free(net,L,sh,diagnostics=diag)
     def via(self,net,p):
-        if not self.inside(p) or (130<=p[0]<=160 and 180<=p[1]<=190): return False
+        if not self.inside(p) or domains.in_vbus_band(p): return False
         if hasattr(self,'via_filter') and not self.via_filter(net,p): return False
         if self.in_latch(net,(p[0]-.3,p[1]-.3,p[0]+.3,p[1]+.3)): return False   # a via is inner copper too
         if domains.is_estop(net) and any(z.Outline().Contains(V(p)) for z in self.hvzones): return False   # route_checks 5
