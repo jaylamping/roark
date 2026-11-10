@@ -32,11 +32,9 @@ pub(crate) struct Outstanding {
     pub(crate) deadline_ns: u64,
     /// A stop's Disable: a Reset status after it confirms the stop.
     pub(crate) stop_disable: bool,
-    /// Whether a missing status counts as unanswered. Not for Enable or Disable; not for anything sent to a drive in
-    /// `Off`, never enabled since start or its limb's clear or seen in Reset after this host's Disable, which a later
-    /// Disable doesn't change (a silent disabled drive is offline, not a fault: PLAN.md item 6 Silence row); not in the
-    /// [`Timing::stop_confirm_ns`] after a Disable to an enabled drive that no Reset has answered yet; and not in the
-    /// enable-to-Run window, up to [`ENABLE_TO_RUN_NS`] after the Enable (PLAN.md item 2 Silence windows).
+    /// Whether a missing status counts as unanswered: not for an Enable or a Disable, and not inside PLAN.md item 2's
+    /// Silence windows, which the drive's [`Phase`] holds (`Off`; `Disabled` until [`Timing::stop_confirm_ns`] has
+    /// passed; `Enabling` until [`ENABLE_TO_RUN_NS`] has).
     pub(crate) counts_missed: bool,
     pub(crate) reply: Reply,
     pub(crate) counted: bool,
@@ -112,8 +110,7 @@ pub(crate) enum Phase {
     /// Never enabled since start or the limb's last clear, or reported Reset after this host's Disable.
     Off,
     /// A Disable was taken at `since_ns` while the drive was enabling or enabled, and no Reset has been read since. Its
-    /// misses count again once [`Timing::stop_confirm_ns`] has passed, so a lost Disable can't leave a running drive
-    /// uncounted.
+    /// misses count again once [`Timing::stop_confirm_ns`] has passed (PLAN.md item 2 Silence windows).
     Disabled {
         /// When the socket took the Disable.
         since_ns: u64,
@@ -131,11 +128,10 @@ pub(crate) enum Phase {
 }
 
 impl Phase {
-    /// The phase after the socket took a frame of `kind` at `sent_ns`. An Enable to a drive not already enabling or
-    /// enabled starts its enable-to-Run window. A Disable to an enabling or enabled drive starts the post-Disable window;
-    /// one sent again keeps the first one's window, so Disables sent every tick can't hold misses off; and one to a drive
-    /// in `Off` leaves it there, offline, since it was never enabled or already reported Reset. Nothing else changes the
-    /// phase.
+    /// The phase after the socket took a frame of `kind` at `sent_ns`, for PLAN.md item 2's Silence windows: an Enable
+    /// to a drive not already enabling or enabled starts its enable-to-Run window; a Disable to an enabling or enabled
+    /// drive starts its post-Disable window. Any other send, a Disable sent again or one to a drive in `Off` included,
+    /// leaves the phase as it is, so Disables sent every tick can't hold misses off.
     pub(crate) const fn after_send(self, kind: Option<EchoKind>, sent_ns: u64) -> Self {
         match kind {
             Some(EchoKind::Enable) => match self {

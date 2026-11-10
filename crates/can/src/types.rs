@@ -318,10 +318,7 @@ pub struct DriveView {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Counters {
     /// Commands the socket took that got no status by the collect deadline, counted only where a miss counts toward
-    /// `Timing::silence_misses`: not Enable or Disable; nothing to a drive never enabled since start or its limb's clear,
-    /// or seen in Reset after this host's Disable, which a later Disable doesn't change; nothing in the
-    /// `Timing::stop_confirm_ns` after a Disable to an enabled drive; and nothing in the first
-    /// `ENABLE_TO_RUN_NS` after an Enable while the drive hasn't shown Run (PLAN.md item 2 Silence windows).
+    /// `Timing::silence_misses`: not an Enable or a Disable, and nothing inside PLAN.md item 2's Silence windows.
     pub unanswered: u64,
     /// Statuses for a command after its tick's collect deadline.
     pub late: u64,

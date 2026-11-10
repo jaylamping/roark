@@ -33,8 +33,8 @@ pub struct Timing {
     /// item 6 Silence row).
     pub feedback_limit_ns: u64,
     /// How long a stop sends Disables for each drive's Disable to be confirmed (drives unconfirmed by then stay so; one
-    /// confirmed in it still gets its reporting off after its silence), and how long after a Disable a drive's missed replies aren't counted while no Reset has
-    /// answered it (100 ms, PLAN.md item 2 Silence windows).
+    /// confirmed in it still gets its reporting off after its silence); and the post-Disable silence window, in which
+    /// missed replies aren't counted (100 ms; PLAN.md item 2 Silence windows says which Disables open it).
     pub stop_confirm_ns: u64,
     /// How long a drive drops frames after a Disable; its reporting-off waits this long after its confirmation, and a
     /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
