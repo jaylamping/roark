@@ -1,13 +1,7 @@
 net,class,open connections,parts
-/EN_A,ESTOP (1.5 mm to 54 V),2,U8
 /I2C_SDA,signal,2,
-/BST_A,rides 54 V,1,C28 U8
-/CSN_A,rides 54 V,1,U8
-/CSP_A,rides 54 V,1,U8
 /CWD,signal,1,C81 U25
 /D_L2,54 V,1,U12
-/FLT_A,ESTOP (1.5 mm to 54 V),1,U8
 /G2,rides 54 V,1,Q2 R2
 /I2C_SCL,signal,1,U15
-/MID,54 V,1,U8
 GND,GND,1,
