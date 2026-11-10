@@ -5,8 +5,9 @@
     python tools/cad/gate.py --verify      # every 3MF in cad/prints/ has a current passing report (stdlib only; CI)
 
 The part is looked up in the `[[part]]` tables of the requirements specs (cad/<region>/*_requirements.md). The report goes to
-cad/prints/<region>/<part>_gate.md, with the hashes of the spec, export and 3MF it judged, and the exit code is 1 on FAIL.
-A report is written on FAIL too, so the failure is visible in review.
+cad/prints/<region>/<part>_gate.md, with the hash of every input it judged (spec, export, 3MF, picture sheet, evidence, the
+part's mesh-whitelist entry, the `hidden_by` and `mates` meshes), and the exit code is 1 on FAIL. A report is written on
+FAIL too, so the failure is visible in review.
 
 Checks, in order: spec agreed; files present; mesh (mesh_check.py); support on visible faces and interference with mating
 parts (part_checks.py); 3MF settings and their override flags; evidence (load cases with converged FEA, insertion path and
@@ -16,6 +17,7 @@ The mesh checks need numpy, scipy, trimesh and rtree; the rest is stdlib (Python
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -33,6 +35,7 @@ WHITELIST = "manifests/mesh-whitelist.json"
 FRONT = "+++"
 PASS, FAIL, WARN = "PASS", "FAIL", "WARN"
 INTERFERENCE_TOL = 0.05  # mm: tessellation noise on faces that only touch
+TEXT_INPUTS = (".md", ".json")
 
 
 @dataclass
@@ -193,6 +196,30 @@ def load_whitelist(cad: Path, name: str) -> dict:
     return json.loads(f.read_text(encoding="utf-8")).get(name, {}) if f.is_file() else {}
 
 
+def inputs(cad: Path, spec_path: Path, spec: dict, part: dict, p: dict[str, str]) -> list[tuple[str, str]]:
+    """(role, cad/-relative path) of everything a PASS depends on. The mesh whitelist is shared by every part, so only this
+    part's entry is pinned, as `manifests/mesh-whitelist.json#<part>`."""
+    ev = part.get("evidence", spec.get("evidence"))
+    return [("spec", spec_path.relative_to(cad).as_posix()), ("export", p["export"]), ("3mf", p["3mf"]),
+            ("sheet", p["sheet"]), *([("evidence", ev)] if ev else []), ("mesh whitelist", f"{WHITELIST}#{part['name']}"),
+            *[("hidden by", r) for r in part.get("hidden_by", [])], *[("mate", r) for r in part.get("mates", [])]]
+
+
+def input_sha(cad: Path, rel: str) -> str:
+    """The content hash the report records for an input: the LFS oid for an LFS file, so CI can check it from pointers.
+    Text inputs (the spec, the evidence) are hashed with LF line ends, so a Windows checkout with core.autocrlf records
+    the same hash CI computes."""
+    f = cad / rel.split("#", 1)[0]
+    if "#" in rel:
+        entry = json.loads(f.read_text(encoding="utf-8")).get(rel.split("#", 1)[1], {}) if f.is_file() else {}
+        return hashlib.sha256(json.dumps(entry, sort_keys=True).encode()).hexdigest()
+    if not f.is_file():
+        return "missing"
+    if f.suffix.lower() in TEXT_INPUTS:
+        return hashlib.sha256(f.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+    return content_sha256(f)
+
+
 def mesh_checks(cad: Path, spec: dict, part: dict, p: dict[str, str]) -> list[Check]:
     try:
         import trimesh
@@ -278,7 +305,10 @@ def run(cad: Path, name: str) -> tuple[bool, Path]:
     ok = all(c.status != FAIL for c in checks)
 
     def sha(rel: str) -> str:
-        return content_sha256(cad / rel) if (cad / rel).is_file() else "missing"
+        try:
+            return input_sha(cad, rel)
+        except ValueError:  # a malformed whitelist; the mesh check has already failed on it
+            return "unreadable"
 
     lines = [
         f"# Pre-print gate: {name}",
@@ -286,12 +316,7 @@ def run(cad: Path, name: str) -> tuple[bool, Path]:
         f"Result: {PASS if ok else FAIL}",
         "",
         f"- Gate run: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}, `python tools/cad/gate.py {name}`",
-        f"- Spec: {spec_path.relative_to(cad).as_posix()}",
-        f"- Spec sha256: {content_sha256(spec_path)}",
-        f"- Export: {p['export']}",
-        f"- Export sha256: {sha(p['export'])}",
-        f"- 3MF: {p['3mf']}",
-        f"- 3MF sha256: {sha(p['3mf'])}",
+        *[f"- Input {role}: {rel} (sha256 {sha(rel)})" for role, rel in inputs(cad, spec_path, spec, part, p)],
         "",
         "| Check | Result |",
         "|---|---|",
@@ -306,14 +331,15 @@ def run(cad: Path, name: str) -> tuple[bool, Path]:
     return ok, report
 
 
-FIELD = re.compile(r"^- (Spec|Export|3MF)( sha256)?: (\S+)\s*$")
+INPUT = re.compile(r"^- Input ([a-z0-9 ]+): (\S+) \(sha256 (\S+)\)$")
 
 
 def verify(cad: Path) -> list[str]:
-    """Every 3MF under cad/prints/ has a gate report beside it that passed for exactly this 3MF, export and spec.
-    Stdlib only and reads LFS pointers, so CI can run it without the CAD content."""
+    """Every 3MF under cad/prints/ (any depth, any case of `.3mf`) has a gate report beside it that passed for exactly the
+    inputs it records. Stdlib only and reads LFS pointers, so CI can run it without the CAD content."""
     errors = []
-    for mf in sorted(cad.glob("prints/*/*.3mf")):
+    prints = cad / "prints"
+    for mf in sorted(f for f in prints.rglob("*") if f.is_file() and f.suffix.lower() == ".3mf"):
         rel = mf.relative_to(cad).as_posix()
         rep = mf.with_name(mf.stem + "_gate.md")
         if not rep.is_file():
@@ -323,18 +349,22 @@ def verify(cad: Path) -> list[str]:
         if "\nResult: PASS\n" not in text:
             errors.append(f"cad/{rel}: its gate report did not pass")
             continue
-        fields: dict[str, str] = {}
-        for line in text.splitlines():
-            m = FIELD.match(line)
-            if m:
-                fields[m.group(1) + (m.group(2) or "")] = m.group(3)
-        for what in ("Spec", "Export", "3MF"):
-            path = rel if what == "3MF" else fields.get(what, "")
-            f = cad / path
-            if not path or not f.is_file():
-                errors.append(f"cad/{rel}: gate report names a missing {what} ({path or 'none'})")
-            elif content_sha256(f) != fields.get(what + " sha256"):
-                errors.append(f"cad/{rel}: {what} cad/{path} changed after the gate ran; run it again")
+        recorded = [m.groups() for m in map(INPUT.match, text.splitlines()) if m]
+        roles = {role: path for role, path, _ in recorded}
+        for role in ("spec", "export", "3mf"):
+            if role not in roles:
+                errors.append(f"cad/{rel}: gate report records no {role}; run the gate again")
+        if roles.get("3mf", rel) != rel:
+            errors.append(f"cad/{rel}: gate report is for another 3MF ({roles['3mf']})")
+        for role, path, sha in recorded:
+            try:
+                now = input_sha(cad, path)
+            except ValueError as e:
+                now = f"unreadable ({e})"
+            if now == "missing":
+                errors.append(f"cad/{rel}: {role} cad/{path} is missing")
+            elif now != sha:
+                errors.append(f"cad/{rel}: {role} cad/{path} changed after the gate ran; run it again")
     return errors
 
 

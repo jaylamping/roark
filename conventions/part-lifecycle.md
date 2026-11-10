@@ -124,8 +124,8 @@ python tools/cad/gate.py --all                         # every part in every spe
 ```
 
 It runs on Joey-PC (or anywhere with the LFS content and `pip install numpy scipy trimesh rtree`) and writes
-`cad/prints/<region>/<part>_gate.md` with PASS or FAIL per check and the hashes of the spec, export and 3MF it judged. It
-fails when:
+`cad/prints/<region>/<part>_gate.md` with PASS or FAIL per check and the hash of every input it judged: the spec, export,
+3MF, picture sheet, evidence file, the part's mesh-whitelist entry, and the `hidden_by` and `mates` meshes. It fails when:
 
 | Check | Fails when | Added after |
 |---|---|---|
@@ -145,8 +145,9 @@ after looking at the spot in a render and in the CAD. The format is the one `mes
 (points), `thin` (boxes), `bodies`, `revolve`.
 
 **A passing report is the condition for printing and for a review packet.** Commit it with the 3MF. `gate.py --verify` (in
-[scripts/check.sh](../scripts/check.sh), so CI runs it) fails when a committed 3MF has no report beside it, its report did not
-pass, or the 3MF, export or spec changed after the gate ran. It reads only hashes, so it needs no LFS content.
+[scripts/check.sh](../scripts/check.sh), so CI runs it) fails when a committed 3MF anywhere under `cad/prints/` has no report
+beside it, its report did not pass, or any input the report records changed or went missing after the gate ran. It reads
+only hashes, so it needs no LFS content. Text inputs are hashed with LF line ends, so a Windows checkout and CI agree.
 
 ## 4. Print log
 

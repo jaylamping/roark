@@ -115,23 +115,67 @@ def test_evidence_for_an_older_export_or_below_the_pass_mark_fails(tmp_path: Pat
 
 
 def test_verify_needs_a_current_passing_report_for_every_3mf(tmp_path: Path) -> None:
-    """Guards: number - a print file is committed only with a passing gate report for that exact 3MF, export and spec."""
+    """Guards: number - a print file is committed only with a passing gate report for exactly the inputs it judged: spec,
+    export, 3MF, picture sheet, evidence, the part's mesh-whitelist entry, and the meshes that hide or mate with it."""
     cad = tmp_path / "cad"
     make_link(cad)
     mf = cad / "prints/upper-arm/upper_arm_test_left.3mf"
     write_3mf(mf, GOOD_SETTINGS)
-    assert len(gate.verify(cad)) == 1  # no report
+    sheet = cad / "prints/upper-arm/upper_arm_test_left_sheet.png"
+    sheet.write_bytes(b"png")
+    for rel in ("exports/upper-arm/hider.stl", "exports/upper-arm/mate.stl"):
+        (cad / rel).write_text(f"solid {rel}\nendsolid\n")
+    (cad / "manifests").mkdir()
+    (cad / gate.WHITELIST).write_text(json.dumps({"upper_arm_test_left": {"bodies": 1}, "other": {"bodies": 2}}))
+    roles = [("spec", "upper-arm/test_requirements.md"), ("export", "exports/upper-arm/upper_arm_test_left.stl"),
+             ("3mf", "prints/upper-arm/upper_arm_test_left.3mf"), ("sheet", "prints/upper-arm/upper_arm_test_left_sheet.png"),
+             ("evidence", "reviews/upper-arm/20261109_test/evidence.json"),
+             ("mesh whitelist", "manifests/mesh-whitelist.json#upper_arm_test_left"),
+             ("hidden by", "exports/upper-arm/hider.stl"), ("mate", "exports/upper-arm/mate.stl")]
     rep = mf.with_name("upper_arm_test_left_gate.md")
-    head = (f"- Spec: upper-arm/test_requirements.md\n- Spec sha256: {content_sha256(cad / 'upper-arm/test_requirements.md')}\n"
-            f"- Export: exports/upper-arm/upper_arm_test_left.stl\n"
-            f"- Export sha256: {content_sha256(cad / 'exports/upper-arm/upper_arm_test_left.stl')}\n"
-            f"- 3MF: prints/upper-arm/upper_arm_test_left.3mf\n- 3MF sha256: {content_sha256(mf)}\n")
-    rep.write_text("# gate\n\nResult: FAIL\n\n" + head)
-    assert len(gate.verify(cad)) == 1  # failed report
-    rep.write_text("# gate\n\nResult: PASS\n\n" + head)
+
+    def report(result: str) -> None:
+        rep.write_text(f"# gate\n\nResult: {result}\n\n" +
+                       "".join(f"- Input {r}: {p} (sha256 {gate.input_sha(cad, p)})\n" for r, p in roles))
+
+    m3 = "cad/prints/upper-arm/upper_arm_test_left.3mf"
+    assert gate.verify(cad) == [f"{m3}: no gate report (upper_arm_test_left_gate.md); run python tools/cad/gate.py "
+                                "upper_arm_test_left"]
+    report("FAIL")
+    assert gate.verify(cad) == [f"{m3}: its gate report did not pass"]
+    report("PASS")
     assert gate.verify(cad) == []
-    write_3mf(mf, {**GOOD_SETTINGS, "wall_loops": "4"})
-    assert len(gate.verify(cad)) == 1  # 3MF changed after the gate
+    wl = json.loads((cad / gate.WHITELIST).read_text())
+    (cad / gate.WHITELIST).write_text(json.dumps({**wl, "other": {"bodies": 3}}))  # another part's entry: no effect
+    assert gate.verify(cad) == []
+    # CRLF line ends from a Windows checkout don't change a text input's hash
+    spec = cad / "upper-arm/test_requirements.md"
+    spec.write_bytes(spec.read_bytes().replace(b"\n", b"\r\n"))
+    assert gate.verify(cad) == []
+
+    def change_spec() -> None:
+        spec.write_text(SPEC.replace("bulk_sf = 2.0", "bulk_sf = 1.5"))
+
+    for role, path, change in [
+        ("spec", "upper-arm/test_requirements.md", change_spec),
+        ("export", "exports/upper-arm/upper_arm_test_left.stl", lambda: (cad / roles[1][1]).write_text("solid y\nendsolid y\n")),
+        ("3mf", "prints/upper-arm/upper_arm_test_left.3mf", lambda: write_3mf(mf, {**GOOD_SETTINGS, "wall_loops": "4"})),
+        ("evidence", roles[4][1], lambda: (cad / roles[4][1]).write_text(json.dumps(evidence(cad, fea=[])))),
+        ("mesh whitelist", roles[5][1], lambda: (cad / gate.WHITELIST).write_text(json.dumps({**wl, "upper_arm_test_left": {}}))),
+        ("hidden by", roles[6][1], lambda: (cad / roles[6][1]).write_text("solid z\nendsolid z\n")),
+        ("mate", roles[7][1], lambda: (cad / roles[7][1]).write_text("solid z\nendsolid z\n")),
+    ]:
+        report("PASS")
+        change()
+        assert gate.verify(cad) == [f"{m3}: {role} cad/{path} changed after the gate ran; run it again"], role
+    report("PASS")
+    sheet.unlink()
+    assert gate.verify(cad) == [f"{m3}: sheet cad/prints/upper-arm/upper_arm_test_left_sheet.png is missing"]
+    # a 3MF in a sub-folder or with an upper-case extension still needs its report
+    write_3mf(cad / "prints/upper-arm/sub/other.3MF", GOOD_SETTINGS)
+    sheet.write_bytes(b"png")
+    assert gate.verify(cad) == ["cad/prints/upper-arm/sub/other.3MF: no gate report (other_gate.md); run python "
+                                "tools/cad/gate.py other"]
 
 
 def write(p: Path, text: str) -> Path:
