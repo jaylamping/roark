@@ -413,8 +413,9 @@ impl BusTick {
     /// draining the socket and [`Self::drained`]. Returns the frames to send, in order: the stops' Disables, the batch's
     /// Disables, the stops' reporting off, then the rest of the batch in slot order, the batch's reporting off among
     /// it. So every Disable goes ahead of every reporting off, whoever planned it, and a queue that fills after the
-    /// first frames never costs a Disable (PLAN.md item 2 Stop). Report each with [`Self::sent`]. Each send says whether it expires ([`Send::expires`](crate::Send::expires)): a command goes
-    /// out only inside the send window, while a Disable or active reporting off goes out late too, whoever planned it.
+    /// first frames never costs a Disable (PLAN.md item 2 Stop). Report each with [`Self::sent`]. Each send says
+    /// whether it expires ([`Send::expires`](crate::Send::expires)): a command goes out only inside the send window,
+    /// while a Disable or active reporting off goes out late too, whoever planned it.
     ///
     /// A stop asked for before the tick (the whole bus's or one limb's) is taken first, so it keeps its reason. A backlog
     /// in the drain, a wake past the send window (a missed deadline, counted whatever the limbs are doing) or ticks a
