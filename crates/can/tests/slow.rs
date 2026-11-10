@@ -602,19 +602,22 @@ fn a_slow_send_holds_off_the_rearm() {
     );
     bus.slow_sent(SendOutcome::Sent, slow_at);
     assert_eq!(bus.stop_limb(0), Ok(()));
-    // Every Disable is refused by the socket, so the slow read stays the last frame the drive was sent.
-    let mut tick = 1;
-    loop {
+    // Every Disable is refused by the socket, so the slow read stays the last frame the drive was sent. The stop ends by
+    // `stop_max_ns` after tick 1's start.
+    let stop_ends = 1 + bus.timing().stop_max_ns().div_ceil(PERIOD);
+    let mut snap = None;
+    for tick in 1..=stop_ends {
         let start = tick * PERIOD;
-        let list = bus.begin(tick, start, start, Some(&batch(tick, &[])));
-        for (index, _) in list.iter().enumerate() {
+        let sends = bus.begin(tick, start, start, Some(&batch(tick, &[])));
+        for (index, _) in sends.iter().enumerate() {
             bus.sent(index, SendOutcome::QueueFull, start);
         }
-        if state_of_limb(&bus.end(deadline(tick)), 0) == LimbState::Stopped {
-            break;
-        }
-        tick += 1;
+        snap = Some(bus.end(deadline(tick)));
     }
+    assert_eq!(
+        snap.map(|s| common::limb(&s, 0).0),
+        Some(LimbState::Stopped)
+    );
     assert_eq!(
         bus.submit(read(2, 0, Param::Vbus)),
         Err(SlowRefusal::LimbStopped),
@@ -626,8 +629,4 @@ fn a_slow_send_holds_off_the_rearm() {
         Err(RearmRefused::DriveNotQuiet { slot: 0 })
     );
     assert_eq!(bus.rearm(0, slow_at + quiet), Ok(()));
-}
-
-fn state_of_limb(snap: &can::Snapshot, limb: usize) -> LimbState {
-    snap.limb(limb).map_or(LimbState::Idle, |l| l.state)
 }
