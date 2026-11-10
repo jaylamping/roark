@@ -147,7 +147,7 @@
   - each driver within 10 mm of its FETs;
   - the gate resistor at the gate pin (for the banks, only R1 and R31 so far: see Gate parts below);
   - the gate return taken as its own trace from the source pin nearest the gate, running beside the gate trace;
-  - symmetric between the two FETs of a bank. Not met: R2 and R32 sit at their controllers while R1 and R31 sit at
+  - symmetric between the two FETs of a bank. Not met: R2 sits at the GATE tee and R32 at its controller, while R1 and R31 sit at
     the gates (exception 13).
 - **Controllers at their shunts (2026-11-08):** schematic/tools/place.py fixes each controller next to its shunt, sense pins facing
   the sense pads:

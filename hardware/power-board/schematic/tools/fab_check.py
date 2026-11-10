@@ -1,0 +1,91 @@
+"""fab_check.py board.kicad_pcb fab_dir (KiCad Python): the order package against the board it was made from.
+  1. Every expected Gerber is there, loads in KiCad's own Gerber reader (pcbnew GERBER_JOBFILE-free check: the file
+     parses line by line: balanced commands, an end-of-file M02, at least one draw) and carries the layer function its
+     name says (X2 attribute TF.FileFunction).
+  2. Copper layer count: 6 copper Gerbers for a 6-layer board, in stack order L1..L6.
+  3. Outline: the Edge.Cuts Gerber's extents are the board's (100 x 170 mm).
+  4. Drill files: the plated file's hit count equals the board's vias plus plated pad holes, tool by tool; the unplated
+     file's equals the unplated pad holes.
+  5. B.Mask carries the ten heatsink openings: its drawn area is at least the generated openings' area.
+  6. The position file lists every fitted top-side part of the board once; the two BOM files cover the fitted parts.
+  7. The zip holds exactly the files in gerbers/.
+  8. BOARD.sha256 is the board file's hash: the package is not older than the board.
+Exit 1 on any difference."""
+import sys,os,re,glob,csv,zipfile,collections
+import pcbnew
+MM=pcbnew.ToMM
+b=pcbnew.LoadBoard(sys.argv[1]); out=sys.argv[2]; G=out+'/gerbers'; fail=[]
+def ok(c,m):
+    print('ok  ' if c else 'FAIL',m)
+    if not c: fail.append(m)
+stem='marengo_pdu_revb'
+EXPECT={'F_Cu.gtl':'Copper,L1,Top','In1_Cu.g1':'Copper,L2,Inr','In2_Cu.g2':'Copper,L3,Inr','In3_Cu.g3':'Copper,L4,Inr','In4_Cu.g4':'Copper,L5,Inr',
+        'B_Cu.gbl':'Copper,L6,Bot','F_Mask.gts':'Soldermask,Top','B_Mask.gbs':'Soldermask,Bot','F_Silkscreen.gto':'Legend,Top',
+        'B_Silkscreen.gbo':'Legend,Bot','F_Paste.gtp':'Paste,Top','Edge_Cuts.gm1':'Profile,NP'}
+files={os.path.basename(f) for f in glob.glob(G+'/*')}
+want={f'{stem}-{k}' for k in EXPECT}|{f'{stem}-PTH.drl',f'{stem}-NPTH.drl'}
+ok(files==want,f'gerbers/ holds the 12 Gerber and 2 drill files: missing {sorted(want-files)}, extra {sorted(files-want)}')
+def gerber(path):
+    """(file function, extents in mm (x0,y0,x1,y1), number of draw/flash operations, well formed)"""
+    t=open(path,encoding='utf-8',errors='replace').read()
+    ff=re.search(r'%TF\.FileFunction,([^*]+)\*%',t); fs=re.search(r'%FSLAX(\d)(\d)Y(\d)(\d)\*%',t); units='MM' in (re.search(r'%MO(\w\w)\*%',t) or [''])[0]
+    dec=int(fs.group(2)) if fs else 6; xs=[];ys=[]
+    for m in re.finditer(r'X(-?[0-9]+)Y(-?[0-9]+)D0[123][*]',t): xs.append(int(m.group(1))/10**dec); ys.append(int(m.group(2))/10**dec)
+    ops=len(re.findall(r'D0[123]\*',t))
+    well=t.rstrip().endswith('M02*') and t.count('%')%2==0 and bool(fs) and units
+    return (ff.group(1) if ff else None),((min(xs),min(ys),max(xs),max(ys)) if xs else None),ops,well
+info={}
+for k,fn in EXPECT.items():
+    p=f'{G}/{stem}-{k}'
+    if not os.path.exists(p): continue
+    ff,ext,ops,well=gerber(p); info[k]=(ff,ext,ops)
+    ok(well and ops>0 and ff is not None and ff.startswith(fn),f'{k}: parses (format, units, end of file), {ops} operations, function "{ff}" (expected {fn})')
+cu=[k for k in EXPECT if 'Copper' in EXPECT[k] and k in info]
+ok(len(cu)==6==b.GetCopperLayerCount(),f'copper layers: {len(cu)} Gerbers for a board with {b.GetCopperLayerCount()} copper layers')
+bb=b.GetBoardEdgesBoundingBox(); bw,bh=MM(bb.GetWidth()),MM(bb.GetHeight())
+if 'Edge_Cuts.gm1' in info and info['Edge_Cuts.gm1'][1]:
+    x0,y0,x1,y1=info['Edge_Cuts.gm1'][1]; gw,gh=x1-x0,y1-y0
+    ok(abs(gw-100.0)<0.2 and abs(gh-170.0)<0.2 and abs(gw-bw)<0.2 and abs(gh-bh)<0.2,f'outline: Gerber {gw:.2f} x {gh:.2f} mm, board {bw:.2f} x {bh:.2f} mm, expected 100 x 170')
+def drill(path):
+    """{tool diameter mm: hits} of an Excellon file"""
+    tools={}; cur=None; hits=collections.Counter()
+    for l in open(path,encoding='utf-8',errors='replace'):
+        m=re.match(r'T(\d+)C([\d.]+)',l)
+        if m: tools[m.group(1)]=round(float(m.group(2)),3); continue
+        m=re.match(r'T(\d+)\s*$',l)
+        if m: cur=m.group(1); continue
+        if cur and cur in tools and re.match(r'X-?[\d.]+Y-?[\d.]+',l): hits[tools[cur]]+=1
+    return dict(hits)
+bp=collections.Counter(); bn=collections.Counter()
+for t in b.GetTracks():
+    if t.GetClass()=='PCB_VIA': bp[round(MM(t.GetDrill()),3)]+=1
+for p in b.GetPads():
+    if p.HasHole():
+        d=p.GetDrillSize(); dia=round(MM(min(d.x,d.y)),3)
+        (bp if p.GetAttribute()==pcbnew.PAD_ATTRIB_PTH else bn)[dia]+=1
+gp=drill(f'{G}/{stem}-PTH.drl') if os.path.exists(f'{G}/{stem}-PTH.drl') else {}
+gn=drill(f'{G}/{stem}-NPTH.drl') if os.path.exists(f'{G}/{stem}-NPTH.drl') else {}
+ok(gp==dict(bp),f'plated holes: file {sum(gp.values())} hits {dict(sorted(gp.items()))}; board {sum(bp.values())} (vias and plated pads) {dict(sorted(bp.items()))}')
+ok(gn==dict(bn),f'unplated holes: file {sum(gn.values())} hits {dict(sorted(gn.items()))}; board {sum(bn.values())} {dict(sorted(bn.items()))}')
+# B.Mask: the ten heatsink openings are drawn (regions G36/G37 in the file: the board-level shapes are the only polygons there)
+t=open(f'{G}/{stem}-B_Mask.gbs',encoding='utf-8',errors='replace').read() if os.path.exists(f'{G}/{stem}-B_Mask.gbs') else ''
+nshape=len([d for d in b.GetDrawings() if d.GetClass()=='PCB_SHAPE' and d.GetLayer()==pcbnew.B_Mask])
+ok(nshape==10 and t.count('G36*')>=10,f'B.Mask: {nshape} heatsink openings on the board, {t.count("G36*")} filled regions in the Gerber')
+# position file and BOMs
+fitted={f.GetReference() for f in b.GetFootprints() if not f.IsDNP() and not f.IsBoardOnly() and any(p.GetNumber() for p in f.Pads())}
+pos=[r[0] for r in list(csv.reader(open(out+f'/{stem}-pos.csv',encoding='utf-8')))[1:]] if os.path.exists(out+f'/{stem}-pos.csv') else []
+smt={f.GetReference() for f in b.GetFootprints() if f.GetReference() in fitted and not f.IsFlipped() and not f.IsExcludedFromPosFiles()}
+ok(len(pos)==len(set(pos)) and set(pos)==smt,f'position file: {len(pos)} parts, each once; the board has {len(smt)} fitted top-side parts that a machine places ({len(fitted)-len(smt)} more are fitted by hand: through-hole parts, wire pads, test points, the copper link): missing {sorted(smt-set(pos))[:6]}, extra {sorted(set(pos)-smt)[:6]}')
+for name,col in (('bom-jlc.csv',1),('bom-digikey.csv',2)):
+    refs=[x for r in list(csv.reader(open(out+'/'+name,encoding='utf-8')))[1:] for x in r[col].split(',') if re.match(r'[A-Z]+\d+$',x)] if os.path.exists(out+'/'+name) else []
+    ok(set(refs)==fitted and len(refs)==len(set(refs)),f'{name}: {len(refs)} references, the board has {len(fitted)} fitted parts: missing {sorted(fitted-set(refs))[:6]}, extra {sorted(set(refs)-fitted)[:6]}')
+z=out+f'/{stem}-gerbers.zip'
+if os.path.exists(z):
+    zf=zipfile.ZipFile(z); names=set(zf.namelist())
+    same=all(zf.read(n)==open(f'{G}/{n}','rb').read() for n in names&files)
+    ok(names==files and same,f'zip: {len(names)} files, identical to gerbers/')
+else: ok(False,'zip missing')
+import hashlib
+sha=hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest(); rec=open(out+'/BOARD.sha256').read().split()[0] if os.path.exists(out+'/BOARD.sha256') else None
+ok(rec==sha,f'the package was made from this board file (sha256 {sha[:16]}..., recorded {str(rec)[:16]}...): if not, run tools/fab_package.sh again')
+print('fab_check fails',len(fail)); sys.exit(1 if fail else 0)

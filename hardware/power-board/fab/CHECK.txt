@@ -1,0 +1,24 @@
+ok   gerbers/ holds the 12 Gerber and 2 drill files: missing [], extra []
+ok   F_Cu.gtl: parses (format, units, end of file), 44417 operations, function "Copper,L1,Top" (expected Copper,L1,Top)
+ok   In1_Cu.g1: parses (format, units, end of file), 35600 operations, function "Copper,L2,Inr" (expected Copper,L2,Inr)
+ok   In2_Cu.g2: parses (format, units, end of file), 58068 operations, function "Copper,L3,Inr" (expected Copper,L3,Inr)
+ok   In3_Cu.g3: parses (format, units, end of file), 52064 operations, function "Copper,L4,Inr" (expected Copper,L4,Inr)
+ok   In4_Cu.g4: parses (format, units, end of file), 35600 operations, function "Copper,L5,Inr" (expected Copper,L5,Inr)
+ok   B_Cu.gbl: parses (format, units, end of file), 40200 operations, function "Copper,L6,Bot" (expected Copper,L6,Bot)
+ok   F_Mask.gts: parses (format, units, end of file), 1025 operations, function "Soldermask,Top" (expected Soldermask,Top)
+ok   B_Mask.gbs: parses (format, units, end of file), 874 operations, function "Soldermask,Bot" (expected Soldermask,Bot)
+ok   F_Silkscreen.gto: parses (format, units, end of file), 28920 operations, function "Legend,Top" (expected Legend,Top)
+ok   B_Silkscreen.gbo: parses (format, units, end of file), 874 operations, function "Legend,Bot" (expected Legend,Bot)
+ok   F_Paste.gtp: parses (format, units, end of file), 1010 operations, function "Paste,Top" (expected Paste,Top)
+ok   Edge_Cuts.gm1: parses (format, units, end of file), 5 operations, function "Profile,NP" (expected Profile,NP)
+ok   copper layers: 6 Gerbers for a board with 6 copper layers
+ok   outline: Gerber 100.00 x 170.00 mm, board 100.10 x 170.10 mm, expected 100 x 170
+ok   plated holes: file 1906 hits {0.3: 1862, 0.4: 1, 0.5: 2, 1.02: 12, 1.15: 1, 1.4: 4, 1.78: 4, 3.0: 12, 3.2: 6, 4.5: 2}; board 1906 (vias and plated pads) {0.3: 1862, 0.4: 1, 0.5: 2, 1.02: 12, 1.15: 1, 1.4: 4, 1.78: 4, 3.0: 12, 3.2: 6, 4.5: 2}
+ok   unplated holes: file 12 hits {1.02: 2, 2.2: 8, 3.2: 2}; board 12 {1.02: 2, 2.2: 8, 3.2: 2}
+ok   B.Mask: 10 heatsink openings on the board, 10 filled regions in the Gerber
+ok   position file: 244 parts, each once; the board has 244 fitted top-side parts that a machine places (18 more are fitted by hand: through-hole parts, wire pads, test points, the copper link): missing [], extra []
+ok   bom-jlc.csv: 262 references, the board has 262 fitted parts: missing [], extra []
+ok   bom-digikey.csv: 262 references, the board has 262 fitted parts: missing [], extra []
+ok   zip: 14 files, identical to gerbers/
+ok   the package was made from this board file (sha256 e5c5e244aac6c57d..., recorded e5c5e244aac6c57d...): if not, run tools/fab_package.sh again
+fab_check fails 0

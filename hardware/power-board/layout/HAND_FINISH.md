@@ -38,6 +38,6 @@ DRC violation type except the three silkscreen ones on its allow-list, on any op
 item, and on any of: route_checks.py (checks 1 to 10), joint_check.py, the template, U8-block and hand-laid copper
 checks, pour_width.py, heatsink_pads.py, check.py and bom_check.py.
 
-Done means `verify_board: PASS`. Then take the refilled copy it wrote (`KEEP=<dir>`, `<dir>/verify.kicad_pcb`) as the
+Done means `verify_board: PASS`, with the order package rebuilt (`bash tools/fab_package.sh`) after the last board change. Then take the refilled copy it wrote (`KEEP=<dir>`, `<dir>/verify.kicad_pcb`) as the
 board, re-render (`tools/render_export.py`, `tools/render_routed.py`, `kicad-cli pcb render` for the two 3D views) and
 commit the board, open_nets.csv and the renders.

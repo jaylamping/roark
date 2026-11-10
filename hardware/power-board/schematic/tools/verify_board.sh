@@ -11,6 +11,7 @@
 #                               the designed blocks' and the hand-laid copper equal the scripts
 #   tools/pour_width.py         60 A pours: temperature rise at the narrowest cut, vias in the VBUS band
 #   tools/heatsink_pads.py MODE=check   the bare B.Mask openings under the FET tabs are the generated set
+#   tools/fab_check.py          the order package in ../fab against the board file it must have been made from
 #   tools/check.py              the netlist, and the project's ESTOP / HV54 net classes against tools/domains.py
 #   tools/bom_check.py          the BOM files and the kit's J24 / J1 pinout rows against the two netlists
 # Exit 1 on any failure, and also when kicad-cli exits non-zero, when the DRC report is missing, older than this run or
@@ -75,6 +76,8 @@ MODE=check run 'latch block copper differs from latch_block.py' "$KP" "$ROOT/too
 MODE=check run 'hand-laid copper differs from hand_laid.specs' "$KP" "$ROOT/tools/lay_path.py" "$W/verify.kicad_pcb" "@$ROOT/tools/hand_laid.specs"
 run pour_width "$KP" "$ROOT/tools/pour_width.py" "$W/verify.kicad_pcb"
 MODE=check run 'heatsink pad openings differ from heatsink_pads.py' "$KP" "$ROOT/tools/heatsink_pads.py" "$W/verify.kicad_pcb"
+# the order package in ../fab, when there is one, was made from this very board file (default board only)
+[ -d "$PB/fab/gerbers" ] && [ "$B" = "$LAYOUT/marengo_pdu_revb.kicad_pcb" ] && run 'the order package in fab/ does not match the board: run tools/fab_package.sh' "$KP" "$ROOT/tools/fab_check.py" "$B" "$PB/fab"
 "$KCLI" sch export netlist --format kicadsexpr -o "$W/net.net" "$ROOT/marengo_pdu_revb.kicad_sch" > "$W/net.log" 2>&1; rc=$?
 if [ "$rc" != 0 ] || [ ! -s "$W/net.net" ]; then cat "$W/net.log"; echo "FAIL: netlist export (exit $rc)"; fail=1
 else

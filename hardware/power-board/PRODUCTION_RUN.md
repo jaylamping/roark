@@ -229,7 +229,7 @@ Hot air is for rework only (removing or reseating a part). Joey's low-power gun 
 3. JLC quote for both designs, frameless stencils: main 6 layers, 2 oz outer / 0.5 oz inner, OSP; buck 4 layers, 1 oz.
    Confirm the main board's L1–In1 prepreg (tools/stack.py) and update section 1.
    **Main board, on the order form, every time (the Gerbers don't carry it):**
-   - **Via covering: "Epoxy Filled & Capped" (IPC-4761 type VII), for all vias.** The board has 971 of its 1,903 vias in
+   - **Via covering: "Epoxy Filled & Capped" (IPC-4761 type VII), for all vias.** The board has 971 of its 1,865 vias in
      pads: under the ten FET tabs (about 50 each, the heat path to the heatsink), in the power GND pads and in the
      bare heatsink pads on the bottom. Unfilled, they wick the solder out of the tab joints on the hot plate and leave
      open holes in the bare pads under the gap pad. The board file says the same (board setup: capping yes, filling
@@ -241,6 +241,8 @@ Hot air is for rework only (removing or reseating a part). Joey's low-power gun 
      meets it everywhere: its narrowest track and its smallest gap are both 0.2 mm (the pads of U1, U7 and U2 are at
      TI's land-pattern widths; [LAYOUT_RULES.md](LAYOUT_RULES.md), "Clearance").
 4. The big review on the routed boards (Fable plus several Opus). Fix everything blocking.
-5. Gerbers, drill files and stencil (paste) layers exported; polarity of every diode, can and IC checked in the 3D view.
+5. Gerbers, drill files, the paste layer, the position file and the BOM files are in [fab/](fab/README.md), written and
+   checked by schematic/tools/fab_package.sh; run it again after any board change (verify_board.sh fails if the package
+   is older than the board). Open the zip in the fab's preview; check the polarity of every diode, can and IC in the 3D view.
 6. Order the boards, the parts (LCSC + DigiKey), the tools, and the off-board parts (pack plan, REVB5_CHANGES), so they all
    arrive together.
