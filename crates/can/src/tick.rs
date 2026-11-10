@@ -216,6 +216,12 @@ pub(crate) struct Limb {
     pub(crate) pending: Option<StopReason>,
 }
 
+/// Limb `limb`'s state, or `None` for a limb not on this bus. A free function over the limb table, so it can be read
+/// while a drive is borrowed mutably.
+pub(crate) fn limb_state(limbs: &[Option<Limb>; MAX_DRIVES], limb: usize) -> Option<LimbState> {
+    limbs.get(limb).and_then(Option::as_ref).map(|l| l.state)
+}
+
 /// One bus's drives, their limbs, and the tick logic over them.
 #[derive(Debug)]
 pub struct BusTick {
@@ -509,11 +515,7 @@ impl BusTick {
     fn forget_fresh(&mut self) {
         let limbs = self.limbs;
         for d in self.drives.iter_mut().flatten() {
-            let held = limbs
-                .get(d.limb)
-                .copied()
-                .flatten()
-                .is_some_and(|l| l.state.takes_commands());
+            let held = limb_state(&limbs, d.limb).is_some_and(LimbState::takes_commands);
             if held {
                 d.fresh_ns = None;
                 d.fresh_status = None;
@@ -615,12 +617,8 @@ impl BusTick {
             else {
                 continue;
             };
-            let running = self
-                .limbs
-                .get(drive.limb)
-                .copied()
-                .flatten()
-                .is_some_and(|l| l.state.takes_commands());
+            let running =
+                limb_state(&self.limbs, drive.limb).is_some_and(LimbState::takes_commands);
             if !running {
                 self.counters.refused_frames += 1;
                 continue;

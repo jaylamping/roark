@@ -5,7 +5,7 @@ use robstride::{DecodeError, DeviceId, Inbound, Mode, Status, decode};
 use telemetry::{Direction, FrameRecord};
 
 use crate::error_frame::{BusError, classify, controller_passive};
-use crate::tick::{BusTick, DriveState, DriveStop, Off, Reply};
+use crate::tick::{BusTick, DriveState, DriveStop, Off, Reply, limb_state};
 use crate::types::{EchoSeen, LimbState, Observed};
 
 impl BusTick {
@@ -84,8 +84,7 @@ impl BusTick {
                     // A version reply carries the status header too: its faults and its mode count like a status's.
                     Some(d) => {
                         d.fault_seen |= !header.faults.is_empty();
-                        let active = limbs.get(d.limb).copied().flatten().map(|l| l.state)
-                            == Some(LimbState::Active);
+                        let active = limb_state(&limbs, d.limb) == Some(LimbState::Active);
                         d.note_mode(header.mode, active, unordered);
                     }
                     None => self.counters.unexpected += 1,
@@ -117,7 +116,7 @@ impl BusTick {
         if !status.header.faults.is_empty() {
             d.fault_seen = true;
         }
-        let limb = limbs.get(d.limb).copied().flatten().map(|l| l.state);
+        let limb = limb_state(&limbs, d.limb);
         let active = limb == Some(LimbState::Active);
         // A Reset confirms only while the limb is stopping and inside the stop's reply allowance.
         let replies_ns = self.timing.stop_replies_ns();

@@ -13,7 +13,7 @@
 use robstride::encode::{self, Reporting};
 
 use crate::error_frame::BusError;
-use crate::tick::{BusTick, DriveStop, Off, Phase};
+use crate::tick::{BusTick, DriveStop, Off, Phase, limb_state};
 use crate::timing::DRIVE_TIMEOUT_NS;
 use crate::types::{LimbState, MAX_DRIVES, RearmRefused, Send, SendKind, StopReason};
 
@@ -32,12 +32,7 @@ impl BusTick {
         match reason {
             StopReason::LateWake | StopReason::Backlog => {
                 for limb in 0..self.limbs.len() {
-                    let active = self
-                        .limbs
-                        .get(limb)
-                        .copied()
-                        .flatten()
-                        .is_some_and(|l| l.state == LimbState::Active);
+                    let active = limb_state(&self.limbs, limb) == Some(LimbState::Active);
                     if active {
                         self.stop_limb_now(limb, reason, now_ns);
                     }
@@ -92,12 +87,8 @@ impl BusTick {
             let Some(d) = self.drives.get(slot).copied().flatten() else {
                 continue;
             };
-            let takes_commands = self
-                .limbs
-                .get(d.limb)
-                .copied()
-                .flatten()
-                .is_some_and(|l| l.state.takes_commands());
+            let takes_commands =
+                limb_state(&self.limbs, d.limb).is_some_and(LimbState::takes_commands);
             if !takes_commands {
                 continue;
             }
@@ -125,9 +116,7 @@ impl BusTick {
         let mut confirming = [false; MAX_DRIVES];
         let mut stopping = [false; MAX_DRIVES];
         for limb in 0..self.limbs.len() {
-            let Some(LimbState::Stopping { since_ns }) =
-                self.limbs.get(limb).copied().flatten().map(|l| l.state)
-            else {
+            let Some(LimbState::Stopping { since_ns }) = limb_state(&self.limbs, limb) else {
                 continue;
             };
             if self.stop_over(limb, since_ns, now_ns) {
@@ -211,9 +200,7 @@ impl BusTick {
     /// At the tick's end: a stopping limb whose stop is over ([`Self::stop_over`]) is stopped.
     pub(crate) fn settle_stops(&mut self, now_ns: u64) {
         for limb in 0..self.limbs.len() {
-            let Some(LimbState::Stopping { since_ns }) =
-                self.limbs.get(limb).copied().flatten().map(|l| l.state)
-            else {
+            let Some(LimbState::Stopping { since_ns }) = limb_state(&self.limbs, limb) else {
                 continue;
             };
             if self.stop_over(limb, since_ns, now_ns)
@@ -254,13 +241,13 @@ impl BusTick {
     /// [`RearmRefused`] when the limb isn't on this bus, isn't stopped, the bus has failed, or a drive isn't known to
     /// be disabled yet.
     pub fn rearm(&mut self, limb: usize, now_ns: u64) -> Result<(), RearmRefused> {
-        let Some(l) = self.limbs.get(limb).copied().flatten() else {
+        let Some(state) = limb_state(&self.limbs, limb) else {
             return Err(RearmRefused::NoSuchLimb(limb));
         };
         if let Some(error) = self.bus_error {
             return Err(RearmRefused::BusFailed(error));
         }
-        if l.state != LimbState::Stopped {
+        if state != LimbState::Stopped {
             return Err(RearmRefused::NotStopped(limb));
         }
         let quiet_ns = DRIVE_TIMEOUT_NS.saturating_add(self.timing.period_ns);
