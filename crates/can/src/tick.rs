@@ -198,7 +198,7 @@ impl BusTick {
 
     /// `count` ticks went by without running (the thread stalled past them): each a missed deadline (PLAN.md item 3:
     /// missed deadlines are counted, never skipped silently). The next `begin` treats it as a late wake: an active bus
-    /// stops, and an idle one sends only its batch's Disables and reporting off.
+    /// stops, and an idle one's tick is held (both in [`Self::begin`]).
     pub fn skipped(&mut self, count: u64) {
         if count > 0 {
             self.counters.missed_deadlines += count;
@@ -232,7 +232,8 @@ impl BusTick {
     /// Disable or active reporting off goes out late too, whoever planned it, since late it is still the right frame.
     ///
     /// A stop asked for before the tick is taken first, so it keeps its reason. A backlog in the drain, then a wake past
-    /// the send window (a missed deadline, counted in every state), stops an active bus. Neither stops an idle bus
+    /// the send window (a missed deadline, counted in every state) or ticks a stall slept through ([`Self::skipped`]),
+    /// stops an active bus. Neither stops an idle bus
     /// (nothing enabled since start): its tick is **held** instead, since an untrusted tick holds an idle bus and
     /// doesn't stop it (PLAN.md item 3). On a held tick, in this order:
     ///
