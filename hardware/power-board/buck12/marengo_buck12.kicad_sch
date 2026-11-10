@@ -10262,7 +10262,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "402R 1%"
+		(property "Value" "330R 1%"
 			(at 193.04 220.98 0)
 			(effects
 				(font
@@ -10376,7 +10376,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "15pF 100V C0G"
+		(property "Value" "18pF 100V C0G"
 			(at 207.01 220.98 0)
 			(effects
 				(font
@@ -11915,7 +11915,7 @@
 		)
 		(uuid "6d354766-a84e-5d29-a5be-613cd5e4db99")
 	)
-	(text "Input: SK810L crowbar (a reversed pigtail clamps at about 1 V; U7 on the main board limits and times out), 1 uF at the connector, 2.2 uH filter, 47 uF aluminium (Chemi-\nCon MVH, 12.5 mm can, 0.33 Ohm ESR damps the filter and the pigtail: 24 dB of margin against the converter's input impedance at 30 V, 158 W), 5 x 2.2 uF hot-loop ceramics\nat Q1. tools/absorber_sim.py (main board) runs the bank-trip spike through U7, F2, the pigtail and this filter.\nUVLO: 300k / 12.4k: on at 30.2 V, off at 27.2 V (10 uA hysteresis current). Below the 30.5 V worst sag at 90 A from a 38 V pack, so motor load can't brown out compute\nbefore the BMS does; the Pi still shuts down on its load-aware threshold.\nON/OFF: the main board's 2N7002 pulls pin 5 low through 220R when U7's PGD is good. Pin 5 open: 220k from VIN biases the NPN, which holds EN low (off). Pin 5 low: NPN\noff, EN rises: on. Pin 5 idles at about 2.7 V, like the DVE's.\nPower train (TI design 2 uprated): 400 kHz (RT 24.9k), 6.8 uH 8.9 mOhm 21.8 A Isat, 3.3 A ripple; Q1 BSC070N10NS5 (low Qgd), Q2 BSC040N10NS5. Valley limit by Q2 RDS(on)\n(LM5146 eq. 6: I_OUT,CL = I_RDSON x R_ILIM / RDS(on)Q2 + dIL/2): 200 uA x 402R = 80.4 mV; cold, RDS(on) 3.5-4.5 mOhm: valley 17.9-23 A, output limit 19.5-24.6 A; hot (TJ\n100 C, I_RDSON +34 %, RDS(on) about x1.6): valley 15-19 A, output 16.6-20.9 A: over the 12 A rating at every corner. C18 15 pF 100 V C0G: R_ILIM x C_ILIM = 6.0 ns (TI:\nabout 6 ns); ILIM swings with SW to VIN. Hiccup on overload.\nOutput: 12.0 V (0.8 V x (1 + 21k / 1.5k)), 5 x 22 uF at VOUT plus the 330 uF bulk cap on +12V behind RS1 (12 V distribution, below). Compensation is TI's for this L and 5\nx 22 uF only (40 kHz crossover): recheck it for the 330 uF and measure the loop with an injection resistor in place of the 0R before loading. VCC from VOUT through BAT46W\n(TI's D1) cuts bias loss.\nLoss at 12 A, 48 V (est): Q1 0.4 W conduction + 1.2 W switching, Q2 0.7 W, inductor 1.3 W, controller 0.3 W: about 4 W, 97 %. Board: about 60 x 85 mm with the 12 V\ndistribution and its six outputs, bolted to the rail with a thermal pad like the DVE."
+	(text "Input: SK810L crowbar (a reversed pigtail clamps at about 1 V; U7 on the main board limits and times out), 1 uF at the connector, 2.2 uH filter, 47 uF aluminium (Chemi-\nCon MVH, 12.5 mm can, 0.33 Ohm ESR damps the filter and the pigtail: 24 dB of margin against the converter's input impedance at 30 V, 158 W), 5 x 2.2 uF hot-loop ceramics\nat Q1. tools/absorber_sim.py (main board) runs the bank-trip spike through U7, F2, the pigtail and this filter.\nUVLO: 300k / 12.4k: on at 30.2 V, off at 27.2 V (10 uA hysteresis current). Below the 30.5 V worst sag at 90 A from a 38 V pack, so motor load can't brown out compute\nbefore the BMS does; the Pi still shuts down on its load-aware threshold.\nON/OFF: the main board's 2N7002 pulls pin 5 low through 220R when U7's PGD is good. Pin 5 open: 220k from VIN biases the NPN, which holds EN low (off). Pin 5 low: NPN\noff, EN rises: on. Pin 5 idles at about 2.7 V, like the DVE's.\nPower train (TI design 2 uprated): 400 kHz (RT 24.9k), 6.8 uH 8.9 mOhm 21.8 A Isat, 3.3 A ripple; Q1 BSC070N10NS5 (low Qgd), Q2 BSC040N10NS5. Valley limit by Q2 RDS(on)\n(LM5146 eq. 6: I_OUT,CL = I_RDSON x R_ILIM / RDS(on)Q2 + dIL/2), R_ILIM 330R, Q2 VGS = VCC 11.6 V: hot (TJ 125 C, I_RDSON 180 uA min +44 %, RDS(on) 4.0 mOhm max x1.7)\nvalley 12.6 A, 16 % over the 10.8 A valley at 12 A out with the smallest ripple (36 V, L +20 %); cold (25 C, 220 uA, 3.5 mOhm) valley 20.7 A, hard-short peak about 21.2 A\nagainst L2's 21.8 A Isat (30 % drop). C18 18 pF 100 V C0G: R_ILIM x C_ILIM = 5.9 ns (TI: about 6 ns); ILIM swings with SW to VIN. Hiccup on overload.\nOutput: 12.0 V (0.8 V x (1 + 21k / 1.5k)), 5 x 22 uF at VOUT plus the 330 uF bulk cap on +12V behind RS1 (12 V distribution, below). Compensation is TI's for this L and 5\nx 22 uF only (40 kHz crossover): recheck it for the 330 uF and measure the loop with an injection resistor in place of the 0R before loading. VCC from VOUT through BAT46W\n(TI's D1) cuts bias loss.\nLoss at 12 A, 48 V (est): Q1 0.4 W conduction + 1.2 W switching, Q2 0.7 W, inductor 1.3 W, controller 0.3 W: about 4 W, 97 %. Board: about 60 x 85 mm with the 12 V\ndistribution and its six outputs, bolted to the rail with a thermal pad like the DVE."
 		(exclude_from_sim no)
 		(at 20 280 0)
 		(effects
@@ -15514,7 +15514,7 @@
 				)
 			)
 		)
-		(property "Value" "SMBJ15A"
+		(property "Value" "SMBJ12A"
 			(at 344.17 351.79 90)
 			(effects
 				(font
@@ -17885,7 +17885,7 @@
 		)
 		(uuid "c1146363-0068-5ecc-b9d9-c5eb6b0e4232")
 	)
-	(text "Moved from the main board (split S1): the 12 V meter (0x4D) and SPARE_SW meter (0x47) on the Pi's I2C, powered by the Pi's 3.3 V through J1 pin 6; pull-ups only at the\nPi.\nSP_EN (J1 pin 9, between GND pins) comes from the main board's RUN through 100k and a series diode; the 68k here pulls EN low, so SPARE_SW is off when RUN drops, the\ndiode opens or the pigtail is unplugged (fail-off). EN about 2.6 V with RUN up.\nSPARE_SW: limit 3.87-4.42 A (499R), dV/dt 3.3 nF about 12 V/ms. SPARE_ON: unswitched, about 2 A limit. B340A clamps on both outputs. SMBJ15A: servo back-feed clamp on\n+12V.\n330 uF + 5 x 22 uF now sit at the converter output, not at the far end of the pigtail: recheck the compensation and measure the loop at the 0R injection point before\nloading.\nThe DVE fallback no longer plugs into J24: this board has no 12 V input, and the old DVE adapter pinout puts 12 V on SCL and SP_EN."
+	(text "Moved from the main board (split S1): the 12 V meter (0x4D) and SPARE_SW meter (0x47) on the Pi's I2C, powered by the Pi's 3.3 V through J1 pin 6; pull-ups only at the\nPi.\nSP_EN (J1 pin 9, between GND pins) comes from the main board's RUN through 100k and a series diode; the 68k here pulls EN low, so SPARE_SW is off when RUN drops, the\ndiode opens or the pigtail is unplugged (fail-off). EN about 2.6 V with RUN up.\nSPARE_SW: limit 3.87-4.42 A (499R), dV/dt 3.3 nF about 12 V/ms. SPARE_ON: unswitched, about 2 A limit. B340A clamps on both outputs. SMBJ12A: servo back-feed clamp on\n+12V, 13.3 V min breakdown (over the 12.35 V worst regulated output), 19.9 V at its 30.2 A rating: under the eFuses' 20 V maximum.\n330 uF + 5 x 22 uF now sit at the converter output, not at the far end of the pigtail: recheck the compensation and measure the loop at the 0R injection point before\nloading.\nThe DVE fallback no longer plugs into J24: this board has no 12 V input, and the old DVE adapter pinout puts 12 V on SCL and SP_EN."
 		(exclude_from_sim no)
 		(at 20 500 0)
 		(effects

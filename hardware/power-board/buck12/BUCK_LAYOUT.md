@@ -56,7 +56,7 @@ Every part is at a listed position.
     In2, with the In2 GND fill between).
   - BST runs on In2 under HO and SW to C17. R5 (2.2 Ω) takes the bootstrap back to the SW track.
   - VCC goes to C16 at the pin; PGND has its own via.
-  - ILIM runs on In2 at Y 18.3, between BST (In2) and LO (In3), to R6 at the SW track, with C18 (15 pF 100 V C0G) at
+  - ILIM runs on In2 at Y 18.3, between BST (In2) and LO (In3), to R6 at the SW track, with C18 (18 pF 100 V C0G) at
     the pin. It crosses LO once and never runs over it.
 - **Pours:** VIN_P from J1's pins to the filter (F.Cu and B.Cu), VIN (F.Cu and a B.Cu mirror), VOUT (F.Cu and B.Cu,
   both carried past RS1's sense cut-out), +12V, and the three fused outputs. GND: solid planes on In1 and In4, fills on
@@ -136,14 +136,8 @@ The real board must pass.
 3. The test points are bare pads, not parts.
 4. The main board's E-stop and latch rules don't apply here; only SP_EN's distance does (1.7 mm kept, 1.5 mm rule).
 
-## Datasheet answers (review of 2026-11-10)
+## Ratings and datasheet answers (review of 2026-11-10; D3, R6 and C18 changed after it)
 
-- **C24 (EEH-ZA1E331V, 25 V) against the SMBJ15A under back-feed.** The SMBJ15A breaks down at 16.7–18.5 V and clamps
-  at 24.4 V at its full 24.6 A pulse rating, so C24 sees at most 24.4 V, under its 25 V rating (Panasonic ZA surge
-  rating 1.15 × = 28.75 V). C24 is fine. **The eFuses are not:** U3 and U5 (TPS259541) sit on +12V with a **20 V absolute
-  maximum** (TPS2595 datasheet, 7.1), and a back-feed pulse large enough to pull the SMBJ15A past about 20 V (a few amps
-  and up, by its V-I curve) exceeds it. Not changed here: it needs a part decision (a lower clamp such as SMBJ13A, which
-  clamps at 21.5 V at full current, or limiting what can back-feed). For Joey.
 - **U3 EN against the TPS259541 threshold.** EN/UVLO rises at 1.13–1.27 V and falls at 1.03–1.17 V (datasheet 7.5).
   SP_EN comes from the main board's RUN through 100 kΩ and a BAV19W, into the 68 kΩ pull-down here. latch_sim.py puts
   RUN at 6.8 V when the latch is closed (every hFE case), so EN = (6.8 − 0.6) × 68 / 168 = **2.5 V** (2.3 V with 5 %
@@ -156,13 +150,53 @@ The real board must pass.
   paste filled, plated over) is "the default for 6-layer and above multilayer boards" and is "compatible with via
   diameters from 0.15 to 0.55 mm"; the multilayer minimum via hole is 0.15 mm, with no separate minimum for 2 oz outer
   copper (2 oz sets the track/space minimum, 0.15 mm, and the PTH annular ring). U1's 0.2 mm thermal vias stay.
-- **C18 and the current limit.** C18 is 15 pF 100 V C0G (KEMET C0603C150J1GACTU): ILIM swings with SW up to VIN, and
-  402 Ω × 15 pF = 6.0 ns against TI's "approximately 6 ns" (it was 100 pF 50 V, 40 ns). The current limit (LM5146
-  eq. 6, I_OUT,CL = I_RDSON × R_ILIM / R_DS(on)Q2 + ΔI_L / 2, 200 µA ± 10 % at 25 °C, +4500 ppm/°C) is 19.5–24.6 A cold
-  (Q2 R_DS(on) 4.5–3.5 mΩ) and 16.6–20.9 A hot (T_J 100 °C), over the 12 A rating at every corner. At the cold, low-R_DS(on)
-  corner the inductor's peak (valley + 3.3 A ripple) reaches about 26 A, over L2's 21.8 A I_sat: a cold hard short
-  saturates L2 for the cycles before hiccup. R6 was not changed (a schematic change); for Joey if he wants the cold limit
-  lower (330 Ω gives 16–20 A cold).
+- **C24 (EEH-ZA1E331V, 25 V) and the eFuses against the +12V back-feed clamp.**
+  - **Change.** D3 is now **SMBJ12A** (Diodes Incorporated SMBJ12A-13-F, DigiKey SMBJ12A-FDICT-ND, same SMB footprint).
+    It was SMBJ15A, which clamps at up to 24.4 V. That is over the TPS259541 eFuses' (U3, U5) **20 V absolute maximum**
+    (TPS2595 datasheet, 7.1).
+  - **SMBJ12A** (Bourns/JEDEC SMBJ table): VRWM 12 V; breakdown 13.3–14.7 V at 1 mA; I_R 1 µA max at 12 V; clamp 19.9 V at
+    its 30.2 A (10/1000 µs) rating.
+  - **No conduction in regulation.** The highest regulated output is FB 0.808 V × (1 + 21.21 k / 1.485 k) = **12.35 V**
+    (±1 % reference, 1 % divider). A 5 % load-release overshoot (the bring-up limit) gives 12.96 V. Both are under the
+    13.3 V minimum breakdown, so D3 draws well under 1 mA.
+  - **Leakage at 12.3 V.** That is 2.5 % over VRWM, where the spec is 1 µA; between VRWM and VBR the current rises
+    exponentially but stays under the 1 mA that defines VBR. Typically microamps, at most 12 mW: acceptable.
+  - **Clamp at the largest realistic back-feed.**
+    - Where back-feed comes from: the buck runs in diode emulation (SYNCIN to GND), so it cannot sink, and back-feed goes
+      into D3. The source is the neck and jaw servos, back-driven by hand through SPARE_SW. U3 does not block reverse
+      current.
+    - Size: they draw at most U3's 4.42 A forward limit, so take **5 A**.
+    - Clamp at 5 A: dynamic resistance (19.9 − 14.7) / 30.2 = 0.17 Ω, so 14.7 + 0.86 = **15.6 V**, or about 16.5 V with
+      the breakdown voltage's temperature rise at 85 °C.
+    - Even at its full 30.2 A rating it clamps at 19.9 V (25 °C), under 20 V.
+  - **C24** (25 V, surge 28.75 V) sees at most 19.9 V.
+- **C18 and the current limit.**
+  - **Change.** R6 is now **330 Ω** (Stackpole RMCF0603FT330R) and C18 is **18 pF 100 V C0G** (KEMET C0603C180J1GACTU,
+    DigiKey 399-C0603C180J1GACTUCT-ND). 330 Ω × 18 pF = **5.9 ns** against TI's "approximately 6 ns"; 15 pF would give
+    4.95 ns. ILIM swings with SW up to VIN, hence 100 V. (It was 402 Ω and 15 pF, 6.0 ns; before that 100 pF 50 V.)
+  - **Valley limit** (LM5146 eq. 6): I_valley = I_RDSON × R_ILIM / R_DS(on)Q2, with I_RDSON 180–220 µA at 25 °C and
+    +4500 ppm/°C. Q2 (BSC040N10NS5) gets VGS = VCC, about 11.6 V once VOUT is up (D2): 3.5 mΩ typ, 4.0 mΩ max at 10 V and 25 °C.
+  - **Hot corner** (T_J 125 °C; I_RDSON 180 µA × 1.44 = 259 µA; R_DS(on) 4.0 mΩ × 1.7 = 6.8 mΩ):
+    - valley limit **12.6 A**;
+    - output limit with the smallest ripple, 13.7 A.
+  - **Margin.** The highest valley at a 12 A load comes with the smallest ripple: 36 V in, L +20 % (8.16 µH),
+    f +5 %, ΔI_L 2.33 A, so the valley is 12 − 1.17 = 10.8 A. The hot limit is **16 % over** it. (The 15 % asked for is
+    met; at T_J 100 °C it is 17 %.) Through soft start VCC is the internal 7.5 V, and R_DS(on) is about 10 % higher.
+  - **Soft start.**
+    - Time: SS 47 nF × 0.8 V / 12 µA max = 3.1 ms.
+    - Load: the output capacitance, 330 µF + 20 % plus 5 × 22 µF (506 µF without DC-bias derating), draws
+      506 µF × 12 V / 3.1 ms = 1.9 A, plus the loads that start during the ramp (U5 enables at about 4.8 V).
+    - Even with 5 A of start-up load, under 7 A against the 11.4 A hot limit at VCC 7.5 V: it does not trip.
+  - **Cold corner** (25 °C, 220 µA, 3.5 mΩ; colder is lower, as I_RDSON's tempco outruns R_DS(on)'s):
+    - valley limit **20.7 A**, typical (200 µA) 18.9 A;
+    - output limit 22.4 A worst, 20.5 A typical.
+  - **L2 in a cold hard short.**
+    - Peak: with VOUT near 0 the ripple is only the minimum on-time ramp, 54.6 V × 50 ns / 5.44 µH = 0.5 A. So the peak
+      is about **21.2 A** worst (19.4 A typical), under the XAL1010-682's **21.8 A I_sat** (30 % inductance drop, Coilcraft).
+      With 402 Ω it was about 26 A.
+    - In an overload with VOUT still up, the peak adds the full ripple: 25 A worst at 54.6 V with L −20 %, 22 A typical.
+      That is past the 30 % point, until hiccup stops it. Valley sensing on R_DS(on) spans 1.75× between the corners, so
+      no R_ILIM holds both the hot margin and the cold peak in overload.
 
 ## Bring-up (bench supply, current-limited, before the main board or the pack)
 

@@ -40,7 +40,7 @@ ok(any(val(c).startswith('330uF') for c in two('+12V','GND',('C',))),'330 uF bul
 for net,nm,a in (('+12V_JET','Jetson','5A'),('+12V_PI','Pi buck','5A'),('+12V_FAN','fans','2A')):
     ok(any(v==[net,'GND'] for v in outs.values()) and [val(r).split()[0] for r in comp if r[0]=='F' and {n(r,1),n(r,2)}=={'+12V',net}]==[a],nm+' output fused at '+a)
 ok(all(any(r[0]=='D' and n(r,1)==o and n(r,2)=='GND' for r in comp) for o in (n('U3',5),'SPARE_ON')),'eFuse outputs clamped to GND')
-ok(any(r[0]=='D' and n(r,1)=='+12V' and n(r,2)=='GND' and val(r).startswith('SMBJ15') for r in comp),'+12V back-feed TVS')
+ok(any(r[0]=='D' and n(r,1)=='+12V' and n(r,2)=='GND' and val(r).startswith('SMBJ12') for r in comp),'+12V back-feed TVS')
 SYM={'GND':0,'+3V3_PI':1,'I2C_SDA':2,'I2C_SCL':3}
 addr={0x40|(SYM.get(n(u,1),9)<<2)|SYM.get(n(u,2),9):u for u in comp if val(u).startswith('INA2')}
 ok(addr.get(0x4D)=='U2' and addr.get(0x47)=='U4' and n('U2',8)=='+12V' and n('U4',8)=='SPARE_SW' and len(addr)==2 and all(n(u,4)=='I2C_SDA' and n(u,5)=='I2C_SCL' and n(u,6)=='+3V3_PI' and n(u,7)=='GND' for u in addr.values()),

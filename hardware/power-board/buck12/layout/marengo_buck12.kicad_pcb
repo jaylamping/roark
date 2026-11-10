@@ -8775,7 +8775,7 @@
 				)
 			)
 		)
-		(property "Value" "SMBJ15A"
+		(property "Value" "SMBJ12A"
 			(at 0 3.1 0)
 			(layer "F.Fab")
 			(uuid "b432b4f8-3684-4ca6-bf63-5934909d9301")
@@ -9992,7 +9992,7 @@
 				)
 			)
 		)
-		(property "Value" "15pF 100V C0G"
+		(property "Value" "18pF 100V C0G"
 			(at 0 1.43 90)
 			(layer "F.Fab")
 			(uuid "61ead619-3b73-4667-b563-dda1cc0db554")
@@ -10138,7 +10138,7 @@
 				)
 			)
 		)
-		(property "Value" "402R 1%"
+		(property "Value" "330R 1%"
 			(at 0 1.43 90)
 			(layer "F.Fab")
 			(uuid "f0d892fe-a117-4022-84b7-d034efafbe1e")

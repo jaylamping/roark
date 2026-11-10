@@ -7,7 +7,7 @@ Quantity,Value / MPN,Reference designators,Footprint,Manufacturer,Manufacturer P
 4,47nF X7R,C15,C_0603_1608Metric,KEMET,C0603C473K5RACTU,399-C0603C473K5RACTUCT-ND,Voltage not in value string: 50 V X7R chosen (SS pin).
 2,2.2uF 25V X7R,C16,C_0805_2012Metric,KEMET,C0805C225K3RACTU,399-C0805C225K3RACTUCT-ND,
 10,100nF 50V X7R,"C17,C22,C23,C26,C29",C_0603_1608Metric,KEMET,C0603C104K5RACTU,399-C0603C104K5RACTUCT-ND,
-2,15pF 100V C0G,C18,C_0603_1608Metric,KEMET,C0603C150J1GACTU,399-C0603C150J1GACTUCT-ND,"ILIM filter: the node swings with SW up to VIN (54.6 V), so 100 V C0G; 15 pF x 402R = 6.0 ns (LM5146: about 6 ns)."
+2,18pF 100V C0G,C18,C_0603_1608Metric,KEMET,C0603C180J1GACTU,399-C0603C180J1GACTUCT-ND,"ILIM filter: the node swings with SW up to VIN (54.6 V), so 100 V C0G; 18 pF x 330R = 5.9 ns (LM5146: about 6 ns)."
 4,1nF C0G,C19,C_0603_1608Metric,KEMET,C0603C102J5GACTU,399-C0603C102J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
 2,4.7nF C0G,C20,C_0603_1608Metric,KEMET,C0603C472J5GACTU,399-C0603C472J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
 4,10pF C0G,C21,C_0603_1608Metric,KEMET,C0603C100J5GACTU,399-C0603C100J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
@@ -15,7 +15,7 @@ Quantity,Value / MPN,Reference designators,Footprint,Manufacturer,Manufacturer P
 4,3.3nF C0G,"C25,C28",C_0603_1608Metric,KEMET,C0603C332J5GACTU,399-C0603C332J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
 2,SK810L-TP,D1,D_SMC,MCC (Micro Commercial Components),SK810L-TP,SK810L-TPMSCT-ND,
 2,BAT46W,D2,D_SOD-123,Diotec Semiconductor,BAT46W,4878-BAT46WCT-ND,Vishay BAT46W-E3-08 out of stock.
-4,SMBJ15A,D3,D_SMB,Diodes Incorporated,SMBJ15A-13-F,SMBJ15A-FDICT-ND,
+4,SMBJ12A,D3,D_SMB,Diodes Incorporated,SMBJ12A-13-F,SMBJ12A-FDICT-ND,"+12V back-feed clamp: VBR 13.3 V min (no conduction at the 12.35 V worst output), 19.9 V at 30.2 A, under U3/U5's 20 V maximum."
 6,B340A-13-F,"D4,D5",D_SMA,Diodes Incorporated,B340A-13-F,B340A-FDICT-ND,
 6,5A 32V 0466005,"F1,F2",Fuse_1206_3216Metric,Littelfuse Inc.,0466005.NR,F1460CT-ND,
 4,2A 32V 0466002,F3,Fuse_1206_3216Metric,Littelfuse Inc.,0466002.NR,F1457CT-ND,Part is rated 63 V (kit text says 32 V); the higher rating is fine.
@@ -34,7 +34,7 @@ Quantity,Value / MPN,Reference designators,Footprint,Manufacturer,Manufacturer P
 4,300k 1%,R2,R_1206_3216Metric,Stackpole Electronics,RMCF1206FT300K,RMCF1206FT300KCT-ND,
 4,12.4k 1%,R3,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT12K4,RMCF0603FT12K4CT-ND,
 4,24.9k 1%,R4,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT24K9,RMCF0603FT24K9CT-ND,
-4,402R 1%,R6,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT402R,RMCF0603FT402RCT-ND,
+4,330R 1%,R6,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT330R,RMCF0603FT330RCT-ND,
 4,0R (loop injection),R7,R_0603_1608Metric,Stackpole Electronics,RMCF0603ZT0R00,RMCF0603ZT0R00CT-ND,
 4,21k 1%,R8,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT21K0,RMCF0603FT21K0CT-ND,
 4,1.5k 1%,R9,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT1K50,RMCF0603FT1K50CT-ND,
