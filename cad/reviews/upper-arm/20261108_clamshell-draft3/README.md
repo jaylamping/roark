@@ -1,10 +1,10 @@
 # Upper-arm clamshell, draft 3: gate results
 
-Pinned commit: 492db8beb2c64a8b87c844e9d95bae77f773d765
+Pinned commit: 4969edec11c4f0f8373a204cc581f2ea8ee26e82
 
-Parts: [front half](https://github.com/jaylamping/roark/blob/492db8beb2c64a8b87c844e9d95bae77f773d765/cad/upper-arm/upper_arm_shell_front_left.SLDPRT), [back half](https://github.com/jaylamping/roark/blob/492db8beb2c64a8b87c844e9d95bae77f773d765/cad/upper-arm/upper_arm_shell_back_left.SLDPRT),
-[elbow ring](https://github.com/jaylamping/roark/blob/492db8beb2c64a8b87c844e9d95bae77f773d765/cad/upper-arm/upper_arm_elbow_ring_left.SLDPRT), [hub](https://github.com/jaylamping/roark/blob/492db8beb2c64a8b87c844e9d95bae77f773d765/cad/upper-arm/upper_arm_hub_left.SLDPRT),
-[loop clip](https://github.com/jaylamping/roark/blob/492db8beb2c64a8b87c844e9d95bae77f773d765/cad/upper-arm/upper_arm_loop_clip_left.SLDPRT). Design notes: [cad/upper-arm/README.md](https://github.com/jaylamping/roark/blob/492db8beb2c64a8b87c844e9d95bae77f773d765/cad/upper-arm/README.md).
+Parts: [front half](https://github.com/jaylamping/roark/blob/4969edec11c4f0f8373a204cc581f2ea8ee26e82/cad/upper-arm/upper_arm_shell_front_left.SLDPRT), [back half](https://github.com/jaylamping/roark/blob/4969edec11c4f0f8373a204cc581f2ea8ee26e82/cad/upper-arm/upper_arm_shell_back_left.SLDPRT),
+[elbow ring](https://github.com/jaylamping/roark/blob/4969edec11c4f0f8373a204cc581f2ea8ee26e82/cad/upper-arm/upper_arm_elbow_ring_left.SLDPRT), [hub](https://github.com/jaylamping/roark/blob/4969edec11c4f0f8373a204cc581f2ea8ee26e82/cad/upper-arm/upper_arm_hub_left.SLDPRT),
+[loop clip](https://github.com/jaylamping/roark/blob/4969edec11c4f0f8373a204cc581f2ea8ee26e82/cad/upper-arm/upper_arm_loop_clip_left.SLDPRT). Design notes: [cad/upper-arm/README.md](https://github.com/jaylamping/roark/blob/4969edec11c4f0f8373a204cc581f2ea8ee26e82/cad/upper-arm/README.md).
 
 - `sheet.png`: the picture sheet (parts, print orientations, visible holes).
 - `gate_summary.json`: mesh gate and support-on-visible-face check, rerun on the exports at the pinned commit with
