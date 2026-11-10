@@ -200,7 +200,7 @@ impl BusTick {
         let in_flight = self.slow.iter().flatten().any(|e| e.state.in_flight());
         let after_collect = now_ns >= self.scheduled_ns.saturating_add(self.timing.collect_ns);
         let next_tick = self.scheduled_ns.saturating_add(self.timing.period_ns);
-        if self.held_tick == Some(self.tick)
+        if self.held
             || in_flight
             || !after_collect
             || now_ns.saturating_add(self.timing.slow_reply_ns) > next_tick

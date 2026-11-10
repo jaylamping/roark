@@ -213,6 +213,10 @@ pub(crate) fn limb_state(limbs: &[Option<Limb>; MAX_DRIVES], limb: usize) -> Opt
 
 /// One bus's drives, their limbs, and the tick logic over them.
 #[derive(Debug)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent facts about the bus and this tick's reads, each set on its own, not one state"
+)]
 pub struct BusTick {
     pub(crate) timing: Timing,
     pub(crate) drives: [Option<DriveState>; MAX_DRIVES],
@@ -232,9 +236,9 @@ pub struct BusTick {
     pub(crate) tick: u64,
     pub(crate) scheduled_ns: u64,
     pub(crate) planned: Planned,
-    /// The last tick that woke late, followed a stall or read a backlog: only its batch's Disables and reporting off
-    /// went, and no slow frame goes in its slack.
-    pub(crate) held_tick: Option<u64>,
+    /// This tick woke late, followed a stall or read a backlog: only its batch's Disables and reporting off went, and
+    /// no slow frame goes in its slack.
+    pub(crate) held: bool,
     pub(crate) slow: [Option<SlowEntry>; SLOW_SLOTS],
     pub(crate) slow_seq: u64,
 }
@@ -302,7 +306,7 @@ impl BusTick {
             tick: 0,
             scheduled_ns: 0,
             planned: Planned::EMPTY,
-            held_tick: None,
+            held: false,
             slow: [None; SLOW_SLOTS],
             slow_seq: 0,
         })
@@ -482,9 +486,7 @@ impl BusTick {
         }
         // On a tick whose reads can't be trusted or that woke too late, only the batch's Disables and reporting off go.
         let hold = backlog || woke_late || stalled;
-        if hold {
-            self.held_tick = Some(tick);
-        }
+        self.held = hold;
         self.veto(now_ns);
         let accepted = if takes_batches {
             self.check_batch(tick, now_ns, batch)
