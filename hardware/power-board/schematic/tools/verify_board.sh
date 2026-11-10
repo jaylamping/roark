@@ -2,7 +2,8 @@
 # verify_board.sh [board.kicad_pcb] : the full check set on a routed board (default: ../layout/marengo_pdu_revb.kicad_pcb).
 # Copies the board next to a copy of the schematic and the project rules in a temp dir, so KiCad's schematic-parity check
 # can read the netlist (run in layout/ it only prints "Failed to fetch schematic netlist" and checks nothing), refills
-# the zones with the project rules there, and runs: DRC with parity, tools/open_nets.py, tools/route_checks.py, tools/check.py.
+# the zones with the project rules there, and runs: DRC with parity, tools/open_nets.py, tools/route_checks.py,
+# tools/joint_check.py, tools/port_template.py MODE=check, tools/check.py.
 # Exit 1 if parity was skipped, on any parity item, clearance/short/courtyard violation, or a failed route_checks or
 # check.py. Open connections are reported, not failed: OPEN_MAX=<n> makes more than n an error.
 # The board file itself is not changed. KEEP=<dir> keeps the work files there.
@@ -38,6 +39,9 @@ PYEOF
 "$KP" "$ROOT/tools/route_checks.py" "$W/verify.kicad_pcb" > "$W/checks.txt" 2>&1; rc=$?
 grep -v 'memory leak\|GetWidth called\|image handler' "$W/checks.txt" | grep -v '^    (' || true
 [ "$rc" = 0 ] || { echo "FAIL: route_checks (exit $rc)"; fail=1; }
+# every joint has real copper overlap (KiCad's connectivity accepts a tangent touch), and the six ports' own nets equal the template
+"$KP" "$ROOT/tools/joint_check.py" "$W/verify.kicad_pcb" 2>&1 | grep -v 'memory leak\|GetWidth called\|image handler'; [ "${PIPESTATUS[0]}" = 0 ] || { echo 'FAIL: joint_check'; fail=1; }
+MODE=check "$KP" "$ROOT/tools/port_template.py" "$W/verify.kicad_pcb" 2>&1 | grep -v 'memory leak\|GetWidth called\|image handler'; [ "${PIPESTATUS[0]}" = 0 ] || { echo 'FAIL: port template copper differs from port_copper.py'; fail=1; }
 "$KC" sch export netlist --format kicadsexpr -o "$W/net.net" "$ROOT/marengo_pdu_revb.kicad_sch" >/dev/null 2>&1
 "$PY" -I "$ROOT/tools/check.py" "$ROOT/tools" "$W/net.net" | grep -E '^FAIL|^FAILS|^audited'
 "$PY" -I "$ROOT/tools/check.py" "$ROOT/tools" "$W/net.net" | grep -q '^FAILS 0' || { echo 'FAIL: check.py'; fail=1; }

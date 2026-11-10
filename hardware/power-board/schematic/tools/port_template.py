@@ -62,6 +62,11 @@ def Tinv(k,p):
     return (p[0],y) if k%2 else (300-p[0],390.5-y)
 def inwin(k,x,y):
     X,Y=Tinv(k,(x,y)); return WIN[0]<=X<=WIN[1] and WIN[2]<=Y<=WIN[3]
+def inblock(k,t):
+    """a track or via with every end inside port k's block (BLOCK: the template copper's extent, template mm)"""
+    ps=[t.GetPosition()] if t.GetClass()=='PCB_VIA' else [t.GetStart(),t.GetEnd()]
+    return all(BLOCK[0]<=X<=BLOCK[1] and BLOCK[2]<=Y<=BLOCK[3] for X,Y in (Tinv(k,(MM(p.x),MM(p.y))) for p in ps))
+BLOCK=(158.4,194.0,186.4,204.1)
 def rip(b,k):
     """the port's signal nets everywhere, and every other net's copper inside the block except the power stage: VBUS copper,
     the D_L tab vias and pin 4 link, the V_L vias from the FET's pins outward, and the in-pad GND/V_L vias"""
@@ -79,6 +84,15 @@ def rip(b,k):
     return kill
 if __name__=='__main__':
     b=pcbnew.LoadBoard(sys.argv[1]); load(b); ports=[int(x) for x in os.environ.get('PORTS','1,2,3,4,5,6').split(',')]
+    mode=os.environ.get('MODE','stamp')
+    if mode in ('check','sync'):
+        # MODE=check: exit 1 if the board's template copper differs from port_copper.ITEMS (no output file needed);
+        # MODE=sync: add the missing template copper and remove stale locked copper of the ports' own nets, nothing else
+        import port_copper
+        m,s=port_copper.sync(b,ports,FPS,dry=mode=='check')
+        print(f'port template {mode}: {m} primitives missing, {s} stale')
+        if mode=='sync': pcbnew.ZONE_FILLER(b).Fill(b.Zones()); b.Save(sys.argv[2])
+        sys.exit(1 if mode=='check' and (m or s) else 0)
     for k in ports:
         place(b,k); print(f'port {k}: placed {len(PLACE)} parts',flush=True)
     kill=[t for k in ports for t in rip(b,k)]; print('ripping',len(kill),flush=True)

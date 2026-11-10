@@ -37,9 +37,9 @@ ITEMS=[
  ('t','CSP','F',[(163.75,192.6),(163.75,193.75),(161.2,193.75),(160.6,194.3)]),
  # ---- gate drive
  ('t','GPU','F',[(165.25,191.6),(165.25,190.62),(169.5,190.62),(169.9,191.02),(169.9,195.7),(169.5,196.12),(169.2,196.12)]),
- ('t','GPD','F',[(165.75,191.6),(165.75,191.02),(168.7,191.02)]),
+ ('t','GPD','F',[(165.75,191.6),(165.75,191.02),(168.7,191.02),(169.0,191.3)]),   # ends inside R5's pad, not on its edge
  ('t','G','F',[(169.0,193.07),(169.0,194.47)]),
- ('t','G','F',[(169.0,193.77),(168.0,193.77),(168.0,198.2),(172.09,198.2),(172.09,198.9)]),
+ ('t','G','F',[(169.0,193.77),(168.0,193.77),(168.0,198.2),(172.09,198.2),(172.09,198.9)]),   # starts on the R4-R5 link's centre line (a start at 168.8 only touched it at a tangent point)
  ('t','G','F',[(168.95,198.2),(168.95,199.1)]),
  ('t','G','F',[(170.7,198.2),(170.7,197.35)]), ('v','G',(170.7,197.35)),
  ('t','G','3',[(170.7,197.35),(171.55,196.5),(181.2,196.5),(181.4,196.3),(181.4,194.2),(182.0,193.6),(184.6,193.6),(184.6,193.65)]),
@@ -83,21 +83,69 @@ def netname(role,k):
     return {'P':f'/SHL{k}_P','N':f'/SHL{k}_N','V':f'/V_L{k}','D':f'/D_L{k}','G':f'/G_L{k}','FLT':'/PORT_FLT_N','GND':'GND','3V3':'/+3V3_PI',
             'SDA':'/I2C_SDA','SCL':'/I2C_SCL'}.get(role) or f'/{role}_L{k}'
 LAY={'F':PT.F,'2':PT.I2,'3':PT.I3,'B':PT.B}
-def lay(b,k,fps):
-    new=[]; R=PT.refs(k)
+# The port's own analog and gate nets: on these the board must equal the template (MODE=check). The logic exits and the
+# buses (EN, INP, PORT_FLT_N, I2C, 3V3, GND, V_L, D_L) are re-routed between the blocks by finish_route.py and may differ.
+ROLES=('P','N','ISCP','CSP','GPU','GPD','G','BST','GC','IWRN','TMR')
+def prims(b,k,fps,roles=None):
+    """the template's primitives for port k, page mm: ('v', net, (x,y)) and ('t', net, layer, a, c, width)"""
+    out=[]; R=PT.refs(k)
     v8=next(p.GetNetname() for p in fps[R['INA']].Pads() if p.GetNumber()=='8')   # port 2's meter senses D_L, not V_L
     for it in ITEMS:
+        if roles and it[1] not in roles: continue
         if it[1]=='V8':
             if v8!=f'/V_L{k}': continue   # no designed tap: finish_route connects pin 8
-            ni=b.FindNet(v8)
-        else: ni=b.FindNet(netname(it[1],k))
-        assert ni,(it[1],k)
-        if it[0]=='v':
-            v=pcbnew.PCB_VIA(b); v.SetPosition(PT.V(PT.T(k,it[2]))); v.SetWidth(IU(.6)); v.SetDrill(IU(.3)); v.SetNet(ni)
-            v.SetViaType(pcbnew.VIATYPE_THROUGH); v.SetLayerPair(PT.F,PT.B); new.append(v)
+            net=v8
+        else: net=netname(it[1],k)
+        assert b.FindNet(net),(it[1],k)
+        if it[0]=='v': out.append(('v',net,PT.T(k,it[2])))
         else:
             w=it[4] if len(it)>4 else (.25 if it[1]=='GND' else .2)
-            for a,c in zip(it[3],it[3][1:]):
-                t=pcbnew.PCB_TRACK(b); t.SetStart(PT.V(PT.T(k,a))); t.SetEnd(PT.V(PT.T(k,c))); t.SetWidth(IU(w)); t.SetLayer(LAY[it[2]]); t.SetNet(ni); new.append(t)
+            out+=[('t',net,LAY[it[2]],PT.T(k,a),PT.T(k,c),w) for a,c in zip(it[3],it[3][1:])]
+    return out
+def make(b,p):
+    if p[0]=='v':
+        v=pcbnew.PCB_VIA(b); v.SetPosition(PT.V(p[2])); v.SetWidth(IU(.6)); v.SetDrill(IU(.3)); v.SetNet(b.FindNet(p[1]))
+        v.SetViaType(pcbnew.VIATYPE_THROUGH); v.SetLayerPair(PT.F,PT.B); return v
+    t=pcbnew.PCB_TRACK(b); t.SetStart(PT.V(p[3])); t.SetEnd(PT.V(p[4])); t.SetWidth(IU(p[5])); t.SetLayer(p[2]); t.SetNet(b.FindNet(p[1])); return t
+def lay(b,k,fps):
+    new=[make(b,p) for p in prims(b,k,fps)]
     for t in new: t.SetLocked(True); b.Add(t)
     print(f'port {k}: template copper {len(new)} items')
+def key(t):
+    """a board track or via in the form prims() gives, rounded to 1 um; a track's ends in sorted order"""
+    r=lambda p:(round(pcbnew.ToMM(p.x),3),round(pcbnew.ToMM(p.y),3))
+    if t.GetClass()=='PCB_VIA': return ('v',t.GetNetname(),r(t.GetPosition()))
+    return ('t',t.GetNetname(),t.GetLayer())+tuple(sorted((r(t.GetStart()),r(t.GetEnd()))))+(round(pcbnew.ToMM(t.GetWidth()),3),)
+def pkey(p):
+    r=lambda q:(round(q[0],3),round(q[1],3))
+    return ('v',p[1],r(p[2])) if p[0]=='v' else ('t',p[1],p[2])+tuple(sorted((r(p[3]),r(p[4]))))+(round(p[5],3),)
+def diff(b,k,fps):
+    """the board against the template for port k: (template primitives missing from the board, locked copper of the
+    port's own nets inside the block that the template doesn't have)"""
+    want={pkey(p):p for p in prims(b,k,fps,ROLES)}; have={}
+    for t in b.GetTracks(): have.setdefault(key(t),t)
+    missing=[p for q,p in want.items() if q not in have]
+    own={netname(r,k) for r in ROLES}
+    stale=[t for q,t in have.items() if q not in want and t.IsLocked() and t.GetNetname() in own and PT.inblock(k,t)]
+    return missing,stale
+def sync(b,ports,fps,dry=False):
+    """bring the ports' own nets to the template without ripping the routing between the blocks: add what is missing,
+    remove stale locked copper and any router bridge that started from a stale primitive's end (a point the template no
+    longer has). Everything is read from the board before the first Remove (KiCad 10's lookups can fail after it)."""
+    plan=[]; tracks=list(b.GetTracks())
+    for k in ports:
+        missing,stale=diff(b,k,fps)
+        ends={q for p in prims(b,k,fps,ROLES) if p[0]=='t' for q in pkey(p)[3:5]}
+        old={q for t in stale if key(t)[0]=='t' for q in key(t)[3:5]}-ends
+        own={netname(r,k) for r in ROLES}
+        bridges=[t for t in tracks if t.GetClass()!='PCB_VIA' and not t.IsLocked() and t.GetNetname() in own and set(key(t)[3:5])&old]
+        for p in missing: print(f'   port {k} missing:',p[1],[b.GetLayerName(p[2])]+list(p[3:]) if p[0]=='t' else p[2])
+        for t in stale: print(f'   port {k} stale:',key(t)[1],key(t)[3:] if key(t)[0]=='t' else key(t)[2])
+        for t in bridges: print(f'   port {k} router bridge at a stale end:',key(t)[1],key(t)[3:5])
+        plan.append((missing,stale,bridges))
+    if not dry:
+        new=[make(b,p) for missing,_,_ in plan for p in missing]
+        for _,stale,bridges in plan:
+            for t in stale+bridges: b.Remove(t)
+        for t in new: t.SetLocked(True); b.Add(t)
+    return sum(len(m) for m,_,_ in plan),sum(len(s_)+len(br) for _,s_,br in plan)
