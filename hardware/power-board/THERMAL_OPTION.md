@@ -95,21 +95,52 @@ Path from junction to air for one bank FET:
 | Junction to tab (IPB017N10N5LF) | 0.4 | 1 K |
 | Solder + 2 oz pad | 0.1 | 0.3 K |
 | 50 × 0.3 mm vias through 1.6 mm (25 µm plating, about 176 K/W each; JLC fills them with resin and caps them, and the resin adds little, so this keeps the unfilled figure) | 3.5 | 9.5 K |
-| Bottom pad 15 × 15 mm into a 0.5 mm insulating gap pad at 3 W/mK | 0.75 | 2 K |
-| **Junction to heatsink** | **about 4.8** | **about 13 K** |
+| Bare bottom pad into a 0.51 mm insulating gap pad at 3.0 W/mK: 139 mm² at bank A, 144 mm² at bank B (as generated on the board; the 15 × 15 mm first planned would be 0.75 K/W) | 1.2 | 3.3 K |
+| **Junction to heatsink** | **about 5.2** | **about 14 K** |
 
 The heatsink takes all 16 W: about 1.5 K/W with fan air → +24 K. Ambient inside the torso is taken as 40 °C. So
-**Tj ≈ 40 + 24 + 13 ≈ 77 °C**. The board copper still spreads and sheds some heat in parallel, so this is the pessimistic
-side. Without fan air, the heatsink (about 3 K/W natural) gives about 101 °C, still under 125 °C.
+**Tj ≈ 40 + 24 + 14 ≈ 78 °C**. The board copper still spreads and sheds some heat in parallel, so this is the pessimistic
+side. Without fan air, the heatsink (about 3 K/W natural, +48 K) gives about 102 °C, still under 125 °C. A port FET at
+30 A has a 112 mm² pad (1.5 K/W, 5.5 K/W in all, 15 K): about 79 °C with fan air and 103 °C without.
 
 Layout for D (done since stage 1):
 - 50 vias per tab, at the pad edge and under the tab, filled and capped (free at 6 layers) so they don't wick solder on
   the hot plate; the gap pad insulates them on the bottom.
-- Bare bottom copper (solder mask off, OSP) under each FET, 15 × 15 mm per tab.
+- Bare bottom copper (solder mask off, OSP) under each FET: the 15 × 15 mm square cut down to the FET's own drain copper
+  (schematic/tools/heatsink_pads.py): 139 mm² at bank A, 143–145 mm² at bank B, 110–114 mm² at the ports.
 - Two M3 holes for the heatsink, HS1 (0, 286) and HS2 (0, 204), non-plated with a copper keep-out around each; the screw
-  heads sit on solder mask and the heatsink floats (insulated by the pad).
+  heads sit on solder mask and the heatsink floats (insulated by the pad; see "Insulation under the heatsink").
 - No THT pins inside the heatsink footprint: on the 100 × 170 board the Micro-Fit pins are at Y 175 and F2's pins start at
   Y 319 (F2 is pinned there), so the 120 mm heatsink fits as bought at Y 196.5–316.5.
+
+## Insulation under the heatsink
+
+The ten bare pads are on eight nets: SW_D (bank A's two tabs, at the pack's 54 V), MID (bank B's two) and the six port
+drains (each at VBUS behind its 2 mΩ shunt). The rest of the bottom under the heatsink is under solder mask. The gap
+pad is the only insulation between a bare pad and the aluminium.
+
+- **Pad:** Henkel Bergquist GAP PAD TGP 3000 (Gap Pad 3000S30), 0.020 in (0.51 mm), cut in one piece. Its breakdown is rated over 3000 Vac
+  (ASTM D149) against 54 V working and at most about 85 V in a bank trip, and its fiberglass carrier resists
+  puncture and tearing. The requirement for any substitute: a breakdown voltage of at least 1 kV stated on its
+  datasheet at the thickness used, a reinforced carrier, 3 W/mK or better at 0.5 mm. Confirm the figure on Henkel's
+  current datasheet when ordering (the values here are from Bergquist's typical-properties sheet and Henkel's product
+  page).
+- **Before assembly:** deburr the heatsink's face and the two tapped holes, wipe both faces, look at the ten pads for
+  solder spikes or raised via caps. A burr is what punctures a pad.
+- **What one puncture does:** the heatsink takes that pad's potential. Nothing else happens, and nothing shows it.
+  A second puncture under a pad of another net joins the two through the aluminium: SW_D to MID bridges bank A,
+  MID to a port drain bridges bank B, SW_D to a port drain bridges both banks and U1.
+- **Heatsink potential: tie it to GND through a resistor, don't leave it floating.** Recommended: 100 kΩ (0603 is
+  enough: 29 mW with 54 V across it) from a ring lug under one heatsink screw to GND, with a test point on the
+  heatsink side. Reasons: (1) a first puncture then shows as a voltage on that test point (over 1 V with any leak
+  under 5 MΩ from 54 V), so it can be found at bring-up and at service instead of waiting for the second; (2) the
+  heatsink has about 17 pF to each pad (140 mm², 0.5 mm, εr 7), about 170 pF in all, and floating it rides on the FET
+  drains' edges and radiates; the resistor holds it at ground for anything slower than about 20 µs; (3) it drains
+  static. A hard tie to GND is worse: a first puncture under SW_D would then be a dead short on the pack, ahead of both
+  banks, with only the BMS to clear it. The resistor needs one part and one pad that the board does not have yet (a
+  schematic change: a 100 kΩ and a test point on a net HS, and a solder pad or a plated hole for the lug's wire near
+  HS1). Until then the heatsink floats as built; the insulation check at bring-up is a megohmmeter or a 50 V supply
+  through 100 kΩ from the heatsink to GND with the pack connected and the latch off, reading under 1 V.
 
 ## Simulation effects
 
@@ -151,7 +182,7 @@ datasheets checked states the lead inductance (LD/LS). The 35 nH figure assumes 
 | Item | Part | Each | 2 sets |
 | --- | --- | --- | --- |
 | Heatsink | Commodity extruded aluminium, **120 × 69 × 36 mm, 27 fins, 4.6 mm base** (sold by JVFYI and others on Amazon/AliExpress/eBay). Fitted as bought (no cut). Drill 2.5 mm and tap M3 at 82 mm spacing on the centre line (positions below) | $10–14 | $20–28 |
-| Thermal pad | Electrically insulating silicone pad, 0.5 mm, at least 120 × 69 mm per set (e.g. ARCTIC TP-3 200 × 100 × 0.5 mm, cut one 120 × 69 piece per sheet) | $10–12 | $20–24 |
+| Thermal pad | **Henkel Bergquist GAP PAD TGP 3000 (Gap Pad 3000S30), 0.020 in (0.51 mm), 8 × 16 in sheet, part GP3000S30-0.020-02-0816**: 3.0 W/mK, fiberglass-reinforced, dielectric breakdown over 3000 Vac (ASTM D149), UL 94 V-0. Cut one 120 × 69 mm piece per set from the one sheet, in one piece. Stocked by DigiKey, Mouser, RS and Farnell. Not the ARCTIC TP-3 named before: it has no rated breakdown voltage | about $60 a sheet (both sets from one; to confirm in the cart) | about $60 |
 | Screws | 2 × M3 × 12 stainless pan head + 2 × M3 flat washers per set | $0.50 | $1 |
 | **Total** | | **about $21–27 per set** | **about $41–53** |
 

@@ -17,7 +17,7 @@ so 5 + 5 bare boards are ordered and 2 + 2 are built. **All prices are estimates
 | JLC shipping, DHL | about $25–45 |
 | JLC prepaid duty (US DDP: 35 % on boards, 90 % on stencils) | about $51–57 |
 | **Total, 2 sets** | **about $470–515** |
-| Heatsink kit, thermal option D (chosen; [THERMAL_OPTION.md](THERMAL_OPTION.md)): 120 × 69 × 36 mm extruded heatsink (no cut), insulating 0.5 mm pad, 2 × M3, 2 sets | about $41–53 |
+| Heatsink kit, thermal option D (chosen; [THERMAL_OPTION.md](THERMAL_OPTION.md)): 120 × 69 × 36 mm extruded heatsink (no cut), one 8 × 16 in sheet of Bergquist GAP PAD TGP 3000 0.020 in for both sets (about $60, to confirm in the cart; it replaces the unrated pad), 2 × M3, 2 sets | about $80–90 |
 | Conformal coat (Joey chose coating, 2026-11-09): MG Chemicals 419D acrylic, 55 mL brush bottle, enough for both boards; Kapton tape for masking | about $10 |
 | Tools (section 6), one-off | about $110–200 |
 
@@ -201,8 +201,10 @@ Work on the buck board first; it's the practice run. Inspect and test between ev
      wicks fully into the hole.
 7. Cable ties through the tie holes; clean the flux again.
 8. Heatsink (option D): drill 2.5 mm and tap M3 at 7.5 and 89.5 mm from one end of the 120 mm heatsink, on the centre
-   line, deburr. Thermal pad on the clean bottom copper, heatsink on with 2 × M3 × 12 stainless + washers through
-   HS1/HS2, snug and even (about 0.5 N·m).
+   line, deburr the face and both holes (a burr is what punctures the pad). Cut the gap pad (GAP PAD TGP 3000, 0.020 in) to
+   120 × 69 mm in one piece, lay it on the clean bottom copper, heatsink on with 2 × M3 × 12 stainless + washers through
+   HS1/HS2, snug and even (about 0.5 N·m). Then check the insulation: with the pack connected and the latch off, the
+   heatsink reads under 1 V to GND through a 100 kΩ resistor ([THERMAL_OPTION.md](THERMAL_OPTION.md), "Insulation under the heatsink").
 9. Bring-up per [REV_B_PARTS.md](REV_B_PARTS.md) steps 1–15, starting at the current-limited bench supply. Never go
    straight to the pack.
 

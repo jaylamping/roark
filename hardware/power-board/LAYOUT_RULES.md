@@ -75,7 +75,10 @@
   (thin prepreg): BAT 73.4 V, bank A drain 80.2 V.** Against the parts: the FETs, C87–C92, U1 and U7 are 100 V parts;
   the absorber cans (80 V) sit behind D7/D21 and see no more than BAT's 73.8 V; the bus caps (80 V) are downstream of
   the opened bank. U8's VS and CS pins sit on RS1's pads and see the bank A drain's 80–84 V for under a microsecond:
-  its recommended maximum is 80 V, so check the TPS48100's absolute maximum in the datasheet before fab.
+  the TPS4810-Q1 datasheet (SLUSEW1C, June 2026) rates VS, CS+ and CS– at 100 V absolute maximum and recommends VS up
+  to 95 V, so the worst case keeps 10 V to the recommended limit and 15 V to the absolute one. U1's SENSE pin is on the
+  same node: 100 V absolute maximum, with the LM5069's operating range ending at 80 V, so it is 4 V over the operating
+  range for that microsecond and 15 V under the limit. No clamp is needed.
 - **FET copper and the heatsink (option D, [THERMAL_OPTION.md](THERMAL_OPTION.md)):**
   - 2.7 W per FET at 60 A goes down into a finned heatsink under the board (X −33..33, Y 200–305).
   - About 50 × 0.3 mm vias per tab, at the pad edge and under it, filled and capped (free at 6 layers) so they
@@ -96,11 +99,11 @@
     and the six port drains, each at VBUS behind its 2 mΩ shunt), and the heatsink floats. The
     0.5 mm gap pad is then the only insulation between a bare pad and the heatsink: one puncture makes the heatsink
     live at that pad's potential, and a second one under a pad of another net joins the two through the heatsink
-    (SW_D to MID bridges bank B; SW_D to a port drain bridges both banks). So the pad must be a material with a rated
-    dielectric strength (for example a Sil-Pad or Gap Pad class sheet with a breakdown voltage on its datasheet, not
-    an unrated thermal pad), cut in one piece, and the bare pads and the heatsink face inspected for burrs before
-    assembly. With mask left on instead, the mask would be a second layer at a cost of about 0.6 K/W per pad (1.5 K);
-    that is the alternative if no rated pad is bought.
+    (SW_D to MID bridges bank A; SW_D to a port drain bridges both banks). The pad is therefore specified with a
+    rated breakdown voltage: Henkel Bergquist GAP PAD TGP 3000, 0.020 in, over 3000 Vac, fiberglass-reinforced, cut in
+    one piece ([THERMAL_OPTION.md](THERMAL_OPTION.md), "Insulation under the heatsink", with the thermal figures for
+    the pads as built: Tj about 78 °C with fan air, 102 °C without). The heatsink floats on this board; tying it to
+    GND through 100 kΩ with a test point is recommended there and needs a schematic change.
   - Heatsink holes HS1 (0, 286) and HS2 (0, 204), M3, no copper within 2 mm; the MID pour flows around HS1.
   - Keep all four bank FETs inside the upper fan footprint (|X| ≤ 20, Y 264–304).
   - Check with a coupon or quick FEM; a clip-on heatsink per bank is the fallback.
@@ -317,7 +320,7 @@ Rule exceptions and open items on this board, each tested or bounded by a check:
 | 5 | U1's UVLO pin (E-stop) is 0.2 mm from its SH_P pin: inside U1's courtyard, F.Cu pads, tracks and vias keep 0.2 mm instead of 1.5 mm. No clearance under 0.2 mm is left anywhere (the fine-pitch rules are removed, pads at TI's land-pattern widths) | .kicad_dru `estop_at_U1` | package-set; in force | DRC, route_checks 1/2 |
 | 6 | Inner GND planes and fills at 0.3 mm zone clearance (outer fills 0.6 mm); the VBUS pours on In2/In3 at 0.25 mm | In1-In4 | accepted in the project thread, 2026-11-10 | route_checks 6 |
 | 7 | Signal and GND vias pass through the L6 VBUS stem, 18 of them in the band X 130-160, Y 180-190 | under the meter blocks and the port blocks | band rule: no new ones | pour_width.py (18 at most; the stem's rise) |
-| 8 | Masked copper (the VBUS stem, the vias through it, GND fill) inside the heatsink zone on L6; bare copper only at the ten FET pads, under an insulating pad that is the only insulation there | X -33..33, Y 200-305 | the rule as the board meets it: Joey to confirm, and to choose a pad with a rated breakdown voltage (FET copper, above) | heatsink_pads.py MODE=check, DRC's solder-mask bridge check |
+| 8 | Masked copper (the VBUS stem, the vias through it, GND fill) inside the heatsink zone on L6; bare copper only at the ten FET pads, under an insulating pad that is the only insulation there | X -33..33, Y 200-305 | the rule as the board meets it; the pad is specified (GAP PAD TGP 3000, 0.020 in, over 3000 Vac). Open: the heatsink floats; a 100 kΩ tie to GND with a test point is recommended and needs a schematic change | heatsink_pads.py MODE=check, DRC's solder-mask bridge check |
 | 9 | SH9 Kelvin pair 9 % paired | RS9 to U7 | open: needs RS9 or U7 moved | route_checks 3 (floor 9 %) |
 | 10 | VBUS stem 25.3 °C at its worst cut (target 20 °C, about 25 accepted); BAT (27 mm, L1 only) and the port legs just under their 27.5 / 10.5 mm targets; the outer GND return not measured | Board, above | the stem: done as far as the copper goes; the rest open before fab | pour_width.py (stem 26 °C, columns and band 25 °C) |
 | 11 | The latch supply (BAT_F, BAT_R, BAT_CTL) within 1.5 mm of leakage-sensitive E-stop nets (L_B, MID_B, RUN_A, RUN_B): 135 item pairs | latch block, X 108-118, Y 136-165 | open: needs the latch block re-placed as a designed block ("Leakage from the latch supply") | route_checks 10 (135 at most) |
