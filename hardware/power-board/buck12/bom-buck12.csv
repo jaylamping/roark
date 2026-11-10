@@ -11,7 +11,7 @@
 "C19","1nF C0G","Capacitor_SMD:C_0603_1608Metric","1",""
 "C20","4.7nF C0G","Capacitor_SMD:C_0603_1608Metric","1",""
 "C21","10pF C0G","Capacitor_SMD:C_0603_1608Metric","1",""
-"C24","330uF 25V EEH-ZA1E331P","Capacitor_SMD:CP_Elec_10x10.5","1",""
+"C24","330uF 25V EEH-ZA1E331V","Capacitor_SMD:CP_Elec_10x10.5","1",""
 "C25,C28","3.3nF C0G","Capacitor_SMD:C_0603_1608Metric","2",""
 "D1","SK810L-TP","Diode_SMD:D_SMC","1",""
 "D2","BAT46W","Diode_SMD:D_SOD-123","1",""

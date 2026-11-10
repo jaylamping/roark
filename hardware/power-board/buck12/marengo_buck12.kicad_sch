@@ -15346,7 +15346,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "330uF 25V EEH-ZA1E331P"
+		(property "Value" "330uF 25V EEH-ZA1E331V"
 			(at 327.66 351.79 0)
 			(effects
 				(font

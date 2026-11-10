@@ -62,7 +62,7 @@ nic(s,LIBN+':TPS259541DSG','U5','TPS259541DSGR',(40,460),EF,{'1':'SPON_DV','2':'
 nic(s,'Connector_Generic:Conn_01x02',s.nref('J'),'SPARE_ON, always on',(90,460),MF2,{'1':'SPARE_ON','2':'GND'})
 g=Grid(s,240,350,17,30,400)
 for o,f in (('+12V_JET','5A 32V 0466005'),('+12V_PI','5A 32V 0466005'),('+12V_FAN','2A 32V 0466002')): g.two('Device:Fuse','F',f,'+12V',o,'Fuse:Fuse_1206_3216Metric')
-g.C('100nF','+3V3_PI','GND',C603,k=2); g.CP('330uF 25V EEH-ZA1E331P','+12V','GND','Capacitor_SMD:CP_Elec_10x10.5'); g.Z('SMBJ15A','+12V','GND','Diode_SMD:D_SMB')
+g.C('100nF','+3V3_PI','GND',C603,k=2); g.CP('330uF 25V EEH-ZA1E331V','+12V','GND','Capacitor_SMD:CP_Elec_10x10.5'); g.Z('SMBJ15A','+12V','GND','Diode_SMD:D_SMB')
 g.nl(); g.R('68k','SP_EN','GND',R603); g.R('499R 1%','SP_ILM','GND',R603); g.C('3.3nF C0G','SP_DV','GND',C603); g.C('100nF 25V','+12V','GND',C603); g.C('22uF 25V','SP_SW1','GND',C1210); g.D('B340A-13-F','SP_SW1','GND','Diode_SMD:D_SMA')
 g.nl(); g.R('100k','+12V','SPON_EN',R603); g.R('33k','SPON_EN','GND',R603); g.R('1.02k 1%','SPON_ILM','GND',R603); g.C('3.3nF C0G','SPON_DV','GND',C603); g.C('100nF 25V','+12V','GND',C603); g.D('B340A-13-F','SPARE_ON','GND','Diode_SMD:D_SMA')
 g.F('+12V'); g.F('+3V3_PI'); g.F('SP_EN')
