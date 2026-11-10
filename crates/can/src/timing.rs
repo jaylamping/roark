@@ -51,12 +51,12 @@ pub struct Timing {
     /// the next drain reads its reply. A quarter period by default: provisional, to be measured on the real adapter
     /// (PLAN step 8).
     pub slow_reply_ns: u64,
-    /// How many ticks a slow request may wait queued: one still unsent this many ticks after the tick it was submitted
-    /// in expires at the start of that tick's slack, so a run of held ticks or of slacks opened too late can't keep it
-    /// for good (rust.md section 4: a limit on everything). The ticks covering 100 ms by default, rounded up (25 at
-    /// 250 Hz): at every rate whose defaults [`Self::check`] passes (86 Hz and up) that is more than
-    /// [`SLOW_SLOTS`](crate::SLOW_SLOTS) ticks, so a full queue, sent one a tick, drains before its last request
-    /// expires.
+    /// How many slacks a slow request may go in, N: one submitted in tick T may be sent in T's slack or those of the
+    /// next N - 1 ticks, and one still unsent expires as tick T + N's slack opens, so a run of held ticks or of slacks
+    /// opened too late can't keep it for good (rust.md section 4: a limit on everything).
+    /// The ticks covering 100 ms by default, rounded up (25 at 250 Hz): at every rate whose defaults [`Self::check`]
+    /// passes (86 Hz and up) that is more than [`SLOW_SLOTS`](crate::SLOW_SLOTS) ticks, so a full queue, sent one a
+    /// tick, drains before its last request expires.
     pub slow_queue_ticks: u64,
 }
 
@@ -104,7 +104,7 @@ impl Timing {
     ///   ([`TimingError::SilenceMisses`]), so a silent drive's limb is stopped before the drives give up;
     /// - a slow reply window of at least one nanosecond that, from the collect deadline, ends before the next tick
     ///   starts ([`TimingError::SlowReply`]);
-    /// - at least one tick a slow request may wait queued ([`TimingError::NoSlowQueueTicks`]).
+    /// - a slow queue limit of at least one tick ([`TimingError::NoSlowQueueTicks`]).
     ///
     /// # Errors
     /// The first rule it breaks.
@@ -353,7 +353,9 @@ pub enum TimingError {
         /// The period.
         period_ns: u64,
     },
-    /// `slow_queue_ticks` is zero: every slow request would expire before a slack could send it.
+    /// `slow_queue_ticks` is zero. A request submitted in its tick's slack, after it opened, as the shell submits them,
+    /// would still go in that slack and expire at the next, as with one; but one submitted earlier in its tick, before
+    /// that tick's slack opened, would expire there unsent.
     #[error("slow_queue_ticks must be at least 1")]
     NoSlowQueueTicks,
 }
