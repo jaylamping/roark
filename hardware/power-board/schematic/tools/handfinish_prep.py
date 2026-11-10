@@ -38,8 +38,9 @@ NL=chr(10)
 LEAKHDR=("# The latch supply chain keeps 1.5 mm to the leakage-sensitive E-stop nets (schematic/tools/domains.py LATCH_SUPPLY,"+NL+
          "# LEAK_SENSITIVE; LAYOUT_RULES.md, Leakage from the latch supply). Written by schematic/tools/handfinish_prep.py."+NL)
 s=s.replace(LEAKHDR,'')
-k=s.find('(rule latch_supply_leak')
-if k>=0: s=s[:k]+s[s.index('))'+NL,k)+3:]
+# remove the rule as written before: it ends at its condition's closing '"))' (its constraint line also ends in '))', so
+# cutting at the first '))' would leave the condition behind and corrupt the file on a second run)
+s=re.sub(r'\(rule latch_supply_leak\r?\n.*?"\)\)\r?\n','',s,flags=re.S)
 k=s.find('# U1 (LM5069)'); k=len(s) if k<0 else k
 if k==len(s) and not s.endswith(NL): s+=NL
 s=s[:k]+LEAKHDR+domains.leak_rule()+s[k:]
