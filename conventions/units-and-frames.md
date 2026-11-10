@@ -100,8 +100,8 @@ The values and the loader's checks are in [PLAN item 1](../PLAN.md#1-the-skeleto
   times and spans as `u64` nanoseconds on the session's monotonic `Epoch`, every name ending `_ns`, the same clock the
   recorder's `mono_ns` uses. The bus thread converts its `Instant`s once, at that seam. `robstride::CanTimeout::nanos`
   returns the drives' timeout as an `Option<u64>` of nanoseconds (`None` when off), and `can` derives
-  `DRIVE_TIMEOUT_NS` from `CanTimeout::RUNTIME` with it at compile time; a compile-time constant needs no measurement of
-  its own, since it adds no arithmetic to the loop. **Why:** the tick runs every period on every bus, and
+  `DRIVE_TIMEOUT_NS` from `CanTimeout::RUNTIME` with it at compile time; that constant needs no measurement of its own,
+  since it adds no arithmetic to the loop. **Why:** the tick runs every period on every bus, and
   `Instant`/`Duration` arithmetic (seconds and nanoseconds normalised on every add and compare) measured 32 % slower:
   57.3 against 43.5 ns for a two-drive tick on an M-series Mac, 2026-11-08. Nothing else gets the exception without a
   measurement of its own.
