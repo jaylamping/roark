@@ -142,7 +142,8 @@ pad is the only insulation between a bare pad and the aluminium.
   edges and radiate; the resistor holds it at ground for anything slower than about 20 µs; (3) it drains static. A
   hard tie to GND would be worse: a first puncture under SW_D would then be a dead short on the pack, ahead of both
   banks, with only the BMS to clear it.
-- **Check at bring-up and at service:** with the pack connected and the latch off, TP17 reads under 1 V to GND. With
+- **Check at bring-up and at service:** at bring-up from the current-limited bench supply at 54 V, never the pack
+  (REV_B_PARTS bring-up step 16), latch off, TP17 reads under 1 V to GND; at service the same reading on the pack. With
   the lug wire lifted, a megohmmeter or a 50 V supply through 100 kΩ from the heatsink to each bare-pad net shows no
   conduction.
 

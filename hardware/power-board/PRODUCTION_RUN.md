@@ -204,10 +204,12 @@ Work on the buck board first; it's the practice run. Inspect and test between ev
    line, deburr the face and both holes (a burr is what punctures the pad). Cut the gap pad (GAP PAD TGP 3000, 0.020 in) to
    120 × 69 mm in one piece, lay it on the clean bottom copper, heatsink on with 2 × M3 × 12 stainless + washers through
    HS1/HS2, snug and even (about 0.5 N·m), with an M3 ring terminal (Molex 19070-0009) under one screw head and about 60 mm of 22 AWG
-   wire crimped to it and soldered into J27 (the heatsink's 100 kΩ tie to GND). Then check the insulation: with the pack
-   connected and the latch off, TP17 reads under 1 V to GND ([THERMAL_OPTION.md](THERMAL_OPTION.md), "Insulation under the heatsink").
-9. Bring-up per [REV_B_PARTS.md](REV_B_PARTS.md) steps 1–15, starting at the current-limited bench supply. Never go
-   straight to the pack.
+   wire crimped to it and soldered into J27 (the heatsink's 100 kΩ tie to GND). The board is not powered in this step:
+   the insulation check (TP17) is bring-up step 16, from the current-limited bench supply, never from the pack
+   ([THERMAL_OPTION.md](THERMAL_OPTION.md), "Insulation under the heatsink").
+9. Bring-up per [REV_B_PARTS.md](REV_B_PARTS.md) steps 1–16, starting at the current-limited bench supply with steps 15
+   (UVLO leakage) and 16 (heatsink insulation, TP17 at 54 V). The pack connects only after both pass. Never go straight
+   to the pack.
 
 Hot air is for rework only (removing or reseating a part). Joey's low-power gun can't reflow the 2 oz board by itself.
 10. **Conformal coat, after bring-up passes** (Joey's decision, 2026-11-09; the board is laid out for it: IPC-2221B
