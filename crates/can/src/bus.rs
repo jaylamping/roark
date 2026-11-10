@@ -123,8 +123,8 @@ pub struct BusExit {
     /// held, or found in its ring, its one result.
     pub slow_results_dropped: u64,
     /// The first socket or clock error the thread met, if any. Most end the thread; one after the snapshot that
-    /// decided its exit ([`BusLinks::exit`]), in that tick's slack or in the sleep or drain of the tick it returns at,
-    /// is reported too, though it returns there all the same. No snapshot is made after it, so `last` is then the
+    /// decided its exit ([`BusLinks::exit`]), in the sleep or drain of the tick it returns at, is reported too, though
+    /// it returns there all the same. No snapshot is made after it, so `last` is then the
     /// snapshot with every limb stopped that decided the exit, made before the error and healthy as far as it knew.
     pub error: Option<io::Error>,
 }

@@ -1,18 +1,8 @@
-//! Slow requests: parameter reads, allowlisted writes and get-ID, for preflight and the once-a-second reads. They share
-//! the bus with the tick's commands, so they go one at a time, in the slack after the collect deadline, and only when
-//! the reply can be back before the next tick's send: the next drain reads it, so it never lands among the tick's
-//! command replies.
-//!
-//! Each request gets exactly one result: its reply, timed out, not sent, or refused, including when the bus thread ends
-//! with it pending. The bus layer never retries one. A write is answered by an ordinary status with no register in it,
-//! so its result says only that the drive answered. Writes go only to drives of an idle limb with no command of the
-//! tick still unanswered, where that status is least likely to be mixed up with a command's reply; a late status can
-//! still be, either way (crates/can/README.md, Slow requests), so a read-back is what proves the value. A request for
-//! a drive whose limb is stopping, stopped or due to stop (the veto's own checks on any drive of the limb: a fault, a
-//! drop out of Run, too many misses), while control is silent, or on a failed bus is refused, and one already queued is
-//! cancelled before it goes, so slow traffic never keeps a drive alive (`canTimeout` counts from any frame). A held tick
-//! (a late wake, a stall or a backlog) sends none: its reads can't be trusted and its slack isn't known, so a queued
-//! request waits for a trusted tick.
+//! Slow requests: parameter reads, allowlisted writes and get-ID, for preflight and the once-a-second reads. Each waits
+//! in one of [`SLOW_SLOTS`], is cancelled or expired as a slack opens ([`BusTick::open_slack`]), goes alone in the slack
+//! after the collect deadline ([`BusTick::slow_send`]), is answered or timed out by the next tick's start, and ends in
+//! one [`SlowResult`]. Which requests are refused, what answers each kind and what a write's answer proves are in
+//! crates/can/README.md, Slow requests; the rule is conventions/can.md section 2.
 
 use robstride::{EchoKind, Frame, Param, ParamOutcome, Uid, Write, encode};
 

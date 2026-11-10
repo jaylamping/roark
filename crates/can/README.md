@@ -100,9 +100,9 @@ layer's.
 
 **Slow requests** (`submit`) are parameter reads, the codec's allowlisted writes and get-ID, for preflight and the
 once-a-second reads; they never ride in a batch. A bus holds `SLOW_SLOTS` of them and has at most one in flight, sent
-after the collect deadline and only while its reply fits before the next tick starts (`Timing::slow_reply_ns`, a
-quarter period by default, provisional until the real adapter is measured), so the next drain reads the reply and it
-never lands among the tick's command replies. A held tick (a late wake, a stall or a backlog, above) sends none: its
+after the collect deadline and only while its reply fits before the next tick starts (`Timing::slow_reply_ns`, a quarter
+period by default, provisional until the real adapter is measured), so a reply on time is read in the next tick's drain,
+before that tick's sends (a late one is below). A held tick (a late wake, a stall or a backlog, above) sends none: its
 reads can't be trusted and its slack isn't known, so a queued request waits for a trusted tick, but not for good: one
 still queued `Timing::slow_queue_ticks` ticks after the tick it was submitted in expires as that tick's slack opens
 (`NotSent(Expired)`, counted in `slow_expired`). A read is answered by its drive's reply naming its register, get-ID by
