@@ -488,15 +488,14 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             break;
         }
         // The slack after the collect deadline: control's slow requests, one exchange at a time.
-        if let Err(e) = slow(
+        slow(
             socket,
             &clock,
             &mut tick,
             &mut links.requests,
             &mut links.results,
-        ) {
-            lose(&mut tick, &mut outcome, e);
-        }
+            &mut outcome,
+        );
         leaving = exit_wait.done(&snap, taken, exiting, links.snapshots.is_abandoned());
         n += 1;
     }
@@ -627,14 +626,16 @@ fn take(clock: &Clock, tick: &mut BusTick, batch: &mut TickBatch, received: sys:
 
 /// Open the slack (cancelling and expiring queued requests), hand back the results the tick holds (freeing their
 /// slots), queue the slow requests that fit, send one if the tick allows, and hand every new result back. A full
-/// result ring drops the result and counts it; the requester times out.
+/// result ring drops the result and counts it; the requester times out. A failed write loses the bus, as in the
+/// tick's sends.
 fn slow(
     socket: &CanSocket,
     clock: &Clock,
     tick: &mut BusTick,
     requests: &mut Consumer<SlowRequest>,
     results: &mut Producer<SlowResult>,
-) -> io::Result<()> {
+    outcome: &mut BusExit,
+) {
     tick.open_slack();
     hand_back(tick, results);
     // Bounded by the ring: a refused request takes no slot, so room alone wouldn't end the loop.
@@ -649,16 +650,19 @@ fn slow(
             refuse(tick, results, request, refusal);
         }
     }
-    let mut failed = Ok(());
-    if let Some(frame) = tick.slow_send(clock.ns(mono_now())) {
-        let outcome = write(socket, &frame).unwrap_or_else(|e| {
-            failed = Err(e);
-            SendOutcome::Failed
-        });
-        tick.slow_sent(outcome, clock.ns(mono_now()));
+    // Read once the slack's own work is done, so whether the reply still fits is judged as near the write as can be.
+    let now_ns = clock.ns(mono_now());
+    if let Some(frame) = tick.slow_send(now_ns) {
+        let result = match write(socket, &frame) {
+            Ok(result) => result,
+            Err(e) => {
+                lose(tick, outcome, e);
+                SendOutcome::Failed
+            }
+        };
+        tick.slow_sent(result, clock.ns(mono_now()));
     }
     hand_back(tick, results);
-    failed
 }
 
 /// Every result the tick holds, onto control's ring; a full ring drops the result and counts it.
