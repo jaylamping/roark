@@ -175,4 +175,6 @@
 "buck","U1","LM5146RGYR","Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias","1","2","0","2"
 "buck","U2,U4","INA237AIDGSR","TSSOP-10_3x3mm_P0.5mm","2","4","0","4"
 "buck","U3,U5","TPS259541DSGR","Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm","2","4","0","4"
+"assembly","J27 lug","Molex 19070-0009 InsulKrimp ring terminal, M3 to M3.5 stud, 18-22 AWG: under one heatsink screw head, on the lead from J27","—","1","2","2","4"
+"assembly","J27 lead","22 AWG stranded hook-up wire, 300 V PVC (Alpha Wire 3051 or equal), 60 mm per board: J27 to the ring terminal","—","1","2","0","1 spool"
 "consumable","—","MG Chemicals 419D-55ML acrylic conformal coat (brush bottle, about $10), applied after bring-up; Kapton tape to mask","—","1","1","0","1"

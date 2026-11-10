@@ -88,7 +88,7 @@ Both boards are ordered as **two separate designs in one JLC order**, not one pa
 
 ## 4. Kit list
 
-[kit-2sets.csv](kit-2sets.csv) lists every fitted line for 2 main + 2 buck boards: 177 lines and 870 parts,
+[kit-2sets.csv](kit-2sets.csv) lists every fitted line for 2 main + 2 buck boards: 179 lines (two of them the heatsink lug and its lead) and 874 parts,
 counting spares. Spares are about 15 % (minimum 2) on cheap passives, small diodes, small transistors and 1206 fuses only;
 expensive parts get none. The off-board parts (BMS, Class T fuse, brake resistors, thermostats, harness) are in the pack
 plan and REVB5_CHANGES.
@@ -203,8 +203,8 @@ Work on the buck board first; it's the practice run. Inspect and test between ev
 8. Heatsink (option D): drill 2.5 mm and tap M3 at 7.5 and 89.5 mm from one end of the 120 mm heatsink, on the centre
    line, deburr the face and both holes (a burr is what punctures the pad). Cut the gap pad (GAP PAD TGP 3000, 0.020 in) to
    120 × 69 mm in one piece, lay it on the clean bottom copper, heatsink on with 2 × M3 × 12 stainless + washers through
-   HS1/HS2, snug and even (about 0.5 N·m), with an M3 ring lug under one screw head and about 60 mm of 24 AWG wire
-   from the lug soldered into J27 (the heatsink's 100 kΩ tie to GND). Then check the insulation: with the pack
+   HS1/HS2, snug and even (about 0.5 N·m), with an M3 ring terminal (Molex 19070-0009) under one screw head and about 60 mm of 22 AWG
+   wire crimped to it and soldered into J27 (the heatsink's 100 kΩ tie to GND). Then check the insulation: with the pack
    connected and the latch off, TP17 reads under 1 V to GND ([THERMAL_OPTION.md](THERMAL_OPTION.md), "Insulation under the heatsink").
 9. Bring-up per [REV_B_PARTS.md](REV_B_PARTS.md) steps 1–15, starting at the current-limited bench supply. Never go
    straight to the pack.

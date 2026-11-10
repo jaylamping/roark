@@ -133,7 +133,8 @@ pad is the only insulation between a bare pad and the aluminium.
   MID to a port drain bridges bank B, SW_D to a port drain bridges both banks and U1.
 - **Heatsink potential: tied to GND through 100 kΩ, with a test point (on the board since 2026-11-10).** R139
   (100 kΩ, 1206, 200 V working voltage; 54 V across it is 29 mW against 250 mW) joins the net HSINK to GND; TP17 is
-  the test point; J27 is a solder pad (0.9 mm hole) for a wire to a ring lug under one heatsink screw. All three sit
+  the test point; J27 is a solder pad (0.9 mm hole) for a 22 AWG wire to a ring terminal (Molex 19070-0009, M3) under one heatsink
+  screw. All three sit
   just south of the heatsink's edge (page Y 246), because J27 is a through hole and no through-hole joint may sit
   under the heatsink. Reasons: (1) a first puncture now shows as a voltage on TP17 (over 1 V with any leak under 5 MΩ
   from 54 V), so it can be found at bring-up and at service instead of waiting for the second; (2) the heatsink has
