@@ -99,6 +99,11 @@ snapshot in `BusExit::last`; the next tick's drain is still recorded, so the sto
 A socket or clock error ends the thread as soon as a snapshot with every limb stopped is made, without waiting for
 control.
 
+Open: a Reset read in order after a Disable puts its drive offline, and a later Disable leaves it there, which assumes
+a Reset read after the Disable was sent after it; a drive wrongly offline is not counted silent until its next Enable,
+while motion to it still stops its limb on stale feedback (`BusTick::drained` has the detail). Checked on the real
+adapter at PLAN step 8.
+
 Not yet: the `/can/<bus>/tx_intent` record of every frame handed to the socket or not sent, with the reason
 (logging.md section 8.2), and the per-run tick duration and jitter (rust.md section 6). Both come with the runtime,
 which owns the recording's channels and the metrics, before step 8 measures latency and jitter on the real adapter.

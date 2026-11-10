@@ -107,7 +107,8 @@ impl DriveState {
 /// Where a drive is in this host's Enable and Disable: what its silence means.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Phase {
-    /// Never enabled since start or the limb's last clear, or reported Reset after this host's Disable.
+    /// Never enabled since start or the limb's last clear, or reported Reset after this host's Disable. A later Disable
+    /// leaves it here; what that assumes of the read order is at [`BusTick::drained`].
     Off,
     /// A Disable was taken at `since_ns` while the drive was enabling or enabled, and no Reset has been read since. Its
     /// misses count again once [`Timing::stop_confirm_ns`] has passed (PLAN.md item 2 Silence windows).
@@ -301,6 +302,14 @@ impl BusTick {
     /// The frames of the drain itself are ordered unless an earlier drain left the socket unemptied: the socket is a
     /// queue, and the last drain emptied it before the last tick's sends, so whatever this drain reads came after them.
     /// Only what a drain leaves queued may predate the next sends, which is what `Unemptied` marks.
+    ///
+    /// That order says when a frame was read, not when the drive sent it, and the `Off` rule rests on it: a Reset read
+    /// in order after a Disable puts the drive in `Off`, where a later Disable leaves it, and nothing sent to it counts
+    /// as missed until it is enabled again. A drive wrongly `Off` (a Reset it sent before a Disable that was lost, read
+    /// after that Disable; or a drive another sender runs) is then never counted silent until its next Enable. Motion
+    /// stays covered: an MIT frame to a drive whose fresh status is older than the feedback limit stops its limb, and
+    /// the drive's own timeout applies. Whether a real adapter can deliver a Reset that late is checked on it (PLAN
+    /// step 8).
     pub fn drained(&mut self, drain: Drain) {
         match drain {
             Drain::Emptied => self.unordered = false,
