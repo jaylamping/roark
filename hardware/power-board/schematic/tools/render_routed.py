@@ -29,6 +29,10 @@ for i,name in enumerate(NAMES):
     ax.add_collection(LineCollection([(t['a'],t['b']) for t in tr],linewidths=[t['w']*PTMM for t in tr],colors='#2e7d32',zorder=4,capstyle='round'))
     ax.add_collection(PatchCollection([Circle(v['c'],v['r']*.6) for v in its if v['k']=='via'],facecolor='#4a3030',zorder=5))
     ax.add_collection(LineCollection(D['open'],colors='magenta',linewidths=1,zorder=6))
+    mk=[Polygon(p,closed=True) for it in its if it['k']=='mask' for p in it['p'] if len(p)>2]
+    if mk:
+        ax.add_collection(PatchCollection(mk,facecolor='none',edgecolor='black',linewidths=1.6,linestyles='--',zorder=7))
+        f.text(.02,.004,'dashed black: bare heatsink pads (solder-mask openings on B.Mask)',fontsize=11)
     f.savefig(os.path.join(OUT,f'routed_{name.replace(".","_")}.png')); plt.close(f)
 # critical nets
 KEL=re.compile(r'/SH\w*_[PN]$'); GATE=re.compile(r'/(G\d|G_L\d|GC_L\d|GATE|UVLO|BRK_GATE)')

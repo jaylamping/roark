@@ -7,8 +7,8 @@ tools/verify_selftest.sh, which then expects each check to fail on it. Nothing h
             7    G2's via in the MID mirror moved 0.3 mm (the count per net stays the same);
             8    three vias on /PRE_G, and GATE_A's via at TP11 moved 0.35 mm;
             9    a stale guard area ESTOP_GUARD_U8_1 at U8's old position.
-  copper  breaks the copper checks: port 2's gate stub pulled back to a tangent touch (joint_check, port_template
-          MODE=check); U8's FLT_A jog moved (u8_block MODE=check); a via of another net in the VBUS band and a 12 mm
+  copper  breaks the copper checks: on port 2, R4's branch of the gate node pulled back to a tangent touch with the
+          gate line (joint_check, port_template MODE=check); U8's FLT_A jog moved (u8_block MODE=check); a via of another net in the VBUS band and a 12 mm
           no-fill slot across the VBUS stem (pour_width).
   dangle  a dangling 2 mm /VCTL stub in free board area: a DRC type (track_dangling) outside verify_board.sh's allow-list."""
 import os,sys
@@ -54,7 +54,9 @@ if kind=='rules':
     for p in ((166.7,149.8),(171.3,149.8),(171.3,155.3),(166.7,155.3)): o.Append(V(p))
     add.append(k)
 elif kind=='copper':
-    find_track('/G_L2',CU[0],(131.0,196.73),(132.0,196.73)).SetStart(V((131.2,196.73))) if near(find_track('/G_L2',CU[0],(131.0,196.73),(132.0,196.73)).GetStart(),(131.0,196.73)) else find_track('/G_L2',CU[0],(131.0,196.73),(132.0,196.73)).SetEnd(V((131.2,196.73)))
+    t=find_track('/G_L2',CU[0],(130.1,195.7),(130.1,192.3))   # R4's branch of the gate node: end it 0.2 mm short of the gate line
+    if near(t.GetStart(),(130.1,192.3)): t.SetStart(V((130.1,192.5)))
+    else: t.SetEnd(V((130.1,192.5)))
     t=find_track('/FLT_A',CU[0],(171.32,146.35),(170.9,146.35)); t.SetStart(V((171.32,146.4))); t.SetEnd(V((170.9,146.4)))
     via('/I2C_SDA',(145.0,185.0))
     k=pcbnew.ZONE(b); k.SetIsRuleArea(True); k.SetDoNotAllowZoneFills(True); k.SetDoNotAllowTracks(False); k.SetDoNotAllowVias(False)

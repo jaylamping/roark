@@ -69,6 +69,14 @@ Budget:
 Main-board side, unchanged:
 - **F2** is a 20 A MINI blade fuse (0997020.WXN) in a Keystone 3568 holder at the board end.
 - **U7** limits at 9.7–12.3 A and soft-starts the converter input.
+- **Compensation with the 330 µF at the output (calculated 2026-11-10, not yet measured):** TI's type III network
+  (21k / 1.5k, 100 Ω + 1 nF, 8.06k + 4.7 nF, 10 pF) with 6.8 µH, taking the modulator gain as 15 (ramp = VIN / 15) and
+  an ideal error amplifier. With the five 22 µF alone the loop crosses at 28 kHz (nominal 110 µF) to 46 kHz (65 µF at
+  12 V bias) with 69–76° of phase margin. With the 330 µF hybrid behind the 2 mΩ shunt the crossover drops to
+  10–12 kHz and the margin is 49° at 10 mΩ ESR, 62° at 20 mΩ, 74° at 30 mΩ; cold (60 mΩ, −20 % capacitance) it is
+  20 kHz and over 90°. So the loop stays stable but is about three times slower than TI's design; a load step sags
+  further before the loop answers, with the 330 µF itself holding the rail. No part change is needed for stability.
+  Measure the loop at the 0R injection point before loading, as planned.
 - **Pigtail:** Molex Micro-Fit 3.0 43025-1200 plugs at both ends, 18 AWG, twisted in pairs, about 150 mm (300 mm at most for the I2C). Pin n faces pin n+6 across the rows (split S1 pinout, 2026-11-09):
 
 | J24 pin | Net | Faces |

@@ -49,7 +49,7 @@ right now anyway. Where both have stock, buy the ICs from DigiKey (no duty, genu
 
 | Board | Status | Size | Stackup | Parts per board |
 | --- | --- | --- | --- | --- |
-| **Main power board** ([marengo_pdu_revb](schematic)) | schematic done, ERC clean; placed, routing not finished ([README](README.md)) | 100 × 170 mm | 6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, OSP, thermal vias filled and capped | [bom-rev-B.csv](bom-rev-B.csv) |
+| **Main power board** ([marengo_pdu_revb](schematic)) | schematic done, ERC clean; routed, 0 open, verify_board.sh passes; open items before fab in [LAYOUT_RULES.md](LAYOUT_RULES.md), "Exceptions and hand-laid copper" | 100 × 170 mm | 6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, OSP, **every via epoxy-filled and capped** (section 8, step 3) | [bom-rev-B.csv](bom-rev-B.csv) |
 | **12 V buck and 12 V distribution** ([buck12](buck12), LM5146, 12 A; split S1 2026-11-09) | schematic done, ERC clean, check_buck.py clean; layout not started | about 60 × 85 mm | 4 layers, 1.6 mm, 1 oz (to quote) | 53 lines, 73 parts |
 
 Not in the run:
@@ -137,7 +137,7 @@ Joey has a good iron with many tips and a low-power hot-air gun. To buy:
 
 | Tool | Pick | About |
 | --- | --- | --- |
-| **Hot plate**, at least 100 × 170 mm of usable area, enough power for 4-layer 2 oz | UYUE 946C, 200 × 200 mm, 800 W, set point to about 350 °C ([listing](https://www.fruugo.us/electric-hot-plate-soldering-preheating-station-946c-lcd-digital-display-for-pcb-smd/p-405311245); often cheaper on Amazon or AliExpress, check the 110 V version) | $80–170 |
+| **Hot plate**, at least 100 × 170 mm of usable area, enough power for a 6-layer board with 2 oz outer copper | UYUE 946C, 200 × 200 mm, 800 W, set point to about 350 °C ([listing](https://www.fruugo.us/electric-hot-plate-soldering-preheating-station-946c-lcd-digital-display-for-pcb-smd/p-405311245); often cheaper on Amazon or AliExpress, check the 110 V version) | $80–170 |
 | **Solder paste** | **Sn63/Pb37, no-clean, Type 4** (e.g. Chip Quik SMD291AX in a jar, or an equivalent from LCSC). Melts at 183 °C, peaks at 210–225 °C | $15–30 |
 | Gel flux | no-clean tacky gel flux (e.g. Amtech NC-559 class) | $10 |
 | Tweezers | fine, straight and curved, ESD-safe | $10 |
@@ -223,8 +223,22 @@ Hot air is for rework only (removing or reseating a part). Joey's low-power gun 
    **Joey prefers one source for all board parts:** re-check DigiKey stock for the 6 ICs out of stock on 2026-11-07
    (INA237, LM5069-1/-2, TPS7A4001, TPS3431S, LM5146). If they're back, order everything from DigiKey (route A) and
    accept the about $80–95 premium; otherwise DigiKey for everything it stocks plus one LCSC order for the rest.
-3. JLC quote for both designs, frameless stencils: main 6 layers, 2 oz outer / 0.5 oz inner, OSP, thermal vias filled and
-   capped; buck 4 layers, 1 oz. Confirm the main board's L1–In1 prepreg (tools/stack.py) and update section 1.
+3. JLC quote for both designs, frameless stencils: main 6 layers, 2 oz outer / 0.5 oz inner, OSP; buck 4 layers, 1 oz.
+   Confirm the main board's L1–In1 prepreg (tools/stack.py) and update section 1.
+   **Main board, on the order form, every time (the Gerbers don't carry it):**
+   - **Via covering: "Epoxy Filled & Capped" (IPC-4761 type VII), for all vias.** The board has 971 of its 1,903 vias in
+     pads: under the ten FET tabs (about 50 each, the heat path to the heatsink), in the power GND pads and in the
+     bare heatsink pads on the bottom. Unfilled, they wick the solder out of the tab joints on the hot plate and leave
+     open holes in the bare pads under the gap pad. The board file says the same (board setup: capping yes, filling
+     yes), but JLC builds from the order form. If the form offers the option per drill size only, it must cover the
+     0.3 mm vias (970 in pads) and the 0.5 mm ones (one in a pad).
+   - Outer copper 2 oz, inner 0.5 oz; surface finish OSP; solder mask on both sides with the ten openings on the
+     bottom (B.Mask) left as drawn: they are the heatsink pads, not an error. Answer "keep as designed" if JLC asks.
+   - **Minimum spacing:** JLC's capability page gives 0.2 mm (8 mil) track and space for 2 oz outer copper. The board
+     has 23 gaps of 0.15 mm on the top side, all at U1, U7 (MSOP-10) and U2 (HVSSOP-8): 17 between the footprints' own
+     pads and 6 at their first escape tracks. Before ordering, either narrow those pads to 0.30 mm (then every gap is
+     0.2 mm and the fine-pitch DRC rules can go) or get JLC's written yes for these three footprints (open item;
+     [LAYOUT_RULES.md](LAYOUT_RULES.md), exception 5).
 4. The big review on the routed boards (Fable plus several Opus). Fix everything blocking.
 5. Gerbers, drill files and stencil (paste) layers exported; polarity of every diode, can and IC checked in the 3D view.
 6. Order the boards, the parts (LCSC + DigiKey), the tools, and the off-board parts (pack plan, REVB5_CHANGES), so they all

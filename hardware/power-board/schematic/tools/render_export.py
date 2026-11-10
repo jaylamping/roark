@@ -27,6 +27,9 @@ for i,L in enumerate(LAY):
             q=t.GetPosition(); D['items'].append(dict(k='via',L=i,net=t.GetNetname(),c=[mm(q.x),mm(q.y)],r=mm(t.GetWidth(pcbnew.F_Cu))/2))
         elif t.GetLayer()==L:
             s,e=t.GetStart(),t.GetEnd(); D['items'].append(dict(k='trk',L=i,net=t.GetNetname(),a=[mm(s.x),mm(s.y)],b=[mm(e.x),mm(e.y)],w=mm(t.GetWidth())))
+# the bare heatsink pads: board-level shapes on B.Mask (tools/heatsink_pads.py), drawn on the B.Cu picture
+for d in b.GetDrawings():
+    if d.GetClass()=='PCB_SHAPE' and d.GetLayer()==pcbnew.B_Mask: D['items'].append(dict(k='mask',L=len(LAY)-1,net='',p=polys(d.GetPolyShape())))
 for u in json.load(open(sys.argv[2]))['unconnected_items']:
     D['open'].append([[u['items'][0]['pos']['x'],u['items'][0]['pos']['y']],[u['items'][1]['pos']['x'],u['items'][1]['pos']['y']]])
 json.dump(D,open(sys.argv[3],'w'))
