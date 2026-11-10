@@ -53,7 +53,7 @@ nic(s,Qb,'Q1','IPB017N10N5LFATMA1',(228.6,48.26),'Package_TO_SOT_SMD:TO-263-7_Ta
 nic(s,Qb,'Q2','IPB017N10N5LFATMA1',(292.1,48.26),'Package_TO_SOT_SMD:TO-263-7_TabPin4',{'1':'G2','2':'VBUS','3':'VBUS','4':'MID','5':'VBUS','6':'VBUS','7':'VBUS'})
 g=Grid(s,335.28,38.1,20.32,30.48,420)
 g.R('10R','GATE','G1'); g.R('10R','GATE','G2')
-nic(s,'Power_Management:LM5069MM-1','U1','LM5069MMX-1',(63.5,114.3),'marengo_revb:MSOP-10_3x3mm_P0.5mm_TI',{'1':'SH_N','2':'SH_P','3':'UVLO','4':'GND','5':'GND','6':'TIMER','7':'PWR','8':None,'9':'VBUS','10':'GATE'},ds='https://www.ti.com/lit/ds/symlink/lm5069.pdf')
+nic(s,'Power_Management:LM5069MM-1','U1','LM5069MMX-1',(63.5,114.3),'marengo_revb:MSOP-10_3x3mm_P0.5mm_TI',{'1':'SH_N','2':'SH_P','3':'UVLO','4':'GND','5':'GND','6':'TIMER','7':'PWR','8':None,'9':'VBUS','10':'GATE'},ds='https://www.ti.com/lit/ds/symlink/lm5069.pdf',fields={'Fitted':'LM5069MM-2/NOPB (temporary fit: LM5069-1 has no authorised stock; auto-retry about every 63 ms, see LM5069_RETRY.md)'})
 g=Grid(s,114.3,96.52,20.32,30.48,420)
 g.R('34k 1%','PWR','GND'); g.C('4.7nF C0G','TIMER','GND',C603); g.D('BAV19W','CDV','GATE'); g.C('100nF 100V C0G','CDV','GND',C1210); g.R('1k','GATE','CDV_B')
 g.R('22k','RUN_B','UVLO'); g.R('33k','UVLO','GND','Resistor_SMD:R_0805_2012Metric')

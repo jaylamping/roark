@@ -1,6 +1,8 @@
 # U1 fitted with LM5069-2 (auto-retry) instead of LM5069-1 (latch-off)
 
-Analysis only; the schematic still calls for LM5069MMX-1. Why it matters: on 2026-11-10 the LM5069-1 had no authorised
+**Decided 2026-11-10: U1 is fitted with LM5069MM-2/NOPB as a temporary fit** (kit-2sets.csv; the schematic keeps
+LM5069MMX-1 as the design part, with a "Fitted" field on U1). The heatsink fan must run whenever the pack is connected,
+checked at bring-up step 3a ([REV_B_PARTS.md](REV_B_PARTS.md)). Why it matters: on 2026-11-10 the LM5069-1 had no authorised
 stock anywhere, and the LM5069-2 was in stock at Mouser and LCSC ([SOURCING.md](SOURCING.md)). The two are the same die
 and pinout; only what happens after the fault timer runs out differs (LM5069 datasheet SNVS452G, 8.4.3).
 

@@ -211,6 +211,8 @@ Work on the buck board first; it's the practice run. Inspect and test between ev
    (UVLO leakage) and 16 (heatsink insulation, TP17 at 54 V). The pack connects only after both pass. Never go straight
    to the pack.
 
+   **U1 is fitted with LM5069MM-2/NOPB (auto-retry), a temporary fit decided 2026-11-10:** the latch-off LM5069-1 has no authorised stock ([SOURCING.md](SOURCING.md)); the design part stays LM5069MMX-1 and goes in when it is back. With the -2 fitted, after a U1 fault (a bus short upstream of the ports, or an overload past the timer) the bus comes back by itself about every 63 ms (44-117 ms) once the fault clears, with no reset press. **The heatsink fan must be running whenever the pack is connected:** through continuous retries into a hard short the bank B FETs keep a 19 % SOA margin with fan air and only 5 % without ([LM5069_RETRY.md](LM5069_RETRY.md)). E-stop, loop-open and watchdog behaviour is unchanged: RUN pulls U1's UVLO low and the -2 does not retry while UVLO is low. Before the first short-circuit test (REV_B_PARTS step 4) the fan is checked running (REV_B_PARTS step 3a).
+
 Hot air is for rework only (removing or reseating a part). Joey's low-power gun can't reflow the 2 oz board by itself.
 10. **Conformal coat, after bring-up passes** (Joey's decision, 2026-11-09; the board is laid out for it: IPC-2221B
     51–100 V coated assembly spacing (A5/A7) is 0.13 mm, used as 0.2 mm between 54 V domains, against 0.6 mm bare; [LAYOUT_RULES.md](LAYOUT_RULES.md) "Clearance"). Bring-up runs uncoated so
@@ -226,7 +228,8 @@ Hot air is for rework only (removing or reseating a part). Joey's low-power gun 
    clean, and the buck board laid out and DRC clean.
 2. Part numbers fixed (section 4) and the BOM regenerated; kit CSV regenerated with suppliers chosen per route B/C.
    **Joey prefers one source for all board parts:** re-check DigiKey stock for the 6 ICs out of stock on 2026-11-07
-   (INA237, LM5069-1/-2, TPS7A4001, TPS3431S, LM5146). If they're back, order everything from DigiKey (route A) and
+   (INA237, LM5069-1/-2, TPS7A4001, TPS3431S, LM5146). U1 is ordered as LM5069MM-2/NOPB for now (Mouser, or LCSC
+   C2653582), 4 for two sets with U7; order 2 LM5069MM-1/NOPB and swap U1 when it is back in stock. If they're back, order everything from DigiKey (route A) and
    accept the about $80–95 premium; otherwise DigiKey for everything it stocks plus one LCSC order for the rest.
 3. JLC quote for both designs, frameless stencils: main 6 layers, 2 oz outer / 0.5 oz inner, OSP; buck 6 layers, 2 oz outer / 0.5 oz inner, OSP, epoxy-filled and capped vias (via in pad).
    Confirm the main board's L1–In1 prepreg (tools/stack.py) and update section 1.

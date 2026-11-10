@@ -23,12 +23,17 @@ unknown age, and some carry on-order dates already past. TI.com shows its stock 
 | Coilcraft XAL1010-682MED (buck L2) | "No longer available at DigiKey" | not confirmed | QuickView about 6,967 in stock. Also Farnell 2289019 (923 cached) and Coilcraft direct | n/a |
 | MG Chemicals 419D-55ML (consumable) | DigiKey no longer carries MG Chemicals coatings | 590-419D-55ML | Listed, "Shipping Restricted"; stock not visible. TestEquity 10001234-419D-55ML, US$18.88 | n/a |
 
-Quantities for two sets, no spares: LM5069-1 ×2, LM5069-2 ×2, INA237 ×12, TPS3431 ×2, LM5146 ×2, SM08B-GHS-TB ×4,
+Quantities for two sets, no spares: LM5069-2 ×4 (U1 temporary fit and U7; LM5069-1 ×2 later), INA237 ×12, TPS3431 ×2, LM5146 ×2, SM08B-GHS-TB ×4,
 WSK25125L000FEA ×4, C2 ×2, C24 ×2, L2 ×2.
 
 Checked live: **LM5069-1 (U1, latch-off) has no authorised stock anywhere** (Mouser's next 583 are due 24-May-2027);
 LM5069-2 is in stock at Mouser (51, small reel) and LCSC (3,156, large reel); SM08B-GHS-TB is in stock at Mouser (975) and
 LCSC (26,635). On the cached, unverified figures, Mouser covers INA237, LM5146, the 5 mΩ WSK2512, EEH-ZA1E331P and
 XAL1010-682MED from stock; TPS3431 showed small stock. C24 is EEH-ZA1E331V (in stock at DigiKey; kit note gives the fit).
-C2 is EMVH101ARA470MKE0S (decided; the buck board is laid out for it). What fitting LM5069-2 in U1's place would mean:
-[LM5069_RETRY.md](LM5069_RETRY.md).
+C2 is EMVH101ARA470MKE0S (decided; the buck board is laid out for it).
+
+**Decided 2026-11-10: U1 is fitted with LM5069MM-2/NOPB for now.** The kit orders 4 LM5069-2 for two sets (U1 and U7):
+Mouser LM5069MM-2/NOPB or LCSC C2653582 (LM5069MMX-2/NOPB, the large reel). The schematic keeps LM5069MMX-1 as U1's
+design part, with a "Fitted" field naming the -2; order 2 LM5069MM-1/NOPB and swap U1 when it is back in stock. With
+the -2 the bus restarts by itself about every 63 ms after a fault clears, and the heatsink fan must run whenever the
+pack is connected: [LM5069_RETRY.md](LM5069_RETRY.md).

@@ -113,11 +113,10 @@ Quantity,Value / MPN,Reference designators,Footprint,Manufacturer,Manufacturer P
 2,TP ABS,TP15,TestPoint_Pad_D1.0mm,,,,"Bare PCB test pad, nothing to order."
 2,TP WDO_N,TP16,TestPoint_Pad_D1.0mm,,,,"Bare PCB test pad, nothing to order."
 2,TP HSINK,TP17,TestPoint_Pad_D2.0mm,,,,"Bare PCB test pad, nothing to order."
-2,LM5069MMX-1,U1,MSOP-10_3x3mm_P0.5mm_TI,Texas Instruments,LM5069MMX-1/NOPB,296-49221-1-ND,"Out of stock at DigiKey at check (2026-11-10); 3,500 expected 01-Mar-2027; the small-reel LM5069MM-1/NOPB is also out. Try TI.com direct."
+4,LM5069MM-2 (U1: temporary fit in place of LM5069MM-1; U7: design part),"U1,U7",MSOP-10_3x3mm_P0.5mm_TI,Texas Instruments,LM5069MM-2/NOPB,,"Fitted in U1 and U7 (decided 2026-11-10). Order 4 from Mouser LM5069MM-2/NOPB (51 in stock at check 2026-11-10) or LCSC C2653582 (LM5069MMX-2/NOPB, large reel, 3,156 in stock, $4.44). DigiKey out (296-35297-1-ND, MMX-2: 2,894 due 11-Jan-2027). With -2 in U1 the bus restarts by itself about every 63 ms after a fault clears; the heatsink fan must run whenever the pack is connected (LM5069_RETRY.md)."
 2,TPS7A4001DGNR,U2,HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm_TI,Texas Instruments,TPS7A4001DGNT,296-28330-1-ND,"Kit lists TPS7A4001DGNR (296-41780-1-ND), out of stock until Mar 2027; DGNT is the same part on a 250-pc reel, 550 in stock."
 4,TLV1805DBVR,"U3,U26",SOT-23-6,Texas Instruments,TLV1805DBVR,296-53434-1-ND,
 6,LM4040AIM3-2.5,"U4,U27",SOT-23,Texas Instruments,LM4040AIM3-2.5/NOPB,LM4040AIM3-2.5/NOPBCT-ND,
-2,LM5069MMX-2,U7,MSOP-10_3x3mm_P0.5mm_TI,Texas Instruments,LM5069MMX-2/NOPB,296-35297-1-ND,"Out of stock at DigiKey at check (2026-11-10); 2,894 expected 11-Jan-2027; LM5069MM-2/NOPB also out. Try TI.com direct."
 2,TPS48100QDGXRQ1,U8,TPS48100_DGX_VSSOP-19,Texas Instruments,TPS48100QDGXRQ1,296-TPS48100QDGXRQ1CT-ND,
 8,INA237AIDGSR,"U11,U12,U13,U17",TSSOP-10_3x3mm_P0.5mm,Texas Instruments,INA237AIDGSR,296-INA237AIDGSRCT-ND,"Out of stock at DigiKey at check (2026-11-10); 2,500 expected 25-Nov-2026."
 6,TPS48111LQDGXRQ1,"U19,U20,U21",TPS48100_DGX_VSSOP-19,Texas Instruments,TPS48111LQDGXRQ1,296-TPS48111LQDGXRQ1CT-ND,
