@@ -25,28 +25,13 @@ impl BusTick {
         }
     }
 
-    /// A stop of the whole bus taken at a tick's start. A late wake or a backlog stops every active limb: an idle limb
-    /// has nothing enabled to stop (that tick only its batch's Disables and reporting off go). Any other reason stops
-    /// every limb.
-    pub(crate) fn stop_bus(&mut self, reason: StopReason, now_ns: u64) {
-        match reason {
-            StopReason::LateWake | StopReason::Backlog => {
-                for limb in 0..self.limbs.len() {
-                    let active = limb_state(&self.limbs, limb) == Some(LimbState::Active);
-                    if active {
-                        self.stop_limb_now(limb, reason, now_ns);
-                    }
-                }
+    /// Stop every active limb, for a late wake or a backlog: an idle limb has nothing enabled to stop (that tick only
+    /// its batch's Disables and reporting off go, [`Self::begin`]).
+    pub(crate) fn stop_active(&mut self, reason: StopReason, now_ns: u64) {
+        for limb in 0..self.limbs.len() {
+            if limb_state(&self.limbs, limb) == Some(LimbState::Active) {
+                self.stop_limb_now(limb, reason, now_ns);
             }
-            StopReason::Requested
-            | StopReason::LimbRequested
-            | StopReason::ControlSilent
-            | StopReason::BadBatch { .. }
-            | StopReason::ExpiredFeedback { .. }
-            | StopReason::DriveFault { .. }
-            | StopReason::DriveMode { .. }
-            | StopReason::DriveSilent { .. }
-            | StopReason::Bus(_) => self.stop_all(reason, now_ns),
         }
     }
 

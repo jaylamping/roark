@@ -462,7 +462,7 @@ impl BusTick {
         }
         // A stop asked for before this tick began came first, so it keeps its reason over a backlog or a late wake.
         if let Some(reason) = self.pending_stop.take() {
-            self.stop_bus(reason, now_ns);
+            self.stop_all(reason, now_ns);
         }
         // Whether a batch is still checked this tick is decided before any one limb stops: a batch for a bus whose
         // only limb stops now is still checked whole, and its frames for that limb are refused one by one.
@@ -475,9 +475,9 @@ impl BusTick {
             self.counters.missed_deadlines += 1;
         }
         if backlog {
-            self.stop_bus(StopReason::Backlog, now_ns);
+            self.stop_active(StopReason::Backlog, now_ns);
         } else if woke_late || stalled {
-            self.stop_bus(StopReason::LateWake, now_ns);
+            self.stop_active(StopReason::LateWake, now_ns);
         }
         // On a tick whose reads can't be trusted or that woke too late, only the batch's Disables and reporting off go.
         let hold = backlog || woke_late || stalled;
