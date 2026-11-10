@@ -26,5 +26,5 @@ ok   bom-digikey.csv exists
 ok   bom-digikey.csv: 73 references, the board has 73 fitted parts: missing [], extra []
 ok   zip: 14 files, identical to gerbers/
 ok   BOARD.sha256 exists
-ok   the package was made from this board file (sha256 fff66a8263058e0d..., recorded fff66a8263058e0d...): if not, run tools/fab_package.sh again
+ok   the package was made from this board file (sha256 fff66a8263058e0d..., recorded fff66a8263058e0d...): if not, run buck12/tools/fab_package_buck.sh again
 fab_check fails 0
