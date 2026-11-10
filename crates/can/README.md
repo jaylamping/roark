@@ -87,7 +87,8 @@ A latched bus error (bus-off in an error frame, or any socket failure) sends not
 limb is `Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's
 `bus_error`, even if a stop was already under way; `healthy` is false while there is one or the controller is
 error-passive.
- Only the operator's clear undoes a stop: `rearm(limb, now)` makes a `Stopped` limb idle again, with a new `generation`,
+
+Only the operator's clear undoes a stop: `rearm(limb, now)` makes a `Stopped` limb idle again, with a new `generation`,
 its drives' stop outcomes, fault history (`fault_seen`) and miss counts started afresh. It is refused while the bus has
 a latched error (that bus is rebuilt instead), while the limb is running or still stopping, and until every drive in it
 is known disabled: confirmed in Reset by the stop and not seen in another mode since, or sent nothing for longer than
