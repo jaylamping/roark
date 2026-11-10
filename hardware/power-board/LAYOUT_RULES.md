@@ -141,7 +141,9 @@ that is never coated must not go on the pack.
   [schematic/tools/stack.py](schematic/tools/stack.py)). The zones were built with 0.6 mm, the old uncoated outer-layer
   value, and a row of vias at 0.85 mm pitch under a fine-pitch IC then cut the planes away completely. IPC-2221B B1
   (internal conductors, 51–100 V) asks 0.1 mm. With 0.3 mm a 0.6/0.3 mm via keeps 0.45 mm from its drill to the plane
-  and a pad without an inner land 0.3 mm (check against the fab's hole-to-inner-copper minimum when ordering). The
+  and a pad without an inner land 0.3 mm. JLCPCB's capability page (read 2026-11-10) asks 0.2 mm from an inner-layer via
+  hole to copper and 0.3 mm from a PTH pad hole; all 40 PTH pads here keep their inner lands, so their holes are
+  further than 0.3 mm from the planes. The
   outer GND fills keep 0.6 mm. schematic/tools/route_power.py builds the zones with it, schematic/tools/plane_clearance.py sets it
   on a routed board, and route_checks.py check 6 tests it.
 - **DRC rules** (layout/marengo_pdu_revb.kicad_dru; a later rule wins in KiCad):
@@ -161,37 +163,49 @@ that is never coated must not go on the pack.
 - **Holes:** no copper within 2 mm of the heatsink screw holes HS1/HS2 (the screw and the heatsink aren't insulated from
   it), 0.6 mm round the tie holes and the M3 mounting pads (rule areas from schematic/tools/place.py).
 
-## Hand finishing (2026-11-09, 6 layers)
+## Routing state (2026-11-10, 6 layers)
 
-The autorouters don't finish this board. schematic/tools/route_stages.sh (critical nets, rails, the I2C/VCTL/RUN_P bus, the port
-meter nets, the rest, schematic/tools/route_fixes.py, then schematic/tools/patch_route.py for short connections) leaves **59 connections on
-44 nets** open, with DRC clean (0 clearance violations, schematic parity 0) and route_checks clean. Freerouting 2.5
-thrashed again (about 2,800 violations after six passes) and is not used; shuffled net orders did no better.
-- The meter block sits over the L6 VBUS pour. Without vias through that pour (`SOFTV` in schematic/tools/grid_route.py) every
-  signal there was confined to F.Cu and the bus nets could not route at all; with them, 123 open connections became 67,
-  and patch_route.py closed 8 more. 94 signal and GND vias now pass through the VBUS pour, 27 of them in the 180–190 mm
-  band where the full 60 A flows: keep new vias out of that band when finishing, and move some out if it is easy.
-- What is left is blocked by copper already placed (neighbouring pins, Kelvin pads, GND vias), so it needs KiCad's
-  push-and-shove:
-  - port meter and eFuse blocks, about 30: V_L taps (U19–U24 pin 13 to U11–U16 pin 8 and the C51/C56/C71/C76 pads),
-    EN_L, TMR_L, ISCP/IWRN_L, CSP/INP_L, D_L2;
-  - latch block round U8, about 12, by class (layout/open_nets.csv): E-stop (1.5 mm to 54 V) EN_A, FLT_A, L_B; 54 V
-    MID; riding on 54 V BST_A, CSN_A, CSP_A; signal TMR_A;
-  - 54 V and 54 V-riding, local: BRK_P/BRK_PG at U7, G2 at Q2/R2, SHL4_N at R99, D_L2 at U12;
-  - signal and GND: 4 GND pins on U13 and U15; the CL comparator taps (CL_HY, CL_OUT, CL_SENSE); CWD, FB_CTL, MID_Z, VB_Z.
-- The committed board predates the latch keep-out in schematic/tools/grid_route.py and route_checks.py checks 4 and 5:
-  it has BAT copper on the inner layers under the latch block, and an E-stop RUN_P via inside the L6 VBUS pour
-  outline (about X −5, Y 253). Re-route on a KiCad machine (schematic/tools/build_board.sh from `route`) before hand
-  finishing; the counts above will change.
-- Kelvin pairs to re-route as tight pairs: SHL2 (0 % paired), SHL4 (25 %), SHL6 (33 %) and SH9 (8 %).
-- Estimate in KiCad's interactive router: about 3–4 h for the connections, plus 1–2 h for the four Kelvin pairs.
-- The step-by-step checklist, with a picture per group: [layout/HAND_FINISH.md](layout/HAND_FINISH.md).
+One connection is open: **G2** (Q2 pin 1 to R2). Everything else is routed, with DRC clean (0 clearance, 0 shorts,
+schematic parity 0), route_checks clean and check.py at 0 fails. `schematic/tools/verify_board.sh` runs the whole set next to a
+copy of the schematic, so the parity check really runs (in layout/ KiCad only prints "Failed to fetch schematic netlist"
+and checks nothing; the earlier "parity 0" reports came from that).
 
-The rest is finished by hand in KiCad, starting from the board with the power stage and the locked critical pre-routes:
-- Net classes ESTOP, HV54 and P12 are set, and the DRC holds the E-stop rule.
-- Run `MARENGO_COATED=1 schematic/tools/route_checks.py` after each session. It is the authority for the 54 V domain rule; coated,
-  that rule is the 0.2 mm default.
-- The open nets are in layout/open_nets.csv (schematic/tools/open_nets.py, from the DRC's unconnected items).
+How the board got there:
+- **Staged scripts** (schematic/tools/route_stages.sh, then the finish_* tools) for the general routing. Generic routers
+  stalled at the port taps and at U8, so those two are now designed:
+- **Port block template** (schematic/tools/port_template.py for placement and rip-up, port_copper.py for the copper,
+  port 1's page mm mapped to the other five; the left ports are the right ports turned 180 degrees, part for part):
+  - logic row of the eFuse (EN, INP, PORT_FLT_N, GND): inward to one row of vias under the body, In3 from there;
+  - 54 V row: V_L (pin 13) and BST inward to a via each; GPU/GPD outward through the two-track channel under the shunt
+    to R4/R5 beside the eFuse; the gate node runs 9 mm on F.Cu to the zener and the gate pin, with one In3 link to the
+    slew diode right of the FET (the old gate node looped 30 to 130 mm round the FET);
+  - Kelvin pair on In2 down the west side of the eFuse, P outside and N inside at 0.6 mm, feeding R0/C2 and R1 through one
+    via each and ending at the meter's pins 10/9: **76 % paired on all six ports**;
+  - the sense resistors, the bootstrap and the timer/limit parts keep one In2/In3 lane each across the FET's pin row.
+  - Port 2's meter reads D_L2 on pin 8 (deliberate: schematic/gen/gen.py and check.py), so its tap is laid by hand on B.Cu
+    to the L6 drain mirror instead of the template's V_L tap.
+- **U8 block** (schematic/tools/u8_block.py): U8 sits between bank A/B's tabs (54 V) and the ABS spine (54 V), 7 mm apart,
+  so its E-stop pins could not leave sideways at 1.5 mm. U8 is turned so the logic row faces north and the 54 V row
+  south; R27, R28, TP13, R36, C29 and R37 sit north of it, every 54 V part south. EN_A and FLT_A run from the pins on
+  F.Cu with no via. The SH pair runs on In2 down the middle of the column to R61/R62 (50 % paired, was 48 %).
+- **J24** pads 6-12 were on the pinout from before split S1's review fixes; they now follow the schematic (6 +3V3_PI,
+  7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA, as on the buck board's J1) and their nets are re-routed.
+  schematic/tools/sync_netlist.py does this on an existing board, with the values, datasheets and attributes.
+- **C81** (the watchdog's CWD cap) sits beside U25's pin 2 (place.py MOVED); the packer had put it 20 mm away.
+
+Measured on the filled zones (schematic/tools/pour_width.py), unchanged from the board before: VBUS neck (Y 178-190)
+18.9 mm on L6, MID band (Y 150-158) 21.1 mm (10.0 mm L1 + 11.1 mm L6). Signal vias in the VBUS band (X 130-160,
+Y 180-190): 18 (were 24).
+
+**G2, the open connection.** Q2's gate pin lies in a 1.7 mm slot between Q1's tab and Q2's own pins, under the MID
+band on L1 and over the MID mirror on L6. From there G2 can only leave (a) through a via, which pierces the L6 MID
+mirror, or (b) on F.Cu across the L1 MID band, which cuts that pour. Both break a rule here (no via in a MID pour; MID
+must not get narrower), so it is left for a decision. A trial of (a), one 0.6 mm via at (149.9, 160.2) and In2/In3 to
+R2, routes G2 in 51 mm with 3 vias and leaves both measured widths unchanged, since the via is south of the MID neck.
+The alternative is R2 at Q2's gate, as R1 is at Q1's, which needs about 2 x 3 mm that the placement doesn't have.
+
+Kelvin pairs still poorly paired: **SH9 (8 %)**. RS9's N sense pad is on the far side of its BAT pad from U7, so N has to
+pass under that pad on In2 while P stays on F.Cu; a better pair needs RS9 or U7 moved.
 
 Gate parts (schematic/tools/place.py, 2026-11-09):
 - Each port's gate-source zener (D24, D27, D30, D33, D36, D39) sits at its FET's gate pin, between the meter and the FET.

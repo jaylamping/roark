@@ -4,20 +4,19 @@ The robot's main power board: the 54 V battery path (soft start, two FET banks, 
 with eFuses and meters, and the E-stop latch. Rev B5: 100 × 170 mm, 6 layers (2 oz outer / 0.5 oz inner), conformal-coated
 after bring-up. A separate buck board makes the 12 V and carries the 12 V outputs (split S1, 2026-11-09).
 
-**Status (2026-11-09):** schematic done, ERC clean. The 6-layer board in [layout/](layout) is placed and routed by
-script (schematic/tools/build_board.sh: placement, power stage, then schematic/tools/route_stages.sh for the signal
-routing in five locked stages). It leaves **59 open connections on 44 nets** ([layout/open_nets.csv](layout/open_nets.csv))
-and four Kelvin pairs (SHL2, SHL4, SHL6, SH9) to re-route as tight pairs, all for hand finishing in KiCad
-([layout/HAND_FINISH.md](layout/HAND_FINISH.md)). It must be re-routed once more first: the committed board predates the
-latch keep-out ([LAYOUT_RULES.md](LAYOUT_RULES.md), "Hand finishing"). No script in the repo regenerates the renders in
-layout/renders/. The big review is still pending before the board is ordered.
+**Status (2026-11-10):** schematic done, ERC clean. The 6-layer board in [layout/](layout) is routed except for **one
+connection, G2** (Q2's gate to R2; [layout/HAND_FINISH.md](layout/HAND_FINISH.md) has the reason and the two ways to
+close it). DRC is clean with schematic parity 0, route_checks and check.py pass (schematic/tools/verify_board.sh runs
+them all). The six port blocks and the U8 block are designed templates (schematic/tools/port_template.py, port_copper.py,
+u8_block.py); the rest was routed by the staged scripts and the finishing tools. The pictures in layout/renders/routed_*
+come from schematic/tools/render_export.py and render_routed.py. The big review is still pending before the board is ordered.
 
 | What | Where |
 |---|---|
 | Parts, bring-up steps, accepted risks | [REV_B_PARTS.md](REV_B_PARTS.md) |
 | Cost, ordering, assembly, coating | [PRODUCTION_RUN.md](PRODUCTION_RUN.md) |
 | Layout rules (spacing, E-stop, Kelvin, gates, hand finishing) | [LAYOUT_RULES.md](LAYOUT_RULES.md) |
-| Hand-finishing checklist (open connections by group, with pictures) | [layout/HAND_FINISH.md](layout/HAND_FINISH.md) |
+| What is still open, and the checks to run | [layout/HAND_FINISH.md](layout/HAND_FINISH.md) |
 | Heatsink (option D) | [THERMAL_OPTION.md](THERMAL_OPTION.md) |
 | What rev B5 changed | [REVB5_CHANGES.md](REVB5_CHANGES.md) |
 | Bill of materials and the two-set kit to order from | [bom-rev-B.csv](bom-rev-B.csv), [kit-2sets.csv](kit-2sets.csv) |
