@@ -95,8 +95,8 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
 
 - **Bus errors are a typed enum** (`BusOff`, `ErrorPassive`, `ErrorWarning`, `RxOverflow`, `TxTimeout`, `InterfaceDown`,
   `InterfaceGone`, ...), matched exhaustively.
-- **Latch on the first bus-off error frame** and stop every run on that bus, as [PLAN item 3](../PLAN.md#3-the-new-can-layer-tenet-5)
-  and item 6 say. The latch lives in software because the adapter may bring the bus back by itself (PLAN item 3 has the
+- **Latch on the first bus-off error frame, or any socket read or write failure other than a full queue,** and stop every
+  run on that bus, as [PLAN item 3](../PLAN.md#3-the-new-can-layer-tenet-5) and item 6 say. The latch lives in software because the adapter may bring the bus back by itself (PLAN item 3 has the
   details and sources). Code never treats "the interface is up again" as permission to continue.
 - **Error counters and drops are metrics** (per bus: bus errors, error-passive, bus-off count, RX overflow, TX drops, late
   ticks), exported every second and shown in the UI.

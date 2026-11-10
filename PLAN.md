@@ -344,7 +344,7 @@ Each rule names what it protects and the failure it covers. A rule that protects
 | Host | Sign: no gravity feed-forward on a joint until its direction is verified by a small torque-only pulse with the link supported, checked against the skeleton. Feed-forward runs only on a chain whose every joint answers with a verified direction | Arm and parts | Feed-forward pushing the wrong way |
 | Host | Temperature: pause at 60 °C (rest pose, torque off if the pose allows) until 45 °C; stop at 75 °C | Drive windings | Overheating (drive's own protection is far higher) |
 | Host | Hang: see item 3 (stale batches, watchdog, no auto-enable) | All drives | Hung control thread keeping drives fed |
-| Host | Bus-off (latched on the first error frame, even if the adapter restarts itself), interface down or gone (`ENODEV`, `ENETDOWN`): stop every active run; the drives on that bus time out | All limbs | Lost bus, wiring fault or unplugged adapter |
+| Host | Bus-off (latched on the first error frame, even if the adapter restarts itself), or any socket read or write failure other than a full queue (interface down or gone, `ENETDOWN`, `ENODEV`, included): stop every active run; the drives on that bus time out | All limbs | Lost bus, wiring fault or unplugged adapter |
 | Host | Pi health: read `vcgencmd get_throttled` once a second; refuse enable while under-voltage or throttling is active, and log it if it starts during a run | Control timing | A browned-out or throttled Pi missing ticks |
 | Host | Logging: if the session log can't open or the disk is full, refuse the next enable; never stop a running motion for it | The record (tenet 6) | Disk full or slow |
 

@@ -203,8 +203,8 @@ fn only_consecutive_silent_ticks_stop_the_bus() {
     assert_eq!(bus.end(deadline(4)).stop, Some(StopReason::ControlSilent));
 }
 
-/// Guards: safety - bus-off is latched on the first error frame and nothing later clears it (PLAN.md item 3, item 6
-/// Bus-off row).
+/// Guards: safety - bus-off is latched on the first error frame, and so is any socket failure passed to `lost_bus`;
+/// nothing later clears it (PLAN.md item 3, item 6 Bus-off row).
 #[test]
 fn bus_off_latches_stopped() {
     let mut bus = bus();
@@ -436,7 +436,7 @@ fn a_drive_confirmed_late_still_gets_reporting_off() {
 }
 
 /// Guards: safety - a bus error during a stop is kept for the safety layer even though the stop's reason stays what
-/// started it (PLAN.md item 6: bus-off or a lost bus faults every active run).
+/// started it (PLAN.md item 6 Bus-off row: bus-off or a socket failure faults every active run).
 #[test]
 fn a_bus_error_during_a_stop_is_kept() {
     let mut bus = bus();
