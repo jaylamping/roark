@@ -20,7 +20,8 @@ pub const MAX_SENDS: usize = 2 * MAX_DRIVES;
 pub struct CommandBatch {
     /// The tick it is for. A batch for any other tick is stale and never sent.
     pub tick: u64,
-    /// After this monotonic time it is expired and never sent.
+    /// After this monotonic time it is expired: its commands are never sent, while its Disables and active reporting
+    /// off still go if it is for this tick, since late they are still the right frames (can.md section 2).
     pub expires_ns: u64,
     frames: [Option<Frame>; MAX_DRIVES],
 }
@@ -98,7 +99,10 @@ pub enum SendOutcome {
     QueueFull,
     /// A send whose window had passed before the write: dropped and counted. Only sends that [`Send::expires`] are.
     Expired,
-    /// Any other write error, or a send not tried because the bus was already lost (nothing to send on).
+    /// Not taken for any other reason: a socket write error, a frame the shell couldn't build, or a send not tried
+    /// because the bus was already lost (nothing to send on). It records only that the frame wasn't taken and never
+    /// latches: a socket write error other than a full queue must also go to
+    /// [`BusTick::lost_bus`](crate::BusTick::lost_bus), which does.
     Failed,
 }
 
@@ -165,7 +169,8 @@ pub enum LimbState {
     Idle,
     /// An Enable or MIT frame to one of its drives was sent, so the bus needs a fresh batch every tick.
     Active,
-    /// A stop is in progress: Disable to every unconfirmed drive each tick, its frames in batches refused.
+    /// A stop is in progress: Disables, then reporting off, its frames in batches refused; over by
+    /// `Timing::stop_max_ns` after `since_ns` at the latest.
     Stopping {
         /// When the stop began, monotonic.
         since_ns: u64,
@@ -182,15 +187,6 @@ impl LimbState {
         match self {
             Self::Idle | Self::Active => true,
             Self::Stopping { .. } | Self::Stopped => false,
-        }
-    }
-
-    /// Whether nothing on the limb needs stopping: idle (nothing enabled) or stopped.
-    #[must_use]
-    pub const fn settled(self) -> bool {
-        match self {
-            Self::Idle | Self::Stopped => true,
-            Self::Active | Self::Stopping { .. } => false,
         }
     }
 }
@@ -222,7 +218,7 @@ pub struct EchoSeen {
 pub enum StopReason {
     /// No fresh batch for `Timing::silent_ticks` ticks while a limb was active (PLAN.md item 3).
     ControlSilent,
-    /// The thread woke after its send window (PLAN.md item 3).
+    /// The thread woke after its send window, or a stall skipped ticks, whatever its feedback's age (PLAN.md item 3).
     LateWake,
     /// A batch carried motion for a drive whose last fresh status was too old.
     ExpiredFeedback {
@@ -270,10 +266,11 @@ pub enum StopOutcome {
     /// A stop happened but no Disable to this drive was taken by the socket (also every drive of a bus whose error
     /// left nothing to send on).
     NeverSent,
-    /// Disable was sent; no Reset-mode status read after it was counted (a read that may predate it, after a drain that
-    /// left frames queued, confirms nothing).
+    /// Disable was sent; no Reset-mode status read after it was counted: none came, one was read after the stop's reply
+    /// allowance (`Timing::stop_replies_ns`), or one may predate it (after a drain that left frames queued). Such a
+    /// drive gets no reporting off.
     Sent,
-    /// A Reset-mode status was read after a sent Disable.
+    /// A Reset-mode status was read after a sent Disable, inside the stop's reply allowance.
     Confirmed,
 }
 
@@ -298,7 +295,8 @@ pub struct DriveView {
     /// When its last fresh status was read: the first status after a command the socket took. Freshness, not
     /// acknowledgement: the protocol has no sequence numbers, so which command a status answers can't be proven. Read
     /// time, not arrival: it can trail the kernel's receipt by up to period - collect + send window
-    /// (units-and-frames.md section 5).
+    /// (units-and-frames.md section 5). Cleared, with `fresh_status`, for the drives of a limb still idle after an
+    /// untrusted tick (a late wake, a stall or a backlog), whose drain read too late to vouch for it.
     pub fresh_ns: Option<u64>,
     /// The status `fresh_ns` is the read time of, kept when a later status of the same mode (a duplicate, a report, an
     /// unsolicited or earlier-tick status, a version reply) replaces `observed`, and dropped when a later one shows another
@@ -316,7 +314,8 @@ pub struct DriveView {
     pub last_echo: Option<EchoSeen>,
     /// What the current or last stop achieved for it.
     pub stop: StopOutcome,
-    /// Whether the current or last stop's active reporting off was taken by the socket.
+    /// Whether the current or last stop's active reporting off was taken by the socket. False for a drive the stop never
+    /// confirmed, and for one whose reporting off the socket refused until the stop ended.
     pub reporting_off_sent: bool,
 }
 
@@ -324,10 +323,7 @@ pub struct DriveView {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Counters {
     /// Commands the socket took that got no status by the collect deadline, counted only where a miss counts toward
-    /// `Timing::silence_misses`: not Enable or Disable; nothing to a drive never enabled since start or its limb's clear,
-    /// or seen in Reset after this host's Disable, which a later Disable doesn't change; nothing in the
-    /// `Timing::stop_confirm_ns` after a Disable to an enabled drive; and nothing in the first
-    /// `ENABLE_TO_RUN_NS` after an Enable while the drive hasn't shown Run (PLAN.md item 2 Silence windows).
+    /// `Timing::silence_misses`: not an Enable or a Disable, and nothing inside PLAN.md item 2's Silence windows.
     pub unanswered: u64,
     /// Statuses for a command after its tick's collect deadline.
     pub late: u64,
@@ -351,7 +347,7 @@ pub struct Counters {
     pub tx_dropped: u64,
     /// Sends dropped because their window had passed.
     pub tx_expired: u64,
-    /// Ticks handed a stale or expired batch.
+    /// Ticks handed a stale or expired batch (an expired one for the tick still sends its Disables and reporting off).
     pub stale_ticks: u64,
     /// Batches refused because every limb was stopping or stopped, a bad one included once no limb was left to stop.
     pub refused_batches: u64,
@@ -376,7 +372,8 @@ pub struct Counters {
 pub struct Snapshot {
     /// The tick.
     pub tick: u64,
-    /// The first bus error that latched (bus-off, interface down or gone), even if the bus was already stopping.
+    /// The first bus error that latched (bus-off from an error frame, or any socket failure passed to `lost_bus`), even
+    /// if a limb was already stopping.
     pub bus_error: Option<BusError>,
     /// No latched bus error and not error-passive: the recording's `valid` flag (logging.md section 8.2).
     pub healthy: bool,
@@ -416,12 +413,6 @@ impl Snapshot {
             .iter()
             .enumerate()
             .filter_map(|(i, l)| l.as_ref().map(|l| (i, l)))
-    }
-
-    /// Whether every limb is idle or stopped: nothing on this bus is running or still stopping.
-    #[must_use]
-    pub fn settled(&self) -> bool {
-        self.limbs().all(|(_, l)| l.state.settled())
     }
 
     /// Whether every limb is stopped.

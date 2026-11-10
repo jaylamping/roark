@@ -98,17 +98,23 @@ The values and the loader's checks are in [PLAN item 1](../PLAN.md#1-the-skeleto
   ([architecture.md section 7](architecture.md#7-time)).
 - **The bus tick's exception:** `can::BusTick` and the types it hands control (`Timing`, `CommandBatch`, `Snapshot`) carry
   times and spans as `u64` nanoseconds on the session's monotonic `Epoch`, every name ending `_ns`, the same clock the
-  recorder's `mono_ns` uses. The bus thread converts its `Instant`s once, at that seam. **Why:** the tick runs every
-  period on every bus, and `Instant`/`Duration` arithmetic (seconds and nanoseconds normalised on every add and compare)
-  measured 32 % slower: 57.3 against 43.5 ns for a two-drive tick on an M-series Mac, 2026-11-08. Nothing else gets the
-  exception without a measurement of its own.
+  recorder's `mono_ns` uses. The bus thread converts its `Instant`s once, at that seam. `robstride::CanTimeout::nanos`
+  returns the drives' timeout as an `Option<u64>` of nanoseconds (`None` when off), and `can` derives
+  `DRIVE_TIMEOUT_NS` from `CanTimeout::RUNTIME` with it at compile time; a compile-time constant needs no measurement of
+  its own, since it adds no arithmetic to the loop. **Why:** the tick runs every period on every bus, and
+  `Instant`/`Duration` arithmetic (seconds and nanoseconds normalised on every add and compare) measured 32 % slower:
+  57.3 against 43.5 ns for a two-drive tick on an M-series Mac, 2026-11-08. Nothing else gets the exception without a
+  measurement of its own.
 - CAN frames carry the **kernel RX timestamp** in the recording, not the time the user-space code got round to reading
   them. The bus tick matches replies and ages feedback on the monotonic time the bus thread read the frame instead
-  (can.md section 2), because the kernel's stamp is wall-clock and can step. Reading trails arrival by at most the gap
-  from the collect deadline to the close of the next tick's send window (period - collect + send window: 2.6 ms at
-  250 Hz); a later wake is a late wake, which stops an active bus and sends no command on an idle one. So a status can be that much older than its `fresh_ns`: the
-  three-period feedback limit is 12 to 14.6 ms of real age, well inside the drives' 50 ms timeout. The real adapter's
-  queue age is measured at PLAN step 8.
+  (can.md section 2), because the kernel's stamp is wall-clock and can step. For every status motion is sent on,
+  reading trailed arrival by at most the gap from the collect deadline to the close of the next tick's send window
+  (period - collect + send window: 2.6 ms at 250 Hz): a later wake or a drain backlog stops every active limb, and
+  leaves no status of an idle limb's drives fresh, so motion waits for a status read on a tick that can be trusted.
+  The motion frame goes out up to a send window (1 ms at 250 Hz) after its staleness check at the wake. So at 250 Hz
+  the three-period feedback limit allows at most 12 + 2.6 + 1 = 15.6 ms of real age when the frame is written, well
+  inside the drives' 50 ms timeout, and `Timing::check` refuses any timing whose limit plus that lag and slack reaches
+  it. The real adapter's queue age is measured at PLAN step 8.
 - Durations in logs use the same suffix rule as everything else (`latency_us`, `age_ms`).
 
 ## 6. Identity

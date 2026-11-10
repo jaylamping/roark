@@ -158,14 +158,16 @@ fn a_fault_injected_on_vcan_stops_only_its_limb() {
             }
         }
         let (seen, (stopped, outcome)) = (seen.unwrap(), stopped.unwrap());
-        // The Disable went out in the tick that stopped the limb.
+        // The Disable went out in the tick that stopped the limb. This drive still answers, so its Reset may already
+        // have confirmed the stop by that tick's collect deadline, or not yet.
         let disabled = [can::StopOutcome::Sent, can::StopOutcome::Confirmed];
         assert!(
             outcome.is_some_and(|o| disabled.contains(&o)),
             "{outcome:?}"
         );
+        // Read by a tick's collect, the fault stops the limb at the next tick's start; read by its drain, at once.
         assert!(
-            stopped <= seen + 1,
+            (seen..=seen + 1).contains(&stopped),
             "read at tick {seen}, stopped at {stopped}"
         );
         assert!(
@@ -192,7 +194,8 @@ fn a_fault_injected_on_vcan_stops_only_its_limb() {
             "{:?}",
             snap.counters
         );
-        // The drive answered its Disable in Reset five ticks ago.
+        // The drive answered the stop's first Disable in Reset, read well inside the stop's reply allowance
+        // (`stop_replies_ns`: the confirm window plus a period, more than these five ticks), so the stop confirmed it.
         assert_eq!(
             snap.drive(0).map(|d| d.stop),
             Some(can::StopOutcome::Confirmed),
@@ -226,18 +229,44 @@ enum Then {
     LostDisable,
 }
 
-/// A silent drive's run: the tick of the snapshot that showed its first counted miss, its miss count in each
-/// snapshot after it until its limb stopped, and the tick of the snapshot that showed the stop.
+/// A silent drive's run, by snapshot tick: where the run of unanswered commands that stopped it began, the misses
+/// counted when control turned to `then` and the tick it first sent it, the miss count in each snapshot after that
+/// until the limb stopped, and the snapshot that showed the stop.
 struct Silent {
     from: u64,
+    held_misses: u32,
+    then_from: u64,
     misses: Vec<(u64, u32)>,
     stopped: u64,
 }
 
+/// Drive 101, to go silent on its `FAULT_ON_MIT`th hold and, for [`Then::LostDisable`], lose the Disable after it;
+/// and drive 102.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: both faults fit an empty plan"
+)]
+fn silent_drives(then: Then) -> [SimDrive; 2] {
+    let mut silent = SimDrive::new(Drive::new(id(101), Model::Rs03), Uid([1; 8]), 23);
+    silent
+        .schedule(Trigger::OnMit(FAULT_ON_MIT), Fault::Silent)
+        .unwrap();
+    if let Then::LostDisable = then {
+        silent
+            .schedule(Trigger::OnMit(FAULT_ON_MIT), Fault::IgnoreDisables(1))
+            .unwrap();
+    }
+    [
+        silent,
+        SimDrive::new(Drive::new(id(102), Model::Rs03), Uid([2; 8]), 24),
+    ]
+}
+
 /// Drive 101 goes silent as it takes its `FAULT_ON_MIT`th hold and, for [`Then::LostDisable`], loses the Disable that
-/// follows. Control holds both drives until a snapshot shows 101's first counted miss, then does `then` and holds
-/// drive 102 throughout. Checks limb 1 ran on, limb 0 stopped for its silence with its Disable taken by the socket,
-/// and drive 102 kept answering after it.
+/// follows. Control holds both drives until `Fault::Silent` has fired and a snapshot shows a counted miss, then does
+/// `then` and holds drive 102 throughout. Checks limb 1 ran on, limb 0 stopped for its silence after
+/// `silence_misses` misses with its Disable taken by the socket and never confirmed, and drive 102 kept answering
+/// after it.
 #[expect(
     clippy::unwrap_used,
     clippy::indexing_slicing,
@@ -248,23 +277,14 @@ fn silent_drive(then: Then) -> Silent {
     let root = std::env::temp_dir().join(format!("sim-suite-silent-{}", std::process::id()));
     let stop_sim = AtomicBool::new(false);
     let exit = Arc::new(AtomicBool::new(false));
+    let (mut injected_tx, mut injected) = rtrb::RingBuffer::<Injected>::new(4);
     let ended = std::thread::scope(|scope| {
         let _shutdown = Shutdown(&stop_sim, Arc::clone(&exit));
         let sim = scope.spawn(|| {
-            let mut silent = SimDrive::new(Drive::new(id(101), Model::Rs03), Uid([1; 8]), 23);
-            silent
-                .schedule(Trigger::OnMit(FAULT_ON_MIT), Fault::Silent)
-                .unwrap();
-            if let Then::LostDisable = then {
-                silent
-                    .schedule(Trigger::OnMit(FAULT_ON_MIT), Fault::IgnoreDisables(1))
-                    .unwrap();
-            }
-            let mut drives = [
-                silent,
-                SimDrive::new(Drive::new(id(102), Model::Rs03), Uid([2; 8]), 24),
-            ];
-            serve(FAULT_BUS, &mut drives, &stop_sim, &mut |_| {})
+            let mut drives = silent_drives(then);
+            serve(FAULT_BUS, &mut drives, &stop_sim, &mut |i| {
+                assert!(injected_tx.push(i).is_ok(), "the injection ring is full");
+            })
         });
         let session = Session::start(&root, info(FAULT_BUS), 1_000_000_000).unwrap();
         let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
@@ -277,17 +297,23 @@ fn silent_drive(then: Then) -> Silent {
         let mut snap = enable_both(&mut send, &mut snapshots, end);
         let write = encode::param_write(&Write::mit_mode(Drive::new(id(101), Model::Rs03)));
         let active = [(LimbState::Active, None), (LimbState::Active, None)];
-        // Hold both until the bus thread has counted 101's first unanswered command, whichever tick that is.
-        let from = loop {
+        // Hold both until the silence has fired and a snapshot shows a counted miss. A miss alone isn't enough: a reply
+        // read after the collect deadline counts as one too, and only holds count toward `FAULT_ON_MIT`, so turning
+        // to `then` on it would leave the silence unfired. Each miss of the run was counted at its own tick's end.
+        let mut silent = false;
+        let (from, held_misses) = loop {
             send(&snap, [Some(hold(101)), Some(hold(102))]);
             snap = next_snapshot(&mut snapshots, end).unwrap();
             assert_eq!(limbs(&snap), active, "{snap:?}");
+            while let Ok(i) = injected.pop() {
+                silent |= (i.device, i.fault) == (id(101), Fault::Silent);
+            }
             let misses = snap.drive(0).map_or(0, |d| d.misses);
-            if misses > 0 {
-                assert_eq!(misses, 1, "{snap:?}");
-                break snap.tick;
+            if silent && misses > 0 {
+                break (snap.tick + 1 - u64::from(misses), misses);
             }
         };
+        let then_from = snap.tick + 1;
         let mut misses = Vec::new();
         let mut first = match then {
             Then::RunModeWrite => write,
@@ -313,10 +339,11 @@ fn silent_drive(then: Then) -> Silent {
             ),
             "{snap:?}"
         );
-        // The Disable went out in the tick that stopped the limb.
-        let disabled = [can::StopOutcome::Sent, can::StopOutcome::Confirmed];
-        assert!(
-            snap.drive(0).is_some_and(|d| disabled.contains(&d.stop)),
+        // Stopped on the `silence_misses`th miss, and the stop's Disable went out that tick. A silent drive sends
+        // nothing, so no Reset can confirm it.
+        assert_eq!(
+            snap.drive(0).map(|d| (d.misses, d.stop)),
+            Some((timing().silence_misses, can::StopOutcome::Sent)),
             "{snap:?}"
         );
         // The other limb runs on after it.
@@ -335,6 +362,8 @@ fn silent_drive(then: Then) -> Silent {
         sim.join().unwrap().unwrap();
         Silent {
             from,
+            held_misses,
+            then_from,
             misses,
             stopped,
         }
@@ -360,39 +389,45 @@ fn a_silent_drive_stops_only_its_limb_on_vcan() {
 }
 
 /// Guards: safety - `host.silence` on a real socket: a Disable the drive loses doesn't hold its silence off for good;
-/// with no Reset read after it, the one miss before it stays counted through `stop_confirm_ns`, missed replies count
+/// with no Reset read after it, the misses before it stay counted through `stop_confirm_ns`, missed replies count
 /// again after it, and the limb stops for them (PLAN item 2 Silence windows).
 #[test]
 fn a_lost_disable_doesnt_hide_a_silent_drive_on_vcan() {
     let t = timing();
     let quiet_ticks = t.stop_confirm_ns.div_ceil(t.period_ns);
     let run = silent_drive(Then::LostDisable);
-    // Counting resumes at the first write sent `stop_confirm_ns` after the Disable, which went out the tick after the
-    // first miss: a tick later if the Disable's tick woke late.
-    let counted_from = run.from + 1 + quiet_ticks;
+    let held = run.held_misses;
+    assert!(
+        held < t.silence_misses,
+        "{held} misses before the Disable: the limb stopped on them, not after it"
+    );
+    // Counting resumes at the first write sent `stop_confirm_ns` after the Disable, which went out on `then_from`.
+    // Both went out somewhere in their tick's send window, so that write is the one `quiet_ticks` later if it went
+    // no earlier in its tick than the Disable did, and the next one if it went earlier.
+    let counted_from = run.then_from + quiet_ticks;
     let resumed = run
         .misses
         .iter()
-        .find(|&&(_, m)| m > 1)
-        .map(|&(tick, _)| tick);
-    let resumed = resumed.unwrap_or(run.stopped);
+        .find(|&&(_, m)| m > held)
+        .map(|&(tick, _)| tick)
+        .expect("a miss counted after the window, shown before the stop");
     assert!(
         (counted_from..=counted_from + 1).contains(&resumed),
-        "silent from tick {}, resumed at {resumed}: {:?}",
-        run.from,
+        "Disable at tick {}, resumed at {resumed}: {:?}",
+        run.then_from,
         run.misses
     );
     for &(tick, misses) in &run.misses {
         let expected = if tick < resumed {
-            1
+            u64::from(held)
         } else {
-            tick - resumed + 2
+            u64::from(held) + tick - resumed + 1
         };
         assert_eq!(u64::from(misses), expected, "tick {tick}");
     }
     assert_eq!(
         run.stopped,
-        resumed + u64::from(t.silence_misses) - 1,
+        resumed + u64::from(t.silence_misses - held),
         "silent from tick {}, resumed at {resumed}",
         run.from
     );

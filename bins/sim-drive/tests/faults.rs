@@ -300,8 +300,9 @@ fn a_lost_disable_leaves_the_drive_running() {
 }
 
 /// Guards: protocol - an injected fault reaches what the drive hasn't sent yet: a Silent or a Mode(Reset) injected
-/// between an Enable and its Run reply stops that reply, fault bits injected then show in it, and a Late delays a
-/// reply already waiting (PLAN item 4: the injected fault is what the bus sees from then on).
+/// between an Enable and its Run reply stops that reply, fault bits injected then show in it, a Late delays a reply
+/// already waiting, and a reboot lets out only what the transport faults in effect let go before it (PLAN item 4: the
+/// injected fault is what the bus sees from then on).
 #[test]
 fn faults_reach_replies_not_yet_sent() {
     let over: StatusFaults = [StatusFault::Overcurrent].into_iter().collect();
@@ -333,21 +334,37 @@ fn faults_reach_replies_not_yet_sent() {
     assert_eq!(replies(&mut sim, t + ms(4)).len(), 0);
     assert_eq!(replies(&mut sim, t + ms(5)).len(), 1);
 
-    // A reboot loses what wasn't due yet; what was due went out before the power went.
-    let (mut sim, t) = running();
-    sim.inject(t, Fault::Late(ms(5))).unwrap();
-    sim.receive(t, host(neutral(7)));
-    assert_eq!(replies(&mut sim, t).len(), 0, "held until 5 ms");
-    sim.inject(t + ms(1), Fault::Reboot).unwrap();
-    assert_eq!(replies(&mut sim, t + ms(10)).len(), 0, "lost in the reboot");
-    let (mut sim, t) = running();
-    sim.receive(t, host(neutral(7)));
-    sim.inject(t + ms(1), Fault::Reboot).unwrap();
-    assert_eq!(
-        status_of(&replies(&mut sim, t + ms(1))),
-        [(Mode::Run, StatusFaults::default(), 25.0)],
-        "due before the reboot"
-    );
+    // A reboot lets out what was due before it, as far as the faults in effect let it go, whether or not the host read
+    // in between, and loses the rest; what it let out went before the power went, so a fault injected after it
+    // doesn't reach it.
+    for (fault, reboot_after, expected) in [
+        (None, ms(1), 1),
+        (Some(Fault::Silent), ms(1), 0),
+        (Some(Fault::Drop(1)), ms(1), 0),
+        (Some(Fault::Late(ms(5))), ms(1), 0),
+        (Some(Fault::Late(ms(5))), ms(5), 1),
+        (Some(Fault::Duplicate(1)), ms(1), 2),
+    ] {
+        for read_first in [false, true] {
+            let (mut sim, t) = running();
+            if let Some(fault) = fault {
+                sim.inject(t, fault).unwrap();
+            }
+            sim.receive(t, host(neutral(7)));
+            let read = if read_first {
+                replies(&mut sim, t).len()
+            } else {
+                0
+            };
+            sim.inject(t + reboot_after, Fault::Reboot).unwrap();
+            sim.inject(t + reboot_after, Fault::Silent).unwrap();
+            assert_eq!(
+                read + replies(&mut sim, t + ms(10)).len(),
+                expected,
+                "{fault:?}, reboot after {reboot_after:?}, read first: {read_first}"
+            );
+        }
+    }
 }
 
 /// Guards: protocol - timed faults land at their own times, in time order, however late the drive is stepped: a Mode
@@ -393,24 +410,28 @@ fn timed_faults_land_in_time_order() {
     assert!(held > 0.01, "it moved first: {held}");
     assert!((position(&mut late) - held).abs() < 1e-3, "{held}");
 
-    // A drive in Reset, canTimeout written and reporting on at `t`, put in Run by a fault at 100 ms: it times out
-    // 50 ms after that, not at once. The reports show the mode without a command restarting the count.
-    let mut sim = SimDrive::new(rs03(7), Uid([7; 8]), 11);
-    let t = Instant::now();
-    let _ = ask(
-        &mut sim,
-        t,
-        encode::param_write(&Write::can_timeout(rs03(7))),
-    );
-    let _ = ask(
-        &mut sim,
-        t,
-        encode::active_reporting(id(7), robstride::Reporting::On),
-    );
-    assert_eq!(
-        sim.schedule(Trigger::At(t + ms(100)), Fault::Mode(Mode::Run)),
-        Ok(())
-    );
+    // A drive in Reset, canTimeout written and reporting on at `t`, put in Run by a fault: it times out 50 ms after
+    // that, not at once. The reports show the mode without a command restarting the count.
+    let timing_out = |fault_at| {
+        let mut sim = SimDrive::new(rs03(7), Uid([7; 8]), 11);
+        let t = Instant::now();
+        let _ = ask(
+            &mut sim,
+            t,
+            encode::param_write(&Write::can_timeout(rs03(7))),
+        );
+        let _ = ask(
+            &mut sim,
+            t,
+            encode::active_reporting(id(7), robstride::Reporting::On),
+        );
+        assert_eq!(
+            sim.schedule(Trigger::At(t + fault_at), Fault::Mode(Mode::Run)),
+            Ok(())
+        );
+        (sim, t)
+    };
+    let (mut sim, t) = timing_out(ms(100));
     let modes: Vec<_> = replies(&mut sim, t + ms(160)).iter().map(mode_of).collect();
     let (run, reset) = (Some(Mode::Run), Some(Mode::Reset));
     assert_eq!(
@@ -420,6 +441,16 @@ fn timed_faults_land_in_time_order() {
             reset, reset
         ],
         "reports at 10 to 160 ms"
+    );
+    // Stepped once over more reports than the outbox holds, the fault and the timeout still land at their own times.
+    let (mut sim, t) = timing_out(ms(900));
+    let end = t + ms(1200);
+    let _ = replies(&mut sim, end);
+    assert_eq!(sim.take_injected().map(|i| i.at), Some(t + ms(900)));
+    assert_eq!(
+        status_of(&ask(&mut sim, end, neutral(7))),
+        [(Mode::Reset, StatusFaults::default(), 25.0)],
+        "timed out at 950 ms"
     );
 }
 
@@ -584,73 +615,42 @@ fn scheduled_faults_fire_on_their_trigger_and_are_recorded() {
     assert_eq!(kept, first, "oldest first");
 }
 
-/// Guards: protocol - a reboot sends only what the transport faults in effect let out before it, whether or not the
-/// host read in between: nothing from a silent drive, nothing a lost or late frame held past the reboot, and both
-/// copies of a doubled frame (PLAN item 4: the injected fault is what the bus sees).
+/// Guards: protocol - one long step with reporting on keeps the reports the outbox can hold and counts the rest
+/// dropped, exactly as many as a drive stepped every millisecond sends; a report the Set Zero blackout keeps off the bus
+/// takes no room and isn't counted (can.md section 2: bounded queues, every drop counted).
 #[test]
-fn a_reboot_sends_only_what_the_faults_let_out() {
-    for (fault, expected) in [
-        (Fault::Silent, 0),
-        (Fault::Drop(1), 0),
-        (Fault::Late(ms(5)), 0),
-        (Fault::Duplicate(1), 2),
-    ] {
-        for read_first in [false, true] {
+fn a_long_step_keeps_what_the_outbox_holds_and_counts_the_rest() {
+    let span = 1200;
+    let mut sent = Vec::new();
+    for set_zero in [false, true] {
+        let reporting = || {
             let (mut sim, t) = running();
-            sim.inject(t, fault).unwrap();
-            sim.receive(t, host(neutral(7)));
-            let read = if read_first {
-                replies(&mut sim, t).len()
-            } else {
-                0
-            };
-            sim.inject(t + ms(1), Fault::Reboot).unwrap();
-            assert_eq!(
-                read + replies(&mut sim, t + ms(10)).len(),
-                expected,
-                "{fault:?}, read first: {read_first}"
+            if set_zero {
+                let _ = ask(&mut sim, t, encode::set_zero(id(7)));
+            }
+            let _ = ask(
+                &mut sim,
+                t,
+                encode::active_reporting(id(7), robstride::Reporting::On),
             );
-        }
+            (sim, t)
+        };
+        // Stepped every millisecond, its outbox never fills: everything it sends goes.
+        let (mut often, t) = reporting();
+        let reports: usize = (1..=span)
+            .map(|n| replies(&mut often, t + ms(n)).len())
+            .sum();
+        assert_eq!(often.dropped(), 0, "set zero: {set_zero}");
+        // Stepped once, it keeps the first 64 (the outbox) and counts the rest.
+        let (mut once, t) = reporting();
+        assert_eq!(
+            (replies(&mut once, t + ms(span)).len(), once.dropped()),
+            (64, u64::try_from(reports - 64).unwrap()),
+            "set zero: {set_zero}"
+        );
+        sent.push(reports);
     }
-}
-
-/// Guards: protocol - one long step with reporting on runs every other event at its own time, however many reports
-/// fall in it: a Mode fault at 900 ms and the `canTimeout` 50 ms after it land then, and the reports the full outbox
-/// can't hold are counted (PLAN item 4).
-#[test]
-fn a_long_step_keeps_each_event_at_its_time() {
-    let mut sim = SimDrive::new(rs03(7), Uid([7; 8]), 11);
-    let t = Instant::now();
-    let _ = ask(
-        &mut sim,
-        t,
-        encode::param_write(&Write::can_timeout(rs03(7))),
-    );
-    let _ = ask(
-        &mut sim,
-        t,
-        encode::active_reporting(id(7), robstride::Reporting::On),
-    );
-    assert_eq!(
-        sim.schedule(Trigger::At(t + ms(900)), Fault::Mode(Mode::Run)),
-        Ok(())
-    );
-    let end = t + ms(1200);
-    let reports = replies(&mut sim, end);
-    assert_eq!(
-        sim.take_injected().map(|i| i.at),
-        Some(t + ms(900)),
-        "the fault at its own time"
-    );
-    // Reports every 10 ms from 10 to 1200 ms: the outbox holds the first 64, to 640 ms; the other 56 are dropped.
-    assert_eq!(reports.len(), 64);
-    assert!(reports.iter().all(|r| mode_of(r) == Some(Mode::Reset)));
-    assert_eq!(sim.dropped(), 56);
-    assert_eq!(
-        status_of(&ask(&mut sim, end, neutral(7))),
-        [(Mode::Reset, StatusFaults::default(), 25.0)],
-        "timed out at 950 ms"
-    );
+    assert!(sent[1] < sent[0], "the blackout kept reports off: {sent:?}");
 }
 
 /// Guards: protocol - the record and the plan keep the order things happened in when a slot is freed and reused: an

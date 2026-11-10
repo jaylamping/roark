@@ -1,48 +1,19 @@
-//! Limbs on one bus: each runs and stops on its own, the check before every send stops a limb on what the drain just
-//! read, and an operator's clear re-arms a stopped limb (PLAN.md item 6).
+//! Limbs on one bus: each runs and stops on its own, and the check before every send stops a limb on what the drain
+//! just read (PLAN.md item 6, step 7 design D1 and D2). The operator's re-arm is in `rearm.rs`.
 
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
 use can::{
-    BusDrive, BusError, BusTick, ConfigError, DRIVE_TIMEOUT_NS, ENABLE_TO_RUN_NS, EchoSeen,
-    LimbState, MAX_DRIVES, NoSuchLimb, RearmRefused, SendKind, SendOutcome, Snapshot, StopOutcome,
-    StopReason, Timing,
+    BusDrive, BusTick, ConfigError, ENABLE_TO_RUN_NS, EchoSeen, LimbState, MAX_DRIVES, NoSuchLimb,
+    SendKind, SendOutcome, StopOutcome, StopReason, Timing,
 };
 use common::{
-    MS, PERIOD, at, batch, deadline, error_frame, hold, id, record, run_tick, status, status_frame,
-    two_limbs,
+    MS, PERIOD, at, batch, deadline, hold, id, limb, record, run_tick, running, status,
+    status_frame, two_limbs,
 };
 use robstride::{EchoKind, Mode, StatusFault, StatusFaults, encode};
 use telemetry::Direction;
-
-#[expect(clippy::unwrap_used, reason = "test helper: the limbs asked for exist")]
-fn limb(snap: &Snapshot, limb: usize) -> (LimbState, Option<StopReason>) {
-    let l = snap.limb(limb).unwrap();
-    (l.state, l.stop)
-}
-
-/// Both drives enabled at tick 0 and answering in Run, then held at tick 1 with both answering.
-fn running(bus: &mut BusTick) {
-    let enable = batch(
-        0,
-        &[Some(encode::enable(id(101))), Some(encode::enable(id(102)))],
-    );
-    run_tick(
-        bus,
-        0,
-        Some(&enable),
-        &[(MS, status(101, Mode::Run)), (MS, status(102, Mode::Run))],
-    );
-    let _ = bus.end(deadline(0));
-    run_tick(
-        bus,
-        1,
-        Some(&batch(1, &[Some(hold(101)), Some(hold(102))])),
-        &[(MS, status(101, Mode::Run)), (MS, status(102, Mode::Run))],
-    );
-    let _ = bus.end(deadline(1));
-}
 
 /// Guards: safety - a limb stop stops only that limb: its drives get Disable and its frames in control's batch are
 /// dropped and counted, while the bus's other limb keeps its commands (PLAN.md item 6: a stop names its scope).
@@ -189,9 +160,10 @@ fn expired_feedback_stops_only_its_limb() {
 }
 
 /// Guards: safety - replies missed while a drive is between its Enable and its first Run status aren't counted for
-/// [`ENABLE_TO_RUN_NS`]; after a Disable they aren't counted for `stop_confirm_ns`, nor at all once a Reset confirms
-/// the drive off, even after another Disable; a Run status doesn't confirm it; once Run is seen after an Enable they count again (PLAN.md item 2 Silence windows; item 6 Silence row:
-/// a silent disabled drive is offline, not a fault).
+/// [`ENABLE_TO_RUN_NS`]; after a Disable they aren't counted at all once a Reset confirms the drive off, even after
+/// another Disable, and count again once Run is seen after an Enable; after a Disable no Reset answered (a Run status
+/// doesn't confirm it) they aren't counted for `stop_confirm_ns`, which a Disable sent again doesn't restart (PLAN.md
+/// item 2 Silence windows; item 6 Silence row: a silent disabled drive is offline, not a fault).
 #[test]
 fn misses_in_the_enable_and_post_disable_windows_are_not_counted() {
     // The enable sequence's run_mode write needs no fresh feedback, so it can go unanswered in either window.
@@ -544,91 +516,6 @@ fn a_stop_reaches_every_drive_of_its_limb_and_no_other() {
     assert_eq!(limb(&snap, 0), (LimbState::Active, None));
 }
 
-/// Guards: safety - only an operator's clear re-arms a stopped limb, and only once every drive in it is known
-/// disabled: confirmed in Reset by the stop, or without a frame for longer than the drive timeout. A running or
-/// stopping limb, a failed bus or an unknown limb is refused. A re-armed limb starts a new generation with no fault
-/// history and can be enabled again (PLAN.md item 6: a latched stop clears only by an operator clear, then preflight).
-#[test]
-fn a_stopped_limb_is_rearmed_only_when_its_drives_are_known_disabled() {
-    let mut bus = two_limbs();
-    running(&mut bus);
-    assert_eq!(bus.rearm(0, 2 * PERIOD), Err(RearmRefused::NotStopped(0)));
-    assert_eq!(bus.rearm(5, 2 * PERIOD), Err(RearmRefused::NoSuchLimb(5)));
-    // Drive 101 faults and its limb stops; it never answers the Disables.
-    let faulted = status_frame(
-        101,
-        Mode::Run,
-        [StatusFault::Overcurrent].into_iter().collect(),
-    );
-    bus.on_frame(
-        2 * PERIOD - MS,
-        &record(faulted.id(), faulted.data(), Direction::TxOther),
-    );
-    let mut tick = 2;
-    let last_disable = loop {
-        let sent = run_tick(
-            &mut bus,
-            tick,
-            Some(&batch(tick, &[None, Some(hold(102))])),
-            &[(MS, status(102, Mode::Run))],
-        );
-        let snap = bus.end(deadline(tick));
-        if limb(&snap, 0).0 == LimbState::Stopped {
-            break (tick - 1) * PERIOD;
-        }
-        assert_eq!(
-            sent,
-            [(0, SendKind::Disable), (1, SendKind::Command)],
-            "tick {tick}"
-        );
-        tick += 1;
-    };
-    let now = tick * PERIOD;
-    assert_eq!(
-        bus.rearm(0, now),
-        Err(RearmRefused::DriveNotQuiet { slot: 0 })
-    );
-    // Limb 1 keeps running while drive 101 stays quiet past the drive timeout plus a period, after which it has
-    // dropped to Reset on its own.
-    let quiet = last_disable + DRIVE_TIMEOUT_NS + PERIOD;
-    while tick * PERIOD < quiet {
-        let sent = run_tick(
-            &mut bus,
-            tick,
-            Some(&batch(tick, &[None, Some(hold(102))])),
-            &[(MS, status(102, Mode::Run))],
-        );
-        assert_eq!(sent, [(1, SendKind::Command)], "tick {tick}");
-        let _ = bus.end(deadline(tick));
-        tick += 1;
-    }
-    assert_eq!(bus.rearm(0, quiet), Ok(()));
-    let next = tick;
-    let sent = run_tick(
-        &mut bus,
-        next,
-        Some(&batch(
-            next,
-            &[Some(encode::enable(id(101))), Some(hold(102))],
-        )),
-        &[(MS, status(101, Mode::Run)), (MS, status(102, Mode::Run))],
-    );
-    assert_eq!(sent, [(0, SendKind::Command), (1, SendKind::Command)]);
-    let snap = bus.end(deadline(next));
-    assert_eq!(
-        snap.limb(0).map(|l| (l.state, l.stop, l.generation)),
-        Some((LimbState::Active, None, 1))
-    );
-    assert!(!at(&snap, 0).fault_seen);
-    // A failed bus is never re-armed in place.
-    bus.on_frame(next * PERIOD + 2 * MS, &error_frame(0x40, 0));
-    let _ = bus.end(deadline(next));
-    assert_eq!(
-        bus.rearm(0, quiet + DRIVE_TIMEOUT_NS * 2),
-        Err(RearmRefused::BusFailed(BusError::BusOff))
-    );
-}
-
 /// Guards: protocol - the echo of this host's frame to a drive is kept per drive, so the enable sequence can wait on
 /// that drive's reporting-off echo (PLAN.md item 2 Enable one drive: "wait for its echo plus one tick").
 #[test]
@@ -667,88 +554,46 @@ fn a_limb_past_the_table_is_refused() {
     );
 }
 
-/// Guards: safety - the re-arm's quiet time counts from when the socket took the last frame, not from its tick's
-/// scheduled start: a Disable written late (it never expires) holds the re-arm off for the drive timeout after the
-/// write (can.md section 2: sent nothing for longer than the drive timeout).
+/// Guards: protocol - a batch with no limb left to take it is counted as refused rather than lost: one handed to a bus
+/// whose every limb is stopping or stopped, and a bad one arriving in the tick the last running limb stops, which has
+/// no limb left to stop (logging.md section 4: nothing fails in silence).
 #[test]
-fn a_late_written_disable_holds_off_the_rearm() {
-    let late = PERIOD + PERIOD / 2;
-    let mut bus = two_limbs();
-    running(&mut bus);
-    assert_eq!(bus.stop_limb(0), Ok(()));
-    // Drive 101 never answers; each tick's Disable to it is written `late`.
-    let mut tick = 2;
-    let last_write = loop {
-        let start = tick * PERIOD;
-        let list = bus.begin(
-            tick,
-            start,
-            start,
-            Some(&batch(tick, &[None, Some(hold(102))])),
-        );
-        let mut disabled = false;
-        for (index, send) in list.iter().enumerate() {
-            let at = if send.slot == 0 { start + late } else { start };
-            disabled |= send.slot == 0;
-            bus.sent(index, SendOutcome::Sent, at);
+fn a_batch_no_limb_can_take_is_counted() {
+    // (name, the tick's batch: sound, or with slot 0 aimed at drive 102, and whether the limbs stopped a tick before)
+    let rows = [
+        ("a bad batch as the last limb stops", Some(hold(102)), false),
+        (
+            "a sound batch to a bus with every limb stopping",
+            Some(hold(101)),
+            true,
+        ),
+    ];
+    for (name, slot0, stopped_before) in rows {
+        let mut bus = two_limbs();
+        running(&mut bus);
+        assert_eq!(bus.stop_limb(0), Ok(()));
+        assert_eq!(bus.stop_limb(1), Ok(()));
+        let mut tick = 2;
+        if stopped_before {
+            run_tick(&mut bus, tick, None, &[]);
+            let _ = bus.end(deadline(tick));
+            tick += 1;
         }
-        bus.on_frame(start + MS, &status(102, Mode::Run));
-        let snap = bus.end(deadline(tick));
-        if limb(&snap, 0).0 == LimbState::Stopped && !disabled {
-            break (tick - 1) * PERIOD + late;
-        }
-        tick += 1;
-    };
-    let quiet = DRIVE_TIMEOUT_NS + PERIOD;
-    assert_eq!(
-        bus.rearm(0, last_write - late + quiet),
-        Err(RearmRefused::DriveNotQuiet { slot: 0 })
-    );
-    assert_eq!(
-        bus.rearm(0, last_write + quiet - 1),
-        Err(RearmRefused::DriveNotQuiet { slot: 0 })
-    );
-    assert_eq!(bus.rearm(0, last_write + quiet), Ok(()));
-}
-
-/// Guards: safety - a limb whose drives all confirmed Reset re-arms as soon as it is stopped, with no wait: a confirmed
-/// drive is known disabled (PLAN.md item 6: operator clear).
-#[test]
-fn a_confirmed_limb_rearms_at_once() {
-    let mut bus = two_limbs();
-    running(&mut bus);
-    assert_eq!(bus.stop_limb(0), Ok(()));
-    let mut tick = 2;
-    loop {
-        run_tick(
-            &mut bus,
-            tick,
-            Some(&batch(tick, &[None, Some(hold(102))])),
-            &[(MS, status(101, Mode::Reset)), (MS, status(102, Mode::Run))],
+        let sent = run_tick(&mut bus, tick, Some(&batch(tick, &[slot0, None])), &[]);
+        assert_eq!(
+            sent,
+            [(0, SendKind::Disable), (1, SendKind::Disable)],
+            "{name}"
         );
         let snap = bus.end(deadline(tick));
-        if limb(&snap, 0).0 == LimbState::Stopped {
-            assert_eq!(at(&snap, 0).stop, StopOutcome::Confirmed);
-            break;
-        }
-        tick += 1;
+        assert_eq!(
+            (
+                snap.counters.refused_batches,
+                snap.counters.refused_frames,
+                limb(&snap, 0).1
+            ),
+            (1, 0, Some(StopReason::LimbRequested)),
+            "{name}"
+        );
     }
-    // Its reporting off went out this very tick.
-    assert_eq!(bus.rearm(0, deadline(tick)), Ok(()));
-}
-
-/// Guards: protocol - a bad batch arriving in the tick its bus's last running limb stops has no limb left to stop, so it is
-/// counted as refused rather than lost (logging.md section 4: nothing fails in silence).
-#[test]
-fn a_bad_batch_as_the_last_limb_stops_is_counted() {
-    let mut bus = two_limbs();
-    running(&mut bus);
-    assert_eq!(bus.stop_limb(0), Ok(()));
-    assert_eq!(bus.stop_limb(1), Ok(()));
-    // Slot 0 carries a frame for drive 102: aimed wrong.
-    let sent = run_tick(&mut bus, 2, Some(&batch(2, &[Some(hold(102)), None])), &[]);
-    assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Disable)]);
-    let snap = bus.end(deadline(2));
-    assert_eq!(snap.counters.refused_batches, 1);
-    assert_eq!(limb(&snap, 0).1, Some(StopReason::LimbRequested));
 }

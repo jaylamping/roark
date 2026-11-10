@@ -5,12 +5,14 @@
 //!
 //! Each request gets exactly one result: its reply, timed out, not sent, or refused, including when the bus thread ends
 //! with it pending. The bus layer never retries one. A write is answered by an ordinary status with no register in it,
-//! so its result says only that the drive answered; a read-back is what proves the value. Writes go only to drives of
-//! an idle limb with no command of the tick still unanswered, so that status is unlikely to be a command's reply (a reply
-//! more than a tick late can still be taken for the write's answer, which is why the read-back proves the value). A request for
+//! so its result says only that the drive answered. Writes go only to drives of an idle limb with no command of the
+//! tick still unanswered, where that status is least likely to be mixed up with a command's reply; a late status can
+//! still be, either way (crates/can/README.md, Slow requests), so a read-back is what proves the value. A request for
 //! a drive whose limb is stopping, stopped or due to stop (the veto's own checks on any drive of the limb: a fault, a
 //! drop out of Run, too many misses), while control is silent, or on a failed bus is refused, and one already queued is
-//! cancelled before it goes, so slow traffic never keeps a drive alive (`canTimeout` counts from any frame).
+//! cancelled before it goes, so slow traffic never keeps a drive alive (`canTimeout` counts from any frame). A held tick
+//! (a late wake, a stall or a backlog) sends none: its reads can't be trusted and its slack isn't known, so a queued
+//! request waits for a trusted tick.
 
 use robstride::{EchoKind, Frame, Param, ParamOutcome, Uid, Write, encode};
 
@@ -161,9 +163,9 @@ impl BusTick {
         self.slow.iter().filter(|e| e.is_none()).count()
     }
 
-    /// The slow frame to send now, at `now_ns`, if one may go: after this tick's collect deadline, with nothing in
-    /// flight, and early enough for the reply to be read before the next tick starts. Queued requests that may no
-    /// longer go are cancelled first. Report what the socket did with [`Self::slow_sent`].
+    /// The slow frame to send now, at `now_ns`, if one may go: on a tick that wasn't held, after its collect deadline,
+    /// with nothing in flight, and early enough for the reply to be read before the next tick starts. Queued requests
+    /// that may no longer go are cancelled first; the rest wait. Report what the socket did with [`Self::slow_sent`].
     pub fn slow_send(&mut self, now_ns: u64) -> Option<Frame> {
         for i in 0..SLOW_SLOTS {
             let Some(entry) = self.slow.get(i).copied().flatten() else {
@@ -182,7 +184,8 @@ impl BusTick {
             .any(|e| matches!(e.state, SlowState::Sending | SlowState::Waiting));
         let after_collect = now_ns >= self.scheduled_ns.saturating_add(self.timing.collect_ns);
         let next_tick = self.scheduled_ns.saturating_add(self.timing.period_ns);
-        if in_flight
+        if self.held_tick == Some(self.tick)
+            || in_flight
             || !after_collect
             || now_ns.saturating_add(self.timing.slow_reply_ns) > next_tick
         {
@@ -296,7 +299,8 @@ impl BusTick {
         refusal
     }
 
-    /// A slow result couldn't be handed to control (its ring was full): counted in the next snapshot.
+    /// A slow result couldn't be handed to control (its ring was full): counted in the next snapshot, and, for one
+    /// dropped after the last, in what the thread hands back when it ends (`BusExit::slow_results_dropped`).
     pub fn slow_result_dropped(&mut self) {
         self.counters.slow_results_dropped += 1;
     }
@@ -370,7 +374,8 @@ impl BusTick {
             if write.target() != drive.device {
                 return Err(SlowRefusal::WrongTarget);
             }
-            // Judged from the write itself, not a decode of its frame: a write that didn't round-trip must not pass.
+            // A write of a kind control's batch carries (the enable sequence's `run_mode` = MIT) would leave its echo
+            // as the drive's `last_echo`, which keeps only those kinds for the enable sequence.
             if batch_may_carry(EchoKind::ParamWrite {
                 param: write.param(),
                 value: write.value(),

@@ -19,10 +19,14 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
 - `enable.rs`: `safety`'s preflight and enable sequence played as control would, over the bus layer's rings: a truthful
   drive passes and enables, another UID or a drive not in Reset is refused, and a drive silent after preflight fails
   its enable.
+- `exit.rs`: a bus of two active limbs told to exit with control's snapshot ring full stops every limb and returns
+  once the ring takes a snapshot with every limb stopped, once control drops the ring, or after its wait when control
+  never reads again; and a bus that ends counts the slow results control's ring can't take.
 
-Each test file uses a bus of its own, because every frame on a bus reaches every socket on it. The test binaries that
-share `can0` (`slow`, `faults`, `enable`) run one test at a time (nextest's `can0` test group, `.config/nextest.toml`); a
-new test on a shared bus joins that group.
+Every frame on a bus reaches every socket on it, so two tests that run at the same time never share a bus. Each test
+on `can1` to `can4` has its bus to itself; the tests in `exit.rs`, `slow.rs`, `faults.rs` and `enable.rs` all use
+`can0` and run one at a time (nextest's `can0` test group, `.config/nextest.toml`). A new test either takes a bus no
+other test uses or joins that group.
 
 nextest's default profile leaves this crate out, so `scripts/check.sh` stays runnable on any machine; the `sim` profile
 runs only this crate.

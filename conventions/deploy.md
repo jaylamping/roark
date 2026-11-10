@@ -33,7 +33,7 @@ pinned OS image, and nobody changes it by hand without putting the change back i
   A pulled plug gives almost no warning (the power board has no hold-up capacitors), so ext4 journaling and the safe writes
   above are what protect the data.
 - **A low pack is a planned shutdown.** The power board's power-fail line and the software low-pack limits are specified in
-  [REV_B_PARTS.md](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/pdb/REV_B_PARTS.md) and
+  [REV_B_PARTS.md](../hardware/power-board/REV_B_PARTS.md) and
   [PLAN item 10](../PLAN.md#10-power-board-interface-milestone-4). One shutdown path in the runtime handles every trigger, in
   this order: stop the motors (the normal stop sequence), record the event, close the recording, `sync`, remount
   `/var/lib/robot` read-only, then `systemctl poweroff`. It's tested on `vcan` with the trigger simulated.
