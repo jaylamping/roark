@@ -117,7 +117,10 @@ pub struct BusExit {
     /// the ring couldn't take counts itself in `counters.snapshots_dropped`, so a control that stopped reading still
     /// learns from here that it never got it.
     pub last: Option<Snapshot>,
-    /// The socket or clock error that ended it, if one did.
+    /// The first socket or clock error the thread met, if any. Most end the thread; one in the sleep or drain of the
+    /// tick it returns at after deciding its exit ([`BusLinks::exit`]) is reported too, though it returns there all the
+    /// same. That tick makes no snapshot, so `last` is then the Stopped snapshot that decided the exit, made before
+    /// the error and healthy as far as it knew.
     pub error: Option<io::Error>,
 }
 
@@ -325,7 +328,7 @@ fn sleep_relative(span: Duration) {
 struct ExitWait {
     /// The Stopped snapshots made after `exit` that the ring may leave untaken before the thread returns anyway: one
     /// stop window (`Timing::stop_confirm_ns`, 100 ms by default) in ticks of this bus, rounded up; `Timing::check`
-    /// makes the window longer than a period, so at least one. The shutdown already gives the drives that window to
+    /// makes the window at least a period, so at least one. The shutdown already gives the drives that window to
     /// confirm their Disables; a control that is alive reads its ring well inside one more, and one that isn't must not
     /// hold the join (and the recorder's close). Provisional, like the stop window itself: tuned with the rest of the
     /// timing on the real adapter (PLAN step 8).
@@ -407,17 +410,26 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             lose(&mut tick, &mut outcome, e);
         }
         let exiting = links.exit.load(Ordering::Acquire);
-        if leaving || (exiting && tick.state() == BusState::Idle) {
+        let leave = leaving
+            || (exiting
+                && match tick.state() {
+                    // Nothing enabled since start: nothing to stop.
+                    BusState::Idle => true,
+                    // Anything enabled is stopped first; the exit is decided once a Stopped snapshot is published.
+                    BusState::Active | BusState::Stopping { .. } => {
+                        tick.request_stop();
+                        false
+                    }
+                    // Already stopped: decided at this tick's snapshot.
+                    BusState::Stopped => false,
+                });
+        if leave {
             // The frames this drain read are still recorded, with the health they left the bus in: for a bus leaving
             // after its stop, the echoes of a last send the previous tick wrote after its collect deadline, which only
             // reach the recording by being read back.
             batch.valid = tick.healthy();
             outcome.recorder.record(batch);
             break;
-        }
-        if exiting && matches!(tick.state(), BusState::Active | BusState::Stopping { .. }) {
-            // Anything enabled is stopped first; the exit is decided once a Stopped snapshot is published.
-            tick.request_stop();
         }
         let command = newest(&mut links.commands);
         // Planned against the tick's own schedule: a wake past its send window is a missed deadline.
