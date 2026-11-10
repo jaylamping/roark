@@ -21,7 +21,8 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   its enable.
 - `exit.rs`: a bus of two active limbs told to exit with control's snapshot ring full stops every limb and returns
   once the ring takes a snapshot with every limb stopped, once control drops the ring, or after its wait when control
-  never reads again; and a bus that ends counts the slow results control's ring can't take.
+  never reads again, each time at the next tick's drain; a bus of two stopping limbs with no time to collect records
+  its last reporting off through that drain; and a bus that ends counts the slow results control's ring can't take.
 
 Every frame on a bus reaches every socket on it, so two tests that run at the same time never share a bus. Each test
 on `can1` to `can4` has its bus to itself; the tests in `exit.rs`, `slow.rs`, `faults.rs` and `enable.rs` all use
