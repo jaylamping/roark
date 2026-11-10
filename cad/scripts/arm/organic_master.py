@@ -21,7 +21,7 @@ CY, CZ, HX = 209.860668, 5.985875, 170.49
 HUB_Y = 319.86
 N = 40
 SHELL_T = 3.0
-FORE_T = 2.4              # forearm belly skin: the forearm FEA has bulk SF 5.5 or more in the belly at 3 mm; 2.4 saves about 15 g
+FORE_T = 2.1              # forearm belly skin: belly FEA bulk SF 7.8 at 2.4 mm; 2.1 saves about 8 g more
 OUT = {'upper': CAD / 'upper-arm' / 'upper_arm_organic_master_left.SLDPRT',
        'fore': CAD / 'forearm' / 'forearm_organic_master_left.SLDPRT'}
 WIP = CAD / '_wip' / 'organic-arm' / 'cad'
@@ -174,7 +174,7 @@ KEYS = [(0.4, 12.0, -37.8, -33.6), (0.4, 12.0, 33.6, 37.8), (33.6, 39.0, -6.0, 6
 NOTCHES = [(0.0, 12.4, -38.1, -30.0), (0.0, 12.4, 30.0, 38.1), (30.0, 39.3, -6.4, 6.4)]
 BEARS = ['y', 'y', 'z']           # which faces bear: Y-normal for the two side keys, Z-normal for the top one
 STUB = dict(x0=134.0, r_out=20.0, r_in=16.0)        # hollow inboard stub; 6808 (Ø40 / Ø52 x 7) on X 134-141
-STOP = dict(r0=28.0, r1=36.5, lug_phi=90.0, lug_span=50.0, travel=124.0, depth=6.0)   # 5 mm rim outside the slot
+STOP = dict(r0=29.5, r1=36.5, lug_phi=90.0, lug_span=60.0, travel=124.0, depth=6.0)   # 5 mm rim outside the slot
 CAP = dict(r=38.3, recess=1.5, pocket=3.0)       # inboard cap Ø76.6 over a 3 mm pocket: the flat bundle coils at r 22-35 in one layer (seat inside the R6 rim round)
 OUT_HOLES = [(12.0, 30.0 + 60.0 * k) for k in range(6)]          # 6 x M4 on Ø24
 OUT_PINS = [(12.0, 120.0 * k) for k in range(3)]                  # 3 printed Ø3.95 x 8.7 pins (organic_parts.py) in Ø4.05 holes, into the RS02 output's Ø4 pin holes on Ø24
@@ -251,7 +251,7 @@ def upper_details(d):
         return abs(p[0] - DRUM['x0']) < 0.05 and STOP['r0'] - 0.1 < r < STOP['r1'] + 0.1 and STOP['lug_phi'] - STOP['lug_span'] / 2 - 0.5 < ph < STOP['lug_phi'] + STOP['lug_span'] / 2 + 0.5
     root = edges_where(d, at_lug_root)
     print('  lug root edges', len(root), flush=True)
-    fillet_edges(d, root, (1.0, 0.8, 0.6), 'LUG_ROOT')
+    fillet_edges(d, root, (2.0, 1.5, 1.0), 'LUG_ROOT')
     # the rib meets the drum wall in a concave corner on both faces: R1.5
     rib_c = edges_where(d, lambda p: abs(math.hypot(p[1] - CY, p[2] - CZ) - (DRUM['r'] - SHELL_T)) < 0.1 and abs(p[0] - RIB[1]) < 0.05)   # ring side only: on the back face it left slivers at the neck opening
     print('  rib corner edges', len(rib_c), flush=True)
@@ -285,17 +285,20 @@ def fore_details(d):
     lo = STOP['lug_phi'] - STOP['travel'] - STOP['lug_span'] / 2
     hi = STOP['lug_phi'] + STOP['lug_span'] / 2
     arc_band(d, 'STOP_SLOT', STOP['r0'] - 0.5, STOP['r1'] + 0.5, lo, hi, ix[1] - STOP['depth'] - 0.5, ix[1] + 0.5, cut=True)
-    # relief at the slot mouth for the lug's R1 root fillets: 1.1 mm wider over the last 1.6 mm
+    # relief at the slot mouth for the lug's R2 root fillets: 2.2 mm wider over the last 2.6 mm
     d_ = math.degrees(1.1 / STOP['r0'])
-    arc_band(d, 'SLOT_MOUTH', STOP['r0'] - 1.0, STOP['r1'] + 0.5,   # inner edge stays 1 mm off the 6808 bore
-             lo - d_, hi + d_, ix[1] - 1.1, ix[1] + 0.5, cut=True)   # relief 1.6 deep: worst-case axial stack (+-0.3) keeps contact off the R1 root
+    arc_band(d, 'SLOT_MOUTH', STOP['r0'] - 1.6, STOP['r1'] + 0.5,   # inner edge r 27.9, 1.9 mm off the 6808 bore
+             lo - d_, hi + d_, ix[1] - 2.1, ix[1] + 0.5, cut=True)   # relief 2.6 deep: worst-case axial stack (+-0.3) keeps contact off the R2 root
+    d2 = math.degrees(2.2 / STOP['r0'])                   # the slot ends get the full 2.2 mm for the R2 fillets on the lug's end edges
+    arc_band(d, 'SLOT_END_LO', STOP['r0'] - 1.6, STOP['r1'] + 0.5, lo - d2, lo + 2.0, ix[1] - 2.1, ix[1] + 0.5, cut=True)
+    arc_band(d, 'SLOT_END_HI', STOP['r0'] - 1.6, STOP['r1'] + 0.5, hi - 2.0, hi + d2, ix[1] - 2.1, ix[1] + 0.5, cut=True)
 
 
 def yaw_interface(d):
     """The belly's bottom rim (layout A2): a rim band under the Ø72 skin at Y 98.3, the Ø58.2 bore the RS00 goes up through,
     six M3 x 5.7 inserts on r 32.6 for the stub ring's screws, and the low cable channel at the back. The front of the belly
     near the elbow is 1.5 mm fuller (Y 148) so the RS00, 8 mm higher than in draft 4, clears it."""
-    y_revolve(d, 'RIM_BAND', [(29.1, 98.3), (34.5, 98.3), (34.5, 105.0), (31.5, 111.0), (29.1, 111.0)])
+    y_revolve(d, 'RIM_BAND', [(29.1, 98.3), (34.5, 98.3), (34.5, 105.5), (31.5, 107.5), (29.1, 107.5)])   # just past the 7 mm inserts
     with Sk(d, plane(d, 'Y', 98.3, 'SLEEVE_INSERTS_P'), 'SLEEVE_INSERTS') as s:
         for a in range(0, 360, 60):
             t = math.radians(a)

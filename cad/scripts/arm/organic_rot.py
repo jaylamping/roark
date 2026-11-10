@@ -43,12 +43,12 @@ Y_RING = (92.3, 98.3)
 Y_BRG = ((83.0, 90.0), (76.0, 83.0))   # upper, lower 6808 (Ø40 / Ø52 x 7)
 Y_SHOULDER = 90.0
 THREAD = (70.0, 76.0)                  # stub end: M40 x 1.5 for the nut, bore r 15.5 there
-HUB = dict(bore=26.05, top=91.5, r_out=30.0, flange=(68.0, 75.0), r_flange=33.0)
+HUB = dict(bore=26.05, top=91.5, r_out=29.0, flange=(68.0, 75.0), r_flange=33.0)
 WAVE = (75.2, 76.0)
 PLATE = dict(y0=65.0, y1=68.0, boss_top=75.2, r_hole=10.6)
 SHAFT = dict(r_in=7.5, r_out=10.5, top=(94.0, 97.9), foot=65.0, dogs=(65.0, 68.0))
 WRIST = dict(face=14.9, top=22.0, r=33.0, rim_in=21.0, plate_top=18.9, opening=12.0, pilot=17.5, pilot_d=2.0)
-SHELL = dict(top=92.0, cone_end=24.4, r_top=36.0, r_cone=34.0, r_cuff=35.2, t=2.0)
+SHELL = dict(top=92.0, cone_end=24.4, r_top=36.0, r_cone=34.0, r_cuff=35.2, t=1.6)      # 4 perimeters at 0.4; turning-section SF 45 at 2.0
 LUG_A, TAB_A, STOP_SPAN = 30.0, 210.0, 10.0
 SLOT = (258.0, 282.0)
 H_SCREWS = [0.0 + 60.0 * k for k in range(6)]       # RS00 housing (r 25) and rim (r 32.6) screws, as draft 4
@@ -112,6 +112,7 @@ def stub_ring():
     holes_y(d, 'HOUSING_CBORES', [(25.0, a) for a in H_SCREWS], 2.85, Y_RING[0] - 1, Y_RING[0] + 1.8)
     holes_y(d, 'RIM_SCREWS', [(32.6, a) for a in H_SCREWS], 1.7, Y_RING[0] - 1, Y_RING[1] + 1)
     arc_y(d, 'RIBBON_SLOT', 16.5, 33.5, SLOT[0], SLOT[1], Y_SHOULDER - 0.2, Y_RING[1] + 1, True)   # right through the shoulder
+    z_holes(d, 'NUT_PIN', [(HX, 73.0)], 1.3, CZ + 14.0, CZ + 21.0)        # radial Ø2.6 hole at the front for the nut's locking pin
     arc_y(d, 'STOP_LUG', 30.5, 33.0, LUG_A - STOP_SPAN / 2, LUG_A + STOP_SPAN / 2, 88.5, Y_RING[0] + 0.05, False)
     # lighten the ring between its screw circles from below (hidden under the turning shell's top)
     for k, a in enumerate(H_SCREWS):
@@ -125,6 +126,10 @@ def stub_nut():
     y_revolve(d, 'NUT', [(20.05, THREAD[0]), (22.0, THREAD[0]), (22.0, THREAD[1] - 0.05), (20.05, THREAD[1] - 0.05)])
     arc_y(d, 'WRENCH_SLOTS', 21.2, 22.5, 85.0, 95.0, THREAD[0] - 0.5, THREAD[0] + 1.5, True)     # spanner notch
     arc_y(d, 'WRENCH_SLOTS2', 21.2, 22.5, 265.0, 275.0, THREAD[0] - 0.5, THREAD[0] + 1.5, True)
+    # six radial Ø2.6 holes: tighten snug with a pin spanner, back off to the nearest hole, push a printed Ø2.5 pin into the stub
+    z_holes(d, 'LOCK_HOLE_F', [(HX, 73.0)], 1.3, CZ + 19.0, CZ + 23.0)
+    z_holes(d, 'LOCK_HOLE_B', [(HX, 73.0)], 1.3, CZ - 23.0, CZ - 19.0)
+    x_holes(d, 'LOCK_HOLE_S', [(73.0, CZ)], 1.3, HX - 23.0, HX + 23.0)
     save(d, name)
 
 
@@ -147,7 +152,7 @@ def hub():
     f0, f1 = HUB['flange']
     y_revolve(d, 'HUB', [(HUB['bore'], f0), (HUB['r_flange'], f0), (HUB['r_flange'], f1), (HUB['r_out'], f1), (HUB['r_out'], HUB['top']),
                          (23.5, HUB['top']), (23.5, Y_BRG[0][1]), (HUB['bore'], Y_BRG[0][1])])
-    arc_y(d, 'STOP_TAB', 29.9, 33.0, TAB_A - STOP_SPAN / 2, TAB_A + STOP_SPAN / 2, 88.5, HUB['top'], False)
+    arc_y(d, 'STOP_TAB', HUB['r_out'] - 0.1, 33.0, TAB_A - STOP_SPAN / 2, TAB_A + STOP_SPAN / 2, 88.5, HUB['top'], False)
     holes_y(d, 'PLATE_INSERTS', [(29.5, a) for a in H_SCREWS], 2.0, f0 - 0.01, f0 + 6.0)      # 1.45 mm off the bearing bore
     z_holes(d, 'SHELL_INSERTS', [(HX, (f0 + f1) / 2)], 2.0, CZ - HUB['r_flange'] - 0.5, CZ - HUB['r_flange'] + 6.0)
     z_holes(d, 'SHELL_INSERTS2', [(HX, (f0 + f1) / 2)], 2.0, CZ + HUB['r_flange'] - 6.0, CZ + HUB['r_flange'] + 0.5)
@@ -164,7 +169,7 @@ def drive_plate():
         arc_y(d, f'DOG_SLOT{k}', PLATE['r_hole'] - 0.5, 13.2, a - 11.5, a + 11.5, PLATE['y0'] - 0.5, PLATE['y1'] + 0.5, True)
     holes_y(d, 'HUB_SCREWS', [(29.5, a) for a in H_SCREWS], 1.7, PLATE['y0'] - 1, PLATE['y1'] + 1)
     for k, a in enumerate(OUT_SCREWS):                  # lightening windows between the hub screws
-        arc_y(d, f'WINDOW{k}', 15.0, 21.5, a - 18.0, a + 18.0, PLATE['y0'] - 0.5, PLATE['y1'] + 0.5, True)
+        arc_y(d, f'WINDOW{k}', 14.0, 22.0, a - 22.0, a + 22.0, PLATE['y0'] - 0.5, PLATE['y1'] + 0.5, True)
     save(d, name)
 
 
@@ -184,7 +189,7 @@ def wrist_plate():
     z_holes(d, 'SHELL_INSERTS2', [(HX, yr)], 2.0, CZ + w['r'] - 6.0, CZ + w['r'] + 0.5)
     for k, a in enumerate(H_SCREWS):                    # lighten the rim from the top between the inserts (not over the shell inserts at 90 / 270)
         if not (a + 20.0 < 90.0 < a + 40.0 or a + 20.0 < 270.0 < a + 40.0):
-            arc_y(d, f'RIM_POCKET{k}', 27.0, 31.5, a + 20.0, a + 40.0, w['top'] - 2.5, w['top'] + 0.5, True)
+            arc_y(d, f'RIM_POCKET{k}', 27.0, 31.5, a + 20.0, a + 40.0, w['top'] - 4.0, w['top'] + 0.5, True)
     save(d, name)
 
 

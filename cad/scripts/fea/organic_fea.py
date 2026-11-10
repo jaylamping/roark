@@ -13,7 +13,7 @@ import sys
 
 from p3_fea import CASES, F, GOLD, PARTS, CY, CZ, I, cyl, pl, run, VARIANT, pythoncom
 
-PARTS['organic'] = F / os.environ.get('ORG_MODEL', 'UA_ORGANIC_BONDED_v11.SLDPRT')   # v4: ring chamfer as printed; v3: ring joined only through its dogs, lug root fillets
+PARTS['organic'] = F / os.environ.get('ORG_MODEL', 'UA_ORGANIC_BONDED_v12.SLDPRT')   # v4: ring chamfer as printed; v3: ring joined only through its dogs, lug root fillets
 FG, MG = 62.0, 17.2
 SEAT = cyl(35.9, [129, 295, -35, 212, 304, 47])
 RS02 = cyl(32.75, [156, 170, -30, 163.5, 250, 42])      # ring bore only: no rigid tie to the drum
@@ -35,8 +35,8 @@ for k, (f, m) in LOADS.items():
     CASES[k] = dict(base, el=3.0)
     CASES[k + '_fine'] = dict(base, el=2.0, ctrl=[(SEAT, 1.2)])
     CASES[k + '_xfine'] = dict(base, el=1.5, ctrl=[(SEAT, 1.0)])
-for tag, a in (('0', 64.6), ('124', 115.4)):          # contact pads on the 50 deg lug's end faces
-    face = ('plane', (137.55,) + P(32.25, a), None, 'on')     # the pad face only
+for tag, a in (('0', 59.6), ('124', 120.4)):          # contact pads on the 60 deg lug's end faces
+    face = ('plane', (137.55,) + P(33.0, a), None, 'on')     # the pad face only
     CASES['STOP_' + tag] = dict(part='organic', fix=[('fixed', SEAT)], forces=[(face, 889.0, None)], regions=REGIONS, el=2.5, ctrl=[(face, 0.8)], exclude=[RING_ZONE])
     CASES['STOP_' + tag + '_fine'] = dict(CASES['STOP_' + tag], el=1.8, ctrl=[(face, 0.5)])
     CASES['STOP_' + tag + '_xfine'] = dict(CASES['STOP_' + tag], el=1.3, ctrl=[(face, 0.35)])
@@ -53,8 +53,8 @@ for k, f, m in (('FP90', (0, 0, -55.0), (0, 0, 0)), ('FLAT', (55.0, 0, 0), (0, 0
     CASES[k] = dict(part='fore', fix=OUT_FIX, remote=(RIM, HAND, f, m), regions=FREG, el=3.0)
     CASES[k + '_fine'] = dict(CASES[k], el=2.0, ctrl=[(RIM, 1.0)])
 # back-driven onto the stops: 120 N at the hand (34 N.m at the elbow), held by the slot end face and the bearing
-for tag, a, fz in (('0', 114.6, -120.0), ('124', -58.6, 120.0)):   # contact pads on the slot ends for the 50 deg lug
-    face = ('plane', (137.55,) + P(32.25, a), None, 'on')
+for tag, a, fz in (('0', 119.6, -120.0), ('124', -63.6, 120.0)):   # contact pads on the slot ends for the 60 deg lug
+    face = ('plane', (137.55,) + P(33.0, a), None, 'on')
     CASES['FSTOP_' + tag] = dict(part='fore', fix=[('fixed', face), OUT_FIX[2]], remote=(RIM, HAND, (0, 0, fz), (0, 0, 0)), regions=FREG, el=2.5, ctrl=[(face, 0.8)])
     CASES['FSTOP_' + tag + '_fine'] = dict(CASES['FSTOP_' + tag], el=1.8, ctrl=[(face, 0.5)])
 
@@ -117,4 +117,4 @@ CASES['STUB_TW'] = dict(part='stub', fix=[('fixed', RING_TOP)], remote=(STUB_OD,
 
 if __name__ == '__main__':
     for n in sys.argv[1:]:
-        run(('a2_' if CASES[n]['part'] in ('rot', 'stub') else 'fa_' if CASES[n]['part'] == 'fore' else 'con_' if CASES[n]['part'] == 'contact' else 'org11_') + n, CASES[n])
+        run(('a2_' if CASES[n]['part'] in ('rot', 'stub') else 'fa_' if CASES[n]['part'] == 'fore' else 'con_' if CASES[n]['part'] == 'contact' else 'org12_') + n, CASES[n])

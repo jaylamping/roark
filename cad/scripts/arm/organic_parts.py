@@ -285,7 +285,7 @@ def disc(side):
         x_holes(d, 'LAP_INSERTS', [P(SCREW_R, a) for a in SCREW_PHI], 2.0, OUT['inner'] - 0.5, OUT['lap'] + 0.1)
         # lightening: six pockets under the cap ring (r 19.5-31, 8.6 deep from the recess floor), 3 mm spokes between them
         for k in range(6):
-            arc_band(d, f'LIGHTEN{k}', 19.5, 31.0, 60.0 * k + 3.5, 60.0 * k + 56.5, 203.0, OUT['outer'] - 1.4, cut=True)
+            arc_band(d, f'LIGHTEN{k}', 19.5, 31.0, 60.0 * k + 3.5, 60.0 * k + 56.5, 201.0, OUT['outer'] - 1.4, cut=True)
     else:
         cut_half_space(d, 'X', IN['inner'] + 0.5, -1, 'PAST_DISC')
         cut_half_space(d, 'X', IN['floor'], 1, 'UNDER_POCKET')
@@ -353,7 +353,7 @@ def fea_upper():
     the lug end faces carry the stop load where the slot end bears (X 135.7-139.4)."""
     sim = CAD / '_sim' / 'upper-arm'
     sim.mkdir(parents=True, exist_ok=True)
-    p = sim / 'UA_ORGANIC_BONDED_v11.SLDPRT'
+    p = sim / 'UA_ORGANIC_BONDED_v12.SLDPRT'
     shutil.copy(M.OUT['upper'], p)
     e, w = L(), L()
     d = sw.OpenDoc6(str(p), 1, 1, '', e, w)
