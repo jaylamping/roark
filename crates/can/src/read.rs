@@ -154,6 +154,13 @@ impl BusTick {
         if self.slow_write_reply(slot) {
             return;
         }
+        // A write's own status read after it timed out (at this tick's start) lands below, as the reply to this tick's
+        // command (crates/can/README.md, Slow requests). It is a real status of the drive from just before this tick's
+        // sends, so it can't confirm a stop that isn't so: the write went only to a drive of an idle limb with no stop
+        // due, so nothing has been sent to the drive since; a Reset in it shows the drive disabled, and a limb that
+        // starts stopping this tick sends it no Enable, so it is still disabled when the stop's Disable arrives. Only a
+        // status that also outlived an Enable on a later tick could, which is the read order `BusTick::drained`
+        // assumes for every status.
         let Some(d) = self.drives.get_mut(slot).and_then(Option::as_mut) else {
             return;
         };
