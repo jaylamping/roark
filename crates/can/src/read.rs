@@ -5,8 +5,8 @@ use robstride::{DecodeError, DeviceId, Inbound, Mode, Status, decode};
 use telemetry::{Direction, FrameRecord};
 
 use crate::error_frame::{BusError, classify, controller_passive};
-use crate::tick::{BusTick, DriveState, Reply};
-use crate::types::{EchoSeen, LimbState, Observed, StopOutcome};
+use crate::tick::{BusTick, DriveState, DriveStop, Off, Reply};
+use crate::types::{EchoSeen, LimbState, Observed};
 
 impl BusTick {
     /// One frame read at `read_ns`, before the send (draining) or after it.
@@ -152,13 +152,11 @@ impl BusTick {
         // Any Reset after the stop's Disable confirms it, even behind an earlier status still in flight, while the reply
         // allowance is open. After it, or once the limb is stopped, it confirms nothing: the stop's end is bounded
         // (`Timing::stop_max_ns`), and a confirmation then would record a reporting off that never comes.
-        if confirms
-            && o.stop_disable
-            && status.header.mode == Mode::Reset
-            && d.stop != StopOutcome::Confirmed
-        {
-            d.stop = StopOutcome::Confirmed;
-            d.confirmed_ns = Some(read_ns);
+        if confirms && o.stop_disable && status.header.mode == Mode::Reset && !d.stop.confirmed() {
+            d.stop = DriveStop::Confirmed {
+                at_ns: read_ns,
+                off: Off::Unsent,
+            };
         }
     }
 

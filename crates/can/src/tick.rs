@@ -63,12 +63,42 @@ pub(crate) struct DriveState {
     /// When the socket last took a frame to it, as the shell read the clock after the write.
     pub(crate) last_sent_ns: Option<u64>,
     pub(crate) last_echo: Option<EchoSeen>,
-    pub(crate) stop: StopOutcome,
-    /// When this stop's Disable was confirmed: set only with `stop` Confirmed, by a Reset read inside the stop's reply
-    /// allowance ([`Timing::stop_replies_ns`]).
-    pub(crate) confirmed_ns: Option<u64>,
-    /// This stop's reporting off.
-    pub(crate) off: Off,
+    pub(crate) stop: DriveStop,
+}
+
+/// Where the current or last stop is with one drive (PLAN.md item 2 Stop). One value, so a confirmation and its
+/// reporting off are set and withdrawn together.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum DriveStop {
+    /// No stop since start or the limb's last re-arm.
+    None,
+    /// A stop began and the socket has taken no Disable to the drive yet (or the bus was lost).
+    NeverSent,
+    /// The socket took a Disable; no Reset read inside the reply allowance stands for it.
+    Sent,
+    /// A Reset read at `at_ns`, inside the stop's reply allowance ([`Timing::stop_replies_ns`]), confirmed it.
+    Confirmed {
+        /// When the confirming Reset was read.
+        at_ns: u64,
+        /// Its reporting off.
+        off: Off,
+    },
+}
+
+impl DriveStop {
+    /// What the snapshot says of it.
+    pub(crate) const fn outcome(self) -> StopOutcome {
+        match self {
+            Self::None => StopOutcome::None,
+            Self::NeverSent => StopOutcome::NeverSent,
+            Self::Sent => StopOutcome::Sent,
+            Self::Confirmed { .. } => StopOutcome::Confirmed,
+        }
+    }
+
+    pub(crate) const fn confirmed(self) -> bool {
+        matches!(self, Self::Confirmed { .. })
+    }
 }
 
 /// Where a stop's reporting off to one drive is. It is planned every tick from its due time until the socket takes it
@@ -248,9 +278,7 @@ impl BusTick {
                 phase: Phase::Off,
                 last_sent_ns: None,
                 last_echo: None,
-                stop: StopOutcome::None,
-                confirmed_ns: None,
-                off: Off::Unsent,
+                stop: DriveStop::None,
             });
         }
         Ok(Self {
@@ -653,10 +681,10 @@ impl BusTick {
             d.misses = 0;
         }
         d.phase = phase;
-        match send.kind {
-            SendKind::Disable if d.stop == StopOutcome::NeverSent => d.stop = StopOutcome::Sent,
-            SendKind::ReportingOff => d.off = Off::Sent,
-            SendKind::Disable | SendKind::Command => {}
+        match (send.kind, &mut d.stop) {
+            (SendKind::Disable, stop @ DriveStop::NeverSent) => *stop = DriveStop::Sent,
+            (SendKind::ReportingOff, DriveStop::Confirmed { off, .. }) => *off = Off::Sent,
+            (SendKind::Disable | SendKind::ReportingOff | SendKind::Command, _) => {}
         }
         if expects_status {
             d.outstanding = Some(Outstanding {
@@ -719,8 +747,11 @@ impl BusTick {
                         fault_seen: d.fault_seen,
                         misses: d.misses,
                         last_echo: d.last_echo,
-                        stop: d.stop,
-                        reporting_off_sent: d.off == Off::Sent,
+                        stop: d.stop.outcome(),
+                        reporting_off_sent: matches!(
+                            d.stop,
+                            DriveStop::Confirmed { off: Off::Sent, .. }
+                        ),
                     },
                 );
             }

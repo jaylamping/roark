@@ -13,9 +13,9 @@
 use robstride::encode::{self, Reporting};
 
 use crate::error_frame::BusError;
-use crate::tick::{BusTick, Off, Phase};
+use crate::tick::{BusTick, DriveStop, Off, Phase};
 use crate::timing::DRIVE_TIMEOUT_NS;
-use crate::types::{LimbState, MAX_DRIVES, RearmRefused, Send, SendKind, StopOutcome, StopReason};
+use crate::types::{LimbState, MAX_DRIVES, RearmRefused, Send, SendKind, StopReason};
 
 impl BusTick {
     /// Stop every limb not already stopping or stopped, for a reason that is the whole bus's.
@@ -67,9 +67,7 @@ impl BusTick {
         l.state = LimbState::Stopping { since_ns: now_ns };
         l.pending = None;
         for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {
-            d.stop = StopOutcome::NeverSent;
-            d.confirmed_ns = None;
-            d.off = Off::Unsent;
+            d.stop = DriveStop::NeverSent;
         }
     }
 
@@ -148,7 +146,7 @@ impl BusTick {
         for (slot, d) in self.drives.iter().enumerate() {
             if let Some(d) = d
                 && flag(&confirming, d.limb)
-                && d.stop != StopOutcome::Confirmed
+                && !d.stop.confirmed()
             {
                 self.sends.push(Send {
                     slot,
@@ -162,9 +160,11 @@ impl BusTick {
         for (slot, d) in self.drives.iter().enumerate() {
             if let Some(d) = d
                 && flag(&stopping, d.limb)
-                && d.off == Off::Unsent
-                && d.confirmed_ns
-                    .is_some_and(|at| now_ns >= at.saturating_add(silence))
+                && let DriveStop::Confirmed {
+                    at_ns,
+                    off: Off::Unsent,
+                } = d.stop
+                && now_ns >= at_ns.saturating_add(silence)
             {
                 self.sends.push(Send {
                     slot,
@@ -188,7 +188,7 @@ impl BusTick {
         let mut drives = self.drives.iter().flatten().filter(|d| d.limb == limb);
         if drives
             .clone()
-            .all(|d| d.stop == StopOutcome::Confirmed && d.off == Off::Sent)
+            .all(|d| matches!(d.stop, DriveStop::Confirmed { off: Off::Sent, .. }))
         {
             return true;
         }
@@ -197,7 +197,15 @@ impl BusTick {
             return false;
         }
         elapsed >= self.timing.stop_max_ns()
-            || !drives.any(|d| d.confirmed_ns.is_some() && d.off == Off::Unsent)
+            || !drives.any(|d| {
+                matches!(
+                    d.stop,
+                    DriveStop::Confirmed {
+                        off: Off::Unsent,
+                        ..
+                    }
+                )
+            })
     }
 
     /// At the tick's end: a stopping limb whose stop is over ([`Self::stop_over`]) is stopped.
@@ -227,7 +235,7 @@ impl BusTick {
             if l.state.takes_commands() {
                 l.stop = Some(StopReason::Bus(error));
                 for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {
-                    d.stop = StopOutcome::NeverSent;
+                    d.stop = DriveStop::NeverSent;
                 }
             }
             l.state = LimbState::Stopped;
@@ -259,7 +267,7 @@ impl BusTick {
         for (slot, d) in self.drives.iter().enumerate() {
             if let Some(d) = d
                 && d.limb == limb
-                && d.stop != StopOutcome::Confirmed
+                && !d.stop.confirmed()
                 && d.last_sent_ns
                     .is_some_and(|at| now_ns.saturating_sub(at) < quiet_ns)
             {
@@ -273,9 +281,7 @@ impl BusTick {
             l.generation = l.generation.saturating_add(1);
         }
         for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {
-            d.stop = StopOutcome::None;
-            d.confirmed_ns = None;
-            d.off = Off::Unsent;
+            d.stop = DriveStop::None;
             d.fault_seen = false;
             d.misses = 0;
             d.phase = Phase::Off;
