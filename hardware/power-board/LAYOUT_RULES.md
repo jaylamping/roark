@@ -335,11 +335,16 @@ pads to the IC pins it serves (for SH also to R61/R62, the 0 Ω links into U8); 
 decoupling part is not part of the pair. Both measures count the share of both legs' length within 1.0 mm, centre to
 centre on the same layer, of the other leg.
 
-| Pair | Old measure, before the SH9 re-lay | Old measure, now | New measure, now | Floor (new measure) |
-|---|---|---|---|---|
-| SH (RS1 to U1 and U8) | 61.7 % | 61.7 % | 86.6 % | 86 % |
-| SHL1–SHL6 (ports) | 56.1 % | 56.1 % | 57.8 % | 57 % |
-| SH9 (RS9 to U7) | 9.4 % | 49.6 % | 66.3 % | 66 % |
+| Pair | Old measure, before the SH9 re-lay | Old measure, now | New measure (round 3) | Layer-aware measure, now | Floor |
+|---|---|---|---|---|---|
+| SH (RS1 to U1 and U8) | 61.7 % | 61.7 % | 86.6 % | 86.8 % | 86 % |
+| SHL1–SHL6 (ports) | 56.1 % | 56.1 % | 57.8 % | 58.2 % | 57 % |
+| SH9 (RS9 to U7) | 9.4 % | 49.6 % | 66.3 % | 66.3 % | 66 % |
+
+Since round 4 the leg is traced on a layer-aware graph: track ends on different layers join only through a via of the
+net or a through-hole pad (before, two ends at the same X/Y on different layers counted as joined), and a leg that can't
+be traced from a sense pad to every IC pin of the net fails check 3 instead of falling back to the whole net. The port
+legs' N side came out 0.3 mm shorter (23.9 mm, was 24.2) and SH's legs 0.2 / 0.6 mm shorter; every leg traced.
 
 The difference for SH is a 48 mm branch of SH_P that is not on the way to an IC's sense pin; for SH9 it is the 8.4 mm
 branch from U7's pin to its decoupling capacitor C20, which cannot move closer because F2's holder stands beside U7.

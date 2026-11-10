@@ -11,8 +11,9 @@
      Pairs inside one footprint are listed separately: the package sets those, not the routing.
   3. Kelvin sense pairs: for each SH*_P / SH*_N pair, each leg from the shunt's sense pad to the IC pins it serves (a
      branch that ends at a filter or decoupling part is not counted), its length, and the share of both legs' length
-     that runs within 1.0 mm, centre to centre on the same layer, of the other leg. Fails below tools/domains.py
-     KELVIN_FLOOR.
+     that runs within 1.0 mm, centre to centre on the same layer, of the other leg. The leg is traced layer by layer
+     (ends on different layers join only through a via or a through-hole pad). Fails below tools/domains.py
+     KELVIN_FLOOR, and when a leg can't be traced from a sense pad to every IC pin of the net.
   4. No track, via, pad or pour of a 54 V net, of a net riding on 54 V, or of the latch's supply chain (BAT_F, BAT_R,
      BAT_CTL) on the inner layers under the latch block (tools/domains.py LATCH).
   5. No E-stop via inside a 54 V zone outline on any layer.
@@ -195,38 +196,54 @@ for t in b.GetTracks():
     if t.GetClass()=='PCB_TRACK': tr.setdefault(t.GetNetname(),[]).append((t.GetLayer(),(MM(t.GetStart().x),MM(t.GetStart().y)),(MM(t.GetEnd().x),MM(t.GetEnd().y))))
 PADS_BY_NET={}
 for p_ in b.GetPads(): PADS_BY_NET.setdefault(p_.GetNetname(),[]).append(p_)
+VIAS_BY_NET={}
+for t in b.GetTracks():
+    if t.GetClass()=='PCB_VIA': VIAS_BY_NET.setdefault(t.GetNetname(),[]).append(t)
 def sense_path(net):
-    """the net's tracks that lie on the way from a shunt's sense pad (RS*) to an IC's pin (U*): the Kelvin leg itself.
-    Branches that end at a filter or decoupling part (C20 on SH9_P, the port's R0/C2) are not part of the pair
-    ("branching only at the ICs"). Shortest paths over the track graph; a track end on another track's middle joins it."""
+    """(the net's tracks that lie on the way from a shunt's sense pad (RS*) to an IC's pin (U*): the Kelvin leg itself,
+    None) or (None, why it could not be traced). Branches that end at a filter or decoupling part (C20 on SH9_P, the
+    port's R0/C2) are not part of the pair ("branching only at the ICs"). Shortest paths over a layer-aware track graph:
+    a node is (layer, x, y), so track ends on different layers join only through a via of the net (or a through-hole
+    pad), and a track end on another track's middle joins it on the same layer only. Every IC pin of the net must be
+    reached from a sense pad; there is no fallback to the whole net."""
     import heapq
-    T=tr[net]; R=lambda q:(round(q[0],2),round(q[1],2)); adj={}
+    T=tr.get(net,[]); R=lambda L,q:(L,round(q[0],2),round(q[1],2)); adj={}
     def edge(u,v,w,i):
         adj.setdefault(u,[]).append((v,w,i)); adj.setdefault(v,[]).append((u,w,i))
-    for i,(L,s_,e_) in enumerate(T): edge(R(s_),R(e_),math.dist(s_,e_),i)
-    for i,(L,s_,e_) in enumerate(T):          # T-joins
+    for i,(L,s_,e_) in enumerate(T): edge(R(L,s_),R(L,e_),math.dist(s_,e_),i)
+    for i,(L,s_,e_) in enumerate(T):          # T-joins, same layer
         for q in (s_,e_):
             for j,(L2,s2,e2) in enumerate(T):
-                if j!=i and L2==L and ptseg(q,s2,e2)<0.02 and R(q) not in (R(s2),R(e2)):
-                    edge(R(q),R(s2),math.dist(q,s2),j); edge(R(q),R(e2),math.dist(q,e2),j)
+                if j!=i and L2==L and ptseg(q,s2,e2)<0.02 and R(L,q) not in (R(L,s2),R(L,e2)):
+                    edge(R(L,q),R(L,s2),math.dist(q,s2),j); edge(R(L,q),R(L,e2),math.dist(q,e2),j)
+    for k,v in enumerate(VIAS_BY_NET.get(net,[])):   # a via joins the track ends it holds, on every layer
+        node=('via',k)
+        for u in list(adj):
+            if u[0]!='via' and u[0]!='pad' and v.HitTest(pcbnew.VECTOR2I(mm(u[1]),mm(u[2]))): edge(node,u,0.0,-1)
     src=[]; dst=[]
     for pd in PADS_BY_NET.get(net,[]):
         ref=pd.GetParentFootprint().GetReference(); node=('pad',ref,pd.GetNumber())
         for u in list(adj):
-            if isinstance(u[0],float) and pd.HitTest(pcbnew.VECTOR2I(mm(u[0]),mm(u[1]))): edge(node,u,0.0,-1)
+            if u[0] in ('via','pad'): continue
+            if pd.IsOnLayer(u[0]) and pd.HitTest(pcbnew.VECTOR2I(mm(u[1]),mm(u[2]))): edge(node,u,0.0,-1)
         if ref.startswith('RS'): src.append(node)
         elif ref.startswith('U') or ref in domains.KELVIN_ENDS.get(net,()): dst.append(node)
+    if not src: return None,'no sense pad (RS*) on the net'
+    if not dst: return None,'no IC pin on the net'
     dist={u:0.0 for u in src}; prev={}; heap=[(0.0,repr(u),u) for u in src]; heapq.heapify(heap)
     while heap:
         d,_,u=heapq.heappop(heap)
         if d>dist.get(u,1e30): continue
         for v,w,i in adj.get(u,()):
             if d+w<dist.get(v,1e30)-1e-9: dist[v]=d+w; prev[v]=(u,i); heapq.heappush(heap,(d+w,repr(v),v))
+    lost=[f'{t[1]}.{t[2]}' for t in dst if t not in dist]
+    if lost: return None,f'no copper path from a sense pad to {lost}'
     used=set()
     for t in dst:
         while t in prev: u,i=prev[t]; used.add(i); t=u
     used.discard(-1)
-    return [T[i] for i in sorted(used)] if used else T
+    if not used: return None,'the path has no track'
+    return [T[i] for i in sorted(used)],None
 def near(A,B):
     """(length of A, length of A within 1.0 mm centre to centre of B on the same layer), sampled every 0.25 mm"""
     tot=nr=0.0
@@ -241,7 +258,10 @@ kbad=[]
 for n in sorted(tr):
     m=re.match(r'(/SH\w*)_P$',n)
     if not m or m.group(1)+'_N' not in tr: continue
-    P,Nn=sense_path(n),sense_path(m.group(1)+'_N'); lp,np_=near(P,Nn); ln,nn=near(Nn,P); both=100*(np_+nn)/max(lp+ln,1e-9)
+    (P,ep),(Nn,en)=sense_path(n),sense_path(m.group(1)+'_N')
+    if ep or en:
+        kbad.append((m.group(1),f'leg not traced: P {ep}, N {en}')); print(f'   {m.group(1)}: leg not traced: P {ep}, N {en}'); continue
+    lp,np_=near(P,Nn); ln,nn=near(Nn,P); both=100*(np_+nn)/max(lp+ln,1e-9)
     fl=domains.KELVIN_FLOOR.get(m.group(1))
     if fl is None: kbad.append((m.group(1),'no floor in domains.KELVIN_FLOOR'))
     elif both<fl: kbad.append((m.group(1),f'{both:.1f} % paired, floor {fl} %'))
