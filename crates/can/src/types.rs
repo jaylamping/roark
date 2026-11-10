@@ -268,11 +268,12 @@ pub enum StopOutcome {
     NeverSent,
     /// Disable was sent; no Reset-mode status read after it was counted: none came, one was read after the stop's reply
     /// allowance (`Timing::stop_replies_ns`), or one may predate it (after a drain that left frames queued). Also a
-    /// drive that was confirmed and then showed another mode: that withdraws the confirmation. Such a drive gets no
-    /// reporting off, and re-arming waits for it to go quiet past its timeout.
+    /// drive that was confirmed and then showed another mode: that withdraws the confirmation. A drive never confirmed
+    /// gets no reporting off; one whose confirmation was withdrawn may have had it already. Either way re-arming waits
+    /// for it to go quiet past its timeout.
     Sent,
-    /// A Reset-mode status was read after a sent Disable, inside the stop's reply allowance, and no status in another
-    /// mode since.
+    /// A Reset-mode status was read after a sent Disable, inside the stop's reply allowance, and no status, report or
+    /// version reply in another mode since.
     Confirmed,
 }
 
@@ -319,8 +320,10 @@ pub struct DriveView {
     pub last_echo: Option<EchoSeen>,
     /// What the current or last stop achieved for it.
     pub stop: StopOutcome,
-    /// Whether the current or last stop's active reporting off was taken by the socket. False for a drive the stop never
-    /// confirmed, and for one whose reporting off the socket refused until the stop ended.
+    /// Whether the current or last stop's active reporting off was taken by the socket, for a drive whose confirmation
+    /// still stands. False for a drive the stop never confirmed, for one whose reporting off the socket refused until
+    /// the stop ended, and for one whose confirmation was withdrawn (`stop` back to `Sent`), even if the socket took its
+    /// reporting off before that.
     pub reporting_off_sent: bool,
 }
 

@@ -69,7 +69,8 @@ or a backlog stops every active limb (below). A stopping limb follows PLAN item 
   reply allowance closes, and after it as soon as no confirmed drive's reporting off is unsent, or at the latest at
   `stop_max_ns` (the allowance, the silence, two periods and the send window; PLAN item 2 Stop gives it at 250 Hz),
   which gives the last drive that can confirm at least two tries on ticks that wake inside their send windows. A
-  reporting off never taken is recorded unsent (`reporting_off_sent`).
+  reporting off never taken is recorded unsent (`reporting_off_sent`), as is one taken before its drive's
+  confirmation was withdrawn.
 
 The first reason a limb stopped for stays in its `LimbView`.
 
