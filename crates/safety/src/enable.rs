@@ -22,8 +22,9 @@ use crate::preflight::PreflightPassed;
 use crate::rule::RuleId;
 
 /// How long each step has for its reply after its frame is planned: Run after the Enable (PLAN item 2, "refuse after
-/// 50 ms"; 1.4 to 10.3 ms measured), and the echo of the reporting off and of the `run_mode` write.
-pub const RUN_WITHIN_NS: u64 = 50_000_000;
+/// 50 ms"; 1.4 to 10.3 ms measured), and the echo of the reporting off and of the `run_mode` write. The bus layer's
+/// enable-to-Run window, so a drive the bus doesn't yet count silent is one this sequence still waits for.
+pub const RUN_WITHIN_NS: u64 = can::ENABLE_TO_RUN_NS;
 
 /// Why a drive's enable sequence gave up. Once an Enable may have gone out, the limb is stopped, not just refused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

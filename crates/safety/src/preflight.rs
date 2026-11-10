@@ -22,9 +22,11 @@ use skeleton::{Joint, Power, Window};
 use crate::refusal::{CapKind, JointFact, Refusal, Unanswered};
 use crate::rule::RuleId;
 
-/// How long preflight waits for one request's result before refusing. A bus serves one slow request a tick, so at
-/// 250 Hz a full bus (`can::MAX_DRIVES` drives, each asking one at a time) answers every drive's request within 8 ticks;
-/// a second is far past that and bounds only a result the bus dropped, or one control handed over late.
+/// How long preflight waits for one request's result before refusing. A bus sends at most one slow request a tick, in
+/// the slack of a tick that wasn't held, and gives each its result by the next tick's start, so a full bus
+/// (`can::MAX_DRIVES` drives, each asking one at a time) answers every drive's request within `MAX_DRIVES` trusted
+/// ticks: under 100 ms even at the slowest rate `can::Timing::check` allows. A second is far past that and bounds a
+/// run of held ticks, a result control's ring dropped (`slow_results_dropped`), or one control handed over late.
 pub const ANSWER_WITHIN_NS: u64 = 1_000_000_000;
 
 /// Whether a request submitted at `at_ns` has had longer than [`ANSWER_WITHIN_NS`] by `now_ns`.

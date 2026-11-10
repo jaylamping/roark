@@ -18,6 +18,9 @@ use safety::{
 /// What the operator is told when control handed a result over late.
 const LATE_REMEDY: &str = "The runtime fell behind handing over the answer: check its log and the Pi's load, then run preflight again";
 
+/// The default tick (`can::Timing`'s at PLAN item 3's 250 Hz): the bus sends at most one slow request a tick.
+const PERIOD: u64 = can::Timing::at_hz(250).period_ns;
+
 /// The fixture's UID for `arm_joint_one`.
 const UID: Uid = Uid([0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]);
 
@@ -97,7 +100,7 @@ fn run(n: usize, drive: &Drive) -> (Result<(), Refusal>, Vec<(Param, ParamValue)
     let mut view = drive.before;
     let mut written = Vec::new();
     for _ in 0..32 {
-        now += 4_000_000;
+        now += PERIOD;
         // The row's views are drive 101's; joint `n`'s drive may have another ID.
         view.device = target.drive().id();
         let kind = match preflight.poll(&view, now) {

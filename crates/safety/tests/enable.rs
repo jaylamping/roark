@@ -14,7 +14,8 @@ use safety::{
     EnableFailure, Enabling, Next, Preflight, PreflightPassed, RUN_WITHIN_NS, RuleId, Step, Target,
 };
 
-const PERIOD: u64 = 4_000_000;
+/// The default tick (`can::Timing`'s at PLAN item 3's 250 Hz).
+const PERIOD: u64 = can::Timing::at_hz(250).period_ns;
 
 /// A preflight pass for the fixture's first joint, run against a truthful drive.
 #[expect(
