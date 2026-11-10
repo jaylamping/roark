@@ -3,9 +3,15 @@
 
 use robstride::CanTimeout;
 
-/// The drives' own command timeout, the `canTimeout` the host writes ([`CanTimeout::RUNTIME`]): three periods of
-/// feedback must fit inside it (PLAN.md item 3 Timing).
-pub const DRIVE_TIMEOUT_NS: u64 = CanTimeout::RUNTIME.nanos();
+/// The drives' own command timeout, the `canTimeout` the host writes ([`CanTimeout::RUNTIME`], PLAN.md item 6). The age
+/// of the feedback motion is written on (units-and-frames.md section 5), the span of control silence that stops the
+/// bus's limbs and the span of a drive's missed replies that stops its limb (safety.md section 4) must each stay under
+/// it ([`Timing::check`]).
+pub const DRIVE_TIMEOUT_NS: u64 = match CanTimeout::RUNTIME.nanos() {
+    Some(ns) => ns,
+    // Evaluated at compile time: a RUNTIME that turned the timeout off fails the build, it never runs.
+    None => panic!("canTimeout RUNTIME must be a timeout, not off"),
+};
 
 /// How long a drive may take from an Enable the socket took to its first Run status before its missed replies count
 /// again (PLAN.md item 2 Enable one drive: measured 1.4 to 10.3 ms, refuse after 50 ms).
@@ -26,15 +32,16 @@ pub struct Timing {
     /// The oldest a drive's last fresh status may be when motion is sent to it (three periods: 12 ms at 250 Hz, PLAN.md
     /// item 6 Silence row).
     pub feedback_limit_ns: u64,
-    /// How long a stop sends Disables for each drive's Disable to be confirmed (drives unconfirmed by then stay so; one
-    /// confirmed in it still gets its reporting off after its silence), and how long after a Disable a drive's missed replies aren't counted while no Reset has
-    /// answered it (100 ms, PLAN.md item 2 Silence windows).
+    /// How long a stop sends Disable to each of its drives not yet confirmed, from the stop's start (the reply to the
+    /// last of them may still confirm in [`Self::stop_replies_ns`]; the stop ends by [`Self::stop_max_ns`]); and the
+    /// post-Disable silence window, in which missed replies aren't counted (100 ms; PLAN.md item 2 Silence windows says
+    /// which Disables open it).
     pub stop_confirm_ns: u64,
     /// How long a drive drops frames after a Disable; its reporting-off waits this long after its confirmation, and a
     /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
     pub disable_silence_ns: u64,
-    /// Ticks without a fresh batch that stop an active bus (PLAN.md item 3: two). Counted with every limb idle too:
-    /// past it, slow requests are refused.
+    /// Ticks without a fresh batch, while a limb is active, that stop every limb on the bus (PLAN.md item 3: two).
+    /// Counted with every limb idle too: past it, slow requests are refused.
     pub silent_ticks: u32,
     /// Consecutive commands a drive may leave unanswered by the collect deadline before its limb stops (PLAN.md item 6
     /// Silence row: three).
@@ -47,8 +54,8 @@ pub struct Timing {
 
 impl Timing {
     /// The defaults at `hz` ticks a second (250 by default, PLAN.md item 3), the period rounded up to a whole
-    /// nanosecond so the rate is never above `hz`. A rate [`Self::check`] refuses (0, or below 81 Hz, where three
-    /// missed replies and the tick that stops on them reach the drives' timeout) gives timing it refuses.
+    /// nanosecond so the rate is never above `hz`. A rate [`Self::check`] refuses (0, or one slow enough that three
+    /// periods plus the write slack and the read lag reach the drives' timeout) gives timing it refuses.
     #[must_use]
     pub const fn at_hz(hz: u64) -> Self {
         let period_ns = match hz {
@@ -68,10 +75,23 @@ impl Timing {
         }
     }
 
-    /// Whether this timing keeps the tick's promises: a send window inside the collect window inside the period, at
-    /// least a period of feedback but less than the drives' timeout, a stop window that fits the post-Disable silence and a
-    /// tick to send reporting off after it, silence counts of at least one that fire before the drives' timeout, and a
-    /// slow reply window of at least one nanosecond that, from the collect deadline, ends before the next tick starts.
+    /// Whether this timing keeps the tick's promises, each rule once, in this order:
+    ///
+    /// - a period ([`TimingError::NoPeriod`]), a send window inside the collect window ([`TimingError::SendWindow`]),
+    ///   and the collect deadline inside the period ([`TimingError::Collect`]);
+    /// - at least a period of feedback ([`TimingError::FeedbackLimit`]), with the feedback limit plus the write slack
+    ///   plus the read lag (the oldest a status motion is written on can really be, units-and-frames.md section 5)
+    ///   under the drives' timeout ([`TimingError::FeedbackAge`]);
+    /// - a stop window that fits the post-Disable silence and a tick to send reporting off after it
+    ///   ([`TimingError::StopWindow`]);
+    /// - at least one silent tick ([`TimingError::NoSilentTicks`]), with the silent ticks plus the write slack (from
+    ///   the last command to the stop's Disable) under the drives' timeout ([`TimingError::SilentTicks`]), so a silent
+    ///   control is stopped before the drives give up on it;
+    /// - at least one missed reply ([`TimingError::NoSilenceMisses`]), with the misses plus the tick that stops on them
+    ///   plus the write slack (from the first unanswered command to the stop's Disable) under the drives' timeout
+    ///   ([`TimingError::SilenceMisses`]), so a silent drive's limb is stopped before the drives give up;
+    /// - a slow reply window of at least one nanosecond that, from the collect deadline, ends before the next tick
+    ///   starts ([`TimingError::SlowReply`]).
     ///
     /// # Errors
     /// The first rule it breaks.
@@ -90,10 +110,21 @@ impl Timing {
                 collect_ns,
                 period_ns,
             })
-        } else if self.feedback_limit_ns < period_ns || self.feedback_limit_ns >= DRIVE_TIMEOUT_NS {
+        } else if self.feedback_limit_ns < period_ns {
             Err(TimingError::FeedbackLimit {
                 feedback_limit_ns: self.feedback_limit_ns,
                 period_ns,
+            })
+        } else if self
+            .feedback_limit_ns
+            .saturating_add(self.write_slack_ns())
+            .saturating_add(self.read_lag_ns())
+            >= DRIVE_TIMEOUT_NS
+        {
+            Err(TimingError::FeedbackAge {
+                feedback_limit_ns: self.feedback_limit_ns,
+                write_slack_ns: self.write_slack_ns(),
+                read_lag_ns: self.read_lag_ns(),
             })
         } else if self.stop_confirm_ns < self.disable_silence_ns.saturating_add(period_ns) {
             Err(TimingError::StopWindow {
@@ -101,18 +132,22 @@ impl Timing {
                 disable_silence_ns: self.disable_silence_ns,
                 period_ns,
             })
-        } else if self.silent_ticks == 0 || spans_timeout(self.silent_ticks, period_ns) {
+        } else if self.silent_ticks == 0 {
+            Err(TimingError::NoSilentTicks)
+        } else if self.spans_timeout(self.silent_ticks) {
             Err(TimingError::SilentTicks {
                 silent_ticks: self.silent_ticks,
                 period_ns,
+                write_slack_ns: self.write_slack_ns(),
             })
+        } else if self.silence_misses == 0 {
+            Err(TimingError::NoSilenceMisses)
         // Misses are counted at a tick's end and stop the limb at the next tick's start: one period more than the count.
-        } else if self.silence_misses == 0
-            || spans_timeout(self.silence_misses.saturating_add(1), period_ns)
-        {
+        } else if self.spans_timeout(self.silence_misses.saturating_add(1)) {
             Err(TimingError::SilenceMisses {
                 silence_misses: self.silence_misses,
                 period_ns,
+                write_slack_ns: self.write_slack_ns(),
             })
         } else if self.slow_reply_ns == 0
             || collect_ns.saturating_add(self.slow_reply_ns) >= period_ns
@@ -126,6 +161,61 @@ impl Timing {
             Ok(())
         }
     }
+
+    /// How long after a stop's start a Reset still confirms a drive: the confirm window plus one period, the reply
+    /// allowance, since the reply to the window's last Disable is read at the latest by the next tick's drain. A Reset
+    /// read later confirms nothing, so its drive gets no reporting off. Provisional: Disable-to-Reset latency is
+    /// measured on the real adapter (PLAN step 8).
+    #[must_use]
+    pub const fn stop_replies_ns(&self) -> u64 {
+        self.stop_confirm_ns.saturating_add(self.period_ns)
+    }
+
+    /// The latest a stop ends, from its start: the reply allowance ([`Self::stop_replies_ns`]), the post-Disable
+    /// silence, and two periods. A drive confirmed just before the allowance closes has its reporting off due just
+    /// before the allowance plus the silence; from then to this bound is more than two periods, so on ticks that run on
+    /// time the last drive that can confirm is offered its reporting off at least twice. 162 ms at 250 Hz. A stop ends
+    /// sooner once every drive has confirmed and its reporting off was taken, or once the allowance has closed and no
+    /// confirmed drive's reporting off is still unsent; the bus tick decides it at each tick's start and end.
+    #[must_use]
+    pub const fn stop_max_ns(&self) -> u64 {
+        self.stop_replies_ns()
+            .saturating_add(self.disable_silence_ns)
+            .saturating_add(self.period_ns.saturating_mul(2))
+    }
+
+    /// The most a frame is written after its tick's scheduled start: the send window, since a wake exactly at its close
+    /// isn't late. Motion passes its staleness check at the wake and goes out up to this much later; a stop's Disable
+    /// goes out up to this much after the tick that found control silent, or a drive's misses, was due.
+    const fn write_slack_ns(&self) -> u64 {
+        self.send_window_ns
+    }
+
+    /// The most a status motion is sent on was read after its arrival: from the collect deadline to the close of the
+    /// next tick's send window (units-and-frames.md section 5).
+    const fn read_lag_ns(&self) -> u64 {
+        self.period_ns
+            .saturating_sub(self.collect_ns)
+            .saturating_add(self.send_window_ns)
+    }
+
+    /// Whether `periods` periods plus the write slack reach the drives' timeout: a silence count that long would stop
+    /// only after the drives had given up on their own, or never (safety.md section 4: no config value turns a
+    /// protection off).
+    const fn spans_timeout(&self, periods: u32) -> bool {
+        widen(periods)
+            .saturating_mul(self.period_ns)
+            .saturating_add(self.write_slack_ns())
+            >= DRIVE_TIMEOUT_NS
+    }
+}
+
+#[expect(
+    clippy::as_conversions,
+    reason = "u32 to u64 widens losslessly, and u64::from isn't const"
+)]
+const fn widen(n: u32) -> u64 {
+    n as u64
 }
 
 /// The rule a [`Timing`] breaks, with the values that break it.
@@ -152,16 +242,27 @@ pub enum TimingError {
         /// The period.
         period_ns: u64,
     },
-    /// The feedback limit is under a period, or reaches the drives' timeout.
-    #[error(
-        "feedback limit {feedback_limit_ns} ns must be at least the period, {period_ns} ns, and under the drives' \
-         {DRIVE_TIMEOUT_NS} ns timeout"
-    )]
+    /// The feedback limit is under a period.
+    #[error("feedback limit {feedback_limit_ns} ns must be at least the period, {period_ns} ns")]
     FeedbackLimit {
         /// The feedback limit.
         feedback_limit_ns: u64,
         /// The period.
         period_ns: u64,
+    },
+    /// The feedback limit plus the write slack plus the read lag reaches the drives' timeout: motion could be written
+    /// on a status older, in real age, than the drive's own patience.
+    #[error(
+        "feedback limit {feedback_limit_ns} ns plus write slack {write_slack_ns} ns plus read lag {read_lag_ns} ns \
+         must be under the drives' {DRIVE_TIMEOUT_NS} ns timeout"
+    )]
+    FeedbackAge {
+        /// The feedback limit.
+        feedback_limit_ns: u64,
+        /// The send window: how long after the staleness check, at the wake, the frame may be written.
+        write_slack_ns: u64,
+        /// Period - collect + send window: how long after its arrival a status may be read.
+        read_lag_ns: u64,
     },
     /// The stop window can't fit the post-Disable silence and a tick to send reporting off after it.
     #[error(
@@ -176,28 +277,40 @@ pub enum TimingError {
         /// The period.
         period_ns: u64,
     },
-    /// `silent_ticks` is zero, or so many that the drives' timeout passes first (the count would never stop a bus).
+    /// `silent_ticks` is zero.
+    #[error("silent_ticks must be at least 1")]
+    NoSilentTicks,
+    /// `silent_ticks` periods plus the write slack reach the drives' timeout: the bus would stop a silent control only
+    /// after the drives had given up on their own, or never (safety.md section 4: no config value turns a protection
+    /// off).
     #[error(
-        "silent_ticks {silent_ticks} must be at least 1, and that many periods of {period_ns} ns under the drives' \
-         {DRIVE_TIMEOUT_NS} ns timeout"
+        "{silent_ticks} silent ticks of {period_ns} ns plus write slack {write_slack_ns} ns must span less than the \
+         drives' {DRIVE_TIMEOUT_NS} ns timeout"
     )]
     SilentTicks {
-        /// The count.
+        /// The silent ticks.
         silent_ticks: u32,
         /// The period.
         period_ns: u64,
+        /// The send window: how late in its tick the stop's Disable may be written.
+        write_slack_ns: u64,
     },
-    /// `silence_misses` is zero, or so many that the drives' timeout passes first (the count would never stop a limb).
-    /// The limb stops at the tick after the last miss, so the count plus one periods must stay under the timeout.
+    /// `silence_misses` is zero.
+    #[error("silence_misses must be at least 1")]
+    NoSilenceMisses,
+    /// `silence_misses` periods, plus the tick that stops the limb after the last miss, plus the write slack reach the
+    /// drives' timeout: the limb would stop a silent drive only after the drives had given up on their own, or never.
     #[error(
-        "silence_misses {silence_misses} must be at least 1, and that many periods of {period_ns} ns plus one more \
-         period (the tick that stops the limb) under the drives' {DRIVE_TIMEOUT_NS} ns timeout"
+        "{silence_misses} missed replies of {period_ns} ns, plus one period (the tick that stops the limb), plus write \
+         slack {write_slack_ns} ns must span less than the drives' {DRIVE_TIMEOUT_NS} ns timeout"
     )]
     SilenceMisses {
         /// The count.
         silence_misses: u32,
         /// The period.
         period_ns: u64,
+        /// The send window: how late in its tick the stop's Disable may be written.
+        write_slack_ns: u64,
     },
     /// The slow reply window is zero or fills the whole slack between the collect deadline and the next tick, so no
     /// slow request could go: the shell sends only after the deadline.
@@ -212,13 +325,4 @@ pub enum TimingError {
         /// The period.
         period_ns: u64,
     },
-}
-
-/// Whether `count` periods reach the drives' timeout: a silence count that long turns its rule off (safety.md section 4:
-/// no config value turns a protection off).
-const fn spans_timeout(count: u32, period_ns: u64) -> bool {
-    // `u64::from` isn't const; u32 widens losslessly.
-    #[expect(clippy::as_conversions, reason = "u32 to u64 widens losslessly")]
-    let count = count as u64;
-    count.saturating_mul(period_ns) >= DRIVE_TIMEOUT_NS
 }

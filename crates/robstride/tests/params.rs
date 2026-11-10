@@ -203,10 +203,12 @@ fn parameter_writes_refuse_rather_than_clamp() {
     }
 }
 
-/// Guards: safety - the codec writes canTimeout only as 1000 (50 ms), and reads it back in ticks and as a span; the drive report interval converts in the codec too (PLAN item 6, units-and-frames.md "drive encodings never leave the codec").
+/// Guards: safety - the codec writes canTimeout only as 1000 (50 ms), and reads it back in ticks, in nanoseconds and as a span, 0 as no timeout; the drive report interval converts in the codec too (PLAN item 6, units-and-frames.md "drive encodings never leave the codec").
 #[test]
 fn drive_spans_convert_in_the_codec() {
     assert_eq!(CanTimeout::RUNTIME.ticks(), 1000);
+    assert_eq!(CanTimeout::RUNTIME.nanos(), Some(50_000_000));
+    assert_eq!(CanTimeout::OFF.nanos(), None);
     assert_eq!(
         CanTimeout::RUNTIME.duration(),
         Some(Duration::from_millis(50))

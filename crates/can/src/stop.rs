@@ -1,12 +1,14 @@
 //! Stopping limbs: what starts a stop, what each stopping limb sends, when it is over, the bus error that stops every
 //! limb at once, and the operator's re-arm.
 //!
-//! A stop sends Disable to every drive of the limb not yet confirmed, re-sent each tick, and active reporting off to
-//! each confirmed drive once the post-Disable silence after its confirmation is over (a drive drops every frame in it,
-//! PLAN.md item 2 Silence windows), until the socket takes it. A drive that never confirms is sent a Disable every
-//! tick of the confirm window, so it never leaves its silence and gets no reporting off. The limb is stopped once every
-//! drive has confirmed and taken its reporting off, or once the confirm window has passed and no confirmed drive still
-//! waits for its reporting off ([`BusTick::stop_over`]).
+//! A stop sends Disable to every drive of the limb not yet confirmed, re-sent each tick of the confirm window
+//! ([`Timing::stop_confirm_ns`](crate::Timing::stop_confirm_ns)). A drive confirms with a Reset read after the stop's
+//! Disable inside the reply allowance ([`Timing::stop_replies_ns`](crate::Timing::stop_replies_ns): the window plus a
+//! period, for the reply to its last Disable); a Reset read later confirms nothing. Each confirmed drive is sent active
+//! reporting off once the post-Disable silence after its confirmation is over (a drive drops every frame in it,
+//! PLAN.md item 2 Silence windows), every tick until the socket takes it. A drive that never confirms gets no
+//! reporting off. When the stop ends is decided in one place, [`BusTick::stop_over`], bounded by
+//! [`Timing::stop_max_ns`](crate::Timing::stop_max_ns).
 
 use robstride::encode::{self, Reporting};
 
@@ -67,7 +69,7 @@ impl BusTick {
         for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {
             d.stop = StopOutcome::NeverSent;
             d.confirmed_ns = None;
-            d.off = Off::Untried;
+            d.off = Off::Unsent;
         }
     }
 
@@ -135,7 +137,8 @@ impl BusTick {
     /// The stop frames of every stopping limb, every Disable ahead of every reporting off (PLAN.md item 2 Stop:
     /// Disable to every affected drive, then reporting off), so a full queue never costs a Disable for a reporting off.
     /// Disables go to each drive not yet confirmed, inside the confirm window; reporting off to each confirmed drive
-    /// once its silence is over. A limb whose stop is over ([`Self::stop_over`]) is stopped and sends nothing.
+    /// whose silence is over, every tick until the socket takes it. A limb whose stop is over ([`Self::stop_over`]) is
+    /// stopped and sends nothing.
     pub(crate) fn plan_stops(&mut self, now_ns: u64) {
         let mut confirming = [false; MAX_DRIVES];
         let mut stopping = [false; MAX_DRIVES];
@@ -172,14 +175,13 @@ impl BusTick {
             }
         }
         let silence = self.timing.disable_silence_ns;
-        for (slot, d) in self.drives.iter_mut().enumerate() {
+        for (slot, d) in self.drives.iter().enumerate() {
             if let Some(d) = d
                 && flag(&stopping, d.limb)
-                && d.off != Off::Sent
+                && d.off == Off::Unsent
                 && d.confirmed_ns
                     .is_some_and(|at| now_ns >= at.saturating_add(silence))
             {
-                d.off = Off::Tried;
                 self.sends.push(Send {
                     slot,
                     kind: SendKind::ReportingOff,
@@ -190,37 +192,31 @@ impl BusTick {
         }
     }
 
-    /// Whether limb `limb`'s stop, begun at `since_ns`, is over at `now_ns`. Disables go out for the confirm window; a
-    /// drive confirmed in it (or by a Reset read just after it) still gets its reporting off once its silence is over,
-    /// so the stop runs on past the window while one waits. Each confirmed drive waits until its reporting off has been
-    /// planned at least once and a period has passed since it fell due, so a drive confirmed at the window's end still
-    /// gets it, and a reporting off the queue keeps refusing ends the stop a period later. The one place this is
-    /// decided, for planning at `begin` and settling at `end`.
+    /// Whether limb `limb`'s stop, begun at `since_ns`, is over at `now_ns`; the one place this is decided, for
+    /// planning at `begin` and settling at `end`. It is over once every drive has confirmed and the socket took its
+    /// reporting off. Otherwise never before the reply allowance closes ([`Timing::stop_replies_ns`], when a Reset can
+    /// no longer confirm), and after it as soon as no confirmed drive's reporting off is still unsent, or at the
+    /// latest at [`Timing::stop_max_ns`], with any reporting off never taken recorded unsent.
+    ///
+    /// [`Timing::stop_replies_ns`]: crate::Timing::stop_replies_ns
+    /// [`Timing::stop_max_ns`]: crate::Timing::stop_max_ns
     pub(crate) fn stop_over(&self, limb: usize, since_ns: u64, now_ns: u64) -> bool {
-        if now_ns.saturating_sub(since_ns) < self.timing.stop_confirm_ns {
+        let mut drives = self.drives.iter().flatten().filter(|d| d.limb == limb);
+        if drives
+            .clone()
+            .all(|d| d.stop == StopOutcome::Confirmed && d.off == Off::Sent)
+        {
+            return true;
+        }
+        let elapsed = now_ns.saturating_sub(since_ns);
+        if elapsed < self.timing.stop_replies_ns() {
             return false;
         }
-        let last_chance = self
-            .timing
-            .disable_silence_ns
-            .saturating_add(self.timing.period_ns);
-        let waiting = self
-            .drives
-            .iter()
-            .flatten()
-            .filter(|d| d.limb == limb)
-            .any(|d| {
-                d.confirmed_ns.is_some_and(|at| match d.off {
-                    Off::Untried => true,
-                    Off::Tried => now_ns < at.saturating_add(last_chance),
-                    Off::Sent => false,
-                })
-            });
-        !waiting
+        elapsed >= self.timing.stop_max_ns()
+            || !drives.any(|d| d.confirmed_ns.is_some() && d.off == Off::Unsent)
     }
 
-    /// At the tick's end: a stopping limb whose drives have all confirmed and taken reporting off, or whose stop is
-    /// over, is stopped.
+    /// At the tick's end: a stopping limb whose stop is over ([`Self::stop_over`]) is stopped.
     pub(crate) fn settle_stops(&mut self, now_ns: u64) {
         for limb in 0..self.limbs.len() {
             let Some(LimbState::Stopping { since_ns }) =
@@ -228,13 +224,7 @@ impl BusTick {
             else {
                 continue;
             };
-            let all_done = self
-                .drives
-                .iter()
-                .flatten()
-                .filter(|d| d.limb == limb)
-                .all(|d| d.stop == StopOutcome::Confirmed && d.off == Off::Sent);
-            if (all_done || self.stop_over(limb, since_ns, now_ns))
+            if self.stop_over(limb, since_ns, now_ns)
                 && let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut)
             {
                 l.state = LimbState::Stopped;
@@ -301,7 +291,7 @@ impl BusTick {
         for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {
             d.stop = StopOutcome::None;
             d.confirmed_ns = None;
-            d.off = Off::Untried;
+            d.off = Off::Unsent;
             d.fault_seen = false;
             d.misses = 0;
             d.phase = Phase::Off;

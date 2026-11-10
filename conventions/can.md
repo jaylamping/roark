@@ -85,8 +85,8 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   traced exactly this to a duplicate sender).
 - **Only frames on the allowlist** (PLAN item 2) can be built for transmit; the check lives in the codec so nothing else can
   bypass it.
-- **A TX echo isn't proof the frame reached the wire** (PLAN item 3). Latency is measured from RX timestamps of replies, and
-  liveness from replies, never from echoes.
+- **A TX echo isn't proof the frame reached the wire** (PLAN item 3). Latency in the recording is measured from the
+  kernel RX timestamps of replies, and liveness from replies, never from echoes.
 
 ### Receive
 
@@ -97,13 +97,15 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   virtual bus is unbounded by default; ours isn't).
 - **Liveness comes from replies to commands,** not from any traffic on the bus. A drive is alive if it answered this tick's
   command.
+- **The tick matches replies and ages feedback on the monotonic time the bus thread read the frame;** the recording
+  carries the kernel RX stamp. **Why:** the kernel's stamp is wall-clock and can step.
 
 ### Errors and bus-off
 
 - **Bus errors are a typed enum** (`BusOff`, `ErrorPassive`, `ErrorWarning`, `RxOverflow`, `TxTimeout`, `InterfaceDown`,
   `InterfaceGone`, ...), matched exhaustively.
-- **Latch on the first bus-off error frame** and stop every run on that bus, as [PLAN item 3](../PLAN.md#3-the-new-can-layer-tenet-5)
-  and item 6 say. The latch lives in software because the adapter may bring the bus back by itself (PLAN item 3 has the
+- **Latch on the first bus-off error frame, or any socket read or write failure other than a full queue,** and stop every
+  run on that bus, as [PLAN item 3](../PLAN.md#3-the-new-can-layer-tenet-5) and item 6 say. The latch lives in software because the adapter may bring the bus back by itself (PLAN item 3 has the
   details and sources). Code never treats "the interface is up again" as permission to continue.
 - **Error counters and drops are metrics** (per bus: bus errors, error-passive, bus-off count, RX overflow, TX drops, late
   ticks), exported every second and shown in the UI.

@@ -4,7 +4,7 @@
 use robstride::{DecodeError, DeviceId, Inbound, Mode, Status, decode};
 use telemetry::{Direction, FrameRecord};
 
-use crate::error_frame::{classify, controller_passive};
+use crate::error_frame::{BusError, classify, controller_passive};
 use crate::tick::{BusTick, DriveState, Reply, batch_may_carry};
 use crate::types::{EchoSeen, LimbState, Observed, StopOutcome};
 
@@ -13,9 +13,21 @@ impl BusTick {
     pub fn on_frame(&mut self, read_ns: u64, frame: &FrameRecord) {
         if frame.error {
             self.counters.error_frames += 1;
+            // Of what an error frame can say, only bus-off stops the bus for good: the adapter may restart the bus by
+            // itself (PLAN.md item 3, item 6 Bus-off row). The interface errors come from the socket, through
+            // `lost_bus`; the controller's state is read below.
             let error = classify(frame.id, &frame.data);
-            if error.latches() {
-                self.latch(error);
+            match error {
+                BusError::BusOff => self.latch(error),
+                BusError::ErrorPassive
+                | BusError::ErrorWarning
+                | BusError::ErrorActive
+                | BusError::RxOverflow
+                | BusError::TxTimeout
+                | BusError::InterfaceDown
+                | BusError::InterfaceGone
+                | BusError::Socket(_)
+                | BusError::Other(_) => {}
             }
             // The controller's state, read on its own: a frame can carry it beside a more severe flag (passive back
             // to warning together with an overflow), and warning after passive is a recovery.
@@ -126,12 +138,14 @@ impl BusTick {
         if !status.header.faults.is_empty() {
             d.fault_seen = true;
         }
-        let stopping = matches!(limb, Some(LimbState::Stopping { .. }));
-        d.note_mode(
-            status.header.mode,
-            limb == Some(LimbState::Active),
-            unordered,
+        let active = limb == Some(LimbState::Active);
+        // A Reset confirms only while the limb is stopping and inside the stop's reply allowance.
+        let replies_ns = self.timing.stop_replies_ns();
+        let confirms = matches!(
+            limb,
+            Some(LimbState::Stopping { since_ns }) if read_ns < since_ns.saturating_add(replies_ns)
         );
+        d.note_mode(status.header.mode, active, unordered);
         if !answer {
             return;
         }
@@ -163,9 +177,10 @@ impl BusTick {
         } else {
             self.counters.unsolicited += 1;
         }
-        // Any Reset after the stop's Disable confirms it, even behind an earlier status still in flight. Once the limb
-        // is stopped nothing more is sent, so a confirmation then would record a reporting off that never comes.
-        if stopping
+        // Any Reset after the stop's Disable confirms it, even behind an earlier status still in flight, while the reply
+        // allowance is open. After it, or once the limb is stopped, it confirms nothing: the stop's end is bounded
+        // (`Timing::stop_max_ns`), and a confirmation then would record a reporting off that never comes.
+        if confirms
             && o.stop_disable
             && status.header.mode == Mode::Reset
             && d.stop != StopOutcome::Confirmed
