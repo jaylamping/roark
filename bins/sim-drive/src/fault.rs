@@ -38,8 +38,8 @@ pub enum Fault {
     /// The drive is in this mode now, by itself (a drop to Reset while running, say): its plant and `canTimeout`
     /// follow.
     Mode(Mode),
-    /// The register reads this value from now on (VBUS out of its window, the damper off). The value must be of the
-    /// register's type.
+    /// The register reads this value (VBUS out of its window, the damper off) until the host writes it; pair it with
+    /// [`Fault::IgnoreWrites`] to hold it. The value must be of the register's type.
     Param(Param, ParamValue),
     /// Every status and report from now on gives this temperature, 0 to [`MAX_TEMPERATURE_C`].
     Temperature(Celsius),

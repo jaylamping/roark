@@ -17,7 +17,7 @@ something that answers like the real drives before any real drive is enabled.
   damper (`DAMPING` in `plant.rs`, 1 N·m·s/rad, a sim value), so a target is reached with time constant
   `(DAMPING + kd) / kp`; torque stops at `limit_torque` and speed at `limit_spd`, the caps preflight writes. That a real drive holds those two caps in MIT mode
   is a sim assumption until a bench capture shows it (PLAN item 6). Out of Run the joint rests where it is. No inertia
-  or gravity yet. A read of the position or speed register gives the joint as it is.
+  or gravity yet. A read of the position or speed register gives the joint as it is, unless a value was injected.
 - **Fault injection** (`Fault`, PLAN item 4): a silent drive, late, lost or doubled frames, fault bits, a mode the host
   didn't ask for, a register that reads out of window (VBUS, the damper), a temperature, a reboot mid-run, writes
   answered but not kept, and lost Disables. `inject` applies one now; `schedule` fires one on a `Trigger` (the drive's
