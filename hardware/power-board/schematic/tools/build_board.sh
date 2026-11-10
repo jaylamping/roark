@@ -19,6 +19,8 @@
 # A full rebuild (2026-11-10, about 70 minutes) reproduces the placement, pours, blocks, hand-laid copper and generated
 # items, and ends with 68 connections open on 27 nets and verify_board.sh failing: LAYOUT_RULES.md, "Exceptions and
 # hand-laid copper".
+# Every stage deletes its outputs before it runs, so a file left by an earlier build can't stand in for one that failed,
+# and every tool's exit code is checked (pipefail, and step() below runs the tool before filtering its output).
 set -uo pipefail
 W=$(cd "$1" && (pwd -W 2>/dev/null || pwd)); FROM=${2:-place}   # pwd -W: a Windows path for the Windows Pythons
 ROOT=$(cd "$(dirname "$0")/.." && pwd); LAYOUT="$ROOT/../layout"
@@ -28,6 +30,15 @@ PY=python3; "$PY" -c "" 2>/dev/null || PY=python  # a python3 that fails (the Wi
 export MSYS_NO_PATHCONV=1
 q() { grep -v 'memory leak\|GetWidth called\|image handler'; }
 die() { echo "$*"; exit 1; }
+step() {   # step <label> <output board or -> <lines> <command...>: run, show the last <lines> lines, fail on a non-zero exit
+           # or (with an output board) when the board was not written; the output is deleted first
+  local label=$1 out=$2 n=$3; shift 3
+  [ "$out" = - ] || rm -f "$out"
+  "$@" > "$W/step.log" 2>&1; local rc=$?
+  q < "$W/step.log" | tail -n "$n" | cut -c1-200
+  [ "$rc" = 0 ] || die "$label failed (exit $rc)"
+  [ "$out" = - ] || [ -s "$out" ] || die "$label wrote no board"
+}
 cd "$ROOT"
 ORDER='place power route blocks finish verify'
 case " $ORDER " in *" $FROM "*) ;; *) die "unknown stage $FROM (stages: $ORDER)";; esac
@@ -44,30 +55,35 @@ refill() {   # refill <in board> <out board>: kicad-cli's fill with the project 
   cp "$W/fill.kicad_pcb" "$2"
 }
 if run place; then
-  "$KP" tools/place.py "$W/net.net" "$W/placed.kicad_pcb" "$W/place.json" 2>&1 | q | grep -E 'overlaps|missing|room|gap in'
-  [ -s "$W/placed.kicad_pcb" ] || die 'place stage failed'
+  rm -f "$W/place.json"
+  step place "$W/placed.kicad_pcb" 0 "$KP" tools/place.py "$W/net.net" "$W/placed.kicad_pcb" "$W/place.json"
+  q < "$W/step.log" | grep -E 'overlaps|missing|room|gap in'
 fi
 if run power; then
-  "$KP" tools/route_power.py "$W/placed.kicad_pcb" "$W/base.kicad_pcb" 2>&1 | q | tail -1
-  "$KP" tools/hv_spacing.py "$W/base.kicad_pcb" > "$W/hv_spacing.txt" 2>&1 || echo "hv_spacing exit $?"; grep -E '^moved|^left|guard|removed' "$W/hv_spacing.txt" | cut -c1-160
-  "$KP" tools/gnd_fanout.py "$W/base.kicad_pcb" 2>&1 | q | cut -c1-160 | tail -1
-  "$KP" tools/route_u1.py "$W/base.kicad_pcb" 2>&1 | q | tail -1
-  "$KP" tools/route_export.py "$W/base.kicad_pcb" "$W/copper.json" 2>&1 | q | tail -1
-  [ -s "$W/copper.json" ] || die 'power stage failed'
+  rm -f "$W/copper.json" "$W/hv_spacing.txt"
+  step route_power "$W/base.kicad_pcb" 1 "$KP" tools/route_power.py "$W/placed.kicad_pcb" "$W/base.kicad_pcb"
+  step hv_spacing - 0 "$KP" tools/hv_spacing.py "$W/base.kicad_pcb"   # works on base.kicad_pcb in place
+  cp "$W/step.log" "$W/hv_spacing.txt"; grep -E '^moved|^left|guard|removed' "$W/hv_spacing.txt" | cut -c1-160
+  step gnd_fanout - 1 "$KP" tools/gnd_fanout.py "$W/base.kicad_pcb"
+  step route_u1 - 1 "$KP" tools/route_u1.py "$W/base.kicad_pcb"
+  step route_export - 1 "$KP" tools/route_export.py "$W/base.kicad_pcb" "$W/copper.json"
+  [ -s "$W/copper.json" ] || die 'power stage wrote no copper.json'
   [ "${STOP:-}" = power ] && exit 0   # STOP=power: build the base board only
 fi
 # The signal routing is staged (tools/route_stages.sh: five locked stages on base.kicad_pcb, route_fixes, patch_route,
 # DRC with parity, open nets, route_checks); a single grid_route.py pass over every net doesn't reach the committed board.
 # Its route_checks run can't pass before the blocks are laid, so here it only reports (CHECKS_REPORT=1).
 if run route; then
+  rm -f "$W/routed.kicad_pcb"
   CHECKS_REPORT=1 bash tools/route_stages.sh "$W" || exit $?
+  [ -s "$W/routed.kicad_pcb" ] || die 'route stage wrote no routed.kicad_pcb'
 fi
 if run blocks; then
   [ -s "$W/routed.kicad_pcb" ] || die "no routed.kicad_pcb in $W"
-  rm -f "$W/b1.kicad_pcb" "$W/b2.kicad_pcb" "$W/blocks.kicad_pcb"
-  "$KP" tools/port_template.py "$W/routed.kicad_pcb" "$W/b1.kicad_pcb" 2>&1 | q | tail -8; [ -s "$W/b1.kicad_pcb" ] || die 'port_template failed'
-  "$KP" tools/u8_block.py "$W/b1.kicad_pcb" "$W/b1b.kicad_pcb" 2>&1 | q | tail -2; [ -s "$W/b1b.kicad_pcb" ] || die 'u8_block failed'
-  "$KP" tools/latch_block.py "$W/b1b.kicad_pcb" "$W/b2.kicad_pcb" 2>&1 | q | tail -2; [ -s "$W/b2.kicad_pcb" ] || die 'latch_block failed'
+  rm -f "$W/b1.kicad_pcb" "$W/b1b.kicad_pcb" "$W/b2.kicad_pcb" "$W/blocks.kicad_pcb" "$W/hand_laid.txt"
+  step port_template "$W/b1.kicad_pcb" 8 "$KP" tools/port_template.py "$W/routed.kicad_pcb" "$W/b1.kicad_pcb"
+  step u8_block "$W/b1b.kicad_pcb" 2 "$KP" tools/u8_block.py "$W/b1.kicad_pcb" "$W/b1b.kicad_pcb"
+  step latch_block "$W/b2.kicad_pcb" 2 "$KP" tools/latch_block.py "$W/b1b.kicad_pcb" "$W/b2.kicad_pcb"
   # the pours refill round the hand-laid copper, so a pour is not an obstacle for it (SOFTZ=1); router copper in its
   # way is ripped for finish_route.py to lay again (RIP=1): the routers' result differs from run to run
   SOFTZ=1 LOCK=1 RIP=1 "$KP" tools/lay_path.py "$W/b2.kicad_pcb" "$W/blocks.kicad_pcb" @tools/hand_laid.specs > "$W/hand_laid.txt" 2>&1; rc=$?
@@ -76,23 +92,31 @@ if run blocks; then
 fi
 if run finish; then
   [ -s "$W/blocks.kicad_pcb" ] || die "no blocks.kicad_pcb in $W"
+  rm -f "$W/f.kicad_pcb" "$W/f2.kicad_pcb" "$W/f3.kicad_pcb" "$W/finished.kicad_pcb" "$W"/finish[0-9]*.txt
   cp "$W/blocks.kicad_pcb" "$W/f.kicad_pcb"; last=-1
   for round in 1 2 3 4 5 6 7 8; do
     refill "$W/f.kicad_pcb" "$W/f.kicad_pcb"
     open=$("$PY" -c "import json,sys;print(len(json.load(open(sys.argv[1]))['unconnected_items']))" "$W/fill.json")
     echo "finish round $round: $open open"
     [ "$open" = 0 ] && break; [ "$open" = "$last" ] && break; last=$open
+    rm -f "$W/f2.kicad_pcb"
     COMPONENTS=1 "$KP" tools/finish_route.py "$W/f.kicad_pcb" "$W/f2.kicad_pcb" "$W/fill.json" > "$W/finish$round.txt" 2>&1 || { tail -5 "$W/finish$round.txt"; die 'finish_route failed'; }
+    [ -s "$W/f2.kicad_pcb" ] || die 'finish_route wrote no board'
     q < "$W/finish$round.txt" | tail -1 | cut -c1-200; cp "$W/f2.kicad_pcb" "$W/f.kicad_pcb"
   done
-  "$KP" tools/joint_fix.py "$W/f.kicad_pcb" "$W/f2.kicad_pcb" 2>&1 | q | tail -1; [ -s "$W/f2.kicad_pcb" ] || die 'joint_fix wrote no board'
-  "$KP" tools/bat_copper.py "$W/f2.kicad_pcb" "$W/f3.kicad_pcb" 2>&1 | q | tail -1; [ -s "$W/f3.kicad_pcb" ] || die 'bat_copper wrote no board'
-  "$KP" tools/estop_guards.py "$W/f3.kicad_pcb" "$W/f.kicad_pcb" 2>&1 | q | tail -1
-  refill "$W/f.kicad_pcb" "$W/f.kicad_pcb"
-  "$KP" tools/heatsink_pads.py "$W/f.kicad_pcb" "$W/finished.kicad_pcb" 2>&1 | q | tail -1
-  [ -s "$W/finished.kicad_pcb" ] || die 'finish stage failed'
+  # joint_fix.py exits 1 when joints are left that it could not fix: the build goes on, and verify_board.sh's
+  # joint_check fails the board on them (JOINTS_STRICT=1 stops here instead)
+  rm -f "$W/f2.kicad_pcb"
+  "$KP" tools/joint_fix.py "$W/f.kicad_pcb" "$W/f2.kicad_pcb" > "$W/step.log" 2>&1; rc=$?
+  q < "$W/step.log" | tail -1; [ -s "$W/f2.kicad_pcb" ] || die "joint_fix wrote no board (exit $rc)"
+  [ "$rc" = 0 ] || { [ "${JOINTS_STRICT:-0}" = 1 ] && die "joint_fix left joints (exit $rc)"; echo "joint_fix left joints (exit $rc): verify_board.sh's joint_check will say which"; }
+  step bat_copper "$W/f3.kicad_pcb" 1 "$KP" tools/bat_copper.py "$W/f2.kicad_pcb" "$W/f3.kicad_pcb"
+  step estop_guards "$W/f4.kicad_pcb" 1 "$KP" tools/estop_guards.py "$W/f3.kicad_pcb" "$W/f4.kicad_pcb"
+  rm -f "$W/f.kicad_pcb"; refill "$W/f4.kicad_pcb" "$W/f.kicad_pcb"; [ -s "$W/f.kicad_pcb" ] || die 'refill wrote no board'
+  step heatsink_pads "$W/finished.kicad_pcb" 1 "$KP" tools/heatsink_pads.py "$W/f.kicad_pcb" "$W/finished.kicad_pcb"
 fi
 if run verify; then
   [ -s "$W/finished.kicad_pcb" ] || die "no finished.kicad_pcb in $W"
+  rm -rf "$W/verify"
   KEEP="$W/verify" bash tools/verify_board.sh "$W/finished.kicad_pcb"
 fi
