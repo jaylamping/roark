@@ -16,7 +16,8 @@
 
 use robstride::{EchoKind, Frame, Param, ParamOutcome, Uid, Write, encode};
 
-use crate::tick::{BusTick, Reply, batch_may_carry};
+use crate::batch::batch_may_carry;
+use crate::tick::{BusTick, Reply};
 use crate::types::{LimbState, SendOutcome};
 
 /// Slow requests a bus holds at once, queued, in flight or with a result not yet taken.

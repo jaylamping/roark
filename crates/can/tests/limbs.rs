@@ -516,6 +516,55 @@ fn a_stop_reaches_every_drive_of_its_limb_and_no_other() {
     assert_eq!(limb(&snap, 0), (LimbState::Active, None));
 }
 
+/// Guards: safety - every Disable goes out ahead of every reporting off, whoever planned it: a stopping limb's Disables,
+/// then the Disables in control's batch for another limb, then the stop's reporting off, then the rest of the batch, so
+/// a queue that fills after the first frame never costs a Disable for a reporting off (PLAN.md item 2 Stop: Disable to
+/// every affected drive, then reporting off).
+#[test]
+fn every_disable_goes_ahead_of_every_reporting_off() {
+    // Limb 0 is drives 101 and 104, limb 1 drives 102 and 103.
+    let drives = [(101, 0), (102, 1), (103, 1), (104, 0)].map(|(n, limb)| BusDrive {
+        device: id(n),
+        limb,
+    });
+    let mut bus = BusTick::new(&drives, Timing::at_hz(250)).unwrap();
+    let all = [101, 102, 103, 104];
+    let enable = batch(0, &all.map(|n| Some(encode::enable(id(n)))));
+    run_tick(
+        &mut bus,
+        0,
+        Some(&enable),
+        &all.map(|n| (MS, status(n, Mode::Run))),
+    );
+    let _ = bus.end(deadline(0));
+    assert_eq!(bus.stop_limb(0), Ok(()));
+    // Limb 1 holds; of limb 0, drive 101 confirms Reset in the stop's first tick and drive 104 never answers.
+    let limb1_running = [(MS, status(102, Mode::Run)), (MS, status(103, Mode::Run))];
+    let holds = |tick| batch(tick, &[None, Some(hold(102)), Some(hold(103)), None]);
+    let mut replies = limb1_running.to_vec();
+    replies.push((MS, status(101, Mode::Reset)));
+    run_tick(&mut bus, 1, Some(&holds(1)), &replies);
+    let _ = bus.end(deadline(1));
+    // Drive 101's reporting off is due 50 ms after its confirmation, at tick 14, while drive 104 still gets Disables.
+    for tick in 2..14 {
+        run_tick(&mut bus, tick, Some(&holds(tick)), &limb1_running);
+        let _ = bus.end(deadline(tick));
+    }
+    let mixed = batch(
+        14,
+        &[None, Some(encode::disable(id(102))), Some(hold(103)), None],
+    );
+    assert_eq!(
+        run_tick(&mut bus, 14, Some(&mixed), &[]),
+        [
+            (3, SendKind::Disable),
+            (1, SendKind::Command),
+            (0, SendKind::ReportingOff),
+            (2, SendKind::Command),
+        ]
+    );
+}
+
 /// Guards: protocol - the echo of this host's frame to a drive is kept per drive, so the enable sequence can wait on
 /// that drive's reporting-off echo (PLAN.md item 2 Enable one drive: "wait for its echo plus one tick").
 #[test]

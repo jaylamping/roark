@@ -55,8 +55,8 @@ pub struct Timing {
 
 impl Timing {
     /// The defaults at `hz` ticks a second (250 by default, PLAN.md item 3), the period rounded up to a whole
-    /// nanosecond so the rate is never above `hz`. A rate [`Self::check`] refuses (0, or one slow enough that three
-    /// periods plus the write slack and the read lag reach the drives' timeout) gives timing it refuses.
+    /// nanosecond so the rate is never above `hz`. At a rate too slow or zero the result is timing [`Self::check`]
+    /// refuses; its doc lists the rules.
     #[must_use]
     pub const fn at_hz(hz: u64) -> Self {
         let period_ns = match hz {
@@ -163,26 +163,34 @@ impl Timing {
         }
     }
 
-    /// How long after a stop's start a Reset still confirms a drive: the confirm window plus one period, the reply
-    /// allowance, since the reply to the window's last Disable is read at the latest by the next tick's drain. A Reset
-    /// read later confirms nothing, so its drive gets no reporting off. Provisional: Disable-to-Reset latency is
-    /// measured on the real adapter (PLAN step 8).
+    /// How long after a stop's start a Reset still confirms a drive, the reply allowance: the confirm window, a period
+    /// and the send window. The stop's start is its tick's wake and the last Disable goes on the last tick that wakes
+    /// inside the window, so that tick is scheduled before the window closes and the next one before a period after
+    /// that; that tick may wake up to a send window late and still be on time, and its drain, before the wake ends,
+    /// reads the reply to the last Disable at the latest. A Reset read later confirms nothing, so its drive gets no
+    /// reporting off. A tick that wakes past its send window is a missed deadline, outside this promise. Provisional:
+    /// Disable-to-Reset latency is measured on the real adapter (PLAN step 8).
     #[must_use]
     pub const fn stop_replies_ns(&self) -> u64 {
-        self.stop_confirm_ns.saturating_add(self.period_ns)
+        self.stop_confirm_ns
+            .saturating_add(self.period_ns)
+            .saturating_add(self.send_window_ns)
     }
 
     /// The latest a stop ends, from its start: the reply allowance ([`Self::stop_replies_ns`]), the post-Disable
-    /// silence, and two periods. A drive confirmed just before the allowance closes has its reporting off due just
-    /// before the allowance plus the silence; from then to this bound is more than two periods, so on ticks that run on
-    /// time the last drive that can confirm is offered its reporting off at least twice. 162 ms at 250 Hz. A stop ends
-    /// sooner once every drive has confirmed and its reporting off was taken, or once the allowance has closed and no
-    /// confirmed drive's reporting off is still unsent; the bus tick decides it at each tick's start and end.
+    /// silence, two periods and the send window. A drive confirmed just before the allowance closes has its reporting
+    /// off due just before the allowance plus the silence. The first tick scheduled at or after that is due within a
+    /// period and offers it, however it wakes; the next is scheduled a period later and, waking up to a send window
+    /// late, still before this bound. So on ticks that wake inside their send windows the last drive that can confirm
+    /// is offered its reporting off at least twice. A stop ends sooner once every drive has confirmed and its
+    /// reporting off was taken, or once the allowance has closed and no confirmed drive's reporting off is still
+    /// unsent; the bus tick decides it at each tick's start and end.
     #[must_use]
     pub const fn stop_max_ns(&self) -> u64 {
         self.stop_replies_ns()
             .saturating_add(self.disable_silence_ns)
             .saturating_add(self.period_ns.saturating_mul(2))
+            .saturating_add(self.send_window_ns)
     }
 
     /// The most a tick may wake after its scheduled start and still send: the send window, since a wake exactly at its

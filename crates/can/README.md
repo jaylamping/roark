@@ -57,16 +57,21 @@ or a backlog stops every active limb (below). A stopping limb follows PLAN item 
 
 - Disable to each of its drives not yet confirmed, every tick of the confirm window (`stop_confirm_ns`, 100 ms).
 - A drive confirms with a Reset-mode status read after the stop's Disable, inside the reply allowance
-  (`stop_replies_ns`: the window plus a period, so the reply to the window's last Disable still counts when the next
-  tick's drain reads it). A Reset read later confirms nothing: that drive stays unconfirmed and gets no reporting off,
-  as does one that never answers.
+  (`stop_replies_ns`: the window, a period and the send window, so the reply to the window's last Disable still
+  counts when the next tick's drain reads it, however late inside their send windows that tick and the stop's first
+  woke). A Reset read later confirms nothing: that drive stays unconfirmed and gets no reporting off,
+  as does one that never answers. A status, report or version reply in any other mode read after a confirmation
+  withdraws it: the drive gets Disable again while the window lasts, and counts as unconfirmed for the stop's end and
+  the re-arm.
 - Active reporting off to each confirmed drive once its post-Disable silence is over (`disable_silence_ns`, 50 ms after
-  its confirmation), every tick until the socket takes it or the stop ends. Every Disable goes out ahead of every
-  reporting off.
+  its confirmation), every tick until the socket takes it or the stop ends. Every Disable, a stop's or one in
+  control's batch, goes out ahead of every reporting off, so a queue that fills after the first frames costs a
+  reporting off before it costs a Disable.
 - The limb is `Stopped` once every drive has confirmed and the socket took its reporting off; otherwise not before the
   reply allowance closes, and after it as soon as no confirmed drive's reporting off is unsent, or at the latest at
-  `stop_max_ns` (the allowance, the silence and two periods: 162 ms at 250 Hz), which gives the last drive that can
-  confirm at least two tries. A reporting off never taken is recorded unsent (`reporting_off_sent`).
+  `stop_max_ns` (the allowance, the silence, two periods and the send window; PLAN item 2 Stop gives it at 250 Hz),
+  which gives the last drive that can confirm at least two tries on ticks that wake inside their send windows. A
+  reporting off never taken is recorded unsent (`reporting_off_sent`).
 
 The first reason a limb stopped for stays in its `LimbView`.
 
@@ -81,13 +86,13 @@ A latched bus error (bus-off in an error frame, or any socket failure) sends not
 limb is `Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's
 `bus_error`, even if a stop was already under way; `healthy` is false while there is one or the controller is
 error-passive.
-
-Only the operator's clear undoes a stop: `rearm(limb, now)` makes a `Stopped` limb idle again, with a new
-`generation`, its drives' stop outcomes, fault history (`fault_seen`) and miss counts started afresh. It is refused
-while the bus has a latched error (that bus is rebuilt instead), while the limb is running or still stopping, and until
-every drive in it is known disabled: confirmed in Reset by the stop, or sent nothing for longer than the drives' 50 ms
-timeout plus a period since the socket took its last frame (stamped when it was written, so a late Disable counts from
-when it went). Each drive needs a fresh preflight before it is enabled again; that is the safety layer's.
+ Only the operator's clear undoes a stop: `rearm(limb, now)` makes a `Stopped` limb idle again, with a new `generation`,
+its drives' stop outcomes, fault history (`fault_seen`) and miss counts started afresh. It is refused while the bus has
+a latched error (that bus is rebuilt instead), while the limb is running or still stopping, and until every drive in it
+is known disabled: confirmed in Reset by the stop and not seen in another mode since, or sent nothing for longer than
+the drives' 50 ms timeout plus a period since the socket took its last frame (stamped when it was written, so a late
+Disable counts from when it went). Each drive needs a fresh preflight before it is enabled again; that is the safety
+layer's.
 
 **Slow requests** (`submit`) are parameter reads, the codec's allowlisted writes and get-ID, for preflight and the
 once-a-second reads; they never ride in a batch. A bus holds `SLOW_SLOTS` of them and has at most one in flight, sent

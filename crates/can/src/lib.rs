@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![warn(clippy::wildcard_enum_match_arm, clippy::as_conversions)]
 
+mod batch;
 #[cfg(target_os = "linux")]
 mod bus;
 mod error_frame;

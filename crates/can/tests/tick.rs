@@ -127,10 +127,10 @@ fn a_disable_never_expires_whoever_planned_it() {
         ],
     );
     let list = bus.begin(0, 0, 0, Some(&b));
-    let expiry: Vec<_> = list.iter().map(|s| (s.kind, s.expires)).collect();
+    let expiry: Vec<_> = list.iter().map(|s| (s.slot, s.kind, s.expires)).collect();
     assert_eq!(
         expiry,
-        [(SendKind::Command, true), (SendKind::Command, false)]
+        [(1, SendKind::Command, false), (0, SendKind::Command, true)]
     );
     for index in 0..list.len() {
         bus.sent(index, SendOutcome::Sent, 0);
