@@ -1,9 +1,11 @@
 """Tests for the pre-print gate (pytest; run by scripts/check.sh). Rules: conventions/part-lifecycle.md section 3.
 
-The mesh tests need numpy, scipy, trimesh and rtree and are skipped without them (CI has only pytest); the rest is stdlib.
+The mesh tests need the gate's mesh libraries (gate.MESH_LIBS). Without them they skip on a workstation, but never in CI
+(where CI is set), which installs them: there a missing library fails the test. The rest is stdlib.
 """
 
 import json
+import os
 import sys
 import zipfile
 from pathlib import Path
@@ -38,6 +40,16 @@ up = [0, 0, 1]
 +++
 # Test link
 """
+
+def mesh_libs():
+    """trimesh, once every mesh library imports. In CI a missing one is an error, so the mesh tests can't silently skip."""
+    if not os.environ.get("CI"):
+        for lib in gate.MESH_LIBS.split():
+            pytest.importorskip(lib)
+    import networkx, rtree, scipy, trimesh  # noqa: E401, F401
+
+    return trimesh
+
 
 G90 = {"id": "G90", "what": "arm horizontal", "bulk_sf": 2.0, "layer_sf": 1.25}
 
@@ -242,8 +254,7 @@ def write(p: Path, text: str) -> Path:
 def test_mesh_check_rejects_the_defects_that_reached_prints(tmp_path: Path) -> None:
     """Guards: bug - spikes, slivers and notches reached printed parts before each mesh check existed (2026-11-07); a listed
     spot passes only where the whitelist names it."""
-    trimesh = pytest.importorskip("trimesh")
-    pytest.importorskip("scipy")
+    trimesh = mesh_libs()
     import mesh_check
 
     box = lambda size, at=(0, 0, 0): trimesh.creation.box(size, trimesh.transformations.translation_matrix(at))  # noqa: E731
@@ -280,7 +291,7 @@ def test_mesh_check_rejects_the_defects_that_reached_prints(tmp_path: Path) -> N
 
 def test_support_on_a_visible_face_is_found(tmp_path: Path) -> None:
     """Guards: bug - the one-piece upper arm printed with supported, rough outer skin (2026-11-08)."""
-    trimesh = pytest.importorskip("trimesh")
+    trimesh = mesh_libs()
     import part_checks
 
     # a T: a 10 mm stem with two 10 mm arms on top; printed stem-down, the arms' undersides are visible overhangs
@@ -295,7 +306,7 @@ def test_support_on_a_visible_face_is_found(tmp_path: Path) -> None:
 def test_support_check_fails_without_its_hiding_meshes_or_an_allowance_reason(tmp_path: Path) -> None:
     """Guards: number - visible-support allowances come with a reason (part-lifecycle.md section 1), and a hidden_by mesh
     that isn't there would count the faces it hides as visible."""
-    trimesh = pytest.importorskip("trimesh")
+    trimesh = mesh_libs()
     cad = tmp_path / "cad"
     make_link(cad)
     _, spec, part = gate.find_part(cad, "upper_arm_test_left")
@@ -312,7 +323,7 @@ def test_support_check_fails_without_its_hiding_meshes_or_an_allowance_reason(tm
 
 def test_interference_depth_with_a_mating_part(tmp_path: Path) -> None:
     """Guards: bug - an RS02 housing tab overlapped the printed upper arm by about 1 mm and nothing flagged it (2026-11-08)."""
-    trimesh = pytest.importorskip("trimesh")
+    trimesh = mesh_libs()
     import part_checks
 
     a = trimesh.creation.box((20, 20, 20))
@@ -324,8 +335,7 @@ def test_interference_depth_with_a_mating_part(tmp_path: Path) -> None:
 
 def test_gate_passes_a_clean_part_end_to_end(tmp_path: Path) -> None:
     """Guards: number - the gate's pass/fail is the AND of every check, and its report is what --verify accepts."""
-    trimesh = pytest.importorskip("trimesh")
-    pytest.importorskip("scipy")
+    trimesh = mesh_libs()
     cad = tmp_path / "cad"
     box = trimesh.creation.box((40, 30, 20), trimesh.transformations.translation_matrix((0, 0, 10)))
     make_link(cad, export_text="")
