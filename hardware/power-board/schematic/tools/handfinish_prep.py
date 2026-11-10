@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Hand-finishing setup for the rev B5 board in KiCad: net classes and the E-stop DRC rule, so KiCad's interactive
 router and DRC hold the rules tools/route_checks.py tests (tools/domains.py).
-  - net classes: ESTOP (the E-stop safety list), HV54 (the 54 V list), P12 (12 V distribution, 0.6 mm), and GND / 54 V
-    taps at 0.25 mm; everything else Default 0.2/0.2;
-  - E-stop rule in the .kicad_dru: 1.5 mm from ESTOP to HV54 copper on every layer, ahead of the fine-pitch courtyard
-    rules (a later rule wins in KiCad, so inside U1/U2/U7's courtyards their 0.15 mm still applies);
+  - net classes: ESTOP (the E-stop safety list, 0.2 mm tracks), HV54 (the 54 V list, 0.25 mm tracks), P12 (12 V
+    distribution, 0.6 mm tracks), all at 0.2 mm clearance; everything else Default 0.2/0.2;
+  - E-stop rule in the .kicad_dru: 1.5 mm from ESTOP to HV54 copper on every layer, ahead of U1's package rule
+    estop_at_U1 (a later rule wins in KiCad, so inside U1's courtyard its 0.2 mm applies);
+  - the latch supply's rule latch_supply_leak (domains.leak_rule(): 1.5 mm from BAT_F, BAT_R, BAT_CTL to the
+    leakage-sensitive E-stop nets), rewritten on every run, ahead of U1's rule;
   - the 54 V domain rule (0.6 mm outer, uncoated) stays in tools/route_checks.py: coated it is the 0.2 mm default.
 Run with plain Python: python tools/handfinish_prep.py <project.kicad_pro> <rules.kicad_dru> <netlist.net>"""
 import json,os,re,sys
@@ -25,8 +27,8 @@ for n in nets:
 ns['netclass_patterns']=pat; ns['netclass_assignments']=None
 json.dump(d,open(pro,'w',newline=chr(10)),indent=2)   # LF on every platform, so the file doesn't change wholesale
 s=open(dru,newline='').read()
-RULE="""# E-stop safety nets keep 1.5 mm to 54 V copper on every layer (LAYOUT_RULES.md, tools/domains.py); the fine-pitch
-# rules below come later in this file, so they win inside U1/U2/U7's courtyards
+RULE="""# E-stop safety nets keep 1.5 mm to 54 V copper on every layer (LAYOUT_RULES.md, tools/domains.py); U1's package rule
+# estop_at_U1 comes later in this file, so it wins inside U1's courtyard
 (rule estop_to_54v
   (constraint clearance (min 1.5mm))
   (condition "A.hasNetclass('ESTOP') && B.hasNetclass('HV54')"))

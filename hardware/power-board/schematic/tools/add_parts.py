@@ -4,7 +4,7 @@ library as tools/place.py does (value, datasheet, attributes and pad nets from t
 clean) and placed with its courtyard centre at (cx, cy) page mm, turned so that pad 1 lies at (p1x, p1y) when given.
 A net the board doesn't have yet is created. Stops if a REF is already on the board or not in the netlist.
 Connect the new pads with tools/lay_path.py or tools/finish_route.py afterwards. tools/place.py holds the same
-positions for a rebuild (ADDED)."""
+positions for a rebuild (its MOVED table: J27, TP17 and R139 of the heatsink tie)."""
 import os,sys
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); from sx import *
 import pcbnew, blocks

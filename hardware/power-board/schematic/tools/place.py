@@ -88,8 +88,9 @@ FIX['RS9']=(-20.4,326.4,180,False); FIX['R53']=(45.5,270.3,0,False)
 # toward its Kelvin pads, GATE toward Q8 (UVLO leaves through a via under the body); U7 sense pins up toward RS9
 FIX['U1']=(-8.25,312.6,180,False); FIX['U7']=(-13.8,320.15,270,False)
 # gate resistors at the gate pins of the left FET of each bank (Q1: G1, Q8: GA1), in the bank B controller column just
-# left of the FET. Q2/Q9's gates have no room: the MID band, the SW_D strip and the 1.3 mm gap to Q1/Q8 fill it, so R2/R32
-# stay with their controllers (LAYOUT_RULES.md, gate loops)
+# left of the FET. Q2/Q9's gates have no room: the MID band, the SW_D strip and the 1.3 mm gap to Q1/Q8 fill it. R32 stays
+# with its controller; R2 sits at the GATE tee beside R1 since 2026-11-10 (tools/bank_block.py places it on a rebuild;
+# LAYOUT_RULES.md, gate loops)
 FIX['R1']=(-18.625,279.8,90,False); FIX['R31']=(-18.625,299.8,90,False)
 FIX['C87']=(-8.6,307.6,90,False); FIX['C88']=(-13.1,307.6,90,False)   # bank A drain ceramics, SW_D pad down onto the drain pour
 FIX['C89']=(5.8,312.4,90,False); FIX['C90']=(9.4,312.4,90,False); FIX['C91']=(-8.6,327.6,0,False); FIX['C92']=(-8.6,331.0,0,False)   # pack-entry ceramics on the BAT pour

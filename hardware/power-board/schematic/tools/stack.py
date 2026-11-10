@@ -23,9 +23,10 @@ import os
 H_L1_L2=float(os.environ.get('MARENGO_H_L1_L2_MM','0.2104'))*1e-3   # MARENGO_H_L1_L2_MM=0.0994: the thin-prepreg case, for comparison
 # Zone clearance of the GND planes and fills on the four inner layers (In1-In4), mm. 0.6 mm (the old uncoated outer-layer
 # rule) cut the planes away under every fine-pitch via row; 0.3 mm keeps them solid there. IPC-2221B B1 (internal
-# conductors, 51-100 V) asks 0.1 mm. A 0.6/0.3 mm via then has 0.45 mm from its drill to the plane, and a pad without an
-# inner land 0.3 mm. tools/route_power.py builds the zones with it, tools/plane_clearance.py sets it on a routed
-# board, tools/route_checks.py check 6 tests it. The outer GND fills keep 0.6 mm.
+# conductors, 51-100 V) asks 0.1 mm. A 0.6/0.3 mm via then has 0.45 mm from its drill to the plane (every via and plated
+# pad on this board keeps its inner lands). tools/route_power.py builds the zones with it, tools/plane_clearance.py sets
+# it on a routed board, tools/route_checks.py check 6 tests it. The outer GND fills (L1, L6) keep a 0.6 mm zone
+# clearance (tools/route_power.py), more than the coated board's 0.2 mm rule asks.
 PLANE_CLEAR=0.3
 def kicad_layers(pcbnew):
     """pcbnew layer IDs in index order"""
