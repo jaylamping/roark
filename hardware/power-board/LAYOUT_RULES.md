@@ -35,6 +35,9 @@
   | VBUS at Q1's / Q2's source pins | 30 A each | Y 169 | L1 5.0 + L6 6.1 / 5.0 mm | 11.1 / 10.0 mm | 19.0 / 22.5 °C |
   | MID at Q8's / Q9's source pins | 30 A each | Y 149 | L1 5.0 + L6 6.1 / 5.0 mm | 11.1 / 10.0 mm | 19.0 / 22.5 °C |
   | MID band between the FET rows | 60 A | Y 150.25 | L1 35.2 + L6 13.7 mm | 48.9 mm | 8.0 °C |
+  | BAT, pack pad to RS1 | 60 A | Y 121.75 | L1 26.6 + L6 11.2 mm | 37.8 mm | 12.2 °C |
+  | GND return, ports to the pack's GND pad, every layer | 60 A | Y 173.25, under the bus-cap bar | L1 6.7, In1 56.5, In2 32.9, In3 32.8, In4 56.5, L6 5.5 mm | 29.3 mm | 18.5 °C |
+  | Port output legs V_L1–6, source pins to the pigtail pad | 30 A each | | L1 5.0–5.2 + L6 5.2–5.5 mm | 10.4–10.7 mm | 20.2–21.2 °C |
 
   The stem was 25.6 mm of outline on L6 alone, 18.3 mm at its worst cut (Y 221.5) and about 40 °C there. It is now
   38.4 mm of outline on L6 (X 130.8–169.2: the strips beside it were GND fill cut up by the port blocks' vias) with
@@ -45,12 +48,18 @@
   outline. pour_width.py fails the board above 26 °C on the stem and 25 °C elsewhere, and if the VBUS band
   (X 130–160, Y 180–190) holds more than its 18 vias of other nets. The stem's worst case assumes the last two ports
   loaded at 30 A each.
-  **Open before fab:** BAT (27 mm, L1 only) and the port legs (about 5 mm on each outer layer, about 10 mm
-  in total) sit just under their targets: widen them or mirror BAT on L6. The two 0.5 oz GND planes return 60 A across
-  about 90 mm (about 0.8 mOhm, about 3 W spread over the board). By IPC-2221B's internal curve the two planes alone rise
-  about 44 °C at 60 A (about 7,900 mil² for 20 °C, about 4,900 mil² there); the GND fill on L1 and L6 carries part of
-  the return, but its width along the path isn't measured yet. **Open before fab:** measure the outer GND return and
-  show the rise, or add outer GND copper. At layer changes, use about 1 A per 0.3 mm via.
+  BAT was 26.6 mm on L1 alone (21.7 °C); it now has a mirror on L6 from the pack pad to 17 staggered vias north of
+  RS1's pad ([schematic/tools/bat_copper.py](schematic/tools/bat_copper.py)). The L6 share is limited by those vias
+  (about 1 A each), so take the L1 pour as carrying about 43 A of the 60. The GND return was measured the same way for
+  the first time: its worst cut was under the bus-cap bar, where the VBUS via rows at 1.3 and 1.0 mm pitch had merged
+  their clearance holes into a slot 53 mm long through all four inner layers (31 mm of each plane left, 25.1 °C). The
+  rows are now at 2.6 and 2.0 mm, staggered, and the planes keep 56 mm there. The port legs are at their 10.5 mm
+  target and stay as they are: the strips are bounded by the pigtail pads and the neighbouring port. Each port's
+  drain link from the shunt's pad to the FET tab is a 2.1 mm wide, 2.5 mm long neck on L1 between two large copper
+  areas (0.29 mΩ, 0.26 W at 30 A, about 3 K by conduction into the pads); IPC's long-trace curve does not apply to it
+  and pour_width.py does not measure it. Floors in pour_width.py: stem 26 °C, BAT 15 °C, GND return 21 °C, port
+  legs 22 °C, the rest 25 °C. At layer changes, use about 1 A per 0.3 mm via, and never put vias of one net closer
+  than 1.8 mm in a row across a return path: at 0.3 mm plane clearance their holes are 1.2 mm wide.
 
 ## Power path
 
@@ -186,14 +195,18 @@ from it does, net by net (values from schematic/gen/gen.py; leakage pulls a net 
 
 No single leakage path keeps power on through a pressed E-stop: the PNP loses its supply, and the two banks take RUN
 through separate diodes. The nets in bold are the ones where leakage in the megohm range removes one of those layers
-or re-arms the latch, so they should keep 1.5 mm to BAT_F, BAT_R and BAT_CTL
-([schematic/tools/domains.py](schematic/tools/domains.py) LEAK_SENSITIVE). **They don't yet** (exception 11): 135 item
-pairs are closer, because the supply chain's parts (R59, D8, C39, F1's via) stand courtyard to courtyard with Q5, R48,
-R16 and the RUN_B track. Clearing them means re-placing the latch block as a designed block, like U8's; it is not a
-local move (the BAT_F via 0.30 mm from a RUN via at (112.35, 145.95) is in the same knot, and RUN itself may stay at
-0.2 mm by the table). route_checks check 10 counts the pairs and fails above 135, so they can only go down. The
-coating covers these gaps as it covers the 0.2 mm domain gaps; until the block is re-laid, that and the flux wash are
-what stand between the supply and these nets.
+or re-arms the latch, so they keep 1.5 mm to BAT_F, BAT_R and BAT_CTL on every layer
+([schematic/tools/domains.py](schematic/tools/domains.py) LATCH_SUPPLY and LEAK_SENSITIVE; the .kicad_dru rule
+`latch_supply_leak`; route_checks checks 1/2 and 10). As packed, 135 item pairs were closer: R59 and D8 stood
+courtyard to courtyard with Q5, R48 and the RUN_B track, and L_B ran 17 mm south past U2's BAT_CTL pins. The supply
+chain is now a designed block ([schematic/tools/latch_block.py](schematic/tools/latch_block.py), 2026-11-10):
+- R59 and D8 sit south of the logic beside F1 (page Y 173.7–181.8), so BAT_F and BAT_R are 4 mm long and stay there;
+- BAT_CTL runs north on F.Cu in one lane (X 114.6) to C39 and U2's pins 5 and 8, with no via: no supply copper is on
+  an inner layer under the latch block (route_checks check 4 now tests the chain too);
+- R16, R17 and C7 sit at Q5's base where R59 and D8 were, so L_B is a 5 mm net; R49 sits beside R48, so MID_B's two
+  resistors are together;
+- MID_B, and the copper of other nets that lay in the way, were re-routed by finish_route.py to the same rule.
+The fail-safe nets of the table keep 0.2 mm to the chain; that is the documented exception, not an open item.
 
 ## Clearance
 
@@ -283,7 +296,9 @@ How the board got there:
   the logic row faces north and the 54 V row south; R27, R28, TP13, R36, C29 and R37 sit north of it, every 54 V part
   south. EN_A and FLT_A run from the pins on F.Cu with no via. The SH pair runs on In2 down the middle of the column
   to R61/R62 (62 % of both legs paired).
-- **VBUS stem copper** (schematic/tools/vbus_copper.py), the **bare heatsink pads** (heatsink_pads.py) and the **E-stop
+- **Latch supply block** (schematic/tools/latch_block.py, `MODE=check` / `MODE=sync`): "Leakage from the latch supply"
+  above. tools/place.py takes the whole latch group's positions from it.
+- **VBUS stem copper** (schematic/tools/vbus_copper.py), the **BAT mirror** (bat_copper.py), the **bare heatsink pads** (heatsink_pads.py) and the **E-stop
   guard areas** (estop_guards.py; none is needed at the present placement) are generated from the board and rebuilt
   by their scripts.
 - **J24** pads 6-12 follow the schematic (6 +3V3_PI, 7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA, as on the buck board's
@@ -322,8 +337,8 @@ Rule exceptions and open items on this board, each tested or bounded by a check:
 | 7 | Signal and GND vias pass through the L6 VBUS stem, 18 of them in the band X 130-160, Y 180-190 | under the meter blocks and the port blocks | band rule: no new ones | pour_width.py (18 at most; the stem's rise) |
 | 8 | Masked copper (the VBUS stem, the vias through it, GND fill) inside the heatsink zone on L6; bare copper only at the ten FET pads, under an insulating pad that is the only insulation there | X -33..33, Y 200-305 | the rule as the board meets it; the pad is specified (GAP PAD TGP 3000, 0.020 in, over 3000 Vac). Open: the heatsink floats; a 100 kΩ tie to GND with a test point is recommended and needs a schematic change | heatsink_pads.py MODE=check, DRC's solder-mask bridge check |
 | 9 | SH9 Kelvin pair 9 % paired | RS9 to U7 | open: needs RS9 or U7 moved | route_checks 3 (floor 9 %) |
-| 10 | VBUS stem 25.3 °C at its worst cut (target 20 °C, about 25 accepted); BAT (27 mm, L1 only) and the port legs just under their 27.5 / 10.5 mm targets; the outer GND return not measured | Board, above | the stem: done as far as the copper goes; the rest open before fab | pour_width.py (stem 26 °C, columns and band 25 °C) |
-| 11 | The latch supply (BAT_F, BAT_R, BAT_CTL) within 1.5 mm of leakage-sensitive E-stop nets (L_B, MID_B, RUN_A, RUN_B): 135 item pairs | latch block, X 108-118, Y 136-165 | open: needs the latch block re-placed as a designed block ("Leakage from the latch supply") | route_checks 10 (135 at most) |
+| 10 | VBUS stem 25.3 °C at its worst cut (target 20 °C, about 25 accepted); port legs 20.2–21.2 °C (at their 10.5 mm target, bounded by the pads) | Board, above | accepted as measured; BAT (12.2 °C) and the GND return (18.5 °C) are no longer open | pour_width.py floors for every path |
+| 11 | The fail-safe E-stop nets (RUN, LOOP_RET, L_PB, L_E, L_PC, RUN_P, VB_B, INT_B, RST_SRC, RST_IN) keep 0.2 mm, not 1.5 mm, to the latch supply chain, which is at 54 V but not on the 54 V list | latch block | by the leakage table ("Leakage from the latch supply"); the leakage-sensitive nets keep 1.5 mm (0 pairs closer) | route_checks 1/2 and 10, DRC `latch_supply_leak` |
 | 12 | The 100k gate pull-up resistor R4 is 5.9 mm from the gate pin (rule: gate resistor at the gate pin); the 22 Ω R5 is at 3.2 mm | each port | kept: the corridor holds one 0603 column, and 100 kΩ swamps the track | port_template.py MODE=check |
 | 13 | R2 and R32 sit at their controllers, not at Q2's and Q9's gates | bank A and B | kept: no room at the gates (Gate parts, below; R2 at the tee tried, above) | none |
 

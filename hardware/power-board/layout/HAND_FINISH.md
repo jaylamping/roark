@@ -1,7 +1,7 @@
 # Finishing the rev B5 board
 
 **Nothing is open in the routing (2026-11-10).** Every connection is routed and `verify_board.sh` passes. The state,
-the rule exceptions and open items (13, among them G2's via through the L6 MID mirror and the latch supply's spacing)
+the rule exceptions (13, among them G2's via through the L6 MID mirror)
 and the hand-laid copper are in [LAYOUT_RULES.md](../LAYOUT_RULES.md), "Routing state" and "Exceptions and hand-laid
 copper". [open_nets.csv](open_nets.csv) lists the open connections: only its header.
 
@@ -9,10 +9,13 @@ copper". [open_nets.csv](open_nets.csv) lists the open connections: only its hea
 
 - No new vias in the VBUS band, Y 180-190 mm, X 130-160 (18 vias of other nets are there; pour_width.py fails on a 19th).
 - Don't unlock or drag locked tracks: the port and U8 templates, the gate drives and the Kelvin pairs are locked. Change a
-  template in its script (port_copper.py, u8_block.py) and run it with `MODE=sync`; put any other hand-laid copper in
+  template in its script (port_copper.py, u8_block.py, latch_block.py) and run it with `MODE=sync`; put any other hand-laid copper in
   schematic/tools/hand_laid.specs and lay it with lay_path.py.
 - E-stop nets (ESTOP class) keep 1.5 mm from 54 V copper; the DRC holds it. The one exception is inside U1's courtyard,
   between F.Cu pads, tracks and vias, where U1's own UVLO and SH_P pins are 0.2 mm apart.
+- L_B, RST_C, MID_B, RUN_A, EN_A, RUN_B, UVLO and FLT_D keep 1.5 mm from BAT_F, BAT_R and BAT_CTL (the latch's own 54 V
+  supply); the DRC rule `latch_supply_leak` holds it. No supply copper on the inner layers under the latch block.
+- No row of vias of one net closer than 1.8 mm across a return path: the clearance holes merge into a slot in the planes.
 - Nothing closer than 0.2 mm anywhere (JLCPCB's minimum for 2 oz outer copper); there is no fine-pitch rule.
 - No tracks on In1 or In4. No via in or touching a signal pad (the vias in the power pads and under the FET tabs are the
   filled and capped ones). No via of another net in a MID pour, and at most 2 vias on a gate net: route_checks checks 7

@@ -7,10 +7,10 @@ after bring-up. A separate buck board makes the 12 V and carries the 12 V output
 **Status (2026-11-10):** schematic done, ERC clean. The 6-layer board in [layout/](layout) is fully routed (0 open) and
 schematic/tools/verify_board.sh passes: DRC with schematic parity, route_checks, the joint, template, pour and heatsink-pad
 checks, check.py and bom_check.py (schematic/tools/verify_selftest.sh shows each of them failing on a broken copy). The
-big review's fix round is in; **not ready to order yet**: 13 exceptions and open items are listed in
-[LAYOUT_RULES.md](LAYOUT_RULES.md), "Exceptions and hand-laid copper", among them the latch supply's spacing to
-leakage-sensitive E-stop nets (needs the latch block re-placed), and the copper still under target on BAT and the port legs. The six port blocks and the U8
-block are designed templates (schematic/tools/port_template.py, port_copper.py, u8_block.py); the rest was routed by the
+big review's fix rounds are in. What is left before ordering is in [LAYOUT_RULES.md](LAYOUT_RULES.md), "Exceptions and
+hand-laid copper" (13 exceptions, each held by a check) and in [THERMAL_OPTION.md](THERMAL_OPTION.md) (the heatsink's
+100 kΩ tie to GND, which needs a schematic change). The six port blocks, the U8 block
+and the latch supply are designed blocks (schematic/tools/port_template.py, port_copper.py, u8_block.py, latch_block.py); the rest was routed by the
 staged scripts and the finishing tools. The pictures in layout/renders/routed_* come from
 schematic/tools/render_export.py and render_routed.py.
 
