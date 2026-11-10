@@ -231,8 +231,9 @@ Per [can-stack-for-marengo.md](https://github.com/jaylamping/marengo/blob/main/h
   fact; 300 Hz only if measured.
 - **Timing is a worst-case budget.** At 250 Hz three periods are 12 ms, inside the drives' 50 ms timeout. Any wake past its
   send window, or a backlog in the drain (more frames queued than it may read before the send), stops an active bus at
-  once; it doesn't wait for the feedback to expire. An idle bus has nothing to stop: that tick it sends only Disables and
-  reporting off and holds the rest. Missed deadlines are counted, never skipped silently.
+  once; it doesn't wait for the feedback to expire. Neither stops an idle bus: that tick it sends only Disables and
+  reporting off and holds the rest, and the batch checks (a bad batch, motion on stale feedback) still stop it. Missed
+  deadlines are counted, never skipped silently.
 - **Rust:** `socketcan` 4.0 (blocking socket, netlink, candump log format). No async runtime in the loop. Realtime rules are in
   [rust.md](conventions/rust.md).
 - **Codec:** our own, no I/O, a typed frame table transcribed from the manuals, per-model scales as constants in `robstride`

@@ -421,8 +421,9 @@ pub struct DriveView {
     pub observed: Option<Observed>,
     /// When its last fresh status was read: the first status after a command the socket took. Freshness, not
     /// acknowledgement: the protocol has no sequence numbers, so which command a status answers can't be proven. Read
-    /// time, not arrival: on an active bus it can trail the kernel's receipt by up to period - collect + send window
-    /// (units-and-frames.md section 5).
+    /// time, not arrival: it can trail the kernel's receipt by up to period - collect + send window
+    /// (units-and-frames.md section 5). Cleared on an idle bus's held tick (a late wake or a backlog), whose drain read
+    /// too late to vouch for it.
     pub fresh_ns: Option<u64>,
     /// Whether it answered this tick's command by the collect deadline.
     pub answered: bool,

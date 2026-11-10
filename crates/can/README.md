@@ -8,7 +8,8 @@ delivers, and publishes what each drive last said and how fresh it is (PLAN item
 Each tick, on the monotonic clock (the steps the bus thread's shell runs around `BusTick`):
 
 1. **Wake** at the tick's scheduled start (`clock_nanosleep`, absolute). Waking later than the send window is a missed
-   deadline: it stops an active bus, and an idle bus sends only its batch's Disables and reporting off that tick.
+   deadline: it stops an active bus. It doesn't stop an idle bus, which sends only its batch's Disables and reporting
+   off that tick and holds the rest; the batch checks in step 3 still apply.
 2. **Drain** the socket to empty, so what is read after the send came after the backlog. It is not a strict barrier:
    a frame landing between the drain and the write counts as after it, which is still evidence of the drive then.
 3. **Plan** with `BusTick::begin`: the newest `CommandBatch` from control, only if it is for this tick and unexpired.
@@ -32,8 +33,9 @@ latches `fault_seen`. Missing replies to Enable and Disable aren't counted as un
 reach Run, and goes silent after a Disable (PLAN item 2 Silence windows).
 
 A drain that reads past its limit or leaves frames queued is a backlog: what it said can't be known in time, so it
-stops an active bus, and an idle bus sends only its batch's Disables and reporting off that tick, as for a late wake
-(`held_batches`).
+stops an active bus. As for a late wake, it doesn't stop an idle bus, which sends only its batch's Disables and
+reporting off that tick (`held_batches`); the batch checks still apply. On such a held tick no drive's status counts
+as fresh, so motion waits for a status read on a tick that can be trusted.
 
 A stop (requested, control silent, a late wake, expired feedback, a bad batch, or a backlog) sends Disable to every
 drive, re-sends it each tick to every drive that hasn't confirmed, and sends active reporting off to each confirmed

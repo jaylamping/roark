@@ -198,10 +198,11 @@ impl BusTick {
     /// Disable or active reporting off goes out late too, whoever planned it, since late it is still the right frame.
     ///
     /// A stop asked for before the tick is taken first, so it keeps its reason. A backlog in the drain, then a wake past
-    /// the send window (a missed deadline, counted in every state), stops an active bus. An idle bus (nothing enabled
-    /// since start) has nothing to stop: that tick it sends only its batch's Disables and reporting off, which are
-    /// right late or not, and holds back the rest (`held_batches`), so nothing is enabled on a tick whose reads can't
-    /// be trusted (PLAN.md item 3).
+    /// the send window (a missed deadline, counted in every state), stops an active bus. Neither stops an idle bus
+    /// (nothing enabled since start): that tick it sends only its batch's Disables and reporting off, which are right
+    /// late or not, and holds back the rest (`held_batches`), so nothing is enabled on a tick whose reads can't be
+    /// trusted; the batch checks still apply. Its drain read late or in a backlog, so no drive's status stays fresh
+    /// after it, and motion waits for a status read on a trusted tick (PLAN.md item 3).
     pub fn begin(
         &mut self,
         tick: u64,
@@ -239,7 +240,13 @@ impl BusTick {
                 self.plan_stop(now_ns);
             }
             BusState::Idle | BusState::Active => {
-                self.plan_batch(tick, now_ns, batch, backlog || late);
+                let hold = backlog || late;
+                self.plan_batch(tick, now_ns, batch, hold);
+                if hold {
+                    for d in self.drives.iter_mut().flatten() {
+                        d.fresh_ns = None;
+                    }
+                }
             }
         }
         self.sends
