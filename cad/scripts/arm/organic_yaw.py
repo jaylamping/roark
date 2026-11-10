@@ -7,7 +7,12 @@ the tube's existing back window (Y 45-55) and leaves the coil up the sleeve's ba
 RS00 ring's back slot and the belly rim's cable channel; the groove and the ring slot widen from 15 and 13 deg to 24 deg
 (11.5 mm) to take it flat.
 
-    python organic_yaw.py [sleeve ring]
+Cone-and-cuff wrist (chosen 2026-11-10): the sleeve gets a 1.2 mm cone skin from Ø72 at the ring to Ø68 at the lower bearing
+band, closing a void round its barrel; under the skin the barrel thins from r 31 to r 30 between the bearings, since the skin
+now shares the bending. The wrist cap gets a Ø70.4 cuff down to the wrist flange's face, 0.8 mm clear of the flange's
+yaw-stop tab (r 33.2), so the end reads as one band and a flat face.
+
+    python organic_yaw.py [sleeve ring cone cuff]   (each step runs once on the draft 4 file; groove_lip is a fix-up)
 """
 import math
 import shutil
@@ -24,7 +29,7 @@ CAD = M.CAD
 DIR = CAD / 'forearm'
 EXP = CAD / 'exports' / 'forearm'
 BORE = dict(r=27.6, y0=32.4, y1=68.3)        # clock-spring bore between the bearing seats (Y 24.4-31.4 and 69.3-76.3)
-GROOVE = dict(r0=25.9, r1=28.5, a0=258.0, a1=282.0)
+GROOVE = dict(r0=24.3, r1=28.5, a0=258.0, a1=282.0)      # through the upper lip too, as the original groove
 RING_SLOT = dict(r0=24.4, r1=33.5, a0=258.0, a1=282.0)
 
 
@@ -75,6 +80,26 @@ def ring():
     d, p = open_part('rs00_ring')
     arc_band_y(d, 'RIBBON_SLOT', RING_SLOT['r0'], RING_SLOT['r1'], RING_SLOT['a0'], RING_SLOT['a1'], 84.0, 90.6, True)
     finish(d, p, 'rs00_ring')
+
+
+def groove_lip():
+    """Run the widened back groove through the upper lip too (r 24.3), as the original groove does."""
+    d, p = open_part('sleeve')
+    arc_band_y(d, 'RIBBON_GROOVE_LIP', 24.3, 26.1, GROOVE['a0'], GROOVE['a1'], 75.5, 84.6, True)
+    finish(d, p, 'sleeve')
+
+
+def cone():
+    d, p = open_part('sleeve')
+    y_revolve0(d, 'CONE_SKIN', [(34.0, 24.4), (36.0, 84.3), (34.8, 84.3), (32.8, 24.4)], False)
+    y_revolve0(d, 'BARREL_THIN', [(30.0, 37.0), (31.2, 37.0), (31.2, 63.0), (30.0, 63.0)], True)
+    finish(d, p, 'sleeve')
+
+
+def cuff():
+    d, p = open_part('wrist_cap')
+    y_revolve0(d, 'CUFF', [(34.0, 14.9), (35.2, 14.9), (35.2, 24.3), (33.9, 24.3), (33.9, 21.5), (34.0, 21.5)], False)
+    finish(d, p, 'wrist_cap')
 
 
 if __name__ == '__main__':

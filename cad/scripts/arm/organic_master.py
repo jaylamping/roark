@@ -132,6 +132,7 @@ def shell(d, face_pts, t, name):
 
 
 def new_part(path):
+    sw.CloseAllDocuments(True)       # a failed build leaves its part open, and the next NewDocument then throws
     tpl = sw.GetUserPreferenceStringValue(8)
     d = sw.NewDocument(tpl, 0, 0, 0)
     e, w = L(), L()

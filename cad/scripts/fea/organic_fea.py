@@ -39,6 +39,7 @@ for tag, a in (('0', 64.6), ('124', 115.4)):          # contact pads on the 50 d
     face = ('plane', (137.55,) + P(32.25, a), None, 'on')     # the pad face only
     CASES['STOP_' + tag] = dict(part='organic', fix=[('fixed', SEAT)], forces=[(face, 889.0, None)], regions=REGIONS, el=2.5, ctrl=[(face, 0.8)], exclude=[RING_ZONE])
     CASES['STOP_' + tag + '_fine'] = dict(CASES['STOP_' + tag], el=1.8, ctrl=[(face, 0.5)])
+    CASES['STOP_' + tag + '_xfine'] = dict(CASES['STOP_' + tag], el=1.3, ctrl=[(face, 0.35)])
 
 # forearm side of the elbow (bonded shells and discs). Fixed on the RS02 output (6 M4 holes, 3 pin holes) and the 6808 bore
 # (hinge); loads at the hand point through the six rim inserts. Layers across X (shells print on the seam, discs flat).
@@ -94,6 +95,26 @@ for k in ('E34', 'E17', 'G90'):
     CASES['C' + k] = dict(part='contact', fix=[('fixed', SEAT)], remote=(RS02, GOLD, f, m), regions=CREG, el=2.5, pre_mesh=contact)
     CASES['C' + k + '_fine'] = dict(CASES['C' + k], el=1.8)
 
+# A2 rotating lower forearm. 5 kg at the hand point plus the 500 g placeholder (200 g hand at 90 mm past the face, 300 g pack
+# in the bay): 54 N at the combined point Y -68.8. ROT: the turning section held at its bearing seats; STUB: the static stub
+# ring held at its top face, the load reaching it through the bearings on the stub.
+from pathlib import Path as _P
+SIMF = _P(__file__).resolve().parents[2] / '_sim' / 'forearm'
+PARTS['rot'] = SIMF / 'ROT_A2_v1.SLDPRT'
+PARTS['stub'] = SIMF / 'STUB_A2_v1.SLDPRT'
+HP2 = (170.49, -68.8, CZ)
+BORE = cyl(26.05, [135, 60, -30, 206, 84, 42])
+FACE = pl((170.49 + 25.0, 14.9, CZ))
+STUB_OD = cyl(20.0, [145, 66, -20, 196, 83, 32])
+RING_TOP = pl((170.49 + 30.0, 90.3, CZ))
+RREG = {'hub': [135, 59, -30, 206, 84, 42], 'shell': [133, 14, -32, 208, 84, 44], 'wrist': [135, 14, -30, 206, 23, 42]}
+for k, f, m in (('ROT_P90', (0, 0, -54.0), (0, 0, 0)), ('ROT_LAT', (54.0, 0, 0), (0, 0, 0)), ('ROT_TW', (0, 0, 0), (0, 14.0, 0))):
+    CASES[k] = dict(part='rot', fix=[('fixed', BORE)], remote=(FACE, HP2, f, m), regions=RREG, el=2.5)
+    CASES[k + '_fine'] = dict(CASES[k], el=1.8)
+CASES['STUB_P90'] = dict(part='stub', fix=[('fixed', RING_TOP)], remote=(STUB_OD, HP2, (0, 0, -54.0), (0, 0, 0)), el=1.5, regions={'stub': [148, 66, -20, 193, 85, 32]})
+CASES['STUB_P90_fine'] = dict(CASES['STUB_P90'], el=1.0)
+CASES['STUB_TW'] = dict(part='stub', fix=[('fixed', RING_TOP)], remote=(STUB_OD, HP2, (0, 0, 0), (0, 14.0, 0)), el=1.5, regions={'stub': [148, 66, -20, 193, 85, 32]})
+
 if __name__ == '__main__':
     for n in sys.argv[1:]:
-        run(('fa_' if CASES[n]['part'] == 'fore' else 'con_' if CASES[n]['part'] == 'contact' else 'org11_') + n, CASES[n])
+        run(('a2_' if CASES[n]['part'] in ('rot', 'stub') else 'fa_' if CASES[n]['part'] == 'fore' else 'con_' if CASES[n]['part'] == 'contact' else 'org11_') + n, CASES[n])
