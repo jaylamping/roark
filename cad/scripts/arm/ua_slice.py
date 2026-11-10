@@ -10,7 +10,7 @@ from build import *
 
 U = CAD / 'exports' / 'upper-arm'
 CY, CZ = 209.860668, 5.985875
-TUBE_COLS = [(147.5, 262.0), (147.5, 278.0), (193.5, 262.0), (193.5, 278.0)]   # seam posts (scripts/ua_parts.py)
+TUBE_COLS = [(147.5, 262.0), (147.5, 278.0), (193.5, 262.0), (193.5, 278.0)]   # seam posts (cad/scripts/arm/ua_parts.py)
 HUB_COLS = [(147.5, 292.0), (193.5, 292.0)]
 RING_PINS = [(158.5, 246.5)]
 

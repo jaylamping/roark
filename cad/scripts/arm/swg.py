@@ -75,8 +75,9 @@ def sw_app():
 
 
 def feat(d, sk, name, depth, cut, mode=BLIND, want=None, lo=1.0, flip_side=False):
-    """Extrude (cut=False) or cut a sketch. depth > 0 one way; tries both directions and keeps the one whose
-    feature faces lie on the 'want' side: want = (axis_index, sign) relative to the sketch plane coordinate.
+    """Extrude (cut=False) or cut a sketch, depth in mm. Except for MID, tries both directions and keeps the first that
+    changes the volume by more than lo (mm3) and, if want = (axis_index, sign, c0) is given, whose feature faces' mean
+    coordinate along that axis lies on the sign side of c0 (mm, model coordinates). flip_side flips the side a cut removes.
     mode MID = mid-plane (depth total), THRU_ALL = through all both sides, UP_TO_NEXT = to the first face met."""
     fm = d.FeatureManager
     tries = (False,) if mode in (MID,) else (False, True)
@@ -112,7 +113,8 @@ def feat(d, sk, name, depth, cut, mode=BLIND, want=None, lo=1.0, flip_side=False
 
 
 def revolve(d, sk, name, axis_line_pts, cut, angle=360.0, mid=False, lo=1.0):
-    """Revolve a closed sketch that also contains a centreline (added by caller through Sk.centerline)."""
+    """Revolve a closed sketch that also contains a centreline (added by the caller with centerline(s, a, b)).
+    axis_line_pts is not used: the axis is that centreline."""
     v0 = vol(d)
     d.ClearSelection2(True); sk.Select2(False, 0)
     f = d.FeatureManager.FeatureRevolve2(True, True, False, cut, False, False, 6 if mid else 0, 0, math.radians(angle), 0, False, False, 0, 0, 0, 0, 0, True, False, True)

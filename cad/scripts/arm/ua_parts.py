@@ -1,5 +1,6 @@
 """Upper arm clamshell parts from the master (db71b23b with the cover window closed). Arm frame, mm.
-Parts: upper half (Z > 6), lower half (Z < 6), RS02 seat ring, hub disc. usage: python ua_parts.py [ring hub upper lower]"""
+Parts: upper half (Z > 6), lower half (Z < 6), RS02 seat ring, hub disc, loop clip; plus the one-body FEA models.
+usage: python ua_parts.py [ring hub clip upper lower fea fea_slit fea_contact]   (no job given: runs all of them)"""
 import math, os, shutil, sys
 import numpy as np
 from swg import *
@@ -211,8 +212,8 @@ def ring():
         A = [math.radians(a) for a in range(161, 192, 2)]
         s.poly([(151.0, CY + 32.5 * math.cos(a), CZ + 32.5 * math.sin(a)) for a in A] + [(151.0, CY + 36.9 * math.cos(a), CZ + 36.9 * math.sin(a)) for a in A[::-1]])
     feat(d, s.feat, 'POCKET_THRU', 15.0, True, want=(0, 1, 151.0))
-    # no lug: the top of the ring is the master's port slot. Each half pins the ring with one M3 x 10 along Z into a
-    # Ruthex insert at Y RING_PIN_Y, outside the slot (Z -7.5..16)
+    # no lug: the top of the ring is the master's port slot. One M3 x 12 along Z from the back (lower) half, at
+    # RING_PIN_X, pins the ring into this Ruthex insert at Y RING_PIN_Y, outside the slot (SLOT_Z)
     cyl_z(d, 'RING_INSERT_LO', [(x, RING_PIN_Y) for x in RING_PIN_X], 2.0, -22.5, (RING_PIN_Z[1] + 6.0) + 22.5, True, 1)   # start in air
     # the master's port slot leaves 0.03-0.5 mm skins on the ring top beside the lug: clear them down to Y 250,
     # out to where the OD is below Y 250 on both sides, so the cut ends in air
@@ -340,7 +341,7 @@ def half(upper):
 LOOP_X, LOOP_R, LOOM_R = 132.0, 48.0, 4.2
 
 
-def anchor_frame(phi_deg, sense, alpha_deg=15.0):   # 15 deg outward: free loom stays R>=25 over 0-124 (pkg/loop_sweep.py)
+def anchor_frame(phi_deg, sense, alpha_deg=15.0):   # 15 deg outward: free loom stays R>=25 over 0-124 (loop_sweep.py, in marengo)
     """Anchor centre C and in-plane unit vectors (Y, Z): u along the groove toward the free loop, w out of the floor."""
     f, a = math.radians(phi_deg), math.radians(alpha_deg)
     C = np.array([CY + LOOP_R * math.cos(f), CZ - LOOP_R * math.sin(f)])
@@ -486,9 +487,14 @@ def ring_kerf(d):
 
 
 def fea_model(slit_on=False, contact=False):
-    """One body for the seam FEA: the master with the hub lightening and the seam columns, and a 0.2 mm slit on the
-    seam plane through the tube walls everywhere except the bolted column footprints and the hub lugs. Ring and hub
-    stay bonded (they bear in their pockets; the screws only locate them)."""
+    """FEA model of the clamshell, into SIM: the master with the hub lightening, the upper seam posts with their root
+    fillets, the lower seam columns, and the printed parts' trims (skirt at Y_SKIRT, ring flare tips, widened port
+    slot). Three variants:
+    - default (job fea, UA_CLAM_BONDED): one body, halves, ring and hub bonded; no slit.
+    - slit_on (job fea_slit, UA_CLAM): as the default plus a 0.2 mm slit on the seam plane through the tube walls
+      everywhere except the bolted column footprints and the hub lugs. Ring and hub stay bonded.
+    - contact (job fea_contact, UA_CLAM_CONTACT): ring_kerf cuts the ring free of the halves along its printed
+      clearances, for no-penetration contact and a pin connector; no slit. The hub stays bonded."""
     SIM.mkdir(parents=True, exist_ok=True)
     p = str(SIM / ('UA_CLAM_CONTACT.SLDPRT' if contact else 'UA_CLAM.SLDPRT' if slit_on else 'UA_CLAM_BONDED.SLDPRT'))
     shutil.copy(MASTER, p)

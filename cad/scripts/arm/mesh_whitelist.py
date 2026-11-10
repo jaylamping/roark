@@ -1,4 +1,4 @@
-"""Known design corners and hidden thin spots that tools/mesh_check.py may pass, per part.
+"""Known design corners and hidden thin spots that cad/scripts/arm/mesh_check.py may pass, per part.
 
 Coordinates are CAD coordinates of the source STL (arm frame, mm) unless the part is generated in the
 build script (seat_ring_only, layer_coupons, dummy_output), where they are plate coordinates.
@@ -77,7 +77,7 @@ WHITELIST = {
     'layer_coupons': {'bodies': None},
     'dummy_output': {'bodies': 2},
 }
-# upper-arm clamshell (hardware/designs/left-arm/upper-arm/clamshell/cad), cut from the db71b23b master: the entries
+# upper-arm clamshell (cad/upper-arm/), cut from the db71b23b master: the entries
 # below are the master's own reviewed spots that land in each part, plus one ring end corner.
 WHITELIST['ua_ring'] = {
     'corners': WHITELIST['upper_arm']['corners'][:2] + [
