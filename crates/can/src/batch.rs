@@ -94,14 +94,10 @@ impl BusTick {
         batch: Option<&'b CommandBatch>,
     ) -> Option<Accepted<'b>> {
         let this_tick = batch.filter(|b| b.tick == tick);
-        if this_tick.is_some_and(|b| b.expires_ns > now_ns) {
-            self.silent = 0;
-        } else {
+        if !self.note_control(tick, now_ns, batch) {
             if batch.is_some() {
                 self.counters.stale_ticks += 1;
             }
-            // Counted with every limb idle too: silent control also cancels slow requests.
-            self.silent = self.silent.saturating_add(1);
             let active = self
                 .limbs
                 .iter()
@@ -154,6 +150,25 @@ impl BusTick {
             taken,
             kinds,
         })
+    }
+
+    /// Count control's silence on every tick, whatever the limbs are doing: a fresh batch (for this tick and unexpired)
+    /// ends it, anything else adds a silent tick. Returns whether the batch was fresh. Only [`Self::check_batch`] stops
+    /// on the count; with every limb stopping or stopped it is kept so that a re-armed limb's slow requests are refused
+    /// while control is still silent.
+    pub(crate) fn note_control(
+        &mut self,
+        tick: u64,
+        now_ns: u64,
+        batch: Option<&CommandBatch>,
+    ) -> bool {
+        let fresh = batch.is_some_and(|b| b.tick == tick && b.expires_ns > now_ns);
+        self.silent = if fresh {
+            0
+        } else {
+            self.silent.saturating_add(1)
+        };
+        fresh
     }
 
     /// A bad batch stops every limb. If this tick's stops already took the last idle or active one, there is nothing left

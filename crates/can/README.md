@@ -121,9 +121,9 @@ the drive's `last_echo`. Each request gets exactly one result: its answer, `Time
 start), `NotSent`, or `Refused`, including when the thread ends with it pending (`end_slow`: `Ended`, or `BusFailed`).
 Nothing is retried. A request for a drive whose limb is stopping, stopped or due to stop (a stop asked for and not yet
 taken, or what the veto stops on, on any drive of the limb: a fault, a drop out of Run, too many misses), while control
-has been silent for the silent-tick limit (counted with every limb idle too), or on a failed bus is refused, and one
-already queued is cancelled before it goes, so slow traffic never keeps a drive alive past a stop (`canTimeout` counts
-from any frame).
+has been silent for the silent-tick limit (counted on every tick, with every limb idle or stopped too), or on a failed
+bus is refused, and one already queued is cancelled before it goes, so slow traffic never keeps a drive alive past a
+stop (`canTimeout` counts from any frame).
 
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
 a drive table past `MAX_DRIVES`, a drive listed twice, a limb index past the table, and timing that breaks its

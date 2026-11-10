@@ -235,9 +235,10 @@ fn get_id_and_a_write_are_answered_by_their_own_replies() {
 }
 
 /// Guards: safety - slow requests never keep a drive alive past a stop or a silent control thread: one for a drive in
-/// a stopping or stopped limb, or while control is silent (even with every limb idle, as during preflight), or on a
-/// failed bus, is refused, and one already queued is cancelled before it goes, while the bus's other limb is served
-/// (PLAN.md item 6: a stop latches; `canTimeout` counts from any frame).
+/// a stopping or stopped limb, or while control is silent (even with every limb idle, as during preflight, or just
+/// re-armed after control went quiet with every limb stopped), or on a failed bus, is refused, and one already queued
+/// is cancelled before it goes, while the bus's other limb is served (PLAN.md item 6: a stop latches; `canTimeout`
+/// counts from any frame).
 #[test]
 fn a_stop_or_silent_control_refuses_and_cancels_slow_requests() {
     // Limb 0 stops: refused for it, served for limb 1, and its queued request cancelled.
@@ -285,6 +286,25 @@ fn a_stop_or_silent_control_refuses_and_cancels_slow_requests() {
     // Control back: served again.
     quiet_tick(&mut bus, silent + 1);
     assert_eq!(bus.submit(read(3, 1, Param::CanTimeout)), Ok(()));
+
+    // Control goes quiet while every limb stops: the silence still counts, so after the re-arm a request is refused
+    // until a fresh batch comes.
+    let mut bus = two_limbs();
+    quiet_tick(&mut bus, 0);
+    bus.request_stop();
+    let last = bus.timing().stop_max_ns().div_ceil(PERIOD) + 1;
+    for tick in 1..=last {
+        run_tick(&mut bus, tick, None, &[]);
+        let _ = bus.end(deadline(tick));
+    }
+    let quiet = (last + 1) * PERIOD + DRIVE_TIMEOUT_NS;
+    assert_eq!((bus.rearm(0, quiet), bus.rearm(1, quiet)), (Ok(()), Ok(())));
+    assert_eq!(
+        bus.submit(read(1, 1, Param::CanTimeout)),
+        Err(SlowRefusal::ControlSilent)
+    );
+    quiet_tick(&mut bus, last + 1);
+    assert_eq!(bus.submit(read(2, 1, Param::CanTimeout)), Ok(()));
 
     // A failed bus: refused, and a queued one cancelled.
     let mut bus = two_limbs();

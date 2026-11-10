@@ -42,7 +42,7 @@ pub struct Timing {
     /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
     pub disable_silence_ns: u64,
     /// Ticks without a fresh batch, while a limb is active, that stop every limb on the bus (PLAN.md item 3: two).
-    /// Counted with every limb idle too: past it, slow requests are refused.
+    /// Counted on every tick, whatever the limbs are doing: past it, slow requests are refused.
     pub silent_ticks: u32,
     /// Consecutive commands a drive may leave unanswered by the collect deadline before its limb stops (PLAN.md item 6
     /// Silence row: three).

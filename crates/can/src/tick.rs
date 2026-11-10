@@ -489,6 +489,8 @@ impl BusTick {
         let accepted = if takes_batches {
             self.check_batch(tick, now_ns, batch)
         } else {
+            // Nothing to stop, but control's silence still counts: it refuses slow requests after a re-arm.
+            self.note_control(tick, now_ns, batch);
             if batch.is_some() {
                 self.counters.refused_batches += 1;
             }
