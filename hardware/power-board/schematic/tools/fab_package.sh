@@ -8,7 +8,8 @@
 #   marengo_pdu_revb-gerbers.zip   the same 14 files, for the fab's upload form
 #   marengo_pdu_revb-pos.csv       positions of the fitted parts (top side; mm, board origin as in the Gerbers)
 #   bom-jlc.csv                    Comment, Designator, Footprint, Quantity: one line per value and footprint, fitted parts
-#   bom-digikey.csv                Quantity (for two sets with spares), Value / MPN, Reference designators: from ../kit-2sets.csv
+#   bom-digikey.csv                Quantity (for two sets with spares), Value / MPN, Reference designators, Footprint,
+#                                  Manufacturer, Manufacturer PN, DigiKey PN, Supplier note: from ../kit-2sets.csv
 #   BOARD.sha256                   the hash of the board file the package was made from
 #   CHECK.txt                      tools/fab_check.py's comparison of the files with the board
 # Nothing is ordered or uploaded. The board file itself is not changed. Run tools/verify_board.sh afterwards.
@@ -46,8 +47,8 @@ w=csv.writer(open(out+'/bom-jlc.csv','w',newline='',encoding='utf-8'),linetermin
 for refs,val,fp,qty,dnp in rows:
     if not dnp: w.writerow([val,refs,fp.split(':')[-1],qty])
 kit=[r for r in csv.reader(open(PB+'/kit-2sets.csv',encoding='utf-8')) if r and r[0] in ('main','assembly')]
-w=csv.writer(open(out+'/bom-digikey.csv','w',newline='',encoding='utf-8'),lineterminator='\n'); w.writerow(['Quantity','Value / MPN','Reference designators','Footprint'])
-for r in kit: w.writerow([r[7],r[2],r[1],r[3]])
+w=csv.writer(open(out+'/bom-digikey.csv','w',newline='',encoding='utf-8'),lineterminator='\n'); w.writerow(['Quantity','Value / MPN','Reference designators','Footprint','Manufacturer','Manufacturer PN','DigiKey PN','Supplier note'])
+for r in kit: w.writerow([r[7],r[2],r[1],r[3]]+(r[8:12]+['','','',''])[:4])
 z=out+'/marengo_pdu_revb-gerbers.zip'
 if os.path.exists(z): os.remove(z)
 with zipfile.ZipFile(z,'w',zipfile.ZIP_DEFLATED) as f:
