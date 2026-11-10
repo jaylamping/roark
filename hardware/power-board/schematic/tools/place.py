@@ -141,6 +141,11 @@ def place_at(fp,X,Y,rot=0,back=False):
     bb=bbox(fp); c=bb.GetCenter(); t=P(X,Y)
     fp.Move(pcbnew.VECTOR2I(t.x-c.x,t.y-c.y))
 FIX.update({r:(X,Y,rot,False) for r,(X,Y,rot) in PFIX.items()})
+# the small parts of each port sit at the designed template positions (tools/port_template.py PLACE, page mm, placed
+# after the packing below), so they aren't packed
+import port_template as PT
+TEMPLATE={PT.refs(k)[role] for k in PORT for role in PT.PLACE}
+for r in TEMPLATE: G.pop(r,None)
 for r in FIX: G.pop(r,None)
 for r,(X,Y,rot,back) in FIX.items(): place_at(fps[r],X,Y,rot,back)
 rep={}
@@ -223,6 +228,8 @@ for blk,(X0,X1,Y0,Y1) in BLK.items():
         print(blk,'54 V strip',round(hs,1),'mm:',' '.join(hv)); r1=pack(blk,X0,X1,Y0,Y0+hs,hv); r2=pack(blk,X0,X1,Y0+hs+1.6,Y1,[r for r in refs if r not in hv])
         rep[blk]=dict(parts=r1['parts']+r2['parts'],fill=r2['fill'],hv_strip=round(hs,1),overflow=r1['overflow']+r2['overflow'])
     else: rep[blk]=pack(blk,X0,X1,Y0,Y1,refs)
+PT.FPS.update(fps)
+for k in PORT: PT.place(b,k)   # page mm = this file's P(): X+150, 440-Y
 # J20 (JST GH horizontal, E-stop loop) must open toward the -X edge (KO_estop); maxrects only knows its box, so turn it 180
 # about the courtyard centre, which keeps the box
 if round(fps['J20'].GetOrientationDegrees())==90: fps['J20'].Rotate(bbox(fps['J20']).GetCenter(),pcbnew.EDA_ANGLE(180,pcbnew.DEGREES_T))
@@ -231,7 +238,7 @@ px=-50
 for blk in rep:
     for r in rep[blk]['overflow']:
         bb=bbox(fps[r]); w=pcbnew.ToMM(bb.GetWidth()); place_at(fps[r],px+w/2,YB-6); px+=w+1
-missing=[r for r in fps if r not in G and r not in FIX]
+missing=[r for r in fps if r not in G and r not in FIX and r not in TEMPLATE]
 # ---- outline, holes, keep-outs, notes
 def seg(layer,a,c,w=0.15):
     s=pcbnew.PCB_SHAPE(b); s.SetShape(pcbnew.SHAPE_T_RECT); s.SetLayer(layer); s.SetWidth(pcbnew.FromMM(w))
