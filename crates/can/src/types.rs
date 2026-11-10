@@ -15,8 +15,8 @@ pub const MAX_SENDS: usize = 2 * MAX_DRIVES;
 /// the read lag, and the ticks of control silence that stop a bus, must each fit inside it (PLAN.md item 3 Timing).
 pub const DRIVE_TIMEOUT_NS: u64 = match CanTimeout::RUNTIME.nanos() {
     Some(ns) => ns,
-    // RUNTIME is never OFF; were it, 0 would make `Timing::check` refuse every timing, so the bus could never run.
-    None => 0,
+    // Evaluated at compile time: a RUNTIME that turned the timeout off fails the build, it never runs.
+    None => panic!("canTimeout RUNTIME must be a timeout, not off"),
 };
 
 /// The tick's timing, in nanoseconds on the monotonic clock (`u64`, not `Duration`: the bus tick's exception,
