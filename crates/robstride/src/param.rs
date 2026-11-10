@@ -267,10 +267,24 @@ impl CanTimeout {
         self.0
     }
 
-    /// The timeout as a span, or `None` for [`CanTimeout::OFF`]: no timeout at all, never an immediate one.
+    /// The timeout in nanoseconds, or `None` for [`CanTimeout::OFF`]: no timeout at all, never an immediate one. For
+    /// the bus tick's `u64` times (units-and-frames.md section 5).
+    #[must_use]
+    #[expect(
+        clippy::as_conversions,
+        reason = "u32 to u64 widens losslessly, and u64::from isn't const"
+    )]
+    pub const fn nanos(self) -> Option<u64> {
+        match self.0 {
+            0 => None,
+            ticks => Some(ticks as u64 * 50_000),
+        }
+    }
+
+    /// The timeout as a span, or `None` for [`CanTimeout::OFF`], as [`Self::nanos`].
     #[must_use]
     pub fn duration(self) -> Option<Duration> {
-        (self.0 != 0).then(|| Duration::from_micros(u64::from(self.0) * 50))
+        self.nanos().map(Duration::from_nanos)
     }
 }
 

@@ -41,6 +41,22 @@ Anything hidden is logged to `sw_hidden_<pid>.log` in the temp folder, and `HAD 
 
 No console windows showed, from Python, PowerShell, git or Bambu Studio.
 
+**What was still flashing on 2026-11-09:** a watcher logged every window, its ancestry and how long it stayed visible, over five launches.
+
+- The Simulation solver, `Simulation\star.exe`, shows a progress dialog titled with the study name. It runs below a helper (`SLDWORKS.exe` → `cwanalysisproc.exe` → `star.exe`) and lives only for the solve, so the 2 s child sweep missed it: it stayed on screen and took focus. The hider now treats any process with our instance among its ancestors as ours. It also covers a `star.exe` from the Simulation folder whose parent chain is broken, if it started after our instance and has no other SolidWorks among its ancestors, so another session's solver is never touched. After the fix the solver dialog was hidden before it painted.
+- Launch windows (splash, main window, welcome screen, the journal prompt) were hidden in 0 to 50 ms on a quiet PC, but the main window was once visible for 0.3 to 0.9 s. Window events reach the hider through its message loop, so slow work there delays the hide. Processes already judged foreign are now cached, so a busy desktop costs one lookup per process, not one per window event.
+- **Every launch still takes focus about 7 times in its first 20 s.** Threads must reuse one instance with `session()` and `end_session()`, never launch per script.
+
+## Sound
+
+Measured on 2026-11-09 with the Core Audio peak meters of every session (`python tools/solidworks/sw_audio.py` lists them):
+
+- SolidWorks never opened an audio session of its own in five launches. Its tones play through the shared **System Sounds** session, which carries every app's sounds, so it cannot be muted for our instance alone.
+- A tone played each time the hidden **"A journal file could not be created"** prompt (`#32770`, "SOLIDWORKS Design") showed. That prompt comes up whenever this instance is the third SolidWorks running. `launch()` dismisses it, but the message box has already beeped. Fewer instances, through `session()` reuse, is the fix. A second, quieter tone sometimes followed a few seconds later without any SolidWorks window to match it.
+- A rebuild error made through the API (a shell thicker than the part, What's Wrong count 1) played no tone.
+- The hider still mutes any audio session owned by our instance or its children, in case a sound such as collision detection ever plays through one. Windows saves an app's mute by exe path, so `close()` raises `sw_unmute_<pid>.flag` and unmutes before exit. That way Joey's own SolidWorks never starts muted. If an instance crashes while muted and Joey's SolidWorks goes quiet, unmute SolidWorks in the Windows volume mixer.
+- SolidWorks' own sound options live in the registry and are shared with Joey's SolidWorks. Do not change them.
+
 **A launch stalls at the splash screen while another instance is mid-solve.** It resumes once the solve stops. So coordinate a short hold with any thread that is solving before you launch, and hold between cases if another thread asks.
 
 **A launch takes focus about 6 times in its first 20 s, and nothing tried stops it.** So reuse one instance across scripts with `session()` and don't restart between runs. Each measured on one launch, Joey-PC, 2026-11-07:

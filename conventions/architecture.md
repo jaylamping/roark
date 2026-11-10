@@ -67,9 +67,11 @@ skeleton   (types and loader, no I/O beyond reading the file; reads robstride's 
                          ^
                       dynamics
 api       (message types; used by runtime, ui bridge, mcp, robot-cli)
-telemetry (leaf for producers: takes events, depends on nothing above)
+telemetry (leaf for producers: takes events, depends on nothing above; can hands it each tick's frames)
 
-sim-drive (bin) --> robstride, skeleton        sim-suite (tests only) --> sim-drive, robstride
+can --> robstride, telemetry
+
+sim-drive (bin) --> robstride, skeleton        sim-suite (tests only) --> can, sim-drive, robstride, telemetry
 ```
 
 - Arrows only point toward the leaves. No cycles, no "utils" or "common" crate that everything imports.
@@ -82,9 +84,9 @@ sim-drive (bin) --> robstride, skeleton        sim-suite (tests only) --> sim-dr
   never a `Frame`; only `robstride::encode` makes a `Frame`, and the bus layer transmits only `Frame`s. So nothing that talks
   to the robot's drives can send a drive's frame, whichever crates a build compiles together. **Why:** a cargo feature
   can't hold this, because a workspace build turns a feature on for every crate in it.
-- **Only named crates open a CAN socket.** `deny.toml` bans `socketcan` except as a direct dependency of `sim-drive` and
-  `sim-suite`; `can` joins that list when it exists. `sim-drive` and every sim test check an interface is `vcan` before
-  the first frame, because the sim's buses carry the robot's real bus names.
+- **Only named crates open a CAN socket.** `deny.toml` bans `socketcan` except as a direct dependency of `can`,
+  `sim-drive` and `sim-suite`. `sim-drive`, every sim test and, until the real adapter is supported (PLAN step 8), `can`
+  check an interface is `vcan` before the first frame, because the sim's buses carry the robot's real bus names.
 - **Clients depend on `api`, never on `runtime` internals.** If a client needs something, it becomes an `api` message.
 - A new crate needs a separate reason to exist: a different owner, a different realtime class, or reuse by two binaries. "It
   felt big" is a reason for a module, not a crate.

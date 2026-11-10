@@ -17,6 +17,7 @@ with ADRs and agent guides that described code that no longer existed. These rul
 | Crate `README.md` (the crate doc, through `include_str!`) | What the crate does, what it must never do, what it talks to, how to use it, with an example that runs ([rust.md section 11](rust.md#11-shape-and-readability-tenet-7)) | The map (link [architecture.md](architecture.md)), tutorials |
 | `config/skeleton.yaml` | Joint facts, each with a source comment ([skeleton.md](skeleton.md)) | Schema docs (those are on the loader) |
 | [STATUS.md](https://github.com/jaylamping/marengo/blob/main/hardware/STATUS.md) (marengo) | Hardware state and facts | Software decisions |
+| [hardware/power-board/](../hardware/power-board/README.md) | The power board's design of record: schematic, layout, parts, and what software must do for it | Software decisions |
 | README.md | What the repo is, how to build and run, links to the above | Anything that changes often |
 
 PLAN's "Which file wins" table settles conflicts.

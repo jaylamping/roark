@@ -59,9 +59,14 @@ Every socket is opened by one function that sets, and logs at startup, all of:
 
 - **Error frames on** (`CAN_RAW_ERR_FILTER` with the full mask). They're off by default, and without them bus-off and error
   counters are invisible.
-- **Kernel filters** for the IDs that bus expects, written once and logged in candump syntax so a person can read them.
+- **No kernel ID filter.** The socket takes every ID, so a frame from another host or from an ID the skeleton doesn't have
+  is seen, counted and recorded instead of dropped unseen by the kernel. The session records the empty filter list.
+  **Why:** a duplicate sender is exactly the frame a filter would hide (see Transmit).
 - **Loopback left on.** It's how the `candump` black box sees what the runtime sent. Turning it off blinds the black box.
-- **Hardware timestamps** requested; the startup check logs whether the adapter provides them.
+- **Kernel timestamps** on every frame (`SO_TIMESTAMPNS_NEW`, 64-bit time), recorded with it, and the overflow counter
+  (`SO_RXQ_OVFL`). Hardware timestamps are requested once the real adapter is supported (PLAN step 8); the startup check
+  logs whether the adapter provides them. Reply ages and matching use the monotonic time the bus thread read the frame,
+  never the recorded wall-clock stamp, which can step.
 
 Interface settings (bitrate, sample point, TX queue length, restart) are applied by `deploy/` link setup, not by the runtime,
 and the runtime **checks** them at start (driver, bitrate, sample point, state) against the skeleton and refuses to run a bus
@@ -71,13 +76,17 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
 
 - **Every frame has a deadline** (its tick). A frame that can't go out by then is dropped and counted, never sent late.
   **Why:** a late motion command is a wrong motion command. ArduPilot's and libcanard's CAN drivers follow the same rule.
+  Disable and active reporting off are the exception, whether a stop or control planned them: they go out late rather
+  than not at all, because a late Disable is still the right one. The deadline bounds handing the frame to the kernel,
+  not its transmission: a frame the socket took can still wait in the adapter's queue. Measure that wait on the real
+  adapter before the first Enable (PLAN step 8).
 - **No busy retry.** On `ENOBUFS` or `EAGAIN` the frame is dropped and counted, and the tick goes on. Never loop on
   `write` in the bus thread. Never raise `txqueuelen` to make `ENOBUFS` go away: it hides a bus problem (a linux-can thread
   traced exactly this to a duplicate sender).
 - **Only frames on the allowlist** (PLAN item 2) can be built for transmit; the check lives in the codec so nothing else can
   bypass it.
-- **A TX echo isn't proof the frame reached the wire** (PLAN item 3). Latency is measured from RX timestamps of replies, and
-  liveness from replies, never from echoes.
+- **A TX echo isn't proof the frame reached the wire** (PLAN item 3). Latency in the recording is measured from the
+  kernel RX timestamps of replies, and liveness from replies, never from echoes.
 
 ### Receive
 
@@ -88,13 +97,15 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   virtual bus is unbounded by default; ours isn't).
 - **Liveness comes from replies to commands,** not from any traffic on the bus. A drive is alive if it answered this tick's
   command.
+- **The tick matches replies and ages feedback on the monotonic time the bus thread read the frame;** the recording
+  carries the kernel RX stamp. **Why:** the kernel's stamp is wall-clock and can step.
 
 ### Errors and bus-off
 
 - **Bus errors are a typed enum** (`BusOff`, `ErrorPassive`, `ErrorWarning`, `RxOverflow`, `TxTimeout`, `InterfaceDown`,
   `InterfaceGone`, ...), matched exhaustively.
-- **Latch on the first bus-off error frame** and stop every run on that bus, as [PLAN item 3](../PLAN.md#3-the-new-can-layer-tenet-5)
-  and item 6 say. The latch lives in software because the adapter may bring the bus back by itself (PLAN item 3 has the
+- **Latch on the first bus-off error frame, or any socket read or write failure other than a full queue,** and stop every
+  run on that bus, as [PLAN item 3](../PLAN.md#3-the-new-can-layer-tenet-5) and item 6 say. The latch lives in software because the adapter may bring the bus back by itself (PLAN item 3 has the
   details and sources). Code never treats "the interface is up again" as permission to continue.
 - **Error counters and drops are metrics** (per bus: bus errors, error-passive, bus-off count, RX overflow, TX drops, late
   ticks), exported every second and shown in the UI.
@@ -126,7 +137,7 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
 - Can anything send a frame without a deadline, retry in a loop, or block the bus thread?
 - Is every queue bounded, and every drop counted?
 - Is any bus-off or interface error handled by anything other than stop and latch?
-- Are error frames on, loopback on, and filters logged?
+- Are error frames on, loopback on, and the (empty) filter list recorded?
 
 ## Sources
 

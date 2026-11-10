@@ -141,7 +141,8 @@ is uploaded for a refused push; it fails if Git LFS is missing. Git LFS's stock 
 hook is kept as `<hook>.local` and still runs. CI repeats the size and layout checks, so a `--no-verify` commit is
 still caught at the PR.
 
-All worktrees of a clone share one hooks folder, so installing from one worktree installs for all of them. A worktree whose
+All worktrees of a clone share one hooks folder, so `install_hooks.py` runs only from the main checkout and refuses in a
+linked worktree. A worktree whose
 branch has no `tools/cad/hooks/` (one cut before them) prints a warning and skips the CAD checks; its pre-push still runs Git
 LFS. **Why:** on Joey-PC an install from a CAD worktree once broke every commit in the power-board worktrees.
 
