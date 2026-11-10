@@ -147,7 +147,8 @@ whose limbs are all idle ends the thread at once; on any other it stops every li
 control has a snapshot with every limb stopped, or can't or won't take it (`BusLinks::exit` says when), with the last
 snapshot in `BusExit::last`; the next tick's drain is still recorded, so the stop's last echoes are in the recording.
 As it ends, every slow request it holds or finds in its ring gets its result, and `BusExit::slow_results_dropped`
-counts every result control's ring couldn't take, those after the last snapshot included.
+counts every result control's ring couldn't take, and `BusExit::slow_expired` every request that expired queued, those
+after the last snapshot included.
 A socket or clock error ends the thread as soon as a snapshot with every limb stopped is made, without waiting for
 control.
 
