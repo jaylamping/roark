@@ -11,11 +11,13 @@ the 6808 seat print flat:
   outboard: disc = cheek inside r 30, plus the inner layer (X 199-205) of r 30-38.5 on phi 131-190; the shell keeps the
             outer layer. 4 x M3 from the outer face (under the cap ring) into M3 x 5.7 inserts in the disc.
   inboard:  the cap pocket takes the outer layer, so the lap runs the other way: the disc keeps the pocket-side layer
-            (X 132.5-136.5) of r 30-38.5 on the sector, the shell keeps the slot-side layer (X 136.5-141). 4 x M3 from inside
-            the pocket (cap off) into M3 x 4 inserts in the shell.
+            (X 131.5-134.3) of r 30-38.5 on the sector, the shell keeps the slot-side layer (X 134.3-141, deep enough for the
+            standard M3 x 5.7 insert). 4 x M3 x 8 button heads from inside the pocket (cap off) into the shell's inserts.
+The outboard disc prints on its RS02 face (outer face down would put support in the visible M4 counterbores); three printed
+Ø3.95 x 8.7 pins, printed lying down so the layers run along them, locate it on the RS02 output.
 Caps press into their recesses (a lip with 0.05-0.15 mm interference) and lift out at a pry notch, so they come off with the arm assembled.
 
-    python organic_parts.py [front back inboard outboard disc_in disc_out caps ring]
+    python organic_parts.py [front back inboard outboard disc_in disc_out caps ring pin]
 """
 import math
 import shutil
@@ -34,14 +36,14 @@ EXP = {'upper': CAD / 'exports' / 'upper-arm', 'fore': CAD / 'exports' / 'forear
 NAMES = {'front': ('upper', 'upper_arm_organic_front_left'), 'back': ('upper', 'upper_arm_organic_back_left'),
          'inboard': ('fore', 'forearm_organic_shell_inboard_left'), 'outboard': ('fore', 'forearm_organic_shell_outboard_left'),
          'disc_in': ('fore', 'forearm_organic_cheek_inboard_left'), 'disc_out': ('fore', 'forearm_organic_cheek_outboard_left'),
-         'ring': ('upper', 'upper_arm_organic_rs02_ring_left'), 'cap_in': ('fore', 'forearm_organic_cap_inboard_left'), 'cap_out': ('fore', 'forearm_organic_cap_outboard_left')}
+         'ring': ('upper', 'upper_arm_organic_rs02_ring_left'), 'pin': ('fore', 'forearm_organic_output_pin'), 'cap_in': ('fore', 'forearm_organic_cap_inboard_left'), 'cap_out': ('fore', 'forearm_organic_cap_outboard_left')}
 DIRS = {'upper': CAD / 'upper-arm', 'fore': CAD / 'forearm'}
 CL = 0.1
 SECTOR = (131.0, 190.0)
 R_FULL, R_LAP = 30.0, 38.5
 Y_SHELF = 171.5                       # above the saddle fillet, so the split plane doesn't feather it
 SCREW_R, SCREW_PHI = 34.75, (138.0, 152.0, 170.0, 182.0)
-IN = dict(outer=CHEEKS[0][0], inner=CHEEKS[0][1], lap=136.5, floor=M.CHEEKS[0][0] + M.CAP['recess'] + M.CAP['pocket'])  # floor 132.5
+IN = dict(outer=CHEEKS[0][0], inner=CHEEKS[0][1], lap=134.3, floor=M.CHEEKS[0][0] + M.CAP['recess'] + M.CAP['pocket'])  # floor 131.5
 OUT = dict(outer=CHEEKS[1][1], inner=CHEEKS[1][0], lap=205.0)
 UA_POSTS = [(151.0, 272.0), (190.0, 272.0)]
 POST_R = 4.5
@@ -215,7 +217,8 @@ def fore_shell(side):
     else:
         region_x(d, 'DISC_FULL', disc_region(R_FULL), IN['floor'] - 0.01, IN['inner'] + 3.0)
         region_x(d, 'DISC_LAP', disc_region(R_LAP), IN['floor'] - 0.01, IN['lap'])
-        x_holes(d, 'LAP_INSERTS', [P(SCREW_R, a) for a in SCREW_PHI], 2.0, IN['lap'] - 0.1, IN['inner'] + 0.1)
+        x_holes(d, 'LAP_INSERTS', [P(SCREW_R, a) for a in SCREW_PHI], 2.0, IN['lap'] - 0.1, IN['lap'] + 5.8)      # M3 x 5.7, 1 mm floor ring
+        x_holes(d, 'LAP_TIPS', [P(SCREW_R, a) for a in SCREW_PHI], 1.6, IN['lap'] + 5.7, IN['inner'] + 0.1)
     finish(d, p, job)
 
 
@@ -223,9 +226,9 @@ def disc(side):
     job = 'disc_in' if side == 'in' else 'disc_out'
     d, p = open_copy(job)
     if side == 'out':
-        cut_half_space(d, 'X', OUT['inner'] - 2.5, 1, 'PAST_DISC')            # keeps X > 196.5 (incl. the output boss)
+        cut_half_space(d, 'X', OUT['inner'] - 5.5, 1, 'PAST_DISC')            # keeps X > 193.5 (output boss and locating bosses)
         region_x(d, 'ROOT_OUTER', root_region(R_FULL), OUT['lap'], OUT['outer'] + 1.0)
-        region_x(d, 'ROOT_INNER', root_region(R_LAP), OUT['inner'] - 3.0, OUT['lap'])
+        region_x(d, 'ROOT_INNER', root_region(R_LAP), OUT['inner'] - 6.0, OUT['lap'])
         x_holes(d, 'LAP_INSERTS', [P(SCREW_R, a) for a in SCREW_PHI], 2.0, OUT['inner'] - 0.5, OUT['lap'] + 0.1)
     else:
         cut_half_space(d, 'X', IN['inner'] + 0.5, -1, 'PAST_DISC')
@@ -233,7 +236,7 @@ def disc(side):
         region_x(d, 'ROOT_POCKET_SIDE', root_region(R_LAP), IN['floor'] - 1.0, IN['lap'])
         region_x(d, 'ROOT_SLOT_SIDE', root_region(R_FULL), IN['lap'], IN['inner'] + 1.0)
         x_holes(d, 'LAP_HOLES', [P(SCREW_R, a) for a in SCREW_PHI], 1.7, IN['floor'] - 1.0, IN['lap'] + 0.1)
-        x_holes(d, 'LAP_CBORES', [P(SCREW_R, a) for a in SCREW_PHI], 3.1, IN['floor'] - 1.0, IN['floor'] + 1.8)   # button heads below the pocket floor
+        x_holes(d, 'LAP_CBORES', [P(SCREW_R, a) for a in SCREW_PHI], 3.1, IN['floor'] - 1.0, IN['floor'] + 1.2)   # button heads 0.45 proud of the pocket floor
     finish(d, p, job)
 
 
@@ -257,6 +260,26 @@ def ring():
     for ext in ('.stl', '.step'):
         d.Extension.SaveAs(str(EXP[region] / (name + ext)), 0, 1, NUL, e, w)
     fine_stl(d, M.WIP / f'{name}.stl')
+    print('  bodies', bodies(d), flush=True)
+    sw.CloseDoc(d.GetTitle)
+
+
+def pin():
+    """Locating pin, Ø3.95 x 8.7 with 0.4 chamfers and a 0.3 flat (prints lying on the flat)."""
+    region, name = NAMES['pin']
+    p = DIRS[region] / (name + '.SLDPRT')
+    d = M.new_part(p)
+    r, L_, c = 1.975, 8.7, 0.4
+    x_revolve(d, 'PIN', [(150.0, 0.0), (150.0, r - c), (150.0 + c, r), (150.0 + L_ - c, r), (150.0 + L_, r - c), (150.0 + L_, 0.0)])
+    with Sk(d, plane(d, 'X', 150.0 + L_ / 2, 'FLAT_P'), 'FLAT') as s:
+        yc = CY - r + 0.3
+        s.poly([(150.0 + L_ / 2, yc - 3, CZ - 3), (150.0 + L_ / 2, yc, CZ - 3), (150.0 + L_ / 2, yc, CZ + 3), (150.0 + L_ / 2, yc - 3, CZ + 3)])
+    feat(d, s.feat, 'FLAT', L_ + 2, True, mode=MID, lo=0.01)
+    d.ForceRebuild3(False)
+    e, w = L(), L()
+    d.Save3(1, e, w)
+    for ext in ('.stl', '.step'):
+        d.Extension.SaveAs(str(EXP[region] / (name + ext)), 0, 1, NUL, e, w)
     print('  bodies', bodies(d), flush=True)
     sw.CloseDoc(d.GetTitle)
 
@@ -298,7 +321,7 @@ def cap(side):
 if __name__ == '__main__':
     jobs = dict(front=lambda: upper_half(True), back=lambda: upper_half(False), inboard=lambda: fore_shell('in'),
                 outboard=lambda: fore_shell('out'), disc_in=lambda: disc('in'), disc_out=lambda: disc('out'),
-                caps=lambda: (cap('in'), cap('out')), ring=ring)
+                caps=lambda: (cap('in'), cap('out')), ring=ring, pin=pin)
     for k in sys.argv[1:] or jobs:
         print('==', k, flush=True)
         jobs[k]()

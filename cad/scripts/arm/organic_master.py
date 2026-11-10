@@ -166,9 +166,9 @@ RIB = (154.4, 156.8)                   # then dropped into the halves behind thi
 RIB_R0, DOG_PHI, DOG_SPAN = 38.0, (90.0, 270.0), 11.0      # notches straight back and front, so the ring drops in square
 STUB = dict(x0=134.0, r_out=20.0, r_in=16.0)        # hollow inboard stub; 6808 (Ø40 / Ø52 x 7) on X 134-141
 STOP = dict(r0=28.0, r1=36.5, lug_phi=90.0, lug_span=30.0, travel=124.0, depth=4.5)   # 5 mm rim outside the slot
-CAP = dict(r=38.3, recess=1.5, pocket=4.0)       # inboard cap Ø76.6 over a 4 mm pocket: the flat bundle coils at r 22-35 in one layer (seat inside the R6 rim round)
+CAP = dict(r=38.3, recess=1.5, pocket=3.0)       # inboard cap Ø76.6 over a 3 mm pocket: the flat bundle coils at r 22-35 in one layer (seat inside the R6 rim round)
 OUT_HOLES = [(12.0, 30.0 + 60.0 * k) for k in range(6)]          # 6 x M4 on Ø24
-OUT_PINS = [(12.0, 120.0 * k) for k in range(3)]                  # 3 x Ø4 pins on Ø24
+OUT_PINS = [(12.0, 120.0 * k) for k in range(3)]                  # 3 printed Ø3.95 x 8.7 pins (organic_parts.py) in Ø4.05 holes, into the RS02 output's Ø4 pin holes on Ø24
 
 
 def P(r, phi):
