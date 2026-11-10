@@ -19,7 +19,7 @@
 "D4,D5","B340A-13-F","Diode_SMD:D_SMA","2",""
 "F1,F2","5A 32V 0466005","Fuse:Fuse_1206_3216Metric","2",""
 "F3","2A 32V 0466002","Fuse:Fuse_1206_3216Metric","1",""
-"J1","J24 mate: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 GND, 7 +3V3_PI, 8 SDA, 9 GND, 10 SCL, 11 SP_EN, 12 GND","Connector_Molex:Molex_Micro-Fit_3.0_43045-1212_2x06_P3.00mm_Vertical","1",""
+"J1","J24 mate: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 +3V3_PI, 7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA","Connector_Molex:Molex_Micro-Fit_3.0_43045-1212_2x06_P3.00mm_Vertical","1",""
 "J2","12 V to Jetson (fused)","Connector_Molex:Molex_Micro-Fit_3.0_43045-0212_2x01_P3.00mm_Vertical","1",""
 "J3","12 V to Pi 5 V buck (fused)","Connector_Molex:Molex_Micro-Fit_3.0_43045-0212_2x01_P3.00mm_Vertical","1",""
 "J4","12 V to fans (fused)","Connector_Molex:Molex_Micro-Fit_3.0_43045-0212_2x01_P3.00mm_Vertical","1",""

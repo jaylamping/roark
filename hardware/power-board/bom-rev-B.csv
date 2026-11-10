@@ -58,7 +58,7 @@
 "J13","R leg: 14 AWG pigtail pair, 1 +, 2 return","Connector_Wire:SolderWire-2.5sqmm_1x02_P7.2mm_D2.4mm_OD3.6mm","1","DNP"
 "J20","E-stop: 1 NC out, 2 GND, 3 NC return, 4 GND, 5-6 reset NO, 7 GND, 8 button NO","Connector_JST:JST_GH_SM08B-GHS-TB_1x08-1MP_P1.25mm_Horizontal","1",""
 "J21","Pi: 3V3, SDA, GND, SCL, E-stop pressed (low), heartbeat out, port fault (low), power fail (low)","Connector_JST:JST_GH_SM08B-GHS-TB_1x08-1MP_P1.25mm_Horizontal","1",""
-"J24","Buck board pigtail: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 GND, 7 +3V3_PI, 8 SDA, 9 GND, 10 SCL, 11 SP_EN, 12 GND","Connector_Molex:Molex_Micro-Fit_3.0_43045-1212_2x06_P3.00mm_Vertical","1",""
+"J24","Buck board pigtail: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 +3V3_PI, 7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA","Connector_Molex:Molex_Micro-Fit_3.0_43045-1212_2x06_P3.00mm_Vertical","1",""
 "J25","HS50 B (-X): 1 VBUS, 2 FET drain (Mini-Fit Jr, 18 AWG)","Connector_Molex:Molex_Mini-Fit_Jr_5566-02A_2x01_P4.20mm_Vertical","1",""
 "Q1,Q2,Q7,Q8,Q9,Q15,Q16,Q17","IPB017N10N5LFATMA1","Package_TO_SOT_SMD:TO-263-7_TabPin4","8",""
 "Q3","MMBTA92LT1G","Package_TO_SOT_SMD:SOT-23","1",""
