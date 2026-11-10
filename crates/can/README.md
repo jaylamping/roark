@@ -116,7 +116,9 @@ a Disable or the `run_mode` write; an earlier tick's command is late or lost and
 status can still land either way. A command's reply more than a tick late, read while the write is in flight, is taken
 for the write's answer. A write's own status read after its timeout (the next tick's start) is taken for that tick's
 command's reply, as fresh evidence of the drive from just before that tick's sends; it can't wrongly confirm a stop
-(`on_status` in `read.rs` has the argument).
+(`on_status` in `read.rs` has the argument). A read's answer can be late the same way: a reply to a read that timed
+out, read while a newer read of the same register on the same drive is in flight, is taken for the newer read's
+answer, so its value can be about a tick stale, and the newer read's own reply is then counted `unsolicited`.
 
 The `run_mode` = MIT write goes only in control's batch (`BatchOnly`), so a slow frame's echo is never of a kind kept as
 the drive's `last_echo`. Each request gets exactly one result: its answer, `TimedOut` (no reply by the next tick's
