@@ -35,8 +35,9 @@ PLACE={'U8':((171.07,149.6),(173.32,147.4)),
  'C40':((169.15,169.0),(168.2,169.0)),     # MID (at Q2's tab) - GND
  'TP11':((169.023,163.961),None),          # GATE_A, on the In3 run from the west
  'TP15':((173.6,169.6),None)}              # ABS
-def place(fps):
-    for ref,(c,p1) in PLACE.items():
+def place(fps,table=None):
+    """put each footprint of the table (default: this block's PLACE) with its courtyard centre and pad 1 where given"""
+    for ref,(c,p1) in (table or PLACE).items():
         fp=fps[ref]; best=None
         for rot in (0,90,180,270):
             fp.SetOrientationDegrees(rot); fp.SetPosition(V(c))

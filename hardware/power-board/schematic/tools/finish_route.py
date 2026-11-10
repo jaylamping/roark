@@ -197,7 +197,12 @@ class Router:
     def component_anchors(self,it,other,base):
         ob=self.byid.get(it['uuid'])
         if not ob or ob.GetNetname()=='GND': return base
-        items=self.b.GetConnectivity().GetConnectedItems(ob)
+        # the whole connected piece, not only what touches the reported item: a via two segments away is an anchor too
+        con=self.b.GetConnectivity(); items=[]; seen={UID(ob)}; todo=[ob]
+        while todo and len(items)<80:
+            for t in con.GetConnectedItems(todo.pop()):
+                if not hasattr(t,'m_Uuid') or UID(t) in seen or t.GetClass() not in ('PCB_VIA','PCB_TRACK','PAD'): continue
+                seen.add(UID(t)); items.append(t); todo.append(t)
         candidates=list(base)
         via=[]
         for t in items:
@@ -307,7 +312,7 @@ class Router:
                 return result
             L,x,y=k; p=pt(k)
             ns=[((L,x+dx,y+dy),STEP*math.hypot(dx,dy),False) for dx,dy in ((1,0),(-1,0),(0,1),(0,-1),(1,1),(-1,1),(1,-1),(-1,-1))]
-            if net!='/G2': ns += [((K,x,y),3.,True) for K in RL if K!=L]
+            if net!='/G2' or os.getenv('G2_VIAS')=='1': ns += [((K,x,y),3.,True) for K in RL if K!=L]   # G2 stays on F.Cu unless G2_VIAS=1
             for nk,cost,isvia in ns:
                 if not isvia and hasattr(self,'step_cost'): cost *= self.step_cost(net,L,p,pt(nk))
                 ng=g+cost
@@ -358,7 +363,7 @@ def main():
         if os.getenv('COMPONENTS')=='1':
             A0,B0=A,B
             A=r.component_anchors(u['items'][0],B0,A0); B=r.component_anchors(u['items'][1],A0,B0)
-        if n=='/G2': A=[a for a in A if a[1]==CU[0]]; B=[a for a in B if a[1]==CU[0]]
+        if n=='/G2' and os.getenv('G2_VIAS')!='1': A=[a for a in A if a[1]==CU[0]]; B=[a for a in B if a[1]==CU[0]]
         length=min(math.dist(a[0],b[0]) for a in A for b in B)
         edges.append((length,i,n,A,B))
     done=[]
