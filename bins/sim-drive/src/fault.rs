@@ -38,8 +38,8 @@ pub enum Fault {
     /// The drive is in this mode now, by itself (a drop to Reset while running, say): its plant and `canTimeout`
     /// follow.
     Mode(Mode),
-    /// The register reads this value from now on (VBUS out of its window, the damper off). The value must be of the
-    /// register's type.
+    /// The register reads this value (VBUS out of its window, the damper off) until the host writes it; pair it with
+    /// [`Fault::IgnoreWrites`] to hold it. The value must be of the register's type.
     Param(Param, ParamValue),
     /// Every status and report from now on gives this temperature, 0 to [`MAX_TEMPERATURE_C`].
     Temperature(Celsius),
@@ -84,7 +84,7 @@ pub enum FaultRefused {
     /// `OnMit(0)`: MIT commands are counted from 1.
     #[error("OnMit counts from 1")]
     OnMitZero,
-    /// An `At` time the drive has already been stepped past: it can't take effect then any more.
+    /// A time the drive has already been stepped past (an injection's, or an `At`): it can't take effect then any more.
     #[error("the drive is already past that time")]
     Past,
     /// A `Late` past [`MAX_LATE`].
@@ -121,13 +121,9 @@ impl Fault {
     }
 }
 
-/// The faults in effect on a drive now.
+/// The faults in effect on a drive now, but for the transport faults, which the outbox holds.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Active {
-    pub(crate) silent: bool,
-    pub(crate) late: Duration,
-    pub(crate) drop: u32,
-    pub(crate) duplicate: u32,
     pub(crate) faults: StatusFaults,
     pub(crate) temperature: Option<Celsius>,
     /// One flag per register, in `Param::ALL` order: a set, so injecting one twice changes nothing.

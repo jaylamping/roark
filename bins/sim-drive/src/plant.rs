@@ -3,81 +3,97 @@
 //! The torque stops at `limit_torque` and the speed at `limit_spd`, and both at what the model's MIT feedback can carry.
 //! That the drive holds those two caps in MIT mode is a sim assumption: no bench capture shows it yet (PLAN item 6).
 
-use std::time::Instant;
+use std::time::Duration;
 
-use robstride::MitCommand;
+use robstride::{MitCommand, NewtonMeters, RadPerSec, Radians};
 
 /// The sim joint's damping, N·m·s/rad. A sim value, not a measurement: with `kd` it sets how fast a target is reached,
 /// a time constant of `(damping + kd) / kp`.
 const DAMPING: f64 = 1.0;
 
-/// What bounds the joint: each as a magnitude, plus the position range.
+/// What bounds the joint: the torque and speed each as a magnitude, and the position range.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Limits {
-    pub(crate) torque: f64,
-    pub(crate) speed: f64,
-    pub(crate) position: (f64, f64),
+    pub(crate) torque: NewtonMeters,
+    pub(crate) speed: RadPerSec,
+    pub(crate) position: (Radians, Radians),
 }
 
-/// The joint: where it is, the MIT command it follows (only while the drive is in Run), and the time it was brought
-/// up to. Velocity and torque follow from those, so a reply built at any moment shows the joint as it is then.
+/// The joint's velocity and torque at one moment.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Motion {
+    pub(crate) velocity: RadPerSec,
+    pub(crate) torque: NewtonMeters,
+}
+
+/// The joint: where it is, and the MIT command it follows (only while the drive is in Run). Velocity and torque follow
+/// from those, so a reply built at any moment shows the joint as it is then. The drive keeps the time.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Plant {
-    pub(crate) position: f64,
+    position: Radians,
     target: Option<MitCommand>,
-    at: Option<Instant>,
 }
 
 impl Plant {
-    pub(crate) const AT_ZERO: Self = Self {
-        position: 0.0,
-        target: None,
-        at: None,
-    };
-
-    /// The same joint, at rest where it is, following nothing: a drive leaving Run, or rebooting, doesn't move it.
-    pub(crate) const fn at_rest(self) -> Self {
+    /// A joint at rest at `position`, following nothing.
+    pub(crate) const fn resting_at(position: Radians) -> Self {
         Self {
-            position: self.position,
+            position,
             target: None,
-            at: self.at,
         }
     }
 
-    /// Move the joint up to `now`. Only a drive in Run drives it; otherwise it rests where it is and forgets its target.
-    pub(crate) fn advance(&mut self, now: Instant, running: bool, limits: Limits) {
-        let from = self.at.map_or(now, |at| at.min(now));
-        self.at = Some(now.max(from));
+    /// The same joint, at rest where it is, following nothing: a drive leaving Run, or rebooting, doesn't move it.
+    pub(crate) const fn at_rest(self) -> Self {
+        Self::resting_at(self.position)
+    }
+
+    /// Where the joint is.
+    pub(crate) const fn position(&self) -> Radians {
+        self.position
+    }
+
+    /// The joint now reads `position` where it stands (a Set Zero), still following what it followed.
+    pub(crate) const fn set_position(&mut self, position: Radians) {
+        self.position = position;
+    }
+
+    /// Move the joint on by `dt`. Only a drive in Run drives it; otherwise it rests where it is and forgets its target.
+    pub(crate) fn advance(&mut self, dt: Duration, running: bool, limits: Limits) {
         let Some(command) = self.target.filter(|_| running) else {
             self.target = None;
             return;
         };
-        self.step(&command, (now - from).as_secs_f64(), limits);
+        self.step(&command, dt.as_secs_f64(), limits);
     }
 
-    /// A new MIT command, taken at the time last advanced to.
+    /// A new MIT command, taken where the joint was last advanced to.
     pub(crate) const fn command(&mut self, command: MitCommand) {
         self.target = Some(command);
     }
 
-    /// Velocity and torque now: zero at rest.
-    pub(crate) fn motion(&self, limits: Limits) -> (f64, f64) {
-        self.target.map_or((0.0, 0.0), |c| {
+    /// Velocity and torque now: zero at rest, or out of Run. `None` if a value isn't finite.
+    pub(crate) fn motion(&self, running: bool, limits: Limits) -> Option<Motion> {
+        let (velocity, torque) = self.target.filter(|_| running).map_or((0.0, 0.0), |c| {
             let (velocity, torque, _) = self.rate(&c, limits);
             (velocity, torque)
+        });
+        Some(Motion {
+            velocity: RadPerSec::new(velocity)?,
+            torque: NewtonMeters::new(torque)?,
         })
     }
 
     /// The torque the joint can't pass: the torque cap, or what the speed cap allows through the damping.
     fn torque_cap(limits: Limits) -> f64 {
-        limits.torque.min(limits.speed * DAMPING)
+        limits.torque.get().min(limits.speed.get() * DAMPING)
     }
 
     /// Velocity and torque at the current position under `c`, and whether a cap binds.
     fn rate(&self, c: &MitCommand, limits: Limits) -> (f64, f64, bool) {
         let (kp, kd) = (c.kp.get(), c.kd.get());
         let drive =
-            kp * (c.position.get() - self.position) + kd * c.velocity.get() + c.torque.get();
+            kp * (c.position.get() - self.position.get()) + kd * c.velocity.get() + c.torque.get();
         let free = DAMPING * drive / (DAMPING + kd);
         let cap = Self::torque_cap(limits);
         let torque = free.clamp(-cap, cap);
@@ -90,26 +106,31 @@ impl Plant {
     fn step(&mut self, c: &MitCommand, dt: f64, limits: Limits) {
         let (velocity, _, capped) = self.rate(c, limits);
         let (kp, kd) = (c.kp.get(), c.kd.get());
+        let position = self.position.get();
         let settles_at = c.position.get() + (kd * c.velocity.get() + c.torque.get()) / kp;
         let exact = |from: f64, dt: f64| {
             settles_at + (from - settles_at) * (-kp * dt / (DAMPING + kd)).exp()
         };
         let next = if kp <= 0.0 || (capped && velocity == 0.0) {
             // No spring, or a zero cap holding the joint still.
-            self.position + velocity * dt
+            position + velocity * dt
         } else if capped {
             // The cap stops binding where the free torque falls to it: kp (settles_at - p) = ±cap (damping + kd) / damping.
             let edge = settles_at
                 - velocity.signum() * Self::torque_cap(limits) * (DAMPING + kd) / (DAMPING * kp);
-            let reach = (edge - self.position) / velocity;
+            let reach = (edge - position) / velocity;
             if (0.0..dt).contains(&reach) {
                 exact(edge, dt - reach)
             } else {
-                self.position + velocity * dt
+                position + velocity * dt
             }
         } else {
-            exact(self.position, dt)
+            exact(position, dt)
         };
-        self.position = next.clamp(limits.position.0, limits.position.1);
+        let (lo, hi) = limits.position;
+        // Every input is finite, so the step is; were it not, the joint would stay where it is.
+        if let Some(next) = Radians::new(next.clamp(lo.get(), hi.get())) {
+            self.position = next;
+        }
     }
 }

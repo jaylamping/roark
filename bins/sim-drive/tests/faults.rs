@@ -17,8 +17,12 @@ use sim_drive::{
 
 /// Drive 7, enabled and in Run by `t + 11 ms`, with every reply so far taken.
 fn running() -> (SimDrive, Instant) {
+    running_from(Instant::now())
+}
+
+/// Drive 7, enabled at `t` and in Run by `t + 11 ms`, with every reply so far taken.
+fn running_from(t: Instant) -> (SimDrive, Instant) {
     let mut sim = SimDrive::new(rs03(7), Uid([7; 8]), 11);
-    let t = Instant::now();
     sim.receive(t, host(encode::enable(id(7))));
     let up = t + ms(11);
     assert_eq!(
@@ -95,8 +99,8 @@ fn value(param: Param, v: ParamValue) -> Vec<Inbound> {
 
 /// Guards: protocol - the transport faults shape what goes on the bus and nothing else: a silent drive answers nothing,
 /// a late one answers after the delay, dropped replies are lost and duplicated ones come twice, each for exactly the
-/// count injected; a duplicate's second copy is a frame like any other, so a drive gone silent doesn't send it (PLAN
-/// item 4: silent drive, late, dropped and duplicated frames).
+/// count injected; a duplicate's second copy goes out with the first, so a drive gone silent once the host has read
+/// one has still sent both (PLAN item 4: silent drive, late, dropped and duplicated frames).
 #[test]
 fn transport_faults_shape_the_replies() {
     let count = |sim: &mut SimDrive, at: Instant| ask(sim, at, neutral(7)).len();
@@ -139,7 +143,7 @@ fn transport_faults_shape_the_replies() {
     sim.receive(t, host(neutral(7)));
     assert!(sim.pop_due(t).is_some(), "the first copy");
     sim.inject(t, Fault::Silent).unwrap();
-    assert_eq!(replies(&mut sim, t + ms(10)).len(), 0, "no second copy");
+    assert_eq!(replies(&mut sim, t + ms(10)).len(), 1, "the second copy");
 }
 
 /// Guards: safety - the drive-state faults show in every status from then on: fault bits, a mode the host didn't ask
@@ -301,8 +305,9 @@ fn a_lost_disable_leaves_the_drive_running() {
 
 /// Guards: protocol - an injected fault reaches what the drive hasn't sent yet: a Silent or a Mode(Reset) injected
 /// between an Enable and its Run reply stops that reply, fault bits injected then show in it, a Late delays a reply
-/// already waiting, and a reboot lets out only what the transport faults in effect let go before it (PLAN item 4: the
-/// injected fault is what the bus sees from then on).
+/// already waiting, and a reboot lets out only what the transport faults in effect let go before it; a fault that fires
+/// after a frame fell due doesn't reach it, however seldom the host reads (PLAN item 4: the injected fault is what the
+/// bus sees from then on).
 #[test]
 fn faults_reach_replies_not_yet_sent() {
     let over: StatusFaults = [StatusFault::Overcurrent].into_iter().collect();
@@ -365,9 +370,49 @@ fn faults_reach_replies_not_yet_sent() {
             );
         }
     }
+
+    // Reporting on and the joint moving, so each report differs: a Drop firing at 15 ms takes the 20 ms report, not the
+    // 10 ms one, whether the host reads every millisecond or once at 25 ms.
+    let reporting = || {
+        let (mut sim, t) = running();
+        let _ = ask(&mut sim, t, mit_to(1.0));
+        let _ = ask(
+            &mut sim,
+            t,
+            encode::active_reporting(id(7), robstride::Reporting::On),
+        );
+        assert_eq!(
+            sim.schedule(Trigger::At(t + ms(15)), Fault::Drop(1)),
+            Ok(())
+        );
+        (sim, t)
+    };
+    let (mut often, t) = reporting();
+    let polled: Vec<_> = (1..=25)
+        .flat_map(|n| replies(&mut often, t + ms(n)))
+        .collect();
+    let (mut once, t) = reporting();
+    let read_once = replies(&mut once, t + ms(25));
+    assert_eq!(polled.len(), 1);
+    assert_eq!(read_once, polled, "the 10 ms report");
+
+    // A reply held by a Late until 10 ms went out then: a Drop at 12 ms and a reboot at 15 ms come after it.
+    let (mut sim, t) = running();
+    sim.inject(t, Fault::Late(ms(10))).unwrap();
+    sim.receive(t, host(neutral(7)));
+    assert_eq!(
+        sim.schedule(Trigger::At(t + ms(12)), Fault::Drop(1)),
+        Ok(())
+    );
+    assert_eq!(sim.schedule(Trigger::At(t + ms(15)), Fault::Reboot), Ok(()));
+    assert_eq!(
+        status_of(&replies(&mut sim, t + ms(20))),
+        [(Mode::Run, StatusFaults::default(), 25.0)]
+    );
 }
 
-/// Guards: protocol - timed faults land at their own times, in time order, however late the drive is stepped: a Mode
+/// Guards: protocol - timed faults land at their own times, in time order, however late the drive is stepped (even
+/// first stepped after them): a Mode
 /// fault holds the joint where it was then, a Mode(Run) starts `canTimeout` counting then, and two faults due at once
 /// apply oldest first, as their record shows (logging.md section 3: the record matches what was applied).
 #[test]
@@ -393,8 +438,9 @@ fn timed_faults_land_in_time_order() {
 
     // The joint moving toward a target stops when the drive drops to Reset at 10 ms, not when it is next stepped.
     let target = mit_to(1.0);
-    let (mut late, t) = running();
-    let (mut on_time, _) = running();
+    let start = Instant::now();
+    let (mut late, t) = running_from(start);
+    let (mut on_time, _) = running_from(start);
     for sim in [&mut late, &mut on_time] {
         let _ = ask(sim, t, target);
     }
@@ -409,6 +455,29 @@ fn timed_faults_land_in_time_order() {
     let held = position(&mut on_time);
     assert!(held > 0.01, "it moved first: {held}");
     assert!((position(&mut late) - held).abs() < 1e-3, "{held}");
+
+    // Scheduled on a drive not yet stepped, faults still land at their own times, not at its first step: canTimeout
+    // written at `t` and Run at 10 ms, so by the first step at 70 ms it has timed out.
+    let mut sim = SimDrive::new(rs03(7), Uid([7; 8]), 11);
+    let t = Instant::now();
+    let runtime = Fault::Param(
+        Param::CanTimeout,
+        ParamValue::CanTimeout(CanTimeout::RUNTIME),
+    );
+    assert_eq!(sim.schedule(Trigger::At(t), runtime), Ok(()));
+    assert_eq!(
+        sim.schedule(Trigger::At(t + ms(10)), Fault::Mode(Mode::Run)),
+        Ok(())
+    );
+    assert_eq!(
+        status_of(&ask(&mut sim, t + ms(70), neutral(7))),
+        [(Mode::Reset, StatusFaults::default(), 25.0)],
+        "timed out at 60 ms"
+    );
+    let record: Vec<_> = std::iter::from_fn(|| sim.take_injected())
+        .map(|i| (i.at, i.fault))
+        .collect();
+    assert_eq!(record, [(t, runtime), (t + ms(10), Fault::Mode(Mode::Run))]);
 
     // A drive in Reset, canTimeout written and reporting on at `t`, put in Run by a fault: it times out 50 ms after
     // that, not at once. The reports show the mode without a command restarting the count.
@@ -496,6 +565,7 @@ fn faults_the_drive_cant_honour_are_refused() {
         sim.schedule(Trigger::At(before), Fault::Silent),
         Err(FaultRefused::Past)
     );
+    assert_eq!(sim.inject(before, Fault::Silent), Err(FaultRefused::Past));
     assert_eq!(sim.inject(t, Fault::Late(MAX_LATE)), Ok(()), "at the limit");
     assert_eq!(
         sim.take_injected().map(|i| i.fault),

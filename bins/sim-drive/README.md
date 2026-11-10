@@ -17,16 +17,16 @@ something that answers like the real drives before any real drive is enabled.
   damper (`DAMPING` in `plant.rs`, 1 N·m·s/rad, a sim value), so a target is reached with time constant
   `(DAMPING + kd) / kp`; torque stops at `limit_torque` and speed at `limit_spd`, the caps preflight writes. That a real drive holds those two caps in MIT mode
   is a sim assumption until a bench capture shows it (PLAN item 6). Out of Run the joint rests where it is. No inertia
-  or gravity yet. A read of the position or speed register gives the joint as it is.
+  or gravity yet. A read of the position or speed register gives the joint as it is, unless a value was injected.
 - **Fault injection** (`Fault`, PLAN item 4): a silent drive, late, lost or doubled frames, fault bits, a mode the host
   didn't ask for, a register that reads out of window (VBUS, the damper), a temperature, a reboot mid-run, writes
   answered but not kept, and lost Disables. `inject` applies one now; `schedule` fires one on a `Trigger` (the drive's
   nth MIT command, or a time: the drive is brought up to it, so timed faults land in time order), at most `FAULT_PLAN`
   at once. Both refuse a fault the drive can't honour (`FaultRefused`: a `Late` past `MAX_LATE`, a temperature a
-  status can't carry, a register value of the wrong type); `schedule` also refuses `OnMit(0)` and a time the drive is
-  already past. Transport faults apply as each frame falls due, so they reach replies already waiting. Every injection
-  is recorded once (`take_injected`, up to `INJECTED_LOG` untaken; `injections_lost` counts the rest), so a replay
-  shows what was injected. A duplicate ID or a wrong UID needs no fault: build two drives with one ID, or one
+  status can't carry, a register value of the wrong type) and a time the drive is already past; `schedule` also
+  refuses `OnMit(0)`. Transport faults apply as each frame falls due, so they reach replies already waiting but never
+  a frame due before they fired, however seldom the host reads. Every injection is recorded once (`take_injected`, up
+  to `INJECTED_LOG` untaken; `injections_lost` counts the rest), so a replay shows what was injected. A duplicate ID or a wrong UID needs no fault: build two drives with one ID, or one
   with another UID.
 - **`serve`** (Linux) runs a set of `SimDrive`s on one bus's `vcan` socket until told to stop, handing each injection
   to its caller as it takes effect.
