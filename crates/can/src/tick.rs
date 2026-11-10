@@ -74,7 +74,8 @@ pub(crate) enum DriveStop {
     None,
     /// A stop began and the socket has taken no Disable to the drive yet (or the bus was lost).
     NeverSent,
-    /// The socket took a Disable; no Reset read inside the reply allowance stands for it.
+    /// The socket took a Disable; no Reset read inside the reply allowance stands for it (none came, or the drive
+    /// showed another mode after it, [`DriveState::note_mode`]).
     Sent,
     /// A Reset read at `at_ns`, inside the stop's reply allowance ([`Timing::stop_replies_ns`]), confirmed it.
     Confirmed {
@@ -116,9 +117,14 @@ impl DriveState {
     /// after an Enable is the drive running, counted only from an ordered read while its limb is active; any other mode
     /// after running, without a Disable from this host, is latched as having left Run; Reset from an ordered read after a
     /// Disable confirms the drive off. A mode other than the fresh status's supersedes it (`fresh_status` goes), the
-    /// age of the last fresh reply (`fresh_ns`) staying.
+    /// age of the last fresh reply (`fresh_ns`) staying. Any mode but Reset withdraws a stop's confirmation, whatever
+    /// the read order: frames from one drive are read in the order it sent them, so the drive left Reset after the
+    /// status that confirmed it and isn't known disabled any more.
     pub(crate) fn note_mode(&mut self, mode: Mode, limb_active: bool, unordered: bool) {
         self.fresh_status = self.fresh_status.filter(|f| f.status.header.mode == mode);
+        if mode != Mode::Reset && self.stop.confirmed() {
+            self.stop = DriveStop::Sent;
+        }
         match self.phase {
             Phase::Enabling { .. } if mode == Mode::Run && limb_active && !unordered => {
                 self.phase = Phase::Running;

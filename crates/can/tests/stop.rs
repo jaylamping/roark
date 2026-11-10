@@ -313,23 +313,31 @@ enum Takes {
 /// One drive's stop in a row: the tick of its last Disable, the ticks its reporting off was planned, and its outcome.
 type DriveStop = (u64, Vec<u64>, StopOutcome, bool);
 
-/// A row: its name, each Reset read as (slot, read at), how the socket takes each drive's reporting off, the tick the
-/// limb is stopped in, and each drive's stop.
-type Row = (
-    &'static str,
-    Vec<(usize, u64)>,
-    [Takes; 2],
-    u64,
-    [DriveStop; 2],
-);
+/// A row of `the_stop_ends_by_its_bound_whenever_drives_confirm`.
+struct Row {
+    name: &'static str,
+    /// Each status read, as (slot, read at, mode). A read at or after a tick's start and by its wake is in its drain,
+    /// before the send; any other after it.
+    reads: Vec<(usize, u64, Mode)>,
+    /// Ticks that wake after their start, inside the send window, as (tick, wake); every other tick wakes on time.
+    wakes: Vec<(u64, u64)>,
+    /// How the socket takes each drive's reporting off.
+    takes: [Takes; 2],
+    /// The tick the limb is stopped in.
+    stopped_in: u64,
+    /// Each drive's stop.
+    expected: [DriveStop; 2],
+}
 
 /// Guards: safety - a stop's end is bounded whenever its drives confirm (rust.md section 4: a limit on everything).
 /// Disables go to each unconfirmed drive for the 100 ms window; a Reset read by the reply allowance (the window plus a
-/// period) confirms, one read later doesn't and its drive gets no reporting off; each confirmed drive's reporting off
-/// is planned every tick from 50 ms after its confirmation until the socket takes it, every Disable ahead of it; the
-/// stop ends once every drive confirmed and took it, else once the allowance has closed and no confirmed drive's
-/// reporting off is unsent, and at the latest 162 ms after it began, a reporting off never taken recorded unsent
-/// (PLAN.md item 2 Stop and Exit: reporting persists across host processes otherwise; Silence windows).
+/// period) confirms, one read later doesn't and its drive gets no reporting off; a status in another mode read after a
+/// confirmation withdraws it, so its drive gets Disables again inside the window and counts as unconfirmed; each
+/// confirmed drive's reporting off is planned every tick from 50 ms after its confirmation until the socket takes it,
+/// every Disable ahead of it; the stop ends once every drive confirmed and took it, else once the allowance has closed
+/// and no confirmed drive's reporting off is unsent, and at the latest 162 ms after it began, a reporting off never
+/// taken recorded unsent (PLAN.md item 2 Stop and Exit: reporting persists across host processes otherwise; Silence
+/// windows).
 #[test]
 #[expect(
     clippy::too_many_lines,
@@ -344,84 +352,101 @@ fn the_stop_ends_by_its_bound_whenever_drives_confirm() {
         (timing.stop_replies_ns(), timing.stop_max_ns()),
         (104 * MS, 162 * MS)
     );
-    // A read at a tick's start is in its drain, before the send; any other after it.
-    let rows: [Row; 8] = [
-        (
-            "both confirmed at once: reporting off once the silence is over, then stopped",
-            vec![(0, 5 * MS), (1, 5 * MS)],
-            [Takes::Always, Takes::Always],
-            14,
-            [
+    let reset = |slot, at| (slot, at, Mode::Reset);
+    let rows = [
+        Row {
+            name: "both confirmed at once: reporting off once the silence is over, then stopped",
+            reads: vec![reset(0, 5 * MS), reset(1, 5 * MS)],
+            wakes: vec![],
+            takes: [Takes::Always, Takes::Always],
+            stopped_in: 14,
+            expected: [
                 (1, vec![14], Confirmed, true),
                 (1, vec![14], Confirmed, true),
             ],
-        ),
-        (
-            "a reporting off refused once goes again the next tick",
-            vec![(0, 5 * MS), (1, 5 * MS)],
-            [Takes::Always, Takes::SecondTry],
-            15,
-            [
+        },
+        Row {
+            name: "a reporting off refused once goes again the next tick",
+            reads: vec![reset(0, 5 * MS), reset(1, 5 * MS)],
+            wakes: vec![],
+            takes: [Takes::Always, Takes::SecondTry],
+            stopped_in: 15,
+            expected: [
                 (1, vec![14], Confirmed, true),
                 (1, vec![14, 15], Confirmed, true),
             ],
-        ),
-        (
-            "confirmed in the window's last tick",
-            vec![(1, 5 * MS), (0, 101 * MS)],
-            [Takes::Always, Takes::Always],
-            38,
-            [
+        },
+        Row {
+            name: "confirmed in the window's last tick",
+            reads: vec![reset(1, 5 * MS), reset(0, 101 * MS)],
+            wakes: vec![],
+            takes: [Takes::Always, Takes::Always],
+            stopped_in: 38,
+            expected: [
                 (25, vec![38], Confirmed, true),
                 (1, vec![14], Confirmed, true),
             ],
-        ),
-        (
-            "the last Disable's Reset, read in the next tick's drain, inside the allowance",
-            vec![(1, 5 * MS), (0, 104 * MS)],
-            [Takes::Always, Takes::Always],
-            39,
-            [
+        },
+        Row {
+            name: "the last Disable's Reset, read in the next tick's drain, inside the allowance",
+            reads: vec![reset(1, 5 * MS), reset(0, 104 * MS)],
+            wakes: vec![],
+            takes: [Takes::Always, Takes::Always],
+            stopped_in: 39,
+            expected: [
                 (25, vec![39], Confirmed, true),
                 (1, vec![14], Confirmed, true),
             ],
-        ),
-        (
-            "a Reset read as the allowance closes confirms nothing",
-            vec![(1, 5 * MS), (0, 108 * MS)],
-            [Takes::Always, Takes::Always],
-            27,
-            [(25, vec![], Sent, false), (1, vec![14], Confirmed, true)],
-        ),
-        (
-            "two drives confirm late, one after the other",
-            vec![(1, 101 * MS), (0, 104 * MS)],
-            [Takes::Always, Takes::Always],
-            39,
-            [
+        },
+        Row {
+            name: "a Reset read as the allowance closes confirms nothing",
+            reads: vec![reset(1, 5 * MS), reset(0, 108 * MS)],
+            wakes: vec![],
+            takes: [Takes::Always, Takes::Always],
+            stopped_in: 27,
+            expected: [(25, vec![], Sent, false), (1, vec![14], Confirmed, true)],
+        },
+        Row {
+            name: "two drives confirm late, one after the other",
+            reads: vec![reset(1, 101 * MS), reset(0, 104 * MS)],
+            wakes: vec![],
+            takes: [Takes::Always, Takes::Always],
+            stopped_in: 39,
+            expected: [
                 (25, vec![39], Confirmed, true),
                 (25, vec![38], Confirmed, true),
             ],
-        ),
-        (
-            "a Reset read long after the allowance doesn't hold the stop open",
-            vec![(1, 104 * MS), (0, 157 * MS)],
-            [Takes::Always, Takes::Always],
-            39,
-            [(25, vec![], Sent, false), (25, vec![39], Confirmed, true)],
-        ),
-        (
-            "the last drive that can confirm, its reporting off never taken: two tries, stopped at the bound",
-            vec![(1, 5 * MS), (0, deadline(26))],
-            [Takes::Never, Takes::Always],
-            41,
-            [
+        },
+        Row {
+            name: "a Reset read long after the allowance doesn't hold the stop open",
+            reads: vec![reset(1, 104 * MS), reset(0, 157 * MS)],
+            wakes: vec![],
+            takes: [Takes::Always, Takes::Always],
+            stopped_in: 39,
+            expected: [(25, vec![], Sent, false), (25, vec![39], Confirmed, true)],
+        },
+        Row {
+            name: "the last drive that can confirm, its reporting off never taken: two tries, stopped at the bound",
+            reads: vec![reset(1, 5 * MS), reset(0, deadline(26))],
+            wakes: vec![],
+            takes: [Takes::Never, Takes::Always],
+            stopped_in: 41,
+            expected: [
                 (25, vec![40, 41], Confirmed, false),
                 (1, vec![14], Confirmed, true),
             ],
-        ),
+        },
+        Row {
+            name: "a drive seen in Run after its confirmation is unconfirmed again: Disables resume, no reporting off",
+            reads: vec![reset(0, 5 * MS), reset(1, 5 * MS), (0, 9 * MS, Mode::Run)],
+            wakes: vec![],
+            takes: [Takes::Always, Takes::Always],
+            stopped_in: 27,
+            expected: [(25, vec![], Sent, false), (1, vec![14], Confirmed, true)],
+        },
     ];
-    for (name, resets, takes, stopped_in, expected) in rows {
+    for row in rows {
+        let name = row.name;
         let mut bus = bus();
         let enable = batch(
             0,
@@ -441,18 +466,24 @@ fn the_stop_ends_by_its_bound_whenever_drives_confirm() {
         let snap = loop {
             assert!(tick < 100, "{name}: the stop never ended");
             let start = tick * PERIOD;
-            let reset = |&(slot, at): &(usize, u64)| {
-                (at, status(101 + u8::try_from(slot).unwrap(), Mode::Reset))
-            };
-            let tick_of = |at: u64| at / PERIOD == tick;
-            for (at, frame) in resets
+            let wake = row
+                .wakes
                 .iter()
-                .filter(|(_, at)| tick_of(*at) && *at == start)
-                .map(reset)
+                .find(|(t, _)| *t == tick)
+                .map_or(start, |&(_, at)| at);
+            let read = |&(slot, at, mode): &(usize, u64, Mode)| {
+                (at, status(101 + u8::try_from(slot).unwrap(), mode))
+            };
+            let in_tick = |at: u64| at / PERIOD == tick;
+            for (at, frame) in row
+                .reads
+                .iter()
+                .filter(|(_, at, _)| in_tick(*at) && *at <= wake)
+                .map(read)
             {
                 bus.on_frame(at, &frame);
             }
-            let list = bus.begin(tick, start, start, None);
+            let list = bus.begin(tick, wake, start, None);
             let mut off_seen = false;
             for (index, send) in list.iter().enumerate() {
                 assert_ne!(send.kind, SendKind::Command, "{name}: tick {tick}");
@@ -468,7 +499,7 @@ fn the_stop_ends_by_its_bound_whenever_drives_confirm() {
                     SendKind::ReportingOff => {
                         off_seen = true;
                         offs[send.slot].push(tick);
-                        match takes[send.slot] {
+                        match row.takes[send.slot] {
                             Takes::Always => SendOutcome::Sent,
                             Takes::SecondTry if offs[send.slot].len() > 1 => SendOutcome::Sent,
                             Takes::SecondTry | Takes::Never => SendOutcome::QueueFull,
@@ -476,12 +507,13 @@ fn the_stop_ends_by_its_bound_whenever_drives_confirm() {
                     }
                     SendKind::Command => SendOutcome::Sent,
                 };
-                bus.sent(index, outcome, start);
+                bus.sent(index, outcome, wake);
             }
-            for (at, frame) in resets
+            for (at, frame) in row
+                .reads
                 .iter()
-                .filter(|(_, at)| tick_of(*at) && *at != start)
-                .map(reset)
+                .filter(|(_, at, _)| in_tick(*at) && *at > wake)
+                .map(read)
             {
                 bus.on_frame(at, &frame);
             }
@@ -502,6 +534,10 @@ fn the_stop_ends_by_its_bound_whenever_drives_confirm() {
                 )
             })
             .collect();
-        assert_eq!((snap.tick, got), (stopped_in, expected.to_vec()), "{name}");
+        assert_eq!(
+            (snap.tick, got),
+            (row.stopped_in, row.expected.to_vec()),
+            "{name}"
+        );
     }
 }

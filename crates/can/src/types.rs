@@ -266,10 +266,12 @@ pub enum StopOutcome {
     /// left nothing to send on).
     NeverSent,
     /// Disable was sent; no Reset-mode status read after it was counted: none came, one was read after the stop's reply
-    /// allowance (`Timing::stop_replies_ns`), or one may predate it (after a drain that left frames queued). Such a
-    /// drive gets no reporting off.
+    /// allowance (`Timing::stop_replies_ns`), or one may predate it (after a drain that left frames queued). Also a
+    /// drive that was confirmed and then showed another mode: that withdraws the confirmation. Such a drive gets no
+    /// reporting off, and re-arming waits for it to go quiet past its timeout.
     Sent,
-    /// A Reset-mode status was read after a sent Disable, inside the stop's reply allowance.
+    /// A Reset-mode status was read after a sent Disable, inside the stop's reply allowance, and no status in another
+    /// mode since.
     Confirmed,
 }
 
