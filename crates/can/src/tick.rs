@@ -457,8 +457,10 @@ impl BusTick {
     pub fn on_frame(&mut self, read_ns: u64, frame: &FrameRecord) {
         if frame.error {
             self.counters.error_frames += 1;
+            // Of what an error frame can say, only bus-off stops the bus for good: the adapter may restart the bus by
+            // itself (PLAN.md item 3, item 6 Bus-off row).
             let error = classify(frame.id, &frame.data);
-            if error.latches() {
+            if error == BusError::BusOff {
                 self.latch(error);
             }
             // The controller's state, read on its own: a frame can carry it beside a more severe flag (passive back
@@ -658,6 +660,18 @@ fn echo_of(frame: &Frame) -> Option<(EchoKind, DeviceId)> {
             | Inbound::Version { .. }
             | Inbound::Param { .. },
         )
-        | Err(_) => None,
+        | Err(
+            DecodeError::IdTooWide(_)
+            | DecodeError::BadLength { .. }
+            | DecodeError::UnknownType { .. }
+            | DecodeError::BadDeviceId { .. }
+            | DecodeError::ReservedMode { .. }
+            | DecodeError::UnknownParam { .. }
+            | DecodeError::BadParamValue { .. }
+            | DecodeError::UnexpectedData { .. }
+            | DecodeError::OtherHost { .. }
+            | DecodeError::ForeignType { .. }
+            | DecodeError::ForeignWrite { .. },
+        ) => None,
     }
 }

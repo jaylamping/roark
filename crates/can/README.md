@@ -50,9 +50,10 @@ A latched bus error (bus-off in an error frame, or any socket failure) sends not
 error-passive.
 
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
-a drive table past `MAX_DRIVES` and timing that breaks its promises (`Timing::check`: for one, three periods must fit
-inside the drives' 50 ms timeout, so the rate is at least 61 Hz). The Linux shell that owns the socket and the
-clock comes next (PLAN step 6).
+a drive table past `MAX_DRIVES` and timing that breaks its promises (`Timing::check`: for one, the three-period
+feedback limit plus the most a read trails arrival must stay under the drives' 50 ms timeout, so the default timing
+needs at least 74 Hz; and the silent ticks that stop a bus must span less than that timeout). The Linux shell that
+owns the socket and the clock comes next (PLAN step 6).
 
 ## Must never
 

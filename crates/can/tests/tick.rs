@@ -4,8 +4,8 @@
 mod common;
 
 use can::{
-    BusError, BusState, BusTick, CommandBatch, ConfigError, MAX_DRIVES, SendKind, SendOutcome,
-    StopOutcome, StopReason, Timing, TimingError, classify,
+    BusError, BusState, BusTick, CommandBatch, ConfigError, DRIVE_TIMEOUT_NS, MAX_DRIVES, SendKind,
+    SendOutcome, StopOutcome, StopReason, Timing, TimingError, classify,
 };
 use common::{
     MS, PERIOD, at, batch, bus, deadline, drive, error_frame, hold, id, record, report_frame,
@@ -556,14 +556,20 @@ fn the_feedback_limit_is_three_periods_inclusive() {
 }
 
 /// Guards: safety - timing that breaks the tick's promises is refused at startup, never quietly replaced, one row per
-/// rule and its boundary: a rate whose three periods reach the drives' 50 ms timeout (60 Hz) is refused and 61 Hz is not,
-/// and a stop window must fit the post-Disable silence and a tick to send reporting off (safety.md: invalid
-/// configuration is an error; PLAN.md item 3).
+/// rule and its boundary: a feedback limit whose span plus the read lag reaches the drives' 50 ms timeout is refused
+/// (73 Hz by default) and 74 Hz is not; a stop window must fit the post-Disable silence and a tick to send reporting
+/// off; and silent ticks spanning the drives' timeout, which would leave a silent control unstopped, are refused
+/// (safety.md: invalid configuration is an error, and no config value turns a protection off; PLAN.md item 3).
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one table, one row per timing rule and its boundary"
+)]
 fn timing_that_breaks_the_tick_is_refused() {
     let base = Timing::at_hz(250);
     let fits = base.disable_silence_ns + base.period_ns;
-    let at_60 = Timing::at_hz(60);
+    // Period - collect + send window at 250 Hz: 4 - 2.4 + 1 ms.
+    let lag = 2_600_000;
     let rows = [
         ("no rate", Timing::at_hz(0), Some(TimingError::NoPeriod)),
         (
@@ -611,14 +617,33 @@ fn timing_that_breaks_the_tick_is_refused() {
             }),
         ),
         (
-            "60 Hz",
-            at_60,
-            Some(TimingError::FeedbackLimit {
-                feedback_limit_ns: 50_000_001,
-                period_ns: 16_666_667,
+            "feedback plus lag reaches the timeout",
+            Timing {
+                feedback_limit_ns: DRIVE_TIMEOUT_NS - lag,
+                ..base
+            },
+            Some(TimingError::FeedbackAge {
+                feedback_limit_ns: 47_400_000,
+                read_lag_ns: lag,
             }),
         ),
-        ("61 Hz", Timing::at_hz(61), None),
+        (
+            "feedback plus lag just under the timeout",
+            Timing {
+                feedback_limit_ns: DRIVE_TIMEOUT_NS - lag - 1,
+                ..base
+            },
+            None,
+        ),
+        (
+            "73 Hz",
+            Timing::at_hz(73),
+            Some(TimingError::FeedbackAge {
+                feedback_limit_ns: 41_095_893,
+                read_lag_ns: 8_904_110,
+            }),
+        ),
+        ("74 Hz", Timing::at_hz(74), None),
         (
             "stop window too short",
             Timing {
@@ -646,6 +671,36 @@ fn timing_that_breaks_the_tick_is_refused() {
                 ..base
             },
             Some(TimingError::NoSilentTicks),
+        ),
+        (
+            "silent ticks span the timeout",
+            Timing {
+                silent_ticks: 13,
+                ..base
+            },
+            Some(TimingError::SilentTicks {
+                silent_ticks: 13,
+                period_ns: base.period_ns,
+            }),
+        ),
+        (
+            "silent ticks just inside the timeout",
+            Timing {
+                silent_ticks: 12,
+                ..base
+            },
+            None,
+        ),
+        (
+            "silent ticks that never end",
+            Timing {
+                silent_ticks: u32::MAX,
+                ..base
+            },
+            Some(TimingError::SilentTicks {
+                silent_ticks: u32::MAX,
+                period_ns: base.period_ns,
+            }),
         ),
         ("250 Hz", base, None),
     ];

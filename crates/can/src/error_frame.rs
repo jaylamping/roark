@@ -17,24 +17,12 @@ pub enum BusError {
     RxOverflow,
     /// A transmit timed out (`CAN_ERR_TX_TIMEOUT`).
     TxTimeout,
-    /// The interface is down (`ENETDOWN`). Latched.
+    /// The interface is down (`ENETDOWN`), from the socket. Latched, as is any error passed to `BusTick::lost_bus`.
     InterfaceDown,
-    /// The interface is gone (`ENODEV`). Latched.
+    /// The interface is gone (`ENODEV`), from the socket. Latched, as is any error passed to `BusTick::lost_bus`.
     InterfaceGone,
     /// Any other error class, as its bits.
     Other(u32),
-}
-
-impl BusError {
-    /// Whether an error frame carrying this error stops the bus for good (PLAN.md item 6 Bus-off row). A socket failure
-    /// always does ([`BusTick::lost_bus`](crate::BusTick::lost_bus)).
-    #[must_use]
-    pub const fn latches(self) -> bool {
-        matches!(
-            self,
-            Self::BusOff | Self::InterfaceDown | Self::InterfaceGone
-        )
-    }
 }
 
 const TX_TIMEOUT: u32 = 0x0001;

@@ -108,8 +108,9 @@ The values and the loader's checks are in [PLAN item 1](../PLAN.md#1-the-skeleto
   at most the gap from the collect deadline to the close of the next tick's send window (period - collect + send
   window: 2.6 ms at 250 Hz), since a later wake stops it. So on an active bus a status can be that much older than its
   `fresh_ns`: at 250 Hz the three-period feedback limit is 12 to 14.6 ms of real age, well inside the drives' 50 ms
-  timeout. An idle bus runs on after a late wake, sending only its batch's Disables and reporting off that tick, so its
-  reads can trail by more. The real adapter's queue age is measured at PLAN step 8.
+  timeout, and `Timing::check` refuses any timing whose limit plus that lag reaches it. An idle bus runs on after a
+  late wake, sending only its batch's Disables and reporting off that tick, so its reads can trail by more. The real
+  adapter's queue age is measured at PLAN step 8.
 - Durations in logs use the same suffix rule as everything else (`latency_us`, `age_ms`).
 
 ## 6. Identity
