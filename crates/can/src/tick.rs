@@ -199,7 +199,7 @@ impl BusTick {
     /// the send window (a missed deadline, counted in every state), stops an active bus. An idle bus (nothing enabled
     /// since start) has nothing to stop: that tick it sends only its batch's Disables and reporting off, which are
     /// right late or not, and holds back the rest (`held_batches`), so nothing is enabled on a tick whose reads can't
-    /// be trusted (PLAN.md item 3 stops a late wake for its limbs' sake).
+    /// be trusted (PLAN.md item 3).
     pub fn begin(
         &mut self,
         tick: u64,

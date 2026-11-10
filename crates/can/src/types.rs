@@ -311,7 +311,7 @@ pub enum BusState {
 pub enum StopReason {
     /// No fresh batch for `Timing::silent_ticks` ticks while active (PLAN.md item 3).
     ControlSilent,
-    /// The thread woke after its send window (PLAN.md item 3).
+    /// The thread woke after its send window, whatever its feedback's age (PLAN.md item 3).
     LateWake,
     /// A batch carried motion for a drive whose last fresh status was too old.
     ExpiredFeedback {
