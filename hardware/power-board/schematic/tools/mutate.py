@@ -2,8 +2,12 @@
 tools/verify_selftest.sh, which then expects each check to fail on it. Nothing here is ever applied to the real board.
   rules   breaks route_checks.py's checks in one copy:
             1/2  an EN_A stub 0.13 mm from U8's GND pin 2 (a pair at the 0.2 mm rule, and inside U8's courtyard);
-            3    SHL3_P's long In2 run moved 3 mm away from its N leg;
+            3    SHL3_P's long In2 run moved 3 mm away from its N leg, with In2 stubs from its old ends, so the leg stays
+                 joined and only its pairing drops; and SH9_N's via at (128.6, 114.5) removed, so its F.Cu and In2
+                 pieces meet only at the same X/Y on different layers: the leg can't be traced;
             4    a /GATE track (rides on VBUS, not on the 54 V list) on In2 under the latch block;
+            5    an unfilled VBUS pour on In3 whose outline holds a /RUN via (an E-stop net);
+            6    an inner GND zone's clearance set to 0.2 mm;
             7    G2's via in the MID mirror moved 0.3 mm (the count per net stays the same);
             8    three vias on /PRE_G, and GATE_A's via at TP11 moved 0.35 mm;
             9    a stale guard area ESTOP_GUARD_U8_1 at U8's old position;
@@ -11,7 +15,10 @@ tools/verify_selftest.sh, which then expects each check to fail on it. Nothing h
   copper  breaks the copper checks: on port 2, R4's branch of the gate node pulled back to a tangent touch with the
           gate line (joint_check, port_template MODE=check); U8's FLT_A jog moved (u8_block MODE=check); a via of another net in the VBUS band and a 12 mm
           no-fill slot across the VBUS stem (pour_width).
-  dangle  a dangling 2 mm /VCTL stub in free board area: a DRC type (track_dangling) outside verify_board.sh's allow-list."""
+  dangle  a dangling 2 mm /VCTL stub in free board area: a DRC type (track_dangling) outside verify_board.sh's allow-list.
+  blocks  breaks the designed-copper checks: U2's pin 8 BAT_CTL tie moved 0.05 mm (latch_block MODE=check); the HSINK
+          track off its spec (lay_path MODE=check @hand_laid.specs); one heatsink B.Mask opening removed
+          (heatsink_pads MODE=check)."""
 import os,sys
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
 import pcbnew, stack
@@ -36,6 +43,8 @@ refill=False
 if kind=='rules':
     track('/EN_A',CU[0],(173.32,146.9),(173.20,146.9))
     t=find_track('/SHL3_P',CU[2],(161.35,208.7),(161.35,215.35)); t.SetStart(V((158.35,208.7))); t.SetEnd(V((158.35,215.35)))
+    track('/SHL3_P',CU[2],(161.35,208.7),(158.35,208.7)); track('/SHL3_P',CU[2],(161.35,215.35),(158.35,215.35))
+    rm.append(find_via('/SH9_N',(128.6,114.5)))
     # a free spot on In2 under the latch block (a track laid across other copper takes that copper's net when saved)
     import domains
     x0,x1,y0,y1=domains.latch_page(); spot=None
@@ -47,6 +56,15 @@ if kind=='rules':
         if spot: break
     track('/GATE',CU[2],spot,(spot[0]+1,spot[1]))
     find_via('/G2',(149.9,160.19)).SetPosition(V((150.2,160.19)))
+    # check 5: an E-stop via inside a 54 V pour outline. A via laid into a filled pour takes the pour's net on save, so
+    # the pour comes to the via instead: an unfilled VBUS zone on In3 round an existing /RUN via (nothing is refilled)
+    rv=next(t for t in TR if t.GetClass()=='PCB_VIA' and t.GetNetname()=='/RUN'); c=(MM(rv.GetPosition().x),MM(rv.GetPosition().y))
+    k5=pcbnew.ZONE(b); k5.SetLayer(CU[3]); k5.SetNet(NETS['/VBUS']); k5.SetZoneName('SELFTEST_VBUS'); o5=k5.Outline(); o5.NewOutline()
+    for p in ((c[0]-1,c[1]-1),(c[0]+1,c[1]-1),(c[0]+1,c[1]+1),(c[0]-1,c[1]+1)): o5.Append(V(p))
+    add.append(k5)
+    # check 6: an inner GND plane off stack.PLANE_CLEAR
+    gz=next(z for z in b.Zones() if not z.GetIsRuleArea() and z.GetNetname()=='GND' and z.GetFirstLayer() in CU[1:5])
+    gz.SetLocalClearance(IU(0.2))
     track('/BAT_CTL',CU[0],(115.6,140.1),(115.6,140.7))   # check 10: the latch supply 0.6 mm from R49's MID_B pad and 0.7 mm from L_B
     for p in ((120.0,300.0),(121.0,300.0),(122.0,300.0)): via('/PRE_G',p)
     find_via('/GATE_A',(168.55,164.75)).SetPosition(V((168.55,165.1)))
@@ -68,7 +86,12 @@ elif kind=='copper':
     add.append(k); refill=True
 elif kind=='dangle':
     track('/VCTL',CU[0],(160.0,262.0),(162.0,262.0),0.25)
+elif kind=='blocks':
+    t=find_track('/BAT_CTL',CU[0],(114.75,153.955),(113.7,153.955)); t.SetStart(V((114.75,154.005))); t.SetEnd(V((113.7,154.005)))
+    t=find_track('/HSINK',CU[0],(147.0,246.2),(150.0,246.2)); t.SetEnd(V((150.0,246.3))) if near(t.GetEnd(),(150.0,246.2)) else t.SetStart(V((150.0,246.3)))
+    sh=[d for d in b.GetDrawings() if d.GetClass()=='PCB_SHAPE' and d.GetLayer()==pcbnew.B_Mask]; rm.append(sh[0])
 else: raise SystemExit('unknown KIND '+kind)
+for t in rm: b.Remove(t)
 for t in add: b.Add(t)
 if refill: pcbnew.ZONE_FILLER(b).Fill(b.Zones())
 b.Save(sys.argv[2]); print('mutated',kind,'added',len(add))

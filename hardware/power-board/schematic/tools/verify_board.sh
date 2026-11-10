@@ -34,6 +34,8 @@ cp "$B" "$W/verify.kicad_pcb" && cp "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/ver
   && cp "$ROOT/marengo_pdu_revb.kicad_sch" "$W/verify.kicad_sch" && cp "$ROOT/marengo_pdu_revb.kicad_sch" "$W/marengo_pdu_revb.kicad_sch" \
   && cp "$ROOT/marengo_revb.kicad_sym" "$ROOT/sym-lib-table" "$ROOT/fp-lib-table" "$W/" && cp -r "$ROOT/marengo_revb.pretty" "$W/" || { echo 'copying the project files failed'; exit 1; }
 fail=0
+# MARENGO_HV_EXTRA (tools/domains.py) is a what-if for route_checks.py: a board checked under it is not the board's verdict
+[ -z "${MARENGO_HV_EXTRA:-}" ] || { echo "FAIL: MARENGO_HV_EXTRA is set ($MARENGO_HV_EXTRA): unset it to verify the board"; exit 1; }
 "$KC" pcb drc --refill-zones --save-board --severity-all --format json --schematic-parity -o "$W/drc.json" "$W/verify.kicad_pcb" > "$W/drc.log" 2>&1; rc=$?
 [ "$rc" = 0 ] || { cat "$W/drc.log"; echo "FAIL: kicad-cli pcb drc exited $rc"; fail=1; }
 [ -s "$W/drc.json" ] || { cat "$W/drc.log"; echo 'FAIL: DRC wrote no report'; exit 1; }
