@@ -2,7 +2,7 @@
 # verify_buck.sh [board.kicad_pcb] : the buck board's check set (default: ../layout/marengo_buck12.kicad_pcb). Copies the
 # board next to the schematic and the project in a temp dir, refills the zones with the project rules there, and runs:
 #   kicad-cli DRC with parity     every violation type fails, except the cosmetic silkscreen ones in ALLOW; any parity issue
-#                                 and any open connection fail; a report that is missing, stale or has no parity key fails
+#                                 and any open connection fail; a report that is missing, dated before the run or has no parity key fails
 #   tools/spacing_buck.py         SP_EN (E-stop class on the main board) 1.7 mm (the 1.5 mm rule plus etch tolerance) from the
 #                                 54 V copper (tools/hv_buck.py); no other E-stop net here; fails when it compared nothing
 #   tools/kelvin_buck.py          both Kelvin pairs traced sense pad to meter pin, on one inner layer, paired over their floor
@@ -24,20 +24,23 @@ PY=python3; "$PY" -c "" 2>/dev/null || PY=python
 export MSYS_NO_PATHCONV=1
 q() { grep -v 'memory leak\|GetWidth called\|image handler'; }
 W=${KEEP:-$(mktemp -d)}; mkdir -p "$W"; W=$(wp "$W")
-rm -f "$W/drc.json"; : > "$W/.start"
+rm -f "$W/drc.json"; START=$("$PY" -c "import time;print(int(time.time()))")
 cp "$BRD" "$W/marengo_buck12.kicad_pcb" && cp "$B/layout/marengo_buck12.kicad_pro" "$B/marengo_buck12.kicad_sch" "$B/marengo_buck12.kicad_sym" "$B/sym-lib-table" "$B/fp-lib-table" "$W/" \
   && cp -r "$B/marengo_buck12.pretty" "$W/" || { echo 'copying the project failed'; exit 1; }
 fail=0
 "$KC" pcb drc --refill-zones --save-board --severity-all --format json --schematic-parity -o "$W/drc.json" "$W/marengo_buck12.kicad_pcb" > "$W/drc.log" 2>&1; rc=$?
 [ "$rc" = 0 ] || { cat "$W/drc.log"; echo "FAIL: kicad-cli pcb drc exited $rc"; fail=1; }
 [ -s "$W/drc.json" ] || { cat "$W/drc.log"; echo 'FAIL: DRC wrote no report'; exit 1; }
-[ "$W/drc.json" -nt "$W/.start" ] || { echo 'FAIL: the DRC report is older than this run'; exit 1; }
 if grep -qi 'failed to fetch schematic' "$W/drc.log"; then cat "$W/drc.log"; echo 'FAIL: the schematic parity check did not run'; exit 1; fi
-"$PY" - "$W/drc.json" <<'PYEOF' || fail=1
-import json,collections,sys
+"$PY" - "$W/drc.json" "$START" <<'PYEOF' || fail=1
+import json,collections,sys,datetime
 ALLOW={'silk_overlap':'cosmetic','silk_over_copper':'cosmetic: the fab clips silkscreen at pads','silk_edge_clearance':'cosmetic'}
 d=json.load(open(sys.argv[1]))
 if 'schematic_parity' not in d: print('FAIL: the DRC report has no schematic_parity key'); sys.exit(1)
+# the report must be this run's: its own date (local time, to the second) is not before the run started
+try: made=datetime.datetime.fromisoformat(d['date']).timestamp()
+except Exception: print('FAIL: the DRC report has no readable date'); sys.exit(1)
+if made<int(sys.argv[2])-2: print(f"FAIL: the DRC report is older than this run (dated {d['date']})"); sys.exit(1)
 v=collections.Counter(x['type'] for x in d['violations']); hard={k:n for k,n in v.items() if k not in ALLOW}
 par=d['schematic_parity']; un=len(d['unconnected_items'])
 print('DRC violations',hard,'allowed',{k:n for k,n in v.items() if k in ALLOW},'unconnected',un,'parity',len(par))

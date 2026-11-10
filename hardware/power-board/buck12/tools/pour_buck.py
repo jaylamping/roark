@@ -13,8 +13,8 @@ PATHS=[
  ('vout','/VOUT','VOUT, L2 to RS1 (12 A)','x',44.0,51.1,33.0,44.0,12.0,20.0),   # to RS1.1's left edge (X 51.12)
  ('p12','/+12V','+12V, RS1 into the distribution pour (12 A)','x',42.0,49.8,44.0,62.0,12.0,20.0),   # to RS1.4's left edge (X 49.85)
  ('sw','/SW','SW node, Q2 to L2 (12 A)','y',27.6,30.9,33.0,44.0,12.0,20.0),
- ('vin','/VIN','VIN, L1 to the input caps and Q1 (3.5 A at 36 V, 126 W in)','x',22.0,28.5,12.0,40.0,3.5,10.0),
- ('vinp','/VIN_P','VIN_P, J1 to the filter (3.5 A)','y',7.2,10.8,8.0,17.0,3.5,10.0),
+ ('vin','/VIN','VIN, L1 to the input caps and Q1 (4.3 A: 144 W out at 94 % is 153 W in, at 36 V)','x',22.0,28.5,12.0,40.0,4.3,10.0),
+ ('vinp','/VIN_P','VIN_P, J1 to the filter (4.3 A)','y',7.2,10.8,8.0,17.0,4.3,10.0),
  ('jet','/+12V_JET','Jetson output, F1 to J2 (5 A)','y',64.0,76.5,9.0,14.0,5.0,20.0),
  ('pi','/+12V_PI','Pi output, F2 to J3 (5 A)','y',64.0,76.5,19.0,24.0,5.0,20.0),
  ('fan','/+12V_FAN','fan output, F3 to J4 (2 A)','y',64.0,76.5,29.0,34.0,2.0,20.0),
@@ -24,24 +24,24 @@ def measure(path):
     for key,net,name,ax,c0,c1,s0,s1,amps,lim in PATHS:
         zs=[z for z in b.Zones() if not z.GetIsRuleArea() and z.GetNetname()==net]
         tr=[t for t in b.GetTracks() if t.GetNetname()==net and t.GetClass()=='PCB_TRACK']
+        # the net's copper on each layer, once: zone fills and tracks merged, so a track inside its own pour isn't counted twice
+        cu={}
+        for i,L in enumerate(KL):
+            u=pcbnew.SHAPE_POLY_SET()
+            for z in zs:
+                if z.IsOnLayer(L): u.Append(pcbnew.SHAPE_POLY_SET(z.GetFilledPolysList(L)))
+            for t in tr:   # tracks of the net crossing the cut count too
+                if t.GetLayer()==L: t.TransformShapeToPolygon(u,L,0,IU(0.005),pcbnew.ERROR_INSIDE)
+            if u.OutlineCount(): u.Simplify(); cu[i]=u
         worst=None; c=c0
         while c<=c1+1e-9:
             strip=pcbnew.SHAPE_POLY_SET(); strip.NewOutline()
             pts=((s0,c-H/2),(s1,c-H/2),(s1,c+H/2),(s0,c+H/2)) if ax=='y' else ((c-H/2,s0),(c+H/2,s0),(c+H/2,s1),(c-H/2,s1))
-            for px,py in pts:
-                if ax=='y': strip.Append(IU(px+O[0]),IU(py+O[1]))
-                else: strip.Append(IU(px+O[0]),IU(py+O[1]))
+            for px,py in pts: strip.Append(IU(px+O[0]),IU(py+O[1]))
             w={}
-            for i,L in enumerate(KL):
-                tot=0.0
-                for z in zs:
-                    if not z.IsOnLayer(L): continue
-                    f=pcbnew.SHAPE_POLY_SET(z.GetFilledPolysList(L)); f.BooleanIntersection(strip)
-                    tot+=MM(MM(f.Area()))/H if f.OutlineCount() else 0.0
-                for t in tr:   # tracks of the net crossing the cut count too
-                    if t.GetLayer()!=L: continue
-                    s=pcbnew.SHAPE_POLY_SET(); t.TransformShapeToPolygon(s,L,0,IU(0.005),pcbnew.ERROR_INSIDE); s.BooleanIntersection(strip)
-                    tot+=MM(MM(s.Area()))/H if s.OutlineCount() else 0.0
+            for i,u in cu.items():
+                f=pcbnew.SHAPE_POLY_SET(u); f.BooleanIntersection(strip)
+                tot=MM(MM(f.Area()))/H if f.OutlineCount() else 0.0
                 if tot>0.01: w[i]=tot
             r=rise(w,amps)
             if worst is None or r>worst[0]: worst=(r,c,w)

@@ -129,5 +129,5 @@ else: ok(False,'zip missing')
 import hashlib
 ok(os.path.exists(out+'/BOARD.sha256'),'BOARD.sha256 exists')
 sha=hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest(); rec=open(out+'/BOARD.sha256').read().split()[0] if os.path.exists(out+'/BOARD.sha256') else None
-ok(rec==sha,f'the package was made from this board file (sha256 {sha[:16]}..., recorded {str(rec)[:16]}...): if not, run tools/fab_package.sh again')
+ok(rec==sha,f'the package was made from this board file (sha256 {sha[:16]}..., recorded {str(rec)[:16]}...): if not, run {os.environ.get("FAB_PACKAGER","tools/fab_package.sh")} again')
 print('fab_check fails',len(fail)); sys.exit(1 if fail else 0)

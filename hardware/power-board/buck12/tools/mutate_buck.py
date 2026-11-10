@@ -4,7 +4,13 @@ tools/verify_selftest_buck.sh, which expects verify_buck.sh to fail on it. Nothi
   parity   C14's value changed: a schematic parity issue
   spen     an SP_EN track on B.Cu 1 mm below the VIN mirror: spacing_buck.py
   designed the HO track's bottom end moved 0.3 mm (the gate joint) and LO's In3 via moved: copper_buck.py MODE=check
-  slot     a 1 mm no-fill rule area across the +12V neck at RS1 and across VOUT: pour_buck.py"""
+  slot     a 1 mm no-fill rule area across the +12V neck at RS1 and across VOUT: pour_buck.py
+  zone     the hot loop's GND plane (BUCK_GND_1) moved 100 mm, name kept: copper_buck.py MODE=check compares outlines
+  neck     the 3cd770b neck back: no fill in the F.Cu VOUT pour's extension above RS1 (Y < 36.85) or in the B.Cu mirror
+           past X 49, so F.Cu at X 50 is the 2.8 mm beside the SH12_P cut-out: pour_buck.py
+  kelvin   RS1's N leg moved from In2 to In3: unpaired and on another layer: kelvin_buck.py
+  hole     KO_H2 (the keep-out round the top-right M3 hole) deleted, so the fills reach the hole: holes_buck.py
+  nospen   SP_EN's pads and copper moved to a net outside the E-stop class: spacing_buck.py has nothing to check"""
 import os,sys
 sys.path.insert(0,os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','schematic','tools'))
 import pcbnew, stack
@@ -30,6 +36,25 @@ elif kind=='slot':
         o=k.Outline(); o.NewOutline()
         for x,y in ((x0,y0),(x1,y0),(x1,y1),(x0,y1)): o.Append(V(x,y))
         add.append(k)
+elif kind=='zone':
+    z=next(z for z in b.Zones() if z.GetZoneName()=='BUCK_GND_1'); z.Move(pcbnew.VECTOR2I(IU(100),0))
+elif kind=='neck':
+    for L,(x0,y0,x1,y1) in ((CU[0],(47.0,34.0,52.6,36.85)),(CU[5],(49.0,34.0,52.6,43.0))):
+        k=pcbnew.ZONE(b); k.SetIsRuleArea(True); k.SetDoNotAllowZoneFills(True); k.SetDoNotAllowTracks(False); k.SetDoNotAllowVias(False)
+        k.SetDoNotAllowPads(False); k.SetDoNotAllowFootprints(False); k.SetLayer(L); k.SetZoneName('SELFTEST_NECK'); o=k.Outline(); o.NewOutline()
+        for x,y in ((x0,y0),(x1,y0),(x1,y1),(x0,y1)): o.Append(V(x,y))
+        add.append(k)
+elif kind=='kelvin':
+    for t in TR:
+        if t.GetNetname()=='/SH12_N' and t.GetClass()=='PCB_TRACK' and t.GetLayer()==CU[2]: t.SetLayer(CU[3])
+elif kind=='hole':
+    b.Remove(next(z for z in b.Zones() if z.GetZoneName()=='KO_H2'))
+elif kind=='nospen':
+    n=pcbnew.NETINFO_ITEM(b,'/SPEN_MOVED'); b.Add(n)
+    for t in TR:
+        if t.GetNetname()=='/SP_EN': t.SetNet(n)
+    for p in b.GetPads():
+        if p.GetNetname()=='/SP_EN': p.SetNet(n)
 else: raise SystemExit('unknown KIND '+kind)
 for t in add: b.Add(t)
 b.Save(sys.argv[2]); print('mutated',kind)

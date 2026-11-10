@@ -135,11 +135,24 @@ if __name__=='__main__':
     if mode=='check':
         have={key(t):t for t in b.GetTracks() if OWNED(t)}
         miss=[q for k,q in want.items() if k not in have]; stale=[k for k in have if k not in want]
-        zn={z.GetZoneName() for z in b.Zones()}; zmiss=['BUCK_'+z[0] for z in ZONES if 'BUCK_'+z[0] not in zn]
+        # zones by what they are, not by name: net, layer, priority, clearance and outline (to 0.001 mm, any start point)
+        def zsig(net,L,prio,cl,pts):
+            pts=[(round(x,3),round(y,3)) for x,y in pts]; k=pts.index(min(pts)); pts=pts[k:]+pts[:k]
+            return (net,L,prio,round(cl,3),tuple(pts))
+        zwant={zsig(net,LAY[L],prio,cl,[(x+O[0],y+O[1]) for x,y in poly]):'BUCK_'+name for name,net,L,prio,cl,poly in ZONES}
+        zhave={}
+        for z in b.Zones():
+            if z.GetIsRuleArea(): continue
+            o=z.Outline().Outline(0)
+            pts=[(MM(o.CPoint(i).x),MM(o.CPoint(i).y)) for i in range(o.PointCount())]
+            zhave[zsig(z.GetNetname(),z.GetLayer(),z.GetAssignedPriority(),MM(z.GetLocalClearance() or 0),pts)]=z.GetZoneName()
+        zmiss=[n for s,n in zwant.items() if s not in zhave]; zstale=[n for s,n in zhave.items() if s not in zwant]
         for q in miss: print('   designed copper missing:',q[1],q[2:])
         for k in stale: print('   designed copper stale:',k)
-        print(f'buck copper check: {len(miss)} missing, {len(stale)} stale, zones missing {zmiss}')
-        sys.exit(1 if miss or stale or zmiss else 0)
+        for n in zmiss: print('   designed zone missing or changed (net, layer, priority, clearance or outline):',n)
+        for n in zstale: print('   zone not in copper_buck.py:',n)
+        print(f'buck copper check: {len(miss)} missing, {len(stale)} stale; zones {len(zhave)} on the board, {len(zwant)} designed, {len(zmiss)} missing or changed, {len(zstale)} not designed')
+        sys.exit(1 if miss or stale or zmiss or zstale else 0)
     old=[z for z in b.Zones() if z.GetZoneName().startswith('BUCK_')]+[t for t in b.GetTracks() if OWNED(t)]
     new=zone_items(b,nets)+[make(b,q,nets) for q in prims()]
     for t in old: b.Remove(t)

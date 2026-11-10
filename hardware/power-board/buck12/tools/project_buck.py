@@ -1,7 +1,9 @@
 """project_buck.py: write ../layout/marengo_buck12.kicad_pro, the buck board's project file (plain Python): the schematic
 project (../marengo_buck12.kicad_pro) with the main board's board settings (design rules: 0.2 mm track and space, 0.6/0.3 mm
-vias, 0.5 mm to the edge, the same DRC severities) and one net class, Default 0.2/0.2: no E-stop or 54 V-to-E-stop rule
-applies here (no E-stop net crosses to this board), and the coated board's 0.2 mm covers the 54 V input."""
+vias, 0.5 mm to the edge, the same DRC severities) and one net class, Default 0.2/0.2; the coated board's 0.2 mm covers
+the 54 V input. One E-stop-class net does cross to this board: SP_EN (J1 pin 9). Its distance to the 54 V copper
+(tools/hv_buck.py, 1.7 mm) is not a net-class rule here: the routers keep it (build_buck.sh) and tools/spacing_buck.py
+checks it."""
 import json,os
 H=os.path.dirname(os.path.abspath(__file__)); PB=os.path.join(H,'..','..')
 sch=json.load(open(os.path.join(H,'..','marengo_buck12.kicad_pro')))

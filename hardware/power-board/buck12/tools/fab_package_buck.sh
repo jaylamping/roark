@@ -21,6 +21,7 @@ RF=$(mktemp -d); RF=$(cd "$RF" && (pwd -W 2>/dev/null || pwd)); trap 'rm -rf "$R
 cp "$BRD" "$RF/marengo_buck12.kicad_pcb" && cp "$B/layout/marengo_buck12.kicad_pro" "$RF/" && cp "$B/fp-lib-table" "$RF/" && cp -r "$B/marengo_buck12.pretty" "$RF/" || { echo 'copying the board failed'; exit 1; }
 "$KC" pcb drc --refill-zones --save-board --format json -o "$RF/drc.json" "$RF/marengo_buck12.kicad_pcb" > "$RF/drc.log" 2>&1; rc=$?
 { [ "$rc" = 0 ] && [ -s "$RF/drc.json" ]; } || { cat "$RF/drc.log"; echo "refill failed (kicad-cli exit $rc)"; exit 1; }
+if grep -qi 'error' "$RF/drc.log"; then cat "$RF/drc.log"; echo 'refill: kicad-cli reported an error (a malformed .kicad_dru is ignored silently otherwise)'; exit 1; fi
 P="$RF/marengo_buck12.kicad_pcb"
 LAYERS=F.Cu,In1.Cu,In2.Cu,In3.Cu,In4.Cu,B.Cu,F.Mask,B.Mask,F.SilkS,B.SilkS,F.Paste,Edge.Cuts
 "$KC" pcb export gerbers -l "$LAYERS" --subtract-soldermask --no-netlist -o "$OUT/gerbers/" "$P" > "$OUT/export.log" 2>&1 || { cat "$OUT/export.log"; echo 'gerber export failed'; exit 1; }
