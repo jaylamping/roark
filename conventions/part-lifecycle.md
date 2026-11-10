@@ -139,7 +139,7 @@ It runs on Joey-PC (or anywhere with the LFS content and `pip install numpy scip
 | Requirements agreed | the spec is not `agreed` | three mid-design redos on the forearm |
 | Files present | the export, the 3MF or the picture sheet (`<part>_sheet.png`, all sides including the bed side) is missing | defects missed by single-view checks |
 | Mesh ([mesh_check.py](../tools/cad/mesh_check.py)) | not one watertight body; an unlisted vertex sharper than 150°, knife edge, wall under 0.6 mm over 0.5 mm², or surface step over 0.03 mm over 1 mm² | spikes, slivers, then notches reached Joey (2026-11-07) |
-| Support on visible faces ([part_checks.py](../tools/cad/part_checks.py)) | support touches more visible outer area than the spec allows | rough upper-arm skin, trapped cavity support (2026-11-08) |
+| Support on visible faces ([part_checks.py](../tools/cad/part_checks.py)) | support touches more visible outer area than the spec allows, an allowance has no reason, or a `hidden_by` mesh is missing | rough upper-arm skin, trapped cavity support (2026-11-08) |
 | Interference | a `mates` mesh overlaps the part by more than 0.05 mm | RS02 tab lip about 1 mm into the upper arm (2026-11-08) |
 | 3MF settings | material or a spec setting differs, or a spec setting isn't flagged in `different_settings_to_system` (unless the spec lists it in `preset`) | infill reset to 15% on open (2026-11-07) |
 | Evidence | a load case has no result, isn't converged, is under its pass mark or was run for another load; access isn't recorded; any source changed; the file doesn't parse | stale or singular FEA reported as passes (2026-11-07) |

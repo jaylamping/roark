@@ -285,20 +285,7 @@ def mesh_checks(cad: Path, spec: dict, part: dict, p: dict[str, str]) -> list[Ch
         out = [Check(mesh_name, FAIL, [f"not run: cad/{WHITELIST} or its entry for {part['name']} is malformed: "
                                         f"{type(e).__name__}: {e}"])]
 
-    hide = [load(r) for r in part.get("hidden_by", []) if has_content(cad / r)]
-    ref = trimesh.util.concatenate([m, *hide]) if hide else None
-    areas, _, _ = part_checks.support(m, part["up"], ref=ref)
-    allowed = float(part.get("visible_support_mm2", spec.get("print", {}).get("visible_support_mm2", 0)))
-    line = (f"support on visible outer faces {areas['outer_mm2']} mm2 (allowed {allowed:g}), "
-            f"hidden {areas['hidden_mm2']} mm2, up {part['up']}")
-    lines = [line] + ([f"where: {areas['outer_where']}"] if "outer_where" in areas else [])
-    if allowed and part.get("visible_support_reason"):
-        lines.append(f"allowance: {part['visible_support_reason']}")
-    support_off = str({**spec.get("print", {}).get("settings", {}), **part.get("settings", {})}.get("enable_support")) == "0"
-    if support_off:
-        lines.append(f"support is off for this part: these {areas['support_mm2']} mm2 print as unsupported overhangs")
-    status = WARN if support_off else (PASS if areas["outer_mm2"] <= allowed else FAIL)
-    out.append(Check("support on visible faces", status, lines))
+    out.append(support_check(cad, spec, part, m, load))
 
     rows, worst = [], 0.0
     for rel in part.get("mates", []):
@@ -315,6 +302,37 @@ def mesh_checks(cad: Path, spec: dict, part: dict, p: dict[str, str]) -> list[Ch
     else:
         out.append(Check("interference with mating parts", WARN, ["no `mates` listed for this part"]))
     return out
+
+
+def support_check(cad: Path, spec: dict, part: dict, m, load) -> Check:
+    """Support on visible outer faces. A missing `hidden_by` mesh fails: without it, faces it hides count as visible. An
+    allowance above zero needs its reason (part-lifecycle.md section 1). Called only once the mesh libraries imported."""
+    import trimesh
+
+    import part_checks
+
+    missing = [r for r in part.get("hidden_by", []) if not has_content(cad / r)]
+    hide = [load(r) for r in part.get("hidden_by", []) if r not in missing]
+    ref = trimesh.util.concatenate([m, *hide]) if hide else None
+    areas, _, _ = part_checks.support(m, part["up"], ref=ref)
+    allowed = float(part.get("visible_support_mm2", spec.get("print", {}).get("visible_support_mm2", 0)))
+    reason = part.get("visible_support_reason")
+    line = (f"support on visible outer faces {areas['outer_mm2']} mm2 (allowed {allowed:g}), "
+            f"hidden {areas['hidden_mm2']} mm2, up {part['up']}")
+    lines = [line] + ([f"where: {areas['outer_where']}"] if "outer_where" in areas else [])
+    bad = [f"hidden_by mesh missing or not downloaded: cad/{r}" for r in missing]
+    if allowed and not reason:
+        bad.append(f"an allowance of {allowed:g} mm2 needs visible_support_reason in the spec")
+    elif allowed:
+        lines.append(f"allowance: {reason}")
+    support_off = str({**spec.get("print", {}).get("settings", {}), **part.get("settings", {})}.get("enable_support")) == "0"
+    if support_off:
+        lines.append(f"support is off for this part: these {areas['support_mm2']} mm2 print as unsupported overhangs")
+    if bad:
+        status = FAIL
+    else:
+        status = WARN if support_off else (PASS if areas["outer_mm2"] <= allowed else FAIL)
+    return Check("support on visible faces", status, bad + lines)
 
 
 def lessons(cad: Path) -> tuple[list[tuple[str, dict]], list[str]]:

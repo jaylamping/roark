@@ -253,6 +253,24 @@ def test_support_on_a_visible_face_is_found(tmp_path: Path) -> None:
     assert areas["outer_mm2"] == 0
 
 
+def test_support_check_fails_without_its_hiding_meshes_or_an_allowance_reason(tmp_path: Path) -> None:
+    """Guards: number - visible-support allowances come with a reason (part-lifecycle.md section 1), and a hidden_by mesh
+    that isn't there would count the faces it hides as visible."""
+    trimesh = pytest.importorskip("trimesh")
+    cad = tmp_path / "cad"
+    make_link(cad)
+    _, spec, part = gate.find_part(cad, "upper_arm_test_left")
+    box = trimesh.creation.box((40, 30, 20), trimesh.transformations.translation_matrix((0, 0, 10)))
+    load = lambda rel: trimesh.load(str(cad / rel), force="mesh")  # noqa: E731
+    assert gate.support_check(cad, spec, part, box, load).status == gate.PASS
+    c = gate.support_check(cad, spec, {**part, "hidden_by": ["exports/upper-arm/gone.stl"]}, box, load)
+    assert (c.status, c.detail[0]) == (gate.FAIL, "hidden_by mesh missing or not downloaded: cad/exports/upper-arm/gone.stl")
+    c = gate.support_check(cad, spec, {**part, "visible_support_mm2": 5}, box, load)
+    assert (c.status, c.detail[0]) == (gate.FAIL, "an allowance of 5 mm2 needs visible_support_reason in the spec")
+    c = gate.support_check(cad, spec, {**part, "visible_support_mm2": 5, "visible_support_reason": "inside"}, box, load)
+    assert (c.status, c.detail[-1]) == (gate.PASS, "allowance: inside")
+
+
 def test_interference_depth_with_a_mating_part(tmp_path: Path) -> None:
     """Guards: bug - an RS02 housing tab overlapped the printed upper arm by about 1 mm and nothing flagged it (2026-11-08)."""
     trimesh = pytest.importorskip("trimesh")
