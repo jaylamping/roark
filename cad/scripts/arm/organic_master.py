@@ -27,7 +27,7 @@ WIP = CAD / '_wip' / 'organic-arm' / 'cad'
 
 # (y, x+ half-width, x- half-width, z front, z back, superellipse n); concept A after the flex sweep
 HUB_JOINT = 302.0                      # today's hub disc (Y 302-319.86) stays: the skin starts under it
-UPPER = [(HUB_JOINT, 39.0, 39.0, 39.0, 39.0, 2.0), (294, 38.3, 38.3, 35, 39, 2.2), (284, 35, 35, 29, 38, 2.5),
+UPPER = [(HUB_JOINT, 39.0, 39.0, 39.0, 39.0, 2.0), (294, 38.3, 38.3, 37.5, 39, 2.2), (284, 35, 35, 29, 38, 2.5),
          (266, 29, 29, 17.5, 34, 2.4), (250, 26, 26, 13.5, 30, 2.3), (232, 26, 26, 13.5, 28, 2.2)]
 FORE = [(92, 33.5, 33.5, 33.5, 33.5, 2.0), (108, 35, 35, 34, 34.5, 2.0), (128, 38.5, 38.5, 33, 36.5, 2.2),
         (148, 42.0, 43.0, 30, 38.5, 3.2), (165, 42.51, 43.49, 27, 39, 10.0)]
@@ -161,10 +161,12 @@ def save(d, job):
 # ---- elbow internals (RobStride RS02 drawing: body Ø78.5 x 28, 41.5 overall; output Ø43, 3.5 proud, 6 x M4 x 7 and
 # 3 x Ø4 pins on Ø24; housing 9 x M3 x 8 on Ø73 on the shoulder behind the body; back Ø65)
 RS02_X = dict(back=151.8, shoulder=162.8, front=193.7, output=197.2)
-BULKHEAD = (156.8, 162.8)              # RS02 seat ring, half in each upper-arm shell; 9 x M3 x 12 from the inboard bay
+BULKHEAD = (156.8, 162.8)              # RS02 mounting ring (a separate part, organic_parts.py): screwed to the RS02 on the bench,
+RIB = (154.4, 156.8)                   # then dropped into the halves behind this rib, keyed by two dogs in its notches
+RIB_R0, DOG_PHI, DOG_SPAN = 38.0, (90.0, 270.0), 11.0      # notches straight back and front, so the ring drops in square
 STUB = dict(x0=134.0, r_out=20.0, r_in=16.0)        # hollow inboard stub; 6808 (Ø40 / Ø52 x 7) on X 134-141
 STOP = dict(r0=28.0, r1=36.5, lug_phi=90.0, lug_span=30.0, travel=124.0, depth=4.5)   # 5 mm rim outside the slot
-CAP = dict(r=40.0, recess=1.5, pocket=4.0)       # inboard cap Ø80 over a 4 mm pocket: the flat bundle coils at r 22-36 in one layer
+CAP = dict(r=38.3, recess=1.5, pocket=4.0)       # inboard cap Ø76.6 over a 4 mm pocket: the flat bundle coils at r 22-35 in one layer (seat inside the R6 rim round)
 OUT_HOLES = [(12.0, 30.0 + 60.0 * k) for k in range(6)]          # 6 x M4 on Ø24
 OUT_PINS = [(12.0, 120.0 * k) for k in range(3)]                  # 3 x Ø4 pins on Ø24
 
@@ -200,21 +202,19 @@ def arc_band(d, name, r0, r1, phi0, phi1, x0, x1, cut, n=60):
 
 
 def upper_details(d):
-    # hub seat: a floor ring under today's hub spigot (r 35.8, Y 296-302), 6 x M3 up into inserts in the spigot
-    y_revolve(d, 'HUB_FLOOR', [(30.0, 288.0), (37.0, 288.0), (37.0, 296.0), (30.0, 296.0)])
-    y_revolve(d, 'HUB_SEAT', [(0.0, 295.95), (35.9, 295.95), (35.9, HUB_JOINT + 1), (0.0, HUB_JOINT + 1)], cut=True)
-    with Sk(d, plane(d, 'Y', 292.0, 'HUB_SCREWS_P'), 'HUB_SCREWS') as s:
-        for k in range(6):
-            t = math.radians(30 + 60 * k)
-            s.circle((HX + 33.4 * math.cos(t), 292.0, CZ + 33.4 * math.sin(t)), 1.7)
-    feat(d, s.feat, 'HUB_SCREWS', 10.0, True, mode=MID)
+    # hub seat: today's hub spigot (r 35.8, Y 296-302) sits in a bore; it is held by the two seam bolts through its lugs
+    # (organic_parts.py), as in today's upper arm
+    y_revolve(d, 'HUB_SEAT', [(0.0, 296.0), (35.9, 296.0), (35.9, HUB_JOINT + 1), (0.0, HUB_JOINT + 1)], cut=True)
     # drum ends: the output passes the outboard end wall; the inboard end carries the hollow stub for the 6808
     x_revolve(d, 'OUTPUT_BORE', [(RS02_X['front'], 0), (DRUM['x1'] + 1, 0), (DRUM['x1'] + 1, 22.5), (RS02_X['front'], 22.5)], cut=True)
     x_revolve(d, 'STUB', [(STUB['x0'], STUB['r_in']), (DRUM['x0'] + 1.5, STUB['r_in']), (DRUM['x0'] + 1.5, STUB['r_out']), (STUB['x0'], STUB['r_out'])])
     x_revolve(d, 'STUB_BORE', [(STUB['x0'] - 1, 0), (DRUM['x0'] + 4, 0), (DRUM['x0'] + 4, STUB['r_in']), (STUB['x0'] - 1, STUB['r_in'])], cut=True)
     # RS02 seat: bulkhead ring at the shoulder, bore for the Ø65 back, 9 x M3 on Ø73
-    x_revolve(d, 'BULKHEAD', [(BULKHEAD[0], 32.75), (BULKHEAD[1], 32.75), (BULKHEAD[1], DRUM['r'] - 1.0), (BULKHEAD[0], DRUM['r'] - 1.0)])
-    x_holes(d, 'RS02_SCREWS', [P(36.5, 20.0 + 40.0 * k) for k in range(9)], 1.7, BULKHEAD[0] - 0.5, BULKHEAD[1] + 0.5)
+    x_revolve(d, 'RS02_RIB', [(RIB[0], RIB_R0), (RIB[1], RIB_R0), (RIB[1], DRUM['r'] - 1.0), (RIB[0], DRUM['r'] - 1.0)])
+    for k, ph in enumerate(DOG_PHI):
+        arc_band(d, f'RIB_NOTCH{k}', RIB_R0 - 0.1, DRUM['r'] - 2.9, ph - DOG_SPAN / 2, ph + DOG_SPAN / 2, RIB[0] - 0.1, RIB[1] + 0.1, cut=True)
+    # outboard end wall thickened to X 193.9: the RS02 housing face (r 22.5-39) stops on it, 0.2 mm axial play to the ring
+    x_revolve(d, 'RS02_STOP', [(RS02_X['front'] + 0.2, 22.5), (DRUM['x1'] - 2.0, 22.5), (DRUM['x1'] - 2.0, DRUM['r'] - 1.0), (RS02_X['front'] + 0.2, DRUM['r'] - 1.0)])
     # hard stop: a lug on the drum's inboard end, running in a slot in the inboard cheek
     arc_band(d, 'STOP_LUG', STOP['r0'], STOP['r1'], STOP['lug_phi'] - STOP['lug_span'] / 2, STOP['lug_phi'] + STOP['lug_span'] / 2,
              DRUM['x0'] - STOP['depth'], DRUM['x0'] + 1.5, cut=False)
@@ -226,11 +226,18 @@ def fore_details(d):
     x_revolve(d, 'OUTPUT_BOSS', [(RS02_X['output'], 0), (ox[0] + 0.5, 0), (ox[0] + 0.5, 21.0), (RS02_X['output'], 21.0)])
     x_holes(d, 'OUTPUT_SCREWS', [P(r, a) for r, a in OUT_HOLES], 2.2, RS02_X['output'] - 0.1, ox[1] + 1)
     x_holes(d, 'OUTPUT_CBORES', [P(r, a) for r, a in OUT_HOLES], 3.75, 206.0, ox[1] + 1)
+    # outboard cap: a Ø70 ring in a 1.5 mm recess with a snap groove; the M4 heads show through its middle
+    x_revolve(d, 'OUT_CAP_SEAT', [(ox[1] - 1.5, 0), (ox[1] + 1, 0), (ox[1] + 1, 35.1), (ox[1] - 1.5, 35.1)], cut=True)
+    x_revolve(d, 'OUT_CAP_GROOVE', [(ox[1] - 3.5, 32.4), (ox[1] - 1.4, 32.4), (ox[1] - 1.4, 33.6), (ox[1] - 3.5, 33.6)], cut=True)
     x_holes(d, 'OUTPUT_PINS', [P(r, a) for r, a in OUT_PINS], 2.025, RS02_X['output'] - 0.1, RS02_X['output'] + 6.0)
     # inboard cheek: 6808 bore with a shoulder at X 134, cable pocket under the cap, channel down into the forearm
     x_revolve(d, 'BEARING_BORE', [(STUB['x0'], 0), (ix[1] + 1, 0), (ix[1] + 1, 26.025), (STUB['x0'], 26.025)], cut=True)
     x_revolve(d, 'CAP_SEAT', [(ix[0] - 1, 0), (ix[0] + CAP['recess'], 0), (ix[0] + CAP['recess'], CAP['r'] + 0.1), (ix[0] - 1, CAP['r'] + 0.1)], cut=True)
     x_revolve(d, 'POCKET', [(ix[0] + 1.0, 0), (ix[0] + CAP['recess'] + CAP['pocket'], 0), (ix[0] + CAP['recess'] + CAP['pocket'], CAP['r'] - 1.0), (ix[0] + 1.0, CAP['r'] - 1.0)], cut=True)
+    # break the recess lip where it meets the cheek's R6 rim round (a sharp 66 deg edge otherwise)
+    lip = edges_where(d, lambda p: abs(math.hypot(p[1] - CY, p[2] - CZ) - CAP['r'] - 0.1) < 0.3 and ix[0] - 0.2 < p[0] < ix[0] + 1.2)
+    print('  cap lip edges', len(lip), flush=True)
+    fillet_edges(d, lip, (0.8, 0.6, 0.4), 'CAP_LIP_ROUND')
     # open the shoulder layer's centre (keep r 21.5-28 for the 6808 outer race): the stub ends free and the harness passes from its bore into the pocket
     x_revolve(d, 'STUB_PASS', [(ix[0] + 4.5, 0), (STUB['x0'] + 0.6, 0), (STUB['x0'] + 0.6, 21.5), (ix[0] + 4.5, 21.5)], cut=True)
     with Sk(d, plane(d, 'Z', CZ, 'POCKET_DROP_P'), 'POCKET_DROP') as s:

@@ -1,5 +1,168 @@
 {
   "version": 1,
   "description": "Where each STEP/STL in cad/exports/ came from. Written by tools/cad/record_export.py; checked by tools/cad/check_cad_layout.py (a changed source makes its export stale). Paths are relative to cad/.",
-  "exports": []
+  "exports": [
+    {
+      "export": "exports/forearm/forearm_organic_cap_inboard_left.step",
+      "source": "forearm/forearm_organic_cap_inboard_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214",
+      "sourceSha256": "76a3440c471ef9b59089c118e7a5c57af93b7bdeba8088806ab40fe4527dc23a",
+      "exportSha256": "109b84af4682ec212d2e3f96e3048a22aa0c8ce679b94dd4eff35ff907b7824d",
+      "recorded": "2026-11-10T03:28:27Z"
+    },
+    {
+      "export": "exports/forearm/forearm_organic_cap_inboard_left.STL",
+      "source": "forearm/forearm_organic_cap_inboard_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary",
+      "sourceSha256": "76a3440c471ef9b59089c118e7a5c57af93b7bdeba8088806ab40fe4527dc23a",
+      "exportSha256": "685df20dd78167932f02f3e26d6dc1710d2cd1175222237223de7413bef79fe1",
+      "recorded": "2026-11-10T03:28:26Z"
+    },
+    {
+      "export": "exports/forearm/forearm_organic_cap_outboard_left.step",
+      "source": "forearm/forearm_organic_cap_outboard_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214",
+      "sourceSha256": "25387a29dcf0e355ad7a4e06b64e1d589b0d7bee7dff4d903bb1ac58e17d8e72",
+      "exportSha256": "3d90d281ca62e4c1d4c0f2891135aa761a912ad3fcf69fc8aed4de195945321c",
+      "recorded": "2026-11-10T03:28:27Z"
+    },
+    {
+      "export": "exports/forearm/forearm_organic_cap_outboard_left.STL",
+      "source": "forearm/forearm_organic_cap_outboard_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary",
+      "sourceSha256": "25387a29dcf0e355ad7a4e06b64e1d589b0d7bee7dff4d903bb1ac58e17d8e72",
+      "exportSha256": "83b8944fb7a03fb9f5f39dea38c8e333a4e6741940b350fb3f87f201b558d1e7",
+      "recorded": "2026-11-10T03:28:27Z"
+    },
+    {
+      "export": "exports/forearm/forearm_organic_cheek_inboard_left.step",
+      "source": "forearm/forearm_organic_cheek_inboard_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214",
+      "sourceSha256": "e6fabadae5338546a48d756d90e2b6dce79b812c6040d36e357d2f7b0adbf601",
+      "exportSha256": "0cdadcce947e80122beea050e3e14a219f4988e821d188a0fc9f4935d975daf7",
+      "recorded": "2026-11-10T03:28:27Z"
+    },
+    {
+      "export": "exports/forearm/forearm_organic_cheek_inboard_left.STL",
+      "source": "forearm/forearm_organic_cheek_inboard_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary",
+      "sourceSha256": "e6fabadae5338546a48d756d90e2b6dce79b812c6040d36e357d2f7b0adbf601",
+      "exportSha256": "6de07c77d701bed4586ac69e7933d6b767be4cddbae13ed8d0fcc6246104af2d",
+      "recorded": "2026-11-10T03:28:27Z"
+    },
+    {
+      "export": "exports/forearm/forearm_organic_cheek_outboard_left.step",
+      "source": "forearm/forearm_organic_cheek_outboard_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214",
+      "sourceSha256": "b7489ee3e016a61138b7d9e8902e4e5d85e2b15852d26ac4d0853b9a1d54032c",
+      "exportSha256": "95c8c4e00931bccc4f188354b38a2e518e275c74c98d4a4c9abe9d34863a0511",
+      "recorded": "2026-11-10T03:28:27Z"
+    },
+    {
+      "export": "exports/forearm/forearm_organic_cheek_outboard_left.STL",
+      "source": "forearm/forearm_organic_cheek_outboard_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary",
+      "sourceSha256": "b7489ee3e016a61138b7d9e8902e4e5d85e2b15852d26ac4d0853b9a1d54032c",
+      "exportSha256": "86da56c78be07425d4797a82d50c9a809fd5c1e6385582e9a8423c882fb1681f",
+      "recorded": "2026-11-10T03:28:27Z"
+    },
+    {
+      "export": "exports/forearm/forearm_organic_shell_inboard_left.step",
+      "source": "forearm/forearm_organic_shell_inboard_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214",
+      "sourceSha256": "f2a37a7568e55f80f55152f6806884524e66c9e8fb57613c8f794b8db53fe37b",
+      "exportSha256": "08d32ecc54532724904a3a12163e6046a5901e9f6432cbc0771a600fafe53474",
+      "recorded": "2026-11-10T03:28:28Z"
+    },
+    {
+      "export": "exports/forearm/forearm_organic_shell_inboard_left.STL",
+      "source": "forearm/forearm_organic_shell_inboard_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary",
+      "sourceSha256": "f2a37a7568e55f80f55152f6806884524e66c9e8fb57613c8f794b8db53fe37b",
+      "exportSha256": "d58da34332200be50ff1f77687d1b54207fa9c9232f0c6d8fe08575c242708fe",
+      "recorded": "2026-11-10T03:28:28Z"
+    },
+    {
+      "export": "exports/forearm/forearm_organic_shell_outboard_left.step",
+      "source": "forearm/forearm_organic_shell_outboard_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214",
+      "sourceSha256": "979cb9cc711dc24bb430ce964c9bff97b162363b4d63479b30523efff0c1389a",
+      "exportSha256": "5fcc3aefdaa629c77a23ca985a324d09d2ca94c27395c6533b4258fb810e8e91",
+      "recorded": "2026-11-10T03:28:28Z"
+    },
+    {
+      "export": "exports/forearm/forearm_organic_shell_outboard_left.STL",
+      "source": "forearm/forearm_organic_shell_outboard_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary",
+      "sourceSha256": "979cb9cc711dc24bb430ce964c9bff97b162363b4d63479b30523efff0c1389a",
+      "exportSha256": "15927521e5f4644fd871114cc8466163a8627376256ad02f8756a15b98dcda76",
+      "recorded": "2026-11-10T03:28:28Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_organic_back_left.step",
+      "source": "upper-arm/upper_arm_organic_back_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214",
+      "sourceSha256": "ca25b57a129fbee5c54d22ef34f753a40e4ee3bffd704192aceda1dd893cf542",
+      "exportSha256": "28893906290ac96c241d11466916d026f1678a7f5c82dfc787625b2e2107f971",
+      "recorded": "2026-11-10T03:28:28Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_organic_back_left.STL",
+      "source": "upper-arm/upper_arm_organic_back_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary",
+      "sourceSha256": "ca25b57a129fbee5c54d22ef34f753a40e4ee3bffd704192aceda1dd893cf542",
+      "exportSha256": "7f3ac8dda87ff7bb0918904b417e177f81c77bc72b82de58aaf0dbf91ccf6b74",
+      "recorded": "2026-11-10T03:28:28Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_organic_front_left.step",
+      "source": "upper-arm/upper_arm_organic_front_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214",
+      "sourceSha256": "79f73f9b024d0c3517fcb338f5f14047d5c6a83f4002d1f1b26c25cec565b83d",
+      "exportSha256": "52d901ec1cd06e1b46cfce58d6dd3a35aa362bfd717f6162585e51798183726d",
+      "recorded": "2026-11-10T03:28:28Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_organic_front_left.STL",
+      "source": "upper-arm/upper_arm_organic_front_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary",
+      "sourceSha256": "79f73f9b024d0c3517fcb338f5f14047d5c6a83f4002d1f1b26c25cec565b83d",
+      "exportSha256": "6ba35638767a17e165c7b5158812c78369aad358955d20df6a8530cddcb6bff0",
+      "recorded": "2026-11-10T03:28:28Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_organic_rs02_ring_left.step",
+      "source": "upper-arm/upper_arm_organic_rs02_ring_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP AP214",
+      "sourceSha256": "5aa5f26afd3f387f574fc0382c10c2088ec7944c20b089d58899a4f80e860088",
+      "exportSha256": "da4093a73bcb4cb602577ac8b2cced82c5fe04ec896e0e56e7ea59b0da4a2410",
+      "recorded": "2026-11-10T03:28:29Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_organic_rs02_ring_left.STL",
+      "source": "upper-arm/upper_arm_organic_rs02_ring_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary",
+      "sourceSha256": "5aa5f26afd3f387f574fc0382c10c2088ec7944c20b089d58899a4f80e860088",
+      "exportSha256": "3bf01e2e3dd1fd06ed160072c992c06139fc15e20ce5517f2021ecb011d260a4",
+      "recorded": "2026-11-10T03:28:29Z"
+    }
+  ]
 }
