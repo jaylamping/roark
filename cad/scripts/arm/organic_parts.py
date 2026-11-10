@@ -41,6 +41,7 @@ DIRS = {'upper': CAD / 'upper-arm', 'fore': CAD / 'forearm'}
 CL = 0.1
 SECTOR = (131.0, 190.0)
 R_FULL, R_LAP = 30.0, 38.5
+R_LAP_OUT = 45.0                      # outboard: the disc's inner layer runs out to the skin, so no shell face points down at the drum
 Y_SHELF = 171.5                       # above the saddle fillet, so the split plane doesn't feather it
 SCREW_R, SCREW_PHI = 34.75, (138.0, 152.0, 170.0, 182.0)
 IN = dict(outer=CHEEKS[0][0], inner=CHEEKS[0][1], lap=134.3, floor=M.CHEEKS[0][0] + M.CAP['recess'] + M.CAP['pocket'])  # floor 131.5
@@ -52,6 +53,8 @@ HUB_COLS = [(147.5, 292.0), (193.5, 292.0)]
 HUB_LUGS = [(141.0, 151.75), (189.25, 200.0)]
 HUB_LUG_Y = (288.0, 300.0)
 HUB_LUG_HZ = 5.0
+FA_POSTS = [(143.5, CZ + 13.0), (143.5, CZ - 13.0)]   # (Y, Z): forearm seam posts above the RS00 (top Y 136.4), the harness passes between
+FA_POST_R = 4.5
 HUB_POST_Y = 291.4                    # post top 295.9, just under the spigot (Y 296)
 
 
@@ -135,28 +138,44 @@ def z_cyl(d, name, pts, r, z0, z1, cut):
     return feat(d, s.feat, name, abs(z1 - z0), cut, mode=MID, lo=0.01)
 
 
-_UM = []
+_MESH = {}
+AX = {'Z': (2, CZ, (0, 1)), 'X': (0, HX, (1, 2))}       # axis: (index, seam coordinate, indices of the two other coordinates)
 
 
-def skin_hits(q, sign):
-    """Inner and outer skin depth (along sign, from Z CZ) straight above/below (X, Y) q, from the master mesh."""
-    if not _UM:
+def skin_hits(q, sign, axis='Z', master='upper'):
+    """Inner and outer skin depth (along sign, from the seam plane) through the point q (the two other coordinates)."""
+    if master not in _MESH:
         import trimesh
-        _UM.append(trimesh.load(M.WIP / 'upper_master.stl'))
-    loc, _, _ = _UM[0].ray.intersects_location([[q[0], q[1], CZ]], [[0, 0, sign]])
-    t = sorted((loc[:, 2] - CZ) * sign)
+        _MESH[master] = trimesh.load(M.WIP / f'{master}_master.stl')
+    i, c0, (j, k) = AX[axis]
+    o = [0.0, 0.0, 0.0]
+    o[i], o[j], o[k] = c0, q[0], q[1]
+    dr = [0.0, 0.0, 0.0]
+    dr[i] = sign
+    loc, _, _ = _MESH[master].ray.intersects_location([o], [dr])
+    t = sorted((loc[:, i] - c0) * sign)
     return t[0], t[1]
 
 
-def post_z(d, name, q, sign, z0=CZ, inset=1.0):
+def pt3(axis, a, q):
+    i, _, (j, k) = AX[axis]
+    o = [0.0, 0.0, 0.0]
+    o[i], o[j], o[k] = a, q[0], q[1]
+    return tuple(o)
+
+
+def post_z(d, name, q, sign, z0=None, inset=1.0, axis='Z', master='upper', r=None):
     """A post from z0 out to 'inset' mm inside the outer skin, its end following the skin (offset-from-surface end): the neck
     skin slopes more across a post than the skin is thick, so a flat end either gaps at the centre or breaks out at the rim."""
-    t_in, t_out = skin_hits(q, sign)
-    zo = CZ + sign * t_out
-    area = math.pi * POST_R ** 2
-    want = area * (t_in - abs(z0 - CZ))           # the cavity part it fills (the skin overlap adds nothing)
-    with Sk(d, plane(d, 'Z', z0, name + '_P'), name) as s:
-        s.circle((q[0], q[1], z0), POST_R)
+    r = r or POST_R
+    c0 = AX[axis][1]
+    z0 = c0 if z0 is None else z0
+    t_in, t_out = skin_hits(q, sign, axis, master)
+    zo = c0 + sign * t_out
+    area = math.pi * r ** 2
+    want = area * (t_in - abs(z0 - c0))           # the cavity part it fills (the skin overlap adds nothing)
+    with Sk(d, plane(d, axis, z0, name + '_P'), name) as s:
+        s.circle(pt3(axis, z0, q), r)
     fm = d.FeatureManager
     best = None
     for rev in (False, True):
@@ -166,7 +185,8 @@ def post_z(d, name, q, sign, z0=CZ, inset=1.0):
             s.feat.Select2(False, 0)
             sd = d.SelectionManager.CreateSelectData
             sd.Mark = 1
-            d.Extension.SelectByID2('', 'FACE', q[0] * m, q[1] * m, zo * m, True, 1, NUL, 0)
+            fp = pt3(axis, zo, q)
+            d.Extension.SelectByID2('', 'FACE', fp[0] * m, fp[1] * m, fp[2] * m, True, 1, NUL, 0)
             f = fm.FeatureExtrusion3(True, False, rev, 5, 0, inset * m, inset * m, False, False, False, False, 0, 0, orev, False,
                                      False, False, True, False, True, 0, 0, False)
             if f is None:
@@ -174,7 +194,13 @@ def post_z(d, name, q, sign, z0=CZ, inset=1.0):
             d.ForceRebuild3(False)
             dv = vol(d) - v0
             print(f'   {name} rev={rev} orev={orev}: dv {dv:.0f} (want ~{want:.0f})', flush=True)
-            if abs(dv - want) < 0.1 * want:
+            ia = AX[axis][0]
+            vals = []
+            for fc in (f.GetFaces or []):
+                b = fc.GetBox
+                vals += [b[ia] * 1e3, b[ia + 3] * 1e3]
+            right_way = bool(vals) and (sum(vals) / len(vals) - z0) * sign > 0
+            if abs(dv - want) < 0.1 * want and right_way:
                 f.Name = name
                 return f
             d.EditUndo2(1)
@@ -204,6 +230,24 @@ def upper_half(front):
     finish(d, p, job)
 
 
+def exit_chamfer(d, name, q, sign, axis, master, r0=3.25, w=2.5):
+    """45 deg chamfer where a counterbore leaves the sloped skin: a cone from r0 2 mm inside the skin out to r0 + w + 2
+    1 mm past it, so the hole edge is no knife edge."""
+    t_out = skin_hits(q, sign, axis, master)[1]
+    c0 = AX[axis][1]
+    a0, a1 = c0 + sign * (t_out - 2.0), c0 + sign * (t_out + 1.0 + w)
+    i, _, (j, k) = AX[axis]
+    with Sk(d, plane(d, 'X' if axis == 'Z' else 'Z', q[0] if axis == 'Z' else q[1], name + '_P'), name) as s:
+        prof = [(0.0, a0), (r0, a0), (r0 + 3.0 + w, a1), (0.0, a1)]
+        if axis == 'Z':
+            s.poly([(q[0], q[1] + rr, a) for rr, a in prof])
+            centerline(s, (q[0], q[1], a0 - 5 * sign), (q[0], q[1], a1 + 5 * sign))
+        else:
+            s.poly([(a, q[0] + rr, q[1]) for rr, a in prof])
+            centerline(s, (a0 - 5 * sign, q[0], q[1]), (a1 + 5 * sign, q[0], q[1]))
+    revolve(d, s.feat, name, None, True)
+
+
 def fore_shell(side):
     job = 'inboard' if side == 'in' else 'outboard'
     d, p = open_copy(job)
@@ -211,7 +255,7 @@ def fore_shell(side):
     if side == 'out':
         # the disc: inside r 30 everywhere, and the inner layer of the lap band; the shell keeps the rest
         region_x(d, 'DISC_FULL', disc_region(R_FULL), OUT['inner'] - 3.0, OUT['outer'] + 1.0)
-        region_x(d, 'DISC_LAP', disc_region(R_LAP), OUT['inner'] - 3.0, OUT['lap'])
+        region_x(d, 'DISC_LAP', disc_region(R_LAP_OUT), OUT['inner'] - 3.0, OUT['lap'])
         x_holes(d, 'LAP_HOLES', [P(SCREW_R, a) for a in SCREW_PHI], 1.7, OUT['lap'] - 0.1, OUT['outer'] + 1.0)
         x_holes(d, 'LAP_CBORES', [P(SCREW_R, a) for a in SCREW_PHI], 3.1, OUT['outer'] - 2.0, OUT['outer'] + 1.0)
     else:
@@ -219,6 +263,15 @@ def fore_shell(side):
         region_x(d, 'DISC_LAP', disc_region(R_LAP), IN['floor'] - 0.01, IN['lap'])
         x_holes(d, 'LAP_INSERTS', [P(SCREW_R, a) for a in SCREW_PHI], 2.0, IN['lap'] - 0.1, IN['lap'] + 5.8)      # M3 x 5.7, 1 mm floor ring
         x_holes(d, 'LAP_TIPS', [P(SCREW_R, a) for a in SCREW_PHI], 1.6, IN['lap'] + 5.7, IN['inner'] + 0.1)
+    sg = -1 if side == 'in' else 1
+    for i, q in enumerate(FA_POSTS):
+        post_z(d, f'FA_POST{i}', q, sg, axis='X', master='fore', r=FA_POST_R)
+    if side == 'out':
+        x_holes(d, 'FA_POST_INSERTS', FA_POSTS, 2.0, HX - 0.01, HX + 6.5)
+        x_holes(d, 'FA_POST_PILOTS', FA_POSTS, 1.6, HX + 6.4, HX + 10.0)
+    else:
+        x_holes(d, 'FA_POST_HOLES', FA_POSTS, 1.7, HX - 60.0, HX + 0.5)
+        x_holes(d, 'FA_POST_CBORES', FA_POSTS, 3.25, HX - 60.0, HX - 12.0)   # heads 12 from the seam: M3 x 18 into 5.7
     finish(d, p, job)
 
 
@@ -228,7 +281,7 @@ def disc(side):
     if side == 'out':
         cut_half_space(d, 'X', OUT['inner'] - 5.5, 1, 'PAST_DISC')            # keeps X > 193.5 (output boss and locating bosses)
         region_x(d, 'ROOT_OUTER', root_region(R_FULL), OUT['lap'], OUT['outer'] + 1.0)
-        region_x(d, 'ROOT_INNER', root_region(R_LAP), OUT['inner'] - 6.0, OUT['lap'])
+        region_x(d, 'ROOT_INNER', root_region(R_LAP_OUT), OUT['inner'] - 6.0, OUT['lap'])
         x_holes(d, 'LAP_INSERTS', [P(SCREW_R, a) for a in SCREW_PHI], 2.0, OUT['inner'] - 0.5, OUT['lap'] + 0.1)
     else:
         cut_half_space(d, 'X', IN['inner'] + 0.5, -1, 'PAST_DISC')
@@ -284,6 +337,22 @@ def pin():
     sw.CloseDoc(d.GetTitle)
 
 
+def fea_upper():
+    """Bonded FEA model of the upper arm: the master (halves as one body) with the RS02 ring merged into the drum, so the
+    RS02 loads go in through the ring bore and the housing stop face. The dogs are checked by hand (see RIB_R0)."""
+    sim = CAD / '_sim' / 'upper-arm'
+    sim.mkdir(parents=True, exist_ok=True)
+    p = sim / 'UA_ORGANIC_BONDED_v2.SLDPRT'
+    shutil.copy(M.OUT['upper'], p)
+    e, w = L(), L()
+    d = sw.OpenDoc6(str(p), 1, 1, '', e, w)
+    x_revolve(d, 'RING_BONDED', [(M.BULKHEAD[0], 32.75), (M.BULKHEAD[1], 32.75), (M.BULKHEAD[1], M.DRUM['r'] - M.SHELL_T + 0.05), (M.BULKHEAD[0], M.DRUM['r'] - M.SHELL_T + 0.05)])
+    d.ForceRebuild3(False)
+    print('  bodies', bodies(d), flush=True)
+    d.Save3(1, e, w)
+    sw.CloseDoc(d.GetTitle)
+
+
 def cap(side):
     """Caps: revolved discs with a snap lip; the outboard one is a ring that shows the RS02 output bolt circle."""
     job = 'cap_in' if side == 'in' else 'cap_out'
@@ -321,7 +390,7 @@ def cap(side):
 if __name__ == '__main__':
     jobs = dict(front=lambda: upper_half(True), back=lambda: upper_half(False), inboard=lambda: fore_shell('in'),
                 outboard=lambda: fore_shell('out'), disc_in=lambda: disc('in'), disc_out=lambda: disc('out'),
-                caps=lambda: (cap('in'), cap('out')), ring=ring, pin=pin)
+                caps=lambda: (cap('in'), cap('out')), ring=ring, pin=pin, fea_upper=fea_upper)
     for k in sys.argv[1:] or jobs:
         print('==', k, flush=True)
         jobs[k]()
