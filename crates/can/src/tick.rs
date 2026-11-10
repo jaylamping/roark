@@ -490,6 +490,7 @@ impl BusTick {
             }
             None
         };
+        self.settle_stops(now_ns);
         self.plan_stops(now_ns);
         match accepted {
             Some((batch, Taken::Fresh)) => {

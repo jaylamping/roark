@@ -15,7 +15,7 @@ use robstride::encode::{self, Reporting};
 use crate::error_frame::BusError;
 use crate::tick::{BusTick, DriveStop, Off, Phase, limb_state};
 use crate::timing::DRIVE_TIMEOUT_NS;
-use crate::types::{LimbState, MAX_DRIVES, RearmRefused, Send, SendKind, StopReason};
+use crate::types::{LimbState, RearmRefused, Send, SendKind, StopReason};
 
 impl BusTick {
     /// Stop every limb not already stopping or stopped, for a reason that is the whole bus's.
@@ -95,31 +95,14 @@ impl BusTick {
     /// The stop frames of every stopping limb, every Disable ahead of every reporting off (PLAN.md item 2 Stop:
     /// Disable to every affected drive, then reporting off), so a full queue never costs a Disable for a reporting off.
     /// Disables go to each drive not yet confirmed, inside the confirm window; reporting off to each confirmed drive
-    /// whose silence is over, every tick until the socket takes it. A limb whose stop is over ([`Self::stop_over`]) is
-    /// stopped and sends nothing.
+    /// whose silence is over, every tick until the socket takes it. Called after [`Self::settle_stops`], so a limb
+    /// whose stop is over is stopped and sends nothing.
     pub(crate) fn plan_stops(&mut self, now_ns: u64) {
-        let mut confirming = [false; MAX_DRIVES];
-        let mut stopping = [false; MAX_DRIVES];
-        for limb in 0..self.limbs.len() {
-            let Some(LimbState::Stopping { since_ns }) = limb_state(&self.limbs, limb) else {
-                continue;
-            };
-            if self.stop_over(limb, since_ns, now_ns) {
-                if let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut) {
-                    l.state = LimbState::Stopped;
-                }
-                continue;
-            }
-            if let (Some(c), Some(st)) = (confirming.get_mut(limb), stopping.get_mut(limb)) {
-                *c = now_ns.saturating_sub(since_ns) < self.timing.stop_confirm_ns;
-                *st = true;
-            }
-        }
-        let flag =
-            |table: &[bool; MAX_DRIVES], limb: usize| table.get(limb).copied().unwrap_or(false);
+        let confirm_ns = self.timing.stop_confirm_ns;
         for (slot, d) in self.drives.iter().enumerate() {
             if let Some(d) = d
-                && flag(&confirming, d.limb)
+                && let Some(LimbState::Stopping { since_ns }) = limb_state(&self.limbs, d.limb)
+                && now_ns.saturating_sub(since_ns) < confirm_ns
                 && !d.stop.confirmed()
             {
                 self.sends.push(Send {
@@ -133,7 +116,7 @@ impl BusTick {
         let silence = self.timing.disable_silence_ns;
         for (slot, d) in self.drives.iter().enumerate() {
             if let Some(d) = d
-                && flag(&stopping, d.limb)
+                && let Some(LimbState::Stopping { .. }) = limb_state(&self.limbs, d.limb)
                 && let DriveStop::Confirmed {
                     at_ns,
                     off: Off::Unsent,
@@ -182,7 +165,8 @@ impl BusTick {
             })
     }
 
-    /// At the tick's end: a stopping limb whose stop is over ([`Self::stop_over`]) is stopped.
+    /// At the tick's start, before its stop frames are planned, and at its end: a stopping limb whose stop is over
+    /// ([`Self::stop_over`]) is stopped.
     pub(crate) fn settle_stops(&mut self, now_ns: u64) {
         for limb in 0..self.limbs.len() {
             let Some(LimbState::Stopping { since_ns }) = limb_state(&self.limbs, limb) else {
