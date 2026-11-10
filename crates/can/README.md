@@ -73,9 +73,9 @@ The first reason a limb stopped for stays in its `LimbView`.
 A late wake, ticks a stall slept through, or a backlog (a drain that read past its limit or left frames queued) stop
 every active limb; an idle limb has nothing enabled to stop. That tick only the batch's Disables and reporting off go,
 right late or not, and the rest is held back (`held_batches`), so nothing is enabled on a tick whose reads can't be
-trusted; the batch checks still apply. A limb still idle after such a tick is held: none of its drives' statuses
-counts as fresh after it (`fresh_ns` and `fresh_status` are cleared), so motion waits for a status read on a tick
-that can be trusted.
+trusted; the batch checks still apply. That held tick then clears the freshness its own drain stamped for the drives
+of every limb still idle (`fresh_ns` and `fresh_status`), and a status read after its sends counts again;
+`BusTick::begin` states the rule in full.
 
 A latched bus error (bus-off in an error frame, or any socket failure) sends nothing: there is no bus to send on, so every
 limb is `Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's

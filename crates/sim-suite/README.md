@@ -15,8 +15,9 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   the slack.
 - `exit.rs`: a bus of two active limbs told to exit with control's snapshot ring full stops every limb and returns
   once the ring takes a snapshot with every limb stopped, once control drops the ring, or after its wait when control
-  never reads again; and a bus that ends counts the slow results control's ring can't take. Its tests and `bus.rs`'s
-  slow-request test share `can0`, one at a time (`.config/nextest.toml`).
+  never reads again, each time at the next tick's drain; a bus of two stopping limbs with no time to collect records
+  its last reporting off through that drain; and a bus that ends counts the slow results control's ring can't take.
+  Its tests and `bus.rs`'s slow-request test share `can0`, one at a time (`.config/nextest.toml`).
 
 The bus loop's fault tests (PLAN item 4, "Done when") join it as the safety layer lands.
 
