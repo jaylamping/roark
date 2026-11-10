@@ -140,6 +140,16 @@ enum SlowState {
     Done(SlowOutcome),
 }
 
+impl SlowState {
+    /// Handed to the shell or taken by the socket, with no result yet: the one exchange a bus has in flight.
+    const fn in_flight(self) -> bool {
+        match self {
+            Self::Sending | Self::Waiting => true,
+            Self::Queued | Self::Done(_) => false,
+        }
+    }
+}
+
 impl BusTick {
     /// Queue a slow request.
     ///
@@ -197,11 +207,7 @@ impl BusTick {
     /// request goes. [`Self::open_slack`] has cancelled those that may no longer go; one found refused here all the
     /// same is cancelled and nothing goes. Report what the socket did with [`Self::slow_sent`].
     pub fn slow_send(&mut self, now_ns: u64) -> Option<Frame> {
-        let in_flight = self
-            .slow
-            .iter()
-            .flatten()
-            .any(|e| matches!(e.state, SlowState::Sending | SlowState::Waiting));
+        let in_flight = self.slow.iter().flatten().any(|e| e.state.in_flight());
         let after_collect = now_ns >= self.scheduled_ns.saturating_add(self.timing.collect_ns);
         let next_tick = self.scheduled_ns.saturating_add(self.timing.period_ns);
         if self.held_tick == Some(self.tick)
@@ -278,22 +284,18 @@ impl BusTick {
             .slow
             .iter()
             .enumerate()
-            .filter_map(|(i, e)| match e {
-                Some(SlowEntry {
-                    seq,
-                    request,
-                    state: SlowState::Done(outcome),
-                    ..
-                }) => Some((
-                    i,
-                    *seq,
-                    SlowResult {
-                        tag: request.tag,
-                        slot: request.slot,
-                        outcome: *outcome,
-                    },
-                )),
-                Some(_) | None => None,
+            .filter_map(|(i, e)| {
+                let e = e.as_ref()?;
+                let outcome = match e.state {
+                    SlowState::Done(outcome) => outcome,
+                    SlowState::Queued | SlowState::Sending | SlowState::Waiting => return None,
+                };
+                let result = SlowResult {
+                    tag: e.request.tag,
+                    slot: e.request.slot,
+                    outcome,
+                };
+                Some((i, e.seq, result))
             })
             .min_by_key(|(_, seq, _)| *seq)
             .map(|(i, _, r)| (i, r))?;
@@ -331,9 +333,7 @@ impl BusTick {
 
     /// At a tick's start: a slow request still unanswered has timed out.
     pub(crate) fn time_out_slow(&mut self) {
-        if let Some(i) =
-            self.slow_index(|e| matches!(e.state, SlowState::Sending | SlowState::Waiting))
-        {
+        if let Some(i) = self.slow_index(|e| e.state.in_flight()) {
             self.finish_slow(i, SlowOutcome::TimedOut);
         }
     }
