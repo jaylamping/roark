@@ -35,11 +35,14 @@ stops an active bus, and an idle bus sends only its batch's Disables and reporti
 
 A stop (requested, control silent, a late wake, expired feedback, a bad batch, or a backlog) sends Disable to every
 drive, re-sends it each tick to every drive that hasn't confirmed, and sends active reporting off to each confirmed
-drive once its post-Disable silence is over (50 ms after its confirmation), again each tick until the socket takes it.
-A drive confirms with a Reset-mode status read after the stop's Disable; one that never confirms is still getting a
-Disable every tick, so it gets no reporting off. Disables go out for 100 ms; the bus is `Stopped` once every drive
-has confirmed and taken its reporting off, or once the 100 ms have passed and no confirmed drive still waits for its
-reporting off. A drive waits until its reporting off has been tried and a period has passed since it fell due.
+drive once its post-Disable silence is over (50 ms after its confirmation). A drive confirms with a Reset-mode status
+read after the stop's Disable, at any point while the bus is still stopping; one that never confirms is still getting
+a Disable every tick, so it gets no reporting off. Disables go out for 100 ms, and inside them a reporting off the
+socket refuses is tried again each tick. After them the stop runs on only while a confirmed drive's reporting off is
+untried, or tried but less than a period past its due time; so one that falls due after the 100 ms is tried only
+until a period past its due time, typically once, and one the socket refuses is recorded unsent. The bus is `Stopped`
+once every drive has confirmed and taken its reporting off, or once the 100 ms have passed and no confirmed drive's
+reporting off is still untried or inside that period.
 
 A latched bus error (bus-off in an error frame, or any socket failure) sends nothing: there is no bus to send on, so the bus is
 `Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's

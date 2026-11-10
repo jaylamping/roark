@@ -30,8 +30,9 @@ pub struct Timing {
     /// The oldest a drive's last fresh status may be when motion is sent to it (three periods: 12 ms at 250 Hz, PLAN.md
     /// item 6 Silence row).
     pub feedback_limit_ns: u64,
-    /// How long a stop sends Disables for each drive's Disable to be confirmed (100 ms, PLAN.md item 2 Silence windows);
-    /// drives unconfirmed by then stay so. A drive confirmed in it still gets its reporting off after its silence.
+    /// How long a stop re-sends Disable to each drive not yet confirmed (100 ms, PLAN.md item 2 Silence windows). A
+    /// Reset read while the bus is still stopping confirms a drive even after it, and a confirmed drive still gets its
+    /// reporting off after its silence.
     pub stop_confirm_ns: u64,
     /// How long a drive drops frames after a Disable; its reporting-off waits this long after its confirmation, and a
     /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
@@ -366,7 +367,7 @@ pub struct DriveView {
     pub observed: Option<Observed>,
     /// When its last fresh status was read: the first status after a command the socket took. Freshness, not
     /// acknowledgement: the protocol has no sequence numbers, so which command a status answers can't be proven. Read
-    /// time, not arrival: it can trail the kernel's receipt by up to period - collect + send window
+    /// time, not arrival: on an active bus it can trail the kernel's receipt by up to period - collect + send window
     /// (units-and-frames.md section 5).
     pub fresh_ns: Option<u64>,
     /// Whether it answered this tick's command by the collect deadline.
@@ -430,7 +431,8 @@ pub struct Snapshot {
     pub state: BusState,
     /// Why it stopped, if it has.
     pub stop: Option<StopReason>,
-    /// The first bus error that latched (bus-off, interface down or gone), even if the bus was already stopping.
+    /// The first bus error that latched (bus-off from an error frame, or any socket failure passed to `lost_bus`), even
+    /// if the bus was already stopping.
     pub bus_error: Option<BusError>,
     /// No latched bus error and not error-passive: the recording's `valid` flag (logging.md section 8.2).
     pub healthy: bool,

@@ -104,11 +104,12 @@ The values and the loader's checks are in [PLAN item 1](../PLAN.md#1-the-skeleto
   exception without a measurement of its own.
 - CAN frames carry the **kernel RX timestamp** in the recording, not the time the user-space code got round to reading
   them. The bus tick matches replies and ages feedback on the monotonic time the bus thread read the frame instead
-  (can.md section 2), because the kernel's stamp is wall-clock and can step. Reading trails arrival by at most the gap
-  from the collect deadline to the close of the next tick's send window (period - collect + send window: 2.6 ms at
-  250 Hz); a later wake is a late wake, which stops an active bus and sends no command on an idle one. So a status can be that much older than its `fresh_ns`: the
-  three-period feedback limit is 12 to 14.6 ms of real age, well inside the drives' 50 ms timeout. The real adapter's
-  queue age is measured at PLAN step 8.
+  (can.md section 2), because the kernel's stamp is wall-clock and can step. On an active bus, reading trails arrival by
+  at most the gap from the collect deadline to the close of the next tick's send window (period - collect + send
+  window: 2.6 ms at 250 Hz), since a later wake stops it. So on an active bus a status can be that much older than its
+  `fresh_ns`: at 250 Hz the three-period feedback limit is 12 to 14.6 ms of real age, well inside the drives' 50 ms
+  timeout. An idle bus runs on after a late wake, sending only its batch's Disables and reporting off that tick, so its
+  reads can trail by more. The real adapter's queue age is measured at PLAN step 8.
 - Durations in logs use the same suffix rule as everything else (`latency_us`, `age_ms`).
 
 ## 6. Identity

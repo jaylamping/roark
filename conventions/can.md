@@ -78,8 +78,8 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   traced exactly this to a duplicate sender).
 - **Only frames on the allowlist** (PLAN item 2) can be built for transmit; the check lives in the codec so nothing else can
   bypass it.
-- **A TX echo isn't proof the frame reached the wire** (PLAN item 3). Latency is measured from RX timestamps of replies, and
-  liveness from replies, never from echoes.
+- **A TX echo isn't proof the frame reached the wire** (PLAN item 3). Latency in the recording is measured from the
+  kernel RX timestamps of replies, and liveness from replies, never from echoes.
 
 ### Receive
 
@@ -90,6 +90,8 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   virtual bus is unbounded by default; ours isn't).
 - **Liveness comes from replies to commands,** not from any traffic on the bus. A drive is alive if it answered this tick's
   command.
+- **The tick matches replies and ages feedback on the monotonic time the bus thread read the frame;** the recording
+  carries the kernel RX stamp. **Why:** the kernel's stamp is wall-clock and can step.
 
 ### Errors and bus-off
 
