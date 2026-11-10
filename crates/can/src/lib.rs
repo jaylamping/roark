@@ -6,6 +6,8 @@ mod batch;
 mod bus;
 mod error_frame;
 mod read;
+#[cfg(target_os = "linux")]
+mod slack;
 mod slow;
 mod stop;
 #[cfg(target_os = "linux")]

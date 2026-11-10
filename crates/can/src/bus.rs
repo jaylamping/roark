@@ -16,11 +16,11 @@ use socketcan::{CanDataFrame, CanSocket, EmbeddedFrame, ExtendedId, Socket, Sock
 use telemetry::{BusInfo, BusRecorder, Epoch, TickBatch, TimestampSource};
 
 use crate::error_frame::BusError;
-use crate::slow::{SlowOutcome, SlowRefusal, SlowRequest, SlowResult};
-use crate::sys;
+use crate::slow::{SlowRequest, SlowResult};
 use crate::tick::BusTick;
 use crate::timing::Timing;
 use crate::types::{BusDrive, CommandBatch, ConfigError, Drain, SendList, SendOutcome, Snapshot};
+use crate::{slack, sys};
 
 /// The most frames a tick's drain may find before the send. More than that queued means the thread can't tell what the
 /// bus said in time, so it stops (1 Mbit/s carries about 8,000 frames a second: 32 a tick at 250 Hz).
@@ -261,7 +261,7 @@ fn is_vcan(bus: &str) -> Result<bool, String> {
 }
 
 /// The bus's clocks: the loop's schedule on `CLOCK_MONOTONIC` (absolute sleeps) and the session's epoch for stamps.
-struct Clock {
+pub(crate) struct Clock {
     start: Instant,
     start_ts: TimeSpec,
     epoch: Epoch,
@@ -320,7 +320,7 @@ impl Clock {
         self.start + Duration::from_nanos(n.saturating_mul(period_ns))
     }
 
-    fn ns(&self, at: Instant) -> u64 {
+    pub(crate) fn ns(&self, at: Instant) -> u64 {
         self.epoch.ns(at)
     }
 }
@@ -330,7 +330,7 @@ impl Clock {
     clippy::disallowed_methods,
     reason = "the shell is where the bus reads its clock"
 )]
-fn mono_now() -> Instant {
+pub(crate) fn mono_now() -> Instant {
     Instant::now()
 }
 
@@ -410,7 +410,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         Err(e) => {
             outcome.error = Some(e);
             outcome.slow_results_dropped =
-                end_slow(&mut tick, &mut links.requests, &mut links.results);
+                slack::end_slow(&mut tick, &mut links.requests, &mut links.results);
             return outcome;
         }
     };
@@ -488,7 +488,7 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             break;
         }
         // The slack after the collect deadline: control's slow requests, one exchange at a time.
-        slow(
+        slack::slow(
             socket,
             &clock,
             &mut tick,
@@ -499,7 +499,8 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         leaving = exit_wait.done(&snap, taken, exiting, links.snapshots.is_abandoned());
         n += 1;
     }
-    outcome.slow_results_dropped = end_slow(&mut tick, &mut links.requests, &mut links.results);
+    outcome.slow_results_dropped =
+        slack::end_slow(&mut tick, &mut links.requests, &mut links.results);
     outcome
 }
 
@@ -533,7 +534,7 @@ fn send_all(
 }
 
 /// The socket failed: the tick latches the bus lost, and the first error is kept for [`BusExit`].
-fn lose(tick: &mut BusTick, outcome: &mut BusExit, e: io::Error) {
+pub(crate) fn lose(tick: &mut BusTick, outcome: &mut BusExit, e: io::Error) {
     tick.lost_bus(bus_error(&e));
     outcome.error.get_or_insert(e);
 }
@@ -624,95 +625,9 @@ fn take(clock: &Clock, tick: &mut BusTick, batch: &mut TickBatch, received: sys:
     let _ = batch.push(received.frame);
 }
 
-/// Open the slack (cancelling and expiring queued requests), hand back the results the tick holds (freeing their
-/// slots), queue the slow requests that fit, send one if the tick allows, and hand every new result back. A full
-/// result ring drops the result and counts it; the requester times out. A failed write loses the bus, as in the
-/// tick's sends.
-fn slow(
-    socket: &CanSocket,
-    clock: &Clock,
-    tick: &mut BusTick,
-    requests: &mut Consumer<SlowRequest>,
-    results: &mut Producer<SlowResult>,
-    outcome: &mut BusExit,
-) {
-    tick.open_slack();
-    hand_back(tick, results);
-    // Bounded by the ring: a refused request takes no slot, so room alone wouldn't end the loop.
-    for _ in 0..requests.buffer().capacity() {
-        if tick.slow_room() == 0 {
-            break;
-        }
-        let Ok(request) = requests.pop() else {
-            break;
-        };
-        if let Err(refusal) = tick.submit(request) {
-            refuse(tick, results, request, refusal);
-        }
-    }
-    // Read once the slack's own work is done, so whether the reply still fits is judged as near the write as can be.
-    let now_ns = clock.ns(mono_now());
-    if let Some(frame) = tick.slow_send(now_ns) {
-        let result = match write(socket, &frame) {
-            Ok(result) => result,
-            Err(e) => {
-                lose(tick, outcome, e);
-                SendOutcome::Failed
-            }
-        };
-        tick.slow_sent(result, clock.ns(mono_now()));
-    }
-    hand_back(tick, results);
-}
-
-/// Every result the tick holds, onto control's ring; a full ring drops the result and counts it.
-fn hand_back(tick: &mut BusTick, results: &mut Producer<SlowResult>) {
-    while let Some(result) = tick.take_slow_result() {
-        if results.push(result).is_err() {
-            tick.slow_result_dropped();
-        }
-    }
-}
-
-/// The thread is ending: every slow request still held or still in the ring gets its one result (crates/can/README.md,
-/// Slow requests). Returns every result dropped over the thread's run, these included, for [`BusExit`]: no snapshot
-/// comes after these; the requester times out.
-fn end_slow(
-    tick: &mut BusTick,
-    requests: &mut Consumer<SlowRequest>,
-    results: &mut Producer<SlowResult>,
-) -> u64 {
-    let refusal = tick.end_slow();
-    hand_back(tick, results);
-    for _ in 0..requests.buffer().capacity() {
-        let Ok(request) = requests.pop() else {
-            break;
-        };
-        refuse(tick, results, request, refusal);
-    }
-    tick.counters.slow_results_dropped
-}
-
-/// Request `request`'s one result, a refusal, onto control's ring; a full ring drops it and counts it.
-fn refuse(
-    tick: &mut BusTick,
-    results: &mut Producer<SlowResult>,
-    request: SlowRequest,
-    refusal: SlowRefusal,
-) {
-    let refused = SlowResult {
-        tag: request.tag,
-        slot: request.slot,
-        outcome: SlowOutcome::Refused(refusal),
-    };
-    if results.push(refused).is_err() {
-        tick.slow_result_dropped();
-    }
-}
-
 /// Write one frame, once. A full queue drops it (never retried, can.md section 2). Any other failure is an error that
 /// loses the bus: the socket can't be trusted to carry the stop either, and the errno is kept for [`BusExit`].
-fn write(socket: &CanSocket, frame: &Frame) -> io::Result<SendOutcome> {
+pub(crate) fn write(socket: &CanSocket, frame: &Frame) -> io::Result<SendOutcome> {
     let Some(id) = ExtendedId::new(frame.id()) else {
         return Ok(SendOutcome::Failed);
     };
