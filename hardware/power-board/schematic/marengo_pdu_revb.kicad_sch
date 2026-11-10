@@ -8577,7 +8577,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Package_SO:MSOP-10_3x3mm_P0.5mm"
+		(property "Footprint" "marengo_revb:MSOP-10_3x3mm_P0.5mm_TI"
 			(at 63.5 114.3 0)
 			(effects
 				(font
@@ -10205,7 +10205,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Package_SO:HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm"
+		(property "Footprint" "marengo_revb:HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm_TI"
 			(at 63.5 199.39 0)
 			(effects
 				(font
@@ -17769,7 +17769,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Package_SO:MSOP-10_3x3mm_P0.5mm"
+		(property "Footprint" "marengo_revb:MSOP-10_3x3mm_P0.5mm_TI"
 			(at 190.5 469.9 0)
 			(effects
 				(font

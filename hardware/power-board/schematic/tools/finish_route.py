@@ -44,7 +44,7 @@ class Router:
             k=float(os.getenv('FCOST')); self.step_cost=lambda net,L,p,q: k if L==CU[0] else 1.0
         self.collect_all = False   # escape_probe.py: free() lists every blocker instead of stopping at the first
         self.fine = []; self.fineshape = []
-        for ref in os.getenv('FINE','U1,U2,U7').split(','):   # the .kicad_dru fine-pitch courtyards
+        for ref in os.getenv('FINE','U1').split(','):   # the .kicad_dru fine-pitch courtyards
             f = self.b.FindFootprintByReference(ref)
             self.fine.append(self.bb(f.GetCourtyard(pcbnew.F_CrtYd).BBox()))
             self.fineshape.append(pcbnew.SHAPE_POLY_SET(f.GetCourtyard(pcbnew.F_CrtYd)))
@@ -78,7 +78,7 @@ class Router:
     @staticmethod
     def bb(b): return MM(b.GetLeft()), MM(b.GetTop()), MM(b.GetRight()), MM(b.GetBottom())
     def incy(self, shape, bb):
-        """the fine-pitch courtyards (U1/U2/U7) the copper itself enters, as the .kicad_dru intersectsCourtyard() tests
+        """U1's courtyard (the .kicad_dru estop_at_U1 scope), if the copper itself enters it, as the .kicad_dru intersectsCourtyard() tests
         (the callers ask on F.Cu only, and never for a pour, as the rules do);
         a bounding-box overlap alone would relax the clearance for a long diagonal that only passes near the courtyard"""
         out = set()
@@ -128,7 +128,7 @@ class Router:
                 if n==net and not kind.startswith('keepout'): continue
                 if kind=='zone' and ((via and n=='/VBUS') or os.getenv('SOFTZ')=='1'): continue
                 cl = .001 if kind.startswith('keepout') else domains.clearance(net,n,L in OUT)
-                if not via and cy & ocy and not kind.startswith('keepout'): cl=min(cl,.15)
+                if not via and cy & ocy and not kind.startswith('keepout'): cl=min(cl,.2)   # U1's courtyard: the E-stop rule gives way to the pin gap
                 if sh.Collide(shape, IU(cl+MARGIN)):
                     if diagnostics is not None: diagnostics.add((kind,n,uid,cl))
                     if not self.collect_all: return False

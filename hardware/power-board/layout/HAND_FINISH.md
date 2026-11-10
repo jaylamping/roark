@@ -11,8 +11,9 @@ copper". [open_nets.csv](open_nets.csv) lists the open connections: only its hea
 - Don't unlock or drag locked tracks: the port and U8 templates, the gate drives and the Kelvin pairs are locked. Change a
   template in its script (port_copper.py, u8_block.py) and run it with `MODE=sync`; put any other hand-laid copper in
   schematic/tools/hand_laid.specs and lay it with lay_path.py.
-- E-stop nets (ESTOP class) keep 1.5 mm from 54 V copper; the DRC holds it, inside U8's courtyard too. Only inside U1's,
-  U2's and U7's courtyards, and only between F.Cu pads, tracks and vias, 0.15 mm applies.
+- E-stop nets (ESTOP class) keep 1.5 mm from 54 V copper; the DRC holds it. The one exception is inside U1's courtyard,
+  between F.Cu pads, tracks and vias, where U1's own UVLO and SH_P pins are 0.2 mm apart.
+- Nothing closer than 0.2 mm anywhere (JLCPCB's minimum for 2 oz outer copper); there is no fine-pitch rule.
 - No tracks on In1 or In4. No via in or touching a signal pad (the vias in the power pads and under the FET tabs are the
   filled and capped ones). No via of another net in a MID pour, and at most 2 vias on a gate net: route_checks checks 7
   and 8 pin the excepted vias to their coordinates.

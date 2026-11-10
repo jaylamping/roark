@@ -229,19 +229,19 @@ that is never coated must not go on the pack.
 - **DRC rules** (layout/marengo_pdu_revb.kicad_dru; a later rule wins in KiCad):
   - `estop_to_54v`: 1.5 mm from net class ESTOP to net class HV54 on every layer (classes set by
     schematic/tools/handfinish_prep.py from schematic/tools/domains.py).
-  - **Fine-pitch footprints:** U1 and U7 (LM5069, MSOP-10 0.5 mm) and U2 (TPS7A4001, HVSSOP-8) put their own pads
-    0.15 mm apart, so **only clearances between F.Cu pads, tracks and vias that enter that IC's courtyard** (its own
-    pads, and each pin's first escape segment) drop to 0.15 mm:
-    `(rule fine_pitch_U1 (layer "F.Cu") (constraint clearance (min 0.15mm)) (condition "A.Type != 'Zone' && B.Type != 'Zone' && ((A.memberOfFootprint('U1') && B.intersectsCourtyard('U1')) || (B.memberOfFootprint('U1') && A.intersectsCourtyard('U1')) || (A.intersectsCourtyard('U1') && B.intersectsCourtyard('U1')))"))`,
-    and the same for U2 and U7. The rule is limited to F.Cu and never applies to a pour (2026-11-10): KiCad's courtyard
-    test is true for copper under the courtyard on any layer and for a whole pour that touches it, so before that
-    limit the inner planes and the GND fill came within 0.15 mm of tracks passing under or leaving these courtyards.
-  - **U8 has no fine-pitch rule** (removed 2026-11-10). It had one from 2026-11-09, which also let E-stop copper come
-    within 0.15 mm of 54 V copper inside its courtyard. Since U8 was turned (E-stop row north, 54 V row south,
-    schematic/tools/u8_block.py) nothing needs it: its pads are 0.2 mm apart, and DRC is clean with the 1.5 mm
-    E-stop rule and the 0.2 mm default inside U8's courtyard.
-  - Outside the courtyards, E-stop copper stays at 1.5 mm from 54 V, and 54 V domains at 0.2 mm (coated).
-    schematic/tools/route_checks.py tests the same scope, on the real shapes.
+  - **No fine-pitch rule; nothing on the board is closer than 0.2 mm** (2026-11-10). JLCPCB's capability page gives
+    0.2 mm track and space for 2 oz outer copper, and KiCad's library footprints for U1 and U7 (LM5069, MSOP-10) and
+    U2 (TPS7A4001, HVSSOP-8) leave 0.15 mm between pads (0.35 mm pads at 0.5 mm pitch, 0.5 mm at 0.65 mm). TI's land
+    patterns for these packages (DGS and DGN) draw the pads 0.30 and 0.45 mm wide, so the project library now holds
+    copies at those widths (`marengo_revb:MSOP-10_3x3mm_P0.5mm_TI`, `...HVSSOP-8-..._TI`, written by
+    schematic/gen/genfp.py and named in the schematic); schematic/tools/fine_pitch_pads.py brought the routed board to
+    them. The 23 gaps of 0.15 mm are gone: 17 by the narrower pads, 6 by re-laying U7's BRK_P and U2's FB_CTL escapes.
+    The three courtyard rules at 0.15 mm are removed, as U8's was when its block was turned
+    (schematic/tools/u8_block.py).
+  - **One package-set rule remains, `estop_at_U1`:** U1's UVLO pin (E-stop) is 0.2 mm from its SH_P pin and 0.7 mm
+    from SH_N (54 V). Between F.Cu pads, tracks and vias inside U1's courtyard the 1.5 mm rule gives way to the 0.2 mm
+    default; never for a pour, never on another layer. schematic/tools/route_checks.py tests the same scope on the
+    real shapes.
   - U1's UVLO pin sits between SH_P and the GND pins. schematic/tools/route_u1.py therefore draws U1's escapes as single straight
     segments: SH_P and SH_N straight out to RS1, and UVLO inward to a via under the body.
 - **Holes:** no copper within 2 mm of the heatsink screw holes HS1/HS2 (the screw and the heatsink aren't insulated from
@@ -314,7 +314,7 @@ Rule exceptions and open items on this board, each tested or bounded by a check:
 | 2 | G2 has 3 vias (gate nets: 2) and is 55.8 mm long | (149.9, 160.19), (130.2, 167.0), (125.6, 139.8) | as 1 | route_checks 8: exactly these three (domains.GATE_VIA_OK) |
 | 3 | GATE_A has 3 vias, one inside the MID outline at Q8's gate | (132.0, 141.46), (168.55, 158.85), (168.55, 164.75) | from the staged routing; not changed | route_checks 7, 8: pinned |
 | 4 | GA2 has a via inside the MID outline, in the pour's dead tip beside U8 beyond the tabs | (167.95, 157.0) | not changed | route_checks 7: pinned |
-| 5 | Fine-pitch courtyards: 0.15 mm between F.Cu pads, tracks and vias inside U1's, U2's and U7's courtyards (not pours, not inner layers): 23 gaps, 17 of them between the footprints' own pads. U8's rule is removed | .kicad_dru | **open before fab:** JLC's page gives 0.2 mm track and space for 2 oz outer copper, so narrow these pads to 0.30 mm (every gap then 0.2 mm, the rules can go) or get JLC's yes | DRC, route_checks 1/2 |
+| 5 | U1's UVLO pin (E-stop) is 0.2 mm from its SH_P pin: inside U1's courtyard, F.Cu pads, tracks and vias keep 0.2 mm instead of 1.5 mm. No clearance under 0.2 mm is left anywhere (the fine-pitch rules are removed, pads at TI's land-pattern widths) | .kicad_dru `estop_at_U1` | package-set; in force | DRC, route_checks 1/2 |
 | 6 | Inner GND planes and fills at 0.3 mm zone clearance (outer fills 0.6 mm); the VBUS pours on In2/In3 at 0.25 mm | In1-In4 | accepted in the project thread, 2026-11-10 | route_checks 6 |
 | 7 | Signal and GND vias pass through the L6 VBUS stem, 18 of them in the band X 130-160, Y 180-190 | under the meter blocks and the port blocks | band rule: no new ones | pour_width.py (18 at most; the stem's rise) |
 | 8 | Masked copper (the VBUS stem, the vias through it, GND fill) inside the heatsink zone on L6; bare copper only at the ten FET pads, under an insulating pad that is the only insulation there | X -33..33, Y 200-305 | the rule as the board meets it: Joey to confirm, and to choose a pad with a rated breakdown voltage (FET copper, above) | heatsink_pads.py MODE=check, DRC's solder-mask bridge check |

@@ -1,28 +1,16 @@
 (version 1)
-# Fine-pitch ICs whose footprint puts pads 0.15 mm apart: U1 and U7 (LM5069, MSOP-10 0.5 mm) and U2 (TPS7A4001,
-# HVSSOP-8 0.65 mm with its large pads). Only clearances between copper that enters the IC's courtyard (its own pads, and
-# the first escape segment of each pin, drawn straight out of the courtyard) drop to 0.15 mm; everything else keeps the
-# defaults. U8 (TPS48100) had the same rule until 2026-11-10; turned with its E-stop row north and its 54 V row south
-# (schematic/tools/u8_block.py) it doesn't need one, so the 1.5 mm E-stop rule holds inside its courtyard too.
-# The rules apply on F.Cu only (where the pads are) and never to a pour: a courtyard test is true for anything under the
-# courtyard on any layer, and for a whole pour that touches it, so without these two limits the inner planes and the
-# GND fill came within 0.15 mm of tracks that pass under or leave the courtyard (found by route_checks.py, 2026-11-10).
-# The 54 V domain spacing is checked by tools/route_checks.py and tools/hv_spacing.py; tools/grid_route.py and
-# tools/finish_route.py route to the same rule (FINE, courtyards).
-# E-stop safety nets keep 1.5 mm to 54 V copper on every layer (LAYOUT_RULES.md, schematic/tools/domains.py); the fine-pitch
-# rules below come later in this file, so they win inside U1/U2/U7's courtyards
+# No fine-pitch rule: U1, U7 (MSOP-10) and U2 (HVSSOP-8) have their pads at TI's land-pattern width (0.30 and 0.45 mm,
+# schematic/tools/fine_pitch_pads.py), so every gap is at least the 0.2 mm default, which is also JLCPCB's minimum
+# space for 2 oz outer copper. Until 2026-11-10 these three had a 0.15 mm courtyard rule, and U8 one until its block
+# was turned (schematic/tools/u8_block.py).
+# E-stop safety nets keep 1.5 mm to 54 V copper on every layer (LAYOUT_RULES.md, schematic/tools/domains.py)
 (rule estop_to_54v
   (constraint clearance (min 1.5mm))
   (condition "A.hasNetclass('ESTOP') && B.hasNetclass('HV54')"))
-(rule fine_pitch_U1
+# U1 (LM5069): the UVLO pin (E-stop class) is pin 3, 0.2 mm from SH_P on pin 2 and 0.7 mm from SH_N on pin 1 (54 V
+# class). The package sets that, so between F.Cu pads, tracks and vias inside U1's courtyard the 1.5 mm rule gives way to
+# the 0.2 mm default. Never a pour, never another layer. This rule comes later in the file, so it wins there.
+(rule estop_at_U1
   (layer "F.Cu")
-  (constraint clearance (min 0.15mm))
-  (condition "A.Type != 'Zone' && B.Type != 'Zone' && ((A.memberOfFootprint('U1') && B.intersectsCourtyard('U1')) || (B.memberOfFootprint('U1') && A.intersectsCourtyard('U1')) || (A.intersectsCourtyard('U1') && B.intersectsCourtyard('U1')))"))
-(rule fine_pitch_U2
-  (layer "F.Cu")
-  (constraint clearance (min 0.15mm))
-  (condition "A.Type != 'Zone' && B.Type != 'Zone' && ((A.memberOfFootprint('U2') && B.intersectsCourtyard('U2')) || (B.memberOfFootprint('U2') && A.intersectsCourtyard('U2')) || (A.intersectsCourtyard('U2') && B.intersectsCourtyard('U2')))"))
-(rule fine_pitch_U7
-  (layer "F.Cu")
-  (constraint clearance (min 0.15mm))
-  (condition "A.Type != 'Zone' && B.Type != 'Zone' && ((A.memberOfFootprint('U7') && B.intersectsCourtyard('U7')) || (B.memberOfFootprint('U7') && A.intersectsCourtyard('U7')) || (A.intersectsCourtyard('U7') && B.intersectsCourtyard('U7')))"))
+  (constraint clearance (min 0.2mm))
+  (condition "A.Type != 'Zone' && B.Type != 'Zone' && A.intersectsCourtyard('U1') && B.intersectsCourtyard('U1')"))

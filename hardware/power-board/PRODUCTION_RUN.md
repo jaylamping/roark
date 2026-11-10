@@ -235,10 +235,8 @@ Hot air is for rework only (removing or reseating a part). Joey's low-power gun 
    - Outer copper 2 oz, inner 0.5 oz; surface finish OSP; solder mask on both sides with the ten openings on the
      bottom (B.Mask) left as drawn: they are the heatsink pads, not an error. Answer "keep as designed" if JLC asks.
    - **Minimum spacing:** JLC's capability page gives 0.2 mm (8 mil) track and space for 2 oz outer copper. The board
-     has 23 gaps of 0.15 mm on the top side, all at U1, U7 (MSOP-10) and U2 (HVSSOP-8): 17 between the footprints' own
-     pads and 6 at their first escape tracks. Before ordering, either narrow those pads to 0.30 mm (then every gap is
-     0.2 mm and the fine-pitch DRC rules can go) or get JLC's written yes for these three footprints (open item;
-     [LAYOUT_RULES.md](LAYOUT_RULES.md), exception 5).
+     meets it everywhere: its narrowest track and its smallest gap are both 0.2 mm (the pads of U1, U7 and U2 are at
+     TI's land-pattern widths; [LAYOUT_RULES.md](LAYOUT_RULES.md), "Clearance").
 4. The big review on the routed boards (Fable plus several Opus). Fix everything blocking.
 5. Gerbers, drill files and stencil (paste) layers exported; polarity of every diode, can and IC checked in the 3D view.
 6. Order the boards, the parts (LCSC + DigiKey), the tools, and the off-board parts (pack plan, REVB5_CHANGES), so they all

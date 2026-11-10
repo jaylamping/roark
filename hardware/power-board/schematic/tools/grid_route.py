@@ -103,7 +103,7 @@ LATCHM[max(0,int(math.floor((_ly0-Y0)/RES))):max(0,int(math.ceil((_ly1-Y0)/RES))
 # exact pad distances: the 0.1 mm raster puts a pad edge up to ~0.07 mm off, which at 0.5 mm pin pitch is the whole
 # margin. Per layer: D1/N1 = distance (mm, cell centre to pad outline) and net of the nearest pad, D2 = distance to the
 # nearest pad of any other net; the foreign-pad distance for net v is D2 where N1 == v, else D1.
-FINE={'U1','U2','U7'}   # LM5069 MSOP-10 and TPS7A4001 HVSSOP-8: pads 0.15 mm apart, so 0.15 mm to their pads inside their courtyard only (layout/*.kicad_dru)
+FINE={'U1'}   # U1 (LM5069): its UVLO pin (E-stop) sits 0.2 mm from SH_P, so inside U1's courtyard the E-stop clearance is the 0.2 mm default (layout/*.kicad_dru estop_at_U1). No footprint has a clearance under 0.2 mm any more (tools/fine_pitch_pads.py)
 PM=0.03   # margin on exact pad clearances (polyline vertices sit on cell centres, so the geometry is exact)
 D1=[np.full((H,W),99.0) for _ in range(stack.NL)]; D2=[np.full((H,W),99.0) for _ in range(stack.NL)]; N1=[np.zeros((H,W),np.int32) for _ in range(stack.NL)]
 padctr=[np.zeros((H,W),bool) for _ in range(stack.NL)]
@@ -132,7 +132,7 @@ for x0_,y0_,x1_,y1_ in fbox.values():
 for it in D['items']:
     if it['kind']!='pad': continue
     L=it['layer']; pv=NID.get(it['net'],NONET)
-    relax=0.05 if it.get('ref','').split('.')[0] in FINE else 0.0
+    relax=0.0   # was 0.05 for the 0.15 mm footprints
     for ring in it['poly']:
         if not ring or ring[-1] is None or len(ring)<3: continue
         xs=[q[0] for q in ring]; ys=[q[1] for q in ring]
@@ -172,7 +172,7 @@ for L,pv,ref,ring,x0p,y0p,x1p,y1p in _pads:
         if not (0<=r<H and 0<=c<W): continue
         ok_=True
         for _,qv,qref,qring,*_b in near:
-            cl=0.15 if (qref in FINE and incy[r,c]) else 0.2
+            cl=0.2
             if _pt_poly(np.array([x]),np.array([y]),qring)[0]<hwn+cl+0.01: ok_=False; break
         if not ok_: continue
         STUB[L][r,c]=pv

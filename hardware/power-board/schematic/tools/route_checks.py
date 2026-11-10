@@ -4,9 +4,10 @@
      UVLO enables bank B by itself).
   2. 54 V copper, and copper riding on 54 V, keeps tools/domains.py's clearance to every other net (0.2 mm coated;
      0.6 mm outer / 0.2 mm inner with MARENGO_COATED=0). Every pair is tested, the 0.2 mm ones too.
-     Fine-pitch courtyards (U1, U2, U7; the .kicad_dru rules): two F.Cu pads, tracks or vias that both enter one of
-     these courtyards keep 0.15 mm. "Enters" is tested on the real shapes against the courtyard polygon. A pour never
-     gets the 0.15 mm, and is tested island by island.
+     No pair is allowed under 0.2 mm. Inside U1's courtyard (the .kicad_dru rule estop_at_U1) two F.Cu pads, tracks or
+     vias keep 0.2 mm even when one is E-stop and the other 54 V: U1's UVLO pin sits 0.2 mm from its SH_P pin.
+     "Inside" is tested on the real shapes against the courtyard polygon. A pour never gets this, and is tested in
+     tiles, island by island.
      Pairs inside one footprint are listed separately: the package sets those, not the routing.
   3. Kelvin sense pairs: for each SH*_P / SH*_N pair, the length of each leg and the share of the pair's whole length
      (both legs) that runs within 1.0 mm, centre to centre on the same layer, of the other leg. Fails below
@@ -32,9 +33,9 @@ stack.check_board(b)
 LAYERS=stack.kicad_layers(pcbnew)
 OUTER={pcbnew.F_Cu,pcbnew.B_Cu}
 def page(p): return (round(MM(p.x),2),round(MM(p.y),2))
-# fine-pitch courtyards (the .kicad_dru rules fine_pitch_U1/U2/U7): the real courtyard polygons
+# U1's courtyard (the .kicad_dru rule estop_at_U1): the real courtyard polygon
 FINE={}
-for r in ('U1','U2','U7'):
+for r in ('U1',):
     f=b.FindFootprintByReference(r)
     if f: FINE[r]=pcbnew.SHAPE_POLY_SET(f.GetCourtyard(pcbnew.F_CrtYd))
 FBOX={r:c.BBox() for r,c in FINE.items()}
@@ -115,7 +116,7 @@ for L in LAYERS:
             if n==m or ((RIDES(n) or n in ESTOP) and (n,lab,id(s_))<(m,lab2,id(h))): continue   # each hot-hot pair once
             if domains.latch_leak(m,n) and collide(h,s_,1.5-0.001): leak.append((b.GetLayerName(L),m,lab2,pos(h),n,lab,pos(s_)))
             cl=domains.clearance(m,n,L in OUTER)
-            if cy&cy2: cl=min(cl,0.15)
+            if cy&cy2: cl=min(cl,0.2)
             npairs[cl]+=1
             if not collide(h,s_,cl-0.001): continue
             rec=(b.GetLayerName(L),m,lab2,pos(h),n,lab,pos(s_),f'<{cl} mm')

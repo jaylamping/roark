@@ -9,8 +9,7 @@ schematic/tools/verify_board.sh passes: DRC with schematic parity, route_checks,
 checks, check.py and bom_check.py (schematic/tools/verify_selftest.sh shows each of them failing on a broken copy). The
 big review's fix round is in; **not ready to order yet**: 13 exceptions and open items are listed in
 [LAYOUT_RULES.md](LAYOUT_RULES.md), "Exceptions and hand-laid copper", among them the latch supply's spacing to
-leakage-sensitive E-stop nets (needs the latch block re-placed), the 0.15 mm gaps at three fine-pitch ICs against JLC's
-0.2 mm for 2 oz copper, and the choice of a heatsink pad with a rated breakdown voltage. The six port blocks and the U8
+leakage-sensitive E-stop nets (needs the latch block re-placed), and the copper still under target on BAT and the port legs. The six port blocks and the U8
 block are designed templates (schematic/tools/port_template.py, port_copper.py, u8_block.py); the rest was routed by the
 staged scripts and the finishing tools. The pictures in layout/renders/routed_* come from
 schematic/tools/render_export.py and render_routed.py.
