@@ -168,3 +168,27 @@ the pointer files. A plain `git clone` on a machine with Git LFS installed downl
 
 `_wip/`, `_sim/` and `_archive/` exist only on Joey-PC. Git is not their backup: they are covered by Joey-PC's own backup, or
 the design is promoted before it would hurt to lose it.
+
+## 9. Modelling for robust features
+
+Lessons from scripting the arm parts through the SolidWorks API. Each one cost a rebuild or a wrong FEA result.
+
+1. **Round shapes before they meet.** Build a plate or boss that needs rounded edges as its own body, round it while it is
+   free, then combine it with the main body. Fillets on the intersection edges of merged bodies fail far more often.
+2. **Outline with real lines and arcs.** Sketch profiles from lines and three-point arcs, not from point-by-point polylines:
+   a polyline outline gives hundreds of edges, and fillets across them fail.
+3. **End posts on the surface they meet.** A post that runs into a sloped skin ends offset from that skin face (an
+   up-to-surface end with an offset), not blind or up-to-next. A flat end either leaves a gap at one edge or breaks out of the
+   skin at the other.
+4. **Leave 1 mm or cut clean through.** Keep every cut, recess and notch at least 1 mm from another surface, including a round
+   or the inside of a skin, or take it right through. Near misses leave 0.05-0.3 mm walls and slivers that print badly and
+   break FEA meshes.
+5. **Relieve mouths for root fillets.** Where a lug or key with root fillets enters a slot or notch, widen the slot's mouth
+   over the fillet depth plus the axial tolerance, so the fit and the contact stay off the fillet.
+6. **Check a feature's direction, not just its volume.** A symmetric extrusion adds about the same volume either way; confirm
+   which side its faces landed on.
+7. **Check every part after every change.** Re-run the mesh, thin-wall, support and overlap checks on the split parts, not just
+   on the master, after each geometry change. Fixes create new slivers somewhere else.
+8. **Put FEA loads where the contact is.** Apply a contact load to a pad face over the area that really bears, pick it by a
+   point on that face, and let a load connector tie only what the real part ties. List every region left out of a result and
+   why, next to the result.
