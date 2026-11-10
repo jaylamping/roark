@@ -130,9 +130,10 @@ python tools/cad/gate.py upper_arm_shell_front_left   # one part
 python tools/cad/gate.py --all                         # every part in every spec
 ```
 
-It runs on Joey-PC (or anywhere with the LFS content and `pip install numpy scipy trimesh rtree`) and writes
-`cad/prints/<region>/<part>_gate.md` with PASS or FAIL per check and the hash of every input it judged: the spec, export,
-3MF, picture sheet, evidence file, the part's mesh-whitelist entry, and the `hidden_by` and `mates` meshes. It fails when:
+It runs on Joey-PC (or anywhere with the LFS content and `pip install numpy scipy trimesh rtree networkx`) and
+writes `cad/prints/<region>/<part>_gate.md` with PASS or FAIL per check and the hash of every input it judged: the spec,
+export, 3MF, picture sheet, evidence file, the part's mesh-whitelist entry, and the `hidden_by` and `mates` meshes. It
+fails when:
 
 | Check | Fails when | Added after |
 |---|---|---|

@@ -12,7 +12,7 @@ FAIL too, so the failure is visible in review.
 Checks, in order: spec agreed; files present; mesh (mesh_check.py); support on visible faces and interference with mating
 parts (part_checks.py); 3MF settings and their override flags; evidence (load cases with converged FEA, insertion path and
 driver access) recorded against the current export; print-log lessons that apply (warnings).
-The mesh checks need numpy, scipy, trimesh and rtree; the rest is stdlib (Python 3.11+ for tomllib).
+The mesh checks need numpy, scipy, trimesh, rtree and networkx; the rest is stdlib (Python 3.11+ for tomllib).
 """
 
 from __future__ import annotations
@@ -37,6 +37,7 @@ FRONT = "+++"
 PASS, FAIL, WARN = "PASS", "FAIL", "WARN"
 INTERFERENCE_TOL = 0.05  # mm: tessellation noise on faces that only touch
 TEXT_INPUTS = (".md", ".json")
+MESH_LIBS = "numpy scipy trimesh rtree networkx"
 
 
 @dataclass
@@ -264,13 +265,16 @@ def input_sha(cad: Path, rel: str) -> str:
 
 
 def mesh_checks(cad: Path, spec: dict, part: dict, p: dict[str, str]) -> list[Check]:
-    try:
+    try:  # trimesh loads rtree (ray tests) and networkx (splitting an open mesh) only when first used
+        import networkx  # noqa: F401
+        import rtree  # noqa: F401
+        import scipy  # noqa: F401
         import trimesh
 
         import mesh_check
         import part_checks
     except ImportError as e:
-        return [Check("mesh, support and interference", FAIL, [f"not run: {e} (pip install numpy scipy trimesh rtree)"])]
+        return [Check("mesh, support and interference", FAIL, [f"not run: {e} (pip install {MESH_LIBS})"])]
     if not has_content(cad / p["export"]):
         return [Check("mesh, support and interference", FAIL, ["not run: no export content"])]
     load = lambda rel: trimesh.load(str(cad / rel), force="mesh")  # noqa: E731

@@ -18,7 +18,7 @@ CAD tessellation makes thousands of them on flat fans, so a needle only matters 
 knife edge or a thin wall, which the two checks above catch.
 
 Whitelists are per part, in cad/manifests/mesh-whitelist.json: a point (or box) in the coordinates of the exported mesh,
-plus a reason. Needs numpy, scipy and trimesh (pip install numpy scipy trimesh rtree).
+plus a reason. Needs numpy, scipy, trimesh, rtree and networkx (pip install numpy scipy trimesh rtree networkx).
 """
 import numpy as np
 import trimesh

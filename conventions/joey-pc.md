@@ -136,7 +136,7 @@ A thread asks for these by name and says why. It doesn't ask for anything on the
    other flags before the refspec still matches `git push:*`. **GitHub's protection on `main` is the only real guard**;
    these lines just stop the common attempts early. If the prompts that keep appearing name the PowerShell tool instead of
    Bash, add the same lines with `PowerShell(` in place of `Bash(`.
-3. Install the gate's mesh libraries once: `python -m pip install numpy scipy trimesh rtree`.
+3. Install the gate's mesh libraries once: `python -m pip install numpy scipy trimesh rtree networkx`.
 4. Turn on per-worktree git config: `git -C J:/code/roark config extensions.worktreeConfig true`. Without it,
    `git config --worktree` refuses in a clone with several worktrees, and in a clone with one it writes the shared
    `.git/config`.
