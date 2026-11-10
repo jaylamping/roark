@@ -4,9 +4,8 @@ The robot's main power board: the 54 V battery path (soft start, two FET banks, 
 with eFuses and meters, and the E-stop latch. Rev B5: 100 × 170 mm, 6 layers (2 oz outer / 0.5 oz inner), conformal-coated
 after bring-up. A separate buck board makes the 12 V and carries the 12 V outputs (split S1, 2026-11-09).
 
-**Status (2026-11-10):** schematic done, ERC clean. The 6-layer board in [layout/](layout) is routed except for **one
-connection, G2** (Q2's gate to R2; [layout/HAND_FINISH.md](layout/HAND_FINISH.md) has the reason and the two ways to
-close it). DRC is clean with schematic parity 0, route_checks and check.py pass (schematic/tools/verify_board.sh runs
+**Status (2026-11-10):** schematic done, ERC clean. The 6-layer board in [layout/](layout) is fully routed (0 open; G2 under an
+exception still to be confirmed at the review, [LAYOUT_RULES.md](LAYOUT_RULES.md), "Exceptions and hand-laid copper"). DRC is clean with schematic parity 0, route_checks and check.py pass (schematic/tools/verify_board.sh runs
 them all). The six port blocks and the U8 block are designed templates (schematic/tools/port_template.py, port_copper.py,
 u8_block.py); the rest was routed by the staged scripts and the finishing tools. The pictures in layout/renders/routed_*
 come from schematic/tools/render_export.py and render_routed.py. The big review is still pending before the board is ordered.

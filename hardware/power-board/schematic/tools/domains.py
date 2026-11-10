@@ -41,3 +41,13 @@ def clearance(a,b,outer):
     if (is_estop(a) and is_hv(b)) or (is_estop(b) and is_hv(a)): return 1.5   # the rule's net list; 54 V-riding nets get 0.6 below
     if (rides(a) or rides(b)) and not (dom(a) and dom(a)==dom(b)): return 0.6 if (outer and not COATED) else 0.2
     return 0.2
+# Documented exceptions (LAYOUT_RULES.md, "Exceptions and hand-laid copper"), tested by tools/route_checks.py checks 7 and 8.
+# Vias of another net inside a MID pour outline: the three VBUS vias at the bank B FETs' pins 2-3 (tools/route_power.py),
+# GATE_A's at Q8's gate, GA2's in the pour's dead tip beside U8, and G2's at Q2's gate (the only way out of the slot
+# between Q1's tab and Q2's pins; accepted in the project thread on 2026-11-10, to be confirmed at the review).
+# Anything else fails.
+MID_VIA_OK={'/VBUS':3,'/GATE_A':1,'/GA2':1,'/G2':1}
+# Gate-drive nets take at most 2 vias; G2 may take 3 (same exception), GATE_A has 3 from the staged routing.
+GATE_RE=r'/((G|GPD|GPU|BST)_L\d|GATE|GATE_A|GA[12]|G[12]|G1PD_A|BST_A|BRK_GATE|BRK_G1)$'
+GATE_VIAS_MAX=2
+GATE_VIA_OK={'/G2':3,'/GATE_A':3}

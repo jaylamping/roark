@@ -165,7 +165,7 @@ that is never coated must not go on the pack.
 
 ## Routing state (2026-11-10, 6 layers)
 
-One connection is open: **G2** (Q2 pin 1 to R2). Everything else is routed, with DRC clean (0 clearance, 0 shorts,
+Every connection is routed (0 open), with DRC clean (0 clearance, 0 shorts,
 schematic parity 0), route_checks clean and check.py at 0 fails. `schematic/tools/verify_board.sh` runs the whole set next to a
 copy of the schematic, so the parity check really runs (in layout/ KiCad only prints "Failed to fetch schematic netlist"
 and checks nothing; the earlier "parity 0" reports came from that).
@@ -197,15 +197,51 @@ Measured on the filled zones (schematic/tools/pour_width.py), unchanged from the
 18.9 mm on L6, MID band (Y 150-158) 21.1 mm (10.0 mm L1 + 11.1 mm L6). Signal vias in the VBUS band (X 130-160,
 Y 180-190): 18 (were 24).
 
-**G2, the open connection.** Q2's gate pin lies in a 1.7 mm slot between Q1's tab and Q2's own pins, under the MID
-band on L1 and over the MID mirror on L6. From there G2 can only leave (a) through a via, which pierces the L6 MID
-mirror, or (b) on F.Cu across the L1 MID band, which cuts that pour. Both break a rule here (no via in a MID pour; MID
-must not get narrower), so it is left for a decision. A trial of (a), one 0.6 mm via at (149.9, 160.2) and In2/In3 to
-R2, routes G2 in 51 mm with 3 vias and leaves both measured widths unchanged, since the via is south of the MID neck.
-The alternative is R2 at Q2's gate, as R1 is at Q1's, which needs about 2 x 3 mm that the placement doesn't have.
+**G2** (Q2's gate to R2) is routed under an exception (listed below; to be confirmed at the review). Q2's gate pin lies
+in a 1.7 mm slot between Q1's tab and Q2's own pins, under the MID band on L1 and over the MID mirror on L6, so G2 can
+only leave through a via in the L6 MID mirror or on F.Cu across the L1 MID band. R2 at the gate (as R1 is at Q1's) was
+looked at first: it fits in the slot, but GATE would then need the same via through the mirror to reach it, so it removes
+nothing. G2 takes one via at (149.9, 160.19), In3 west under Q1, a second via at (130.2, 167.0) outside the pours, In2
+north and a third via at R2: 55.8 mm, 3 vias. Both measured widths are unchanged, since the via is south of the MID neck.
 
 Kelvin pairs still poorly paired: **SH9 (8 %)**. RS9's N sense pad is on the far side of its BAT pad from U7, so N has to
 pass under that pad on In2 while P stays on F.Cu; a better pair needs RS9 or U7 moved.
+
+## Exceptions and hand-laid copper (for the review)
+
+Rule exceptions on this board, each tested or bounded by a check:
+
+| # | Exception | Where | Status | Held by |
+|---|---|---|---|---|
+| 1 | G2 has a via through the L6 MID mirror | (149.9, 160.19), at Q2's gate | accepted in the project thread, 2026-11-10; to confirm at the review | route_checks 7 (domains.MID_VIA_OK) |
+| 2 | G2 has 3 vias (gate nets: 2) | (149.9, 160.19), (130.2, 167.0), (125.6, 139.8) | accepted in the project thread, 2026-11-10; to confirm at the review | route_checks 8 (domains.GATE_VIA_OK) |
+| 3 | GATE_A has 3 vias, one inside the MID outline at Q8's gate (132.0, 141.46) | from the staged routing, unchanged | not yet reviewed | route_checks 7, 8 |
+| 4 | GA2 has a via inside the MID outline, in the pour's dead tip beside U8 beyond the tabs | (167.95, 157.0); the old board had TMR_A's via in the same tip | not yet reviewed | route_checks 7 |
+| 5 | Fine-pitch courtyards: 0.15 mm inside U1, U2, U7 and U8; inside U8's also between E-stop and 54 V copper | .kicad_dru | Joey, 2026-11-09 (U8), as recorded under Clearance | DRC, route_checks 1/2 |
+| 6 | Inner GND planes and fills at 0.3 mm zone clearance (outer fills 0.6 mm) | In1-In4 | accepted in the project thread, 2026-11-10; to confirm at the review | route_checks 6 |
+| 7 | Signal and GND vias pass through the L6 VBUS sheet: 142 inside VBUS pour outlines (126 before this routing), 18 of them in the band X 130-160, Y 180-190 (24 before) | under the meter blocks | band rule: no new ones | pour_width.py (neck 18.9 mm, unchanged) |
+| 8 | Masked copper (the VBUS sheet and those vias) inside the heatsink zone on L6 | X -33..33, Y 200-305 | open, Joey's call (FET copper, above) | none |
+| 9 | SH9 Kelvin pair 8 % paired | RS9 to U7 | open: needs RS9 or U7 moved | route_checks 3 (report only) |
+| 10 | VBUS under its 27.5 mm target at the neck (18.9 mm, L6 only); BAT and the port legs just under theirs | Board, above | open before fab | pour_width.py |
+
+Copper laid from hand-specified coordinates rather than found by a router. The two templates are scripts and re-run; the
+rest was laid once with schematic/tools/lay_path.py (checked against the same clearances as the finishing router) and exists only
+in the board file:
+
+| What | Path (page mm) |
+|---|---|
+| Port template, six ports | schematic/tools/port_copper.py ITEMS, mapped by port_template.T() |
+| U8 block | schematic/tools/u8_block.py ITEMS |
+| D_L2 tap to U12 pin 8 (port 2) | F.Cu (134.0, 190.6) to a via at (134.8, 190.05), B.Cu by (133.6, 191.3), (130.8, 191.3), (130.0, 193.5) to (129.4, 194.3) on the L6 drain mirror |
+| G2 | F.Cu (150.95, 160.19) to the via at (149.9, 160.19); In3 by (149.9, 159.2), (140.2, 159.2), (132.4, 165.6) to the via at (130.2, 167.0); In2 by (130.2, 162.6), (131.8, 161.0), (131.8, 147.0) to the via at (125.6, 139.8); F.Cu to R2 pin 2 |
+| I2C_SCL exits under the meters | port 2: In2 (135.5, 189.4) to (140.8, 189.1); port 5: In3 (164.5, 236.1) to (159.2, 236.4) |
+| At U25 (watchdog), to free its CWD pin | L_E on F.Cu (102.95, 247.75), (102.95, 249.2), (103.5, 249.75), (104.65, 249.75); CWD stub to a via at (104.5, 248.35); VWD link (103.65, 247.75), (103.65, 248.3), (104.0, 249.05), (105.0, 249.05), (105.75, 248.15) |
+| GND island link | F.Cu (161.0, 236.8) to (161.4, 237.0) |
+
+Everything else between the templates (the buses between the blocks, EN/INP/PORT_FLT_N runs, the J24 nets, the GND
+vias) was found by schematic/tools/finish_route.py, whose result depends on the order of the runs: a rebuild from the placement
+gives the same blocks but not the same copper in between. The port template's gate stub start was corrected in
+port_copper.py after the six ports were stamped ((168.8, 193.77) to (169.0, 193.77)); on the board the router bridged it.
 
 Gate parts (schematic/tools/place.py, 2026-11-09):
 - Each port's gate-source zener (D24, D27, D30, D33, D36, D39) sits at its FET's gate pin, between the meter and the FET.

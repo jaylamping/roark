@@ -11,6 +11,8 @@
   4. No 54 V track, via or pour on the inner layers under the latch block (tools/domains.py LATCH).
   5. No E-stop via inside a 54 V zone outline on any layer.
   6. The inner GND planes and fills (In1-In4) have tools/stack.py PLANE_CLEAR as their zone clearance.
+  7. Vias of another net inside a MID pour outline: only those in tools/domains.py MID_VIA_OK.
+  8. Gate-drive nets take at most 2 vias (G2 and GATE_A: 3, tools/domains.py).
 Run with KiCad's Python: <kicad python> tools/route_checks.py <board.kicad_pcb>   (exit 1 on a routing violation)"""
 import re,sys
 import pcbnew
@@ -116,7 +118,20 @@ pl=[(b.GetLayerName(z.GetFirstLayer()),zclr(z)) for z in b.Zones() if not z.GetI
     and z.GetFirstLayer() in LAYERS[1:-1] and zclr(z)!=stack.PLANE_CLEAR]
 print(f'6. inner GND zones not at {stack.PLANE_CLEAR} mm clearance:',len(pl))
 for r in pl: print('   ',r)
-bad+=latch+esv+pl
+# ---- 7. vias of another net inside a MID pour outline: only the documented ones (tools/domains.py MID_VIA_OK)
+import collections
+mz=[z for z in b.Zones() if not z.GetIsRuleArea() and z.GetNetname()=='/MID']
+mv=collections.Counter(t.GetNetname() for t in b.GetTracks() if t.GetClass()=='PCB_VIA' and t.GetNetname()!='/MID'
+                       and any(z.Outline().Contains(t.GetPosition()) for z in mz))
+mbad=[(n,k,'allowed',domains.MID_VIA_OK.get(n,0)) for n,k in sorted(mv.items()) if k>domains.MID_VIA_OK.get(n,0)]
+print('7. vias of other nets inside a MID pour outline:',dict(sorted(mv.items())),'not allowed:',len(mbad))
+for r in mbad: print('   ',r)
+# ---- 8. gate-drive nets: at most GATE_VIAS_MAX vias (tools/domains.py; the listed exceptions more)
+gv=collections.Counter(t.GetNetname() for t in b.GetTracks() if t.GetClass()=='PCB_VIA' and re.match(domains.GATE_RE,t.GetNetname()))
+gbad=[(n,k,'allowed',domains.GATE_VIA_OK.get(n,domains.GATE_VIAS_MAX)) for n,k in sorted(gv.items()) if k>domains.GATE_VIA_OK.get(n,domains.GATE_VIAS_MAX)]
+print(f'8. gate-drive nets with more than their via allowance ({domains.GATE_VIAS_MAX}; G2 and GATE_A 3):',len(gbad))
+for r in gbad: print('   ',r)
+bad+=latch+esv+pl+mbad+gbad
 # ---- Kelvin pairs
 tr={}
 for t in b.GetTracks():
