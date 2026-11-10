@@ -21,6 +21,7 @@ CY, CZ, HX = 209.860668, 5.985875, 170.49
 HUB_Y = 319.86
 N = 40
 SHELL_T = 3.0
+FORE_T = 2.4              # forearm belly skin: the forearm FEA has bulk SF 5.5 or more in the belly at 3 mm; 2.4 saves about 15 g
 OUT = {'upper': CAD / 'upper-arm' / 'upper_arm_organic_master_left.SLDPRT',
        'fore': CAD / 'forearm' / 'forearm_organic_master_left.SLDPRT'}
 WIP = CAD / '_wip' / 'organic-arm' / 'cad'
@@ -162,11 +163,17 @@ def save(d, job):
 # 3 x Ø4 pins on Ø24; housing 9 x M3 x 8 on Ø73 on the shoulder behind the body; back Ø65)
 RS02_X = dict(back=151.8, shoulder=162.8, front=193.7, output=197.2)
 BULKHEAD = (156.8, 162.8)              # RS02 mounting ring (a separate part, organic_parts.py): screwed to the RS02 on the bench,
-RIB = (152.4, 156.8)                   # then dropped into the halves behind this rib, keyed by two dogs in its notches
-RIB_R0, DOG_PHI, DOG_SPAN = 33.5, (90.0, 270.0), 9.0       # notches straight back and front, so the ring drops in square;
-# each dog bears on 7.7 x 4.2 mm: 17 N.m of RS02 reaction is 6.5 MPa on the dog sides (2 dogs at r 37.5)
+RIB = (150.4, 156.8)                   # then dropped into the halves behind this rib, keyed by two dogs in its notches
+RIB_R0 = 33.5
+# Three straight-sided keys on the ring take the RS02 housing torque (the 9-mm arc dogs bent at their roots under 34 N.m). They
+# sit between the ring's screw heads (screws at 20 + 40k deg): two with Y-normal faces at phi 80 and 280, so the ring still
+# drops into the back half along -Z, and one at the top straddling the seam with Z-normal faces. (dy0, dy1, dz0, dz1) from the
+# elbow axis; each notch is its key plus 0.4 per side, open toward the seam / bore so the key slides in.
+KEYS = [(0.4, 12.0, -37.8, -33.6), (0.4, 12.0, 33.6, 37.8), (33.6, 39.0, -6.0, 6.0)]     # 1.1 mm or more of rib left on the wall
+NOTCHES = [(0.0, 12.4, -38.1, -30.0), (0.0, 12.4, 30.0, 38.1), (30.0, 39.3, -6.4, 6.4)]
+BEARS = ['y', 'y', 'z']           # which faces bear: Y-normal for the two side keys, Z-normal for the top one
 STUB = dict(x0=134.0, r_out=20.0, r_in=16.0)        # hollow inboard stub; 6808 (Ø40 / Ø52 x 7) on X 134-141
-STOP = dict(r0=28.0, r1=36.5, lug_phi=90.0, lug_span=30.0, travel=124.0, depth=4.5)   # 5 mm rim outside the slot
+STOP = dict(r0=28.0, r1=36.5, lug_phi=90.0, lug_span=50.0, travel=124.0, depth=6.0)   # 5 mm rim outside the slot
 CAP = dict(r=38.3, recess=1.5, pocket=3.0)       # inboard cap Ø76.6 over a 3 mm pocket: the flat bundle coils at r 22-35 in one layer (seat inside the R6 rim round)
 OUT_HOLES = [(12.0, 30.0 + 60.0 * k) for k in range(6)]          # 6 x M4 on Ø24
 OUT_PINS = [(12.0, 120.0 * k) for k in range(3)]                  # 3 printed Ø3.95 x 8.7 pins (organic_parts.py) in Ø4.05 holes, into the RS02 output's Ø4 pin holes on Ø24
@@ -194,6 +201,15 @@ def x_holes(d, name, pts, r, x0, x1, cut=True):
     return feat(d, s.feat, name, abs(x1 - x0), cut, mode=MID, lo=0.01)
 
 
+def rect_x(d, name, q, x0, x1, cut):
+    """A block (dy0, dy1, dz0, dz1 from the elbow axis) between X x0 and x1."""
+    xm = (x0 + x1) / 2
+    dy0, dy1, dz0, dz1 = q
+    with Sk(d, plane(d, 'X', xm, name + '_P'), name) as s:
+        s.poly([(xm, CY + dy0, CZ + dz0), (xm, CY + dy1, CZ + dz0), (xm, CY + dy1, CZ + dz1), (xm, CY + dy0, CZ + dz1)])
+    return feat(d, s.feat, name, abs(x1 - x0), cut, mode=MID, lo=0.01)
+
+
 def arc_band(d, name, r0, r1, phi0, phi1, x0, x1, cut, n=60):
     xm = (x0 + x1) / 2
     pts = [P(r1, a) for a in np.linspace(phi0, phi1, n)] + [P(r0, a) for a in np.linspace(phi1, phi0, n)]
@@ -211,9 +227,13 @@ def upper_details(d):
     x_revolve(d, 'STUB', [(STUB['x0'], STUB['r_in']), (DRUM['x0'] + 1.5, STUB['r_in']), (DRUM['x0'] + 1.5, STUB['r_out']), (STUB['x0'], STUB['r_out'])])
     x_revolve(d, 'STUB_BORE', [(STUB['x0'] - 1, 0), (DRUM['x0'] + 4, 0), (DRUM['x0'] + 4, STUB['r_in']), (STUB['x0'] - 1, STUB['r_in'])], cut=True)
     # RS02 seat: bulkhead ring at the shoulder, bore for the Ø65 back, 9 x M3 on Ø73
-    x_revolve(d, 'RS02_RIB', [(RIB[0], RIB_R0), (RIB[1], RIB_R0), (RIB[1], DRUM['r'] - 1.0), (RIB[0], DRUM['r'] - 1.0)])
-    for k, ph in enumerate(DOG_PHI):
-        arc_band(d, f'RIB_NOTCH{k}', RIB_R0 - 0.1, DRUM['r'] - 2.9, ph - DOG_SPAN / 2, ph + DOG_SPAN / 2, RIB[0] - 0.1, RIB[1] + 0.1, cut=True)
+    x_revolve(d, 'RS02_RIB', [(RIB[0], RIB_R0), (RIB[1], RIB_R0), (RIB[1], DRUM['r'] - SHELL_T + 0.3), (RIB[0], DRUM['r'] - SHELL_T + 0.3)])   # just into the wall: under the neck opening it ends as a free edge, no lip
+    for k, q in enumerate(NOTCHES):
+        rect_x(d, f'RIB_NOTCH{k}', q, RIB[0] - 0.1, RIB[1] + 0.1, cut=True)
+        # mouth relief for the keys' R1 root fillets: 1.1 mm wider over the last 1.2 mm of the notch
+        g = 1.1        # only across the bearing faces (outward it would thin the rib left on the wall)
+        qq = (q[0] - g, q[1] + g, q[2], q[3]) if BEARS[k] == 'y' else (q[0], q[1], q[2] - g, q[3] + g)
+        rect_x(d, f'NOTCH_MOUTH{k}', qq, RIB[1] - 1.2, RIB[1] + 0.1, cut=True)
     # outboard end wall thickened to X 193.9: the RS02 housing face (r 22.5-39) stops on it, 0.2 mm axial play to the ring
     x_revolve(d, 'RS02_STOP', [(RS02_X['front'] + 0.2, 22.5), (DRUM['x1'] - 2.0, 22.5), (DRUM['x1'] - 2.0, DRUM['r'] - 1.0), (RS02_X['front'] + 0.2, DRUM['r'] - 1.0)])
     # hard stop: a lug on the drum's inboard end, running in a slot in the inboard cheek
@@ -223,6 +243,18 @@ def upper_details(d):
     # the lug's sector, inside the bay (the harness enters the stub from the top, away from it)
     arc_band(d, 'LUG_BACKING', STUB['r_out'], DRUM['r'] - SHELL_T + 0.05, STOP['lug_phi'] - 40.0, STOP['lug_phi'] + 40.0,
              DRUM['x0'] + SHELL_T - 0.1, DRUM['x0'] + SHELL_T + 4.6, cut=False)
+    # R1 root fillets on the lug (a sharp root is a stress singularity under the 889 N stop load); the slot mouth is relieved for them
+    def at_lug_root(p):
+        r = math.hypot(p[1] - CY, p[2] - CZ)
+        ph = math.degrees(math.atan2(-(p[2] - CZ), p[1] - CY)) % 360
+        return abs(p[0] - DRUM['x0']) < 0.05 and STOP['r0'] - 0.1 < r < STOP['r1'] + 0.1 and STOP['lug_phi'] - STOP['lug_span'] / 2 - 0.5 < ph < STOP['lug_phi'] + STOP['lug_span'] / 2 + 0.5
+    root = edges_where(d, at_lug_root)
+    print('  lug root edges', len(root), flush=True)
+    fillet_edges(d, root, (1.0, 0.8, 0.6), 'LUG_ROOT')
+    # the rib meets the drum wall in a concave corner on both faces: R1.5
+    rib_c = edges_where(d, lambda p: abs(math.hypot(p[1] - CY, p[2] - CZ) - (DRUM['r'] - SHELL_T)) < 0.1 and abs(p[0] - RIB[1]) < 0.05)   # ring side only: on the back face it left slivers at the neck opening
+    print('  rib corner edges', len(rib_c), flush=True)
+    fillet_edges(d, rib_c, (1.0, 0.8), 'RIB_CORNER')   # the ring's 1.2 chamfer clears R1
 
 
 def fore_details(d):
@@ -252,6 +284,10 @@ def fore_details(d):
     lo = STOP['lug_phi'] - STOP['travel'] - STOP['lug_span'] / 2
     hi = STOP['lug_phi'] + STOP['lug_span'] / 2
     arc_band(d, 'STOP_SLOT', STOP['r0'] - 0.5, STOP['r1'] + 0.5, lo, hi, ix[1] - STOP['depth'] - 0.5, ix[1] + 0.5, cut=True)
+    # relief at the slot mouth for the lug's R1 root fillets: 1.1 mm wider over the last 1.6 mm
+    d_ = math.degrees(1.1 / STOP['r0'])
+    arc_band(d, 'SLOT_MOUTH', STOP['r0'] - 1.0, STOP['r1'] + 0.5,   # inner edge stays 1 mm off the 6808 bore
+             lo - d_, hi + d_, ix[1] - 1.1, ix[1] + 0.5, cut=True)   # relief 1.6 deep: worst-case axial stack (+-0.3) keeps contact off the R1 root
 
 
 def yaw_interface(d):
@@ -264,7 +300,7 @@ def yaw_interface(d):
             s.circle((HX + 32.6 * math.cos(t), 90.3, CZ + 32.6 * math.sin(t)), 2.0)
     feat(d, s.feat, 'SLEEVE_INSERTS', 7.0, True, want=(1, 1, 90.3))
     with Sk(d, plane(d, 'Y', 90.3, 'CABLE_CHANNEL_LOW_P'), 'CABLE_CHANNEL_LOW') as s:
-        s.poly([(HX - 6.0, 90.3, CZ - 23.0), (HX + 6.0, 90.3, CZ - 23.0), (HX + 6.0, 90.3, CZ - 33.0), (HX - 6.0, 90.3, CZ - 33.0)])
+        s.poly([(HX - 6.0, 90.3, CZ - 23.0), (HX + 6.0, 90.3, CZ - 23.0), (HX + 6.0, 90.3, CZ - 32.0), (HX - 6.0, 90.3, CZ - 32.0)])   # 12 x 9: 1 mm+ off the 2.4 mm skin
     feat(d, s.feat, 'CABLE_CHANNEL_LOW', 13.0, True, want=(1, 1, 90.3))   # through the rim band; above it the cable runs behind the RS00
 
 
@@ -398,7 +434,7 @@ def fore():
     inner = []
     for y in (FORE[0][0] - 1.0, 108.0, 128.0, 148.0, 160.0):
         row = [float(np.interp(y, ys, [r[i] for r in FORE])) for i in range(1, 6)]
-        inner.append(section(y, *[v - SHELL_T for v in row[:4]], row[4]))
+        inner.append(section(y, *[v - FORE_T for v in row[:4]], row[4]))
     sk = [spline_section(d, p, f'FA_CAV_{i}') for i, p in enumerate(inner)]
     v0 = vol(d)
     d.ClearSelection2(True)

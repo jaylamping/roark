@@ -41,7 +41,7 @@ DIRS = {'upper': CAD / 'upper-arm', 'fore': CAD / 'forearm'}
 CL = 0.1
 SECTOR = (131.0, 190.0)
 R_FULL, R_LAP = 30.0, 38.5
-R_LAP_OUT = 45.0                      # outboard: the disc's inner layer runs out to the skin, so no shell face points down at the drum
+R_LAP_OUT = R_LAP                     # (45 put the disc edge on the saddle fillet: a feather edge, and no gain)
 Y_SHELF = 171.5                       # above the saddle fillet, so the split plane doesn't feather it
 SCREW_R, SCREW_PHI = 34.75, (138.0, 152.0, 170.0, 182.0)
 IN = dict(outer=CHEEKS[0][0], inner=CHEEKS[0][1], lap=134.3, floor=M.CHEEKS[0][0] + M.CAP['recess'] + M.CAP['pocket'])  # floor 131.5
@@ -283,6 +283,9 @@ def disc(side):
         region_x(d, 'ROOT_OUTER', root_region(R_FULL), OUT['lap'], OUT['outer'] + 1.0)
         region_x(d, 'ROOT_INNER', root_region(R_LAP_OUT), OUT['inner'] - 6.0, OUT['lap'])
         x_holes(d, 'LAP_INSERTS', [P(SCREW_R, a) for a in SCREW_PHI], 2.0, OUT['inner'] - 0.5, OUT['lap'] + 0.1)
+        # lightening: six pockets under the cap ring (r 19.5-31, 8.6 deep from the recess floor), 3 mm spokes between them
+        for k in range(6):
+            arc_band(d, f'LIGHTEN{k}', 19.5, 31.0, 60.0 * k + 3.5, 60.0 * k + 56.5, 203.0, OUT['outer'] - 1.4, cut=True)
     else:
         cut_half_space(d, 'X', IN['inner'] + 0.5, -1, 'PAST_DISC')
         cut_half_space(d, 'X', IN['floor'], 1, 'UNDER_POCKET')
@@ -302,9 +305,15 @@ def ring():
     x0, x1 = M.BULKHEAD[0] + 0.1, M.BULKHEAD[1]
     r_in, r_out = 32.75, M.DRUM['r'] - M.SHELL_T - 0.2
     x_revolve(d, 'RING', [(x0, r_in), (x1, r_in), (x1, r_out), (x0, r_out)])
-    for k, ph in enumerate(M.DOG_PHI):
-        arc_band(d, f'DOG{k}', M.RIB_R0 + 0.1, r_out, ph - M.DOG_SPAN / 2 + 0.6, ph + M.DOG_SPAN / 2 - 0.6, M.RIB[0] + 0.2, x0 + 0.01, cut=False)
+    for k, q in enumerate(M.KEYS):
+        M.rect_x(d, f'KEY{k}', q, M.RIB[0] + 0.2, x0 + 0.01, cut=False)
+    # R1 root fillets where the keys leave the ring face (the keys bend across the print layers there)
+    roots = edges_where(d, lambda p: abs(p[0] - x0) < 0.05 and any(q[0] - 0.05 <= p[1] - CY <= q[1] + 0.05 and q[2] - 0.05 <= p[2] - CZ <= q[3] + 0.05 for q in M.KEYS))
+    print('  key root edges', len(roots), flush=True)
+    fillet_edges(d, roots, (1.0, 0.8, 0.5), 'KEY_ROOTS')
     holes = [P(36.5, 20.0 + 40.0 * k) for k in range(9)]
+    # 1.2 x 45 deg chamfer on the rib-side outer edge: clears the R1 fillet where the rib meets the drum wall
+    x_revolve(d, 'RIB_CLEAR', [(x0 - 0.1, r_out - 1.3), (x0 + 1.3, r_out + 0.1), (x0 - 0.1, r_out + 0.1)], cut=True)   # clears the R1 rib fillet, not the keys
     x_holes(d, 'RS02_SCREWS', holes, 1.7, x0 - 1, x1 + 1)
     x_holes(d, 'RS02_CBORES', holes, 3.1, x0 - 0.01, x0 + 2.0)
     d.ForceRebuild3(False)
@@ -338,15 +347,58 @@ def pin():
 
 
 def fea_upper():
-    """Bonded FEA model of the upper arm: the master (halves as one body) with the RS02 ring merged into the drum, so the
-    RS02 loads go in through the ring bore and the housing stop face. The dogs are checked by hand (see RIB_R0)."""
+    """Upper-arm FEA model for the drum, neck and stop: the master (halves as one body) with the RS02 ring merged into the rib
+    and the drum wall, the load going in through the ring bore. The key torque path is checked by hand (the merged ring
+    carries the torque by its bond, so the zone within 3 mm of the ring is excluded from the drum results). Contact pads on
+    the lug end faces carry the stop load where the slot end bears (X 135.7-139.4)."""
     sim = CAD / '_sim' / 'upper-arm'
     sim.mkdir(parents=True, exist_ok=True)
-    p = sim / 'UA_ORGANIC_BONDED_v2.SLDPRT'
+    p = sim / 'UA_ORGANIC_BONDED_v11.SLDPRT'
     shutil.copy(M.OUT['upper'], p)
     e, w = L(), L()
     d = sw.OpenDoc6(str(p), 1, 1, '', e, w)
-    x_revolve(d, 'RING_BONDED', [(M.BULKHEAD[0], 32.75), (M.BULKHEAD[1], 32.75), (M.BULKHEAD[1], M.DRUM['r'] - M.SHELL_T + 0.05), (M.BULKHEAD[0], M.DRUM['r'] - M.SHELL_T + 0.05)])
+    r_wall = M.DRUM['r'] - M.SHELL_T
+    x_revolve(d, 'RING_BONDED', [(M.RIB[1] - 0.05, 32.75), (M.BULKHEAD[1], 32.75), (M.BULKHEAD[1], r_wall + 0.05), (M.RIB[1] - 0.05, r_wall + 0.05)])
+    lo_, hi_ = M.STOP['lug_phi'] - M.STOP['lug_span'] / 2, M.STOP['lug_phi'] + M.STOP['lug_span'] / 2
+    arc_band(d, 'PAD_LO', M.STOP['r0'] + 0.6, M.STOP['r1'] - 0.6, lo_ - 0.4, lo_ + 0.05, 135.7, 139.4, cut=False)
+    arc_band(d, 'PAD_HI', M.STOP['r0'] + 0.6, M.STOP['r1'] - 0.6, hi_ - 0.05, hi_ + 0.4, 135.7, 139.4, cut=False)
+    d.ForceRebuild3(False)
+    print('  bodies', bodies(d), flush=True)
+    if len(bodies(d)) != 1:
+        raise SystemExit('expected one body')
+    d.Save3(1, e, w)
+    sw.CloseDoc(d.GetTitle)
+
+
+def fea_contact():
+    """Upper-arm FEA model with the RS02 ring as its own body in its printed clearances (0.2 radial, 0.1 axial, dogs in their
+    notches), for no-penetration contact: the housing torque then has to go through the two dogs."""
+    sim = CAD / '_sim' / 'upper-arm'
+    p = sim / 'UA_ORGANIC_CONTACT_v7.SLDPRT'
+    shutil.copy(M.OUT['upper'], p)
+    e, w = L(), L()
+    d = sw.OpenDoc6(str(p), 1, 1, '', e, w)
+    f = d.InsertPart3(str(DIRS['upper'] / (NAMES['ring'][1] + '.SLDPRT')), 1, '')
+    d.ForceRebuild3(False)
+    print('  insert', f is not None, 'bodies', bodies(d), flush=True)
+    if len(bodies(d)) != 2:
+        raise SystemExit('expected 2 bodies')
+    d.Save3(1, e, w)
+    sw.CloseDoc(d.GetTitle)
+
+
+def fea_fore():
+    """Bonded FEA model of the forearm: the master (shells and cheek discs as one body)."""
+    sim = CAD / '_sim' / 'upper-arm'
+    p = sim / 'FA_ORGANIC_BONDED_v10.SLDPRT'
+    shutil.copy(M.OUT['fore'], p)
+    e, w = L(), L()
+    d = sw.OpenDoc6(str(p), 1, 1, '', e, w)
+    lo_ = M.STOP['lug_phi'] - M.STOP['travel'] - M.STOP['lug_span'] / 2
+    hi_ = M.STOP['lug_phi'] + M.STOP['lug_span'] / 2
+    # contact pads on the slot ends, where the lug bears (X 136.7-140.0), for the fixtures of the stop cases
+    arc_band(d, 'PAD_LO', M.STOP['r0'] + 0.6, M.STOP['r1'] - 0.6, lo_ - 0.05, lo_ + 0.4, 135.7, 139.4, cut=False)
+    arc_band(d, 'PAD_HI', M.STOP['r0'] + 0.6, M.STOP['r1'] - 0.6, hi_ - 0.4, hi_ + 0.05, 135.7, 139.4, cut=False)
     d.ForceRebuild3(False)
     print('  bodies', bodies(d), flush=True)
     d.Save3(1, e, w)
@@ -372,6 +424,11 @@ def cap(side):
     prof = [(x_top, r_in), (x_top, r_out - 1.2), (x_top - sg * 1.2, r_out), (x_seat, r_out), (x_seat, lip_r1),
             (lip, lip_r1), (lip, lip_r0), (x_seat, lip_r0), (x_seat, r_in)]
     x_revolve(d, 'CAP', prof)
+    # hollow underside: 1.3 mm off the inside of the disc (prints top face down, so the recess opens upward)
+    if side == 'in':
+        x_revolve(d, 'UNDERSIDE', [(x_seat - sg * 0.5, 0.0), (x_seat - sg * 0.5, r_out - 3.5), (x_top - sg * 1.6, r_out - 3.5), (x_top - sg * 1.6, 0.0)], cut=True)
+    else:
+        x_revolve(d, 'UNDERSIDE', [(x_seat - sg * 0.5, r_in + 2.0), (x_seat - sg * 0.5, 31.0), (x_top - sg * 1.6, 31.0), (x_top - sg * 1.6, r_in + 2.0)], cut=True)
     # pry notch at the back (phi 90): a 6 x 1.2 slot in the rim
     with Sk(d, plane(d, 'X', x_top - sg * 0.6, 'PRY_P'), 'PRY') as s:
         yc, zc = P(r_out - 0.5, 90.0)
@@ -390,7 +447,7 @@ def cap(side):
 if __name__ == '__main__':
     jobs = dict(front=lambda: upper_half(True), back=lambda: upper_half(False), inboard=lambda: fore_shell('in'),
                 outboard=lambda: fore_shell('out'), disc_in=lambda: disc('in'), disc_out=lambda: disc('out'),
-                caps=lambda: (cap('in'), cap('out')), ring=ring, pin=pin, fea_upper=fea_upper)
+                caps=lambda: (cap('in'), cap('out')), ring=ring, pin=pin, fea_upper=fea_upper, fea_fore=fea_fore, fea_contact=fea_contact)
     for k in sys.argv[1:] or jobs:
         print('==', k, flush=True)
         jobs[k]()

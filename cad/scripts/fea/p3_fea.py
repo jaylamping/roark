@@ -174,6 +174,10 @@ def pick(d, sel):
         if sel[0] == 'plane' and t == 'plane':
             p = sel[1]
             if all(lo[i] - .3 <= p[i] <= hi[i] + .3 for i in range(3)) and (sel[2] is None or abs(a - sel[2]) < sel[2] * .3):
+                if len(sel) > 3 and sel[3] == 'on':       # the point must lie on the face itself (within 0.05 mm)
+                    q = f.GetClosestPointOn(p[0] / 1000, p[1] / 1000, p[2] / 1000)
+                    if q is None or math.dist([v * 1000 for v in list(q)[:3]], p) > 0.05:
+                        continue
                 out.append(f)
     return out
 
@@ -188,6 +192,7 @@ def run(name, c):
     sw = app()
     t0 = time.time()
     el = c.get('el', 3.0)
+    sw.CloseAllDocuments(True)        # a failed case leaves its model open, and a second copy by the same name won't open
     e, w = L(), L()
     d = sw.OpenDoc6(str(PARTS[c['part']]), 1, 1, '', e, w)
     sw.ActivateDoc3(d.GetTitle, False, 0, L())
@@ -276,6 +281,10 @@ def run(name, c):
     anchors = np.array([xyz[int(i)] for i in fid if int(i) in xyz])
     dist = cKDTree(anchors).query(pos)[0]
     away = dist >= 2 * el
+    for bx in c.get('exclude', []):          # judged elsewhere (listed with the results): not part of the bulk / layer peaks
+        away &= ~np.all((pos >= np.array(bx[:3])) & (pos <= np.array(bx[3:])), axis=1)
+    if c.get('exclude'):
+        print(' excluded', c['exclude'], flush=True)
     vm = s[:, 10]
     np.savez(str(F / (name + '.npz')), pos=pos, s=s)
     i = np.flatnonzero(away)[np.argmax(vm[away])]
