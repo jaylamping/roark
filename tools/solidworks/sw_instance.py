@@ -28,6 +28,7 @@ import win32process
 
 EXE = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\SLDWORKS.exe"
 SIM_DLL = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\Simulation\cosworks.dll"
+SIM_DIR = os.path.normcase(os.path.dirname(SIM_DLL))
 LOCK = os.path.join(tempfile.gettempdir(), "sw_instance_launch.lock")
 
 
@@ -127,18 +128,44 @@ def _watch_hidden(pid):
     def live(p):
         return p in ours and ours[p] is not None and ours[p] == _started(p)
 
+    foreign = {}  # pid to start time of processes already judged not ours: a process's ancestry never changes
+
     def is_ours(p):
         if live(p):
             return True
         try:
             q = psutil.Process(p)
-            crash = q.name().lower() == "sldexitapp.exe" and f"/SWPID={pid}" in " ".join(q.cmdline()).upper()
-            if crash or live(q.ppid()):
-                ours[p] = q.create_time()
+            born = q.create_time()
+            if foreign.get(p) == born:
+                return False
+            name = q.name().lower()
+            crash = name == "sldexitapp.exe" and f"/SWPID={pid}" in " ".join(q.cmdline()).upper()
+            if crash or _descends(q) or (name == "star.exe" and _our_solver(q)):
+                ours[p] = born
                 return True
+            if name != "sldexitapp.exe":  # a crash report names its PID on the command line, not by ancestry
+                foreign[p] = born
         except psutil.Error:
             pass
         return False
+
+    def _descends(q):
+        # Any ancestor, not only the direct parent: the solver (Simulation\star.exe) can sit below a helper process,
+        # and a window shown in the first 2 s of a child's life would otherwise beat the sweep.
+        try:
+            return any(live(a.pid) for a in q.parents())
+        except psutil.Error:
+            return False
+
+    def _our_solver(q):
+        # star.exe whose parent chain is broken (helper already gone): ours if it started after this instance and no
+        # other SolidWorks is an ancestor, so another session's solver window is never touched.
+        try:
+            if os.path.normcase(os.path.dirname(q.exe())) != SIM_DIR or q.create_time() < ours[pid]:
+                return False
+            return not any(a.name().lower() == "sldworks.exe" for a in q.parents())
+        except (psutil.Error, KeyError, TypeError):
+            return False
 
     def log(h, took):
         item = (win32gui.GetClassName(h), win32gui.GetWindowText(h))
@@ -174,11 +201,23 @@ def _watch_hidden(pid):
     msg = wt.MSG()
     sweep = 0
     gone = None
+    muted = set()
     while True:
-        user.MsgWaitForMultipleObjectsEx(0, None, 500, 0x04FF, 0)
+        user.MsgWaitForMultipleObjectsEx(0, None, 250, 0x04FF, 0)
         while user.PeekMessageW(ctypes.byref(msg), 0, 0, 0, 1):
             user.TranslateMessage(ctypes.byref(msg))
             user.DispatchMessageW(ctypes.byref(msg))
+        # Sound: mute this instance's own audio sessions as they appear. Windows saves an app's mute by exe path, so
+        # close() raises the unmute flag first and the sessions end unmuted; Joey's own SolidWorks never inherits it.
+        if not os.path.exists(unmute_flag(pid)):
+            hit = _mute([q for q in ours if live(q)], True)
+            if hit:
+                muted.update(hit)
+                with open(hider_log(pid), "a", encoding="utf8") as f:
+                    f.write(f"{time.strftime('%H:%M:%S')} MUTED audio of {sorted(set(hit))}\n")
+        elif muted:
+            _mute(list(muted), False)
+            muted.clear()
         if time.time() - sweep > 2:
             sweep = time.time()
             alive = [q for q in ours if live(q)]
@@ -194,9 +233,30 @@ def _watch_hidden(pid):
             # A crash report can appear after the instance has gone, so stay a minute longer.
             gone = (gone or time.time()) if not alive else None
             if gone and time.time() - gone > 60:
+                try:
+                    os.remove(unmute_flag(pid))
+                except OSError:
+                    pass
                 return
             for q in alive:
                 hide_windows(q)
+
+
+def unmute_flag(pid):
+    return os.path.join(tempfile.gettempdir(), f"sw_unmute_{pid}.flag")
+
+
+def _mute(pids, on):
+    """Mute or unmute the audio sessions of these PIDs only. Returns the PIDs changed; never raises."""
+    try:
+        here = os.path.dirname(os.path.abspath(__file__))
+        if here not in sys.path:
+            sys.path.insert(0, here)
+        import sw_audio  # noqa: PLC0415 - Windows Core Audio through ctypes, loaded only where it is used
+
+        return sw_audio.mute_pids(set(pids), on)
+    except Exception:  # noqa: BLE001 - sound is a nicety: a Core Audio failure must never stop the hider or a close
+        return []
 
 
 def _started(pid):
@@ -275,6 +335,15 @@ class Instance:
         """Close this instance's documents and exit it. Only ever touches self.pid."""
         if not self.owned:
             raise RuntimeError("this session does not own that instance")
+        # Unmute this instance's sessions before it exits, so Windows saves SLDWORKS.exe as unmuted (see the hider).
+        try:
+            with open(unmute_flag(self.pid), "w"):
+                pass
+            time.sleep(0.6)  # the hider checks the flag every 250 ms
+            kids = psutil.Process(self.pid).children(recursive=True) if _started(self.pid) == self.started else []
+            _mute([self.pid] + [k.pid for k in kids], False)
+        except (OSError, psutil.Error):
+            pass
         if self.sw is not None:
             try:
                 if int(self.sw.GetProcessID) != self.pid:
