@@ -85,8 +85,8 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   traced exactly this to a duplicate sender).
 - **Only frames on the allowlist** (PLAN item 2) can be built for transmit; the check lives in the codec so nothing else can
   bypass it.
-- **A TX echo isn't proof the frame reached the wire** (PLAN item 3). Latency is measured from RX timestamps of replies, and
-  liveness from replies, never from echoes.
+- **A TX echo isn't proof the frame reached the wire** (PLAN item 3). Latency in the recording is measured from the
+  kernel RX timestamps of replies, and liveness from replies, never from echoes.
 
 ### Receive
 
@@ -97,13 +97,15 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   virtual bus is unbounded by default; ours isn't).
 - **Liveness comes from replies to commands,** not from any traffic on the bus. A drive is alive if it answered this tick's
   command.
+- **The tick matches replies and ages feedback on the monotonic time the bus thread read the frame;** the recording
+  carries the kernel RX stamp. **Why:** the kernel's stamp is wall-clock and can step.
 
 ### Errors and bus-off
 
 - **Bus errors are a typed enum** (`BusOff`, `ErrorPassive`, `ErrorWarning`, `RxOverflow`, `TxTimeout`, `InterfaceDown`,
   `InterfaceGone`, ...), matched exhaustively.
-- **Latch on the first bus-off error frame** and stop every run on that bus, as [PLAN item 3](../PLAN.md#3-the-new-can-layer-tenet-5)
-  and item 6 say. The latch lives in software because the adapter may bring the bus back by itself (PLAN item 3 has the
+- **Latch on the first bus-off error frame, or any socket read or write failure other than a full queue,** and stop every
+  run on that bus, as [PLAN item 3](../PLAN.md#3-the-new-can-layer-tenet-5) and item 6 say. The latch lives in software because the adapter may bring the bus back by itself (PLAN item 3 has the
   details and sources). Code never treats "the interface is up again" as permission to continue.
 - **Error counters and drops are metrics** (per bus: bus errors, error-passive, bus-off count, RX overflow, TX drops, late
   ticks), exported every second and shown in the UI.
@@ -111,19 +113,24 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
 ### Stops and the schedule
 
 - **A stop names its scope.** A fault, a drop out of Run, a silent drive or motion on expired feedback stops that drive's
-  limb; a late wake, a backlog, a bad batch, control going silent or a bus error stops every active limb on the bus (an idle limb has nothing running to stop). **Why:** the
-  affected limb stops ([architecture.md](architecture.md)), and the other arm on the same bus has done nothing wrong.
+  limb; a bad batch, control going silent, an operator's bus stop or a bus error stops every limb on the bus not already
+  stopping or stopped; a late wake or a backlog stops every active limb on the bus (an idle limb has nothing running to
+  stop). **Why:** the affected limb stops ([architecture.md](architecture.md)), and the other arm on the same bus has
+  done nothing wrong; a batch or a bus that can't be trusted is trusted for no limb.
 - **Check before every send.** What the drain read before the send is checked before the tick's commands go out, so a
   fault read in the slack stops its limb on that tick, not the next ([safety.md section 3](safety.md#3-how-a-rule-is-written)).
 - **Only an operator clear re-arms,** and only a stopped limb whose drives are known disabled (confirmed in Reset, or sent
   nothing for longer than the drive timeout). A latched bus error is never re-armed in place: the bus thread and socket
   are rebuilt. Nothing in the bus layer re-arms itself.
 - **Slow requests ride in the slack,** one in flight per bus, sent after the collect deadline only when the reply fits
-  before the next tick starts, never to a limb the veto would stop or while control is silent, and writes only to an
-  idle limb's drive with no command of that tick unanswered. Every request gets exactly one result, including when the
-  thread ends (a result control's full ring can't take is dropped, and counted until the last snapshot is out), and none is retried. **Why:** a parameter read must not crowd out a command, and a write's answer is a plain status, like a command's, so
-  a write goes only where that status is least likely to be taken for a command's reply; a reply more than a tick late still can be, so a write's result proves nothing about the value and preflight reads every write back. Since `canTimeout` counts from any frame, slow traffic must never keep a
-  stopped drive alive.
+  before the next tick starts, never on a tick whose reads can't be trusted, never to a limb the veto would stop or
+  while control is silent, and writes only to an idle limb's drive with no command of that tick unanswered. Every
+  request gets exactly one result, including when the thread ends, and none is retried. **Why:** a parameter read must
+  not crowd out a command. A write's answer is a plain status, like a command's, so a write goes only where the two are
+  least likely to be mixed up; a late status can still be taken for the other (both ways are in the
+  [`can` README](../crates/can/README.md), Slow requests), so a write's result proves nothing about the value and
+  preflight reads every write back. Since `canTimeout` counts from any frame, slow traffic must never keep a stopped
+  drive alive.
 - **One schedule for every bus.** Every bus thread and the control thread tick from the one origin the runtime picks, so
   tick n is the same instant everywhere.
 

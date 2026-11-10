@@ -5,13 +5,12 @@
 mod common;
 
 use can::{
-    BusTick, ConfigError, DRIVE_TIMEOUT_NS, LimbState, RearmRefused, SLOW_SLOTS, SendOutcome,
-    SlowKind, SlowOutcome, SlowRefusal, SlowRequest, SlowResult, StopReason, Timing, TimingError,
-    Unsent,
+    BusTick, DRIVE_TIMEOUT_NS, Drain, LimbState, RearmRefused, SLOW_SLOTS, SendOutcome, SlowKind,
+    SlowOutcome, SlowRefusal, SlowRequest, SlowResult, StopReason, Timing, Unsent,
 };
 use common::{
-    MS, PERIOD, at, batch, bus, deadline, drive, error_frame, id, one_limb, record, run_tick,
-    status, status_frame, stop_of, two_limbs,
+    MS, PERIOD, at, batch, bus, deadline, drive, error_frame, id, record, run_tick, status,
+    status_frame, stop_of, two_limbs,
 };
 use robstride::drive as wire;
 use robstride::{
@@ -356,41 +355,33 @@ fn slow_requests_name_a_drive_on_the_bus_and_the_queue_is_bounded() {
     assert_eq!(bus.slow_room(), 1);
 }
 
-/// Guards: number - a slow reply window that fills the whole slack between the collect deadline and the next tick
-/// (the shell sends only after the deadline, so nothing could go), or is zero, is refused at startup; one a nanosecond
-/// shorter is not (PLAN.md item 3: parameter traffic only in the slack).
+/// Guards: safety - a held tick (a late wake, a stall or a backlog) sends nothing but its batch's Disables and
+/// reporting off, slow frames included: the request waits, queued, and goes in the next trusted tick's slack (can.md
+/// section 2: slow requests never on a tick whose reads can't be trusted; PLAN.md item 3).
 #[test]
-fn a_slow_reply_window_past_the_slack_is_refused() {
-    let base = Timing::at_hz(250);
-    let slack = base.period_ns - base.collect_ns;
-    let rows = [
-        (
-            0,
-            Some(TimingError::SlowReply {
-                slow_reply_ns: 0,
-                collect_ns: base.collect_ns,
-                period_ns: base.period_ns,
-            }),
-        ),
-        (
-            slack,
-            Some(TimingError::SlowReply {
-                slow_reply_ns: slack,
-                collect_ns: base.collect_ns,
-                period_ns: base.period_ns,
-            }),
-        ),
-        (slack - 1, None),
+fn a_held_tick_sends_no_slow_request() {
+    let late = Timing::at_hz(250).send_window_ns + 1;
+    // (cause, how late tick 1 wakes, ticks the stall slept through, how its drain went)
+    let causes = [
+        ("late wake", late, 0, Drain::Emptied),
+        ("stall", 0, 1, Drain::Emptied),
+        ("backlog", 0, 0, Drain::Backlog),
     ];
-    for (slow_reply_ns, refused) in rows {
-        let timing = Timing {
-            slow_reply_ns,
-            ..base
-        };
+    for (name, woke_after, skipped, drain) in causes {
+        let mut bus = two_limbs();
+        quiet_tick(&mut bus, 0);
+        assert_eq!(bus.submit(read(1, 1, Param::Vbus)), Ok(()));
+        bus.skipped(skipped);
+        bus.drained(drain);
+        let _ = bus.begin(1, PERIOD + woke_after, PERIOD, Some(&batch(1, &[])));
+        let _ = bus.end(deadline(1));
+        assert_eq!(bus.slow_send(deadline(1)), None, "{name}");
+        assert_eq!(bus.take_slow_result(), None, "{name}: still queued");
+        quiet_tick(&mut bus, 2);
         assert_eq!(
-            BusTick::new(&one_limb(&[id(101)]), timing).err(),
-            refused.map(ConfigError::Timing),
-            "{slow_reply_ns}"
+            bus.slow_send(deadline(2)),
+            Some(encode::param_read(id(102), Param::Vbus)),
+            "{name}"
         );
     }
 }
@@ -404,8 +395,9 @@ fn faulted(n: u8, mode: Mode) -> telemetry::FrameRecord {
 
 /// Guards: safety - a slow frame is a send, so the slack refuses what the veto would stop at the next send: a fault
 /// read in the collect on any drive of the limb, or a stop asked for and not yet taken, refuses the request at once;
-/// and a write goes only to a drive of an idle limb with no command of that tick unanswered, so its status answer can't
-/// pass for a command's reply (can.md section 2; crates/can/README.md, slow requests: check before every send).
+/// and a write goes only to a drive of an idle limb with no command of that tick unanswered, where its status answer
+/// is least likely to be taken for a command's reply (a late status still can be, either way, so the read-back proves
+/// the value; crates/can/README.md, Slow requests; can.md section 2: check before every send).
 #[test]
 fn the_slack_refuses_what_the_veto_would_stop_and_writes_to_a_running_limb() {
     let mut bus = two_limbs();

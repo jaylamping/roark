@@ -12,6 +12,7 @@
 Run with no arguments for all checks. Exits non-zero if any check fails.
 """
 
+import ast
 import json
 import re
 import subprocess
@@ -213,6 +214,21 @@ def check_guards():
     return errors
 
 
+PY_GUARDS = re.compile(r"^\s*Guards: (bug|safety|protocol|number) - \S")
+
+
+def check_py_guards():
+    """pytest tests carry the Guards: line as the first line of their docstring."""
+    errors = []
+    for path in sorted(p for p in ROOT.rglob("test_*.py") if "target" not in p.parts):
+        for node in ast.walk(ast.parse(path.read_text(), str(path))):
+            if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
+                doc = ast.get_docstring(node) or ""
+                if not PY_GUARDS.match(doc.splitlines()[0] if doc else ""):
+                    errors.append(f"{path.relative_to(ROOT)}:{node.lineno}: test without a `Guards: <kind> - ...` docstring")
+    return errors
+
+
 def check_sleep():
     errors = []
     for path in rust_files():
@@ -252,7 +268,7 @@ def count_tests():
     return []
 
 
-CHECKS = {"deps": check_deps, "lines": check_lines, "guards": check_guards, "sleep": check_sleep, "todo": check_todo, "docs": check_docs,
+CHECKS = {"deps": check_deps, "lines": check_lines, "guards": check_guards, "py_guards": check_py_guards, "sleep": check_sleep, "todo": check_todo, "docs": check_docs,
           "count": count_tests}
 
 

@@ -26,6 +26,8 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest@0.9.151,cargo-deny@0.20.2   # pinned; bump in its own PR
+      - name: Install pytest for the CAD tool tests
+        run: sudo apt-get update && sudo apt-get install -y python3-pytest
       - run: ./scripts/check.sh
 
   sim:
