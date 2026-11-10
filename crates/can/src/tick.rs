@@ -458,10 +458,19 @@ impl BusTick {
         if frame.error {
             self.counters.error_frames += 1;
             // Of what an error frame can say, only bus-off stops the bus for good: the adapter may restart the bus by
-            // itself (PLAN.md item 3, item 6 Bus-off row).
+            // itself (PLAN.md item 3, item 6 Bus-off row). The interface errors come from the socket, through
+            // `lost_bus`; the controller's state is read below.
             let error = classify(frame.id, &frame.data);
-            if error == BusError::BusOff {
-                self.latch(error);
+            match error {
+                BusError::BusOff => self.latch(error),
+                BusError::ErrorPassive
+                | BusError::ErrorWarning
+                | BusError::ErrorActive
+                | BusError::RxOverflow
+                | BusError::TxTimeout
+                | BusError::InterfaceDown
+                | BusError::InterfaceGone
+                | BusError::Other(_) => {}
             }
             // The controller's state, read on its own: a frame can carry it beside a more severe flag (passive back
             // to warning together with an overflow), and warning after passive is a recovery.
