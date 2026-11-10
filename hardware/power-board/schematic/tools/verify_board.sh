@@ -9,6 +9,7 @@
 #   tools/joint_check.py        every joint has 0.1 mm of real copper overlap
 #   tools/port_template.py and tools/u8_block.py with MODE=check   the designed blocks' copper equals the scripts
 #   tools/pour_width.py         60 A pours: temperature rise at the narrowest cut, vias in the VBUS band
+#   tools/heatsink_pads.py MODE=check   the bare B.Mask openings under the FET tabs are the generated set
 #   tools/check.py              the netlist, and the project's ESTOP / HV54 net classes against tools/domains.py
 #   tools/bom_check.py          the BOM files and the kit's J24 / J1 pinout rows against the two netlists
 # Exit 1 on any failure, and also when kicad-cli exits non-zero, when the DRC report is missing, older than this run or
@@ -70,6 +71,7 @@ run joint_check "$KP" "$ROOT/tools/joint_check.py" "$W/verify.kicad_pcb"
 MODE=check run 'port template copper differs from port_copper.py' "$KP" "$ROOT/tools/port_template.py" "$W/verify.kicad_pcb"
 MODE=check run 'U8 block copper differs from u8_block.py' "$KP" "$ROOT/tools/u8_block.py" "$W/verify.kicad_pcb"
 run pour_width "$KP" "$ROOT/tools/pour_width.py" "$W/verify.kicad_pcb"
+MODE=check run 'heatsink pad openings differ from heatsink_pads.py' "$KP" "$ROOT/tools/heatsink_pads.py" "$W/verify.kicad_pcb"
 "$KCLI" sch export netlist --format kicadsexpr -o "$W/net.net" "$ROOT/marengo_pdu_revb.kicad_sch" > "$W/net.log" 2>&1; rc=$?
 if [ "$rc" != 0 ] || [ ! -s "$W/net.net" ]; then cat "$W/net.log"; echo "FAIL: netlist export (exit $rc)"; fail=1
 else

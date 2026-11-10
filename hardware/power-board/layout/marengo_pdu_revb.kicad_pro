@@ -413,6 +413,14 @@
       },
       {
         "netclass": "HV54",
+        "pattern": "/CSN_A"
+      },
+      {
+        "netclass": "HV54",
+        "pattern": "/CSP_A"
+      },
+      {
+        "netclass": "HV54",
         "pattern": "/D_L1"
       },
       {
@@ -594,6 +602,10 @@
       {
         "netclass": "ESTOP",
         "pattern": "/VB_B"
+      },
+      {
+        "netclass": "HV54",
+        "pattern": "/VS_A"
       },
       {
         "netclass": "ESTOP",

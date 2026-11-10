@@ -1,7 +1,8 @@
 """Net classes for the rev B5 spacing rules (LAYOUT_RULES.md), shared by tools/grid_route.py (plain Python) and
 tools/route_checks.py / hv_spacing.py / gnd_fanout.py (KiCad's Python), so the router routes to the rules the checks test.
   - 54 V copper (HV): LAYOUT_RULES.md's list (BAT, SW_D, MID, VBUS, ABS, CL_D, BRK_*, SH*, V_L*) plus ABS_N and the
-    port drains D_L*. The latch's own supply chain (BAT_F, BAT_R, BAT_CTL) and the divider taps are not in it.
+    port drains D_L*, and U8's supply and sense pins VS_A, CSP_A, CSN_A (on RS1's pads through 0R; added 2026-11-10,
+    no copper had to move). The latch's own supply chain (BAT_F, BAT_R, BAT_CTL) and the divider taps are not in it.
   - E-stop safety nets (ESTOP): keep >= 1.5 mm to 54 V copper (the HV list) on every layer, 0.6 mm (outer) to copper
     riding on 54 V (0.44 MOhm of leakage into UVLO enables bank
     B by itself).
@@ -16,7 +17,7 @@ import os
 # MARENGO_HV_EXTRA=BAT_F,BAT_CTL,...: a what-if for tools/route_checks.py, treating these nets as 54 V copper too
 HV_EXTRA={'/'+x for x in os.environ.get('MARENGO_HV_EXTRA','').split(',') if x}
 def is_hv(n):
-    return (bool(re.match(r'/(BAT|SW_D|MID|VBUS|ABS|ABS_N|CL_D)$|/(BRK_|SH|V_L|D_L)',n)) or n in HV_EXTRA) and not is_estop(n) and not n.startswith('/SH12')
+    return (bool(re.match(r'/(BAT|SW_D|MID|VBUS|ABS|ABS_N|CL_D|VS_A|CSP_A|CSN_A)$|/(BRK_|SH|V_L|D_L)',n)) or n in HV_EXTRA) and not is_estop(n) and not n.startswith('/SH12')
 DOMRE=[('BAT',r'/(BAT|SW_D|SH_[PN]|SH9_[PN]|BRK_D|CSP_A|CSN_A|VS_A)$'),('MID',r'/(MID|GA1|GA2|GATE_A|BST_A|G1PD_A)$'),
        ('VBUS',r'/(VBUS|D_L\d|CSP_L\d|INP_L\d|SHL\d_[PN]|G1|G2|GATE|SHSP_[PN])$'),('ABS',r'/ABS$'),('CLD',r'/CL_D$'),
        ('BRK',r'/BRK_(F|P|T|PG|IN|GATE|G1)$')]+[(f'VL{k}',rf'/(V|G|GPD|GPU|BST|GC)_L{k}$') for k in range(1,7)]
