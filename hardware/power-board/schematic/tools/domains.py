@@ -29,6 +29,23 @@ def dom(n):
 def rides(n):
     """54 V copper, or copper riding on a 54 V node (a gate or bootstrap on its source, a sense tap on VBUS)"""
     return is_hv(n) or dom(n) is not None
+# The latch's own 54 V supply chain (BAT -> F1 -> BAT_F -> 22R -> BAT_R -> ES1D -> BAT_CTL -> U2) lies inside the latch
+# block, among the E-stop nets, so it is not on the 54 V list (599 item pairs would break the 1.5 mm rule). Most E-stop
+# nets fail safe under leakage from it or need under 70 kOhm to matter; these are the ones that leakage from 54 V could
+# push toward "run" at over 100 kOhm (LAYOUT_RULES.md, "Leakage from the latch supply": the table net by net):
+#   L_B, RST_C  0.47-0.56 MOhm turns the seal-in NPN on: the latch sets without a reset press
+#   MID_B       20 MOhm reports "MID healthy" and releases the reset interlock
+#   RUN_A, EN_A 4.3 MOhm enables bank A;  RUN_B, UVLO, FLT_D  0.44-0.7 MOhm enables bank B
+# They should keep 1.5 mm to the chain. On the routed board 135 item pairs don't (the chain's parts stand courtyard to
+# courtyard with Q5, R48 and R16), and clearing them means re-placing the latch block, which is open (exception 11).
+# tools/route_checks.py check 10 counts the pairs and fails above LEAK_PAIRS_MAX, so the count can only go down; the
+# routers keep the 0.2 mm default here until the block is re-laid.
+LATCH_SUPPLY={'/BAT_F','/BAT_R','/BAT_CTL'}
+LEAK_SENSITIVE={'/L_B','/RST_C','/MID_B','/RUN_A','/EN_A','/RUN_B','/UVLO','/FLT_D'}
+LEAK_PAIRS_MAX=135
+def latch_leak(a,b):
+    """one net on the latch's supply chain, the other a leakage-sensitive E-stop net"""
+    return (a in LATCH_SUPPLY and b in LEAK_SENSITIVE) or (b in LATCH_SUPPLY and a in LEAK_SENSITIVE)
 # The latch block (tools/place.py, option A), floorplan mm (X0, X1, Y0, Y1). LAYOUT_RULES: no 54 V copper on L2-L5 under
 # it, so no 54 V inner track or via there. latch_page() gives KiCad page mm (place.py: page X = X + 150, page Y = 440 - Y).
 LATCH=(-48.0,-31.0,254.0,310.5)

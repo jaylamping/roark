@@ -18,6 +18,8 @@
   7. Vias of another net inside a MID pour outline: only the ones at the coordinates in tools/domains.py MID_VIA_OK.
   8. Gate-drive nets take at most 2 vias; a net listed in tools/domains.py GATE_VIA_OK may have exactly its listed vias.
   9. The F.Cu E-stop guard areas (ESTOP_GUARD_*) are the set tools/estop_guards.py generates from the pads.
+ 10. The latch's 54 V supply chain within 1.5 mm of a leakage-sensitive E-stop net (tools/domains.py): counted, and
+     failed above LEAK_PAIRS_MAX (an open item that may only shrink; LEAK_LIST=1 lists the pairs).
 Run with KiCad's Python: <kicad python> tools/route_checks.py <board.kicad_pcb>   (exit 1 on a violation)"""
 import re,sys,math,collections
 import pcbnew
@@ -47,11 +49,28 @@ items=[]   # (net, layer, shape, label, footprint ref or None, courtyards entere
 def fpref(it):
     f=it.GetParentFootprint() if hasattr(it,'GetParentFootprint') else None
     return f.GetReference() if f else None
+TILE=mm(8)
 def islands(ps):
+    """the fill's islands; a big island is cut into 8 mm tiles, so a collision test runs against a few hundred vertices
+    instead of the whole pour (the tiles of one island abut, which changes nothing for clearances to other nets)"""
     for i in range(ps.OutlineCount()):
         one=pcbnew.SHAPE_POLY_SET(); one.AddOutline(ps.Outline(i))
         for h in range(ps.HoleCount(i)): one.AddHole(ps.Hole(i,h))
-        yield one
+        bb=one.BBox()
+        if bb.GetWidth()<=TILE and bb.GetHeight()<=TILE: yield one; continue
+        y=bb.GetTop()
+        while y<bb.GetBottom():
+            x=bb.GetLeft()
+            while x<bb.GetRight():
+                cell=pcbnew.SHAPE_POLY_SET(); cell.NewOutline()
+                for px,py in ((x,y),(x+TILE,y),(x+TILE,y+TILE),(x,y+TILE)): cell.Append(px,py)
+                cell.BooleanIntersection(one)
+                for k in range(cell.OutlineCount()):
+                    t=pcbnew.SHAPE_POLY_SET(); t.AddOutline(cell.Outline(k))
+                    for h in range(cell.HoleCount(k)): t.AddHole(cell.Hole(k,h))
+                    yield t
+                x+=TILE
+            y+=TILE
 for L in LAYERS:
     for p in b.GetPads():
         if p.IsOnLayer(L):   # an unflashed inner layer of a PTH pad keeps only its hole
@@ -76,7 +95,7 @@ def collide(a,c,cl):
     A,C=box(a),box(c); g=mm(cl)
     if A[1]+g<C[0] or C[1]+g<A[0] or A[3]+g<C[2] or C[3]+g<A[2]: return False
     return coll(a,c,mm(cl))
-bad=[]; pkg=[]; npairs=collections.Counter()
+bad=[]; pkg=[]; leak=[]; npairs=collections.Counter()
 byL={L:[i for i in items if i[1]==L] for L in LAYERS}
 for L in LAYERS:
     # every pair of different nets where one side is 54 V (or rides on 54 V) or E-stop: the rule from tools/domains.py
@@ -94,6 +113,7 @@ for L in LAYERS:
                 for it in bk.get((gx,gy),()): cand[id(it)]=it
         for n,_,s_,lab,ref,cy in cand.values():
             if n==m or ((RIDES(n) or n in ESTOP) and (n,lab,id(s_))<(m,lab2,id(h))): continue   # each hot-hot pair once
+            if domains.latch_leak(m,n) and collide(h,s_,1.5-0.001): leak.append((b.GetLayerName(L),m,lab2,pos(h),n,lab,pos(s_)))
             cl=domains.clearance(m,n,L in OUTER)
             if cy&cy2: cl=min(cl,0.15)
             npairs[cl]+=1
@@ -156,7 +176,13 @@ gw,gs=estop_guards.diff(b)
 print('9. E-stop guard areas: missing or misplaced',len(gw),'stale',len(gs))
 for r in gw: print('    missing/misplaced',r)
 for r in gs: print('    stale',r)
-bad+=latch+esv+pl+mbad+gbad+gw+gs
+# ---- 10. the latch's own 54 V supply chain against the leakage-sensitive E-stop nets (tools/domains.py): an open item,
+# held to its count so it can only shrink
+lbad=[('latch supply pairs',len(leak),'over the ceiling',domains.LEAK_PAIRS_MAX)] if len(leak)>domains.LEAK_PAIRS_MAX else []
+print(f'10. latch supply (BAT_F, BAT_R, BAT_CTL) within 1.5 mm of a leakage-sensitive E-stop net: {len(leak)} item pairs (open item; ceiling {domains.LEAK_PAIRS_MAX})',dict(sorted(collections.Counter((r[1],r[4]) for r in leak).items())))
+if __import__('os').environ.get('LEAK_LIST'):
+    for r in leak: print('   ',r)
+bad+=latch+esv+pl+mbad+gbad+gw+gs+lbad
 # ---- 3. Kelvin pairs
 def ptseg(p,a,c):
     dx,dy=c[0]-a[0],c[1]-a[1]; ll=dx*dx+dy*dy
