@@ -59,8 +59,10 @@ or a backlog stops every active limb (below). A stopping limb follows PLAN item 
   counts when the next tick's drain reads it, however late inside their send windows that tick and the stop's first
   woke). A Reset read later confirms nothing: that drive stays unconfirmed and gets no reporting off,
   as does one that never answers. A status, report or version reply in any other mode read after a confirmation
-  withdraws it: the drive gets Disable again while the window lasts, and counts as unconfirmed for the stop's end and
-  the re-arm.
+  withdraws it: the drive counts as unconfirmed for the stop's end and the re-arm, and gets Disable again while the
+  limb is still stopping and the window lasts. Once the limb is `Stopped` nothing is sent to it: the drive's own
+  timeout (`canTimeout`) takes it down, the re-arm treats it as unconfirmed (the quiet wait below applies), and an
+  enable needs preflight to read it in Reset (PLAN item 6).
 - Active reporting off to each confirmed drive once its post-Disable silence is over (`disable_silence_ns`, 50 ms after
   its confirmation), every tick until the socket takes it or the stop ends. Every Disable, a stop's or one in
   control's batch, goes out ahead of every reporting off, so a queue that fills after the first frames costs a
@@ -116,7 +118,8 @@ control.
 Open: a Reset read in order after a Disable puts its drive offline, and a later Disable leaves it there, which assumes
 a Reset read after the Disable was sent after it; a drive wrongly offline is not counted silent until its next Enable,
 while motion to it still stops its limb on stale feedback (`BusTick::drained` has the detail). Checked on the real
-adapter at PLAN step 8.
+adapter at PLAN step 8. Also to check on the bench, since the re-arm relies on the drive's timeout (`BusTick::rearm`):
+a drive that stays in Run past its `canTimeout`.
 
 Not yet: the `/can/<bus>/tx_intent` record of every frame handed to the socket or not sent, with the reason
 (logging.md section 8.2), and the per-run tick duration and jitter (rust.md section 6). Both come with the runtime,
