@@ -53,7 +53,7 @@ HUB_COLS = [(147.5, 292.0), (193.5, 292.0)]
 HUB_LUGS = [(141.0, 151.75), (189.25, 200.0)]
 HUB_LUG_Y = (288.0, 300.0)
 HUB_LUG_HZ = 5.0
-FA_POSTS = [(143.5, CZ + 13.0), (143.5, CZ - 13.0)]   # (Y, Z): forearm seam posts above the RS00 (top Y 136.4), the harness passes between
+FA_POSTS = [(150.5, CZ + 13.0), (150.5, CZ - 13.0)]   # (Y, Z): forearm seam posts above the RS00 (top Y 144.4), the harness passes between
 FA_POST_R = 4.5
 HUB_POST_Y = 291.4                    # post top 295.9, just under the spigot (Y 296)
 

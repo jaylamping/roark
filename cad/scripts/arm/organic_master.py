@@ -30,8 +30,8 @@ WIP = CAD / '_wip' / 'organic-arm' / 'cad'
 HUB_JOINT = 302.0                      # today's hub disc (Y 302-319.86) stays: the skin starts under it
 UPPER = [(HUB_JOINT, 39.0, 39.0, 39.0, 39.0, 2.0), (294, 38.3, 38.3, 37.5, 39, 2.2), (284, 35, 35, 29, 38, 2.5),
          (266, 29, 29, 17.5, 34, 2.4), (250, 26, 26, 13.5, 30, 2.3), (232, 26, 26, 13.5, 28, 2.2)]
-FORE = [(90.3, 36.0, 36.0, 36.0, 36.0, 2.0), (108, 35, 35, 34, 36.0, 2.0), (128, 38.5, 38.5, 33, 36.5, 2.2),
-        (148, 42.0, 43.0, 30, 38.5, 3.2), (165, 42.51, 43.49, 27, 39, 10.0)]
+FORE = [(98.3, 36.0, 36.0, 36.0, 36.0, 2.0), (108, 35.5, 35.5, 35.0, 36.0, 2.0), (128, 38.5, 38.5, 33, 36.5, 2.2),
+        (148, 42.0, 43.0, 31.5, 38.5, 3.2), (165, 42.51, 43.49, 27, 39, 10.0)]
 # from Y 165 the sides sit on the cheek outer faces (X 127.0 / 213.0); the cheeks are plates whose side outline is the r 42
 # circle with tangent lines down to the belly's front and back at Y 165, so each side runs up into its cheek
 DRUM = dict(x0=141.5, x1=198.5, r=44.5, edge=7.0)
@@ -292,17 +292,18 @@ def fore_details(d):
 
 
 def yaw_interface(d):
-    """The PR #28 yaw stage bolts on unchanged: a rim band under the Ø72 skin at Y 90.3, the Ø58.2 bore the RS00 goes up
-    through, six M3 x 5.7 inserts on r 32.6 for the sleeve flange (through the RS00 ring), and the low cable channel at the back."""
-    y_revolve(d, 'RIM_BAND', [(29.1, 90.3), (34.5, 90.3), (34.5, 97.0), (31.5, 103.0), (29.1, 103.0)])
-    with Sk(d, plane(d, 'Y', 90.3, 'SLEEVE_INSERTS_P'), 'SLEEVE_INSERTS') as s:
+    """The belly's bottom rim (layout A2): a rim band under the Ø72 skin at Y 98.3, the Ø58.2 bore the RS00 goes up through,
+    six M3 x 5.7 inserts on r 32.6 for the stub ring's screws, and the low cable channel at the back. The front of the belly
+    near the elbow is 1.5 mm fuller (Y 148) so the RS00, 8 mm higher than in draft 4, clears it."""
+    y_revolve(d, 'RIM_BAND', [(29.1, 98.3), (34.5, 98.3), (34.5, 105.0), (31.5, 111.0), (29.1, 111.0)])
+    with Sk(d, plane(d, 'Y', 98.3, 'SLEEVE_INSERTS_P'), 'SLEEVE_INSERTS') as s:
         for a in range(0, 360, 60):
             t = math.radians(a)
-            s.circle((HX + 32.6 * math.cos(t), 90.3, CZ + 32.6 * math.sin(t)), 2.0)
-    feat(d, s.feat, 'SLEEVE_INSERTS', 7.0, True, want=(1, 1, 90.3))
-    with Sk(d, plane(d, 'Y', 90.3, 'CABLE_CHANNEL_LOW_P'), 'CABLE_CHANNEL_LOW') as s:
-        s.poly([(HX - 6.0, 90.3, CZ - 23.0), (HX + 6.0, 90.3, CZ - 23.0), (HX + 6.0, 90.3, CZ - 32.0), (HX - 6.0, 90.3, CZ - 32.0)])   # 12 x 9: 1 mm+ off the 2.4 mm skin
-    feat(d, s.feat, 'CABLE_CHANNEL_LOW', 13.0, True, want=(1, 1, 90.3))   # through the rim band; above it the cable runs behind the RS00
+            s.circle((HX + 32.6 * math.cos(t), 98.3, CZ + 32.6 * math.sin(t)), 2.0)
+    feat(d, s.feat, 'SLEEVE_INSERTS', 7.0, True, want=(1, 1, 98.3))
+    with Sk(d, plane(d, 'Y', 98.3, 'CABLE_CHANNEL_LOW_P'), 'CABLE_CHANNEL_LOW') as s:
+        s.poly([(HX - 6.0, 98.3, CZ - 23.0), (HX + 6.0, 98.3, CZ - 23.0), (HX + 6.0, 98.3, CZ - 32.0), (HX - 6.0, 98.3, CZ - 32.0)])   # 12 x 9: 1 mm+ off the 2.4 mm skin
+    feat(d, s.feat, 'CABLE_CHANNEL_LOW', 13.0, True, want=(1, 1, 98.3))   # through the rim band; above it the cable runs behind the RS00
 
 
 def upper():

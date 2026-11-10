@@ -46,7 +46,7 @@ for tag, a in (('0', 64.6), ('124', 115.4)):          # contact pads on the 50 d
 PARTS['fore'] = F / 'FA_ORGANIC_BONDED_v10.SLDPRT'
 HAND = (170.49, -73.1, CZ)
 OUT_FIX = [('fixed', cyl(2.2, [196, 190, -15, 214, 230, 27])), ('fixed', cyl(2.025, [196, 190, -15, 204, 230, 27])), ('hinge', cyl(26.025, [133, 180, -25, 143, 240, 37]))]
-RIM = cyl(2.0, [125, 89, -35, 215, 99, 47])
+RIM = cyl(2.0, [125, 97, -35, 215, 107, 47])
 FREG = {'cheek_in_web': [126, 165, -40, 142, 255, 52], 'cheek_out': [196, 165, -40, 214, 255, 52], 'saddle': [126, 150, -45, 214, 175, 52],
         'belly': [126, 95, -45, 214, 150, 52]}
 for k, f, m in (('FP90', (0, 0, -55.0), (0, 0, 0)), ('FLAT', (55.0, 0, 0), (0, 0, 0)), ('FTW', (0, 0, 0), (0, 14.0, 0))):
@@ -100,20 +100,20 @@ for k in ('E34', 'E17', 'G90'):
 # ring held at its top face, the load reaching it through the bearings on the stub.
 from pathlib import Path as _P
 SIMF = _P(__file__).resolve().parents[2] / '_sim' / 'forearm'
-PARTS['rot'] = SIMF / 'ROT_A2_v1.SLDPRT'
-PARTS['stub'] = SIMF / 'STUB_A2_v1.SLDPRT'
+PARTS['rot'] = SIMF / 'ROT_A2_v2.SLDPRT'
+PARTS['stub'] = SIMF / 'STUB_A2_v2.SLDPRT'
 HP2 = (170.49, -68.8, CZ)
-BORE = cyl(26.05, [135, 60, -30, 206, 84, 42])
+BORE = cyl(26.05, [135, 68, -30, 206, 92, 42])
 FACE = pl((170.49 + 25.0, 14.9, CZ))
-STUB_OD = cyl(20.0, [145, 66, -20, 196, 83, 32])
-RING_TOP = pl((170.49 + 30.0, 90.3, CZ))
-RREG = {'hub': [135, 59, -30, 206, 84, 42], 'shell': [133, 14, -32, 208, 84, 44], 'wrist': [135, 14, -30, 206, 23, 42]}
+STUB_OD = cyl(20.0, [145, 69, -20, 196, 91, 32])
+RING_TOP = pl((170.49 + 30.0, 98.3, CZ))
+RREG = {'hub': [135, 64, -30, 206, 92, 42], 'shell': [133, 14, -32, 208, 84, 44], 'wrist': [135, 14, -30, 206, 23, 42]}
 for k, f, m in (('ROT_P90', (0, 0, -54.0), (0, 0, 0)), ('ROT_LAT', (54.0, 0, 0), (0, 0, 0)), ('ROT_TW', (0, 0, 0), (0, 14.0, 0))):
     CASES[k] = dict(part='rot', fix=[('fixed', BORE)], remote=(FACE, HP2, f, m), regions=RREG, el=2.5)
     CASES[k + '_fine'] = dict(CASES[k], el=1.8)
-CASES['STUB_P90'] = dict(part='stub', fix=[('fixed', RING_TOP)], remote=(STUB_OD, HP2, (0, 0, -54.0), (0, 0, 0)), el=1.5, regions={'stub': [148, 66, -20, 193, 85, 32]})
+CASES['STUB_P90'] = dict(part='stub', fix=[('fixed', RING_TOP)], remote=(STUB_OD, HP2, (0, 0, -54.0), (0, 0, 0)), el=1.5, regions={'stub': [148, 69, -20, 193, 93, 32]})
 CASES['STUB_P90_fine'] = dict(CASES['STUB_P90'], el=1.0)
-CASES['STUB_TW'] = dict(part='stub', fix=[('fixed', RING_TOP)], remote=(STUB_OD, HP2, (0, 0, 0), (0, 14.0, 0)), el=1.5, regions={'stub': [148, 66, -20, 193, 85, 32]})
+CASES['STUB_TW'] = dict(part='stub', fix=[('fixed', RING_TOP)], remote=(STUB_OD, HP2, (0, 0, 0), (0, 14.0, 0)), el=1.5, regions={'stub': [148, 69, -20, 193, 93, 32]})
 
 if __name__ == '__main__':
     for n in sys.argv[1:]:
