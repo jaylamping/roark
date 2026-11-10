@@ -42,7 +42,7 @@ pub struct Timing {
     /// drive that never confirms gets none (post-Disable silences up to 48.7 ms measured, PLAN.md item 2).
     pub disable_silence_ns: u64,
     /// Ticks without a fresh batch, while a limb is active, that stop every limb on the bus (PLAN.md item 3: two).
-    /// Counted with every limb idle too: past it, slow requests are refused.
+    /// Counted on every tick, whatever the limbs are doing: past it, slow requests are refused.
     pub silent_ticks: u32,
     /// Consecutive commands a drive may leave unanswered by the collect deadline before its limb stops (PLAN.md item 6
     /// Silence row: three).
@@ -51,6 +51,13 @@ pub struct Timing {
     /// the next drain reads its reply. A quarter period by default: provisional, to be measured on the real adapter
     /// (PLAN step 8).
     pub slow_reply_ns: u64,
+    /// How many ticks a slow request may wait queued: one still unsent this many ticks after the tick it was submitted
+    /// in expires at the start of that tick's slack, so a run of held ticks or of slacks opened too late can't keep it
+    /// for good (rust.md section 4: a limit on everything). The ticks covering 100 ms by default, rounded up (25 at
+    /// 250 Hz): at every rate whose defaults [`Self::check`] passes (86 Hz and up) that is more than
+    /// [`SLOW_SLOTS`](crate::SLOW_SLOTS) ticks, so a full queue, sent one a tick, drains before its last request
+    /// expires.
+    pub slow_queue_ticks: u64,
 }
 
 impl Timing {
@@ -73,6 +80,10 @@ impl Timing {
             silent_ticks: 2,
             silence_misses: 3,
             slow_reply_ns: period_ns / 4,
+            slow_queue_ticks: match period_ns {
+                0 => 0,
+                period_ns => 100_000_000_u64.div_ceil(period_ns),
+            },
         }
     }
 
@@ -92,7 +103,8 @@ impl Timing {
     ///   plus the write slack (from the first unanswered command to the stop's Disable) under the drives' timeout
     ///   ([`TimingError::SilenceMisses`]), so a silent drive's limb is stopped before the drives give up;
     /// - a slow reply window of at least one nanosecond that, from the collect deadline, ends before the next tick
-    ///   starts ([`TimingError::SlowReply`]).
+    ///   starts ([`TimingError::SlowReply`]);
+    /// - at least one tick a slow request may wait queued ([`TimingError::NoSlowQueueTicks`]).
     ///
     /// # Errors
     /// The first rule it breaks.
@@ -158,6 +170,8 @@ impl Timing {
                 collect_ns,
                 period_ns,
             })
+        } else if self.slow_queue_ticks == 0 {
+            Err(TimingError::NoSlowQueueTicks)
         } else {
             Ok(())
         }
@@ -339,4 +353,7 @@ pub enum TimingError {
         /// The period.
         period_ns: u64,
     },
+    /// `slow_queue_ticks` is zero: every slow request would expire before a slack could send it.
+    #[error("slow_queue_ticks must be at least 1")]
+    NoSlowQueueTicks,
 }

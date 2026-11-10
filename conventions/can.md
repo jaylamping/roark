@@ -124,13 +124,14 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   are rebuilt. Nothing in the bus layer re-arms itself.
 - **Slow requests ride in the slack,** one in flight per bus, sent after the collect deadline only when the reply fits
   before the next tick starts, never on a tick whose reads can't be trusted, never to a limb the veto would stop or
-  while control is silent, and writes only to an idle limb's drive with no command of that tick unanswered. Every
-  request gets exactly one result, including when the thread ends, and none is retried. **Why:** a parameter read must
-  not crowd out a command. A write's answer is a plain status, like a command's, so a write goes only where the two are
-  least likely to be mixed up; a late status can still be taken for the other (both ways are in the
-  [`can` README](../crates/can/README.md), Slow requests), so a write's result proves nothing about the value and
-  preflight reads every write back. Since `canTimeout` counts from any frame, slow traffic must never keep a stopped
-  drive alive.
+  while control is silent, and writes only to an idle limb's drive with no command of that tick unanswered. A request
+  waits queued only a bounded number of ticks. The bus produces exactly one result for every request, including when the
+  thread ends, and retries none; a result control's full ring can't take is dropped and counted, and the requester times
+  out. **Why:** a parameter read must not crowd out a command. A write's answer is a plain status, like a command's, so
+  a write goes only where the two are least likely to be mixed up; a late status can still be taken for the other (both
+  ways are in the [`can` README](../crates/can/README.md), Slow requests), so a write's result proves nothing about the
+  value and preflight reads every write back. Since `canTimeout` counts from any frame, slow traffic must never keep a
+  stopped drive alive.
 - **One schedule for every bus.** Every bus thread and the control thread tick from the one origin the runtime picks, so
   tick n is the same instant everywhere.
 

@@ -122,6 +122,9 @@ impl BusTick {
             self.counters.unexpected += 1;
             return;
         };
+        // A status while a write is in flight to the drive answers the write, not a command. Its faults and mode are
+        // taken below all the same.
+        let answers_write = answer && self.slow_write_reply(slot);
         let Some(d) = self.drives.get_mut(slot).and_then(Option::as_mut) else {
             return;
         };
@@ -138,12 +141,7 @@ impl BusTick {
             Some(LimbState::Stopping { since_ns }) if read_ns < since_ns.saturating_add(replies_ns)
         );
         d.note_mode(status.header.mode, active, unordered);
-        if !answer {
-            return;
-        }
-        // A status while a write is in flight to the drive answers the write, not a command. Its faults and mode are
-        // already taken above.
-        if self.slow_write_reply(slot) {
+        if !answer || answers_write {
             return;
         }
         // A write's own status read after it timed out (at this tick's start) lands below, as the reply to this tick's
@@ -153,9 +151,6 @@ impl BusTick {
         // starts stopping this tick sends it no Enable, so it is still disabled when the stop's Disable arrives. Only a
         // status that also outlived an Enable on a later tick could, which is the read order `BusTick::drained`
         // assumes for every status.
-        let Some(d) = self.drives.get_mut(slot).and_then(Option::as_mut) else {
-            return;
-        };
         let Some(o) = d.outstanding.as_mut().filter(|_| !unordered) else {
             self.counters.unsolicited += 1;
             return;
@@ -190,7 +185,7 @@ impl BusTick {
     fn slot_index(&self, device: DeviceId) -> Option<usize> {
         self.drives
             .iter()
-            .position(|d| d.is_some_and(|d| d.device == device))
+            .position(|d| d.as_ref().is_some_and(|d| d.device == device))
     }
 }
 

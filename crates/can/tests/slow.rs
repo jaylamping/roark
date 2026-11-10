@@ -39,10 +39,11 @@ fn param_reply(n: u8, param: Param, value: ParamValue) -> telemetry::FrameRecord
     record(f.id(), f.data(), Direction::TxOther)
 }
 
-/// Tick `tick` with control alive (an empty batch) and nothing sent, ended at its collect deadline.
+/// Tick `tick` with control alive (an empty batch) and nothing sent, ended at its collect deadline, its slack opened.
 fn quiet_tick(bus: &mut BusTick, tick: u64) {
     run_tick(bus, tick, Some(&batch(tick, &[])), &[]);
     let _ = bus.end(deadline(tick));
+    bus.open_slack();
 }
 
 /// The last moment a slow request may go in tick `tick`: its reply window ends at the next tick's start.
@@ -235,33 +236,39 @@ fn get_id_and_a_write_are_answered_by_their_own_replies() {
 }
 
 /// Guards: safety - slow requests never keep a drive alive past a stop or a silent control thread: one for a drive in
-/// a stopping or stopped limb, or while control is silent (even with every limb idle, as during preflight), or on a
-/// failed bus, is refused, and one already queued is cancelled before it goes, while the bus's other limb is served
-/// (PLAN.md item 6: a stop latches; `canTimeout` counts from any frame).
+/// a stopping or stopped limb, or while control is silent (even with every limb idle, as during preflight, or just
+/// re-armed after control went quiet with every limb stopped), or on a failed bus, is refused, and one already queued
+/// is cancelled before it goes, while the bus's other limb is served (PLAN.md item 6: a stop latches; `canTimeout`
+/// counts from any frame).
 #[test]
 fn a_stop_or_silent_control_refuses_and_cancels_slow_requests() {
-    // Limb 0 stops: refused for it, served for limb 1, and its queued request cancelled.
+    // Limb 0 stops with every slot queued for it: each is cancelled as the next slack opens, so limb 1's request is
+    // taken and sent in that same slack, and limb 0's new one is refused.
     let mut bus = two_limbs();
     quiet_tick(&mut bus, 0);
-    assert_eq!(bus.submit(read(1, 0, Param::CanTimeout)), Ok(()));
+    let slots = u32::try_from(SLOW_SLOTS).unwrap();
+    for tag in 0..slots {
+        assert_eq!(bus.submit(read(tag, 0, Param::CanTimeout)), Ok(()));
+    }
     assert_eq!(bus.stop_limb(0), Ok(()));
     quiet_tick(&mut bus, 1);
-    assert_eq!(
-        bus.submit(read(2, 0, Param::CanTimeout)),
-        Err(SlowRefusal::LimbStopped)
-    );
-    assert_eq!(bus.submit(read(3, 1, Param::CanTimeout)), Ok(()));
-    assert_eq!(
-        bus.slow_send(deadline(1)),
-        Some(encode::param_read(id(102), Param::CanTimeout))
-    );
-    assert_eq!(
-        bus.take_slow_result(),
-        Some(SlowResult {
-            tag: 1,
+    let cancelled: Vec<_> = std::iter::from_fn(|| bus.take_slow_result()).collect();
+    let expected: Vec<_> = (0..slots)
+        .map(|tag| SlowResult {
+            tag,
             slot: 0,
             outcome: SlowOutcome::Refused(SlowRefusal::LimbStopped),
         })
+        .collect();
+    assert_eq!(cancelled, expected);
+    assert_eq!(
+        bus.submit(read(slots, 0, Param::CanTimeout)),
+        Err(SlowRefusal::LimbStopped)
+    );
+    assert_eq!(bus.submit(read(slots + 1, 1, Param::CanTimeout)), Ok(()));
+    assert_eq!(
+        bus.slow_send(deadline(1)),
+        Some(encode::param_read(id(102), Param::CanTimeout))
     );
 
     // Control silent with every limb idle: refused, and a queued one cancelled.
@@ -273,6 +280,7 @@ fn a_stop_or_silent_control_refuses_and_cancels_slow_requests() {
         run_tick(&mut bus, tick, None, &[]);
         let _ = bus.end(deadline(tick));
     }
+    bus.open_slack();
     assert_eq!(
         bus.submit(read(2, 1, Param::CanTimeout)),
         Err(SlowRefusal::ControlSilent)
@@ -285,6 +293,25 @@ fn a_stop_or_silent_control_refuses_and_cancels_slow_requests() {
     // Control back: served again.
     quiet_tick(&mut bus, silent + 1);
     assert_eq!(bus.submit(read(3, 1, Param::CanTimeout)), Ok(()));
+
+    // Control goes quiet while every limb stops: the silence still counts, so after the re-arm a request is refused
+    // until a fresh batch comes.
+    let mut bus = two_limbs();
+    quiet_tick(&mut bus, 0);
+    bus.request_stop();
+    let last = bus.timing().stop_max_ns().div_ceil(PERIOD) + 1;
+    for tick in 1..=last {
+        run_tick(&mut bus, tick, None, &[]);
+        let _ = bus.end(deadline(tick));
+    }
+    let quiet = (last + 1) * PERIOD + DRIVE_TIMEOUT_NS;
+    assert_eq!((bus.rearm(0, quiet), bus.rearm(1, quiet)), (Ok(()), Ok(())));
+    assert_eq!(
+        bus.submit(read(1, 1, Param::CanTimeout)),
+        Err(SlowRefusal::ControlSilent)
+    );
+    quiet_tick(&mut bus, last + 1);
+    assert_eq!(bus.submit(read(2, 1, Param::CanTimeout)), Ok(()));
 
     // A failed bus: refused, and a queued one cancelled.
     let mut bus = two_limbs();
@@ -356,8 +383,10 @@ fn slow_requests_name_a_drive_on_the_bus_and_the_queue_is_bounded() {
 }
 
 /// Guards: safety - a held tick (a late wake, a stall or a backlog) sends nothing but its batch's Disables and
-/// reporting off, slow frames included: the request waits, queued, and goes in the next trusted tick's slack (can.md
-/// section 2: slow requests never on a tick whose reads can't be trusted; PLAN.md item 3).
+/// reporting off, slow frames included: the request waits, queued, and goes in the next trusted tick's slack, but not
+/// for good: still queued `Timing::slow_queue_ticks` ticks after it was submitted, it expires unsent and is counted
+/// (can.md section 2: slow requests never on a tick whose reads can't be trusted; PLAN.md item 3; rust.md section 4:
+/// a limit on everything).
 #[test]
 fn a_held_tick_sends_no_slow_request() {
     let late = Timing::at_hz(250).send_window_ns + 1;
@@ -384,6 +413,31 @@ fn a_held_tick_sends_no_slow_request() {
             "{name}"
         );
     }
+
+    // A run of late wakes: the request waits through each and expires as the last one's slack opens.
+    let mut bus = two_limbs();
+    quiet_tick(&mut bus, 0);
+    assert_eq!(bus.submit(read(1, 1, Param::Vbus)), Ok(()));
+    let bound = bus.timing().slow_queue_ticks;
+    for tick in 1..=bound {
+        let start = tick * PERIOD;
+        let _ = bus.begin(tick, start + late, start, Some(&batch(tick, &[])));
+        let _ = bus.end(deadline(tick));
+        bus.open_slack();
+        let expired = SlowResult {
+            tag: 1,
+            slot: 1,
+            outcome: SlowOutcome::NotSent(Unsent::Expired),
+        };
+        assert_eq!(
+            bus.take_slow_result(),
+            (tick == bound).then_some(expired),
+            "tick {tick}"
+        );
+        assert_eq!(bus.slow_send(deadline(tick)), None, "tick {tick}");
+    }
+    run_tick(&mut bus, bound + 1, Some(&batch(bound + 1, &[])), &[]);
+    assert_eq!(bus.end(deadline(bound + 1)).counters.slow_expired, 1);
 }
 
 /// Drive `n`'s status in `mode` showing an overcurrent fault.
@@ -548,19 +602,22 @@ fn a_slow_send_holds_off_the_rearm() {
     );
     bus.slow_sent(SendOutcome::Sent, slow_at);
     assert_eq!(bus.stop_limb(0), Ok(()));
-    // Every Disable is refused by the socket, so the slow read stays the last frame the drive was sent.
-    let mut tick = 1;
-    loop {
+    // Every Disable is refused by the socket, so the slow read stays the last frame the drive was sent. The stop ends by
+    // `stop_max_ns` after tick 1's start.
+    let stop_ends = 1 + bus.timing().stop_max_ns().div_ceil(PERIOD);
+    let mut snap = None;
+    for tick in 1..=stop_ends {
         let start = tick * PERIOD;
-        let list = bus.begin(tick, start, start, Some(&batch(tick, &[])));
-        for (index, _) in list.iter().enumerate() {
+        let sends = bus.begin(tick, start, start, Some(&batch(tick, &[])));
+        for (index, _) in sends.iter().enumerate() {
             bus.sent(index, SendOutcome::QueueFull, start);
         }
-        if state_of_limb(&bus.end(deadline(tick)), 0) == LimbState::Stopped {
-            break;
-        }
-        tick += 1;
+        snap = Some(bus.end(deadline(tick)));
     }
+    assert_eq!(
+        snap.map(|s| common::limb(&s, 0).0),
+        Some(LimbState::Stopped)
+    );
     assert_eq!(
         bus.submit(read(2, 0, Param::Vbus)),
         Err(SlowRefusal::LimbStopped),
@@ -572,8 +629,4 @@ fn a_slow_send_holds_off_the_rearm() {
         Err(RearmRefused::DriveNotQuiet { slot: 0 })
     );
     assert_eq!(bus.rearm(0, slow_at + quiet), Ok(()));
-}
-
-fn state_of_limb(snap: &can::Snapshot, limb: usize) -> LimbState {
-    snap.limb(limb).map_or(LimbState::Idle, |l| l.state)
 }
