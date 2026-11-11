@@ -116,6 +116,68 @@ SolidWorks parts, dressed twice for the look of the organic arm.
 
 At both stops everything else is 2.0 mm or more away.
 
+## No-protrusions round (Joey, 2026-11-11: nothing may stand proud of the skin)
+
+What changed against the organic round:
+
+- **Cable:** no trunk, branch, spine or ridge stands on the drum.
+  - The trunk runs along X at Y 470 inside a hollow egg-section **bell** round the pitch axis. The bell replaces the neck
+    tube and flare: top r 60 over the trunk, bottom r 41 (clear of the fork and RS02 swing), Z +34 / -27, 2.5 mm wall.
+  - It turns down at roll angle 135 deg (r 58, its width along the skin) and enters the cap.
+  - The branch to the RS03 top bay runs inside the drum wall.
+- **Drum outline:** a loft whose sections are the crown circle swelled (convex hull) over the down-run and the branch only.
+  - The swell is +8.8 mm (r 65.8) in the 120-150 deg sector, fading to the plain crown by Z 10 (`envelope.py`).
+  - It is hollowed from the rear under the cap.
+  - The flange ring's hole moved to the new trunk height; its spokes turned to 108 deg to stay clear.
+- **Cap:** no ears. Its outline continues the drum's rear section. It is held by 3 x M3 thread-forming screws axially inside
+  the outline (r 50 at 0 / 180 / 270 deg), with heads in pockets on the flat rear face.
+- **Stops inside the outline:**
+  - A tooth on the fork rear cheek (r 27-33, 20 deg wide) runs in an arc slot (r 25-35) in a ring on the inside of the
+    cap's rear face, with 2 mm all round.
+  - The tooth meets the slot ends at -11 and +110 deg. The contact face is 8 x 8 mm (about 64 mm²) at r 25-33.
+  - The slot's start plane and sweep are driven by `ROLL_STOP_IN` / `ROLL_STOP_OUT` (start 172 deg, sweep 141 deg).
+  - The ring covers only the slot sector, plus 15 deg each end.
+- **Fork rear arm and joint:**
+  - The cuff is now an egg-section loft that swells back to the fork rear arm (0.5 mm static gap), so they read as one
+    sleeve. It is hollow to 2 mm and open at the bottom.
+  - The joint lugs are narrowed from X ±30 to ±21.5, a rounded flare of the arm, with screws in pockets from the back.
+- **Not yet clean:**
+  - a soft crease where the bell surface comes out of the swell (the SolidWorks blend fillet does not build there)
+  - the fork rear arm, which still reads as a rounded bar from straight behind
+  - the bottom feed, which sits inside the shell.
+
+**Masses (solid PETG):**
+
+| Part | g |
+|---|---|
+| Drum | 224.1 |
+| Flange ring | 29.3 |
+| Cap | 84.5 |
+| Fork front | 131.3 |
+| Fork rear | 59.9 |
+| Fork cap | 5.5 |
+| Hub (rev B with groove) | 69.3 |
+| **Total** | **603.9** |
+| Cover (torso side) | 102.3 |
+
+**Final clearance sweep** (these parts with hub rev B):
+
+- Every moving pair is **2.0 mm or more**. The only contact is the tooth on the slot ends (0.05 mm at +110 and -11).
+- Tightest pairs:
+
+| Pair | Min (mm) |
+|---|---|
+| Ring ↔ cover | 2.00 (designed) |
+| Cuff ↔ hub | 2.04 (roll -11, yaw 30) |
+| Fork rear ↔ hub | 2.16 |
+| Ring ↔ fork front | 2.46 |
+| Drum ↔ RS02 | 2.60 |
+| Drum ↔ frame | 3.50 |
+
+- Static booleans between the parts and the motors are clean.
+- **Pictures:** D1-D6 as before, plus [D7_top_down.png](D7_top_down.png) and
+  [D8_drum_top_view.png](D8_drum_top_view.png) (the review screenshot's camera).
+
 ## Rev A frame and shell: inward roll from 0 to -25 deg
 
 `check_reva.py`: roll in 1 deg steps, yaw -90…+90 in 15 deg steps. Contact means under 0.5 mm.
