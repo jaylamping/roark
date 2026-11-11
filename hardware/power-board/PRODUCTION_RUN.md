@@ -88,9 +88,18 @@ Both boards are ordered as **two separate designs in one JLC order**, not one pa
 
 ## 4. Kit list
 
-[kit-2sets.csv](kit-2sets.csv) lists every fitted line for 2 main + 2 buck boards: 179 lines (two of them the heatsink lug and its lead) and 874 parts,
-counting spares. Spares are about 15 % (minimum 2) on cheap passives, small diodes, small transistors and 1206 fuses only;
-expensive parts get none. The off-board parts (BMS, Class T fuse, brake resistors, thermostats, harness) are in the pack
+[kit-2sets.csv](kit-2sets.csv) lists every fitted line for 2 main + 2 buck boards, plus the assembly parts (plugs, crimps,
+the heatsink lug and its lead): 188 rows and 1,345 parts, counting spares. Spares, for a first hand build:
+- at least 4 on every 0603, 0805 and 1206 resistor and capacitor, small diode, SOT-23 part and 1206 fuse (the 0.1 %
+  resistors keep 2);
+- 2 on the 1210 capacitors, the 47 µF cans, the SK810L diodes, the F2 blade fuse, the GND test loops and the WSON eFuses
+  (TPS259541, the hardest part to place);
+- 1 on the other parts that are easy to damage or misplace and cost under $5 for the spare: D1, D4, the 2010 and 2512
+  resistors, the 2 mΩ and 5 mΩ shunts, the buck cans C2 and C24, the SuperSO8 FETs, a JST GH header, TLV1805, TPS3431S
+  and TPS7A4001.
+
+Parts whose spare costs about $5 or more get none: the IPB017 FETs, TPS48100/TPS48111, LM5069, LM5146, INA237, the
+inductors, RS1 and the connectors. The off-board parts (BMS, Class T fuse, brake resistors, thermostats, harness) are in the pack
 plan and REVB5_CHANGES.
 
 **Part numbers fixed** (2026-11-07, schematic and BOM updated):
