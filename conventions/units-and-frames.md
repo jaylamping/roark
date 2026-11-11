@@ -74,7 +74,7 @@ between drive and joint, the zero convention and the persistence test are in
   reading goes through it. **Why:** when a joint moves the wrong way there is one place to look, and one `Guards: safety`
   test covers it.
 - **Unverified is `null`, never a guess.** A `direction` or `zero_rad` that hasn't been checked on the hardware stays `null`
-  and the joint is refused at enable (PLAN item 1, "Null is not permission"). Nobody writes `1` "for now".
+  and the joint moves only at its commissioning caps (PLAN item 1, "Null is not a number"). Nobody writes `1` "for now".
 - **No wrapping in joint space.** Joint positions are continuous values inside the joint's limits; code never normalises them
   into ±π. **Why:** no joint on this robot turns a full revolution, so a jump across ±π means a lost zero or a decode bug, and
   wrapping it would hide exactly the failure we need to see.

@@ -36,7 +36,7 @@ the hardware's identity, wiring and limits. **The software never reads CAD or de
 
 - When the hardware changes, the hardware side opens one PR in this repo that touches only the skeleton, and adds a change-log
   line to [STATUS.md](https://github.com/jaylamping/marengo/blob/main/hardware/STATUS.md) the same day. A missing value stays
-  empty and refuses enable; placeholders never become numbers.
+  empty and refuses the motion that needs it (PLAN item 1); placeholders never become numbers.
 - Measured dynamics (masses, centres of mass, friction fits) live in one second committed file that tools write from logged
   sessions and the runtime reads. It never holds limits or addresses.
 - A URDF or MJCF for sim and visualisation may be generated from CAD or from the skeleton, but the runtime doesn't depend on it.
@@ -56,7 +56,9 @@ We will never catch everything, so safety is layered, and each layer covers a fa
    comes back.
 
 Every safety rule names the hardware it protects and the failure it covers. A rule that duplicates another layer, or protects
-nothing nameable, goes. There are no spare actuators, so motors come first, then printed parts, then the frame.
+nothing nameable, goes. **Safety that stops the robot being tested has failed too:** a refusal is a cost, a rule is built
+before the test that needs it and not before, and nothing blocks an attended, low-cap bench test unless it protects a
+named motor or part. There are no spare actuators, so motors come first, then printed parts, then the frame.
 
 ## 4. Build only what's needed now
 
