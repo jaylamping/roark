@@ -92,7 +92,7 @@ def frame_samples(path=None, sp=1.0):
     out = []
     for nm, sh in named_solids(path or FRAME_STEP):
         bb = sh.BoundingBox()
-        if bb.xmax < 60 or bb.ymax < 250 or nm.split('__')[0] in ('actuator', 'shellpart'):
+        if bb.xmax < 60 or bb.ymax < 250 or nm.split('__')[0] in ('actuator', 'shellpart') or nm.startswith('fastener__c1_'):
             continue
         m = tess(sh)
         if m.area > 0:

@@ -45,7 +45,7 @@ def main():
         p = samp(m, 1.0) + shift
         if grp in ('actuator',):                   # the pitch RS03 envelope: the real motor is in the model
             continue
-        if grp == 'shellpart':
+        if grp == 'shellpart' or nm.startswith('fastener__c1_'):   # the shell collar and its screws
             other[nm] = p
             continue
         fr.append(p); names += [nm] * len(p)

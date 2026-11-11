@@ -29,7 +29,12 @@ LIP_PCD_R = 49.0
 DRUM_Z0 = -28.5                  # rear rim = cap front face
 EAR_ANGLES = [125.0, 148.0, 212.0]   # cap screws, inboard/top; CHANGED from 130/165/200: those ears reached X 104 into the flange ring
 EAR_R, EAR_PCD = 7.5, 61.0
-WIN_ANGLES = [0.0, 45.0, -45.0, -90.0]     # drum wall windows (between ribs)
+WIN_ANGLES = [0.0, 45.0, 135.0, 225.0, 270.0, 315.0]   # windows in the inner wall into the pockets under the skin
+PORT_ANGLE = 0.0                 # the one window through the skin: driver access to the 6 pitch pad screws (styled oval port)
+SKIN_RI = 55.0                   # DRESSED: closed outer skin r 55-57 over the roll RS03; pockets r 51.5-55 between the lug ribs
+POCKET_Z = (DRUM_Z0 + 4.0, LIP_Z0 - 3.0)
+FLARE = dict(x0=105.0, x1=119.0, x2=124.0, r=56.0, fillet=12.0)   # DRESSED: neck flares into the drum (pitch axis)
+CUFF = dict(ri=41.3, ro=43.5, y0=326.0)   # DRESSED: fork front cuff round the RS02 housing (r 39.25) down to Y 326
 RS03_BUMP = dict(x0=RX - 53.0, x1=RX - 46.0, y=9.5, z0=18.6)   # relief for the RS03 housing boss at r 50.25 inboard (Z 19.6-28.1)
 TOPWIN = dict(x=14.0, z0=-28.5, z1=-6.0)   # window over the roll RS03 top connector bay (half width X)
 # pitch adaptor

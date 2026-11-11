@@ -147,7 +147,7 @@ def shoulder_items(offsets=None, with_arm=True, with_frame=True, cover=True, op=
 def main():
     F = np.array([RX - 25, RY - 40, 0.0])
     eye_front = F + np.array([420.0, 90.0, 560.0])
-    render(shoulder_items(), OUT / 'P1_look_front_outboard.png', eye_front, F, title='Left shoulder, first SolidWorks pass: front-outboard, neutral, frozen upper arm, rev A frame')
+    render(shoulder_items(), OUT / 'P1_look_front_outboard.png', eye_front, F, title='Left shoulder, first SolidWorks pass, dressed: front-outboard, neutral, frozen upper arm, rev A frame')
     eye_back = F + np.array([380.0, 140.0, -560.0])
     render(shoulder_items(), OUT / 'P2_back.png', eye_back, F, title='Back: rear cap with the stub, stop lugs (roll -11 / +110), fork rear cheek')
     ex = dict(cover=(-45, 0, 0), ring=(-25, 0, 0), roll_rs03=(0, 0, -95), cap=(0, 0, -150), bearing=(0, 0, -185), fork_rear=(0, 0, -215),
@@ -199,6 +199,23 @@ def main():
     sheet.save(OUT / 'P5_today_vs_pass1.png')
     for f in OUT.glob('_*.png'):
         f.unlink()
+    # dressed views without the frame, and bare (first commit of this pass) against dressed
+    render(shoulder_items(with_frame=False), OUT / 'D2_front_clean.png', eye_front, F, title='Dressed: front-outboard, no frame or shell')
+    render(shoulder_items(with_frame=False), OUT / 'D3_back_clean.png', eye_back, F, title='Dressed: back, no frame or shell')
+    bare = [Path(p) for p in sys.argv[2:4]] if len(sys.argv) > 3 else []
+    if bare:
+        rows = []
+        for b, n in zip(bare, ('P1_look_front_outboard.png', 'P2_back.png')):
+            a, c = Image.open(b).convert('RGB'), Image.open(OUT / n).convert('RGB')
+            row = Image.new('RGB', (a.width + c.width, a.height), 'white'); row.paste(a, (0, 0)); row.paste(c, (a.width, 0))
+            ImageDraw.Draw(row).text((24, 60), 'BARE (first pass)', fill=(150, 20, 20), font=FONT)
+            ImageDraw.Draw(row).text((a.width + 24, 60), 'DRESSED', fill=(20, 110, 20), font=FONT)
+            rows.append(row)
+        sheet = Image.new('RGB', (rows[0].width, sum(r.height for r in rows)), 'white')
+        y = 0
+        for r in rows:
+            sheet.paste(r, (0, y)); y += r.height
+        sheet.save(OUT / 'D4_bare_vs_dressed.png')
     print('done', flush=True)
 
 

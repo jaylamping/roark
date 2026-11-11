@@ -3,6 +3,7 @@
 One SolidWorks instance per working session, reused across scripts through sw_instance.session() (tools/solidworks/RULES.md).
 Sketch points are mapped through each sketch's ModelToSketchTransform, so a plane's orientation never matters.
 """
+import inspect
 import math
 import os
 import sys
@@ -384,19 +385,18 @@ def revolve(d, sk, name, cut=False, angle=360.0, lo=0.5):
     return f
 
 
-def edges_where(d, test):
+def edges_where(d, test, pair=None):
     """Edges of all bodies whose start, end and mid points pass test(p) (model mm)."""
     out = []
     for b in (d.GetBodies2(0, True) or []):
-        for e in (b.GetEdges or []):
+        es = b.GetEdges
+        for e in ((es() if inspect.ismethod(es) else es) or []):
             cp = e.GetCurveParams3
+            cp = cp() if inspect.ismethod(cp) else cp
             p0 = np.array(cp.StartPoint[:3]) * 1e3
             p1 = np.array(cp.EndPoint[:3]) * 1e3
-            c = e.GetCurve
-            t0, t1 = cp.UParam1, cp.UParam2
-            mid = c.Evaluate2((t0 + t1) / 2, 0)
-            pm = np.array(mid[:3]) * 1e3 if mid else (p0 + p1) / 2
-            if test(p0) and test(p1) and test(pm):
+            pm = (p0 + p1) / 2 if np.linalg.norm(p1 - p0) > 1e-6 else p0
+            if test(p0) and test(p1) and test(pm) and (pair is None or pair(p0, p1)):
                 out.append(e)
     return out
 
