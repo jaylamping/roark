@@ -100,9 +100,7 @@ impl Rig {
             foreign_host: foreign,
             ..Counters::default()
         };
-        self.snapshots[bus] = Some(Snapshot::from_parts(
-            1, None, true, counters, limb_views, drives,
-        ));
+        self.snapshots[bus] = Some(Snapshot::from_parts(1, None, counters, limb_views, drives));
     }
 
     fn buses(&mut self) -> Buses<'_> {
@@ -321,17 +319,17 @@ fn a_limb_mate_out_of_reset_on_another_bus_stops_the_whole_held_limb() {
     );
     // A bus with nothing to show for the mate fails closed.
     enabled(&mut rig, &mut enabler, &["arm_b_one"]);
-    rig.show(1, &[], &[], 0);
     rig.snapshots[1] = None;
     assert_eq!(rig.tick(&mut enabler), None);
     assert_eq!(rig.stopped(), [Scope::Limb(LimbName::RightArm)]);
 }
 
-/// Guards: safety - a held limb over two buses stopped on one bus stops on every bus: its holds end and a stop of the
-/// whole limb is asked, since the bus that stopped it reaches only its own part; a limb stopped on its own bus just ends
-/// its holds (PLAN item 6 host.fault: a fault stops the whole limb).
+/// Guards: safety - a held limb over two buses stopped on either bus stops on every bus: its holds end and a stop of
+/// the whole limb is asked, since the bus that stopped it reaches only its own part, whether the held joints are on the
+/// bus that stopped or on the other (PLAN item 6 host.fault: a fault stops the whole limb).
 #[test]
 fn a_held_limb_stopped_on_one_bus_is_stopped_on_every_bus() {
+    // Held on can0, stopped on can1.
     let mut rig = Rig::new();
     let mut enabler = Enabler::new(&rig.roster, rig.plans.len());
     enabled(&mut rig, &mut enabler, &["arm_b_one", "arm_b_two"]);
@@ -341,14 +339,26 @@ fn a_held_limb_stopped_on_one_bus_is_stopped_on_every_bus() {
     assert_eq!(rig.batches[0], CommandBatch::new(1, u64::MAX));
     assert_eq!(rig.stopped(), [Scope::Limb(LimbName::RightArm)]);
     assert_eq!(rig.counts.holds_ended, 2);
-    // The left arm, all on can1, stopped there: its holds end, nothing more to ask.
-    enabled(&mut rig, &mut enabler, &["arm_a_one"]);
+    // Held on can0, stopped there (a fault, say): the part on can1, idle, is stopped too.
+    let mut rig = Rig::new();
+    let mut enabler = Enabler::new(&rig.roster, rig.plans.len());
+    enabled(&mut rig, &mut enabler, &["arm_b_one", "arm_b_two"]);
     rig.show(
-        1,
-        &[(LimbName::LeftArm, LimbState::Stopping { since_ns: 1 })],
+        0,
+        &[(LimbName::RightArm, LimbState::Stopping { since_ns: 1 })],
         &[],
         0,
     );
+    assert_eq!(rig.tick(&mut enabler), None);
+    assert_eq!(rig.batches[0], CommandBatch::new(1, u64::MAX));
+    assert_eq!(rig.stopped(), [Scope::Limb(LimbName::RightArm)]);
+    assert_eq!(rig.counts.holds_ended, 2);
+    assert_eq!(rig.tick(&mut enabler), None);
+    assert_eq!(rig.stopped(), []);
+    // Held, then stopped and cleared on its own bus between two passes: Idle, not Active, so no longer held, and
+    // nothing to stop.
+    enabled(&mut rig, &mut enabler, &["arm_a_one"]);
+    rig.show(1, &[], &[], 0);
     assert_eq!(rig.tick(&mut enabler), None);
     assert_eq!(rig.batches[1], CommandBatch::new(1, u64::MAX));
     assert_eq!(rig.stopped(), []);
@@ -454,6 +464,38 @@ fn an_enable_that_fails_stops_its_limbs_once_an_enable_may_have_gone() {
         })
     );
     assert_eq!(rig.stopped(), []);
+}
+
+/// Guards: safety - host.mode - an enable whose joints are enabled while a limb-mate this host didn't enable leaves
+/// Reset on another bus fails under host.mode with every named limb stopped, never answered Ok.
+#[test]
+fn an_enable_whose_limb_mate_leaves_reset_fails_with_its_limb_stopped() {
+    let mut rig = Rig::new();
+    let mut enabler = Enabler::new(&rig.roster, rig.plans.len());
+    let right = rig.roster.set(["arm_b_one", "arm_b_two"]).unwrap();
+    enabler.run = Some((5, right));
+    enabled(&mut rig, &mut enabler, &["arm_b_one", "arm_b_two"]);
+    rig.show(0, &[(LimbName::RightArm, LimbState::Active)], &[], 0);
+    rig.show(1, &[], &["arm_b_three"], 0);
+    assert_eq!(
+        rig.tick(&mut enabler),
+        Some(EnableReply {
+            tag: 5,
+            outcome: Err(EnableRefused::LimbMate {
+                limb: LimbName::RightArm,
+                stopped: true
+            })
+        })
+    );
+    assert_eq!(rig.stopped(), [Scope::Limb(LimbName::RightArm)]);
+    assert_eq!(
+        rig.counts,
+        Counts {
+            stray_results: 0,
+            mode_stops: 1,
+            holds_ended: 2
+        }
+    );
 }
 
 /// Guards: safety - the hold every enabled drive gets is zero gains and zero torque, encodable for a model with

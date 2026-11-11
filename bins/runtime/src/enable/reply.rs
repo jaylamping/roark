@@ -1,6 +1,7 @@
 //! What an enable asks and how it is answered.
 
 use safety::{EnableFailure, Refusal};
+use skeleton::LimbName;
 
 use crate::roster::JointSet;
 #[cfg(doc)]
@@ -24,8 +25,8 @@ pub struct EnableReply {
     pub outcome: Result<(), EnableRefused>,
 }
 
-/// Why an enable didn't happen. A joint is named by its index in the roster. Where `stopped` is false, nothing of the
-/// enable was sent past preflight's reads and writes, and nothing was enabled.
+/// Why an enable didn't happen. A joint is named by its index in the roster. Where `stopped` is false, no Enable was
+/// planned, so nothing was enabled; preflight's reads and writes, and a sequence's active-reporting off, may have gone.
 #[derive(Clone, Copy, Debug, PartialEq, thiserror::Error)]
 pub enum EnableRefused {
     /// It named no joint.
@@ -82,6 +83,17 @@ pub enum EnableRefused {
     ForeignHost {
         /// The bus, as its index in the plan.
         bus: usize,
+        /// Whether every limb it named was stopped.
+        stopped: bool,
+    },
+    /// A drive of a named limb that this host didn't enable left Reset, or couldn't be seen, once an Enable of the limb
+    /// may have gone (`host.mode`'s limb-mate clause, PLAN item 6).
+    #[error(
+        "a drive of {limb:?} not enabled here left Reset or can't be seen (host.mode; limbs stopped: {stopped})"
+    )]
+    LimbMate {
+        /// The limb.
+        limb: LimbName,
         /// Whether every limb it named was stopped.
         stopped: bool,
     },

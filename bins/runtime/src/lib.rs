@@ -8,8 +8,8 @@ mod control;
 // The control thread is its only user; its tests run everywhere.
 #[cfg(any(target_os = "linux", test))]
 mod dispatch;
-// Run by the control thread alone, which is Linux only: so are its tests.
-#[cfg(target_os = "linux")]
+// The control thread is its only user; its tests run everywhere.
+#[cfg(any(target_os = "linux", test))]
 mod enable;
 mod plan;
 mod request;
@@ -19,7 +19,7 @@ mod start;
 
 #[cfg(target_os = "linux")]
 pub use control::{ControlExit, View};
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", test))]
 pub use enable::{Enable, EnableRefused, EnableReply};
 pub use plan::{BusPlan, PlanError, offline, plan};
 pub use request::{

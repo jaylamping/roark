@@ -86,9 +86,10 @@ pub struct ControlExit {
     pub enables_ending: u64,
     /// Slow results that answered no preflight running: dropped.
     pub stray_results: u64,
-    /// Limbs stopped because a drive of a held limb that this host never enabled was seen out of Reset (`host.mode`).
+    /// Limbs stopped under `host.mode`'s limb-mate clause: a drive of a held limb, or of the enable running, that this
+    /// host didn't enable was seen out of Reset or not seen at all. One per limb each time.
     pub mode_stops: u64,
-    /// Enabled joints no longer held because their limb was stopped.
+    /// Enabled joints no longer held: their limb stopped on some bus (then cleared, perhaps), or their enable failed.
     pub holds_ended: u64,
     /// The first bus thread that ended before the run did (a socket or clock error): control then ended the run.
     pub bus_ended: Option<usize>,

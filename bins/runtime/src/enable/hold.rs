@@ -3,7 +3,7 @@
 
 use can::{LimbState, LimbView, Snapshot, StopReason};
 use robstride::{MitCommand, NewtonMeters, NmPerRad, NmSecPerRad, RadPerSec, Radians, encode};
-use safety::{HoldVerdict, Mate, limb_mates};
+use safety::{HoldVerdict, Mate, RuleId, limb_mates};
 use skeleton::LimbName;
 
 use super::{Buses, Counts, Enabler, Phase, place};
@@ -12,10 +12,11 @@ use crate::request::Scope;
 use crate::roster::{Roster, RosterJoint};
 
 impl Enabler {
-    /// Hold every enabled joint whose limb is still Active on its bus and stopped on none; drop the rest, asking a stop
-    /// of the whole limb when a part of it stopped on another bus (that bus's stop reaches only its own part). A held
-    /// limb whose other drives `host.mode`'s limb-mate clause refuses is stopped, and its holds end at once. A joint of
-    /// the enable running is held the same way; if its limb stopped, `step_run` has already failed the enable.
+    /// Hold every enabled joint, deciding limb by limb. A held limb stopped on any bus has its holds end and a stop of
+    /// the whole limb asked, since the bus that stopped it reaches only its own part; one that `host.mode`'s limb-mate
+    /// clause refuses is stopped the same way, counted once. A joint whose own part is no longer Active (stopped and
+    /// cleared since) just stops being held. The joints of the enable running were checked by `step_run` this pass,
+    /// which failed the enable on either verdict; they are held as they are.
     pub(super) fn hold(
         &mut self,
         roster: &Roster,
@@ -23,43 +24,86 @@ impl Enabler {
         stops: &StopLatch,
         counts: &mut Counts,
     ) {
-        for joint in 0..self.phases.len() {
-            let Some(Phase::Enabled(drive)) = self.phases.get(joint) else {
-                continue;
+        let running = self.run.map(|(_, joints)| joints).unwrap_or_default();
+        for limb in LimbName::ALL {
+            let held = |phases: &[Phase], j: usize| {
+                !running.contains(j)
+                    && matches!(phases.get(j), Some(Phase::Enabled(_)))
+                    && roster.joint(j).is_some_and(|e| e.limb == limb)
             };
-            let drive = *drive;
-            let Some(entry) = roster.joint(joint) else {
-                continue;
-            };
-            let halted = halted(roster, buses.snapshots, entry.limb).is_some();
-            let active =
-                limb_on(buses.snapshots, entry).is_some_and(|l| l.state == LimbState::Active);
-            if halted || !active {
-                // Stopped elsewhere while Active here: this part must stop too. Stopped here, its bus has it.
-                if halted && active {
-                    stops.ask(Scope::Limb(entry.limb));
-                }
-                self.drop_hold(joint, counts);
+            if !(0..self.phases.len()).any(|j| held(&self.phases, j)) {
                 continue;
             }
-            if let HoldVerdict::Stop(_) =
-                limb_mates(self.mates(roster, buses.snapshots, entry.limb))
-            {
-                counts.mode_stops += 1;
-                stops.ask(Scope::Limb(entry.limb));
-                // Every hold of the limb ends now, so the stop is counted once.
-                for mate in 0..self.phases.len() {
-                    if roster.joint(mate).is_some_and(|m| m.limb == entry.limb) {
-                        self.drop_hold(mate, counts);
+            let verdict = self.verdict(roster, buses.snapshots, limb);
+            for joint in 0..self.phases.len() {
+                if !held(&self.phases, joint) {
+                    continue;
+                }
+                let Some(entry) = roster.joint(joint) else {
+                    continue;
+                };
+                match verdict {
+                    LimbVerdict::Hold
+                        if limb_on(buses.snapshots, entry)
+                            .is_some_and(|l| l.state == LimbState::Active) =>
+                    {
+                        self.send_hold(joint, entry, buses, stops);
+                    }
+                    LimbVerdict::Hold | LimbVerdict::Halted | LimbVerdict::Mode => {
+                        self.drop_hold(joint, counts);
                     }
                 }
-                continue;
             }
-            match encode::mit(drive, &slack()) {
-                Ok(frame) => place(buses, stops, entry, frame),
-                // A model without MIT scales never passes preflight; stop rather than hold blind.
-                Err(_) => stops.ask(Scope::Limb(entry.limb)),
+            match verdict {
+                LimbVerdict::Hold => {}
+                LimbVerdict::Halted => stops.ask(Scope::Limb(limb)),
+                LimbVerdict::Mode => {
+                    counts.mode_stops += 1;
+                    stops.ask(Scope::Limb(limb));
+                }
             }
+        }
+        for joint in running.iter() {
+            if let Some(entry) = roster.joint(joint) {
+                self.send_hold(joint, entry, buses, stops);
+            }
+        }
+    }
+
+    /// `joint`'s slack command into the next batch, if it is enabled.
+    fn send_hold(
+        &self,
+        joint: usize,
+        entry: &RosterJoint,
+        buses: &mut Buses<'_>,
+        stops: &StopLatch,
+    ) {
+        let Some(Phase::Enabled(drive)) = self.phases.get(joint) else {
+            return;
+        };
+        match encode::mit(*drive, &slack()) {
+            Ok(frame) => place(buses, stops, entry, frame),
+            // A model without MIT scales never passes preflight; stop rather than hold blind.
+            Err(_) => stops.ask(Scope::Limb(entry.limb)),
+        }
+    }
+
+    /// Whether `limb` may go on being held: stopped on no bus, and every drive of it this host didn't enable seen in
+    /// Reset (`host.mode`'s limb-mate clause).
+    pub(super) fn verdict(
+        &self,
+        roster: &Roster,
+        snapshots: &[Option<Snapshot>],
+        limb: LimbName,
+    ) -> LimbVerdict {
+        if halted(roster, snapshots, limb).is_some() {
+            return LimbVerdict::Halted;
+        }
+        match limb_mates(self.mates(roster, snapshots, limb)) {
+            HoldVerdict::Hold => LimbVerdict::Hold,
+            HoldVerdict::Stop(RuleId::HostMode) => LimbVerdict::Mode,
+            // The clause gives only `host.mode`; any other rule still stops the limb.
+            HoldVerdict::Stop(_) => LimbVerdict::Halted,
         }
     }
 
@@ -96,6 +140,17 @@ impl Enabler {
             })
         })
     }
+}
+
+/// What a held limb gets this pass.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum LimbVerdict {
+    /// Held on.
+    Hold,
+    /// Stopped on some bus: stopped on every bus.
+    Halted,
+    /// A drive of it this host didn't enable left Reset, or can't be seen: stopped (`host.mode`).
+    Mode,
 }
 
 /// `entry`'s limb as its own bus's newest snapshot shows it.

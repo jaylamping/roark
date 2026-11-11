@@ -19,6 +19,7 @@ use robstride::{Mode, Param, ParamValue, Reporting, RunMode, StatusFault, Status
 use runtime::{
     Clear, ClearRefused, Enable, EnableRefused, EnableReply, Reply, Runtime, RuntimeConfig, Scope,
 };
+use safety::EnableFailure;
 use sim_drive::{Fault, SimDrive, ensure_vcan, serve};
 use skeleton::{LimbName, Skeleton};
 use socketcan::{CanFrame, CanSocket, EmbeddedFrame, Id, Socket};
@@ -322,7 +323,8 @@ impl Drop for Flags<'_> {
 /// Guards: safety - an operator's enable reaches exactly the joints it names, and only once every one's preflight has
 /// passed: one naming a joint with a null fact or cap is refused before anything is sent; the left arm's two commissioned
 /// joints pass preflight against `sim-drive`, get the enable sequence, go Active and are held with MIT commands; a stop
-/// ends the hold, a clear and a new enable run preflight again and enable again; a limb-mate the host never enabled,
+/// ends the hold, a clear and a new enable run preflight again and enable again; a drive that answers its Enable too
+/// late fails the enable with the limb stopped, since the Enable may have gone; a limb-mate the host never enabled,
 /// put in Run by something else, stops the whole limb (PLAN item 6 `host.mode`); a fault from a held drive stops its
 /// limb (`host.fault`); and nothing but the right arm's stops ever reaches can0 (PLAN item 3: the runtime never enables
 /// on its own; item 6: enable is per joint set and runs preflight first).
@@ -338,13 +340,26 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
     let root =
         std::env::temp_dir().join(format!("sim-suite-runtime-enable-{}", std::process::id()));
     // The can1 sim's stages: it serves until each flag, then puts the next fault on the bus.
+    let to_late = AtomicBool::new(false);
+    let late_on = AtomicBool::new(false);
+    let to_prompt = AtomicBool::new(false);
+    let prompt_on = AtomicBool::new(false);
     let to_mode = AtomicBool::new(false);
     let to_fault = AtomicBool::new(false);
     let stop_sim = AtomicBool::new(false);
     let stop_watch = AtomicBool::new(false);
     let over: StatusFaults = [StatusFault::Overcurrent].into_iter().collect();
     let (seen, first_enable) = std::thread::scope(|scope| {
-        let flags = [&to_mode, &to_fault, &stop_sim, &stop_watch];
+        let flags = [
+            &to_late,
+            &late_on,
+            &to_prompt,
+            &prompt_on,
+            &to_mode,
+            &to_fault,
+            &stop_sim,
+            &stop_watch,
+        ];
         let _flags = Flags(&flags);
         let watchers: Vec<_> = names
             .iter()
@@ -357,6 +372,17 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
         let can1 = scope.spawn(|| {
             // The left arm's drives 11 and 12 come first on can1, in skeleton order.
             let mut sim = drives(&skeleton, "can1");
+            // Drive 12 answers everything later than an Enable must be answered, then promptly again.
+            serve("can1", &mut sim, &to_late, &mut |_| {})?;
+            sim[1]
+                .inject(Instant::now(), Fault::Late(sim_drive::MAX_LATE))
+                .unwrap();
+            late_on.store(true, Ordering::Release);
+            serve("can1", &mut sim, &to_prompt, &mut |_| {})?;
+            sim[1]
+                .inject(Instant::now(), Fault::Late(Duration::ZERO))
+                .unwrap();
+            prompt_on.store(true, Ordering::Release);
             serve("can1", &mut sim, &to_mode, &mut |_| {})?;
             // Drive 12 put in Run by another controller's Enable, answering it on the bus.
             let now = Instant::now();
@@ -484,7 +510,8 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
             })
         );
 
-        // host.mode: only drive 11 enabled, then drive 12 put in Run by something else stops the whole left arm.
+        // A drive that doesn't answer its Enable in time: the Enable may have gone, so the enable fails with the limb
+        // stopped.
         runtime.stop(Scope::Limb(LimbName::LeftArm));
         assert!(
             until(&mut runtime, &mut newest, end, |bus, s| bus == 0
@@ -492,10 +519,49 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
             "{newest:?}"
         );
         clear(&mut runtime, 6);
+        to_late.store(true, Ordering::Release);
+        while !late_on.load(Ordering::Acquire) {
+            assert!(Instant::now() < end, "drive 12 never made late");
+            std::thread::yield_now();
+        }
+        let a_two = runtime
+            .joints(["arm_a_two"])
+            .unwrap()
+            .iter()
+            .next()
+            .unwrap();
+        let late = enable(&mut runtime, 7, &["arm_a_two"]);
+        assert!(
+            matches!(
+                late,
+                Some(EnableReply {
+                    outcome: Err(EnableRefused::Sequence {
+                        joint,
+                        failure: EnableFailure::NoRun { .. },
+                        stopped: true,
+                    }),
+                    ..
+                }) if joint == a_two
+            ),
+            "{late:?}"
+        );
+        assert!(
+            until(&mut runtime, &mut newest, end, |bus, s| bus == 0
+                || left_is(s, LimbState::Stopped)),
+            "{newest:?}"
+        );
+        to_prompt.store(true, Ordering::Release);
+        while !prompt_on.load(Ordering::Acquire) {
+            assert!(Instant::now() < end, "drive 12 never made prompt");
+            std::thread::yield_now();
+        }
+
+        // host.mode: only drive 11 enabled, then drive 12 put in Run by something else stops the whole left arm.
+        clear(&mut runtime, 8);
         assert_eq!(
-            enable(&mut runtime, 7, &["arm_a_one"]),
+            enable(&mut runtime, 9, &["arm_a_one"]),
             Some(EnableReply {
-                tag: 7,
+                tag: 9,
                 outcome: Ok(())
             })
         );
@@ -507,11 +573,11 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
         );
 
         // host.fault: drive 11 enabled and held, then faulted, stops the left arm on the bus.
-        clear(&mut runtime, 8);
+        clear(&mut runtime, 10);
         assert_eq!(
-            enable(&mut runtime, 9, &["arm_a_one"]),
+            enable(&mut runtime, 11, &["arm_a_one"]),
             Some(EnableReply {
-                tag: 9,
+                tag: 11,
                 outcome: Ok(())
             })
         );
@@ -564,7 +630,11 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
             .map(|(at, f)| (*at, f.command))
             .collect()
     };
-    assert!(to(13).iter().all(|(_, c)| only_stops(c)), "{:?}", to(13));
+    let right = to(23);
+    assert!(
+        !right.is_empty() && right.iter().all(|(_, c)| only_stops(c)),
+        "{right:?}"
+    );
     for id in [11, 12] {
         let frames = to(id);
         // The refused enable sent nothing to the left arm: its first frame came after the enable that passed.
@@ -608,13 +678,13 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
             }
         }
     }
-    // Drive 12 was enabled by the first two enables only; drive 11 by all four.
+    // Drive 12 was sent an Enable by the first two enables and the late one only; drive 11 by the four it was named in.
     assert_eq!(
         to(11).iter().filter(|(_, c)| *c == Command::Enable).count(),
         4
     );
     assert_eq!(
         to(12).iter().filter(|(_, c)| *c == Command::Enable).count(),
-        2
+        3
     );
 }

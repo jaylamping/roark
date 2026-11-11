@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+# `Snapshot::from_parts`, for the unit tests of crates that read snapshots. Never in a normal build.
+test-support = []
+
 [dependencies]
 robstride.workspace = true
 telemetry.workspace = true

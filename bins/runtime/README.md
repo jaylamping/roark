@@ -32,7 +32,8 @@ thread per wired bus and the control thread on one schedule origin, and takes th
   zero torque: watched by the bus's rules, holding nothing, so the motion rules have nothing to check yet) until real
   control modes and gains exist. A joint stops being held when its limb stops on any bus, and a stop on one bus is then
   asked of the whole limb. While a limb is held, a drive of it on any bus that this host never enabled, seen out of
-  Reset or not seen at all, stops the whole limb (`safety::limb_mates`, `host.mode`, PLAN item 6).
+  Reset or not seen at all, stops the whole limb (`safety::limb_mates`, `host.mode`, PLAN item 6); the same clause fails
+  the enable running once an Enable of it may have gone, so it is never answered `Ok` over such a mate.
 - **Stops** (`Runtime::stop(Scope)`) go through a latch, never a queue: always accepted, never waiting, and taken each tick
   before any clear (PLAN item 3a). A stop a bus's full order ring didn't take is pushed again each tick, ahead of anything
   else for that bus.
@@ -48,6 +49,13 @@ The `api` socket (and so any way for the binary's operator to enable), `mlockall
 come in the PRs that follow (PLAN step 7). Stops that control asks (an enable's failure, `host.mode`) reach the bus as
 operator stops, and control's enables and refusals emit no event yet: the session records them only as limb stops until
 a stop carries its cause and control has an event queue, the next PR, before any real drive is enabled (step 8).
+
+Known limits, each failing closed or only delaying a stop by a pass: control decides on the newest snapshots, so a stop
+seen on one bus reaches the limb's other buses a control pass later; a limb-mate's view carries no age, so a bus that
+missed its tick shows its last one; a bus with no snapshot yet when an enable is taken counts every other host's frame
+it later reports as new, refusing the enable; the recording's `Health` fails on write errors only, not on frames the
+recorder's ring dropped; and a joint whose drive its bus's snapshot doesn't show isn't stepped, so its sequence's
+deadlines wait until it is seen again.
 
 ## Must never
 

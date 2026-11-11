@@ -18,12 +18,13 @@ use can::{CommandBatch, MAX_DRIVES, SlowRequest, SlowResult, Snapshot};
 use robstride::Drive;
 use rtrb::{Consumer, Producer};
 use safety::{EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal, Seen, Step};
+use skeleton::LimbName;
 
 use crate::dispatch::StopLatch;
 use crate::request::Scope;
 use crate::roster::{JointSet, Roster, RosterJoint};
 
-use hold::{halted, limb_on};
+use hold::{LimbVerdict, halted, limb_on};
 pub use reply::{Enable, EnableRefused, EnableReply};
 
 /// Where one joint is.
@@ -122,6 +123,9 @@ enum Failed {
     Foreign {
         bus: usize,
     },
+    Mode {
+        limb: LimbName,
+    },
 }
 
 impl Enabler {
@@ -213,8 +217,8 @@ impl Enabler {
         Ok(())
     }
 
-    /// End the enable running, if any, because the run is ending. Its joints already enabled stay held until the bus
-    /// stops their limbs.
+    /// End the enable running, if any, because the run is ending, which stops every limb: so is any joint of it whose
+    /// Enable may have gone. Its joints already enabled stay held until the bus stops their limbs; the rest are dropped.
     pub(crate) fn end(&mut self) -> Option<EnableReply> {
         let (tag, joints) = self.run.take()?;
         for joint in joints.iter() {
@@ -269,7 +273,7 @@ impl Enabler {
         };
         self.route_results(roster, joints, buses.slow, now_ns, counts);
         if let Some(bus) = self.foreign_since(roster, joints, buses.snapshots) {
-            return Some(self.fail(roster, tag, joints, Failed::Foreign { bus }, stops));
+            return Some(self.fail(roster, tag, joints, Failed::Foreign { bus }, stops, counts));
         }
         let mut all_passed = true;
         let mut all_enabled = true;
@@ -281,7 +285,9 @@ impl Enabler {
                     all_passed = false;
                     all_enabled = false;
                 }
-                Err(failure) => return Some(self.fail(roster, tag, joints, failure, stops)),
+                Err(failure) => {
+                    return Some(self.fail(roster, tag, joints, failure, stops, counts));
+                }
             }
         }
         // Every proof in hand: every sequence starts in this tick, from proofs no event has voided (each sequence
@@ -337,6 +343,7 @@ impl Enabler {
             joint,
             refusal: Refusal::Unwired,
         };
+        self.mode_check(roster, buses.snapshots, joint)?;
         let (Some(entry), Some(phase)) = (roster.joint(joint), self.phases.get_mut(joint)) else {
             return Err(unwired);
         };
@@ -354,46 +361,12 @@ impl Enabler {
             .and_then(|s| Seen::of(bus_name, s, slot));
         // A limb is one limb over every bus it is on: a part stopped anywhere voids the proofs and ends the sequences.
         if let Some(stop) = halted(roster, buses.snapshots, entry.limb) {
-            return Err(match phase {
-                Phase::Off | Phase::Preflight { .. } | Phase::Passed(_) => Failed::Preflight {
-                    joint,
-                    refusal: Refusal::LimbStopped { stop },
-                },
-                Phase::Enabling(enabling) => Failed::Sequence {
-                    joint,
-                    failure: EnableFailure::LimbStopped {
-                        stop,
-                        enable_planned: enabling.enable_planned(),
-                    },
-                },
-                Phase::Enabled(_) => Failed::Sequence {
-                    joint,
-                    failure: EnableFailure::LimbStopped {
-                        stop,
-                        enable_planned: true,
-                    },
-                },
-            });
+            return Err(halted_failure(phase, joint, stop));
         }
         match phase {
             Phase::Off => Err(unwired),
             Phase::Passed(_) => Ok(Progress::Passed),
-            Phase::Enabled(_) => {
-                // Held: its limb must still be the Active one the Enable made, or it was stopped and cleared since.
-                if limb_on(buses.snapshots, entry)
-                    .is_some_and(|l| l.state == can::LimbState::Active)
-                {
-                    Ok(Progress::Enabled)
-                } else {
-                    Err(Failed::Sequence {
-                        joint,
-                        failure: EnableFailure::LimbStopped {
-                            stop: limb_on(buses.snapshots, entry).and_then(|l| l.stop),
-                            enable_planned: true,
-                        },
-                    })
-                }
-            }
+            Phase::Enabled(_) => still_active(buses.snapshots, entry, joint),
             Phase::Preflight { preflight, .. } => {
                 let Some(seen) = seen else {
                     return Ok(Progress::Running);
@@ -427,6 +400,28 @@ impl Enabler {
                     }
                 }
             }
+        }
+    }
+
+    /// `host.mode`'s limb-mate clause for `joint`'s limb, once an Enable of it may have gone (the limb is then held).
+    fn mode_check(
+        &self,
+        roster: &Roster,
+        snapshots: &[Option<Snapshot>],
+        joint: usize,
+    ) -> Result<(), Failed> {
+        let held = match self.phases.get(joint) {
+            Some(Phase::Enabled(_)) => true,
+            Some(Phase::Enabling(e)) => e.enable_planned(),
+            Some(Phase::Off | Phase::Preflight { .. } | Phase::Passed(_)) | None => false,
+        };
+        match roster.joint(joint) {
+            Some(entry)
+                if held && self.verdict(roster, snapshots, entry.limb) == LimbVerdict::Mode =>
+            {
+                Err(Failed::Mode { limb: entry.limb })
+            }
+            Some(_) | None => Ok(()),
         }
     }
 
@@ -468,6 +463,7 @@ impl Enabler {
         joints: JointSet,
         failure: Failed,
         stops: &StopLatch,
+        counts: &mut Counts,
     ) -> EnableReply {
         let stopped = joints.iter().any(|j| match self.phases.get(j) {
             Some(Phase::Enabling(e)) => e.enable_planned(),
@@ -476,6 +472,9 @@ impl Enabler {
         });
         for joint in joints.iter() {
             if let Some(phase) = self.phases.get_mut(joint) {
+                if let Phase::Enabled(_) = phase {
+                    counts.holds_ended += 1;
+                }
                 *phase = Phase::Off;
             }
             if stopped && let Some(entry) = roster.joint(joint) {
@@ -503,12 +502,60 @@ impl Enabler {
                 stopped,
             },
             Failed::Ended { joint } => EnableRefused::BusEnded { joint, stopped },
+            Failed::Mode { limb } => {
+                counts.mode_stops += 1;
+                EnableRefused::LimbMate { limb, stopped }
+            }
             Failed::Foreign { bus } => EnableRefused::ForeignHost { bus, stopped },
         };
         EnableReply {
             tag,
             outcome: Err(why),
         }
+    }
+}
+
+/// An enabled joint of the enable running: its limb must still be the Active one the Enable made, or it was stopped and
+/// cleared since.
+fn still_active(
+    snapshots: &[Option<Snapshot>],
+    entry: &RosterJoint,
+    joint: usize,
+) -> Result<Progress, Failed> {
+    match limb_on(snapshots, entry) {
+        Some(l) if l.state == can::LimbState::Active => Ok(Progress::Enabled),
+        limb => Err(Failed::Sequence {
+            joint,
+            failure: EnableFailure::LimbStopped {
+                stop: limb.and_then(|l| l.stop),
+                enable_planned: true,
+            },
+        }),
+    }
+}
+
+/// How a joint of the enable running fails when its limb is stopped on some bus: before any Enable of it, a refused
+/// preflight; after, a sequence whose limb stopped.
+fn halted_failure(phase: &Phase, joint: usize, stop: Option<can::StopReason>) -> Failed {
+    match phase {
+        Phase::Off | Phase::Preflight { .. } | Phase::Passed(_) => Failed::Preflight {
+            joint,
+            refusal: Refusal::LimbStopped { stop },
+        },
+        Phase::Enabling(enabling) => Failed::Sequence {
+            joint,
+            failure: EnableFailure::LimbStopped {
+                stop,
+                enable_planned: enabling.enable_planned(),
+            },
+        },
+        Phase::Enabled(_) => Failed::Sequence {
+            joint,
+            failure: EnableFailure::LimbStopped {
+                stop,
+                enable_planned: true,
+            },
+        },
     }
 }
 
