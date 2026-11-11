@@ -37,7 +37,8 @@ pub enum RuleId {
     HostTemperature,
     /// A hung, late or broken control side lets the drives time out.
     HostHang,
-    /// Bus-off, an interface down or gone, a bus the thread can't keep up with, or an enable's frames not read back.
+    /// Bus-off, an interface down or gone, a bus the thread can't keep up with, or an enable's frames not read back or
+    /// its Enable not planned inside the reporting off's window.
     HostBus,
     /// Under-voltage or throttling on the Pi refuses enable.
     HostPiHealth,
