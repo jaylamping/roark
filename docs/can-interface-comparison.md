@@ -37,7 +37,8 @@ a PCIe CAN card behind a PCIe switch, run through the same steps.
 ## Preconditions
 
 - [ ] No drive on the bus: every drive's CAN lead unplugged, not just disabled.
-- [ ] `runtime` stopped on the Pi (`systemctl is-active runtime` says inactive).
+- [ ] `runtime` stopped and masked for the session: `sudo systemctl mask --runtime --now runtime.service` (a reboot
+  undoes it). `can-bench` refuses to start while the unit could start.
 - [ ] Both interfaces up at 1 Mbit/s, sample point 0.75, no `restart-ms` (pi-setup.md section 11).
 - [ ] CPU governor `performance` on the Pi (pi-setup.md section 12); `can-utils`, `rt-tests` and `stress-ng` installed.
 - [ ] The `can-bench` commit noted.
@@ -61,8 +62,8 @@ a PCIe CAN card behind a PCIe switch, run through the same steps.
 
 Then, once the CAN board exists:
 
-6. **Every bus at once.** One host per bus on the Pi, each bus wired to a responder (a second CAN board, or the dev
-   box's interfaces), started together under the same load. This shows whether the buses slow each other down on the
+6. **Every bus at once.** One host per bus on the Pi, each bus wired to a responder on a second
+   CAN board, started together under the same load. This shows whether the buses slow each other down on the
    Pi's SPI controllers and interrupt lines. One process per bus stands in for the runtime's bus threads, so the pass
    mark is the same per bus.
 
@@ -70,14 +71,17 @@ The same steps also run with `--slots 5` for an arm-sized bus; the leg (6 slots,
 
 ## Pass mark
 
-From PLAN "Open with Joey" item 9 (the defaults until Joey changes them) and item 3, on the loaded run:
+The first two rows are PLAN [Open with Joey](../PLAN.md#open-with-joey) item 9 (the defaults until Joey changes them).
+The rest are this bench's own, proposed with it: each is a loss the runtime would act on. `can-bench` fails a run on
+any of them, on the loaded run:
 
 | What | Pass |
 |---|---|
 | Wake late, 99.9 % | under 500 µs |
 | Replies read by the collect deadline (60 %, 2.4 ms at 250 Hz) | 99.9 % or more |
-| Missing replies | none over the hour |
-| Kernel `rx over_errors` and `dropped` | no change |
+| Missing replies | none over the hour (proposed) |
+| Requests refused by a full queue, wakes past the send window, ticks skipped | none (proposed) |
+| Kernel `rx over_errors` and `dropped` | no change (proposed) |
 | Bus-off | counted in the summary; the interface's own restart behaviour recorded |
 
 A candidate that passes with margin at 250 Hz, 6 slots, is good for every bus. One that passes only at 5 slots is good

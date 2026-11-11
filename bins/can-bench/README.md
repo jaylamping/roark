@@ -28,17 +28,20 @@ The host writes two files to `--out`:
   frame dropped by the kernel. A run below the mark exits non-zero, so a script can tell.
 
 Times are read with `CLOCK_MONOTONIC` when the program gets each frame: the time the runtime would act on, which includes
-USB, driver and wake-up delay. That delay is what the comparison is for.
+SPI, driver and wake-up delay. That delay is what the comparison is for.
 
 ## Must never
 
 - **Send a frame a drive could act on.** Its frames use communication types 31 and 30, which no RobStride manual defines,
   addressed to 0x80 and above, past every drive ID (`src/frames.rs`).
-- **Run with a drive or another host on the bus.** Both ends listen for a second first and refuse if anything else talks.
-  A powered drive with reporting off is silent, so the procedure says to unplug every drive; the check catches the rest.
-- **Run alongside `runtime`, or on a robot bus in use.** Both ends take the runtime's lock (`/run/robot/runtime.lock`, the
-  one `robot-cli disable` checks) for the whole run and refuse while a runtime holds it. It is a bench tool, never
-  installed as a service.
+- **Run with a drive or another host on the bus.** Both ends listen for a second first and refuse if any frame arrives
+  (the responder lets a bench request through, so it can start after the host). A powered drive with reporting off is
+  silent, so the procedure says to unplug every drive; the check catches the rest.
+- **Run alongside `runtime`, or on a robot bus in use.** If the runtime's lock (`/run/robot/runtime.lock`) exists, both
+  ends hold it shared for the whole run and refuse while a runtime holds it. If it doesn't, they refuse while
+  `runtime.service` is installed and not masked, because systemd could start it mid-run: mask it for the session with
+  `sudo systemctl mask --runtime --now runtime.service` (undone by a reboot). It is a bench tool, never installed as a
+  service.
 
 ## Talks to
 

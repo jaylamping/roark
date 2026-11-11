@@ -16,27 +16,61 @@ use crate::frames;
 
 /// The runtime's lock (`bins/runtime`): held for as long as a runtime runs.
 const RUNTIME_LOCK: &str = "/run/robot/runtime.lock";
+/// The runtime's systemd unit (`deploy/systemd`).
+const RUNTIME_UNIT: &str = "runtime.service";
 
 /// How long the bench listens before its first frame.
 const LISTEN: Duration = Duration::from_secs(1);
 
-/// `ENOBUFS`: the interface's queue is full. Counted, never retried (can.md section 2).
-pub(crate) const ENOBUFS: i32 = 105;
+/// `ENOBUFS`: the interface's queue is full.
+const ENOBUFS: i32 = 105;
 
-/// Take the runtime's lock, shared, for the whole run, so the bench never runs alongside a runtime and a runtime can't
-/// start under it. Shared, because the runtime takes it exclusive while both bench ends may run on one machine. `None` when this machine has never run one (no `/run/robot`); the lock is the runtime's, never made here.
-pub(crate) fn claim_runtime_lock() -> Result<Option<Flock<File>>, String> {
-    let file = match OpenOptions::new().read(true).write(true).open(RUNTIME_LOCK) {
-        Ok(file) => file,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
+/// Whether a write failed only because a queue was full: `ENOBUFS` from the interface's queue or `EAGAIN` from the
+/// socket's. The frame is dropped and counted, never retried (can.md section 2, "No busy retry").
+pub(crate) fn queue_full(e: &io::Error) -> bool {
+    e.raw_os_error() == Some(ENOBUFS) || e.kind() == io::ErrorKind::WouldBlock
+}
+
+/// Which end of the bench a process is, for the quiet check.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Role {
+    Host,
+    Responder,
+}
+
+/// Keep the runtime off the bus for the whole run. While a runtime has run since boot, its lock exists: take it shared
+/// (the runtime takes it exclusive, so a running runtime refuses the bench and a runtime can't start under it, while
+/// both bench ends may run on one machine). When it doesn't exist (stopped, so systemd removed `/run/robot`), refuse
+/// unless the unit is masked or not installed, so nothing can start it during the run. The lock file is the runtime's
+/// and never made here: one made by root under `sudo` could keep the `User=robot` runtime from opening it.
+pub(crate) fn exclude_runtime() -> Result<Option<Flock<File>>, String> {
+    match OpenOptions::new().read(true).write(true).open(RUNTIME_LOCK) {
+        Ok(file) => match Flock::lock(file, FlockArg::LockSharedNonblock) {
+            Ok(lock) => return Ok(Some(lock)),
+            Err((_, Errno::EWOULDBLOCK)) => {
+                return Err(format!(
+                    "{RUNTIME_LOCK} is held: a runtime is running; stop it before can-bench"
+                ));
+            }
+            Err((_, e)) => return Err(format!("{RUNTIME_LOCK}: {e}")),
+        },
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {}
         Err(e) => return Err(format!("{RUNTIME_LOCK}: {e}")),
-    };
-    match Flock::lock(file, FlockArg::LockSharedNonblock) {
-        Ok(lock) => Ok(Some(lock)),
-        Err((_, Errno::EWOULDBLOCK)) => Err(format!(
-            "{RUNTIME_LOCK} is held: a runtime is running; stop it before can-bench"
-        )),
-        Err((_, e)) => Err(format!("{RUNTIME_LOCK}: {e}")),
+    }
+    // `systemctl is-enabled` prints the unit file's state; nothing (and a non-zero exit) when the unit isn't installed,
+    // as on the dev box, or when there is no systemd.
+    let state = Command::new("systemctl")
+        .args(["is-enabled", RUNTIME_UNIT])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+        .unwrap_or_default();
+    if state.is_empty() || state == "not-found" || state.starts_with("masked") {
+        Ok(None)
+    } else {
+        Err(format!(
+            "{RUNTIME_UNIT} is {state}: something could start it during the run; \
+             `sudo systemctl mask --runtime --now {RUNTIME_UNIT}` first (unmasked at the next boot)"
+        ))
     }
 }
 
@@ -48,10 +82,12 @@ pub(crate) fn open(bus: &str) -> io::Result<CanSocket> {
     Ok(socket)
 }
 
-/// Listen for one second and refuse if any frame that isn't this bench's own shows up: a drive reporting, the runtime,
-/// the legacy stack. The bench runs with no drive on the bus (`README.md`); this catches the cases that announce
-/// themselves. A drive that is powered but silent doesn't, which is why the procedure says to unplug them.
-pub(crate) fn check_quiet(socket: &CanSocket, bus: &str) -> Result<(), String> {
+/// Listen for one second and refuse if anything else is on the bus: a drive reporting, the runtime, the legacy stack, an
+/// error frame (a bus already in trouble) or a remote frame. A host refuses every frame, since anything it hears before
+/// its first request is another host or its responder; a responder accepts only this bench's requests, from a host
+/// already running. The bench runs with no drive on the bus (`README.md`); a drive that is powered but silent doesn't
+/// announce itself, which is why the procedure says to unplug them.
+pub(crate) fn check_quiet(socket: &CanSocket, bus: &str, role: Role) -> Result<(), String> {
     let end = Instant::now() + LISTEN;
     loop {
         let now = Instant::now();
@@ -60,13 +96,13 @@ pub(crate) fn check_quiet(socket: &CanSocket, bus: &str) -> Result<(), String> {
         };
         wait(socket, left).map_err(|e| format!("{bus}: {e}"))?;
         while let Some(frame) = read(socket).map_err(|e| format!("{bus}: {e}"))? {
-            if let CanFrame::Data(data) = frame
-                && !frames::is_bench(data.raw_id())
-            {
+            let allowed = matches!(&frame, CanFrame::Data(d)
+                if role == Role::Responder && frames::request_slot(d.raw_id()).is_some());
+            if !allowed {
                 return Err(format!(
-                    "{bus}: frame {:08X} from something else on the bus; can-bench runs only with no drive and no \
-                     other host on the bus",
-                    data.raw_id()
+                    "{bus}: frame {:08X} heard before starting; can-bench runs only on a quiet bus with no drive, no \
+                     other host and no error",
+                    frame.raw_id()
                 ));
             }
         }

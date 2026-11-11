@@ -1,12 +1,12 @@
-//! The bench's own frames. They are built so no RobStride drive can act on them: communication types 31 (request) and
-//! 30 (reply), which no RobStride manual defines (§4 lists 0 to 25), sent to addresses 0x80 and up, above any drive ID
+//! The bench's own frames. They are built so no RobStride drive can act on them: communication types 30 (request) and
+//! 31 (reply), which no RobStride manual defines (§4 lists 0 to 25), sent to addresses 0x80 and up, above any drive ID
 //! (1 to 127, manual §4). They are 8-byte extended frames like a drive's MIT command and status, so each one takes as
-//! long on the wire.
+//! long on the wire, and a request wins arbitration over a reply as a command (type 1) does over a status (type 2).
 
 /// The communication type of a request from the host under test.
-pub(crate) const REQUEST_TYPE: u32 = 31;
+pub(crate) const REQUEST_TYPE: u32 = 30;
 /// The communication type of a reply from the responder.
-pub(crate) const REPLY_TYPE: u32 = 30;
+pub(crate) const REPLY_TYPE: u32 = 31;
 /// The address of slot 0; slot `n` is this plus `n`. Above every drive ID.
 pub(crate) const FIRST_ADDRESS: u32 = 0x80;
 /// The most slots one run may have: 16 fake drives, more than any limb.
@@ -42,11 +42,6 @@ pub(crate) fn reply_slot(id: u32) -> Option<usize> {
     (0..MAX_SLOTS).find(|&s| reply_id(s) == Some(id))
 }
 
-/// Whether `id` is any frame of this bench's.
-pub(crate) fn is_bench(id: u32) -> bool {
-    request_slot(id).is_some() || reply_slot(id).is_some()
-}
-
 /// A request's data: the tick it was sent in, then a running count, both little-endian. The reply echoes it.
 pub(crate) fn payload(tick: u32, count: u32) -> [u8; 8] {
     let t = tick.to_le_bytes();
@@ -58,4 +53,33 @@ pub(crate) fn payload(tick: u32, count: u32) -> [u8; 8] {
 pub(crate) fn payload_tick(data: &[u8]) -> Option<u32> {
     let bytes: [u8; 4] = data.get(..4)?.try_into().ok()?;
     Some(u32::from_le_bytes(bytes))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{MAX_SLOTS, reply_id, reply_slot, request_id, request_slot};
+
+    /// Guards: safety - no drive can act on a bench frame (README "Must never"): every request and reply has a
+    /// communication type no RobStride manual defines (above 25) and both address bytes above every drive ID (above
+    /// 127), and each ID maps back to its own slot only.
+    #[test]
+    fn no_drive_can_act_on_a_bench_frame() {
+        for slot in 0..MAX_SLOTS {
+            for (id, back) in [
+                (request_id(slot), request_id(slot).and_then(request_slot)),
+                (reply_id(slot), reply_id(slot).and_then(reply_slot)),
+            ] {
+                let id = id.unwrap_or(0);
+                assert!(id >> 24 > 25 && id <= 0x1FFF_FFFF, "type of {id:08X}");
+                assert!(
+                    [id & 0xFF, (id >> 8) & 0xFF].iter().all(|&a| a > 127),
+                    "addresses of {id:08X}"
+                );
+                assert_eq!(back, Some(slot));
+            }
+            assert_eq!(request_id(slot).and_then(reply_slot), None);
+            assert_eq!(reply_id(slot).and_then(request_slot), None);
+        }
+        assert_eq!(request_id(MAX_SLOTS), None);
+    }
 }

@@ -281,9 +281,10 @@ Per [can-stack-for-marengo.md](https://github.com/jaylamping/marengo/blob/main/h
   file, per [deploy.md](conventions/deploy.md)); disable the HAT's `can1` before the
   adapter takes that name. At start, check each interface's driver against the skeleton.
 - **Only the realtime process transmits.** Scan, set-ID and parameter reads are runtime commands through `api`; `robot-cli` is
-  a client. The one exception is `robot-cli disable`: it reads only (bus, ID) pairs from the skeleton, opens the sockets itself,
+  a client. The one exception on a robot bus is `robot-cli disable`: it reads only (bus, ID) pairs from the skeleton, opens the sockets itself,
   sends Disable then active reporting off to every ID, depends on nothing else, and runs only after the runtime has exited
-  (systemd `ExecStopPost`).
+  (systemd `ExecStopPost`). `can-bench` also transmits, but only its own frames, which no drive acts on, on a bus with no
+  drive, and never while `runtime` can run.
 - **A hung control thread must let the drives time out.** Each command batch carries a tick number and an expiry. A bus thread
   sends only a fresh batch and never re-sends a stale one. If control hasn't published for two ticks, the bus thread stops its
   limbs. The systemd watchdog is fed only when the control loop and every bus in an active run are making progress.

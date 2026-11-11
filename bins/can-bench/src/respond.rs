@@ -8,7 +8,7 @@ use std::time::Duration;
 use socketcan::{CanDataFrame, CanFrame, EmbeddedFrame, ExtendedId, Frame, Socket};
 
 use crate::frames;
-use crate::link::{self, ENOBUFS};
+use crate::link::{self, Role};
 
 /// How long one wait blocks, so a long quiet spell still loops.
 const WAIT: Duration = Duration::from_secs(1);
@@ -18,9 +18,9 @@ pub(crate) fn run(bus: &str, slots: usize) -> Result<(), String> {
     if slots == 0 || slots > frames::MAX_SLOTS {
         return Err(format!("--slots must be 1 to {}", frames::MAX_SLOTS));
     }
-    let _runtime_lock = link::claim_runtime_lock()?;
+    let _runtime_lock = link::exclude_runtime()?;
     let socket = link::open(bus).map_err(|e| format!("{bus}: {e}"))?;
-    link::check_quiet(&socket, bus)?;
+    link::check_quiet(&socket, bus, Role::Responder)?;
     let replies: Vec<ExtendedId> = (0..slots)
         .map(|s| frames::reply_id(s).and_then(ExtendedId::new))
         .collect::<Option<_>>()
@@ -39,7 +39,7 @@ pub(crate) fn run(bus: &str, slots: usize) -> Result<(), String> {
             match socket.write_frame(&CanFrame::Data(reply)) {
                 Ok(()) => {}
                 // A full queue drops the reply; the host counts it missing.
-                Err(e) if e.raw_os_error() == Some(ENOBUFS) => {}
+                Err(e) if link::queue_full(&e) => {}
                 Err(e) => return Err(format!("{bus}: write: {e}")),
             }
         }

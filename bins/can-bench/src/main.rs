@@ -7,6 +7,8 @@ mod host;
 #[cfg(target_os = "linux")]
 mod link;
 #[cfg(target_os = "linux")]
+mod report;
+#[cfg(target_os = "linux")]
 mod respond;
 #[cfg(target_os = "linux")]
 mod stats;

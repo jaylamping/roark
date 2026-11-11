@@ -84,7 +84,8 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   `write` in the bus thread. Never raise `txqueuelen` to make `ENOBUFS` go away: it hides a bus problem (a linux-can thread
   traced exactly this to a duplicate sender).
 - **Only frames on the allowlist** (PLAN item 2) can be built for transmit; the check lives in the codec so nothing else can
-  bypass it.
+  bypass it. `can-bench` is outside this rule: it never links the codec and sends only its own frames, which no drive
+  acts on, on a bus with no drive.
 - **A TX echo isn't proof the frame reached the wire** (PLAN item 3). Latency in the recording is measured from the
   kernel RX timestamps of replies, and liveness from replies, never from echoes.
 

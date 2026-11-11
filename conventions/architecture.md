@@ -71,8 +71,9 @@ And between the control thread and the rest of `runtime` (`runtime::Runtime`), u
 
 ## 2. Process boundaries are failure domains
 
-- **One process owns motion.** Only `runtime` transmits on CAN (tenet 5). Every other process can crash, hang or be restarted
-  and the motors don't notice. **Why:** the legacy stack had several bus writers (motor-repl, an MCP tool that stopped the
+- **One process owns motion.** Only `runtime` transmits on a robot bus (tenet 5); `robot-cli disable` after it has
+  exited, and `can-bench` on a bench bus with no drive, are the named exceptions. Every other process can crash, hang or
+  be restarted and the motors don't notice. **Why:** the legacy stack had several bus writers (motor-repl, an MCP tool that stopped the
   service and launched its own owner), and nobody could say who moved a joint.
 - **A dead `runtime` stops the robot.** The drives' 50 ms CAN timeout makes them go limp, systemd's watchdog kills a hung
   process, and `ExecStopPost` runs the independent disable. Nothing tries to keep motion alive after the owner dies.
@@ -212,7 +213,7 @@ Each of these was in the marengo stack and was judged against the tenets in the
 | Degraded modes that keep drives powered after a fault | Tenet 3 says stop |
 | Limits and IDs held in several files | One fact, one place (tenet 2) |
 | Home-grown logging, storage and log viewers | Off-the-shelf stack (tenet 8) |
-| Tools that open the bus or stop the service | One CAN owner (tenet 5) |
+| Tools that open a robot bus or stop the service | One CAN owner (tenet 5); `can-bench` runs only on a bus with no drive |
 | Preflights that require every joint online | Missing drives are a state (tenet 1) |
 | Runtime that writes config or URDF | The skeleton is hand-agreed (tenet 2) |
 | Speculative ADRs and versioned interfaces nobody uses | Build only what's needed now (tenet 4) |
