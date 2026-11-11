@@ -32,8 +32,64 @@ LCSC (26,635). On the cached, unverified figures, Mouser covers INA237, LM5146, 
 XAL1010-682MED from stock; TPS3431 showed small stock. C24 is EEH-ZA1E331V (in stock at DigiKey; kit note gives the fit).
 C2 is EMVH101ARA470MKE0S (decided; the buck board is laid out for it).
 
-**Decided 2026-11-10: U1 is fitted with LM5069MM-2/NOPB for now.** The kit orders 4 LM5069-2 for two sets (U1 and U7):
+**Decided 2026-11-10: U1 is fitted with LM5069MM-2/NOPB for now.** The kit orders 5 LM5069-2: 4 for two sets (U1 and U7) and 1 spare:
 Mouser LM5069MM-2/NOPB or LCSC C2653582 (LM5069MMX-2/NOPB, the large reel). The schematic keeps LM5069MMX-1 as U1's
 design part, with a "Fitted" field naming the -2; order 2 LM5069MM-1/NOPB and swap U1 when it is back in stock. With
 the -2 the bus restarts by itself about every 63 ms after a fault clears, and the heatsink fan must run whenever the
 pack is connected: [LM5069_RETRY.md](LM5069_RETRY.md).
+
+## LCSC, checked live 2026-11-11
+
+Read from LCSC's product pages. Prices are LCSC's list price before US duty (about 37.5 % on China-origin goods) and
+shipping (about $20).
+
+| Part | LCSC | Stock | Price at the kit quantity | Note |
+|---|---|---|---|---|
+| IPB017N10N5LFATMA1 (18) | C3289286 | 499 | $4.30 each at 10+ ($5.04 at 1) | about $77, about $106 with duty: not cheaper than DigiKey's roughly $5.50 each |
+| INA237AIDGSR (14) | C2864837 | 9,825 | $1.56 each at 10+ | in stock; DigiKey is out until 25-Nov-2026 |
+| TPS48111LQDGXRQ1 (7) | C17558994 | 9,860 | $3.00 each at 1, $2.56 at 10+ | |
+| TPS259541DSGR (6) | C2155673 | 155 | $0.27 each, sold in fives | |
+| TPS7A4001DGNR (3) | C55006 | 4,364 | $2.46 each | |
+| EEH-ZC1K470P (28) | C178648 | 9 | $0.65 each at 10+ | too few in stock |
+| LM5146RGYR (3) | C3188679 | 0 | | out of stock |
+| TPS3431SDRBR (3) | C702145 | 0 | | out of stock |
+
+**What this changes.** PRODUCTION_RUN.md section 1 estimated the power FETs at about $51 for 16 from LCSC; the live price
+is about $69 for 16 before duty, so the FETs are no cheaper from LCSC once duty is paid. After duty and LCSC's shipping,
+moving the lines above to LCSC saves little or nothing against DigiKey. The second order exists for stock, not for
+price: the lines DigiKey cannot supply (LM5069-2, INA237, TPS3431S, LM5146, SM08B-GHS-TB, WSK25125L000FEA,
+XAL1010-682MED, 419D) go to Mouser, which ships from the US without duty; LCSC covers only INA237, LM5069-2 and
+SM08B-GHS-TB of those. The Mouser stock figures above are still unverified.
+
+## Distributor comparison, checked 2026-11-11
+
+Unit prices at the kit quantity, from trustedparts.com (authorised distributors) and LCSC's product pages. "No stock"
+means no authorised distributor showed units on hand.
+
+| Part (kit qty) | DigiKey | Mouser | Other | Buy from |
+|---|---|---|---|---|
+| IPB017N10N5LFATMA1 (18) | $5.51 | $4.37 | LCSC $4.30 before duty | Mouser, about $20 less |
+| BSC040N10NS5ATMA1 (5) | $3.45 at 1, $2.24 at 10 | $1.73 at 10 | Arrow $1.63 at 10 | Mouser |
+| INA237AIDGSR (14) | $2.42 | $2.13, 13,105 in stock | LCSC $1.56 before duty | Mouser |
+| TPS48111LQDGXRQ1 (7) | $5.05 at 1, $3.85 at 10 | $5.10 at 1, $3.89 at 10 | LCSC $3.00 at 1 | LCSC, about $6 less with duty |
+| TPS48100QDGXRQ1 (3) | $4.50 | $4.50 | not at LCSC | DigiKey |
+| EEH-ZC1K470P (28) | $1.09 | $1.18 | LCSC 9 in stock | DigiKey |
+| C1210C225K1RACTU (24) | $0.69 | $0.69 | | DigiKey |
+| CSS2H-2512K-2L00F (7) | $1.48 at 1, $0.97 at 10 | the same | Arrow $0.59 | DigiKey (about $4 more than Arrow) |
+| WSK25125L000FEA (5) | no stock | 123 in stock, $2.86 at 1 | Arrow 545, $1.81; Newark 124 | Mouser |
+| LM5069MM-2/NOPB (5) | no stock | lead time only (51 in stock on 2026-11-10) | LCSC C2653582 (MMX-2) 4,802 at $4.10 | LCSC |
+| LM5146RGYR (3) | no stock until 18-Jan-2027 | lead time 112 days | TI.com out of stock; LCSC out | none: see below |
+| TPS3431SDRBR (3) | no stock | stock not shown, $2.07 | Spirit Electronics 139 at $1.95 | Mouser if it shows stock |
+| SM08B-GHS-TB(LF)(SN) (5) | no stock | stock not shown (975 on 2026-11-10) | LCSC C265111 out of stock today | Mouser if it shows stock |
+| XAL1010-682MED (2) | not sold | stock not shown, $5.11 | Coilcraft direct | Mouser or Coilcraft |
+
+**LM5146RGYR has no authorised stock.** The automotive-grade LM5146QRGYRQ1 (LM5146-Q1, the same RGY VQFN-20 package)
+is at LCSC (C1850329, 60 in stock, $7.21) and Spirit Electronics (1,424, $5.69). TI's LM5146 product page lists
+the LM5146-Q1 as the "pin-to-pin, automotive version of LM5146", in the same 20-pin RGY package (4.5 x 3.5 mm), so it
+fits buck12's U1 footprint unchanged. It costs about $3 more per chip.
+
+**Decided 2026-11-11: buck U1 is ordered as LM5146QRGYRQ1** (3 pieces, LCSC C1850329). The schematic value stays LM5146RGYR;
+the two are the same device in the same package.
+
+Outside the lines above DigiKey and Mouser price within a few percent of each other, so shopping further saves about
+$35 to $45 on the whole order, most of it the power FETs at Mouser.

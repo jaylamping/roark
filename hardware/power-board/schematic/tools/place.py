@@ -123,7 +123,7 @@ for net in getall(get(N,'nets'),'net'):
 fps={}
 for c in getall(get(N,'components'),'comp'):
     ref=str(get(c,'ref')[1]); f=str(get(c,'footprint')[1]); lib,name=f.split(':')
-    fp=pcbnew.FootprintLoad(os.path.join(HERE,'marengo_revb.pretty') if lib=='marengo_revb' else FPDIR+lib+'.pretty',name)
+    fp=pcbnew.FootprintLoad(os.path.join(HERE,'power_board_revb.pretty') if lib=='power_board_revb' else FPDIR+lib+'.pretty',name)
     fp.SetReference(ref); fp.SetValue(str(get(c,'value')[1])); fp.SetFPID(pcbnew.LIB_ID(lib,name))
     # value, datasheet and attributes as on the symbol, so KiCad's schematic-parity check is clean (tools/sync_netlist.py
     # does the same on an existing board)

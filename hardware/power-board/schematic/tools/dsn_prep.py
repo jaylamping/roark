@@ -91,7 +91,7 @@ HVN=[n for n in names if domains.is_hv(n.strip('"')) and n.strip('"') not in POW
 rest=[n for n in names if n.strip('"') not in POWER+P12+['GND'] and n not in ESTN+HVN]
 def cls(name,nets,w,cl): return f'    (class {name} {" ".join(nets)}\n      (circuit\n        (use_via "{stack.via_name()}")\n      )\n      (rule\n        (width {w})\n        (clearance {cl})\n      )\n    )\n'
 start=s.rfind('    (class kicad_default',0,m.end()); end=s.find('\n    )\n',m.end())+len('\n    )\n')
-# coated (MARENGO_COATED=1, tools/domains.py): 0.2 mm between 54 V domains; E-stop nets keep 1.5 mm to 54 V copper
+# coated (PB_COATED=1, tools/domains.py): 0.2 mm between 54 V domains; E-stop nets keep 1.5 mm to 54 V copper
 # through class-to-class rules (route_checks.py re-checks it after import)
 HVW=250; PCL=int(os.environ.get('PWRCL','200' if domains.COATED else '350'))
 cc=('    (class_class (classes ESTOPC HV) (rule (clearance 1500)))\n'

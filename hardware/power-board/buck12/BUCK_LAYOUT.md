@@ -1,6 +1,6 @@
 # 12 V buck board: layout rules, exceptions, bring-up
 
-The board in [layout/marengo_buck12.kicad_pcb](layout/marengo_buck12.kicad_pcb) is built from the schematic by
+The board in [layout/buck12.kicad_pcb](layout/buck12.kicad_pcb) is built from the schematic by
 [tools/build_buck.sh](tools/build_buck.sh) and checked by [tools/verify_buck.sh](tools/verify_buck.sh). Its order package
 is in [fab/](fab/) ([tools/fab_package_buck.sh](tools/fab_package_buck.sh), checked by
 [tools/fab_check_buck.sh](tools/fab_check_buck.sh)). The circuit is LM5146, 36–54.6 V in, 12 V at 12 A, 400 kHz
@@ -19,8 +19,12 @@ is in [fab/](fab/) ([tools/fab_package_buck.sh](tools/fab_package_buck.sh), chec
   - the Kelvin taps in RS1's and RS2's four sense pads;
   - TPV6.
 
-  U1's stock TI footprint also has four 0.2 mm thermal vias in its exposed pad. They are the only drills under 0.3 mm;
-  JLC fills and caps via-in-pad holes from 0.15 to 0.55 mm and its multilayer minimum is 0.15 mm (below), so they stay.
+  U1's four thermal vias in its exposed pad are the board's standard 0.6/0.3 mm via (buck12.pretty, from TI's stock
+  RGY footprint by tools/fp_buck.py; the stock 0.2 mm drill was the board's only hole under 0.3 mm and doubled the
+  fab price). They sit at (±0.7, 0) and (0, ±1.2) mm, each pad 0.025 mm inside the 2.05 × 3.05 mm exposed pad, holes
+  1.09 mm apart wall to wall; filled and capped like the rest. Through 1.6 mm with 25 µm plating each barrel is about
+  190 K/W (0.2 mm: about 300 K/W), so the four together are about 48 K/W top to bottom (0.2 mm: about 76 K/W):
+  about 1.6 times the conduction into the In1/In4 GND planes and the B.Cu fill. The board's smallest drill is 0.3 mm.
 - **Four M3 holes**, 3.5 mm in from the corners, **not bonded to the frame**: a copper keep-out of 3.8 mm radius on every
   layer round each one (as the main board's M3 holes), so the screw head, washer or standoff touches no copper.
   The pigtail from the main board's J24 plugs into J1 on the top edge; the 12 V outputs are on the bottom edge (J2 Jetson,
@@ -132,7 +136,7 @@ The real board must pass.
 ## Exceptions
 
 1. LO on In3 with two vias (gate drive, above).
-2. Via in pad at the 28 places listed under Board, plus U1's 0.2 mm footprint vias.
+2. Via in pad at the 28 places listed under Board, plus U1's four 0.3 mm footprint vias.
 3. The test points are bare pads, not parts.
 4. The main board's E-stop and latch rules don't apply here; only SP_EN's distance does (1.7 mm kept, 1.5 mm rule).
 
@@ -146,10 +150,10 @@ The real board must pass.
 - **SP_EN's closest point against etch tolerance.** It was 1.55 mm (the B.Cu VIN_P pour's edge), 0.05 mm over the rule:
   inside what over-etch, under-etch and layer registration can take away. The pours now step back, SP_EN is laid by
   hand, the routers keep 1.7 mm, and spacing_buck fails under 1.7 mm. Closest pair now 1.92 mm.
-- **Does JLC fill 0.2 mm via-in-pad holes on 2 oz copper?** Yes. JLC's capabilities page: via-in-pad (epoxy or copper
+- **Does JLC fill via-in-pad holes on 2 oz copper?** Yes. JLC's capabilities page: via-in-pad (epoxy or copper
   paste filled, plated over) is "the default for 6-layer and above multilayer boards" and is "compatible with via
-  diameters from 0.15 to 0.55 mm"; the multilayer minimum via hole is 0.15 mm, with no separate minimum for 2 oz outer
-  copper (2 oz sets the track/space minimum, 0.15 mm, and the PTH annular ring). U1's 0.2 mm thermal vias stay.
+  diameters from 0.15 to 0.55 mm", with no separate minimum for 2 oz outer copper (2 oz sets the track/space minimum,
+  0.15 mm, and the PTH annular ring). Every via here, U1's four included, is 0.3 mm.
 - **C24 (EEH-ZA1E331V, 25 V) and the eFuses against the +12V back-feed clamp.**
   - **Change.** D3 is now **SMBJ12A** (Diodes Incorporated SMBJ12A-13-F, DigiKey SMBJ12A-FDICT-ND, same SMB footprint).
     It was SMBJ15A, which clamps at up to 24.4 V. That is over the TPS259541 eFuses' (U3, U5) **20 V absolute maximum**

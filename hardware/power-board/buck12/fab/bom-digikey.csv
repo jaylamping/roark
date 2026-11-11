@@ -1,24 +1,24 @@
 Quantity,Value / MPN,Reference designators,Footprint,Manufacturer,Manufacturer PN,DigiKey PN,Supplier note
-2,1uF 100V X7R,C1,C_1210_3225Metric,KEMET,C1210C105K1RACTU,399-C1210C105K1RACTUCT-ND,
-2,47uF 100V EMVH101ARA470MKE0S,C2,CP_Elec_12.5x13.5_ChemiCon,Chemi-Con (United Chemi-Con),EMVH101ARA470MKE0S,565-2342-1-ND,"Replaces EEE-TK2A470AQ (out of stock to Sep 2027; a 12.5 mm can that the old 10 x 10 footprint never fitted). 12.5 x 13.5 mm, ESR 0.33 ohm, ripple 450 mA at 100 kHz/125 C, 5000 h at 125 C; Chemi-Con land (5.7 x 2.5 mm pads, 4.0 mm gap). absorber_sim.py with 0.33 ohm: buck VIN peak 78.7 V worst case (was 86.4), filter damping margin 24 dB. 4,738 in stock 2026-11-10."
-10,2.2uF 100V X7R,"C3,C4,C5,C6,C7",C_1210_3225Metric,KEMET,C1210C225K1RACTU,399-C1210C225K1RACTUCT-ND,
-4,100nF 100V X7R,"C8,C14",C_0805_2012Metric,KEMET,C0805C104K1RACTU,399-C0805C104K1RACTUCT-ND,
+4,1uF 100V X7R,C1,C_1210_3225Metric,KEMET,C1210C105K1RACTU,399-C1210C105K1RACTUCT-ND,
+3,47uF 100V EMVH101ARA470MKE0S,C2,CP_Elec_12.5x13.5_ChemiCon,Chemi-Con (United Chemi-Con),EMVH101ARA470MKE0S,565-2342-1-ND,"Replaces EEE-TK2A470AQ (out of stock to Sep 2027; a 12.5 mm can that the old 10 x 10 footprint never fitted). 12.5 x 13.5 mm, ESR 0.33 ohm, ripple 450 mA at 100 kHz/125 C, 5000 h at 125 C; Chemi-Con land (5.7 x 2.5 mm pads, 4.0 mm gap). absorber_sim.py with 0.33 ohm: buck VIN peak 78.7 V worst case (was 86.4), filter damping margin 24 dB. 4,738 in stock 2026-11-10."
+12,2.2uF 100V X7R,"C3,C4,C5,C6,C7",C_1210_3225Metric,KEMET,C1210C225K1RACTU,399-C1210C225K1RACTUCT-ND,
+8,100nF 100V X7R,"C8,C14",C_0805_2012Metric,KEMET,C0805C104K1RACTU,399-C0805C104K1RACTUCT-ND,
 14,22uF 25V X7R,"C9,C10,C11,C12,C13,C27",C_1210_3225Metric,TDK Corporation,CGA6P3X7R1E226M250AB,445-180363-1-ND,"Automotive, +/-20%. KEMET C1210C226K3RACTU and Murata GRM32ER71E226KE15L are out of stock."
-4,47nF X7R,C15,C_0603_1608Metric,KEMET,C0603C473K5RACTU,399-C0603C473K5RACTUCT-ND,Voltage not in value string: 50 V X7R chosen (SS pin).
-2,2.2uF 25V X7R,C16,C_0805_2012Metric,KEMET,C0805C225K3RACTU,399-C0805C225K3RACTUCT-ND,
-10,100nF 50V X7R,"C17,C22,C23,C26,C29",C_0603_1608Metric,KEMET,C0603C104K5RACTU,399-C0603C104K5RACTUCT-ND,
-2,18pF 100V C0G,C18,C_0603_1608Metric,KEMET,C0603C180J1GACTU,399-C0603C180J1GACTUCT-ND,"ILIM filter: the node swings with SW up to VIN (54.6 V), so 100 V C0G; 18 pF x 330R = 5.9 ns (LM5146: about 6 ns)."
-4,1nF C0G,C19,C_0603_1608Metric,KEMET,C0603C102J5GACTU,399-C0603C102J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
-2,4.7nF C0G,C20,C_0603_1608Metric,KEMET,C0603C472J5GACTU,399-C0603C472J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
-4,10pF C0G,C21,C_0603_1608Metric,KEMET,C0603C100J5GACTU,399-C0603C100J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
-2,330uF 25V EEH-ZA1E331V,C24,CP_Elec_10x10.5_ZA,Panasonic Industry,EEH-ZA1E331V,P19823CT-ND,"Was EEH-ZA1E331P (out of stock to Apr 2027). The V version (Panasonic ZA datasheet 01-Sep-25): same case G, 10.3 mm base, 4.6 mm terminal gap; 10.5 +/-0.3 mm tall (P 10.2), 1.2 mm main terminals (P 0.9) plus two support terminals beside each. On CP_Elec_10x10.5 (4.4 x 2.5 mm pads at +/-4.2 mm) the main terminals sit fully on the pads; the support terminals reach about +/-1.9 mm, so about half of each overhangs the 2.5 mm pad: footprint CP_Elec_10x10.5_ZA has the pads 4.2 mm wide, so they are wetted too. 52 in stock 2026-11-10."
-4,3.3nF C0G,"C25,C28",C_0603_1608Metric,KEMET,C0603C332J5GACTU,399-C0603C332J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
-2,SK810L-TP,D1,D_SMC,MCC (Micro Commercial Components),SK810L-TP,SK810L-TPMSCT-ND,
-2,BAT46W,D2,D_SOD-123,Diotec Semiconductor,BAT46W,4878-BAT46WCT-ND,Vishay BAT46W-E3-08 out of stock.
+6,47nF X7R,C15,C_0603_1608Metric,KEMET,C0603C473K5RACTU,399-C0603C473K5RACTUCT-ND,Voltage not in value string: 50 V X7R chosen (SS pin).
+6,2.2uF 25V X7R,C16,C_0805_2012Metric,KEMET,C0805C225K3RACTU,399-C0805C225K3RACTUCT-ND,
+14,100nF 50V X7R,"C17,C22,C23,C26,C29",C_0603_1608Metric,KEMET,C0603C104K5RACTU,399-C0603C104K5RACTUCT-ND,
+6,18pF 100V C0G,C18,C_0603_1608Metric,KEMET,C0603C180J1GACTU,399-C0603C180J1GACTUCT-ND,"ILIM filter: the node swings with SW up to VIN (54.6 V), so 100 V C0G; 18 pF x 330R = 5.9 ns (LM5146: about 6 ns)."
+6,1nF C0G,C19,C_0603_1608Metric,KEMET,C0603C102J5GACTU,399-C0603C102J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
+6,4.7nF C0G,C20,C_0603_1608Metric,KEMET,C0603C472J5GACTU,399-C0603C472J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
+6,10pF C0G,C21,C_0603_1608Metric,KEMET,C0603C100J5GACTU,399-C0603C100J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
+3,330uF 25V EEH-ZA1E331V,C24,CP_Elec_10x10.5_ZA,Panasonic Industry,EEH-ZA1E331V,P19823CT-ND,"Was EEH-ZA1E331P (out of stock to Apr 2027). The V version (Panasonic ZA datasheet 01-Sep-25): same case G, 10.3 mm base, 4.6 mm terminal gap; 10.5 +/-0.3 mm tall (P 10.2), 1.2 mm main terminals (P 0.9) plus two support terminals beside each. On CP_Elec_10x10.5 (4.4 x 2.5 mm pads at +/-4.2 mm) the main terminals sit fully on the pads; the support terminals reach about +/-1.9 mm, so about half of each overhangs the 2.5 mm pad: footprint CP_Elec_10x10.5_ZA has the pads 4.2 mm wide, so they are wetted too. 52 in stock 2026-11-10."
+8,3.3nF C0G,"C25,C28",C_0603_1608Metric,KEMET,C0603C332J5GACTU,399-C0603C332J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
+3,SK810L-TP,D1,D_SMC,MCC (Micro Commercial Components),SK810L-TP,SK810L-TPMSCT-ND,
+6,BAT46W,D2,D_SOD-123,Diotec Semiconductor,BAT46W,4878-BAT46WCT-ND,Vishay BAT46W-E3-08 out of stock.
 4,SMBJ12A,D3,D_SMB,Diodes Incorporated,SMBJ12A-13-F,SMBJ12A-FDICT-ND,"+12V back-feed clamp: VBR 13.3 V min (no conduction at the 12.35 V worst output), 19.9 V at 30.2 A, under U3/U5's 20 V maximum."
-6,B340A-13-F,"D4,D5",D_SMA,Diodes Incorporated,B340A-13-F,B340A-FDICT-ND,
-6,5A 32V 0466005,"F1,F2",Fuse_1206_3216Metric,Littelfuse Inc.,0466005.NR,F1460CT-ND,
-4,2A 32V 0466002,F3,Fuse_1206_3216Metric,Littelfuse Inc.,0466002.NR,F1457CT-ND,Part is rated 63 V (kit text says 32 V); the higher rating is fine.
+8,B340A-13-F,"D4,D5",D_SMA,Diodes Incorporated,B340A-13-F,B340A-FDICT-ND,
+8,5A 32V 0466005,"F1,F2",Fuse_1206_3216Metric,Littelfuse Inc.,0466005.NR,F1460CT-ND,
+6,2A 32V 0466002,F3,Fuse_1206_3216Metric,Littelfuse Inc.,0466002.NR,F1457CT-ND,Part is rated 63 V (kit text says 32 V); the higher rating is fine.
 2,"J24 mate: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 +3V3_PI, 7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA",J1,Molex_Micro-Fit_3.0_43045-1212_2x06_P3.00mm_Vertical,Molex,0430451212,WM1794-ND,
 2,12 V to Jetson (fused),J2,Molex_Micro-Fit_3.0_43045-0212_2x01_P3.00mm_Vertical,Molex,0430450212,WM1789-ND,
 2,12 V to Pi 5 V buck (fused),J3,Molex_Micro-Fit_3.0_43045-0212_2x01_P3.00mm_Vertical,Molex,0430450212,WM1789-ND,
@@ -27,28 +27,28 @@ Quantity,Value / MPN,Reference designators,Footprint,Manufacturer,Manufacturer P
 2,"SPARE_ON, always on",J6,Molex_Micro-Fit_3.0_43045-0212_2x01_P3.00mm_Vertical,Molex,0430450212,WM1789-ND,
 2,2.2uH XAL7030-222MEC,L1,L_Coilcraft_XAL7030-222,Coilcraft,XAL7030-222MEC,2457-XAL7030-222MEC-ND,"DigiKey Marketplace listing: ships from Coilcraft (about 4 days), strip packaging, separate shipment."
 2,6.8uH XAL1010-682MED,L2,L_Coilcraft_XAL1010-XXX,Coilcraft,XAL1010-682MED,,"DigiKey no longer sells it. Keep the part: no other 6.8 uH part on the XAL1010 land is as good (XGL1010 has worse DCR; Eaton/Abracon 6.8 uH have 18.5 A Isat and another body). Coilcraft datasheet: 8.1/8.9 mOhm DCR, 21.8 A Isat (30 % drop), 14/18.5 A Irms; at 12 A the peak is 13.7 A (14.2 A at -20 % L). Buy from Mouser, Farnell or Coilcraft direct. Fallback XAL1010-562 (5.6 uH, same land) needs the compensation rechecked."
-2,BSC070N10NS5ATMA1,Q1,TDSON-8-1,Infineon Technologies,BSC070N10NS5ATMA1,BSC070N10NS5ATMA1CT-ND,
+3,BSC070N10NS5ATMA1,Q1,TDSON-8-1,Infineon Technologies,BSC070N10NS5ATMA1,BSC070N10NS5ATMA1CT-ND,
 2,BSC040N10NS5ATMA1,Q2,TDSON-8-1,Infineon Technologies,BSC040N10NS5ATMA1,BSC040N10NS5ATMA1CT-ND,
-2,MMBT3904,Q3,SOT-23,onsemi,MMBT3904LT1G,MMBT3904LT1GOSCT-ND,
-6,2.2R,"R1,R5",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT2R20,RMCF0603FT2R20CT-ND,
-4,300k 1%,R2,R_1206_3216Metric,Stackpole Electronics,RMCF1206FT300K,RMCF1206FT300KCT-ND,
-4,12.4k 1%,R3,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT12K4,RMCF0603FT12K4CT-ND,
-4,24.9k 1%,R4,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT24K9,RMCF0603FT24K9CT-ND,
-4,330R 1%,R6,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT330R,RMCF0603FT330RCT-ND,
-4,0R (loop injection),R7,R_0603_1608Metric,Stackpole Electronics,RMCF0603ZT0R00,RMCF0603ZT0R00CT-ND,
-4,21k 1%,R8,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT21K0,RMCF0603FT21K0CT-ND,
-4,1.5k 1%,R9,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT1K50,RMCF0603FT1K50CT-ND,
-2,100R,R10,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT100R,RMCF0603FT100RCT-ND,
-4,8.06k 1%,R11,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT8K06,RMCF0603FT8K06CT-ND,
-4,220k,R12,R_1206_3216Metric,Stackpole Electronics,RMCF1206FT220K,738-RMCF1206FT220KCT-ND,
-2,10k,R13,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT10K0,RMCF0603FT10K0CT-ND,
-4,68k,R14,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT68K0,RMCF0603FT68K0CT-ND,
-4,499R 1%,R15,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT499R,RMCF0603FT499RCT-ND,
-2,100k,R16,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT100K,RMCF0603FT100KCT-ND,
-2,33k,R17,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT33K0,RMCF0603FT33K0CT-ND,
-4,1.02k 1%,R18,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT1K02,RMCF0603FT1K02CT-ND,
+6,MMBT3904,Q3,SOT-23,onsemi,MMBT3904LT1G,MMBT3904LT1GOSCT-ND,
+8,2.2R,"R1,R5",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT2R20,RMCF0603FT2R20CT-ND,
+6,300k 1%,R2,R_1206_3216Metric,Stackpole Electronics,RMCF1206FT300K,RMCF1206FT300KCT-ND,
+6,12.4k 1%,R3,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT12K4,RMCF0603FT12K4CT-ND,
+6,24.9k 1%,R4,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT24K9,RMCF0603FT24K9CT-ND,
+6,330R 1%,R6,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT330R,RMCF0603FT330RCT-ND,
+6,0R (loop injection),R7,R_0603_1608Metric,Stackpole Electronics,RMCF0603ZT0R00,RMCF0603ZT0R00CT-ND,
+6,21k 1%,R8,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT21K0,RMCF0603FT21K0CT-ND,
+6,1.5k 1%,R9,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT1K50,RMCF0603FT1K50CT-ND,
+6,100R,R10,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT100R,RMCF0603FT100RCT-ND,
+6,8.06k 1%,R11,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT8K06,RMCF0603FT8K06CT-ND,
+6,220k,R12,R_1206_3216Metric,Stackpole Electronics,RMCF1206FT220K,738-RMCF1206FT220KCT-ND,
+6,10k,R13,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT10K0,RMCF0603FT10K0CT-ND,
+6,68k,R14,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT68K0,RMCF0603FT68K0CT-ND,
+6,499R 1%,R15,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT499R,RMCF0603FT499RCT-ND,
+6,100k,R16,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT100K,RMCF0603FT100KCT-ND,
+6,33k,R17,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT33K0,RMCF0603FT33K0CT-ND,
+6,1.02k 1%,R18,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT1K02,RMCF0603FT1K02CT-ND,
 2,2mR 2512 Kelvin WSK25122L000FEA,RS1,R_Shunt_Vishay_WSK2512_6332Metric_T1.19mm,Vishay Dale,WSK25122L000FEA,541-WSK25122L000FEACT-ND,
 2,5mR 2512 Kelvin WSK25125L000FEA,RS2,R_Shunt_Vishay_WSK2512_6332Metric_T1.19mm,Vishay Dale,WSK25125L000FEA,541-WSK25125L000FEACT-ND,"Out of stock at check (2,000 expected 28-Dec-2026); backorder."
-2,LM5146RGYR,U1,Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias,Texas Instruments,LM5146RGYR,296-LM5146RGYRCT-ND,"Out of stock at DigiKey at check (2026-11-10); 2,758 expected 18-Jan-2027; LM5146QRGYRQ1 also out. Try TI.com direct."
+3,LM5146RGYR,U1,Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias_0.3mm,Texas Instruments,LM5146RGYR,296-LM5146RGYRCT-ND,"Ordered as LM5146QRGYRQ1 (LM5146-Q1, pin-to-pin automotive version, same RGY package; decided 2026-11-11): LCSC C1850329, 60 in stock at $7.21. LM5146RGYR has no authorised stock (DigiKey expects 2,758 on 18-Jan-2027)."
 4,INA237AIDGSR,"U2,U4",TSSOP-10_3x3mm_P0.5mm,Texas Instruments,INA237AIDGSR,296-INA237AIDGSRCT-ND,"Out of stock at DigiKey at check (2026-11-10); 2,500 expected 25-Nov-2026."
-4,TPS259541DSGR,"U3,U5",Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm,Texas Instruments,TPS259541DSGR,296-50499-1-ND,About 491 in stock at check.
+6,TPS259541DSGR,"U3,U5",Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm,Texas Instruments,TPS259541DSGR,296-50499-1-ND,About 491 in stock at check.

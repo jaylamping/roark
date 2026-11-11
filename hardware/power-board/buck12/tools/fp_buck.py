@@ -1,13 +1,14 @@
-"""fp_buck.py: the buck board's own footprints, written into ../marengo_buck12.pretty from KiCad's stock ones (plain Python).
+"""fp_buck.py: the buck board's own footprints, written into ../buck12.pretty from KiCad's stock ones (plain Python).
   CP_Elec_12.5x13.5_ChemiCon  C2, Chemi-Con EMVH101ARA470MKE0S (12.5 x 13.5 mm can): Chemi-Con's land, 5.7 x 2.5 mm pads
                               with a 4.0 mm gap (pad centres at +/-4.85 mm); outline, silk and courtyard scaled from
                               CP_Elec_10x10 to the 13.5 mm base plate
+  Texas_RGY_..._ThermalVias_0.3mm  U1, LM5146: the stock footprint with its four exposed-pad vias at 0.6/0.3 mm (stock 0.5/0.2)
   CP_Elec_10x10.5_ZA          C24, Panasonic EEH-ZA1E331V: CP_Elec_10x10.5 with the pads 4.2 mm wide (was 2.5), so the V
                               version's support terminals (out to about +/-1.9 mm) are wetted as well as its main terminals
 Usage: python fp_buck.py"""
 import os,re
 STOCK=os.environ.get('KICAD_FP') or next(p for p in ('C:/Program Files/KiCad/10.0/share/kicad/footprints/','/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints/') if os.path.isdir(p))
-OUT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','marengo_buck12.pretty'); os.makedirs(OUT,exist_ok=True)
+OUT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','buck12.pretty'); os.makedirs(OUT,exist_ok=True)
 def rd(n): return open(os.path.join(STOCK,'Capacitor_SMD.pretty',n+'.kicad_mod'),encoding='utf-8').read()
 def wr(n,t): open(os.path.join(OUT,n+'.kicad_mod'),'w',encoding='utf-8',newline='\n').write(t); print('wrote',n)
 def rename(t,old,new,descr):
@@ -39,3 +40,19 @@ t=head+body
 # text positions above/below the body move out with it
 t=re.sub(r'(\(property "(?:Reference|Value)" "[^"]*"\s*\(at 0 )(-?[\d.]+)',lambda m:m.group(1)+f'{float(m.group(2))*K:.4g}',t)
 wr('CP_Elec_12.5x13.5_ChemiCon',t)
+# U1: the stock RGY thermal-via footprint with the four exposed-pad vias at the board's own via size, 0.6 mm pad, 0.3 mm
+# drill (stock: 0.5/0.2 mm, the only drill under 0.3 mm, which costs a finer-drill price at JLC). The exposed pad is
+# 2.05 x 3.05 mm (TI RGY land pattern); the stock diamond (+/-0.775, 0), (0, +/-1.275) would put a 0.6 mm pad 0.05 mm
+# past the pad's edge, so the vias move in to (+/-0.7, 0) and (0, +/-1.2): each via pad stays 0.025 mm inside the
+# exposed pad, holes 1.09 mm wall to wall at the closest (JLC asks 0.2 mm). Filled and capped like every via on the board.
+src=open(os.path.join(STOCK,'Package_DFN_QFN.pretty','Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias.kicad_mod'),encoding='utf-8').read()
+old,new='Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias','Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias_0.3mm'
+t=src.replace(f'(footprint "{old}"',f'(footprint "{new}"',1).replace(f'"{old}"',f'"{new}"')
+t=re.sub(r'\(descr "',r'(descr "Four 0.6/0.3 mm thermal vias (stock: 0.5/0.2 mm); ',t,count=1)
+MOVE={'-0.775 0':'-0.7 0','0.775 0':'0.7 0','0 -1.275':'0 -1.2','0 1.275':'0 1.2'}
+def via(m):
+    at=m.group(1); assert at in MOVE, at
+    return f'(pad "21" thru_hole circle\n\t\t(at {MOVE[at]})\n\t\t(size 0.6 0.6)\n\t\t(drill 0.3)\n\t\t(zone_connect 2)'   # solid: inside the exposed pad a thermal relief has no room for spokes (DRC starved_thermal)
+t,n=re.subn(r'\(pad "21" thru_hole circle\s*\(at (-?[\d.]+ -?[\d.]+)\)\s*\(size 0\.5 0\.5\)\s*\(drill 0\.2\)',via,t)
+assert n==4 and '(drill 0.2)' not in t, n
+wr(new,t)

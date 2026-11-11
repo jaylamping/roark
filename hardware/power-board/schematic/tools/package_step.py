@@ -17,7 +17,7 @@ bb=board.val().BoundingBox()                                          # kicad-cl
 conn=json.load(open(sys.argv[2]))
 def box(x0,x1,y0,y1,z0,z1): return cq.Workplane().box(x1-x0,y1-y0,z1-z0,centered=False).translate((x0,y0,z0))
 T=1.6
-a=cq.Assembly(name='marengo_power_board_revb5')
+a=cq.Assembly(name='power_board_revb5')
 a.add(board,name='board_with_parts',color=cq.Color(0.1,0.35,0.15))
 # connectors without a KiCad 3D model: courtyard footprint, approximate mated height with the plug (Micro-Fit 3.0 about 16 mm,
 # Mini-Fit Jr about 22 mm)
