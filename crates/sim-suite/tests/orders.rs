@@ -103,7 +103,8 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
             [(LimbState::Active, None), (LimbState::Active, None)]
         );
         assert!(orders.push(Order::StopLimb(0)).is_ok());
-        let ordered = snap.tick;
+        let ordered_ns = epoch.ns(Instant::now());
+        let period = 1_000_000_000 / HZ;
         loop {
             assert!(
                 commands
@@ -114,8 +115,15 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
             let (state, stop) = limbs(&snap)[0];
             if state != LimbState::Active {
                 assert_eq!(stop, Some(StopReason::LimbRequested), "{snap:?}");
-                // Pushed after tick `ordered`'s snapshot, the order is taken at the next tick's start at the latest.
-                assert!(snap.tick <= ordered + 2, "ordered at {ordered}: {snap:?}");
+                // This thread may read snapshots a few ticks behind the bus, so the stop is timed by when it began:
+                // pushed at `ordered_ns`, the order is taken at the next tick's start, within a period and that
+                // tick's wake.
+                if let LimbState::Stopping { since_ns } = state {
+                    assert!(
+                        since_ns <= ordered_ns + 2 * period,
+                        "ordered at {ordered_ns} ns: {snap:?}"
+                    );
+                }
             }
             assert_eq!(limbs(&snap)[1], (LimbState::Active, None), "{snap:?}");
             assert!(snap.drive(1).is_some_and(|d| d.answered), "{snap:?}");
