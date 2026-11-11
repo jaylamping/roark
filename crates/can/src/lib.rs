@@ -31,6 +31,6 @@ pub use tick::BusTick;
 pub use timing::{DRIVE_TIMEOUT_NS, ENABLE_TO_RUN_NS, Timing, TimingError};
 pub use types::{
     BusDrive, CommandBatch, ConfigError, Counters, Drain, DriveView, EchoSeen, LimbState, LimbView,
-    MAX_DRIVES, MAX_SENDS, NoSuchLimb, Observed, RearmRefused, Send, SendKind, SendList,
+    MAX_DRIVES, MAX_SENDS, ModeSeen, NoSuchLimb, Observed, RearmRefused, Send, SendKind, SendList,
     SendOutcome, Snapshot, StopOutcome, StopReason,
 };

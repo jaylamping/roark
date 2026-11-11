@@ -3,7 +3,7 @@
 
 use std::sync::LazyLock;
 
-use can::{DriveView, EchoSeen, LimbState, LimbView, Observed, StopOutcome};
+use can::{DriveView, EchoSeen, LimbState, LimbView, ModeSeen, Observed, StopOutcome};
 use robstride::{
     Celsius, DeviceId, EchoKind, Feedback, Inbound, Mode, NewtonMeters, RadPerSec, Radians,
     StatusFaults, decode, drive,
@@ -155,6 +155,7 @@ pub(crate) fn quiet() -> DriveView {
         device: id(101),
         limb: 0,
         observed: None,
+        mode: None,
         fresh_ns: None,
         fresh_status: None,
         answered: false,
@@ -170,6 +171,10 @@ pub(crate) fn quiet() -> DriveView {
 pub(crate) fn seen(observed: Observed) -> DriveView {
     DriveView {
         observed: Some(observed),
+        mode: Some(ModeSeen {
+            mode: observed.status.header.mode,
+            read_ns: observed.read_ns,
+        }),
         fresh_ns: Some(observed.read_ns),
         fresh_status: Some(observed),
         fault_seen: !observed.status.header.faults.is_empty(),

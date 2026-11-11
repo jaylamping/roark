@@ -87,7 +87,7 @@ impl BusTick {
                     Some(d) => {
                         d.fault_seen |= !header.faults.is_empty();
                         let active = limb_state(&self.limbs, d.limb) == Some(LimbState::Active);
-                        d.note_mode(header.mode, active, self.unordered);
+                        d.note_mode(header.mode, read_ns, active, self.unordered);
                     }
                     None => self.counters.unexpected += 1,
                 }
@@ -140,7 +140,7 @@ impl BusTick {
             limb,
             Some(LimbState::Stopping { since_ns }) if read_ns < since_ns.saturating_add(replies_ns)
         );
-        d.note_mode(status.header.mode, active, unordered);
+        d.note_mode(status.header.mode, read_ns, active, unordered);
         if !answer || answers_write {
             return;
         }
