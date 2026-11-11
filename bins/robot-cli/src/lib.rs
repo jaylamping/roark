@@ -8,7 +8,7 @@ mod bus;
 mod lock;
 
 #[cfg(target_os = "linux")]
-pub use bus::{BusReport, disable};
+pub use bus::{BusReport, DriveReport, disable};
 #[cfg(target_os = "linux")]
 pub use lock::{Claim, LockError, claim};
 

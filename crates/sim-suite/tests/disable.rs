@@ -6,12 +6,9 @@
 //! The binaries come from the build `scripts/sim.sh` makes before it runs the suite.
 #![cfg(target_os = "linux")]
 
-#[expect(dead_code, reason = "each test file uses some of the shared helpers")]
-mod common;
-
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::{Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
@@ -150,12 +147,24 @@ fn run_and_report(bus: &str, ids: &BTreeSet<u8>) -> bool {
     running == *ids
 }
 
-/// Run `robot-cli disable` and return its output and how long it took.
+/// What one `robot-cli disable --json` run said.
+#[derive(Debug)]
+struct Disabled {
+    status: ExitStatus,
+    stderr: String,
+    /// Each drive's outcome by (bus, ID), from the JSON on stdout (empty when it refused).
+    outcomes: BTreeMap<(String, u8), String>,
+    /// Each bus's fault, if any.
+    faults: BTreeMap<String, Option<String>>,
+    took: Duration,
+}
+
+/// Run `robot-cli disable --json` and read what it said.
 #[expect(
     clippy::unwrap_used,
-    reason = "test helper: the binary must run for the test to mean anything"
+    reason = "test helper: the binary must run and print JSON for the test to mean anything"
 )]
-fn disable(skeleton: &Path, lock: &Path) -> (Output, Duration) {
+fn disable(skeleton: &Path, lock: &Path) -> Disabled {
     let start = Instant::now();
     let out = Command::new(binary("robot-cli"))
         .arg("disable")
@@ -163,9 +172,36 @@ fn disable(skeleton: &Path, lock: &Path) -> (Output, Duration) {
         .arg(skeleton)
         .arg("--lock")
         .arg(lock)
+        .arg("--json")
         .output()
         .unwrap();
-    (out, start.elapsed())
+    let took = start.elapsed();
+    let mut outcomes = BTreeMap::new();
+    let mut faults = BTreeMap::new();
+    if !out.stdout.is_empty() {
+        let doc: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
+        for bus in doc.get("buses").unwrap().as_array().unwrap() {
+            let name = bus.get("bus").unwrap().as_str().unwrap().to_owned();
+            faults.insert(
+                name.clone(),
+                bus.get("fault").unwrap().as_str().map(str::to_owned),
+            );
+            for d in bus.get("drives").unwrap().as_array().unwrap() {
+                let id = u8::try_from(d.get("id").unwrap().as_u64().unwrap()).unwrap();
+                outcomes.insert(
+                    (name.clone(), id),
+                    d.get("outcome").unwrap().as_str().unwrap().to_owned(),
+                );
+            }
+        }
+    }
+    Disabled {
+        status: out.status,
+        stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+        outcomes,
+        faults,
+        took,
+    }
 }
 
 /// Read the runtime's stderr until it says it has started (its "nothing enabled" line): true then, false if it ends
@@ -187,19 +223,23 @@ impl Drop for End<'_> {
     }
 }
 
-/// What `disable` sent on one bus, and what the drives did after it, from the watcher's frames after `from`.
+/// A report read this long after a drive's last reporting off means reporting is still on. Twice `disable`'s own
+/// grace, because the watcher stamps a frame when it reads it, not when it arrived.
+const REPORTED_AFTER: Duration = Duration::from_millis(30);
+
+/// What `disable` sent on one bus, and what the drives did, from the watcher's frames after `from`.
 struct Bus {
     disabled: BTreeSet<u8>,
     reporting_off: BTreeSet<u8>,
     /// Host commands other than Disable and reporting off.
     other: Vec<HostCommand>,
-    /// Drives that reported after `quiet`.
+    /// Drives that reported more than `REPORTED_AFTER` after their last reporting off.
     reported_after: BTreeSet<u8>,
     /// Each drive's last mode seen.
     last_mode: Vec<(u8, Mode)>,
 }
 
-fn bus(seen: &[Seen], from: Instant, quiet: Instant) -> Bus {
+fn bus(seen: &[Seen], from: Instant) -> Bus {
     let mut b = Bus {
         disabled: BTreeSet::new(),
         reporting_off: BTreeSet::new(),
@@ -207,6 +247,7 @@ fn bus(seen: &[Seen], from: Instant, quiet: Instant) -> Bus {
         reported_after: BTreeSet::new(),
         last_mode: Vec::new(),
     };
+    let mut last_off: BTreeMap<u8, Instant> = BTreeMap::new();
     for s in seen.iter().filter(|s| s.at >= from) {
         if let Some(h) = s.host {
             match h.command {
@@ -215,15 +256,22 @@ fn bus(seen: &[Seen], from: Instant, quiet: Instant) -> Bus {
                 }
                 HostCommand::Reporting(Reporting::Off) => {
                     b.reporting_off.insert(h.target.get());
+                    last_off.insert(h.target.get(), s.at);
                 }
                 other => b.other.push(other),
             }
         }
+    }
+    for s in seen.iter().filter(|s| s.at >= from) {
         if let Some(Inbound::Status(st) | Inbound::Report(st)) = s.drive {
             let n = st.header.device.get();
             b.last_mode.retain(|(d, _)| *d != n);
             b.last_mode.push((n, st.header.mode));
-            if s.at > quiet && matches!(s.drive, Some(Inbound::Report(_))) {
+            if matches!(s.drive, Some(Inbound::Report(_)))
+                && last_off
+                    .get(&n)
+                    .is_some_and(|off| s.at > *off + REPORTED_AFTER)
+            {
                 b.reported_after.insert(n);
             }
         }
@@ -250,7 +298,7 @@ fn after_kill_9_disable_leaves_every_drive_in_reset_with_reporting_off() {
     // Drive 31 is never served: it stands for a drive that is off.
     let silent = [31];
     let stop = AtomicBool::new(false);
-    let (seen, refused, run, (out, took), from, quiet) = std::thread::scope(|scope| {
+    let (seen, refused, run, done, from) = std::thread::scope(|scope| {
         let _end = End(&stop);
         let watchers: Vec<_> = names
             .iter()
@@ -279,7 +327,7 @@ fn after_kill_9_disable_leaves_every_drive_in_reset_with_reporting_off() {
         // A runtime that never starts and never ends is cut off by the test's 60 s limit (.config/nextest.toml).
         let stderr = runtime.stderr.take().unwrap();
         let up = started(stderr);
-        let (refused, _) = disable(&path, &lock);
+        let refused = disable(&path, &lock);
         runtime.kill().unwrap();
         runtime.wait().unwrap();
         assert!(up, "the runtime never took its lock");
@@ -292,31 +340,23 @@ fn after_kill_9_disable_leaves_every_drive_in_reset_with_reporting_off() {
             )
         });
         let from = Instant::now();
+        // `disable` returns only after watching each drive for reports past its last reporting off.
         let done = disable(&path, &lock);
-        // Every report on its way when reporting off went has been read by now.
-        let quiet = Instant::now();
-        let end = quiet + Duration::from_millis(100);
-        while Instant::now() < end {
-            std::thread::yield_now();
-        }
         stop.store(true, Ordering::Release);
         let seen: Vec<Vec<Seen>> = watchers.into_iter().map(|w| w.join().unwrap()).collect();
-        (seen, refused, run, done, from, quiet)
+        (seen, refused, run, done, from)
     });
     let _ = std::fs::remove_dir_all(&dir);
 
     assert_eq!(refused.status.code(), Some(2), "{refused:?}");
-    assert!(
-        String::from_utf8_lossy(&refused.stderr).contains("is held"),
-        "{refused:?}"
-    );
+    assert!(refused.stderr.contains("is held"), "{refused:?}");
+    assert!(refused.outcomes.is_empty(), "{refused:?}");
     assert!(run, "the drives never reached Run with reporting on");
-    let stdout = String::from_utf8_lossy(&out.stdout);
-    assert_eq!(out.status.code(), Some(0), "{out:?}");
-    assert!(took < Duration::from_secs(1), "disable took {took:?}");
+    assert_eq!(done.status.code(), Some(0), "{done:?}");
+    assert!(done.took < Duration::from_secs(1), "{done:?}");
     for (name, seen) in names.iter().zip(&seen) {
         let wired = ids(&skeleton, name);
-        let b = bus(seen, from, quiet);
+        let b = bus(seen, from);
         assert_eq!(b.disabled, wired, "{name}: a Disable to every wired drive");
         assert_eq!(
             b.reporting_off, wired,
@@ -341,17 +381,19 @@ fn after_kill_9_disable_leaves_every_drive_in_reset_with_reporting_off() {
             b.last_mode, answering,
             "{name}: every answering drive ends in Reset"
         );
-        for n in &wired {
-            let want = if silent.contains(n) {
-                ": silent"
+        assert_eq!(done.faults.get(*name), Some(&None), "{done:?}");
+        for n in wired {
+            let want = if silent.contains(&n) {
+                "Silent"
             } else {
-                ": stopped"
+                "Stopped"
             };
-            assert!(
-                stdout
-                    .lines()
-                    .any(|l| l.starts_with(&format!("{name} {n} ")) && l.contains(want)),
-                "{name} {n} should be{want}: {stdout}"
+            assert_eq!(
+                done.outcomes
+                    .get(&((*name).to_owned(), n))
+                    .map(String::as_str),
+                Some(want),
+                "{name} {n}: {done:?}"
             );
         }
     }
@@ -366,8 +408,9 @@ fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
     // can0 becomes a bus with no interface: the vcan buses are can0 to can4.
     let skeleton_text = text.replace("can0", "can9");
     let skeleton = skeleton::parse(&skeleton_text).unwrap();
+    // Absent, not merely not a vcan: on a machine with a real can9, this test would send to it.
     assert!(
-        ensure_vcan("can9").is_err(),
+        !Path::new("/sys/class/net/can9").exists(),
         "can9 must not exist for this test"
     );
     ensure_vcan("can1").unwrap();
@@ -375,7 +418,7 @@ fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
     let path = dir.join("skeleton.yaml");
     std::fs::write(&path, &skeleton_text).unwrap();
     let stop = AtomicBool::new(false);
-    let (out, took) = std::thread::scope(|scope| {
+    let done = std::thread::scope(|scope| {
         let _end = End(&stop);
         let mut sim = drives(&skeleton, "can1", &[]);
         let stop = &stop;
@@ -385,24 +428,31 @@ fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
     });
     let _ = std::fs::remove_dir_all(&dir);
 
-    let stdout = String::from_utf8_lossy(&out.stdout);
-    assert_eq!(out.status.code(), Some(1), "{out:?}");
-    assert!(took < Duration::from_secs(1), "disable took {took:?}");
-    assert!(stdout.contains("can9: FAILED: can't open can9"), "{stdout}");
+    assert_eq!(done.status.code(), Some(1), "{done:?}");
+    assert!(done.took < Duration::from_secs(1), "{done:?}");
+    assert!(
+        done.faults.get("can9").is_some_and(|f| f
+            .as_deref()
+            .is_some_and(|f| f.starts_with("can't open the interface"))),
+        "{done:?}"
+    );
+    assert_eq!(done.faults.get("can1"), Some(&None), "{done:?}");
     for n in ids(&skeleton, "can9") {
-        assert!(
-            stdout
-                .lines()
-                .any(|l| l.starts_with(&format!("can9 {n} ")) && l.contains("FAILED")),
-            "{stdout}"
+        assert_eq!(
+            done.outcomes
+                .get(&("can9".to_owned(), n))
+                .map(String::as_str),
+            Some("BusFailed"),
+            "{done:?}"
         );
     }
     for n in ids(&skeleton, "can1") {
-        assert!(
-            stdout
-                .lines()
-                .any(|l| l.starts_with(&format!("can1 {n} ")) && l.contains(": stopped")),
-            "{stdout}"
+        assert_eq!(
+            done.outcomes
+                .get(&("can1".to_owned(), n))
+                .map(String::as_str),
+            Some("Stopped"),
+            "{done:?}"
         );
     }
 }

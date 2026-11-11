@@ -47,8 +47,8 @@ thread per wired bus and the control thread on one schedule origin, and takes th
   control has taken a snapshot with every limb at rest, then the session closes. It also ends on its own if control loses
   its clock or a bus thread ends: `Runtime::finished` is set, and the binary then ends the runtime and exits with failure.
 
-The `api` socket (and so any way for the binary's operator to enable), `mlockall`, `SCHED_FIFO` and the systemd units
-come in the PRs that follow (PLAN step 7). Stops that control asks (an enable's failure, `host.mode`) reach the bus as
+The `api` socket (and so any way for the binary's operator to enable), `mlockall`, `SCHED_FIFO` and the watchdog come in
+the PRs that follow (PLAN step 7); the unit is `deploy/systemd/runtime.service`. Stops that control asks (an enable's failure, `host.mode`) reach the bus as
 operator stops, and control's enables and refusals emit no event yet: the session records them only as limb stops until
 a stop carries its cause and control has an event queue, the next PR, before any real drive is enabled (step 8).
 
@@ -81,6 +81,8 @@ frames), `skeleton` (the file it runs), `telemetry` (the session). The sim suite
 runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>] [--lock <file>]
 # on the dev box, with vcan up and sim-drive serving the skeleton's buses:
 scripts/devbox.sh run cargo run -p runtime -- --sessions /tmp/sessions --lock /tmp/runtime.lock
+# then, once it has exited, the independent stop with the same lock:
+scripts/devbox.sh run cargo run -p robot-cli -- disable --lock /tmp/runtime.lock
 ```
 
 Defaults: `config/skeleton.yaml`, `/var/lib/robot/sessions`, 250 Hz, `/run/robot/runtime.lock`. Before anything else it

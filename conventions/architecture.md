@@ -178,7 +178,9 @@ sim-suite (tests only) --> can, runtime, safety, sim-drive, skeleton, robstride,
 ## 10. The UI and agent tools
 
 - **Clients are views and request senders.** `ui/`, `mcp/` and `robot-cli` show state and send requests. They hold no safety
-  logic, limits or hardware facts of their own; what they display comes from `api`.
+  logic, limits or hardware facts of their own; what they display comes from `api`. The one exception is `robot-cli
+  disable`, the independent stop (section 1), which holds the stop sequence of PLAN item 2 and reads only the skeleton's
+  (bus, ID) pairs.
 - **One schema for the interface.** `api` message types are defined once and the UI's TypeScript types are generated from them,
   never hand-copied. **Why:** two hand-kept copies of a schema drift (the legacy proto carried 12 unreferenced messages and
   about 20 deprecated fields).

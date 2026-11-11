@@ -10,7 +10,6 @@ publish = false
 
 [workspace.dependencies]
 can = { path = "crates/can" }
-robot-cli = { path = "bins/robot-cli" }
 robstride = { path = "crates/robstride" }
 runtime = { path = "bins/runtime" }
 safety = { path = "crates/safety" }

@@ -21,7 +21,7 @@ Unknown is `None`, and `None` refuses enable downstream.
 ## Talks to
 
 `robstride` for the actuator models, their ranges and the unit types (a cap above the model's range is refused). Read
-by every binary that needs the robot's shape: `runtime` and `sim-drive` today, `robot-cli` later. See the
+by every binary that needs the robot's shape: `runtime`, `sim-drive` and `robot-cli` (for `disable`, its (bus, ID) pairs). See the
 [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
 
 ## Using it
