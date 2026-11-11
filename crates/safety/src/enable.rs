@@ -18,7 +18,7 @@
 //! Set Zero has no command in this stack yet. When it gets one, this sequence gains the "no Set Zero to this drive in
 //! the last 800 ms" step before Enable.
 
-use can::{DriveView, StopReason};
+use can::{DriveView, ModeSeen, StopReason};
 use robstride::{
     Drive, EchoKind, Frame, Mode, Param, ParamValue, Reporting, RunMode, StatusFaults, Write,
     encode,
@@ -360,13 +360,12 @@ impl Enabling {
                     value: ParamValue::RunMode(RunMode::Mit),
                 };
                 // Strictly after the Enable's answer, so that one status never answers both frames. The drive's latest
-                // status, if it is after that and in another mode, is the drive leaving Run, fresh or not. A Reset hidden
-                // by a later Run in one snapshot is the bus layer's to catch: it latches the drop out of Run and stops
-                // the limb, which ends this at the next step (`LimbStopped`).
-                let left = view
-                    .observed
-                    .filter(|o| o.read_ns > run_read_ns && o.status.header.mode != Mode::Run)
-                    .map(|o| o.status.header.mode);
+                // mode (a status's or a version reply's), if read after that and other than Run, is the drive leaving
+                // Run, fresh or not. A Reset hidden by a later Run in one snapshot is the bus layer's to catch: it
+                // latches the drop out of Run and stops the limb, which ends this at the next step (`LimbStopped`).
+                let left = latest_mode(view)
+                    .filter(|m| m.read_ns > run_read_ns && m.mode != Mode::Run)
+                    .map(|m| m.mode);
                 let answer = fresh_since(view, since_ns)
                     .filter(|a| a.read_ns > run_read_ns)
                     .map(|a| a.mode);
@@ -522,9 +521,20 @@ fn fresh_since(view: &DriveView, since_ns: u64) -> Option<Answer> {
 
 /// The last mode reported since a step planned at `since_ns`, fresh or not, in or after its window.
 fn mode_since(view: &DriveView, since_ns: u64) -> Option<Mode> {
-    view.observed
-        .filter(|o| o.read_ns >= since_ns)
-        .map(|o| o.status.header.mode)
+    latest_mode(view)
+        .filter(|m| m.read_ns >= since_ns)
+        .map(|m| m.mode)
+}
+
+/// The drive's latest mode: the last status header the bus read, a version reply's included (`mode`), else its last
+/// status.
+fn latest_mode(view: &DriveView) -> Option<ModeSeen> {
+    view.mode.or_else(|| {
+        view.observed.map(|o| ModeSeen {
+            mode: o.status.header.mode,
+            read_ns: o.read_ns,
+        })
+    })
 }
 
 /// Whether the drive's last echo is `kind`, read inside the window of a step planned at `since_ns`.
