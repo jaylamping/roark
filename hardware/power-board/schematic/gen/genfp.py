@@ -1,4 +1,4 @@
-"""Rev B project footprints. Run: python3 -I gen/genfp.py marengo_revb.pretty"""
+"""Rev B project footprints. Run: python3 -I gen/genfp.py power_board_revb.pretty"""
 import sys,uuid
 OUT=sys.argv[1]; NS=uuid.UUID('b1d0f6a2-58a7-4a55-9e8e-2d4b6c7e1f03')
 BW,BH=57.9,36.8
@@ -9,7 +9,7 @@ def u(k): return str(uuid.uuid5(NS,k))
 def rect(x0,y0,x1,y1,l,w): return f'\t(fp_rect (start {x0} {y0}) (end {x1} {y1}) (stroke (width {w}) (type solid)) (fill no) (layer "{l}") (uuid "{u(l)}"))\n'
 t=f'''(footprint "IQB150W8"
 \t(version 20241229)
-\t(generator "marengo_revb_genfp")
+\t(generator "power_board_revb_genfp")
 \t(layer "F.Cu")
 \t(descr "Mean Well IQB150W8 quarter brick. Pins, holes and inserts from IQB150W8-SPEC 2026-06-23 page 8, body 57.9 x 36.8 x 12.7, pin length 4.1.")
 \t(tags "dc-dc quarter brick")
@@ -35,7 +35,7 @@ open(OUT+'/IQB150W8.kicad_mod','w',newline=chr(10)).write(t)
 D,OD,PIT='4.5','8.0',14.0
 t=f'''(footprint "SolderWire-8AWG_1x02_P14mm_D4.5mm_OD8mm"
 \t(version 20241229)
-\t(generator "marengo_revb_genfp")
+\t(generator "power_board_revb_genfp")
 \t(layer "F.Cu")
 \t(descr "Two soldered 8 AWG wires (pack pigtail), 4.5 mm holes, 8 mm pads, 14 mm pitch")
 \t(tags "solder wire 8AWG")

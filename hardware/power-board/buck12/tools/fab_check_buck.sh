@@ -8,6 +8,6 @@ wp() { (cd "$1" && (pwd -W 2>/dev/null || pwd)); }
 B=$(wp "$(dirname "$0")/.."); T=$(wp "$B/../schematic/tools")
 KP="/c/Program Files/KiCad/10.0/bin/python.exe"
 [ -x "$KP" ] || KP=/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3
-export MSYS_NO_PATHCONV=1 FAB_STEM=marengo_buck12 FAB_OUTLINE=60x85 FAB_BMASK_OPENINGS=0 FAB_PACKAGER=buck12/tools/fab_package_buck.sh
-"$KP" "$T/fab_check.py" "${1:-$B/layout/marengo_buck12.kicad_pcb}" "${2:-$B/fab}" 2>&1 | grep -v 'memory leak\|GetWidth called\|image handler'
+export MSYS_NO_PATHCONV=1 FAB_STEM=buck12 FAB_OUTLINE=60x85 FAB_BMASK_OPENINGS=0 FAB_PACKAGER=buck12/tools/fab_package_buck.sh
+"$KP" "$T/fab_check.py" "${1:-$B/layout/buck12.kicad_pcb}" "${2:-$B/fab}" 2>&1 | grep -v 'memory leak\|GetWidth called\|image handler'
 exit "${PIPESTATUS[0]}"

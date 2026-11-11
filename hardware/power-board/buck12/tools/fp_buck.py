@@ -1,4 +1,4 @@
-"""fp_buck.py: the buck board's own footprints, written into ../marengo_buck12.pretty from KiCad's stock ones (plain Python).
+"""fp_buck.py: the buck board's own footprints, written into ../buck12.pretty from KiCad's stock ones (plain Python).
   CP_Elec_12.5x13.5_ChemiCon  C2, Chemi-Con EMVH101ARA470MKE0S (12.5 x 13.5 mm can): Chemi-Con's land, 5.7 x 2.5 mm pads
                               with a 4.0 mm gap (pad centres at +/-4.85 mm); outline, silk and courtyard scaled from
                               CP_Elec_10x10 to the 13.5 mm base plate
@@ -7,7 +7,7 @@
 Usage: python fp_buck.py"""
 import os,re
 STOCK=os.environ.get('KICAD_FP') or next(p for p in ('C:/Program Files/KiCad/10.0/share/kicad/footprints/','/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints/') if os.path.isdir(p))
-OUT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','marengo_buck12.pretty'); os.makedirs(OUT,exist_ok=True)
+OUT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','buck12.pretty'); os.makedirs(OUT,exist_ok=True)
 def rd(n): return open(os.path.join(STOCK,'Capacitor_SMD.pretty',n+'.kicad_mod'),encoding='utf-8').read()
 def wr(n,t): open(os.path.join(OUT,n+'.kicad_mod'),'w',encoding='utf-8',newline='\n').write(t); print('wrote',n)
 def rename(t,old,new,descr):

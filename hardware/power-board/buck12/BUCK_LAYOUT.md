@@ -1,6 +1,6 @@
 # 12 V buck board: layout rules, exceptions, bring-up
 
-The board in [layout/marengo_buck12.kicad_pcb](layout/marengo_buck12.kicad_pcb) is built from the schematic by
+The board in [layout/buck12.kicad_pcb](layout/buck12.kicad_pcb) is built from the schematic by
 [tools/build_buck.sh](tools/build_buck.sh) and checked by [tools/verify_buck.sh](tools/verify_buck.sh). Its order package
 is in [fab/](fab/) ([tools/fab_package_buck.sh](tools/fab_package_buck.sh), checked by
 [tools/fab_check_buck.sh](tools/fab_check_buck.sh)). The circuit is LM5146, 36–54.6 V in, 12 V at 12 A, 400 kHz

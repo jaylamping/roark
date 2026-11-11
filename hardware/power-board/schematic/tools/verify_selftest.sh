@@ -63,20 +63,20 @@ expect 'heatsink_pads MODE=check' "$W/b3.txt" "heatsink pads: 9 of 10 openings"
 echo '--- fab_check.py on broken order packages'
 fabcopy() { rm -rf "$W/$1"; mkdir -p "$W/$1"; cp -r "$PB/fab/." "$W/$1/"; }
 fabcopy fab1   # one part 0.5 mm off in the position file
-"$PY" - "$W/fab1/marengo_pdu_revb-pos.csv" <<'PYEOF'
+"$PY" - "$W/fab1/power_board_revb-pos.csv" <<'PYEOF'
 import sys; p=sys.argv[1]; L=open(p,encoding='utf-8').read().split('\n'); f=L[1].split(','); f[3]='%.6f'%(float(f[3])+0.5); L[1]=','.join(f)
 open(p,'w',encoding='utf-8',newline='').write('\n'.join(L))
 PYEOF
-"$KP" "$T/fab_check.py" "$LAYOUT/marengo_pdu_revb.kicad_pcb" "$W/fab1" > "$W/f1.txt" 2>&1 && { echo '   NOT CAUGHT: fab_check passed a moved part'; bad=1; }
+"$KP" "$T/fab_check.py" "$LAYOUT/power_board_revb.kicad_pcb" "$W/fab1" > "$W/f1.txt" 2>&1 && { echo '   NOT CAUGHT: fab_check passed a moved part'; bad=1; }
 expect 'fab_check: position file off the board' "$W/f1.txt" "^FAIL position file: X, Y, rotation and side.*1 differ"
 fabcopy fab2   # one heatsink opening missing from the B.Mask Gerber
-"$PY" - "$W/fab2/gerbers/marengo_pdu_revb-B_Mask.gbs" <<'PYEOF'
+"$PY" - "$W/fab2/gerbers/power_board_revb-B_Mask.gbs" <<'PYEOF'
 import sys,re; p=sys.argv[1]; t=open(p,encoding='utf-8',newline='').read(); open(p,'w',encoding='utf-8',newline='').write(re.sub(r'G36\*.*?G37\*\r?\n','',t,count=1,flags=re.S))
 PYEOF
-"$KP" "$T/fab_check.py" "$LAYOUT/marengo_pdu_revb.kicad_pcb" "$W/fab2" > "$W/f2.txt" 2>&1 && { echo '   NOT CAUGHT: fab_check passed a missing mask opening'; bad=1; }
+"$KP" "$T/fab_check.py" "$LAYOUT/power_board_revb.kicad_pcb" "$W/fab2" > "$W/f2.txt" 2>&1 && { echo '   NOT CAUGHT: fab_check passed a missing mask opening'; bad=1; }
 expect 'fab_check: B.Mask opening missing' "$W/f2.txt" "^FAIL B\.Mask: 10 heatsink openings on the board, 9 filled regions"
 fabcopy fab3; rm -rf "$W/fab3/gerbers"   # no Gerbers at all
-"$KP" "$T/fab_check.py" "$LAYOUT/marengo_pdu_revb.kicad_pcb" "$W/fab3" > "$W/f3.txt" 2>&1 && { echo '   NOT CAUGHT: fab_check passed a package without gerbers/'; bad=1; }
+"$KP" "$T/fab_check.py" "$LAYOUT/power_board_revb.kicad_pcb" "$W/fab3" > "$W/f3.txt" 2>&1 && { echo '   NOT CAUGHT: fab_check passed a package without gerbers/'; bad=1; }
 expect 'fab_check: gerbers/ missing' "$W/f3.txt" "^FAIL .*gerbers exists"
 
 echo '--- verify_board.sh: DRC types outside the allow-list, and a kicad-cli that fails or reports nothing'
@@ -98,16 +98,16 @@ KC="$W/stub/silent.sh" KEEP="$W/s3" bash "$T/verify_board.sh" > "$W/s3.txt" 2>&1
 expect 'no fresh report (an old one in the work dir is not used)' "$W/s3.txt" "FAIL: DRC wrote no report"
 
 echo '--- check.py and bom_check.py on broken rule and BOM files'
-"$PY" - "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/noestop.kicad_pro" <<'PYEOF'
+"$PY" - "$LAYOUT/power_board_revb.kicad_pro" "$W/noestop.kicad_pro" <<'PYEOF'
 import json,sys
 d=json.load(open(sys.argv[1])); p=d['net_settings']['netclass_patterns']
 d['net_settings']['netclass_patterns']=[x for x in p if x['pattern']!='/SP_ENR']; json.dump(d,open(sys.argv[2],'w'))
 PYEOF
-cp "$LAYOUT/marengo_pdu_revb.kicad_dru" "$W/noestop.kicad_dru"   # the rules file beside it, so the class is the only fault
+cp "$LAYOUT/power_board_revb.kicad_dru" "$W/noestop.kicad_dru"   # the rules file beside it, so the class is the only fault
 "$PY" -I "$T/check.py" "$T" "$W/real/net.net" "$W/noestop.kicad_pro" > "$W/k1.txt" 2>&1 && { echo '   NOT CAUGHT: check.py exit 0'; bad=1; }
 expect 'check.py: ESTOP class against domains.py, and nothing else' "$W/k1.txt" "^FAIL .kicad_pro net class ESTOP equals tools/domains.py: missing \['/SP_ENR'\]" "^FAILS 1$"
-mkdir -p "$W/baddru"; cp "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/baddru/x.kicad_pro"
-sed 's/(constraint clearance (min 1.5mm))$/(constraint clearance (min 1.5mm)/' "$LAYOUT/marengo_pdu_revb.kicad_dru" > "$W/baddru/x.kicad_dru"   # two parentheses lost
+mkdir -p "$W/baddru"; cp "$LAYOUT/power_board_revb.kicad_pro" "$W/baddru/x.kicad_pro"
+sed 's/(constraint clearance (min 1.5mm))$/(constraint clearance (min 1.5mm)/' "$LAYOUT/power_board_revb.kicad_dru" > "$W/baddru/x.kicad_dru"   # two parentheses lost
 "$PY" -I "$T/check.py" "$T" "$W/real/net.net" "$W/baddru/x.kicad_pro" > "$W/k3.txt" 2>&1 && { echo '   NOT CAUGHT: check.py passed a malformed rules file'; bad=1; }
 expect 'check.py: a rules file that does not parse (kicad-cli drops it silently)' "$W/k3.txt" "^FAIL .kicad_dru is well formed"
 mkdir -p "$W/pb/buck12"; cp "$PB/bom-rev-B.csv" "$PB/kit-2sets.csv" "$W/pb/"; cp "$PB/buck12/bom-buck12.csv" "$W/pb/buck12/"

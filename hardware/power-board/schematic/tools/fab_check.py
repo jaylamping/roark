@@ -21,7 +21,7 @@ def ok(c,m):
     print('ok  ' if c else 'FAIL',m)
     if not c: fail.append(m)
 # the main board by default; the buck board's package (buck12/tools/fab_check_buck.sh) sets these
-stem=os.environ.get('FAB_STEM','marengo_pdu_revb')
+stem=os.environ.get('FAB_STEM','power_board_revb')
 OW,OH=(float(v) for v in os.environ.get('FAB_OUTLINE','100x170').split('x'))
 NMASK=int(os.environ.get('FAB_BMASK_OPENINGS','10'))   # the bare B.Mask openings drawn on the board (the heatsink pads)
 EXPECT={'F_Cu.gtl':'Copper,L1,Top','In1_Cu.g1':'Copper,L2,Inr','In2_Cu.g2':'Copper,L3,Inr','In3_Cu.g3':'Copper,L4,Inr','In4_Cu.g4':'Copper,L5,Inr',

@@ -48,7 +48,7 @@ run() {   # run <stage>: true when the stage is at or after the from-stage
   return 1
 }
 refill() {   # refill <in board> <out board>: kicad-cli's fill with the project rules (the .kicad_dru clearances)
-  cp "$1" "$W/fill.kicad_pcb" && cp "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/fill.kicad_pro" && cp "$LAYOUT/marengo_pdu_revb.kicad_dru" "$W/fill.kicad_dru" || die 'copying the project files failed'
+  cp "$1" "$W/fill.kicad_pcb" && cp "$LAYOUT/power_board_revb.kicad_pro" "$W/fill.kicad_pro" && cp "$LAYOUT/power_board_revb.kicad_dru" "$W/fill.kicad_dru" || die 'copying the project files failed'
   rm -f "$W/fill.json"
   "$KC" pcb drc --refill-zones --save-board --severity-all --format json -o "$W/fill.json" "$W/fill.kicad_pcb" > "$W/fill.log" 2>&1 || { cat "$W/fill.log"; die 'kicad-cli refill failed'; }
   [ -s "$W/fill.json" ] || die 'kicad-cli refill wrote no report'

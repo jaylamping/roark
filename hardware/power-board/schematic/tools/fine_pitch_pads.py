@@ -5,7 +5,7 @@ KiCad's library footprints draw these pads wider than TI's drawings and leave 0.
   U1, U7  LM5069 in MSOP-10 (TI DGS, 0.5 mm pitch): library pad 1.5 x 0.35 mm, TI's land pattern 1.45 x 0.3 mm
   U2      TPS7A4001 in HVSSOP-8 (TI DGN, 0.65 mm pitch): library pad 1.45 x 0.5 mm, TI's land pattern 1.4 x 0.45 mm
 Only the width across the pitch is changed (0.30 and 0.45 mm); length, position, paste and mask follow the pad.
-The narrowed footprints are in the project library (marengo_revb:..._TI, written by gen/genfp.py) and the schematic
+The narrowed footprints are in the project library (power_board_revb:..._TI, written by gen/genfp.py) and the schematic
 names them, so tools/place.py loads them on a new board. This script brings an existing board to them: pad widths and
 footprint IDs. MODE=check: exit 1 if a listed pad is wider than its value."""
 import os,sys
@@ -13,7 +13,7 @@ sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
 import pcbnew
 IU,MM=pcbnew.FromMM,pcbnew.ToMM
 WIDTH={'U1':(0.30,10),'U7':(0.30,10),'U2':(0.45,8)}   # ref: (pad width across the pitch in mm, number of pin pads)
-FPID={'U1':'marengo_revb:MSOP-10_3x3mm_P0.5mm_TI','U7':'marengo_revb:MSOP-10_3x3mm_P0.5mm_TI','U2':'marengo_revb:HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm_TI'}
+FPID={'U1':'power_board_revb:MSOP-10_3x3mm_P0.5mm_TI','U7':'power_board_revb:MSOP-10_3x3mm_P0.5mm_TI','U2':'power_board_revb:HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm_TI'}
 def pins(fp,n): return [p for p in fp.Pads() if p.GetNumber().isdigit() and 1<=int(p.GetNumber())<=n]
 def narrow(fps,dry=False):
     """set the pads; returns the pads that were (or, dry, are) wider than their value"""

@@ -9,7 +9,7 @@ sys.path.insert(0,os.path.join(HERE,'..','..','schematic','tools')); from sx imp
 import pcbnew
 IU,MM=pcbnew.FromMM,pcbnew.ToMM
 FPDIR=os.environ.get('KICAD_FP') or next((p for p in ('C:/Program Files/KiCad/10.0/share/kicad/footprints/','/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints/') if os.path.isdir(p)),None)
-OWN=os.path.join(HERE,'..','marengo_buck12.pretty')
+OWN=os.path.join(HERE,'..','buck12.pretty')
 ORIGIN=(30.0,30.0); W,H=60.0,85.0
 def P(x,y): return pcbnew.VECTOR2I(IU(x+ORIGIN[0]),IU(y+ORIGIN[1]))
 # ref: (courtyard centre x, y in board mm, rotation in degrees)
@@ -53,7 +53,7 @@ TPADS={'TPV1':('/VIN',23.5,38.0),'TPV2':('/SW',46.5,29.7),'TPV3':('/VOUT',47.8,3
        'TPV5':('GND',47.0,32.5),'TPV6':('GND',26.0,54.0),'TPV7':('/EN',57.5,17.0),'TPV8':('/VCC',44.6,10.4),
        'TPV9':('/SS',49.0,2.0),'TPV10':('/COMP',49.0,5.0),'TPV11':('/SPARE_SW',58.6,62.4),'TPV12':('/SPARE_ON',46.0,70.0),'TPV13':('/VIN_P',3.0,12.5)}
 def load(lib,name):
-    p=os.path.abspath(OWN) if lib=="marengo_buck12" else FPDIR+lib+".pretty"
+    p=os.path.abspath(OWN) if lib=="buck12" else FPDIR+lib+".pretty"
     try: return pcbnew.FootprintLoad(p,name)
     except Exception as e: raise SystemExit(f"cannot load {p} {name}: {e}")
 def put(f,x,y,rot):
