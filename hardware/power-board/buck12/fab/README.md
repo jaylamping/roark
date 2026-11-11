@@ -19,8 +19,8 @@ Upload `buck12-gerbers.zip` (the 14 files of `gerbers/`). On the order form:
 | Thickness | 1.6 mm |
 | Copper | **2 oz outer, 0.5 oz inner** |
 | Surface finish | **OSP** |
-| Via covering | **Epoxy filled and capped (IPC-4761 type VII), all vias.** 28 of the 139 vias are in SMD pads (the GND pads of the input ceramics, C1, C2, C24 and D3, Q1's drain tab, the shunts' four sense pads, TPV6), plus U1's four 0.2 mm thermal vias in its exposed pad (JLC fills 0.15-0.55 mm). Drills: 0.3 mm (139 vias), 0.2 mm (4, U1's exposed pad), 1.02 mm (24 connector pins) |
-| Smallest drill | **0.2 mm** (the four in U1's exposed pad; JLC's 6-layer minimum is 0.15 mm) |
+| Via covering | **Epoxy filled and capped (IPC-4761 type VII), all vias.** 28 of the 139 vias are in SMD pads (the GND pads of the input ceramics, C1, C2, C24 and D3, Q1's drain tab, the shunts' four sense pads, TPV6), plus U1's four 0.6/0.3 mm thermal vias in its exposed pad (JLC fills 0.15-0.55 mm). Drills: 0.3 mm (139 vias and U1's 4), 1.02 mm (24 connector pins) |
+| Smallest drill | **0.3 mm** (no finer-drill surcharge) |
 | Solder mask | both sides, any colour; no openings drawn on the bottom |
 | Silkscreen | top only; the bottom file holds only the bottom mask openings plotted clear and prints nothing |
 | Minimum track / space | **0.2 mm / 0.2 mm**; via 0.6/0.3 mm; inner-plane clearance 0.3 mm |
