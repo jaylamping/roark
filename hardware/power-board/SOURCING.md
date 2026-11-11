@@ -88,5 +88,8 @@ is at LCSC (C1850329, 60 in stock, $7.21) and Spirit Electronics (1,424, $5.69).
 the LM5146-Q1 as the "pin-to-pin, automotive version of LM5146", in the same 20-pin RGY package (4.5 x 3.5 mm), so it
 fits buck12's U1 footprint unchanged. It costs about $3 more per chip.
 
+**Decided 2026-11-11: buck U1 is ordered as LM5146QRGYRQ1** (3 pieces, LCSC C1850329). The schematic value stays LM5146RGYR;
+the two are the same device in the same package.
+
 Outside the lines above DigiKey and Mouser price within a few percent of each other, so shopping further saves about
 $35 to $45 on the whole order, most of it the power FETs at Mouser.
