@@ -34,8 +34,9 @@ fn batch(epoch: Epoch, snap: &Snapshot, frames: [Option<Frame>; 2]) -> CommandBa
 
 /// Guards: safety - on a real socket, control's order to stop one limb stops that limb alone (`LimbRequested`) while
 /// the bus's other limb keeps its commands and answers; once the stop has ended, a re-arm order (the operator's clear)
-/// is answered once under its tag and makes the limb idle with a new generation (PLAN item 6: a stop names its scope,
-/// a latched stop clears only by an operator clear).
+/// is answered once under its tag and makes the limb idle with a new generation; and a stop order naming a limb the
+/// bus doesn't have stops every limb (PLAN item 6: a stop names its scope, a latched stop clears only by an operator
+/// clear, `host.hang`).
 #[test]
 #[expect(clippy::too_many_lines, reason = "one control loop, start to end")]
 fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
@@ -154,11 +155,41 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
                 outcome: Ok(()),
             }
         );
+        // This thread may read snapshots behind the bus: the clear shows in the first one made after it was taken.
+        while snap.limb(0).is_some_and(|l| l.generation == 0) {
+            assert_eq!(
+                limbs(&snap)[0],
+                (LimbState::Stopped, Some(StopReason::LimbRequested))
+            );
+            assert!(
+                commands
+                    .push(batch(epoch, &snap, [None, Some(hold(102))]))
+                    .is_ok()
+            );
+            snap = next_snapshot(&mut snapshots, end).unwrap();
+        }
         assert_eq!(limbs(&snap)[0], (LimbState::Idle, None), "{snap:?}");
         assert_eq!(snap.limb(0).map(|l| l.generation), Some(1));
         assert_eq!(snap.counters.rearms_dropped, 0);
 
-        // Told to exit with limb 1 running, the bus stops it and ends once control has taken a snapshot showing it.
+        // A stop order naming a limb the bus doesn't have stops both limbs, the running one included.
+        assert!(orders.push(Order::StopLimb(7)).is_ok());
+        while limbs(&snap)[1].0 == LimbState::Active {
+            assert!(
+                commands
+                    .push(batch(epoch, &snap, [None, Some(hold(102))]))
+                    .is_ok()
+            );
+            snap = next_snapshot(&mut snapshots, end).unwrap();
+        }
+        let bad = Some(StopReason::BadOrder { limb: 7 });
+        for (state, stop) in limbs(&snap) {
+            assert!(matches!(state, LimbState::Stopping { .. }), "{snap:?}");
+            assert_eq!(stop, bad, "{snap:?}");
+        }
+        assert_eq!(snap.counters.bad_orders, 1);
+
+        // Told to exit, the bus finishes the stop and ends once control has taken a snapshot showing it.
         exit.store(true, Ordering::Release);
         while !bus.thread.is_finished() {
             if let Ok(s) = snapshots.pop() {

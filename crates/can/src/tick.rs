@@ -9,7 +9,7 @@
 //! acknowledgement.
 //!
 //! The drives on a bus belong to limbs. Each limb runs and stops on its own; a stop of the whole bus (control gone
-//! silent, a bad batch, a requested bus stop) stops every limb not already stopping or stopped, a failed bus stops
+//! silent, a bad batch, a requested bus stop, a stop order naming a limb the bus lacks) stops every limb not already stopping or stopped, a failed bus stops
 //! every limb at once, and a late wake or a backlog stops every active limb, an idle one having nothing enabled to stop
 //! ([`StopReason`] has the scope of each). Frames in are read in `read.rs`, limb stops are planned in `stop.rs`, and
 //! control's batch is checked and planned in `batch.rs`.

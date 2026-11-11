@@ -405,6 +405,8 @@ pub struct Counters {
     pub slow_expired: u64,
     /// Answers to control's re-arm orders that its ring was too full to take.
     pub rearms_dropped: u64,
+    /// Stop orders naming a limb this bus doesn't have (`StopReason::BadOrder`), each stopping the bus.
+    pub bad_orders: u64,
 }
 
 /// The bus at the end of a tick, for control and the safety layer.
@@ -517,6 +519,9 @@ pub enum RearmRefused {
     /// The bus itself failed; only a new bus thread and socket bring it back.
     #[error("the bus failed ({0:?}); it comes back only with a new bus thread")]
     BusFailed(BusError),
+    /// A stop of the limb or the bus was asked before this clear and not yet planned: the stop stands.
+    #[error("a stop of limb {0} or its bus is still pending")]
+    StopPending(usize),
     /// The bus thread ended before it took the order.
     #[error("the bus thread ended before the clear")]
     Ended,
