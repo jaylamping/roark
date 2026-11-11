@@ -22,7 +22,7 @@ To reuse one instance across separate script runs, use `session(state_file)` wit
 
 ## Hidden by default
 
-Joey uses the PC while sessions work, so SolidWorks must never pop up or take focus. `launch()` and `session()` now start hidden. Pass `visible=True` only when someone needs to see the window.
+On Joey-PC, Joey uses the PC while sessions work, so SolidWorks must never pop up or take focus there. CAD work now runs on holly-pc ([cad.md, section 9](../../conventions/cad.md#9-cad-workstation)), where nobody is at the desk and a visible window is fine. `launch()` and `session()` now start hidden. Pass `visible=True` only when someone needs to see the window.
 
 A hidden launch does three things:
 
@@ -104,6 +104,19 @@ Joey-PC, SolidWorks 2026 SP0, 2026-11-06, with another session's instance open t
 | Two instances solving at once, 476,266 nodes each, started within 0.1 s | Pass, 19.1 and 19.4 s against 15.4 to 15.8 s alone, same peak displacement |
 | Exit own instance, other instance still responding | Pass |
 | RAM | About 950 MB idle, 1.3 GB with Simulation, 1.6 GB after the solve |
+
+holly-pc, SolidWorks 2026 SP0, 2026-11-11, one instance, hidden:
+
+| Check | Result |
+| --- | --- |
+| Launch to ready | Pass, 3.0 to 4.5 s |
+| Part, sketch, extrude, save | Pass |
+| Simulation add-in | Pass, 4 s, no license prompt |
+| Mesh and solve, Ø40 × 100 mm cylinder, 100 N axial, 48,724 nodes | Pass, 0.5 s mesh and 1.9 s solve; peak displacement 2.24 µm against 2.27 µm by hand |
+| RAM | About 740 MB |
+
+`CreateMesh` takes element sizes in mm. A new install has no default part template until SolidWorks has been opened once
+by hand, so pass a template path to `NewDocument` until then.
 
 Hidden mode, Joey-PC, 2026-11-07:
 

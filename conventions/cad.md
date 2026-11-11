@@ -8,9 +8,9 @@ runtime never reads them (tenet 2).
 
 ## 1. What goes in git
 
-**Git holds the design of record. Joey-PC holds everything that led to it.**
+**Git holds the design of record. The CAD workstation holds everything that led to it.**
 
-| Versioned (binaries through Git LFS) | Ignored (stays on Joey-PC) |
+| Versioned (binaries through Git LFS) | Ignored (stays on the CAD workstation) |
 |---|---|
 | The one current file of each part and assembly: the file the robot assembly or a print uses today, in its region folder | Variants, studies, test and render copies: `_wip/<topic>/` |
 | The STEP/STL export of a current part that something uses (a print, a review, a URDF, another tool) | FEA and solver output: `_sim/<region>/`, `*.CWR`, `*.STE` |
@@ -112,7 +112,7 @@ drifts from its part is how a print or a URDF ends up built from the wrong geome
 
 ## 6. Writer lock, hooks and LFS budget
 
-**Writer lock.** Several sessions share the one checkout on Joey-PC. Before a session opens SolidWorks to change anything in
+**Writer lock.** Several sessions share the one checkout on the CAD workstation. Before a session opens SolidWorks to change anything in
 `cad/`, it takes the lock and names itself in that shell:
 
 ```bash
@@ -166,5 +166,17 @@ the pointer files. A plain `git clone` on a machine with Git LFS installed downl
 
 ## 8. Backup
 
-`_wip/`, `_sim/` and `_archive/` exist only on Joey-PC. Git is not their backup: they are covered by Joey-PC's own backup, or
-the design is promoted before it would hurt to lose it.
+`_wip/`, `_sim/` and `_archive/` exist only on the CAD workstation. Git is not their backup, and holly-pc has no backup of
+its own yet: promote a design before it would hurt to lose it. Joey-PC keeps the copies made when CAD moved to holly-pc.
+
+## 9. CAD workstation
+
+All SolidWorks, Simulation and KiCad work runs on **holly-pc**, a PC kept for it, from 2026-11-11. Joey-PC is Joey's own
+PC: it keeps the older copies as a backup and is not used for CAD runs.
+
+- The shared checkout is `C:\joe\code\roark`. `subst J: C:\joe` maps it to `J:\code\roark`, the same path it had on
+  Joey-PC, so scripts and SolidWorks references keep working. If `J:` is missing after a restart, run that line first.
+- Files are worked on from holly-pc's own disk, never over the network share from Joey-PC. **Why:** a dropped
+  connection mid-save can corrupt a SolidWorks file, and FEA output would load Joey-PC's disk and network.
+- Nobody uses holly-pc while sessions run, so SolidWorks may run visibly there; hidden stays the default
+  ([RULES.md](../tools/solidworks/RULES.md)).
