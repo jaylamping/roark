@@ -1,0 +1,58 @@
+LEFT P1 WO01 L01 -- INDEPENDENT REVIEW HANDOFF, 2026-11-05
+
+DECISION
+Exact claude-opus-5-5 and claude-fable-5-1 both independently give CONDITIONAL GO for one substantial development print and loose dimensional/process inspection of exact L01. Neither identifies a demonstrated geometry or slice-setting change required before that limited print. This is not final hardware fit, clamping, load, powered-motion, impact or hand bend-test approval. The prior hand failure remains an unknown-force event; dense infill and model agreement do not establish strength.
+
+PREPRINT GATES STILL OPEN
+1. Confirm this is the intended side opposite the already fitted P1. L01 is positive STEP X/node39; baseline is negative STEP X/node38. Names in the torso export conflict. Anatomical left is not independently established by the CAD labels.
+2. Open the exact selected file as a FULL project, preserve any unsaved work, and verify actual Prepare/Preview geometry, one object/one plate, intended orientation, nozzle/material/plate/settings and warnings. No live UI check was performed by this review task. Do not infer identity from filename or thumbnail.
+3. Explicitly retain development/reprint risk: pitch clock is unresolved and left P2/cable/stop integration may require a new P1. This part is useful for inspection even if that happens; it is not a guaranteed final mating part.
+
+CONFIRMED PACKET DEFECT -- STALE THUMBNAILS
+Opus flagged the pad on the left in LEFT_SAVED_plate_1.png and LEFT_SAVED_top_1.png, conflicting with actual L01 toolpaths showing pad at plate +X around170..194mm. Fable incorrectly accepted these as fresh thumbnails. Direct ZIP-member SHA256 comparison now proves BOTH thumbnails are byte-identical in the reviewed right project, left input seed, and final sliced left project:
+plate_1.png 65c678bf0c7e9233a29580f5caf41282506e5bbbfaac4d72228da227570eea9f
+top_1.png a8e1c9e819dd84cf9726059423d320ec101b760885199b14dd51782210bf48ed
+See THUMBNAIL_PROVENANCE_CHECK.json. These two images are inherited stale previews, not current L01 geometry evidence. Correct the handoff's thumbnail claim; do not silently modify the frozen archive. A stale thumbnail alone is not proof of wrong mesh or G-code: source audits separately establish mirrored geometry and fresh left toolpaths. Verify live geometry in a known plate-axis orientation, not merely screen-left/right with an arbitrary camera. If UI disagrees with the actual expected plate coordinates or settings, stop and reconcile before printing. Any regenerated/resliced archive changes identity and needs scoped comparison.
+
+EXACT ARTIFACT
+Source: C:\Users\joeyl\Documents\Codex\2026-10-29\task\LEFT_ARM_FORK_20261105
+Selected: slice-L01-normal-context\P1_LEFT_WO01_L01_04HF_REVIEW_HOLD.3mf
+Project SHA256 5dea466d3580a62327b9d42b53d4fd5f4aaf02ede04b9bf2a38aa372f28d7c1b
+G-code SHA256 38d60b8d3fdb1a1aacdf401a6fd63146c5a090f8a8caaa287e6921970975b9f3
+Manifest SHA256 bd8170da4099756c15730fbb7174889b2b6b6118ce3de9c6f92e03d808353e1c
+44 manifest entries independently verified before and after; source and review copies unchanged. Direct archive check confirms selected process and G-code identity. 5,116,655bytes; estimate5h01m10s/172.73g. Actual new accepted CLI slice on02.09.01.70, exit0, Success, empty warning_message; one object. Reported375 G-code layer heights include independent support heights and should not be interpreted as375 uniform part layers. No new slicing occurred here.
+
+EXACT PROCESS TO VERIFY LOADED
+P2S;0.4mm;selected High Flow and resolved Direct Drive High Flow, NOT E3D.
+Generic PETG; Textured PEI; first/other layers0.20mm;6walls;100% zig-zag (packet labels Rectilinear); internal solid alsozig-zag.
+5top/3bottom shells; Normal(auto) supports45deg; build-plate-only OFF; critical-regions-only OFF; independent support layer height ON.
+2top/2bottom interface layers;0.5mm interface spacing;0.2mm top/bottom Zgap;0.35mm XYseparation.
+Automatic5mm brim is configured, NOT proof a brim was generated; inspect actual first layer.
+255C nozzle;70C textured bed;12mm3/s configured material limit;flow ratio0.95.
+Selected nozzle_volume_type is High Flow; new developer extruder_nozzle_volume_type and inherited default_nozzle_volume_type say Standard. These default fields do not by themselves override resolved High Flow, but actual loaded selection still matters.
+2walls/15%grid/tree30/Supertack is NOT this reviewed process. The changed older right-side projects-HOLD file was not used as the source.
+
+HANDEDNESS AND INTERFACES
+Documented transformations produce a world reflection across STEP X=0; left placement itself is a proper rotation. Actual node39 fixed pitch reference remains unchanged; roll reference retains its real orientation and is translated, not mirrored. All8roll housing-hole axes align numerically (~3.2e-12mm residual). Neutral roll/P1 common volume0 is a finite reference check, not full assembly proof. Pitch reference is surface-only, so distance0 establishes neither bearing nor volumetric clearance.
+Six pitch holes have7.831272mm nearest-hole error at the exported output pose. Diagnostic pattern rotation is-29.8965616deg modulo60 (equivalent+30.1034384deg), not a command, adopted zero, allowed motion or proven hardware adjustment. Fable's assertion that sign is meaningless at half-pitch is incorrect: this is near30deg, not exactly30; reversing the sign does not preserve the same phase. Do not force screws or use hole slop to absorb this mismatch.
+Both models regard the clock mismatch as compatible with a useful loose inspection print, because the congruent pattern, pad/envelope, roll interface and process can still be examined. It blocks claiming an assembled neutral pose or validated stops/cables/P2. Prior context already recorded a right-side clock mismatch; Opus lacked node38 coordinates in this packet and its suggestion to extract them is an optional diagnostic, not a new print prerequisite or proof of a mirror-specific cause.
+
+GEOMETRY, PATHS AND ACCESS
+Supplied CAD audit: one valid solid, same133724.7561mm3 volume and reflected bounds, broad bilateral walls/pad/recessed seats retained. Mesh16075vertices/32210triangles, reversed winding, no reported boundary/nonmanifold/orientation-edge errors,0.01169% tessellation-volume deficit. Direct global surface-distance equivalence is not supplied.
+Fresh actual G-code plots show supports and closing paths at all8housing seats, supported pad growth, all6horizontal pitch bores, central opening/crown and paths in narrow1.38mm ligament regions. Canonical pre-mirror coordinates on pitch plots are an explicit mapping of LEFT G-code, not copied right paths. Point-section plots omit parallel tracks; companion layer image supplies them. Six nominal walls do not fit in the narrow necks. Path presence does not prove bead fusion or removal force.
+All14straight nominal D5x60 driver cylinders clear P1 ALONE. Real handles, installed motor obstructions, connectors and pending P2 are absent from that test. Pitch tool access may depend on assembly order. It is not complete assembly/service access approval.
+Support reaches alongside the pad face and may connect plugs. After full cooling, remove incrementally without levering roots/ligaments, wedging or forcing holes. Stop if cleanup requires damaging force. Inspect roots/layers, six necks, bore crowns,8bridged seat undersides, pad flatness/scarring and openings. Cracked/delaminated/unsuitable parts are rejected, not load-tested.
+
+REVIEW CORRECTIONS / LIMITS
+- Fable's0.86mm/four-layer shelf claim is not a demonstrated minimum material thickness. A vertical projection between circular extrema is not a same-position material section; crossing counts omit parallel tracks. Retain source nominal1.38mm ligament and local paths; do not claim a new thin defect or predict P0/P3 must fail first from these plots.
+- Fable's 'any phase resolvable by output angle' is only abstract congruence; actual allowable phase, zero, stops and cables remain unverified. Its 'reprint is likely' has no quantified probability; reprint is a disclosed possibility.
+- Both note naive volumetric-rate maxima above12mm3/s; source calls these unreliable short-move estimates. This review did not independently reconcile segment lengths/acceleration. Configured limit is verified; achieved physical flow is not. Do not claim measured overload or measured capacity. Actual flow Preview is a useful preprint check, with physical finish/bonding evaluated on the print.
+- Opus's estimated95.1% extruded volume/CAD-volume match to0.95flow is not measured physical porosity or a strength result.
+- Fable's categorical 'must not change' means a changed candidate loses this exact review identity; it does not prohibit justified corrections followed by scoped verification.
+- No electrical topology, connector clearance, thread depth/rating, actual stack, limiter, preload, PETG creep, allowable torque or left continuous-motion qualification is established. No new FEA was executed.
+
+EXECUTION EVIDENCE
+claude-personal exact claude-opus-5-5: success,exit0,439.55s.
+claude-personal exact claude-fable-5-1: success,exit0,218.77s.
+Both final canonical modelUsage identities match; each independently read all14required PNGs with zero Read errors, no other tool calls and no MCP. Prompts identical, no cross-review leakage. Some large images were downsampled. Both reviewed supplied evidence/pixels; neither executed CAD, FEA, slicer, hash verification or hardware operations. Orchestrator verified hashes and archive metadata separately.
+Full unedited decisions: opus/FINAL_LEFT_P1_REVIEW.txt and fable/FINAL_LEFT_P1_REVIEW.txt. Raw logs, returned model metadata, read coverage, preparation and completion checkpoints are retained. Both processes finished; no duplicate, retry, fallback, installation, account change, printer action or CAD mutation occurred.

@@ -1,0 +1,52 @@
+LEFT P2 L04B 100% PRINT REVIEW -- 2026-11-05
+
+DECISION
+Exact Opus5.5 and Fable5.1 independently find no demonstrated must-change geometry or process defect for ONE potentially disposable substantial development print and loose-part/support-removal/dimensional inspection. Both accept that unconfirmed actual connector orientation may make this print unsuitable for the eventual assembly. Neither approves bolts/clamping, unsupported arm weight, powered use, harness motion, fatigue or structural capacity. This is a conditional print disposition, not an unconditional go-ahead.
+
+SPECIFIC PREPRINT GATES STILL OPEN
+Opus requires three targeted checks in the actual loaded Preview or equivalently registered new G-code evidence:
+1. BuildZ0.8 around the patched lobe/face83: demonstrate its first actual part layer is closed and supported. Supplied panels show absence atZ0.6 and presence atZ1; the intervening start was not plotted. Do not treat Opus's casual '+/-1layer acceptable' as a general geometry tolerance or authorize an unsupported layer.
+2. BuildZ14.0..14.8 around the existing relief ceiling/sourceZ~ -58.6: demonstrate roof/support continuity and intended walls. Supplied selected panels jumpZ12 to17.4.
+3. BuildZ72..82 through the roll opening/horizontal bores: confirm support bases/continuity and supported closure. Selected panels show support at some levels and not others; independent support layer heights may explain this, but the review did not resolve it. A single exact-Z plot omitting nearby support-only levels is not proof of mid-air support.
+These are evidence/preview gates, not newly proven defects. Do not reslice or alter geometry solely to respond to an unexplained sampled-view absence. If actual support begins unsupported or a necessary wall is absent, hold and correct the specific defect, then review the changed slice.
+Also verify the FULL loaded project is the selected artifact, one part/one plate, correct B-only geometry, orientation, all saved settings and warning list. No live Bambu/session check was performed by this reviewer task. Do not import as geometry into a different preset or silently accept2wall/15%defaults. If re-sliced/changed, exact current review identity no longer applies.
+
+EXACT ARTIFACT AND PROCESS
+Source packet C:\Users\joeyl\Documents\Codex\2026-10-29\task\LEFT_P2_L04B_PRINT_REVIEW_20261105
+Selected print-HOLD\LEFT_P2_L04B_04HF_100R_6W.3mf
+Project SHA256 90367bc237a87b12274acbf46eb948555168afb75d906f3a7f8901b7d684116c
+G-code SHA256 da5011898aa000232d34dff6b87bba7a0657fba35f510ec2f4e46b61c0073745
+Manifest SHA256 6f9d456d729ffbfeca71fc532ab99a3bcf5e19793e0d3af3c2804f8fd63daa65
+60manifest entries verified before/after; source/copy unchanged. Direct ZIP settings and embedded/external G-code identity independently checked by orchestrator.
+One P2 only; no new P1 or spacer. Estimate5h48m20s /188.624g TOTAL JOB including support, not actual finished-part mass. Slicer2.9.1.70 success, exit0, no CLI warnings.
+P2S0.4standardBambu HighFlow, NOT E3D; BOTH saved nozzle fields HighFlow; resolved DirectDriveHighFlow. GenericPETG @BBL P2S;TexturedPEI;.20mmfirst/other;6walls;100%zig-zag(UIRectilinear);5top/3bottom.
+255Cfirst/allnozzle;70Cfirst/alltextured bed;flow.95;12mm3/sconfiguredmateriallimit.
+Normalauto45supports;critical-onlyOFF;buildplate-onlyOFF;2/2interfaces;.5mmspacing;.2mmtop/bottomgap;.35mmXYgap;2.5mmbasespacing. Auto5mmbrim configured, not a verified generated brim. SourceZup,RS02sourceZ-73annularsidedown,45degplate rotation,102mmtall.
+
+CONFIRMED STALE THUMBNAILS
+Independent byte-hash comparison proves Metadata/plate_1.png and top_1.png are identical in old right-P2 template, left input seed and final currentHF project:
+plate_1.png b022c5d82a7ff6552845101e0caaafa77260defc003837c208ccded011047a93
+top_1.png 09a2e3addce66bdd24bb8352301d167a1122e740316bb26348e9c56636b694cd
+See THUMBNAIL_PROVENANCE_CHECK.json. They are inherited previews and cannot verify L04B identity. This does not invalidate the separately documented current mesh and registered actual toolpaths. Ignore/label stale thumbnails; preserve the frozen archive. Any regenerated archive needs a scoped identity comparison.
+
+WHAT IS SUPPORTED
+B torso/source+X opening only; opposite opening and top wall unchanged. Real rigidRS02clock172.12 retained, not mirrored motor geometry or adopted actual phase/zero. Five protected mounting-seat annuli excluded from removal, not proven full bearing support. L04B removes1121.58mm3fromL03;onevalidsolid;current exactB assumedplug/withdrawal gap1mm,straightD6leadgap1.19265mm. These are assumptions, not real key/latch/boot/bend/tolerance evidence. No need to populate both ports; no electrical topology inferred.
+New paths show supports beneath the opening roof, bridge/overhang nearbuildZ10 and subsequentpartpaths; exposed remnant has intended walls in sampledlayers. Five rearholes, ringlayers, disc/gussetroots and upperbores have sampled intendedpaths. Global6walls is not6physicaltracks in every narrowsection. The1.974mmselectedCADchord and7.6365mmroofsample are notglobalminimum/strength. Unchanged thinnerregions androof-to-hornconnection remain laterload-pathassessment targets. No freshFEAorcontinuousmotionapproval.
+
+MESH PROVENANCE
+Initial MESH_CHECK.json is the failed raw tessellation:33boundary/orientation-edgeerrors. It is not the final selected mesh status. Accepted PLANAR_FACE_TESSELLATION.json preserves33existingboundaryvertices and adds31triangles onknownplanarCADface83,sourceZ-72.5;final174726triangles/87339vertices,zeroedge-count/orientationerrors. No movedvertices/freeformgeometricrepair. Patcharea17.93777mm2 vs17.99308CADarea,existingcurvededgechordsretained;finalvolume140381.32855 vsCAD140422.78940mm3(-.029526%). Firstimportfloatroundingmax1.9531e-6mm and finalserializedgeometry/placementpreservation documented. Bothmodelsjudge this defensible for the limitedprint.
+The perimeter*tessellation comparison is an area screen, not a rigorous globalsurface-error bound. Closededges/volumeagreement alone do notprovefullCADsurfaceequivalence orabsenceofeveryselfintersection. Opusnotes an approximately.06mm3 discrepancy between planararea-based signedvolumeaddition and raw/finalreportedvolumes; causeunresolved, judgednonblocking, do not inventa diagnosis.
+
+INSPECTION AND LATER GATES
+Cool fully and remove supports in smallpieces before motors; do not pry against exposedtip,roof,roots orseat walls. Stop if cleanup needs damagingforce. Inspect cracks/layersplits, chippedtips, rootdamage, supportresidue, borecrowns, undersizethreads/holes, seatflatness, openingroof and roughcablecontactedges. No forcibleplugfit or usingbolts topull a misfit into place. No handbendtest/hangingarm.
+Loosemeasurements can assessseat/partshape, openingdimensions and tentativehardware/connectorregistration afterinspection. Theunconfirmedconnector may requirea differentexit/relief orredesign, notmerelyanotheridenticalprint. Quickphysicalorientationconfirmationcouldavoidwaste butbothmodelsacceptaprovisionalinspectionarticlewithoutit.
+Actualthreads/engagement/stacks/limiter/contact/preload/creep;assemblyorder/handles/wires;armphase;materialandlayerqualification;cablerouting/strainrelief/fullassemblymotion/fatigue remainunresolved. L10/L11 failedorvariablelengthroutes do notvalidateL04B. FourrearRS02driverpathsmeetupstreamparts;RS02toP2first/P2torollsecond is onlyinvestigatedstaging. Neitherthisprint nor100%infillqualifiesarmload.
+
+REVIEWER CORRECTIONS
+Fable's 'full annulus' phrasing must not imply an intactring: B intentionallyinterruptsthelowersector. 'Everyremainingunknownisphysical/bestsolvedwithaprint' is too broad: CAD, structural, tolerance androutingquestions remain. Awrongsidecouldrequireredesign, notjustreprint; no probabilityofreprint hasbeenmeasured.
+Fable's statementthat theflowcapisapplied'atexecution' is not proof ofactualflowcontrol. Saved/resolved12mm3/s isverified;naive13-15mm3/speaks maybe shortsegmentrounding, butachievedflow/thermal/bondingwerenotmeasured. No overload/capacityclaimfromthosemaxima.
+Neither model provedphysicaladhesion/supportremovalforce; 'no brim' is suggestedbylackofclassifiedBrim/Skirt, notentirefirstlayer proof. Inspectactualpreview. Intendedcleanup isnotpermissiontocutstructuralplastic. Plot-based5x2mmtip,5.5..7mmneckor63.2mmholedistanceareapproximateinspectionleads, notnewCADmeasurements oracceptancecriteria. Sampled/clippedlocalchordsarenotglobalminima.
+
+EXECUTION / OUTPUTS
+claude-opus-5-5 success exit0,318.79s; claude-fable-5-1 success exit0,92.15s. Canonicalreturnedidentitiesverified,no fallback. Eachindependentlyreadall9requiredPNGs withnoerrors;onlyRead/noMCP/noothercalls. Sameprompt,no cross-reviewsharing. Bothprocessesfinished;nohardware,CADmutation,slicing,printeroperation,accountchangeorinstallationhere.
+Fullunalteredoutputs: opus/FINAL_L04B_PRINT_REVIEW.txt and fable/FINAL_L04B_PRINT_REVIEW.txt. Logs,modelmetadata,readcoverage,archivecheck,thumbnailcheckandLIVE_CHECKPOINTretained. No deniedactionoruncertainexecution. OutstandingpreprintgatesarethethreePreviewchecksandloadedprojectverificationlistedabove.
