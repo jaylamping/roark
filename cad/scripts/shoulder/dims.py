@@ -141,9 +141,10 @@ HUB = dict(spigot_ext_on=0, spigot_ext_len=6.0, spigot_taper=0.0, spigot_ri=28.0
            # REV C (arm thread, roark 7ad03f9 ridge_groove_profile_land2.png): 2 mm land Y 296-298, groove Y 298-302, full depth
            # 30-150 / 210-330, smooth run-outs to 20/160 and 200/340 (lofted)
            band_fill=dict(on=1, r=(30.0, 39.3), y=(302.3, 312.8), sectors=((60.0, 120.0), (240.0, 300.0))),
-           # REV C+ lever (a), agreed with the arm side 20:33Z: the spigot wall thickened inward to r 25 over the groove arcs (the cable
+           # REV C+ lever (a), agreed with the arm side 20:33Z, deepened to r 23 at 22:45Z (stop case, R1.0 corner near the ridge end): the
+           # spigot wall thickened inward over the groove arcs (the cable
            # window passes r 15-19 at these heights, so the bundle never needs these sectors); rounded ends
-           wall_fill=dict(on=1, r=(25.0, 28.2), y=(296.0, 302.3), sectors=((25.0, 155.0), (205.0, 335.0)), end_r=1.2),
+           wall_fill=dict(on=1, r=(23.0, 28.2), y=(296.0, 302.3), sectors=((25.0, 155.0), (205.0, 335.0)), end_r=1.2),
            disc_corner_r=0.3,
            # REV C: the window band is filled over the two sectors the fore-aft moment loads (clear of the cable window at 8 deg)
            lug2_on=0, lug2_angle=90.0, lug_r=(19.0, 30.0), lug_half_deg=15.0, lug_y=(288.0, 296.0))

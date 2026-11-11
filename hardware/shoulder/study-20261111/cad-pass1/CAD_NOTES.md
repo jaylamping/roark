@@ -265,6 +265,12 @@ The first sleeve version broke two rules, and both are fixed in the parts above:
 - The inboard swell came within 0.93 mm of the flange ring at the stop. Capping the inboard reach brought it to 2.20.
 - The skirt touched the shell skin at roll -9 to -10. Narrowing the low swell and raising the skirt to Y 314.5 fixed it.
 
+Rev A sweep on the option-a parts (`check_reva.py`, capped at 6 GB, peak 1.5 GB), all four pitches:
+- **Frame, gusset allowance and pitch wing:** no contact inside -11…+110; 25.5 mm at the stop.
+- **Shell skin, r 80 opening, at the -11 stop:** 2.29 mm (pitch -30), 3.7 or more (0), 3.02 (+24), 7.8 (+90). The first
+  skin contact is at -13, or -24 at pitch +90.
+- The collar and spine-pad touches are as before; they're on the shell option A change list.
+
 Rev A frame, gussets and shell option A, on these parts (`check_reva.py`):
 
 - **Frame, gusset allowance and pitch wing:** no contact inside -11…+110. At the stop the nearest frame point is
@@ -327,11 +333,11 @@ Masses:
 | Fork front | 144.6 |
 | Fork rear | 70.4 |
 | Drum port cap | 1.4 |
-| Hub (rev C+) | 75.4 |
-| **Total** | **632.1** |
+| Hub (rev C+, fill to r 23) | 77.1 |
+| **Total** | **633.8** |
 
 Fork cap dropped (-5.5 g). Against a71b446: drum -4.3, fork front +1.2, fork rear +10.4 (the deeper back that really
-covers the channel, plus the front plate), hub +2.9 (rev C+ wall fill).
+covers the channel, plus the front plate), hub +4.6 (rev C+ wall fill, to r 23).
 
 Clearances, moving pairs (`check_clearance.py`, capped at 6 GB). The stop tooth (0.05) is the intended contact. The
 tightest five inside -11…+110:

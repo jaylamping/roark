@@ -113,6 +113,14 @@ def run(name, c):
         with Sk(d, plane(d, 'Y', dm_['y0'], 'P_DUMMY'), 'DUMMY') as s_:
             s_.circle((RX, dm_['y0'], YZ), dm_['r'])
         extrude(d, s_.feat, 'DUMMY', dm_['t'], (0, 1, 0), merge=False)
+        if dm_.get('bolts'):
+            # tapped M4 holes in the dummy (thread faces for the bolt connectors), on the hub's six screw axes
+            cen_ = hole_centres(d)
+            print(' hub hole centres', [tuple(round(v, 3) for v in c_) for c_ in cen_], flush=True)
+            with Sk(d, plane(d, 'Y', dm_['y0'], 'P_DUMMY_T'), 'DUMMY_TAPS') as s_:
+                for cx_, cz_ in cen_:
+                    s_.circle((cx_, dm_['y0'], cz_), 1.65)
+            extrude(d, s_.feat, 'DUMMY_TAPS', 8.0, (0, 1, 0), cut=True)
         d.ForceRebuild3(False)
     cw = session(STATE).load_simulation()
     doc = cw.ActiveDoc
@@ -197,6 +205,14 @@ def run(name, c):
     post = c['pre_mesh'](st, d, lbc) if 'pre_mesh' in c else None     # contacts, connectors: returns a result hook
     mesh = st.Mesh
     mesh.Quality = 1
+    if c.get('stabilise'):
+        # contact models: soft springs hold the dummy against rigid-body motion until contact closes; Intel direct sparse
+        so_ = st.StaticStudyOptions
+        try:
+            so_.UseSoftSpring = 1
+            so_.SolverType = 7
+        except Exception as e_:
+            print(' study options failed', e_, flush=True)
     opts = {}      # defaults this script does not set: logged so runs on different machines can be compared
     for k, o, a in (('solver', st, 'StaticStudyOptions.SolverType'), ('mesher', mesh, 'MesherType'), ('jacobian', mesh, 'JacobianPoints'),
                     ('auto_transition', mesh, 'AutomaticTransition'), ('jacobian_check', mesh, 'UseJacobianCheck')):
@@ -371,6 +387,89 @@ CASES['HUBL_I'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl=[(LUG_HOLES[0], 0.5
                        remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (-170.0, -230.0, 0.0), (0.0, 0.0, 0.0), 1),
                                 (LUG_HOLES[1], (193.5, 292.0, YZ), (170.0, -230.0, 0.0), (0.0, 0.0, 0.0), 1)])
 
+SCREW_ANGLES = [-142.0, -82.0, -22.0, 38.0, 98.0, 158.0]     # hub screws on PCD 24 (measured on the hub)
+HEAD_SEAT_Y = 298.06                                          # bottom face of each screw boss (tube r 2.15-4.4 in the lightening
+                                                              # pocket, Y 298.06-319.86): the heads bear here, clamping 21.8 mm of boss
+WASHER_OD, SHANK_D = 8.8, 4.0                                 # bearing limited by the boss OD 8.8 (washer Ø9): r 2.15-4.4, 46.3 mm2
+
+
+def hole_centres(d):
+    """Actual centres (X, Z) of the six hub screw holes, from the circle parameters of their edges (the imported holes sit a
+    few hundredths off the nominal PCD 24 positions; the bolt connector needs head and thread concentric)."""
+    import inspect
+    out = []
+    for a_ in SCREW_ANGLES:
+        t_ = math.radians(a_)
+        nx, nz = RX + 12.0 * math.cos(t_), YZ + 12.0 * math.sin(t_)
+        found = None
+        for b in d.GetBodies2(0, True):
+            es = b.GetEdges
+            for ed in (es() if inspect.ismethod(es) else es):
+                cv = ed.GetCurve
+                if not cv.IsCircle:
+                    continue
+                cp = cv.CircleParams
+                cx_, cy_, cz_, r_ = cp[0] * 1e3, cp[1] * 1e3, cp[2] * 1e3, cp[6] * 1e3
+                if abs(r_ - 2.15) < 0.1 and math.hypot(cx_ - nx, cz_ - nz) < 0.5:
+                    found = (cx_, cz_)
+                    break
+            if found:
+                break
+        out.append(found or (nx, nz))
+    return out
+
+
+def bolt_setup(preload):
+    """pre_mesh hook: no-penetration contact between hub and dummy everywhere, and six bolt connectors (counterbore screw:
+    head on the hub hole edge at the seat, thread in the dummy's tapped hole) with an axial preload."""
+    def hook(st, d, lbc):
+        cm = st.ContactManager
+        try:
+            r_ = cm.SetGlobalContact(2, 0)
+        except Exception as e_:
+            r_ = repr(e_)
+        print(' global contact no-penetration', r_, flush=True)
+        from swk import edges_where
+        out = []
+        for a_, (cx, cz) in zip(SCREW_ANGLES, hole_centres(d)):
+            head = edges_where(d, lambda p, cx=cx, cz=cz: abs(p[1] - HEAD_SEAT_Y) < 0.08 and math.hypot(p[0] - cx, p[2] - cz) < 2.3,
+                               pair=lambda p0, p1, cx=cx, cz=cz: all(abs(math.hypot(q[0] - cx, q[2] - cz) - 2.145) < 0.12 for q in (p0, p1)))
+            thr = pick(d, cyl(1.65, [cx - 2, RS02_OUT - 0.1, cz - 2, cx + 2, RS02_OUT + 8.2, cz + 2]))
+            err = I()
+            b = lbc.AddBoltConnector(2, head[:1], thr, err)
+            if b is None:
+                print(' bolt', a_, 'head edges', len(head), 'thread faces', len(thr), 'err', err.value, flush=True)
+                raise SystemExit('bolt failed')
+            call(b, 'BoltConnectorBeginEdit')
+            b.HeadDiameterUnit = 0
+            b.HeadDiameterValue = WASHER_OD
+            b.BoltShankDiameterUnit = 0
+            b.BoltShankDiameterValue = SHANK_D
+            b.MaterialSource = 1
+            b.MaterialUnit = 0
+            b.YoungModulus = 210e9
+            b.PoissonsRatio = 0.28
+            b.ThermalCoefficient = 1.2e-5
+            b.PreLoadForceType = 0
+            b.PreLoadForceValue = float(preload)
+            rc = call(b, 'BoltConnectorEndEdit')
+            out.append((a_, len(head), len(thr), rc))
+        print(' bolts', out, flush=True)
+        # local no-penetration contact on the seat (the solver refuses bolt connectors with no contact defined on them)
+        dn, up = [], []
+        for f in faces_of(d):
+            t_, r_, n_, bx, a_ = info(f)
+            if t_ == 'plane' and abs(bx[1] - RS02_OUT) < 0.02 and abs(bx[4] - RS02_OUT) < 0.02 and n_ is not None:
+                (dn if n_[1] < -0.9 else up if n_[1] > 0.9 else []).append(f)
+        err = I()
+        cs = cm.CreateContactSet2(0, 0, dn, up, err)      # contact-set type 0 = no penetration (2 is shrink fit)
+        print(' seat contact set: dummy faces', len(dn), 'hub faces', len(up), 'err', err.value, 'set', cs is not None, flush=True)
+        if cs is None or err.value:
+            raise SystemExit('contact set failed')
+        return None
+    return hook
+
+
 # REV C+ honest top: the RS02 output as an aluminium dummy disc (r 23.4, 10 thick) on the step face (Y 319.86), bonded;
 # the arm loads go in as their reaction on the dummy's top face about the arm's hub point. The spigot side as in HUBCF_*.
 for k_ in ('A', 'B'):
@@ -378,6 +477,11 @@ for k_ in ('A', 'B'):
     CASES['HUBD_' + k_] = dict(base_, dummy=dict(r=23.4, y0=RS02_OUT, t=10.0),
                                remote=(pl((RX, RS02_OUT + 10.0, YZ)), AT, base_['remote'][2], base_['remote'][3]), coupling=0,
                                regions=dict(GREG_C, hub_top=[130, 311.5, -35, 212, RS02_OUT + 0.01, 47]))
+
+# contact seat + six preloaded M4 (bearing 15 MPa on the boss end, 46.3 mm2 -> 0.69 kN; relaxed after creep: half)
+for k_, pre_ in (('A', 690.0), ('B', 690.0), ('Ah', 345.0)):
+    base_ = CASES['HUBD_' + k_[0]]
+    CASES['HUBB_' + k_] = dict(base_, dummy=dict(base_['dummy'], bolts=True), pre_mesh=bolt_setup(pre_), stabilise=True)
 
 if __name__ == '__main__':
     for n in sys.argv[1:]:

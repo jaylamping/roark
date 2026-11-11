@@ -228,3 +228,25 @@ Safety factors, as peak (0.5 mm average / 1 mm average):
 - The groove rounds are two layers deep, inside a groove whose load flank is already a 60° overhang.
 - The R0.3 disc corner sits on the disc's top face at the foot of the spigot.
 - The wall fill is a plain inward step.
+
+### Rev C+ fill deepened to r 23 (22:45Z, the arm side's deciding run)
+
+**Why:** the arm side's bolted contact run, with this hub mirrored, passes everywhere except one spot at the stop. It is
+the groove bottom on the 45° side, on the R1.0 round: r 34.38, Y 300.4, θ 139, near the ridge end. Layer 0.87 peak, 1.16
+over 0.5 mm, against a target of 1.2: section tension across the layers.
+
+**Change:** the inward wall fill now runs to **r 23** (was 25) over the same sectors, θ 25-155 and 205-335, Y 296-302.3,
+with rounded ends.
+- **Wall under the groove:** 11.3 mm (r 23-34.3); it was 9.3 at r 25 and 6.25 before any fill.
+- **Clearances:** 3.7 mm to the inner core (r 19.3). The cable only uses the window sector, θ -10..26, which is outside
+  the fill.
+- **Mass:** 77.1 g (+1.7).
+- The interface is unchanged: groove, arcs, rounds, r 35.8, lugs, R0.3 and run-outs as frozen.
+
+**Check in this model (stop case B, face contact):** at that spot and its three mirrors (θ 41, 221, 319) the change
+from r 25 to r 23 is within ±3%. This model can't resolve it. With idealised supports (radial on r 35.8, axial on the
+load flanks) the groove bottom there carries almost nothing: about 2 MPa von Mises and no tension across the layers.
+The arm side's contact model loads it through the ridge.
+
+**Section estimate:** 9.3 → 11.3 mm is +21.5% of section, so about -18% section tension. The arm's 1.16 over 0.5 mm
+goes to about 1.4, above its 1.2 target. The arm side's own run on this hub is the confirmation.
