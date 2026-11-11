@@ -107,9 +107,10 @@ The values and the loader's checks are in [PLAN item 1](../PLAN.md#1-the-skeleto
   measurement of its own, but for one case.
 - **The exception reaches `safety`'s steppers** (`Preflight`, `Enabling` and the proof between them): they take `now_ns`
   and keep their windows as `u64` nanoseconds on the same `Epoch` (Joey, 2026-11-10). **Why:** every time they hold is
-  compared with a `Snapshot`'s own `_ns` fields, so a `Duration` at that seam would be converted straight back and
-  remove no way of losing the unit. It reaches no further: anything that doesn't compare with the bus tick's fields
-  takes a `Duration`.
+  on the bus tick's `Epoch`, read by control alongside each snapshot; most are compared with a `Snapshot`'s own `_ns`
+  fields, and the rest (preflight's request window) with the same `now_ns`, so one clock and one unit run through the
+  stepper, and a `Duration` at that seam would be converted straight back and remove no way of losing the unit. It
+  reaches no further: anything that doesn't compare with the bus tick's fields takes a `Duration`.
 - CAN frames carry the **kernel RX timestamp** in the recording, not the time the user-space code got round to reading
   them. The bus tick matches replies and ages feedback on the monotonic time the bus thread read the frame instead
   (can.md section 2), because the kernel's stamp is wall-clock and can step. For every status motion is sent on,
