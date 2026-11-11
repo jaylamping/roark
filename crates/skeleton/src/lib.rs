@@ -33,6 +33,15 @@ const MAX_BYTES: u64 = 1 << 20;
 /// # Errors
 /// [`LoadError::Read`] if the file can't be read, [`LoadError::Invalid`] with every problem found otherwise.
 pub fn load(path: &Path) -> Result<Skeleton, LoadError> {
+    parse(&read(path)?)
+}
+
+/// Reads the skeleton file at `path` as text, unchecked, for a caller that must record exactly the bytes it then
+/// [`parse`]s (the session's skeleton hash).
+///
+/// # Errors
+/// [`LoadError::Read`] if the file can't be read, [`LoadError::Invalid`] if it is over 1 MiB.
+pub fn read(path: &Path) -> Result<String, LoadError> {
     let read_error = |source| LoadError::Read {
         path: path.to_owned(),
         source,
@@ -50,7 +59,7 @@ pub fn load(path: &Path) -> Result<Skeleton, LoadError> {
             ProblemKind::OutOfRange("at most 1 MiB"),
         )]));
     }
-    parse(&text)
+    Ok(text)
 }
 
 /// Checks skeleton YAML given as text.

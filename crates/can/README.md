@@ -192,7 +192,8 @@ error stays latched. Open an interface that isn't `vcan` before the real adapter
 tick's frames go to a `BusRecorder`. Control is on the other side of `rtrb` queues: batches, orders and slow requests in, snapshots,
 re-arm answers and slow results out; a full outgoing ring drops and counts (`snapshots_dropped`, `rearms_dropped`,
 `slow_results_dropped`).
-The runtime that wires those up doesn't exist yet; the sim suite drives the shell against `sim-drive` on `vcan`. See
+The runtime (`bins/runtime`) wires those up; the sim suite drives the shell, and the runtime, against `sim-drive` on
+`vcan`. See
 the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
 
 ## Using it

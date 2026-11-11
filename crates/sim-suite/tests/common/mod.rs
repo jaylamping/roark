@@ -46,7 +46,7 @@ pub(crate) fn limbs(snap: &Snapshot) -> Vec<(LimbState, Option<StopReason>)> {
     snap.limbs().map(|(_, l)| (l.state, l.stop)).collect()
 }
 
-/// A schedule that starts two periods from now, as the runtime's does.
+/// A schedule that starts two periods from now, so the test thread is ready before tick 0.
 pub(crate) fn soon() -> Instant {
     Instant::now() + Duration::from_nanos(2 * 1_000_000_000 / HZ)
 }

@@ -11,6 +11,7 @@ publish = false
 [workspace.dependencies]
 can = { path = "crates/can" }
 robstride = { path = "crates/robstride" }
+runtime = { path = "bins/runtime" }
 safety = { path = "crates/safety" }
 sim-drive = { path = "bins/sim-drive" }
 skeleton = { path = "crates/skeleton" }
