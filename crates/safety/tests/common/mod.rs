@@ -12,6 +12,7 @@ use safety::Seen;
 use skeleton::{BusName, Joint, Skeleton};
 
 pub(crate) mod bus;
+pub(crate) mod enable;
 pub(crate) mod preflight;
 
 /// One arm on `bus0`, and `bus1` with no joints. `arm_joint_one` is fully set (direction, zero and hard limits too); `arm_joint_two` leaves its
