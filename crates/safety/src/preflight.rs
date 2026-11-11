@@ -265,7 +265,7 @@ impl Target {
 /// limb-mates' preflights); it drops every proof or cancels every sequence on any such event, and runs preflight again
 /// for every enable. It carries the drive's bus and ID and its limb's `generation`, so the enable sequence ends by
 /// itself on the voiding events its snapshots show: a stop or clear of the limb, a fault, another drive's view (or its
-/// own from another slot).
+/// own from another slot), and a mode other than Reset before its Enable.
 #[derive(Debug, PartialEq, Eq)]
 pub struct PreflightPassed {
     drive: Drive,
