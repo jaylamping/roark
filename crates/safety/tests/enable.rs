@@ -603,10 +603,11 @@ fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
 }
 
 /// Guards: safety - `host.preflight`: a drive seen out of Reset since its preflight began and before its Enable is
-/// planned, in a status or a version reply, ends the sequence before any Enable: something else put it in that mode,
-/// and a drive already in Run would answer the Enable in Run. That counts from when preflight began, so a status the bus
-/// read after the snapshot preflight passed on isn't missed; one from before preflight began doesn't count, and after
-/// the Enable is planned a Run is its answer (PLAN item 6 Preflight row: the drive in Reset; another controller).
+/// planned, in a status or a version reply, or latched by the bus though a later Reset hides it, ends the sequence
+/// before any Enable: something else put it in that mode, and a drive already in Run would answer the Enable in Run.
+/// That counts from when preflight began, so a status the bus read after the snapshot preflight passed on isn't
+/// missed; one from before preflight began doesn't count, and after the Enable is planned a Run is its answer (PLAN item
+/// 6 Preflight row: the drive in Reset; another controller).
 #[test]
 fn the_enable_sequence_refuses_a_drive_out_of_reset_before_its_enable() {
     let t0 = 100 * PERIOD;
@@ -620,7 +621,19 @@ fn the_enable_sequence_refuses_a_drive_out_of_reset_before_its_enable() {
         fresh_status: None,
         ..with_status(echo, Mode::Reset, t0 + PERIOD)
     };
-    for (view, mode) in [(run, Mode::Run), (version, Mode::Calibration)] {
+    // Run and back to Reset between two snapshots: the bus latched the Run.
+    let back = DriveView {
+        out_of_reset: Some(ModeSeen {
+            mode: Mode::Run,
+            read_ns: t0 + PERIOD,
+        }),
+        ..with_status(echo, Mode::Reset, t0 + PERIOD + 1)
+    };
+    for (view, mode) in [
+        (run, Mode::Run),
+        (version, Mode::Calibration),
+        (back, Mode::Run),
+    ] {
         // Seen as the echo comes, or in the tick the Enable would have been planned: either way, no Enable.
         for at_tick in [1, 2] {
             let mut enabling = Enabling::new(passed(), t0);

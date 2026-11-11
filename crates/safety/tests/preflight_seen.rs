@@ -149,6 +149,46 @@ fn a_version_reply_out_of_reset_refuses() {
     }
 }
 
+/// Guards: safety - `host.preflight`: a drive that went out of Reset and back between two polls (in one snapshot, or
+/// across snapshots control never read) is refused all the same, by the mode the bus latched while this host hadn't
+/// enabled it; one latched before preflight began says nothing, since preflight's own statuses showed Reset after it
+/// (PLAN item 6 Preflight row: the drive in Reset; another controller).
+#[test]
+fn a_drive_out_of_reset_and_back_between_polls_refuses() {
+    let skeleton = skeleton();
+    let target = Target::new(&joint(&skeleton, 0), &skeleton.power).unwrap();
+    let back = heard(status(Mode::Reset, StatusFaults::default(), 2_500));
+    let latched = |mode, read_ns| DriveView {
+        out_of_reset: Some(ModeSeen { mode, read_ns }),
+        ..back
+    };
+    let get_id = SlowRequest {
+        tag: 1,
+        slot: SLOT,
+        kind: SlowKind::GetId,
+    };
+    for (view, expected) in [
+        (
+            latched(Mode::Run, 2_000),
+            Step::Refused(Refusal::NotReset { mode: Mode::Run }),
+        ),
+        (
+            latched(Mode::Calibration, 1_000),
+            Step::Refused(Refusal::NotReset {
+                mode: Mode::Calibration,
+            }),
+        ),
+        (latched(Mode::Run, 999), Step::Submit(get_id)),
+    ] {
+        let mut preflight = Preflight::start(target, SLOT, 1, 1_000);
+        assert_eq!(
+            preflight.poll(shown(&view).seen(), 3_000),
+            expected,
+            "{view:?}"
+        );
+    }
+}
+
 /// Guards: safety - `host.preflight`: preflight checks at every poll that it is shown its own drive on its own bus,
 /// and that the drive's limb is idle and hasn't stopped or been cleared since the first poll. Another drive's view
 /// (another ID, or the same ID on another bus) is a runtime bug; an enabled limb, or one that stopped or was cleared

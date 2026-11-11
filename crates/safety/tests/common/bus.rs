@@ -160,8 +160,8 @@ fn unreachable_frame(what: &str) -> ! {
 /// The snapshot a bus with `view`'s drive in slot `slot` publishes after the sends and frames that make `view` and
 /// `limb`; its other slots hold other drives of the same limb, which nothing is sent to (one of them faults for a limb
 /// stopped by another drive's fault). The view's fields the safety layer reads (device, limb, `observed`, `mode`,
-/// `fresh_ns`, `fresh_status`, `fault_seen`, `last_echo`) and the limb's must come out as asked; what else the frames
-/// set (the bus's own bookkeeping) is whatever they make it.
+/// `fresh_ns`, `fresh_status`, `fault_seen`, `last_echo`, and `out_of_reset` as below) and the limb's must come out as
+/// asked; what else the frames set (the bus's own bookkeeping) is whatever they make it.
 ///
 /// - The fresh status is the first status read after a command the socket took: the limb's Enable if the limb is
 ///   active, else the `run_mode` = MIT write a batch may carry, sent at the status's read time (or as a stopping limb
@@ -169,6 +169,8 @@ fn unreachable_frame(what: &str) -> ! {
 ///   with nothing outstanding. A `fresh_ns` with no `fresh_status` is a fresh status superseded by a later frame in
 ///   another mode: the last status, or a version reply.
 /// - `mode` other than the last status's comes from a version reply read at its time, after that status.
+/// - `out_of_reset`, when the view sets it, must come out as asked; a version reply in that mode is read at its time,
+///   first, unless a frame above shows it. A view that leaves it `None` takes whatever the frames latch.
 /// - `fault_seen` with no fault bits in a status read comes from a fault report, read last, so no send follows it.
 /// - An active limb with no fresh status had its Enable sent after the last frame; a stopping limb's stop began at its
 ///   `since_ns` and a stopped one's after the last frame; a limb at generation `n` was stopped and cleared `n` times
@@ -193,11 +195,18 @@ pub(crate) fn replay(view: &DriveView, limb: &LimbView, slot: usize) -> Snapshot
         last
     };
     let snapshot = rig.bus.end(end);
+    let made = snapshot.drive(slot).unwrap();
     assert_eq!(
-        read_by_safety(snapshot.drive(slot).unwrap()),
+        read_by_safety(made),
         read_by_safety(view),
         "no frames make this view"
     );
+    if view.out_of_reset.is_some() {
+        assert_eq!(
+            made.out_of_reset, view.out_of_reset,
+            "no frames make this latch"
+        );
+    }
     assert_eq!(
         snapshot.limb(view.limb),
         Some(limb),
@@ -331,6 +340,14 @@ fn events(view: &DriveView, limb: &LimbView, start: u64) -> (Vec<(u64, u8, Event
     {
         let version = version_record(view.device, mode.mode);
         events.push((mode.read_ns, 3, Event::Read(version)));
+    }
+    // A latched mode out of Reset that no frame above shows was a version reply read before them at its time.
+    if let Some(latched) = view.out_of_reset
+        && Some(latched) != view.mode
+        && Some(latched) != header
+    {
+        let version = version_record(view.device, latched.mode);
+        events.push((latched.read_ns, 0, Event::Read(version)));
     }
     if let Some(echo) = view.last_echo {
         let record = echo_record(view.device, echo.kind);

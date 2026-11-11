@@ -395,8 +395,9 @@ impl Preflight {
 
     /// The next step, given what the drive's bus last showed of it and the time. A view of another drive (by ID or by
     /// bus), a fault in the latest status or latched since the last clear, any mode but Reset in the latest status or
-    /// status header (a version reply's included) since preflight began, or a limb that isn't idle or that stopped or
-    /// was cleared since the first poll, refuses at once; so does a request with no result within [`ANSWER_WITHIN_NS`].
+    /// status header (a version reply's included) or latched by the bus since preflight began, or a limb that isn't
+    /// idle or that stopped or was cleared since the first poll, refuses at once; so does a request with no result
+    /// within [`ANSWER_WITHIN_NS`].
     pub fn poll(&mut self, seen: Seen<'_>, now_ns: u64) -> Step {
         let view = seen.view;
         // Taken at the first poll, which is always while asking.
@@ -642,12 +643,15 @@ impl Preflight {
 }
 
 /// A mode other than Reset that the drive's bus has shown since `since_ns`, if any: in its latest status header (`mode`,
-/// a version reply's included), else in its last status (`observed`). Either one out of Reset is the drive out of
-/// Reset, so a later Reset in one never hides the other.
+/// a version reply's included), in its last status (`observed`), or latched by the bus while this host hadn't enabled
+/// the drive (`out_of_reset`), so a later Reset hides none of them, even one between two snapshots. Only what was read
+/// since `since_ns`, when preflight began, counts: the latch stays until the limb's re-arm, which an idle limb can't
+/// have, and an excursion before preflight began is one its own checks then saw end, in a status in Reset read since.
 pub(crate) fn left_reset(view: &DriveView, since_ns: u64) -> Option<Mode> {
     let latest = view.mode.map(|m| (m.mode, m.read_ns));
     let status = view.observed.map(|o| (o.status.header.mode, o.read_ns));
-    [latest, status]
+    let latched = view.out_of_reset.map(|m| (m.mode, m.read_ns));
+    [latest, status, latched]
         .into_iter()
         .flatten()
         .filter(|(_, read_ns)| *read_ns >= since_ns)
