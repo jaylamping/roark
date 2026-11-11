@@ -48,7 +48,7 @@ Quantity,Value / MPN,Reference designators,Footprint,Manufacturer,Manufacturer P
 2,"Buck board pigtail: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 +3V3_PI, 7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA",J24,Molex_Micro-Fit_3.0_43045-1212_2x06_P3.00mm_Vertical,Molex,0430451212,WM1794-ND,Micro-Fit 3.0 43045-1212 vertical. Pigtail plugs (43025-1200 + 43030 crimps) are not in the kit.
 2,"HS50 B (-X): 1 VBUS, 2 FET drain (Mini-Fit Jr, 18 AWG)",J25,Molex_Mini-Fit_Jr_5566-02A_2x01_P4.20mm_Vertical,Molex,0039281023,WM3800-ND,Mini-Fit Jr 5566-02A vertical header. Mating plug not in kit.
 2,Heatsink lug wire: to a ring lug under a heatsink screw,J27,SolderWire-0.5sqmm_1x01_D0.9mm_OD2.1mm,,,,Solder pad for the heatsink lug lead; parts are the assembly rows 'J27 lug' and 'J27 lead'. Nothing to order here.
-16,IPB017N10N5LFATMA1,"Q1,Q2,Q7,Q8,Q9,Q15,Q16,Q17",TO-263-7_TabPin4,Infineon Technologies,IPB017N10N5LFATMA1,IPB017N10N5LFATMA1CT-ND,
+18,IPB017N10N5LFATMA1,"Q1,Q2,Q7,Q8,Q9,Q15,Q16,Q17",TO-263-7_TabPin4,Infineon Technologies,IPB017N10N5LFATMA1,IPB017N10N5LFATMA1CT-ND,
 6,MMBTA92LT1G,Q3,SOT-23,onsemi,MMBTA92LT1G,MMBTA92LT1GOSCT-ND,
 6,MMBT3906,Q4,SOT-23,onsemi,MMBT3906LT1G,MMBT3906LT1GOSCT-ND,
 14,MMBT3904,"Q5,Q10,Q11,Q14,Q21",SOT-23,onsemi,MMBT3904LT1G,MMBT3904LT1GOSCT-ND,
@@ -113,13 +113,13 @@ Quantity,Value / MPN,Reference designators,Footprint,Manufacturer,Manufacturer P
 2,TP ABS,TP15,TestPoint_Pad_D1.0mm,,,,"Bare PCB test pad, nothing to order."
 2,TP WDO_N,TP16,TestPoint_Pad_D1.0mm,,,,"Bare PCB test pad, nothing to order."
 2,TP HSINK,TP17,TestPoint_Pad_D2.0mm,,,,"Bare PCB test pad, nothing to order."
-4,LM5069MM-2 (U1: temporary fit in place of LM5069MM-1; U7: design part),"U1,U7",MSOP-10_3x3mm_P0.5mm_TI,Texas Instruments,LM5069MM-2/NOPB,,"Fitted in U1 and U7 (decided 2026-11-10). Order 4 from Mouser LM5069MM-2/NOPB (51 in stock at check 2026-11-10) or LCSC C2653582 (LM5069MMX-2/NOPB, large reel, 3,156 in stock, $4.44). DigiKey out (296-35297-1-ND, MMX-2: 2,894 due 11-Jan-2027). With -2 in U1 the bus restarts by itself about every 63 ms after a fault clears; the heatsink fan must run whenever the pack is connected (LM5069_RETRY.md)."
+5,LM5069MM-2 (U1: temporary fit in place of LM5069MM-1; U7: design part),"U1,U7",MSOP-10_3x3mm_P0.5mm_TI,Texas Instruments,LM5069MM-2/NOPB,,"Fitted in U1 and U7 (decided 2026-11-10). Order 5 (4 plus 1 spare) from Mouser LM5069MM-2/NOPB (51 in stock at check 2026-11-10) or LCSC C2653582 (LM5069MMX-2/NOPB, large reel, 3,156 in stock, $4.44). DigiKey out (296-35297-1-ND, MMX-2: 2,894 due 11-Jan-2027). With -2 in U1 the bus restarts by itself about every 63 ms after a fault clears; the heatsink fan must run whenever the pack is connected (LM5069_RETRY.md)."
 3,TPS7A4001DGNR,U2,HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm_TI,Texas Instruments,TPS7A4001DGNT,296-28330-1-ND,"Kit lists TPS7A4001DGNR (296-41780-1-ND), out of stock until Mar 2027; DGNT is the same part on a 250-pc reel, 550 in stock."
 5,TLV1805DBVR,"U3,U26",SOT-23-6,Texas Instruments,TLV1805DBVR,296-53434-1-ND,
 8,LM4040AIM3-2.5,"U4,U27",SOT-23,Texas Instruments,LM4040AIM3-2.5/NOPB,LM4040AIM3-2.5/NOPBCT-ND,
-2,TPS48100QDGXRQ1,U8,TPS48100_DGX_VSSOP-19,Texas Instruments,TPS48100QDGXRQ1,296-TPS48100QDGXRQ1CT-ND,
-8,INA237AIDGSR,"U11,U12,U13,U17",TSSOP-10_3x3mm_P0.5mm,Texas Instruments,INA237AIDGSR,296-INA237AIDGSRCT-ND,"Out of stock at DigiKey at check (2026-11-10); 2,500 expected 25-Nov-2026."
-6,TPS48111LQDGXRQ1,"U19,U20,U21",TPS48100_DGX_VSSOP-19,Texas Instruments,TPS48111LQDGXRQ1,296-TPS48111LQDGXRQ1CT-ND,
+3,TPS48100QDGXRQ1,U8,TPS48100_DGX_VSSOP-19,Texas Instruments,TPS48100QDGXRQ1,296-TPS48100QDGXRQ1CT-ND,
+10,INA237AIDGSR,"U11,U12,U13,U17",TSSOP-10_3x3mm_P0.5mm,Texas Instruments,INA237AIDGSR,296-INA237AIDGSRCT-ND,"Out of stock at DigiKey at check (2026-11-10); 2,500 expected 25-Nov-2026."
+7,TPS48111LQDGXRQ1,"U19,U20,U21",TPS48100_DGX_VSSOP-19,Texas Instruments,TPS48111LQDGXRQ1,296-TPS48111LQDGXRQ1CT-ND,
 3,TPS3431SDRBR,U25,VSON-8-1EP_3x3mm_P0.65mm_EP1.65x2.4mm,Texas Instruments,TPS3431SDRBR,296-51909-1-ND,"Out of stock at DigiKey at check (2026-11-10); 3,000 expected 08-Mar-2027. Try TI.com direct."
 4,"Molex 19070-0009 InsulKrimp ring terminal, M3 to M3.5 stud, 18-22 AWG: under one heatsink screw head, on the lead from J27",J27 lug,—,Molex,0190700009,WM13697-ND,"Ring for #6 stud (3.5 mm), 18-22 AWG, red InsulKrimp."
 1 spool,"22 AWG stranded hook-up wire, 300 V PVC (Alpha Wire 3051 or equal), 60 mm per board: J27 to the ring terminal",J27 lead,—,Alpha Wire,3051 BK005,A2016B-100-ND,"22 AWG 7/30 stranded, 300 V PVC, black, 100 ft spool."

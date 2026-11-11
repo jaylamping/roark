@@ -32,7 +32,7 @@ LCSC (26,635). On the cached, unverified figures, Mouser covers INA237, LM5146, 
 XAL1010-682MED from stock; TPS3431 showed small stock. C24 is EEH-ZA1E331V (in stock at DigiKey; kit note gives the fit).
 C2 is EMVH101ARA470MKE0S (decided; the buck board is laid out for it).
 
-**Decided 2026-11-10: U1 is fitted with LM5069MM-2/NOPB for now.** The kit orders 4 LM5069-2 for two sets (U1 and U7):
+**Decided 2026-11-10: U1 is fitted with LM5069MM-2/NOPB for now.** The kit orders 5 LM5069-2: 4 for two sets (U1 and U7) and 1 spare:
 Mouser LM5069MM-2/NOPB or LCSC C2653582 (LM5069MMX-2/NOPB, the large reel). The schematic keeps LM5069MMX-1 as U1's
 design part, with a "Fitted" field naming the -2; order 2 LM5069MM-1/NOPB and swap U1 when it is back in stock. With
 the -2 the bus restarts by itself about every 63 ms after a fault clears, and the heatsink fan must run whenever the

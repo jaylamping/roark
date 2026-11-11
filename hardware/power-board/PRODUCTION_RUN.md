@@ -89,7 +89,7 @@ Both boards are ordered as **two separate designs in one JLC order**, not one pa
 ## 4. Kit list
 
 [kit-2sets.csv](kit-2sets.csv) lists every fitted line for 2 main + 2 buck boards, plus the assembly parts (plugs, crimps,
-the heatsink lug and its lead): 188 rows and 1,345 parts, counting spares. Spares, for a first hand build:
+the heatsink lug and its lead): 188 rows and 1,353 parts, counting spares. Spares, for a first hand build:
 - at least 4 on every 0603, 0805 and 1206 resistor and capacitor, small diode, SOT-23 part and 1206 fuse (the 0.1 %
   resistors keep 2);
 - 2 on the 1210 capacitors, the 47 µF cans, the SK810L diodes, the F2 blade fuse, the GND test loops and the WSON eFuses
@@ -98,8 +98,8 @@ the heatsink lug and its lead): 188 rows and 1,345 parts, counting spares. Spare
   resistors, the 2 mΩ and 5 mΩ shunts, the buck cans C2 and C24, the SuperSO8 FETs, a JST GH header, TLV1805, TPS3431S
   and TPS7A4001.
 
-Parts whose spare costs about $5 or more get none: the IPB017 FETs, TPS48100/TPS48111, LM5069, LM5146, INA237, the
-inductors, RS1 and the connectors. The off-board parts (BMS, Class T fuse, brake resistors, thermostats, harness) are in the pack
+Six lines whose spare costs about $5 each carry spares too (2026-11-11): 2 IPB017 FETs, 2 INA237, and 1 each of
+TPS48111, TPS48100, LM5069-2 and LM5146. The inductors, RS1 and the other connectors get none. The off-board parts (BMS, Class T fuse, brake resistors, thermostats, harness) are in the pack
 plan and REVB5_CHANGES.
 
 **Part numbers fixed** (2026-11-07, schematic and BOM updated):
@@ -238,7 +238,7 @@ Hot air is for rework only (removing or reseating a part). Joey's low-power gun 
 2. Part numbers fixed (section 4) and the BOM regenerated; kit CSV regenerated with suppliers chosen per route B/C.
    **Joey prefers one source for all board parts:** re-check DigiKey stock for the 6 ICs out of stock on 2026-11-07
    (INA237, LM5069-1/-2, TPS7A4001, TPS3431S, LM5146). U1 is ordered as LM5069MM-2/NOPB for now (Mouser, or LCSC
-   C2653582), 4 for two sets with U7; order 2 LM5069MM-1/NOPB and swap U1 when it is back in stock. If they're back, order everything from DigiKey (route A) and
+   C2653582), 4 for two sets with U7 plus 1 spare; order 2 LM5069MM-1/NOPB and swap U1 when it is back in stock. If they're back, order everything from DigiKey (route A) and
    accept the about $80–95 premium; otherwise DigiKey for everything it stocks plus one LCSC order for the rest.
 3. JLC quote for both designs, frameless stencils: main 6 layers, 2 oz outer / 0.5 oz inner, OSP; buck 6 layers, 2 oz outer / 0.5 oz inner, OSP, epoxy-filled and capped vias (via in pad).
    Confirm the main board's L1–In1 prepreg (tools/stack.py) and update section 1.
