@@ -1,7 +1,7 @@
 //! What crosses the bus thread's seams: command batches in, snapshots out (slow requests and results are in `slow`), all
 //! fixed-size and `Copy` so the rings never allocate (rust.md section 6).
 
-use robstride::{DeviceId, EchoKind, Frame, Status};
+use robstride::{DeviceId, EchoKind, Frame, Mode, Status};
 
 use crate::error_frame::BusError;
 use crate::timing::TimingError;
@@ -232,7 +232,8 @@ pub enum StopReason {
         slot: usize,
     },
     /// A drive seen in Run after its Enable later reported another mode with no Disable from this host (PLAN.md item 6
-    /// States). A drive this host never enabled isn't watched here: preflight refuses one found already in Run.
+    /// States). A drive this host never enabled doesn't stop its limb here: its excursions out of Reset are latched in
+    /// [`DriveView::out_of_reset`], and preflight and the enable sequence refuse it.
     DriveMode {
         /// That drive's slot.
         slot: usize,
@@ -287,6 +288,15 @@ pub struct Observed {
     pub read_ns: u64,
 }
 
+/// A drive's mode as a frame's status header showed it, with the monotonic time the bus thread read that frame.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ModeSeen {
+    /// The mode.
+    pub mode: Mode,
+    /// When the frame was read.
+    pub read_ns: u64,
+}
+
 /// One drive in a snapshot.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DriveView {
@@ -295,9 +305,20 @@ pub struct DriveView {
     /// Its limb on this bus.
     pub limb: usize,
     /// The last status or report read from it, answer or not: its mode and fault bits are never filtered out. A version
-    /// reply isn't kept here: its mode and faults go only to the stop logic and `fault_seen`, so a version reply read
-    /// since can have shown another mode than this one.
+    /// reply isn't kept here (it carries no feedback): its faults go to `fault_seen` and its mode to `mode`, so a version
+    /// reply read since can have shown another mode than this one.
     pub observed: Option<Observed>,
+    /// The mode the last frame with a status header showed, and when it was read: a status, a report or a version reply,
+    /// the frames that carry one (an identity, parameter or fault reply carries none). The drive's latest word on its
+    /// mode, answer or not; the stop logic reads the same headers.
+    pub mode: Option<ModeSeen>,
+    /// The last mode other than Reset a status header showed while this host hadn't enabled the drive (never enabled
+    /// since start or its limb's last re-arm, or seen in Reset after this host's Disable) or had disabled it, and when
+    /// it was read. Kept until the limb's next re-arm, so a drive that went to Run and back to Reset between two
+    /// snapshots, or across snapshots control never read, still shows it; this host's own Enable and the Run that
+    /// answers it never set it. Preflight and the enable sequence read it to refuse a drive something else took out
+    /// of Reset since preflight began.
+    pub out_of_reset: Option<ModeSeen>,
     /// When its last fresh status was read: the first status after a command the socket took. Freshness, not
     /// acknowledgement: the protocol has no sequence numbers, so which command a status answers can't be proven. Read
     /// time, not arrival: for every status motion is sent on, it trails the kernel's receipt by at most period -
@@ -306,8 +327,8 @@ pub struct DriveView {
     pub fresh_ns: Option<u64>,
     /// The status `fresh_ns` is the read time of, kept while later frames show the same mode (a duplicate, a report, an
     /// unsolicited or earlier-tick status replacing `observed`, or a version reply), and dropped when a later one, a
-    /// version reply included, shows another mode, which supersedes it. Read the last status's mode from `observed`
-    /// (which a version reply doesn't update) and faults from `fault_seen`, never from this; `fresh_ns` stays the age
+    /// version reply included, shows another mode, which supersedes it. Read the drive's latest mode from `mode` and
+    /// faults from `fault_seen`, never from this; `fresh_ns` stays the age
     /// of the last fresh reply either way.
     pub fresh_status: Option<Observed>,
     /// Whether it answered this tick's command by the collect deadline.

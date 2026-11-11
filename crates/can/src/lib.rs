@@ -27,10 +27,12 @@ pub use bus::{BusConfig, BusExit, BusLinks, BusRunError, Spawned, bus_info, spaw
 
 pub use error_frame::{BusError, classify};
 pub use slow::{SLOW_SLOTS, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, SlowResult, Unsent};
+/// The frame record [`BusTick::on_frame`] reads, so a caller feeding a tick by hand needs no `telemetry` of its own.
+pub use telemetry::{Direction, FrameRecord};
 pub use tick::BusTick;
 pub use timing::{DRIVE_TIMEOUT_NS, ENABLE_TO_RUN_NS, Timing, TimingError};
 pub use types::{
     BusDrive, CommandBatch, ConfigError, Counters, Drain, DriveView, EchoSeen, LimbState, LimbView,
-    MAX_DRIVES, MAX_SENDS, NoSuchLimb, Observed, RearmRefused, Send, SendKind, SendList,
+    MAX_DRIVES, MAX_SENDS, ModeSeen, NoSuchLimb, Observed, RearmRefused, Send, SendKind, SendList,
     SendOutcome, Snapshot, StopOutcome, StopReason,
 };

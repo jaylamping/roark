@@ -8,10 +8,10 @@
 //! mode read after a confirmation withdraws it (`DriveState::note_mode`), so the drive gets Disable again while the
 //! limb is still stopping and the window lasts. Once the limb is stopped nothing is sent to it: the drive's own timeout
 //! takes it down, [`BusTick::rearm`] treats it as unconfirmed (its quiet wait applies), and an enable needs preflight
-//! to read it in Reset (PLAN.md item 6). Each confirmed drive is sent active reporting off once the post-Disable
-//! silence after its confirmation is over (a drive drops every frame in it, PLAN.md item 2 Silence windows), every tick
-//! until the socket takes it. A drive that never confirms gets no reporting off. When the stop ends is decided in one
-//! place, [`BusTick::stop_over`], bounded by [`Timing::stop_max_ns`](crate::Timing::stop_max_ns).
+//! to read it in Reset (PLAN.md item 6 `host.preflight`). Each confirmed drive is sent active reporting off once the
+//! post-Disable silence after its confirmation is over (a drive drops every frame in it, PLAN.md item 2 Silence
+//! windows), every tick until the socket takes it. A drive that never confirms gets no reporting off. When the stop
+//! ends is decided in one place, [`BusTick::stop_over`], bounded by [`Timing::stop_max_ns`](crate::Timing::stop_max_ns).
 
 use robstride::EchoKind;
 use robstride::encode::{self, Reporting};
@@ -225,7 +225,7 @@ impl BusTick {
     }
 
     /// The operator cleared limb `limb` (PLAN.md item 6: a latched stop clears only by an operator `clear`): idle again,
-    /// with its stop outcomes, fault history and miss counts started afresh, and a new generation. Each drive must
+    /// with its stop outcomes, fault history, modes out of Reset and miss counts started afresh, and a new generation. Each drive must
     /// first be confirmed in Reset by the stop, or have been sent nothing by this host for longer than the drive timeout
     /// since the last write the socket took (plus a period of margin for the adapter's queue), so it has dropped to
     /// Reset on its own. A read in another mode does not itself hold the re-arm off once that quiet time since the
@@ -267,6 +267,7 @@ impl BusTick {
         for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {
             d.stop = DriveStop::None;
             d.fault_seen = false;
+            d.out_of_reset = None;
             d.misses = 0;
             d.phase = Phase::Off;
             d.outstanding = None;

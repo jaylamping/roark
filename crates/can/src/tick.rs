@@ -22,8 +22,8 @@ use crate::slow::{SLOW_SLOTS, SlowEntry};
 use crate::timing::{ENABLE_TO_RUN_NS, Timing};
 use crate::types::{
     BusDrive, CommandBatch, ConfigError, Counters, Drain, DriveView, EchoSeen, LimbState, LimbView,
-    MAX_DRIVES, NoSuchLimb, Observed, SendKind, SendList, SendOutcome, Snapshot, StopOutcome,
-    StopReason,
+    MAX_DRIVES, ModeSeen, NoSuchLimb, Observed, SendKind, SendList, SendOutcome, Snapshot,
+    StopOutcome, StopReason,
 };
 
 /// A command the socket took, waiting for its status.
@@ -54,6 +54,9 @@ pub(crate) struct DriveState {
     pub(crate) device: DeviceId,
     pub(crate) limb: usize,
     pub(crate) observed: Option<Observed>,
+    pub(crate) mode: Option<ModeSeen>,
+    /// The last mode other than Reset seen while this host hadn't enabled the drive ([`DriveView::out_of_reset`]).
+    pub(crate) out_of_reset: Option<ModeSeen>,
     pub(crate) fresh_ns: Option<u64>,
     pub(crate) fresh_status: Option<Observed>,
     pub(crate) outstanding: Option<Outstanding>,
@@ -114,14 +117,28 @@ pub(crate) enum Off {
 }
 
 impl DriveState {
-    /// What a status header's mode says about the drive's run, from a status, a report or a version reply alike. Run
-    /// after an Enable is the drive running, counted only from an ordered read while its limb is active; any other mode
-    /// after running, without a Disable from this host, is latched as having left Run; Reset from an ordered read after a
-    /// Disable confirms the drive off. A mode other than the fresh status's supersedes it (`fresh_status` goes), the
-    /// age of the last fresh reply (`fresh_ns`) staying. Any mode but Reset withdraws a stop's confirmation, whatever
-    /// the read order: frames from one drive are read in the order it sent them, so the drive left Reset after the
-    /// status that confirmed it and isn't known disabled any more.
-    pub(crate) fn note_mode(&mut self, mode: Mode, limb_active: bool, unordered: bool) {
+    /// What a status header's mode, read at `read_ns`, says about the drive's run, from a status, a report or a version
+    /// reply alike; it is the drive's latest mode (`mode`) from here. Run after an Enable is the drive running, counted
+    /// only from an ordered read while its limb is active; any other mode after running, without a Disable from this
+    /// host, is latched as having left Run; Reset from an ordered read after a Disable confirms the drive off. Any mode
+    /// but Reset while this host hasn't enabled the drive (`Off`) or has disabled it (`Disabled`) is latched in
+    /// `out_of_reset`, whatever the read order, so a later Reset can't hide it; this host's own Enable and its answer
+    /// (`Enabling`, `Running`, `LeftRun`) never set it. A mode
+    /// other than the fresh status's supersedes it (`fresh_status` goes), the age of the last fresh reply (`fresh_ns`)
+    /// staying. Any mode but Reset withdraws a stop's confirmation, whatever the read order: frames from one drive are
+    /// read in the order it sent them, so the drive left Reset after the status that confirmed it and isn't known
+    /// disabled any more.
+    pub(crate) fn note_mode(
+        &mut self,
+        mode: Mode,
+        read_ns: u64,
+        limb_active: bool,
+        unordered: bool,
+    ) {
+        self.mode = Some(ModeSeen { mode, read_ns });
+        if mode != Mode::Reset && matches!(self.phase, Phase::Off | Phase::Disabled { .. }) {
+            self.out_of_reset = Some(ModeSeen { mode, read_ns });
+        }
         self.fresh_status = self.fresh_status.filter(|f| f.status.header.mode == mode);
         if mode != Mode::Reset && self.stop.confirmed() {
             self.stop = DriveStop::Sent;
@@ -279,6 +296,8 @@ impl BusTick {
                 device: drive.device,
                 limb: drive.limb,
                 observed: None,
+                mode: None,
+                out_of_reset: None,
                 fresh_ns: None,
                 fresh_status: None,
                 outstanding: None,
@@ -639,6 +658,8 @@ impl BusTick {
                         device: d.device,
                         limb: d.limb,
                         observed: d.observed,
+                        mode: d.mode,
+                        out_of_reset: d.out_of_reset,
                         fresh_ns: d.fresh_ns,
                         fresh_status: d.fresh_status,
                         answered: d.answered,
