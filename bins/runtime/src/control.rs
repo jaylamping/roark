@@ -178,25 +178,21 @@ pub(crate) fn run(
                 batches: &mut batches,
                 ended: &ended,
             };
-            for _ in 0..links.enables.buffer().capacity() {
-                let Ok(enable) = links.enables.pop() else {
-                    break;
-                };
-                let failed = links.health.failed();
-                if let Some(r) = enabler.take(&links.roster, enable, &mut buses, failed, now_ns) {
-                    push_enable_reply(&mut links.enable_replies, r, &mut exit.replies_dropped);
-                }
-            }
-            if let Some(r) = enabler.tick(
+            let mut step = EnableStep {
+                enabler: &mut enabler,
+                counts: &mut counts,
+                replies_dropped: &mut exit.replies_dropped,
+            };
+            step.run(
                 &links.roster,
-                &mut buses,
+                &mut links.enables,
+                &mut links.enable_replies,
+                &links.health,
                 &links.stops,
+                &mut buses,
                 next,
                 now_ns,
-                &mut counts,
-            ) {
-                push_enable_reply(&mut links.enable_replies, r, &mut exit.replies_dropped);
-            }
+            );
             let replies = &mut links.replies;
             let clears = &mut links.clears;
             let mut budget = clears.buffer().capacity();
@@ -220,6 +216,51 @@ pub(crate) fn run(
             }
         }
         n = n.saturating_add(1);
+    }
+}
+
+/// The enabler's part of a pass, with what it counts.
+struct EnableStep<'a> {
+    enabler: &'a mut Enabler,
+    counts: &'a mut Counts,
+    replies_dropped: &'a mut u64,
+}
+
+impl EnableStep<'_> {
+    /// Take every enable queued, then step the enable running and hold every enabled joint into the next tick's
+    /// batches, answering each enable that ends.
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the pass's links, borrowed apart"
+    )]
+    fn run(
+        &mut self,
+        roster: &Roster,
+        enables: &mut Consumer<Enable>,
+        enable_replies: &mut Producer<EnableReply>,
+        health: &telemetry::Health,
+        stops: &StopLatch,
+        buses: &mut Buses<'_>,
+        next: u64,
+        now_ns: u64,
+    ) {
+        for _ in 0..enables.buffer().capacity() {
+            let Ok(enable) = enables.pop() else {
+                break;
+            };
+            if let Some(r) = self
+                .enabler
+                .take(roster, enable, buses, health.failed(), now_ns)
+            {
+                push_enable_reply(enable_replies, r, self.replies_dropped);
+            }
+        }
+        if let Some(r) = self
+            .enabler
+            .tick(roster, buses, stops, next, now_ns, self.counts)
+        {
+            push_enable_reply(enable_replies, r, self.replies_dropped);
+        }
     }
 }
 

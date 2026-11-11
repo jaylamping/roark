@@ -77,6 +77,15 @@ pub enum EnableRefused {
         /// Whether every limb it named was stopped.
         stopped: bool,
     },
+    /// A named joint's drive wasn't in its bus's snapshot within `safety::ANSWER_WITHIN_NS` of the enable: its bus
+    /// had published none, or none showing it.
+    #[error("joint {joint}'s drive wasn't seen on its bus (limbs stopped: {stopped})")]
+    Unseen {
+        /// The joint.
+        joint: usize,
+        /// Whether every limb it named was stopped.
+        stopped: bool,
+    },
     /// Another host sent on a bus a named joint is on while the enable ran: its writes may have changed what preflight
     /// proved (PLAN item 3: only the realtime process transmits).
     #[error("another host sent on bus {bus} during the enable (limbs stopped: {stopped})")]

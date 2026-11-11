@@ -10,14 +10,16 @@
 //! its holds everywhere. The runtime never enables on its own.
 
 mod hold;
+mod preflight;
 mod reply;
 #[cfg(test)]
 mod tests;
 
-use can::{CommandBatch, MAX_DRIVES, SlowRequest, SlowResult, Snapshot};
+use can::{CommandBatch, Snapshot};
 use robstride::Drive;
-use rtrb::{Consumer, Producer};
-use safety::{EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal, Seen, Step};
+use safety::{
+    ANSWER_WITHIN_NS, EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal, Seen,
+};
 use skeleton::LimbName;
 
 use crate::dispatch::StopLatch;
@@ -25,6 +27,8 @@ use crate::request::Scope;
 use crate::roster::{JointSet, Roster, RosterJoint};
 
 use hold::{LimbVerdict, halted, limb_on};
+pub(crate) use preflight::{SLOW_RING, SlowEnds};
+use preflight::{drain_stray, step_preflight};
 pub use reply::{Enable, EnableRefused, EnableReply};
 
 /// Where one joint is.
@@ -41,35 +45,16 @@ enum Phase {
     Enabled(Drive),
 }
 
-/// One bus's slow-request rings, as control holds them.
-pub(crate) struct SlowEnds {
-    pub(crate) requests: Producer<SlowRequest>,
-    pub(crate) results: Consumer<SlowResult>,
-    /// The next block of tags for a preflight on this bus.
-    next_tag: u32,
-}
-
-impl SlowEnds {
-    pub(crate) const fn new(
-        requests: Producer<SlowRequest>,
-        results: Consumer<SlowResult>,
-    ) -> Self {
-        Self {
-            requests,
-            results,
-            next_tag: 0,
-        }
-    }
-}
-
 /// What the enabler did, counted over the run.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Counts {
     /// Slow results that answered no preflight running.
     pub(crate) stray_results: u64,
-    /// Held limbs stopped under `host.mode`'s limb-mate clause: one per stop, however long the stop takes to show.
+    /// Limbs stopped under `host.mode`'s limb-mate clause, a held limb's or the enable running's: one per limb each
+    /// time, however long the stop takes to show.
     pub(crate) mode_stops: u64,
-    /// Joints no longer held, one per joint each time: their limb stopped (or `host.mode` stopped it).
+    /// Enabled joints no longer held, one per joint each time: their limb stopped on some bus (then cleared, perhaps),
+    /// or their enable failed.
     pub(crate) holds_ended: u64,
 }
 
@@ -81,6 +66,8 @@ pub(crate) struct Enabler {
     phases: Vec<Phase>,
     /// Each bus's count of other hosts' frames as the enable running began, by plan index; made once, at start.
     foreign: Vec<u64>,
+    /// When the enable running began.
+    started_ns: u64,
 }
 
 /// One tick's view of the buses, for [`Enabler::tick`].
@@ -126,6 +113,9 @@ enum Failed {
     Mode {
         limb: LimbName,
     },
+    Unseen {
+        joint: usize,
+    },
 }
 
 impl Enabler {
@@ -135,11 +125,13 @@ impl Enabler {
             run: None,
             phases: (0..roster.len()).map(|_| Phase::Off).collect(),
             foreign: vec![0; buses],
+            started_ns: 0,
         }
     }
 
     /// Take a new enable at `now_ns`: refused at once if another runs, the recording has failed, it names nothing or a
-    /// joint the roster doesn't have, a joint already enabled or one whose skeleton entry can't pass preflight;
+    /// joint the roster doesn't have, a joint already enabled or of a limb held on any bus, or one whose skeleton entry
+    /// can't pass preflight;
     /// otherwise every named joint's preflight starts.
     pub(crate) fn take(
         &mut self,
@@ -177,6 +169,7 @@ impl Enabler {
             };
         }
         self.run = Some((enable.tag, enable.joints));
+        self.started_ns = now_ns;
         None
     }
 
@@ -203,6 +196,14 @@ impl Enabler {
             if matches!(self.phases.get(joint), Some(Phase::Enabled(_))) {
                 return Err(EnableRefused::AlreadyEnabled { joint });
             }
+            // A limb held on any bus is enabled: preflight's own check reads only the joint's bus, where another part
+            // of the limb may be idle.
+            if self.limb_held(roster, entry.limb) {
+                return Err(EnableRefused::Preflight {
+                    joint,
+                    refusal: Refusal::LimbActive,
+                });
+            }
             if let Err(refusal) = entry.target {
                 return Err(EnableRefused::Preflight { joint, refusal });
             }
@@ -217,8 +218,16 @@ impl Enabler {
         Ok(())
     }
 
+    /// Whether any joint of `limb`, on any bus, is enabled.
+    fn limb_held(&self, roster: &Roster, limb: LimbName) -> bool {
+        self.phases.iter().enumerate().any(|(j, phase)| {
+            matches!(phase, Phase::Enabled(_)) && roster.joint(j).is_some_and(|e| e.limb == limb)
+        })
+    }
+
     /// End the enable running, if any, because the run is ending, which stops every limb: so is any joint of it whose
-    /// Enable may have gone. Its joints already enabled stay held until the bus stops their limbs; the rest are dropped.
+    /// Enable may have gone. Its joints already enabled keep their phase, though no further hold is sent, and each bus
+    /// stops their limbs as the run ends; the rest are dropped.
     pub(crate) fn end(&mut self) -> Option<EnableReply> {
         let (tag, joints) = self.run.take()?;
         for joint in joints.iter() {
@@ -260,15 +269,7 @@ impl Enabler {
         counts: &mut Counts,
     ) -> Option<EnableReply> {
         let Some((tag, joints)) = self.run else {
-            // Results for no preflight: drained and counted, so an old one never answers a new preflight's tag.
-            for ends in buses.slow.iter_mut() {
-                for _ in 0..ends.results.buffer().capacity() {
-                    if ends.results.pop().is_err() {
-                        break;
-                    }
-                    counts.stray_results += 1;
-                }
-            }
+            drain_stray(buses.slow, counts);
             return None;
         };
         self.route_results(roster, joints, buses.slow, now_ns, counts);
@@ -359,6 +360,10 @@ impl Enabler {
             .get(bus)
             .and_then(Option::as_ref)
             .and_then(|s| Seen::of(bus_name, s, slot));
+        // A joint not yet in its bus's snapshot can't step, so none of its own deadlines run: this one bounds the wait.
+        if seen.is_none() && now_ns.saturating_sub(self.started_ns) > ANSWER_WITHIN_NS {
+            return Err(Failed::Unseen { joint });
+        }
         // A limb is one limb over every bus it is on: a part stopped anywhere voids the proofs and ends the sequences.
         if let Some(stop) = halted(roster, buses.snapshots, entry.limb) {
             return Err(halted_failure(phase, joint, stop));
@@ -417,41 +422,15 @@ impl Enabler {
         };
         match roster.joint(joint) {
             Some(entry)
-                if held && self.verdict(roster, snapshots, entry.limb) == LimbVerdict::Mode =>
+                if held
+                    && matches!(
+                        self.verdict(roster, snapshots, entry.limb),
+                        LimbVerdict::Mate(_)
+                    ) =>
             {
                 Err(Failed::Mode { limb: entry.limb })
             }
             Some(_) | None => Ok(()),
-        }
-    }
-
-    /// Each bus's slow results to the preflight whose slot and block of tags they carry; any other is counted and dropped.
-    fn route_results(
-        &mut self,
-        roster: &Roster,
-        joints: JointSet,
-        slow: &mut [SlowEnds],
-        now_ns: u64,
-        counts: &mut Counts,
-    ) {
-        for (bus, ends) in slow.iter_mut().enumerate() {
-            for _ in 0..ends.results.buffer().capacity() {
-                let Ok(result) = ends.results.pop() else {
-                    break;
-                };
-                let owner = joints.iter().find(|j| {
-                    roster
-                        .joint(*j)
-                        .and_then(RosterJoint::slot)
-                        .is_some_and(|(b, slot)| b == bus && slot == result.slot)
-                        && matches!(self.phases.get(*j), Some(Phase::Preflight { first_tag, .. })
-                            if result.tag.wrapping_sub(*first_tag) < Preflight::TAGS)
-                });
-                match owner.and_then(|j| self.phases.get_mut(j)) {
-                    Some(Phase::Preflight { preflight, .. }) => preflight.answered(result, now_ns),
-                    _ => counts.stray_results += 1,
-                }
-            }
         }
     }
 
@@ -507,6 +486,7 @@ impl Enabler {
                 EnableRefused::LimbMate { limb, stopped }
             }
             Failed::Foreign { bus } => EnableRefused::ForeignHost { bus, stopped },
+            Failed::Unseen { joint } => EnableRefused::Unseen { joint, stopped },
         };
         EnableReply {
             tag,
@@ -559,43 +539,6 @@ fn halted_failure(phase: &Phase, joint: usize, stop: Option<can::StopReason>) ->
     }
 }
 
-/// One preflight, one tick on: its request onto its bus's ring, its proof once it passes, or its refusal.
-fn step_preflight(
-    preflight: &mut Preflight,
-    seen: Seen<'_>,
-    buses: &mut Buses<'_>,
-    bus: usize,
-    joint: usize,
-    now_ns: u64,
-) -> Result<Option<PreflightPassed>, Failed> {
-    match preflight.poll(seen, now_ns) {
-        Step::Submit(request) => {
-            // A ring of a request per slot: one preflight has one in flight, so it always has room. A full ring is a bug
-            // here; it refuses the enable rather than waits.
-            let pushed = buses
-                .slow
-                .get_mut(bus)
-                .is_some_and(|ends| ends.requests.push(request).is_ok());
-            if pushed {
-                Ok(None)
-            } else {
-                Err(Failed::Preflight {
-                    joint,
-                    refusal: Refusal::NoStatus,
-                })
-            }
-        }
-        Step::Wait => Ok(None),
-        Step::Passed(proof) => Ok(Some(proof)),
-        Step::Refused(refusal) => Err(Failed::Preflight { joint, refusal }),
-        // Only a preflight that already passed says so: never one still running here.
-        Step::Spent => Err(Failed::Preflight {
-            joint,
-            refusal: Refusal::NoStatus,
-        }),
-    }
-}
-
 /// `frame` into its joint's slot of the next batch. The plan keeps every slot in range; a frame that can't go stops its
 /// limb.
 fn place(buses: &mut Buses<'_>, stops: &StopLatch, entry: &RosterJoint, frame: robstride::Frame) {
@@ -617,6 +560,3 @@ fn foreign_host(snapshots: &[Option<Snapshot>], bus: usize) -> u64 {
         .and_then(Option::as_ref)
         .map_or(0, |s| s.counters.foreign_host)
 }
-
-/// The slow rings' size: a request per slot a bus holds.
-pub(crate) const SLOW_RING: usize = MAX_DRIVES;

@@ -119,13 +119,17 @@ impl Rig {
     }
 
     fn tick(&mut self, enabler: &mut Enabler) -> Option<EnableReply> {
+        self.tick_at(enabler, 0)
+    }
+
+    fn tick_at(&mut self, enabler: &mut Enabler, now_ns: u64) -> Option<EnableReply> {
         for b in &mut self.batches {
             *b = CommandBatch::new(1, u64::MAX);
         }
         let roster = self.roster.clone();
         let stops = core::mem::take(&mut self.stops);
         let mut counts = self.counts;
-        let reply = enabler.tick(&roster, &mut self.buses(), &stops, 1, 0, &mut counts);
+        let reply = enabler.tick(&roster, &mut self.buses(), &stops, 1, now_ns, &mut counts);
         self.counts = counts;
         self.stops = stops;
         reply
@@ -161,7 +165,8 @@ fn enabled(rig: &mut Rig, enabler: &mut Enabler, names: &[&str]) {
 }
 
 /// Guards: safety - an enable is refused before anything is sent when it names nothing or an index the roster doesn't
-/// have, a joint whose skeleton entry can't pass preflight (a null fact or cap, no bus), a joint already enabled, while
+/// have, a joint whose skeleton entry can't pass preflight (a null fact or cap, no bus), a joint already enabled or of a
+/// limb held on another bus, while
 /// the recording has failed (`host.logging`), or while another enable runs; one that can pass starts a preflight per
 /// named joint, each with its own block of slow-request tags on its bus (PLAN item 6: null refuses enable; enable runs
 /// preflight first).
@@ -231,10 +236,25 @@ fn an_enable_is_refused_before_anything_is_sent_unless_every_joint_can_pass() {
     enabled(&mut rig, &mut enabler, &["arm_a_two"]);
     let a_two = rig.joint("arm_a_two");
     assert_eq!(
-        rig.take(&mut enabler, 6, &["arm_a_one", "arm_a_two"]),
+        rig.take(&mut enabler, 6, &["arm_a_two"]),
         refused(6, EnableRefused::AlreadyEnabled { joint: a_two })
     );
     enabler.phases[a_two] = Phase::Off;
+    // The right arm held on can0: a joint of it on can1, where its part is idle, is refused as preflight would refuse
+    // it on can0.
+    enabled(&mut rig, &mut enabler, &["arm_b_one"]);
+    let b_three = rig.joint("arm_b_three");
+    assert_eq!(
+        rig.take(&mut enabler, 6, &["arm_b_three"]),
+        refused(
+            6,
+            EnableRefused::Preflight {
+                joint: b_three,
+                refusal: Refusal::LimbActive
+            }
+        )
+    );
+    enabler.phases[b_one] = Phase::Off;
     assert!(enabler.run.is_none());
     assert!(rig.slow.iter().all(|s| s.next_tag == 0));
     // The left arm can pass: its preflights start, on can1, with tags in separate blocks.
@@ -496,6 +516,30 @@ fn an_enable_whose_limb_mate_leaves_reset_fails_with_its_limb_stopped() {
             holds_ended: 2
         }
     );
+}
+
+/// Guards: bug - an enable naming a joint its bus's snapshot never shows is refused once preflight's answer window has
+/// passed, rather than running, and refusing every later enable as busy, for as long as the bus stays silent (rust.md:
+/// put a limit on everything).
+#[test]
+fn an_enable_waits_for_an_unseen_joint_only_as_long_as_an_answer() {
+    let mut rig = Rig::new();
+    let mut enabler = Enabler::new(&rig.roster, rig.plans.len());
+    rig.snapshots[1] = None;
+    assert_eq!(rig.take(&mut enabler, 1, &["arm_a_one"]), None);
+    assert_eq!(rig.tick_at(&mut enabler, ANSWER_WITHIN_NS), None);
+    assert_eq!(
+        rig.tick_at(&mut enabler, ANSWER_WITHIN_NS + 1),
+        Some(EnableReply {
+            tag: 1,
+            outcome: Err(EnableRefused::Unseen {
+                joint: rig.joint("arm_a_one"),
+                stopped: false
+            })
+        })
+    );
+    assert_eq!(rig.stopped(), []);
+    assert!(enabler.run.is_none());
 }
 
 /// Guards: safety - the hold every enabled drive gets is zero gains and zero torque, encodable for a model with

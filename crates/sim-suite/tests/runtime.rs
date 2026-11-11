@@ -578,6 +578,14 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
                         == Some(can::StopReason::DriveFault { slot: 0 }))),
             "{newest:?}"
         );
+        // Control drops the hold in the pass that hands over that view, after handing it over: a view of a later tick
+        // shows that pass done before the run ends.
+        let fault_tick = newest[1].as_ref().map_or(0, |s| s.tick);
+        assert!(
+            until(&mut runtime, &mut newest, end, |bus, s| bus == 0
+                || s.tick > fault_tick),
+            "{newest:?}"
+        );
 
         let exit = runtime.end().unwrap();
         assert!(exit.control.error.is_none(), "{:?}", exit.control);

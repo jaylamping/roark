@@ -21,13 +21,14 @@ thread per wired bus and the control thread on one schedule origin, and takes th
   replies and views.
 - **Enables** (`Enable`, through `Runtime::enables`, of joints named by `Runtime::joints`) are answered by one
   `EnableReply`. One runs at a time. An enable is refused before anything is sent if it names nothing, a joint already
-  enabled, or a joint whose skeleton entry can't pass (a null fact or cap, no bus, a model without settled MIT scales),
+  enabled or of a limb held on any bus, or a joint whose skeleton entry can't pass (a null fact or cap, no bus, a model without settled MIT scales),
   or while the session's recording has failed (`host.logging`). Otherwise every named joint's preflight runs (`safety`,
   over its bus's slow requests); in the tick the last one passes every enable sequence starts, and once every drive is
   in Run and MIT mode the enable is answered `Ok`. A refusal before any Enable may have gone stops nothing; a failure
   after one stops every limb the enable named. A limb is one limb over every bus it is on: a part of it stopped on any
   bus fails the enable, so a limb over two buses enables only once both are cleared. Another host's frame on a named
-  joint's bus during the enable fails it too, since its writes could change what preflight proved.
+  joint's bus during the enable fails it too, since its writes could change what preflight proved, as does a named
+  drive its bus hasn't shown within preflight's answer window.
 - **The hold**: every enabled joint gets a slack MIT command each tick from the tick its own drive is in Run (zero gains,
   zero torque: watched by the bus's rules, holding nothing, so the motion rules have nothing to check yet) until real
   control modes and gains exist. A joint stops being held when its limb stops on any bus, and a stop on one bus is then
@@ -54,8 +55,9 @@ Known limits, each failing closed or only delaying a stop by a pass: control dec
 seen on one bus reaches the limb's other buses a control pass later; a limb-mate's view carries no age, so a bus that
 missed its tick shows its last one; a bus with no snapshot yet when an enable is taken counts every other host's frame
 it later reports as new, refusing the enable; the recording's `Health` fails on write errors only, not on frames the
-recorder's ring dropped; and a joint whose drive its bus's snapshot doesn't show isn't stepped, so its sequence's
-deadlines wait until it is seen again.
+recorder's ring dropped; a drive that reboots after its preflight passed, while its enable waits for a mate's proof,
+loses its `canTimeout` with nothing on the bus to say so (whether a real RobStride leaves a trace is for the bench); and
+a full slow ring is reported as `NoStatus`.
 
 ## Must never
 

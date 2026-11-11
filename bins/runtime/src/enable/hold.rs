@@ -49,7 +49,7 @@ impl Enabler {
                     {
                         self.send_hold(joint, entry, buses, stops);
                     }
-                    LimbVerdict::Hold | LimbVerdict::Halted | LimbVerdict::Mode => {
+                    LimbVerdict::Hold | LimbVerdict::Halted | LimbVerdict::Mate(_) => {
                         self.drop_hold(joint, counts);
                     }
                 }
@@ -57,7 +57,7 @@ impl Enabler {
             match verdict {
                 LimbVerdict::Hold => {}
                 LimbVerdict::Halted => stops.ask(Scope::Limb(limb)),
-                LimbVerdict::Mode => {
+                LimbVerdict::Mate(_) => {
                     counts.mode_stops += 1;
                     stops.ask(Scope::Limb(limb));
                 }
@@ -101,9 +101,7 @@ impl Enabler {
         }
         match limb_mates(self.mates(roster, snapshots, limb)) {
             HoldVerdict::Hold => LimbVerdict::Hold,
-            HoldVerdict::Stop(RuleId::HostMode) => LimbVerdict::Mode,
-            // The clause gives only `host.mode`; any other rule still stops the limb.
-            HoldVerdict::Stop(_) => LimbVerdict::Halted,
+            HoldVerdict::Stop(rule) => LimbVerdict::Mate(rule),
         }
     }
 
@@ -149,8 +147,8 @@ pub(super) enum LimbVerdict {
     Hold,
     /// Stopped on some bus: stopped on every bus.
     Halted,
-    /// A drive of it this host didn't enable left Reset, or can't be seen: stopped (`host.mode`).
-    Mode,
+    /// A drive of it this host didn't enable left Reset, or can't be seen: stopped under this rule (`host.mode`).
+    Mate(RuleId),
 }
 
 /// `entry`'s limb as its own bus's newest snapshot shows it.
