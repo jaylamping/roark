@@ -180,3 +180,22 @@ PC: it keeps the older copies as a backup and is not used for CAD runs.
   connection mid-save can corrupt a SolidWorks file, and FEA output would load Joey-PC's disk and network.
 - Nobody uses holly-pc while sessions run, so SolidWorks may run visibly there; hidden stays the default
   ([RULES.md](../tools/solidworks/RULES.md)).
+
+### SolidWorks and Bambu Studio settings on holly-pc
+
+holly-pc's SolidWorks is a fresh install. Its defaults differ from Joey-PC's in ways the scripts relied on without saying so
+(found while rebuilding the upper arm R1, 2026-11-11). Set these in the script that exports, not by hand, and log them:
+
+| Setting | Joey-PC (as the v26 exports show) | holly-pc default | What to do |
+| --- | --- | --- | --- |
+| Default part template | set, **IPS** units | **none** | Pass a template (`SW_PART_TEMPLATE`, e.g. `C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2026\templates\MBD\part 0051mm to 0250mm.prtdot`) and set the document to MMGS (`SetUserPreferenceInteger(263, 0, 5)`). STEP exports then come out in mm instead of inches; the geometry is the same. |
+| STL: do not translate to positive space (toggle 71) | on | **off**: STLs shift by the part's negative extents | Turn it on. Anything that reads an exported STL in the CAD frame breaks otherwise. |
+| STL binary (69), units (211 = mm), quality (78) | binary, mm, Fine | same | Set them anyway. Fine reproduced the v26 face counts. |
+| STEP AP (75) | AP203 | AP203 | Set it anyway. |
+| Simulation solver, mesher, Jacobian points | defaults | defaults | `p3_fea.py` logs them. The smoke test re-solved two Joey-PC cases within 2 %, with nearly the same node counts. |
+
+`cad/scripts/arm/organic_master.py` does all of this at startup; copy that block into other export scripts.
+
+Bambu Studio **2.09.01.70**, the version the upper-arm slices used, is installed at `C:\Program Files\Bambu Studio`. Its GUI had
+not been run, so `%APPDATA%\BambuStudio\system\BBL` didn't exist. Fall back to the presets the install ships in
+`resources\profiles\BBL`. Re-slicing the reviewed ring that way reproduced the stored slice exactly (3465 s, 19.04 g).
