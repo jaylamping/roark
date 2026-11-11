@@ -36,9 +36,9 @@ Each `WIRE_*` body runs 80–120 mm. Rows that bend the same way use concentric 
 | Limb pigtails J8, J10, J12 (arms, waist, aux: 16 AWG, 3.0 mm; legs: 14 AWG, 3.6 mm) | pads at X +45, Y 206–248 | +Z, then +X out of the side edge | 3 × OD (R9 / R11) | `KO_limb_pigtails_right` |
 | Limb pigtails J9, J11, J13 | pads at X −45, Y 206–248 | +Z, then −X | 3 × OD | `KO_limb_pigtails_left` |
 | Brake J3, J25 (Mini-Fit Jr, 18 AWG, 2.3 mm) | mated plug top, Z about 23.6, at X 29 and 37 | +Z, then +Y | R8 and up (nested) | `KO_brake_plugs_J3_J25` |
-| 12 V converter J24 (Micro-Fit 2 × 6, 18 AWG, 1.9 mm) | plug top, Z about 17.6, X −37.5..−22.5 | +Z, then +Y | R6 and up | `KO_12V_converter_plug_J24` |
-| 12 V outputs J5, J6, J7, J22, J23 (Micro-Fit) | plug top, Z about 17.6, Y about 194–197 | +Z, then −Y | 4 × OD and up | `KO_bottom_plugs_J5_J7_J21_J22_J23` |
-| Pi link J21 (GH 8, 26 AWG, 1.0 mm) | plug back at Y about 185, Z 3.8 | −Y (side entry) | none on the board | same |
+| Buck board pigtail J24 (Micro-Fit 2 × 6, 18 AWG, 1.9 mm) | plug top, Z about 17.6, X −37.5..−22.5 | +Z, then +Y | R6 and up | `KO_12V_converter_plug_J24` |
+| 12 V outputs | on the buck board since split S1 (2026-11-09): J2 Jetson, J3 Pi buck, J4 fans, J5 SPARE_SW, J6 SPARE_ON | | | |
+| Pi link J21 (GH 8, 26 AWG, 1.0 mm) | plug back at Y about 185, Z 3.8 | −Y (side entry) | none on the board | `KO_bottom_plug_J21` |
 | E-stop loop J20 (GH 8, 26 AWG, 1.0 mm) | plug back at X about −48.5, Z 3.8 | −X (side entry) | none on the board | `KO_estop_plug_J20` |
 
 Rev B5 change in this hand-off: J20 was turned 180° so its plug enters from the −X edge. It used to face into the board.
@@ -62,8 +62,8 @@ All dimensions marked "about" are approximate. Take the drawing before freezing 
 | L leg, R leg (rev C) | 14 AWG pigtail (kept heavier for the leg ports, rev C) → fuse → **Amass XT60** + separate JST GH CAN at the leg | — | XT60 mated about 16 × 8 × 32 mm |
 | Aux | as arms | — | unfitted |
 | Brake ×2 | Mini-Fit Jr 5557-02R plug | HS50 tabs (solder or ring) | plug about 10 × 10 mm, 22 mm above the board |
-| 12 V converter | Micro-Fit 3.0 43025-1200 | the same plug on the buck board | plug about 21 × 10 mm |
-| 12 V outputs | Micro-Fit 3.0 43025-0200/-0400 | loads | plug about 7 × 10 mm |
+| Buck board pigtail | Micro-Fit 3.0 43025-1200 | the same plug on the buck board | plug about 21 × 10 mm |
+| 12 V outputs (buck board) | Micro-Fit 3.0 43025-0200/-0400 | loads | plug about 7 × 10 mm |
 | Pi link, E-stop | JST GH GHR-08V-S (both) | Pi adapter; E-stop and reset buttons | plug about 11 × 4.25 × 6.5 mm |
 
 **Arm, waist and aux pigtails are 16 AWG** (coordinator 18:55Z, matching

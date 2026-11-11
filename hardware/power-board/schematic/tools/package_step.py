@@ -21,7 +21,7 @@ a=cq.Assembly(name='marengo_power_board_revb5')
 a.add(board,name='board_with_parts',color=cq.Color(0.1,0.35,0.15))
 # connectors without a KiCad 3D model: courtyard footprint, approximate mated height with the plug (Micro-Fit 3.0 about 16 mm,
 # Mini-Fit Jr about 22 mm)
-for r,h in (('J3',22),('J25',22),('J5',16),('J6',16),('J7',16),('J22',16),('J23',16),('J24',16)):
+for r,h in (('J3',22),('J25',22),('J24',16)):   # the 12 V outputs moved to the buck board (split S1)
     x0,x1,y0,y1=conn[r]['box']; a.add(box(x0,x1,y0,y1,T,T+h),name=f'{r}_approx',color=cq.Color(0.2,0.2,0.2))
 # heatsink (THERMAL_OPTION.md option D, chosen by Joey 2026-11-07): commodity 120 x 69 x 36 mm extruded aluminium, 27 fins
 # along Y, 4.6 mm base, fitted as bought (120 mm; the 100 x 170 board moved the Micro-Fit pins to Y 175, F2's pins start at
@@ -39,7 +39,7 @@ a.add(hs,name='heatsink_120x69x36',color=cq.Color(0.75,0.75,0.78))
 KO={'KO_pack_8AWG_leads_R15_bend':(-5,25,325,358,-12,22),
     'KO_brake_plugs_J3_J25':(25,41,327.5,365,T,30),
     'KO_12V_converter_plug_J24':(-42,-18,328.5,365,T,30),
-    'KO_bottom_plugs_J5_J7_J21_J22_J23':(-38,24,145,180,T,30),
+    'KO_bottom_plug_J21':(-38,24,145,180,T,30),
     'KO_estop_plug_J20':(-70,-35,295,311,T,9),
     'KO_limb_pigtails_right':(42,80,203,252,-6,20),
     'KO_limb_pigtails_left':(-80,-42,203,252,-6,20),
@@ -96,10 +96,7 @@ for r,tag in LIMB.items():
 # brake leads: Mini-Fit Jr plug (mated top about 22 mm above the board), 18 AWG silicone twisted pair, 2.3 mm OD, toward +Y
 for r in ('J3','J25'): nested(r,T+22.0,2.3,8.0,1,90.0,'BRAKE','18 AWG twisted pair to the HS50 on the '+('+X' if r=='J3' else '-X')+' gusset')
 # 12 V converter pigtail J24: Micro-Fit 3.0 2 x 6 (mated top about 16 mm), 18 AWG thin-wall, 1.9 mm OD, toward +Y
-nested('J24',T+16.0,1.9,6.0,1,100.0,'BUCK12','18 AWG, twisted in facing pairs, about 150 mm to the buck board')
-# bottom-edge 12 V outputs, Micro-Fit 3.0 (mated top about 16 mm), toward -Y: 18 AWG for Jetson, Pi, spares; 22 AWG for fans
-for r,tag,od in (('J5','JETSON12',1.9),('J6','PI12',1.9),('J7','FAN12',1.3),('J22','SPARE_SW',1.9),('J23','SPARE_ON',1.9)):
-    nested(r,T+16.0,od,4*od,-1,100.0,tag,{'J7':'22 AWG to the fan splitter'}.get(r,'18 AWG'))
+nested('J24',T+16.0,1.9,6.0,1,100.0,'BUCK12','18 AWG, twisted in facing pairs (n with n+6), about 150 mm to the buck board (300 mm at most: I2C)')
 # JST GH 1.25 side-entry cables, 26 AWG, 1.0 mm OD, leaving the plug back (plug about 6.5 mm long), 2.2 mm above the board
 for r,tag,ax in (('J21','PI_LINK',(0,-1,0)),('J20','ESTOP_LOOP',(-1,0,0))):
     x0,x1,y0,y1=conn[r]['box']
