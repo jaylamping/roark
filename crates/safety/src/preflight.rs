@@ -274,7 +274,7 @@ pub struct PreflightPassed {
     slot: usize,
     /// The limb's `generation` throughout: a clear since would void the proof.
     generation: u32,
-    /// When preflight began: it held the drive in Reset from here to its pass.
+    /// When preflight began: every status and version reply read since showed Reset up to the pass.
     started_ns: u64,
     at_ns: u64,
 }
