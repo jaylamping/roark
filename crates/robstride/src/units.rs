@@ -9,6 +9,9 @@ macro_rules! si_unit {
         pub struct $name(pub(crate) f64);
 
         impl $name {
+            /// Zero.
+            pub const ZERO: Self = Self(0.0);
+
             /// The value, or `None` if it isn't finite.
             #[must_use]
             pub fn new(value: f64) -> Option<Self> {

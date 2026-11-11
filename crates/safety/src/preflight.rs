@@ -4,8 +4,8 @@
 //! preflight doesn't compile (rust.md section 3).
 //!
 //! A write is answered by a plain status that names no register (`robstride` `param_write`), so a write proves nothing
-//! until its read-back. Every unknown fails closed: a request not answered in time, an answer of the wrong kind, a value
-//! the skeleton leaves null.
+//! until its read-back. Every unknown fails closed: a request not answered in time, or an answer of the wrong kind. A
+//! value the skeleton leaves null is not one: it lowers the caps written to the model's commissioning caps (PLAN item 1).
 //!
 //! Preflight is stepped with what its drive's bus last showed ([`Seen`]): a view of any other drive, by ID or by bus,
 //! or from another slot than its requests go to, refuses, and so does a limb that isn't idle, or that stopped or was
@@ -17,8 +17,7 @@
 
 use can::{DriveView, LimbState, ModeSeen, SlowKind, SlowOutcome, SlowRequest, SlowResult};
 use robstride::{
-    Amps, CanTimeout, Damper, Drive, Mode, NewtonMeters, Param, ParamOutcome, ParamValue,
-    RadPerSec, Uid, Volts, Write,
+    CanTimeout, Damper, Drive, Mode, Param, ParamOutcome, ParamValue, Uid, Volts, Write,
 };
 use skeleton::{Joint, Power, Window};
 
@@ -161,30 +160,6 @@ pub struct Target {
     current: Write,
     speed: Write,
     vbus: Window<Volts>,
-    commissioned: bool,
-}
-
-/// `joint`'s three caps and whether it is commissioned: its skeleton caps if so; otherwise each the lower of its
-/// model's commissioning cap and its own, if set. `None` only if the model's commissioning caps can't be made.
-fn caps(joint: &Joint) -> Option<(NewtonMeters, Amps, RadPerSec, bool)> {
-    let facts = joint.direction.is_some() && joint.zero_rad.is_some() && joint.hard_rad.is_some();
-    match (
-        joint.torque_cap_nm,
-        joint.current_cap_a,
-        joint.speed_cap_rad_s,
-    ) {
-        (Some(torque), Some(current), Some(speed)) if facts => Some((torque, current, speed, true)),
-        (torque, current, speed) => {
-            let floor = skeleton::CommissioningCaps::of(joint.actuator)?;
-            let lower = |own: Option<f64>, floor: f64| own.map_or(floor, |own| own.min(floor));
-            Some((
-                NewtonMeters::new(lower(torque.map(NewtonMeters::get), floor.torque.get()))?,
-                Amps::new(lower(current.map(Amps::get), floor.current.get()))?,
-                RadPerSec::new(lower(speed.map(RadPerSec::get), floor.speed.get()))?,
-                false,
-            ))
-        }
-    }
 }
 
 impl Target {
@@ -194,8 +169,8 @@ impl Target {
     /// [`Refusal::Unwired`] for a joint with no bus, [`Refusal::UnvouchedModel`] for a model whose MIT scales aren't
     /// settled, [`Refusal::CapOutOfRange`] for a cap its model can't take.
     ///
-    /// Null is not a refusal (PLAN item 1): a joint with any cap, `direction`, `zero_rad` or `hard_rad` null is
-    /// uncommissioned, and gets its model's [`skeleton::CommissioningCaps`], or its own cap where that is lower.
+    /// Null is not a refusal (PLAN item 1): the caps written are [`skeleton::Joint::caps`], a commissioned joint's own
+    /// or an uncommissioned one's commissioning caps.
     pub fn new(joint: &Joint, power: &Power) -> Result<Self, Refusal> {
         // The skeleton holds every bus name to the kernel's limit, so a name that doesn't fit an address is one no
         // parsed skeleton has: no bus this host can open, so the joint is offline.
@@ -210,8 +185,11 @@ impl Target {
             return Err(Refusal::UnvouchedModel(drive.model()));
         }
         let ranges = drive.model().ranges();
-        let (torque, current, speed, commissioned) =
-            caps(joint).ok_or(Refusal::UnvouchedModel(drive.model()))?;
+        let skeleton::Caps {
+            torque,
+            current,
+            speed,
+        } = joint.caps();
         let out = |cap, value, max| Refusal::CapOutOfRange { cap, value, max };
         Ok(Self {
             drive,
@@ -240,15 +218,7 @@ impl Target {
                 )
             })?,
             vbus: power.vbus_v,
-            commissioned,
         })
-    }
-
-    /// Whether the joint is commissioned, so runs at its skeleton caps: every cap, `direction`, `zero_rad` and
-    /// `hard_rad` set. One that isn't runs at its model's commissioning caps (PLAN item 1).
-    #[must_use]
-    pub const fn commissioned(&self) -> bool {
-        self.commissioned
     }
 
     /// The drive.
@@ -261,12 +231,6 @@ impl Target {
     #[must_use]
     pub const fn address(&self) -> DriveAddress {
         self.address
-    }
-
-    /// The three cap writes preflight sends and reads back: `limit_torque`, `limit_cur`, `limit_spd`.
-    #[must_use]
-    pub const fn caps(&self) -> [Write; 3] {
-        [self.torque, self.current, self.speed]
     }
 
     const fn write(&self, register: Register) -> Option<Write> {
