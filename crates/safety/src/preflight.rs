@@ -270,6 +270,8 @@ pub struct PreflightPassed {
     address: DriveAddress,
     /// The limb's `generation` throughout: a clear since would void the proof.
     generation: u32,
+    /// When preflight began: it held the drive in Reset from here to its pass.
+    started_ns: u64,
     at_ns: u64,
 }
 
@@ -291,7 +293,15 @@ impl PreflightPassed {
         self.generation
     }
 
-    /// When the last check passed, monotonic, for the event log.
+    /// When preflight began, on the bus's clock: every status and version reply read since showed Reset up to the
+    /// pass, so a mode out of Reset read since is news the proof didn't check.
+    pub(crate) const fn started_ns(&self) -> u64 {
+        self.started_ns
+    }
+
+    /// The control thread's clock at the poll that passed, for the event log. Not the read time of anything it judged:
+    /// control takes the snapshot before it reads the clock, so a frame the bus read in between is newer than the
+    /// snapshot but older than this.
     #[must_use]
     pub const fn at_ns(&self) -> u64 {
         self.at_ns
@@ -449,6 +459,7 @@ impl Preflight {
                         drive: self.target.drive,
                         address: self.target.address,
                         generation,
+                        started_ns: self.started_ns,
                         at_ns: now_ns,
                     })
                 }

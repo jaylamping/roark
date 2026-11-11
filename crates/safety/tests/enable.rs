@@ -19,7 +19,10 @@ use safety::{
 /// The default tick (`can::Timing`'s at PLAN item 3's 250 Hz).
 const PERIOD: u64 = can::Timing::at_hz(250).period_ns;
 
-/// A preflight pass for the fixture's first joint, run against a truthful drive.
+/// When [`passed`]'s preflight begins.
+const PREFLIGHT_AT: u64 = 1_000;
+
+/// A preflight pass for the fixture's first joint begun at [`PREFLIGHT_AT`], run against a truthful drive.
 #[expect(
     clippy::unwrap_used,
     clippy::panic,
@@ -28,7 +31,7 @@ const PERIOD: u64 = can::Timing::at_hz(250).period_ns;
 fn passed() -> PreflightPassed {
     let skeleton = skeleton();
     let target = Target::new(&joint(&skeleton, 0), &skeleton.power).unwrap();
-    let mut preflight = Preflight::start(target, 0, 1, 0);
+    let mut preflight = Preflight::start(target, 0, 1, PREFLIGHT_AT);
     let mut view = quiet();
     let mut written = Vec::new();
     for n in 1..32 {
@@ -599,9 +602,10 @@ fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
     );
 }
 
-/// Guards: safety - `host.preflight`: a drive seen out of Reset after its preflight passed and before its Enable is
+/// Guards: safety - `host.preflight`: a drive seen out of Reset since its preflight began and before its Enable is
 /// planned, in a status or a version reply, ends the sequence before any Enable: something else put it in that mode,
-/// and a drive already in Run would answer the Enable in Run. A status from before the proof doesn't count, and after
+/// and a drive already in Run would answer the Enable in Run. That counts from when preflight began, so a status the bus
+/// read after the snapshot preflight passed on isn't missed; one from before preflight began doesn't count, and after
 /// the Enable is planned a Run is its answer (PLAN item 6 Preflight row: the drive in Reset; another controller).
 #[test]
 fn the_enable_sequence_refuses_a_drive_out_of_reset_before_its_enable() {
@@ -635,19 +639,29 @@ fn the_enable_sequence_refuses_a_drive_out_of_reset_before_its_enable() {
     assert_eq!(failure.rule(), RuleId::HostPreflight);
     assert_eq!(
         failure.message("arm_joint_one"),
-        "enable failed (host.preflight): arm_joint_one reported Run after its preflight, before its Enable, expected \
-         Reset"
+        "enable failed (host.preflight): arm_joint_one reported Run since its preflight began, before its Enable, \
+         expected Reset"
     );
 
-    // A Run read before the proof was made is older than what preflight checked.
-    let mut enabling = Enabling::new(passed(), t0);
-    let before_proof = with_status(echo, Mode::Run, 1);
-    let _ = enabling.step(shown(&quiet()).seen(), 0, t0);
-    let _ = enabling.step(shown(&before_proof).seen(), 1, t0 + PERIOD);
-    assert_eq!(
-        enabling.step(shown(&before_proof).seen(), 2, t0 + 2 * PERIOD),
-        Next::Send(encode::enable(joint(&skeleton(), 0).id))
-    );
+    // What preflight checked runs from when it began, not from control's clock at its pass: a Run the bus read after
+    // the snapshot that passed, though before that clock, is news; one read before preflight began is not.
+    let proved_ns = passed().at_ns();
+    let enable = Next::Send(encode::enable(joint(&skeleton(), 0).id));
+    for (read_ns, expected) in [
+        (PREFLIGHT_AT - 1, enable),
+        (PREFLIGHT_AT, Next::Refused(failure)),
+        (proved_ns - 1, Next::Refused(failure)),
+    ] {
+        let mut enabling = Enabling::new(passed(), t0);
+        let run = with_status(echo, Mode::Run, read_ns);
+        let _ = enabling.step(shown(&quiet()).seen(), 0, t0);
+        let _ = enabling.step(shown(&run).seen(), 1, t0 + PERIOD);
+        assert_eq!(
+            enabling.step(shown(&run).seen(), 2, t0 + 2 * PERIOD),
+            expected,
+            "a Run read at {read_ns}"
+        );
+    }
 }
 
 /// Guards: safety - `host.bus`: the Enable is planned inside the reporting off's 50 ms window or not at all: a stall of
