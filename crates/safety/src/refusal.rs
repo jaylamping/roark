@@ -317,7 +317,8 @@ impl Refusal {
             Self::Faults { .. } | Self::FaultSeen => {
                 "Find the fault's cause, power-cycle the drive, clear the limb, then run preflight again"
             }
-            // The bus doesn't stop an idle limb for a drive out of Reset, so there is no stop to clear.
+            // The mode is named before the limb's state, so the limb may also be stopped, for another cause: the bus
+            // itself doesn't stop an idle limb for a drive out of Reset.
             Self::NotReset { .. } => {
                 "Find what put it in that mode; power-cycle the drive, clear the limb if it is stopped, then run preflight again"
             }
