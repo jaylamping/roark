@@ -75,6 +75,8 @@ pub enum EnableFailure {
     LimbStopped {
         /// Why the limb stopped, if the snapshot still says.
         stop: Option<StopReason>,
+        /// Whether the Enable had been planned: the limb was to be running, not idle.
+        enable_planned: bool,
     },
     /// Before its Enable was planned, the drive showed a mode other than Reset (a status or a version reply read since
     /// its preflight passed): something else put it there, and the Enable's answer would prove nothing.
@@ -146,9 +148,17 @@ impl EnableFailure {
             Self::WrongView { view, drive } => {
                 format!("was stepped with {view}'s view, expected {drive}'s")
             }
-            Self::LimbStopped { stop } => format!(
-                "found its limb stopped or cleared since its preflight{}, expected it running",
-                stopped_by(stop)
+            Self::LimbStopped {
+                stop,
+                enable_planned,
+            } => format!(
+                "found its limb stopped or cleared since its preflight{}, expected it {}",
+                stopped_by(stop),
+                if enable_planned {
+                    "running"
+                } else {
+                    "idle throughout"
+                }
             ),
             Self::NotReset { mode } => {
                 format!("reported {mode:?} after its preflight, before its Enable, expected Reset")
@@ -457,6 +467,7 @@ impl Enabling {
         (!seen.limb.state.takes_commands() || seen.limb.generation != self.generation).then_some(
             EnableFailure::LimbStopped {
                 stop: seen.limb.stop,
+                enable_planned: self.enable_planned(),
             },
         )
     }

@@ -558,7 +558,10 @@ fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
         ..IDLE
     };
     let on_stopping = on(&BUS0, &answered, &stopping);
-    let failure = EnableFailure::LimbStopped { stop };
+    let failure = EnableFailure::LimbStopped {
+        stop,
+        enable_planned: true,
+    };
     assert_eq!(
         enabling.step(on_stopping, 4, mit_at + PERIOD),
         Next::Stop(failure)
@@ -578,9 +581,16 @@ fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
     };
     let view = quiet();
     let on_cleared = on(&BUS0, &view, &cleared);
+    let failure = EnableFailure::LimbStopped {
+        stop: None,
+        enable_planned: false,
+    };
+    assert_eq!(enabling.step(on_cleared, 0, t0), Next::Refused(failure));
     assert_eq!(
-        enabling.step(on_cleared, 0, t0),
-        Next::Refused(EnableFailure::LimbStopped { stop: None })
+        failure.message("arm_joint_one"),
+        "enable failed (host.preflight): arm_joint_one found its limb stopped or cleared since its preflight, expected \
+         it idle throughout",
+        "before its Enable the limb was idle, not running"
     );
 }
 
