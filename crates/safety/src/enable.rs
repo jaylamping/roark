@@ -8,9 +8,12 @@
 //! The runtime cancels the sequence on any event that voids its preflight (see [`PreflightPassed`]); the sequence
 //! itself checks, at every step, that it is stepped with its own drive on its own bus ([`Seen`]), that the drive
 //! reports no fault, that until the Enable is planned it shows no mode but Reset since its preflight, and that its limb
-//! hasn't stopped or been cleared since preflight: each of those ends it. It sends
-//! no slow request to a drive while it is enabling: the bus keeps only each drive's last echo, so a slow frame's echo
-//! would hide the sequence's own and the sequence would give up.
+//! hasn't stopped or been cleared since preflight: each of those ends it.
+//!
+//! It sends every frame in control's batch, never as a slow request. A slow request to the drive meanwhile can't
+//! disturb it: the bus keeps as `last_echo` only the kinds of frame a batch carries, so a slow frame's echo never hides
+//! the sequence's own, and once the Enable has made the limb active the bus refuses slow writes to it
+//! (`can::SlowRefusal::LimbNotIdle`), whose status answer could pass for the Enable's or the `run_mode` write's.
 //!
 //! Set Zero has no command in this stack yet. When it gets one, this sequence gains the "no Set Zero to this drive in
 //! the last 800 ms" step before Enable.
