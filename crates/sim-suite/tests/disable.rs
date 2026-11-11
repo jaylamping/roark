@@ -204,9 +204,11 @@ fn bus(seen: &[Seen], from: Instant, quiet: Instant) -> Bus {
     for s in seen.iter().filter(|s| s.at >= from) {
         if let Some(h) = s.host {
             match h.command {
-                HostCommand::Disable => drop(b.disabled.insert(h.target.get())),
+                HostCommand::Disable => {
+                    b.disabled.insert(h.target.get());
+                }
                 HostCommand::Reporting(Reporting::Off) => {
-                    drop(b.reporting_off.insert(h.target.get()))
+                    b.reporting_off.insert(h.target.get());
                 }
                 other => b.other.push(other),
             }
@@ -229,6 +231,7 @@ fn bus(seen: &[Seen], from: Instant, quiet: Instant) -> Bus {
 /// Disable and reporting off, to every drive the skeleton wires, leaving every answering drive in Reset and silent,
 /// with a silent drive reported but not failed.
 #[test]
+#[expect(clippy::too_many_lines, reason = "one run, start to end")]
 fn after_kill_9_disable_leaves_every_drive_in_reset_with_reporting_off() {
     let path = skeleton_path();
     let skeleton = skeleton::load(&path).unwrap();
