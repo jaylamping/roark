@@ -213,8 +213,9 @@ pub enum Next {
     Wait,
     /// The drive is in Run and MIT mode: control may command it.
     Enabled,
-    /// It gave up before the Enable was planned: refuse the enable. No Enable can have gone, so the limb has nothing to
-    /// stop.
+    /// It gave up before its Enable was planned: no Enable went to this drive. That speaks for this drive only: if any
+    /// other sequence of the same enable has planned its Enable ([`Enabling::enable_planned`]), control stops the limb;
+    /// only if none has is the enable refused, with nothing to stop.
     Refused(EnableFailure),
     /// It gave up once the Enable was planned: stop the drive's limb, since the Enable may have gone out.
     Stop(EnableFailure),
@@ -285,8 +286,12 @@ impl Enabling {
         self.drive
     }
 
-    /// Whether the Enable has been planned, so a failure from here on must stop the limb rather than just refuse.
-    const fn enable_planned(&self) -> bool {
+    /// Whether this drive's Enable has been planned, so it may have gone out: a failure from here on stops the limb
+    /// ([`Next::Stop`]). Control asks it of every sequence of an enable when one gives up: a [`Next::Refused`] speaks
+    /// for its own drive only, and the limb must be stopped, not returned to idle, if any of them has planned its
+    /// Enable.
+    #[must_use]
+    pub const fn enable_planned(&self) -> bool {
         match self.stage {
             Stage::ReportingOff | Stage::AwaitEcho { .. } | Stage::Settle { .. } => false,
             Stage::AwaitRun { .. } | Stage::AwaitModeEcho { .. } | Stage::Enabled => true,

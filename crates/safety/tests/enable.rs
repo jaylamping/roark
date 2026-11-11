@@ -6,7 +6,8 @@ mod common;
 
 use can::DriveView;
 use common::enable::{
-    ECHO_NS, MIT, PERIOD, fresh_was, mit_write, passed, superseded, to_enable, to_mit, with_status,
+    ECHO_NS, MIT, PERIOD, fresh_was, mit_write, passed, passed_for, superseded, to_enable, to_mit,
+    with_status,
 };
 use common::{echoed, joint, quiet, seen, shown, skeleton, status};
 use robstride::{EchoKind, Mode, Reporting, StatusFault, StatusFaults, Write, encode};
@@ -482,4 +483,26 @@ fn an_enable_not_read_back_is_told_from_a_drive_that_never_answered() {
         "enable failed (host.bus): arm_joint_one had its Enable not read back within 50 ms, so it may not have gone \
          out, expected its echo"
     );
+}
+
+/// Guards: safety - `host.bus`: a sequence's refusal speaks for its own drive only. In an enable of two drives of one
+/// limb, the first may have planned its Enable when the second gives up before its own: the second is `Refused`, and
+/// the public `enable_planned` says the first's Enable may have gone, so control stops the limb rather than return it
+/// to idle (PLAN item 2, Enable one drive; item 6 States: a limb with anything enabled is stopped).
+#[test]
+fn a_refusal_speaks_for_its_own_drive_only() {
+    let t0 = 100 * PERIOD;
+    let (first, _) = to_enable(t0);
+    let mut second = Enabling::new(passed_for(3), t0);
+    let deaf = DriveView {
+        device: joint(&skeleton(), 3).id,
+        ..quiet()
+    };
+    let _ = second.step(shown(&deaf).seen(), 0, t0);
+    assert_eq!(
+        second.step(shown(&deaf).seen(), 1, t0 + RUN_WITHIN_NS + 1),
+        Next::Refused(EnableFailure::NoEcho)
+    );
+    assert!(first.enable_planned(), "the first's Enable may have gone");
+    assert!(!second.enable_planned(), "no Enable went to the second");
 }

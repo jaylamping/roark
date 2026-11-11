@@ -8,7 +8,7 @@ use robstride::{
 };
 use safety::{Enabling, Next, Preflight, PreflightPassed, Step, Target};
 
-use super::{echoed, joint, quiet, seen, shown, skeleton, status};
+use super::{echoed, joint, quiet, seen, shown, skeleton, status, status_of};
 
 /// The default tick (`can::Timing`'s at PLAN item 3's 250 Hz).
 pub(crate) const PERIOD: u64 = can::Timing::at_hz(250).period_ns;
@@ -16,17 +16,23 @@ pub(crate) const PERIOD: u64 = can::Timing::at_hz(250).period_ns;
 /// When [`passed`]'s preflight begins.
 pub(crate) const PREFLIGHT_AT: u64 = 1_000;
 
-/// A preflight pass for the fixture's first joint begun at [`PREFLIGHT_AT`], run against a truthful drive.
+/// A preflight pass for the fixture's first joint: [`passed_for`] joint 0.
+pub(crate) fn passed() -> PreflightPassed {
+    passed_for(0)
+}
+
+/// A preflight pass for the fixture's joint `n`, begun at [`PREFLIGHT_AT`], run against a truthful drive.
 #[expect(
     clippy::unwrap_used,
     clippy::panic,
     reason = "test helper; the fixture's first joint passes"
 )]
-pub(crate) fn passed() -> PreflightPassed {
+pub(crate) fn passed_for(n: usize) -> PreflightPassed {
     let skeleton = skeleton();
-    let target = Target::new(&joint(&skeleton, 0), &skeleton.power).unwrap();
+    let target = Target::new(&joint(&skeleton, n), &skeleton.power).unwrap();
+    let device = target.drive().id();
     let mut preflight = Preflight::start(target, 0, 1, PREFLIGHT_AT);
-    let mut view = quiet();
+    let mut view = DriveView { device, ..quiet() };
     let mut written = Vec::new();
     for n in 1..32 {
         let now = n * PERIOD;
@@ -38,7 +44,7 @@ pub(crate) fn passed() -> PreflightPassed {
                     ])),
                     SlowKind::Write(w) => {
                         written.push(w);
-                        view = seen(status(Mode::Reset, StatusFaults::default(), now));
+                        view = seen(status_of(device, Mode::Reset, StatusFaults::default(), now));
                         can::SlowOutcome::WriteAnswered
                     }
                     SlowKind::Read(p) => can::SlowOutcome::Read(ParamOutcome::Read(match p {

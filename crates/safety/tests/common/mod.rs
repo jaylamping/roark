@@ -180,9 +180,10 @@ pub(crate) fn quiet() -> DriveView {
     }
 }
 
-/// Drive 101 with its last status, fresh: the first after a command.
+/// The drive of `observed` with it as its last status, fresh: the first after a command.
 pub(crate) fn seen(observed: Observed) -> DriveView {
     DriveView {
+        device: observed.status.header.device,
         observed: Some(observed),
         mode: Some(ModeSeen {
             mode: observed.status.header.mode,
@@ -195,7 +196,7 @@ pub(crate) fn seen(observed: Observed) -> DriveView {
     }
 }
 
-/// Drive 101 with its last status, read with no command outstanding: not fresh.
+/// The drive of `observed` with it as its last status, read with no command outstanding: not fresh.
 pub(crate) fn heard(observed: Observed) -> DriveView {
     DriveView {
         fresh_ns: None,

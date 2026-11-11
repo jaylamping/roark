@@ -119,7 +119,9 @@ pub enum LimbEvent {
     Enable,
     /// Every named joint reached Run.
     Enabled,
-    /// The enable was refused before any Enable was planned: nothing to stop.
+    /// The enable was refused, and none of its sequences had planned an Enable
+    /// ([`Enabling::enable_planned`](crate::Enabling::enable_planned)): nothing was enabled, so nothing to stop. One
+    /// sequence's refusal while another of the same enable has planned its Enable is a [`Self::Stop`], not this.
     Refused,
     /// A stop, and why. The first cause is kept.
     Stop(Cause),
