@@ -21,8 +21,9 @@ thread per wired bus and the control thread on one schedule origin, and takes th
   replies and views.
 - **Enables** (`Enable`, through `Runtime::enables`, of joints named by `Runtime::joints`) are answered by one
   `EnableReply`. One runs at a time. An enable is refused before anything is sent if it names nothing, a joint already
-  enabled or of a limb held on any bus, or a joint whose skeleton entry can't pass (a null fact or cap, no bus, a model without settled MIT scales),
-  or while the session's recording has failed (`host.logging`). Otherwise every named joint's preflight runs (`safety`,
+  enabled or of a limb held on any bus, or a joint whose skeleton entry can't pass (no bus, a model without settled MIT
+  scales, a cap its model can't take), or while the session's recording has failed (`host.logging`). A joint with null
+  facts or caps isn't refused: it enables at its model's commissioning caps (PLAN item 1). Otherwise every named joint's preflight runs (`safety`,
   over its bus's slow requests); in the tick the last one passes every enable sequence starts, and once every drive is
   in Run and MIT mode the enable is answered `Ok`. A refusal before any Enable may have gone stops nothing; a failure
   after one stops every limb the enable named. A limb is one limb over every bus it is on: a part of it stopped on any

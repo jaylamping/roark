@@ -9,7 +9,9 @@ downstream sees raw YAML or re-checks it. Every problem in the file is reported 
 and field. The rules are PLAN item 1, "Loader refuses", and skeleton.md sections 4 and 5.
 
 `None` in a loaded value means it isn't known yet (a joint's UID before commissioning, a direction not yet verified). It
-loads fine and refuses enable downstream ("Null is not permission", PLAN item 1).
+loads fine and refuses only the motion that needs it, never the enable: a joint with a null cap, `direction`, `zero_rad`
+or `hard_rad` runs at its model's commissioning caps (`CommissioningCaps`: 5 % of the model's torque and current ranges,
+0.5 rad/s; PLAN item 1). The current budget counts each such joint at its commissioning current.
 
 ## Must never
 

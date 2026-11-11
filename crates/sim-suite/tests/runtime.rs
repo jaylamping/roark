@@ -21,7 +21,7 @@ use runtime::{
 };
 use safety::EnableFailure;
 use sim_drive::{Fault, SimDrive, Trigger, ensure_vcan, serve};
-use skeleton::{LimbName, Skeleton};
+use skeleton::{CommissioningCaps, LimbName, Skeleton};
 use socketcan::{CanFrame, CanSocket, EmbeddedFrame, Id, Socket};
 
 /// The runtime's test robot, never the live skeleton (testing.md rule 3).
@@ -325,13 +325,14 @@ impl Drop for Flags<'_> {
 }
 
 /// Guards: safety - an operator's enable reaches exactly the joints it names, and only once every one's preflight has
-/// passed: one naming a joint with a null fact or cap is refused before anything is sent; the left arm's two commissioned
+/// passed: one naming a joint with no bus is refused before anything is sent; the left arm's two commissioned
 /// joints pass preflight against `sim-drive`, get the enable sequence, go Active and are held with MIT commands; a stop
 /// ends the hold, a clear and a new enable run preflight again and enable again; a drive that answers its Enable too
 /// late fails the enable with the limb stopped, since the Enable may have gone; a limb-mate the host never enabled,
 /// put in Run by something else, stops the whole limb (PLAN item 6 `host.mode`); a fault from a held drive stops its
-/// limb (`host.fault`); and nothing but the right arm's stops ever reaches can0 (PLAN item 3: the runtime never enables
-/// on its own; item 6: enable is per joint set and runs preflight first).
+/// limb (`host.fault`); the waist's joint, every fact and cap null, enables at its model's commissioning caps (PLAN item
+/// 1); and the right arm, never named, gets only stops (PLAN item 3: the runtime never enables on its own; item 6:
+/// enable is per joint set and runs preflight first).
 #[test]
 #[expect(clippy::too_many_lines, reason = "one run, start to end")]
 fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
@@ -426,16 +427,16 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
         };
         let both = ["arm_a_one", "arm_a_two"];
 
-        // A joint with nulls refuses the whole enable before anything is sent: the left arm stays idle.
-        let b_one = runtime
-            .joints(["arm_b_one"])
+        // A joint with no bus refuses the whole enable before anything is sent: the left arm stays idle.
+        let leg = runtime
+            .joints(["leg_a_one"])
             .unwrap()
             .iter()
             .next()
             .unwrap();
         assert!(matches!(
-            enable(&mut runtime, 1, &["arm_a_one", "arm_b_one"]),
-            Some(EnableReply { outcome: Err(EnableRefused::Preflight { joint, .. }), .. }) if joint == b_one
+            enable(&mut runtime, 1, &["arm_a_one", "leg_a_one"]),
+            Some(EnableReply { outcome: Err(EnableRefused::Preflight { joint, .. }), .. }) if joint == leg
         ));
         assert!(
             newest[1]
@@ -591,6 +592,15 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
             "{newest:?}"
         );
 
+        // An uncommissioned joint (every fact and cap null) enables, at its model's commissioning caps.
+        assert_eq!(
+            enable(&mut runtime, 12, &["waist_one"]),
+            Some(EnableReply {
+                tag: 12,
+                outcome: Ok(())
+            })
+        );
+
         let exit = runtime.end().unwrap();
         assert!(exit.control.error.is_none(), "{:?}", exit.control);
         assert_eq!(exit.control.bus_ended, None, "{:?}", exit.control);
@@ -616,14 +626,40 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
     });
     let _ = std::fs::remove_dir_all(&root);
 
-    // can0 holds no left-arm joint, and can1's right-arm drive was never named: only the end's stops reached them.
+    // The right arm was never named, on can0 or can1: only the end's stops reached it.
     let only_stops =
         |c: &Command| matches!(c, Command::Disable | Command::Reporting(Reporting::Off));
-    assert!(
-        seen[0].iter().all(|(_, f)| only_stops(&f.command)),
-        "{:?}",
-        seen[0]
-    );
+    for id in [21, 22] {
+        assert!(
+            seen[0]
+                .iter()
+                .filter(|(_, f)| f.target == common::id(id))
+                .all(|(_, f)| only_stops(&f.command)),
+            "{:?}",
+            seen[0]
+        );
+    }
+    // The waist's drive got its model's commissioning caps, written as preflight writes any cap.
+    let floor = CommissioningCaps::of(robstride::Model::Rs03).unwrap();
+    let waist = robstride::Drive::new(common::id(31), robstride::Model::Rs03);
+    let expected = [
+        robstride::Write::limit_torque(waist, floor.torque).unwrap(),
+        robstride::Write::limit_cur(waist, floor.current).unwrap(),
+        robstride::Write::limit_spd(waist, floor.speed).unwrap(),
+    ]
+    .map(|w| w.value());
+    let caps: Vec<ParamValue> = seen[0]
+        .iter()
+        .filter(|(_, f)| f.target == common::id(31))
+        .filter_map(|(_, f)| match f.command {
+            Command::ParamWrite {
+                param: Param::LimitTorque | Param::LimitCur | Param::LimitSpd,
+                value,
+            } => Some(value),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(caps, expected);
     let to = |id: u8| -> Vec<(Instant, Command)> {
         seen[1]
             .iter()

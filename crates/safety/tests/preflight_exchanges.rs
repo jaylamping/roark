@@ -61,8 +61,8 @@ fn can_timeout_must_read_back_exactly_1000() {
     }
 }
 
-/// Guards: safety - `drive.caps`: the skeleton's three caps are written and must read back as written; a null cap refuses
-/// before anything is sent (PLAN item 6 drive layer; item 1, null is not permission).
+/// Guards: safety - `drive.caps`: the skeleton's three caps are written and must read back as written (PLAN item 6
+/// drive layer).
 #[test]
 fn the_caps_are_written_from_the_skeleton_and_read_back_as_written() {
     let torque = |v| ParamValue::NewtonMeters(NewtonMeters::new(v).unwrap());
@@ -111,12 +111,7 @@ fn the_caps_are_written_from_the_skeleton_and_read_back_as_written() {
         })
     );
 
-    let (verdict, written) = run(1, &Drive::honest());
-    assert_eq!(verdict, Err(Refusal::CapUnset(CapKind::Torque)));
-    assert_eq!(written, [], "nothing sent");
-
     for refusal in [
-        Refusal::CapUnset(CapKind::Torque),
         Refusal::CapOutOfRange {
             cap: CapKind::Speed,
             value: speed(21.0),
