@@ -172,7 +172,7 @@
 "buck","R18","1.02k 1%","R_0603_1608Metric","1","2","4","6","Stackpole Electronics","RMCF0603FT1K02","RMCF0603FT1K02CT-ND",""
 "buck","RS1","2mR 2512 Kelvin WSK25122L000FEA","R_Shunt_Vishay_WSK2512_6332Metric_T1.19mm","1","2","0","2","Vishay Dale","WSK25122L000FEA","541-WSK25122L000FEACT-ND",""
 "buck","RS2","5mR 2512 Kelvin WSK25125L000FEA","R_Shunt_Vishay_WSK2512_6332Metric_T1.19mm","1","2","0","2","Vishay Dale","WSK25125L000FEA","541-WSK25125L000FEACT-ND","Out of stock at check (2,000 expected 28-Dec-2026); backorder."
-"buck","U1","LM5146RGYR","Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias","1","2","0","2","Texas Instruments","LM5146RGYR","296-LM5146RGYRCT-ND","Out of stock at DigiKey at check (2026-11-10); 2,758 expected 18-Jan-2027; LM5146QRGYRQ1 also out. Try TI.com direct."
+"buck","U1","LM5146RGYR","Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias_0.3mm","1","2","0","2","Texas Instruments","LM5146RGYR","296-LM5146RGYRCT-ND","Out of stock at DigiKey at check (2026-11-10); 2,758 expected 18-Jan-2027; LM5146QRGYRQ1 also out. Try TI.com direct."
 "buck","U2,U4","INA237AIDGSR","TSSOP-10_3x3mm_P0.5mm","2","4","0","4","Texas Instruments","INA237AIDGSR","296-INA237AIDGSRCT-ND","Out of stock at DigiKey at check (2026-11-10); 2,500 expected 25-Nov-2026."
 "buck","U3,U5","TPS259541DSGR","Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm","2","4","2","6","Texas Instruments","TPS259541DSGR","296-50499-1-ND","About 491 in stock at check."
 "assembly","J27 lug","Molex 19070-0009 InsulKrimp ring terminal, M3 to M3.5 stud, 18-22 AWG: under one heatsink screw head, on the lead from J27","—","1","2","2","4","Molex","0190700009","WM13697-ND","Ring for #6 stud (3.5 mm), 18-22 AWG, red InsulKrimp."

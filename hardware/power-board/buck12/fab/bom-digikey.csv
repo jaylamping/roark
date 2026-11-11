@@ -49,6 +49,6 @@ Quantity,Value / MPN,Reference designators,Footprint,Manufacturer,Manufacturer P
 6,1.02k 1%,R18,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT1K02,RMCF0603FT1K02CT-ND,
 2,2mR 2512 Kelvin WSK25122L000FEA,RS1,R_Shunt_Vishay_WSK2512_6332Metric_T1.19mm,Vishay Dale,WSK25122L000FEA,541-WSK25122L000FEACT-ND,
 2,5mR 2512 Kelvin WSK25125L000FEA,RS2,R_Shunt_Vishay_WSK2512_6332Metric_T1.19mm,Vishay Dale,WSK25125L000FEA,541-WSK25125L000FEACT-ND,"Out of stock at check (2,000 expected 28-Dec-2026); backorder."
-2,LM5146RGYR,U1,Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias,Texas Instruments,LM5146RGYR,296-LM5146RGYRCT-ND,"Out of stock at DigiKey at check (2026-11-10); 2,758 expected 18-Jan-2027; LM5146QRGYRQ1 also out. Try TI.com direct."
+2,LM5146RGYR,U1,Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias_0.3mm,Texas Instruments,LM5146RGYR,296-LM5146RGYRCT-ND,"Out of stock at DigiKey at check (2026-11-10); 2,758 expected 18-Jan-2027; LM5146QRGYRQ1 also out. Try TI.com direct."
 4,INA237AIDGSR,"U2,U4",TSSOP-10_3x3mm_P0.5mm,Texas Instruments,INA237AIDGSR,296-INA237AIDGSRCT-ND,"Out of stock at DigiKey at check (2026-11-10); 2,500 expected 25-Nov-2026."
 6,TPS259541DSGR,"U3,U5",Texas_DSG0008A_WSON-8-1EP_2x2mm_P0.5mm_EP0.9x1.6mm,Texas Instruments,TPS259541DSGR,296-50499-1-ND,About 491 in stock at check.

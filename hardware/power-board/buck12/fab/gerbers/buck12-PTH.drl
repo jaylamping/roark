@@ -5,9 +5,9 @@ M48
 ; #@! TF.FileFunction,Plated,1,6,PTH
 FMAT,2
 METRIC
-; #@! TA.AperFunction,Plated,PTH,ComponentDrill
-T1C0.200
 ; #@! TA.AperFunction,Plated,PTH,ViaDrill
+T1C0.300
+; #@! TA.AperFunction,Plated,PTH,ComponentDrill
 T2C0.300
 ; #@! TA.AperFunction,Plated,PTH,ComponentDrill
 T3C1.020
@@ -15,11 +15,6 @@ T3C1.020
 G90
 G05
 T1
-X62.875Y-43.5
-X64.15Y-42.725
-X64.15Y-44.275
-X65.425Y-43.5
-T2
 X32.4Y-55.4
 X32.4Y-60.4
 X32.4Y-62.6
@@ -159,6 +154,11 @@ X87.9Y-81.9
 X88.2Y-67.0
 X88.7Y-79.0
 X89.1Y-78.0
+T2
+X62.95Y-43.5
+X64.15Y-42.8
+X64.15Y-44.2
+X65.35Y-43.5
 T3
 X41.6Y-107.5
 X41.6Y-110.5

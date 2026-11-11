@@ -1430,7 +1430,7 @@
 					)
 				)
 			)
-			(property "Footprint" "Package_DFN_QFN:Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias"
+			(property "Footprint" "buck12:Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias_0.3mm"
 				(at 0 -20.32 0)
 				(effects
 					(font
@@ -6608,7 +6608,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Package_DFN_QFN:Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias"
+		(property "Footprint" "buck12:Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias_0.3mm"
 			(at 119.38 139.7 0)
 			(effects
 				(font

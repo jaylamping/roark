@@ -16,7 +16,7 @@ def head(t,at): s.text(t,at,size=2,bold=True)
 def wnote(t,at,w): s.text('\n'.join(textwrap.fill(l,w) for l in t.split('\n')),at,size=1.27)
 def Q(lid,val,at,b,e,c): r=s.nref('Q'); nic(s,lid,r,val,at,SOT23,{'1':b,'2':e,'3':c}); return r
 mkic('LM5146',[('1','EN/UVLO','input'),('2','RT','passive'),('3','SS/TRK','passive'),('4','COMP','output'),('5','FB','input'),('6','AGND','power_in'),('7','SYNCOUT','output'),('8','SYNCIN','input'),('9','NC','passive'),('10','PGOOD','open_collector'),('11','ILIM','passive'),('12','PGND','power_in'),('13','LO','output'),('14','VCC','passive'),('15','EPC','passive'),('16','NC','passive'),('17','BST','passive'),('18','HO','output'),('19','SW','passive'),('20','VIN','power_in'),('21','EP','passive')],
-     'Package_DFN_QFN:Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias','https://www.ti.com/lit/ds/symlink/lm5146.pdf','100 V synchronous buck controller, voltage mode with line feed-forward, 7.5 V drivers')
+     'buck12:Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias_0.3mm','https://www.ti.com/lit/ds/symlink/lm5146.pdf','100 V synchronous buck controller, voltage mode with line feed-forward, 7.5 V drivers')
 head('12 V buck: LM5146, 48 V to 12 V, 12 A, 400 kHz',(20,20))
 nic(s,'Connector_Generic:Conn_02x06_Odd_Even','J1','J24 mate: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 +3V3_PI, 7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA',(40,70),'Connector_Molex:Molex_Micro-Fit_3.0_43045-1212_2x06_P3.00mm_Vertical',
     {'1':'VIN_P','2':'VIN_P','3':'GND','4':'GND','5':'ON_N','6':'+3V3_PI','7':'GND','8':'GND','9':'SP_EN','10':'GND','11':'I2C_SCL','12':'I2C_SDA'})
@@ -24,7 +24,7 @@ g=Grid(s,80,50,17,30,300)
 g.D('SK810L-TP','VIN_P','GND',SMC); g.C('1uF 100V X7R','VIN_P','GND',C1210); g.L('2.2uH XAL7030-222MEC','VIN_P','VIN','Inductor_SMD:L_Coilcraft_XAL7030-222')
 g.CP('47uF 100V EMVH101ARA470MKE0S','VIN','GND','buck12:CP_Elec_12.5x13.5_ChemiCon'); g.C('2.2uF 100V X7R','VIN','GND',C1210,k=5); g.C('100nF 100V X7R','VIN','GND',C805)
 g.F('VIN_P'); g.F('VIN'); g.F('GND')
-nic(s,LIBN+':LM5146','U1','LM5146RGYR',(120,140),'Package_DFN_QFN:Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias',
+nic(s,LIBN+':LM5146','U1','LM5146RGYR',(120,140),'buck12:Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias_0.3mm',
     {'1':'EN','2':'RT','3':'SS','4':'COMP','5':'FB','6':'GND','7':None,'8':'GND','9':None,'10':None,'11':'ILIM','12':'GND','13':'LO','14':'VCC','15':'GND','16':None,'17':'BST','18':'HO','19':'SW','20':'VIN_C','21':'GND'},ds='https://www.ti.com/lit/ds/symlink/lm5146.pdf')
 nfet5(s,'Q1','BSC070N10NS5ATMA1',(200,120),'VIN','HO','SW')
 nfet5(s,'Q2','BSC040N10NS5ATMA1',(200,160),'SW','LO','GND'); s.refc['Q']=2
