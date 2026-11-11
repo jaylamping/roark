@@ -62,7 +62,9 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         let epoch = recording.epoch();
         let recorder = Recorder::spawn(recording).unwrap();
         let (mut commands, commands_rx) = rtrb::RingBuffer::new(4);
-        let (snapshots_tx, mut snapshots) = rtrb::RingBuffer::new(64);
+        // A small ring: a test thread that falls behind fills it, so the bus can't count a snapshot taken that control
+        // hasn't read (the exit below relies on it).
+        let (snapshots_tx, mut snapshots) = rtrb::RingBuffer::new(4);
         let (mut orders, orders_rx) = rtrb::RingBuffer::new(4);
         let (rearmed_tx, mut rearmed) = rtrb::RingBuffer::new(4);
         let start = soon();
@@ -110,9 +112,9 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
             [(LimbState::Active, None), (LimbState::Active, None)]
         );
         // Caught up with the bus, the order is pushed before the next tick is due, so that tick takes it and stops the
-        // limb: an order taken in a slack instead shows a tick late. (Whether the take is before or after the drain
-        // can't show here: a stopped drive sends nothing unasked, so no frame lands between a clear and the drain;
-        // the unit test `a_fault_read_after_a_clear_stops_the_limb_before_its_enable` covers what that order is for.)
+        // limb: an order taken in a slack instead shows a tick late. This test doesn't tell a take before the drain from
+        // one after it: no frame of this run lands between a clear and the drain. The unit test
+        // `a_fault_read_after_a_clear_stops_the_limb_before_its_enable` covers what that order is for.
         // Pushed only with 2 ms to spare, which a caught-up thread nearly always has; a push the thread was preempted
         // through, landing within 1 ms of the tick, skips the check (the bound below still holds).
         let before = loop {
@@ -240,27 +242,39 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         }
         assert_eq!(limbs(&snap)[0].0, LimbState::Stopped, "{snap:?}");
 
-        // Told to exit, the bus stops limb 1 and ends once control has taken a snapshot with every limb stopped. Once
-        // a snapshot shows limb 1 stopping for the exit, the bus has seen it, and can't end before limb 1's stop does:
-        // a clear of the stopped limb 0 sent then is refused, the exit's stop being asked before the clear is taken.
+        // Told to exit, the bus stops limb 1 and ends once its snapshot ring has taken one with every limb stopped.
+        // Once the newest snapshot shows limb 1 stopping for the exit, the bus has seen it; with every snapshot read
+        // up to then, none with every limb stopped has gone into the ring yet, so the bus is still running ticks: a
+        // clear of the stopped limb 0 sent then is taken at the next tick's start, after the exit's stop is asked, and
+        // refused. (A test thread behind fills the small ring, which holds the bus in its exit wait.)
         exit.store(true, Ordering::Release);
-        while limbs(&snap)[1].1 != Some(StopReason::Requested) {
+        while limbs(&snap)[1].0 == LimbState::Active {
             assert!(
                 commands
                     .push(batch(epoch, &snap, [None, Some(hold(102))]))
                     .is_ok()
             );
             snap = next_snapshot(&mut snapshots, end).unwrap();
+            while let Ok(s) = snapshots.pop() {
+                snap = s;
+            }
         }
         assert!(
-            matches!(limbs(&snap)[1].0, LimbState::Stopping { .. }),
-            "{snap:?}"
+            matches!(
+                limbs(&snap)[1],
+                (LimbState::Stopping { .. }, Some(StopReason::Requested))
+            ),
+            "limb 1 stops for the exit, and is still stopping when the clear is sent: {snap:?}"
         );
         assert!(orders.push(Order::Rearm { tag: 7, limb: 0 }).is_ok());
         let answer = loop {
             if let Ok(answer) = rearmed.pop() {
                 break answer;
             }
+            assert!(
+                !bus.thread.is_finished() || !rearmed.is_empty(),
+                "the bus ended without answering the clear"
+            );
             if let Ok(s) = snapshots.pop() {
                 snap = s;
             }
