@@ -39,6 +39,8 @@ WIP = CAD / '_wip' / 'organic-arm' / 'cad'
 # R2 (2026-11-11, trial): the neck opening narrowed to phi +-15 next to the rib, inside the drum only. ARM_R2=1 builds it into
 # cad/_wip/r2 so R1's master and its STL stay as they are.
 R2 = os.environ.get('ARM_R2') == '1'
+R1B = os.environ.get('ARM_R1B') == '1'      # R1b: round the rib/opening-edge corners (see upper_details)
+R1B_DONE = []
 R2_NECK = dict(x0=145.0, x1=156.0, hi=(15.0, 48.0), lo=(-32.0, -15.0), runout=(3.0, 2.0, 1.5))
 if R2:
     WIP = CAD / '_wip' / 'r2'
@@ -339,6 +341,34 @@ def upper_details(d):
     rib_c = edges_where(d, lambda p: abs(math.hypot(p[1] - CY, p[2] - CZ) - (DRUM['r'] - SHELL_T)) < 0.1 and abs(p[0] - RIB[1]) < 0.05)   # ring side only: on the back face it left slivers at the neck opening
     print('  rib corner edges', len(rib_c), flush=True)
     fillet_edges(d, rib_c, (2.0, 1.5, 1.0), 'RIB_CORNER')   # R2 (2026-11-11: the elbow torque peaks here at the neck-opening edges); the ring's 2.2 chamfer clears it
+    if R1B:
+        # R1b (2026-11-11): the R2 round ends at the neck opening's edges (phi 41 and -24), where the rib's top (r 41.8, 0.3 proud
+        # of the wall) meets the opening's edge face in a sharp corner: the elbow-torque peak there does not converge (singular).
+        # Round those edges, within 3.5 mm of each corner
+        corners = [np.array((154.0, CY + 41.8 * math.cos(math.radians(a)), CZ - 41.8 * math.sin(math.radians(a)))) for a in (40.5, -24.0)]
+        oc = []      # edges on the rib top / wall band (r 41.4-41.9 at start, middle and end) that pass within 3.5 mm of a corner
+        for bd in d.GetBodies2(0, True):
+            es = bd.GetEdges
+            for e in ((es() if callable(es) else es) or []):
+                cp = e.GetCurveParams3
+                ev = list(e.GetCurve.Evaluate2((cp.UMinValue + cp.UMaxValue) / 2, 0))
+                pts = [np.array(cp.StartPoint[:3]) * 1000.0, np.array(ev[:3]) * 1000.0, np.array(cp.EndPoint[:3]) * 1000.0]
+                if all(41.4 < math.hypot(q[1] - CY, q[2] - CZ) < 41.9 for q in pts) and min(np.linalg.norm(q - c) for q in pts for c in corners) < 3.5:
+                    oc.append(e)
+        print('  R1b open-corner edges', len(oc), flush=True)
+        # attempt 2 (attempt 1, all six at R1.5/1.0/0.75 together, built nothing): one edge at a time, smaller rounds, and a
+        # 0.3 x 45 deg chamfer where no round builds (the rib top stands only 0.3 proud of the wall there)
+        for i, e in enumerate(oc):
+            r_ = fillet_edges(d, [e], (1.0, 0.6, 0.4), f'R1B_OPEN_CORNER{i}')
+            if r_ is None:
+                d.ClearSelection2(True)
+                e.Select4(True, NUL)
+                f = d.FeatureManager.InsertFeatureChamfer(0, 1, 0.3 * m, math.pi / 4, 0, 0, 0, 0)
+                d.ForceRebuild3(False)
+                r_ = 'C0.3' if f is not None else None
+                print(f'  R1B_OPEN_CORNER{i}: chamfer', r_, flush=True)
+            R1B_DONE.append(r_)
+        print('  R1b corners:', R1B_DONE, flush=True)
     for k, q in enumerate(RIB_KEYS):                  # after the corner round: their outer sides merge into the wall
         # each key is its rectangle clipped to r 42.1 (0.6 into the 3 mm wall): its outer side follows the wall, inside the skin
         r_c = DRUM['r'] - SHELL_T + 0.6
