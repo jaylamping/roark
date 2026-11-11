@@ -23,7 +23,7 @@ OUT = CAD / 'shoulder' / 'left'
 VENDOR = CAD / 'vendor' / 'robstride'
 WIP = CAD / '_wip' / 'shoulder-pass1'
 WIP.mkdir(parents=True, exist_ok=True)
-STATE = WIP / '.sw_instance_pid'
+STATE = WIP / os.environ.get('SW_STATE_NAME', '.sw_instance_pid')   # a second stream runs its own instance
 TPL_PART = r'C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2026\templates\MBD\part 0051mm to 0250mm.prtdot'
 TPL_ASM = r'C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2026\templates\MBD\assembly 0250mm and smaller.asmdot'
 NUL = VARIANT(pythoncom.VT_DISPATCH, None)
@@ -35,7 +35,7 @@ BLIND, THRU_ALL, MID = 0, 1, 6
 def log(*a):
     s = time.strftime('%H:%M:%S ') + ' '.join(str(x) for x in a)
     print(s, flush=True)
-    with open(WIP / 'build_log.txt', 'a', encoding='utf8') as f:
+    with open(WIP / os.environ.get('SW_LOG_NAME', 'build_log.txt'), 'a', encoding='utf8') as f:
         f.write(s + '\n')
 
 

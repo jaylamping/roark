@@ -13,6 +13,9 @@ ROLL_OUT, ROLL_REAR = 30.64, -25.96      # roll RS03 output face / rear face (Z)
 PITCH_OUT, PITCH_REAR = 97.0, 40.4       # pitch RS03 output face / rear face (X)
 RS02_REAR, RS02_SEAT, RS02_UNDER, RS02_OUT = 365.26, 351.86, 323.86, 319.86   # yaw RS02 (Y)
 PETG = 1.27e-3                   # g/mm3, solid
+DISH_R0 = 23.5
+DISH_Y = float(__import__('os').environ.get('DISH_Y', 318.36))   # HUB REV B: floor top raised 315.8 -> 318.36 (yaw-loop gap 8.06 -> 5.5)
+DISH_FILLET = 1.5
 
 # ---- roll stops (CHANGED: inward -11, was -15; the upper arm reaches the cage at -12..-13 when yawed 45-75 deg) ----
 # Driven in the cap part by the global variables ROLL_STOP_IN / ROLL_STOP_OUT (Tools > Equations).
@@ -32,14 +35,21 @@ EAR_R, EAR_PCD = 7.5, 61.0
 WIN_ANGLES = [0.0, 45.0, 135.0, 225.0, 270.0, 315.0]   # windows in the inner wall into the pockets under the skin
 PORT_ANGLE = 0.0                 # the one window through the skin: driver access to the 6 pitch pad screws (styled oval port)
 SKIN_RI = 54.0                   # DRESSED: closed outer skin r 55-57 over the roll RS03; pockets r 51.5-55 between the lug ribs
-POCKET_Z = (DRUM_Z0 + 4.0, LIP_Z0 - 3.0)
+POCKET_Z = (DRUM_Z0 + 9.5, LIP_Z0 - 3.0)   # SMOOTH: start deeper, the cap screws' inserts go into the rear end
 DRUM_CROWN = [(DRUM_Z0, 54.5), (-24.0, 56.2), (-14.0, 57.0), (14.0, 57.0), (27.0, 56.2), (33.0, 55.2), (LIP_Z1, 54.5)]
 # ORGANIC: the drum skin is a loft through these (Z, r) circles: crowned, r 57 at most (RS02 passes 2.6 mm below it)
 CAP_RIM_R = 54.5                 # ORGANIC: the cap rim continues the drum's rear end
 FRONT_CROWN = dict(z0=42.0, z1=49.0, inset=9.0)   # ORGANIC: the fork front face crowns forward to Z 49 (was flat at 47)
 CAP_FLOOR = 45.0                 # floor of the press-in cap recess (cap top 48.5: 0.5 below the crown, like the arm's caps)
+BELL = dict(x=(106.3, 113.0, 120.0, 127.0, 134.0), top=60.0, bot=41.0, front=34.0, rear=27.0, wall=2.5)
+# SMOOTH: the pitch adaptor is an egg-section bell round the pitch axis (top r 60 over the trunk, bottom r 41 clear of the
+# fork and RS02 swing, Z +34 / -27 inside the drum's span), hollow (2.5 wall), replacing the neck tube and flare
+CAP_SCREW_ANGLES = [0.0, 180.0, 270.0]   # SMOOTH: 3 x M3 thread-forming, axial, inside the outline, into 2.6 mm pilots in the drum wall
+CAP_SCREW_R = 50.0
+STOP_SLOT = dict(r=(25.0, 35.0), z_floor=-31.0, tooth_r=(27.0, 33.0), tooth_angle=193.0, tooth_half=10.0, ring_r=(24.0, 37.0))
+# SMOOTH: roll stops inside the outline: a tooth on the fork rear cheek runs in an arc slot in a ring on the cap's rear face
 FLARE = dict(x0=105.0, x1=119.0, x2=124.0, r=56.0, fillet=12.0)   # DRESSED: neck flares into the drum (pitch axis)
-CUFF = dict(ri=39.75, ro_top=43.0, ro_bot=41.35, ro_mid=(42.9, 336.0), y0=317.8, notch=(-122.0, -78.0))
+CUFF = dict(ri=39.75, ro_top=43.0, ro_bot=41.35, ro_mid=(42.9, 336.0), y0=DISH_Y + 2.0, notch=(-122.0, -78.0))
 # DRESSED 2: cuff round the RS02 housing (r 39.25), tapering to r 41.7 and down to 2 mm above the hub rim (Y 315.8), to
 # continue the arm's top (r 39 at Y 302); notched round the fork rear's yaw exit
 DOME = dict(r=55.0, edge=5.0, back_t=2.4, pocket_r=(24.5, 52.6), pockets=[(-20.0, 40.0), (50.0, 130.0), (140.0, 200.0), (212.0, 252.0), (288.0, 328.0)])
@@ -51,7 +61,7 @@ TOPWIN = dict(x=14.0, z0=-28.5, z1=-6.0)   # window over the roll RS03 top conne
 PAD_R, PAD_X = 22.0, (97.0, 108.7)
 PAD_HOLES = [-134.0 + 60 * k for k in range(6)]   # 6 x M4 on PCD 30.4 (angle in the Y-Z plane from +Y toward +Z)
 NECK = dict(ri_core=21.0, ro=40.0, ri=35.6, x0=100.5, x_disc=106.0, x1=130.0)
-SPOKES = dict(n=5, a0=90.0, w=9.0, r0=21.0, r1=50.0, x0=100.5, x1=104.5, screw_r=46.0, insert_depth=3.8)   # M3 x 4 inserts   # carry the flange ring
+SPOKES = dict(n=5, a0=108.0, w=9.0, r0=21.0, r1=50.0, x0=100.5, x1=104.5, screw_r=46.0, insert_depth=3.8)   # M3 x 4 inserts   # carry the flange ring
 # ---- flange ring (separate printed part; CHANGED: was the 1.8 mm flange on P1 at X 100.5-102.3) ----
 RING = dict(ri=42.0, ro=77.5, x0=104.5, x1=106.3)   # 1.8 thick, printed flat
 # ---- pitch loop cover (torso side, fixed); CHANGED: outer wall runs on to 2 mm short of the ring (X 104.5)
@@ -72,8 +82,14 @@ PW, PH, SW, SH, RIB, WALL = 16.0, 6.0, 10.0, 5.0, 2.0, 2.4
 TOT = PW + RIB + SW
 SHW, SHH = TOT + 2 * WALL, PH + 2 * WALL         # 32.8 x 10.8 duct shell
 P_OFF, S_OFF = -TOT / 2 + PW / 2, TOT / 2 - SW / 2   # channel centre offsets across the duct (-6, +9)
-TRUNK_Y, TRUNK_X = 489.0, 140.0
-TU = (1.0, -0.45, 0.0)
+# SMOOTH: the down-run (trunk B) sits at roll angle 135 deg, r 58, its width along the skin; trunk A runs along X at Y 470
+# inside the bell; the outline swells about 7 mm over trunk B only
+TRUNK_ANG, TRUNK_R = 135.0, 58.0
+TRUNK_X, TRUNK_Y = RX + TRUNK_R * math.cos(math.radians(TRUNK_ANG)), RY + TRUNK_R * math.sin(math.radians(TRUNK_ANG))
+TRUNK_AY = 470.0
+TRUNK_B_ZTOP = SHW / 2 + WALL      # trunk B runs forward to take trunk A's full width
+BRANCH_END = (RX - 8.0, 474.5)
+TU = (math.cos(math.radians(TRUNK_ANG - 90)), math.sin(math.radians(TRUNK_ANG - 90)), 0.0)
 # ---- rear cap ----
 CAP_Z1 = -39.3                   # rear face of the cap plate
 CAPZ = (DRUM_Z0 + CAP_Z1) / 2    # cap channel centre
@@ -92,7 +108,7 @@ SEAT_RI, SEAT_RO = 33.5, 45.0
 RS02_SCREWS = [-136.0, -96.0, -56.0, 64.0, 104.0]   # 5 x M3 on PCD 73 (yaw angle atan2(z - YZ, x - RX))
 SOCKET_POCKETS = [(162.0, 198.0), (-26.0, 34.0)]   # CHANGED: 4 deg wider each side (RS02 socket body reached 196 deg)
 TAP_Y = (353.4, 359.4)
-JX = 30.0                        # joint pad half width
+JX = 21.5                        # joint pad half width (SMOOTH: a rounded flare of the arm, was 30)
 JZ0 = RZ + PH / 2 + WALL         # -45.9: joint face (front face of the rear arm)
 BACK_Z = RZ - PH / 2 - WALL      # -56.7: fork rear back face
 ARM_HW = 17.0
@@ -101,7 +117,7 @@ Y_BOT = Y_EX - 3 - WALL
 CHEEK_R, HOUSE_R = 35.0, 33.0
 BRG_SEAT_R, BRG_LIP_R = 26.0, 24.0
 # ---- hub (frozen interface; dished top) ----
-DISH_R0, DISH_Y = 23.5, 315.8
+
 HUB_WIN_A = 7.9
 # Hub lower half, prepared for the arm joint work (all OFF by default; the frozen interface is unchanged when off):
 HUB = dict(spigot_ext_on=0, spigot_ext_len=6.0, spigot_taper=0.0, spigot_ri=28.0, spigot_ro=35.8, spigot_y0=296.0,

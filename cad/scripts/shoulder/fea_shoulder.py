@@ -260,6 +260,12 @@ SPIGOT = cyl(35.8, [130, 295, -35, 212, 303, 47])
 for tag, mom in (('MX', (23.0, YAW_T, 0.0)), ('MZ', (0.0, YAW_T, 23.0))):
     CASES['HUBS_' + tag] = dict(CASES['HUB_' + tag], remote=(LUG_HOLES + [SPIGOT], AT, (0.0, -2 * 155.0, 0.0), mom))
 
+# arm-thread load cases (2026-11-11), spigot held over Y 296-302 with the lugs (rigid remote on both):
+# A: arm horizontal, 5 kg payload: 62 N shear + 310 N, 22.9 N.m about X, 17 N.m yaw.  B: elbow end stop at 515 N:
+# 7.0 N.m about X, 8.6 about Y (yaw), 14.7 about Z (sideways), with the 62 N shear.
+CASES['HUBS_A'] = dict(CASES['HUBS_MX'], remote=(LUG_HOLES + [SPIGOT], AT, (0.0, -372.0, 0.0), (22.9, 17.0, 0.0)))
+CASES['HUBS_B'] = dict(CASES['HUBS_MX'], remote=(LUG_HOLES + [SPIGOT], AT, (0.0, -62.0, 0.0), (7.0, 8.6, 14.7)))
+
 if __name__ == '__main__':
     for n in sys.argv[1:]:
         run(n, CASES[n])

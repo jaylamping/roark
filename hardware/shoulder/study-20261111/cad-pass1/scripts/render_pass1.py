@@ -216,6 +216,13 @@ def main():
         row = Image.new('RGB', (a.width + b.width, a.height), 'white'); row.paste(a, (0, 0)); row.paste(b, (a.width, 0))
         ImageDraw.Draw(row).text((a.width + 24, 20), "The organic arm's own render (left-arm-organic, a2_90_q34)", fill=(20, 20, 20), font=FONT)
         row.save(OUT / 'D6_shoulder_vs_arm_render.png')
+    # top-down and the camera of Joey's screenshot: front-outboard, looking down on the drum top
+    Ft = np.array([RX - 20, RY - 10, -5.0])
+    render(shoulder_items(with_frame=False), OUT / 'D7_top_down.png', Ft + np.array([60.0, 650.0, 120.0]), Ft, up=(0, 0, -1), size=(1600, 1300),
+           title='Top-down: the drum top, swell and bell (no frame or shell)')
+    Fs = np.array([RX - 15, RY + 20, 0.0])
+    render(shoulder_items(with_frame=False), OUT / 'D8_drum_top_view.png', Fs + np.array([330.0, 300.0, 420.0]), Fs, size=(1600, 1200),
+           title='Front-outboard, looking down on the drum top (the camera of the review screenshot)')
     bare = [Path(p) for p in sys.argv[2:4]] if len(sys.argv) > 3 else []
     if bare:
         rows = []
