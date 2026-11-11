@@ -10,17 +10,17 @@ anyway (`can-bench` README, "Must never").
 
 ## The candidates
 
-| Interface | Driver | What it tests | Why it's in |
-|---|---|---|---|
-| MKS CANable **V1.0** Pro (STM32F072, isolated) with mainline candleLight | `gs_usb` | The pick in PLAN and the research: a USB adapter that buffers on its own chip | The default |
-| The same board with its stock slcan firmware | `slcan` | The same hardware over a serial protocol | Shows what the firmware choice is worth |
-| PEAK PCAN-USB FD (isolated) | `peak_usb` | High-speed USB (125 µs frames, against full-speed's 1 ms) | The upgrade if USB jitter eats the budget |
-| Waveshare 2-CH isolated CAN FD HAT (MCP2518FD) | `mcp251xfd` | SPI with deep on-chip FIFOs: no USB in the path | The non-USB option; 2 buses per HAT |
-| The MCP2515 HAT now fitted | `mcp251x` | The old interface, two receive buffers | The baseline that failed on the legacy stack |
+| Interface | Driver | What it tests |
+|---|---|---|
+| The Waveshare HAT already on the Pi | `mcp251x` (MCP2515) or `mcp251xfd` (MCP2518FD) | The interface we have. An MCP2515 holds two received frames, so a host stall drops replies; an MCP2518FD has deep FIFOs |
+| One MKS CANable **V1.0** Pro (STM32F072, isolated) with mainline candleLight | `gs_usb` | The pick in PLAN and the research: a USB adapter that buffers on its own chip, at the cost of up to about 1 ms of USB delivery jitter |
 
-Left out: Kvaser and Ixxat (the same class as PEAK; one premium sample is enough), the mjbots pi3hat (built for moteus,
-Pi 5 support unconfirmed), and EtherCAT (RobStride drives speak only CAN). The MKS **V2.0** Pro uses an STM32G431, which
-mainline candleLight doesn't support; check the chip before buying.
+What to expect: the adapter's gain is no lost replies under load, isolation, hardware timestamps and one adapter per bus,
+not lower latency. These runs show whether the gain is real on this Pi and what the USB jitter costs against the collect
+deadline. The MKS **V2.0** Pro uses an STM32G431, which mainline candleLight doesn't support; check the chip before buying.
+
+Only if the adapter misses the budget on jitter: PEAK PCAN-USB FD (high-speed USB, 125 µs frames, about $350 a channel)
+is the next candidate, run through the same steps.
 
 A second MKS V1.0 Pro with candleLight is the **reference adapter** on the dev box for every run, so only the interface
 on the Pi changes between runs.
@@ -38,15 +38,14 @@ on the Pi changes between runs.
 
 - [ ] No drive on the bus: every drive's CAN lead unplugged, not just disabled.
 - [ ] `runtime` stopped on the Pi (`systemctl is-active runtime` says inactive).
-- [ ] Both interfaces up at 1 Mbit/s, sample point 0.75, no `restart-ms` (pi-setup.md section 11). For slcan:
-      `sudo slcand -o -c -s8 /dev/ttyACM0 slcan0 && sudo ip link set slcan0 up` (`-s8` is 1 Mbit/s).
+- [ ] Both interfaces up at 1 Mbit/s, sample point 0.75, no `restart-ms` (pi-setup.md section 11).
 - [ ] CPU governor `performance` on the Pi (pi-setup.md section 12); `can-utils`, `rt-tests` and `stress-ng` installed.
 - [ ] The same `can-bench` build on both machines; note the commit.
 - [ ] A 10 s run on `vcan` passes on each machine first (README, "Using it").
 
 ## Steps, for each candidate
 
-1. **Identify it.** Record `ip -details link show <if>`, `dmesg | grep -iE 'gs_usb|slcan|peak|mcp251'`, and for a
+1. **Identify it.** Record `ip -details link show <if>`, `dmesg | grep -iE 'gs_usb|mcp251'`, and for a
    candleLight board its firmware version (`dmesg` prints it on plug-in). The summary records the driver and whether it
    gives hardware timestamps.
 2. **Start the responder** on the dev box: `sudo chrt -f 80 can-bench respond --bus <reference> --slots 6`.
