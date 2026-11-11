@@ -93,3 +93,35 @@ the two are the same device in the same package.
 
 Outside the lines above DigiKey and Mouser price within a few percent of each other, so shopping further saves about
 $35 to $45 on the whole order, most of it the power FETs at Mouser.
+
+## First build, one set, priced live 2026-11-11
+
+The two-set DigiKey list came to $550.37, far above the estimates in PRODUCTION_RUN.md. The order was cut to one main and
+one buck board with every port fitted: $292 in parts ([kit-first-build.csv](kit-first-build.csv)).
+
+**How it was priced.** About 90 part numbers were read on trustedparts.com (authorised distributors, stock and price
+breaks at 1, 10 and 100). The RMCF resistors and the KEMET 0603 and 0805 capacitors are priced from one sample per series.
+The same price table rebuilds the $550.37 DigiKey list to within $4. Each line takes the cheapest of DigiKey, Mouser and
+LCSC (LCSC prices carry 37.5 % duty), at the quantity that costs least.
+
+**Parts changed** (same footprints, kit and BOM files updated):
+
+| Refs | Was | Now | Why it is equivalent |
+| --- | --- | --- | --- |
+| main C4 | KEMET C1210C104J1GACTU, $5.85 | Murata GRM31C5C2A104JA01L, $0.56 | 100 nF 100 V C0G 5 % in both. The Murata is a 1206 body: same length as 1210, narrower, so it solders on the 1210 land |
+| main C1 | KEMET C1210X105K1RACTU (flexible termination), $2.93 | Samsung CL32B105KCJNNNE, LCSC C444847, $0.14 | 1 µF 100 V X7R 1210. C1 sits behind fuse F1, so a cracked part blows the fuse |
+| main C39, C49; buck C1 | KEMET C1210C105K1RACTU, $1.17 | Samsung CL32B105KCJNNNE | 1 µF 100 V X7R 1210 |
+| buck C9–C13, C27 | TDK CGA6P3X7R1E226M250AB, $1.82 | Murata GRM32ER71E226KE15L, LCSC C21397, $0.41 | 22 µF 25 V X7R 1210, 10 % against 20 % |
+
+**Price traps found:**
+
+- Alpha 3051 BK005 hook-up wire is a 100 ft spool at $84.15 (DigiKey), for one short heatsink lead. Dropped: use wire on hand.
+- IPB017N10N5LFATMA1 is $8.09 at 1 and $4.37 at 10 (Mouser): ten cost less than eight.
+- DigiKey sells the Micro-Fit 43030-0038 and JST SSHL-002T-P0.2 crimps on cut tape only from 100; Mouser sells singles.
+- LCSC sells TPS259541DSGR in fives and small MLCCs and resistors in packs of 50 to 100, so with duty it saves nothing on
+  the resistors and the 0603 and 0805 capacitors at these quantities. It saves only on the two 1210 lines above.
+- Marketplace sellers (AliExpress and the like) are not used for the FETs, the protection ICs, the fuses, the shunts or
+  the bus capacitors: relabelled power parts are common there and these parts are the protection.
+
+Mouser stock to confirm in the cart: SM08B-GHS-TB(LF)(SN), TPS3431SDRBR, XAL1010-682MED (the price page showed lead time
+without a clear stock count).
