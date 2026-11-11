@@ -108,9 +108,6 @@ def check_deps():
             errors.append(f"{name}: not in the dependency table; add it to architecture.md section 3 and this script")
             continue
         for dep in pkg["dependencies"]:
-            # A package's dev-dependency on itself only turns on its own test features: no edge between crates.
-            if dep["name"] == name and dep["kind"] == "dev":
-                continue
             if dep["name"] in names and dep["name"] not in ALLOWED_DEPS[name]:
                 errors.append(f"{name} -> {dep['name']}: edge not allowed by architecture.md section 3")
     return errors

@@ -114,14 +114,6 @@ impl<'a> Seen<'a> {
         Some(Self { bus, view, limb })
     }
 
-    /// A drive's view and a limb's, as this crate's tests build them (feature `test-support`, which only test builds
-    /// turn on): the runtime has only [`Seen::of`].
-    #[cfg(feature = "test-support")]
-    #[must_use]
-    pub const fn from_parts(bus: &'a BusName, view: &'a DriveView, limb: &'a LimbView) -> Self {
-        Self { bus, view, limb }
-    }
-
     /// The bus the snapshot came from, as its caller named it.
     #[must_use]
     pub const fn bus(&self) -> &'a BusName {

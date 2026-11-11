@@ -449,7 +449,6 @@ version = "0.1.0"
 dependencies = [
  "can",
  "robstride",
- "safety",
  "skeleton",
 ]
 
