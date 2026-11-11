@@ -11,6 +11,8 @@ use robstride::{
 use safety::Seen;
 use skeleton::{BusName, Joint, Skeleton};
 
+pub(crate) mod preflight;
+
 /// One arm on `bus0`, and `bus1` with no joints. `arm_joint_one` is fully set (direction, zero and hard limits too); `arm_joint_two` leaves its
 /// torque cap null; `arm_joint_three` has no bus yet; `arm_joint_four` has every cap, a direction, a zero and hard
 /// limits, and no UID.

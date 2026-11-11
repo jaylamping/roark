@@ -1,0 +1,139 @@
+//! Preflight's refusals from the skeleton alone, before anything is sent (PLAN item 6 drive layer and Preflight row;
+//! safety.md section 6.1).
+
+#[expect(dead_code, reason = "each test file uses some of the shared helpers")]
+mod common;
+
+use common::{joint, skeleton};
+use robstride::{Amps, NewtonMeters, RadPerSec};
+use safety::{CapKind, JointFact, Refusal, RuleId, Target};
+
+/// Guards: safety - `drive.caps`: a cap outside what the drive's model can be set to refuses before anything is sent,
+/// naming the skeleton's value and the model's highest (RS03: 60 N·m, 43 A, 20 rad/s; the model's highest passes).
+#[test]
+fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
+    let skeleton = skeleton();
+    let rs03 = joint(&skeleton, 0);
+    let target = |joint: &skeleton::Joint| Target::new(joint, &skeleton.power).map(|_| ());
+    let at_max = skeleton::Joint {
+        torque_cap_nm: NewtonMeters::new(60.0),
+        current_cap_a: Amps::new(43.0),
+        speed_cap_rad_s: RadPerSec::new(20.0),
+        ..rs03.clone()
+    };
+    assert_eq!(target(&at_max), Ok(()));
+    for (joint, cap, value, max) in [
+        (
+            skeleton::Joint {
+                torque_cap_nm: NewtonMeters::new(60.5),
+                ..rs03.clone()
+            },
+            CapKind::Torque,
+            60.5,
+            60.0,
+        ),
+        (
+            skeleton::Joint {
+                current_cap_a: Amps::new(43.5),
+                ..rs03.clone()
+            },
+            CapKind::Current,
+            43.5,
+            43.0,
+        ),
+        (
+            skeleton::Joint {
+                speed_cap_rad_s: RadPerSec::new(20.5),
+                ..rs03.clone()
+            },
+            CapKind::Speed,
+            20.5,
+            20.0,
+        ),
+        // Below the range too: a negative cap is no cap a drive can be set to.
+        (
+            skeleton::Joint {
+                torque_cap_nm: NewtonMeters::new(-1.0),
+                ..rs03.clone()
+            },
+            CapKind::Torque,
+            -1.0,
+            60.0,
+        ),
+    ] {
+        assert_eq!(
+            target(&joint),
+            Err(Refusal::CapOutOfRange { cap, value, max }),
+            "{cap:?}"
+        );
+    }
+    assert_eq!(
+        Refusal::CapOutOfRange {
+            cap: CapKind::Torque,
+            value: 60.5,
+            max: 60.0
+        }
+        .message("arm_joint_one"),
+        "refused (drive.caps): arm_joint_one torque_cap_nm is 60.5 in the skeleton, expected 0 to 60 for its drive"
+    );
+}
+
+/// Guards: safety - `host.preflight`: a joint whose direction, zero or hard limits haven't been verified on the hardware
+/// (null in the skeleton), or whose drive model has no settled MIT scales, is refused before anything is sent (tenets,
+/// fail closed; PLAN item 1, null is not permission; item 2, the RS00's scales).
+#[test]
+fn a_null_direction_or_zero_refuses_before_anything_is_sent() {
+    let skeleton = skeleton();
+    let set = joint(&skeleton, 0);
+    let target = |joint: &skeleton::Joint| Target::new(joint, &skeleton.power).map(|_| ());
+    assert_eq!(target(&set), Ok(()));
+    let no_direction = skeleton::Joint {
+        direction: None,
+        ..set.clone()
+    };
+    let no_zero = skeleton::Joint {
+        zero_rad: None,
+        ..set.clone()
+    };
+    let neither = skeleton::Joint {
+        direction: None,
+        zero_rad: None,
+        ..set.clone()
+    };
+    assert_eq!(
+        target(&no_direction),
+        Err(Refusal::FactUnset(JointFact::Direction))
+    );
+    assert_eq!(target(&no_zero), Err(Refusal::FactUnset(JointFact::Zero)));
+    assert_eq!(
+        target(&neither),
+        Err(Refusal::FactUnset(JointFact::Direction))
+    );
+    let no_limits = skeleton::Joint {
+        hard_rad: None,
+        ..set.clone()
+    };
+    assert_eq!(
+        target(&no_limits),
+        Err(Refusal::FactUnset(JointFact::HardLimits))
+    );
+    let rs00 = skeleton::Joint {
+        actuator: robstride::Model::Rs00,
+        ..set.clone()
+    };
+    assert_eq!(
+        target(&rs00),
+        Err(Refusal::UnvouchedModel(robstride::Model::Rs00))
+    );
+    assert_eq!(
+        Refusal::UnvouchedModel(robstride::Model::Rs00).rule(),
+        RuleId::HostPreflight
+    );
+    for fact in [JointFact::Direction, JointFact::Zero, JointFact::HardLimits] {
+        assert_eq!(Refusal::FactUnset(fact).rule(), RuleId::HostPreflight);
+    }
+    assert_eq!(
+        Refusal::FactUnset(JointFact::Zero).message("arm_joint_one"),
+        "refused (host.preflight): arm_joint_one zero_rad is null in the skeleton, expected a verified value"
+    );
+}

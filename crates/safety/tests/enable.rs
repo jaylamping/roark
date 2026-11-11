@@ -1,6 +1,7 @@
 //! The enable sequence for one drive (PLAN item 2, "Enable one drive"), stepped tick by tick against the views a
 //! snapshot would show.
 
+#[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
 use can::SlowKind;
