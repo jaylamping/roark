@@ -64,6 +64,7 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         let (snapshots_tx, mut snapshots) = rtrb::RingBuffer::new(64);
         let (mut orders, orders_rx) = rtrb::RingBuffer::new(4);
         let (rearmed_tx, mut rearmed) = rtrb::RingBuffer::new(4);
+        let start = soon();
         let bus = can::spawn(
             BusConfig {
                 name: BUS.to_owned(),
@@ -79,11 +80,12 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
                 orders: orders_rx,
                 rearmed: rearmed_tx,
                 epoch,
-                start: soon(),
+                start,
                 exit: Arc::clone(&exit),
             },
         )
         .unwrap();
+        let period = 1_000_000_000 / HZ;
 
         // Play control: enable both until both run.
         let end = Instant::now() + Duration::from_secs(10);
@@ -106,9 +108,28 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
             limbs(&snap),
             [(LimbState::Active, None), (LimbState::Active, None)]
         );
+        // Caught up with the bus, the order is pushed before the next tick is due, so that tick takes it at its start,
+        // before its drain, and stops the limb: an order taken any later (in a slack, after the drain) shows a tick
+        // late. The check holds only when the push beat the tick by a margin; a slow push still meets the bound below.
+        while let Ok(s) = snapshots.pop() {
+            snap = s;
+        }
+        let holds = [Some(hold(101)), Some(hold(102))];
+        assert!(commands.push(batch(epoch, &snap, holds)).is_ok());
+        let due = start + Duration::from_nanos((snap.tick + 1) * period);
         assert!(orders.push(Order::StopLimb(0)).is_ok());
-        let ordered_ns = epoch.ns(Instant::now());
-        let period = 1_000_000_000 / HZ;
+        let ordered = Instant::now();
+        let ordered_ns = epoch.ns(ordered);
+        let in_time = ordered + Duration::from_millis(1) < due;
+        let before = snap.tick;
+        snap = next_snapshot(&mut snapshots, end).unwrap();
+        if in_time {
+            assert_eq!(snap.tick, before + 1, "{snap:?}");
+            assert!(
+                matches!(limbs(&snap)[0].0, LimbState::Stopping { .. }),
+                "an order pushed before its tick is due stops the limb in that tick: {snap:?}"
+            );
+        }
         loop {
             assert!(
                 commands
@@ -139,7 +160,7 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
 
         // The operator's clear, with a stop order naming a limb the bus doesn't have right behind it, made visible to
         // the bus at once: both are taken at the same tick's start, so the clear is answered and the bad stop then
-        // stops both limbs within that tick, the running one included, the cleared one with its new generation.
+        // stops both limbs in that tick, the running one included, the cleared one with its new generation.
         let chunk = orders.write_chunk_uninit(2).unwrap();
         assert_eq!(
             chunk.fill_from_iter([Order::Rearm { tag: 5, limb: 0 }, Order::StopLimb(7)]),
@@ -188,10 +209,11 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         assert_eq!(snap.counters.rearms_dropped, 0);
 
         // Told to exit, the bus finishes the stop and ends once control has taken a snapshot showing it. A clear sent
-        // as it exits never undoes that stop: refused (limb 0 still stopping, or the exit's stop pending) or left for
-        // the end (`Ended`). Only a clear the bus took before it saw the exit can pass, and the exit's stop then stops
-        // that limb again: the bus still ends with every limb stopped.
+        // once the bus has seen the exit never undoes that stop: refused (limb 0 still stopping, or the exit's stop
+        // asked before the clear) or left for the end (`Ended`). Sent several ticks after the exit, so the bus has
+        // seen it.
         exit.store(true, Ordering::Release);
+        std::thread::sleep(Duration::from_nanos(5 * period));
         assert!(orders.push(Order::Rearm { tag: 6, limb: 0 }).is_ok());
         while !bus.thread.is_finished() {
             if let Ok(s) = snapshots.pop() {
@@ -208,17 +230,15 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         assert!(
             matches!(
                 answer.outcome,
-                Ok(())
-                    | Err(RearmRefused::Ended
-                        | RearmRefused::NotStopped(0)
-                        | RearmRefused::StopPending(0))
+                Err(RearmRefused::Ended
+                    | RearmRefused::NotStopped(0)
+                    | RearmRefused::StopPending(0))
             ),
             "{answer:?}"
         );
-        let generation = if answer.outcome.is_ok() { 2 } else { 1 };
         assert!(
             done.last
-                .is_some_and(|s| s.limb(0).is_some_and(|l| l.generation == generation)),
+                .is_some_and(|s| s.limb(0).is_some_and(|l| l.generation == 1)),
             "{answer:?} {:?}",
             done.last
         );
