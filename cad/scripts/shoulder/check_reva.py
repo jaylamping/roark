@@ -87,7 +87,7 @@ def main():
                     for k in movers:
                         M = pose_matrix(GROUP[k], pitch, float(roll), float(yaw))
                         q = xf(P[k][::2], M)
-                        dd, ii = tree.query(q, distance_upper_bound=60, workers=-1)
+                        dd, ii = tree.query(q, distance_upper_bound=60, workers=2)
                         j = int(np.argmin(dd))
                         if dd[j] < best[0]:
                             best = (float(dd[j]), k, (tn[ii[j]] if tn is not None and np.isfinite(dd[j]) else tname), yaw)
@@ -103,7 +103,7 @@ def main():
     feed = cov[(cov[:, 1] < RY - COVER['out'][1] + 0.5)]
     hres = {}
     for tname in ('frame', 'frame_petg', 'shell_open60'):
-        dd, ii = T[tname][0].query(feed, workers=-1)
+        dd, ii = T[tname][0].query(feed, workers=2)
         j = int(np.argmin(dd))
         hres[tname] = dict(min=round(float(dd[j]), 2), at_reva=[round(float(v), 1) for v in feed[j] - shift], touches=(T[tname][1][ii[j]] if T[tname][1] is not None else tname))
     hres['feed_box_reva'] = [round(float(v), 1) for v in np.r_[feed.min(0) - shift, feed.max(0) - shift]]

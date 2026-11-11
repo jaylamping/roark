@@ -103,7 +103,7 @@ def frame_samples(path=None, sp=1.0):
 def load():
     t0 = time.time()
     P = {}
-    for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'fork_cap', 'hub', 'cover', 'port_cap'):
+    for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'hub', 'cover', 'port_cap'):   # fork cap dropped (look option a)
         P[k] = samp(trimesh.load(STL / f'{k}.stl'), 0.7)
     P['roll_rs03'] = samp(mesh_step(VENDOR / 'vendor_robstride_rs03.stp', T_ROLL_RS03), 0.7)
     P['rs02'] = samp(mesh_step(VENDOR / 'vendor_robstride_rs02.step', T_RS02), 0.7)
@@ -158,7 +158,7 @@ def run():
             Ma = pose_matrix(GROUP[a], p_, r_, y_)
             Mb = pose_matrix(GROUP[b], p_, r_, y_)
             pa = xf(P[a][::2], np.linalg.inv(Mb) @ Ma)
-            dd, _ = TREE[b].query(pa, distance_upper_bound=40, workers=-1)
+            dd, _ = TREE[b].query(pa, distance_upper_bound=40, workers=2)
             d = float(dd.min()) if np.isfinite(dd.min()) else 40.0
             out[f'{a}|{b}'] = round(d, 2)
             upd(f'{a}|{b}', d, (p_, r_, y_))

@@ -1,5 +1,9 @@
 # Look options: match the organic arm (2026-11-11)
 
+**Decision (Joey, 20:01Z): option a, shape only.** No dark band, no seam lines. It's applied to the real parts with a
+milder drum relief (0.9 mm, held by 1.6 mm of skin over the parts inside the drum). Details are in CAD_NOTES.md,
+"Look option a".
+
 Three restrained variants on top of the outline-fix version (a71b446). Every detail copies something the arm already has
 (`left-arm-organic`, read only). Nothing stands proud of the skin and there are no flat boxes.
 

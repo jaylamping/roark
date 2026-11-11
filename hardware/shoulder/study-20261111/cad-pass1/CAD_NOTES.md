@@ -22,7 +22,6 @@ SolidWorks parts, dressed twice for the look of the organic arm.
 | `shoulder_roll_cap_left.SLDPRT` | Rear cap: hollow stub OD 40.0 / bore 25 with 1 mm land, radial channel, 2 stop lugs, 3 x M4 ears |
 | `shoulder_fork_front_left.SLDPRT` | Dome cap on the roll output (r 55), RS02 seat ring, cuff round the RS02, socket pockets and tap, joint pad |
 | `shoulder_fork_rear_left.SLDPRT` | Rear cheek with the 6808 seat (Ø52), arm with power and signal channels, yaw exit |
-| `shoulder_fork_cap_left.SLDPRT` | Domed press-in cap over the 6 front screws |
 | `shoulder_roll_drum_port_cap_left.SLDPRT` | Press-in cap closing the drum's driver port flush with the skin |
 | `shoulder_hub_left.SLDPRT` | Hub with the dished top, on the frozen hub; spigot extension and second lug pair prepared, suppressed |
 | `shoulder_pitch_loop_cover_left.SLDPRT` | Fixed cover round the pitch motor, bottom feed (FEED_*), 4 M5 placeholder pads |
@@ -284,6 +283,66 @@ Still not clean:
 
 - The seam at the joint plane shows as a line down the sleeve's back sides (a part split, like the arm's seams).
 - The pitch cover's bottom feed is still an L-shaped duct (inside the torso shell, behind the skin).
+
+### Look option a (Joey, 2026-11-11 20:01Z: "shape only")
+
+[look-options/OPTIONS.md](look-options/OPTIONS.md) has the variants. On the real parts:
+
+- **Drum as a bobbin**, copying the forearm cheeks: rims r 57 at Z -22 and +27.5, middle r 56.1. That's a 0.9 mm relief,
+  milder than the mock-up's 1.5. The middle can't go lower: the RS03 lug slots and the top connector window inside
+  reach r 54.5, and 56.1 keeps 1.6 mm of skin over them.
+  - The window's top corners are clipped to r 54.5.
+  - The pockets stay at r 54.
+  - The bell's top taper ends at 55.8 (X 141), so it still dives under the drum skin.
+- **Cuff waist**, copying the upper-arm neck: r 42.1 at Y 330, against 43.0-43.6 at the ends. It stays clear of the
+  socket pockets (r 40.5 from Y 340.9). The hollowing loft now has a station every 4 mm, so it follows the waist with no
+  bulge.
+- **Fork cap dropped**, copying the forearm caps: the 6 front screws show in the recessed disc (r 24, 8 deep). Driver
+  access is straight along +Z from the front; nothing stands in front of the fork front.
+  `shoulder_fork_cap_left.SLDPRT` is removed.
+- **Sleeve back fixed in this round:** the 16 x 6 power channel is centred on RZ (Z -54.3..-48.3), 3 mm deeper than the
+  sleeve round's cover check assumed, so the skin over its inboard corner was only 1.0 mm.
+  - The back now goes to r 66.5 (67.0 from Y 354, where the signal channel joins), giving 2.4 mm walls plus about
+    0.5-0.9 mm of margin.
+  - The rear hollow stops 1.6 mm short of the joint plane, which leaves a front plate instead of a feather edge on the
+    joint face.
+- **Port cap:** rebuilt on the new skin, same slot and hooks.
+
+Thinnest walls, measured on sections and inward rays:
+
+- **Drum skin:** 1.6 mm over the lug slots and window. The one exception is 0.97 mm where the bell dives into the drum
+  over trunk A. That spot dates from the crease fix and option a didn't change it; it's still open.
+- **Cuff:** 1.48 mm at the bore step at Y 320.4, otherwise 1.6 or more.
+- **Fork rear:** the 1.6 mm front plate; skins 2.0 or more.
+- **Port cap:** 1.9 mm.
+- The RS02 counterbores at the seat leave 1.2 mm to the seat bore. That's vendor-interface geometry and unchanged.
+
+Masses:
+
+| Part | g |
+|---|---|
+| Drum | 226.5 |
+| Flange ring | 29.3 |
+| Cap | 84.5 |
+| Fork front | 144.6 |
+| Fork rear | 70.4 |
+| Drum port cap | 1.4 |
+| Hub (rev C+) | 75.4 |
+| **Total** | **632.1** |
+
+Fork cap dropped (-5.5 g). Against a71b446: drum -4.3, fork front +1.2, fork rear +10.4 (the deeper back that really
+covers the channel, plus the front plate), hub +2.9 (rev C+ wall fill).
+
+Clearances, moving pairs (`check_clearance.py`, capped at 6 GB). The stop tooth (0.05) is the intended contact. The
+tightest five inside -11…+110:
+
+| Pair | Min (mm) |
+|---|---|
+| Ring ↔ cover | 2.00 (designed) |
+| Ring ↔ fork front | 2.12 (roll -11; 1.15 at -12, past the stop) |
+| Cuff ↔ hub | 2.13 |
+| Drum ↔ RS02 | 2.60 |
+| Port cap ↔ RS02 | 2.61 |
 
 ## Rev A frame and shell: inward roll from 0 to -25 deg
 

@@ -104,6 +104,16 @@ def run(name, c):
     e, w = L(), L()
     d = sw.OpenDoc6(str(PARTS[c['part']]), 1, 1, '', e, w)
     sw.ActivateDoc3(d.GetTitle, False, 0, L())
+    if c.get('dummy'):
+        # a stiff dummy of the RS02 output: an aluminium disc seated on the hub's step face, a separate body bonded to it
+        # (the six preloaded M4 on PCD 24 keep the joint closed: about 0.6 kN of bolt load change at 23 N.m against about
+        # 3 kN of preload each), so the load reaches the hub through the seat and the bolt pattern, not through hub faces
+        from swk import Sk, plane, extrude
+        dm_ = c['dummy']
+        with Sk(d, plane(d, 'Y', dm_['y0'], 'P_DUMMY'), 'DUMMY') as s_:
+            s_.circle((RX, dm_['y0'], YZ), dm_['r'])
+        extrude(d, s_.feat, 'DUMMY', dm_['t'], (0, 1, 0), merge=False)
+        d.ForceRebuild3(False)
     cw = session(STATE).load_simulation()
     doc = cw.ActiveDoc
     sm = doc.StudyManager
@@ -119,7 +129,30 @@ def run(name, c):
     m.MaterialName = 'T'
     for k, v in (('EX', EX), ('NUXY', NU), ('GXY', EX / (2 * (1 + NU))), ('DENS', RHO), ('SIGYLD', YIELD * 1e6), ('SIGXT', 50e6)):
         m.SetPropertyByName2(k, v, False)
-    print(' material', [comp.GetSolidBodyAt(k, I()).SetSolidBodyMaterial(m) for k in range(comp.SolidBodyCount)], flush=True)
+    mats = []
+    for k in range(comp.SolidBodyCount):
+        cb = comp.GetSolidBodyAt(k, I())
+        is_dummy = False
+        if c.get('dummy'):
+            nm_ = ''
+            for a_ in ('SolidBodyName', 'Name'):
+                try:
+                    nm_ = str(getattr(cb, a_)); break
+                except Exception:
+                    pass
+            # the dummy is the body made by the DUMMY feature (created last); by name if the name is readable
+            is_dummy = ('DUMMY' in nm_.upper()) if nm_ else (k == comp.SolidBodyCount - 1)
+            print(' body', k, repr(nm_), 'dummy' if is_dummy else 'hub', flush=True)
+        if is_dummy:
+            ma = cb.GetDefaultMaterial
+            ma.MaterialUnits = 0
+            ma.MaterialName = 'AL'
+            for k_, v_ in (('EX', 69e9), ('NUXY', 0.33), ('GXY', 26e9), ('DENS', 2700.0), ('SIGYLD', 250e6), ('SIGXT', 300e6)):
+                ma.SetPropertyByName2(k_, v_, False)
+            mats.append(('dummy', cb.SetSolidBodyMaterial(ma)))
+        else:
+            mats.append(('petg', cb.SetSolidBodyMaterial(m)))
+    print(' material', mats, flush=True)
     lbc = st.LoadsAndRestraintsManager
     fixed = []
     for kind, sel in c['fix']:
@@ -185,6 +218,16 @@ def run(name, c):
         print(' control', len(fs), size, call(q, 'MeshControlEndEdit'), flush=True)
     rc = st.CreateMesh(0, el, el * 0.05)
     print(' mesh', rc, 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, flush=True)
+    # fallbacks when the curvature mesher fails (rev C run-out lofts leave narrow faces): blended curvature, then finer
+    for mt, k in ((1, 1.0), (1, 0.8), (0, 0.8)):
+        if not rc:
+            break
+        try:
+            mesh.MesherType = mt
+        except Exception as e_:
+            print(' mesher type set failed', e_, flush=True)
+        rc = st.CreateMesh(0, el * k, el * k * 0.05)
+        print(' mesh retry', mt, el * k, rc, 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, flush=True)
     if rc:
         raise SystemExit('mesh failed')
     rc = call(st, 'RunAnalysis')
@@ -216,6 +259,9 @@ def run(name, c):
         away &= ~np.all((pos >= np.array(bx[:3])) & (pos <= np.array(bx[3:])), axis=1)
     if c.get('exclude'):
         print(' excluded', c['exclude'], flush=True)
+    if c.get('dummy'):
+        keep_ = pos[:, 1] <= c['dummy']['y0'] + 0.01      # hub nodes only (the dummy sits above the seat)
+        pos, s, away = pos[keep_], s[keep_], away[keep_]
     vm = s[:, 10]
     np.savez(str(F / (name + '.npz')), pos=pos, s=s)
     i = np.flatnonzero(away)[np.argmax(vm[away])]
@@ -229,6 +275,17 @@ def run(name, c):
         if mk.any():
             k_ = np.flatnonzero(mk)[np.argmax(vm[mk])]
             out['region_' + k] = dict(vm=round(float(vm[k_]), 2), at=pos[k_].round(1).tolist(), sf=round(YIELD / float(vm[k_]), 2), p1=round(float(s[mk, 7].max()), 2), p3=round(float(s[mk, 9].min()), 2), layer_x=round(float(layer(pos[mk], s[mk, 1:7], None, (1, 0, 0), None).max()), 2), layer_y=round(float(layer(pos[mk], s[mk, 1:7], None, (0, 1, 0), None).max()), 2), sf_layer_y=round(YIELD * LAYER / max(float(layer(pos[mk], s[mk, 1:7], None, (0, 1, 0), None).max()), 1e-9), 2))
+            # 1 mm averages: mean over the nodes within 1 mm of the region's bulk peak and of its layer (sigma_y) peak
+            ly_all = layer(pos, s[:, 1:7], None, (0, 1, 0), None)
+            kl = np.flatnonzero(mk)[np.argmax(ly_all[mk])]
+            near_v = np.linalg.norm(pos - pos[k_], axis=1) <= 1.0
+            near_l = np.linalg.norm(pos - pos[kl], axis=1) <= 1.0
+            n5_v = np.linalg.norm(pos - pos[k_], axis=1) <= 0.5
+            n5_l = np.linalg.norm(pos - pos[kl], axis=1) <= 0.5
+            out['region_' + k].update(layer_at=pos[kl].round(1).tolist(), sf_avg1=round(YIELD / float(vm[near_v].mean()), 2),
+                                      sf_layer_y_avg1=round(YIELD * LAYER / max(float(ly_all[near_l].mean()), 1e-9), 2), n_avg1=int(near_l.sum()),
+                                      sf_avg05=round(YIELD / float(vm[n5_v].mean()), 2),
+                                      sf_layer_y_avg05=round(YIELD * LAYER / max(float(ly_all[n5_l].mean()), 1e-9), 2), n_avg05=int(n5_l.sum()))
     if loaded:
         err = I()
         q = res.GetStressForEntities2(True, 9, 1, NUL, loaded, 3, err)
@@ -296,11 +353,14 @@ for k_, f_, m_ in (('A', (0.0, -372.0, 0.0), (22.9, 17.0, 0.0)), ('B', (0.0, -62
 CONE_C = ('cone', [130, 297.8, -35, 212, 299.0, 47])
 FACE_302 = pl((RX, 302.0, YZ - 37.5))
 GREG_C = dict(GREG, load_flank_90=[150, 297.5, 25, 192, 299.2, 47], load_flank_270=[150, 297.5, -35, 192, 299.2, -13],
-              land_below=[130, 295.9, -35, 212, 298.05, 47], window_band=[130, 302.2, -35, 212, 312.8, 47])
+              land_below=[130, 295.9, -35, 212, 298.05, 47], window_band=[130, 302.2, -35, 212, 312.8, 47],
+              groove_bottom=[130, 298.6, -35, 212, 300.8, 47], spigot_edge=[130, 295.4, -35, 212, 296.8, 47], disc_corner=[130, 301.4, -35, 212, 303.0, 47],
+              corner45_t135=[139.0, 299.9, 24.0, 151.5, 301.2, 37.5], corner45_t315=[189.5, 299.9, -25.5, 202.0, 301.2, -12.0])
 for k_, f_, m_ in (('A', (0.0, -372.0, 0.0), (22.9, 17.0, 0.0)), ('B', (0.0, -62.0, 0.0), (7.0, 8.6, 14.7))):
     base = dict(part='hub', remote=(RS02_SIDE, AT, tuple(-v for v in f_), tuple(-v for v in m_)), coupling=1, el=1.5,
                 ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (CONE_C, float(os.environ.get('CONE_EL', '0.7')))], regions=GREG_C)
-    fx = [('radial', cyl(35.8, [130, 295.5, -35, 212, 302.5, 47])), ('axialY', CONE_C), ('fixed', LUG_HOLES[0]), ('fixed', LUG_HOLES[1])]
+    # (SolidWorks gives the r 35.8 faces loose boxes, Y 294.3-304.4: the box is wide; only r 35.8 cylinders are taken)
+    fx = [('radial', cyl(35.8, [130, 294.0, -35, 212, 305.0, 47])), ('axialY', CONE_C), ('fixed', LUG_HOLES[0]), ('fixed', LUG_HOLES[1])]
     CASES['HUBC_' + k_] = dict(base, fix=fx)
     CASES['HUBCF_' + k_] = dict(base, fix=fx + [('axialY', FACE_302)])
 
@@ -310,6 +370,14 @@ for k_, f_, m_ in (('A', (0.0, -372.0, 0.0), (22.9, 17.0, 0.0)), ('B', (0.0, -62
 CASES['HUBL_I'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5)], regions=GREG_C,
                        remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (-170.0, -230.0, 0.0), (0.0, 0.0, 0.0), 1),
                                 (LUG_HOLES[1], (193.5, 292.0, YZ), (170.0, -230.0, 0.0), (0.0, 0.0, 0.0), 1)])
+
+# REV C+ honest top: the RS02 output as an aluminium dummy disc (r 23.4, 10 thick) on the step face (Y 319.86), bonded;
+# the arm loads go in as their reaction on the dummy's top face about the arm's hub point. The spigot side as in HUBCF_*.
+for k_ in ('A', 'B'):
+    base_ = CASES['HUBCF_' + k_]
+    CASES['HUBD_' + k_] = dict(base_, dummy=dict(r=23.4, y0=RS02_OUT, t=10.0),
+                               remote=(pl((RX, RS02_OUT + 10.0, YZ)), AT, base_['remote'][2], base_['remote'][3]), coupling=0,
+                               regions=dict(GREG_C, hub_top=[130, 311.5, -35, 212, RS02_OUT + 0.01, 47]))
 
 if __name__ == '__main__':
     for n in sys.argv[1:]:

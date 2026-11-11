@@ -66,7 +66,6 @@ PARTS = [  # (key, file, group, base transform, colour)
     ('roll_rs03', VENDOR / 'vendor_robstride_rs03.SLDPRT', 'pitch', T_ROLL_RS03, 'motor'),
     ('fork_front', OUT / 'shoulder_fork_front_left.SLDPRT', 'roll', None, 'petg'),
     ('fork_rear', OUT / 'shoulder_fork_rear_left.SLDPRT', 'roll', None, 'petg'),
-    ('fork_cap', OUT / 'shoulder_fork_cap_left.SLDPRT', 'roll', None, 'petg'),
     ('rs02', VENDOR / 'vendor_robstride_rs02.SLDPRT', 'roll', T_RS02, 'motor'),
     ('hub', OUT / 'shoulder_hub_left.SLDPRT', 'yaw', None, 'petg'),
     ('ua_front', REF / 'shoulder_ref_upper_arm_front_left.SLDPRT', 'yaw', None, 'arm'),

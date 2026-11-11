@@ -120,9 +120,12 @@ def arm_section(y, cx, w, depth, n=25, e=2.6):
 # only at the joint plane (fork front Z >= JZ0 + 0.5, fork rear Z <= JZ0). Round at the front, one rearward swell that takes
 # the 16 x 6 passage with its wall, the socket-tap arc and the joint screws; a skirt to Y 313.6 hides the yaw exit.
 SLEEVE = dict(y_bot=314.5, bore_skirt=41.5, a_c=-100.0, p=1.0, top_round=4.0, round_free=(30.0, 60.0),
-              ys=[314.5, 320.36, 336.0, SEAT_Y[0] - 2.0, SEAT_Y[0] + 2.0, SEAT_Y[1]],
-              ro=[43.6, 43.4, 42.9, 43.0, 43.4, 43.8] if not LOOK else [43.6, 43.0, 41.9, 42.6, 43.4, 43.8],   # LOOK: waisted like the upper arm's neck      # no flare at the top (round 1 flared to 45.3: read as a flange)
-              rb_ys=[314.5, 320.0, SEAT_Y[1]], rb=[62.0, 63.5, 63.5],
+              ys=[314.5, 320.36, 336.0, SEAT_Y[0] - 2.0, SEAT_Y[0] + 2.0, SEAT_Y[1]] if not SHAPE_A else
+                 [314.5, 320.36, 330.0, 340.0, SEAT_Y[0] + 2.0, SEAT_Y[1]],     # option a: waist at Y 330, clear of the socket pockets (r 40.5 from Y 340.9)
+              ro=[43.6, 43.4, 42.9, 43.0, 43.4, 43.8] if not SHAPE_A else [43.6, 43.0, 42.1, 42.6, 43.4, 43.8],   # option a: waisted like the upper arm's neck      # no flare at the top (round 1 flared to 45.3: read as a flange)
+              # the back holds the real channel boxes with their 2.4 mm wall: power Z -54.3..-48.3 (centred on RZ), signal from
+              # Y 354 at X +4..+14 (round 1 took the power channel as -51.3..-45.3 and left 1.0 mm over its inboard corner)
+              rb_ys=[314.5, 350.0, 354.0], rb=[66.5, 66.5, 67.0],
               x_in=48.9, shape_y=[345.0, 351.0], a_c_y=[-95.0, -100.0], p_y=[2.5, 1.0])
 
 
@@ -160,11 +163,12 @@ def sleeve_section(y, inset=0.0, top=0.0, n=144):
     return out
 
 
-def sleeve_clip(y, side, inset=0.0, top=0.0, n=720):
+def sleeve_clip(y, side, inset=0.0, top=0.0, n=720, zc=None):
     """Open curve of the outline on one side of the joint plane plus its two end points on the plane:
     side 'front' keeps Z >= JZ0 + 0.5, 'rear' keeps Z <= JZ0. Returns (curve pts, start, end) ordered so the closing
     line runs end -> start along the plane."""
-    zc = JZ0 + 0.5 if side == 'front' else JZ0
+    if zc is None:
+        zc = JZ0 + 0.5 if side == 'front' else JZ0
     keep = (lambda z: z >= zc) if side == 'front' else (lambda z: z <= zc)
     pts = sleeve_section(y, inset, top, n)
     m = len(pts)

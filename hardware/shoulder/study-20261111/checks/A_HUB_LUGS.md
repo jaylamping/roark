@@ -154,3 +154,77 @@ The thicker top lifts case A's layer SF from 0.54 to 1.17. That is still short o
 - a hub printed with the spigot's layers running along the load. That is the side-print, which costs roundness.
 
 **Hub mass with the groove:** 69.3 g.
+
+## Revision C+ (2026-11-11 evening): groove as settled with the arm side, rounds, wall fill
+
+**Geometry** (`build_hub`, `HUB` in `dims.py`):
+
+- **Groove:** opens Y 298-302 at r 35.8, bottom r 34.3, 30° load flank, 45° other flank. Full depth over θ 30-150 and
+  210-330.
+- **Groove corners:** load-side bottom corner R0.4, 45°-side bottom corner R1.0, flank tip rounded into r 35.8. The
+  rounds are part of the section itself.
+- **Run-outs:** each is one revolve of the full section about an axis parallel to the yaw axis, at r 55 on the radial
+  plane where the full arc ends. The depth falls 1.48 / 1.28 / 0.90 / 0.34 / 0 mm at 1.3 / 3.9 / 6.5 / 8.9 / 10°, so it is
+  0 at 20/160 and 200/340, tangent to the full arc at the start. These replaced the lofted run-outs, which would not mesh.
+- **Spigot bottom outer edge (Y 296):** R0.4, cut exactly as a revolve; the fillet feature does not build on the imported
+  edge.
+- **Spigot-to-disc corner (r 35.8 / Y 302.0):** R0.3 concave. The arm breaks its bore-to-end-face edge by 0.5.
+- **Lug roots:** R1.0 on the X-facing outer faces only (flat at r 29.5). Nothing on the Z-facing sides, where the arm's
+  hub posts sit 0.1 under the spigot. Lug outline unchanged: r 18.8-29.9, ±15° about θ 0/180, Y 288-296.
+- **Wall fill (lever a, agreed):** the spigot wall goes inward to r 25 over θ 25-155 and 205-335, Y 296-302.3, with
+  rounded ends. The wall under the groove goes from 6.25 to 9.3 mm.
+  - The cable window runs at r 15-19 at these heights and the bundle stays in the window sector (the hub turns with the
+    arm), so the fill never meets it.
+- **No undercut at the disc:** the 45° flank meets r 35.8 at Y 301.9 and the disc face is flat at Y 302.0 from r 35.8 to
+  38.7. Checked on sections at θ 45, 90 and 135.
+- **Mass:** 75.4 g (rev C 72.5).
+
+**FEA:**
+
+- **Mesh:** 1.5 mm, 0.5 mm at the seam-bolt holes, 0.7 mm on the load flanks; 498,423 nodes. The run-outs now mesh first
+  time.
+- **Supports:** the spigot is held radially on r 35.8 and axially on the 30° load flanks. The Y 302 end face is held
+  axially both ways, which is the optimistic bound of the compression-only contact. The lugs are fixed.
+- **Load:** the arm's loads go in as their reaction at the RS02 side (distributed coupling).
+- **Layer stress:** σy, with the hub printed RS02 side on the bed. The averages cover the nodes within 0.5 and 1.0 mm of
+  each peak, tensile part only.
+- Script: `cad/scripts/shoulder/hub_post.py`; data in `cad/_sim/shoulder/hub_post_revCplus.json`.
+
+Safety factors, as peak (0.5 mm average / 1 mm average):
+
+| Region | A bulk | A layer | B bulk | B layer |
+|---|---|---|---|---|
+| 45° corner, θ 135 (the arm's stop-case spot) | 19.9 (19.9 / 19.9) | 25.7 (28.2 / 18.7) | 17.8 (17.8 / 17.2) | 336 (181 / 101) |
+| 45° corner, θ 315 | 8.7 (8.7 / 7.8) | 30.3 (51.4 / 50.8) | 18.8 (21.7 / 22.7) | 20.2 (30.5 / 34.5) |
+| Load flank, θ 90 side | 1.60 (2.99 / 4.35) | 0.82 (2.54 / 4.25) | 4.40 (8.42 / 11.6) | 2.36 (7.45 / 11.8) |
+| Load flank, θ 270 side | 2.27 (4.66 / 6.66) | 1.17 (3.31 / 6.55) | 4.05 (8.27 / 11.6) | 2.53 (7.80 / 14.7) |
+| Land below the groove | 1.32 (5.51 / 6.90) | 0.52 (4.08 / 6.03) | 2.50 (2.50 / 4.53) | 1.09 (11.3 / 21.1) |
+| Spigot ring / disc corner, Y 301.7 | 0.21 (1.49 / 2.50) | 0.28 (2.24 / 4.44) | 0.70 (4.35 / 7.34) | 0.65 (11.0 / 20.2) |
+| Lug A root | 1.60 (2.19 / 2.75) | 0.65 (1.14 / 1.75) | 2.72 (3.72 / 4.64) | 1.17 (2.04 / 3.14) |
+| Lug B root | 0.96 (1.31 / 1.68) | 0.40 (0.71 / 1.12) | 2.01 (2.76 / 3.54) | 0.82 (1.46 / 2.30) |
+| Hub top, Y 315.9 | 0.36 (0.64 / 1.16) | 0.47 (0.47 / 0.91) | 0.51 (0.91 / 1.58) | 0.57 (0.57 / 1.11) |
+
+**Which peaks are artefacts:**
+
+- **Land, spigot edge, ring and disc corner:** the peaks sit exactly where a support ends.
+  - Land and spigot edge: at r 35.8, Y 296.4, the lower end of the radial support at the spigot round.
+  - Ring and disc corner: at r 35.8, Y 301.7, where the radial support meets the bilateral Y 302 face at the R0.3
+    corner.
+  - They fall to 1.5-11 within 0.5 mm, so they come from the boundary conditions, not the geometry.
+- **Lug roots:** the lug holes are fixed rigidly, so the lugs pull load the bolted joint does not give them. The arm side's
+  bolted-contact model has about 3 N axial and 15 N shear per lug, with a layer SF of 6.2. The peaks here are at the
+  fixed hole's edge.
+- **Hub top (Y 315.9):** 3 mm from where the load goes in on the step face and hub screws, and with only one node within
+  0.5 mm. The 1 mm average is 0.9 (A) and 1.1 (B). This is the same zone rev B flagged.
+  - The arm side's model with real contact puts the hub's worst layer SF at 1.75 (A).
+  - This model can't separate the joint's real load path from its own load application here. **Open:** it needs the
+    arm-side contact model's numbers at Y 312-320.
+- **The arm's stop-case corner (45° side, θ 135):** with the R1.0 corner and the r 25 fill it is no longer critical in
+  this model, SF 17 or more in both cases. Compare like for like with the arm side's contact run on the same geometry.
+
+**Print check:** the hub prints RS02 side on the bed, spigot up. None of the rounds is a problem.
+- The spigot-edge R0.4 is a convex top edge.
+- The lug-root R1.0 sits at the foot of the lugs.
+- The groove rounds are two layers deep, inside a groove whose load flank is already a 60° overhang.
+- The R0.3 disc corner sits on the disc's top face at the foot of the spigot.
+- The wall fill is a plain inward step.
