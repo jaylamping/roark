@@ -71,6 +71,10 @@ def pick(d, sel):
             q = sel[2]
             if all(lo[i] >= q[i] - .01 and hi[i] <= q[i + 3] + .01 for i in range(3)):
                 out.append(f)
+        if sel[0] == 'cone' and f.GetSurface.IsCone:      # cones whose box lies inside the given box
+            q = sel[1]
+            if all(lo[i] >= q[i] - .01 and hi[i] <= q[i + 3] + .01 for i in range(3)):
+                out.append(f)
         if sel[0] == 'touch':      # any face whose box meets the given box and whose area is under the limit (local mesh control)
             q, amax = sel[1], sel[2]
             if all(lo[i] <= q[i + 3] and hi[i] >= q[i] for i in range(3)) and a <= amax:
@@ -121,7 +125,15 @@ def run(name, c):
     for kind, sel in c['fix']:
         fs = pick(d, sel)
         err = I()
-        lbc.AddRestraint({'fixed': 0, 'hinge': 4}[kind], fs, NUL, err)
+        if kind in ('radial', 'axialY'):
+            # radial only on cylinders (type 7: radial, circumferential, axial), or only normal to the Top plane (type 5)
+            ref = d.FeatureByName('Top Plane') if kind == 'axialY' else NUL
+            r_ = lbc.AddRestraint(7 if kind == 'radial' else 5, fs, ref, err)
+            call(r_, 'RestraintBeginEdit')
+            r_.SetTranslationComponentsValues2(*((1, 0, 0) if kind == 'radial' else (0, 0, 1)), 0.0, 0.0, 0.0)
+            print(' restraint edit', call(r_, 'RestraintEndEdit'), flush=True)
+        else:
+            lbc.AddRestraint({'fixed': 0, 'roller': 3, 'hinge': 4}[kind], fs, NUL, err)
         print(' fixture', kind, len(fs), 'err', err.value, flush=True)
         if not fs or err.value:
             raise SystemExit('fixture failed')
@@ -216,7 +228,7 @@ def run(name, c):
         mk = np.all((pos >= np.array(box[:3])) & (pos <= np.array(box[3:])), axis=1)
         if mk.any():
             k_ = np.flatnonzero(mk)[np.argmax(vm[mk])]
-            out['region_' + k] = dict(vm=round(float(vm[k_]), 2), at=pos[k_].round(1).tolist(), sf=round(YIELD / float(vm[k_]), 2), p1=round(float(s[mk, 7].max()), 2), p3=round(float(s[mk, 9].min()), 2), layer_x=round(float(layer(pos[mk], s[mk, 1:7], None, (1, 0, 0), None).max()), 2))
+            out['region_' + k] = dict(vm=round(float(vm[k_]), 2), at=pos[k_].round(1).tolist(), sf=round(YIELD / float(vm[k_]), 2), p1=round(float(s[mk, 7].max()), 2), p3=round(float(s[mk, 9].min()), 2), layer_x=round(float(layer(pos[mk], s[mk, 1:7], None, (1, 0, 0), None).max()), 2), layer_y=round(float(layer(pos[mk], s[mk, 1:7], None, (0, 1, 0), None).max()), 2), sf_layer_y=round(YIELD * LAYER / max(float(layer(pos[mk], s[mk, 1:7], None, (0, 1, 0), None).max()), 1e-9), 2))
     if loaded:
         err = I()
         q = res.GetStressForEntities2(True, 9, 1, NUL, loaded, 3, err)
@@ -265,6 +277,19 @@ for tag, mom in (('MX', (23.0, YAW_T, 0.0)), ('MZ', (0.0, YAW_T, 23.0))):
 # 7.0 N.m about X, 8.6 about Y (yaw), 14.7 about Z (sideways), with the 62 N shear.
 CASES['HUBS_A'] = dict(CASES['HUBS_MX'], remote=(LUG_HOLES + [SPIGOT], AT, (0.0, -372.0, 0.0), (22.9, 17.0, 0.0)))
 CASES['HUBS_B'] = dict(CASES['HUBS_MX'], remote=(LUG_HOLES + [SPIGOT], AT, (0.0, -62.0, 0.0), (7.0, 8.6, 14.7)))
+
+# ---- groove model (hub rev B + groove): spigot held radially only (roller on the r 35.8 cylinder), axially only on the
+# groove's load flanks (roller on the 30 deg cones, low-Y side), lugs bolted (fixed holes). The arm loads go in as their
+# reaction at the RS02 side (remote load on the hub screws and the step-ring face, -F and -M about the same point).
+RS02_SIDE = [cyl(2.15, [150, 297, -20, 192, 321, 30]), pl((RX + 21.5, RS02_OUT, YZ))]
+GROOVE_FIX = [('radial', cyl(35.8, [130, 295.5, -35, 212, 302.5, 47])), ('axialY', ('cone', [130, 296.8, -35, 212, 298.0, 47])),
+              ('fixed', LUG_HOLES[0]), ('fixed', LUG_HOLES[1])]
+GREG = {'load_flank_90': [150, 296.5, 25, 192, 298.2, 47], 'load_flank_270': [150, 296.5, -35, 192, 298.2, -13],
+        'land_below': [130, 295.9, -35, 212, 297.05, 47], 'spigot_ring': [130, 295.9, -35, 212, 302.1, 47],
+        'lug_A': [143, 286, -2, 158, 297, 14], 'lug_B': [183, 286, -2, 198, 297, 14], 'hub_top': [130, 311.5, -35, 212, 320, 47]}
+for k_, f_, m_ in (('A', (0.0, -372.0, 0.0), (22.9, 17.0, 0.0)), ('B', (0.0, -62.0, 0.0), (7.0, 8.6, 14.7))):
+    CASES['HUBG_' + k_] = dict(part='hub', fix=GROOVE_FIX, remote=(RS02_SIDE, AT, tuple(-v for v in f_), tuple(-v for v in m_)), el=1.5,
+                               ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (('cone', [130, 296.8, -35, 212, 298.0, 47]), 0.4)], regions=GREG)
 
 if __name__ == '__main__':
     for n in sys.argv[1:]:

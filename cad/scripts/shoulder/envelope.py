@@ -78,3 +78,20 @@ def bell_section(x, inset=0.0):
         zz = bz * math.copysign(abs(s) ** (2 / e), s)
         pts.append((x, RY + yy, PZ + zz))
     return pts
+
+
+def cuff_section(y, inset=0.0, n=N_ANG):
+    """Cuff round the RS02 about the yaw axis: the round cuff profile (CUFF), swelled toward the back to meet the fork rear
+    arm (0.5 mm static gap), so cuff and arm read as one sleeve."""
+    c = CUFF
+    ys = [c['y0'], c['ro_mid'][1], SEAT_Y[0] - 2.0, SEAT_Y[0] + 2.0]
+    rs = [c['ro_bot'], c['ro_mid'][0], c['ro_top'], c['ro_top']]
+    ro = float(np.interp(y, ys, rs)) - inset
+    rear = (YZ - (JZ0 + 0.5)) - inset           # to Z JZ0 + 0.5 straight behind the axis
+    pts = []
+    for k in range(n):
+        a = 2 * math.pi * k / n
+        w = max(0.0, -math.sin(a)) ** 3
+        r = ro + (rear - ro) * w
+        pts.append((RX + r * math.cos(a), y, YZ + r * math.sin(a)))
+    return pts

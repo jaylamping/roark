@@ -289,8 +289,10 @@ def build_cap():
             DRUM_Z0 - CAP_Z1, NZ, lo=-1.0)
     # SMOOTH: stop ring on the inside of the rear face; the fork rear's tooth runs in an arc slot in it
     ss = STOP_SLOT
-    roll_rev(d, 'STOP_RING', [(ss['ring_r'][0], DRUM_Z0 - 1.0), (ss['ring_r'][1], DRUM_Z0 - 1.0), (ss['ring_r'][1], CAP_Z1 + 0.5),
-                              (ss['ring_r'][0], CAP_Z1 + 0.5)], [0, 1.0, 0, 0])
+    a_lo = ss['tooth_angle'] - ss['tooth_half'] + ROLL_STOP_IN - 15.0
+    a_hi = ss['tooth_angle'] + ss['tooth_half'] + ROLL_STOP_OUT + 15.0       # only round the slot, 15 deg past each end
+    extrude(d, zsk(d, DRUM_Z0 - 1.0, 'STOP_RING', lambda s: sector(s, lambda r, a: rpt(r, a, DRUM_Z0 - 1.0), ss['ring_r'][0], ss['ring_r'][1], a_lo, a_hi, 2.0)),
+            'STOP_RING', (DRUM_Z0 - 1.0) - (CAP_Z1 + 0.5), NZ, lo=-1.0)
     # ---- cuts
     roll_rev(d, 'BORE', [(0, DRUM_Z0 + 1), (STUB_BORE, DRUM_Z0 + 1), (STUB_BORE, BRG_Z[1] - 1), (0, BRG_Z[1] - 1)], cut=True)
     extrude(d, zsk(d, CAP_Z1 - 1, 'SCREW_HOLES', lambda s: [s.circle(rpt(CAP_SCREW_R, a, CAP_Z1 - 1), 1.7) for a in CAP_SCREW_ANGLES]),
@@ -407,8 +409,19 @@ def build_fork_front():
             'TAP_SECTOR', SEAT_Y[1] - SEAT_Y[0], Y)
     # DRESSED: cuff round the RS02 housing, down to just above the hub
     cf = CUFF
-    yaw_rev(d, 'CUFF', [(cf['ri'], cf['y0']), (cf['ro_bot'], cf['y0']), cf['ro_mid'], (cf['ro_top'], SEAT_Y[0] - 2.0), (cf['ro_top'], SEAT_Y[0] + 2.0),
-                        (cf['ri'], SEAT_Y[0] + 2.0)], [0.5, 0.7, 12.0, 0, 0, 0])   # ORGANIC: a convex swell, not a cone
+    # SMOOTH: the cuff is a loft of egg sections, round at the front and sides, swelled back to meet the fork rear arm
+    import envelope as EV
+    cys = [cf['y0'], 328.0, cf['ro_mid'][1], 344.0, SEAT_Y[0] + 2.0]
+    csecs = [ysk(d, y_, f'CUFF_S{i}', lambda s, y_=y_: s.spline(EV.cuff_section(y_))) for i, y_ in enumerate(cys)]
+    loft(d, csecs, 'CUFF')
+    yaw_rev(d, 'CUFF_BORE', [(0, cf['y0'] - 1), (cf['ri'], cf['y0'] - 1), (cf['ri'], SEAT_Y[0]), (0, SEAT_Y[0])], cut=True)
+    # hollow the rear swell to a 2 mm skin (open at the bottom)
+    hsecs = [ysk(d, y_, f'CUFF_IN_S{i}', lambda s, y_=y_: s.spline(EV.cuff_section(y_, 2.0))) for i, y_ in enumerate([cf['y0'] - 0.5, cf['ro_mid'][1], SEAT_Y[0] - 2.5])]
+    d.ClearSelection2(True)
+    for k in hsecs:
+        k.Select2(True, 1)
+    fh = d.FeatureManager.InsertCutBlend(False, True, False, 1.0, 0, 0, False, 0, 0, 0, True, True)
+    log('  CUFF_HOLLOW', fh is not None)
     ym = (SEAT_Y[0] + SEAT_Y[1]) / 2
     extrude(d, zsk(d, JZ0, 'JOINT_PAD', lambda s: s.rpoly(rect_pts((RX, ym, JZ0), X, Y, 2 * JX, SEAT_Y[1] - SEAT_Y[0]), [4, 4, 4, 4])),
             'JOINT_PAD', -30.0 - JZ0, Z)
@@ -416,7 +429,7 @@ def build_fork_front():
     # ---- cuts
     extrude(d, zsk(d, z0 - 1, 'DOME_POCKETS', lambda s: [sector(s, lambda r, a: rpt(r, a, z0 - 1), dm['pocket_r'][0], dm['pocket_r'][1], a0, a1, 3.0)
                                                          for a0, a1 in dm['pockets']]), 'DOME_POCKETS', z1 - z0 - dm['back_t'] + 1, Z, cut=True)
-    extrude(d, ysk(d, cf['y0'] - 1, 'CUFF_NOTCH', lambda s: sector(s, lambda r, a: ypt(r, a, cf['y0'] - 1), cf['ri'] - 1, cf['ro_top'] + 2, cf['notch'][0], cf['notch'][1], 2.0)),
+    extrude(d, ysk(d, cf['y0'] - 1, 'CUFF_NOTCH', lambda s: sector(s, lambda r, a: ypt(r, a, cf['y0'] - 1), cf['ri'] - 1, YZ - JZ0 + 3.0, cf['notch'][0], cf['notch'][1], 2.0)),
             'CUFF_NOTCH', Y_EX + 3 + WALL + 1.5 - (cf['y0'] - 1), Y, cut=True)
     extrude(d, ysk(d, SEAT_Y[0] - 1, 'SEAT_BORE', lambda s: s.circle((RX, SEAT_Y[0] - 1, YZ), SEAT_RI)), 'SEAT_BORE', 12, Y, cut=True)
     extrude(d, zsk(d, ROLL_OUT - 1, 'ROLL_BORE', lambda s: s.circle((RX, RY, ROLL_OUT - 1), 10.75)), 'ROLL_BORE', 30, Z, cut=True)
@@ -571,7 +584,52 @@ def build_hub():
             s.rpoly([(RX + sg * r0 * u2[0], hb['lug_y'][0], YZ + sg * r0 * u2[2]), (RX + sg * r1 * u2[0], hb['lug_y'][0], YZ + sg * r1 * u2[2]),
                      (RX + sg * r1 * u2[0], hb['lug_y'][1], YZ + sg * r1 * u2[2]), (RX + sg * r0 * u2[0], hb['lug_y'][1], YZ + sg * r0 * u2[2])], [0, 1.5, 0, 0])
     extrude(d, s.feat, 'LUG2', w2, (0, 0, 0), mode=MID)
-    for k, v in (('SPIGOT_EXT_ON', hb['spigot_ext_on']), ('SPIGOT_EXT_LEN', hb['spigot_ext_len']), ('SPIGOT_TAPER', hb['spigot_taper']),
+    # ---- the spigot groove (arm thread's ridge section); full depth over the centre arcs, stepped run-outs at the ends
+    g = hb['groove']
+    def groove_profile(k):
+        d_ = (g['r_out'] - g['r_bot']) * k
+        rb = g['r_out'] - d_
+        # mouth corners stay at Y 297.0 / 301.0; the bottom narrows with depth along the same flank angles
+        y0b = g['y_open'][0] + (g['y_bot'][0] - g['y_open'][0]) * k
+        y1b = g['y_open'][1] - (g['y_open'][1] - g['y_bot'][1]) * k
+        return [(g['r_out'] + 1.0, g['y_open'][0] - 0.58), (g['r_out'], g['y_open'][0]), (rb, y0b), (rb, y1b), (g['r_out'], g['y_open'][1]),
+                (g['r_out'] + 1.0, g['y_open'][1] + 1.0)]
+    nst = g['steps']
+    for ci, cen in enumerate(g['centres']):
+        spans = [(cen - g['full_half'], cen + g['full_half'], 1.0)]
+        for k in range(nst):
+            w = g['runout'] / nst
+            kk = (k + 1) / (nst + 1)
+            spans += [(cen - g['full_half'] - g['runout'] + k * w, cen - g['full_half'] - g['runout'] + (k + 1) * w, kk),
+                      (cen + g['full_half'] + g['runout'] - (k + 1) * w, cen + g['full_half'] + g['runout'] - k * w, kk)]
+        for si, (a0, a1, kk) in enumerate(spans):
+            ta = math.radians(a0)
+            ua = (math.cos(ta), 0.0, math.sin(ta))
+            plg, _ = plane_axis_angle(d, ax, d.FeatureByName('Front Plane'), a0 % 180, ua, f'P_GROOVE_{ci}_{si}')
+            with Sk(d, plg, f'GROOVE_{ci}_{si}') as s_:
+                s_.poly([(RX + r_ * ua[0], y_, YZ + r_ * ua[2]) for r_, y_ in groove_profile(kk)])
+                s_.cline((RX, 280.0, YZ), (RX, 330.0, YZ))
+            want = math.radians((a0 + a1) / 2)
+            done = False
+            for rev in (False, True):
+                v0, m0 = vol_com(d)
+                d.ClearSelection2(True)
+                s_.feat.Select2(False, 0)
+                f = d.FeatureManager.FeatureRevolve2(True, True, False, True, rev, False, 0, 0, math.radians(a1 - a0), 0, False, False, 0, 0, 0, 0, 0, True, False, True)
+                d.ForceRebuild3(False)
+                v1, m1 = vol_com(d)
+                if f is not None and v0 - v1 > 1e-3:
+                    cen_ = (m0 - m1) / (v0 - v1)
+                    ang = math.atan2(cen_[2] - YZ, cen_[0] - RX)
+                    if abs(((ang - want + math.pi) % (2 * math.pi)) - math.pi) < 0.2:
+                        f.Name = f'GROOVE_{ci}_{si}'
+                        done = True
+                        break
+                if f is not None:
+                    d.EditUndo2(1)
+                    d.ForceRebuild3(False)
+            log(f'  GROOVE_{ci}_{si} {a0:.1f}-{a1:.1f} deg depth x{kk:.2f}', done)
+    for k, v in (('GROOVE_ON', hb['groove_on']), ('SPIGOT_EXT_ON', hb['spigot_ext_on']), ('SPIGOT_EXT_LEN', hb['spigot_ext_len']), ('SPIGOT_TAPER', hb['spigot_taper']),
                  ('LUG2_ON', hb['lug2_on']), ('LUG2_ANGLE', hb['lug2_angle'])):
         add_global(d, k, v)
     for dims_ in (('D1@SPIGOT_EXT', '"SPIGOT_EXT_LEN"'), ('D1@P_LUG2', '"LUG2_ANGLE"')):

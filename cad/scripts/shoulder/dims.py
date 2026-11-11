@@ -121,6 +121,13 @@ BRG_SEAT_R, BRG_LIP_R = 26.0, 24.0
 HUB_WIN_A = 7.9
 # Hub lower half, prepared for the arm joint work (all OFF by default; the frozen interface is unchanged when off):
 HUB = dict(spigot_ext_on=0, spigot_ext_len=6.0, spigot_taper=0.0, spigot_ri=28.0, spigot_ro=35.8, spigot_y0=296.0,
+           groove_on=1,
+           # spigot groove for the arm's ridge (arm thread section, roark 3d23f91 r1c/ridge_groove_profile.png): opens Y 297-301
+           # at r 35.8, bottom r 34.3 from Y 297.87 to 299.50, load flank (low Y) 30 deg from the radial plane, high flank 45 deg;
+           # full depth over theta 50-130 and 230-310 (theta from +X toward +Z about the yaw axis; seam at 0/180), run-outs to
+           # full wall at 40/140 and 220/320
+           groove=dict(r_out=35.8, r_bot=34.3, y_open=(297.0, 301.0), y_bot=(297.87, 299.50), centres=(90.0, 270.0), full_half=40.0,
+                       runout=10.0, steps=3),
            lug2_on=0, lug2_angle=90.0, lug_r=(19.0, 30.0), lug_half_deg=15.0, lug_y=(288.0, 296.0))
 
 # ---- print bed ----
