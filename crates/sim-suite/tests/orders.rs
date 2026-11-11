@@ -38,7 +38,8 @@ fn batch(epoch: Epoch, snap: &Snapshot, frames: [Option<Frame>; 2]) -> CommandBa
 /// Guards: safety - on a real socket, control's order to stop one limb stops that limb alone (`LimbRequested`) while
 /// the bus's other limb keeps its commands and answers; once the stop has ended, a re-arm order (the operator's clear)
 /// is answered once under its tag and gives the limb a new generation; a stop order naming a limb the bus doesn't have,
-/// pushed right behind it, stops every limb in the same tick; and a clear sent as the bus exits never undoes its stop
+/// pushed right behind it, stops every limb in the same tick; and a clear sent once the bus has seen its exit is refused
+/// (`StopPending`), so it never undoes the exit's stop
 /// (PLAN item 6: a stop names its scope, a latched stop clears only by an operator clear, `host.hang`).
 #[test]
 #[expect(clippy::too_many_lines, reason = "one control loop, start to end")]
@@ -108,22 +109,32 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
             limbs(&snap),
             [(LimbState::Active, None), (LimbState::Active, None)]
         );
-        // Caught up with the bus, the order is pushed before the next tick is due, so that tick takes it at its start,
-        // before its drain, and stops the limb: an order taken any later (in a slack, after the drain) shows a tick
-        // late. The check holds only when the push beat the tick by a margin; a slow push still meets the bound below.
-        while let Ok(s) = snapshots.pop() {
-            snap = s;
-        }
+        // Caught up with the bus, the order is pushed before the next tick is due, so that tick takes it and stops the
+        // limb: an order taken in a slack instead shows a tick late. (Whether the take is before or after the drain
+        // can't show here: a stopped drive sends nothing unasked, so no frame lands between a clear and the drain;
+        // the unit test `a_fault_read_after_a_clear_stops_the_limb_before_its_enable` covers what that order is for.)
+        // Pushed only with 2 ms to spare, which a caught-up thread nearly always has; a push the thread was preempted
+        // through, landing within 1 ms of the tick, skips the check (the bound below still holds).
+        let before = loop {
+            while let Ok(s) = snapshots.pop() {
+                snap = s;
+            }
+            let due = start + Duration::from_nanos((snap.tick + 1) * period);
+            if Instant::now() + Duration::from_millis(2) < due {
+                break snap.tick;
+            }
+            let holds = [Some(hold(101)), Some(hold(102))];
+            assert!(commands.push(batch(epoch, &snap, holds)).is_ok());
+            snap = next_snapshot(&mut snapshots, end).unwrap();
+        };
+        let due = start + Duration::from_nanos((before + 1) * period);
         let holds = [Some(hold(101)), Some(hold(102))];
         assert!(commands.push(batch(epoch, &snap, holds)).is_ok());
-        let due = start + Duration::from_nanos((snap.tick + 1) * period);
         assert!(orders.push(Order::StopLimb(0)).is_ok());
         let ordered = Instant::now();
         let ordered_ns = epoch.ns(ordered);
-        let in_time = ordered + Duration::from_millis(1) < due;
-        let before = snap.tick;
         snap = next_snapshot(&mut snapshots, end).unwrap();
-        if in_time {
+        if ordered + Duration::from_millis(1) < due {
             assert_eq!(snap.tick, before + 1, "{snap:?}");
             assert!(
                 matches!(limbs(&snap)[0].0, LimbState::Stopping { .. }),
@@ -208,17 +219,65 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         assert_eq!(snap.counters.bad_orders, 1);
         assert_eq!(snap.counters.rearms_dropped, 0);
 
-        // Told to exit, the bus finishes the stop and ends once control has taken a snapshot showing it. A clear sent
-        // once the bus has seen the exit never undoes that stop: refused (limb 0 still stopping, or the exit's stop
-        // asked before the clear) or left for the end (`Ended`). Sent three periods after the exit, so the bus has
-        // seen it.
-        exit.store(true, Ordering::Release);
-        // Not taking snapshots meanwhile: the bus waits for control to take a stopped one before it ends.
-        let seen = Instant::now() + Duration::from_nanos(3 * period);
-        while Instant::now() < seen {
-            std::thread::yield_now();
+        // Limb 1 re-armed once its stop has ended, and run again; limb 0 stays stopped.
+        while limbs(&snap)[1].0 != LimbState::Stopped {
+            assert!(commands.push(batch(epoch, &snap, [None, None])).is_ok());
+            snap = next_snapshot(&mut snapshots, end).unwrap();
         }
-        assert!(orders.push(Order::Rearm { tag: 6, limb: 0 }).is_ok());
+        assert!(orders.push(Order::Rearm { tag: 6, limb: 1 }).is_ok());
+        let answer = loop {
+            assert!(commands.push(batch(epoch, &snap, [None, None])).is_ok());
+            snap = next_snapshot(&mut snapshots, end).unwrap();
+            if let Ok(answer) = rearmed.pop() {
+                break answer;
+            }
+        };
+        assert_eq!(answer.outcome, Ok(()), "{answer:?}");
+        while limbs(&snap)[1].0 != LimbState::Active {
+            let enable = [None, Some(encode::enable(id(102)))];
+            assert!(commands.push(batch(epoch, &snap, enable)).is_ok());
+            snap = next_snapshot(&mut snapshots, end).unwrap();
+        }
+        assert_eq!(limbs(&snap)[0].0, LimbState::Stopped, "{snap:?}");
+
+        // Told to exit, the bus stops limb 1 and ends once control has taken a snapshot with every limb stopped. Once
+        // a snapshot shows limb 1 stopping for the exit, the bus has seen it, and can't end before limb 1's stop does:
+        // a clear of the stopped limb 0 sent then is refused, the exit's stop being asked before the clear is taken.
+        exit.store(true, Ordering::Release);
+        while limbs(&snap)[1].1 != Some(StopReason::Requested) {
+            assert!(
+                commands
+                    .push(batch(epoch, &snap, [None, Some(hold(102))]))
+                    .is_ok()
+            );
+            snap = next_snapshot(&mut snapshots, end).unwrap();
+        }
+        assert!(
+            matches!(limbs(&snap)[1].0, LimbState::Stopping { .. }),
+            "{snap:?}"
+        );
+        assert!(orders.push(Order::Rearm { tag: 7, limb: 0 }).is_ok());
+        let answer = loop {
+            if let Ok(answer) = rearmed.pop() {
+                break answer;
+            }
+            if let Ok(s) = snapshots.pop() {
+                snap = s;
+            }
+            assert!(
+                Instant::now() < end,
+                "the clear was never answered: {snap:?}"
+            );
+            std::thread::yield_now();
+        };
+        assert_eq!(
+            answer,
+            Rearmed {
+                tag: 7,
+                limb: 0,
+                outcome: Err(RearmRefused::StopPending(0)),
+            }
+        );
         while !bus.thread.is_finished() {
             if let Ok(s) = snapshots.pop() {
                 snap = s;
@@ -229,21 +288,10 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         let done = bus.thread.join().unwrap();
         assert!(done.error.is_none(), "{:?}", done.error);
         assert!(done.last.is_some_and(|s| s.stopped()), "{:?}", done.last);
-        let answer = rearmed.pop().unwrap();
-        assert_eq!((answer.tag, answer.limb), (6, 0));
-        assert!(
-            matches!(
-                answer.outcome,
-                Err(RearmRefused::Ended
-                    | RearmRefused::NotStopped(0)
-                    | RearmRefused::StopPending(0))
-            ),
-            "{answer:?}"
-        );
         assert!(
             done.last
                 .is_some_and(|s| s.limb(0).is_some_and(|l| l.generation == 1)),
-            "{answer:?} {:?}",
+            "{:?}",
             done.last
         );
         assert!(rearmed.pop().is_err(), "one answer per re-arm order");
