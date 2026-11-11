@@ -41,6 +41,14 @@ WIP = CAD / '_wip' / 'organic-arm' / 'cad'
 R2 = os.environ.get('ARM_R2') == '1'
 R1B = os.environ.get('ARM_R1B') == '1'      # R1b: round the rib/opening-edge corners (see upper_details)
 R1B_DONE = []
+R1C = os.environ.get('ARM_R1C') == '1'      # R1c (2026-11-11): hub band: fins on the hub posts, bore 0.05 radial, lip round
+SEAT_R = 35.9      # R1c keeps R1's 0.1 radial on the r 35.8 spigot (no interference risk; the fins carry the joint)
+RIDGE_LAND = float(os.environ.get('ARM_RIDGE_LAND', '2.0'))      # option (d): spigot land below the groove, Y 296 to the groove opening (2026-11-11: 2 mm)
+RIDGE_ARC = (35.0, 145.0)      # ridge arcs theta 35-145 and 215-325 (groove full depth 30-150 / 210-330, run-outs to 20 / 160)
+if R1C:
+    WIP = CAD / '_wip' / 'r1c'
+    OUT['upper'] = WIP / 'upper_arm_organic_master_left_r1c.SLDPRT'
+    WIP.mkdir(parents=True, exist_ok=True)
 R2_NECK = dict(x0=145.0, x1=156.0, hi=(15.0, 48.0), lo=(-32.0, -15.0), runout=(3.0, 2.0, 1.5))
 if R2:
     WIP = CAD / '_wip' / 'r2'
@@ -271,7 +279,37 @@ def arc_band(d, name, r0, r1, phi0, phi1, x0, x1, cut, n=60):
 def upper_details(d):
     # hub seat: today's hub spigot (r 35.8, Y 296-302) sits in a bore; it is held by the two seam bolts through its lugs
     # (organic_parts.py), as in today's upper arm
-    y_revolve(d, 'HUB_SEAT', [(0.0, 296.0), (35.9, 296.0), (35.9, HUB_JOINT + 1), (0.0, HUB_JOINT + 1)], cut=True)
+    y_revolve(d, 'HUB_SEAT', [(0.0, 296.0), (SEAT_R, 296.0), (SEAT_R, HUB_JOINT + 1), (0.0, HUB_JOINT + 1)], cut=True)
+    if R1C and os.environ.get('ARM_RIDGE') == '1':      # option (d), 2026-11-11: Y tie, a ridge in the bore into a groove in the hub spigot
+        # profile (r, Y): load flank (low-Y side) 30 deg from the radial plane, line-to-line with the groove's; tip r 34.5 (0.2 off the
+        # groove bottom r 34.3); other flank 45 deg with 0.3 axial clearance. Arcs RIDGE_ARC and mirror (groove 5 deg longer each end).
+        t30 = math.tan(math.radians(30.0))
+        y0 = 296.0 + RIDGE_LAND      # groove opening (load side) at r 35.8
+        ly = lambda r_: y0 + (35.8 - r_) * t30
+        ny = lambda r_: y0 + 2.2 + (r_ - 34.3)
+        y_revolve(d, 'SEAT_RIDGE', [(36.3, ly(36.3)), (34.5, ly(34.5)), (34.5, ny(34.5)), (35.9, ny(35.9)), (36.3, ny(35.9))])      # stays inside Y 302 (the arm's end face)
+        for k_, (t0, t1) in enumerate(((RIDGE_ARC[1], 360.0 - RIDGE_ARC[1]), (360.0 - RIDGE_ARC[0], 360.0 + RIDGE_ARC[0]))):      # keep only the two arcs
+            ang = np.radians(np.linspace(t0, t1, 41))
+            pts = [(HX + 33.0 * math.cos(a), 299.0, CZ + 33.0 * math.sin(a)) for a in ang] + [(HX + 35.88 * math.cos(a), 299.0, CZ + 35.88 * math.sin(a)) for a in ang[::-1]]
+            with Sk(d, plane(d, 'Y', 299.0, f'RIDGE_TRIM{k_}_P'), f'RIDGE_TRIM{k_}') as sk_:
+                sk_.poly(pts)
+            feat(d, sk_.feat, f'RIDGE_TRIM{k_}', 6.2, True, mode=MID, lo=0.01)
+    if R1C and os.environ.get('ARM_SEAT_RIBS', '1') == '1':      # seat crush ribs (2026-11-11): the seat must be gap-free, or the hub's lugs and bolts carry the moment.
+        # Six axial ribs on the r 35.9 bore over Y 296-302 at theta 45/90/135 in each half (from +X toward +Z about the hub
+        # axis), 1 wide at the tip, tip 0.15 proud of the r 35.8 spigot; the halves still close on the seam and the ribs crush.
+        r_tip = float(os.environ.get('ARM_SEAT_RIB_TIP', '35.65'))      # 35.8 for the FEA model (crushed, line-to-line)
+        for k_, th in enumerate((45.0, 90.0, 135.0, 225.0, 270.0, 315.0)):
+            c_, s_t = math.cos(math.radians(th)), math.sin(math.radians(th))
+            def pt(r_, w_):      # radius r_ along theta, offset w_ across
+                return (HX + r_ * c_ - w_ * s_t, 299.0, CZ + r_ * s_t + w_ * c_)
+            with Sk(d, plane(d, 'Y', 299.0, f'SEAT_RIB{k_}_P'), f'SEAT_RIB{k_}') as sk_:
+                sk_.poly([pt(SEAT_R + 0.4, -1.0), pt(SEAT_R + 0.4, 1.0), pt(r_tip, 0.5), pt(r_tip, -0.5)])
+            feat(d, sk_.feat, f'SEAT_RIB{k_}', 6.0, False, mode=MID, lo=0.01)
+    if R1C and os.environ.get('ARM_R1C_LIP') == '1':      # skipped (2026-11-11: built 3 of 6 edges, then failed); round the bore's inner lip at Y 296 (the spigot's contact edge, sigma z 48 MPa in the hub-seat model)
+        lip = edges_where(d, lambda p: abs(p[1] - 296.0) < 0.05 and abs(math.hypot(p[0] - HX, p[2] - CZ) - SEAT_R) < 0.1)
+        print('  R1c bore lip edges', len(lip), flush=True)
+        for i_, e_ in enumerate(lip):      # edge by edge; skipped where it won't build
+            fillet_edges(d, [e_], (1.0, 0.75, 0.5), f'R1C_SEAT_LIP{i_}')
     # drum ends: the output passes the outboard end wall; the inboard end carries the hollow stub for the 6808
     x_revolve(d, 'OUTPUT_BORE', [(RS02_X['front'], 0), (DRUM['x1'] + 1, 0), (DRUM['x1'] + 1, 22.5), (RS02_X['front'], 22.5)], cut=True)
     x_revolve(d, 'STUB', [(STUB['x0'], STUB['r_in']), (DRUM['x0'] + 1.5, STUB['r_in']), (DRUM['x0'] + 1.5, STUB['r_out']), (STUB['x0'], STUB['r_out'])])

@@ -15,6 +15,7 @@ height, time, grams, settings against the seed, and where the support lands.
 Writes cad/_wip/organic-arm/print/<job>/ (input project, sliced 3MF, result.json, log).
 """
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -27,8 +28,9 @@ import trimesh
 
 CY, CZ = 209.860668, 5.985875
 REPO = Path(__file__).resolve().parents[3]
-E = REPO / 'cad' / 'exports' / 'upper-arm'
-OUT = REPO / 'cad' / '_wip' / 'organic-arm' / 'print'
+E = Path(os.environ.get('ARM_EXPORTS', REPO / 'cad' / 'exports' / 'upper-arm'))      # overrides for trial revisions (R1c)
+OUT = Path(os.environ.get('ARM_PRINT_OUT', REPO / 'cad' / '_wip' / 'organic-arm' / 'print'))
+SUFFIX = os.environ.get('ARM_PRINT_SUFFIX', '')      # e.g. _r1c: print files of a revision get their own names
 SEED = HOLD = Path('J:/code/marengo/hardware/designs/left-arm/prints/upper-arm/upper_arm.3mf')
 EXE = 'C:/Program Files/Bambu Studio/bambu-studio.exe'
 BED = 256.0
@@ -228,7 +230,7 @@ def run(name):
         m.apply_translation((0, 0, -z0))
     part.export(out / f'{name}_plate.stl')
     src, size = project(name, part, mods, extra, out)
-    final = f'upper_arm_organic_{name}.3mf'
+    final = f'upper_arm_organic_{name}{SUFFIX}.3mf'
     args = [EXE, '--datadir', str(out / 'profile'), '--debug', '1', '--slice', '0', '--export-3mf', final, '--outputdir', str(out), str(src)]
     r = subprocess.run(args, capture_output=True, text=True, timeout=1800, creationflags=subprocess.BELOW_NORMAL_PRIORITY_CLASS | subprocess.CREATE_NO_WINDOW)
     (out / 'log.txt').write_text(r.stdout[-6000:] + r.stderr[-3000:], errors='replace')
@@ -247,7 +249,7 @@ def run(name):
         res['kept_as_ours'] = cur.get('different_settings_to_system')
         g = [n for n in z.namelist() if n.endswith('.gcode')]
         if g:
-            (out / f'upper_arm_organic_{name}.gcode').write_bytes(z.read(g[0]))
+            (out / f'upper_arm_organic_{name}{SUFFIX}.gcode').write_bytes(z.read(g[0]))
             res['gcode'] = g[0]
     (out / 'result.json').write_text(json.dumps(res, indent=1))
     print(json.dumps(res)[:1500], flush=True)

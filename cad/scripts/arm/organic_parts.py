@@ -38,6 +38,9 @@ NAMES = {'front': ('upper', 'upper_arm_organic_front_left'), 'back': ('upper', '
          'disc_in': ('fore', 'forearm_organic_cheek_inboard_left'), 'disc_out': ('fore', 'forearm_organic_cheek_outboard_left'),
          'ring': ('upper', 'upper_arm_organic_rs02_ring_left'), 'pin': ('fore', 'forearm_organic_output_pin'), 'cap_in': ('fore', 'forearm_organic_cap_inboard_left'), 'cap_out': ('fore', 'forearm_organic_cap_outboard_left')}
 DIRS = {'upper': CAD / 'upper-arm', 'fore': CAD / 'forearm'}
+if M.R1C:      # R1c trial parts and exports go to cad/_wip/r1c, so R1's files stay as released
+    DIRS['upper'] = M.WIP
+    EXP['upper'] = M.WIP / 'exports'
 CL = 0.1
 SECTOR = (131.0, 190.0)
 R_FULL, R_LAP = 30.0, 38.5
@@ -207,6 +210,26 @@ def post_z(d, name, q, sign, z0=None, inset=1.0, axis='Z', master='upper', r=Non
     raise SystemExit(name + ' failed')
 
 
+FIN_END = 276.0      # R1c fins end inside the seam post (r 7 at Y 272), clear of its bolt counterbore / insert (to Y 275.25)
+
+
+def r1c_fins(d, sg, zl):
+    # R1c fins: each hub post carries the hub joint's lift-off tie as Y-shear at its lug face (about 155 N per post at G90,
+    # 43 MPa across the layers at a bare Dia 9 post root). A 9 mm fin from the post toward -Y (Y 280 to the post's centre),
+    # from the lug-face level out to 1 mm into the skin, makes the root about 9 x 16: about 8 MPa. Cut by the bolt holes below.
+    for i, q in enumerate(HUB_COLS):
+        x = q[0]
+        ys = list(np.round(np.arange(HUB_POST_Y, FIN_END - 0.01, -0.7), 2)) + [FIN_END]   # grown (2026-11-11): into the seam post; dense samples follow the skin
+        top = []
+        for y in ys:
+            t_in, t_out = skin_hits((x, y), sg)
+            top.append((y, CZ + sg * min(t_in + 0.4, t_out - 1.5)))      # 0.4 into the skin: clear of the bolt counterbore's exit chamfer (starts 2 inside the outer skin)
+        pts = [(HUB_POST_Y, zl)] + top + [(FIN_END, zl)]      # full depth from the lug-face level to the skin
+        with M.Sk(d, M.plane(d, 'X', x, f'R1C_FIN{i}_P'), f'R1C_FIN{i}') as s_:
+            s_.poly([(x, y, z) for y, z in pts])
+        M.feat(d, s_.feat, f'R1C_FIN{i}', 9.0, False, mode=M.MID, lo=0.01)
+
+
 def upper_half(front):
     job = 'front' if front else 'back'
     d, p = open_copy(job)
@@ -217,6 +240,8 @@ def upper_half(front):
     zl = CZ + sg * (HUB_LUG_HZ + CL)                                          # lug face in this half
     for i, q in enumerate(HUB_COLS):                                          # posts from the lug face out to the skin; the lug
         post_z(d, f'HUB_POST{i}', (q[0], HUB_POST_Y), sg, z0=zl)              # sits between them, its bolt locating it
+    if M.R1C:
+        r1c_fins(d, sg, zl)
     if front:
         z_cyl(d, 'SEAM_INSERTS', UA_POSTS, 2.0, CZ - 0.01, CZ + 6.5, True)
         z_cyl(d, 'SEAM_PILOTS', UA_POSTS, 1.6, CZ + 6.4, CZ + 10.0, True)
@@ -376,7 +401,7 @@ def fea_upper():
     the lug end faces carry the stop load where the slot end bears (X 135.7-139.4)."""
     sim = CAD / '_sim' / 'upper-arm'
     sim.mkdir(parents=True, exist_ok=True)
-    p = sim / ('UA_ORGANIC_BONDED_v29.SLDPRT' if M.R2 else 'UA_ORGANIC_BONDED_v30.SLDPRT' if M.R1B else 'UA_ORGANIC_BONDED_v28.SLDPRT')     # v29: R2 trial, v30: R1b
+    p = sim / ('UA_ORGANIC_BONDED_v29.SLDPRT' if M.R2 else 'UA_ORGANIC_BONDED_v30.SLDPRT' if M.R1B else 'UA_ORGANIC_BONDED_v31.SLDPRT' if M.R1C else 'UA_ORGANIC_BONDED_v28.SLDPRT')     # v29: R2 trial, v30: R1b, v31: R1c
     shutil.copy(M.OUT['upper'], p)
     e, w = L(), L()
     d = sw.OpenDoc6(str(p), 1, 1, '', e, w)

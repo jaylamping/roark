@@ -22,8 +22,13 @@ ARM = Path(__file__).resolve().parents[1] / 'arm'
 CAD = Path(__file__).resolve().parents[2]
 F = Path(os.environ.get('ARM_FEA_DIR', CAD / '_sim' / 'ua2'))
 HUB_SRC = Path(r'J:/code/roark-wt/left-arm/cad/upper-arm/upper_arm_hub_left.SLDPRT')   # the native part its STEP/STL exports were recorded from
-HUB = F / 'HUB_TODAY.SLDPRT'
-MODEL = F / 'UA_HUBSEAT_v28.SLDPRT'
+HUB = F / ('HUB_GROOVE.SLDPRT' if os.environ.get('HS_GROOVE') == '1' else 'HUB_TODAY.SLDPRT')
+R1C = os.environ.get('ARM_R1C') == '1'
+ARM_MODEL = 'UA_ORGANIC_BONDED_v31.SLDPRT' if R1C else 'UA_ORGANIC_BONDED_v28.SLDPRT'
+GROOVE = os.environ.get('HS_GROOVE') == '1'      # option (d): groove in the hub spigot
+BOLTED = os.environ.get('HS_BOLTED') == '1'     # lugs in frictionless contact, steel M3 bodies bonded in the post bores, no preload
+MODEL = F / os.environ.get('HS_MODEL', ('UA_HUBSEAT_v31' if R1C else 'UA_HUBSEAT_v28') + ('_bolted' if BOLTED else '') + '.SLDPRT')
+BOLTS = F / 'HS_BOLTS.SLDPRT'
 HX, CY, CZ = 170.49, 209.860668, 5.985875
 HUB_TOP = 319.86
 
@@ -34,7 +39,38 @@ def build():
     import organic_parts as OP
     from organic_master import L, NUL, sw, bodies
     shutil.copy(HUB_SRC, HUB)          # (the STEP import hung behind a dialog in a hidden instance)
-    shutil.copy(F / 'UA_ORGANIC_BONDED_v28.SLDPRT', MODEL)
+    if GROOVE:      # option (d): the groove in the hub spigot (profile with organic_master's ridge), on arcs theta 50-130 and 230-310
+        import math as m_
+        import numpy as np
+        import organic_master as M
+        e, w = L(), L()
+        h = sw.OpenDoc6(str(HUB), 1, 1, '', e, w)
+        t30 = m_.tan(m_.radians(30.0))
+        y0 = 296.0 + M.RIDGE_LAND      # groove opening, load side
+        from swg import revolve as revolve_, centerline as centerline_
+        def groove(name, sgn, depth, angle):      # revolve-cut the profile, truncated at r 35.8 - depth, centred on theta 90 (sgn +1) / 270 (-1)
+            rb = 35.8 - depth
+            prof = [(36.5, y0 - 0.7 * t30), (rb, y0 + depth * t30), (rb, y0 + 2.5 + 1.5 - depth), (36.5, y0 + 4.7)] if depth < 1.5 else                    [(36.5, y0 - 0.7 * t30), (34.3, y0 + 1.5 * t30), (34.3, y0 + 2.5), (36.5, y0 + 4.7)]
+            with M.Sk(h, M.plane(h, 'X', HX, name + '_P'), name) as sk_:
+                sk_.poly([(HX, y_, CZ + sgn * r_) for r_, y_ in prof])
+                centerline_(sk_, (HX, 250.0, CZ), (HX, 340.0, CZ))
+            revolve_(h, sk_.feat, name, None, True, angle=angle, mid=True, lo=0.01)
+        span = M.RIDGE_ARC[1] - M.RIDGE_ARC[0] + 10.0      # full depth 30-150 (ridge 35-145 plus 5 each end)
+        for sgn, tag in ((1, 'F'), (-1, 'B')):
+            groove(f'SPIGOT_GROOVE{tag}', sgn, 1.5, span)
+            for k in range(1, 11):      # run-outs: 10 deg each end, depth stepping down 0.14 mm per degree pair
+                groove(f'GROOVE_RUNOUT{tag}{k}', sgn, 1.5 * (1.0 - k / 11.0), span + 2.0 * k)
+        h.ForceRebuild3(False)
+        from swg import bodies as bodies_
+        print('  grooved hub bodies', bodies_(h), flush=True)
+        if len(bodies_(h)) != 1:
+            raise SystemExit('groove fills did not merge into the hub')
+        h.Save3(1, e, w)
+        for t_, v_ in ((69, True), (71, True)):
+            sw.SetUserPreferenceToggle(t_, v_)
+        h.Extension.SaveAs(str(HUB.with_suffix('.STL')), 0, 1, NUL, L(), L())      # for the assembly check
+        sw.CloseDoc(h.GetTitle)
+    shutil.copy(F / ARM_MODEL, MODEL)
     e, w = L(), L()
     d = sw.OpenDoc6(str(MODEL), 1, 1, '', e, w)
     if d is None:
@@ -42,6 +78,24 @@ def build():
     for i, q in enumerate(OP.HUB_COLS):
         for sg in (1, -1):
             OP.post_z(d, f'HUB_POST{i}{"F" if sg > 0 else "B"}', (q[0], OP.HUB_POST_Y), sg, z0=CZ + sg * OP.HUB_LUG_HZ)
+    if R1C:
+        for sg in (1, -1):
+            OP.r1c_fins(d, sg, CZ + sg * OP.HUB_LUG_HZ)
+    if BOLTED:      # M3 bores through both posts at each lug (the real holes are 3.4 / inserts; here the bolt fills its bore)
+        OP.z_cyl(d, 'HS_BOLT_BORES', OP.HUB_COLS, 1.5, CZ - 45.0, CZ + 50.0, True)
+        d.ForceRebuild3(False)
+        d.Save3(1, e, w)          # new_part below closes every open document
+        import organic_master as M
+        b = M.new_part(BOLTS)
+        for i, q in enumerate(OP.HUB_COLS):
+            with M.Sk(b, M.plane(b, 'Z', CZ + 4.0, f'BOLT{i}_P'), f'BOLT{i}') as s_:
+                s_.circle((q[0], q[1], CZ + 4.0), 1.5)
+            M.feat(b, s_.feat, f'BOLT{i}', 64.0, False, mode=M.MID, lo=0.01)
+        e2, w2 = L(), L()
+        b.Save3(1, e2, w2)
+        sw.CloseDoc(b.GetTitle)
+        e, w = L(), L()
+        d = sw.OpenDoc6(str(MODEL), 1, 1, '', e, w)
     d.ForceRebuild3(False)
     n0 = len(bodies(d))
     f = d.InsertPart3(str(HUB), 1, '')        # swInsertPartImportSolids
@@ -50,6 +104,10 @@ def build():
     print('  bodies', n0, '->', bs, 'insert', f is not None, flush=True)
     if len(bs) != n0 + 1:
         raise SystemExit('hub not inserted as its own body')
+    if BOLTED:
+        fb = d.InsertPart3(str(BOLTS), 1, '')
+        d.ForceRebuild3(False)
+        print('  bolts', fb is not None, bodies(d), flush=True)
     d.Save3(1, e, w)
     sw.CloseDoc(d.GetTitle)
 
@@ -66,11 +124,25 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
         return [v * 1000 for v in f.GetBox]
 
     def pre(st, d, lbc):
-        bs = list(d.GetBodies2(0, True))
-        if len(bs) != 2:
-            raise SystemExit(f'expected 2 bodies, got {len(bs)}')
-        hub = min(bs, key=lambda b: b.GetMassProperties(1190)[3])
-        arm = [b for b in bs if b is not hub][0]
+        bs = sorted(d.GetBodies2(0, True), key=lambda b: b.GetMassProperties(1190)[3])
+        if len(bs) != (4 if BOLTED else 2):
+            raise SystemExit(f'expected {4 if BOLTED else 2} bodies, got {len(bs)}')
+        bolts, hub, arm = bs[:-2], bs[-2], bs[-1]
+        if BOLTED:      # the two smallest bodies are the bolts: steel
+            comp = st.SolidManager.GetComponentAt(0, I())
+            for k in range(comp.SolidBodyCount):
+                cb = comp.GetSolidBodyAt(k, I())
+                try:
+                    nm = cb.SolidBodyName
+                except Exception:
+                    nm = '?'
+                if 'HS_BOLTS' in str(nm).upper():      # the inserted bolt bodies only (the arm body can carry its HS_BOLT_BORES feature's name)
+                    m = cb.GetDefaultMaterial
+                    m.MaterialUnits = 0
+                    m.MaterialName = 'steel'
+                    for kk, v in (('EX', 2.0e11), ('NUXY', 0.29), ('GXY', 7.8e10), ('DENS', 7850.0), ('SIGYLD', 6.4e8)):
+                        m.SetPropertyByName2(kk, v, False)
+                    print(' bolt material', nm, cb.SetSolidBodyMaterial(m), flush=True)
         # contact at the seat: hub faces near the spigot and the disc's underside, arm faces of the bore and the end face
 
         def near_seat(b):
@@ -84,12 +156,18 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
         err = I()
         cs = cm.CreateContactSet(0, VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, hf), VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, af), err)
         print(' seat contact set', cs is not None, 'faces hub', len(hf), 'arm', len(af), 'err', err.value, flush=True)
+        if BOLTED:      # lug faces and lug holes against the posts and the bolts: no penetration, no bond
+            def near_lugs(b):
+                lo, hi = (min(b[0], b[3]), min(b[1], b[4]), min(b[2], b[5])), (max(b[0], b[3]), max(b[1], b[4]), max(b[2], b[5]))
+                return hi[1] > 287.5 and lo[1] < 294.2 and abs((lo[2] + hi[2]) / 2 - CZ) < 12.0 and (hi[0] < 153.0 or lo[0] > 188.0)
+            lf = [f for f in faces(hub) if near_lugs(box(f))]
+            pf = [f for f in faces(arm) if near_lugs(box(f))] + [f for bb in bolts for f in faces(bb)]
+            err = I()
+            cs2 = cm.CreateContactSet(0, VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, lf), VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, pf), err)
+            print(' lug contact set', cs2 is not None, 'faces hub', len(lf), 'arm+bolts', len(pf), 'err', err.value, flush=True)
         if err.value or cm.ContactSetCount == 0:
             raise SystemExit('contact failed')
-        try:
-            st.StaticStudyOptions.UseSoftSpring = 1
-        except Exception as ex:
-            print(' soft springs not set', str(ex)[:80], flush=True)
+        # no soft springs: the bonded lugs already hold the arm (setting them crashed SolidWorks intermittently)
 
         def post(st_, res):
             return dict(model='hub as its own body, seat by contact, lugs bonded to posts')
