@@ -55,9 +55,11 @@ Known limits, each failing closed or only delaying a stop by a pass: control dec
 seen on one bus reaches the limb's other buses a control pass later; a limb-mate's view carries no age, so a bus that
 missed its tick shows its last one; a bus with no snapshot yet when an enable is taken counts every other host's frame
 it later reports as new, refusing the enable; the recording's `Health` fails on write errors only, not on frames the
-recorder's ring dropped; a drive that reboots after its preflight passed, while its enable waits for a mate's proof,
-loses its `canTimeout` with nothing on the bus to say so (whether a real RobStride leaves a trace is for the bench); and
-a full slow ring is reported as `NoStatus`.
+recorder's ring dropped; and a full slow ring is reported as `NoStatus`.
+
+One limit does not fail closed, pending the bench: a drive that reboots after its preflight passed, while its enable
+waits for a mate's proof, loses its `canTimeout` with nothing on the bus to say so, and is enabled with no host-loss
+timeout. Whether a real RobStride leaves a trace of a reboot on the bus is for the attended bench.
 
 ## Must never
 

@@ -50,8 +50,9 @@ pub enum EnableRefused {
         /// The joint.
         joint: usize,
     },
-    /// A named joint's preflight refused it, or its skeleton entry did before anything was sent, or its limb stopped on
-    /// some bus before any Enable was planned. Nothing was enabled.
+    /// A named joint's preflight refused it, or its skeleton entry did before anything was sent, or its limb is held on
+    /// some bus (`LimbActive`, before any preflight), or its limb stopped on some bus before any Enable was planned.
+    /// Nothing was enabled.
     #[error("joint {joint}: {refusal:?}")]
     Preflight {
         /// The joint.

@@ -25,6 +25,10 @@ use skeleton::{LimbName, Skeleton};
 use socketcan::{CanFrame, CanSocket, EmbeddedFrame, Id, Socket};
 
 /// The runtime's test robot, never the live skeleton (testing.md rule 3).
+/// How late drive 12 answers in the enable test's late stage: past the 50 ms an Enable has to reach Run
+/// (`can::ENABLE_TO_RUN_NS`), with room left in the stop's wait for its Disable's answer.
+const LATE: Duration = Duration::from_millis(60);
+
 fn skeleton_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bins/runtime/tests/skeleton.yaml")
 }
@@ -370,7 +374,7 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
             let mut sim = drives(&skeleton, "can1");
             // From its third Enable, drive 12 answers later than an Enable must be answered; then promptly again.
             sim[1]
-                .schedule(Trigger::OnEnable(3), Fault::Late(sim_drive::MAX_LATE))
+                .schedule(Trigger::OnEnable(3), Fault::Late(LATE))
                 .unwrap();
             serve("can1", &mut sim, &to_prompt, &mut |_| {})?;
             sim[1]

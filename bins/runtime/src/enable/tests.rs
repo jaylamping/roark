@@ -236,7 +236,7 @@ fn an_enable_is_refused_before_anything_is_sent_unless_every_joint_can_pass() {
     enabled(&mut rig, &mut enabler, &["arm_a_two"]);
     let a_two = rig.joint("arm_a_two");
     assert_eq!(
-        rig.take(&mut enabler, 6, &["arm_a_two"]),
+        rig.take(&mut enabler, 6, &["arm_a_one", "arm_a_two"]),
         refused(6, EnableRefused::AlreadyEnabled { joint: a_two })
     );
     enabler.phases[a_two] = Phase::Off;
@@ -518,9 +518,9 @@ fn an_enable_whose_limb_mate_leaves_reset_fails_with_its_limb_stopped() {
     );
 }
 
-/// Guards: bug - an enable naming a joint its bus's snapshot never shows is refused once preflight's answer window has
-/// passed, rather than running, and refusing every later enable as busy, for as long as the bus stays silent (rust.md:
-/// put a limit on everything).
+/// Guards: safety - an enable naming a joint its bus's snapshot never shows is refused once preflight's answer window
+/// has passed, rather than running, and refusing every later enable as busy, for as long as the bus stays silent
+/// (rust.md: put a limit on everything).
 #[test]
 fn an_enable_waits_for_an_unseen_joint_only_as_long_as_an_answer() {
     let mut rig = Rig::new();

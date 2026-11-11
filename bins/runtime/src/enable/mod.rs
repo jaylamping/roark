@@ -54,7 +54,7 @@ pub(crate) struct Counts {
     /// time, however long the stop takes to show.
     pub(crate) mode_stops: u64,
     /// Enabled joints no longer held, one per joint each time: their limb stopped on some bus (then cleared, perhaps),
-    /// or their enable failed.
+    /// `host.mode`'s limb-mate clause stopped it, or their enable failed.
     pub(crate) holds_ended: u64,
 }
 
@@ -189,13 +189,18 @@ impl Enabler {
         if enable.joints.is_empty() {
             return Err(EnableRefused::Empty);
         }
+        // A joint already enabled is named as such, whichever other joint of its limb comes first.
+        if let Some(joint) = enable
+            .joints
+            .iter()
+            .find(|j| matches!(self.phases.get(*j), Some(Phase::Enabled(_))))
+        {
+            return Err(EnableRefused::AlreadyEnabled { joint });
+        }
         for joint in enable.joints.iter() {
             let Some(entry) = roster.joint(joint) else {
                 return Err(EnableRefused::UnknownJoint { joint });
             };
-            if matches!(self.phases.get(joint), Some(Phase::Enabled(_))) {
-                return Err(EnableRefused::AlreadyEnabled { joint });
-            }
             // A limb held on any bus is enabled: preflight's own check reads only the joint's bus, where another part
             // of the limb may be idle.
             if self.limb_held(roster, entry.limb) {

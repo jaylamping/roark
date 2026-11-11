@@ -89,7 +89,8 @@ pub struct ControlExit {
     /// Limbs stopped under `host.mode`'s limb-mate clause: a drive of a held limb, or of the enable running, that this
     /// host didn't enable was seen out of Reset or not seen at all. One per limb each time.
     pub mode_stops: u64,
-    /// Enabled joints no longer held: their limb stopped on some bus (then cleared, perhaps), or their enable failed.
+    /// Enabled joints no longer held: their limb stopped on some bus (then cleared, perhaps), `host.mode`'s limb-mate
+    /// clause stopped it, or their enable failed.
     pub holds_ended: u64,
     /// The first bus thread that ended before the run did (a socket or clock error): control then ended the run.
     pub bus_ended: Option<usize>,
