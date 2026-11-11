@@ -110,7 +110,7 @@ impl SimDrive {
     /// Schedule `fault` to fire on `trigger`.
     ///
     /// # Errors
-    /// [`FaultRefused`] for a fault the drive can't honour, `OnMit(0)`, an `At` the drive has already been stepped
+    /// [`FaultRefused`] for a fault the drive can't honour, `OnMit(0)`, `OnEnable(0)`, an `At` the drive has already been stepped
     /// past, or a full plan ([`crate::FAULT_PLAN`]).
     pub fn schedule(&mut self, trigger: Trigger, fault: Fault) -> Result<(), FaultRefused> {
         self.check(fault)?;
@@ -181,13 +181,13 @@ impl SimDrive {
                 }
                 self.outbox.send(now, self.status());
             }
-            Command::Enable => match (self.mode, self.run_at) {
-                (Mode::Run, _) | (_, Some(_)) => self.outbox.send(now, self.status()),
-                // The Run status is built when Run is reached (`advance`), with the faults in effect then.
-                (Mode::Reset | Mode::Calibration, None) => {
-                    self.run_at = Some(now + self.rng.between(ENABLE_DELAY_US));
+            Command::Enable => {
+                self.plan.enables = self.plan.enables.saturating_add(1);
+                while let Some((at, fault)) = self.plan.due(now) {
+                    self.apply(at, fault);
                 }
-            },
+                self.enable(now);
+            }
             Command::Disable | Command::FaultClear => {
                 self.set_mode(now, Mode::Reset);
                 self.outbox.send(now, self.status());
@@ -399,6 +399,17 @@ impl SimDrive {
             _ => return None,
         };
         Some(self.last_command? + timeout)
+    }
+
+    /// An Enable taken at `now`: answered at once if the drive is in Run or on its way there; otherwise Run is reached
+    /// after the drive's delay, and its Run status is built then (`advance`), with the faults in effect then.
+    fn enable(&mut self, now: Instant) {
+        match (self.mode, self.run_at) {
+            (Mode::Run, _) | (_, Some(_)) => self.outbox.send(now, self.status()),
+            (Mode::Reset | Mode::Calibration, None) => {
+                self.run_at = Some(now + self.rng.between(ENABLE_DELAY_US));
+            }
+        }
     }
 
     /// The drive is in `mode` from `at`, whatever put it there. Any pending Enable is forgotten; leaving Run leaves the

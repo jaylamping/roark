@@ -20,7 +20,7 @@ use runtime::{
     Clear, ClearRefused, Enable, EnableRefused, EnableReply, Reply, Runtime, RuntimeConfig, Scope,
 };
 use safety::EnableFailure;
-use sim_drive::{Fault, SimDrive, ensure_vcan, serve};
+use sim_drive::{Fault, SimDrive, Trigger, ensure_vcan, serve};
 use skeleton::{LimbName, Skeleton};
 use socketcan::{CanFrame, CanSocket, EmbeddedFrame, Id, Socket};
 
@@ -340,8 +340,6 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
     let root =
         std::env::temp_dir().join(format!("sim-suite-runtime-enable-{}", std::process::id()));
     // The can1 sim's stages: it serves until each flag, then puts the next fault on the bus.
-    let to_late = AtomicBool::new(false);
-    let late_on = AtomicBool::new(false);
     let to_prompt = AtomicBool::new(false);
     let prompt_on = AtomicBool::new(false);
     let to_mode = AtomicBool::new(false);
@@ -351,8 +349,6 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
     let over: StatusFaults = [StatusFault::Overcurrent].into_iter().collect();
     let (seen, first_enable) = std::thread::scope(|scope| {
         let flags = [
-            &to_late,
-            &late_on,
             &to_prompt,
             &prompt_on,
             &to_mode,
@@ -372,12 +368,10 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
         let can1 = scope.spawn(|| {
             // The left arm's drives 11 and 12 come first on can1, in skeleton order.
             let mut sim = drives(&skeleton, "can1");
-            // Drive 12 answers everything later than an Enable must be answered, then promptly again.
-            serve("can1", &mut sim, &to_late, &mut |_| {})?;
+            // From its third Enable, drive 12 answers later than an Enable must be answered; then promptly again.
             sim[1]
-                .inject(Instant::now(), Fault::Late(sim_drive::MAX_LATE))
+                .schedule(Trigger::OnEnable(3), Fault::Late(sim_drive::MAX_LATE))
                 .unwrap();
-            late_on.store(true, Ordering::Release);
             serve("can1", &mut sim, &to_prompt, &mut |_| {})?;
             sim[1]
                 .inject(Instant::now(), Fault::Late(Duration::ZERO))
@@ -519,11 +513,6 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
             "{newest:?}"
         );
         clear(&mut runtime, 6);
-        to_late.store(true, Ordering::Release);
-        while !late_on.load(Ordering::Acquire) {
-            assert!(Instant::now() < end, "drive 12 never made late");
-            std::thread::yield_now();
-        }
         let a_two = runtime
             .joints(["arm_a_two"])
             .unwrap()
