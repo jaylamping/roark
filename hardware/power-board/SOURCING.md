@@ -37,3 +37,26 @@ Mouser LM5069MM-2/NOPB or LCSC C2653582 (LM5069MMX-2/NOPB, the large reel). The 
 design part, with a "Fitted" field naming the -2; order 2 LM5069MM-1/NOPB and swap U1 when it is back in stock. With
 the -2 the bus restarts by itself about every 63 ms after a fault clears, and the heatsink fan must run whenever the
 pack is connected: [LM5069_RETRY.md](LM5069_RETRY.md).
+
+## LCSC, checked live 2026-11-11
+
+Read from LCSC's product pages. Prices are LCSC's list price before US duty (about 37.5 % on China-origin goods) and
+shipping (about $20).
+
+| Part | LCSC | Stock | Price at the kit quantity | Note |
+|---|---|---|---|---|
+| IPB017N10N5LFATMA1 (18) | C3289286 | 499 | $4.30 each at 10+ ($5.04 at 1) | about $77, about $106 with duty: not cheaper than DigiKey's roughly $5.50 each |
+| INA237AIDGSR (14) | C2864837 | 9,825 | $1.56 each at 10+ | in stock; DigiKey is out until 25-Nov-2026 |
+| TPS48111LQDGXRQ1 (7) | C17558994 | 9,860 | $3.00 each at 1, $2.56 at 10+ | |
+| TPS259541DSGR (6) | C2155673 | 155 | $0.27 each, sold in fives | |
+| TPS7A4001DGNR (3) | C55006 | 4,364 | $2.46 each | |
+| EEH-ZC1K470P (28) | C178648 | 9 | $0.65 each at 10+ | too few in stock |
+| LM5146RGYR (3) | C3188679 | 0 | | out of stock |
+| TPS3431SDRBR (3) | C702145 | 0 | | out of stock |
+
+**What this changes.** PRODUCTION_RUN.md section 1 estimated the power FETs at about $51 for 16 from LCSC; the live price
+is about $69 for 16 before duty, so the FETs are no cheaper from LCSC once duty is paid. After duty and LCSC's shipping,
+moving the lines above to LCSC saves little or nothing against DigiKey. The second order exists for stock, not for
+price: the lines DigiKey cannot supply (LM5069-2, INA237, TPS3431S, LM5146, SM08B-GHS-TB, WSK25125L000FEA,
+XAL1010-682MED, 419D) go to Mouser, which ships from the US without duty; LCSC covers only INA237, LM5069-2 and
+SM08B-GHS-TB of those. The Mouser stock figures above are still unverified.
