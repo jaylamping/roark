@@ -96,7 +96,7 @@ fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
 /// Guards: safety - `host.preflight`: a model whose MIT scales aren't settled is refused before anything is sent (PLAN
 /// item 2, the RS00's scales); a joint with null facts or caps is not refused (item 1).
 #[test]
-fn only_an_unsettled_model_refuses_a_wired_joint_before_anything_is_sent() {
+fn an_unsettled_model_refuses_and_null_facts_or_caps_do_not() {
     let skeleton = skeleton();
     let set = joint(&skeleton, 0);
     let target = |joint: &skeleton::Joint| Target::new(joint, &skeleton.power).map(|_| ());

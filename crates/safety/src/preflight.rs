@@ -5,7 +5,8 @@
 //!
 //! A write is answered by a plain status that names no register (`robstride` `param_write`), so a write proves nothing
 //! until its read-back. Every unknown fails closed: a request not answered in time, or an answer of the wrong kind. A
-//! value the skeleton leaves null is not one: it lowers the caps written ([`skeleton::Joint::caps`], PLAN item 1).
+//! null cap, `direction`, `zero_rad` or `hard_rad` in the skeleton is not one: it lowers the caps written
+//! ([`skeleton::Joint::caps`], PLAN item 1). A null UID skips the UID check until a UID is written.
 //!
 //! Preflight is stepped with what its drive's bus last showed ([`Seen`]): a view of any other drive, by ID or by bus,
 //! or from another slot than its requests go to, refuses, and so does a limb that isn't idle, or that stopped or was

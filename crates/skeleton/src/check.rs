@@ -6,7 +6,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use robstride::DeviceId;
+use robstride::{Amps, DeviceId};
 
 use crate::error::ProblemKind;
 use crate::joint::{Site, bus_name, read_joint};
@@ -196,7 +196,7 @@ pub(crate) fn cross_joint(
         }
         // Every joint with a bus can be named in one enable (tenet 1), so each counts against the budget at the
         // current it is enabled at (`Joint::caps`, PLAN item 1), a joint with a field that didn't parse included.
-        current_sum_a += site.current_a;
+        current_sum_a += site.current_a.map_or(0.0, Amps::get);
     }
 
     if let Some((budget_a, line)) = budget

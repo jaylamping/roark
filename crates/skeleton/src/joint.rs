@@ -22,8 +22,9 @@ pub(crate) struct Site {
     pub(crate) bus: Option<Option<BusName>>,
     pub(crate) id: Option<DeviceId>,
     /// The current it is enabled at, for the budget: `Joint::caps`'s rule (`Caps::enabled_at`), even when a field
-    /// didn't parse. Without a model there is no rule, so its written cap, or 0 A if null or unparsed.
-    pub(crate) current_a: f64,
+    /// didn't parse. Without a model there is no rule, so its written cap, or `None` (counted as 0 A) if null or
+    /// unparsed.
+    pub(crate) current_a: Option<Amps>,
     pub(crate) path: String,
     pub(crate) line: usize,
     pub(crate) bus_line: usize,
@@ -107,9 +108,9 @@ pub(crate) fn read_joint(
         })
     })();
     let current_a = actuator.map_or_else(
-        || current_cap_a.flatten().map_or(0.0, Amps::get),
+        || current_cap_a.flatten(),
         |model| {
-            Caps::enabled_at(
+            let caps = Caps::enabled_at(
                 model,
                 [
                     direction.map(|v| v.map(drop)),
@@ -117,9 +118,8 @@ pub(crate) fn read_joint(
                     hard_rad.map(|v| v.map(drop)),
                 ],
                 (torque_cap_nm, current_cap_a, speed_cap_rad_s),
-            )
-            .current
-            .get()
+            );
+            Some(caps.current)
         },
     );
     let site = Site {

@@ -20,7 +20,6 @@ macro_rules! si_unit {
             pub const fn get(self) -> f64 {
                 self.0
             }
-
         }
     };
 }
