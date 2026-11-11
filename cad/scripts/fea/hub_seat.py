@@ -52,17 +52,30 @@ def build():
             rb = 35.8 - depth
             # the 45 deg flank stops at the disc face (r 35.8, Y y0 + 4 = 302): the cut must not undercut the disc (2026-11-11: running it
             # on to (36.5, 302.7) notched a wedge into the disc underside, a knife edge under the arm's end face, 1,447 MPa at STOP_0)
-            prof = [(36.5, y0 - 0.7 * t30), (rb, y0 + depth * t30), (rb, y0 + 2.5 + 1.5 - depth), (35.8, y0 + 4.0), (36.5, y0 + 4.0)] if depth < 1.5 else \
-                   [(36.5, y0 - 0.7 * t30), (34.3, y0 + 1.5 * t30), (34.3, y0 + 2.5), (35.8, y0 + 4.0), (36.5, y0 + 4.0)]
+            # rev C+ (shoulder thread, 2026-11-11): the 45 deg flank reaches r 35.8 at Y 301.9 (bottom ends at Y 300.4), then 0.1 of cylinder
+            # to the flat disc face at Y 302.0; set HS_REVCP=0 for the earlier profile (bottom to Y 300.5, flank to r 35.8 at Y 302.0)
+            ytop = YTOP
+            prof = [(36.5, y0 - 0.7 * t30), (rb, y0 + depth * t30), (rb, ytop - depth), (35.8, ytop), (36.5, ytop)]
             with M.Sk(h, M.plane(h, 'X', HX, name + '_P'), name) as sk_:
                 sk_.poly([(HX, y_, CZ + sgn * r_) for r_, y_ in prof])
                 centerline_(sk_, (HX, 250.0, CZ), (HX, 340.0, CZ))
             revolve_(h, sk_.feat, name, None, True, angle=angle, mid=True, lo=0.01)
+        REVCP = os.environ.get('HS_REVCP', '1') == '1'
+        YTOP = 301.9 if REVCP else y0 + 4.0
         span = M.RIDGE_ARC[1] - M.RIDGE_ARC[0] + 10.0      # full depth 30-150 (ridge 35-145 plus 5 each end)
+        # run-out depth past the full-depth end (deg -> mm); rev C+ is a revolved taper, modelled as 1-deg steps at the mid-step depth
+        ro = ([(0.0, 1.5), (1.3, 1.48), (3.9, 1.28), (6.5, 0.90), (8.9, 0.34), (10.0, 0.0)] if REVCP else [(0.0, 1.5), (11.0, 0.0)])
         for sgn, tag in ((1, 'F'), (-1, 'B')):
             groove(f'SPIGOT_GROOVE{tag}', sgn, 1.5, span)
-            for k in range(1, 11):      # run-outs: 10 deg each end, depth stepping down 0.14 mm per degree pair
-                groove(f'GROOVE_RUNOUT{tag}{k}', sgn, 1.5 * (1.0 - k / 11.0), span + 2.0 * k)
+            for k in range(1, 11):
+                dk = float(np.interp(k - 0.5 if REVCP else k, [a for a, _ in ro], [b for _, b in ro]))
+                if dk > 0.02:
+                    groove(f'GROOVE_RUNOUT{tag}{k}', sgn, dk, span + 2.0 * k)
+            if REVCP and os.environ.get('HS_FILL', '1') == '1':      # spigot inside filled r 28 -> 25 over the groove arcs (wall under the groove 9.25)
+                with M.Sk(h, M.plane(h, 'X', HX, f'SPIGOT_FILL{tag}_P'), f'SPIGOT_FILL{tag}') as sk_:
+                    sk_.poly([(HX, y_, CZ + sgn * r_) for r_, y_ in [(25.0, 296.0), (28.3, 296.0), (28.3, 302.3), (25.0, 302.3)]])
+                    centerline_(sk_, (HX, 250.0, CZ), (HX, 340.0, CZ))
+                revolve_(h, sk_.feat, f'SPIGOT_FILL{tag}', None, False, angle=130.0, mid=True, lo=0.01)
         h.ForceRebuild3(False)
         if os.environ.get('HS_ROUNDS', '1') == '1':      # 2026-11-11: hub rounds the shoulder thread is adding to the real hub
             rad = lambda p: m_.hypot(p[0] - HX, p[2] - CZ)

@@ -295,7 +295,13 @@ def upper_details(d):
             y_revolve(d, 'SEAT_COLLAR', [(SEAT_R, 296.0), (37.4, 296.0), (37.4, HUB_JOINT), (SEAT_R, HUB_JOINT)])
         tc = float(os.environ.get('ARM_RIDGE_TIP_CHAMFER', '0.2'))      # load-flank tip corner, clear of the groove's 0.4 bottom round (its tangent point is at r 34.5)
         tip = [(34.5 + tc * math.cos(math.radians(30.0)), ly(34.5 + tc * math.cos(math.radians(30.0)))), (34.5, ly(34.5) + tc)] if tc > 0 else [(34.5, ly(34.5))]
-        prof = [(36.3, ly(36.3))] + tip + [(34.5, ny(34.5)), (35.9, ny(35.9)), (36.3, ny(35.9))]      # stays inside Y 302 (the arm's end face)
+        top = [(34.5, ny(34.5))]
+        if os.environ.get('ARM_RIDGE_REVCP', '1') == '1':      # hub rev C+ (2026-11-11): groove bottom ends Y 300.4 with an R1.0 round on that corner.
+            # 45 deg flank moved 0.1 toward low Y (0.3 axial clearance kept); top tip chamfer (34.5, 299.85) -> (34.9, 300.70) clears the
+            # R1.0 round by >= 0.26 (min over its arc); the load flank is unchanged
+            ny = lambda r_: y0 + 2.1 + (r_ - 34.3)
+            top = [(34.5, 299.85), (34.9, ny(34.9))]
+        prof = [(36.3, ly(36.3))] + tip + top + [(35.9, ny(35.9)), (36.3, ny(35.9))]      # stays inside Y 302 (the arm's end face)
         # two partial revolves, one per arc, centred on theta 90 / 270 (2026-11-11: a full revolve trimmed back to r 35.88 left a
         # 0.02 mm band proud of the bore all round, which broke the FEA mesh)
         for sgn, tag in ((1, 'F'), (-1, 'B')):
@@ -303,14 +309,15 @@ def upper_details(d):
                 sk_.poly([(HX, y_, CZ + sgn * r_) for r_, y_ in prof])
                 centerline(sk_, (HX, 150, CZ), (HX, 340, CZ))
             revolve(d, sk_.feat, f'SEAT_RIDGE{tag}', None, False, angle=RIDGE_ARC[1] - RIDGE_ARC[0], mid=True, lo=0.01)
+        ec = float(os.environ.get('ARM_END_CHAMFER', '0.5'))
+        if ec > 0:      # bore-to-end-face edge (r 35.9, Y 302): 0.5 x 45 chamfer, inside only, for the hub's R0.3 spigot-to-disc corner (rev C+)
+            y_revolve(d, 'SEAT_END_CHAMFER', [(SEAT_R, HUB_JOINT - ec), (SEAT_R + ec, HUB_JOINT), (SEAT_R + ec, HUB_JOINT + 0.3), (SEAT_R, HUB_JOINT + 0.3)], cut=True)
         rf = float(os.environ.get('ARM_FLOOR_FILLET', '0.25'))
         if rf > 0:      # (b) bore-to-floor corner (r 35.9, Y 296), where the spigot's bottom edge bore (STOP_0 vm SF 0.94 at 0.5 mm).
             # 0.25 clears the hub spigot's 0.4 bottom round by ~0.06; it would touch a sharp-cornered spigot by ~0.1 (needs the rounded hub)
-            fe = edges_where(d, lambda p: abs(p[1] - 296.0) < 0.05 and abs(math.hypot(p[0] - HX, p[2] - CZ) - SEAT_R) < 0.06)
-            print('  floor corner edges', len(fe), flush=True)
-            if fillet_edges(d, fe, (rf,), 'SEAT_FLOOR_FILLET') is None:
-                for i_, e_ in enumerate(fe):
-                    fillet_edges(d, [e_], (rf,), f'SEAT_FLOOR_FILLET{i_}')
+            # built as a revolved 45 deg corner ring (edge fillets here go stale after the first edge and fail); where there is no
+            # floor it is a 0.25 lip at the foot of the collar, facing -Y (a vertical wall with the halves seam-face down)
+            y_revolve(d, 'SEAT_FLOOR_CORNER', [(SEAT_R - rf, 296.0), (SEAT_R + 0.3, 296.0), (SEAT_R + 0.3, 296.0 + rf + 0.3), (SEAT_R, 296.0 + rf)])
     if R1C and os.environ.get('ARM_SEAT_RIBS', '1') == '1':      # seat crush ribs (2026-11-11): the seat must be gap-free, or the hub's lugs and bolts carry the moment.
         # Six axial ribs on the r 35.9 bore over Y 296-302 at theta 45/90/135 in each half (from +X toward +Z about the hub
         # axis), 1 wide at the tip, tip 0.15 proud of the r 35.8 spigot; the halves still close on the seam and the ribs crush.
