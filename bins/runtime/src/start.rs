@@ -210,6 +210,7 @@ impl Runtime {
         let session_dir = session.dir().to_path_buf();
         let (recording, recorders) = Recording::new(session, RING_BATCHES);
         let epoch = recording.epoch();
+        let health = recording.health();
         let mut threads = Threads {
             end: Arc::new(AtomicBool::new(false)),
             control: None,
@@ -258,6 +259,7 @@ impl Runtime {
             slow,
             enables: enables_rx,
             enable_replies: enable_replies_tx,
+            health,
             views: views_tx,
             end: Arc::clone(&threads.end),
             finished: Arc::clone(&finished),

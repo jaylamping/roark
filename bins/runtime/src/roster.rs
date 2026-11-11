@@ -16,13 +16,30 @@ pub struct RosterJoint {
     pub name: JointName,
     /// Its limb.
     pub limb: LimbName,
-    /// Its bus, as its index in the plan, and its slot there; `None` when it is on no bus (offline).
-    pub at: Option<(usize, usize)>,
-    /// Its bus's name, for the views preflight and the enable sequence check against.
-    pub bus: Option<BusName>,
+    /// Where it is wired; `None` when it is on no bus (offline).
+    pub at: Option<Wire>,
     /// What preflight checks its drive against, or why nothing can be: a null fact or cap, a model without settled
     /// MIT scales, or no bus.
     pub target: Result<Target, Refusal>,
+}
+
+/// Where a joint is wired.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Wire {
+    /// Its bus, as its index in the plan.
+    pub bus: usize,
+    /// Its slot on that bus.
+    pub slot: usize,
+    /// Its bus's name, for the views preflight and the enable sequence check against.
+    pub name: BusName,
+}
+
+impl RosterJoint {
+    /// Its bus, as its index in the plan, and its slot there; `None` when it is offline.
+    #[must_use]
+    pub fn slot(&self) -> Option<(usize, usize)> {
+        self.at.as_ref().map(|w| (w.bus, w.slot))
+    }
 }
 
 /// Every joint, in skeleton order (limb by limb, each limb's joints in file order).
@@ -56,17 +73,22 @@ impl Roster {
             .iter()
             .flat_map(|limb| limb.joints.iter().map(move |joint| (limb.name, joint)))
             .map(|(limb, joint)| {
-                let at = plans.iter().enumerate().find_map(|(bus, p)| {
-                    (joint.bus.as_ref().map(BusName::as_str) == Some(p.name.as_str()))
-                        .then(|| p.joints.iter().position(|j| *j == joint.name))
-                        .flatten()
-                        .map(|slot| (bus, slot))
+                let at = joint.bus.as_ref().and_then(|name| {
+                    plans.iter().enumerate().find_map(|(bus, p)| {
+                        (name.as_str() == p.name.as_str())
+                            .then(|| p.joints.iter().position(|j| *j == joint.name))
+                            .flatten()
+                            .map(|slot| Wire {
+                                bus,
+                                slot,
+                                name: name.clone(),
+                            })
+                    })
                 });
                 RosterJoint {
                     name: joint.name.clone(),
                     limb,
                     at,
-                    bus: joint.bus.clone(),
                     target: Target::new(joint, &skeleton.power),
                 }
             })
@@ -114,16 +136,6 @@ impl Roster {
         }
         Ok(set)
     }
-
-    /// Every joint of `limb` on bus `bus`, by index.
-    #[cfg(any(target_os = "linux", test))]
-    pub(crate) fn on(&self, bus: usize, limb: LimbName) -> impl Iterator<Item = usize> + '_ {
-        self.joints
-            .iter()
-            .enumerate()
-            .filter(move |(_, j)| j.limb == limb && j.at.is_some_and(|(b, _)| b == bus))
-            .map(|(i, _)| i)
-    }
 }
 
 impl JointSet {
@@ -144,25 +156,6 @@ impl JointSet {
         if index < MAX_JOINTS {
             self.0 |= 1 << index;
         }
-    }
-
-    /// Remove the joint at `index`.
-    pub const fn remove(&mut self, index: usize) {
-        if index < MAX_JOINTS {
-            self.0 &= !(1 << index);
-        }
-    }
-
-    /// The joints in both.
-    #[must_use]
-    pub const fn and(self, other: Self) -> Self {
-        Self(self.0 & other.0)
-    }
-
-    /// The joints in either.
-    #[must_use]
-    pub const fn or(self, other: Self) -> Self {
-        Self(self.0 | other.0)
     }
 
     /// The joints, by index, in order.
@@ -187,7 +180,7 @@ mod tests {
         let at = |name: &str| {
             let set = roster.set([name]).unwrap();
             let i = set.iter().next().unwrap();
-            roster.joint(i).unwrap().at
+            roster.joint(i).unwrap().slot()
         };
         // can1 holds the left arm (slots 0 and 1) and the right arm's third joint (slot 2); can0 the right arm's first
         // two and the waist.
@@ -201,14 +194,6 @@ mod tests {
         assert_eq!(roster.joint(leg).unwrap().target, Err(Refusal::Unwired));
         let left = roster.set(["arm_a_one", "arm_a_two"]).unwrap();
         assert!(left.iter().all(|i| roster.joint(i).unwrap().target.is_ok()));
-        assert_eq!(
-            roster.on(1, LimbName::RightArm).collect::<Vec<_>>(),
-            roster
-                .set(["arm_b_three"])
-                .unwrap()
-                .iter()
-                .collect::<Vec<_>>()
-        );
         assert_eq!(
             roster.set(["arm_a_one", "elbow"]),
             Err(UnknownJoint("elbow".to_owned()))

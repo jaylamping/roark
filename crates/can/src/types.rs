@@ -444,6 +444,27 @@ impl Snapshot {
         }
     }
 
+    /// A snapshot made from its parts, as a bus thread makes one, for code that reads snapshots without a bus: control's
+    /// unit tests, and replays of a recording. A bus thread's own are made by the bus.
+    #[must_use]
+    pub const fn from_parts(
+        tick: u64,
+        bus_error: Option<BusError>,
+        healthy: bool,
+        counters: Counters,
+        limbs: [Option<LimbView>; MAX_DRIVES],
+        drives: [Option<DriveView>; MAX_DRIVES],
+    ) -> Self {
+        Self {
+            tick,
+            bus_error,
+            healthy,
+            counters,
+            limbs,
+            drives,
+        }
+    }
+
     /// Limb `limb` on this bus.
     #[must_use]
     pub fn limb(&self, limb: usize) -> Option<&LimbView> {

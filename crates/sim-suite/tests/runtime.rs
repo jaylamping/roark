@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 use can::{LimbState, Snapshot};
 use common::HZ;
 use robstride::drive::{Command, HostFrame, command};
-use robstride::{Mode, Reporting, StatusFault, StatusFaults, Uid};
+use robstride::{Mode, Param, ParamValue, Reporting, RunMode, StatusFault, StatusFaults, Uid};
 use runtime::{
     Clear, ClearRefused, Enable, EnableRefused, EnableReply, Reply, Runtime, RuntimeConfig, Scope,
 };
@@ -46,12 +46,12 @@ fn drives(skeleton: &Skeleton, bus: &str) -> Vec<SimDrive> {
         .collect()
 }
 
-/// Every host command seen on `bus` until `stop`.
+/// Every host frame seen on `bus` until `stop`, with when it was read.
 #[expect(
     clippy::unwrap_used,
     reason = "test helper: the monitor must open for the test to mean anything"
 )]
-fn watch(bus: &str, stop: &AtomicBool) -> Vec<Command> {
+fn watch(bus: &str, stop: &AtomicBool) -> Vec<(Instant, HostFrame)> {
     let socket = CanSocket::open(bus).unwrap();
     socket.set_read_timeout(Duration::from_millis(5)).unwrap();
     let mut seen = Vec::new();
@@ -60,7 +60,7 @@ fn watch(bus: &str, stop: &AtomicBool) -> Vec<Command> {
             && let Id::Extended(id) = frame.id()
             && let Ok(Some(host)) = command(id.as_raw(), frame.data())
         {
-            seen.push(host.command);
+            seen.push((Instant::now(), host));
         }
     }
     seen
@@ -284,7 +284,8 @@ fn the_runtime_runs_stops_and_clears_every_bus_and_never_enables_on_vcan() {
     let _ = std::fs::remove_dir_all(&root);
 
     // Only the stops' frames went out: Disables and reporting off, to every drive of every bus.
-    for (name, commands) in names.iter().zip(&seen) {
+    for (name, frames) in names.iter().zip(&seen) {
+        let commands: Vec<Command> = frames.iter().map(|(_, f)| f.command).collect();
         assert!(
             commands
                 .iter()
@@ -342,7 +343,7 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
     let stop_sim = AtomicBool::new(false);
     let stop_watch = AtomicBool::new(false);
     let over: StatusFaults = [StatusFault::Overcurrent].into_iter().collect();
-    let seen = std::thread::scope(|scope| {
+    let (seen, first_enable) = std::thread::scope(|scope| {
         let flags = [&to_mode, &to_fault, &stop_sim, &stop_watch];
         let _flags = Flags(&flags);
         let watchers: Vec<_> = names
@@ -419,6 +420,7 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
         );
 
         // The left arm passes preflight, enables and is held.
+        let first_enable = Instant::now();
         assert_eq!(
             enable(&mut runtime, 2, &both),
             Some(EnableReply {
@@ -528,8 +530,7 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
         assert_eq!(exit.control.replies_dropped, 0);
         assert_eq!(exit.control.batches_dropped, 0);
         assert_eq!(exit.control.stray_results, 0);
-        // Asked again each pass until the stop shows.
-        assert!(exit.control.mode_stops >= 1, "{:?}", exit.control);
+        assert_eq!(exit.control.mode_stops, 1, "{:?}", exit.control);
         // Two joints after the first stop, two after the second, one after host.mode, one after host.fault.
         assert_eq!(exit.control.holds_ended, 6, "{:?}", exit.control);
         for bus in &exit.buses {
@@ -540,21 +541,80 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
         can0.join().unwrap().unwrap();
         can1.join().unwrap().unwrap();
         stop_watch.store(true, Ordering::Release);
-        watchers
+        let seen = watchers
             .into_iter()
             .map(|w| w.join().unwrap())
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+        (seen, first_enable)
     });
     let _ = std::fs::remove_dir_all(&root);
 
-    // can0 holds no left-arm joint: only stops ever reached it. can1 saw the enables and the holds.
+    // can0 holds no left-arm joint, and can1's right-arm drive was never named: only the end's stops reached them.
+    let only_stops =
+        |c: &Command| matches!(c, Command::Disable | Command::Reporting(Reporting::Off));
     assert!(
-        seen[0]
-            .iter()
-            .all(|c| matches!(c, Command::Disable | Command::Reporting(Reporting::Off))),
+        seen[0].iter().all(|(_, f)| only_stops(&f.command)),
         "{:?}",
         seen[0]
     );
-    assert!(seen[1].contains(&Command::Enable));
-    assert!(seen[1].iter().any(|c| matches!(c, Command::Mit(_))));
+    let to = |id: u8| -> Vec<(Instant, Command)> {
+        seen[1]
+            .iter()
+            .filter(|(_, f)| f.target == common::id(id))
+            .map(|(at, f)| (*at, f.command))
+            .collect()
+    };
+    assert!(to(13).iter().all(|(_, c)| only_stops(c)), "{:?}", to(13));
+    for id in [11, 12] {
+        let frames = to(id);
+        // The refused enable sent nothing to the left arm: its first frame came after the enable that passed.
+        assert!(
+            frames.iter().all(|(at, _)| *at >= first_enable),
+            "drive {id}: {frames:?}"
+        );
+        // The first enable's sequence, in PLAN item 2's order: active reporting off, Enable, `run_mode` = MIT, then
+        // the hold's MIT commands.
+        let commands: Vec<Command> = frames.iter().map(|(_, c)| *c).collect();
+        let first = |want: &dyn Fn(&Command) -> bool| commands.iter().position(want);
+        let enable = first(&|c| *c == Command::Enable).unwrap();
+        let mode = first(&|c| {
+            matches!(
+                c,
+                Command::ParamWrite {
+                    param: Param::RunMode,
+                    value: ParamValue::RunMode(RunMode::Mit)
+                }
+            )
+        })
+        .unwrap();
+        let mit = first(&|c| matches!(c, Command::Mit(_))).unwrap();
+        let off = commands[..enable]
+            .iter()
+            .rposition(|c| *c == Command::Reporting(Reporting::Off));
+        assert!(
+            off.is_some() && enable < mode && mode < mit,
+            "drive {id}: {commands:?}"
+        );
+        // Held with zero gains and zero torque (to the codes' resolution).
+        let model = robstride::Model::Rs03;
+        for c in &commands {
+            if let Command::Mit(codes) = c {
+                let held = codes.command(model).unwrap();
+                let (kp, kd, torque) = (held.kp.get(), held.kd.get(), held.torque.get());
+                assert!(
+                    kp == 0.0 && kd == 0.0 && torque.abs() < 0.01,
+                    "drive {id}: {held:?}"
+                );
+            }
+        }
+    }
+    // Drive 12 was enabled by the first two enables only; drive 11 by all four.
+    assert_eq!(
+        to(11).iter().filter(|(_, c)| *c == Command::Enable).count(),
+        4
+    );
+    assert_eq!(
+        to(12).iter().filter(|(_, c)| *c == Command::Enable).count(),
+        2
+    );
 }

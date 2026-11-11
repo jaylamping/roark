@@ -21,15 +21,18 @@ thread per wired bus and the control thread on one schedule origin, and takes th
   replies and views.
 - **Enables** (`Enable`, through `Runtime::enables`, of joints named by `Runtime::joints`) are answered by one
   `EnableReply`. One runs at a time. An enable is refused before anything is sent if it names nothing, a joint already
-  enabled, or a joint whose skeleton entry can't pass (a null fact or cap, no bus, a model without settled MIT scales).
-  Otherwise every named joint's preflight runs (`safety`, over its bus's slow requests); in the tick the last one passes
-  every enable sequence starts, and once every drive is in Run and MIT mode the enable is answered `Ok`. A refusal before
-  any Enable may have gone stops nothing; a failure after one stops every limb the enable named. A part of a limb
-  stopped on another bus refuses the enable too: a limb over two buses enables only once both are cleared.
-- **The hold**: every enabled joint gets a slack MIT command each tick (zero gains, zero torque: in Run and watched by
-  every rule, holding nothing) until real control modes and gains exist. A joint stops being held when its limb stops on
-  any bus, and a stop on one bus is then asked of the whole limb. While a limb is held, a drive of it that this host never
-  enabled seen out of Reset stops the whole limb (`host.mode`, PLAN item 6).
+  enabled, or a joint whose skeleton entry can't pass (a null fact or cap, no bus, a model without settled MIT scales),
+  or while the session's recording has failed (`host.logging`). Otherwise every named joint's preflight runs (`safety`,
+  over its bus's slow requests); in the tick the last one passes every enable sequence starts, and once every drive is
+  in Run and MIT mode the enable is answered `Ok`. A refusal before any Enable may have gone stops nothing; a failure
+  after one stops every limb the enable named. A limb is one limb over every bus it is on: a part of it stopped on any
+  bus fails the enable, so a limb over two buses enables only once both are cleared. Another host's frame on a named
+  joint's bus during the enable fails it too, since its writes could change what preflight proved.
+- **The hold**: every enabled joint gets a slack MIT command each tick from the tick its own drive is in Run (zero gains,
+  zero torque: watched by the bus's rules, holding nothing, so the motion rules have nothing to check yet) until real
+  control modes and gains exist. A joint stops being held when its limb stops on any bus, and a stop on one bus is then
+  asked of the whole limb. While a limb is held, a drive of it on any bus that this host never enabled, seen out of
+  Reset or not seen at all, stops the whole limb (`safety::limb_mates`, `host.mode`, PLAN item 6).
 - **Stops** (`Runtime::stop(Scope)`) go through a latch, never a queue: always accepted, never waiting, and taken each tick
   before any clear (PLAN item 3a). A stop a bus's full order ring didn't take is pushed again each tick, ahead of anything
   else for that bus.
@@ -43,7 +46,8 @@ thread per wired bus and the control thread on one schedule origin, and takes th
 
 The `api` socket (and so any way for the binary's operator to enable), `mlockall`, `SCHED_FIFO` and the systemd units
 come in the PRs that follow (PLAN step 7). Stops that control asks (an enable's failure, `host.mode`) reach the bus as
-operator stops: the session records them as such until a stop carries its cause.
+operator stops, and control's enables and refusals emit no event yet: the session records them only as limb stops until
+a stop carries its cause and control has an event queue, the next PR, before any real drive is enabled (step 8).
 
 ## Must never
 

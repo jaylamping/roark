@@ -50,6 +50,8 @@ pub(crate) struct ControlLinks {
     pub(crate) slow: Vec<SlowEnds>,
     pub(crate) enables: Consumer<Enable>,
     pub(crate) enable_replies: Producer<EnableReply>,
+    /// The recording's health: a failed recording refuses every new enable (PLAN item 6 `host.logging`).
+    pub(crate) health: telemetry::Health,
     /// `None` when nobody reads the views.
     pub(crate) views: Option<Producer<View>>,
     /// The run's end, and every bus thread's exit flag: one flag for both, so the buses and control learn of an end
@@ -110,11 +112,13 @@ pub(crate) fn run(
     mut links: ControlLinks,
 ) -> ControlExit {
     let mut exit = ControlExit::default();
-    let mut enabler = Enabler::new(&links.roster);
+    let mut enabler = Enabler::new(&links.roster, links.buses.len());
     let mut counts = Counts::default();
-    // Each bus's newest snapshot so far, and whether its thread has ended, for the enables and holds.
+    // Each bus's newest snapshot so far, whether its thread has ended, and its next batch, for the enables and holds:
+    // made once here, overwritten each pass (no allocation on the loop).
     let mut newest: Vec<Option<Snapshot>> = vec![None; links.buses.len()];
     let mut ended = vec![false; links.buses.len()];
+    let mut batches = vec![CommandBatch::new(0, 0); links.buses.len()];
     let phase = phase(timing);
     let mut n = schedule.next(phase);
     loop {
@@ -161,24 +165,27 @@ pub(crate) fn run(
                 .saturating_mul(timing.period_ns)
                 .saturating_add(timing.send_window_ns)
                 .saturating_add(origin_ns);
-            let mut batches = vec![CommandBatch::new(next, expires); links.buses.len()];
+            for batch in &mut batches {
+                *batch = CommandBatch::new(next, expires);
+            }
             // Enables and holds first, so a stop they ask goes out in this pass's orders.
             // On the session's epoch, as the snapshots' times are, for the preflights' and sequences' windows.
             let now_ns = origin_ns.saturating_add(since(schedule.at(0, 0)));
-            for _ in 0..links.enables.buffer().capacity() {
-                let Ok(enable) = links.enables.pop() else {
-                    break;
-                };
-                if let Some(r) = enabler.take(&links.roster, enable, &mut links.slow, now_ns) {
-                    push_enable_reply(&mut links.enable_replies, r, &mut exit.replies_dropped);
-                }
-            }
             let mut buses = Buses {
                 snapshots: &newest,
                 slow: &mut links.slow,
                 batches: &mut batches,
                 ended: &ended,
             };
+            for _ in 0..links.enables.buffer().capacity() {
+                let Ok(enable) = links.enables.pop() else {
+                    break;
+                };
+                let failed = links.health.failed();
+                if let Some(r) = enabler.take(&links.roster, enable, &mut buses, failed, now_ns) {
+                    push_enable_reply(&mut links.enable_replies, r, &mut exit.replies_dropped);
+                }
+            }
             if let Some(r) = enabler.tick(
                 &links.roster,
                 &mut buses,
@@ -202,8 +209,8 @@ pub(crate) fn run(
                 },
                 |r| push_reply(replies, r, &mut exit.replies_dropped),
             );
-            for (ends, batch) in links.buses.iter_mut().zip(batches) {
-                if ends.commands.push(batch).is_err() {
+            for (ends, batch) in links.buses.iter_mut().zip(&batches) {
+                if ends.commands.push(*batch).is_err() {
                     exit.batches_dropped += 1;
                 }
             }
@@ -381,6 +388,7 @@ mod tests {
             slow: Vec::new(),
             enables: RingBuffer::new(1).1,
             enable_replies: RingBuffer::new(1).0,
+            health: telemetry::Health::default(),
             views: None,
             end: Arc::clone(&end),
             finished: Arc::clone(&finished),
