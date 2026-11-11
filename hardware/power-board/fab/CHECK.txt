@@ -1,4 +1,4 @@
-ok   J:/code/roark-wt/route-fable/hardware/power-board/fab/gerbers exists
+ok   J:/code/roark-wt/buck/hardware/power-board/fab/gerbers exists
 ok   gerbers/ holds the 12 Gerber and 2 drill files: missing [], extra []
 ok   F_Cu.gtl: parses (format, units, end of file), 44168 operations, function "Copper,L1,Top" (expected Copper,L1,Top)
 ok   In1_Cu.g1: parses (format, units, end of file), 35585 operations, function "Copper,L2,Inr" (expected Copper,L2,Inr)
@@ -26,5 +26,5 @@ ok   bom-digikey.csv exists
 ok   bom-digikey.csv: 262 references, the board has 262 fitted parts: missing [], extra []
 ok   zip: 14 files, identical to gerbers/
 ok   BOARD.sha256 exists
-ok   the package was made from this board file (sha256 b1991956ca7d8d1f..., recorded b1991956ca7d8d1f...): if not, run tools/fab_package.sh again
+ok   the package was made from this board file (sha256 8a12e3bbe767445a..., recorded 8a12e3bbe767445a...): if not, run tools/fab_package.sh again
 fab_check fails 0

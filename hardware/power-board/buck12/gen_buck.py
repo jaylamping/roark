@@ -8,6 +8,7 @@ import kit
 kit.PROJ='marengo_buck12'; kit.LIBNAME='marengo_buck12'
 from kit import *
 LIBN=kit.LIBNAME
+wfile(OUT+'/fp-lib-table').write('(fp_lib_table\n\t(version 7)\n\t(lib (name "marengo_buck12")(type "KiCad")(uri "${KIPRJMOD}/marengo_buck12.pretty")(options "")(descr "buck board footprints (tools/fp_buck.py)"))\n)\n')
 wfile(OUT+'/sym-lib-table').write('(sym_lib_table\n\t(version 7)\n\t(lib (name "marengo_buck12")(type "KiCad")(uri "${KIPRJMOD}/marengo_buck12.kicad_sym")(options "")(descr "buck board symbols"))\n)\n')
 s=Sheet('buck12','marengo 12 V buck board (rev B5)','A1',comment='On the J24 pigtail (split S1 pinout). Main board: hardware/power-board/schematic.')
 s.file='marengo_buck12.kicad_sch'
@@ -21,7 +22,7 @@ nic(s,'Connector_Generic:Conn_02x06_Odd_Even','J1','J24 mate: 1-2 +VIN, 3-4 GND,
     {'1':'VIN_P','2':'VIN_P','3':'GND','4':'GND','5':'ON_N','6':'+3V3_PI','7':'GND','8':'GND','9':'SP_EN','10':'GND','11':'I2C_SCL','12':'I2C_SDA'})
 g=Grid(s,80,50,17,30,300)
 g.D('SK810L-TP','VIN_P','GND',SMC); g.C('1uF 100V X7R','VIN_P','GND',C1210); g.L('2.2uH XAL7030-222MEC','VIN_P','VIN','Inductor_SMD:L_Coilcraft_XAL7030-222')
-g.CP('47uF 100V EEE-TK2A470AQ','VIN','GND','Capacitor_SMD:CP_Elec_10x10'); g.C('2.2uF 100V X7R','VIN','GND',C1210,k=5); g.C('100nF 100V X7R','VIN','GND',C805)
+g.CP('47uF 100V EMVH101ARA470MKE0S','VIN','GND','marengo_buck12:CP_Elec_12.5x13.5_ChemiCon'); g.C('2.2uF 100V X7R','VIN','GND',C1210,k=5); g.C('100nF 100V X7R','VIN','GND',C805)
 g.F('VIN_P'); g.F('VIN'); g.F('GND')
 nic(s,LIBN+':LM5146','U1','LM5146RGYR',(120,140),'Package_DFN_QFN:Texas_RGY_R-PVQFN-N20_EP2.05x3.05mm_ThermalVias',
     {'1':'EN','2':'RT','3':'SS','4':'COMP','5':'FB','6':'GND','7':None,'8':'GND','9':None,'10':None,'11':'ILIM','12':'GND','13':'LO','14':'VCC','15':'GND','16':None,'17':'BST','18':'HO','19':'SW','20':'VIN_C','21':'GND'},ds='https://www.ti.com/lit/ds/symlink/lm5146.pdf')
@@ -32,15 +33,15 @@ g.L('6.8uH XAL1010-682MED','SW','VOUT','Inductor_SMD:L_Coilcraft_XAL1010-XXX'); 
 g=Grid(s,160,190,15,30,330)
 g.R('2.2R','VIN','VIN_C',R603); g.C('100nF 100V X7R','VIN_C','GND',C805); g.F('VIN_C'); g.R('300k 1%','VIN','EN',R1206); g.R('12.4k 1%','EN','GND',R603)
 g.R('24.9k 1%','RT','GND'); g.C('47nF X7R','SS','GND'); g.C('2.2uF 25V X7R','VCC','GND',C805); g.D('BAT46W','VCC','VOUT')
-g.nl(); g.R('2.2R','SW','BST_R',R603); g.C('100nF 25V X7R','BST','BST_R',C603); g.R('402R 1%','ILIM','SW'); g.C('100pF C0G','ILIM','GND')
+g.nl(); g.R('2.2R','SW','BST_R',R603); g.C('100nF 25V X7R','BST','BST_R',C603); g.R('330R 1%','ILIM','SW'); g.C('18pF 100V C0G','ILIM','GND')
 g.R('0R (loop injection)','VOUT','VOUT_S',R603); g.R('21k 1%','VOUT_S','FB'); g.R('1.5k 1%','FB','GND')
 g.nl(); g.R('100R','VOUT_S','FB_Z'); g.C('1nF C0G','FB_Z','FB'); g.R('8.06k 1%','COMP','COMP_Z'); g.C('4.7nF C0G','COMP_Z','FB',C603); g.C('10pF C0G','COMP','FB')
 g.R('220k','VIN','ON_N',R1206); g.R('10k','ON_N','ON_B')
 Q('Transistor_BJT:Q_NPN_BEC','MMBT3904',(320,250),'ON_B','GND','EN')
-wnote('''Input: SK810L crowbar (a reversed pigtail clamps at about 1 V; U7 on the main board limits and times out), 1 uF at the connector, 2.2 uH filter, 47 uF aluminium (0.42 Ohm ESR damps the filter and the pigtail), 5 x 2.2 uF hot-loop ceramics at Q1. tools/absorber_sim.py (main board) runs the bank-trip spike through U7, F2, the pigtail and this filter.
+wnote('''Input: SK810L crowbar (a reversed pigtail clamps at about 1 V; U7 on the main board limits and times out), 1 uF at the connector, 2.2 uH filter, 47 uF aluminium (Chemi-Con MVH, 12.5 mm can, 0.33 Ohm ESR damps the filter and the pigtail: 24 dB of margin against the converter's input impedance at 30 V, 158 W), 5 x 2.2 uF hot-loop ceramics at Q1. tools/absorber_sim.py (main board) runs the bank-trip spike through U7, F2, the pigtail and this filter.
 UVLO: 300k / 12.4k: on at 30.2 V, off at 27.2 V (10 uA hysteresis current). Below the 30.5 V worst sag at 90 A from a 38 V pack, so motor load can't brown out compute before the BMS does; the Pi still shuts down on its load-aware threshold.
 ON/OFF: the main board's 2N7002 pulls pin 5 low through 220R when U7's PGD is good. Pin 5 open: 220k from VIN biases the NPN, which holds EN low (off). Pin 5 low: NPN off, EN rises: on. Pin 5 idles at about 2.7 V, like the DVE's.
-Power train (TI design 2 uprated): 400 kHz (RT 24.9k), 6.8 uH 8.9 mOhm 21.8 A Isat, 3.3 A ripple; Q1 BSC070N10NS5 (low Qgd), Q2 BSC040N10NS5. Valley limit by Q2 RDS(on): 200 uA x 402R / 4.5 mOhm = 18 A cold, about 12-13 A hot: over the 11.6 A ceiling, under the 19-21 A of the inductor. Hiccup on overload.
+Power train (TI design 2 uprated): 400 kHz (RT 24.9k), 6.8 uH 8.9 mOhm 21.8 A Isat, 3.3 A ripple; Q1 BSC070N10NS5 (low Qgd), Q2 BSC040N10NS5. Valley limit by Q2 RDS(on) (LM5146 eq. 6: I_OUT,CL = I_RDSON x R_ILIM / RDS(on)Q2 + dIL/2), R_ILIM 330R, Q2 VGS = VCC 11.6 V: hot (TJ 125 C, I_RDSON 180 uA min +44 %, RDS(on) 4.0 mOhm max x1.7) valley 12.6 A, 16 % over the 10.8 A valley at 12 A out with the smallest ripple (36 V, L +20 %); cold (25 C, 220 uA, 3.5 mOhm) valley 20.7 A, hard-short peak about 21.2 A against L2's 21.8 A Isat (30 % drop). C18 18 pF 100 V C0G: R_ILIM x C_ILIM = 5.9 ns (TI: about 6 ns); ILIM swings with SW to VIN. Hiccup on overload.
 Output: 12.0 V (0.8 V x (1 + 21k / 1.5k)), 5 x 22 uF at VOUT plus the 330 uF bulk cap on +12V behind RS1 (12 V distribution, below). Compensation is TI's for this L and 5 x 22 uF only (40 kHz crossover): recheck it for the 330 uF and measure the loop with an injection resistor in place of the 0R before loading. VCC from VOUT through BAT46W (TI's D1) cuts bias loss.
 Loss at 12 A, 48 V (est): Q1 0.4 W conduction + 1.2 W switching, Q2 0.7 W, inductor 1.3 W, controller 0.3 W: about 4 W, 97 %. Board: about 60 x 85 mm with the 12 V distribution and its six outputs, bolted to the rail with a thermal pad like the DVE.''',(20,280),170)
 # ---------- 12 V distribution (split S1, 2026-11-09: moved here from the main board, same parts and values) ----------
@@ -62,13 +63,13 @@ nic(s,LIBN+':TPS259541DSG','U5','TPS259541DSGR',(40,460),EF,{'1':'SPON_DV','2':'
 nic(s,'Connector_Generic:Conn_01x02',s.nref('J'),'SPARE_ON, always on',(90,460),MF2,{'1':'SPARE_ON','2':'GND'})
 g=Grid(s,240,350,17,30,400)
 for o,f in (('+12V_JET','5A 32V 0466005'),('+12V_PI','5A 32V 0466005'),('+12V_FAN','2A 32V 0466002')): g.two('Device:Fuse','F',f,'+12V',o,'Fuse:Fuse_1206_3216Metric')
-g.C('100nF','+3V3_PI','GND',C603,k=2); g.CP('330uF 25V EEH-ZA1E331V','+12V','GND','Capacitor_SMD:CP_Elec_10x10.5'); g.Z('SMBJ15A','+12V','GND','Diode_SMD:D_SMB')
+g.C('100nF','+3V3_PI','GND',C603,k=2); g.CP('330uF 25V EEH-ZA1E331V','+12V','GND','marengo_buck12:CP_Elec_10x10.5_ZA'); g.Z('SMBJ12A','+12V','GND','Diode_SMD:D_SMB')
 g.nl(); g.R('68k','SP_EN','GND',R603); g.R('499R 1%','SP_ILM','GND',R603); g.C('3.3nF C0G','SP_DV','GND',C603); g.C('100nF 25V','+12V','GND',C603); g.C('22uF 25V','SP_SW1','GND',C1210); g.D('B340A-13-F','SP_SW1','GND','Diode_SMD:D_SMA')
 g.nl(); g.R('100k','+12V','SPON_EN',R603); g.R('33k','SPON_EN','GND',R603); g.R('1.02k 1%','SPON_ILM','GND',R603); g.C('3.3nF C0G','SPON_DV','GND',C603); g.C('100nF 25V','+12V','GND',C603); g.D('B340A-13-F','SPARE_ON','GND','Diode_SMD:D_SMA')
 g.F('+12V'); g.F('+3V3_PI'); g.F('SP_EN')
 wnote('''Moved from the main board (split S1): the 12 V meter (0x4D) and SPARE_SW meter (0x47) on the Pi's I2C, powered by the Pi's 3.3 V through J1 pin 6; pull-ups only at the Pi.
 SP_EN (J1 pin 9, between GND pins) comes from the main board's RUN through 100k and a series diode; the 68k here pulls EN low, so SPARE_SW is off when RUN drops, the diode opens or the pigtail is unplugged (fail-off). EN about 2.6 V with RUN up.
-SPARE_SW: limit 3.87-4.42 A (499R), dV/dt 3.3 nF about 12 V/ms. SPARE_ON: unswitched, about 2 A limit. B340A clamps on both outputs. SMBJ15A: servo back-feed clamp on +12V.
+SPARE_SW: limit 3.87-4.42 A (499R), dV/dt 3.3 nF about 12 V/ms. SPARE_ON: unswitched, about 2 A limit. B340A clamps on both outputs. SMBJ12A: servo back-feed clamp on +12V, 13.3 V min breakdown (over the 12.35 V worst regulated output), 19.9 V at its 30.2 A rating: under the eFuses' 20 V maximum.
 330 uF + 5 x 22 uF now sit at the converter output, not at the far end of the pigtail: recheck the compensation and measure the loop at the 0R injection point before loading.\nThe DVE fallback no longer plugs into J24: this board has no 12 V input, and the old DVE adapter pinout puts 12 V on SCL and SP_EN.''',(20,500),170)
 writelib()
 s.write([('/'+kit.ROOT,'1')])

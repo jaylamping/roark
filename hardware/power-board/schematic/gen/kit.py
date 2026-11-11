@@ -84,7 +84,7 @@ class Sheet:
         s.items.append(['global_label',S(t),['shape','passive'],['at',n(p[0]),n(p[1]),str(ang)],['fields_autoplaced','yes'],eff('right' if ang in(180,270) else 'left'),['uuid',S(s.id())],['property',S('Intersheetrefs'),S('${INTERSHEET_REFS}'),['at',n(p[0]),n(p[1]),'0'],eff(hide=True)]])
     def text(s,t,p,size=1.27,bold=False):
         s.items.append(['text',S(t),['exclude_from_sim','no'],['at',n(p[0]),n(p[1]),'0'],eff('left top',size=size,bold=bold),['uuid',S(s.id())]])
-    def sym(s,lid,ref,val,at,rot=0,fp='',unit=1,refat=None,valat=None,hideval=False,hideref=False,ds=''):
+    def sym(s,lid,ref,val,at,rot=0,fp='',unit=1,refat=None,valat=None,hideval=False,hideref=False,ds='',fields=None):
         l=libsym(lid); s.lib[lid]=l
         pw=lid.startswith('power:')
         rtext=90 if rot in(90,270) else 0
@@ -95,6 +95,7 @@ class Sheet:
         pr=lambda k,t,p,hide=False,j=just:['property',S(k),S(t),['at',n(p[0]),n(p[1]),str(rtext)],eff(j,hide=hide)]
         o=['symbol',['lib_id',S(lid)],['at',n(at[0]),n(at[1]),str(rot)],['unit','1'],['exclude_from_sim','no'],['in_bom','no' if pw else 'yes'],['on_board','no' if pw else 'yes'],['dnp','no'],['uuid',S(U(f'{s.key}/sym/{ref}'))],
            pr('Reference',ref,r,hide=pw or hideref),pr('Value',val,v,hide=hideval or lid=='power:PWR_FLAG'),pr('Footprint',fp,at,True),pr('Datasheet',ds or '~',at,True),pr('Description','',at,True)]
+        for k,v in (fields or {}).items(): o.append(pr(k,v,at,True))   # extra hidden fields (U1's temporary fitted part)
         for p in pins_of(l): o.append(['pin',S(p),['uuid',S(U(f'{s.key}/pin/{ref}/{p}'))]])
         o.append(['__inst__',ref])
         s.items.append(o); return l
@@ -171,10 +172,10 @@ def ext(l):
         for p in getall(u,'pin'):
             ys.append(float(get(p,'at')[2]))
     return (min(ys),max(ys)) if ys else (-10,10)
-def nic(s,lid,ref,val,at,fp,nets,ds='',rot=0,L=5.08):
+def nic(s,lid,ref,val,at,fp,nets,ds='',rot=0,L=5.08,fields=None):
     at=(round(at[0]/1.27)*1.27,round(at[1]/1.27)*1.27)
     l=libsym(lid); lo,hi=ext(l)
-    s.sym(lid,ref,val,at,rot,fp,ds=ds,refat=(at[0]-5.08,at[1]-hi-(11.43)),valat=(at[0]-5.08,at[1]-lo+(11.43)))
+    s.sym(lid,ref,val,at,rot,fp,ds=ds,fields=fields,refat=(at[0]-5.08,at[1]-hi-(11.43)),valat=(at[0]-5.08,at[1]-lo+(11.43)))
     seen={}
     for u in getall(l,'symbol'):
         for p in getall(u,'pin'):

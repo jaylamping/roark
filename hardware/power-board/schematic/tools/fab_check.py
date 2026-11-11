@@ -20,7 +20,10 @@ b=pcbnew.LoadBoard(sys.argv[1]); out=sys.argv[2]; G=out+'/gerbers'; fail=[]
 def ok(c,m):
     print('ok  ' if c else 'FAIL',m)
     if not c: fail.append(m)
-stem='marengo_pdu_revb'
+# the main board by default; the buck board's package (buck12/tools/fab_check_buck.sh) sets these
+stem=os.environ.get('FAB_STEM','marengo_pdu_revb')
+OW,OH=(float(v) for v in os.environ.get('FAB_OUTLINE','100x170').split('x'))
+NMASK=int(os.environ.get('FAB_BMASK_OPENINGS','10'))   # the bare B.Mask openings drawn on the board (the heatsink pads)
 EXPECT={'F_Cu.gtl':'Copper,L1,Top','In1_Cu.g1':'Copper,L2,Inr','In2_Cu.g2':'Copper,L3,Inr','In3_Cu.g3':'Copper,L4,Inr','In4_Cu.g4':'Copper,L5,Inr',
         'B_Cu.gbl':'Copper,L6,Bot','F_Mask.gts':'Soldermask,Top','B_Mask.gbs':'Soldermask,Bot','F_Silkscreen.gto':'Legend,Top',
         'B_Silkscreen.gbo':'Legend,Bot','F_Paste.gtp':'Paste,Top','Edge_Cuts.gm1':'Profile,NP'}
@@ -48,7 +51,7 @@ ok(len(cu)==6==b.GetCopperLayerCount(),f'copper layers: {len(cu)} Gerbers for a 
 bb=b.GetBoardEdgesBoundingBox(); bw,bh=MM(bb.GetWidth()),MM(bb.GetHeight())
 if 'Edge_Cuts.gm1' in info and info['Edge_Cuts.gm1'][1]:
     x0,y0,x1,y1=info['Edge_Cuts.gm1'][1]; gw,gh=x1-x0,y1-y0
-    ok(abs(gw-100.0)<0.2 and abs(gh-170.0)<0.2 and abs(gw-bw)<0.2 and abs(gh-bh)<0.2,f'outline: Gerber {gw:.2f} x {gh:.2f} mm, board {bw:.2f} x {bh:.2f} mm, expected 100 x 170')
+    ok(abs(gw-OW)<0.2 and abs(gh-OH)<0.2 and abs(gw-bw)<0.2 and abs(gh-bh)<0.2,f'outline: Gerber {gw:.2f} x {gh:.2f} mm, board {bw:.2f} x {bh:.2f} mm, expected {OW:g} x {OH:g}')
 def drill(path):
     """{tool diameter mm: hits} of an Excellon file"""
     tools={}; cur=None; hits=collections.Counter()
@@ -97,7 +100,7 @@ for a,x,y in want:
     m=[g for g in left if g[0] is not None and abs(g[0]-a)<=0.005*a and abs(g[1]-x)<=0.05 and abs(g[2]-y)<=0.05]
     if m: left.remove(m[0])
     else: miss.append((round(a,1),round(x,2),round(-y,2)))
-ok(len(shapes)==10 and not miss and not left,f'B.Mask: {len(shapes)} heatsink openings on the board, {len(got)} filled regions in the Gerber; openings without a region of the same area and centroid {miss}; other regions {[(round(g[0],1) if g[0] else "arc") for g in left]}')
+ok(len(shapes)==NMASK and not miss and not left,f'B.Mask: {len(shapes)} heatsink openings on the board, {len(got)} filled regions in the Gerber; openings without a region of the same area and centroid {miss}; other regions {[(round(g[0],1) if g[0] else "arc") for g in left]}')
 # position file and BOMs
 fitted={f.GetReference() for f in b.GetFootprints() if not f.IsDNP() and not f.IsBoardOnly() and any(p.GetNumber() for p in f.Pads())}
 ok(os.path.exists(out+f'/{stem}-pos.csv'),'the position file exists')
@@ -126,5 +129,5 @@ else: ok(False,'zip missing')
 import hashlib
 ok(os.path.exists(out+'/BOARD.sha256'),'BOARD.sha256 exists')
 sha=hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest(); rec=open(out+'/BOARD.sha256').read().split()[0] if os.path.exists(out+'/BOARD.sha256') else None
-ok(rec==sha,f'the package was made from this board file (sha256 {sha[:16]}..., recorded {str(rec)[:16]}...): if not, run tools/fab_package.sh again')
+ok(rec==sha,f'the package was made from this board file (sha256 {sha[:16]}..., recorded {str(rec)[:16]}...): if not, run {os.environ.get("FAB_PACKAGER","tools/fab_package.sh")} again')
 print('fab_check fails',len(fail)); sys.exit(1 if fail else 0)

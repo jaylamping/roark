@@ -12,7 +12,7 @@ so 5 + 5 bare boards are ordered and 2 + 2 are built. **All prices are estimates
 | Board parts for 2 main + 2 buck, cheapest per line (mostly LCSC, the rest DigiKey or Mouser), with spares on cheap parts | about $200 |
 | LCSC shipping (Global Direct or DHL) | about $20 |
 | US duty on the LCSC share (China origin, about 37.5 %; LCSC ships duty-unpaid) | about $55 |
-| Bare boards, JLCPCB: 5 main (100 × 170, 6 layers, 2 oz outer / 0.5 oz inner, OSP, filled thermal vias: **$82.80 quoted 2026-11-09**, 7–8 day build) + 5 buck (about 60 × 85, 4 layers, 1 oz, to quote: about $20–35) | about $105–120 |
+| Bare boards, JLCPCB: 5 main (100 × 170, 6 layers, 2 oz outer / 0.5 oz inner, OSP, filled thermal vias: **$82.80 quoted 2026-11-09**, 7–8 day build) + 5 buck (60 × 85, 6 layers, 2 oz outer / 0.5 oz inner, OSP, epoxy-filled and capped vias: to quote) | $82.80 + the buck quote |
 | 2 frameless stencils (JLC) | about $16 |
 | JLC shipping, DHL | about $25–45 |
 | JLC prepaid duty (US DDP: 35 % on boards, 90 % on stencils) | about $51–57 |
@@ -50,7 +50,7 @@ right now anyway. Where both have stock, buy the ICs from DigiKey (no duty, genu
 | Board | Status | Size | Stackup | Parts per board |
 | --- | --- | --- | --- | --- |
 | **Main power board** ([marengo_pdu_revb](schematic)) | schematic done, ERC clean; routed, 0 open, verify_board.sh passes; open items before fab in [LAYOUT_RULES.md](LAYOUT_RULES.md), "Exceptions and hand-laid copper" | 100 × 170 mm | 6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, OSP, **every via epoxy-filled and capped** (section 8, step 3) | [bom-rev-B.csv](bom-rev-B.csv) |
-| **12 V buck and 12 V distribution** ([buck12](buck12), LM5146, 12 A; split S1 2026-11-09) | schematic done, ERC clean, check_buck.py clean; layout not started | about 60 × 85 mm | 4 layers, 1.6 mm, 1 oz (to quote) | 53 lines, 73 parts |
+| **12 V buck and 12 V distribution** ([buck12](buck12), LM5146, 12 A; split S1 2026-11-09) | schematic done, ERC clean, check_buck.py clean; laid out, verify_buck.sh clean, order package in [buck12/fab](buck12/fab) | 60 × 85 mm | 6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, filled vias (to quote) | 53 lines, 73 parts |
 
 Not in the run:
 - **DVE adapter:** dropped. Since split S1 the buck board carries the 12 V distribution and J24 carries I2C and SP_EN, so the DVE no longer drops in.
@@ -82,7 +82,7 @@ Both boards are ordered as **two separate designs in one JLC order**, not one pa
   GATE_A, UVLO, FLT_A, VCTL, RUN, VBUS, BRK_IN and MID pads and the three GND loops.
 - **Thermal relief:** solid connections only where current needs them (the power pads, the FET tabs, the pigtail and pack
   pads); every small-signal pad on a pour gets thermal relief, so it reflows and reworks normally.
-- **Every part survives a full hot-plate reflow.** The EEH-ZC/ZA hybrids, the EEE-TK can, the XAL inductors, the shunts
+- **Every part survives a full hot-plate reflow.** The EEH-ZC/ZA hybrids, the Chemi-Con MVH can, the XAL inductors, the shunts
   and the JST GH connectors are all reflow-rated. The through-hole parts (Micro-Fit and Mini-Fit headers, the Keystone
   3568 fuse holder, the pigtails and the 8 AWG pack pair) go on afterwards with the iron.
 
@@ -211,6 +211,8 @@ Work on the buck board first; it's the practice run. Inspect and test between ev
    (UVLO leakage) and 16 (heatsink insulation, TP17 at 54 V). The pack connects only after both pass. Never go straight
    to the pack.
 
+   **U1 is fitted with LM5069MM-2/NOPB (auto-retry), a temporary fit decided 2026-11-10:** the latch-off LM5069-1 has no authorised stock ([SOURCING.md](SOURCING.md)); the design part stays LM5069MMX-1 and goes in when it is back. With the -2 fitted, after a U1 fault (a bus short upstream of the ports, or an overload past the timer) the bus comes back by itself about every 63 ms (44-117 ms) once the fault clears, with no reset press. **The heatsink fan must be running whenever the pack is connected:** through continuous retries into a hard short the bank B FETs keep a 19 % SOA margin with fan air and only 5 % without ([LM5069_RETRY.md](LM5069_RETRY.md)). E-stop, loop-open and watchdog behaviour is unchanged: RUN pulls U1's UVLO low and the -2 does not retry while UVLO is low. Before the first short-circuit test (REV_B_PARTS step 4) the fan is checked running (REV_B_PARTS step 3a).
+
 Hot air is for rework only (removing or reseating a part). Joey's low-power gun can't reflow the 2 oz board by itself.
 10. **Conformal coat, after bring-up passes** (Joey's decision, 2026-11-09; the board is laid out for it: IPC-2221B
     51–100 V coated assembly spacing (A5/A7) is 0.13 mm, used as 0.2 mm between 54 V domains, against 0.6 mm bare; [LAYOUT_RULES.md](LAYOUT_RULES.md) "Clearance"). Bring-up runs uncoated so
@@ -226,9 +228,10 @@ Hot air is for rework only (removing or reseating a part). Joey's low-power gun 
    clean, and the buck board laid out and DRC clean.
 2. Part numbers fixed (section 4) and the BOM regenerated; kit CSV regenerated with suppliers chosen per route B/C.
    **Joey prefers one source for all board parts:** re-check DigiKey stock for the 6 ICs out of stock on 2026-11-07
-   (INA237, LM5069-1/-2, TPS7A4001, TPS3431S, LM5146). If they're back, order everything from DigiKey (route A) and
+   (INA237, LM5069-1/-2, TPS7A4001, TPS3431S, LM5146). U1 is ordered as LM5069MM-2/NOPB for now (Mouser, or LCSC
+   C2653582), 4 for two sets with U7; order 2 LM5069MM-1/NOPB and swap U1 when it is back in stock. If they're back, order everything from DigiKey (route A) and
    accept the about $80–95 premium; otherwise DigiKey for everything it stocks plus one LCSC order for the rest.
-3. JLC quote for both designs, frameless stencils: main 6 layers, 2 oz outer / 0.5 oz inner, OSP; buck 4 layers, 1 oz.
+3. JLC quote for both designs, frameless stencils: main 6 layers, 2 oz outer / 0.5 oz inner, OSP; buck 6 layers, 2 oz outer / 0.5 oz inner, OSP, epoxy-filled and capped vias (via in pad).
    Confirm the main board's L1–In1 prepreg (tools/stack.py) and update section 1.
    **Main board, on the order form, every time (the Gerbers don't carry it):**
    - **Via covering: "Epoxy Filled & Capped" (IPC-4761 type VII), for all vias.** The board has 971 of its 1,865 vias in

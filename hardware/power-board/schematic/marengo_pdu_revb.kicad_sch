@@ -8736,6 +8736,16 @@
 				(hide yes)
 			)
 		)
+		(property "Fitted" "LM5069MM-2/NOPB (temporary fit: LM5069-1 has no authorised stock; auto-retry about every 63 ms, see LM5069_RETRY.md)"
+			(at 63.5 114.3 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
 		(pin "6"
 			(uuid "e15e4fa6-fa3e-5bc7-b26b-b24ee3c1376b")
 		)

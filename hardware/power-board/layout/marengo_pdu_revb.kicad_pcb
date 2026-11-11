@@ -56062,6 +56062,17 @@
 				)
 			)
 		)
+		(property "Fitted" "LM5069MM-2/NOPB (temporary fit: LM5069-1 has no authorised stock; auto-retry about every 63 ms, see LM5069_RETRY.md)"
+			(at 0 0 180)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "18759ec5-18ed-524b-934e-bd7444978d57")
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(property "KiLib_Generator" "package/gullwing"
 			(at 0 0 180)
 			(layer "F.SilkS")
