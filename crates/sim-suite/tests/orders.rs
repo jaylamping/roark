@@ -243,28 +243,36 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         assert_eq!(limbs(&snap)[0].0, LimbState::Stopped, "{snap:?}");
 
         // Told to exit, the bus stops limb 1 and ends once its snapshot ring has taken one with every limb stopped.
-        // Once the newest snapshot shows limb 1 stopping for the exit, the bus has seen it; with every snapshot read
-        // up to then, none with every limb stopped has gone into the ring yet, so the bus is still running ticks: a
+        // Control stops reading as it sets the exit, so the small ring fills within a few ticks, well inside limb 1's
+        // stop: from then on every snapshot goes untaken, and the bus stays in its exit wait (up to its limit) whatever
+        // the stop's length. The newest snapshot queued, limb 1 stopping for the exit, shows the bus has seen it; a
         // clear of the stopped limb 0 sent then is taken at the next tick's start, after the exit's stop is asked, and
-        // refused. (A test thread behind fills the small ring, which holds the bus in its exit wait.)
-        exit.store(true, Ordering::Release);
-        while limbs(&snap)[1].0 == LimbState::Active {
-            assert!(
-                commands
-                    .push(batch(epoch, &snap, [None, Some(hold(102))]))
-                    .is_ok()
-            );
-            snap = next_snapshot(&mut snapshots, end).unwrap();
-            while let Ok(s) = snapshots.pop() {
-                snap = s;
-            }
+        // refused.
+        while let Ok(s) = snapshots.pop() {
+            snap = s;
         }
         assert!(
+            commands
+                .push(batch(epoch, &snap, [None, Some(hold(102))]))
+                .is_ok()
+        );
+        exit.store(true, Ordering::Release);
+        let capacity = snapshots.buffer().capacity();
+        while snapshots.slots() < capacity {
+            assert!(Instant::now() < end, "the snapshot ring never filled");
+            std::thread::yield_now();
+        }
+        let newest = {
+            let chunk = snapshots.read_chunk(capacity).unwrap();
+            let (first, second) = chunk.as_slices();
+            second.last().or(first.last()).copied().unwrap()
+        };
+        assert!(
             matches!(
-                limbs(&snap)[1],
+                limbs(&newest)[1],
                 (LimbState::Stopping { .. }, Some(StopReason::Requested))
             ),
-            "limb 1 stops for the exit, and is still stopping when the clear is sent: {snap:?}"
+            "limb 1 stops for the exit, and is still stopping when the clear is sent: {newest:?}"
         );
         assert!(orders.push(Order::Rearm { tag: 7, limb: 0 }).is_ok());
         let answer = loop {
