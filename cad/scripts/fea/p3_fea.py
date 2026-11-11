@@ -248,6 +248,11 @@ def run(name, c):
     post = c['pre_mesh'](st, d, lbc) if 'pre_mesh' in c else None     # contacts, connectors: returns a result hook
     mesh = st.Mesh
     mesh.Quality = 1
+    try:      # defaults this script does not set: logged so runs on different machines can be compared
+        print(' options solver', st.StudyOptions.SolverType, 'mesher', mesh.MesherType, 'jacobian', mesh.JacobianPoints,
+              'auto_transition', mesh.AutomaticTransition, flush=True)
+    except Exception as ex:
+        print(' options not readable', ex, flush=True)
     for sel, size in c.get('ctrl', []):
         fs = pick(d, sel)
         q = mesh.ApplyMeshControl(fs, I())

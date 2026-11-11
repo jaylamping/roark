@@ -276,55 +276,55 @@
       "export": "exports/upper-arm/upper_arm_organic_back_left.step",
       "source": "upper-arm/upper_arm_organic_back_left.SLDPRT",
       "config": "",
-      "settings": "STEP AP214",
-      "sourceSha256": "d50003a9d5c8e849c8d2b6c03114ac39cc6804d27c4f37c49e456a97e73a17e6",
-      "exportSha256": "82f4e07aed59df80b350dc752a50f62f6d464264b29ba83c4becd79dbf8b99af",
-      "recorded": "2026-11-11T07:56:35Z"
+      "settings": "STEP AP203, mm",
+      "sourceSha256": "bc47b6c42ca4620bc1bfe797d1ef4195e0a27e0e1992cb537d79dc5f731dfe47",
+      "exportSha256": "0dc793dbf94905d7dd9fef456468708f9ba4461b58335f825c5bb7b0b40b3696",
+      "recorded": "2026-11-11T10:57:20Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_organic_back_left.STL",
       "source": "upper-arm/upper_arm_organic_back_left.SLDPRT",
       "config": "",
-      "settings": "STL binary, SolidWorks default resolution",
-      "sourceSha256": "d50003a9d5c8e849c8d2b6c03114ac39cc6804d27c4f37c49e456a97e73a17e6",
-      "exportSha256": "0e1924d7665d2cae3b1f9ca879b061f0330d217c5f6863b1ba820e77d5915af2",
-      "recorded": "2026-11-11T07:56:35Z"
+      "settings": "STL binary, SolidWorks Fine, arm frame (no translation), mm",
+      "sourceSha256": "bc47b6c42ca4620bc1bfe797d1ef4195e0a27e0e1992cb537d79dc5f731dfe47",
+      "exportSha256": "d4c34d1058ea9eacb69c9daa8b174d6a1d551b3a0c9d6153cea676f9b7d63b82",
+      "recorded": "2026-11-11T10:57:20Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_organic_front_left.step",
       "source": "upper-arm/upper_arm_organic_front_left.SLDPRT",
       "config": "",
-      "settings": "STEP AP214",
-      "sourceSha256": "9bb0e9bda32f464985ba9e14d2d4554a70c8d95483ccc69a4eb6f498ef1564d5",
-      "exportSha256": "78047c3843294029109984a0143d2a0afe4b045f106a1ba7b24759cf191b53d7",
-      "recorded": "2026-11-11T07:56:35Z"
+      "settings": "STEP AP203, mm",
+      "sourceSha256": "928a1fbc9ed8db1d14f57213859a7977b2dbdb4583c4a342d98127aaeb9f3b35",
+      "exportSha256": "72a6b71c2fc9f2ba5f442cfd753f78e1aa3594e63c3d36c163aea8339c78e639",
+      "recorded": "2026-11-11T10:57:20Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_organic_front_left.STL",
       "source": "upper-arm/upper_arm_organic_front_left.SLDPRT",
       "config": "",
-      "settings": "STL binary, SolidWorks default resolution",
-      "sourceSha256": "9bb0e9bda32f464985ba9e14d2d4554a70c8d95483ccc69a4eb6f498ef1564d5",
-      "exportSha256": "4224fdc755049f7391c367065c0ba6223c37472271f73567f60c4f6c327a0fdd",
-      "recorded": "2026-11-11T07:56:34Z"
+      "settings": "STL binary, SolidWorks Fine, arm frame (no translation), mm",
+      "sourceSha256": "928a1fbc9ed8db1d14f57213859a7977b2dbdb4583c4a342d98127aaeb9f3b35",
+      "exportSha256": "9c232580a6fa9fa229c0d520c22a8c0c12fd8134b11b878651b2c32abb9207fc",
+      "recorded": "2026-11-11T10:57:20Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_organic_rs02_ring_left.step",
       "source": "upper-arm/upper_arm_organic_rs02_ring_left.SLDPRT",
       "config": "",
-      "settings": "STEP AP214",
-      "sourceSha256": "6d869a68f176097e754b44c7fcdc32a029b7f2f882206b686d5db1cc0acfff0f",
-      "exportSha256": "4ac4b096d09f0b3574426614832442539c5a3180222da6572fdebe034f0b6207",
-      "recorded": "2026-11-11T07:56:35Z"
+      "settings": "STEP AP203, mm",
+      "sourceSha256": "393eb577eed22dc2ea5fbfae4ef436690e77627a27bcf85179cdcefbe710fc78",
+      "exportSha256": "0ca81fe963201adaaa67a777293e12855872134e89ecc054a67ab71f11c82c5c",
+      "recorded": "2026-11-11T10:57:20Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_organic_rs02_ring_left.STL",
       "source": "upper-arm/upper_arm_organic_rs02_ring_left.SLDPRT",
       "config": "",
-      "settings": "STL binary, SolidWorks default resolution",
-      "sourceSha256": "6d869a68f176097e754b44c7fcdc32a029b7f2f882206b686d5db1cc0acfff0f",
+      "settings": "STL binary, SolidWorks Fine, arm frame (no translation), mm",
+      "sourceSha256": "393eb577eed22dc2ea5fbfae4ef436690e77627a27bcf85179cdcefbe710fc78",
       "exportSha256": "2400f150b8c3ed085c6b419a2280f020539d868ec7612e2c816e9538208d16bd",
-      "recorded": "2026-11-11T07:56:35Z"
+      "recorded": "2026-11-11T10:57:20Z"
     }
   ]
 }

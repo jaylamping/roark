@@ -17,6 +17,16 @@ from swg import *
 
 sw = sw_app()
 sw.CloseAllDocuments(True)
+# STL export options are SolidWorks system settings, not part of the template: pin them so every machine exports alike.
+# Exports stay in the arm frame (no shift to positive space), binary, mm, quality Fine.
+for _t, _v in ((69, True), (71, True)):      # swSTLBinaryFormat, swSTLDontTranslateToPositive
+    sw.SetUserPreferenceToggle(_t, _v)
+sw.SetUserPreferenceIntegerValue(211, 0)      # swExportStlUnits = swMM
+sw.SetUserPreferenceIntegerValue(78, 2)       # swSTLQuality_Fine: reproduces the v26 exports' face counts (ring 3252)
+sw.SetUserPreferenceIntegerValue(75, 203)     # swStepAP: AP203, as the v26 exports
+print('  stl prefs: quality', sw.GetUserPreferenceIntegerValue(78), 'dev', sw.GetUserPreferenceDoubleValue(2),
+      'angle', sw.GetUserPreferenceDoubleValue(3), 'no-translate', sw.GetUserPreferenceToggle(71),
+      'step AP', sw.GetUserPreferenceIntegerValue(75), flush=True)
 CAD = Path(__file__).resolve().parents[2]
 CY, CZ, HX = 209.860668, 5.985875, 170.49
 HUB_Y = 319.86
@@ -134,8 +144,11 @@ def shell(d, face_pts, t, name):
 
 def new_part(path):
     sw.CloseAllDocuments(True)       # a failed build leaves its part open, and the next NewDocument then throws
-    tpl = sw.GetUserPreferenceStringValue(8)
+    tpl = sw.GetUserPreferenceStringValue(8) or os.environ.get('SW_PART_TEMPLATE', '')   # holly-pc has no default part template set
+    if not tpl:
+        raise SystemExit('no default part template: set one in SolidWorks or set SW_PART_TEMPLATE')
     d = sw.NewDocument(tpl, 0, 0, 0)
+    d.Extension.SetUserPreferenceInteger(263, 0, 5)   # swUnitSystem = MMGS whatever the template (Joey-PC's was IPS: STEP came out in inches)
     e, w = L(), L()
     d.Extension.SaveAs(str(path), 0, 1, NUL, e, w)
     return d

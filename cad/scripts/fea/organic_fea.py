@@ -5,7 +5,7 @@ halves as one body, the RS02 ring merged into the drum. Run it in its own SolidW
 
 Fixed: the hub seat bore (today's hub spigot). Elbow loads (from ua_fea.py): 62 N along gravity and 17.2 N.m at the elbow
 centre, through the ring bore and the RS02 housing stop face as one rigid connector. E34: 34 N.m elbow torque on the housing
-with the arm horizontal. STOP_0 / STOP_124: 889 N on a stop-lug end face (34 N.m at r 38.25).
+with the arm horizontal. STOP_0 / STOP_124: 515 N on a stop-lug end face (17 N.m at the pad radius r 33; was 889 N, converted at r 38.25).
 """
 import math
 import os
@@ -37,7 +37,7 @@ for k, (f, m) in LOADS.items():
     CASES[k + '_xfine'] = dict(base, el=1.5, ctrl=[(SEAT, 1.0)])
 for tag, a in (('0', 59.6), ('124', 120.4)):          # contact pads on the 60 deg lug's end faces
     face = ('plane', (137.55,) + P(33.0, a), None, 'on')     # the pad face only
-    CASES['STOP_' + tag] = dict(part='organic', fix=[('fixed', SEAT)], forces=[(face, 889.0, None)], regions=REGIONS, el=2.5, ctrl=[(face, 0.8)], exclude=[RING_ZONE])
+    CASES['STOP_' + tag] = dict(part='organic', fix=[('fixed', SEAT)], forces=[(face, 515.0, None)], regions=REGIONS, el=2.5, ctrl=[(face, 0.8)], exclude=[RING_ZONE])
     CASES['STOP_' + tag + '_fine'] = dict(CASES['STOP_' + tag], el=1.8, ctrl=[(face, 0.5)])
     CASES['STOP_' + tag + '_xfine'] = dict(CASES['STOP_' + tag], el=1.3, ctrl=[(face, 0.35)])
 
