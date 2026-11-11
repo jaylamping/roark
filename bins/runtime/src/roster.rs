@@ -116,6 +116,7 @@ impl Roster {
     }
 
     /// Every joint of `limb` on bus `bus`, by index.
+    #[cfg(any(target_os = "linux", test))]
     pub(crate) fn on(&self, bus: usize, limb: LimbName) -> impl Iterator<Item = usize> + '_ {
         self.joints
             .iter()

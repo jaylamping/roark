@@ -8,8 +8,8 @@ mod control;
 // The control thread is its only user; its tests run everywhere.
 #[cfg(any(target_os = "linux", test))]
 mod dispatch;
-// The control thread is its only user; its tests run everywhere.
-#[cfg(any(target_os = "linux", test))]
+// Run by the control thread alone, which is Linux only: so are its tests.
+#[cfg(target_os = "linux")]
 mod enable;
 mod plan;
 mod request;

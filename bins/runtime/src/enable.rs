@@ -1,5 +1,5 @@
 //! (rt) The operator's enable, as the control thread runs it each tick, and the hold of every enabled joint. Pure over
-//! the rings and snapshots, so the parts that need no bus are tested on any OS; the sim suite runs the rest on `vcan`.
+//! the rings and snapshots: the parts that need no bus are unit tested, the sim suite runs the rest on `vcan`.
 //!
 //! An enable names a set of joints. Every named joint's preflight runs first, over its bus's slow requests; in the tick
 //! the last one passes, every enable sequence starts from its proof; once every drive is in Run and MIT mode the joints
