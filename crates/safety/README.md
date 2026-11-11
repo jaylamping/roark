@@ -74,9 +74,9 @@ assert_eq!(
 ```
 
 The control thread runs one `Preflight` per named drive: `poll` with what the drive's bus last showed of it (`Seen::of`,
-with the name of the bus the snapshot came from) gives a `Step`; it submits each `Step::Submit` to the drive's bus as it
-is (preflight sets the drive's slot and a tag from the block of `Preflight::TAGS` it was started with) and hands the
-bus's results to `answered`, which takes only the one for the request in flight, until `Step::Passed` (or
-`Step::Refused`). The `PreflightPassed` goes to
-`Enabling::new`, whose `step` gives each tick's frame for the batch until `Next::Enabled`, or until it gives up:
-`Next::Refused` before its Enable was planned, `Next::Stop` (stop the limb) after.
+with the name of the bus the snapshot came from, which the snapshot doesn't carry: the wrong-bus check rests on it until
+the scan, PLAN step 8) gives a `Step`; it submits each `Step::Submit` to the drive's bus as it is (preflight sets the
+drive's slot and a tag from the block of `Preflight::TAGS` it was started with) and hands the bus's results to
+`answered`, which takes only the one for the request in flight, until `Step::Passed` (or `Step::Refused`). The
+`PreflightPassed` goes to `Enabling::new`, whose `step` gives each tick's frame for the batch until `Next::Enabled`, or
+until it gives up: `Next::Refused` before its Enable was planned, `Next::Stop` (stop the limb) after.

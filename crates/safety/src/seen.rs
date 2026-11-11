@@ -2,6 +2,10 @@
 //! address that says which drive that must be. CAN IDs are unique only per bus (the skeleton allows the same ID on two
 //! buses), so a drive is its bus and its ID together; a view of the right ID from another bus's snapshot is another
 //! drive.
+//!
+//! A `can::Snapshot` doesn't say which bus it came from, so the bus a [`Seen`] names is the one its caller passes with
+//! the snapshot: the wrong-bus check holds only as far as that label does. The scan (PLAN step 8), which reads each
+//! drive's UID on each bus, is what ties a drive to its bus on the wire.
 
 use core::fmt;
 
@@ -87,27 +91,53 @@ impl fmt::Debug for DriveAddress {
     }
 }
 
-/// One drive as the latest snapshot of a bus shows it: the bus that snapshot came from, the drive's view and its
-/// limb's. Preflight and the enable sequence take only this, so each checks that it is its own drive on its own bus
-/// and that the limb hasn't stopped or been cleared since it began.
+/// One drive as the latest snapshot of a bus shows it: the bus that snapshot came from (as its caller names it), the
+/// drive's view and its limb's, from the same snapshot. Preflight and the enable sequence take only this, so each
+/// checks that it is its own drive on its own bus and that the limb hasn't stopped or been cleared since it began. Its
+/// parts are read-only: only [`Seen::of`] makes one, so a drive's view is never paired with another limb's.
 #[derive(Clone, Copy, Debug)]
 pub struct Seen<'a> {
-    /// The bus whose snapshot this is.
-    pub bus: &'a BusName,
-    /// The drive.
-    pub view: &'a DriveView,
-    /// The drive's limb.
-    pub limb: &'a LimbView,
+    pub(crate) bus: &'a BusName,
+    pub(crate) view: &'a DriveView,
+    pub(crate) limb: &'a LimbView,
 }
 
 impl<'a> Seen<'a> {
     /// Slot `slot` of `snapshot`, the latest from `bus`, with that drive's limb from the same snapshot; `None` if the
-    /// snapshot has no drive in that slot or no limb for it.
+    /// snapshot has no drive in that slot or no limb for it. `bus` must be the name of the bus the snapshot came from:
+    /// the snapshot doesn't carry it, so the check that a drive is on its own bus rests on it until the scan (PLAN
+    /// step 8).
     #[must_use]
     pub fn of(bus: &'a BusName, snapshot: &'a Snapshot, slot: usize) -> Option<Self> {
         let view = snapshot.drive(slot)?;
         let limb = snapshot.limb(view.limb)?;
         Some(Self { bus, view, limb })
+    }
+
+    /// A drive's view and a limb's, as this crate's tests build them (feature `test-support`, which only test builds
+    /// turn on): the runtime has only [`Seen::of`].
+    #[cfg(feature = "test-support")]
+    #[must_use]
+    pub const fn from_parts(bus: &'a BusName, view: &'a DriveView, limb: &'a LimbView) -> Self {
+        Self { bus, view, limb }
+    }
+
+    /// The bus the snapshot came from, as its caller named it.
+    #[must_use]
+    pub const fn bus(&self) -> &'a BusName {
+        self.bus
+    }
+
+    /// The drive.
+    #[must_use]
+    pub const fn view(&self) -> &'a DriveView {
+        self.view
+    }
+
+    /// The drive's limb, from the same snapshot.
+    #[must_use]
+    pub const fn limb(&self) -> &'a LimbView {
+        self.limb
     }
 
     /// The address of the drive seen.

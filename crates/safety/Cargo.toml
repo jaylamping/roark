@@ -14,3 +14,11 @@ skeleton.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+# Lets this crate's own tests build a `Seen` from parts (`Seen::from_parts`); the runtime builds one only from a whole
+# snapshot (`Seen::of`). Only the dev-dependency below turns it on, for test builds.
+test-support = []
+
+[dev-dependencies]
+safety = { path = ".", features = ["test-support"] }

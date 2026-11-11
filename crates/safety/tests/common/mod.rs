@@ -213,5 +213,5 @@ pub(crate) fn shown(view: &DriveView) -> Seen<'_> {
 
 /// `view` as `bus`'s snapshot shows it, its limb `limb`.
 pub(crate) fn on<'a>(bus: &'a BusName, view: &'a DriveView, limb: &'a LimbView) -> Seen<'a> {
-    Seen { bus, view, limb }
+    Seen::from_parts(bus, view, limb)
 }
