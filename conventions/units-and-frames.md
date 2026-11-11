@@ -30,7 +30,8 @@ to guess. The newtypes that enforce units in Rust are in [rust.md section 3](rus
 - **Celsius, not kelvin,** because the drives report °C and every limit we have (pause at 60 °C, stop at 75 °C) is written in
   °C. This is the one deliberate exception to strict SI.
 - **Milliseconds are fine in config when they read better** (`can_timeout_ms: 50`), as long as the key says so. Inside Rust
-  every span is a `Duration`, so the unit can't be lost. The one exception is the bus tick (section 5).
+  every span is a `Duration`, so the unit can't be lost. The exceptions are the bus tick and `safety`'s steppers (section
+  5).
 - **The drive's own encodings never leave the codec.** RobStride sends positions, velocities and torques as scaled integers
   (MIT mode `u16` ranges, parameter `f32`s with their own units). The `robstride` crate converts to the SI newtypes at the edge
   and nothing else ever sees a raw drive value. **Why:** the legacy RS03 velocity scale was wrong (±20 rad/s measured, not
