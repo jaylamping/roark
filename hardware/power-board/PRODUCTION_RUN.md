@@ -49,7 +49,7 @@ right now anyway. Where both have stock, buy the ICs from DigiKey (no duty, genu
 
 | Board | Status | Size | Stackup | Parts per board |
 | --- | --- | --- | --- | --- |
-| **Main power board** ([marengo_pdu_revb](schematic)) | schematic done, ERC clean; routed, 0 open, verify_board.sh passes; open items before fab in [LAYOUT_RULES.md](LAYOUT_RULES.md), "Exceptions and hand-laid copper" | 100 × 170 mm | 6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, OSP, **every via epoxy-filled and capped** (section 8, step 3) | [bom-rev-B.csv](bom-rev-B.csv) |
+| **Main power board** ([power_board_revb](schematic)) | schematic done, ERC clean; routed, 0 open, verify_board.sh passes; open items before fab in [LAYOUT_RULES.md](LAYOUT_RULES.md), "Exceptions and hand-laid copper" | 100 × 170 mm | 6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, OSP, **every via epoxy-filled and capped** (section 8, step 3) | [bom-rev-B.csv](bom-rev-B.csv) |
 | **12 V buck and 12 V distribution** ([buck12](buck12), LM5146, 12 A; split S1 2026-11-09) | schematic done, ERC clean, check_buck.py clean; laid out, verify_buck.sh clean, order package in [buck12/fab](buck12/fab) | 60 × 85 mm | 6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, filled vias (to quote) | 53 lines, 73 parts |
 
 Not in the run:

@@ -1,5 +1,5 @@
 #!/bin/bash
-# verify_board.sh [board.kicad_pcb] : the full check set on a routed board (default: ../layout/marengo_pdu_revb.kicad_pcb).
+# verify_board.sh [board.kicad_pcb] : the full check set on a routed board (default: ../layout/power_board_revb.kicad_pcb).
 # Copies the board next to a copy of the schematic and the project rules in a temp dir, so KiCad's schematic-parity check
 # can read the netlist (run in layout/ it only prints "Failed to fetch schematic netlist" and checks nothing), refills
 # the zones with the project rules there, and runs:
@@ -21,7 +21,7 @@
 set -uo pipefail
 wp() { (cd "$1" && (pwd -W 2>/dev/null || pwd)); }   # a Windows path for the Windows Pythons
 ROOT=$(wp "$(dirname "$0")/.."); LAYOUT=$(wp "$ROOT/../layout"); PB=$(wp "$ROOT/..")
-B=${1:-$LAYOUT/marengo_pdu_revb.kicad_pcb}; B=$(wp "$(dirname "$B")")/$(basename "$B")
+B=${1:-$LAYOUT/power_board_revb.kicad_pcb}; B=$(wp "$(dirname "$B")")/$(basename "$B")
 KP="/c/Program Files/KiCad/10.0/bin/python.exe"; KCLI="/c/Program Files/KiCad/10.0/bin/kicad-cli.exe"
 [ -x "$KP" ] || { KP=/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3; KCLI=/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli; }
 KC=${KC:-$KCLI}   # KC=<program>: tools/verify_selftest.sh puts a failing stand-in here for the DRC run only
@@ -30,12 +30,12 @@ export MSYS_NO_PATHCONV=1
 q() { grep -v 'memory leak\|GetWidth called\|image handler'; }
 W=${KEEP:-$(mktemp -d)}; mkdir -p "$W"; W=$(cd "$W" && (pwd -W 2>/dev/null || pwd))
 rm -f "$W/drc.json" "$W/net.net" "$W/buck.net"; : > "$W/.start"
-cp "$B" "$W/verify.kicad_pcb" && cp "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/verify.kicad_pro" && cp "$LAYOUT/marengo_pdu_revb.kicad_dru" "$W/verify.kicad_dru" \
-  && cp "$ROOT/marengo_pdu_revb.kicad_sch" "$W/verify.kicad_sch" && cp "$ROOT/marengo_pdu_revb.kicad_sch" "$W/marengo_pdu_revb.kicad_sch" \
-  && cp "$ROOT/marengo_revb.kicad_sym" "$ROOT/sym-lib-table" "$ROOT/fp-lib-table" "$W/" && cp -r "$ROOT/marengo_revb.pretty" "$W/" || { echo 'copying the project files failed'; exit 1; }
+cp "$B" "$W/verify.kicad_pcb" && cp "$LAYOUT/power_board_revb.kicad_pro" "$W/verify.kicad_pro" && cp "$LAYOUT/power_board_revb.kicad_dru" "$W/verify.kicad_dru" \
+  && cp "$ROOT/power_board_revb.kicad_sch" "$W/verify.kicad_sch" && cp "$ROOT/power_board_revb.kicad_sch" "$W/power_board_revb.kicad_sch" \
+  && cp "$ROOT/power_board_revb.kicad_sym" "$ROOT/sym-lib-table" "$ROOT/fp-lib-table" "$W/" && cp -r "$ROOT/power_board_revb.pretty" "$W/" || { echo 'copying the project files failed'; exit 1; }
 fail=0
-# MARENGO_HV_EXTRA (tools/domains.py) is a what-if for route_checks.py: a board checked under it is not the board's verdict
-[ -z "${MARENGO_HV_EXTRA:-}" ] || { echo "FAIL: MARENGO_HV_EXTRA is set ($MARENGO_HV_EXTRA): unset it to verify the board"; exit 1; }
+# PB_HV_EXTRA (tools/domains.py) is a what-if for route_checks.py: a board checked under it is not the board's verdict
+[ -z "${PB_HV_EXTRA:-}" ] || { echo "FAIL: PB_HV_EXTRA is set ($PB_HV_EXTRA): unset it to verify the board"; exit 1; }
 "$KC" pcb drc --refill-zones --save-board --severity-all --format json --schematic-parity -o "$W/drc.json" "$W/verify.kicad_pcb" > "$W/drc.log" 2>&1; rc=$?
 [ "$rc" = 0 ] || { cat "$W/drc.log"; echo "FAIL: kicad-cli pcb drc exited $rc"; fail=1; }
 [ -s "$W/drc.json" ] || { cat "$W/drc.log"; echo 'FAIL: DRC wrote no report'; exit 1; }
@@ -80,14 +80,14 @@ MODE=check run 'hand-laid copper differs from hand_laid.specs' "$KP" "$ROOT/tool
 run pour_width "$KP" "$ROOT/tools/pour_width.py" "$W/verify.kicad_pcb"
 MODE=check run 'heatsink pad openings differ from heatsink_pads.py' "$KP" "$ROOT/tools/heatsink_pads.py" "$W/verify.kicad_pcb"
 # the order package in ../fab was made from this very board file (default board only; a missing package fails)
-[ "$B" = "$LAYOUT/marengo_pdu_revb.kicad_pcb" ] && run 'the order package in fab/ does not match the board: run tools/fab_package.sh' "$KP" "$ROOT/tools/fab_check.py" "$B" "$PB/fab"
-"$KCLI" sch export netlist --format kicadsexpr -o "$W/net.net" "$ROOT/marengo_pdu_revb.kicad_sch" > "$W/net.log" 2>&1; rc=$?
+[ "$B" = "$LAYOUT/power_board_revb.kicad_pcb" ] && run 'the order package in fab/ does not match the board: run tools/fab_package.sh' "$KP" "$ROOT/tools/fab_check.py" "$B" "$PB/fab"
+"$KCLI" sch export netlist --format kicadsexpr -o "$W/net.net" "$ROOT/power_board_revb.kicad_sch" > "$W/net.log" 2>&1; rc=$?
 if [ "$rc" != 0 ] || [ ! -s "$W/net.net" ]; then cat "$W/net.log"; echo "FAIL: netlist export (exit $rc)"; fail=1
 else
-  "$PY" -I "$ROOT/tools/check.py" "$ROOT/tools" "$W/net.net" "$LAYOUT/marengo_pdu_revb.kicad_pro" > "$W/check.txt" 2>&1; rc=$?
+  "$PY" -I "$ROOT/tools/check.py" "$ROOT/tools" "$W/net.net" "$LAYOUT/power_board_revb.kicad_pro" > "$W/check.txt" 2>&1; rc=$?
   grep -E '^FAIL|^FAILS|^audited|Error|Traceback' "$W/check.txt"
   { [ "$rc" = 0 ] && grep -q '^FAILS 0' "$W/check.txt"; } || { echo "FAIL: check.py (exit $rc)"; fail=1; }
-  "$KCLI" sch export netlist --format kicadsexpr -o "$W/buck.net" "$PB/buck12/marengo_buck12.kicad_sch" > "$W/bucknet.log" 2>&1 || { cat "$W/bucknet.log"; echo 'FAIL: buck netlist export'; fail=1; }
+  "$KCLI" sch export netlist --format kicadsexpr -o "$W/buck.net" "$PB/buck12/buck12.kicad_sch" > "$W/bucknet.log" 2>&1 || { cat "$W/bucknet.log"; echo 'FAIL: buck netlist export'; fail=1; }
   run bom_check "$PY" -I "$ROOT/tools/bom_check.py" "$ROOT/tools" "$W/net.net" "$PB" "$W/buck.net"
 fi
 echo "work files: $W"

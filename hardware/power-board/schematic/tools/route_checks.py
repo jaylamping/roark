@@ -3,7 +3,7 @@
   1. E-stop safety nets keep >= 1.5 mm to 54 V copper on every layer (the rule exists because 0.44 MOhm of leakage into
      UVLO enables bank B by itself).
   2. 54 V copper, and copper riding on 54 V, keeps tools/domains.py's clearance to every other net (0.2 mm coated;
-     0.6 mm outer / 0.2 mm inner with MARENGO_COATED=0). Every pair is tested, the 0.2 mm ones too.
+     0.6 mm outer / 0.2 mm inner with PB_COATED=0). Every pair is tested, the 0.2 mm ones too.
      No pair is allowed under 0.2 mm. Inside U1's courtyard (the .kicad_dru rule estop_at_U1) two F.Cu pads, tracks or
      vias keep 0.2 mm even when one is E-stop and the other 54 V: U1's UVLO pin sits 0.2 mm from its SH_P pin.
      "Inside" is tested on the real shapes against the courtyard polygon. A pour never gets this, and is tested in

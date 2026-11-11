@@ -5,7 +5,7 @@
 # 17 broken inputs: 10 boards (mutate_buck.py), 4 kicad-cli stand-ins, 3 order packages; the script prints the counts.
 set -uo pipefail
 wp() { (cd "$1" && (pwd -W 2>/dev/null || pwd)); }
-B=$(wp "$(dirname "$0")/.."); BRD="$B/layout/marengo_buck12.kicad_pcb"
+B=$(wp "$(dirname "$0")/.."); BRD="$B/layout/buck12.kicad_pcb"
 KP="/c/Program Files/KiCad/10.0/bin/python.exe"
 [ -x "$KP" ] || KP=/Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3
 PY=python3; "$PY" -c "" 2>/dev/null || PY=python
@@ -54,15 +54,15 @@ expect 'a report dated before this run' "$W/s4.txt" "FAIL: the DRC report is old
 echo '--- fab_check_buck.sh on broken order packages'
 fabcopy() { rm -rf "$W/$1"; mkdir -p "$W/$1"; cp -r "$B/fab/." "$W/$1/"; }
 fabcopy fab1
-"$PY" - "$W/fab1/marengo_buck12-pos.csv" <<'PYEOF'
+"$PY" - "$W/fab1/buck12-pos.csv" <<'PYEOF'
 import sys; p=sys.argv[1]; L=open(p,encoding='utf-8').read().split('\n'); f=L[1].split(','); f[3]='%.6f'%(float(f[3])+0.5); L[1]=','.join(f)
 open(p,'w',encoding='utf-8',newline='').write('\n'.join(L))
 PYEOF
 bash "$B/tools/fab_check_buck.sh" "$BRD" "$W/fab1" > "$W/f1.txt" 2>&1 && { echo '   NOT CAUGHT: a moved part'; bad=1; }
 expect 'fab_check: position file off the board' "$W/f1.txt" "^FAIL position file: X, Y, rotation and side.*1 differ"
-fabcopy fab2; rm -f "$W/fab2/gerbers/marengo_buck12-In2_Cu.g2"
+fabcopy fab2; rm -f "$W/fab2/gerbers/buck12-In2_Cu.g2"
 bash "$B/tools/fab_check_buck.sh" "$BRD" "$W/fab2" > "$W/f2.txt" 2>&1 && { echo '   NOT CAUGHT: a missing Gerber'; bad=1; }
-expect 'fab_check: a Gerber missing' "$W/f2.txt" "^FAIL gerbers/ holds the 12 Gerber and 2 drill files: missing \['marengo_buck12-In2_Cu.g2'\]"
+expect 'fab_check: a Gerber missing' "$W/f2.txt" "^FAIL gerbers/ holds the 12 Gerber and 2 drill files: missing \['buck12-In2_Cu.g2'\]"
 fabcopy fab3; rm -rf "$W/fab3/gerbers"
 bash "$B/tools/fab_check_buck.sh" "$BRD" "$W/fab3" > "$W/f3.txt" 2>&1 && { echo '   NOT CAUGHT: no gerbers/'; bad=1; }
 expect 'fab_check: gerbers/ missing' "$W/f3.txt" "^FAIL .*gerbers exists"

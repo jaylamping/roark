@@ -71,7 +71,7 @@
   - R53 is at least 5 mm wide, with 10 or more vias to the GND planes, L2 and L5 (In1, In4).
   - **Loop:** extracted from the 4-layer routed copper by `schematic/tools/absorber_loop.py`: **LABS 5.4 nH**, LBAR 2.0 nH.
     **Rerun on the 6-layer routed board, 2026-11-10: LABS 5.36 nH, LBAR 1.97 nH** at h 0.21 mm; 3.23 nH and 1.46 nH
-    at 0.099 mm, the thin prepreg JLC may use (`MARENGO_H_L1_L2_MM=0.0994`). The tool takes the part positions from
+    at 0.099 mm, the thin prepreg JLC may use (`PB_H_L1_L2_MM=0.0994`). The tool takes the part positions from
     the board and the conductor widths from route_power.py's pours; it is not a field solve. Microstrip over In1
     (h 0.21 mm; tools/stack.py keeps it until JLC confirms the 2 oz 6-layer prepreg, since a thinner one only lowers the
     loop) per segment, weighted by its share of the current, plus assumed part ESLs: 1.5 nH per SMC diode, 3 nH per
@@ -225,7 +225,7 @@ B2; coated, everything at 0.13 mm or more passes.
 
 **Coating: the board is conformal-coated (Joey, 2026-11-09).** The coat is acrylic (MG Chemicals 419D), applied after
 bring-up passes, with the connectors, test points, holes and heatsink pad masked (PRODUCTION_RUN step 10). The 54 V domain
-rule below is therefore the 0.2 mm default (IPC-2221B A5/A7, 0.13 mm); the tools run with `MARENGO_COATED=1`. The 1.5 mm
+rule below is therefore the 0.2 mm default (IPC-2221B A5/A7, 0.13 mm); the tools run with `PB_COATED=1`. The 1.5 mm
 E-stop rule and the hole keep-outs don't change. Without the coat it would be 0.6 mm on the outer layers, so a board
 that is never coated must not go on the pack.
 
@@ -249,14 +249,14 @@ that is never coated must not go on the pack.
   The
   outer GND fills keep 0.6 mm. schematic/tools/route_power.py builds the zones with it, schematic/tools/plane_clearance.py sets it
   on a routed board, and route_checks.py check 6 tests it.
-- **DRC rules** (layout/marengo_pdu_revb.kicad_dru; a later rule wins in KiCad):
+- **DRC rules** (layout/power_board_revb.kicad_dru; a later rule wins in KiCad):
   - `estop_to_54v`: 1.5 mm from net class ESTOP to net class HV54 on every layer (classes set by
     schematic/tools/handfinish_prep.py from schematic/tools/domains.py).
   - **No fine-pitch rule; nothing on the board is closer than 0.2 mm** (2026-11-10). JLCPCB's capability page gives
     0.2 mm track and space for 2 oz outer copper, and KiCad's library footprints for U1 and U7 (LM5069, MSOP-10) and
     U2 (TPS7A4001, HVSSOP-8) leave 0.15 mm between pads (0.35 mm pads at 0.5 mm pitch, 0.5 mm at 0.65 mm). TI's land
     patterns for these packages (DGS and DGN) draw the pads 0.30 and 0.45 mm wide, so the project library now holds
-    copies at those widths (`marengo_revb:MSOP-10_3x3mm_P0.5mm_TI`, `...HVSSOP-8-..._TI`, written by
+    copies at those widths (`power_board_revb:MSOP-10_3x3mm_P0.5mm_TI`, `...HVSSOP-8-..._TI`, written by
     schematic/gen/genfp.py and named in the schematic); schematic/tools/fine_pitch_pads.py brought the routed board to
     them. The 23 gaps of 0.15 mm are gone: 17 by the narrower pads, 6 by re-laying U7's BRK_P and U2's FB_CTL escapes.
     The three courtyard rules at 0.15 mm are removed, as U8's was when its block was turned

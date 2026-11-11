@@ -14,7 +14,7 @@ for c in getall(get(N,'components'),'comp'):
     if not f: continue
     d=any(str(get(p,'name')[1])=='dnp' for p in getall(c,'property'))
     lib,name=f.split(':')
-    fp=pcbnew.FootprintLoad(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),'marengo_revb.pretty') if lib=='marengo_revb' else FPDIR+lib+'.pretty',name)
+    fp=pcbnew.FootprintLoad(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),'power_board_revb.pretty') if lib=='power_board_revb' else FPDIR+lib+'.pretty',name)
     cy=fp.GetCourtyard(pcbnew.F_CrtYd); bb=cy.BBox() if cy.OutlineCount() else fp.GetBoundingBox(False)
     a=bb.GetWidth()/MM*bb.GetHeight()/MM
     rows.append((a,ref,str(get(c,'value')[1])[:30],d,any(p.HasHole() for p in fp.Pads())))

@@ -40,15 +40,15 @@ if [ -z "${CHECKS_ONLY:-}" ]; then
   rm -f "$W/s6.kicad_pcb" "$W/s6.drc.json" "$W/routed.kicad_pcb"
   "$KP" tools/route_fixes.py "$W/s5.kicad_pcb" "$W/s6.kicad_pcb" 2>&1 | q | tail -1
   [ -s "$W/s6.kicad_pcb" ] || die 'route_fixes wrote no board'
-  cp "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/s6.kicad_pro" && cp "$LAYOUT/marengo_pdu_revb.kicad_dru" "$W/s6.kicad_dru" \
+  cp "$LAYOUT/power_board_revb.kicad_pro" "$W/s6.kicad_pro" && cp "$LAYOUT/power_board_revb.kicad_dru" "$W/s6.kicad_dru" \
     || die 'copying the project files failed'
   "$KC" pcb drc --format json -o "$W/s6.drc.json" "$W/s6.kicad_pcb" >/dev/null 2>&1
   [ -s "$W/s6.drc.json" ] || die 'DRC on s6 wrote no report'
   SKIP='/(EN_A|FLT_A|BST_A|CSN_A|CSP_A|MID|L_B|SH\w*_[PN])$' "$KP" tools/patch_route.py "$W/s6.kicad_pcb" "$W/routed.kicad_pcb" "$W/s6.drc.json" 2>&1 | q | grep '^patch_route' | cut -c1-300
 fi
 [ -s "$W/routed.kicad_pcb" ] || die "no routed.kicad_pcb in $W"
-cp "$LAYOUT/marengo_pdu_revb.kicad_pro" "$W/routed.kicad_pro" && cp "$LAYOUT/marengo_pdu_revb.kicad_dru" "$W/routed.kicad_dru" \
-  && cp "$ROOT/marengo_pdu_revb.kicad_sch" "$W/routed.kicad_sch" && cp "$ROOT/marengo_pdu_revb.kicad_sch" "$W/marengo_pdu_revb.kicad_sch" \
+cp "$LAYOUT/power_board_revb.kicad_pro" "$W/routed.kicad_pro" && cp "$LAYOUT/power_board_revb.kicad_dru" "$W/routed.kicad_dru" \
+  && cp "$ROOT/power_board_revb.kicad_sch" "$W/routed.kicad_sch" && cp "$ROOT/power_board_revb.kicad_sch" "$W/power_board_revb.kicad_sch" \
   || die 'copying the project files failed'
 rm -f "$W/drc.json"
 "$KC" pcb drc --format json --schematic-parity -o "$W/drc.json" "$W/routed.kicad_pcb" > "$W/drc.log" 2>&1

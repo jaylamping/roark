@@ -23,7 +23,7 @@ for spec in sys.argv[4:]:
     ref,xy=spec.split('='); v=[float(x) for x in xy.split(',')]
     assert ref in comp,f'{ref} is not in the netlist'; assert ref not in have,f'{ref} is already on the board'
     c=comp[ref]; lib,name=str(get(c,'footprint')[1]).split(':')
-    fp=pcbnew.FootprintLoad(os.path.join(HERE,'marengo_revb.pretty') if lib=='marengo_revb' else FPDIR+lib+'.pretty',name)
+    fp=pcbnew.FootprintLoad(os.path.join(HERE,'power_board_revb.pretty') if lib=='power_board_revb' else FPDIR+lib+'.pretty',name)
     fp.SetReference(ref); fp.SetValue(str(get(c,'value')[1])); fp.SetFPID(pcbnew.LIB_ID(lib,name))
     ds=get(c,'datasheet'); fp.SetField('Datasheet',str(ds[1]) if ds and len(ds)>1 else '')
     props={str(get(p,'name')[1]) for p in getall(c,'property')}

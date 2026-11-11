@@ -11,7 +11,7 @@ than 0603 ([PRODUCTION_RUN.md](PRODUCTION_RUN.md)).
 - three additions he raised in the thread: per-limb breakers, a hardware heartbeat watchdog and a keyed battery connector;
 - the rule that the board stays single-sided.
 
-Schematic: [marengo_pdu_revb](schematic) (gen/gen.py), plus the new buck board [marengo_buck12](buck12).
+Schematic: [power_board_revb](schematic) (gen/gen.py), plus the new buck board [buck12](buck12).
 
 **Gates after every stage:**
 - ERC: 0 errors.

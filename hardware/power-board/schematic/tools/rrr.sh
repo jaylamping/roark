@@ -8,7 +8,7 @@ set -u; export MSYS_NO_PATHCONV=1
 KP="/c/Program Files/KiCad/10.0/bin/python.exe"; KC="/c/Program Files/KiCad/10.0/bin/kicad-cli.exe"
 T=$(cd "$(dirname "$0")" && pwd -W); IN=$1; OUT=$2; W=$3; NET=$4; shift 4
 R=$(cd "$T/../.." && pwd -W)/layout; mkdir -p $W
-drc(){ cp "$1" $R/_trial.kicad_pcb; cp $R/marengo_pdu_revb.kicad_pro $R/_trial.kicad_pro; cp $R/marengo_pdu_revb.kicad_dru $R/_trial.kicad_dru
+drc(){ cp "$1" $R/_trial.kicad_pcb; cp $R/power_board_revb.kicad_pro $R/_trial.kicad_pro; cp $R/power_board_revb.kicad_dru $R/_trial.kicad_dru
   "$KC" pcb drc --refill-zones --save-board --format json -o "$2" $R/_trial.kicad_pcb >/dev/null 2>&1; cp $R/_trial.kicad_pcb "$1"
   python -c "import json;print(len(json.load(open('$2'))['unconnected_items']))"; }
 echo "before $(drc $IN $W/d0.json)"

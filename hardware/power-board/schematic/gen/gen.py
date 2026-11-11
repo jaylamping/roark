@@ -2,8 +2,8 @@
 import os,sys,textwrap
 sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
 from kit import *
-wfile(OUT+'/sym-lib-table').write('(sym_lib_table\n\t(version 7)\n\t(lib (name "marengo_revb")(type "KiCad")(uri "${KIPRJMOD}/marengo_revb.kicad_sym")(options "")(descr "rev B project symbols"))\n)\n')
-wfile(OUT+'/fp-lib-table').write('(fp_lib_table\n\t(version 7)\n\t(lib (name "marengo_revb")(type "KiCad")(uri "${KIPRJMOD}/marengo_revb.pretty")(options "")(descr "rev B project footprints"))\n)\n')
+wfile(OUT+'/sym-lib-table').write('(sym_lib_table\n\t(version 7)\n\t(lib (name "power_board_revb")(type "KiCad")(uri "${KIPRJMOD}/power_board_revb.kicad_sym")(options "")(descr "rev B project symbols"))\n)\n')
+wfile(OUT+'/fp-lib-table').write('(fp_lib_table\n\t(version 7)\n\t(lib (name "power_board_revb")(type "KiCad")(uri "${KIPRJMOD}/power_board_revb.pretty")(options "")(descr "rev B project footprints"))\n)\n')
 REDCUBE='TerminalBlock_Wuerth:Wuerth_REDCUBE-THR_WP-THRSH_74651194_THR'
 TPFP='TestPoint:TestPoint_Pad_D2.0mm'  # rev B5 cost pass: bare pads; the three GND points keep Keystone loops for scope clips
 GH=lambda n:f'Connector_JST:JST_GH_SM0{n}B-GHS-TB_1x0{n}-1MP_P1.25mm_Horizontal'
@@ -16,8 +16,8 @@ PIG='Connector_Wire:SolderWire-2.5sqmm_1x02_P7.2mm_D2.4mm_OD3.6mm'  # cable-tie 
 INA='INA237AIDGSR'; INADS='https://www.ti.com/lit/ds/symlink/ina237.pdf'
 CP='Capacitor_SMD:CP_Elec_10x10.5'
 CAP100='47uF 80V EEH-ZC1K470P'
-s=Sheet('root','marengo power board rev B','A0',comment='Rev B: a part goes in only if leaving it out would hurt. Parts list: hardware/power-board/REV_B_PARTS.md. Rev A stays as reference.')
-s.file='marengo_pdu_revb.kicad_sch'; s.refc['Q']=2
+s=Sheet('root','power board rev B','A0',comment='Rev B: a part goes in only if leaving it out would hurt. Parts list: hardware/power-board/REV_B_PARTS.md. Rev A stays as reference.')
+s.file='power_board_revb.kicad_sch'; s.refc['Q']=2
 def dnp(ref):
     for it in s.items:
         if it[0]=='symbol' and it[-1]==['__inst__',ref]:
@@ -37,23 +37,23 @@ def wnote(t,at,w): note('\n'.join(textwrap.fill(l,w) for l in t.split('\n')),at)
 def Q(lid,val,at,b,e,c): r=s.nref('Q'); nic(s,lid,r,val,at,SOT23,{'1':b,'2':e,'3':c}); return r
 NPN='Transistor_BJT:Q_NPN_BEC'; PNP='Transistor_BJT:Q_PNP_BEC'
 mkic('IPB017N10N5LF',[('1','G','input'),('2','S','passive'),('3','S','passive'),('4','D','passive'),('5','S','passive'),('6','S','passive'),('7','S','passive')],'Package_TO_SOT_SMD:TO-263-7_TabPin4','https://www.infineon.com/dgdl/Infineon-IPB017N10N5LF-DataSheet-v02_02-EN.pdf','100 V 1.7 mOhm OptiMOS linear-mode FET, D2PAK-7',ref='Q')
-mkic('IQB150W8-12',[('1','+VIN','power_in'),('2','R.C','passive'),('3','-VIN','power_in'),('5','RS-','input'),('6','TRIM','input'),('7','RS+','input'),('8','+VOUT','passive'),('4','-VOUT','passive')],'marengo_revb:IQB150W8','https://www.meanwell.com/Upload/PDF/IQB150W8/IQB150W8-SPEC.PDF','Mean Well 150 W quarter brick, 9-75 V in, 12 V 12.5 A out')
+mkic('IQB150W8-12',[('1','+VIN','power_in'),('2','R.C','passive'),('3','-VIN','power_in'),('5','RS-','input'),('6','TRIM','input'),('7','RS+','input'),('8','+VOUT','passive'),('4','-VOUT','passive')],'power_board_revb:IQB150W8','https://www.meanwell.com/Upload/PDF/IQB150W8/IQB150W8-SPEC.PDF','Mean Well 150 W quarter brick, 9-75 V in, 12 V 12.5 A out')
 TLV=custom('TLV1805','tlv1805',ds='https://www.ti.com/lit/ds/symlink/tlv1805-q1.pdf')
 LDO=custom('TPS7A4001','tps7a4001',ds='https://www.ti.com/lit/ds/symlink/tps7a40.pdf',renum={'EP':'9'})
 
 # ---------- battery in and E-stop bank ----------
 head('1. Battery in and E-stop bank B (LM5069-1, two FETs). Bank A, in series ahead of it, is block 7',(25.4,22))
-conn(2,'Pack: 8 AWG pigtail pair to an XT90 (mates the pack XT90S), 1 BAT, 2 GND',(40.64,45.72),'marengo_revb:SolderWire-8AWG_1x02_P14mm_D4.5mm_OD8mm',['BAT','GND'],ref='J1')
+conn(2,'Pack: 8 AWG pigtail pair to an XT90 (mates the pack XT90S), 1 BAT, 2 GND',(40.64,45.72),'power_board_revb:SolderWire-8AWG_1x02_P14mm_D4.5mm_OD8mm',['BAT','GND'],ref='J1')
 s.refc['J']=2  # J2 (the second stud) is gone; later refs keep their numbers
 g=Grid(s,68.58,38.1,20.32,30.48,150)
 g.Z('5.0SMDJ58A','BAT','GND',SMC); g.C('1uF 100V X7R soft-term','BAT','GND',C1210); g.C('100nF 100V X7R soft-term','SH_P','GND',C805); g.F('BAT'); g.F('GND'); g.F('SH_P')
 nic(s,'Device:R_Shunt','RS1','0.5mR Bourns CSS4J-4026R-L500F 5W',(177.8,48.26),SH,{'1':'BAT','2':'SH_P','3':'SH_N','4':'SW_D'})
-Qb='marengo_revb:IPB017N10N5LF'
+Qb='power_board_revb:IPB017N10N5LF'
 nic(s,Qb,'Q1','IPB017N10N5LFATMA1',(228.6,48.26),'Package_TO_SOT_SMD:TO-263-7_TabPin4',{'1':'G1','2':'VBUS','3':'VBUS','4':'MID','5':'VBUS','6':'VBUS','7':'VBUS'})
 nic(s,Qb,'Q2','IPB017N10N5LFATMA1',(292.1,48.26),'Package_TO_SOT_SMD:TO-263-7_TabPin4',{'1':'G2','2':'VBUS','3':'VBUS','4':'MID','5':'VBUS','6':'VBUS','7':'VBUS'})
 g=Grid(s,335.28,38.1,20.32,30.48,420)
 g.R('10R','GATE','G1'); g.R('10R','GATE','G2')
-nic(s,'Power_Management:LM5069MM-1','U1','LM5069MMX-1',(63.5,114.3),'marengo_revb:MSOP-10_3x3mm_P0.5mm_TI',{'1':'SH_N','2':'SH_P','3':'UVLO','4':'GND','5':'GND','6':'TIMER','7':'PWR','8':None,'9':'VBUS','10':'GATE'},ds='https://www.ti.com/lit/ds/symlink/lm5069.pdf',fields={'Fitted':'LM5069MM-2/NOPB (temporary fit: LM5069-1 has no authorised stock; auto-retry about every 63 ms, see LM5069_RETRY.md)'})
+nic(s,'Power_Management:LM5069MM-1','U1','LM5069MMX-1',(63.5,114.3),'power_board_revb:MSOP-10_3x3mm_P0.5mm_TI',{'1':'SH_N','2':'SH_P','3':'UVLO','4':'GND','5':'GND','6':'TIMER','7':'PWR','8':None,'9':'VBUS','10':'GATE'},ds='https://www.ti.com/lit/ds/symlink/lm5069.pdf',fields={'Fitted':'LM5069MM-2/NOPB (temporary fit: LM5069-1 has no authorised stock; auto-retry about every 63 ms, see LM5069_RETRY.md)'})
 g=Grid(s,114.3,96.52,20.32,30.48,420)
 g.R('34k 1%','PWR','GND'); g.C('4.7nF C0G','TIMER','GND',C603); g.D('BAV19W','CDV','GATE'); g.C('100nF 100V C0G','CDV','GND',C1210); g.R('1k','GATE','CDV_B')
 g.R('22k','RUN_B','UVLO'); g.R('33k','UVLO','GND','Resistor_SMD:R_0805_2012Metric')
@@ -72,7 +72,7 @@ Polarity (rev B5): one soldered 8 AWG pigtail pair, side by side, to an XT90 tha
 
 # ---------- control rail and latch ----------
 head('2. Control rail and E-stop latch (no logic IC)',(25.4,172))
-nic(s,LDO,'U2','TPS7A4001DGNR',(63.5,200),'marengo_revb:HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm_TI',{'1':'VCTL','2':'FB_CTL','3':None,'4':'GND','5':'BAT_CTL','6':None,'7':None,'8':'BAT_CTL','9':'GND'})
+nic(s,LDO,'U2','TPS7A4001DGNR',(63.5,200),'power_board_revb:HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm_TI',{'1':'VCTL','2':'FB_CTL','3':None,'4':'GND','5':'BAT_CTL','6':None,'7':None,'8':'BAT_CTL','9':'GND'})
 g=Grid(s,114.3,185.42,20.32,30.48,200)
 g.C('10uF 50V X7R','VCTL','GND',C1210); g.R('464k','VCTL','FB_CTL'); g.R('49.9k','FB_CTL','GND'); tp(g,'VCTL')
 note('12.1 V, 11 mA. On the battery side, so regen through the body diodes keeps it up with the BMS open. Runs the latch and the clamp. 0.5 W at 54.6 V.\nFed through F1 with its own 1 uF, clamped by a 15 V TVS, reverse diode OUT to IN: block 10.',(114.3,232))
@@ -130,7 +130,7 @@ waist 0x4C, 12 V 0x4D (buck board), MID 0x4F. Powered by the Pi's 3.3 V; Pi pull
 head('5a. Brick soft start (ahead of the E-stop switch)',(25.4,440))
 nic(s,'Device:R_Shunt','RS9','5mR 2512 Kelvin WSK25125L000FEA',(60,462),SHK,{'1':'BAT','2':'SH9_P','3':'SH9_N','4':'BRK_D'})
 nic(s,Qb,'Q7','IPB017N10N5LFATMA1',(115,462),'Package_TO_SOT_SMD:TO-263-7_TabPin4',{'1':'BRK_G1','2':'BRK_IN','3':'BRK_IN','4':'BRK_D','5':'BRK_IN','6':'BRK_IN','7':'BRK_IN'})
-nic(s,'Power_Management:LM5069MM-2','U7','LM5069MMX-2',(190,470),'marengo_revb:MSOP-10_3x3mm_P0.5mm_TI',{'1':'SH9_N','2':'SH9_P','3':'SH9_P','4':'GND','5':'GND','6':'BRK_T','7':'BRK_P','8':'BRK_PG','9':'BRK_IN','10':'BRK_GATE'},ds='https://www.ti.com/lit/ds/symlink/lm5069.pdf')
+nic(s,'Power_Management:LM5069MM-2','U7','LM5069MMX-2',(190,470),'power_board_revb:MSOP-10_3x3mm_P0.5mm_TI',{'1':'SH9_N','2':'SH9_P','3':'SH9_P','4':'GND','5':'GND','6':'BRK_T','7':'BRK_P','8':'BRK_PG','9':'BRK_IN','10':'BRK_GATE'},ds='https://www.ti.com/lit/ds/symlink/lm5069.pdf')
 g=Grid(s,240,452,20.32,30.48,340)
 g.R('10R','BRK_GATE','BRK_G1'); g.R('37.4k 1%','BRK_P','GND'); g.C('220nF C0G','BRK_T','GND','Capacitor_SMD:C_1206_3216Metric'); g.C('100nF 100V X7R soft-term','SH9_P','GND',C805); g.F('SH9_P'); g.F('BRK_IN'); tp(g,'BRK_IN')
 wnote('''Same controller as the bank, so one part family. -2 retries on its own: a compute fault does not need a BMS cycle. UVLO on VIN, OVLO low: on whenever the pack is.
@@ -160,8 +160,8 @@ s.refc['J']=21
 
 # ---------- bank A ----------
 head('7. E-stop bank A: second series bank, own driver, ahead of bank B',(560,300))
-T48=custom('TPS48100-Q1','tps48100-q1',fp='marengo_revb:TPS48100_DGX_VSSOP-19',ds='https://www.ti.com/lit/ds/symlink/tps4810-q1.pdf',et={'12':'passive','14':'passive','15':'passive'})
-nic(s,T48,'U8','TPS48100QDGXRQ1',(600,340),'marengo_revb:TPS48100_DGX_VSSOP-19',{'1':'EN_A','2':'GND','3':'EN_A','4':None,'5':'FLT_A','6':'GND','7':'GND','8':'ISCP_A','9':'TMR_A','10':'GND','11':None,'12':'BST_A','13':'MID','14':'G1PD_A','15':'GATE_A','17':'CSN_A','18':'CSP_A','19':None,'20':'VS_A'},ds='https://www.ti.com/lit/ds/symlink/tps4810-q1.pdf')
+T48=custom('TPS48100-Q1','tps48100-q1',fp='power_board_revb:TPS48100_DGX_VSSOP-19',ds='https://www.ti.com/lit/ds/symlink/tps4810-q1.pdf',et={'12':'passive','14':'passive','15':'passive'})
+nic(s,T48,'U8','TPS48100QDGXRQ1',(600,340),'power_board_revb:TPS48100_DGX_VSSOP-19',{'1':'EN_A','2':'GND','3':'EN_A','4':None,'5':'FLT_A','6':'GND','7':'GND','8':'ISCP_A','9':'TMR_A','10':'GND','11':None,'12':'BST_A','13':'MID','14':'G1PD_A','15':'GATE_A','17':'CSN_A','18':'CSP_A','19':None,'20':'VS_A'},ds='https://www.ti.com/lit/ds/symlink/tps4810-q1.pdf')
 nic(s,Qb,'Q8','IPB017N10N5LFATMA1',(680,330),'Package_TO_SOT_SMD:TO-263-7_TabPin4',{'1':'GA1','2':'MID','3':'MID','4':'SW_D','5':'MID','6':'MID','7':'MID'})
 nic(s,Qb,'Q9','IPB017N10N5LFATMA1',(745,330),'Package_TO_SOT_SMD:TO-263-7_TabPin4',{'1':'GA2','2':'MID','3':'MID','4':'SW_D','5':'MID','6':'MID','7':'MID'})
 g=Grid(s,650,362,17,30.48,830)
@@ -264,14 +264,14 @@ Clamp duty: CL_OUT (0/12.1 V) through 100k/1k into U17 IN+ (IN- on GND): 120 mV 
 
 # ---------- rev B5: limb port breakers (Opus round 5, Joey 2026-11-07) ----------
 head('6a. Limb port breakers: TPS48111-Q1 + one FET per port, latch-off, enabled by RUN',(850,22))
-mkic('TPS48111-Q1',[('1','EN/UVLO','input'),('2','INP_G','input'),('3','INP','input'),('4','FLT_T','open_collector'),('5','FLT_I','open_collector'),('6','GND','power_in'),('7','IMON','passive'),('8','IWRN','passive'),('9','TMR','passive'),('10','DIODE','passive'),('11','G','output'),('12','BST','passive'),('13','SRC','passive'),('14','PD','output'),('15','PU','output'),('17','CS-','input'),('18','CS+','input'),('19','ISCP','passive'),('20','VS','passive')],'marengo_revb:TPS48100_DGX_VSSOP-19','https://www.ti.com/lit/ds/symlink/tps4811-q1.pdf','100 V smart high-side driver, 1.2 us short-circuit trip, 4 A pull-down (DGX-19, same land as TPS48100)')
+mkic('TPS48111-Q1',[('1','EN/UVLO','input'),('2','INP_G','input'),('3','INP','input'),('4','FLT_T','open_collector'),('5','FLT_I','open_collector'),('6','GND','power_in'),('7','IMON','passive'),('8','IWRN','passive'),('9','TMR','passive'),('10','DIODE','passive'),('11','G','output'),('12','BST','passive'),('13','SRC','passive'),('14','PD','output'),('15','PU','output'),('17','CS-','input'),('18','CS+','input'),('19','ISCP','passive'),('20','VS','passive')],'power_board_revb:TPS48100_DGX_VSSOP-19','https://www.ti.com/lit/ds/symlink/tps4811-q1.pdf','100 V smart high-side driver, 1.2 us short-circuit trip, 4 A pull-down (DGX-19, same land as TPS48100)')
 s.refc['U']=18  # U1-U18 are placed by hand above
 g=Grid(s,860,40,17,30,990)
 g.D('BAV19W','RUN_P','RUN'); g.R('10k','PORT_FLT_N','+3V3_PI'); g.F('RUN_P')
 for k in range(6):
     K=k+1; t=f'L{K}'; y=95+k*105
     u=s.nref('U'); q=s.nref('Q'); refs=[u,q]
-    nic(s,LIBNAME+':TPS48111-Q1',u,'TPS48111LQDGXRQ1',(880,y),'marengo_revb:TPS48100_DGX_VSSOP-19',{'1':f'EN_{t}','2':'GND','3':f'INP_{t}','4':None,'5':'PORT_FLT_N','6':'GND','7':'GND','8':f'IWRN_{t}','9':f'TMR_{t}','10':'GND','11':None,'12':f'BST_{t}','13':f'V_{t}','14':f'GPD_{t}','15':f'GPU_{t}','17':f'SH{t}_N','18':f'CSP_{t}','19':f'ISCP_{t}','20':f'SH{t}_P'},ds='https://www.ti.com/lit/ds/symlink/tps4811-q1.pdf')
+    nic(s,LIBNAME+':TPS48111-Q1',u,'TPS48111LQDGXRQ1',(880,y),'power_board_revb:TPS48100_DGX_VSSOP-19',{'1':f'EN_{t}','2':'GND','3':f'INP_{t}','4':None,'5':'PORT_FLT_N','6':'GND','7':'GND','8':f'IWRN_{t}','9':f'TMR_{t}','10':'GND','11':None,'12':f'BST_{t}','13':f'V_{t}','14':f'GPD_{t}','15':f'GPU_{t}','17':f'SH{t}_N','18':f'CSP_{t}','19':f'ISCP_{t}','20':f'SH{t}_P'},ds='https://www.ti.com/lit/ds/symlink/tps4811-q1.pdf')
     nic(s,Qb,q,'IPB017N10N5LFATMA1',(950,y),'Package_TO_SOT_SMD:TO-263-7_TabPin4',{'1':f'G_{t}','2':f'V_{t}','3':f'V_{t}','4':f'D_{t}','5':f'V_{t}','6':f'V_{t}','7':f'V_{t}'})
     g=Grid(s,985,y-30,15,30,1160)
     refs+=[g.R('100R',f'SH{t}_P',f'CSP_{t}'),g.R('4.64k 1%',f'ISCP_{t}',f'SH{t}_N'),g.R('20k 1%',f'IWRN_{t}','GND'),g.R('100k',f'TMR_{t}','GND')]

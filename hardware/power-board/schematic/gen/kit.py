@@ -6,7 +6,7 @@ LIB=next((p for p in (os.environ.get('KICAD_SYM'),'/Applications/KiCad/KiCad.app
 assert LIB,'set KICAD_SYM to the KiCad symbols folder'
 def wfile(path): return open(path,'w',encoding='utf-8',newline=chr(10))
 OUT=sys.argv[1]
-PROJ='marengo_pdu_revb'; LIBNAME='marengo_revb'; NS=uuid.UUID('b1d0f6a2-58a7-4a55-9e8e-2d4b6c7e1f02')
+PROJ='power_board_revb'; LIBNAME='power_board_revb'; NS=uuid.UUID('b1d0f6a2-58a7-4a55-9e8e-2d4b6c7e1f02')
 ROOT=str(uuid.uuid5(NS,'root'))
 PARTS=os.path.join(os.path.dirname(os.path.abspath(__file__)),'parts')
 def U(s): return str(uuid.uuid5(NS,s))
@@ -112,7 +112,7 @@ class Sheet:
                     m=re.match(r'(#?[A-Z]+)(\d+)$',ref); return m[1]+str(int(m[2])+i*s.multi)
                 it.append(['instances',['project',S(PROJ)]+[['path',S(p),['reference',S(rr(i))],['unit','1']] for i,(p,_) in enumerate(path_uuid_list)]])
             items.append(it)
-        tb=['title_block',['title',S(s.title)],['date',S('2026-11-06')],['rev',S('B-wip')],['company',S('marengo')]]
+        tb=['title_block',['title',S(s.title)],['date',S('2026-11-06')],['rev',S('B-wip')],['company',S('')]]
         if s.comment: tb.append(['comment','1',S(s.comment)])
         doc=['kicad_sch',['version','20260306'],['generator',S('eeschema')],['generator_version',S('10.0')],['uuid',S(ROOT if s.key=='root' else U('file/'+s.key))],['paper',S(s.paper)],tb,['lib_symbols']+list(s.lib.values())]+items
         if s.key=='root': doc.append(['sheet_instances',['path',S('/'),['page',S('1')]]])

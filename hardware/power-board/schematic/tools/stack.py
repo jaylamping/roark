@@ -20,7 +20,7 @@ CU_UM=[70.0,17.5,17.5,17.5,17.5,70.0]   # finished copper per layer, um: 2 oz ou
 # higher spike, so the model keeps the old 4-layer 0.2104 mm (JLC04161H-7628) until JLC confirms the 2 oz 6-layer stack.
 # JLC's 1 oz 6-layer 1.6 mm stack uses one sheet of 2313 prepreg, about 0.1 mm; 2 oz outer copper may use thicker prepreg.
 import os
-H_L1_L2=float(os.environ.get('MARENGO_H_L1_L2_MM','0.2104'))*1e-3   # MARENGO_H_L1_L2_MM=0.0994: the thin-prepreg case, for comparison
+H_L1_L2=float(os.environ.get('PB_H_L1_L2_MM','0.2104'))*1e-3   # PB_H_L1_L2_MM=0.0994: the thin-prepreg case, for comparison
 # Zone clearance of the GND planes and fills on the four inner layers (In1-In4), mm. 0.6 mm (the old uncoated outer-layer
 # rule) cut the planes away under every fine-pitch via row; 0.3 mm keeps them solid there. IPC-2221B B1 (internal
 # conductors, 51-100 V) asks 0.1 mm. A 0.6/0.3 mm via then has 0.45 mm from its drill to the plane (every via and plated
