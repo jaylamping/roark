@@ -33,7 +33,8 @@ DRUM_RI, DRUM_RO = 48.0, 57.0    # bore over the RS03 body (r 47) / outside of r
 WALL_RO, LIP_RO = 51.5, 56.0     # drum wall between ribs / front lip (RS02 rear cap is 59.6 from the roll axis)
 LUG_ANGLES = [22.5 + 45 * k for k in range(8)]   # RS03 cast lugs, r 53, 8.5 wide
 SLOT_HALF, SLOT_R = 5.5, 54.5
-LIP_Z0, LIP_Z1, LIP_RI = 28.3, 36.0, 40.0         # front lip, 8 x M4 on PCD 98 (today's lip ends at Z 39.5)
+LIP_Z0, LIP_Z1 = 28.3, 36.0                       # front lip, 8 x M4 on PCD 98 (today's lip ends at Z 39.5)
+LIP_RI = 43.0 if LIGHT else 40.0                  # lip bore (counterbores r 44.2-53.8)
 DRUM_Z0 = -28.5                                   # drum rear rim = cap front face (RS03 rear face -25.96)
 CAP_Z1 = -39.3                                    # cap rear face: 2.4 wall + 6 channel + 2.4 wall
 CAPZ = (DRUM_Z0 + CAP_Z1) / 2                     # cap channel centre
@@ -49,11 +50,12 @@ SEAT_RI, SEAT_RO = 33.5, 45.0
 DISH_R0, DISH_Y = 23.5, 315.8                     # hub top dished outside r 23.5 down to Y 315.8
 ROLL_IN, ROLL_OUTW = -15.0, 110.0                 # roll range: stops engage exactly here
 # pitch loop channel (fixed cover outside, moving skirt inside)
-FL_X = (100.5, 103.0)                             # P1 flange: 3.5 clear of the pitch stator ring (X 97)
+FL_X = (100.5, 102.3 if LIGHT else 103.0)         # P1 flange: 3.5 clear of the pitch stator ring (X 97); 1.8 thick, not on the load path
 COVER_X1 = FL_X[0] - 2.0                          # cover outer wall ends 2 mm short of the flange
 COVER_RO, COVER_RI = 75.9, 73.5
 FL_RO = 77.5                                      # flange overlaps the cover wall: 2 mm axial slot, no straight path out
-SKIRT = (56.5, 58.9, 77.4 + 2.4)                  # skirt r, and its end X (2.4 clear of the cover back wall X 75-77.4)
+SKIRT = (56.5, 58.9, 77.4 + 2.4)                  # first-pass moving skirt (LIGHT=0 only); with LIGHT the inner wall is on the cover
+COVER_IN = (55.0, 57.4)                           # LIGHT: fixed inner wall of the channel, 2 mm off the pitch housing lugs (r 53)
 
 
 def ax_roll(s):  # profile built about +Y -> roll axis (+Z through RX, RY)
@@ -213,10 +215,12 @@ for k in range(5):
     sp = cq.Workplane('YZ').workplane(offset=FL_X[0]).center(RY + 37 * math.cos(t), PZ + 37 * math.sin(t)).rect(8, 32).extrude(FL_X[1] - FL_X[0])
     flange = flange.union(sp.rotate((0, RY + 37 * math.cos(t), PZ + 37 * math.sin(t)), (1, RY + 37 * math.cos(t), PZ + 37 * math.sin(t)), 72 * k))
 skirt = rev([(SKIRT[0], SKIRT[2]), (SKIRT[1], SKIRT[2]), (SKIRT[1], FL_X[1]), (SKIRT[0], FL_X[1])], ax_pitch)
-NECK_RI = 34.0
+NECK_RI = 35.6 if LIGHT else 34.0     # neck tube wall 4.4 (6.0 in the first geometry)
 neck = rev([(21.0, FL_X[0]), (40.0, FL_X[0]), (40.0, 130.0), (NECK_RI, 130.0), (NECK_RI, 106.0), (21.0, 106.0)], ax_pitch).intersect(
     cq.Workplane('XY').workplane(offset=DRUM_Z0 + 1).rect(400, 1200).extrude(LIP_Z1 - DRUM_Z0 - 1))
-p1 = drum.union(pad).union(flange).union(skirt).union(neck)
+p1 = drum.union(pad).union(flange).union(neck)
+if not LIGHT:
+    p1 = p1.union(skirt)
 p1 = p1.cut(cyl(DRUM_RI, DRUM_Z0 - 1, LIP_Z0, ax_roll))
 for th in LUG_ANGLES:
     sl = cq.Workplane('XY').workplane(offset=DRUM_Z0 - 1).center(RX + SLOT_R / 2, RY).rect(SLOT_R, 2 * SLOT_HALF).extrude(
@@ -250,9 +254,12 @@ p1 = p1.union(sh); red_l.append(r_); blue_l.append(b_)
 for c in red_l + blue_l:
     p1 = p1.cut(c)
 p1 = p1.cut(cyl(DRUM_RI, DRUM_Z0 - 1, LIP_Z0, ax_roll)).cut(WIN)
+if LIGHT:   # windows in the drum wall between the ribs (outboard and below; the inboard side carries the neck)
+    for th in (0.0, 45.0, -45.0, -90.0):
+        w_ = cq.Workplane('XY').box(8.0, 14.0, 40.0).edges('|X').fillet(6.5).translate((RX + 49.5, RY, 2.0))
+        p1 = p1.cut(rot_roll(w_, th))
 BEHIND = cq.Workplane('XY').workplane(offset=DRUM_Z0 - 40).center(RX + 50, RY).rect(2 * 50 + 2 * (RX - 106), 400).extrude(40)
 p1 = p1.cut(BEHIND)
-P1_LIGHT = []          # lightening cuts, filled in the trim section below
 parts['P1_drum'] = p1
 cuts['WIRE_P1_power'] = [r.cut(BEHIND) for r in red_l]
 cuts['WIRE_P1_signal'] = [r.cut(BEHIND) for r in blue_l]
@@ -260,8 +267,12 @@ cuts['WIRE_P1_signal'] = [r.cut(BEHIND) for r in blue_l]
 # ======================================================================================================== P1: rear cap
 print('rear cap')
 # rim r 52.6-57 and centre boss full depth, 4 mm back plate, spoke with the cable channel from the trunk to the stub bore
-cap = zring(DRUM_RO - 4.4, DRUM_RO, DRUM_Z0, CAP_Z1)
-cap = cap.union(zring(0, DRUM_RO, CAP_Z1 + 4.0, CAP_Z1)).union(zring(0, 26.0, DRUM_Z0, CAP_Z1))
+cap = zring(DRUM_RO - (3.0 if LIGHT else 4.4), DRUM_RO, DRUM_Z0, CAP_Z1)
+CAP_T, BOSS_R = (3.0, 24.0) if LIGHT else (4.0, 26.0)
+cap = cap.union(zring(0, DRUM_RO, CAP_Z1 + CAP_T, CAP_Z1)).union(zring(0, BOSS_R, DRUM_Z0, CAP_Z1))
+if LIGHT:   # plate windows clear of the spoke (115 deg), the stop lugs and the ears
+    for a0, a1 in [(-112, -72), (-32, 14), (154, 194)]:
+        cap = cap.cut(sector_roll(a0, a1, 29.0, 50.0, CAP_Z1 - 1, DRUM_Z0 + 1))
 dvec = np.array([RX - TRUNK_X, RY - TRUNK_Y, 0.0]); dvec /= np.linalg.norm(dvec); CU = (-dvec[1], dvec[0], 0.0)
 spoke = box_along((TRUNK_X, TRUNK_Y, CAPZ), (RX, RY, CAPZ), CU, SHW, DRUM_Z0 - CAP_Z1, 5.5)
 cap = cap.union(spoke)
@@ -305,6 +316,8 @@ for k in range(6):
     fork_f = fork_f.cut(cq.Workplane('XY').workplane(offset=ROLL_OUT - 1).center(x, y).circle(2.25).extrude(30))
     fork_f = fork_f.cut(cq.Workplane('XY').workplane(offset=FRONT_Z[1] - 4).center(x, y).circle(4.25).extrude(10))
 fork_f = fork_f.cut(cq.Workplane('XY').workplane(offset=FRONT_Z[1] - 2).center(RX, RY).circle(24.0).extrude(5))
+if LIGHT:   # window in the front cheek's web between the boss and the seat ring (rails 18 mm each side)
+    fork_f = fork_f.cut(cq.Workplane('XY').workplane(offset=FRONT_Z[0] - 1).center(RX, 381.0).slot2D(34.0, 24.0, 90).extrude(FRONT_Z[1] - FRONT_Z[0] + 2))
 for a in [-136, -96, -56, 64, 104]:
     t = math.radians(a); x, z = RX + 36.5 * math.cos(t), YZ + 36.5 * math.sin(t)
     fork_f = fork_f.cut(cq.Workplane('XY').add(cq.Solid.makeCylinder(1.8, 30, cq.Vector(x, SEAT_Y[0] - 5, z), cq.Vector(0, 1, 0))))
@@ -320,25 +333,32 @@ fork_f = fork_f.cut(tap_arc).cut(tap_link)
 for dx in (-JX + 4.5, JX - 4.5):
     fork_f = fork_f.cut(cq.Workplane('XY').workplane(offset=JZ0 - 1).center(RX + dx, (SEAT_Y[0] + SEAT_Y[1]) / 2).circle(2.8).extrude(12))
 fork_f = fork_f.cut(cq.Workplane('XY').box(400, 50, 400).translate((RX, 316.6 - 25, 0)))
-parts['FORK_front_cap'] = cq.Workplane('XY').workplane(offset=FRONT_Z[1] - 2).center(RX, RY).circle(23.8).extrude(4.0).faces('>Z').edges().chamfer(1.2)
+parts['FORK_front_cap'] = cq.Workplane('XY').workplane(offset=FRONT_Z[1] - 2).center(RX, RY).circle(23.8).extrude(2.4 if LIGHT else 4.0).faces('>Z').edges().chamfer(1.2)
 
 print('fork rear')
 # cheek disc round the bearing (r 38, under the stop lugs at r 44), bearing housing r 26-33 from 2.5 behind the cap face,
 # arm straight down behind the RS02 (box 44 x 10.8 with the channels inside), lugs to the joint pad, and the exit forward
 # into the gap under the RS02.
-ARM_HW = 22.0
+ARM_HW = 17.0 if LIGHT else 22.0      # rear arm 34 wide (3 mm side walls beside the channels)
 Y_EX = 319.55                       # exit channel centre: hub dish top 315.8, RS02 underside 323.86
 Y_BOT = Y_EX - 3 - WALL             # floor of the exit (outside r 41 only)
-cheek = zring(0, 38.0, JZ0, RZ - PH / 2 - WALL)
+cheek = zring(0, 35.0 if LIGHT else 38.0, JZ0, RZ - PH / 2 - WALL)
 house = zring(0, 33.0, HOUSE_Z0, JZ0)
-arm = box_along((RX, RY, RZ), (RX, Y_BOT, RZ), (1, 0, 0), 2 * ARM_HW, SHH, 0)
+if LIGHT:   # below the joint the arm only carries the arm bundle: a 16 x 6 duct
+    arm = box_along((RX, RY, RZ), (RX, SEAT_Y[0], RZ), (1, 0, 0), 2 * ARM_HW, SHH, 0).union(
+        box_along((RX - 6.0, SEAT_Y[0] + 4.0, RZ), (RX - 6.0, Y_BOT, RZ), (1, 0, 0), 16.0 + 2 * WALL, SHH, 0))
+else:
+    arm = box_along((RX, RY, RZ), (RX, Y_BOT, RZ), (1, 0, 0), 2 * ARM_HW, SHH, 0)
 lugs = cq.Workplane('XY').workplane(offset=RZ - PH / 2 - WALL).center(RX, (SEAT_Y[0] + SEAT_Y[1]) / 2).rect(2 * JX, SEAT_Y[1] - SEAT_Y[0]).extrude(SHH)
 exit_sh = box_along((RX - 6.0, Y_EX, RZ), (RX - 6.0, Y_EX, YZ - 37.0), (1, 0, 0), 16.0 + 2 * WALL, 6.0 + 2 * WALL, 0)
 fork_r = soft(cheek.union(house).union(arm), 2.0, '|Z').union(lugs).union(exit_sh)
 fork_r = fork_r.cut(zring(0, 26.0, HOUSE_Z0 + 1, BRG_Z[1]))                     # 6808 seat (outer race)
 fork_r = fork_r.cut(zring(0, 24.0, BRG_Z[1] + 0.1, RZ))                         # lip r 24 behind the outer race; stub chamber
 red_r = [box_along((RX, RY + 9.0, RZ), (RX, Y_EX - 3.0, RZ), (1, 0, 0), PW, PH, 0, (-TOT / 2 + PW / 2, 0))]
-blue_r = [box_along((RX, RY + 9.0, RZ), (RX, Y_EX - 3.0, RZ), (1, 0, 0), SW, SH, 0, (TOT / 2 - SW / 2, 0))]
+SIG_END = SEAT_Y[0] + WALL if LIGHT else Y_EX - 3.0     # LIGHT: signal joins the power channel above the joint
+blue_r = [box_along((RX, RY + 9.0, RZ), (RX, SIG_END, RZ), (1, 0, 0), SW, SH, 0, (TOT / 2 - SW / 2, 0))]
+if LIGHT:
+    blue_r.append(cq.Workplane('XY').box(6.0, 6.0, SH).translate((RX + 3.0, SIG_END + 3.0, RZ)))
 exit_cut = box_along((RX - 6.0, Y_EX, RZ - 3.0), (RX - 6.0, Y_EX, YZ - 37.0), (1, 0, 0), 16.0, 6.0, 0)
 for c in red_r + blue_r + [exit_cut]:
     fork_r = fork_r.cut(c)
@@ -389,6 +409,9 @@ cuts['WIRE_YAWLOOP_power'] = [ann_p]; cuts['WIRE_YAWLOOP_signal'] = [ann_s]; cut
 print('pitch cover')
 cover = rev([(56.0, 75.0), (COVER_RO, 75.0), (COVER_RO, COVER_X1 - 1.5), (COVER_RO - 1.5, COVER_X1), (COVER_RI, COVER_X1),
              (COVER_RI, 77.4), (56.0, 77.4)], ax_pitch)
+if LIGHT:
+    cover = cover.union(rev([(COVER_IN[0], 75.0), (56.5, 75.0), (56.5, 77.4), (COVER_IN[1], 77.4), (COVER_IN[1], COVER_X1),
+                             (COVER_IN[0], COVER_X1)], ax_pitch))
 # feed from the cage's back face: along X behind the cage, then forward into the outer wall (ends flush with its inside)
 FY, FZ, FX = RY + 6.0, -79.0, 86.5
 zin = -math.sqrt(COVER_RI ** 2 - 6.0 ** 2)
@@ -399,12 +422,8 @@ for c in (r_a, b_a, r_b, b_b):
     cover = cover.cut(c)
 parts['PITCH_cover'] = cover
 loop_p = ring(65.0, COVER_RI - 0.3, 77.7, COVER_X1 + 1.7, ax_pitch)
-loop_s = ring(SKIRT[1] + 0.3, 63.0, 77.7, COVER_X1 + 1.7, ax_pitch)
+loop_s = ring((COVER_IN[1] if LIGHT else SKIRT[1]) + 0.3, 63.0, 77.7, COVER_X1 + 1.7, ax_pitch)
 cuts['WIRE_PITCHLOOP_power'] = [loop_p, r_a, r_b]; cuts['WIRE_PITCHLOOP_signal'] = [loop_s, b_a, b_b]
-
-# =============================================================================================== trim (second pass)
-exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trim_concept.py')).read()) if LIGHT and \
-    os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'trim_concept.py')) else None
 
 # ================================================================================================================ export
 GROUP = dict(P1_drum='pitch', P1_cap='pitch', FORK_front='roll', FORK_rear='roll', FORK_front_cap='roll',

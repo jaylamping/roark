@@ -45,7 +45,7 @@ hub's interface to the upper arm (spigot, lugs, seam bolts, hub screws).
 | Rear cap / stub / 6808 / rear cheek | Cap Z -28.5 to -40.5 (4 mm plate, 12 mm rim and spoke); 6808 at Z -42.5 to -49.5; cheek and duct to Z -58 | 2.5 mm clear of the RS03 rear face |
 | Wire passages | Power 14 x 8, signal 10 x 5, separate (2 mm rib), 2 mm walls; stub bore Ø25; yaw loop r 23.5-38.5 x 8.1 mm axial (measured); hub window 16 x 9; pitch loop 15 radial x 9.4 (power) / 6.4 (signal) axial | Power 14 x 8 holds the whole 4 x 14.5 shoulder bundle; signal holds 2.2 x 8; yaw loop meets the 3.5 x 13 arm reserve |
 
-## 3a. Second pass: contact fixes (quick sweep, 9 deg steps; full sweep in section 3b)
+## 3a. Second pass: contact fixes (quick sweep, 9 deg steps)
 
 Changes against the first pass, all in `scripts/build_concept.py`:
 
@@ -78,6 +78,59 @@ Changes against the first pass, all in `scripts/build_concept.py`:
   the cage side at roll -12 to -13 when yawed 45-75 deg near pitch 0 (pitch -30…+24). It reaches -20 only at yaw 0.
   The stop stays at -15 as decided. A coupled software limit is needed (roll ≥ -11 when |yaw| ≥ 30 and pitch is -30…+24),
   or the stop moves to -11 (7.8 mm clear at -10).
+
+## 3b. Second pass: mass and depth trim
+
+Lightening (`LIGHT=1`, the default; `LIGHT=0` rebuilds the untrimmed step-2 geometry):
+
+- **Drum:**
+  - four 14 x 40 windows in the wall between the ribs (outboard, up-outboard, down-outboard, bottom), 5 mm webs to the ribs
+  - lip bore r 40 → 43
+  - neck tube wall 6 → 4.4
+  - flange 2.5 → 1.8 thick (not on the load path)
+- **Pitch loop inner wall moved from the drum to the fixed cover.** The skirt is gone from P1. The cover now carries an
+  inner wall at r 55-57.4, 2 mm off the pitch housing lugs.
+- **Cap:**
+  - plate 4 → 3
+  - rim 4.4 → 3.0
+  - boss r 26 → 24
+  - three plate windows, clear of the spoke, the stop lugs and the ears
+- **Fork front:** a 34 x 24 window in the cheek web between the boss and the seat ring (rails 18 mm each side). The press-in
+  cap is 4 → 2.4 thick.
+- **Fork rear:**
+  - arm 44 → 34 wide (3 mm side walls)
+  - bearing cheek disc r 38 → 35
+  - below the joint, only a 16 x 6 duct for the arm bundle (the signal channel joins the power channel above the joint)
+
+| Printed part (solid PETG, g) | Today | First pass | Second pass |
+|---|---|---|---|
+| P1 / drum with pitch adaptor and ducts | 169.8 | 263.1 | **215.8** |
+| Rear cap with stub and stop lugs | — | 100.0 | **81.5** |
+| P2 / fork front | 178.3 | 113.2 | **92.3** |
+| Fork rear | — | 73.1 | **63.5** |
+| PF03 spacer / front press-in cap | 24.9 | 8.9 | **5.3** |
+| Hub | 62.6 | 60.2 | **60.2** |
+| **Total, shoulder** | **435.6** | **618.5** | **518.6 (+83.0 g, +19 % on today)** |
+| Pitch loop cover (torso side, fixed) | — | 56.4 | 89.3 (now holds the inner wall) |
+| 6808 (catalogue, not weighed) | — | about 32 | about 32 |
+
+The 520 g target is met by 1.4 g. Of the 100 g saved against the first pass, 24 g did not leave the robot. It moved to the
+fixed cover with the inner channel wall, which takes it off the pitch output.
+
+**Rear reach:** -56.7 (fork rear back face) against -58.0 in the first pass, only 1.3 mm better. The stack behind the roll
+motor is set by parts that cannot overlap. Each is needed because the cable crosses the roll axis through the stub:
+
+| Item | Z (mm) |
+|---|---|
+| Roll RS03 rear face | -26.0 |
+| Clearance | 2.5 |
+| Cap with its radial channel (6 mm bundle height, 2.4 walls) | to -39.3 |
+| Inner-race land | 1.0 |
+| 6808 | 7.0 |
+| Clearance, then the fork's radial channel with its walls | to -56.7 |
+
+The first pass reached -58 only by overlapping the fork channel with the bearing seat. A thinner radial run needs a flatter
+bundle. A 6708 (6 mm wide) would save 1 mm.
 
 ## 3. Interference sweep (first pass, `data/check.json`)
 
