@@ -316,9 +316,12 @@ fn a_request_with_no_result_in_time_refuses() {
     };
     let identity = answer(get_id, SlowOutcome::Identity(UID));
     let mut preflight = Preflight::start(target, SLOT, 7, 1_000);
-    assert_eq!(preflight.poll(shown(&view), 2_000), Step::Submit(get_id));
     assert_eq!(
-        preflight.poll(shown(&view), 2_000 + ANSWER_WITHIN_NS),
+        preflight.poll(shown(&view).seen(), 2_000),
+        Step::Submit(get_id)
+    );
+    assert_eq!(
+        preflight.poll(shown(&view).seen(), 2_000 + ANSWER_WITHIN_NS),
         Step::Wait
     );
     let refused = Step::Refused(Refusal::NoAnswer {
@@ -326,42 +329,45 @@ fn a_request_with_no_result_in_time_refuses() {
         how: Unanswered::TimedOut,
     });
     assert_eq!(
-        preflight.poll(shown(&view), 2_001 + ANSWER_WITHIN_NS),
+        preflight.poll(shown(&view).seen(), 2_001 + ANSWER_WITHIN_NS),
         refused
     );
     preflight.answered(identity, 2_001 + ANSWER_WITHIN_NS);
     assert_eq!(
-        preflight.poll(shown(&view), 2_002 + ANSWER_WITHIN_NS),
+        preflight.poll(shown(&view).seen(), 2_002 + ANSWER_WITHIN_NS),
         refused
     );
 
     // A result handed over late, with no poll in between, refuses as late (control fell behind); one at exactly 1 s
     // counts, whether control polls before handing it over or after.
     let mut late = Preflight::start(target, SLOT, 7, 1_000);
-    assert_eq!(late.poll(shown(&view), 2_000), Step::Submit(get_id));
+    assert_eq!(late.poll(shown(&view).seen(), 2_000), Step::Submit(get_id));
     late.answered(identity, 2_001 + ANSWER_WITHIN_NS);
     let handed_late = Refusal::NoAnswer {
         exchange: Exchange::Identity,
         how: Unanswered::Late,
     };
     assert_eq!(
-        late.poll(shown(&view), 2_001 + ANSWER_WITHIN_NS),
+        late.poll(shown(&view).seen(), 2_001 + ANSWER_WITHIN_NS),
         Step::Refused(handed_late)
     );
     assert_eq!(handed_late.remedy(), LATE_REMEDY);
     for poll_first in [false, true] {
         let mut on_time = Preflight::start(target, SLOT, 7, 1_000);
-        assert_eq!(on_time.poll(shown(&view), 2_000), Step::Submit(get_id));
+        assert_eq!(
+            on_time.poll(shown(&view).seen(), 2_000),
+            Step::Submit(get_id)
+        );
         if poll_first {
             assert_eq!(
-                on_time.poll(shown(&view), 2_000 + ANSWER_WITHIN_NS),
+                on_time.poll(shown(&view).seen(), 2_000 + ANSWER_WITHIN_NS),
                 Step::Wait
             );
         }
         on_time.answered(identity, 2_000 + ANSWER_WITHIN_NS);
         assert!(
             matches!(
-                on_time.poll(shown(&view), 2_000 + ANSWER_WITHIN_NS),
+                on_time.poll(shown(&view).seen(), 2_000 + ANSWER_WITHIN_NS),
                 Step::Submit(SlowRequest {
                     tag: 8,
                     kind: SlowKind::Write(_),
@@ -388,7 +394,10 @@ fn only_the_result_of_the_request_in_flight_answers_it() {
         slot: SLOT,
         kind: SlowKind::GetId,
     };
-    assert_eq!(earlier.poll(shown(&view), 2_000), Step::Submit(stale));
+    assert_eq!(
+        earlier.poll(shown(&view).seen(), 2_000),
+        Step::Submit(stale)
+    );
     let first = 1 + Preflight::TAGS;
     let get_id = SlowRequest {
         tag: first,
@@ -414,16 +423,20 @@ fn only_the_result_of_the_request_in_flight_answers_it() {
         ),
     ];
     let mut fresh = Preflight::start(target, SLOT, first, 3_000);
-    assert_eq!(fresh.poll(shown(&view), 4_000), Step::Submit(get_id));
+    assert_eq!(fresh.poll(shown(&view).seen(), 4_000), Step::Submit(get_id));
     for stray in strays {
         fresh.answered(stray, 5_000);
-        assert_eq!(fresh.poll(shown(&view), 5_000), Step::Wait, "{stray:?}");
+        assert_eq!(
+            fresh.poll(shown(&view).seen(), 5_000),
+            Step::Wait,
+            "{stray:?}"
+        );
     }
     let count = u32::try_from(strays.len()).unwrap();
     assert_eq!(fresh.ignored(), count);
     fresh.answered(answer(get_id, SlowOutcome::Identity(UID)), 6_000);
     assert!(matches!(
-        fresh.poll(shown(&view), 6_000),
+        fresh.poll(shown(&view).seen(), 6_000),
         Step::Submit(SlowRequest {
             slot: SLOT,
             kind: SlowKind::Write(_),
@@ -434,16 +447,19 @@ fn only_the_result_of_the_request_in_flight_answers_it() {
     let mut idle = Preflight::start(target, SLOT, first, 3_000);
     idle.answered(answer(get_id, SlowOutcome::Identity(UID)), 3_500);
     assert_eq!(idle.ignored(), 1);
-    assert_eq!(idle.poll(shown(&view), 4_000), Step::Submit(get_id));
+    assert_eq!(idle.poll(shown(&view).seen(), 4_000), Step::Submit(get_id));
 
     // Only strays: the request is unanswered.
     let mut unanswered = Preflight::start(target, SLOT, first, 3_000);
-    assert_eq!(unanswered.poll(shown(&view), 4_000), Step::Submit(get_id));
+    assert_eq!(
+        unanswered.poll(shown(&view).seen(), 4_000),
+        Step::Submit(get_id)
+    );
     for stray in strays {
         unanswered.answered(stray, 5_000);
     }
     assert_eq!(
-        unanswered.poll(shown(&view), 4_001 + ANSWER_WITHIN_NS),
+        unanswered.poll(shown(&view).seen(), 4_001 + ANSWER_WITHIN_NS),
         Step::Refused(Refusal::NoAnswer {
             exchange: Exchange::Identity,
             how: Unanswered::TimedOut,

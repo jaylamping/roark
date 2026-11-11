@@ -1,9 +1,9 @@
 //! Shared helpers: a small skeleton fixture (never the live skeleton, testing.md rule 3) and drive views as the bus
-//! layer would publish them.
+//! layer publishes them ([`bus::replay`]).
 
 use std::sync::LazyLock;
 
-use can::{DriveView, EchoSeen, LimbState, LimbView, ModeSeen, Observed, StopOutcome};
+use can::{DriveView, EchoSeen, LimbState, LimbView, ModeSeen, Observed, Snapshot, StopOutcome};
 use robstride::{
     Celsius, DeviceId, EchoKind, Feedback, Inbound, Mode, NewtonMeters, RadPerSec, Radians,
     StatusFaults, decode, drive,
@@ -11,6 +11,7 @@ use robstride::{
 use safety::Seen;
 use skeleton::{BusName, Joint, Skeleton};
 
+pub(crate) mod bus;
 pub(crate) mod preflight;
 
 /// One arm on `bus0`, and `bus1` with no joints. `arm_joint_one` is fully set (direction, zero and hard limits too); `arm_joint_two` leaves its
@@ -123,8 +124,18 @@ pub(crate) fn id(n: u8) -> DeviceId {
 }
 
 /// A status from drive 101 (an RS03) in `mode` with `faults`, read at `read_ns`.
-#[expect(clippy::unwrap_used, reason = "test helper; the feedback is in range")]
 pub(crate) fn status(mode: Mode, faults: StatusFaults, read_ns: u64) -> Observed {
+    status_of(id(101), mode, faults, read_ns)
+}
+
+/// [`status`], from drive `device`.
+#[expect(clippy::unwrap_used, reason = "test helper; the feedback is in range")]
+pub(crate) fn status_of(
+    device: DeviceId,
+    mode: Mode,
+    faults: StatusFaults,
+    read_ns: u64,
+) -> Observed {
     let feedback = Feedback {
         position: Radians::new(0.0).unwrap(),
         velocity: RadPerSec::new(0.0).unwrap(),
@@ -132,7 +143,7 @@ pub(crate) fn status(mode: Mode, faults: StatusFaults, read_ns: u64) -> Observed
         temperature: Celsius::new(25.0).unwrap(),
     };
     let frame = drive::status(
-        robstride::Drive::new(id(101), robstride::Model::Rs03),
+        robstride::Drive::new(device, robstride::Model::Rs03),
         mode,
         faults,
         &feedback,
@@ -182,6 +193,15 @@ pub(crate) fn seen(observed: Observed) -> DriveView {
     }
 }
 
+/// Drive 101 with its last status, read with no command outstanding: not fresh.
+pub(crate) fn heard(observed: Observed) -> DriveView {
+    DriveView {
+        fresh_ns: None,
+        fresh_status: None,
+        ..seen(observed)
+    }
+}
+
 /// `view` with an echo of `kind` read at `read_ns`.
 pub(crate) fn echoed(view: DriveView, kind: EchoKind, read_ns: u64) -> DriveView {
     DriveView {
@@ -206,12 +226,39 @@ pub(crate) const IDLE: LimbView = LimbView {
     generation: 0,
 };
 
+/// A snapshot the bus layer published, with the name of the bus it came from and the slot of the drive a test shows.
+pub(crate) struct Shown {
+    bus: BusName,
+    snapshot: Snapshot,
+    slot: usize,
+}
+
+impl Shown {
+    /// The drive as preflight and the enable sequence are stepped with it: [`Seen::of`] over the snapshot.
+    #[expect(
+        clippy::unwrap_used,
+        reason = "test helper; the replayed slot holds the drive"
+    )]
+    pub(crate) fn seen(&self) -> Seen<'_> {
+        Seen::of(&self.bus, &self.snapshot, self.slot).unwrap()
+    }
+}
+
 /// `view` as `bus0`'s snapshot shows it, its limb idle.
-pub(crate) fn shown(view: &DriveView) -> Seen<'_> {
+pub(crate) fn shown(view: &DriveView) -> Shown {
     on(&BUS0, view, &IDLE)
 }
 
-/// `view` as `bus`'s snapshot shows it, its limb `limb`.
-pub(crate) fn on<'a>(bus: &'a BusName, view: &'a DriveView, limb: &'a LimbView) -> Seen<'a> {
-    Seen::from_parts(bus, view, limb)
+/// `view` as the snapshot of the bus named `bus` shows it, its limb `limb`.
+pub(crate) fn on(bus: &BusName, view: &DriveView, limb: &LimbView) -> Shown {
+    in_slot(bus, view, limb, 0)
+}
+
+/// [`on`], with the drive in slot `slot` of its bus.
+pub(crate) fn in_slot(bus: &BusName, view: &DriveView, limb: &LimbView, slot: usize) -> Shown {
+    Shown {
+        bus: bus.clone(),
+        snapshot: bus::replay(view, limb, slot),
+        slot,
+    }
 }

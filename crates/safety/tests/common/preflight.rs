@@ -6,7 +6,7 @@ use robstride::{
 };
 use safety::{Exchange, Preflight, Refusal, Register, Step, Target};
 
-use super::{joint, quiet, seen, shown, skeleton, status};
+use super::{joint, quiet, seen, shown, skeleton, status_of};
 
 /// The default tick (`can::Timing`'s at PLAN item 3's 250 Hz): the bus sends at most one slow request a tick.
 pub(crate) const PERIOD: u64 = can::Timing::at_hz(250).period_ns;
@@ -96,12 +96,12 @@ pub(crate) fn run(n: usize, drive: &Drive) -> (Result<(), Refusal>, Vec<(Param, 
         now += PERIOD;
         // The row's views are drive 101's; joint `n`'s drive may have another ID.
         view.device = target.drive().id();
-        let request = match preflight.poll(shown(&view), now) {
+        let request = match preflight.poll(shown(&view).seen(), now) {
             Step::Submit(request) => request,
             Step::Passed(passed) => {
                 assert_eq!(passed.drive(), target.drive());
                 assert_eq!(
-                    preflight.poll(shown(&view), now),
+                    preflight.poll(shown(&view).seen(), now),
                     Step::Spent,
                     "proof given once"
                 );
@@ -111,7 +111,7 @@ pub(crate) fn run(n: usize, drive: &Drive) -> (Result<(), Refusal>, Vec<(Param, 
             step @ (Step::Wait | Step::Spent) => return (Err(refusal_for(&step)), written),
         };
         assert_eq!(
-            preflight.poll(shown(&view), now),
+            preflight.poll(shown(&view).seen(), now),
             Step::Wait,
             "one request at a time"
         );
@@ -137,7 +137,7 @@ pub(crate) fn run(n: usize, drive: &Drive) -> (Result<(), Refusal>, Vec<(Param, 
         if let (SlowKind::Write(_), Some((mode, faults))) = (kind, drive.status) {
             view = DriveView {
                 fault_seen: view.fault_seen || !faults.is_empty(),
-                ..seen(status(mode, faults, now + 500_000))
+                ..seen(status_of(target.drive().id(), mode, faults, now + 500_000))
             };
         }
         preflight.answered(answer(request, outcome), now);

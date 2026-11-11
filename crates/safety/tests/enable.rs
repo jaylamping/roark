@@ -33,7 +33,7 @@ fn passed() -> PreflightPassed {
     let mut written = Vec::new();
     for n in 1..32 {
         let now = n * PERIOD;
-        match preflight.poll(shown(&view), now) {
+        match preflight.poll(shown(&view).seen(), now) {
             Step::Submit(request) => {
                 let outcome = match request.kind {
                     SlowKind::GetId => can::SlowOutcome::Identity(Uid([
@@ -77,11 +77,11 @@ fn passed() -> PreflightPassed {
 fn to_enable(t0: u64) -> (Enabling, DriveView) {
     let mut enabling = Enabling::new(passed(), t0);
     let echo = echoed(quiet(), EchoKind::Reporting(Reporting::Off), t0 + 10);
-    let _ = enabling.step(shown(&quiet()), 0, t0);
-    let _ = enabling.step(shown(&echo), 1, t0 + PERIOD);
+    let _ = enabling.step(shown(&quiet()).seen(), 0, t0);
+    let _ = enabling.step(shown(&echo).seen(), 1, t0 + PERIOD);
     let enable_at = t0 + 2 * PERIOD;
     assert_eq!(
-        enabling.step(shown(&echo), 2, enable_at),
+        enabling.step(shown(&echo).seen(), 2, enable_at),
         Next::Send(encode::enable(joint(&skeleton(), 0).id))
     );
     (
@@ -106,7 +106,7 @@ fn to_mit(t0: u64) -> (Enabling, DriveView, u64) {
     let enable_at = t0 + 2 * PERIOD;
     let run = with_status(echo, Mode::Run, enable_at + ECHO_NS + 1);
     let mit_at = enable_at + PERIOD;
-    assert_eq!(enabling.step(shown(&run), 3, mit_at), mit_write());
+    assert_eq!(enabling.step(shown(&run).seen(), 3, mit_at), mit_write());
     (enabling, run, mit_at)
 }
 
@@ -124,11 +124,21 @@ fn with_status(echo: DriveView, mode: Mode, read_ns: u64) -> DriveView {
     }
 }
 
-/// `view` with `fresh` as the drive's fresh status, whatever its latest is.
+/// `view` with `fresh` as the drive's fresh status, and a later status in the same mode as its latest.
 fn fresh_was(view: DriveView, fresh: Observed) -> DriveView {
     DriveView {
         fresh_ns: Some(fresh.read_ns),
         fresh_status: Some(fresh),
+        ..view
+    }
+}
+
+/// `view` with a fresh status read at `fresh_ns` that a later frame in another mode superseded: the bus keeps its time
+/// and drops it.
+fn superseded(view: DriveView, fresh_ns: u64) -> DriveView {
+    DriveView {
+        fresh_ns: Some(fresh_ns),
+        fresh_status: None,
         ..view
     }
 }
@@ -145,48 +155,48 @@ fn the_enable_sequence_runs_its_steps_in_order() {
     assert_eq!(enabling.drive(), drive);
     let view = quiet();
     assert_eq!(
-        enabling.step(shown(&view), 100, t0),
+        enabling.step(shown(&view).seen(), 100, t0),
         Next::Send(encode::active_reporting(id, Reporting::Off))
     );
     let stale = echoed(view, EchoKind::Reporting(Reporting::Off), t0 - 1);
     assert_eq!(
-        enabling.step(shown(&stale), 101, t0 + PERIOD),
+        enabling.step(shown(&stale).seen(), 101, t0 + PERIOD),
         Next::Wait,
         "an older echo"
     );
     let other = echoed(view, EchoKind::Enable, t0 + PERIOD);
     assert_eq!(
-        enabling.step(shown(&other), 101, t0 + PERIOD),
+        enabling.step(shown(&other).seen(), 101, t0 + PERIOD),
         Next::Wait,
         "another frame's echo"
     );
     let echo = echoed(view, EchoKind::Reporting(Reporting::Off), t0 + PERIOD + 10);
     assert_eq!(
-        enabling.step(shown(&echo), 102, t0 + 2 * PERIOD),
+        enabling.step(shown(&echo).seen(), 102, t0 + 2 * PERIOD),
         Next::Wait,
         "the echo's tick"
     );
     assert_eq!(
-        enabling.step(shown(&echo), 102, t0 + 2 * PERIOD),
+        enabling.step(shown(&echo).seen(), 102, t0 + 2 * PERIOD),
         Next::Wait,
         "that tick again"
     );
     let enable_at = t0 + 3 * PERIOD;
     assert_eq!(
-        enabling.step(shown(&echo), 103, enable_at),
+        enabling.step(shown(&echo).seen(), 103, enable_at),
         Next::Send(encode::enable(id)),
         "one tick after the echo"
     );
     let sent = echoed(view, EchoKind::Enable, enable_at + 1);
     let before = with_status(sent, Mode::Run, enable_at - 1);
     assert_eq!(
-        enabling.step(shown(&before), 104, enable_at + PERIOD),
+        enabling.step(shown(&before).seen(), 104, enable_at + PERIOD),
         Next::Wait,
         "a Run from before"
     );
     let reset = with_status(sent, Mode::Reset, enable_at + 1);
     assert_eq!(
-        enabling.step(shown(&reset), 105, enable_at + 2 * PERIOD),
+        enabling.step(shown(&reset).seen(), 105, enable_at + 2 * PERIOD),
         Next::Wait
     );
     let not_fresh = fresh_was(
@@ -194,40 +204,40 @@ fn the_enable_sequence_runs_its_steps_in_order() {
         status(Mode::Run, StatusFaults::default(), enable_at - 1),
     );
     assert_eq!(
-        enabling.step(shown(&not_fresh), 105, enable_at + 2 * PERIOD),
+        enabling.step(shown(&not_fresh).seen(), 105, enable_at + 2 * PERIOD),
         Next::Wait,
         "a Run that answers nothing since the Enable"
     );
     let run = with_status(sent, Mode::Run, enable_at + 2);
     let mit_at = enable_at + 3 * PERIOD;
     assert_eq!(
-        enabling.step(shown(&run), 106, mit_at),
+        enabling.step(shown(&run).seen(), 106, mit_at),
         Next::Send(encode::param_write(&Write::mit_mode(drive)))
     );
     assert_eq!(
-        enabling.step(shown(&run), 107, mit_at + PERIOD),
+        enabling.step(shown(&run).seen(), 107, mit_at + PERIOD),
         Next::Wait,
         "the MIT write not yet read back"
     );
     let early = echoed(run, MIT, mit_at - 1);
     assert_eq!(
-        enabling.step(shown(&early), 108, mit_at + 2 * PERIOD),
+        enabling.step(shown(&early).seen(), 108, mit_at + 2 * PERIOD),
         Next::Wait,
         "an MIT echo from before"
     );
     let mit = echoed(run, MIT, mit_at + 10);
     assert_eq!(
-        enabling.step(shown(&mit), 109, mit_at + 3 * PERIOD),
+        enabling.step(shown(&mit).seen(), 109, mit_at + 3 * PERIOD),
         Next::Wait,
         "the echo alone: the frame reached the controller, not the drive"
     );
     let answered = echoed(with_status(run, Mode::Run, mit_at + 20), MIT, mit_at + 10);
     assert_eq!(
-        enabling.step(shown(&answered), 110, mit_at + 4 * PERIOD),
+        enabling.step(shown(&answered).seen(), 110, mit_at + 4 * PERIOD),
         Next::Enabled
     );
     assert_eq!(
-        enabling.step(shown(&answered), 111, mit_at + 5 * PERIOD),
+        enabling.step(shown(&answered).seen(), 111, mit_at + 5 * PERIOD),
         Next::Enabled,
         "it stays enabled"
     );
@@ -244,25 +254,25 @@ fn the_enable_sequence_gives_up_on_no_run_or_a_fault() {
     let (mut slow, echo) = to_enable(t0);
     let reset = with_status(echo, Mode::Reset, enable_at + 1);
     assert_eq!(
-        slow.step(shown(&reset), 3, enable_at + RUN_WITHIN_NS),
+        slow.step(shown(&reset).seen(), 3, enable_at + RUN_WITHIN_NS),
         Next::Wait,
         "at 50 ms"
     );
     let (mut on_time, _) = to_enable(t0);
     let run = with_status(echo, Mode::Run, enable_at + RUN_WITHIN_NS);
     assert_eq!(
-        on_time.step(shown(&run), 3, enable_at + RUN_WITHIN_NS),
+        on_time.step(shown(&run).seen(), 3, enable_at + RUN_WITHIN_NS),
         mit_write()
     );
     let failed = Next::Stop(EnableFailure::NoRun {
         last: Some(Mode::Reset),
     });
     assert_eq!(
-        slow.step(shown(&reset), 4, enable_at + RUN_WITHIN_NS + 1),
+        slow.step(shown(&reset).seen(), 4, enable_at + RUN_WITHIN_NS + 1),
         failed
     );
     assert_eq!(
-        slow.step(shown(&run), 5, enable_at + RUN_WITHIN_NS + PERIOD),
+        slow.step(shown(&run).seen(), 5, enable_at + RUN_WITHIN_NS + PERIOD),
         failed,
         "it stays given up"
     );
@@ -274,7 +284,7 @@ fn the_enable_sequence_gives_up_on_no_run_or_a_fault() {
         last: Some(Mode::Run),
     };
     assert_eq!(
-        late.step(shown(&late_run), 3, enable_at + RUN_WITHIN_NS + 1),
+        late.step(shown(&late_run).seen(), 3, enable_at + RUN_WITHIN_NS + 1),
         Next::Stop(too_late)
     );
     assert_eq!(
@@ -284,24 +294,24 @@ fn the_enable_sequence_gives_up_on_no_run_or_a_fault() {
     );
 
     let mut deaf = Enabling::new(passed(), t0);
-    let _ = deaf.step(shown(&quiet()), 0, t0);
+    let _ = deaf.step(shown(&quiet()).seen(), 0, t0);
     assert_eq!(
-        deaf.step(shown(&quiet()), 1, t0 + RUN_WITHIN_NS),
+        deaf.step(shown(&quiet()).seen(), 1, t0 + RUN_WITHIN_NS),
         Next::Wait
     );
     assert_eq!(
-        deaf.step(shown(&quiet()), 2, t0 + RUN_WITHIN_NS + 1),
+        deaf.step(shown(&quiet()).seen(), 2, t0 + RUN_WITHIN_NS + 1),
         Next::Refused(EnableFailure::NoEcho)
     );
     let mut slow_echo = Enabling::new(passed(), t0);
-    let _ = slow_echo.step(shown(&quiet()), 0, t0);
+    let _ = slow_echo.step(shown(&quiet()).seen(), 0, t0);
     let late_echo = echoed(
         quiet(),
         EchoKind::Reporting(Reporting::Off),
         t0 + RUN_WITHIN_NS + 1,
     );
     assert_eq!(
-        slow_echo.step(shown(&late_echo), 1, t0 + RUN_WITHIN_NS + 1),
+        slow_echo.step(shown(&late_echo).seen(), 1, t0 + RUN_WITHIN_NS + 1),
         Next::Refused(EnableFailure::NoEcho),
         "an echo read after its window"
     );
@@ -311,7 +321,7 @@ fn the_enable_sequence_gives_up_on_no_run_or_a_fault() {
     let (mut faulted, _) = to_enable(t0);
     let fault = seen(status(Mode::Reset, over, enable_at + 1));
     assert_eq!(
-        faulted.step(shown(&fault), 3, enable_at + PERIOD),
+        faulted.step(shown(&fault).seen(), 3, enable_at + PERIOD),
         Next::Stop(EnableFailure::Faults { bits: over })
     );
     let mut latched = Enabling::new(passed(), t0);
@@ -320,7 +330,7 @@ fn the_enable_sequence_gives_up_on_no_run_or_a_fault() {
         ..quiet()
     };
     assert_eq!(
-        latched.step(shown(&fault_seen), 0, t0),
+        latched.step(shown(&fault_seen).seen(), 0, t0),
         Next::Refused(EnableFailure::Faults {
             bits: StatusFaults::default()
         })
@@ -339,18 +349,18 @@ fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
     let t0 = 100 * PERIOD;
     let (mut deaf, run, mit_at) = to_mit(t0);
     assert_eq!(
-        deaf.step(shown(&run), 4, mit_at + RUN_WITHIN_NS),
+        deaf.step(shown(&run).seen(), 4, mit_at + RUN_WITHIN_NS),
         Next::Wait
     );
     assert_eq!(
-        deaf.step(shown(&run), 5, mit_at + RUN_WITHIN_NS + 1),
+        deaf.step(shown(&run).seen(), 5, mit_at + RUN_WITHIN_NS + 1),
         Next::Stop(EnableFailure::NoModeEcho)
     );
 
     let (mut late, run, mit_at) = to_mit(t0);
     let late_echo = echoed(run, MIT, mit_at + RUN_WITHIN_NS + 1);
     assert_eq!(
-        late.step(shown(&late_echo), 4, mit_at + RUN_WITHIN_NS + 1),
+        late.step(shown(&late_echo).seen(), 4, mit_at + RUN_WITHIN_NS + 1),
         Next::Stop(EnableFailure::NoModeEcho),
         "an echo read after its window"
     );
@@ -361,7 +371,7 @@ fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
         mit_at + RUN_WITHIN_NS,
     );
     assert_eq!(
-        on_time.step(shown(&echo), 4, mit_at + RUN_WITHIN_NS),
+        on_time.step(shown(&echo).seen(), 4, mit_at + RUN_WITHIN_NS),
         Next::Enabled,
         "at 50 ms"
     );
@@ -371,19 +381,19 @@ fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
     let (mut dropped, run, mit_at) = to_mit(t0);
     let reset = echoed(with_status(run, Mode::Reset, mit_at + 20), MIT, mit_at + 10);
     assert_eq!(
-        dropped.step(shown(&reset), 4, mit_at + PERIOD),
+        dropped.step(shown(&reset).seen(), 4, mit_at + PERIOD),
         Next::Stop(EnableFailure::LeftRun {
             last: Some(Mode::Reset)
         })
     );
     // A Reset seen after the write that isn't the fresh status: the drive left Run, and the sequence ends at once.
     let (mut seen_left, run, mit_at) = to_mit(t0);
-    let left_run = DriveView {
-        fresh_status: None,
-        ..with_status(run, Mode::Reset, mit_at + 20)
-    };
+    let left_run = superseded(
+        with_status(run, Mode::Reset, mit_at + 20),
+        t0 + 2 * PERIOD + ECHO_NS + 1,
+    );
     assert_eq!(
-        seen_left.step(shown(&left_run), 4, mit_at + PERIOD),
+        seen_left.step(shown(&left_run).seen(), 4, mit_at + PERIOD),
         Next::Stop(EnableFailure::LeftRun {
             last: Some(Mode::Reset)
         })
@@ -391,11 +401,11 @@ fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
     let (mut silent, run, mit_at) = to_mit(t0);
     let echo_only = echoed(run, MIT, mit_at + 10);
     assert_eq!(
-        silent.step(shown(&echo_only), 4, mit_at + RUN_WITHIN_NS),
+        silent.step(shown(&echo_only).seen(), 4, mit_at + RUN_WITHIN_NS),
         Next::Wait
     );
     assert_eq!(
-        silent.step(shown(&echo_only), 5, mit_at + RUN_WITHIN_NS + 1),
+        silent.step(shown(&echo_only).seen(), 5, mit_at + RUN_WITHIN_NS + 1),
         Next::Stop(EnableFailure::LeftRun { last: None })
     );
     assert_eq!(
@@ -413,31 +423,29 @@ fn a_status_answers_one_frame_until_a_later_one_contradicts_it() {
     let t0 = 100 * PERIOD;
     let enable_at = t0 + 2 * PERIOD;
 
-    // A fresh Reset, then a Run that answers nothing: no Run answered the Enable.
+    // A fresh Reset, then a Run that answers nothing: the bus drops the fresh Reset, and no Run answered the Enable.
     let (mut enabling, echo) = to_enable(t0);
-    let reset_then_run = fresh_was(
-        with_status(echo, Mode::Run, enable_at + 2),
-        status(Mode::Reset, StatusFaults::default(), enable_at + 1),
-    );
+    let reset_then_run = superseded(with_status(echo, Mode::Run, enable_at + 2), enable_at + 1);
     assert_eq!(
-        enabling.step(shown(&reset_then_run), 3, enable_at + PERIOD),
+        enabling.step(shown(&reset_then_run).seen(), 3, enable_at + PERIOD),
         Next::Wait
     );
     assert_eq!(
-        enabling.step(shown(&reset_then_run), 4, enable_at + RUN_WITHIN_NS + 1),
+        enabling.step(
+            shown(&reset_then_run).seen(),
+            4,
+            enable_at + RUN_WITHIN_NS + 1
+        ),
         Next::Stop(EnableFailure::NoRun {
             last: Some(Mode::Run)
         })
     );
 
-    // A fresh Run, then a Reset that answers nothing: the Run is no longer the drive's word.
+    // A fresh Run, then a Reset that answers nothing: the bus drops the fresh Run, no longer the drive's word.
     let (mut enabling, echo) = to_enable(t0);
-    let run_then_reset = fresh_was(
-        with_status(echo, Mode::Reset, enable_at + 2),
-        status(Mode::Run, StatusFaults::default(), enable_at + 1),
-    );
+    let run_then_reset = superseded(with_status(echo, Mode::Reset, enable_at + 2), enable_at + 1);
     assert_eq!(
-        enabling.step(shown(&run_then_reset), 3, enable_at + PERIOD),
+        enabling.step(shown(&run_then_reset).seen(), 3, enable_at + PERIOD),
         Next::Wait
     );
 
@@ -448,7 +456,7 @@ fn a_status_answers_one_frame_until_a_later_one_contradicts_it() {
         status(Mode::Run, StatusFaults::default(), enable_at + 1),
     );
     assert_eq!(
-        enabling.step(shown(&run_then_run), 3, enable_at + PERIOD),
+        enabling.step(shown(&run_then_run).seen(), 3, enable_at + PERIOD),
         mit_write()
     );
 
@@ -463,7 +471,7 @@ fn a_status_answers_one_frame_until_a_later_one_contradicts_it() {
         mit_at + 5,
     );
     assert_eq!(
-        enabling.step(shown(&answered), 5, mit_at + PERIOD),
+        enabling.step(shown(&answered).seen(), 5, mit_at + PERIOD),
         Next::Enabled
     );
 
@@ -471,10 +479,10 @@ fn a_status_answers_one_frame_until_a_later_one_contradicts_it() {
     let (mut enabling, echo) = to_enable(t0);
     let mit_at = enable_at + PERIOD;
     let run = with_status(echo, Mode::Run, mit_at);
-    assert_eq!(enabling.step(shown(&run), 3, mit_at), mit_write());
+    assert_eq!(enabling.step(shown(&run).seen(), 3, mit_at), mit_write());
     let only_echo = echoed(run, MIT, mit_at + 10);
     assert_eq!(
-        enabling.step(shown(&only_echo), 4, mit_at + PERIOD),
+        enabling.step(shown(&only_echo).seen(), 4, mit_at + PERIOD),
         Next::Wait,
         "the Enable's answer doesn't answer the write"
     );
@@ -482,7 +490,7 @@ fn a_status_answers_one_frame_until_a_later_one_contradicts_it() {
         last: Some(Mode::Run),
     };
     assert_eq!(
-        enabling.step(shown(&only_echo), 5, mit_at + RUN_WITHIN_NS + 1),
+        enabling.step(shown(&only_echo).seen(), 5, mit_at + RUN_WITHIN_NS + 1),
         Next::Stop(left)
     );
     assert_eq!(
@@ -511,7 +519,7 @@ fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
         drive: ours,
     };
     assert_eq!(
-        enabling.step(shown(&wrong), 3, t0 + 3 * PERIOD),
+        enabling.step(shown(&wrong).seen(), 3, t0 + 3 * PERIOD),
         Next::Stop(failure)
     );
     assert_eq!(failure.rule(), RuleId::HostPreflight);
@@ -530,7 +538,7 @@ fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
         drive: ours,
     };
     assert_eq!(
-        enabling.step(elsewhere, 3, t0 + 3 * PERIOD),
+        enabling.step(elsewhere.seen(), 3, t0 + 3 * PERIOD),
         Next::Stop(failure)
     );
     assert_eq!(failure.rule(), RuleId::HostPreflight);
@@ -557,7 +565,7 @@ fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
         enable_planned: true,
     };
     assert_eq!(
-        enabling.step(on_stopping, 4, mit_at + PERIOD),
+        enabling.step(on_stopping.seen(), 4, mit_at + PERIOD),
         Next::Stop(failure)
     );
     assert_eq!(failure.rule(), RuleId::HostPreflight);
@@ -579,7 +587,10 @@ fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
         stop: None,
         enable_planned: false,
     };
-    assert_eq!(enabling.step(on_cleared, 0, t0), Next::Refused(failure));
+    assert_eq!(
+        enabling.step(on_cleared.seen(), 0, t0),
+        Next::Refused(failure)
+    );
     assert_eq!(
         failure.message("arm_joint_one"),
         "enable failed (host.preflight): arm_joint_one found its limb stopped or cleared since its preflight, expected \
@@ -602,18 +613,19 @@ fn the_enable_sequence_refuses_a_drive_out_of_reset_before_its_enable() {
             mode: Mode::Calibration,
             read_ns: t0 + PERIOD + 1,
         }),
+        fresh_status: None,
         ..with_status(echo, Mode::Reset, t0 + PERIOD)
     };
     for (view, mode) in [(run, Mode::Run), (version, Mode::Calibration)] {
         // Seen as the echo comes, or in the tick the Enable would have been planned: either way, no Enable.
         for at_tick in [1, 2] {
             let mut enabling = Enabling::new(passed(), t0);
-            let _ = enabling.step(shown(&quiet()), 0, t0);
+            let _ = enabling.step(shown(&quiet()).seen(), 0, t0);
             let first = if at_tick == 1 { &view } else { &echo };
-            let _ = enabling.step(shown(first), 1, t0 + PERIOD);
+            let _ = enabling.step(shown(first).seen(), 1, t0 + PERIOD);
             let failure = EnableFailure::NotReset { mode };
             assert_eq!(
-                enabling.step(shown(&view), 2, t0 + 2 * PERIOD),
+                enabling.step(shown(&view).seen(), 2, t0 + 2 * PERIOD),
                 Next::Refused(failure),
                 "{mode:?} seen at tick {at_tick}"
             );
@@ -630,10 +642,10 @@ fn the_enable_sequence_refuses_a_drive_out_of_reset_before_its_enable() {
     // A Run read before the proof was made is older than what preflight checked.
     let mut enabling = Enabling::new(passed(), t0);
     let before_proof = with_status(echo, Mode::Run, 1);
-    let _ = enabling.step(shown(&quiet()), 0, t0);
-    let _ = enabling.step(shown(&before_proof), 1, t0 + PERIOD);
+    let _ = enabling.step(shown(&quiet()).seen(), 0, t0);
+    let _ = enabling.step(shown(&before_proof).seen(), 1, t0 + PERIOD);
     assert_eq!(
-        enabling.step(shown(&before_proof), 2, t0 + 2 * PERIOD),
+        enabling.step(shown(&before_proof).seen(), 2, t0 + 2 * PERIOD),
         Next::Send(encode::enable(joint(&skeleton(), 0).id))
     );
 }
@@ -661,10 +673,13 @@ fn the_enable_sequence_gives_up_on_a_stall_before_its_enable() {
         ),
     ] {
         let mut enabling = Enabling::new(passed(), t0);
-        let _ = enabling.step(shown(&quiet()), 0, t0);
-        assert_eq!(enabling.step(shown(&echo), 1, t0 + PERIOD), Next::Wait);
+        let _ = enabling.step(shown(&quiet()).seen(), 0, t0);
         assert_eq!(
-            enabling.step(shown(&echo), tick, at),
+            enabling.step(shown(&echo).seen(), 1, t0 + PERIOD),
+            Next::Wait
+        );
+        assert_eq!(
+            enabling.step(shown(&echo).seen(), tick, at),
             expected,
             "tick {tick} at {at}"
         );
@@ -699,7 +714,7 @@ fn an_enable_not_read_back_is_told_from_a_drive_that_never_answered() {
         let (mut enabling, _) = to_enable(t0);
         let run = with_status(late_echo, Mode::Run, read_ns);
         assert_eq!(
-            enabling.step(shown(&run), 3, read_ns),
+            enabling.step(shown(&run).seen(), 3, read_ns),
             expected,
             "Run read {} ns after the Enable, its echo 30 ms after it",
             read_ns - enable_at
@@ -709,7 +724,7 @@ fn an_enable_not_read_back_is_told_from_a_drive_that_never_answered() {
     let (mut unseen_run, _) = to_enable(t0);
     assert_eq!(
         unseen_run.step(
-            shown(&with_status(unseen, Mode::Run, enable_at + 1)),
+            shown(&with_status(unseen, Mode::Run, enable_at + 1)).seen(),
             3,
             enable_at + PERIOD
         ),
@@ -719,28 +734,28 @@ fn an_enable_not_read_back_is_told_from_a_drive_that_never_answered() {
     // Silent after a late echo: given up 50 ms after the Enable was planned, not after the echo.
     let (mut silent, _) = to_enable(t0);
     assert_eq!(
-        silent.step(shown(&late_echo), 3, enable_at + RUN_WITHIN_NS),
+        silent.step(shown(&late_echo).seen(), 3, enable_at + RUN_WITHIN_NS),
         Next::Wait
     );
     assert_eq!(
-        silent.step(shown(&late_echo), 4, enable_at + RUN_WITHIN_NS + 1),
+        silent.step(shown(&late_echo).seen(), 4, enable_at + RUN_WITHIN_NS + 1),
         Next::Stop(EnableFailure::NoRun { last: None })
     );
 
     let (mut dropped, _) = to_enable(t0);
     assert_eq!(
-        dropped.step(shown(&unseen), 3, enable_at + RUN_WITHIN_NS),
+        dropped.step(shown(&unseen).seen(), 3, enable_at + RUN_WITHIN_NS),
         Next::Wait
     );
     assert_eq!(
-        dropped.step(shown(&unseen), 4, enable_at + RUN_WITHIN_NS + 1),
+        dropped.step(shown(&unseen).seen(), 4, enable_at + RUN_WITHIN_NS + 1),
         Next::Stop(EnableFailure::NoEnableEcho)
     );
     // An echo read after its window is no better.
     let (mut late, _) = to_enable(t0);
     let too_late = echoed(quiet(), EchoKind::Enable, enable_at + RUN_WITHIN_NS + 1);
     assert_eq!(
-        late.step(shown(&too_late), 3, enable_at + RUN_WITHIN_NS + 1),
+        late.step(shown(&too_late).seen(), 3, enable_at + RUN_WITHIN_NS + 1),
         Next::Stop(EnableFailure::NoEnableEcho)
     );
     assert_eq!(EnableFailure::NoEnableEcho.rule(), RuleId::HostBus);

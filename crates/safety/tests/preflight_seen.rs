@@ -8,7 +8,7 @@ use can::{
     DriveView, LimbState, LimbView, ModeSeen, SlowKind, SlowOutcome, SlowRequest, StopReason,
 };
 use common::preflight::{Drive, SLOT, UID, answer, run};
-use common::{BUS0, IDLE, joint, on, quiet, seen, shown, skeleton, status};
+use common::{BUS0, IDLE, heard, joint, on, quiet, seen, shown, skeleton, status};
 use robstride::{Mode, StatusFault, StatusFaults};
 use safety::{DriveAddress, Preflight, Refusal, RuleId, Step, Target};
 
@@ -79,7 +79,7 @@ fn preflight_refuses_a_fault_or_a_drive_not_in_reset() {
     );
     let faulted = seen(status(Mode::Reset, over, 2_000));
     assert_eq!(
-        preflight.poll(shown(&faulted), 3_000),
+        preflight.poll(shown(&faulted).seen(), 3_000),
         Step::Refused(Refusal::Faults { bits: over })
     );
     assert_eq!(
@@ -117,7 +117,7 @@ fn a_version_reply_out_of_reset_refuses() {
         (
             DriveView {
                 mode: header(Mode::Calibration, 2_500),
-                ..seen(reset)
+                ..heard(reset)
             },
             Step::Refused(Refusal::NotReset {
                 mode: Mode::Calibration,
@@ -126,7 +126,7 @@ fn a_version_reply_out_of_reset_refuses() {
         (
             DriveView {
                 mode: header(Mode::Reset, 2_500),
-                ..seen(calibration)
+                ..heard(calibration)
             },
             Step::Refused(Refusal::NotReset {
                 mode: Mode::Calibration,
@@ -135,13 +135,17 @@ fn a_version_reply_out_of_reset_refuses() {
         (
             DriveView {
                 mode: header(Mode::Run, 500),
-                ..seen(reset)
+                ..quiet()
             },
             Step::Submit(get_id),
         ),
     ] {
         let mut preflight = Preflight::start(target, SLOT, 1, 1_000);
-        assert_eq!(preflight.poll(shown(&view), 3_000), expected, "{view:?}");
+        assert_eq!(
+            preflight.poll(shown(&view).seen(), 3_000),
+            expected,
+            "{view:?}"
+        );
     }
 }
 
@@ -194,10 +198,13 @@ fn preflight_refuses_another_drives_view_or_a_limb_not_idle() {
             slot: SLOT,
             kind: SlowKind::GetId,
         };
-        assert_eq!(preflight.poll(shown(&view), 2_000), Step::Submit(get_id));
+        assert_eq!(
+            preflight.poll(shown(&view).seen(), 2_000),
+            Step::Submit(get_id)
+        );
         preflight.answered(answer(get_id, SlowOutcome::Identity(UID)), 3_000);
         assert_eq!(
-            preflight.poll(seen, 3_000),
+            preflight.poll(seen.seen(), 3_000),
             Step::Refused(refusal),
             "{refusal:?}"
         );
