@@ -10,7 +10,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use can::{LimbState, Snapshot};
+use can::{LimbState, RearmRefused, Snapshot};
 use common::HZ;
 use robstride::Uid;
 use robstride::drive::{Command, command};
@@ -84,6 +84,16 @@ fn until(
     false
 }
 
+/// Sets both flags when dropped, so a failed assert still ends the sims and watchers and the scope can join them.
+struct Ends<'a>(&'a AtomicBool, &'a AtomicBool);
+
+impl Drop for Ends<'_> {
+    fn drop(&mut self) {
+        self.0.store(true, Ordering::Release);
+        self.1.store(true, Ordering::Release);
+    }
+}
+
 /// The replies that have come in, until `n` have or `end` passes.
 fn replies(runtime: &mut Runtime, n: usize, end: Instant) -> Vec<Reply> {
     let mut got = Vec::new();
@@ -114,6 +124,7 @@ fn the_runtime_runs_the_skeleton_stops_and_clears_and_never_enables_on_vcan() {
     let stop_sim = AtomicBool::new(false);
     let stop_watch = AtomicBool::new(false);
     let seen = std::thread::scope(|scope| {
+        let _ends = Ends(&stop_sim, &stop_watch);
         let watchers: Vec<_> = names
             .iter()
             .map(|name| scope.spawn(|| watch(name, &stop_watch)))
@@ -153,48 +164,62 @@ fn the_runtime_runs_the_skeleton_stops_and_clears_and_never_enables_on_vcan() {
             "{newest:?}"
         );
 
-        // A clear of the left arm re-arms it on its bus alone; one of the waist, wired to no bus, is refused.
-        let left = plans
-            .iter()
-            .position(|p| p.limb_index(LimbName::LeftArm).is_some())
-            .unwrap();
+        // A clear of the waist, wired to no bus, is refused.
         assert!(
             runtime
                 .requests
                 .push(Request::Clear {
                     tag: 1,
-                    limb: LimbName::LeftArm
-                })
-                .is_ok()
-        );
-        assert!(
-            runtime
-                .requests
-                .push(Request::Clear {
-                    tag: 2,
                     limb: LimbName::Waist
                 })
                 .is_ok()
         );
-        let mut got = replies(&mut runtime, 2, end);
-        got.sort_by_key(|r| r.tag);
         assert_eq!(
-            got,
-            [
-                Reply {
-                    tag: 1,
-                    limb: LimbName::LeftArm,
-                    bus: Some(left),
-                    outcome: Ok(()),
-                },
-                Reply {
-                    tag: 2,
-                    limb: LimbName::Waist,
-                    bus: None,
-                    outcome: Err(ClearRefused::Offline),
-                },
-            ]
+            replies(&mut runtime, 1, end),
+            [Reply {
+                tag: 1,
+                limb: LimbName::Waist,
+                bus: None,
+                outcome: Err(ClearRefused::Offline),
+            }]
         );
+        // A clear of the left arm re-arms it on its bus alone. A drive that never confirmed the stop (one whose
+        // status waits for its MIT scales, say) must first be quiet past its timeout, so the operator asks again
+        // until the bus takes it.
+        let left = plans
+            .iter()
+            .position(|p| p.limb_index(LimbName::LeftArm).is_some())
+            .unwrap();
+        let mut tag = 1;
+        loop {
+            tag += 1;
+            assert!(
+                runtime
+                    .requests
+                    .push(Request::Clear {
+                        tag,
+                        limb: LimbName::LeftArm
+                    })
+                    .is_ok()
+            );
+            let got = replies(&mut runtime, 1, end);
+            assert_eq!(got.len(), 1, "one reply per clear: {got:?}");
+            let reply = got[0];
+            assert_eq!(
+                (reply.tag, reply.limb, reply.bus),
+                (tag, LimbName::LeftArm, Some(left))
+            );
+            if reply.outcome.is_ok() {
+                break;
+            }
+            assert!(
+                matches!(
+                    reply.outcome,
+                    Err(ClearRefused::Bus(RearmRefused::DriveNotQuiet { .. }))
+                ),
+                "{reply:?}"
+            );
+        }
         assert!(
             until(&mut runtime, &mut newest, end, |bus, s| {
                 s.limbs().all(|(i, l)| {
