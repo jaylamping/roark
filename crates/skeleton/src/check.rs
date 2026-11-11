@@ -195,16 +195,8 @@ pub(crate) fn cross_joint(
             );
         }
         // Every joint with a bus can be named in one enable (tenet 1), so each counts against the budget at the
-        // current it is enabled at (`Joint::caps`, PLAN item 1). A joint that didn't parse is reported already; its
-        // written cap, if any, stands in.
-        current_sum_a += site.joint.as_ref().map_or_else(
-            || {
-                site.current_cap_a
-                    .flatten()
-                    .map_or(0.0, robstride::Amps::get)
-            },
-            |j| j.caps().current.get(),
-        );
+        // current it is enabled at (`Joint::caps`, PLAN item 1), a joint with a field that didn't parse included.
+        current_sum_a += site.current_a;
     }
 
     if let Some((budget_a, line)) = budget

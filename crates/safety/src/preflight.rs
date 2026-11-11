@@ -5,7 +5,7 @@
 //!
 //! A write is answered by a plain status that names no register (`robstride` `param_write`), so a write proves nothing
 //! until its read-back. Every unknown fails closed: a request not answered in time, or an answer of the wrong kind. A
-//! value the skeleton leaves null is not one: it lowers the caps written to the model's commissioning caps (PLAN item 1).
+//! value the skeleton leaves null is not one: it lowers the caps written ([`skeleton::Joint::caps`], PLAN item 1).
 //!
 //! Preflight is stepped with what its drive's bus last showed ([`Seen`]): a view of any other drive, by ID or by bus,
 //! or from another slot than its requests go to, refuses, and so does a limb that isn't idle, or that stopped or was
@@ -170,7 +170,7 @@ impl Target {
     /// settled, [`Refusal::CapOutOfRange`] for a cap its model can't take.
     ///
     /// Null is not a refusal (PLAN item 1): the caps written are [`skeleton::Joint::caps`], a commissioned joint's own
-    /// or an uncommissioned one's commissioning caps.
+    /// or, for an uncommissioned one, each the lower of its model's commissioning cap and its own.
     pub fn new(joint: &Joint, power: &Power) -> Result<Self, Refusal> {
         // The skeleton holds every bus name to the kernel's limit, so a name that doesn't fit an address is one no
         // parsed skeleton has: no bus this host can open, so the joint is offline.

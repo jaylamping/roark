@@ -42,16 +42,15 @@ limbs:
 ";
 
 /// Guards: safety - `drive.caps`: a commissioned joint is enabled at its own caps, and an uncommissioned one (any cap,
-/// `direction`, `zero_rad` or `hard_rad` null) at its model's commissioning caps for all three, or its own where lower;
-/// each model's commissioning caps are Open with Joey 11's (RS00 and RS02 0.7 N·m, RS03 3 N·m, RS04 6 N·m; 5 % of the
-/// current range; 0.5 rad/s) (PLAN item 1).
+/// `direction`, `zero_rad` or `hard_rad` null) at its model's commissioning caps for all three, or its own where lower,
+/// cap by cap; the rows pin each model's commissioning caps to [PLAN, Open with
+/// Joey](https://github.com/jaylamping/roark/blob/main/PLAN.md#open-with-joey) 11 (PLAN item 1).
 #[test]
 fn a_joint_is_enabled_at_its_own_caps_only_once_commissioned() {
     let set = skeleton::parse(FIXTURE).unwrap().limbs[0].joints[0].clone();
     let nm = |v| NewtonMeters::new(v).unwrap();
     let amps = |v| Amps::new(v).unwrap();
     let rad_s = |v| RadPerSec::new(v).unwrap();
-    assert!(set.commissioned());
     assert_eq!(
         set.caps(),
         Caps {
@@ -60,13 +59,27 @@ fn a_joint_is_enabled_at_its_own_caps_only_once_commissioned() {
             speed: rad_s(1.0)
         }
     );
+    let bare = Joint {
+        direction: None,
+        zero_rad: None,
+        hard_rad: None,
+        torque_cap_nm: None,
+        current_cap_a: None,
+        speed_cap_rad_s: None,
+        ..set.clone()
+    };
     for (model, torque, current) in [
         (Model::Rs00, 0.7, 0.8),
         (Model::Rs02, 0.7, 0.8),
         (Model::Rs03, 3.0, 2.15),
         (Model::Rs04, 6.0, 4.5),
     ] {
-        let caps = Caps::commissioning(model);
+        let caps = Joint {
+            actuator: model,
+            ..bare.clone()
+        }
+        .caps();
+        // The ranges times 5 % aren't exact in binary, so the pinned decimals are compared to within rounding.
         assert!(
             (caps.torque.get() - torque).abs() < 1e-9
                 && (caps.current.get() - current).abs() < 1e-9
@@ -74,7 +87,7 @@ fn a_joint_is_enabled_at_its_own_caps_only_once_commissioned() {
             "{model:?}: {caps:?}"
         );
     }
-    let floor = Caps::commissioning(Model::Rs03);
+    let commissioning = bare.caps();
     let edits: [fn(&mut Joint); 6] = [
         |j| j.direction = None,
         |j| j.zero_rad = None,
@@ -86,14 +99,28 @@ fn a_joint_is_enabled_at_its_own_caps_only_once_commissioned() {
     for (i, edit) in edits.iter().enumerate() {
         let mut joint = set.clone();
         edit(&mut joint);
-        assert!(!joint.commissioned(), "edit {i}");
         assert_eq!(
             joint.caps(),
-            floor,
+            commissioning,
             "edit {i}: all three drop, not only a null one"
         );
     }
     // Its own where lower, cap by cap: an uncommissioned joint never runs above what the skeleton agreed.
+    let mixed = Joint {
+        direction: None,
+        torque_cap_nm: Some(nm(1.0)),
+        current_cap_a: Some(amps(12.0)),
+        speed_cap_rad_s: None,
+        ..set.clone()
+    };
+    assert_eq!(
+        mixed.caps(),
+        Caps {
+            torque: nm(1.0),
+            current: commissioning.current,
+            speed: commissioning.speed
+        }
+    );
     let low = Joint {
         direction: None,
         torque_cap_nm: Some(nm(1.0)),

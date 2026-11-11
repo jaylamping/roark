@@ -91,7 +91,7 @@ fn the_caps_are_written_from_the_skeleton_and_read_back_as_written() {
     assert_eq!(verdict, Ok(()));
     let two = joint(&skeleton(), 1);
     let drive = robstride::Drive::new(two.id, two.actuator);
-    let floor = skeleton::Caps::commissioning(two.actuator);
+    let floor = two.caps();
     assert_eq!(
         written.get(1..),
         Some(

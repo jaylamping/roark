@@ -1,6 +1,7 @@
 //! The caps a joint is enabled at (PLAN item 1, Null is not a number; Commissioning caps): its own once it is
-//! commissioned, otherwise its model's commissioning caps, low enough that a wrong sign, a wrong zero or a bad target
-//! can't hurt the drive or a printed part. One rule, read by the loader's current budget and by preflight.
+//! commissioned, otherwise each the lower of its model's commissioning cap and its own, if set. The commissioning caps
+//! are low enough that a wrong sign, a wrong zero or a bad target can't hurt the drive or a printed part. One rule, read
+//! by the loader's current budget and by preflight.
 
 use robstride::{Amps, Model, NewtonMeters, RadPerSec};
 
@@ -26,57 +27,50 @@ pub struct Caps {
 }
 
 impl Caps {
-    /// `model`'s commissioning caps. Each is a finite range times a finite share, so finite; were one not, it would be
-    /// zero, which the budget counts as the drive would then run: at nothing.
-    #[must_use]
-    pub fn commissioning(model: Model) -> Self {
-        let ranges = model.ranges();
-        Self {
-            torque: NewtonMeters::new(ranges.torque_max.get() * SHARE)
-                .unwrap_or(NewtonMeters::ZERO),
-            current: Amps::new(ranges.current_max.get() * SHARE).unwrap_or(Amps::ZERO),
-            speed: RadPerSec::new(SPEED_RAD_S.min(ranges.speed_max.get()))
-                .unwrap_or(RadPerSec::ZERO),
+    /// The caps a joint of `model` with these caps of its own is enabled at: its own when all three are set and
+    /// `facts_set` (its `direction`, `zero_rad` and `hard_rad` are), otherwise each the lower of the model's
+    /// commissioning cap and its own, if set.
+    pub(crate) fn enabled_at(
+        model: Model,
+        own: (Option<NewtonMeters>, Option<Amps>, Option<RadPerSec>),
+        facts_set: bool,
+    ) -> Self {
+        match (facts_set, own) {
+            (true, (Some(torque), Some(current), Some(speed))) => Self {
+                torque,
+                current,
+                speed,
+            },
+            (_, (torque, current, speed)) => {
+                let ranges = model.ranges();
+                Self {
+                    torque: lower(torque, ranges.torque_max.times(SHARE)),
+                    current: lower(current, ranges.current_max.times(SHARE)),
+                    speed: lower(speed, ranges.speed_max.at_most(SPEED_RAD_S)),
+                }
+            }
         }
     }
 }
 
 impl Joint {
-    /// Whether the joint is commissioned: every cap, `direction`, `zero_rad` and `hard_rad` set.
-    #[must_use]
-    pub const fn commissioned(&self) -> bool {
-        self.direction.is_some()
-            && self.zero_rad.is_some()
-            && self.hard_rad.is_some()
-            && self.torque_cap_nm.is_some()
-            && self.current_cap_a.is_some()
-            && self.speed_cap_rad_s.is_some()
-    }
-
-    /// The caps the joint is enabled at: its own once commissioned; otherwise each the lower of its model's
-    /// commissioning cap and its own, if set (PLAN item 1).
+    /// The caps the joint is enabled at (PLAN item 1): its own once commissioned (every cap, `direction`, `zero_rad` and
+    /// `hard_rad` set; the UID is not part of it), otherwise each the lower of its model's commissioning cap and its
+    /// own, if set.
     #[must_use]
     pub fn caps(&self) -> Caps {
-        let floor = Caps::commissioning(self.actuator);
-        match (self.torque_cap_nm, self.current_cap_a, self.speed_cap_rad_s) {
-            (Some(torque), Some(current), Some(speed)) if self.commissioned() => Caps {
-                torque,
-                current,
-                speed,
-            },
-            (torque, current, speed) => Caps {
-                torque: lower(torque, floor.torque),
-                current: lower(current, floor.current),
-                speed: lower(speed, floor.speed),
-            },
-        }
+        Caps::enabled_at(
+            self.actuator,
+            (self.torque_cap_nm, self.current_cap_a, self.speed_cap_rad_s),
+            self.direction.is_some() && self.zero_rad.is_some() && self.hard_rad.is_some(),
+        )
     }
 }
 
-/// `own`, if set and below `floor`; else `floor`.
-fn lower<T: PartialOrd + Copy>(own: Option<T>, floor: T) -> T {
+/// `own`, if set and below `ceiling`; else `ceiling`.
+fn lower<T: PartialOrd + Copy>(own: Option<T>, ceiling: T) -> T {
     match own {
-        Some(own) if own < floor => own,
-        Some(_) | None => floor,
+        Some(own) if own < ceiling => own,
+        Some(_) | None => ceiling,
     }
 }

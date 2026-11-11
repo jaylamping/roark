@@ -3,6 +3,7 @@
 
 use robstride::{Amps, DeviceId, Model, NewtonMeters, RadPerSec, Radians};
 
+use crate::commissioning::Caps;
 use crate::error::ProblemKind;
 use crate::read::{Fields, Reader, integer, number, plain, positive, range, text};
 use crate::types::{BusName, Direction, Joint, JointName, Uid, Window};
@@ -20,7 +21,9 @@ pub(crate) struct Site {
     pub(crate) name: Option<JointName>,
     pub(crate) bus: Option<Option<BusName>>,
     pub(crate) id: Option<DeviceId>,
-    pub(crate) current_cap_a: Option<Option<Amps>>,
+    /// The current it is enabled at, for the budget: `Joint::caps`'s rule over what parsed, a field that didn't
+    /// counting as null. Without a model there is no rule, so its written cap, or 0 A if null or unparsed.
+    pub(crate) current_a: f64,
     pub(crate) path: String,
     pub(crate) line: usize,
     pub(crate) bus_line: usize,
@@ -103,12 +106,27 @@ pub(crate) fn read_joint(
             speed_cap_rad_s: speed_cap_rad_s?,
         })
     })();
+    let current_a = actuator.map_or_else(
+        || current_cap_a.flatten().map_or(0.0, Amps::get),
+        |model| {
+            let facts_set = matches!(
+                (direction, zero_rad, hard_rad),
+                (Some(Some(_)), Some(Some(_)), Some(Some(_)))
+            );
+            let own = (
+                torque_cap_nm.flatten(),
+                current_cap_a.flatten(),
+                speed_cap_rad_s.flatten(),
+            );
+            Caps::enabled_at(model, own, facts_set).current.get()
+        },
+    );
     let site = Site {
         joint,
         name,
         bus,
         id,
-        current_cap_a,
+        current_a,
         path: f.path.clone(),
         line: f.line,
         bus_line: f.line_of("bus"),

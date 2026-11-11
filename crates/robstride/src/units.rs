@@ -9,9 +9,6 @@ macro_rules! si_unit {
         pub struct $name(pub(crate) f64);
 
         impl $name {
-            /// Zero.
-            pub const ZERO: Self = Self(0.0);
-
             /// The value, or `None` if it isn't finite.
             #[must_use]
             pub fn new(value: f64) -> Option<Self> {
@@ -22,6 +19,20 @@ macro_rules! si_unit {
             #[must_use]
             pub const fn get(self) -> f64 {
                 self.0
+            }
+
+            /// This value times `fraction`, which is held to 0..=1 (not a number counts as 0), so the result is as
+            /// finite as this value.
+            #[must_use]
+            pub fn times(self, fraction: f64) -> Self {
+                let fraction = if fraction.is_nan() { 0.0 } else { fraction.clamp(0.0, 1.0) };
+                Self(self.0 * fraction)
+            }
+
+            /// `value` if it is finite and below this value, else this value.
+            #[must_use]
+            pub fn at_most(self, value: f64) -> Self {
+                if value.is_finite() && value < self.0 { Self(value) } else { self }
             }
         }
     };

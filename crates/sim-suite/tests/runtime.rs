@@ -21,7 +21,7 @@ use runtime::{
 };
 use safety::EnableFailure;
 use sim_drive::{Fault, SimDrive, Trigger, ensure_vcan, serve};
-use skeleton::{Caps, LimbName, Skeleton};
+use skeleton::{LimbName, Skeleton};
 use socketcan::{CanFrame, CanSocket, EmbeddedFrame, Id, Socket};
 
 /// The runtime's test robot, never the live skeleton (testing.md rule 3).
@@ -639,9 +639,15 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
             seen[0]
         );
     }
-    // The waist's drive got its model's commissioning caps, written as preflight writes any cap.
-    let floor = Caps::commissioning(robstride::Model::Rs03);
-    let waist = robstride::Drive::new(common::id(31), robstride::Model::Rs03);
+    // The waist's drive (uncommissioned) got the caps it is enabled at, written as preflight writes any cap.
+    let joint = skeleton
+        .limbs
+        .iter()
+        .flat_map(|l| &l.joints)
+        .find(|j| j.id == common::id(31))
+        .unwrap();
+    let floor = joint.caps();
+    let waist = robstride::Drive::new(joint.id, joint.actuator);
     let expected = [
         robstride::Write::limit_torque(waist, floor.torque).unwrap(),
         robstride::Write::limit_cur(waist, floor.current).unwrap(),

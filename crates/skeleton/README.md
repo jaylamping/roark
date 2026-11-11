@@ -10,7 +10,7 @@ and field. The rules are PLAN item 1, "Loader refuses", and skeleton.md sections
 
 `None` in a loaded value means it isn't known yet (a joint's UID before commissioning, a direction not yet verified). It
 loads fine and refuses only the motion that needs it, never the enable: a joint with a null cap, `direction`, `zero_rad`
-or `hard_rad` runs at its model's commissioning caps, or its own where lower (`Joint::caps`, `Caps::commissioning`;
+or `hard_rad` runs at its model's commissioning caps, or its own where lower (`Joint::caps`;
 the values are [PLAN, Open with Joey](https://github.com/jaylamping/roark/blob/main/PLAN.md#open-with-joey) 11). The
 current budget counts each joint at the current cap it is enabled at.
 

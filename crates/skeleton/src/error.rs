@@ -170,7 +170,7 @@ impl fmt::Display for Problem {
             ProblemKind::CurrentBudget { sum_a, budget_a } => {
                 write!(
                     f,
-                    "current caps on joints with a bus sum to {sum_a} A, above the {budget_a} A budget"
+                    "the currents joints with a bus are enabled at (their own caps, or their commissioning caps until commissioned) sum to {sum_a} A, above the {budget_a} A budget"
                 )
             }
         }
