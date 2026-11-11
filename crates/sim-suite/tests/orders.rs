@@ -210,10 +210,14 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
 
         // Told to exit, the bus finishes the stop and ends once control has taken a snapshot showing it. A clear sent
         // once the bus has seen the exit never undoes that stop: refused (limb 0 still stopping, or the exit's stop
-        // asked before the clear) or left for the end (`Ended`). Sent several ticks after the exit, so the bus has
+        // asked before the clear) or left for the end (`Ended`). Sent three periods after the exit, so the bus has
         // seen it.
         exit.store(true, Ordering::Release);
-        std::thread::sleep(Duration::from_nanos(5 * period));
+        // Not taking snapshots meanwhile: the bus waits for control to take a stopped one before it ends.
+        let seen = Instant::now() + Duration::from_nanos(3 * period);
+        while Instant::now() < seen {
+            std::thread::yield_now();
+        }
         assert!(orders.push(Order::Rearm { tag: 6, limb: 0 }).is_ok());
         while !bus.thread.is_finished() {
             if let Ok(s) = snapshots.pop() {
