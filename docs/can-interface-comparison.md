@@ -12,7 +12,7 @@ anyway (`can-bench` README, "Must never").
 
 | Interface | Driver | What it tests |
 |---|---|---|
-| The Waveshare HAT already on the Pi | `mcp251x` (MCP2515) or `mcp251xfd` (MCP2518FD) | The interface we have. An MCP2515 holds two received frames, so a host stall drops replies; an MCP2518FD has deep FIFOs |
+| The Waveshare 2-CH isolated CAN HAT already on the Pi (MCP2515 + SN65HVD230) | `mcp251x` | The interface we have. The MCP2515 holds two received frames, so a host stall drops replies |
 | One MKS CANable **V1.0** Pro (STM32F072, isolated) with mainline candleLight | `gs_usb` | The pick in PLAN and the research: a USB adapter that buffers on its own chip, at the cost of up to about 1 ms of USB delivery jitter |
 
 What to expect: the adapter's gain is no lost replies under load, isolation, hardware timestamps and one adapter per bus,
