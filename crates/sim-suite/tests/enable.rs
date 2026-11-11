@@ -80,8 +80,10 @@ enum After {
 enum Ended {
     Refused(Refusal),
     Enabled,
-    /// Gave up; whether the Enable had been planned.
-    Failed(EnableFailure, bool),
+    /// The enable sequence gave up before its Enable was planned: refused.
+    GaveUp(EnableFailure),
+    /// The enable sequence gave up once its Enable was planned: the limb must be stopped.
+    Stop(EnableFailure),
 }
 
 /// Where control is.
@@ -244,10 +246,8 @@ fn attempt(uid: Uid, start: Option<Fault>, after: After) -> Ended {
                     }
                     Next::Wait => (Some(Phase::Enabling(enabling)), None),
                     Next::Enabled => (None, Some(Ended::Enabled)),
-                    Next::Failed(failure) => (
-                        None,
-                        Some(Ended::Failed(failure, enabling.enable_planned())),
-                    ),
+                    Next::Refused(failure) => (None, Some(Ended::GaveUp(failure))),
+                    Next::Stop(failure) => (None, Some(Ended::Stop(failure))),
                 },
             };
             assert!(commands.push(batch).is_ok());
@@ -325,10 +325,7 @@ fn a_drive_with_another_uid_is_refused_on_vcan() {
 #[test]
 fn a_drive_that_never_reaches_run_fails_the_enable_on_vcan() {
     let ended = attempt(UID, None, After::Silent);
-    assert_eq!(
-        ended,
-        Ended::Failed(EnableFailure::NoRun { last: None }, true)
-    );
+    assert_eq!(ended, Ended::Stop(EnableFailure::NoRun { last: None }));
     assert_eq!(EnableFailure::NoRun { last: None }.rule(), RuleId::HostMode);
 }
 

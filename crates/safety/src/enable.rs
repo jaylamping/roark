@@ -34,7 +34,8 @@ use crate::seen::{DriveAddress, Seen};
 /// drive the bus doesn't yet count silent is one this sequence still waits for.
 pub const RUN_WITHIN_NS: u64 = can::ENABLE_TO_RUN_NS;
 
-/// Why a drive's enable sequence gave up. Once an Enable may have gone out, the limb is stopped, not just refused.
+/// Why a drive's enable sequence gave up. Once an Enable may have gone out, the limb is stopped ([`Next::Stop`]), not
+/// just refused ([`Next::Refused`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EnableFailure {
     /// The reporting-off frame wasn't read back from the socket in time.
@@ -198,8 +199,11 @@ pub enum Next {
     Wait,
     /// The drive is in Run and MIT mode: control may command it.
     Enabled,
-    /// It gave up.
-    Failed(EnableFailure),
+    /// It gave up before the Enable was planned: refuse the enable. No Enable can have gone, so the limb has nothing to
+    /// stop.
+    Refused(EnableFailure),
+    /// It gave up once the Enable was planned: stop the drive's limb, since the Enable may have gone out.
+    Stop(EnableFailure),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -269,8 +273,7 @@ impl Enabling {
     }
 
     /// Whether the Enable has been planned, so a failure from here on must stop the limb rather than just refuse.
-    #[must_use]
-    pub const fn enable_planned(&self) -> bool {
+    const fn enable_planned(&self) -> bool {
         match self.stage {
             Stage::ReportingOff | Stage::AwaitEcho { .. } | Stage::Settle { .. } => false,
             Stage::AwaitRun { .. } | Stage::AwaitModeEcho { .. } | Stage::Enabled => true,
@@ -363,7 +366,10 @@ impl Enabling {
                 }
             }
             Stage::Enabled => (self.stage, Next::Enabled),
-            Stage::Failed { failure, .. } => (self.stage, Next::Failed(failure)),
+            Stage::Failed {
+                failure,
+                enable_planned,
+            } => (self.stage, verdict(failure, enable_planned)),
         };
         self.stage = stage;
         next
@@ -413,12 +419,13 @@ impl Enabling {
 
     /// The sequence gives up with `failure`, remembering whether the Enable had been planned.
     const fn failed(&self, failure: EnableFailure) -> (Stage, Next) {
+        let enable_planned = self.enable_planned();
         (
             Stage::Failed {
                 failure,
-                enable_planned: self.enable_planned(),
+                enable_planned,
             },
-            Next::Failed(failure),
+            verdict(failure, enable_planned),
         )
     }
 
@@ -457,6 +464,15 @@ impl Enabling {
             .filter(|o| o.read_ns >= self.started_ns)
             .map_or(StatusFaults::default(), |o| o.status.header.faults);
         (!bits.is_empty() || view.fault_seen).then_some(bits)
+    }
+}
+
+/// What a failure asks of control: a refusal before the Enable was planned, a stop of the limb after.
+const fn verdict(failure: EnableFailure, enable_planned: bool) -> Next {
+    if enable_planned {
+        Next::Stop(failure)
+    } else {
+        Next::Refused(failure)
     }
 }
 

@@ -28,8 +28,8 @@ control thread runs it; the bus layer (`can`) does the pre-send veto, and this c
   seen out of Run after the Enable's answer ends the sequence, and so do, at any step, another drive's view, a fault,
   before the Enable is planned a mode out of Reset since preflight, and the limb stopping, stopped or cleared since
   preflight (`LimbStopped`), even where the drive's own replies would have enabled it. Only `Next::Enabled` lets control
-  command the drive. A failure after the Enable is planned means the limb must be stopped (`Enabling::enable_planned`),
-  not just refused; each `EnableFailure` has its operator line and remedy too.
+  command the drive. A failure before the Enable is planned is `Next::Refused`; after it, `Next::Stop`: the limb must be
+  stopped, not just refused; each `EnableFailure` has its operator line and remedy too.
 - **States** (`DriveState`, `LimbState`): PLAN item 6's machines as transition functions. An event a state doesn't
   take returns `None` and changes nothing.
 
@@ -76,4 +76,5 @@ assert_eq!(
 The control thread runs one `Preflight` per named drive: `poll` with what the drive's bus last showed of it (`Seen::of`,
 with the name of the bus the snapshot came from) gives a `Step`; it submits each `Step::Submit` to the drive's bus and
 hands the result to `answered`, until `Step::Passed` (or `Step::Refused`). The `PreflightPassed` goes to
-`Enabling::new`, whose `step` gives each tick's frame for the batch until `Next::Enabled`.
+`Enabling::new`, whose `step` gives each tick's frame for the batch until `Next::Enabled`, or until it gives up:
+`Next::Refused` before its Enable was planned, `Next::Stop` (stop the limb) after.
