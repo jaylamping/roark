@@ -4,14 +4,15 @@
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
-use can::{DriveView, LimbState, LimbView, SlowKind, SlowOutcome, StopReason};
+use can::{DriveView, LimbState, LimbView, ModeSeen, SlowKind, SlowOutcome, StopReason};
 use common::preflight::{Drive, UID, run};
 use common::{BUS0, IDLE, joint, on, quiet, seen, shown, skeleton, status};
 use robstride::{Mode, StatusFault, StatusFaults};
 use safety::{DriveAddress, Preflight, Refusal, RuleId, Step, Target};
 
 /// Guards: safety - `host.preflight`: no fault bits, and the drive not already in Run or Calibration, in every status
-/// since preflight began; a drive that sends no status, or a joint with no bus, is refused (PLAN item 6 Preflight row).
+/// or version reply since preflight began; a drive that sends no status, or a joint with no bus, is refused (PLAN item 6
+/// Preflight row).
 #[test]
 fn preflight_refuses_a_fault_or_a_drive_not_in_reset() {
     let over: StatusFaults = [StatusFault::Overcurrent].into_iter().collect();
@@ -85,6 +86,48 @@ fn preflight_refuses_a_fault_or_a_drive_not_in_reset() {
         Refusal::Unwired,
     ] {
         assert_eq!(refusal.rule(), RuleId::HostPreflight);
+    }
+}
+
+/// Guards: safety - `host.preflight`: a version reply carries the status header too, so one out of Reset since
+/// preflight began refuses whatever the last status says, a later one in Reset doesn't hide a status out of it, and one
+/// from before preflight began says nothing (PLAN item 6 Preflight row: the drive in Reset).
+#[test]
+fn a_version_reply_out_of_reset_refuses() {
+    let skeleton = skeleton();
+    let target = Target::new(&joint(&skeleton, 0), &skeleton.power).unwrap();
+    let reset = status(Mode::Reset, StatusFaults::default(), 2_000);
+    let calibration = status(Mode::Calibration, StatusFaults::default(), 2_000);
+    let header = |mode, read_ns| Some(ModeSeen { mode, read_ns });
+    for (view, expected) in [
+        (
+            DriveView {
+                mode: header(Mode::Calibration, 2_500),
+                ..seen(reset)
+            },
+            Step::Refused(Refusal::NotReset {
+                mode: Mode::Calibration,
+            }),
+        ),
+        (
+            DriveView {
+                mode: header(Mode::Reset, 2_500),
+                ..seen(calibration)
+            },
+            Step::Refused(Refusal::NotReset {
+                mode: Mode::Calibration,
+            }),
+        ),
+        (
+            DriveView {
+                mode: header(Mode::Run, 500),
+                ..seen(reset)
+            },
+            Step::Submit(SlowKind::GetId),
+        ),
+    ] {
+        let mut preflight = Preflight::start(target, 1_000);
+        assert_eq!(preflight.poll(shown(&view), 3_000), expected, "{view:?}");
     }
 }
 

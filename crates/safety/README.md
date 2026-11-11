@@ -10,15 +10,15 @@ control thread runs it; the bus layer (`can`) does the pre-send veto, and this c
   layer's own stops; a requested stop carries its asker's `Cause`.
 - **Preflight** (`Preflight`): for one drive, over its bus's slow requests one at a time (each an `Exchange` on a
   `Register`): get-ID and the UID check, write `canTimeout` 1000 and the skeleton's three caps, then read all four back
-  with the damper and VBUS. Fault bits or any mode but Reset in the latest status since it began, a fault latched since
-  the last clear, no status at all, another drive's view (another ID, or the same ID in another bus's snapshot: a drive
-  is its bus and its ID, `DriveAddress`), a limb that isn't idle or that stopped or was cleared since preflight began,
-  or a request with no result within `ANSWER_WITHIN_NS` (1 s) refuses. Only a pass makes a `PreflightPassed`, which
-  proves the drive was right then; the runtime runs every named drive's preflight, enables them together from their
-  proofs, drops the proofs on any event that voids them, and runs preflight again for every enable. Each `Refusal` names
-  its rule, the measured and the expected value, and what the operator does about it (safety.md section 5). A null cap,
-  a cap the drive's model can't take, a null `direction`, `zero_rad` or `hard_rad`, a model whose MIT scales aren't
-  settled, or an unwired joint refuses before anything is sent.
+  with the damper and VBUS. Fault bits in the latest status since it began, any mode but Reset in a status or version
+  reply since it began, a fault latched since the last clear, no status at all, another drive's view (another ID, or the
+  same ID in another bus's snapshot: a drive is its bus and its ID, `DriveAddress`), a limb that isn't idle or that
+  stopped or was cleared since preflight began, or a request with no result within `ANSWER_WITHIN_NS` (1 s) refuses.
+  Only a pass makes a `PreflightPassed`, which proves the drive was right then; the runtime runs every named drive's
+  preflight, enables them together from their proofs, drops the proofs on any event that voids them, and runs preflight
+  again for every enable. Each `Refusal` names its rule, the measured and the expected value, and what the operator does
+  about it (safety.md section 5). A null cap, a cap the drive's model can't take, a null `direction`, `zero_rad` or
+  `hard_rad`, a model whose MIT scales aren't settled, or an unwired joint refuses before anything is sent.
 - **The enable sequence** (`Enabling`): takes a `PreflightPassed` by value, so an enable without a preflight doesn't
   compile and one preflight enables once. Reporting off, its echo plus one tick, Enable, a fresh Run status within 50 ms,
   then `run_mode` = MIT, its echo and a later fresh Run status within 50 ms, one frame per tick in control's batch.

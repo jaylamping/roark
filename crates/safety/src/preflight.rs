@@ -331,8 +331,8 @@ impl Preflight {
     }
 
     /// The next step, given what the drive's bus last showed of it and the time. A view of another drive (by ID or by
-    /// bus), a fault in the latest status or latched since the last clear, any mode but Reset in the latest status
-    /// since preflight began, or a limb that isn't idle or that stopped or was cleared since the first poll, refuses at
+    /// bus), a fault in the latest status or latched since the last clear, any mode but Reset in the latest status or
+    /// status header (a version reply's included) since preflight began, or a limb that isn't idle or that stopped or was cleared since the first poll, refuses at
     /// once; so does a request with no result within [`ANSWER_WITHIN_NS`].
     pub fn poll(&mut self, seen: Seen<'_>, now_ns: u64) -> Step {
         let view = seen.view;
@@ -453,8 +453,8 @@ impl Preflight {
     }
 
     /// A refusal from what the drive's statuses show: the latest one's fault bits first, so the operator sees them,
-    /// then a fault latched since the last clear, then any mode but Reset (Run, or Calibration: something other than
-    /// this host's enable sequence put it there).
+    /// then a fault latched since the last clear, then any mode but Reset since preflight began ([`left_reset`]: Run,
+    /// or Calibration, something other than this host's enable sequence put it there).
     fn status_refusal(&self, view: &DriveView) -> Option<Refusal> {
         let latest = view.observed.filter(|o| o.read_ns >= self.started_ns);
         if let Some(o) = latest
@@ -467,10 +467,7 @@ impl Preflight {
         if view.fault_seen {
             return Some(Refusal::FaultSeen);
         }
-        latest
-            .map(|o| o.status.header.mode)
-            .filter(|mode| *mode != Mode::Reset)
-            .map(|mode| Refusal::NotReset { mode })
+        left_reset(view, self.started_ns).map(|mode| Refusal::NotReset { mode })
     }
 
     fn check(&self, exchange: Exchange, outcome: SlowOutcome) -> Result<(), Refusal> {
@@ -550,4 +547,18 @@ impl Preflight {
             }
         }
     }
+}
+
+/// A mode other than Reset that the drive's bus has shown since `since_ns`, if any: in its latest status header (`mode`,
+/// a version reply's included), else in its last status (`observed`). Either one out of Reset is the drive out of
+/// Reset, so a later Reset in one never hides the other.
+pub(crate) fn left_reset(view: &DriveView, since_ns: u64) -> Option<Mode> {
+    let latest = view.mode.map(|m| (m.mode, m.read_ns));
+    let status = view.observed.map(|o| (o.status.header.mode, o.read_ns));
+    [latest, status]
+        .into_iter()
+        .flatten()
+        .filter(|(_, read_ns)| *read_ns >= since_ns)
+        .map(|(mode, _)| mode)
+        .find(|mode| *mode != Mode::Reset)
 }

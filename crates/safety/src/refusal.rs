@@ -155,8 +155,8 @@ pub enum Refusal {
     /// A fault was seen since start or the limb's last clear, and the latest status shows none (fault bits clear only
     /// by power-cycling the drive, then a clear).
     FaultSeen,
-    /// The drive's latest status is in a mode other than Reset: Run or Calibration, put there by something other than
-    /// this host's enable sequence.
+    /// A status or status header (a version reply's included) since preflight began shows a mode other than Reset: Run
+    /// or Calibration, put there by something other than this host's enable sequence.
     NotReset {
         /// The mode it reports.
         mode: Mode,
