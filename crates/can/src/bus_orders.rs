@@ -31,9 +31,9 @@ pub(crate) fn take(
     cleared
 }
 
-/// The thread is ending: every re-arm still in the ring gets its one answer, a refusal (`Ended`); a stop left there
-/// isn't taken, as no tick follows to plan it, but one naming a limb the bus doesn't have is still counted. A dropped answer counts in the tick's counters, which `BusExit::counters`
-/// carries: no snapshot comes after these.
+/// The thread is ending: every re-arm still in the ring gets its one answer, a refusal (`Ended`); a stop left there is
+/// taken as any order is, so one naming a limb the bus doesn't have is counted, but no tick follows to plan it. A
+/// dropped answer counts in the tick's counters, which `BusExit::counters` carries: no snapshot comes after these.
 pub(crate) fn end(
     tick: &mut BusTick,
     orders: &mut Consumer<Order>,
@@ -43,19 +43,20 @@ pub(crate) fn end(
         let Ok(order) = orders.pop() else {
             break;
         };
-        if let Order::StopLimb(limb) = order
-            && !tick.has_limb(limb)
-        {
-            tick.counters.bad_orders += 1;
-        }
-        if let Order::Rearm { tag, limb } = order {
-            let answer = Rearmed {
-                tag,
-                limb,
-                outcome: Err(RearmRefused::Ended),
-            };
-            if rearmed.push(answer).is_err() {
-                tick.rearm_dropped();
+        match order {
+            Order::Rearm { tag, limb } => {
+                let answer = Rearmed {
+                    tag,
+                    limb,
+                    outcome: Err(RearmRefused::Ended),
+                };
+                if rearmed.push(answer).is_err() {
+                    tick.rearm_dropped();
+                }
+            }
+            // A stop takes no time (`now_ns` is a re-arm's alone) and answers nothing.
+            Order::StopLimb(_) | Order::StopAll => {
+                let _ = tick.order(order, 0);
             }
         }
     }

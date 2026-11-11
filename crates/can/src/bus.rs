@@ -160,8 +160,9 @@ pub struct BusLinks {
     /// times out.
     pub results: Producer<SlowResult>,
     /// Control's orders: stop a limb, stop the bus, re-arm a stopped limb. Every order in the ring is taken at the next
-    /// tick's start, before its drain, in the order control pushed them. On a bus exiting a re-arm is refused
-    /// (`StopPending`: the exit's stop is asked first); one left when the thread ends is answered `Ended`.
+    /// tick's start, before its drain, in the order control pushed them. A re-arm has its own refusals (`RearmRefused`); on
+    /// a bus exiting it is refused at the least `StopPending` (the exit's stop is asked first), and one left when the
+    /// thread ends is answered `Ended`.
     pub orders: Consumer<Order>,
     /// Each re-arm order's one answer. When the ring is full the answer is dropped and counted
     /// (`Counters::rearms_dropped`); control still sees the limb's state and generation in the snapshots. A re-arm still
@@ -337,7 +338,8 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             // every limb stopped is published. Asked before the orders, so a clear can't undo it (`StopPending`).
             tick.request_stop();
         }
-        // Ending this tick, unless the drain loses the bus: after the stop, or told to exit with nothing ever enabled.
+        // Ending this tick: after the stop, or told to exit with nothing ever enabled. Only the drain can change it (a
+        // lost bus latches every limb stopped, so the thread goes on to publish that), which is why it is asked again.
         let ending = leaving || (exiting && tick.all_idle());
         // Control's orders, before the drain: a stop goes out in this tick's sends, and a frame the drain reads after a
         // clear latches afresh and is checked before the send. Not on the way out: every order left is answered at the
@@ -349,7 +351,8 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         if let Err(e) = drain(socket, &clock, &mut tick, &mut batch) {
             lose(&mut tick, &mut outcome, e);
         }
-        if leaving || (exiting && tick.all_idle()) {
+        let ending = ending && (leaving || tick.all_idle());
+        if ending {
             // The frames this drain read are still recorded, with the health they left the bus in: for a bus leaving
             // after its stop, the echoes of a last send the previous tick wrote after its collect deadline, which only
             // reach the recording by being read back.

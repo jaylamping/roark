@@ -118,7 +118,7 @@ fn a_rearm_order_is_answered_under_its_tag_and_never_undoes_an_earlier_stop() {
 
 /// Guards: safety - `host.fault`: a fault read after a clear is not wiped by it: the cleared limb's drive reporting a
 /// fault in the next drain stops the limb at the check before the send, so control's Enable to it never goes out
-/// (PLAN.md item 6 Faults row; a clear is taken in the slack, before the next drain).
+/// (PLAN.md item 6 Faults row; a clear is taken at the tick's start, before that tick's drain).
 #[test]
 fn a_fault_read_after_a_clear_stops_the_limb_before_its_enable() {
     let (mut bus, tick) = limb_0_stopped();

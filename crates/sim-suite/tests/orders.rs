@@ -137,11 +137,15 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         }
         assert_eq!(snap.limb(0).map(|l| l.generation), Some(0));
 
-        // The operator's clear, with a stop order naming a limb the bus doesn't have pushed right behind it: both are
-        // taken at the same tick's start, so the clear is answered and the bad stop then stops both limbs, the running
-        // one included, the cleared one with its new generation.
-        assert!(orders.push(Order::Rearm { tag: 5, limb: 0 }).is_ok());
-        assert!(orders.push(Order::StopLimb(7)).is_ok());
+        // The operator's clear, with a stop order naming a limb the bus doesn't have right behind it, made visible to
+        // the bus at once: both are taken at the same tick's start, so the clear is answered and the bad stop then
+        // stops both limbs within that tick, the running one included, the cleared one with its new generation.
+        let chunk = orders.write_chunk_uninit(2).unwrap();
+        assert_eq!(
+            chunk.fill_from_iter([Order::Rearm { tag: 5, limb: 0 }, Order::StopLimb(7)]),
+            2
+        );
+        let ordered_ns = epoch.ns(Instant::now());
         let mut answer = None;
         while answer.is_none() || limbs(&snap)[1].0 == LimbState::Active {
             assert!(
@@ -173,13 +177,20 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
             assert!(matches!(state, LimbState::Stopping { .. }), "{snap:?}");
             assert_eq!(stop, bad, "{snap:?}");
         }
+        if let LimbState::Stopping { since_ns } = limbs(&snap)[1].0 {
+            assert!(
+                since_ns <= ordered_ns + 2 * period,
+                "ordered at {ordered_ns} ns: {snap:?}"
+            );
+        }
         assert_eq!(snap.limb(0).map(|l| l.generation), Some(1));
         assert_eq!(snap.counters.bad_orders, 1);
         assert_eq!(snap.counters.rearms_dropped, 0);
 
         // Told to exit, the bus finishes the stop and ends once control has taken a snapshot showing it. A clear sent
         // as it exits never undoes that stop: refused (limb 0 still stopping, or the exit's stop pending) or left for
-        // the end (`Ended`).
+        // the end (`Ended`). Only a clear the bus took before it saw the exit can pass, and the exit's stop then stops
+        // that limb again: the bus still ends with every limb stopped.
         exit.store(true, Ordering::Release);
         assert!(orders.push(Order::Rearm { tag: 6, limb: 0 }).is_ok());
         while !bus.thread.is_finished() {
@@ -197,16 +208,18 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         assert!(
             matches!(
                 answer.outcome,
-                Err(RearmRefused::Ended
-                    | RearmRefused::NotStopped(0)
-                    | RearmRefused::StopPending(0))
+                Ok(())
+                    | Err(RearmRefused::Ended
+                        | RearmRefused::NotStopped(0)
+                        | RearmRefused::StopPending(0))
             ),
             "{answer:?}"
         );
+        let generation = if answer.outcome.is_ok() { 2 } else { 1 };
         assert!(
             done.last
-                .is_some_and(|s| s.limb(0).is_some_and(|l| l.generation == 1)),
-            "{:?}",
+                .is_some_and(|s| s.limb(0).is_some_and(|l| l.generation == generation)),
+            "{answer:?} {:?}",
             done.last
         );
         assert!(rearmed.pop().is_err(), "one answer per re-arm order");
@@ -218,7 +231,8 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
 }
 
 /// Guards: safety - a bus that ends answers every clear still in its order ring `Ended`, takes none of them on the
-/// way out, and counts each answer control's full ring can't take, so a clear is never silently lost (PLAN item 6: a
+/// way out, and counts each answer control's full ring can't take and each stop order left naming a limb it doesn't
+/// have, so neither a clear nor a bad order is silently lost (PLAN item 6: a
 /// latched stop clears only by an operator clear; logging.md section 4: nothing fails in silence).
 #[test]
 fn a_bus_that_ends_answers_every_queued_clear_and_counts_the_drops_on_vcan() {
@@ -235,6 +249,7 @@ fn a_bus_that_ends_answers_every_queued_clear_and_counts_the_drops_on_vcan() {
     for tag in 1..=3 {
         assert!(orders.push(Order::Rearm { tag, limb: 0 }).is_ok());
     }
+    assert!(orders.push(Order::StopLimb(9)).is_ok());
     // Told to exit before its first tick with every limb idle, the bus ends at its first drain.
     let bus = can::spawn(
         BusConfig {
@@ -268,6 +283,7 @@ fn a_bus_that_ends_answers_every_queued_clear_and_counts_the_drops_on_vcan() {
     );
     assert!(rearmed.pop().is_err());
     assert_eq!(done.counters.rearms_dropped, 2);
+    assert_eq!(done.counters.bad_orders, 1);
     recorder.close(vec![done.recorder]).unwrap();
     let _ = std::fs::remove_dir_all(&root);
 }
