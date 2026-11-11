@@ -287,13 +287,14 @@ def upper_details(d):
         y0 = 296.0 + RIDGE_LAND      # groove opening (load side) at r 35.8
         ly = lambda r_: y0 + (35.8 - r_) * t30
         ny = lambda r_: y0 + 2.2 + (r_ - 34.3)
-        y_revolve(d, 'SEAT_RIDGE', [(36.3, ly(36.3)), (34.5, ly(34.5)), (34.5, ny(34.5)), (35.9, ny(35.9)), (36.3, ny(35.9))])      # stays inside Y 302 (the arm's end face)
-        for k_, (t0, t1) in enumerate(((RIDGE_ARC[1], 360.0 - RIDGE_ARC[1]), (360.0 - RIDGE_ARC[0], 360.0 + RIDGE_ARC[0]))):      # keep only the two arcs
-            ang = np.radians(np.linspace(t0, t1, 41))
-            pts = [(HX + 33.0 * math.cos(a), 299.0, CZ + 33.0 * math.sin(a)) for a in ang] + [(HX + 35.88 * math.cos(a), 299.0, CZ + 35.88 * math.sin(a)) for a in ang[::-1]]
-            with Sk(d, plane(d, 'Y', 299.0, f'RIDGE_TRIM{k_}_P'), f'RIDGE_TRIM{k_}') as sk_:
-                sk_.poly(pts)
-            feat(d, sk_.feat, f'RIDGE_TRIM{k_}', 6.2, True, mode=MID, lo=0.01)
+        prof = [(36.3, ly(36.3)), (34.5, ly(34.5)), (34.5, ny(34.5)), (35.9, ny(35.9)), (36.3, ny(35.9))]      # stays inside Y 302 (the arm's end face)
+        # two partial revolves, one per arc, centred on theta 90 / 270 (2026-11-11: a full revolve trimmed back to r 35.88 left a
+        # 0.02 mm band proud of the bore all round, which broke the FEA mesh)
+        for sgn, tag in ((1, 'F'), (-1, 'B')):
+            with Sk(d, plane(d, 'X', HX, f'SEAT_RIDGE{tag}_P'), f'SEAT_RIDGE{tag}') as sk_:
+                sk_.poly([(HX, y_, CZ + sgn * r_) for r_, y_ in prof])
+                centerline(sk_, (HX, 150, CZ), (HX, 340, CZ))
+            revolve(d, sk_.feat, f'SEAT_RIDGE{tag}', None, False, angle=RIDGE_ARC[1] - RIDGE_ARC[0], mid=True, lo=0.01)
     if R1C and os.environ.get('ARM_SEAT_RIBS', '1') == '1':      # seat crush ribs (2026-11-11): the seat must be gap-free, or the hub's lugs and bolts carry the moment.
         # Six axial ribs on the r 35.9 bore over Y 296-302 at theta 45/90/135 in each half (from +X toward +Z about the hub
         # axis), 1 wide at the tip, tip 0.15 proud of the r 35.8 spigot; the halves still close on the seam and the ribs crush.

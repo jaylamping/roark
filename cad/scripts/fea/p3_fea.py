@@ -199,6 +199,8 @@ def run(name, c):
     sw.CloseAllDocuments(True)        # a failed case leaves its model open, and a second copy by the same name won't open
     e, w = L(), L()
     d = sw.OpenDoc6(str(PARTS[c['part']]), 1, 1, '', e, w)
+    if d is None:
+        raise SystemExit(f'open failed: {PARTS[c["part"]]} errors {e.value} warnings {w.value}')
     sw.ActivateDoc3(d.GetTitle, False, 0, L())
     cw = session(W / '.sw_instance_pid').load_simulation()
     doc = cw.ActiveDoc
