@@ -524,7 +524,7 @@ fn timed_faults_land_in_time_order() {
 }
 
 /// Guards: protocol - a fault the drive can't honour is refused and not recorded: a `Late` past `MAX_LATE`, a
-/// temperature a status can't carry, a register value of the wrong type, `OnMit(0)`, a time the drive is already past;
+/// temperature a status can't carry, a register value of the wrong type, `OnMit(0)` or `OnEnable(0)`, a time the drive is already past;
 /// and writes ignored for any number
 /// of registers, or one register twice, all hold (logging.md section 3: what is recorded is what took effect).
 #[test]
@@ -559,6 +559,10 @@ fn faults_the_drive_cant_honour_are_refused() {
     assert_eq!(
         sim.schedule(Trigger::OnMit(0), Fault::Silent),
         Err(FaultRefused::OnMitZero)
+    );
+    assert_eq!(
+        sim.schedule(Trigger::OnEnable(0), Fault::Silent),
+        Err(FaultRefused::OnEnableZero)
     );
     let before = t.checked_sub(Duration::from_micros(1)).unwrap();
     assert_eq!(

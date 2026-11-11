@@ -34,6 +34,9 @@ control thread runs it; the bus layer (`can`) does the pre-send veto, and this c
   `Next::Refused`; after it, `Next::Stop`: the limb must be stopped, not just refused. A refusal speaks for its own
   drive only: control stops the limb if any sequence of the same enable has planned its Enable
   (`Enabling::enable_planned`). Each `EnableFailure` has its operator line and remedy too.
+- **`host.mode`'s limb-mate clause** (`limb_mates`): while a limb is held, a drive of it on any bus that this host
+  never enabled, seen out of Reset since the limb's last re-arm (`DriveView::out_of_reset`) or not seen at all, gives
+  `HoldVerdict::Stop(HostMode)`: control stops the whole limb (#25). The bus watches only the drives this host enabled.
 - **States** (`DriveState`, `LimbState`): PLAN item 6's machines as transition functions. An event a state doesn't
   take returns `None` and changes nothing.
 

@@ -1,7 +1,8 @@
 //! The runtime end to end on `vcan` against `sim-drive`, with its test robot (`bins/runtime/tests/skeleton.yaml`: five
-//! limbs, one over two buses, one offline): it starts a bus thread per wired bus and the control thread on one schedule,
-//! never enables anything, routes the operator's stops and clears to the right buses and limbs, and ends with every limb
-//! at rest and the session closed.
+//! limbs, one over two buses, one offline, the left arm commissioned): it starts a bus thread per wired bus and the
+//! control thread on one schedule, enables nothing on its own, routes the operator's stops and clears to the right buses
+//! and limbs, enables and holds exactly the joints an operator's enable names once their preflights pass, and ends with
+//! every limb at rest and the session closed.
 #![cfg(target_os = "linux")]
 
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
@@ -13,14 +14,21 @@ use std::time::{Duration, Instant};
 
 use can::{LimbState, Snapshot};
 use common::HZ;
-use robstride::drive::{Command, command};
-use robstride::{Reporting, Uid};
-use runtime::{Clear, ClearRefused, Reply, Runtime, RuntimeConfig, Scope};
-use sim_drive::{SimDrive, ensure_vcan, serve};
+use robstride::drive::{Command, HostFrame, command};
+use robstride::{Mode, Param, ParamValue, Reporting, RunMode, StatusFault, StatusFaults, Uid};
+use runtime::{
+    Clear, ClearRefused, Enable, EnableRefused, EnableReply, Reply, Runtime, RuntimeConfig, Scope,
+};
+use safety::EnableFailure;
+use sim_drive::{Fault, SimDrive, Trigger, ensure_vcan, serve};
 use skeleton::{LimbName, Skeleton};
 use socketcan::{CanFrame, CanSocket, EmbeddedFrame, Id, Socket};
 
 /// The runtime's test robot, never the live skeleton (testing.md rule 3).
+/// How late drive 12 answers in the enable test's late stage: past the 50 ms an Enable has to reach Run
+/// (`can::ENABLE_TO_RUN_NS`), with room left in the stop's wait for its Disable's answer.
+const LATE: Duration = Duration::from_millis(60);
+
 fn skeleton_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bins/runtime/tests/skeleton.yaml")
 }
@@ -43,12 +51,12 @@ fn drives(skeleton: &Skeleton, bus: &str) -> Vec<SimDrive> {
         .collect()
 }
 
-/// Every host command seen on `bus` until `stop`.
+/// Every host frame seen on `bus` until `stop`, with when it was read.
 #[expect(
     clippy::unwrap_used,
     reason = "test helper: the monitor must open for the test to mean anything"
 )]
-fn watch(bus: &str, stop: &AtomicBool) -> Vec<Command> {
+fn watch(bus: &str, stop: &AtomicBool) -> Vec<(Instant, HostFrame)> {
     let socket = CanSocket::open(bus).unwrap();
     socket.set_read_timeout(Duration::from_millis(5)).unwrap();
     let mut seen = Vec::new();
@@ -57,7 +65,7 @@ fn watch(bus: &str, stop: &AtomicBool) -> Vec<Command> {
             && let Id::Extended(id) = frame.id()
             && let Ok(Some(host)) = command(id.as_raw(), frame.data())
         {
-            seen.push(host.command);
+            seen.push((Instant::now(), host));
         }
     }
     seen
@@ -281,7 +289,8 @@ fn the_runtime_runs_stops_and_clears_every_bus_and_never_enables_on_vcan() {
     let _ = std::fs::remove_dir_all(&root);
 
     // Only the stops' frames went out: Disables and reporting off, to every drive of every bus.
-    for (name, commands) in names.iter().zip(&seen) {
+    for (name, frames) in names.iter().zip(&seen) {
+        let commands: Vec<Command> = frames.iter().map(|(_, f)| f.command).collect();
         assert!(
             commands
                 .iter()
@@ -290,4 +299,393 @@ fn the_runtime_runs_stops_and_clears_every_bus_and_never_enables_on_vcan() {
         );
         assert!(commands.contains(&Command::Disable), "{name}: {commands:?}");
     }
+}
+
+/// The answer to the enable tagged `tag`, waiting until `end`.
+fn enable_reply(runtime: &mut Runtime, tag: u64, end: Instant) -> Option<EnableReply> {
+    while Instant::now() < end {
+        if let Ok(r) = runtime.enable_replies.pop() {
+            assert_eq!(r.tag, tag, "{r:?}");
+            return Some(r);
+        }
+        std::thread::yield_now();
+    }
+    None
+}
+
+/// Sets every flag when dropped, so a failed assert still ends the sims and watchers and the scope can join them.
+struct Flags<'a>(&'a [&'a AtomicBool]);
+
+impl Drop for Flags<'_> {
+    fn drop(&mut self) {
+        for flag in self.0 {
+            flag.store(true, Ordering::Release);
+        }
+    }
+}
+
+/// Guards: safety - an operator's enable reaches exactly the joints it names, and only once every one's preflight has
+/// passed: one naming a joint with a null fact or cap is refused before anything is sent; the left arm's two commissioned
+/// joints pass preflight against `sim-drive`, get the enable sequence, go Active and are held with MIT commands; a stop
+/// ends the hold, a clear and a new enable run preflight again and enable again; a drive that answers its Enable too
+/// late fails the enable with the limb stopped, since the Enable may have gone; a limb-mate the host never enabled,
+/// put in Run by something else, stops the whole limb (PLAN item 6 `host.mode`); a fault from a held drive stops its
+/// limb (`host.fault`); and nothing but the right arm's stops ever reaches can0 (PLAN item 3: the runtime never enables
+/// on its own; item 6: enable is per joint set and runs preflight first).
+#[test]
+#[expect(clippy::too_many_lines, reason = "one run, start to end")]
+fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
+    let path = skeleton_path();
+    let skeleton = skeleton::load(&path).unwrap();
+    let names = ["can0", "can1"];
+    for name in names {
+        ensure_vcan(name).unwrap();
+    }
+    let root =
+        std::env::temp_dir().join(format!("sim-suite-runtime-enable-{}", std::process::id()));
+    // The can1 sim's stages: it serves until each flag, then puts the next fault on the bus.
+    let to_prompt = AtomicBool::new(false);
+    let prompt_on = AtomicBool::new(false);
+    let to_mode = AtomicBool::new(false);
+    let to_fault = AtomicBool::new(false);
+    let stop_sim = AtomicBool::new(false);
+    let stop_watch = AtomicBool::new(false);
+    let over: StatusFaults = [StatusFault::Overcurrent].into_iter().collect();
+    let (seen, first_enable) = std::thread::scope(|scope| {
+        let flags = [
+            &to_prompt,
+            &prompt_on,
+            &to_mode,
+            &to_fault,
+            &stop_sim,
+            &stop_watch,
+        ];
+        let _flags = Flags(&flags);
+        let watchers: Vec<_> = names
+            .iter()
+            .map(|name| scope.spawn(|| watch(name, &stop_watch)))
+            .collect();
+        let can0 = scope.spawn(|| {
+            let mut sim = drives(&skeleton, "can0");
+            serve("can0", &mut sim, &stop_sim, &mut |_| {})
+        });
+        let can1 = scope.spawn(|| {
+            // The left arm's drives 11 and 12 come first on can1, in skeleton order.
+            let mut sim = drives(&skeleton, "can1");
+            // From its third Enable, drive 12 answers later than an Enable must be answered; then promptly again.
+            sim[1]
+                .schedule(Trigger::OnEnable(3), Fault::Late(LATE))
+                .unwrap();
+            serve("can1", &mut sim, &to_prompt, &mut |_| {})?;
+            sim[1]
+                .inject(Instant::now(), Fault::Late(Duration::ZERO))
+                .unwrap();
+            prompt_on.store(true, Ordering::Release);
+            serve("can1", &mut sim, &to_mode, &mut |_| {})?;
+            // Drive 12 put in Run by another controller's Enable, answering it on the bus.
+            let now = Instant::now();
+            sim[1].inject(now, Fault::Mode(Mode::Run)).unwrap();
+            sim[1].receive(
+                now,
+                HostFrame {
+                    target: common::id(12),
+                    command: Command::Enable,
+                },
+            );
+            serve("can1", &mut sim, &to_fault, &mut |_| {})?;
+            sim[0]
+                .inject(Instant::now(), Fault::FaultBits(over))
+                .unwrap();
+            serve("can1", &mut sim, &stop_sim, &mut |_| {})
+        });
+
+        let mut runtime = Runtime::start(&RuntimeConfig {
+            skeleton: path.clone(),
+            sessions: root.clone(),
+            hz: HZ,
+            operator: "sim-suite".to_owned(),
+            git_revision: "test".to_owned(),
+            views: true,
+        })
+        .unwrap();
+        let plans = runtime.info().plans.clone();
+        let left = plans[1].limb_index(LimbName::LeftArm).unwrap();
+        assert_eq!(plans[0].limb_index(LimbName::LeftArm), None);
+        let left_is =
+            |s: &Snapshot, state: LimbState| s.limb(left).is_some_and(|l| l.state == state);
+        let end = Instant::now() + Duration::from_secs(20);
+        let mut newest = vec![None; plans.len()];
+        assert!(
+            until(&mut runtime, &mut newest, end, |_, s| s.tick >= 20),
+            "{newest:?}"
+        );
+        let enable = |runtime: &mut Runtime, tag, names: &[&str]| {
+            let joints = runtime.joints(names.iter().copied()).unwrap();
+            assert!(runtime.enables.push(Enable { tag, joints }).is_ok());
+            enable_reply(runtime, tag, end)
+        };
+        let both = ["arm_a_one", "arm_a_two"];
+
+        // A joint with nulls refuses the whole enable before anything is sent: the left arm stays idle.
+        let b_one = runtime
+            .joints(["arm_b_one"])
+            .unwrap()
+            .iter()
+            .next()
+            .unwrap();
+        assert!(matches!(
+            enable(&mut runtime, 1, &["arm_a_one", "arm_b_one"]),
+            Some(EnableReply { outcome: Err(EnableRefused::Preflight { joint, .. }), .. }) if joint == b_one
+        ));
+        assert!(
+            newest[1]
+                .as_ref()
+                .is_some_and(|s| left_is(s, LimbState::Idle))
+        );
+
+        // The left arm passes preflight, enables and is held.
+        let first_enable = Instant::now();
+        assert_eq!(
+            enable(&mut runtime, 2, &both),
+            Some(EnableReply {
+                tag: 2,
+                outcome: Ok(())
+            })
+        );
+        assert!(
+            until(&mut runtime, &mut newest, end, |bus, s| bus == 0
+                || left_is(s, LimbState::Active)),
+            "{newest:?}"
+        );
+        // Enabling a joint already enabled is refused.
+        let a_one = runtime
+            .joints(["arm_a_one"])
+            .unwrap()
+            .iter()
+            .next()
+            .unwrap();
+        assert_eq!(
+            enable(&mut runtime, 3, &["arm_a_one"]),
+            Some(EnableReply {
+                tag: 3,
+                outcome: Err(EnableRefused::AlreadyEnabled { joint: a_one })
+            })
+        );
+
+        // The operator's stop ends the hold; a clear and a new enable run preflight again.
+        let clear = |runtime: &mut Runtime, tag| {
+            assert!(
+                runtime
+                    .clears
+                    .push(Clear {
+                        tag,
+                        limb: LimbName::LeftArm
+                    })
+                    .is_ok()
+            );
+            assert_eq!(
+                replies(runtime, 1, end),
+                [Reply {
+                    tag,
+                    limb: LimbName::LeftArm,
+                    bus: Some(1),
+                    outcome: Ok(())
+                }]
+            );
+        };
+        runtime.stop(Scope::Limb(LimbName::LeftArm));
+        assert!(
+            until(&mut runtime, &mut newest, end, |bus, s| bus == 0
+                || left_is(s, LimbState::Stopped)),
+            "{newest:?}"
+        );
+        clear(&mut runtime, 4);
+        assert_eq!(
+            enable(&mut runtime, 5, &both),
+            Some(EnableReply {
+                tag: 5,
+                outcome: Ok(())
+            })
+        );
+
+        // A drive that doesn't answer its Enable in time: the Enable may have gone, so the enable fails with the limb
+        // stopped.
+        runtime.stop(Scope::Limb(LimbName::LeftArm));
+        assert!(
+            until(&mut runtime, &mut newest, end, |bus, s| bus == 0
+                || left_is(s, LimbState::Stopped)),
+            "{newest:?}"
+        );
+        clear(&mut runtime, 6);
+        let a_two = runtime
+            .joints(["arm_a_two"])
+            .unwrap()
+            .iter()
+            .next()
+            .unwrap();
+        let late = enable(&mut runtime, 7, &["arm_a_two"]);
+        assert!(
+            matches!(
+                late,
+                Some(EnableReply {
+                    outcome: Err(EnableRefused::Sequence {
+                        joint,
+                        failure: EnableFailure::NoRun { .. },
+                        stopped: true,
+                    }),
+                    ..
+                }) if joint == a_two
+            ),
+            "{late:?}"
+        );
+        assert!(
+            until(&mut runtime, &mut newest, end, |bus, s| bus == 0
+                || left_is(s, LimbState::Stopped)),
+            "{newest:?}"
+        );
+        to_prompt.store(true, Ordering::Release);
+        while !prompt_on.load(Ordering::Acquire) {
+            assert!(Instant::now() < end, "drive 12 never made prompt");
+            std::thread::yield_now();
+        }
+
+        // host.mode: only drive 11 enabled, then drive 12 put in Run by something else stops the whole left arm.
+        clear(&mut runtime, 8);
+        assert_eq!(
+            enable(&mut runtime, 9, &["arm_a_one"]),
+            Some(EnableReply {
+                tag: 9,
+                outcome: Ok(())
+            })
+        );
+        to_mode.store(true, Ordering::Release);
+        assert!(
+            until(&mut runtime, &mut newest, end, |bus, s| bus == 0
+                || left_is(s, LimbState::Stopped)),
+            "{newest:?}"
+        );
+
+        // host.fault: drive 11 enabled and held, then faulted, stops the left arm on the bus.
+        clear(&mut runtime, 10);
+        assert_eq!(
+            enable(&mut runtime, 11, &["arm_a_one"]),
+            Some(EnableReply {
+                tag: 11,
+                outcome: Ok(())
+            })
+        );
+        to_fault.store(true, Ordering::Release);
+        assert!(
+            until(&mut runtime, &mut newest, end, |bus, s| bus == 0
+                || s.limb(left).is_some_and(|l| l.state != LimbState::Active
+                    && l.stop
+                        == Some(can::StopReason::DriveFault { slot: 0 }))),
+            "{newest:?}"
+        );
+        // Control drops the hold in the pass that hands over that view, after handing it over: a view of a later tick
+        // shows that pass done before the run ends.
+        let fault_tick = newest[1].as_ref().map_or(0, |s| s.tick);
+        assert!(
+            until(&mut runtime, &mut newest, end, |bus, s| bus == 0
+                || s.tick > fault_tick),
+            "{newest:?}"
+        );
+
+        let exit = runtime.end().unwrap();
+        assert!(exit.control.error.is_none(), "{:?}", exit.control);
+        assert_eq!(exit.control.bus_ended, None, "{:?}", exit.control);
+        assert_eq!(exit.control.replies_dropped, 0);
+        assert_eq!(exit.control.batches_dropped, 0);
+        assert_eq!(exit.control.stray_results, 0);
+        assert_eq!(exit.control.mode_stops, 1, "{:?}", exit.control);
+        // Two joints after the first stop, two after the second, one after host.mode, one after host.fault.
+        assert_eq!(exit.control.holds_ended, 6, "{:?}", exit.control);
+        for bus in &exit.buses {
+            assert!(bus.error.is_none(), "{bus:?}");
+        }
+
+        stop_sim.store(true, Ordering::Release);
+        can0.join().unwrap().unwrap();
+        can1.join().unwrap().unwrap();
+        stop_watch.store(true, Ordering::Release);
+        let seen = watchers
+            .into_iter()
+            .map(|w| w.join().unwrap())
+            .collect::<Vec<_>>();
+        (seen, first_enable)
+    });
+    let _ = std::fs::remove_dir_all(&root);
+
+    // can0 holds no left-arm joint, and can1's right-arm drive was never named: only the end's stops reached them.
+    let only_stops =
+        |c: &Command| matches!(c, Command::Disable | Command::Reporting(Reporting::Off));
+    assert!(
+        seen[0].iter().all(|(_, f)| only_stops(&f.command)),
+        "{:?}",
+        seen[0]
+    );
+    let to = |id: u8| -> Vec<(Instant, Command)> {
+        seen[1]
+            .iter()
+            .filter(|(_, f)| f.target == common::id(id))
+            .map(|(at, f)| (*at, f.command))
+            .collect()
+    };
+    let right = to(23);
+    assert!(
+        !right.is_empty() && right.iter().all(|(_, c)| only_stops(c)),
+        "{right:?}"
+    );
+    for id in [11, 12] {
+        let frames = to(id);
+        // The refused enable sent nothing to the left arm: its first frame came after the enable that passed.
+        assert!(
+            frames.iter().all(|(at, _)| *at >= first_enable),
+            "drive {id}: {frames:?}"
+        );
+        // The first enable's sequence, in PLAN item 2's order: active reporting off, Enable, `run_mode` = MIT, then
+        // the hold's MIT commands.
+        let commands: Vec<Command> = frames.iter().map(|(_, c)| *c).collect();
+        let first = |want: &dyn Fn(&Command) -> bool| commands.iter().position(want);
+        let enable = first(&|c| *c == Command::Enable).unwrap();
+        let mode = first(&|c| {
+            matches!(
+                c,
+                Command::ParamWrite {
+                    param: Param::RunMode,
+                    value: ParamValue::RunMode(RunMode::Mit)
+                }
+            )
+        })
+        .unwrap();
+        let mit = first(&|c| matches!(c, Command::Mit(_))).unwrap();
+        let off = commands[..enable]
+            .iter()
+            .rposition(|c| *c == Command::Reporting(Reporting::Off));
+        assert!(
+            off.is_some() && enable < mode && mode < mit,
+            "drive {id}: {commands:?}"
+        );
+        // Held with zero gains and zero torque (to the codes' resolution).
+        let model = robstride::Model::Rs03;
+        for c in &commands {
+            if let Command::Mit(codes) = c {
+                let held = codes.command(model).unwrap();
+                let (kp, kd, torque) = (held.kp.get(), held.kd.get(), held.torque.get());
+                assert!(
+                    kp == 0.0 && kd == 0.0 && torque.abs() < 0.01,
+                    "drive {id}: {held:?}"
+                );
+            }
+        }
+    }
+    // Drive 12 was sent an Enable by the first two enables and the late one only; drive 11 by the four it was named in.
+    assert_eq!(
+        to(11).iter().filter(|(_, c)| *c == Command::Enable).count(),
+        4
+    );
+    assert_eq!(
+        to(12).iter().filter(|(_, c)| *c == Command::Enable).count(),
+        3
+    );
 }

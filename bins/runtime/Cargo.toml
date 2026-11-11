@@ -9,6 +9,8 @@ publish.workspace = true
 
 [dependencies]
 can.workspace = true
+robstride.workspace = true
+safety.workspace = true
 skeleton.workspace = true
 rtrb.workspace = true
 thiserror = { workspace = true, features = ["std"] }
@@ -16,6 +18,9 @@ thiserror = { workspace = true, features = ["std"] }
 [target.'cfg(target_os = "linux")'.dependencies]
 nix.workspace = true
 telemetry.workspace = true
+
+[dev-dependencies]
+can = { workspace = true, features = ["test-support"] }
 
 [lints]
 workspace = true

@@ -16,8 +16,7 @@ pub enum Scope {
 }
 
 /// The operator's clear of one stopped limb: one [`Reply`] per bus the limb is on, under `tag`, or one refusal when it
-/// is on none. Enable and plans come with the control step that runs them (PLAN step 7, 4b-2); until then the runtime
-/// never enables anything.
+/// is on none. A clear enables nothing: only an operator's enable does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Clear {
     /// The requester's tag, echoed in each reply.

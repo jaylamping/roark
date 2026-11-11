@@ -449,7 +449,9 @@ version = "0.1.0"
 dependencies = [
  "can",
  "nix",
+ "robstride",
  "rtrb",
+ "safety",
  "skeleton",
  "telemetry",
  "thiserror",

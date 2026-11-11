@@ -35,7 +35,7 @@ enable and leaves running motion alone (PLAN item 6, Logging row). Drop data wit
 
 Nothing in the workspace; it depends only on outside crates (`mcap`, `rtrb`, `serde`, `schemars`, `sha2`). Its users
 are the bus layer (`can`), whose bus threads hold the `BusRecorder`s, and the runtime, which starts the session and the
-`Recorder` (reading its `Health` comes with the `api`). The sim suite also starts a `Recorder` of its own for the bus
+`Recorder` and reads its `Health` before taking each enable. The sim suite also starts a `Recorder` of its own for the bus
 tests. See the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
 
 ## Using it

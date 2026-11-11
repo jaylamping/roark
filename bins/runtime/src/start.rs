@@ -19,8 +19,10 @@ use telemetry::{
 use crate::clock::{Schedule, mono_now, wall_ns};
 use crate::control::{self, BusEnds, ControlExit, ControlLinks, View};
 use crate::dispatch::{BusOrders, StopLatch};
+use crate::enable::{Enable, EnableReply, SLOW_RING, SlowEnds};
 use crate::plan::{BusPlan, PlanError, offline, plan};
 use crate::request::{Clear, Reply, Scope};
+use crate::roster::{JointSet, Roster, TooManyJoints, UnknownJoint};
 
 /// Ring sizes: a tick's worth of traffic with room to spare. The bus takes the newest batch, so a few are plenty.
 const COMMANDS: usize = 4;
@@ -28,7 +30,7 @@ const COMMANDS: usize = 4;
 const SNAPSHOTS: usize = 8;
 /// Orders to a bus, and re-arm answers back.
 const ORDERS: usize = 16;
-/// Clears in, replies and views out.
+/// Clears and enables in, their replies and views out.
 const REQUESTS: usize = 64;
 /// How far out the schedule's origin is, in periods: time for every thread to be spawned and asleep before tick 0 (a
 /// spawn takes far less than a period), and short enough that nobody waits on it. A thread that starts late anyway runs
@@ -64,6 +66,9 @@ pub enum StartError {
     /// The skeleton's buses can't be run.
     #[error(transparent)]
     Plan(#[from] PlanError),
+    /// The skeleton has more joints than the runtime holds.
+    #[error(transparent)]
+    Roster(#[from] TooManyJoints),
     /// The tick rate gives timing the bus layer refuses.
     #[error("{hz} Hz: {source}")]
     Timing {
@@ -106,13 +111,15 @@ pub struct StartInfo {
     pub receive_buffer_bytes: Vec<usize>,
     /// The joints on no bus.
     pub offline: Vec<JointName>,
+    /// Every joint, where it is wired and what its preflight checks, in the order enables and their replies name them.
+    pub roster: Roster,
     /// The skeleton file and the hash of exactly the bytes loaded.
     pub skeleton: SkeletonRef,
     /// The session's directory.
     pub session: PathBuf,
 }
 
-/// A running runtime: stops and clears in, replies and each bus's newest snapshot out.
+/// A running runtime: stops, clears and enables in, their replies and each bus's newest snapshot out.
 pub struct Runtime {
     /// The operator's clears. Each is answered once per bus its limb is on (by the bus, or refused `Busy`, `BusEnded`
     /// or `Ending`), or once with no bus when the limb is on none (`Offline`). A clear pushed after the run has
@@ -120,6 +127,11 @@ pub struct Runtime {
     pub clears: Producer<Clear>,
     /// The answers to clears.
     pub replies: Consumer<Reply>,
+    /// The operator's enables, of joints named by [`Runtime::joints`]. Each is answered once: enabled and held, or
+    /// refused. An enable pushed after the run has [`finished`](Runtime::finished) gets no reply.
+    pub enables: Producer<Enable>,
+    /// The answers to enables.
+    pub enable_replies: Consumer<EnableReply>,
     /// Each bus's newest snapshot, once a tick, when [`RuntimeConfig::views`] asked for them.
     pub views: Option<Consumer<View>>,
     stops: Arc<StopLatch>,
@@ -183,6 +195,7 @@ impl Runtime {
         let text = skeleton::read(&config.skeleton)?;
         let skeleton = skeleton::parse(&text)?;
         let plans = plan(&skeleton)?;
+        let roster = Roster::new(&skeleton, &plans)?;
         let timing = Timing::at_hz(config.hz);
         timing.check().map_err(|source| StartError::Timing {
             hz: config.hz,
@@ -193,20 +206,11 @@ impl Runtime {
             .iter()
             .map(|p| can::bus_info(&p.name, p.bitrate_bps))
             .collect();
-        let session = Session::start(
-            &config.sessions,
-            SessionInfo {
-                git_revision: config.git_revision.clone(),
-                operator: config.operator.clone(),
-                stage: STAGE,
-                skeleton: skeleton_ref.clone(),
-                buses: sockets.clone(),
-            },
-            wall_ns(),
-        )?;
+        let session = start_session(config, &skeleton_ref, &sockets)?;
         let session_dir = session.dir().to_path_buf();
         let (recording, recorders) = Recording::new(session, RING_BATCHES);
         let epoch = recording.epoch();
+        let health = recording.health();
         let mut threads = Threads {
             end: Arc::new(AtomicBool::new(false)),
             control: None,
@@ -217,6 +221,7 @@ impl Runtime {
         let start = mono_now() + Duration::from_nanos(ORIGIN_PERIODS * timing.period_ns);
         let mut ends = Vec::new();
         let mut orders = Vec::new();
+        let mut slow = Vec::new();
         let mut receive_buffer_bytes = Vec::new();
         for (p, recorder) in plans.iter().zip(recorders) {
             match spawn_bus(p, timing, recorder, epoch, start, &threads.end) {
@@ -224,6 +229,7 @@ impl Runtime {
                     threads.buses.push((p.name.clone(), bus.thread));
                     ends.push(bus.ends);
                     orders.push(bus.orders);
+                    slow.push(bus.slow);
                     receive_buffer_bytes.push(bus.receive_buffer_bytes);
                 }
                 Err(e) => return Err(threads.unwind(e.into())),
@@ -240,18 +246,20 @@ impl Runtime {
         let finished = Arc::new(AtomicBool::new(false));
         let (clears, clears_rx) = RingBuffer::new(REQUESTS);
         let (replies_tx, replies) = RingBuffer::new(REQUESTS);
-        let (views_tx, views) = if config.views {
-            let (tx, rx) = RingBuffer::new(REQUESTS);
-            (Some(tx), Some(rx))
-        } else {
-            (None, None)
-        };
+        let (enables, enables_rx) = RingBuffer::new(REQUESTS);
+        let (enable_replies_tx, enable_replies) = RingBuffer::new(REQUESTS);
+        let (views_tx, views) = views(config.views);
         let links = ControlLinks {
             buses: ends,
             orders,
             stops: Arc::clone(&stops),
             clears: clears_rx,
             replies: replies_tx,
+            roster: roster.clone(),
+            slow,
+            enables: enables_rx,
+            enable_replies: enable_replies_tx,
+            health,
             views: views_tx,
             end: Arc::clone(&threads.end),
             finished: Arc::clone(&finished),
@@ -267,6 +275,8 @@ impl Runtime {
         Ok(Self {
             clears,
             replies,
+            enables,
+            enable_replies,
             views,
             stops,
             finished,
@@ -275,6 +285,7 @@ impl Runtime {
                 sockets,
                 receive_buffer_bytes,
                 offline: offline(&skeleton),
+                roster,
                 skeleton: skeleton_ref,
                 session: session_dir,
             },
@@ -292,6 +303,17 @@ impl Runtime {
     #[must_use]
     pub fn session(&self) -> &Path {
         &self.info.session
+    }
+
+    /// The joints named, for an [`Enable`].
+    ///
+    /// # Errors
+    /// The first name the skeleton doesn't have.
+    pub fn joints<'a>(
+        &self,
+        names: impl IntoIterator<Item = &'a str>,
+    ) -> Result<JointSet, UnknownJoint> {
+        self.info.roster.set(names)
     }
 
     /// The operator's stop of `scope`: always accepted, never waits, and taken by control ahead of any clear on its
@@ -390,12 +412,42 @@ impl Threads {
     }
 }
 
+/// The session, recorded with what the runtime starts from.
+fn start_session(
+    config: &RuntimeConfig,
+    skeleton: &SkeletonRef,
+    sockets: &[BusInfo],
+) -> Result<Session, RecordError> {
+    Session::start(
+        &config.sessions,
+        SessionInfo {
+            git_revision: config.git_revision.clone(),
+            operator: config.operator.clone(),
+            stage: STAGE,
+            skeleton: skeleton.clone(),
+            buses: sockets.to_vec(),
+        },
+        wall_ns(),
+    )
+}
+
+/// The views' ring, when anyone reads them.
+fn views(on: bool) -> (Option<Producer<View>>, Option<Consumer<View>>) {
+    if on {
+        let (tx, rx) = RingBuffer::new(REQUESTS);
+        (Some(tx), Some(rx))
+    } else {
+        (None, None)
+    }
+}
+
 /// A bus thread as started.
 struct SpawnedBus {
     thread: JoinHandle<BusExit>,
     /// Control's ends of its rings.
     ends: BusEnds,
     orders: BusOrders,
+    slow: SlowEnds,
     receive_buffer_bytes: usize,
 }
 
@@ -412,6 +464,8 @@ fn spawn_bus(
     let (snapshots_tx, snapshots) = RingBuffer::new(SNAPSHOTS);
     let (orders, orders_rx): (Producer<_>, Consumer<_>) = RingBuffer::new(ORDERS);
     let (rearmed_tx, rearmed) = RingBuffer::new(ORDERS);
+    let (requests_tx, requests) = RingBuffer::new(SLOW_RING);
+    let (results, results_rx) = RingBuffer::new(SLOW_RING);
     let spawned = can::spawn(
         BusConfig {
             name: p.name.clone(),
@@ -422,9 +476,8 @@ fn spawn_bus(
             commands: commands_rx,
             snapshots: snapshots_tx,
             recorder,
-            // No slow requests yet: preflight comes with the control step that runs it (4b-2).
-            requests: RingBuffer::new(1).1,
-            results: RingBuffer::new(1).0,
+            requests,
+            results,
             orders: orders_rx,
             rearmed: rearmed_tx,
             epoch,
@@ -440,6 +493,7 @@ fn spawn_bus(
             rearmed,
         },
         orders: BusOrders::new(orders),
+        slow: SlowEnds::new(requests_tx, results_rx),
         receive_buffer_bytes: spawned.receive_buffer_bytes,
     })
 }

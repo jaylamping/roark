@@ -444,6 +444,27 @@ impl Snapshot {
         }
     }
 
+    /// A snapshot made from its parts, for the unit tests of code that reads snapshots without a bus. Healthy exactly
+    /// when no bus error latched. A bus thread's own are made by the bus.
+    #[cfg(feature = "test-support")]
+    #[must_use]
+    pub const fn from_parts(
+        tick: u64,
+        bus_error: Option<BusError>,
+        counters: Counters,
+        limbs: [Option<LimbView>; MAX_DRIVES],
+        drives: [Option<DriveView>; MAX_DRIVES],
+    ) -> Self {
+        Self {
+            tick,
+            bus_error,
+            healthy: bus_error.is_none(),
+            counters,
+            limbs,
+            drives,
+        }
+    }
+
     /// Limb `limb` on this bus.
     #[must_use]
     pub fn limb(&self, limb: usize) -> Option<&LimbView> {
