@@ -1,0 +1,48 @@
+# The one realtime process (PLAN item 3, "Repo, toolchain, CI and deploy"; conventions/deploy.md section 4).
+#
+# Not here yet, each with its own PR:
+# - Type=notify and WatchdogSec: the runtime doesn't notify yet. The watchdog is fed only when the control loop and every
+#   bus in an active run make progress (PLAN item 3), which needs control's health signal.
+# - After=/BindsTo= on each bus's device unit: comes with the .link and .network files when the adapter is named by its
+#   serial (PLAN step 8).
+# - The candump@<bus> black box: comes with its rotator (conventions/logging.md section 8.6).
+
+[Unit]
+Description=Robot runtime: the only CAN writer
+# No dependency on the network, Tailscale or the internet (deploy.md section 4).
+
+[Service]
+Type=exec
+User=robot
+Group=robot
+ExecStart=/opt/robot/current/bin/runtime --skeleton /etc/robot/skeleton.yaml --sessions /var/lib/robot/sessions --lock /run/robot/runtime.lock
+# The independent stop: Disable, then reporting off, to every drive the skeleton wires. systemd runs it after the
+# runtime's process has exited, however it exited (a clean stop, a crash, kill -9, or the watchdog once it exists), so
+# the runtime's lock is free. It never depends on the runtime (PLAN item 3).
+ExecStopPost=/opt/robot/current/bin/robot-cli disable --skeleton /etc/robot/skeleton.yaml --lock /run/robot/runtime.lock
+# Safe only because the runtime never enables on its own: not at start, not after a restart (PLAN item 3).
+Restart=always
+RestartSec=2s
+# SIGTERM ends the run cleanly: every limb stopped and confirmed, then the session closed (bins/runtime). Past this,
+# SIGKILL, then ExecStopPost all the same.
+KillMode=mixed
+TimeoutStopSec=5s
+
+ConfigurationDirectory=robot
+StateDirectory=robot
+# /run/robot: the lock and, later, the api socket. Kept until ExecStopPost has run.
+RuntimeDirectory=robot
+
+LimitRTPRIO=99
+LimitMEMLOCK=infinity
+AmbientCapabilities=CAP_SYS_NICE CAP_IPC_LOCK CAP_NET_RAW
+CapabilityBoundingSet=CAP_SYS_NICE CAP_IPC_LOCK CAP_NET_RAW
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/robot
+PrivateTmp=yes
+# Child processes don't inherit realtime priority. Never RestrictRealtime=yes: it blocks the realtime threads.
+CPUSchedulingResetOnFork=yes
+
+[Install]
+WantedBy=multi-user.target
