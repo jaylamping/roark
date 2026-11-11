@@ -73,7 +73,8 @@ def build():
                     groove(f'GROOVE_RUNOUT{tag}{k}', sgn, dk, span + 2.0 * k)
             if REVCP and os.environ.get('HS_FILL', '1') == '1':      # spigot inside filled r 28 -> 25 over the groove arcs (wall under the groove 9.25)
                 with M.Sk(h, M.plane(h, 'X', HX, f'SPIGOT_FILL{tag}_P'), f'SPIGOT_FILL{tag}') as sk_:
-                    sk_.poly([(HX, y_, CZ + sgn * r_) for r_, y_ in [(25.0, 296.0), (28.3, 296.0), (28.3, 302.3), (25.0, 302.3)]])
+                    fr0 = float(os.environ.get('HS_FILL_R0', '25.0'))      # shoulder hub fd0cef8: r 23 (their 1.2 rounded fill ends not modelled)
+                    sk_.poly([(HX, y_, CZ + sgn * r_) for r_, y_ in [(fr0, 296.0), (28.3, 296.0), (28.3, 302.3), (fr0, 302.3)]])
                     centerline_(sk_, (HX, 250.0, CZ), (HX, 340.0, CZ))
                 revolve_(h, sk_.feat, f'SPIGOT_FILL{tag}', None, False, angle=130.0, mid=True, lo=0.01)
         h.ForceRebuild3(False)
