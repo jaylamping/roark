@@ -20,15 +20,15 @@ control thread runs it; the bus layer (`can`) does the pre-send veto, and this c
   about it (safety.md section 5). A null cap, a cap the drive's model can't take, a null `direction`, `zero_rad` or
   `hard_rad`, a model whose MIT scales aren't settled, or an unwired joint refuses before anything is sent.
 - **The enable sequence** (`Enabling`): takes a `PreflightPassed` by value, so an enable without a preflight doesn't
-  compile and one preflight enables once. Reporting off, its echo plus one tick, Enable, a fresh Run status within 50 ms,
-  then `run_mode` = MIT, its echo and a later fresh Run status within 50 ms, one frame per tick in control's batch.
-  A reply counts only if it was read inside its step's window (`RUN_WITHIN_NS`), and a status only if it is the fresh
-  one (the first after a command the socket took) and no later status contradicts its mode, so one status never
+  compile and one preflight enables once. Reporting off, its echo plus one tick, Enable, a fresh Run status within
+  50 ms, then `run_mode` = MIT, its echo and a later fresh Run status within 50 ms, one frame per tick in control's
+  batch. A reply counts only if it was read inside its step's window (`RUN_WITHIN_NS`), and a status only if it is the
+  fresh one (the first after a command the socket took) and no later status contradicts its mode, so one status never
   answers two frames. A drive seen out of Run after the Enable's answer ends the sequence, and so do, at any step,
-  another drive's view, a fault, and the limb stopping, stopped or cleared since preflight (`LimbStopped`), even
-  where the drive's own replies would have enabled it. Only `Next::Enabled` lets control command the drive. A failure
-  after the Enable is planned means the limb must be stopped (`Enabling::enable_planned`), not just refused; each
-  `EnableFailure` has its operator line and remedy too.
+  another drive's view, a fault, before the Enable is planned a mode out of Reset since preflight, and the limb
+  stopping, stopped or cleared since preflight (`LimbStopped`), even where the drive's own replies would have enabled
+  it. Only `Next::Enabled` lets control command the drive. A failure after the Enable is planned means the limb must be
+  stopped (`Enabling::enable_planned`), not just refused; each `EnableFailure` has its operator line and remedy too.
 - **States** (`DriveState`, `LimbState`): PLAN item 6's machines as transition functions. An event a state doesn't
   take returns `None` and changes nothing.
 

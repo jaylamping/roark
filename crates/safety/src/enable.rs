@@ -7,7 +7,8 @@
 //!
 //! The runtime cancels the sequence on any event that voids its preflight (see [`PreflightPassed`]); the sequence
 //! itself checks, at every step, that it is stepped with its own drive on its own bus ([`Seen`]), that the drive
-//! reports no fault, and that its limb hasn't stopped or been cleared since preflight: each of those ends it. It sends
+//! reports no fault, that until the Enable is planned it shows no mode but Reset since its preflight, and that its limb
+//! hasn't stopped or been cleared since preflight: each of those ends it. It sends
 //! no slow request to a drive while it is enabling: the bus keeps only each drive's last echo, so a slow frame's echo
 //! would hide the sequence's own and the sequence would give up.
 //!
@@ -20,7 +21,7 @@ use robstride::{
     encode,
 };
 
-use crate::preflight::PreflightPassed;
+use crate::preflight::{PreflightPassed, left_reset};
 use crate::refusal::stopped_by;
 use crate::rule::RuleId;
 use crate::seen::{DriveAddress, Seen};
@@ -61,6 +62,12 @@ pub enum EnableFailure {
         /// Why the limb stopped, if the snapshot still says.
         stop: Option<StopReason>,
     },
+    /// Before its Enable was planned, the drive showed a mode other than Reset (a status or a version reply read since
+    /// its preflight passed): something else put it there, and the Enable's answer would prove nothing.
+    NotReset {
+        /// The mode it showed.
+        mode: Mode,
+    },
     /// A status since the sequence began carried fault bits, or a fault was seen since the limb's last clear (then the
     /// bits are those of the latest status, possibly none).
     Faults {
@@ -75,7 +82,9 @@ impl EnableFailure {
     pub const fn rule(self) -> RuleId {
         match self {
             Self::NoEcho | Self::NoModeEcho => RuleId::HostBus,
-            Self::WrongView { .. } | Self::LimbStopped { .. } => RuleId::HostPreflight,
+            Self::WrongView { .. } | Self::LimbStopped { .. } | Self::NotReset { .. } => {
+                RuleId::HostPreflight
+            }
             Self::NoRun { .. } | Self::LeftRun { .. } => RuleId::HostMode,
             Self::Faults { .. } => RuleId::HostFault,
         }
@@ -118,6 +127,9 @@ impl EnableFailure {
                 "found its limb stopped or cleared since its preflight{}, expected it running",
                 stopped_by(stop)
             ),
+            Self::NotReset { mode } => {
+                format!("reported {mode:?} after its preflight, before its Enable, expected Reset")
+            }
             Self::Faults { bits } if bits.is_empty() => {
                 "had a fault since the last clear, expected none".to_owned()
             }
@@ -144,6 +156,9 @@ impl EnableFailure {
             }
             Self::NoRun { .. } | Self::LeftRun { .. } => {
                 "Check the drive's power and fault state, clear the limb, then run preflight and enable again"
+            }
+            Self::NotReset { .. } => {
+                "Find what put it in that mode; power-cycle the drive, then run preflight and enable again"
             }
             Self::Faults { .. } => {
                 "Find the fault's cause, power-cycle the drive, clear the limb, then run preflight again"
@@ -196,6 +211,8 @@ pub struct Enabling {
     address: DriveAddress,
     /// The limb's `generation` while preflight ran: a clear since voids the proof.
     generation: u32,
+    /// When the preflight passed: a mode out of Reset read since, before the Enable, voids the proof.
+    proved_ns: u64,
     stage: Stage,
     started_ns: u64,
 }
@@ -212,6 +229,7 @@ impl Enabling {
             drive: passed.drive(),
             address: passed.address(),
             generation: passed.generation(),
+            proved_ns: passed.at_ns(),
             stage: Stage::ReportingOff,
             started_ns: now_ns,
         }
@@ -235,7 +253,8 @@ impl Enabling {
 
     /// The step for tick `tick`'s batch, planned at `now_ns` (the runtime's monotonic epoch, as the view's times) from
     /// what the drive's bus last showed of it. Another drive's view (by ID or by bus), a fault, or a limb stopping,
-    /// stopped or cleared since preflight ends the sequence at any step but a failure.
+    /// stopped or cleared since preflight ends the sequence at any step but a failure; a mode out of Reset since
+    /// preflight ends it at any step before the Enable is planned, so no Enable goes to a drive something else enabled.
     pub fn step(&mut self, seen: Seen<'_>, tick: u64, now_ns: u64) -> Next {
         let view = seen.view;
         if let Some(failure) = self.voided(seen) {
@@ -335,9 +354,9 @@ impl Enabling {
         )
     }
 
-    /// What ends the sequence whatever its step: another drive's view, a fault, or the limb stopped or cleared since
-    /// preflight; a fault first, so a stop the bus made for it is named by its own rule. `None` once it has failed: the
-    /// first failure stands.
+    /// What ends the sequence whatever its step: another drive's view, a fault, until the Enable is planned the drive
+    /// out of Reset since its preflight, or the limb stopped or cleared since preflight; the drive's own word first, so
+    /// a stop the bus made for it is named by its own rule. `None` once it has failed: the first failure stands.
     fn voided(&self, seen: Seen<'_>) -> Option<EnableFailure> {
         if let Stage::Failed { .. } = self.stage {
             return None;
@@ -350,6 +369,12 @@ impl Enabling {
         }
         if let Some(bits) = self.faults(seen.view) {
             return Some(EnableFailure::Faults { bits });
+        }
+        // Once the Enable is planned a mode out of Reset is its answer, which the steps judge.
+        if !self.enable_planned()
+            && let Some(mode) = left_reset(seen.view, self.proved_ns)
+        {
+            return Some(EnableFailure::NotReset { mode });
         }
         (!seen.limb.state.takes_commands() || seen.limb.generation != self.generation).then_some(
             EnableFailure::LimbStopped {

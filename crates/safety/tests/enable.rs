@@ -5,7 +5,7 @@
 mod common;
 
 use can::SlowKind;
-use can::{DriveView, LimbState, LimbView, Observed, StopReason};
+use can::{DriveView, LimbState, LimbView, ModeSeen, Observed, StopReason};
 use common::{BUS0, IDLE, echoed, joint, on, quiet, seen, shown, skeleton, status};
 use robstride::{
     CanTimeout, Damper, EchoKind, Mode, Param, ParamOutcome, ParamValue, Reporting, RunMode,
@@ -571,4 +571,55 @@ fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
         Next::Failed(EnableFailure::LimbStopped { stop: None })
     );
     assert!(!enabling.enable_planned(), "nothing to stop");
+}
+
+/// Guards: safety - `host.preflight`: a drive seen out of Reset after its preflight passed and before its Enable is
+/// planned, in a status or a version reply, ends the sequence before any Enable: something else put it in that mode,
+/// and a drive already in Run would answer the Enable in Run. A status from before the proof doesn't count, and after
+/// the Enable is planned a Run is its answer (PLAN item 6 Preflight row: the drive in Reset; another controller).
+#[test]
+fn the_enable_sequence_refuses_a_drive_out_of_reset_before_its_enable() {
+    let t0 = 100 * PERIOD;
+    let echo = echoed(quiet(), EchoKind::Reporting(Reporting::Off), t0 + 10);
+    let run = with_status(echo, Mode::Run, t0 + PERIOD);
+    let version = DriveView {
+        mode: Some(ModeSeen {
+            mode: Mode::Calibration,
+            read_ns: t0 + PERIOD + 1,
+        }),
+        ..with_status(echo, Mode::Reset, t0 + PERIOD)
+    };
+    for (view, mode) in [(run, Mode::Run), (version, Mode::Calibration)] {
+        // Seen as the echo comes, or in the tick the Enable would have been planned: either way, no Enable.
+        for at_tick in [1, 2] {
+            let mut enabling = Enabling::new(passed(), t0);
+            let _ = enabling.step(shown(&quiet()), 0, t0);
+            let first = if at_tick == 1 { &view } else { &echo };
+            let _ = enabling.step(shown(first), 1, t0 + PERIOD);
+            let failure = EnableFailure::NotReset { mode };
+            assert_eq!(
+                enabling.step(shown(&view), 2, t0 + 2 * PERIOD),
+                Next::Failed(failure),
+                "{mode:?} seen at tick {at_tick}"
+            );
+            assert!(!enabling.enable_planned(), "nothing to stop");
+        }
+    }
+    let failure = EnableFailure::NotReset { mode: Mode::Run };
+    assert_eq!(failure.rule(), RuleId::HostPreflight);
+    assert_eq!(
+        failure.message("arm_joint_one"),
+        "enable failed (host.preflight): arm_joint_one reported Run after its preflight, before its Enable, expected \
+         Reset"
+    );
+
+    // A Run read before the proof was made is older than what preflight checked.
+    let mut enabling = Enabling::new(passed(), t0);
+    let before_proof = with_status(echo, Mode::Run, 1);
+    let _ = enabling.step(shown(&quiet()), 0, t0);
+    let _ = enabling.step(shown(&before_proof), 1, t0 + PERIOD);
+    assert_eq!(
+        enabling.step(shown(&before_proof), 2, t0 + 2 * PERIOD),
+        Next::Send(encode::enable(joint(&skeleton(), 0).id))
+    );
 }
