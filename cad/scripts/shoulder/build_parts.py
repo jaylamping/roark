@@ -119,8 +119,10 @@ def build_drum():
     extrude(d, sk, 'CLIP_REAR', 40, NZ, cut=True)
     # drum: smooth revolved wall with a rounded rear rim and a rounded front lip
     # DRESSED: one closed drum, r 48-57, rounded rear rim and a full round on the front lip; pockets under the skin below
-    roll_rev(d, 'DRUM', [(DRUM_RI, DRUM_Z0), (DRUM_RO, DRUM_Z0), (DRUM_RO, LIP_Z1), (LIP_RI, LIP_Z1), (LIP_RI, LIP_Z0), (DRUM_RI, LIP_Z0)],
-             [0, 1.5, 5.0, 0.8, 0, 0])
+    # ORGANIC: crowned skin, a loft through circles about the roll axis; the bore and lip opening are cut below
+    secs = [zsk(d, z, f'DRUM_S{i}', lambda s, z=z, r=r: s.circle((RX, RY, z), r)) for i, (z, r) in enumerate(DRUM_CROWN)]
+    loft(d, secs, 'DRUM')
+    roll_rev(d, 'LIP_BORE', [(0, LIP_Z0), (LIP_RI, LIP_Z0), (LIP_RI, LIP_Z1 + 1), (0, LIP_Z1 + 1)], cut=True)
     # cap ears
     extrude(d, zsk(d, DRUM_Z0, 'EARS', lambda s: [s.circle(rpt(EAR_PCD, a, DRUM_Z0), EAR_R) for a in EAR_ANGLES]), 'EARS', 9.0, Z)
     # spokes for the flange ring
@@ -167,7 +169,7 @@ def build_drum():
         extrude(d, zsk(d, DRUM_Z0 - 1, 'SPINE_POCKET', spine_pock), 'SPINE_POCKET', zf - WALL - (DRUM_Z0 - 1), Z, cut=True)
     # DRESSED: soften the trunk shells (long edges)
     along_x = lambda a, b: abs(a[0] - b[0]) > 10.0 and abs(a[1] - b[1]) < 0.05 and abs(a[2] - b[2]) < 0.05
-    fillet(d, edges_where(d, lambda p: p[1] > 482.0, along_x), [3.0, 2.0], 'TRUNK_A_ROUND')
+    fillet(d, edges_where(d, lambda p: p[1] > 482.0, along_x), [5.0, 4.0, 3.0, 2.0], 'TRUNK_A_ROUND')
     along_z = lambda a, b: abs(a[2] - b[2]) > 10.0 and abs(a[0] - b[0]) < 0.05 and abs(a[1] - b[1]) < 0.05
     fillet(d, edges_where(d, lambda p: p[1] > 470.0 and abs(p[0] - TRUNK_X) < 25.0 and p[2] < 7.0, along_z), [3.0, 2.0], 'TRUNK_B_ROUND')
     # ---- cuts
@@ -199,10 +201,12 @@ def build_drum():
     extrude(d, zsk(d, zs, 'BRANCH_S', lambda s: s.rpoly(seg_rect((b0[0], b0[1], zs), (b1[0], b1[1], zs), bn, SH, 2, 6), [1, 1, 1, 1])),
             'BRANCH_S', SW, NZ, cut=True)
     # pockets between the lug ribs, under the skin (rib half-width 8 at r 53)
-    def pockets(s):
-        for th in LUG_ANGLES:
-            sector(s, lambda r, a: rpt(r, a, POCKET_Z[0]), WALL_RO, SKIN_RI, th + 9.0, th + 36.0, 1.5)
-    extrude(d, zsk(d, POCKET_Z[0], 'POCKETS', pockets), 'POCKETS', POCKET_Z[1] - POCKET_Z[0], Z, cut=True)
+    # pockets under the crowned skin: r 54 at the ends, r 55 over the middle band where the crown is r 57
+    for nm, z0_, z1_, ro_ in (('POCKETS', POCKET_Z[0], POCKET_Z[1], SKIN_RI), ('POCKETS_MID', -13.0, 13.0, SKIN_RI + 1.0)):
+        def pockets(s, z0_=z0_, ro_=ro_):
+            for th in LUG_ANGLES:
+                sector(s, lambda r, a: rpt(r, a, z0_), WALL_RO, ro_, th + 9.0, th + 36.0, 0.8)
+        extrude(d, zsk(d, z0_, nm, pockets), nm, z1_ - z0_, Z, cut=True)
     # window over the roll RS03 top connector bay, inside the skin (the branch channels open the skin where they pass)
     tw = TOPWIN
     extrude(d, zsk(d, DRUM_Z0 - 1, 'TOP_WINDOW', lambda s: s.rpoly(rect_pts((RX, RY + 47.25, DRUM_Z0 - 1), X, Y, 2 * tw['x'], 14.5), [3, 3, 3, 3])),
@@ -256,8 +260,8 @@ def stop_lug(d, ax, key, phi_deg, lug_side):
 
 def build_cap():
     d = new_part(OUT / f"{NAMES['cap']}.SLDPRT")
-    roll_rev(d, 'CAP', [(0, DRUM_Z0), (BOSS_R, DRUM_Z0), (BOSS_R, CAP_Z1 + CAP_T), (DRUM_RO - RIM_T, CAP_Z1 + CAP_T), (DRUM_RO - RIM_T, DRUM_Z0),
-                        (DRUM_RO, DRUM_Z0), (DRUM_RO, CAP_Z1), (LAND_R, CAP_Z1), (LAND_R, LAND_Z), (STUB_R, LAND_Z), (STUB_R, BRG_Z[1]),
+    roll_rev(d, 'CAP', [(0, DRUM_Z0), (BOSS_R, DRUM_Z0), (BOSS_R, CAP_Z1 + CAP_T), (CAP_RIM_R - RIM_T, CAP_Z1 + CAP_T), (CAP_RIM_R - RIM_T, DRUM_Z0),
+                        (CAP_RIM_R, DRUM_Z0), (CAP_RIM_R - 1.0, CAP_Z1), (LAND_R, CAP_Z1), (LAND_R, LAND_Z), (STUB_R, LAND_Z), (STUB_R, BRG_Z[1]),
                         (0, BRG_Z[1])], [0, 0.8, 1.5, 1.5, 0.5, 0.5, 6.0, 1.0, 0.3, 0.3, 0.6, 0])
     # spoke from the trunk end to the axis, carrying the radial channel
     dvec = np.array([RX - TRUNK_X, RY - TRUNK_Y, 0.0])
@@ -323,14 +327,15 @@ def ypt(r, a, y):
 def build_fork_front():
     d = new_part(OUT / f"{NAMES['fork_front']}.SLDPRT")
     dm = DOME
-    hull = lambda k: hull_pts([(RX, RY, dm['r'] - k), (RX - 22, 362.0, 10.0 - k), (RX + 22, 362.0, 10.0 - k)])
-    z0, z1, e = FRONT_Z[0], FRONT_Z[1], dm['edge']
-    extrude(d, zsk(d, z0, 'CHEEK', lambda s: s.spline([(x, y, z0) for x, y in hull(0.0)])), 'CHEEK', z1 - e - z0, Z)
-    # soft front edge: loft through insets of a quarter round (R5)
+    hull = lambda k: hull_pts([(RX, RY, dm['r'] - k), (RX - 22, 362.0 + 0.5 * k, max(10.0 - k, 3.0)), (RX + 22, 362.0 + 0.5 * k, max(10.0 - k, 3.0))])
+    fc = FRONT_CROWN
+    z0, z1 = FRONT_Z[0], fc['z1']
+    extrude(d, zsk(d, z0, 'CHEEK', lambda s: s.spline([(x, y, z0) for x, y in hull(0.0)])), 'CHEEK', fc['z0'] - z0, Z)
+    # ORGANIC: the face crowns forward, an elliptical quarter (12 mm in, 7 mm forward) lofted through insets
     secs = []
-    for i, a in enumerate((0.0, 30.0, 60.0, 85.0)):
+    for i, a in enumerate((0.0, 25.0, 50.0, 70.0, 86.0)):
         t = math.radians(a)
-        zz, k = z1 - e + e * math.sin(t), e * (1 - math.cos(t))
+        zz, k = fc['z0'] + (fc['z1'] - fc['z0']) * math.sin(t), fc['inset'] * (1 - math.cos(t))
         secs.append(zsk(d, zz, f'CHEEK_EDGE{i}', lambda s, zz=zz, k=k: s.spline([(x, y, zz) for x, y in hull(k)])))
     loft(d, secs, 'CHEEK_EDGE')
     extrude(d, zsk(d, ROLL_OUT, 'BOSS', lambda s: s.circle((RX, RY, ROLL_OUT), 22.0)), 'BOSS', FRONT_Z[0] + 0.5 - ROLL_OUT, Z)
@@ -342,8 +347,8 @@ def build_fork_front():
             'TAP_SECTOR', SEAT_Y[1] - SEAT_Y[0], Y)
     # DRESSED: cuff round the RS02 housing, down to just above the hub
     cf = CUFF
-    yaw_rev(d, 'CUFF', [(cf['ri'], cf['y0']), (cf['ro_bot'], cf['y0']), (cf['ro_top'], SEAT_Y[0] - 2.0), (cf['ro_top'], SEAT_Y[0] + 2.0),
-                        (cf['ri'], SEAT_Y[0] + 2.0)], [0.8, 1.2, 6.0, 0, 0])
+    yaw_rev(d, 'CUFF', [(cf['ri'], cf['y0']), (cf['ro_bot'], cf['y0']), cf['ro_mid'], (cf['ro_top'], SEAT_Y[0] - 2.0), (cf['ro_top'], SEAT_Y[0] + 2.0),
+                        (cf['ri'], SEAT_Y[0] + 2.0)], [0.5, 0.7, 12.0, 0, 0, 0])   # ORGANIC: a convex swell, not a cone
     ym = (SEAT_Y[0] + SEAT_Y[1]) / 2
     extrude(d, zsk(d, JZ0, 'JOINT_PAD', lambda s: s.rpoly(rect_pts((RX, ym, JZ0), X, Y, 2 * JX, SEAT_Y[1] - SEAT_Y[0]), [4, 4, 4, 4])),
             'JOINT_PAD', -30.0 - JZ0, Z)
@@ -359,8 +364,8 @@ def build_fork_front():
     extrude(d, ysk(d, SEAT_Y[0] - 1, 'SEAT_BORE', lambda s: s.circle((RX, SEAT_Y[0] - 1, YZ), SEAT_RI)), 'SEAT_BORE', 12, Y, cut=True)
     extrude(d, zsk(d, ROLL_OUT - 1, 'ROLL_BORE', lambda s: s.circle((RX, RY, ROLL_OUT - 1), 10.75)), 'ROLL_BORE', 30, Z, cut=True)
     extrude(d, zsk(d, ROLL_OUT - 1, 'OUT_HOLES', lambda s: [s.circle(rpt(15.2, 30 + 60 * k, ROLL_OUT - 1), 2.25) for k in range(6)]), 'OUT_HOLES', 30, Z, cut=True)
-    extrude(d, zsk(d, FRONT_Z[1] - 4, 'OUT_CB', lambda s: [s.circle(rpt(15.2, 30 + 60 * k, FRONT_Z[1] - 4), 4.25) for k in range(6)]), 'OUT_CB', 10, Z, cut=True)
-    extrude(d, zsk(d, FRONT_Z[1] - 2, 'CAP_RECESS', lambda s: s.circle((RX, RY, FRONT_Z[1] - 2), 24.0)), 'CAP_RECESS', 5, Z, cut=True)
+    extrude(d, zsk(d, CAP_FLOOR - 2, 'OUT_CB', lambda s: [s.circle(rpt(15.2, 30 + 60 * k, CAP_FLOOR - 2), 4.25) for k in range(6)]), 'OUT_CB', 10, Z, cut=True)
+    extrude(d, zsk(d, CAP_FLOOR, 'CAP_RECESS', lambda s: s.circle((RX, RY, CAP_FLOOR), 24.0)), 'CAP_RECESS', 8, Z, cut=True)
     extrude(d, ysk(d, SEAT_Y[0] - 5, 'RS02_HOLES', lambda s: [s.circle(ypt(36.5, a, SEAT_Y[0] - 5), 1.8) for a in RS02_SCREWS]), 'RS02_HOLES', 30, Y, cut=True)
     extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_CB', lambda s: [s.circle(ypt(36.5, a, SEAT_Y[1] - 3.5), 3.3) for a in RS02_SCREWS]), 'RS02_CB', 10, Y, cut=True)
     extrude(d, ysk(d, SEAT_Y[0] - 1, 'SOCKETS', lambda s: [sector(s, lambda r, a: ypt(r, a, SEAT_Y[0] - 1), 30.0, 40.5, a0, a1, 1.5) for a0, a1 in SOCKET_POCKETS]),
@@ -414,8 +419,9 @@ def build_fork_rear():
 # ==================================================================================================== fork press-in cap
 def build_fork_cap():
     d = new_part(OUT / f"{NAMES['fork_cap']}.SLDPRT")
-    z0 = FRONT_Z[1] - 2
-    roll_rev(d, 'CAP', [(0, z0), (23.8, z0), (23.8, FRONT_Z[1]), (18.0, FRONT_Z[1] + 1.1), (0, FRONT_Z[1] + 1.5)], [0, 0.4, 0.8, 4.0, 0])
+    z0 = CAP_FLOOR
+    zt = FRONT_CROWN['z1'] - 1.5           # recessed 1.5 below the crown at its rim, like the arm's caps
+    roll_rev(d, 'CAP', [(0, z0), (23.8, z0), (23.8, zt - 1.0), (18.0, zt), (0, zt + 0.8)], [0, 0.4, 1.0, 6.0, 0])
     return finish_part(d, 'fork_cap')
 
 

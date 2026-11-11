@@ -31,13 +31,18 @@ EAR_ANGLES = [125.0, 148.0, 212.0]   # cap screws, inboard/top; CHANGED from 130
 EAR_R, EAR_PCD = 7.5, 61.0
 WIN_ANGLES = [0.0, 45.0, 135.0, 225.0, 270.0, 315.0]   # windows in the inner wall into the pockets under the skin
 PORT_ANGLE = 0.0                 # the one window through the skin: driver access to the 6 pitch pad screws (styled oval port)
-SKIN_RI = 55.0                   # DRESSED: closed outer skin r 55-57 over the roll RS03; pockets r 51.5-55 between the lug ribs
+SKIN_RI = 54.0                   # DRESSED: closed outer skin r 55-57 over the roll RS03; pockets r 51.5-55 between the lug ribs
 POCKET_Z = (DRUM_Z0 + 4.0, LIP_Z0 - 3.0)
+DRUM_CROWN = [(DRUM_Z0, 54.5), (-24.0, 56.2), (-14.0, 57.0), (14.0, 57.0), (27.0, 56.2), (33.0, 55.2), (LIP_Z1, 54.5)]
+# ORGANIC: the drum skin is a loft through these (Z, r) circles: crowned, r 57 at most (RS02 passes 2.6 mm below it)
+CAP_RIM_R = 54.5                 # ORGANIC: the cap rim continues the drum's rear end
+FRONT_CROWN = dict(z0=42.0, z1=49.0, inset=9.0)   # ORGANIC: the fork front face crowns forward to Z 49 (was flat at 47)
+CAP_FLOOR = 45.0                 # floor of the press-in cap recess (cap top 48.5: 0.5 below the crown, like the arm's caps)
 FLARE = dict(x0=105.0, x1=119.0, x2=124.0, r=56.0, fillet=12.0)   # DRESSED: neck flares into the drum (pitch axis)
-CUFF = dict(ri=39.75, ro_top=43.5, ro_bot=41.7, y0=317.8, notch=(-122.0, -78.0))
+CUFF = dict(ri=39.75, ro_top=43.0, ro_bot=41.35, ro_mid=(42.9, 336.0), y0=317.8, notch=(-122.0, -78.0))
 # DRESSED 2: cuff round the RS02 housing (r 39.25), tapering to r 41.7 and down to 2 mm above the hub rim (Y 315.8), to
 # continue the arm's top (r 39 at Y 302); notched round the fork rear's yaw exit
-DOME = dict(r=55.0, edge=5.0, back_t=2.4, pocket_r=(24.5, 52.6), pockets=[(-20.0, 40.0), (50.0, 130.0), (140.0, 200.0)])
+DOME = dict(r=55.0, edge=5.0, back_t=2.4, pocket_r=(24.5, 52.6), pockets=[(-20.0, 40.0), (50.0, 130.0), (140.0, 200.0), (212.0, 252.0), (288.0, 328.0)])
 # DRESSED 2: fork front as a full dome cap r 55 (drum skin r 57: the dome sits 3 mm in front of the lip face), R5-ish
 # front edge (arm cheeks R5, drum R7), pocketed from the back
 RS03_BUMP = dict(x0=RX - 53.0, x1=RX - 46.0, y=9.5, z0=18.6)   # relief for the RS03 housing boss at r 50.25 inboard (Z 19.6-28.1)
