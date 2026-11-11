@@ -203,7 +203,7 @@ impl EnableFailure {
                 "Check the drive's power and fault state, clear the limb, then run preflight and enable again"
             }
             Self::NotReset { .. } => {
-                "Find what put it in that mode; power-cycle the drive, then run preflight and enable again"
+                "Find what put it in that mode; power-cycle the drive, clear the limb if it is stopped, then run preflight and enable again"
             }
             Self::Faults { .. } => {
                 "Find the fault's cause, power-cycle the drive, clear the limb, then run preflight again"

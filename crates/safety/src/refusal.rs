@@ -319,7 +319,7 @@ impl Refusal {
             }
             // The bus doesn't stop an idle limb for a drive out of Reset, so there is no stop to clear.
             Self::NotReset { .. } => {
-                "Find what put it in that mode; power-cycle the drive, then run preflight again"
+                "Find what put it in that mode; power-cycle the drive, clear the limb if it is stopped, then run preflight again"
             }
         }
     }

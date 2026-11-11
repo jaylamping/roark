@@ -84,8 +84,8 @@ fn preflight_refuses_a_fault_or_a_drive_not_in_reset() {
     );
     assert_eq!(
         Refusal::NotReset { mode: Mode::Run }.remedy(),
-        "Find what put it in that mode; power-cycle the drive, then run preflight again",
-        "no clear: the limb stays idle, and a clear of an idle limb is refused"
+        "Find what put it in that mode; power-cycle the drive, clear the limb if it is stopped, then run preflight again",
+        "the mode is named before the limb's state, which may be stopped too; a clear of an idle limb is refused"
     );
     for refusal in [
         Refusal::Faults { bits: over },
