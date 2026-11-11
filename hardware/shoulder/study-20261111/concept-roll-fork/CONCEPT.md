@@ -45,6 +45,40 @@ hub's interface to the upper arm (spigot, lugs, seam bolts, hub screws).
 | Rear cap / stub / 6808 / rear cheek | Cap Z -28.5 to -40.5 (4 mm plate, 12 mm rim and spoke); 6808 at Z -42.5 to -49.5; cheek and duct to Z -58 | 2.5 mm clear of the RS03 rear face |
 | Wire passages | Power 14 x 8, signal 10 x 5, separate (2 mm rib), 2 mm walls; stub bore Ø25; yaw loop r 23.5-38.5 x 8.1 mm axial (measured); hub window 16 x 9; pitch loop 15 radial x 9.4 (power) / 6.4 (signal) axial | Power 14 x 8 holds the whole 4 x 14.5 shoulder bundle; signal holds 2.2 x 8; yaw loop meets the 3.5 x 13 arm reserve |
 
+## 3a. Second pass: contact fixes (quick sweep, 9 deg steps; full sweep in section 3b)
+
+Changes against the first pass, all in `scripts/build_concept.py`:
+
+- **Rear bearing stack:** cap rear face Z -39.3 (2.4 wall + 6 channel + 2.4 wall), 1 mm inner-race land, 6808 at Z -40.3 to
+  -47.3, floating (radial support only). The fork's bearing housing starts at Z -41.8, **2.5 mm behind the cap face**; the
+  lip behind the outer race is at r 24, clear of the stub (r 20) and the inner race.
+- **Cable run on the fork moved from the inboard side to the back:** the rear arm runs straight down behind the RS02 (box
+  44 x 10.8 with both channels inside) and turns forward into the gap under the RS02. The inboard finger is gone, so
+  nothing on the fork reaches inboard at inward roll. The RS02 inboard socket is fed by a 7 x 6 channel in a thickened
+  back-inboard sector of the seat ring. The rear arm bolts to a pad behind the seat ring with 2 x M4 along Z, heads at the back.
+- **Pitch loop:** the P1 trunk now opens on the flange face (X 100.5) instead of reaching into the channel. The feed enters
+  through the outer wall and ends flush with its inside, so no rigid part moves inside the channel. The flange (X
+  100.5-103, r 77.5) overlaps the end of the cover wall with a 2 mm axial gap, and the skirt ends 2.4 mm from the back wall.
+- **Roll range -15 to +110.** Each printed stop lug on the cap is an r 44-55 sector minus the rear arm placed at the end of
+  travel, so the arm's flank lands flat on it.
+- **Passages:** power 16 x 6 (holds the 4 x 14.5 flat bundle), signal 10 x 5, walls 2.4.
+
+**Quick sweep result (435 poses):**
+
+- Every moving pair of shoulder parts is **2.0 mm or more** over roll -15…+110, pitch -90…180 and yaw ±90. The closest are:
+  - drum ↔ pitch loop cover 2.0 (designed)
+  - hub ↔ fork rear exit 2.2
+  - fork front ↔ drum flange 2.3 at roll -15
+  - RS02 ↔ drum rib 2.4
+  - fork rear ↔ cap 2.5
+- **Stops:** arm to lug 0.01 mm at -15 and 0.02 mm at +110, with 0.7 mm at 1 deg before each end. At the stops, everything
+  else is 2.3 mm or more apart, and nothing else comes within 12 mm of the lugs.
+- **Passages:** no part's surface lies more than 0.3 mm inside any wire passage.
+- **Still touching: upper arm ↔ cage, 0.05 mm at roll -15.** This is not a shoulder part. The frozen organic upper arm meets
+  the cage side at roll -12 to -13 when yawed 45-75 deg near pitch 0 (pitch -30…+24). It reaches -20 only at yaw 0.
+  The stop stays at -15 as decided. A coupled software limit is needed (roll ≥ -11 when |yaw| ≥ 30 and pitch is -30…+24),
+  or the stop moves to -11 (7.8 mm clear at -10).
+
 ## 3. Interference sweep (first pass, `data/check.json`)
 
 **Poses:** 1,359 in all.
