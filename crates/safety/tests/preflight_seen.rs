@@ -8,7 +8,7 @@ use can::{
     DriveView, LimbState, LimbView, ModeSeen, SlowKind, SlowOutcome, SlowRequest, StopReason,
 };
 use common::preflight::{Drive, SLOT, UID, answer, run};
-use common::{BUS0, IDLE, heard, joint, on, quiet, seen, shown, skeleton, status};
+use common::{BUS0, IDLE, heard, in_slot, joint, on, quiet, seen, shown, skeleton, status};
 use robstride::{Mode, StatusFault, StatusFaults};
 use safety::{DriveAddress, Preflight, Refusal, RuleId, Step, Target};
 
@@ -189,11 +189,11 @@ fn a_drive_out_of_reset_and_back_between_polls_refuses() {
     }
 }
 
-/// Guards: safety - `host.preflight`: preflight checks at every poll that it is shown its own drive on its own bus,
-/// and that the drive's limb is idle and hasn't stopped or been cleared since the first poll. Another drive's view
-/// (another ID, or the same ID on another bus) is a runtime bug; an enabled limb, or one that stopped or was cleared
-/// mid-preflight (idle again, but what was checked before may predate the stop), refuses too (PLAN item 6 Preflight
-/// row).
+/// Guards: safety - `host.preflight`: preflight checks at every poll that it is shown its own drive on its own bus, and
+/// that the drive's limb is idle and hasn't stopped or been cleared since the first poll. Another drive's view (another
+/// ID, or the same ID on another bus), or its own from another slot than its requests go to, is a runtime bug; an
+/// enabled limb, or one that stopped or was cleared mid-preflight (idle again, but what was checked before may predate
+/// the stop), refuses too (PLAN item 6 Preflight row).
 #[test]
 fn preflight_refuses_another_drives_view_or_a_limb_not_idle() {
     let skeleton = skeleton();
@@ -220,13 +220,20 @@ fn preflight_refuses_another_drives_view_or_a_limb_not_idle() {
             Refusal::LimbStopped { stop: None },
         ),
     ];
-    let wrong = |bus, n| Refusal::WrongView {
+    let wrong = |bus, n, view_slot| Refusal::WrongView {
         view: DriveAddress::new(bus, common::id(n)).unwrap(),
+        view_slot,
         drive: target.address(),
+        slot: SLOT,
     };
     let mut rows = vec![
-        (shown(&other), wrong(&BUS0, 102)),
-        (on(&bus1, &view, &IDLE), wrong(&bus1, 101)),
+        (shown(&other), wrong(&BUS0, 102, SLOT)),
+        (on(&bus1, &view, &IDLE), wrong(&bus1, 101, SLOT)),
+        // Its own drive and bus, from another slot than preflight's requests go to.
+        (
+            in_slot(&BUS0, &view, &IDLE, SLOT + 1),
+            wrong(&BUS0, 101, SLOT + 1),
+        ),
     ];
     for (limb, refusal) in &limbs {
         rows.push((on(&BUS0, &view, limb), *refusal));
@@ -251,9 +258,9 @@ fn preflight_refuses_another_drives_view_or_a_limb_not_idle() {
         assert_eq!(refusal.rule(), RuleId::HostPreflight);
     }
     assert_eq!(
-        wrong(&bus1, 101).message("arm_joint_one"),
-        "refused (host.preflight): arm_joint_one was checked against drive 101 on bus1's view, expected drive 101 on \
-         bus0's"
+        wrong(&bus1, 101, 0).message("arm_joint_one"),
+        "refused (host.preflight): arm_joint_one was checked against drive 101 on bus1's view in slot 0, expected drive \
+         101 on bus0's in slot 0"
     );
     assert_eq!(
         Refusal::LimbStopped { stop: None }.message("arm_joint_one"),

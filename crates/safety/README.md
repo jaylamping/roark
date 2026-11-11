@@ -13,13 +13,14 @@ control thread runs it; the bus layer (`can`) does the pre-send veto, and this c
   with the damper and VBUS. Fault bits in the latest status since it began, any mode but Reset in a status or version
   reply since it began (even one a later Reset hid: the bus latches it, `out_of_reset`), a fault latched since the last
   clear, no status at all, another drive's view (another ID, or the same ID in another bus's snapshot: a drive is its
-  bus and its ID, `DriveAddress`), a limb that isn't idle or that stopped or was cleared since preflight began, or a
-  request with no result within `ANSWER_WITHIN_NS` (1 s) refuses. Only a pass makes a `PreflightPassed`, which proves
-  the drive was right then; the runtime runs every named drive's preflight, enables them together from their proofs,
-  drops the proofs on any event that voids them, and runs preflight again for every enable. Each `Refusal` names its
-  rule, the measured and the expected value, and what the operator does about it (safety.md section 5). A null cap, a
-  cap the drive's model can't take, a null `direction`, `zero_rad` or `hard_rad`, a model whose MIT scales aren't
-  settled, or an unwired joint refuses before anything is sent.
+  bus and its ID, `DriveAddress`), its own view from another slot than its requests go to, a limb that isn't idle or
+  that stopped or was cleared since preflight began, or a request with no result within `ANSWER_WITHIN_NS` (1 s)
+  refuses. Only a pass makes a `PreflightPassed`, which proves the drive was right then; the runtime runs every named
+  drive's preflight, enables them together from their proofs, drops the proofs on any event that voids them, and runs
+  preflight again for every enable. Each `Refusal` names its rule, the measured and the expected value, and what the
+  operator does about it (safety.md section 5). A null cap, a cap the drive's model can't take, a null `direction`,
+  `zero_rad` or `hard_rad`, a model whose MIT scales aren't settled, or an unwired joint refuses before anything is
+  sent.
 - **The enable sequence** (`Enabling`): takes a `PreflightPassed` by value, so an enable without a preflight doesn't
   compile and one preflight enables once. Reporting off, its echo plus one tick, Enable, a fresh Run status within 50 ms
   of its being planned (if none comes, an Enable not read back in that time is told apart, and still stops the limb),

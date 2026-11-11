@@ -6,14 +6,15 @@ mod common;
 
 use can::{DriveView, LimbState, LimbView, ModeSeen, StopReason};
 use common::enable::{MIT, PERIOD, PREFLIGHT_AT, passed, to_enable, to_mit, with_status};
-use common::{BUS0, IDLE, echoed, joint, on, quiet, shown, skeleton};
+use common::{BUS0, IDLE, echoed, in_slot, joint, on, quiet, shown, skeleton};
 use robstride::{EchoKind, Mode, Reporting, encode};
 use safety::{DriveAddress, EnableFailure, Enabling, Next, RuleId};
 
 /// Guards: safety - `host.preflight`: at every step the sequence checks it is stepped with its own drive on its own
-/// bus, and that the drive's limb hasn't stopped or been cleared since preflight. Another drive's view (another ID, or
-/// the same ID on another bus) ends it as a runtime bug, and a stopped or cleared limb ends it even where the drive's
-/// own replies would have enabled it; after the Enable, with the limb to stop (PLAN item 6 Preflight row).
+/// bus, in its own slot, and that the drive's limb hasn't stopped or been cleared since preflight. Another drive's view
+/// (another ID, or the same ID on another bus), or its own from another slot, ends it as a runtime bug, and a stopped
+/// or cleared limb ends it even where the drive's own replies would have enabled it; after the Enable, with the limb to
+/// stop (PLAN item 6 Preflight row).
 #[test]
 fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
     let t0 = 100 * PERIOD;
@@ -26,7 +27,9 @@ fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
     };
     let failure = EnableFailure::WrongView {
         view: DriveAddress::new(&BUS0, common::id(102)).unwrap(),
+        view_slot: 0,
         drive: ours,
+        slot: 0,
     };
     assert_eq!(
         enabling.step(shown(&wrong).seen(), 3, t0 + 3 * PERIOD),
@@ -35,8 +38,8 @@ fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
     assert_eq!(failure.rule(), RuleId::HostPreflight);
     assert_eq!(
         failure.message("arm_joint_one"),
-        "enable failed (host.preflight): arm_joint_one was stepped with drive 102 on bus0's view, expected drive 101 \
-         on bus0's"
+        "enable failed (host.preflight): arm_joint_one was stepped with drive 102 on bus0's view in slot 0, expected \
+         drive 101 on bus0's in slot 0"
     );
 
     // Drive 101 on another bus is another drive.
@@ -45,7 +48,9 @@ fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
     let elsewhere = on(&bus1, &echo, &IDLE);
     let failure = EnableFailure::WrongView {
         view: DriveAddress::new(&bus1, common::id(101)).unwrap(),
+        view_slot: 0,
         drive: ours,
+        slot: 0,
     };
     assert_eq!(
         enabling.step(elsewhere.seen(), 3, t0 + 3 * PERIOD),
@@ -54,8 +59,21 @@ fn the_enable_sequence_ends_on_another_drives_view_or_a_stopped_limb() {
     assert_eq!(failure.rule(), RuleId::HostPreflight);
     assert_eq!(
         failure.message("arm_joint_one"),
-        "enable failed (host.preflight): arm_joint_one was stepped with drive 101 on bus1's view, expected drive 101 \
-         on bus0's"
+        "enable failed (host.preflight): arm_joint_one was stepped with drive 101 on bus1's view in slot 0, expected \
+         drive 101 on bus0's in slot 0"
+    );
+
+    // Its own drive on its own bus, from another slot than its frames go to.
+    let (mut enabling, echo) = to_enable(t0);
+    let moved = in_slot(&BUS0, &echo, &IDLE, 1);
+    assert_eq!(
+        enabling.step(moved.seen(), 3, t0 + 3 * PERIOD),
+        Next::Stop(EnableFailure::WrongView {
+            view: ours,
+            view_slot: 1,
+            drive: ours,
+            slot: 0,
+        })
     );
 
     // The write echoed and answered in Run, but the limb began stopping: not enabled.

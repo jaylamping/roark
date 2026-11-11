@@ -64,12 +64,17 @@ pub enum EnableFailure {
         /// The last mode the drive reported.
         last: Option<Mode>,
     },
-    /// The sequence was handed another drive's view, by ID or by bus: a runtime bug.
+    /// The sequence was handed another drive's view, by ID or by bus, or its own from another slot than its frames go
+    /// to: a runtime bug.
     WrongView {
         /// The view's drive.
         view: DriveAddress,
+        /// The view's slot in its snapshot.
+        view_slot: usize,
         /// The drive the sequence is for.
         drive: DriveAddress,
+        /// The slot its frames go to.
+        slot: usize,
     },
     /// The drive's limb is stopping or stopped, or was cleared, since its preflight: the proof no longer holds, and the
     /// bus sends the limb none of the sequence's frames.
@@ -146,9 +151,12 @@ impl EnableFailure {
             Self::LeftRun { last: None } => {
                 "sent no status within 50 ms of the run_mode = MIT write, expected Run".to_owned()
             }
-            Self::WrongView { view, drive } => {
-                format!("was stepped with {view}'s view, expected {drive}'s")
-            }
+            Self::WrongView {
+                view,
+                view_slot,
+                drive,
+                slot,
+            } => format!("was stepped with {view}'s view in slot {view_slot}, expected {drive}'s in slot {slot}"),
             Self::LimbStopped {
                 stop,
                 enable_planned,
@@ -252,6 +260,8 @@ enum Stage {
 pub struct Enabling {
     drive: Drive,
     address: DriveAddress,
+    /// The drive's slot on its bus, where its frames go in the batch.
+    slot: usize,
     /// The limb's `generation` while preflight ran: a clear since voids the proof.
     generation: u32,
     /// When preflight began: a mode out of Reset read since, before the Enable, voids the proof. Preflight checked every
@@ -273,6 +283,7 @@ impl Enabling {
         Self {
             drive: passed.drive(),
             address: passed.address(),
+            slot: passed.slot(),
             generation: passed.generation(),
             preflight_began_ns: passed.started_ns(),
             stage: Stage::ReportingOff,
@@ -300,10 +311,10 @@ impl Enabling {
     }
 
     /// The step for tick `tick`'s batch, planned at `now_ns` (the runtime's monotonic epoch, as the view's times) from
-    /// what the drive's bus last showed of it. Another drive's view (by ID or by bus), a fault, or a limb stopping,
-    /// stopped or cleared since preflight ends the sequence at any step but a failure; a mode out of Reset since
-    /// preflight began ends it at any step before the Enable is planned, so no Enable goes to a drive something else
-    /// enabled.
+    /// what the drive's bus last showed of it. Another drive's view (by ID or by bus, or from another slot), a fault,
+    /// or a limb stopping, stopped or cleared since preflight ends the sequence at any step but a failure; a mode out of
+    /// Reset since preflight began ends it at any step before the Enable is planned, so no Enable goes to a drive
+    /// something else enabled.
     pub fn step(&mut self, seen: Seen<'_>, tick: u64, now_ns: u64) -> Next {
         let view = seen.view;
         if let Some(failure) = self.voided(seen) {
@@ -432,10 +443,12 @@ impl Enabling {
         if let Stage::Failed { .. } = self.stage {
             return None;
         }
-        if !self.address.is(seen.bus, seen.view.device) {
+        if !self.address.is(seen.bus, seen.view.device) || seen.slot != self.slot {
             return Some(EnableFailure::WrongView {
                 view: seen.address(),
+                view_slot: seen.slot,
                 drive: self.address,
+                slot: self.slot,
             });
         }
         if let Some(bits) = self.faults(seen.view) {

@@ -8,7 +8,8 @@
 //! the skeleton leaves null.
 //!
 //! Preflight is stepped with what its drive's bus last showed ([`Seen`]): a view of any other drive, by ID or by bus,
-//! refuses, and so does a limb that isn't idle, or that stopped or was cleared since preflight began.
+//! or from another slot than its requests go to, refuses, and so does a limb that isn't idle, or that stopped or was
+//! cleared since preflight began.
 //!
 //! Times here (`now_ns`, `read_ns`, `at_ns`) are nanoseconds on the runtime's monotonic epoch, the clock the bus layer
 //! stamps its views with (`telemetry::Epoch`); a bare `u64` like the bus layer's own, so they compare with its fields
@@ -263,11 +264,14 @@ impl Target {
 /// last proof comes (the bus refuses slow writes to a limb that isn't idle, so a drive enabled early would refuse its
 /// limb-mates' preflights); it drops every proof or cancels every sequence on any such event, and runs preflight again
 /// for every enable. It carries the drive's bus and ID and its limb's `generation`, so the enable sequence ends by
-/// itself on the voiding events its snapshots show: a stop or clear of the limb, a fault, another drive's view.
+/// itself on the voiding events its snapshots show: a stop or clear of the limb, a fault, another drive's view (or its
+/// own from another slot).
 #[derive(Debug, PartialEq, Eq)]
 pub struct PreflightPassed {
     drive: Drive,
     address: DriveAddress,
+    /// The drive's slot on its bus, as preflight was started with it.
+    slot: usize,
     /// The limb's `generation` throughout: a clear since would void the proof.
     generation: u32,
     /// When preflight began: it held the drive in Reset from here to its pass.
@@ -286,6 +290,11 @@ impl PreflightPassed {
     #[must_use]
     pub const fn address(&self) -> DriveAddress {
         self.address
+    }
+
+    /// Its slot on its bus, as preflight was started with it.
+    pub(crate) const fn slot(&self) -> usize {
+        self.slot
     }
 
     /// Its limb's `generation` while preflight ran.
@@ -394,7 +403,7 @@ impl Preflight {
     }
 
     /// The next step, given what the drive's bus last showed of it and the time. A view of another drive (by ID or by
-    /// bus), a fault in the latest status or latched since the last clear, any mode but Reset in the latest status or
+    /// bus) or from another slot than the one preflight was started with, a fault in the latest status or latched since the last clear, any mode but Reset in the latest status or
     /// status header (a version reply's included) or latched by the bus since preflight began, or a limb that isn't
     /// idle or that stopped or was cleared since the first poll, refuses at once; so does a request with no result
     /// within [`ANSWER_WITHIN_NS`].
@@ -405,22 +414,25 @@ impl Preflight {
         if let State::Asking { .. } = self.state {
             // The drive's own faults and mode before the limb's state, so a stop the bus made for them is named by
             // its own rule.
-            let refusal = if !self.target.address.is(seen.bus, view.device) {
-                Some(Refusal::WrongView {
-                    view: seen.address(),
-                    drive: self.target.address,
-                })
-            } else if let Some(refusal) = self.status_refusal(view) {
-                Some(refusal)
-            } else if !seen.limb.state.takes_commands() || seen.limb.generation != generation {
-                Some(Refusal::LimbStopped {
-                    stop: seen.limb.stop,
-                })
-            } else if seen.limb.state == LimbState::Active {
-                Some(Refusal::LimbActive)
-            } else {
-                None
-            };
+            let refusal =
+                if !self.target.address.is(seen.bus, view.device) || seen.slot != self.slot {
+                    Some(Refusal::WrongView {
+                        view: seen.address(),
+                        view_slot: seen.slot,
+                        drive: self.target.address,
+                        slot: self.slot,
+                    })
+                } else if let Some(refusal) = self.status_refusal(view) {
+                    Some(refusal)
+                } else if !seen.limb.state.takes_commands() || seen.limb.generation != generation {
+                    Some(Refusal::LimbStopped {
+                        stop: seen.limb.stop,
+                    })
+                } else if seen.limb.state == LimbState::Active {
+                    Some(Refusal::LimbActive)
+                } else {
+                    None
+                };
             if let Some(refusal) = refusal {
                 self.state = State::Refused(refusal);
             }
@@ -459,6 +471,7 @@ impl Preflight {
                     Step::Passed(PreflightPassed {
                         drive: self.target.drive,
                         address: self.target.address,
+                        slot: self.slot,
                         generation,
                         started_ns: self.started_ns,
                         at_ns: now_ns,

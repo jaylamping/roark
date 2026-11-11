@@ -95,12 +95,17 @@ pub enum Refusal {
     Unwired,
     /// The joint's drive model has no settled MIT scales, so control can't command it.
     UnvouchedModel(Model),
-    /// Preflight was handed another drive's view, by ID or by bus: a runtime bug.
+    /// Preflight was handed another drive's view, by ID or by bus, or its own from another slot than its requests go
+    /// to: a runtime bug.
     WrongView {
         /// The view's drive.
         view: DriveAddress,
+        /// The view's slot in its snapshot.
+        view_slot: usize,
         /// Preflight's drive.
         drive: DriveAddress,
+        /// The slot preflight's requests go to.
+        slot: usize,
     },
     /// The drive's limb is enabled: preflight writes only to a drive of an idle limb, and the bus refuses the rest.
     LimbActive,
@@ -215,9 +220,14 @@ impl Refusal {
                     "is a {model:?}, whose MIT scales aren't settled, expected a model they are for"
                 )
             }
-            Self::WrongView { view, drive } => {
-                format!("was checked against {view}'s view, expected {drive}'s")
-            }
+            Self::WrongView {
+                view,
+                view_slot,
+                drive,
+                slot,
+            } => format!(
+                "was checked against {view}'s view in slot {view_slot}, expected {drive}'s in slot {slot}"
+            ),
             Self::LimbActive => "is in an enabled limb, expected the limb idle".to_owned(),
             Self::LimbStopped { stop } => format!(
                 "found its limb stopped or cleared since preflight began{}, expected it idle throughout",

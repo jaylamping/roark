@@ -92,12 +92,14 @@ impl fmt::Debug for DriveAddress {
 }
 
 /// One drive as the latest snapshot of a bus shows it: the bus that snapshot came from (as its caller names it), the
-/// drive's view and its limb's, from the same snapshot. Preflight and the enable sequence take only this, so each
-/// checks that it is its own drive on its own bus and that the limb hasn't stopped or been cleared since it began. Its
-/// parts are read-only: only [`Seen::of`] makes one, so a drive's view is never paired with another limb's.
+/// drive's slot in it, the drive's view and its limb's, from the same snapshot. Preflight and the enable sequence take
+/// only this, so each checks that it is its own drive on its own bus, in the slot its requests and frames go to, and
+/// that the limb hasn't stopped or been cleared since it began. Its parts are read-only: only [`Seen::of`] makes one,
+/// so a drive's view is never paired with another limb's or another slot.
 #[derive(Clone, Copy, Debug)]
 pub struct Seen<'a> {
     pub(crate) bus: &'a BusName,
+    pub(crate) slot: usize,
     pub(crate) view: &'a DriveView,
     pub(crate) limb: &'a LimbView,
 }
@@ -111,13 +113,24 @@ impl<'a> Seen<'a> {
     pub fn of(bus: &'a BusName, snapshot: &'a Snapshot, slot: usize) -> Option<Self> {
         let view = snapshot.drive(slot)?;
         let limb = snapshot.limb(view.limb)?;
-        Some(Self { bus, view, limb })
+        Some(Self {
+            bus,
+            slot,
+            view,
+            limb,
+        })
     }
 
     /// The bus the snapshot came from, as its caller named it.
     #[must_use]
     pub const fn bus(&self) -> &'a BusName {
         self.bus
+    }
+
+    /// The drive's slot in the snapshot.
+    #[must_use]
+    pub const fn slot(&self) -> usize {
+        self.slot
     }
 
     /// The drive.
