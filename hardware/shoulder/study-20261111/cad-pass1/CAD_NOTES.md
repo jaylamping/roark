@@ -39,21 +39,24 @@ SolidWorks parts, dressed twice for the look of the organic arm.
 
 ## Masses (solid PETG 1.27 g/cc, SolidWorks volumes)
 
-| Part | Bare (g) | Dressed, round 2 (g) | What the dressing costs |
-|---|---|---|---|
-| Drum with pitch adaptor | 189.0 | **232.5** | Closed skin over the RS03, pockets under it, about +24 g; neck flare, about +10 g; spine fairing over the trunk, +9.2 g |
-| Flange ring | 29.2 | **29.2** | |
-| Rear cap with stub and lugs | 74.1 | **79.5** | Closed plate, +6.8 g; R6 rim and rounder lugs, -1.4 g |
-| Fork front | 92.2 | **153.9** | Dome cap r 55 with soft edge, slot closed, pocketed behind, about +23 g; cuff round the RS02, +32.4 g; rear web to the arm, +6.5 g |
-| Fork rear | 63.4 | **61.0** | R6 back dome, rounded arm, -2.4 g |
-| Fork press-in cap | 6.6 | **6.6** | |
-| Hub | 60.2 | **60.2** | Prepared features suppressed |
-| **Shoulder total** | **514.7** | **622.9** | +108 g against the 520 g target |
-| Pitch loop cover (torso side) | 102.5 | **102.3** | |
+| Part | Bare (g) | Round 2 (g) | Organic, final (g) | What the cosmetics cost (organic) |
+|---|---|---|---|---|
+| Drum with pitch adaptor | 189.0 | 232.5 | **238.3** | Crowned closed skin with pockets under it, about +24 g; neck flare, about +10 g; lofted spine over trunk B and the branch, about +17 g |
+| Flange ring | 29.2 | 29.2 | **29.2** | |
+| Rear cap with stub and lugs | 74.1 | 79.5 | **75.2** | Closed plate, +6.8 g; rim follows the drum's r 54.5 end |
+| Fork front | 92.2 | 153.9 | **140.8** | Crowned dome cap, pocketed behind (5 pockets), about +18 g; cuff with a gentle swell, 1.6 mm at the hub, about +31 g |
+| Fork rear | 63.4 | 61.0 | **60.6** | R6 back dome, rounded arm and joint lugs |
+| Fork press-in cap | 6.6 | 6.6 | **5.5** | Recessed 1.5 mm below the crown, like the arm's caps |
+| Hub | 60.2 | 60.2 | **60.2** | Prepared features suppressed |
+| **Shoulder total** | **514.7** | **622.9** | **609.8** | Working number about 600 g |
+| Pitch loop cover (torso side) | 102.5 | 102.3 | **102.3** | |
 
-- The biggest single costs are the cuff (32 g) and the closed drum skin (about 24 g).
-- Thinning either to 1.6 mm walls saves about a third of each.
-- Add the 6808-2RS (about 32 g catalogue) and the fasteners.
+- The round-2 rear web (cuff to fork rear arm) is dropped. It sat 0.5 mm off the fork rear arm and carried no load, so it
+  was purely cosmetic (6.5 g).
+- If mass matters, drop in this order:
+  1. the spine (trunk B and the branch then show as rounded ducts), about 17 g
+  2. a partial cuff (outboard and front faces only), about 12 g
+- The drum skin and the cuff stay (Joey).
 
 ## Size
 
@@ -84,24 +87,24 @@ SolidWorks parts, dressed twice for the look of the organic arm.
   - pitch -90…+180 at roll -11/0/+110
   - yaw -90…+90
 - **Against:** the rev A frame (moved -38 X; shell parts excluded) and the pitch RS03.
-- **Result:** on the round-2 dressed parts, every moving pair is **2.0 mm or more**. The only contacts are the intended
+- **Result:** on the organic final parts, every moving pair is **2.0 mm or more**. The only contacts are the intended
   stop contacts:
 
 | Pair | Min (mm) | Pose (pitch, roll, yaw) |
 |---|---|---|
-| Fork rear arm ↔ stop lug | 0.04 / 0.02 | roll -11 / +110 (intended) |
+| Fork rear arm ↔ stop lug | 0.02 | roll -11 and +110 (intended) |
 | Flange ring ↔ cover | 2.00 | any (designed axial gap) |
-| Fork rear ↔ hub | 2.16 | roll -11, yaw 72 |
-| Fork front (cuff) ↔ hub | 2.26 | roll 110, yaw 60 (the yaw gap under the cuff) |
-| Drum ↔ cover | 2.40 | pitch -81 |
-| Flange ring ↔ fork front | 2.45 | roll -12 (1 deg past the stop) |
+| Fork rear ↔ hub | 2.16 | roll -11, yaw 78 |
+| Fork front (cuff) ↔ hub | 2.17 | roll 110, yaw -12 (the yaw gap under the cuff) |
+| Flange ring ↔ fork front | 2.40 | roll -12 (1 deg past the stop) |
+| Drum ↔ cover | 2.41 | pitch 150 |
 | Cap ↔ fork rear | 2.50 | any |
-| Drum ↔ RS02 | 2.60 | roll 110 |
+| Drum ↔ RS02 | 2.54 | roll 97 |
 | Drum ↔ fork front (dome) | 3.00 | |
 | Drum ↔ rev A frame | 3.50 | pitch -30 |
 
-- The first dressing put a neck flare where the fork front's socket-tap sector and the RS02 swing in at the inward stop
-  (0.04 mm). The flare is now trimmed below Y = RY - 41.
+- Round 1's neck flare sat where the fork front's socket-tap sector and the RS02 swing in at the inward stop (0.04 mm).
+  It was caught by this sweep, and the flare is now trimmed below Y = RY - 41.
 
 **Stops:**
 
@@ -122,7 +125,7 @@ At both stops everything else is 2.0 mm or more away.
 | -30 | roll -21: upper arm on hardpoint H5 | roll -14: hub, yaw 15 |
 | 0 | none to -25 | roll -13: upper arm, yaw -60 |
 | +24 | roll -20: upper arm on hardpoint H5, yaw -75 | roll -15: hub, yaw -75 |
-| +90 | (run in progress) | |
+| +90 | none to -25 | none to -25 with the r 80 opening |
 
 - **Frame:**
   - no contact with the frame, the PETG gusset allowance (Z ±76) or the pitch wing inside -11…+110
@@ -193,12 +196,20 @@ Two suppressed features are driven by global variables in `shoulder_hub_left`:
    - The rear cap and fork rear cheek with R6 edges.
    - The rear web from the cuff to the fork rear arm.
 
-## Where the organic look is not there yet
+## Organic round (Joey: "organic", not excessive; stop being jarring next to the arm)
 
-- The drum is still a revolved cylinder with round edges. The arm's surfaces are lofted, with a waist and swells.
-- The cable branch over the RS03 top bay, the fork-rear joint lugs and the trunk along the neck still read as boxes from
-  above and behind.
-- The cuff is a straight taper; the arm's top curve is not continued yet.
+- **Drum:** the skin is a loft through crowned circles. It is r 54.5 at both ends and r 57 over the middle; r 57 is the most
+  the RS02 swing allows (2.54 mm). The pockets under it follow the crown.
+- **Rear cap:** its rim continues the drum's r 54.5 end.
+- **Fork front:** its face crowns forward to Z 49 (an elliptical loft, 9 mm in, 7 mm forward). The press-in cap sits 1.5 mm
+  below the crown rim, as the arm's caps sit in their recess.
+- **Cuff:** a gentle convex swell, 2 mm above the hub rim.
+- **Spine:** a low lofted spine covers trunk B and the branch, and its nose eases into the drum crown.
+- **Rounded details:** the trunk on the neck has R5 edges, the fork-rear joint lugs R4.5 corners, the stop lugs R3.7.
+- **Remaining box shapes:**
+  - the trunk mouth on the neck top (rounded)
+  - the fork rear arm seen from behind (rounded edges)
+  - the cover's bottom feed, which sits inside the shell.
 
 ## Still open
 

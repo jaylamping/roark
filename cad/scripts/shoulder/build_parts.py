@@ -158,7 +158,12 @@ def build_drum():
     hullp = unary_union([tbr, brr, Polygon(arc + [(RX, RY)])]).convex_hull
     hv = list(hullp.exterior.coords)[:-1]
     zf = 4 + WALL
-    extrude(d, zsk(d, DRUM_Z0, 'SPINE', lambda s: s.rpoly([(x, y, DRUM_Z0) for x, y in hv], [4.0] * len(hv))), 'SPINE', zf - DRUM_Z0, Z)
+    # ORGANIC: lofted, with a nose that runs forward over trunk B's square front end and eases into the drum crown
+    def hull_at(z, f_):
+        hv_ = [(RX + (x - RX) * f_, RY + (y - RY) * f_) for x, y in hv]
+        return lambda s: s.rpoly([(x, y, z) for x, y in hv_], [4.0] * len(hv_))
+    sp_secs = [zsk(d, z_, f'SPINE_S{i}', hull_at(z_, k_)) for i, (z_, k_) in enumerate([(DRUM_Z0, 1.0), (zf - 2.0, 1.0), (zf + 5.0, 0.95), (zf + 10.0, 0.86)])]
+    loft(d, sp_secs, 'SPINE')
     q = hullp.buffer(-WALL).difference(Point(RX, RY).buffer(DRUM_RO + WALL, 96)).difference(tbr.buffer(0.3)).difference(brr.buffer(0.3))
     polys = [g for g in getattr(q, 'geoms', [q]) if g.area > 40.0]
     if polys:
@@ -253,7 +258,7 @@ def stop_lug(d, ax, key, phi_deg, lug_side):
     base = np.array([RX, RY, 0.0]) + side * ARM_HW
     with Sk(d, fl, f'STOP_{key}') as s:
         q = lambda sv, z: tuple(base + dirv * sv + np.array([0, 0, z]))
-        s.rpoly([q(40.5, z0), q(48.0, z0), q(48.0, z1), q(40.5, z1)], [3.0, 3.0, 0, 0])
+        s.rpoly([q(40.5, z0), q(48.0, z0), q(48.0, z1), q(40.5, z1)], [3.7, 3.7, 0, 0])
     extrude(d, s.feat, f'STOP_{key}', 14.0, tuple(side))
     return pl
 
@@ -352,10 +357,7 @@ def build_fork_front():
     ym = (SEAT_Y[0] + SEAT_Y[1]) / 2
     extrude(d, zsk(d, JZ0, 'JOINT_PAD', lambda s: s.rpoly(rect_pts((RX, ym, JZ0), X, Y, 2 * JX, SEAT_Y[1] - SEAT_Y[0]), [4, 4, 4, 4])),
             'JOINT_PAD', -30.0 - JZ0, Z)
-    # DRESSED 2: web from the cuff back to the fork rear arm (0.5 mm static gap), so the rear arm reads as part of the cuff
-    zw = JZ0 + 0.5
-    extrude(d, zsk(d, zw, 'REAR_WEB', lambda s: s.rpoly(rect_pts((RX - 6.0, (cf['y0'] + 8.7 + SEAT_Y[0]) / 2, zw), X, Y, 16.0 + 2 * WALL, SEAT_Y[0] - cf['y0'] - 8.7),
-                                                            [3, 3, 0, 0])), 'REAR_WEB', YZ - cf['ri'] + 1.0 - zw, Z)
+    # (the round-2 rear web is dropped: it sat 0.5 mm off the fork rear arm, carried no load and cost 6.5 g)
     # ---- cuts
     extrude(d, zsk(d, z0 - 1, 'DOME_POCKETS', lambda s: [sector(s, lambda r, a: rpt(r, a, z0 - 1), dm['pocket_r'][0], dm['pocket_r'][1], a0, a1, 3.0)
                                                          for a0, a1 in dm['pockets']]), 'DOME_POCKETS', z1 - z0 - dm['back_t'] + 1, Z, cut=True)
@@ -387,7 +389,7 @@ def build_fork_rear():
     extrude(d, zsk(d, JZ0, 'DUCT', lambda s: s.rpoly(rect_pts((RX - 6.0, (SEAT_Y[0] + 4.0 + Y_BOT) / 2, JZ0), X, Y, 16.0 + 2 * WALL, SEAT_Y[0] + 4.0 - Y_BOT),
                                                       [0, 0, 0, 0])), 'DUCT', JZ0 - BACK_Z, NZ)
     ym = (SEAT_Y[0] + SEAT_Y[1]) / 2
-    extrude(d, zsk(d, JZ0, 'LUGS', lambda s: s.rpoly(rect_pts((RX, ym, JZ0), X, Y, 2 * JX, SEAT_Y[1] - SEAT_Y[0]), [2, 2, 2, 2])), 'LUGS', JZ0 - BACK_Z, NZ)
+    extrude(d, zsk(d, JZ0, 'LUGS', lambda s: s.rpoly(rect_pts((RX, ym, JZ0), X, Y, 2 * JX, SEAT_Y[1] - SEAT_Y[0]), [4.5, 4.5, 4.5, 4.5])), 'LUGS', JZ0 - BACK_Z, NZ)
     extrude(d, zsk(d, RZ, 'EXIT', lambda s: s.poly(rect_pts((RX - 6.0, Y_EX, RZ), X, Y, 16.0 + 2 * WALL, 6.0 + 2 * WALL))), 'EXIT', (YZ - 37.0) - RZ, Z)
     # ---- cuts
     roll_rev(d, 'SEAT', [(0, HOUSE_Z0 + 1), (BRG_SEAT_R, HOUSE_Z0 + 1), (BRG_SEAT_R, BRG_Z[1]), (BRG_LIP_R, BRG_Z[1]), (BRG_LIP_R, RZ), (0, RZ)],
