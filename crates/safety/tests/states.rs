@@ -41,7 +41,8 @@ fn drive_states_follow_plan_item_6() {
         (Faulted, D::PreflightPassed, None),
         (Faulted, D::RunSeen, None),
         (Faulted, D::BusLost, None),
-        (Faulted, D::Cleared, Some(Seen)),
+        // A clear doesn't say the drive answers: the next answer does.
+        (Faulted, D::Cleared, Some(Offline)),
         (Seen, D::Cleared, None),
         (Enabled, D::Cleared, None),
     ];

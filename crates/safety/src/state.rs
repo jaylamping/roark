@@ -7,7 +7,7 @@ use crate::rule::Cause;
 /// Where one drive is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DriveState {
-    /// No reply since start, a bus loss, or silence while disabled.
+    /// No reply since start, since its limb was cleared of a fault, since a bus loss, or silence while disabled.
     Offline,
     /// Answers; no preflight in hand. Its identity is preflight's to check, not this state's.
     Seen,
@@ -51,10 +51,11 @@ impl DriveState {
         use DriveEvent as E;
         use DriveState::{Checked, Enabled, Faulted, Offline, Seen};
         match event {
-            // A fault latches from anywhere, and only a clear lets go of it.
+            // A fault latches from anywhere, and only a clear lets go of it. A cleared drive hasn't answered since: it
+            // is seen again at its next answer.
             E::Fault => Some(Faulted),
             E::Cleared => match self {
-                Faulted => Some(Seen),
+                Faulted => Some(Offline),
                 Offline | Seen | Checked | Enabled => None,
             },
             E::BusLost => match self {
