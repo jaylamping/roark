@@ -17,13 +17,19 @@ Built by `cad/scripts/arm/organic_master.py` and `organic_parts.py`. Print proje
 The elbow's hard stops, at 0° and 124°, are a printed 60° lug on the drum's inboard end. It runs in a slot in the forearm's
 inboard cheek.
 
-- **Rating:** the RS02's own peak torque, 17 N·m. That is 444 N on a lug end face.
-- **Known limit:** 889 N (34 N·m) is past it. The lug root is at about SF 0.9 on its layers at 889 N.
+- **Rating:** the RS02's own peak torque, 17 N·m. The lug's contact centre is at r 33 (the pad spans r 30.1–35.9), so
+  17 N·m is **515 N** on a lug end face. (Until 2026-11-11 this was given as 444 N, a conversion at r 38.25; 444 N is only
+  14.7 N·m.) At 515 N, fine mesh: lug root bulk SF 1.98, layer 1.59. Elsewhere layer 1.17. The pad edge itself is a
+  load-application singularity that rises with mesh refinement, so only the bench test can settle it.
+- **Known limit:** 34 N·m (1030 N at r 33) is past it.
+- **Impact:** a static rating does not bound impact. A back-driven arm stopping on the lug over a fraction of a millimetre
+  can see well over 17 N·m: for example, 5 kg at 283 mm moving at 1 rad/s into 0.4 mm of compliance is about 33 N·m peak.
+  Software must slow the arm before the ends of travel, and the bench test should include a measured drop or swing into the stop.
 - **A harder impact can break the lug.** The lug is part of the back half, so a break means a reprint.
 - **Hand-off to the software project:** software must limit speed and torque approaching 0° and 124°, so the stop is only a
   backup and never a routine end of travel. Concretely: a soft limit inside each end, and a torque limit at or under
   17 N·m wherever the arm can reach a stop. Track this in the software project.
-- **Bench test:** see "Bench tests" below. The stop coupon is loaded to 444 N, then taken to failure.
+- **Bench test:** see "Bench tests" below. The stop coupon is loaded to 515 N (17 N·m), then taken to failure.
 
 ## RS02 mounting and torque path
 
@@ -107,7 +113,7 @@ TABLE
 1. **Stub coupon** (`prints/upper-arm/upper_arm_organic_stub_coupon.3mf`), **done 2026-11-11:** a 6808 inner race fits
    perfectly on the printed Ø40.0 stub (two half-stubs, seam closed, 3 walls / 15%). No caliper reading. The stub stays at
    Ø40.0.
-2. **Stop coupon:** the lug and its slot, loaded to 444 N (17 N·m) and held, then taken to failure. Record the failure load
+2. **Stop coupon:** the lug and its slot, loaded to 515 N (17 N·m at r 33) and held, then taken to failure. Record the failure load
    and where it broke.
 3. **Ring-and-key torque coupon** (`prints/upper-arm/upper_arm_organic_key_coupon.3mf` plus a second ring):
    - Bolt the ring to a flat plate through its six holes.
