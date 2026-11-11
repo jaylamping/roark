@@ -10,6 +10,8 @@ Decision (Joey): drum and fork, **no yaw ring**. Variant e is kept below only as
 
 ![Look](C10_look_front_outboard.png)
 
+What the concept needs from the torso frame (cable exit, space, cover mount): [TORSO_INTERFACE.md](TORSO_INTERFACE.md).
+
 ## 1. What the concept is
 
 - **P1 becomes a drum** (teal) round the roll RS03.
