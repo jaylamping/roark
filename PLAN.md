@@ -52,7 +52,7 @@ adds the power board interface (item 10).
 
 ## Start here
 
-1. **Joey, now, in parallel with the code:** order two MKS CANable V1.0 Pro adapters for the [interface comparison](docs/can-interface-comparison.md) (item 5), and the
+1. **Joey, now, in parallel with the code:** order one Waveshare 2-CH isolated CAN FD HAT (MCP2518FD) for the [interface comparison](docs/can-interface-comparison.md) (item 5), and the
    luggage scale for the test stand.
 2. **Read** the tenets, this plan and [conventions/](conventions/).
 3. **Skeleton** (item 1): the `skeleton` crate and `config/skeleton.yaml` with all five limbs, including the right arm's
@@ -78,7 +78,7 @@ Create each crate when an item first needs it. The crate table below is the nami
 | Hardware | State on 2026-11-08 | Software needed by then |
 |---|---|---|
 | Left shoulder and upper-arm drives (RS03 ×2, RS02), loose on the bench, 24 V supply | **Ready now** (drives owned, bench harness planned) | Items 1 to 6 |
-| USB-CAN adapter | Not bought. Buy **two** isolated STM32F0/F072 boards that mainline candleLight supports (MKS CANable **V1.0** Pro, STM32F072, ~$24; the Openlight CANable Pro listing is gone), flashed with candleLight before use; not a "CANable 2.0 Pro" or MKS V2.0 G431 board, which candleLight doesn't support. One is measured against the Waveshare HAT on the Pi and the other is the reference end, in the [interface comparison](docs/can-interface-comparison.md), with no drive on the bus; buy the rest only if it wins | Item 5 |
+| CAN interface | The Pi's USB ports face out the back for external use (Joey, 2026-11-11), so the buses connect over SPI. Buy one Waveshare 2-CH isolated CAN FD HAT (MCP2518FD, ~$55) and measure it against the MCP2515 HAT in the [interface comparison](docs/can-interface-comparison.md), with no drive on the bus. If it passes, the robot's buses need a CAN board on the header with one MCP2518FD and isolated transceiver per bus (hardware side). A USB adapter on an internal hub (MKS CANable V1.0 Pro, gs_usb) is the fallback | Item 5 |
 | Actuator test stand, RS03 waist unit first | Designed for all four sizes, waiting for Joey's review and print; luggage scale to buy | Item 7 |
 | Upper arm (printed) | Being redone as clamshells | Item 8 before it moves under power |
 | Elbow dummy-output rig | 6808 bearings arrive Mon 2026-11-09; rig is hand-loaded | **None.** No drive is used |

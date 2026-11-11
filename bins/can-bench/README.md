@@ -9,8 +9,8 @@ compares: [can-interface-comparison.md](https://github.com/jaylamping/roark/blob
 Two ends of one short bus, both terminated:
 
 - **`can-bench respond`** stands in for a limb's drives. It answers every request to one of its slots at once, echoing
-  the request's data. Run it on a second Linux machine (the dev box) through a reference adapter, so the Pi under test
-  does only the host's work.
+  the request's data. Run it on another interface on the same bus: the HAT's second channel on its own core, or a
+  second machine.
 - **`can-bench host`** does to the interface under test what the runtime's bus thread does each tick (can.md section 2):
   wake on an absolute monotonic deadline, read what came late, send one frame per slot, read replies until 90 % of the
   period, never retry a frame the queue refused. Default: 250 Hz, 6 slots (a leg: 12 frames a tick), one hour.
@@ -48,14 +48,14 @@ it is measuring for. It is one of the binaries `deny.toml` lets open a CAN socke
 
 ## Using it
 
-Bring both interfaces up at the robot's settings first (docs/pi-setup.md), then, on the dev box and the Pi:
+Bring both interfaces up at the robot's settings first (docs/pi-setup.md), then, on the Pi:
 
 ```bash
-# Dev box, reference adapter on can0: answer as six drives, under realtime priority.
-sudo chrt -f 80 can-bench respond --bus can0 --slots 6
+# The HAT's second channel, can0: answer as six drives, under realtime priority on its own core.
+sudo chrt -f 80 taskset -c 2 can-bench respond --bus can0 --slots 6
 
-# Pi, interface under test on can1: a one-hour leg-sized run, pinned to the isolated core.
-sudo chrt -f 80 taskset -c 3 can-bench host --bus can1 --hz 250 --slots 6 --seconds 3600 --out runs/gs_usb-leg
+# The channel under test, can1: a one-hour leg-sized run, pinned to the isolated core.
+sudo chrt -f 80 taskset -c 3 can-bench host --bus can1 --hz 250 --slots 6 --seconds 3600 --out runs/mcp2518fd-leg
 ```
 
 A short run on `vcan` checks the setup before any hardware: `ip link add dev vcan0 type vcan && ip link set vcan0 up`,

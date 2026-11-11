@@ -10,29 +10,29 @@ anyway (`can-bench` README, "Must never").
 
 ## The candidates
 
+The Pi's USB ports face out the back of the robot and stay free for external use (Joey, 2026-11-11), so the buses
+connect through the GPIO header over SPI.
+
 | Interface | Driver | What it tests |
 |---|---|---|
 | The Waveshare 2-CH isolated CAN HAT already on the Pi (MCP2515 + SN65HVD230) | `mcp251x` | The interface we have. The MCP2515 holds two received frames, so a host stall drops replies |
-| One MKS CANable **V1.0** Pro (STM32F072, isolated) with mainline candleLight | `gs_usb` | The pick in PLAN and the research: a USB adapter that buffers on its own chip, at the cost of up to about 1 ms of USB delivery jitter |
+| Waveshare 2-CH isolated CAN **FD** HAT (MCP2518FD + MCP2562FD, about $55) | `mcp251xfd` | The same SPI path with the MCP2518FD's 2 KB on-chip RAM: a stall makes replies late instead of lost, with no USB in the path |
 
-What to expect: the adapter's gain is no lost replies under load, isolation, hardware timestamps and one adapter per bus,
-not lower latency. These runs show whether the gain is real on this Pi and what the USB jitter costs against the collect
-deadline. The MKS **V2.0** Pro uses an STM32G431, which mainline candleLight doesn't support; check the chip before buying.
+Each HAT tests itself: one channel runs the host, the other the responder, wired together on one short bus. A run where
+the MCP2515 loses replies can't say which channel lost them, but the host channel's kernel counters (`rx over_errors`,
+`dropped`) do; on the MCP2518FD a pass is a pass for both ends.
 
-Only if the adapter misses the budget on jitter: PEAK PCAN-USB FD (high-speed USB, 125 µs frames, about $350 a channel)
-is the next candidate, run through the same steps.
-
-A second MKS V1.0 Pro with candleLight is the **reference adapter** on the dev box for every run, so only the interface
-on the Pi changes between runs.
+If the MCP2518FD passes, the robot's buses (five limbs, plus two if the hands get their own) need one MCP2518FD and
+isolated transceiver per bus on a small CAN board on the header, which is the hardware side's design. Stacked HATs don't
+fit the 33 mm Pi bay. Only if SPI misses the budget: a USB adapter on an internal hub (gs_usb, MKS CANable V1.0 Pro) or
+a PCIe CAN card behind a PCIe switch, run through the same steps.
 
 ## Hardware
 
-- The Pi 5 with the robot's image (docs/pi-setup.md), cooler fitted, `PSU_MAX_CURRENT` set.
-- The dev box (docs/dev-box.md) with the reference adapter. Running the responder on a second machine keeps its work off
-  the Pi.
-- One short bus: about 1 m of twisted pair, CAN_H, CAN_L and GND between the two interfaces, 120 Ω at each end (each
-  adapter's termination jumper or switch on). With power off, CAN_H to CAN_L reads about 60 Ω.
-- For the five-at-once run: a powered multi-TT USB 2.0 hub (the Pi 5 has four USB ports).
+- The Pi 5 with the robot's image (docs/pi-setup.md), cooler fitted, `PSU_MAX_CURRENT` set, one HAT fitted at a time
+  with its overlay (Waveshare's `mcp2515` or `mcp251xfd` lines in `config.txt`).
+- One short bus between the HAT's two channels: about 1 m of twisted pair, CAN_H, CAN_L and GND, both channels'
+  termination jumpers on. With power off, CAN_H to CAN_L reads about 60 Ω.
 
 ## Preconditions
 
@@ -40,31 +40,31 @@ on the Pi changes between runs.
 - [ ] `runtime` stopped on the Pi (`systemctl is-active runtime` says inactive).
 - [ ] Both interfaces up at 1 Mbit/s, sample point 0.75, no `restart-ms` (pi-setup.md section 11).
 - [ ] CPU governor `performance` on the Pi (pi-setup.md section 12); `can-utils`, `rt-tests` and `stress-ng` installed.
-- [ ] The same `can-bench` build on both machines; note the commit.
-- [ ] A 10 s run on `vcan` passes on each machine first (README, "Using it").
+- [ ] The `can-bench` commit noted.
+- [ ] A 10 s run on `vcan` passes on the Pi first (README, "Using it").
 
 ## Steps, for each candidate
 
-1. **Identify it.** Record `ip -details link show <if>`, `dmesg | grep -iE 'gs_usb|mcp251'`, and for a
-   candleLight board its firmware version (`dmesg` prints it on plug-in). The summary records the driver and whether it
-   gives hardware timestamps.
-2. **Start the responder** on the dev box: `sudo chrt -f 80 can-bench respond --bus <reference> --slots 6`.
+1. **Identify it.** Record `ip -details link show <if>` for both channels and `dmesg | grep -i mcp251`. The summary
+   records the driver and whether it gives hardware timestamps.
+2. **Start the responder** on the HAT's other channel, on its own core:
+   `sudo chrt -f 80 taskset -c 2 can-bench respond --bus <other channel> --slots 6`.
 3. **Quiet run, 10 minutes**, nothing else loading the Pi:
    `sudo chrt -f 80 taskset -c 3 can-bench host --bus <if> --slots 6 --seconds 600 --out runs/<candidate>-quiet`.
 4. **Loaded run, 1 hour.** Start the load on the other cores, then the same host command with `--seconds 3600` and
    `--out runs/<candidate>-loaded`:
-   `taskset -c 0-2 stress-ng --vm 2 --vm-bytes 50% --cpu 2 --timeout 65m`.
+   `taskset -c 0-1 stress-ng --vm 2 --vm-bytes 50% --cpu 2 --timeout 65m`.
 5. **Bus-off.** Start a 60 s host run, short CAN_H to CAN_L for about 2 s at 20 s, then release. The summary counts the
    bus-off frames. `ticks.csv` shows whether replies came back by themselves and how long after the short, which says
-   whether the interface restarts the bus on its own (candleLight does after about 100 ms, PLAN item 3). Note whether
+   whether the interface restarts the bus on its own. Note whether
    `ip -details link show` says `BUS-OFF` until it is set down and up.
 
-Then, once the winner is bought for every bus (PLAN item 5: "only then buy adapters for the other buses"):
+Then, once the CAN board exists:
 
-6. **Five at once.** All five interfaces on the Pi (through the hub if they are USB), each wired to its own reference
-   adapter on the dev box with its own `can-bench respond`, and five hosts started together on the Pi, under the same
-   load. This shows whether the interfaces slow each other down on the Pi's USB or SPI controllers. Five processes
-   stand in for the runtime's five bus threads, so the pass mark is the same per bus.
+6. **Every bus at once.** One host per bus on the Pi, each bus wired to a responder (a second CAN board, or the dev
+   box's interfaces), started together under the same load. This shows whether the buses slow each other down on the
+   Pi's SPI controllers and interrupt lines. One process per bus stands in for the runtime's bus threads, so the pass
+   mark is the same per bus.
 
 The same steps also run with `--slots 5` for an arm-sized bus; the leg (6 slots, 12 frames a tick) is the tight case.
 
@@ -96,4 +96,4 @@ Each run's `--out` folder (`ticks.csv`, `summary.txt`), plus the identify output
   hardware side's STATUS.md through Joey.
 - If the chosen interface's collect timing differs from what `can::Timing` assumes (60 % of the period), that change is
   its own PR, with the numbers linked.
-- Hardware left as found: the HAT's overlays restored if they were changed, the adapters unplugged.
+- Hardware left as found: the MCP2515 HAT and its overlay back on the Pi unless the result replaces it.
