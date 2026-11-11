@@ -47,6 +47,32 @@ A witness line that breaks or shifts means something slipped or yielded.
    - fit the two seam bolts through the lugs and the two hub screws.
    - Check the arm turns freely on the RS02 over its range. Check the witness lines line up.
 
+### R1c halves: hub and assembly order (2026-11-11)
+
+The R1c halves (`prints/upper-arm/upper_arm_organic_{back,front}_r1c.3mf`) have a ridge inside the hub seat. It closes
+around a groove in the hub spigot.
+- **They need the grooved hub, rev C+** (shoulder thread, `shoulder_hub_left.SLDPRT`, fd0cef8 or later).
+- **They will not close around today's hub.** The ridge sits 1.3 mm into its plain spigot, about 220 mm³ of overlap per half.
+  Don't force it.
+
+The hub can't go in from the end once the halves are closed. It goes on **before** the front half, so steps 6 and 7 above
+become:
+
+6. **Inspect the ridge** in each half before anything else. It prints on tree support (it hangs from the bore's ceiling,
+   seam face down). Pick the support off both flanks and the tip, and scrape any stub flat: the flanks are fit faces.
+   Don't sand the flank facing the hub's lugs (the low-Y side).
+7. **Dry test fit, with no screws and before any load:**
+   - Lay the hub into the back half: its groove takes the back ridge, and its lugs sit on the back posts.
+   - Close the front half over it by hand.
+   - The seam faces must meet all round, with no gap a 0.1 mm feeler enters.
+   - The hub must not rock. Along the hub axis it should have at most about 0.3 mm of play.
+   - If the seam won't close, stop and tell me. Don't force or sand anything.
+   - Take it apart and look at the ridge flanks for rub marks.
+8. **Assemble:** RS02 + ring and the cable in the back half as above. Then the hub into the back half (ridge into
+   groove, lugs on posts). Then the front half closed over both. Then the two seam screws, the two seam bolts through the
+   lugs and the two hub screws.
+   - Check the arm turns freely on the RS02, and that the witness lines line up.
+
 ## 3. Key coupon test (before the whole-arm test)
 
 `prints/upper-arm/upper_arm_organic_key_coupon.3mf` (33 min) is the back half's key 0, with its rib and a patch of wall.

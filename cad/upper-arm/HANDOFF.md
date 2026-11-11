@@ -6,6 +6,8 @@
 | --- | --- | --- |
 | `left-arm-organic` | ad67bd0 | The **reviewed geometry**, called v26 in the FEA, plus the review fixes. Print files in `cad/prints/upper-arm/`. Review outcome in `cad/reviews/upper-arm/20261111_print-release/README.md`. |
 | `left-arm-organic-r1` | eed7031 | **R1, code only, never rebuilt.** The RS02 stop face is 0.2 mm further out (`STOP_PLAY` 0.4 in `organic_master.py`). The ring's print project has no brim. FEA model names are v28. |
+| `left-arm-organic-r1` | 70cf634 | **R1 released:** halves and key coupon sliced. Unchanged since. |
+| `left-arm-organic-r1` | (this commit) | **R1c (2026-11-11):** R1 halves plus hub-post fins, a ridge in the hub seat that closes around the grooved hub (rev C+), a seat collar, a 0.5 bore end chamfer, and a floor corner ring (theta 72-108, front). Build with `ARM_R1C=1 ARM_RIDGE=1 ARM_SEAT_RIBS=0`. Files: `cad/upper-arm/*_r1c_left.SLDPRT`, `cad/exports/upper-arm/*_r1c_left.*`, `cad/prints/upper-arm/*_r1c.*`. FEA: `cad/reviews/upper-arm/20261111_print-release/r1c/RIDGE5_6_FEA.md`. Restart: `.../r1c/RESTART.md`. Assembly order and the hub requirement: `BENCH_TESTS.md`, "R1c halves". |
 
 **R2** is an attempt to strengthen the neck-opening corner where the rib meets the drum wall, at φ 41° and 336°. Nothing is
 built yet. Tried and dropped: a web on the rib's inboard side, which raised the peak to E34 SF 0.16.

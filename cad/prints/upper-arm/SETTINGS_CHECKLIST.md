@@ -43,6 +43,24 @@ also listed in the project as one we changed on purpose, which should stop that.
 
 Times and weights are from Bambu Studio's own slice (2.09.01.70, R1, 2026-11-11), support and brim included.
 
+### R1c halves (2026-11-11): print these instead of the R1 halves
+
+| Order | File | Down on the plate | Time | Filament |
+| --- | --- | --- | --- | --- |
+| 2 | `upper_arm_organic_back_r1c.3mf` | the seam face | 5 h 27 min | 124.5 g |
+| 3 | `upper_arm_organic_front_r1c.3mf` | the seam face | 4 h 45 min | 108.2 g |
+
+- **Settings:** the same as R1, with one exception. The hub band of the **loaded_zones_100** modifier now starts lower, at
+  Y 274 (R1: 283), so the new hub-post fins print at 100% too.
+  Bambu Studio reported no settings different from the seed.
+- **Ring:** the same file as R1 (`upper_arm_organic_ring.3mf`).
+- **Hub:** R1c needs the grooved hub, rev C+. It will not close around today's hub. See `cad/upper-arm/BENCH_TESTS.md`,
+  "R1c halves".
+- **Support:** the slicer puts tree support on the ridge inside the hub seat. Pick it off both flanks and the tip.
+- **File SHA-256:**
+  - back 3MF d61d2ffeac33aaf9ff9bd8e75bdc33fdb006a40f72ffaa25c47523e519aa2b8e
+  - front 3MF cd8df89932ae65987d4f2e6a1d48ae4524dd92ce23573c1ef1a843b210119b20
+
 **Stub coupon: done, 2026-11-11.** Joey printed it (3 walls, 15%) and a 6808 inner race fits perfectly on the two
 half-stubs with the seam closed. No caliper reading was taken. The Ø40.0 stub stays as modelled. The coupon file is kept
 for reference.

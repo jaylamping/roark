@@ -32,3 +32,28 @@ gap (B1) is fixed. B1 was fixed on 2026-11-11.
 | 15 | Heat and creep at the motor flange. PETG HDT is about 70 °C. | Opus | **Accepted.** Log the flange temperature during the bench torque test and retorque afterwards. |
 | 16 | Minor: the key coupon misses the neck corner, model versions are mixed, some whitelist text is stale, the slice time differs by 1 min. | Opus | Noted. A whole-arm bench torque test covers the corner. |
 | 17 | The neck corner is 1.28 / 1.10 at 34 N·m and about 2.2 at 17 N·m. | both | **Acceptable as a bench article only.** Test the whole arm in −T (keys 3 + 1) and watch φ 41° for whitening. |
+
+## R1c (2026-11-11): hub joint tie, ahead of its delta review
+
+R1 halves plus:
+- inside fins joining the hub posts to the seam posts;
+- a ridge in the hub seat that closes around a groove in the hub spigot (the hub's rev C+), so the joint carries load along
+  the hub axis without the lugs and bolts;
+- a seat collar;
+- a 0.5 bore end chamfer;
+- a floor corner ring.
+
+The other parts of the arm are unchanged: geometry differs only between Y 276 and 302, the RS02 fit is identical to R1, and
+G90_fine and HALFK31_fine are within mesh noise of R1.
+
+Hub-seat contact FEA, bolted, no preload, with the grooved hub as its own body: see `r1c/RIDGE5_6_FEA.md`. The arm passes
+G90 (1.5) and STOP_0 (1.2) at the 0.5 mm average. Each case was solved twice, and the two runs matched exactly.
+With the plain hub the bolts would reach 770 MPa at the stop; with the ridge they see 105 MPa.
+
+The halves need the grooved rev C+ hub and do not close around today's hub. Assembly order: `cad/upper-arm/BENCH_TESTS.md`.
+Delta review packet: `cad/reviews/upper-arm/20261111_r1c-delta/`.
+
+| Plate | Time | Filament | Mesh gate |
+| --- | --- | --- | --- |
+| Back half R1c | 5 h 27 | 124.5 g | PASS |
+| Front half R1c | 4 h 45 | 108.2 g | PASS (the same 4 visible 8 mm² insert-hole support spots as R1) |

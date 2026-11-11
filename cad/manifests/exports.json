@@ -291,6 +291,24 @@
       "recorded": "2026-11-11T10:57:20Z"
     },
     {
+      "export": "exports/upper-arm/upper_arm_organic_back_r1c_left.step",
+      "source": "upper-arm/upper_arm_organic_back_r1c_left.SLDPRT",
+      "config": "",
+      "settings": "STEP AP203, mm",
+      "sourceSha256": "1f3bd28b76153d7f8128afb792cada7dd6909516521ab09167d8b5ea57eb5bf0",
+      "exportSha256": "0e8b951a92157f342a0b4afc32605603c8251eac5426667a4c63bba6cd03ce83",
+      "recorded": "2026-11-11T23:41:51Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_organic_back_r1c_left.STL",
+      "source": "upper-arm/upper_arm_organic_back_r1c_left.SLDPRT",
+      "config": "",
+      "settings": "STL binary, quality 2, mm",
+      "sourceSha256": "1f3bd28b76153d7f8128afb792cada7dd6909516521ab09167d8b5ea57eb5bf0",
+      "exportSha256": "a3710f5996031123acf9c22174a1431e907f7a603ea111ecba13d369615d7c36",
+      "recorded": "2026-11-11T23:41:51Z"
+    },
+    {
       "export": "exports/upper-arm/upper_arm_organic_front_left.step",
       "source": "upper-arm/upper_arm_organic_front_left.SLDPRT",
       "config": "",
@@ -307,6 +325,24 @@
       "sourceSha256": "928a1fbc9ed8db1d14f57213859a7977b2dbdb4583c4a342d98127aaeb9f3b35",
       "exportSha256": "9c232580a6fa9fa229c0d520c22a8c0c12fd8134b11b878651b2c32abb9207fc",
       "recorded": "2026-11-11T10:57:20Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_organic_front_r1c_left.step",
+      "source": "upper-arm/upper_arm_organic_front_r1c_left.SLDPRT",
+      "config": "",
+      "settings": "STEP AP203, mm",
+      "sourceSha256": "3c9c41a4cabff967c1eeea789ce67ad6d60e9050676f6db09f396590ac63414a",
+      "exportSha256": "adae978ae78cb18f1da8e4f506053f86589acfccd1fbe8cf75afaa490b22ff6f",
+      "recorded": "2026-11-11T23:41:51Z"
+    },
+    {
+      "export": "exports/upper-arm/upper_arm_organic_front_r1c_left.STL",
+      "source": "upper-arm/upper_arm_organic_front_r1c_left.SLDPRT",
+      "config": "",
+      "settings": "STL binary, quality 2, mm",
+      "sourceSha256": "3c9c41a4cabff967c1eeea789ce67ad6d60e9050676f6db09f396590ac63414a",
+      "exportSha256": "8d168f86e8ce821e394af8bb9f0ead04fdcb2b0abae9d5de4cf3ab49bc2fad24",
+      "recorded": "2026-11-11T23:41:51Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_organic_rs02_ring_left.step",
