@@ -444,6 +444,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5974e397833d890f2f74963408e0d4a6cd8eda2f6a445ae06750291b5d7a997e"
 
 [[package]]
+name = "runtime"
+version = "0.1.0"
+dependencies = [
+ "can",
+ "nix",
+ "robstride",
+ "rtrb",
+ "skeleton",
+ "telemetry",
+ "thiserror",
+]
+
+[[package]]
 name = "safety"
 version = "0.1.0"
 dependencies = [
@@ -576,6 +589,7 @@ dependencies = [
  "mcap",
  "robstride",
  "rtrb",
+ "runtime",
  "safety",
  "serde_json",
  "sim-drive",

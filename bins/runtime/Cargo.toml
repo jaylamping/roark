@@ -1,0 +1,24 @@
+[package]
+name = "runtime"
+description = "The one realtime process: loads the skeleton, runs a bus thread per bus and the control thread on one schedule, and records the session"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+can.workspace = true
+skeleton.workspace = true
+thiserror = { workspace = true, features = ["std"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix.workspace = true
+rtrb.workspace = true
+telemetry.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+robstride.workspace = true

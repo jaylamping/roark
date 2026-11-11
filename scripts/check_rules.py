@@ -26,10 +26,11 @@ ROOT = Path(__file__).resolve().parent.parent
 ALLOWED_DEPS = {
     "can": {"robstride", "telemetry"},
     "robstride": set(),
+    "runtime": {"can", "robstride", "skeleton", "telemetry"},
     "safety": {"can", "robstride", "skeleton"},
     "skeleton": {"robstride"},
     "sim-drive": {"robstride", "skeleton"},
-    "sim-suite": {"can", "robstride", "safety", "sim-drive", "skeleton", "telemetry"},
+    "sim-suite": {"can", "robstride", "runtime", "safety", "sim-drive", "skeleton", "telemetry"},
     "telemetry": set(),
 }
 
@@ -38,6 +39,7 @@ ALLOWED_DEPS = {
 DOC_KIND = {
     "can": "library",
     "robstride": "library",
+    "runtime": "library",  # its library is what the sim suite drives; the README also covers the binary
     "safety": "library",
     "skeleton": "library",
     "sim-drive": "library",  # its library is what the sim suite drives; the README also covers the binary

@@ -12,6 +12,7 @@ can.workspace = true
 mcap.workspace = true
 robstride.workspace = true
 rtrb.workspace = true
+runtime.workspace = true
 safety.workspace = true
 serde_json.workspace = true
 sim-drive.workspace = true
