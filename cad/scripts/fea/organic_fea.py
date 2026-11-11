@@ -13,7 +13,7 @@ import sys
 
 from p3_fea import CASES, F, GOLD, PARTS, CY, CZ, I, cyl, pl, run, VARIANT, pythoncom
 
-PARTS['organic'] = F / os.environ.get('ORG_MODEL', 'UA_ORGANIC_BONDED_v26.SLDPRT')   # v4: ring chamfer as printed; v3: ring joined only through its dogs, lug root fillets
+PARTS['organic'] = F / os.environ.get('ORG_MODEL', 'UA_ORGANIC_BONDED_v28.SLDPRT')   # v4: ring chamfer as printed; v3: ring joined only through its dogs, lug root fillets
 FG, MG = 62.0, 17.2
 SEAT = cyl(35.9, [129, 295, -35, 212, 304, 47])
 RS02 = cyl(32.75, [153, 170, -30, 166.0, 250, 42])      # ring bore only: no rigid tie to the drum
@@ -158,7 +158,7 @@ for part in ('ring_old',):
 # ring's slot flank (ring fixed at its six screw holes, clamped to the RS02 flange), and on the key in the halves (master,
 # halves as one body, fixed at the hub seat). Keys 0 (phi 80) and 1 (phi 120) in the back half; 2 and 3 mirror them.
 PARTS['ring'] = F / 'RING_v13.SLDPRT'
-PARTS['halves'] = F / 'UA_HALVES_v25.SLDPRT'
+PARTS['halves'] = F / 'UA_HALVES_v28.SLDPRT'
 # Bearing faces (main flanks): key 0 its -Y face, key 3 its -Y face, keys 1 and 2 their +Y faces. (key face dy, ring flank
 # offset, face centre dz, key x, ring x). +T (ring turning +X): keys 0 and 2 bear; -T: keys 3 and 1.
 KEYF = {'0': (0.6, -0.1, -38.0), '3': (0.6, -0.1, 38.0), '1': (-12.4, 0.1, -36.0), '2': (-12.4, 0.1, 36.0)}

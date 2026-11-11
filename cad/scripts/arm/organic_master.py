@@ -168,6 +168,7 @@ def save(d, job):
 # Each covers one or two of the flange holes (vendor holes at 6.5 + 40k: 86.5 under one tab, 246.5 and 286.5 beside the other),
 # so 6 of the 9 can take screws. (Until 2026-11-10 the flange sat 30.9 behind the front here, a misreading of the drawing.)
 RS02_X = dict(back=152.3, shoulder=165.7, front=193.7, output=197.2)
+STOP_PLAY = 0.4          # RS02 front face to the end-wall stop, nominal (R1, 2026-11-11: 0.2 could bind at +-0.1 per face; 0.4 gives 0.5 total axial freedom)
 BULKHEAD = (153.8, 165.7)              # RS02 mounting ring (a separate part, organic_parts.py): screwed to the RS02 on the bench,
 RIB = (147.4, 153.8)                   # then dropped into the halves behind this rib (ring 11.8 thick since 2026-11-11), keyed by the rib's keys
 RIB_R0 = 33.5
@@ -257,7 +258,7 @@ def upper_details(d):
     # the harness passes the rib at the top, from the neck to the stub: the rib is open there (phi -15 to 15)
     arc_band(d, 'RIB_HARNESS_GAP', RIB_R0 - 0.5, DRUM['r'] - SHELL_T + 0.6, -15.0, 15.0, RIB[0] - 0.1, RIB[1] + 0.1, cut=True)
     # outboard end wall thickened to X 193.9: the RS02 housing face (r 22.5-39) stops on it, 0.2 mm axial play to the ring
-    x_revolve(d, 'RS02_STOP', [(RS02_X['front'] + 0.2, 22.5), (DRUM['x1'] - 2.0, 22.5), (DRUM['x1'] - 2.0, DRUM['r'] - 1.0), (RS02_X['front'] + 0.2, DRUM['r'] - 1.0)])
+    x_revolve(d, 'RS02_STOP', [(RS02_X['front'] + STOP_PLAY, 22.5), (DRUM['x1'] - 2.0, 22.5), (DRUM['x1'] - 2.0, DRUM['r'] - 1.0), (RS02_X['front'] + STOP_PLAY, DRUM['r'] - 1.0)])
     # hard stop: a lug on the drum's inboard end, running in a slot in the inboard cheek
     if STOP_KIND == 'lug':
         arc_band(d, 'STOP_LUG', STOP['r0'], STOP['r1'], STOP['lug_phi'] - STOP['lug_span'] / 2, STOP['lug_phi'] + STOP['lug_span'] / 2,

@@ -38,6 +38,7 @@ SYS = Path.home() / 'AppData/Roaming/BambuStudio/system/BBL'
 COMMON = {}       # all already in the seed: brim outer 5, SuperTack, tree hybrid, support on, 6 walls
 HALF = {'sparse_infill_density': '50%'}
 SOLID = {'sparse_infill_density': '100%'}
+RING = {'sparse_infill_density': '100%', 'brim_type': 'no_brim'}     # no brim: it would flash the key-slot flanks (review 2026-11-11)
 FIT = {'wall_loops': '3', 'sparse_infill_density': '15%'}      # fit coupons only check a fit (as test pass 1)
 
 
@@ -104,7 +105,7 @@ def key_coupon():
 
 
 JOBS = {
-    'ring': lambda: (trimesh.Trimesh(ring_down(load('rs02_ring').vertices), load('rs02_ring').faces), [], SOLID),
+    'ring': lambda: (trimesh.Trimesh(ring_down(load('rs02_ring').vertices), load('rs02_ring').faces), [], RING),
     'back': lambda: (trimesh.Trimesh(back_down(load('back').vertices), load('back').faces),
                      [trimesh.Trimesh(back_down(z.vertices), z.faces) for z in loaded_zones()], HALF),
     'front': lambda: (trimesh.Trimesh(front_down(load('front').vertices), load('front').faces),
