@@ -44,7 +44,7 @@ adds the power board interface (item 10).
 
 | # | Milestone | Done when |
 |---|---|---|
-| 1 | **Left arm online**: loose drives on the bench, then the actuator test stand, then the printed arm on the torso with the camera calibration loop | (a) every §6 rule has a passing `vcan` fault test; (b) three loose drives scanned, IDs 11 to 13 set, preflight passes, and a deliberately wrong `canTimeout` is refused; (c) a 1 h idle soak with no error frames or RX overflow, and latency and jitter recorded in the repo; (d) `kill -9` while enabled leaves the drives limp within 50 ms and the `ExecStopPost` disable shows in candump; (e) a drive power-cycled while enabled (pull its drop fuse) can't be enabled again until preflight passes again; (f) all five joints sign-checked and zeroed (calibration stage C1); (g) the elbow rig has passed before the forearm is powered; (h) test stand files exist for RS03 and RS02; (i) calibration stages C0 to C2 pass attended, plus one clean unattended C3 |
+| 1 | **Left arm online**: loose drives on the bench, then the actuator test stand, then the printed arm on the torso with the camera calibration loop | (a) every §6 rule has a passing `vcan` fault test, each before the test that needs it (§6, Which rules a test waits for); (b) three loose drives scanned, IDs 11 to 13 set, preflight passes, and a deliberately wrong `canTimeout` is refused; (c) a 1 h idle soak with no error frames or RX overflow, and latency and jitter recorded in the repo; (d) `kill -9` while enabled leaves the drives limp within 50 ms and the `ExecStopPost` disable shows in candump; (e) a drive power-cycled while enabled (pull its drop fuse) can't be enabled again until preflight passes again; (f) all five joints sign-checked and zeroed (calibration stage C1); (g) the elbow rig has passed before the forearm is powered; (h) test stand files exist for RS03 and RS02; (i) calibration stages C0 to C2 pass attended, plus one clean unattended C3 |
 | 2 | **Right arm moved to this stack**, then the legacy code deleted | Both arms enable from one runtime and one skeleton; silence on one drive stops only its limb; the right arm's taught limits and directions are moved and re-checked; legacy tree deleted from marengo |
 | 3 | Waist | The waist enables on its own bus with no new code path. Waits on the waist hardware, which is parked |
 | 4 | Power board and battery | Stopping the heartbeat drops the motor latch within its window; port-fault decode names the port; self-test runs only under its conditions (item 10) |
@@ -61,11 +61,14 @@ adds the power board interface (item 10).
 5. **Codec** (`robstride`) against the manual test vectors.
 6. **Bus loop and sim drive together** (items 3 and 4) on `vcan` interfaces named after the skeleton buses, with MCAP and
    `candump -L` recording from the first run (see [Observability](#observability-tenet-8)).
-7. **Safety** (item 6) on `vcan` until every stop rule has a passing fault test. Add the systemd unit, the watchdog and the
-   `ExecStopPost` disable.
+7. **Safety** (item 6) on `vcan`: the rules the first enable waits for, each with a passing fault test; the rest follow
+   before the test that needs them ([Which rules a test waits for](#which-rules-a-test-waits-for)). Add the systemd unit,
+   the watchdog and the `ExecStopPost` disable.
 8. **On the real adapter, no Enable yet:** name it by serial, scan, set IDs, soak, measure latency and jitter (item 5); run the zero
    persistence test (item 1) and the caps-in-mode test (item 6).
-9. **First attended Enable** of the loose drives with Joey: preflight, sign check, unloaded jog.
+9. **First attended Enable** of the loose drives with Joey, as soon as the first row of
+   [Which rules a test waits for](#which-rules-a-test-waits-for) passes: preflight, enable at the commissioning caps,
+   sign check, zero, unloaded jog.
 10. Then the test stand (item 7), the elbow rig result into item 8's limits, and the camera loop (item 9).
 
 Create each crate when an item first needs it. The crate table below is the naming target, not a to-do list.
@@ -149,12 +152,12 @@ limbs:
         bus: can1
         id: 11
         uid: null               # MCU UID from the type-0 reply, filled at commissioning
-        direction: null         # +1 or -1 after the sign check; null refuses enable
-        zero_rad: null          # see "Zero convention"; null refuses enable
+        direction: null         # +1 or -1 after the sign check; null limits what the joint may do (below)
+        zero_rad: null          # see "Zero convention"; null limits what the joint may do (below)
         reference_pose: "<how the link is placed for referencing>"
         hard_rad: [-0.87, 3.14] # from STATUS.md
         soft_rad: null          # optional; tighter than the derived inset
-        torque_cap_nm: null     # null refuses enable
+        torque_cap_nm: null     # null means the commissioning cap applies (below)
         current_cap_a: null
         speed_cap_rad_s: null
 ```
@@ -165,8 +168,20 @@ limbs:
 - **Loader refuses:** duplicate joint names; a duplicate (bus, ID); an unknown actuator model; non-finite numbers; reversed
   bounds; soft limits outside hard limits; a cap above the model's range; a hard window that contains the drive's position wrap
   point; currents that can be enabled together summing above 90 A (STATUS.md). The error names the joint and field.
-- **Null is not permission.** A joint with any required field null loads fine, shows as offline or uncommissioned, and is
-  refused at enable. Placeholders never become numbers.
+- **Null is not a number, and it doesn't block the bench.** A joint with a null field loads fine and shows as
+  uncommissioned. Placeholders never become numbers. What a null refuses is the motion that needs the missing fact,
+  never the enable itself:
+  - a null cap (`torque_cap_nm`, `current_cap_a`, `speed_cap_rad_s`): the joint runs at its model's **commissioning cap**
+    (below) instead;
+  - a null `direction`: no gravity or other model feed-forward on that joint or on a chain through it (`host.sign`);
+  - a null `zero_rad` or `hard_rad`: no soft-limit check is possible, so the joint moves only at the commissioning caps,
+    attended.
+- **Commissioning caps.** An uncommissioned joint (any of the fields above null) can be enabled by a person at the CLI and
+  moved at caps low enough that a wrong sign, a wrong zero or a bad target can't hurt the drive or a printed part: by
+  default 5 % of the model's `limit_torque` range, the matching share of its current range, and 0.5 rad/s
+  ([Open with Joey](#open-with-joey) 11). They are written to the drive and read back by preflight like any cap. This is
+  how the sign check, the zero and the first jog are done (step 9); there is no other route to those numbers. It follows
+  from the skeleton's state, so it needs no flag or mode, and it ends for a joint when its fields are filled in.
 - **Soft limits** default to 3° inside hard limits for supervised runs and 5° for unattended runs, unless `soft_rad` is tighter.
 - **Left arm:** `can1`, IDs 11 to 15: `left_shoulder_pitch`, `left_shoulder_roll`, `left_upper_arm_yaw`, `left_elbow_pitch`,
   `left_lower_arm_yaw` (14 and 15 are marked "proposal" in STATUS.md; use them). **Right arm:** `can0`, IDs 1 to 5. Unbuilt
@@ -184,8 +199,8 @@ reads it. It never holds limits or addresses. A URDF seeds it once and is never 
 motion, run the **persistence test** on one loose drive of each model: mark a pose, read position, power-cycle, read again;
 repeat after one Set Zero.
 - If the reading repeats within 0.5°: `zero_rad` is a skeleton fact and normal startup never sends Set Zero.
-- If not: every power-up needs an attended reference at `reference_pose`; until it's done the joint counts as unzeroed and is
-  refused at enable.
+- If not: every power-up needs an attended reference at `reference_pose`; until it's done the joint counts as unzeroed
+  and moves only at the commissioning caps (above).
 Record the result in STATUS.md (via the hardware side) and here.
 
 ## 2. Lift the hard-won knowledge first
@@ -347,7 +362,7 @@ Each rule names what it protects and the failure it covers. A rule that protects
 | Drive | `drive.can_timeout` | `canTimeout` 0x7028: write 1000 (50 ms; unit 50 µs, 20000 = 1 s, 0 = off) at every runtime start and after any reboot; read back before every enable; refuse unless it reads exactly 1000. The right-arm drives read 600 today; rewrite them | Every drive and its limb | Pi crash, hang, killed process, lost bus: the drive goes limp 50 ms after the last command. It does not hold position; the arm drops onto the pad |
 | Drive | `drive.caps` | `limit_torque` 0x700B, `limit_cur` 0x7018, `limit_spd` 0x7017: write min(skeleton cap, plan or test cap), read back before enable | Drive and the printed parts on that joint | Host bug commanding too much. **Caveat:** the manuals describe `limit_spd` as a position-mode limit and `limit_cur` as a velocity/position-mode limit. Whether any of the three bounds MIT mode is unproven: test on a loose drive before relying on it, and until then treat it as host-only in that mode |
 | Drive | `drive.damper` | Damper 0x702A: read only, never written. The default 0 means the post-power-off anti-backdrive protection is **on**; 1 turns it off. Refuse enable unless it reads 0 | Drive and gearbox | Arm back-driving the drive when power is off |
-| Host | `host.preflight` | Preflight: VBUS 0x701C inside the skeleton's window (bench 22 to 26 V; this is a bench window, not the battery's), no fault bits, the drive in Reset (not Run or Calibration), the three caps and `canTimeout` read back as written, the joint's `direction`, `zero_rad` and `hard_rad` set (item 1: unverified is null, and null refuses enable), and its model's MIT scales settled (item 2). Preflight and the enable sequence both report under this ID a view of another drive than theirs (another ID, or the same ID from another bus: IDs are unique only per bus; until the scan, step 8, the bus is the one control names for each snapshot) or of their own drive's address from another slot than theirs, a runtime bug (Joey, 2026-11-10); and a limb that stopped or was cleared since preflight began, or a drive seen out of Reset since its preflight began and before its Enable (in a status or version reply, or latched by the bus though a later Reset hid it), either of which voids the proof | Every drive | Wrong settings, wrong supply, drive already faulted, drive put in another mode by another controller; an enable acting on another drive's state, or on a proof a stop has voided |
+| Host | `host.preflight` | Preflight: VBUS 0x701C inside the skeleton's window (bench 22 to 26 V; this is a bench window, not the battery's), no fault bits, the drive in Reset (not Run or Calibration), the three caps and `canTimeout` read back as written (the commissioning caps for an uncommissioned joint, item 1), and its model's MIT scales settled (item 2). A null `direction`, `zero_rad` or `hard_rad` doesn't refuse (item 1). Preflight and the enable sequence both report under this ID a view of another drive than theirs (another ID, or the same ID from another bus: IDs are unique only per bus; until the scan, step 8, the bus is the one control names for each snapshot) or of their own drive's address from another slot than theirs, a runtime bug (Joey, 2026-11-10); and a limb that stopped or was cleared since preflight began, or a drive seen out of Reset since its preflight began and before its Enable (in a status or version reply, or latched by the bus though a later Reset hid it), either of which voids the proof | Every drive | Wrong settings, wrong supply, drive already faulted, drive put in another mode by another controller; an enable acting on another drive's state, or on a proof a stop has voided |
 | Host | `host.vbus` | VBUS while running: read 0x701C in the slack at least once a second per drive; stop outside the window | Drives and supply | Supply sag or regen overvoltage |
 | Host | `host.silence` | Silence: while a limb is enabled, stop it after 3 consecutive missed replies (12 ms at 250 Hz) or when any reply age passes 12 ms. A silent disabled drive (never enabled, or seen in Reset after its Disable) is `offline`, not a fault. For a drive that was enabling or enabled when its Disable went, with no Reset read since, counting resumes after 100 ms (item 2 Silence windows) | The limb's drives and parts | Lost drive, cable, power cycle |
 | Host | `host.fault` | Faults: stop on any fault bit. A fault on any drive of a limb, idle or running, stops the whole limb, a drive of that limb not named in the enable included: a deliberate limit on tenet 1's "joints not named block nothing" for drives that share a limb (Joey, 2026-11-10), revisited when the runtime passes the enabled joint set to the bus. A latched stop clears only by an operator `clear` through `api`; a drive fault bit clears only by power-cycling that drive, then full preflight | Everything on that limb | Drive fault; never auto-clear and retry |
@@ -362,8 +377,27 @@ Each rule names what it protects and the failure it covers. A rule that protects
 | Host | `host.logging` | Logging: if the session log can't open or the disk is full, refuse the next enable; never stop a running motion for it | The record (tenet 6) | Disk full or slow |
 
 **Done when** preflight refuses an enable for each of: `canTimeout` ≠ 1000, a cap mismatch, damper ≠ 0, VBUS outside the window,
-any fault bit, a drive not in Reset, a null `direction`, `zero_rad` or `hard_rad`, a model without settled MIT scales;
-proven on `vcan` and once on a real drive.
+any fault bit, a drive not in Reset, a model without settled MIT scales; and a joint with a null `direction`, `zero_rad`
+or `hard_rad` enables at its commissioning caps and is refused anything above them; proven on `vcan` and once on a real
+drive.
+
+### Which rules a test waits for
+
+The last build stalled because its safeguards stopped it being tested (Joey, 2026-11-11). So a rule is built before the
+first test that needs it, not before the first enable, and a refusal is a cost: it has to protect a named motor or part
+from something the layers under it don't already cover. Every first motion is attended, with the E-stop in hand, a fused
+supply and the drive's own 50 ms timeout and caps underneath.
+
+| Before | Rules that must exist and pass on `vcan` | Why these |
+|---|---|---|
+| The first attended enable and jog of loose drives (step 9) | `drive.can_timeout`, `drive.caps` (commissioning caps), `drive.damper`, `host.preflight`, `host.fault`, `host.silence`, `host.mode`, `host.hang`, `host.bus` | With these a drive at commissioning caps can't be hurt by a host bug, a crash or a lost bus, and nothing is enabled on a drive that is faulted or misconfigured |
+| The test stand (item 7) and any run longer than a few minutes | `host.temperature`, `host.vbus` | Heat and supply sag need time or load to matter |
+| A joint with a hard stop moving under power (item 8) | `host.soft_limit`, `host.total_torque`, `host.identity` | There is nothing to hit, and no printed part to load, before the drive is in the arm |
+| Gravity feed-forward (item 9) | `host.sign` | Only feed-forward can push the wrong way |
+| Any unattended run (C3) | `host.pi_health`, `host.logging` | A person watching covers these until then |
+
+A rule not yet due doesn't refuse and doesn't stop: it isn't a mode to switch off, it isn't built yet. Once built it
+applies to every run. Steps 8 and 9 don't wait for the later rows.
 
 ## 7. Actuator test stand tooling (T1 to T6)
 
@@ -478,3 +512,6 @@ Defaults apply until Joey answers.
 8. **One legacy-stack capture for the RS00 scales on the right arm.** Default: yes, candump only, Joey present.
 9. **Realtime budget.** Default: 0.5 ms tick-start jitter, 99.9 % of replies before the collect deadline, 1 h soak.
 10. **Operator UI at milestone 1.** Default: none; CLI and agent tools only.
+11. **Commissioning caps** (item 1). Default: 5 % of the model's `limit_torque` range (RS03 3 N·m, RS02 and RS00 0.7 N·m,
+    RS04 6 N·m), the same share of its current range, and 0.5 rad/s. Enough to turn an unloaded drive; say if a loaded
+    joint needs more to break away.
