@@ -84,8 +84,9 @@ means no authorised distributor showed units on hand.
 | XAL1010-682MED (2) | not sold | stock not shown, $5.11 | Coilcraft direct | Mouser or Coilcraft |
 
 **LM5146RGYR has no authorised stock.** The automotive-grade LM5146QRGYRQ1 (LM5146-Q1, the same RGY VQFN-20 package)
-is at LCSC (C1850329, 60 in stock, $7.21) and Spirit Electronics (1,424, $5.69). Fitting it is a part change on the buck
-board: check the LM5146-Q1 datasheet's pinout and land pattern against buck12's U1 footprint before ordering it.
+is at LCSC (C1850329, 60 in stock, $7.21) and Spirit Electronics (1,424, $5.69). TI's LM5146 product page lists
+the LM5146-Q1 as the "pin-to-pin, automotive version of LM5146", in the same 20-pin RGY package (4.5 x 3.5 mm), so it
+fits buck12's U1 footprint unchanged. It costs about $3 more per chip.
 
 Outside the lines above DigiKey and Mouser price within a few percent of each other, so shopping further saves about
 $35 to $45 on the whole order, most of it the power FETs at Mouser.
