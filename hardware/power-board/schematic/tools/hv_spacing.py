@@ -139,19 +139,14 @@ for MODE,radii,budget in (('estop',(4,4,6)+tuple(float(x) for x in os.environ.ge
 # pours and vias the moves can't clear: keep pours 1.5 mm off each remaining E-stop pad (rule area, no copper pour, F.Cu)
 # and drop 54 V vias within 1.5 mm of it (they sit in arrays; the rest of the array carries the current)
 pcbnew.ZONE_FILLER(b).Fill(b.Zones())
-nko=nvia=0
+nvia=0
 for fp in b.GetFootprints():
     for p in [p for p in fp.Pads() if p.GetNetname() in ESTOP and p.IsOnLayer(L)]:
         s=p.GetEffectiveShape(L)
         for t in list(b.GetTracks()):
             if t.GetClass()=='PCB_VIA' and HV(t.GetNetname()) and t.GetEffectiveShape(L).Collide(s,mm(1.5)-1): b.Remove(t); nvia+=1
-        if any(z.IsOnLayer(L) and HV(z.GetNetname()) and not z.GetIsRuleArea() and z.GetFilledPolysList(L).Collide(s,mm(1.5)-1) for z in b.Zones()):
-            pb=p.GetBoundingBox(); g=mm(1.6)
-            k=pcbnew.ZONE(b); k.SetIsRuleArea(True); k.SetDoNotAllowZoneFills(True); k.SetDoNotAllowTracks(False); k.SetDoNotAllowVias(False)
-            k.SetDoNotAllowPads(False); k.SetDoNotAllowFootprints(False); k.SetLayer(L); k.SetZoneName(f'ESTOP_GUARD_{fp.GetReference()}_{p.GetNumber()}')
-            o=k.Outline(); o.NewOutline()
-            for x,y in ((pb.GetLeft()-g,pb.GetTop()-g),(pb.GetRight()+g,pb.GetTop()-g),(pb.GetRight()+g,pb.GetBottom()+g),(pb.GetLeft()-g,pb.GetBottom()+g)): o.Append(pcbnew.VECTOR2I(x,y))
-            b.Add(k); nko+=1
+import estop_guards   # the guards come from the pads' present positions (tools/estop_guards.py), so they can be rebuilt after a move
+nko=len(estop_guards.build(b)[1])
 print('guard keep-outs',nko,'54 V vias removed',nvia)
 # 54 V vias in the port VBUS strips that crowd low-voltage pads on L1 (IPC-2221B 0.6 mm): drop them, the strips keep the rest
 def lvdom(n): return bool(re.match(r'/(G\d|GA\d|GATE|GATE_A|G_L\d|GPD_L\d|GPU_L\d|BST_L\d|GC_L\d)$',n))

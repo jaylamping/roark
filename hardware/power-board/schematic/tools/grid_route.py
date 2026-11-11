@@ -27,8 +27,8 @@ sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import domains   
 import stack   # the 6-layer stack: layer index = position in stack.NAMES
 stack.check_json(D,sys.argv[1])
 P12={'/+12V_RAW','/+12V','/+12V_JET','/+12V_PI','/+12V_FAN','/SPARE_SW','/SPARE_ON','/SP_SW1'}
-HV=np.zeros(len(NETS)+1,bool); ES=np.zeros(len(NETS)+1,bool)
-for n,i in NID.items(): HV[i]=domains.is_hv(n); ES[i]=domains.is_estop(n)
+HV=np.zeros(len(NETS)+1,bool); ES=np.zeros(len(NETS)+1,bool); LB=np.zeros(len(NETS)+1,bool)
+for n,i in NID.items(): HV[i]=domains.is_hv(n); ES[i]=domains.is_estop(n); LB[i]=domains.latch_inner_banned(n)
 # voltage domains (tools/domains.py): 0 = ground-referenced; copper riding on one 54 V node shares a domain; a 54 V net
 # outside every domain is a domain of its own. 0.6 mm (outer layers) between different domains where one isn't 0,
 # 0.2 mm otherwise; E-stop nets keep 1.5 mm to 54 V nets on every layer. Close to the routed net's own pads (escape
@@ -55,6 +55,14 @@ NECK=0.25   # track width within the escape zone (all classes)
 W12=float(__import__("os").environ.get("W12","0.6"))   # 12 V distribution track width (2 oz outer: about 4 A at 20 K rise; the 12 A trunk is the +12V_RAW strip)
 own=[np.zeros((H,W),np.int32) for _ in range(stack.NL)]
 padown=[np.zeros((H,W),np.int32) for _ in range(stack.NL)]   # pads only, for the escape zones
+# SOFTV=<regex>: pours of these nets on B.Cu don't block vias of low-voltage, non-E-stop nets; tracks still treat them as
+# copper. Nothing here cuts the pour: the via is cleared only when the pour is refilled (route_import.py refills every
+# zone, with the full rule clearance), so route_checks.py must run on the refilled board. Used for the L6 VBUS pour under
+# the meter block, which otherwise leaves every signal there on F.Cu alone. E-stop and 54 V nets never get it: a refill
+# clears 1.5 mm round an E-stop via, which the grid can't see, and a 54 V via in a foreign 54 V pour is a short risk.
+SOFTV=re.compile(os.environ['SOFTV']) if os.environ.get('SOFTV') else None
+softz=[np.zeros((H,W),bool) for _ in range(stack.NL)]
+hardc=[np.zeros((H,W),bool) for _ in range(stack.NL)]   # every other copper item: a soft pour never hides it
 gndplane=np.zeros((H,W),bool)
 def fill(img_arr,poly,val):
     im=Image.new('I',(W,H),0); dr=ImageDraw.Draw(im); hole=[]
@@ -71,7 +79,7 @@ batches=defaultdict(list)
 for it in D['items']:
     v=KEEP if it['kind']=='keepout' else NID.get(it['net'],NONET)
     if it['kind']=='plane': batches[('plane',)].append(it['poly']); continue
-    batches[(it['layer'],v,it['kind']=='pad')].append(it['poly'])
+    batches[(it['layer'],v,it['kind']=='pad',bool(SOFTV and it['kind']=='zone' and SOFTV.match(it.get('net') or '')))].append(it['poly'])
 for key,pl in batches.items():
     im=Image.new('L',(W,H),0); dr=ImageDraw.Draw(im)
     for poly in pl:
@@ -86,10 +94,16 @@ for key,pl in batches.items():
     else:
         own[key[0]][m]=key[1]
         if key[2]: padown[key[0]][m]=key[1]
+        if key[3]: softz[key[0]][m]=True
+        else: hardc[key[0]][m]=True
+# the latch block (tools/domains.py): no 54 V copper on the inner layers under it, so no 54 V inner track or via there
+_lx0,_lx1,_ly0,_ly1=domains.latch_page()
+LATCHM=np.zeros((H,W),bool)
+LATCHM[max(0,int(math.floor((_ly0-Y0)/RES))):max(0,int(math.ceil((_ly1-Y0)/RES))+1),max(0,int(math.floor((_lx0-X0)/RES))):max(0,int(math.ceil((_lx1-X0)/RES))+1)]=True
 # exact pad distances: the 0.1 mm raster puts a pad edge up to ~0.07 mm off, which at 0.5 mm pin pitch is the whole
 # margin. Per layer: D1/N1 = distance (mm, cell centre to pad outline) and net of the nearest pad, D2 = distance to the
 # nearest pad of any other net; the foreign-pad distance for net v is D2 where N1 == v, else D1.
-FINE={'U1','U2','U7'}   # LM5069 MSOP-10 and TPS7A4001 HVSSOP-8: pads 0.15 mm apart, so 0.15 mm to their pads inside their courtyard only (layout/*.kicad_dru)
+FINE={'U1'}   # U1 (LM5069): its UVLO pin (E-stop) sits 0.2 mm from SH_P, so inside U1's courtyard the E-stop clearance is the 0.2 mm default (layout/*.kicad_dru estop_at_U1). No footprint has a clearance under 0.2 mm any more (tools/fine_pitch_pads.py)
 PM=0.03   # margin on exact pad clearances (polyline vertices sit on cell centres, so the geometry is exact)
 D1=[np.full((H,W),99.0) for _ in range(stack.NL)]; D2=[np.full((H,W),99.0) for _ in range(stack.NL)]; N1=[np.zeros((H,W),np.int32) for _ in range(stack.NL)]
 padctr=[np.zeros((H,W),bool) for _ in range(stack.NL)]
@@ -118,7 +132,7 @@ for x0_,y0_,x1_,y1_ in fbox.values():
 for it in D['items']:
     if it['kind']!='pad': continue
     L=it['layer']; pv=NID.get(it['net'],NONET)
-    relax=0.05 if it.get('ref','').split('.')[0] in FINE else 0.0
+    relax=0.0   # was 0.05 for the 0.15 mm footprints
     for ring in it['poly']:
         if not ring or ring[-1] is None or len(ring)<3: continue
         xs=[q[0] for q in ring]; ys=[q[1] for q in ring]
@@ -158,7 +172,7 @@ for L,pv,ref,ring,x0p,y0p,x1p,y1p in _pads:
         if not (0<=r<H and 0<=c<W): continue
         ok_=True
         for _,qv,qref,qring,*_b in near:
-            cl=0.15 if (qref in FINE and incy[r,c]) else 0.2
+            cl=0.2
             if _pt_poly(np.array([x]),np.array([y]),qring)[0]<hwn+cl+0.01: ok_=False; break
         if not ok_: continue
         STUB[L][r,c]=pv
@@ -254,9 +268,20 @@ def fields(v,r0,r1,c0,c1,base_only=False):
             hwm=np.where(esc,min(hw,NECK/2),hw)   # neck-down to NECK within the escape zone
             base=(dl>=hwm+cllv+M)&(dv>=hwm+clhv+M)&(dh>=hwm+0.25+M)&(de>=hwm+0.4)&(hvp_ok|(dvp>=hwm+HVCL+M))&es_ok
             ok[L]=(base&(px>=hwm+0.2+PM))|(base&(STUB[L][r0:r1,c0:c1]==v))|((onp==v)&(px>=hwm+0.2+PM))|((pd==v)&(px>=hwm+0.2+PM))|((pd==v)&padctr[L][r0:r1,c0:c1]); ESCM[L]=esc
+            if LB[v] and not outer: ok[L]&=~LATCHM[r0:r1,c0:c1]   # route_checks check 4's set
         # vias always keep full clearance and never land on a pad (no via-in-pad: hand assembly)
+        sz=softz[L][r0:r1,c0:c1]&~hardc[L][r0:r1,c0:c1]
+        if SOFTV is not None and L==stack.NL-1 and not (ES[v] or HV[v]) and sz.any():   # soft pours: recompute the via distances without them
+            onp=np.where(sz&(d_==0),0,onp); fo=(onp!=0)&(onp!=v); od=DOM[np.clip(onp,0,None)]
+            fhv=fo&(((onp>0)&(od!=dv_)&((od!=0)|(dv_!=0)))|((onp==NONET)&(dv_!=0))); flv=fo&~fhv
+            fes=fo&(onp>0)&(ES[np.clip(onp,0,None)] if HV[v] else HV[np.clip(onp,0,None)]) if (HV[v] or ES[v]) else np.zeros(o.shape,bool)
+            des=ndimage.distance_transform_edt(~(fes|fesp))*RES if (fes|fesp).any() else np.full(o.shape,99.0)
+            es_vok=esce|(des>=0.3+1.5+M+0.05)
+            dl=ndimage.distance_transform_edt(~flv)*RES if flv.any() else np.full(o.shape,99.0)
+            dv=ndimage.distance_transform_edt(~fhv)*RES if fhv.any() else np.full(o.shape,99.0)
         dp=ndimage.distance_transform_edt(pd==0)*RES if (pd!=0).any() else np.full(o.shape,99.0)
         via_ok&=(dl>=0.3+cllv+M)&(dv>=0.3+clhv+M)&(dp>=0.3+M)&(px>=0.3+0.2+PM)&(hvp_ok|(dvp>=0.3+HVCL+M))&es_vok
+    if LB[v]: via_ok&=~LATCHM[r0:r1,c0:c1]   # a via is inner copper too
     return ok,via_ok,ESCM
 # ONLY=<regex>: route only the matching nets (the critical pre-routes: Kelvin pairs, gate drives, UVLO), sequentially.
 # FONLY=<regex>: those nets try F.Cu alone first (no via, so the In1 GND plane lies straight under the whole run), and fall
@@ -395,6 +420,8 @@ for n in NETS:
 # Kelvin legs first (P before N), so they take the short direct paths before the board fills; then shortest nets first
 todo.sort(key=lambda t:(0 if KELV.match(t[1]) else 1, (0 if t[1].endswith('_P') else 1) if KELV.match(t[1]) else 0, t[0]))
 if ONLY: todo=[t for t in todo if re.match(ONLY,t[1])]; NEG=False
+if os.environ.get('SHUFFLE'):   # SHUFFLE=<seed>: random order after the Kelvin legs, to try several orders in parallel
+    import random; random.Random(int(os.environ['SHUFFLE'])).shuffle(todo); todo.sort(key=lambda t:0 if KELV.match(t[1]) else 1)
 print('nets to route',len(todo),flush=True)
 fails=[]; t0=time.time(); nconn=0; tries={}; queue=[n for _,n in todo]; nrip=0; ripped={}
 TMAX=float(os.environ.get('TMAX','3000'))   # wall-clock budget in s; whatever is still queued then is reported open

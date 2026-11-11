@@ -1,0 +1,134 @@
+Quantity,Value / MPN,Reference designators,Footprint,Manufacturer,Manufacturer PN,DigiKey PN,Supplier note
+4,1uF 100V X7R soft-term,C1,C_1210_3225Metric,KEMET,C1210X105K1RACTU,399-C1210X105K1RACTUCT-ND,KEMET flexible termination (soft-term). About 2.4k in stock.
+6,100nF 100V X7R soft-term,"C2,C20",C_0805_2012Metric,KEMET,C0805X104K1RACTU,399-C0805X104K1RACTUCT-ND,KEMET flexible termination (soft-term).
+4,4.7nF C0G,C3,C_0603_1608Metric,KEMET,C0603C472J5GACTU,399-C0603C472J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
+4,100nF 100V C0G,C4,C_1210_3225Metric,KEMET,C1210C104J1GACTU,399-17493-1-ND,
+4,10uF 50V X7R,C5,C_1210_3225Metric,Samsung Electro-Mechanics,CL32B106KBJNNNE,1276-3387-1-ND,Murata GRM32ER71H106KA12L discontinued; KEMET/TDK 10uF 50V 1210 out of stock.
+4,2.2nF C0G,C6,C_0603_1608Metric,KEMET,C0603C222J5GACTU,399-C0603C222J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
+4,10nF 50V X7R,C7,C_0603_1608Metric,KEMET,C0603C103K5RACTU,399-C0603C103K5RACTUCT-ND,
+16,100nF 50V X7R,"C8,C21,C22,C23,C30,C80,C94",C_0603_1608Metric,KEMET,C0603C104K5RACTU,399-C0603C104K5RACTUCT-ND,
+4,100pF C0G,C9,C_0603_1608Metric,KEMET,C0603C101J5GACTU,399-C0603C101J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
+26,47uF 80V EEH-ZC1K470P,"C10,C11,C12,C13,C38,C44,C45,C47,C82,C83,C84,C85,C86",CP_Elec_10x10.5,Panasonic Industry,EEH-ZC1K470P,P19320CT-ND,
+12,2.2uF 100V X7R,"C14,C15,C53,C58,C63",C_1210_3225Metric,KEMET,C1210C225K1RACTU,399-C1210C225K1RACTUCT-ND,
+4,220nF C0G,C19,C_1206_3216Metric,Murata Electronics,GRM31C5C1H224JE02L,490-GRM31C5C1H224JE02LCT-ND,Voltage not in value string: 50 V C0G (BRK_T timer node).
+16,100nF 100V X7R,"C27,C52,C54,C57,C59,C62,C64",C_0805_2012Metric,KEMET,C0805C104K1RACTU,399-C0805C104K1RACTUCT-ND,
+4,2.2uF 25V X7R,C28,C_0805_2012Metric,KEMET,C0805C225K3RACTU,399-C0805C225K3RACTUCT-ND,
+6,1nF 50V X7R,"C37,C95",C_0603_1608Metric,KEMET,C0603C102K5RACTU,399-C0603C102K5RACTUCT-ND,
+6,1uF 100V X7R,"C39,C49",C_1210_3225Metric,KEMET,C1210C105K1RACTU,399-C1210C105K1RACTUCT-ND,
+4,22nF 100V,C40,C_0805_2012Metric,KEMET,C0805C223K1RACTU,399-C0805C223K1RACTUCT-ND,"Dielectric not in value string; X7R 100 V chosen (on MID, about 27 V)."
+4,1uF 50V X7R,C42,C_0805_2012Metric,KEMET,C0805C105K5RACTU,399-C0805C105K5RACTUCT-ND,
+4,4.7uF 10V X7R,C48,C_0805_2012Metric,KEMET,C0805C475K8RACTU,399-C0805C475K8RACTUCT-ND,
+8,1uF 16V X7R,"C50,C55,C60",C_0603_1608Metric,KEMET,C0603C105K4RACTU,399-C0603C105K4RACTUCT-ND,
+10,220nF 25V X7R,"C51,C56,C61,C93",C_0603_1608Metric,KEMET,C0603C224K3RACTU,399-C0603C224K3RACTUCT-ND,
+4,3.3nF C0G,C81,C_0603_1608Metric,KEMET,C0603C332J5GACTU,399-C0603C332J5GACTUCT-ND,Voltage not in value string: 50 V C0G chosen; node is low-voltage.
+14,4.7uF 100V X7R,"C87,C88,C89,C90,C91,C92",C_1210_3225Metric,Samsung Electro-Mechanics,CL32B475KCVZW6E,1276-7060-1-ND,
+2,5.0SMDJ58A,D1,D_SMC,Bourns Inc.,5.0SMDJ58A,5.0SMDJ58ABBCT-ND,Littelfuse 5.0SMDJ58A (5.0SMDJ58ACT-ND) out of stock until about 14-Dec-2026; the Bourns part with the same number is in stock.
+18,BAV19W,"D2,D10,D11,D22,D23,D26,D29,D43",D_SOD-123,MCC (Micro Commercial Components),BAV19W-TP,BAV19WTPMSCT-ND,Diodes Inc BAV19W-7-F out of stock (40 wk lead).
+6,SMAJ15A,"D3,D9",D_SMA,Diodes Incorporated,SMAJ15A-13-F,SMAJ15A-FDICT-ND,Only 287 in stock at check; Littelfuse/Bourns SMAJ15A are equivalents.
+2,MBRS3100T3G,D4,D_SMC,onsemi,MBRS3100T3G,MBRS3100T3GOSCT-ND,
+6,BAT54S,"D6,D42",SOT-23,Diodes Incorporated,BAT54S-7-F,BAT54S-FDICT-ND,
+10,SK810L-TP,"D7,D21,D25,D28,D31",D_SMC,MCC (Micro Commercial Components),SK810L-TP,SK810L-TPMSCT-ND,
+4,ES1D,D8,D_SMA,Diodes Incorporated,ES1D-13-F,ES1D-FDICT-ND,
+6,BZT52C12,"D12,D15",D_SOD-123,MCC (Micro Commercial Components),BZT52C12-TP,BZT52C12-TPMSCT-ND,Diodes Inc BZT52C12-7-F out of stock (Aug 2027).
+6,BAT46W,"D13,D17",D_SOD-123,Diotec Semiconductor,BAT46W,4878-BAT46WCT-ND,100 V 150 mA SOD-123. Vishay BAT46W-E3-08 out of stock until Jan 2027.
+4,BZT52C10,D14,D_SOD-123,MCC (Micro Commercial Components),BZT52C10-TP,BZT52C10-TPMSCT-ND,
+4,BZT52C5V1,D16,D_SOD-123,MCC (Micro Commercial Components),BZT52C5V1-TP,BZT52C5V1-TPMSCT-ND,
+4,"BZT52H-C68,115",D18,D_SOD-123F,Nexperia,"BZT52H-C68,115",1727-3619-1-ND,149 in stock at check.
+8,BZT52C15,"D24,D27,D30",D_SOD-123,MCC (Micro Commercial Components),BZT52C15-TP,353-BZT52C15-TPCT-ND,
+4,BZT52C3V3,D41,D_SOD-123,MCC (Micro Commercial Components),BZT52C3V3-TP,BZT52C3V3-TPMSCT-ND,
+4,250mA 125V 0466.250,F1,Fuse_1206_3216Metric,Littelfuse Inc.,0466.250NR,F1452CT-ND,
+2,20A 58V MINI 0997020.WXN,F2,Fuseholder_Blade_Mini_Keystone_3568,Littelfuse Inc.,0997020.WXN,F1876-ND,"Needs the PCB holder Keystone 3568 (DigiKey 36-3568-ND, in stock, takes mini/ATM blades), which has no kit row: add 1 per board."
+2,"Pack: 8 AWG pigtail pair to an XT90 (mates the pack XT90S), 1 BAT, 2 GND",J1,SolderWire-8AWG_1x02_P14mm_D4.5mm_OD8mm,,,,"Off-board harness: 8 AWG fine-strand silicone pair to an Amass XT90 (mates the pack XT90S). Board side is solder pads, nothing to order. DigiKey does not carry Amass XT90: buy from hobby/RC suppliers (e.g. Amazon, HobbyKing). Not pinned."
+2,"HS50 A (+X): 1 VBUS, 2 FET drain (Mini-Fit Jr, 18 AWG)",J3,Molex_Mini-Fit_Jr_5566-02A_2x01_P4.20mm_Vertical,Molex,0039281023,WM3800-ND,"Mini-Fit Jr 5566-02A vertical header. The mating plug (5557-02R housing + 5556 crimps, 18 AWG) is not in the kit."
+2,"L arm: 16 AWG pigtail pair, 1 +, 2 return",J8,SolderWire-2.5sqmm_1x02_P7.2mm_D2.4mm_OD3.6mm,,,,"Off-board: 16 AWG pigtail soldered to pads, nothing to order for the board. Wire not pinned (16 AWG silicone, hobby suppliers)."
+2,"R arm: 16 AWG pigtail pair, 1 +, 2 return",J9,SolderWire-2.5sqmm_1x02_P7.2mm_D2.4mm_OD3.6mm,,,,"Off-board: 16 AWG pigtail soldered to pads, nothing to order for the board. Wire not pinned (16 AWG silicone, hobby suppliers)."
+2,"waist: 16 AWG pigtail pair, 1 +, 2 return",J10,SolderWire-2.5sqmm_1x02_P7.2mm_D2.4mm_OD3.6mm,,,,"Off-board: 16 AWG pigtail soldered to pads, nothing to order for the board. Wire not pinned (16 AWG silicone, hobby suppliers)."
+2,"E-stop: 1 NC out, 2 GND, 3 NC return, 4 GND, 5-6 reset NO, 7 GND, 8 button NO",J20,JST_GH_SM08B-GHS-TB_1x08-1MP_P1.25mm_Horizontal,JST Sales America Inc.,SM08B-GHS-TB(LF)(SN),455-1570-1-ND,"Out of stock at check (2,500 expected 18-Jan-2027). Mating GHR-08V-S housing + SSHL-002T-P0.2 crimps (or pre-crimped leads) not in kit."
+2,"Pi: 3V3, SDA, GND, SCL, E-stop pressed (low), heartbeat out, port fault (low), power fail (low)",J21,JST_GH_SM08B-GHS-TB_1x08-1MP_P1.25mm_Horizontal,JST Sales America Inc.,SM08B-GHS-TB(LF)(SN),455-1570-1-ND,"Out of stock at check (2,500 expected 18-Jan-2027). Mating GHR-08V-S housing + crimps not in kit."
+2,"Buck board pigtail: 1-2 +VIN, 3-4 GND, 5 ON/OFF (low = on), 6 +3V3_PI, 7-8 GND, 9 SP_EN, 10 GND, 11 SCL, 12 SDA",J24,Molex_Micro-Fit_3.0_43045-1212_2x06_P3.00mm_Vertical,Molex,0430451212,WM1794-ND,Micro-Fit 3.0 43045-1212 vertical. Pigtail plugs (43025-1200 + 43030 crimps) are not in the kit.
+2,"HS50 B (-X): 1 VBUS, 2 FET drain (Mini-Fit Jr, 18 AWG)",J25,Molex_Mini-Fit_Jr_5566-02A_2x01_P4.20mm_Vertical,Molex,0039281023,WM3800-ND,Mini-Fit Jr 5566-02A vertical header. Mating plug not in kit.
+2,Heatsink lug wire: to a ring lug under a heatsink screw,J27,SolderWire-0.5sqmm_1x01_D0.9mm_OD2.1mm,,,,Solder pad for the heatsink lug lead; parts are the assembly rows 'J27 lug' and 'J27 lead'. Nothing to order here.
+16,IPB017N10N5LFATMA1,"Q1,Q2,Q7,Q8,Q9,Q15,Q16,Q17",TO-263-7_TabPin4,Infineon Technologies,IPB017N10N5LFATMA1,IPB017N10N5LFATMA1CT-ND,
+4,MMBTA92LT1G,Q3,SOT-23,onsemi,MMBTA92LT1G,MMBTA92LT1GOSCT-ND,
+4,MMBT3906,Q4,SOT-23,onsemi,MMBT3906LT1G,MMBT3906LT1GOSCT-ND,
+12,MMBT3904,"Q5,Q10,Q11,Q14,Q21",SOT-23,onsemi,MMBT3904LT1G,MMBT3904LT1GOSCT-ND,
+2,BSC040N10NS5ATMA1,Q6,TDSON-8-1,Infineon Technologies,BSC040N10NS5ATMA1,BSC040N10NS5ATMA1CT-ND,
+6,2N7002,"Q12,Q22",SOT-23,onsemi,2N7002LT1G,2N7002LT1GOSCT-ND,
+14,10R,"R1,R2,R23,R25,R31,R32",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT10R0,RMCF0603FT10R0CT-ND,
+4,34k 1%,R3,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT34K0,RMCF0603FT34K0CT-ND,
+8,1k,"R4,R12,R66",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT1K00,RMCF0603FT1K00CT-ND,
+12,22k,"R5,R75,R85,R95,R131",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT22K0,RMCF0603FT22K0CT-ND,
+4,33k,R6,R_0805_2012Metric,Stackpole Electronics,RMCF0805FT33K0,RMCF0805FT33K0CT-ND,
+4,464k,R7,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT464K,RMCF0603FT464KCT-ND,
+4,49.9k,R8,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT49K9,RMCF0603FT49K9CT-ND,
+2,680R 0.5W,R9,R_2010_5025Metric,YAGEO,RC2010FK-07680RL,13-RC2010FK-07680RLCT-ND,0.75 W 2010. Vishay CRCW2010680RFKEF and Stackpole RMCF2010FT680R are not stocked.
+4,4.7k,R10,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT4K70,RMCF0603FT4K70CT-ND,
+22,10k,"R11,R14,R16,R17,R27,R67,R76,R86,R96,R129",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT10K0,RMCF0603FT10K0CT-ND,
+41,100k,"R13,R24,R28,R37,R38,R50,R65,R71,R72,R77,R81,R82,R87,R91,R92,R97,R130,R137",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT100K,RMCF0603FT100KCT-ND,
+4,1.2k,R15,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT1K20,RMCF0603FT1K20CT-ND,
+6,9.09k,"R18,R134",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT9K09,RMCF0603FT9K09CT-ND,
+4,499k 0.1%,R19,R_1206_3216Metric,Panasonic Industry,ERA-8AEB4993V,P499KBCCT-ND,"0.1% thin film 1206, 628 in stock at check."
+4,604k 0.1%,R20,R_1206_3216Metric,YAGEO,RT1206BRD07604KL,YAG2064CT-ND,0.1% thin film 1206. Panasonic ERA-8AEB6043V out of stock (55 wk); Vishay TNPW1206604KBEEA not stocked.
+4,51.1k 0.1%,R21,R_0603_1608Metric,Panasonic Industry,ERA-3AEB5112V,P51.1KDBCT-ND,0.1% thin film 0603.
+6,9.53M,"R22,R64",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT9M53,RMCF0603FT9M53CT-ND,222 in stock at check.
+4,37.4k 1%,R26,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT37K4,RMCF0603FT37K4CT-ND,
+12,100R,"R29,R68,R78,R88,R138",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT100R,RMCF0603FT100RCT-ND,
+4,1M,R30,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT1M00,RMCF0603FT1M00CT-ND,
+6,47k 1%,"R33,R34",R_1206_3216Metric,Stackpole Electronics,RMCF1206FT47K0,RMCF1206FT47K0CT-ND,
+10,22R,"R35,R73,R83,R93",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT22R0,RMCF0603FT22R0CT-ND,
+4,40.2k 1%,R36,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT40K2,RMCF0603FT40K2CT-ND,
+4,3.3k,R44,R_1206_3216Metric,Stackpole Electronics,RMCF1206FT3K30,RMCF1206FT3K30CT-ND,
+8,100k,"R45,R46,R139",R_1206_3216Metric,Stackpole Electronics,RMCF1206FT100K,RMCF1206FT100KCT-ND,
+4,33k,R47,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT33K0,RMCF0603FT33K0CT-ND,
+4,220k,R48,R_0805_2012Metric,Stackpole Electronics,RMCF0805FT220K,RMCF0805FT220KCT-ND,
+6,220k,"R49,R57",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT220K,RMCF0603FT220KCT-ND,"Both sit at a transistor base (R49: MID_B at Q11; R57: VB_B at Q14), so they see under 1 V; the 0805 series resistors above them (220k from MID_Z, 47k from VB_Z) take the voltage. 0603 is fine."
+4,470k,R51,R_1206_3216Metric,Stackpole Electronics,RMCF1206FT470K,RMCF1206FT470KCT-ND,
+2,10k 0.75W,R52,R_2010_5025Metric,Vishay Dale,CRCW201010K0FKEF,541-10.0KACCT-ND,0.75 W 2010.
+2,copper link,R53,NetTie-2_SMD_Pad2.0mm,,,,"PCB copper net tie, no part to order."
+4,47k,R58,R_0805_2012Metric,Stackpole Electronics,RMCF0805FT47K0,RMCF0805FT47K0CT-ND,
+2,22R CRCW251222R0FKEGHP,R59,R_2512_6332Metric,Vishay Dale,CRCW251222R0FKEGHP,541-CRCW251222R0FKEGHPCT-ND,Only 66 in stock at check.
+4,220R,R60,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT220R,RMCF0603FT220RCT-ND,
+6,0R,"R61,R62",R_0603_1608Metric,Stackpole Electronics,RMCF0603ZT0R00,RMCF0603ZT0R00CT-ND,
+8,4.64k 1%,"R69,R79,R89",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT4K64,RMCF0603FT4K64CT-ND,
+8,20k 1%,"R70,R80,R90",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT20K0,RMCF0603FT20K0CT-ND,
+8,10M,"R74,R84,R94",R_0805_2012Metric,Vishay Dale,CRCW080510M0FKEA,541-10.0MCCT-ND,"0805, 150 V working (Vishay CRCW e3 datasheet): the gate-clamp node sits at about V_L + 15 V, about 70 V. About 22k in stock 2026-11-10."
+4,2.2k,R128,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT2K20,RMCF0603FT2K20CT-ND,
+4,118k 1%,R132,R_1206_3216Metric,Stackpole Electronics,RMCF1206FT118K,738-RMCF1206FT118KCT-ND,323 in stock at check.
+6,10k 1%,"R133,R135",R_0603_1608Metric,Stackpole Electronics,RMCF0603FT10K0,RMCF0603FT10K0CT-ND,
+4,499k 1%,R136,R_0603_1608Metric,Stackpole Electronics,RMCF0603FT499K,RMCF0603FT499KCT-ND,
+2,0.5mR Bourns CSS4J-4026R-L500F 5W,RS1,R_Shunt_Isabellenhuette_BVR4026,Bourns Inc.,CSS4J-4026R-L500F,CSS4J-4026R-L500FCT-ND,DigiKey stock very low (page showed about 5); confirm 2 + spare before ordering.
+6,2mR 2512 CSS2H-2512K-2L00F 5W,"RS2,RS3,RS4",R_Shunt_Vishay_WSK2512_6332Metric_T1.19mm,Bourns Inc.,CSS2H-2512K-2L00F,CSS2H-2512K-2L00FCT-ND,"Kept on purpose: a 2-terminal 5 W metal strip (Bourns CSS2H-2512K-2L00F: 5 W at 70 C; 1.8 W at the 30 A trip) on the WSK2512 split Kelvin land, each terminal bridging its current and sense pad (gen.py port note). Fit from the datasheets: CSS2H body 6.35 x 3.05 mm, terminals 3.00 wide x 1.14 long (x 2.04-3.18 from centre, y -1.50..1.50); the land per end is a 2.29 x 2.03 current pad (x 1.84-4.13, y -1.65..0.38) and a 1.40 x 0.76 sense pad (x 2.73-4.13, y 0.89-1.65): the terminal covers the current pad across its full width and 0.45 x 0.61 mm of the sense pad. The 4-terminal part that matches the land natively (Vishay WSK25122L000FEA) is rated 1 W: too small."
+2,5mR 2512 Kelvin WSK25125L000FEA,RS9,R_Shunt_Vishay_WSK2512_6332Metric_T1.19mm,Vishay Dale,WSK25125L000FEA,541-WSK25125L000FEACT-ND,"Out of stock at check (2,000 expected 28-Dec-2026); backorder."
+2,TP VCTL,TP1,TestPoint_Pad_D2.0mm,,,,"Bare PCB test pad, nothing to order."
+2,TP RUN,TP2,TestPoint_Pad_D2.0mm,,,,"Bare PCB test pad, nothing to order."
+2,TP VBUS,TP3,TestPoint_Pad_D2.0mm,,,,"Bare PCB test pad, nothing to order."
+2,TP BRK_IN,TP5,TestPoint_Pad_D2.0mm,,,,"Bare PCB test pad, nothing to order."
+2,TP MID,TP6,TestPoint_Pad_D2.0mm,,,,"Bare PCB test pad, nothing to order."
+6,TP GND,"TP7,TP8,TP9",TestPoint_Keystone_5015_Micro_Mini,Keystone Electronics,5015,36-5015CT-ND,
+2,TP GATE,TP10,TestPoint_Pad_D1.0mm,,,,"Bare PCB test pad, nothing to order."
+2,TP GATE_A,TP11,TestPoint_Pad_D1.0mm,,,,"Bare PCB test pad, nothing to order."
+2,TP UVLO,TP12,TestPoint_Pad_D1.0mm,,,,"Bare PCB test pad, nothing to order."
+2,TP FLT_A,TP13,TestPoint_Pad_D1.0mm,,,,"Bare PCB test pad, nothing to order."
+2,TP SW_D,TP14,TestPoint_Pad_D1.0mm,,,,"Bare PCB test pad, nothing to order."
+2,TP ABS,TP15,TestPoint_Pad_D1.0mm,,,,"Bare PCB test pad, nothing to order."
+2,TP WDO_N,TP16,TestPoint_Pad_D1.0mm,,,,"Bare PCB test pad, nothing to order."
+2,TP HSINK,TP17,TestPoint_Pad_D2.0mm,,,,"Bare PCB test pad, nothing to order."
+4,LM5069MM-2 (U1: temporary fit in place of LM5069MM-1; U7: design part),"U1,U7",MSOP-10_3x3mm_P0.5mm_TI,Texas Instruments,LM5069MM-2/NOPB,,"Fitted in U1 and U7 (decided 2026-11-10). Order 4 from Mouser LM5069MM-2/NOPB (51 in stock at check 2026-11-10) or LCSC C2653582 (LM5069MMX-2/NOPB, large reel, 3,156 in stock, $4.44). DigiKey out (296-35297-1-ND, MMX-2: 2,894 due 11-Jan-2027). With -2 in U1 the bus restarts by itself about every 63 ms after a fault clears; the heatsink fan must run whenever the pack is connected (LM5069_RETRY.md)."
+2,TPS7A4001DGNR,U2,HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm_TI,Texas Instruments,TPS7A4001DGNT,296-28330-1-ND,"Kit lists TPS7A4001DGNR (296-41780-1-ND), out of stock until Mar 2027; DGNT is the same part on a 250-pc reel, 550 in stock."
+4,TLV1805DBVR,"U3,U26",SOT-23-6,Texas Instruments,TLV1805DBVR,296-53434-1-ND,
+6,LM4040AIM3-2.5,"U4,U27",SOT-23,Texas Instruments,LM4040AIM3-2.5/NOPB,LM4040AIM3-2.5/NOPBCT-ND,
+2,TPS48100QDGXRQ1,U8,TPS48100_DGX_VSSOP-19,Texas Instruments,TPS48100QDGXRQ1,296-TPS48100QDGXRQ1CT-ND,
+8,INA237AIDGSR,"U11,U12,U13,U17",TSSOP-10_3x3mm_P0.5mm,Texas Instruments,INA237AIDGSR,296-INA237AIDGSRCT-ND,"Out of stock at DigiKey at check (2026-11-10); 2,500 expected 25-Nov-2026."
+6,TPS48111LQDGXRQ1,"U19,U20,U21",TPS48100_DGX_VSSOP-19,Texas Instruments,TPS48111LQDGXRQ1,296-TPS48111LQDGXRQ1CT-ND,
+2,TPS3431SDRBR,U25,VSON-8-1EP_3x3mm_P0.65mm_EP1.65x2.4mm,Texas Instruments,TPS3431SDRBR,296-51909-1-ND,"Out of stock at DigiKey at check (2026-11-10); 3,000 expected 08-Mar-2027. Try TI.com direct."
+4,"Molex 19070-0009 InsulKrimp ring terminal, M3 to M3.5 stud, 18-22 AWG: under one heatsink screw head, on the lead from J27",J27 lug,—,Molex,0190700009,WM13697-ND,"Ring for #6 stud (3.5 mm), 18-22 AWG, red InsulKrimp."
+1 spool,"22 AWG stranded hook-up wire, 300 V PVC (Alpha Wire 3051 or equal), 60 mm per board: J27 to the ring terminal",J27 lead,—,Alpha Wire,3051 BK005,A2016B-100-ND,"22 AWG 7/30 stranded, 300 V PVC, black, 100 ft spool."
+3,"Keystone 3568 PCB fuse holder for mini (ATM) blade fuses, 30 A 500 V, PC pins: holds F2 (0997020.WXN 20 A 58 V)",F2 holder,-,Keystone Electronics,3568,36-3568-ND,"85,249 in stock (DigiKey NZ product page, 2026-11-10). Fills the gap noted on the F2 row; footprint Fuseholder_Blade_Mini_Keystone_3568 is this part."
+5,"Mini-Fit Jr 5557-02R receptacle housing, 2 pos dual row, mates the 5566-02A headers (HS50 brake-resistor leads)",J3 plug / J25 plug,-,Molex,0039012020,WM3700-ND,"280,384 in stock (DigiKey NZ). Same part as 39-01-2020 / 5557-02R."
+10,"Mini-Fit Jr 5556 female crimp terminal, 18-24 AWG, tin (18 AWG silicone pairs per REV_B_PARTS)",J3 plug / J25 plug crimps,-,Molex,0039000039,WM2501-ND,"742,755 in stock (DigiKey NZ). Tin, to match a tin header; header 0039281023 plating not rechecked. Needs a Mini-Fit crimp tool (not pinned)."
+5,"Micro-Fit 3.0 43025-1200 receptacle housing, 12 pos 2x6: both ends of the J24 pigtail (main J24 and buck J1, both 43045-1212)",J24 plug / buck J1 plug,-,Molex,0430251200,WM1788-ND,"35,547 in stock (DigiKey NZ)."
+9,"Micro-Fit 3.0 43025-0200 receptacle housing, 2 pos 2x1: Jetson, Pi-buck, fan and SPARE_ON 12 V outputs (43045-0212 headers)",buck J2 / J3 / J4 / J6 plugs,-,Molex,0430250200,WM1783-ND,"214,951 in stock (DigiKey NZ)."
+3,"Micro-Fit 3.0 43025-0400 receptacle housing, 4 pos 2x2: SPARE_SW output (43045-0412 header)",buck J5 plug,-,Molex,0430250400,WM1784-ND,"105,178 in stock (DigiKey NZ)."
+83,"Micro-Fit 3.0 43030 female crimp terminal, 18 AWG, tin: 24 for the pigtail (12 per end, 18 AWG per REV_B_PARTS) + 12 for the buck outputs",J24 pigtail + buck J2-J6 crimps,-,Molex,0430300038,WM13070CT-ND,"DigiKey NZ product page shows 475,223 in stock (a cached US page showed 0: recheck when ordering). 18 AWG only, max insulation OD about 1.85 mm (Heilind listing): typical 18 AWG silicone is thicker, so use thin-wall 18 AWG. If the buck output leads are 20-24 AWG, use 0430300007 (WM1837-ND, 20-24 AWG tin, 603,619 in stock) for those 12. Output wire gauge is not stated in the docs. Price break at 100."
+5,"JST GH GHR-08V-S receptacle housing, 8 pos 1.25 mm, mates SM08B-GHS-TB (E-stop and Pi cables)",J20 plug / J21 plug,-,JST Sales America,GHR-08V-S,455-1598-ND,"83,994 in stock (DigiKey NZ)."
+100,"JST GH SSHL-002T-P0.2 socket crimp, 26-30 AWG, tin (J21 GND pin is 26 AWG per REV_B_PARTS)",J20 plug / J21 plug crimps,-,JST Sales America,SSHL-002T-P0.2,455-1606-100-ND,"Strip of 100 (NZ$0.1513 each); this listing shows no stock figure. 455-1606-500-ND (strip of 500) shows 29,500 in stock; 455-1606-1000-ND shows 17,000. 26 AWG is the largest wire it takes. Needs a JST GH crimp tool, or buy pre-crimped GH leads (not pinned)."

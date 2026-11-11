@@ -53,7 +53,7 @@ nic(s,Qb,'Q1','IPB017N10N5LFATMA1',(228.6,48.26),'Package_TO_SOT_SMD:TO-263-7_Ta
 nic(s,Qb,'Q2','IPB017N10N5LFATMA1',(292.1,48.26),'Package_TO_SOT_SMD:TO-263-7_TabPin4',{'1':'G2','2':'VBUS','3':'VBUS','4':'MID','5':'VBUS','6':'VBUS','7':'VBUS'})
 g=Grid(s,335.28,38.1,20.32,30.48,420)
 g.R('10R','GATE','G1'); g.R('10R','GATE','G2')
-nic(s,'Power_Management:LM5069MM-1','U1','LM5069MMX-1',(63.5,114.3),'Package_SO:MSOP-10_3x3mm_P0.5mm',{'1':'SH_N','2':'SH_P','3':'UVLO','4':'GND','5':'GND','6':'TIMER','7':'PWR','8':None,'9':'VBUS','10':'GATE'},ds='https://www.ti.com/lit/ds/symlink/lm5069.pdf')
+nic(s,'Power_Management:LM5069MM-1','U1','LM5069MMX-1',(63.5,114.3),'marengo_revb:MSOP-10_3x3mm_P0.5mm_TI',{'1':'SH_N','2':'SH_P','3':'UVLO','4':'GND','5':'GND','6':'TIMER','7':'PWR','8':None,'9':'VBUS','10':'GATE'},ds='https://www.ti.com/lit/ds/symlink/lm5069.pdf',fields={'Fitted':'LM5069MM-2/NOPB (temporary fit: LM5069-1 has no authorised stock; auto-retry about every 63 ms, see LM5069_RETRY.md)'})
 g=Grid(s,114.3,96.52,20.32,30.48,420)
 g.R('34k 1%','PWR','GND'); g.C('4.7nF C0G','TIMER','GND',C603); g.D('BAV19W','CDV','GATE'); g.C('100nF 100V C0G','CDV','GND',C1210); g.R('1k','GATE','CDV_B')
 g.R('22k','RUN_B','UVLO'); g.R('33k','UVLO','GND','Resistor_SMD:R_0805_2012Metric')
@@ -72,7 +72,7 @@ Polarity (rev B5): one soldered 8 AWG pigtail pair, side by side, to an XT90 tha
 
 # ---------- control rail and latch ----------
 head('2. Control rail and E-stop latch (no logic IC)',(25.4,172))
-nic(s,LDO,'U2','TPS7A4001DGNR',(63.5,200),'Package_SO:HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm',{'1':'VCTL','2':'FB_CTL','3':None,'4':'GND','5':'BAT_CTL','6':None,'7':None,'8':'BAT_CTL','9':'GND'})
+nic(s,LDO,'U2','TPS7A4001DGNR',(63.5,200),'marengo_revb:HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm_TI',{'1':'VCTL','2':'FB_CTL','3':None,'4':'GND','5':'BAT_CTL','6':None,'7':None,'8':'BAT_CTL','9':'GND'})
 g=Grid(s,114.3,185.42,20.32,30.48,200)
 g.C('10uF 50V X7R','VCTL','GND',C1210); g.R('464k','VCTL','FB_CTL'); g.R('49.9k','FB_CTL','GND'); tp(g,'VCTL')
 note('12.1 V, 11 mA. On the battery side, so regen through the body diodes keeps it up with the BMS open. Runs the latch and the clamp. 0.5 W at 54.6 V.\nFed through F1 with its own 1 uF, clamped by a 15 V TVS, reverse diode OUT to IN: block 10.',(114.3,232))
@@ -130,7 +130,7 @@ waist 0x4C, 12 V 0x4D (buck board), MID 0x4F. Powered by the Pi's 3.3 V; Pi pull
 head('5a. Brick soft start (ahead of the E-stop switch)',(25.4,440))
 nic(s,'Device:R_Shunt','RS9','5mR 2512 Kelvin WSK25125L000FEA',(60,462),SHK,{'1':'BAT','2':'SH9_P','3':'SH9_N','4':'BRK_D'})
 nic(s,Qb,'Q7','IPB017N10N5LFATMA1',(115,462),'Package_TO_SOT_SMD:TO-263-7_TabPin4',{'1':'BRK_G1','2':'BRK_IN','3':'BRK_IN','4':'BRK_D','5':'BRK_IN','6':'BRK_IN','7':'BRK_IN'})
-nic(s,'Power_Management:LM5069MM-2','U7','LM5069MMX-2',(190,470),'Package_SO:MSOP-10_3x3mm_P0.5mm',{'1':'SH9_N','2':'SH9_P','3':'SH9_P','4':'GND','5':'GND','6':'BRK_T','7':'BRK_P','8':'BRK_PG','9':'BRK_IN','10':'BRK_GATE'},ds='https://www.ti.com/lit/ds/symlink/lm5069.pdf')
+nic(s,'Power_Management:LM5069MM-2','U7','LM5069MMX-2',(190,470),'marengo_revb:MSOP-10_3x3mm_P0.5mm_TI',{'1':'SH9_N','2':'SH9_P','3':'SH9_P','4':'GND','5':'GND','6':'BRK_T','7':'BRK_P','8':'BRK_PG','9':'BRK_IN','10':'BRK_GATE'},ds='https://www.ti.com/lit/ds/symlink/lm5069.pdf')
 g=Grid(s,240,452,20.32,30.48,340)
 g.R('10R','BRK_GATE','BRK_G1'); g.R('37.4k 1%','BRK_P','GND'); g.C('220nF C0G','BRK_T','GND','Capacitor_SMD:C_1206_3216Metric'); g.C('100nF 100V X7R soft-term','SH9_P','GND',C805); g.F('SH9_P'); g.F('BRK_IN'); tp(g,'BRK_IN')
 wnote('''Same controller as the bank, so one part family. -2 retries on its own: a compute fault does not need a BMS cycle. UVLO on VIN, OVLO low: on whenever the pack is.
@@ -282,7 +282,7 @@ for k in range(6):
     g.nl()
     refs+=[g.R('100k',f'GPU_{t}',f'G_{t}'),g.R('22R',f'GPD_{t}',f'G_{t}',R603),g.D('BAV19W',f'GC_{t}',f'G_{t}')]
     g.C('100nF 100V X7R',f'GC_{t}','GND',C805); refs.append(f"C{s.refc['C']}")
-    refs+=[g.R('10M',f'GC_{t}','GND',R603),g.Z('BZT52C15',f'G_{t}',f'V_{t}'),g.R('22k','RUN_P',f'EN_{t}'),g.R('10k',f'EN_{t}','GND'),g.R('100k','RUN_P',f'INP_{t}'),g.D('SK810L-TP',f'V_{t}','GND',SMC)]
+    refs+=[g.R('10M',f'GC_{t}','GND','Resistor_SMD:R_0805_2012Metric'),g.Z('BZT52C15',f'G_{t}',f'V_{t}'),g.R('22k','RUN_P',f'EN_{t}'),g.R('10k',f'EN_{t}','GND'),g.R('100k','RUN_P',f'INP_{t}'),g.D('SK810L-TP',f'V_{t}','GND',SMC)]
     if K in PORTDNP:
         for r in refs: dnp(r)
 wnote('''Why: a hard limb short used to latch the whole bus (U1 trips in under 0.4 ms, long before a 20 A fuse melts). Each port now opens itself first.
@@ -345,6 +345,16 @@ I2C or holds the converter off. One set of I2C pull-ups only (the Pi's). Pigtail
 Ground: the buck board's ground meets this board's at J24 and again through the Pi (its 12 V return on buck board J3, and
 J21's GND). If the J3 return opens, the Pi buck's return falls back through J21's one GND pin: route the J21 cable beside
 the pigtail and check the J3 return crimp at assembly.''',(300,1035),150)
+# ---------- heatsink tie (2026-11-10), appended so earlier refs keep their numbers ----------
+head('5d. Heatsink tie: the FET heatsink to GND through 100k, with a test point',(300,1120))
+g=Grid(s,310,1140,20.32,30.48,420)
+g.R('100k','HSINK','GND',R1206); nic(s,'Connector:TestPoint',s.nref('TP'),'TP HSINK',g.at(),'TestPoint:TestPoint_Pad_D2.0mm',{'1':'HSINK'})
+conn(1,'Heatsink lug wire: to a ring lug under a heatsink screw',(400,1140),'Connector_Wire:SolderWire-0.5sqmm_1x01_D0.9mm_OD2.1mm',['HSINK'],ref='J27')   # J25 is taken by hand (HS50 B)
+wnote('''The heatsink under the board sits on an insulating gap pad over ten bare FET pads on eight nets (THERMAL_OPTION.md,
+"Insulation under the heatsink"). Left floating, a first puncture of the pad would go unseen, and the heatsink would ride on
+the FET drains' edges through about 170 pF. 100k (1206, 200 V working: 54 V across it is 29 mW) holds it at GND and makes a
+puncture show as a voltage on TP HSINK: over 1 V for any leak under 5 MOhm from 54 V. Not a hard tie: a puncture under a
+bank A tab would then short the pack ahead of both banks. A wire from the pad to a ring lug under a heatsink screw.''',(300,1165),150)
 writelib()
 s.write([('/'+ROOT,'1')])
 print('ok',{k:v for k,v in s.refc.items() if not k.startswith('#')})
