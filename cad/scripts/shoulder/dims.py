@@ -1,0 +1,107 @@
+"""Left shoulder, roll drum and fork: every dimension of the first SolidWorks pass, in one place.
+
+Torso STEP frame, mm: X outboard, Y up, Z forward (hardware/shoulder/study-20261111/MEASUREMENTS.md section 0).
+Values come from concept-roll-fork/CONCEPT.md and build_concept.py (second pass); changes against it are marked CHANGED.
+"""
+import math
+
+# ---- axes (MEASUREMENTS.md section 0) ----
+RX, RY = 170.49, 424.86          # roll axis along Z through (RX, RY); pitch axis height
+PZ = -0.014                      # pitch axis Z (pitch axis along X)
+YZ = 5.99                        # yaw axis along Y through (RX, YZ)
+ROLL_OUT, ROLL_REAR = 30.64, -25.96      # roll RS03 output face / rear face (Z)
+PITCH_OUT, PITCH_REAR = 97.0, 40.4       # pitch RS03 output face / rear face (X)
+RS02_REAR, RS02_SEAT, RS02_UNDER, RS02_OUT = 365.26, 351.86, 323.86, 319.86   # yaw RS02 (Y)
+PETG = 1.27e-3                   # g/mm3, solid
+
+# ---- roll stops (CHANGED: inward -11, was -15; the upper arm reaches the cage at -12..-13 when yawed 45-75 deg) ----
+# Driven in the cap part by the global variables ROLL_STOP_IN / ROLL_STOP_OUT (Tools > Equations).
+ROLL_STOP_IN, ROLL_STOP_OUT = -11.0, 110.0
+
+# ---- drum (P1) ----
+DRUM_RI, DRUM_RO = 48.0, 57.0    # bore over the RS03 body / outside of ribs and rear rim
+WALL_RO, LIP_RO = 51.5, 56.0     # drum wall between the ribs / front lip
+LUG_ANGLES = [22.5 + 45 * k for k in range(8)]   # RS03 cast lugs at r 53
+SLOT_HALF, SLOT_R = 5.5, 54.5    # lug slots, 11 wide, to r 54.5
+LIP_Z0, LIP_Z1 = 28.3, 36.0      # front lip, 8 x M4 on PCD 98 into the RS03 lugs
+LIP_RI = 43.0
+LIP_PCD_R = 49.0
+DRUM_Z0 = -28.5                  # rear rim = cap front face
+EAR_ANGLES = [125.0, 148.0, 212.0]   # cap screws, inboard/top; CHANGED from 130/165/200: those ears reached X 104 into the flange ring
+EAR_R, EAR_PCD = 7.5, 61.0
+WIN_ANGLES = [0.0, 45.0, -45.0, -90.0]     # drum wall windows (between ribs)
+RS03_BUMP = dict(x0=RX - 53.0, x1=RX - 46.0, y=9.5, z0=18.6)   # relief for the RS03 housing boss at r 50.25 inboard (Z 19.6-28.1)
+TOPWIN = dict(x=14.0, z0=-28.5, z1=-6.0)   # window over the roll RS03 top connector bay (half width X)
+# pitch adaptor
+PAD_R, PAD_X = 22.0, (97.0, 108.7)
+PAD_HOLES = [-134.0 + 60 * k for k in range(6)]   # 6 x M4 on PCD 30.4 (angle in the Y-Z plane from +Y toward +Z)
+NECK = dict(ri_core=21.0, ro=40.0, ri=35.6, x0=100.5, x_disc=106.0, x1=130.0)
+SPOKES = dict(n=5, a0=90.0, w=9.0, r0=21.0, r1=50.0, x0=100.5, x1=104.5, screw_r=46.0, insert_depth=3.8)   # M3 x 4 inserts   # carry the flange ring
+# ---- flange ring (separate printed part; CHANGED: was the 1.8 mm flange on P1 at X 100.5-102.3) ----
+RING = dict(ri=42.0, ro=77.5, x0=104.5, x1=106.3)   # 1.8 thick, printed flat
+# ---- pitch loop cover (torso side, fixed); CHANGED: outer wall runs on to 2 mm short of the ring (X 104.5)
+COVER = dict(ri=56.0, back_x=(75.0, 77.4), out=(73.5, 75.9), in_=(55.0, 57.4), in_x1=98.5)
+COVER['x1'] = RING['x0'] - 2.0
+COVER_MOUNT_R, COVER_MOUNT_ANGLES = 66.0, [0.0, 90.0, 180.0, 270.0]
+FEED = dict(y=RY + 6.0, z=-79.0, x0=50.0, x=86.5)
+# ---- wire passages (power 16 x 6, signal 10 x 5, 2 mm rib, 2.4 walls) ----
+PW, PH, SW, SH, RIB, WALL = 16.0, 6.0, 10.0, 5.0, 2.0, 2.4
+TOT = PW + RIB + SW
+SHW, SHH = TOT + 2 * WALL, PH + 2 * WALL         # 32.8 x 10.8 duct shell
+P_OFF, S_OFF = -TOT / 2 + PW / 2, TOT / 2 - SW / 2   # channel centre offsets across the duct (-6, +9)
+TRUNK_Y, TRUNK_X = 489.0, 140.0
+TU = (1.0, -0.45, 0.0)
+# ---- rear cap ----
+CAP_Z1 = -39.3                   # rear face of the cap plate
+CAPZ = (DRUM_Z0 + CAP_Z1) / 2    # cap channel centre
+CAP_T, BOSS_R, RIM_T = 3.0, 24.0, 3.0
+CAP_WINDOWS = [(-112, -72), (-32, 14), (154, 194)]
+LAND_Z, LAND_R = -40.3, 22.5
+BRG_Z = (-40.3, -47.3)           # 6808-2RS 40 x 52 x 7, floating
+STUB_R, STUB_BORE = 20.0, 12.5   # stub OD 40.0, bore 25
+STOP_R = (44.0, 55.0)
+# ---- fork ----
+HOUSE_Z0 = CAP_Z1 - 2.5
+RZ = -51.3                       # fork rear channel centre
+FRONT_Z = (39.0, 47.0)           # front cheek
+SEAT_Y = (RS02_SEAT, 361.9)      # seat ring on the RS02 rear housing face
+SEAT_RI, SEAT_RO = 33.5, 45.0
+RS02_SCREWS = [-136.0, -96.0, -56.0, 64.0, 104.0]   # 5 x M3 on PCD 73 (yaw angle atan2(z - YZ, x - RX))
+SOCKET_POCKETS = [(162.0, 198.0), (-26.0, 34.0)]   # CHANGED: 4 deg wider each side (RS02 socket body reached 196 deg)
+TAP_Y = (353.4, 359.4)
+JX = 30.0                        # joint pad half width
+JZ0 = RZ + PH / 2 + WALL         # -45.9: joint face (front face of the rear arm)
+BACK_Z = RZ - PH / 2 - WALL      # -56.7: fork rear back face
+ARM_HW = 17.0
+Y_EX = 319.55                    # yaw exit channel centre
+Y_BOT = Y_EX - 3 - WALL
+CHEEK_R, HOUSE_R = 35.0, 33.0
+BRG_SEAT_R, BRG_LIP_R = 26.0, 24.0
+# ---- hub (frozen interface; dished top) ----
+DISH_R0, DISH_Y = 23.5, 315.8
+HUB_WIN_A = 7.9
+
+# ---- print bed ----
+BED = 256.0
+
+
+def polar(r, th, c=(RX, RY)):
+    t = math.radians(th)
+    return (c[0] + r * math.cos(t), c[1] + r * math.sin(t))
+
+
+def yaw_pt(r, a, y):
+    """Point at radius r, yaw angle a (atan2(z - YZ, x - RX)), height y."""
+    t = math.radians(a)
+    return (RX + r * math.cos(t), y, YZ + r * math.sin(t))
+
+
+def pitch_pt(r, a, x):
+    """Point at radius r about the pitch axis, angle a in the Y-Z plane measured from +Y toward +Z, at X x."""
+    t = math.radians(a)
+    return (x, RY + r * math.cos(t), PZ + r * math.sin(t))
+
+
+def roll_pt(r, a, z):
+    t = math.radians(a)
+    return (RX + r * math.cos(t), RY + r * math.sin(t), z)
