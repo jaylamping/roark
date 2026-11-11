@@ -336,8 +336,8 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
         ),
         (
             "the currents joints with a bus are enabled at sum above the budget",
-            // The commissioned joint's 24 A, and the two uncommissioned wired joints at their commissioning current (5 %
-            // of 16 A each), whatever cap they write; the offline joint's 43 A doesn't count, it can't be enabled.
+            // The commissioned joint's 24 A, and the two uncommissioned wired joints at their commissioning current
+            // (Open with Joey 11), whatever cap they write; the offline joint's 43 A doesn't count, it can't be enabled.
             edit("current_cap_a: 12.0", "current_cap_a: 24.0"),
             vec![at(
                 "power.current_budget_a",
@@ -363,6 +363,25 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
                 at(
                     "limbs.left_arm.arm_joint_two.id",
                     ProblemKind::Expected("a whole number without leading zeros"),
+                ),
+            ],
+        ),
+        (
+            "a commissioned joint with a fact that didn't parse still counts at its own current cap",
+            // Its direction is broken, not null, so it stays commissioned: 24 A, not its commissioning current.
+            edit("current_cap_a: 12.0", "current_cap_a: 24.0")
+                .replace("direction: -1", "direction: 2"),
+            vec![
+                at(
+                    "power.current_budget_a",
+                    ProblemKind::CurrentBudget {
+                        sum_a: 24.0 + 16.0 * 0.05 + 16.0 * 0.05,
+                        budget_a: 25.0,
+                    },
+                ),
+                at(
+                    &format!("{J1}.direction"),
+                    ProblemKind::Expected("1 or -1, unquoted"),
                 ),
             ],
         ),

@@ -79,7 +79,7 @@ fn a_joint_is_enabled_at_its_own_caps_only_once_commissioned() {
             ..bare.clone()
         }
         .caps();
-        // The ranges times 5 % aren't exact in binary, so the pinned decimals are compared to within rounding.
+        // A share of a range isn't exact in binary, so the pinned decimals are compared to within rounding.
         assert!(
             (caps.torque.get() - torque).abs() < 1e-9
                 && (caps.current.get() - current).abs() < 1e-9

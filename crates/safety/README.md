@@ -48,7 +48,8 @@ come with their sim tests (step 7 design, PR 5).
 
 - Do I/O, read a clock, or keep hidden state: every input is an argument (safety.md section 3).
 - Allow on an unknown: an unanswered or late request, an answer of the wrong kind or a stale status refuses. A null
-  skeleton value is not an unknown: it lowers the caps (above).
+  cap, `direction`, `zero_rad` or `hard_rad` is not an unknown: it lowers the caps (above). A null UID skips the UID
+  check until the joint is commissioned.
 - Offer a way past a rule: no flag, mode or setting skips preflight or a check (safety.md section 4).
 
 ## Talks to

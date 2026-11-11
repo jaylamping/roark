@@ -91,22 +91,22 @@ fn the_caps_are_written_from_the_skeleton_and_read_back_as_written() {
     assert_eq!(verdict, Ok(()));
     let two = joint(&skeleton(), 1);
     let drive = robstride::Drive::new(two.id, two.actuator);
-    let floor = two.caps();
+    let caps = two.caps();
     assert_eq!(
         written.get(1..),
         Some(
             &[
                 (
                     Param::LimitTorque,
-                    Write::limit_torque(drive, floor.torque).unwrap().value()
+                    Write::limit_torque(drive, caps.torque).unwrap().value()
                 ),
                 (
                     Param::LimitCur,
-                    Write::limit_cur(drive, floor.current).unwrap().value()
+                    Write::limit_cur(drive, caps.current).unwrap().value()
                 ),
                 (
                     Param::LimitSpd,
-                    Write::limit_spd(drive, floor.speed).unwrap().value()
+                    Write::limit_spd(drive, caps.speed).unwrap().value()
                 ),
             ][..]
         )

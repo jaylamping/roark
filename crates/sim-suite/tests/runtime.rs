@@ -646,15 +646,15 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
         .flat_map(|l| &l.joints)
         .find(|j| j.id == common::id(31))
         .unwrap();
-    let floor = joint.caps();
+    let caps = joint.caps();
     let waist = robstride::Drive::new(joint.id, joint.actuator);
     let expected = [
-        robstride::Write::limit_torque(waist, floor.torque).unwrap(),
-        robstride::Write::limit_cur(waist, floor.current).unwrap(),
-        robstride::Write::limit_spd(waist, floor.speed).unwrap(),
+        robstride::Write::limit_torque(waist, caps.torque).unwrap(),
+        robstride::Write::limit_cur(waist, caps.current).unwrap(),
+        robstride::Write::limit_spd(waist, caps.speed).unwrap(),
     ]
     .map(|w| w.value());
-    let caps: Vec<ParamValue> = seen[0]
+    let written: Vec<ParamValue> = seen[0]
         .iter()
         .filter(|(_, f)| f.target == common::id(31))
         .filter_map(|(_, f)| match f.command {
@@ -665,7 +665,7 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
             _ => None,
         })
         .collect();
-    assert_eq!(caps, expected);
+    assert_eq!(written, expected);
     let to = |id: u8| -> Vec<(Instant, Command)> {
         seen[1]
             .iter()

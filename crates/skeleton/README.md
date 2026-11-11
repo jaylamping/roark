@@ -17,7 +17,8 @@ current budget counts each joint at the current cap it is enabled at.
 ## Must never
 
 Write the skeleton, read any other file about the hardware (CAD, URDF, legacy config), or give a safety value a default.
-Unknown is `None`; downstream, `None` lowers a joint to its commissioning caps or refuses the motion that needs it.
+Unknown is `None`; downstream, a `None` cap, `direction`, `zero_rad` or `hard_rad` lowers a joint to its commissioning
+caps, a `None` UID skips the UID check, and any `None` refuses the motion that needs it.
 
 ## Talks to
 

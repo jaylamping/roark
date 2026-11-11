@@ -90,9 +90,9 @@ pub enum ProblemKind {
     UnknownLimb(String),
     /// A limb is missing: the robot has five, and an unbuilt one is listed with its drives offline (tenet 1).
     MissingLimb(&'static str),
-    /// Current caps of joints that can be enabled together sum above the power budget.
+    /// The currents joints that can be enabled together are enabled at (`Joint::caps`) sum above the power budget.
     CurrentBudget {
-        /// Sum of the caps, A.
+        /// Sum of those currents, A.
         sum_a: f64,
         /// `power.current_budget_a`.
         budget_a: f64,
@@ -170,7 +170,7 @@ impl fmt::Display for Problem {
             ProblemKind::CurrentBudget { sum_a, budget_a } => {
                 write!(
                     f,
-                    "the currents joints with a bus are enabled at (their own caps, or their commissioning caps until commissioned) sum to {sum_a} A, above the {budget_a} A budget"
+                    "the currents joints with a bus are enabled at (their own caps once commissioned; until then their commissioning caps, or their own where lower) sum to {sum_a} A, above the {budget_a} A budget"
                 )
             }
         }

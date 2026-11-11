@@ -21,8 +21,8 @@ pub(crate) struct Site {
     pub(crate) name: Option<JointName>,
     pub(crate) bus: Option<Option<BusName>>,
     pub(crate) id: Option<DeviceId>,
-    /// The current it is enabled at, for the budget: `Joint::caps`'s rule over what parsed, a field that didn't
-    /// counting as null. Without a model there is no rule, so its written cap, or 0 A if null or unparsed.
+    /// The current it is enabled at, for the budget: `Joint::caps`'s rule (`Caps::enabled_at`), even when a field
+    /// didn't parse. Without a model there is no rule, so its written cap, or 0 A if null or unparsed.
     pub(crate) current_a: f64,
     pub(crate) path: String,
     pub(crate) line: usize,
@@ -109,16 +109,17 @@ pub(crate) fn read_joint(
     let current_a = actuator.map_or_else(
         || current_cap_a.flatten().map_or(0.0, Amps::get),
         |model| {
-            let facts_set = matches!(
-                (direction, zero_rad, hard_rad),
-                (Some(Some(_)), Some(Some(_)), Some(Some(_)))
-            );
-            let own = (
-                torque_cap_nm.flatten(),
-                current_cap_a.flatten(),
-                speed_cap_rad_s.flatten(),
-            );
-            Caps::enabled_at(model, own, facts_set).current.get()
+            Caps::enabled_at(
+                model,
+                [
+                    direction.map(|v| v.map(drop)),
+                    zero_rad.map(|v| v.map(drop)),
+                    hard_rad.map(|v| v.map(drop)),
+                ],
+                (torque_cap_nm, current_cap_a, speed_cap_rad_s),
+            )
+            .current
+            .get()
         },
     );
     let site = Site {
