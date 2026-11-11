@@ -33,6 +33,8 @@ SEED = HOLD = Path('J:/code/marengo/hardware/designs/left-arm/prints/upper-arm/u
 EXE = 'C:/Program Files/Bambu Studio/bambu-studio.exe'
 BED = 256.0
 SYS = Path.home() / 'AppData/Roaming/BambuStudio/system/BBL'
+if not SYS.is_dir():      # before Bambu Studio's GUI has run once, use the presets shipped with the install
+    SYS = Path(EXE).parent / 'resources/profiles/BBL'
 
 # settings that differ from the seed project, on purpose
 COMMON = {}       # all already in the seed: brim outer 5, SuperTack, tree hybrid, support on, 6 walls
