@@ -125,14 +125,20 @@ fn run_and_report(bus: &str, ids: &BTreeSet<u8>) -> bool {
         let data = CanDataFrame::new(ExtendedId::new(frame.id()).unwrap(), &frame.data()).unwrap();
         socket.write_frame(&data).unwrap();
     };
-    for &n in ids {
-        let id = DeviceId::new(u64::from(n)).unwrap();
-        send(encode::enable(id));
-        send(encode::active_reporting(id, Reporting::On));
-    }
     let mut running = BTreeSet::new();
     let end = Instant::now() + Duration::from_secs(2);
+    let mut next = Instant::now();
     while running != *ids && Instant::now() < end {
+        // Sent again every 50 ms to a drive not yet reporting in Run: a sim that hasn't opened its socket yet misses
+        // them, and both frames are harmless to repeat.
+        if Instant::now() >= next {
+            for &n in ids.difference(&running) {
+                let id = DeviceId::new(u64::from(n)).unwrap();
+                send(encode::enable(id));
+                send(encode::active_reporting(id, Reporting::On));
+            }
+            next += Duration::from_millis(50);
+        }
         if let Ok(CanFrame::Data(frame)) = socket.read_frame()
             && let Id::Extended(id) = frame.id()
             && let Ok(Inbound::Report(s)) = decode(id.as_raw(), frame.data())
