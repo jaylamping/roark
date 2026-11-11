@@ -61,6 +61,23 @@ def build():
             for k in range(1, 11):      # run-outs: 10 deg each end, depth stepping down 0.14 mm per degree pair
                 groove(f'GROOVE_RUNOUT{tag}{k}', sgn, 1.5 * (1.0 - k / 11.0), span + 2.0 * k)
         h.ForceRebuild3(False)
+        if os.environ.get('HS_ROUNDS', '1') == '1':      # 2026-11-11: hub rounds the shoulder thread is adding to the real hub
+            rad = lambda p: m_.hypot(p[0] - HX, p[2] - CZ)
+            sets = [('GROOVE_BOT_ROUND', 0.4, lambda p: abs(rad(p) - 34.3) < 0.03 and (abs(p[1] - (y0 + 1.5 * t30)) < 0.05 or abs(p[1] - (y0 + 2.5)) < 0.05)),
+                    ('SPIGOT_BOT_ROUND', 0.4, lambda p: abs(rad(p) - 35.8) < 0.03 and abs(p[1] - 296.0) < 0.05)]
+            lf = float(os.environ.get('HS_LUG_FILLET', '1.0'))      # lug-to-spigot root on the lugs' X-facing sides only: the arm's hub posts sit
+            if lf > 0:                                                # 0.1 under the spigot beside the Z-facing sides, so a fillet there would clash
+                lugx = (141.0, 151.75, 189.25, 200.0)
+                sets.append(('LUG_ROOT_FILLET', lf, lambda p: abs(p[1] - 296.0) < 0.05 and min(abs(p[0] - x_) for x_ in lugx) < 0.05 and abs(p[2] - CZ) < 5.05))
+            for nm, rr, test in sets:
+                es = M.edges_where(h, test)
+                if nm == 'LUG_ROOT_FILLET':      # only edges running along Z
+                    es = [e for e in es if abs(e.GetCurveParams3.StartPoint[0] - e.GetCurveParams3.EndPoint[0]) * 1000 < 0.01]
+                print(f'  {nm}: {len(es)} edges', flush=True)
+                if M.fillet_edges(h, es, (rr,), nm) is None:
+                    ok = sum(M.fillet_edges(h, [e], (rr,), f'{nm}{i}') is not None for i, e in enumerate(es))
+                    print(f'  {nm}: {ok}/{len(es)} built edge by edge', flush=True)
+            h.ForceRebuild3(False)
         from swg import bodies as bodies_
         print('  grooved hub bodies', bodies_(h), flush=True)
         if len(bodies_(h)) != 1:
