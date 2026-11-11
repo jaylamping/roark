@@ -27,3 +27,14 @@ outlier was a bad solve.
   Y 300.4, theta 139) has layer 0.87 | 1.16 / 1.41 / 1.81.** Next lowest: hub lug root layer 0.68 | 1.22; core 1.29; ring above
   the groove 1.37; load flank 1.52 / 1.55; ridge vm 1.47; arm collar-corner layer 1.53. Bolts 105 MPa. Lug -X: 15 N axial,
   260 N shear.
+
+## ridge6c (the arm geometry released as R1c; one solve per case, hub as ridge6b)
+
+Arm changes since ridge6b: the bore-floor corner ring now runs only where there is a floor (theta 72-108, front half), and
+the ridge top is flat at Y 301.5 (both from the mesh gate). The released halves (ridge6e) also close a 0.01 mm lip where
+that flat cut met the end chamfer. That is too small to change the FEA.
+
+- **G90:** arm at 0.5 mm: lowest 2.42 (layer), 2.79 vm at the ridge root. Hub as ridge6b. Bolts 81 MPa.
+- **STOP_0:** arm at 0.5 mm: lowest layer 0.51 | 1.29 / 1.98, at the collar's foot beside the hub post (theta 130, Y 295.9;
+  1.53 in ridge6b with the full corner ring). vm 0.97 | 2.01 at the end of the corner ring (theta 72). Ridge 1.51, ridge
+  root 1.80. Hub: groove corner layer 1.13 (the r 25 fill), load flank 1.52-1.55, lug root as ridge6b. Bolts 105 MPa.

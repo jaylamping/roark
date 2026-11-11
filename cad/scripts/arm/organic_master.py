@@ -314,7 +314,8 @@ def upper_details(d):
             y_revolve(d, 'SEAT_END_CHAMFER', [(SEAT_R, HUB_JOINT - ec), (SEAT_R + ec, HUB_JOINT), (SEAT_R + ec, HUB_JOINT + 0.3), (SEAT_R, HUB_JOINT + 0.3)], cut=True)
             if os.environ.get('ARM_RIDGE_REVCP', '1') == '1':      # the ridge's 45 flank (Y = r + 265.8) runs parallel to the chamfer 0.2 above it,
                 # leaving a 0.2-tall wedge on the ridge top at the bore (mesh gate, 2026-11-11): flatten the ridge top at the chamfer's start
-                y_revolve(d, 'RIDGE_TOP_FLAT', [(35.6, HUB_JOINT - ec), (SEAT_R + 0.01, HUB_JOINT - ec), (SEAT_R + 0.01, HUB_JOINT + 0.3), (35.6, HUB_JOINT + 0.3)], cut=True)
+                # its outer boundary follows the chamfer exactly (r 35.91 left a 0.01 lip: a knife edge at the ridge ends)
+                y_revolve(d, 'RIDGE_TOP_FLAT', [(35.6, HUB_JOINT - ec), (SEAT_R, HUB_JOINT - ec), (SEAT_R + ec, HUB_JOINT), (SEAT_R + ec, HUB_JOINT + 0.3), (35.6, HUB_JOINT + 0.3)], cut=True)
         rf = float(os.environ.get('ARM_FLOOR_FILLET', '0.25'))
         if rf > 0:      # (b) bore-to-floor corner (r 35.9, Y 296), where the spigot's bottom edge bore (STOP_0 vm SF 0.94 at 0.5 mm).
             # 0.25 clears the hub spigot's 0.4 bottom round by ~0.06; it would touch a sharp-cornered spigot by ~0.1 (needs the rounded hub)
