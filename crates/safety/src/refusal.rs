@@ -222,7 +222,11 @@ impl Refusal {
                 stopped_by(*stop)
             ),
             Self::NoAnswer { exchange, how } => {
-                format!("got no usable answer to {}: {how:?}", exchange.describe())
+                format!(
+                    "got no usable answer to {}: {}",
+                    exchange.describe(),
+                    how.describe()
+                )
             }
             Self::Uid { read, expected } => {
                 format!("UID reads {}, expected {}", hex(*read), hex(*expected))
@@ -310,6 +314,20 @@ impl Refusal {
 }
 
 impl Unanswered {
+    /// What happened, for the operator's line.
+    fn describe(self) -> String {
+        match self {
+            Self::TimedOut => "no answer came in time".to_owned(),
+            Self::Late => "its answer was handed over late".to_owned(),
+            Self::NotSent(Unsent::QueueFull) => "not sent, the adapter's queue was full".to_owned(),
+            Self::NotSent(Unsent::Expired) => "not sent, it expired queued".to_owned(),
+            Self::NotSent(Unsent::Failed) => "not sent, the bus failed".to_owned(),
+            Self::Refused(refusal) => format!("refused by the bus: {refusal}"),
+            Self::ReadRefused => "the drive refused the read".to_owned(),
+            Self::WrongAnswer => "an answer of another kind came".to_owned(),
+        }
+    }
+
     const fn remedy(self) -> &'static str {
         match self {
             Self::TimedOut => "Check the drive's power and cable, then run preflight again",

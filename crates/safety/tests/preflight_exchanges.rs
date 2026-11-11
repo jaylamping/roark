@@ -450,3 +450,39 @@ fn only_the_result_of_the_request_in_flight_answers_it() {
         })
     );
 }
+
+/// Guards: safety - safety.md section 5: an unanswered request's line names the request and says in the operator's
+/// words what happened instead, one phrase for each way a request goes unanswered.
+#[test]
+fn an_unanswered_requests_line_says_what_happened() {
+    let exchange = Exchange::Read(Register::Vbus);
+    for (how, said) in [
+        (Unanswered::TimedOut, "no answer came in time"),
+        (Unanswered::Late, "its answer was handed over late"),
+        (
+            Unanswered::NotSent(Unsent::QueueFull),
+            "not sent, the adapter's queue was full",
+        ),
+        (
+            Unanswered::NotSent(Unsent::Expired),
+            "not sent, it expired queued",
+        ),
+        (
+            Unanswered::NotSent(Unsent::Failed),
+            "not sent, the bus failed",
+        ),
+        (
+            Unanswered::Refused(SlowRefusal::LimbNotIdle),
+            "refused by the bus: writes go only to drives of an idle limb",
+        ),
+        (Unanswered::ReadRefused, "the drive refused the read"),
+        (Unanswered::WrongAnswer, "an answer of another kind came"),
+    ] {
+        assert_eq!(
+            Refusal::NoAnswer { exchange, how }.message("arm_joint_one"),
+            format!(
+                "refused (host.preflight): arm_joint_one got no usable answer to the read of VBUS: {said}"
+            )
+        );
+    }
+}
