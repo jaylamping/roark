@@ -247,16 +247,17 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         // stop: from then on every snapshot goes untaken, and the bus stays in its exit wait (up to its limit) whatever
         // the stop's length. The newest snapshot queued, limb 1 stopping for the exit, shows the bus has seen it; a
         // clear of the stopped limb 0 sent then is taken at the next tick's start, after the exit's stop is asked, and
-        // refused.
+        // refused. The ring's four slots fill well inside limb 1's stop (its silence alone is five ticks at `HZ`);
+        // with a shorter stop the assert below says so. Nothing is read from the ring until the clear is answered.
         while let Ok(s) = snapshots.pop() {
             snap = s;
         }
+        exit.store(true, Ordering::Release);
         assert!(
             commands
                 .push(batch(epoch, &snap, [None, Some(hold(102))]))
                 .is_ok()
         );
-        exit.store(true, Ordering::Release);
         let capacity = snapshots.buffer().capacity();
         while snapshots.slots() < capacity {
             assert!(Instant::now() < end, "the snapshot ring never filled");
@@ -283,13 +284,7 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
                 !bus.thread.is_finished() || !rearmed.is_empty(),
                 "the bus ended without answering the clear"
             );
-            if let Ok(s) = snapshots.pop() {
-                snap = s;
-            }
-            assert!(
-                Instant::now() < end,
-                "the clear was never answered: {snap:?}"
-            );
+            assert!(Instant::now() < end, "the clear was never answered");
             std::thread::yield_now();
         };
         assert_eq!(
