@@ -385,12 +385,13 @@ impl Preflight {
 
     /// The next step, given what the drive's bus last showed of it and the time. A view of another drive (by ID or by
     /// bus), a fault in the latest status or latched since the last clear, any mode but Reset in the latest status or
-    /// status header (a version reply's included) since preflight began, or a limb that isn't idle or that stopped or was cleared since the first poll, refuses at
-    /// once; so does a request with no result within [`ANSWER_WITHIN_NS`].
+    /// status header (a version reply's included) since preflight began, or a limb that isn't idle or that stopped or
+    /// was cleared since the first poll, refuses at once; so does a request with no result within [`ANSWER_WITHIN_NS`].
     pub fn poll(&mut self, seen: Seen<'_>, now_ns: u64) -> Step {
         let view = seen.view;
+        // Taken at the first poll, which is always while asking.
+        let generation = *self.generation.get_or_insert(seen.limb.generation);
         if let State::Asking { .. } = self.state {
-            let generation = *self.generation.get_or_insert(seen.limb.generation);
             // The drive's own faults and mode before the limb's state, so a stop the bus made for them is named by
             // its own rule.
             let refusal = if !self.target.address.is(seen.bus, view.device) {
@@ -447,7 +448,7 @@ impl Preflight {
                     Step::Passed(PreflightPassed {
                         drive: self.target.drive,
                         address: self.target.address,
-                        generation: self.generation.unwrap_or(seen.limb.generation),
+                        generation,
                         at_ns: now_ns,
                     })
                 }
@@ -562,9 +563,9 @@ impl Preflight {
                 Some(_) | None => Ok(()),
             },
             (Exchange::Write(_), SlowOutcome::WriteAnswered) => Ok(()),
-            (Exchange::Read(register), SlowOutcome::Read(ParamOutcome::Read(value))) => self
-                .read_back(register, value)
-                .unwrap_or(Err(no_answer(Unanswered::WrongAnswer))),
+            (Exchange::Read(register), SlowOutcome::Read(ParamOutcome::Read(value))) => {
+                self.read_back(register, value)
+            }
             (
                 Exchange::Identity | Exchange::Write(_) | Exchange::Read(_),
                 SlowOutcome::Identity(_) | SlowOutcome::WriteAnswered | SlowOutcome::Read(_),
@@ -572,56 +573,58 @@ impl Preflight {
         }
     }
 
-    /// The read-back check, or `None` for a value of another type than the register's.
-    fn read_back(&self, register: Register, read: ParamValue) -> Option<Result<(), Refusal>> {
+    /// The read-back check of `register`; a value of another type than the register's is an answer of another kind.
+    fn read_back(&self, register: Register, read: ParamValue) -> Result<(), Refusal> {
+        let wrong_type = Refusal::NoAnswer {
+            exchange: Exchange::Read(register),
+            how: Unanswered::WrongAnswer,
+        };
         let as_written = |written: Write| {
             if core::mem::discriminant(&read) != core::mem::discriminant(&written.value()) {
-                None
+                Err(wrong_type)
             } else if read == written.value() {
-                Some(Ok(()))
+                Ok(())
             } else {
-                Some(Err(Refusal::Cap {
+                Err(Refusal::Cap {
                     register,
                     written: written.value(),
                     read,
-                }))
+                })
             }
         };
         match register {
             Register::CanTimeout => {
                 let ParamValue::CanTimeout(read) = read else {
-                    return None;
+                    return Err(wrong_type);
                 };
-                Some(if read == CanTimeout::RUNTIME {
+                if read == CanTimeout::RUNTIME {
                     Ok(())
                 } else {
                     Err(Refusal::CanTimeout { read })
-                })
+                }
             }
             Register::LimitTorque => as_written(self.target.torque),
             Register::LimitCur => as_written(self.target.current),
             Register::LimitSpd => as_written(self.target.speed),
             Register::Damper => {
                 let ParamValue::Damper(damper) = read else {
-                    return None;
+                    return Err(wrong_type);
                 };
-                Some(match damper {
+                match damper {
                     Damper::ProtectionOn => Ok(()),
                     Damper::ProtectionOff => Err(Refusal::DamperOff),
-                })
+                }
             }
             Register::Vbus => {
                 let ParamValue::Volts(read) = read else {
-                    return None;
+                    return Err(wrong_type);
                 };
                 let window = self.target.vbus;
-                Some(
-                    if read.get() >= window.lower.get() && read.get() <= window.upper.get() {
-                        Ok(())
-                    } else {
-                        Err(Refusal::Vbus { read, window })
-                    },
-                )
+                if read.get() >= window.lower.get() && read.get() <= window.upper.get() {
+                    Ok(())
+                } else {
+                    Err(Refusal::Vbus { read, window })
+                }
             }
         }
     }
