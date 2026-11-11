@@ -125,21 +125,21 @@ fn a_mode_out_of_reset_before_this_hosts_enable_is_kept_until_the_rearm() {
 
     // Stopped and re-armed: the latch is cleared with the fault history. The socket takes none of the stop's
     // Disables, so the drives are quiet and the re-arm isn't held off.
+    // The stop ends by `stop_max_ns` after tick 2's start.
     assert_eq!(bus.stop_limb(0), Ok(()));
-    let mut tick = 2;
-    loop {
+    let stop_ends = 2 + bus.timing().stop_max_ns().div_ceil(PERIOD);
+    let mut state = None;
+    for tick in 2..=stop_ends {
         let start = tick * PERIOD;
         let list = bus.begin(tick, start, start, None);
         for index in 0..list.len() {
             bus.sent(index, SendOutcome::QueueFull, start);
         }
-        if state_of(&bus.end(deadline(tick))) == LimbState::Stopped {
-            break;
-        }
-        tick += 1;
+        state = Some(state_of(&bus.end(deadline(tick))));
     }
-    assert_eq!(bus.rearm(0, deadline(tick)), Ok(()));
-    let snap = bus.end(deadline(tick));
+    assert_eq!(state, Some(LimbState::Stopped));
+    assert_eq!(bus.rearm(0, deadline(stop_ends)), Ok(()));
+    let snap = bus.end(deadline(stop_ends));
     assert_eq!(at(&snap, 0).out_of_reset, None);
     assert_eq!(at(&snap, 1).out_of_reset, None);
 
