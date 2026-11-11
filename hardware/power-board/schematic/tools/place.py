@@ -46,6 +46,7 @@ if WIDE:
     put('lv','U17 C30 R47 D18 RS8 U6 C16 C17 C18 TP4 C41 F3 F4 F5 D20 U9 RS10 U10 R38 R39 R40 R41 R42 R43 C31 C32 C33 C34 C35 C36 D5 D19 U18 TP9 R44 R45 C37 D6 D13')
     put('lv','U25 R128 R129 R130 R131 Q21 C80 C81 D41 R67'); put('lv',PF)
 RES={}; PFIX={}
+ZROT=int(os.environ.get('ZROT','270'))   # the port zener's turn: V_L pad toward the pin row's via line, G_L pad toward the gate
 PORT={1:('RS2','U11','C21','U19','Q15',68,50,23),2:('RS3','U12','C22','U20','Q16',78,55,26),3:('RS4','U13','C23','U21','Q17',88,60,29),
       4:('RS5','U14','C24','U22','Q18',98,65,32),5:('RS6','U15','C25','U23','Q19',108,70,35),6:('RS7','U16','C26','U24','Q20',118,75,38)}
 # block -> reserved rects (X0,X1,Y0,Y1), kept free of parts (via fields, pour necks)
@@ -59,11 +60,14 @@ for k,(rs,ina,cd,u,q,r0,c0,d0) in PORT.items():
         # port controller straight under the shunt, its power-side row (sense, gate, V_L) facing it: Kelvin legs under
         # 8 mm; the meter under the controller
         PFIX[u]=(15.0,Y1-7.8,90); PFIX[ina]=(14.45,Y1-13.4,0)
+        # gate-source zener at the FET's gate pin (pin row at Y0+3, gate at X 22.1), between the meter and the FET
+        PFIX[f'D{d0+1}']=(18.95,Y0+3.0,ZROT)
         RES.setdefault('out',[]).append((6.8,9.0,Y1-7.5,Y1))   # VBUS via field at the shunt's bus pad, on the out block's edge
         RES[f'L{k}']=[(38.8,42.5,Y0,Y0+5.2)]   # V_L neck; the D_L copper runs in the gap between the shunt and FET courtyards
     else:
         PFIX[rs]=(-14.6,Y0+2.15,180); PFIX[q]=(-25.9,Y1-8.75,270); PFIX[f'D{d0+2}']=(-35.4,Y1-5.0,270)
         PFIX[u]=(-15.0,Y0+7.8,270); PFIX[ina]=(-14.45,Y0+13.4,180)
+        PFIX[f'D{d0+1}']=(-18.95,Y1-3.0,(ZROT+180)%360)
         RES.setdefault('out',[]).append((-9.0,-6.8,Y0,Y0+7.5))
         RES[f'L{k}']=[(-42.5,-38.8,Y1-5.2,Y1)]     # V_L neck from the output clamp to the pigtail
 if WIDE:
@@ -81,6 +85,10 @@ FIX['RS9']=(-20.4,326.4,180,False); FIX['R53']=(45.5,270.3,0,False)
 # bank A and bank B controllers beside their shunts (Kelvin legs under 8 mm): U1 in the GND gap left of RS1, sense pins
 # toward its Kelvin pads, GATE toward Q8 (UVLO leaves through a via under the body); U7 sense pins up toward RS9
 FIX['U1']=(-8.25,312.6,180,False); FIX['U7']=(-13.8,320.15,270,False)
+# gate resistors at the gate pins of the left FET of each bank (Q1: G1, Q8: GA1), in the bank B controller column just
+# left of the FET. Q2/Q9's gates have no room: the MID band, the SW_D strip and the 1.3 mm gap to Q1/Q8 fill it, so R2/R32
+# stay with their controllers (LAYOUT_RULES.md, gate loops)
+FIX['R1']=(-18.625,279.8,90,False); FIX['R31']=(-18.625,299.8,90,False)
 FIX['C87']=(-8.6,307.6,90,False); FIX['C88']=(-13.1,307.6,90,False)   # bank A drain ceramics, SW_D pad down onto the drain pour
 FIX['C89']=(5.8,312.4,90,False); FIX['C90']=(9.4,312.4,90,False); FIX['C91']=(-8.6,327.6,0,False); FIX['C92']=(-8.6,331.0,0,False)   # pack-entry ceramics on the BAT pour
 # absorber: eight 10 x 10 cans in a 2 x 4 block right of the pack keep-out (X -5..25, Y 315-340), D7 pair beside RS1
