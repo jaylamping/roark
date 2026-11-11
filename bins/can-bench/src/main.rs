@@ -17,7 +17,7 @@ fn main() -> Result<(), String> {
     use std::path::PathBuf;
 
     const USAGE: &str = "usage: can-bench host --bus <if> [--hz 250] [--slots 6] [--seconds 3600] \
-                         [--deadline-pct 60] --out <dir> | can-bench respond --bus <if> [--slots 6]";
+                         [--deadline-pct 60, 1 to 89] --out <dir> | can-bench respond --bus <if> [--slots 6]";
 
     let mut it = std::env::args().skip(1);
     let mode = it.next().ok_or(USAGE)?;
@@ -50,10 +50,16 @@ fn main() -> Result<(), String> {
             if args.out.as_os_str().is_empty() {
                 return Err(format!("--out is required; {USAGE}"));
             }
-            let summary = host::run(&args)?;
+            let (summary, pass) = host::run(&args)?;
             std::io::stdout()
                 .write_all(summary.as_bytes())
-                .map_err(|e| e.to_string())
+                .map_err(|e| e.to_string())?;
+            // A run below the pass mark exits non-zero, so a script can tell; the reasons are the summary's last line.
+            if pass {
+                Ok(())
+            } else {
+                Err("below the pass mark".to_owned())
+            }
         }
         "respond" => respond::run(&args.bus, args.slots),
         other => Err(format!("unknown mode {other}; {USAGE}")),

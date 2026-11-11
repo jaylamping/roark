@@ -12,7 +12,7 @@ impl Spread {
     }
 
     /// The value at or below which `per_10k` ten-thousandths of the values fall (nearest rank). `None` when empty.
-    fn at(&self, per_10k: u64) -> Option<u64> {
+    pub(crate) fn at(&self, per_10k: u64) -> Option<u64> {
         let n = u64::try_from(self.0.len()).ok()?;
         if n == 0 {
             return None;

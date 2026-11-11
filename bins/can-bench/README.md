@@ -23,6 +23,9 @@ The host writes two files to `--out`:
   99.99 % and worst for the wake, the round trip, each reply's time from tick start and each tick's last reply; the share
   of replies read by the collect deadline (`--deadline-pct`, 60 by default); missing, late and duplicate replies, frames
   the queue refused, error and bus-off frames; and how the kernel's link counters (`ip -details -statistics`) changed.
+- **The verdict**, the summary's last line: `PASS`, or `FAIL` with each reason, against PLAN's realtime budget (Open
+  with Joey 9: 99.9 % of wakes under 0.5 ms late, 99.9 % of replies by the deadline), with no missing reply and no
+  frame dropped by the kernel. A run below the mark exits non-zero, so a script can tell.
 
 Times are read with `CLOCK_MONOTONIC` when the program gets each frame: the time the runtime would act on, which includes
 USB, driver and wake-up delay. That delay is what the comparison is for.

@@ -28,6 +28,12 @@ pub(crate) struct HostArgs {
     pub(crate) out: PathBuf,
 }
 
+/// The pass mark, from PLAN "Open with Joey" item 9 (the defaults until Joey changes them): 99.9 % of wakes under
+/// 0.5 ms late, and 99.9 % of replies read by the collect deadline. Missing replies and kernel receive drops also fail.
+const WAKE_LATE_BUDGET_NS: u64 = 500_000;
+/// The share of replies that must be read by the collect deadline, in tenths of a percent.
+const IN_TIME_PER_MILLE: u64 = 999;
+
 /// Reading stops this far into the period, so the next tick's sends aren't delayed by this one's reads.
 const READ_END_PCT: u64 = 90;
 /// The first tick starts this long after the bench is ready.
@@ -83,6 +89,9 @@ fn check(args: &HostArgs) -> Result<(), String> {
     if args.slots == 0 || args.slots > frames::MAX_SLOTS {
         return Err(format!("--slots must be 1 to {}", frames::MAX_SLOTS));
     }
+    if args.seconds == 0 {
+        return Err("--seconds must be 1 or more".to_owned());
+    }
     if args.hz == 0 || args.hz > 2000 {
         return Err("--hz must be 1 to 2000".to_owned());
     }
@@ -92,8 +101,9 @@ fn check(args: &HostArgs) -> Result<(), String> {
     Ok(())
 }
 
-/// Run the host side and write `ticks.csv` and `summary.txt` under `args.out`. Returns the summary.
-pub(crate) fn run(args: &HostArgs) -> Result<String, String> {
+/// Run the host side and write `ticks.csv` and `summary.txt` under `args.out`. Returns the summary and whether the run
+/// met the pass mark.
+pub(crate) fn run(args: &HostArgs) -> Result<(String, bool), String> {
     check(args)?;
     let _runtime_lock = link::claim_runtime_lock()?;
     let bus = args.bus.as_str();
@@ -191,13 +201,13 @@ pub(crate) fn run(args: &HostArgs) -> Result<String, String> {
     csv.flush().map_err(|e| e.to_string())?;
 
     let after = link::counters(bus)?;
-    let summary = summary(
+    let (summary, pass) = summary(
         args, &driver, hw_stamps, deadline, &counts, wake_late, reply_at, round_trip, last_reply,
         &before, &after,
     );
     let path = args.out.join("summary.txt");
     fs::write(&path, &summary).map_err(|e| format!("{}: {e}", path.display()))?;
-    Ok(summary)
+    Ok((summary, pass))
 }
 
 /// Create `ticks.csv` under `out` and write its header: one row per tick, one reply column per slot.
@@ -357,7 +367,8 @@ fn classify(
     }
 }
 
-/// The run's summary: settings, what the interface is, the time spreads, the counts and the kernel's counter changes.
+/// The run's summary: settings, what the interface is, the time spreads, the counts, the kernel's counter changes and
+/// the verdict against the pass mark, which is also returned.
 #[expect(
     clippy::too_many_arguments,
     reason = "one call site; the pieces are the run's results"
@@ -374,7 +385,7 @@ fn summary(
     last_reply: Vec<u64>,
     before: &serde_json::Value,
     after: &serde_json::Value,
-) -> String {
+) -> (String, bool) {
     let wake_late = Spread::new(wake_late);
     let reply_at = Spread::new(reply_at);
     let round_trip = Spread::new(round_trip);
@@ -428,6 +439,7 @@ fn summary(
     ));
     line(String::new());
     line("kernel counters, change over the run:".to_owned());
+    let mut kernel_drops = 0;
     for (dir, keys) in [
         ("rx", &["packets", "errors", "dropped", "over_errors"][..]),
         ("tx", &["packets", "errors", "dropped"][..]),
@@ -437,6 +449,9 @@ fn summary(
             let get =
                 |v: &serde_json::Value| v.get(0)?.get("stats64")?.get(dir)?.get(*key)?.as_u64();
             if let (Some(a), Some(b)) = (get(before), get(after)) {
+                if dir == "rx" && (*key == "dropped" || *key == "over_errors") {
+                    kernel_drops += b.saturating_sub(a);
+                }
                 parts.push(format!("{key} {}", b.saturating_sub(a)));
             }
         }
@@ -452,5 +467,52 @@ fn summary(
     if let (Some(a), Some(b)) = (restarts(before), restarts(after)) {
         line(format!("  restarts {}", b.saturating_sub(a)));
     }
-    s
+    let fails = verdict(
+        &wake_late,
+        share,
+        in_time,
+        expected,
+        counts.missing,
+        kernel_drops,
+    );
+    line(String::new());
+    let pass = fails.is_empty();
+    line(if pass {
+        "PASS".to_owned()
+    } else {
+        format!("FAIL: {}", fails.join("; "))
+    });
+    (s, pass)
+}
+
+/// What failed the pass mark; empty for a pass.
+fn verdict(
+    wake_late: &Spread,
+    share: f64,
+    in_time: u64,
+    expected: u64,
+    missing: u64,
+    kernel_drops: u64,
+) -> Vec<String> {
+    let mut fails = Vec::new();
+    match wake_late.at(9990) {
+        Some(w) if w < WAKE_LATE_BUDGET_NS => {}
+        w => fails.push(format!(
+            "wake late p99.9 {} us, budget {:.0} us",
+            w.map_or_else(|| "-".to_owned(), |w| format!("{:.0}", micros(w))),
+            micros(WAKE_LATE_BUDGET_NS)
+        )),
+    }
+    if expected == 0 || in_time * 1000 < expected * IN_TIME_PER_MILLE {
+        fails.push(format!(
+            "{share:.4} % of replies by the deadline, need 99.9 %"
+        ));
+    }
+    if missing > 0 {
+        fails.push(format!("{missing} replies missing"));
+    }
+    if kernel_drops > 0 {
+        fails.push(format!("{kernel_drops} frames dropped by the kernel"));
+    }
+    fails
 }
