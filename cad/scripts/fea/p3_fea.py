@@ -288,12 +288,17 @@ def run(name, c):
     s = res.GetStress(0, 1, NUL, 3, err)
     s = np.array(s[0] if isinstance(s, tuple) and len(s) == 2 else s, float).reshape(-1, 12)
     pos = np.array([xyz[int(i)] for i in s[:, 0]])
-    err = I()
-    q = res.GetStressForEntities2(True, 9, 1, NUL, fixed, 3, err)
-    q = q[0] if isinstance(q, tuple) and len(q) == 2 else q
-    fid = np.array(q, float).reshape(-1, 2)[:, 0].astype(int)
-    anchors = np.array([xyz[int(i)] for i in fid if int(i) in xyz])
-    dist = cKDTree(anchors).query(pos)[0]
+    np.savez(str(F / (name + '.npz')), pos=pos, s=s)      # saved first: the fixture readback below has failed on contact models
+    try:
+        err = I()
+        q = res.GetStressForEntities2(True, 9, 1, NUL, fixed, 3, err)
+        q = q[0] if isinstance(q, tuple) and len(q) == 2 else q
+        fid = np.array(q, float).reshape(-1, 2)[:, 0].astype(int)
+        anchors = np.array([xyz[int(i)] for i in fid if int(i) in xyz])
+        dist = cKDTree(anchors).query(pos)[0]
+    except Exception as ex:      # no fixture exclusion then (said in the log)
+        print(' fixture nodes not read:', str(ex)[:80], flush=True)
+        dist = np.full(len(pos), 1e9)
     away = dist >= 2 * el
     for bx in c.get('exclude', []):          # judged elsewhere (listed with the results): not part of the bulk / layer peaks
         away &= ~np.all((pos >= np.array(bx[:3])) & (pos <= np.array(bx[3:])), axis=1)
