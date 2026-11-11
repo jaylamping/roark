@@ -1,4 +1,6 @@
-"""Pictures for the roll drum and fork concept (VTK off-screen + matplotlib sections).
+"""Pictures for the roll drum and fork concept, second pass (VTK off-screen + matplotlib sections).
+
+C1-C7 and C9/C10 are rendered; C8 (rejected variant e, first pass) is not regenerated.
 
     python render_concept.py STUDY_WORK CONCEPT_OUT PICTURE_DIR
 
@@ -22,7 +24,7 @@ FRAMEC, SAGE, ARM = (0.78, 0.8, 0.83), (0.62, 0.68, 0.6), (0.86, 0.87, 0.89)
 d = load_all()
 L = lambda k: trimesh.load(os.path.join(C, k + '.stl'))
 cp = {k: L(k) for k in ['P1_drum', 'P1_cap', 'FORK_front', 'FORK_rear', 'FORK_front_cap', 'HUB_dished', 'PITCH_cover',
-                        'BRG_6808', 'VAR_E_sleeve', 'VAR_E_6816', 'VAR_E_hubband']}
+                        'BRG_6808']}
 wires = {}
 for f in os.listdir(C):
     if f.startswith('WIRE_') and f.endswith('.stl'):
@@ -48,8 +50,7 @@ def T(R, o):
 
 
 GROUP = dict(P1_drum='p', P1_cap='p', ROLL='p', BRG_6808='r', FORK_front='r', FORK_rear='r', FORK_front_cap='r', YAW='r',
-             HUB_dished='y', UA='y', VAR_E_sleeve='r', VAR_E_6816='r', VAR_E_hubband='y',
-             P1='p', P2='r', SPACER='r', HUB='y')
+             HUB_dished='y', UA='y', P1='p', P2='r', SPACER='r', HUB='y')
 
 
 def posed(m, k, p=0, r=0, y=0):
@@ -62,24 +63,24 @@ def posed(m, k, p=0, r=0, y=0):
     return m
 
 
-def concept_items(p=0, r=0, y=0, frame=True, arm=True, wire=True, offs=None, skip=()):
+def concept_items(p=0, r=0, y=0, frame=True, arm=True, wire=True, offs=None, skip=(), alpha=None):
     it = []
     keys = ['P1_drum', 'P1_cap', 'FORK_front', 'FORK_rear', 'FORK_front_cap', 'HUB_dished', 'PITCH_cover', 'BRG_6808']
     for k in keys:
         if k in skip: continue
         m = posed(cp[k], k, p, r, y)
         if offs and k in offs: m.apply_translation(offs[k])
-        it.append((m, COLC[k]))
+        it.append((m, COLC[k]) + ((alpha,) if alpha else ()))
     for k in ['ROLL', 'YAW', 'PITCH']:
         m = posed(d[k], k, p, r, y)
         if offs and k in offs: m.apply_translation(offs[k])
-        it.append((m, GREY))
+        it.append((m, GREY) + ((alpha,) if alpha else ()))
     if frame:
-        it += [(d['FRAME'], FRAMEC), (d['PBRK'], SAGE)]
+        it += [(d['FRAME'], FRAMEC) + ((alpha,) if alpha else ()), (d['PBRK'], SAGE) + ((alpha,) if alpha else ())]
     if arm:
         m = posed(d['UA'], 'UA', p, r, y)
         if offs and 'UA' in offs: m.apply_translation(offs['UA'])
-        it.append((m, ARM))
+        it.append((m, ARM) + ((alpha,) if alpha else ()))
     if wire:
         for k, m in wires.items():
             mm = posed(m, 'W:' + k, p, r, y)
@@ -109,6 +110,8 @@ except Exception:
 
 def title(path, text, sub=None):
     im = Image.open(path).convert('RGB'); dr = ImageDraw.Draw(im)
+    if text:   # plain band behind the title so it never sits on the model
+        dr.rectangle([0, 0, im.size[0], 84 if sub else 56], fill=(245, 247, 250))
     dr.text((24, 18), text, fill=(30, 30, 35), font=FONT)
     if sub: dr.text((24, 52), sub, fill=(70, 70, 80), font=FONTS)
     im.save(path)
@@ -140,7 +143,7 @@ title(tmp, 'Roll drum and fork concept: front-outboard view', 'neutral pose, cag
 legend(tmp, LEG); fin(tmp, 'C1_overall_front_outboard.png')
 # 2 back view
 render(concept_items(), tmp, pos=(420, 560, -560), focal=(130, 395, -10), size=(1400, 1050))
-title(tmp, 'Back-outboard view', 'rear cap with stub, 6808 in the fork rear cheek, cable duct down the rear arm, roll stop lugs')
+title(tmp, 'Back-outboard view', 'rear cap with stub, 6808 in the fork rear cheek, cable duct down the rear arm behind the RS02, roll stop lugs (-15 / +110)')
 legend(tmp, LEG); fin(tmp, 'C2_overall_back.png')
 # 3 exploded
 offs = {'PITCH_cover': (-45, 0, 0), 'ROLL': (0, 0, -95), 'P1_cap': (0, 0, -175), 'BRG_6808': (0, 0, -205),
@@ -168,17 +171,20 @@ ms = [(posed(cp[k], k), COLC[k], k) for k in ['P1_drum', 'P1_cap', 'FORK_front',
 ms += [(d[k], GREY, k) for k in ['ROLL', 'YAW']] + [(d['UA'], ARM, 'UA')]
 ms += [(m, RED if k.endswith('power') else BLUE, 'w') for k, m in wires.items()]
 section(ax, ms, (RX, 0, 0), (1, 0, 0), [2, 1])
-# projected route centreline (fixed cage side -> pitch loop -> P1 trunk -> cap -> stub -> fork rear arm -> finger -> yaw loop -> hub window)
-route = np.array([(-79, 430.9), (-64, 430.9), (0, 489), (-28.5, 489), (-34.5, 489), (-34.5, RY), (-52, RY), (-52, 364),
-                  (2.99, 364), (2.99, 319.5), (YZ, 319.5), (YZ + 8, 307), (YZ + 2, 296)])
+# projected route centreline (fixed cage side -> pitch loop -> P1 trunk -> cap -> stub -> fork rear arm -> exit -> yaw loop -> hub window)
+route = np.array([(-79, 430.9), (-73, 430.9), (-60, 455), (-34, 482), (0, 489), (-28.5, 489), (-33.9, 489), (-33.9, RY),
+                  (-51.3, RY), (-51.3, 319.55), (YZ - 37, 319.55), (YZ + 4, 319.0), (YZ + 9, 308), (YZ + 6, 297)])
 ax.plot(route[:, 0], route[:, 1], color=RED, lw=2.2, ls='--', label='cable route, projected onto this plane')
-for (z, y, t) in [(-79, 436, 'from cage back face'), (-2, 494, 'P1 trunk over the drum'), (-60, 452, 'stub bore\n(roll crossing)'),
-                  (-74, 380, 'down the\nfork rear arm'), (12, 340, 'finger beside\nthe RS02'), (30, 314, 'yaw loop under\nthe RS02 (7.5 mm)'),
-                  (22, 297, 'hub window into\nthe arm opening')]:
+NL = chr(10)
+for (z, y, t) in [(-92, 438, 'from cage back face|into the pitch loop'), (-14, 496, 'P1 trunk over the drum'),
+                  (-88, 410, 'cap channel and|stub bore (roll crossing)'), (-90, 345, 'down the fork|rear arm, behind|the RS02'),
+                  (-30, 306, 'exit into the gap|under the RS02'), (26, 314, 'yaw loop in the|dished hub top'),
+                  (22, 293, 'hub window into|the arm opening')]:
+    t = t.replace('|', NL)
     ax.annotate(t, (z, y), fontsize=8.5, bbox=dict(fc='white', ec='0.6', alpha=0.85))
 ax.axhline(RY, color='k', ls='-.', lw=0.7); ax.axvline(YZ, color='k', ls='-.', lw=0.7)
 ax.text(62, RY + 1, 'pitch axis height', fontsize=8); ax.text(YZ + 1, 268, 'yaw axis', fontsize=8)
-ax.set_xlim(-95, 75); ax.set_ylim(260, 505); ax.set_aspect('equal'); ax.grid(alpha=0.25)
+ax.set_xlim(-100, 75); ax.set_ylim(260, 505); ax.set_aspect('equal'); ax.grid(alpha=0.25)
 ax.set_xlabel('Z (mm, + forward)'); ax.set_ylabel('Y (mm, up)')
 ax.set_title('Section X = 170.49 (through the roll and yaw axes), looking inboard; cable route projected', fontsize=11)
 hs = [plt.Rectangle((0, 0), 1, 1, color=c, alpha=0.6) for _, c in LEG[:7]] + [plt.Line2D([0], [0], color=RED, ls='--')]
@@ -194,20 +200,20 @@ def cut(m, o, n):
         return trimesh.intersections.slice_mesh_plane(m, plane_normal=n, plane_origin=o, cap=False)
 
 
-o, n = (0, 0, YZ - 3), (0, 0, -1)
-it = [(cut(posed(cp[k], k), o, n), COLC[k]) for k in ['FORK_front', 'HUB_dished']]
+o, n = (RX - 6.0, 0, 0), (-1, 0, 0)
+it = [(cut(posed(cp[k], k), o, n), COLC[k]) for k in ['FORK_front', 'FORK_rear', 'HUB_dished']]
 it += [(cut(d['YAW'], o, n), GREY), (cut(d['UA'], o, n), ARM)]
 for k in ['FORK_power', 'FORK_signal', 'YAWEXIT_power', 'YAWLOOP_power', 'YAWLOOP_signal', 'HUBWIN_power']:
     if k in wires: it.append((cut(wires[k], o, n), RED if k.endswith('power') else BLUE))
-render(it, tmp, pos=(260, 380, 330), focal=(160, 333, -8), size=(1400, 1000), scale=62)
-title(tmp, 'Yaw crossing close-up (cut at the finger centreline, looking at the cut face)',
-      'finger down the inboard side of the RS02 -> annular loop in the dished hub top (7.5 mm under the RS02) -> hub window -> arm opening')
-legend(tmp, [('fork with finger', ORANGE), ('hub, dished top', WHITE), ('RS02 / upper arm', GREY), ('power / arm bundle', RED), ('signal', BLUE)])
+render(it, tmp, pos=(520, 345, -60), focal=(RX - 6, 343, -12), size=(1400, 1100), scale=78)
+title(tmp, 'Yaw crossing close-up (cut at the exit centreline X = 164.5, looking inboard at the cut face)',
+      'fork rear arm duct behind the RS02 -> exit forward into the gap under the RS02 -> loop in the dished hub top (8.1 mm) -> hub window -> arm opening')
+legend(tmp, [('fork front / rear', ORANGE), ('hub, dished top', WHITE), ('RS02 / upper arm', GREY), ('power / arm bundle', RED), ('signal', BLUE)])
 fin(tmp, 'C5_yaw_crossing_closeup.png')
 
-# 6 roll pose strip: -20 / 0 / +110, from the front
+# 6 roll pose strip: -15 / 0 / +110 (the stops), from the front
 ims = []
-for r_ in (-20, 0, 110):
+for r_ in (-15, 0, 110):
     render(concept_items(r=r_), tmp, pos=(140, 420, 700), focal=(140, 400, 0), size=(800, 1000), scale=230)
     title(tmp, f'roll {r_:+d} deg' if r_ else 'roll 0'); ims.append(Image.open(tmp).convert('RGB'))
 strip = Image.new('RGB', (2400, 1000), (245, 247, 250))
@@ -229,15 +235,18 @@ for i, row in enumerate(pairs):
     for j, im in enumerate(row): grid.paste(im, (900 * j, 900 * i))
 grid.save(tmp); fin(tmp, 'C7_today_vs_concept.png')
 
-# 8 variant e: yaw ring (sleeve + 6816 + enlarged hub band), cut-away
-o, n = (0, 0, YZ), (0, 0, -1)
-it = [(cut(posed(cp[k], k), o, n), c) for k, c in [('VAR_E_sleeve', ORANGE), ('VAR_E_6816', STEEL), ('VAR_E_hubband', WHITE),
-                                                     ('FORK_front', ORANGE2)]]
-it += [(cut(d['YAW'], o, n), GREY), (cut(d['HUB'], o, n), WHITE), (cut(d['UA'], o, n), ARM), (cut(d['ROLL'], o, n), GREY),
-       (cut(cp['P1_drum'], o, n), TEAL)]
-render(it, tmp, pos=(420, 420, 380), focal=(165, 345, -5), size=(1400, 1000), scale=82)
-title(tmp, 'Variant e "yaw ring": fork seat extended as a sleeve round the RS02, 6816 (80x100x10) on a Ø80 hub band',
-      'cut at the yaw axis; cuff OD 108; the sleeve closes the side entry used by the yaw cable loop (see CONCEPT.md)')
-legend(tmp, [('sleeve (fork)', ORANGE), ('6816', STEEL), ('hub band Ø80 (on the hub)', WHITE), ('RS02', GREY)])
-fin(tmp, 'C8_variant_e_yaw_ring.png')
+# 9 the whole cable route in 3D: parts translucent, passages opaque (power red, signal blue)
+it = concept_items(wire=False, alpha=0.13)
+for k, m in wires.items():
+    it.append((posed(m, 'W:' + k), RED if k.endswith('power') else BLUE))
+render(it, tmp, pos=(470, 600, -430), focal=(125, 400, -15), size=(1500, 1100), scale=150)
+title(tmp, 'Cable route, neutral pose (parts translucent)',
+      'cage back face -> pitch loop -> P1 trunk -> cap channel -> stub bore -> fork rear arm -> yaw loop under the RS02 -> hub window -> arm')
+legend(tmp, [('power passage', RED), ('signal passage', BLUE)])
+fin(tmp, 'C9_cable_route_3d.png')
+
+# 10 clean look view: front-outboard at shoulder height, no cable colours, no cut volumes, no frame
+render(concept_items(wire=False, frame=False), tmp, pos=(RX + 520, RY - 30, 470), focal=(RX - 20, RY - 45, -5), size=(1400, 1050), scale=165)
+title(tmp, 'Look: front-outboard at shoulder height', 'neutral pose, printed parts in their colours, frozen upper arm')
+fin(tmp, 'C10_look_front_outboard.png')
 print('done')

@@ -79,6 +79,22 @@ Changes against the first pass, all in `scripts/build_concept.py`:
   The stop stays at -15 as decided. A coupled software limit is needed (roll ≥ -11 when |yaw| ≥ 30 and pitch is -30…+24),
   or the stop moves to -11 (7.8 mm clear at -10).
 
+## 3c. Second pass: full sweep of the trimmed model (`data/check.json`)
+
+**Poses:**
+
+- 1,299 frame poses: roll -15…+110 at pitch -90/0/90/180, and pitch -90…180 at roll -15/0/110, each at yaw -90/0/90,
+  in 3 deg steps.
+- The roll group against the drum, cap and stops, -30…+120 x 3 yaw.
+- Yaw -90…90 in 5 deg steps.
+
+**Result:**
+
+- Every moving pair of shoulder parts is **2.0 mm or more** over the whole range.
+- The stops engage at -15 (0.06) and +110 (0.02), with nothing else within 2.4 mm there.
+- Passages are free.
+- The frozen upper arm ↔ cage is still 0.05 at roll -15 (section 3a).
+
 ## 3b. Second pass: mass and depth trim
 
 Lightening (`LIGHT=1`, the default; `LIGHT=0` rebuilds the untrimmed step-2 geometry):
