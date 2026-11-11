@@ -5,13 +5,8 @@
 mod clock;
 #[cfg(target_os = "linux")]
 mod control;
-#[cfg_attr(
-    not(target_os = "linux"),
-    expect(
-        dead_code,
-        reason = "the control thread that uses it is Linux only; its tests run everywhere"
-    )
-)]
+// The control thread is its only user; its tests run everywhere.
+#[cfg(any(target_os = "linux", test))]
 mod dispatch;
 mod plan;
 mod request;
