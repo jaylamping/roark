@@ -212,9 +212,8 @@ fn the_enable_sequence_gives_up_on_no_run_or_a_fault() {
 
 /// Guards: safety - `host.bus` and `host.mode`: a drive whose `run_mode` = MIT write isn't read back within 50 ms of
 /// being planned, or isn't answered by a fresh Run status in that time, is never handed to control: the drive may not
-/// be in MIT mode, or has left Run (a status or a version reply in another mode ends it at once, named by that mode,
-/// though a Run of the other kind came later);
-/// since its Enable went out the limb is stopped.
+/// be in MIT mode, or has left Run (a status in another mode ends it at once, named by that mode); since its Enable
+/// went out the limb is stopped.
 #[test]
 fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
     let t0 = 100 * PERIOD;
@@ -269,6 +268,27 @@ fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
             last: Some(Mode::Reset)
         })
     );
+    let (mut silent, run, mit_at) = to_mit(t0);
+    let echo_only = echoed(run, MIT, mit_at + 10);
+    assert_eq!(
+        silent.step(shown(&echo_only).seen(), 4, mit_at + RUN_WITHIN_NS),
+        Next::Wait
+    );
+    assert_eq!(
+        silent.step(shown(&echo_only).seen(), 5, mit_at + RUN_WITHIN_NS + 1),
+        Next::Stop(EnableFailure::LeftRun { last: None })
+    );
+    assert_eq!(
+        EnableFailure::LeftRun { last: None }.rule(),
+        RuleId::HostMode
+    );
+}
+
+/// Guards: safety - `host.mode`: after the Enable's answer, a status or a version reply in another mode than Run ends
+/// the enable sequence at once, named by that mode, though a Run of the other kind was read later in the same drain.
+#[test]
+fn a_drive_seen_out_of_run_in_a_status_or_a_version_reply_ends_the_enable() {
+    let t0 = 100 * PERIOD;
     // A version reply in Reset after the write: the drive's latest word, so it left Run, named by that mode.
     let (mut version_left, run, mit_at) = to_mit(t0);
     let version = DriveView {
@@ -324,20 +344,6 @@ fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
             last: Some(Mode::Reset)
         }),
         "a Run status, then a Reset version reply"
-    );
-    let (mut silent, run, mit_at) = to_mit(t0);
-    let echo_only = echoed(run, MIT, mit_at + 10);
-    assert_eq!(
-        silent.step(shown(&echo_only).seen(), 4, mit_at + RUN_WITHIN_NS),
-        Next::Wait
-    );
-    assert_eq!(
-        silent.step(shown(&echo_only).seen(), 5, mit_at + RUN_WITHIN_NS + 1),
-        Next::Stop(EnableFailure::LeftRun { last: None })
-    );
-    assert_eq!(
-        EnableFailure::LeftRun { last: None }.rule(),
-        RuleId::HostMode
     );
 }
 
