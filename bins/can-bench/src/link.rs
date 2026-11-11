@@ -23,15 +23,15 @@ const LISTEN: Duration = Duration::from_secs(1);
 /// `ENOBUFS`: the interface's queue is full. Counted, never retried (can.md section 2).
 pub(crate) const ENOBUFS: i32 = 105;
 
-/// Take the runtime's lock for the whole run, so the bench never runs alongside a runtime and a runtime can't start
-/// under it. `None` when this machine has never run one (no `/run/robot`); the lock is the runtime's, never made here.
+/// Take the runtime's lock, shared, for the whole run, so the bench never runs alongside a runtime and a runtime can't
+/// start under it. Shared, because the runtime takes it exclusive while both bench ends may run on one machine. `None` when this machine has never run one (no `/run/robot`); the lock is the runtime's, never made here.
 pub(crate) fn claim_runtime_lock() -> Result<Option<Flock<File>>, String> {
     let file = match OpenOptions::new().read(true).write(true).open(RUNTIME_LOCK) {
         Ok(file) => file,
         Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
         Err(e) => return Err(format!("{RUNTIME_LOCK}: {e}")),
     };
-    match Flock::lock(file, FlockArg::LockExclusiveNonblock) {
+    match Flock::lock(file, FlockArg::LockSharedNonblock) {
         Ok(lock) => Ok(Some(lock)),
         Err((_, Errno::EWOULDBLOCK)) => Err(format!(
             "{RUNTIME_LOCK} is held: a runtime is running; stop it before can-bench"
