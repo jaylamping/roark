@@ -1,4 +1,6 @@
-"""Netlist checks for rev B: what the sheet is supposed to be, independent of how it was drawn."""
+"""Netlist checks for rev B: what the sheet is supposed to be, independent of how it was drawn.
+check.py <tools dir> <net.net> [<project.kicad_pro>]: with the project file, also that its ESTOP and HV54 net classes
+equal tools/domains.py's lists (tools/handfinish_prep.py writes them)."""
 import sys
 sys.path.insert(0,sys.argv[1]); from sx import *
 N=parse(open(sys.argv[2]).read())
@@ -42,6 +44,15 @@ ok(n('U12',8)=='D_L2' and n('U11',8)=='V_L1','U12 reads VBUS on the R arm port i
 ok(n('U1',3)=='UVLO' and len(two('RUN_B','UVLO'))==1 and len(two('UVLO','GND'))==1 and diode('RUN_B','RUN'),'UVLO only from RUN, through its own diode: no RUN, no bank')
 ok(not any(r[0]=='R' and 'RUN' in (n(r,1),n(r,2)) and {n(r,1),n(r,2)}&{'UVLO','EN_A'} for r in comp),'no resistor from RUN straight to UVLO or EN_A: a pin fault cannot back-drive RUN')
 ok(not any(n(r,q) in ('BAT','VBUS') for r,p in nets['UVLO'] if r[0] in 'RCD' for r2,q in pin if r2==r),'UVLO has no resistor, capacitor or diode to the bus')
+# the same for every E-stop net and every 54 V source (tools/domains.py): no resistor, capacitor, diode, fuse or inductor
+# joins an E-stop net to a 54 V net, a net riding on one, or the latch's own supply chain ahead of the regulator. The
+# port INP pins are logic inputs fed from RUN_P through their resistors (domains.py lists INP_L* with the VBUS domain for
+# spacing only). What this cannot see: leakage across a controller's own pins (U1, U8: the package sets it) and across
+# the board surface (tools/route_checks.py checks 1, 4, 5).
+import domains,re
+hot=lambda x:domains.is_hv('/'+x) or x in ('BAT_F','BAT_R','BAT_CTL') or (domains.rides('/'+x) and not re.match(r'INP_L\d$',x))
+leak=sorted({(e,r) for e in nets if domains.is_estop('/'+e) for r,p in nets[e] if r[0] in 'RCDFL' and r[1:].isdigit() for (r2,q),o in pin.items() if r2==r and q!=p and hot(o)})
+ok(not leak,'no passive part joins an E-stop net to 54 V, to a net riding on 54 V or to the latch supply ahead of the regulator: '+str(leak))
 pk=[r for r in comp if r[0]=='J' and n(r,1)=='BAT']
 ok(len(pk)==1 and n(pk[0],2)=='GND' and not any(r[0]=='J' and r!=pk[0] for r,p in nets['BAT']),'pack in on one keyed two-pole connector, BAT and GND side by side')
 # nothing bulky ahead of the bank
@@ -143,5 +154,23 @@ ok(two('BRK_IN','PF_SENSE',('R',)) and two('PF_SENSE','GND',('R',)) and two('PF_
 ok(two('PF_VR','PF_REF',('R',)) and two('PF_OUT','PF_REF',('R',)),'power-fail hysteresis: reference through a resistor, feedback from OUT')
 qf=[q for q in comp if q[0]=='Q' and n(q,1)=='PF_OUT' and n(q,2)=='GND']
 ok(len(qf)==1 and two(n(qf[0],3),'PWR_FAIL_N',('R',)) and n('J21',8)=='PWR_FAIL_N' and not two('PWR_FAIL_N','+3V3_PI',('R',)),'PWR_FAIL_N open drain on J21 pin 8, pull-up on the Pi side')
+# layout rule classes: the project file's ESTOP and HV54 net classes are exactly tools/domains.py's lists for this netlist
+# (the .kicad_dru's 1.5 mm rule works on the classes; a net missing from ESTOP is not protected by the DRC)
+if len(sys.argv)>3:
+    import json,domains
+    pat=json.load(open(sys.argv[3]))['net_settings']['netclass_patterns']
+    for cname,test in (('ESTOP',domains.is_estop),('HV54',domains.is_hv)):
+        have={p_['pattern'] for p_ in pat if p_['netclass']==cname}; want={'/'+x for x in nets if test('/'+x)}
+        ok(have==want,f'.kicad_pro net class {cname} equals tools/domains.py: missing {sorted(want-have)}, extra {sorted(have-want)}')
+    dru=open(sys.argv[3][:-len('kicad_pro')]+'kicad_dru',encoding='utf-8').read().replace('\r','')
+    # kicad-cli drops a malformed rules file without a word, and the fill then runs on the defaults: the file must parse
+    import re as _re
+    body=_re.sub(r'#[^\n]*','',dru); depth=0; okp=True
+    for ch in _re.sub(r'"[^"]*"','""',body):
+        depth+=ch=='('; depth-=ch==')'; okp=okp and depth>=0
+    rules=_re.findall(r'\(rule (\w+)',body)
+    ok(okp and depth==0 and body.count('(constraint ')==len(rules)==body.count('(condition ') and rules==['estop_to_54v','latch_supply_leak','estop_at_U1'],
+       f'.kicad_dru is well formed: balanced, one constraint and one condition per rule, rules {rules}')
+    ok(domains.leak_rule() in dru,'.kicad_dru rule latch_supply_leak equals tools/domains.py leak_rule() (LATCH_SUPPLY against LEAK_SENSITIVE, 1.5 mm)')
 print('audited',cnt[0]); print('FAILS',len(fail))
 sys.exit(1 if fail else 0)

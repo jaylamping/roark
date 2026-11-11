@@ -1,24 +1,21 @@
 (version 1)
-# Fine-pitch ICs whose footprint puts pads 0.15 mm apart: U1 and U7 (LM5069, MSOP-10 0.5 mm) and U2 (TPS7A4001,
-# HVSSOP-8 0.65 mm with its large pads); U8 (TPS48100 VSSOP-19 0.5 mm, latch controller) added by Joey 2026-11-09, whose
-# E-stop pins EN_A/FLT_A sit 0.5 mm from its 54 V pins, so inside U8's courtyard E-stop copper may come within 0.15 mm of 54 V. Only clearances between copper that enters the IC's courtyard (its own pads, and
-# the first escape segment of each pin, drawn straight out of the courtyard) drop to 0.15 mm; everything else keeps the defaults, and
-# the 54 V (0.6 mm) and E-stop/UVLO (1.5 mm) spacing is checked by tools/route_checks.py and tools/hv_spacing.py.
-# tools/grid_route.py routes to the same rule (FINE, courtyard boxes).
-# E-stop safety nets keep 1.5 mm to 54 V copper on every layer (LAYOUT_RULES.md, schematic/tools/domains.py); the fine-pitch
-# rules below come later in this file, so they win inside U1/U2/U7's courtyards
+# No fine-pitch rule: U1, U7 (MSOP-10) and U2 (HVSSOP-8) have their pads at TI's land-pattern width (0.30 and 0.45 mm,
+# schematic/tools/fine_pitch_pads.py), so every gap is at least the 0.2 mm default, which is also JLCPCB's minimum
+# space for 2 oz outer copper. Until 2026-11-10 these three had a 0.15 mm courtyard rule, and U8 one until its block
+# was turned (schematic/tools/u8_block.py).
+# E-stop safety nets keep 1.5 mm to 54 V copper on every layer (LAYOUT_RULES.md, schematic/tools/domains.py)
 (rule estop_to_54v
   (constraint clearance (min 1.5mm))
   (condition "A.hasNetclass('ESTOP') && B.hasNetclass('HV54')"))
-(rule fine_pitch_U1
-  (constraint clearance (min 0.15mm))
-  (condition "(A.memberOfFootprint('U1') && B.intersectsCourtyard('U1')) || (B.memberOfFootprint('U1') && A.intersectsCourtyard('U1')) || (A.intersectsCourtyard('U1') && B.intersectsCourtyard('U1'))"))
-(rule fine_pitch_U2
-  (constraint clearance (min 0.15mm))
-  (condition "(A.memberOfFootprint('U2') && B.intersectsCourtyard('U2')) || (B.memberOfFootprint('U2') && A.intersectsCourtyard('U2')) || (A.intersectsCourtyard('U2') && B.intersectsCourtyard('U2'))"))
-(rule fine_pitch_U7
-  (constraint clearance (min 0.15mm))
-  (condition "(A.memberOfFootprint('U7') && B.intersectsCourtyard('U7')) || (B.memberOfFootprint('U7') && A.intersectsCourtyard('U7')) || (A.intersectsCourtyard('U7') && B.intersectsCourtyard('U7'))"))
-(rule fine_pitch_U8
-  (constraint clearance (min 0.15mm))
-  (condition "(A.memberOfFootprint('U8') && B.intersectsCourtyard('U8')) || (B.memberOfFootprint('U8') && A.intersectsCourtyard('U8')) || (A.intersectsCourtyard('U8') && B.intersectsCourtyard('U8'))"))
+# The latch supply chain keeps 1.5 mm to the leakage-sensitive E-stop nets (schematic/tools/domains.py LATCH_SUPPLY,
+# LEAK_SENSITIVE; LAYOUT_RULES.md, Leakage from the latch supply). Written by schematic/tools/handfinish_prep.py.
+(rule latch_supply_leak
+  (constraint clearance (min 1.5mm))
+  (condition "(A.NetName == '/BAT_CTL' || A.NetName == '/BAT_F' || A.NetName == '/BAT_R') && (B.NetName == '/EN_A' || B.NetName == '/FLT_D' || B.NetName == '/LOOP_RET' || B.NetName == '/L_B' || B.NetName == '/MID_B' || B.NetName == '/RST_C' || B.NetName == '/RUN' || B.NetName == '/RUN_A' || B.NetName == '/RUN_B' || B.NetName == '/SP_EN' || B.NetName == '/SP_ENR' || B.NetName == '/UVLO')"))
+# U1 (LM5069): the UVLO pin (E-stop class) is pin 3, 0.2 mm from SH_P on pin 2 and 0.7 mm from SH_N on pin 1 (54 V
+# class). The package sets that, so between F.Cu pads, tracks and vias inside U1's courtyard the 1.5 mm rule gives way to
+# the 0.2 mm default. Never a pour, never another layer. This rule comes later in the file, so it wins there.
+(rule estop_at_U1
+  (layer "F.Cu")
+  (constraint clearance (min 0.2mm))
+  (condition "A.Type != 'Zone' && B.Type != 'Zone' && A.intersectsCourtyard('U1') && B.intersectsCourtyard('U1')"))

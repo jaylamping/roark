@@ -70,8 +70,8 @@ for k,Y1,s in PORTS:
     zone(f'/D_L{k}',L1,[T((16.4,20.7,Y1-3.83,Y1-1.73))],5,name=f'D_L{k}')
     zone(f'/V_L{k}',L1,[T((26.6,47.3,Y0+0.1,Y0+5.3)),T((43.0,47.3,Y0+5.3,Y0+7.3))],5,name=f'V_L{k}')
 # ---------------- inner GND planes ----------------
-for L in PLANES: zone('GND',L,[(-49.6,49.6,YB+0.4,339.6)],0,clear=0.6,name='GND '+b.GetLayerName(L))
-for L in FILLS: zone('GND',L,[(-49.6,49.6,YB+0.4,339.6)],0,clear=0.6,name='GND '+b.GetLayerName(L)+' fill')   # signal layers: refilled round the signals
+for L in PLANES: zone('GND',L,[(-49.6,49.6,YB+0.4,339.6)],0,clear=stack.PLANE_CLEAR,name='GND '+b.GetLayerName(L))
+for L in FILLS: zone('GND',L,[(-49.6,49.6,YB+0.4,339.6)],0,clear=stack.PLANE_CLEAR,name='GND '+b.GetLayerName(L)+' fill')   # signal layers: refilled round the signals
 # ---------------- L6: mirrors under the FETs (heatsink pads), VBUS sheet, GND fill ----------------
 zone('/SW_D',L6,[(-11.0,-0.3,290.2,303.6),(7.0,17.8,290.2,303.6),(-11.0,17.8,300.2,304.6)],5,name='SW_D L6')   # bridged above the pins
 zone('/MID',L6,[(-18.4,18.0,270.2,290.0),(-18.4,-12.3,290.0,299.4),(0.7,5.7,290.0,299.4)],4,name='MID L6')
@@ -89,7 +89,11 @@ vias('/SW_D',-1.4,3.1,301.4,303.4,pitch=0.9)                                    
 vias('/MID',-9.8,-1.6,271.0,280.6); vias('/MID',8.0,16.6,271.0,280.6)            # under the bank B tabs
 vias('/MID',-16.0,-13.0,282.6,289.4); vias('/MID',2.8,5.8,282.6,289.4)           # band between the banks (clear of HS1 at 0,286)
 vias('/MID',-18.0,-17.6,297.27,298.54,pitch=1.27); vias('/MID',1.2,1.2,297.27,298.54,pitch=1.27)   # pins 2-3 islands
-vias('/VBUS',-16.9,16.9,267.0,269.6,pitch=1.3); vias('/VBUS',-26.0,-18.0,266.9,266.9,pitch=1.0); vias('/VBUS',18.0,26.0,266.9,266.9,pitch=1.0)   # bank B sources and bus caps to L6
+# bank B sources and bus caps to L6: three rows at 2.6 mm pitch, the middle one offset by half a pitch, and the side rows
+# at 2.0 mm. At 1.3 and 1.0 mm (until 2026-11-10) the vias' clearance holes merged into a slot 53 mm long across all four
+# inner layers, and the 60 A GND return had 31 mm of each plane left there (tools/pour_width.py, GND return).
+vias('/VBUS',-16.9,16.9,267.0,267.0,pitch=2.6); vias('/VBUS',-15.6,15.6,268.3,268.3,pitch=2.6); vias('/VBUS',-16.9,16.9,269.6,269.6,pitch=2.6)
+vias('/VBUS',-26.0,-18.0,266.9,266.9,pitch=2.0); vias('/VBUS',18.0,26.0,266.9,266.9,pitch=2.0)
 vias('/VBUS',-18.0,-17.6,277.27,278.54,pitch=1.27); vias('/VBUS',1.2,1.2,277.27,278.54,pitch=1.27)
 for k,Y1,s in PORTS:
     Y0=Y1-17.5; T=lambda r:turn(s,Y0,Y1,r)
@@ -147,6 +151,7 @@ for net,layer,(x0,x1,y0,y1),name in POURS:
         if x0<X<x1 and y0<Y<y1 and p.IsOnLayer(layer) and p.GetNetname() not in (net,''):
             bad.setdefault(name,set()).add(f'{r}.{p.GetNumber()}={p.GetNetname()}')
 for k,v in bad.items(): print('foreign pads in',k,':',' '.join(sorted(v)))
+import vbus_copper; vbus_copper.build(b)   # the stem's parallel copper: In2 / In3 pours and the widened L6 outline
 print('vias:',sum(n for _,n,_ in VIAS))
 pcbnew.ZONE_FILLER(b).Fill(b.Zones())
 b.Save(sys.argv[2]); print('saved',sys.argv[2])

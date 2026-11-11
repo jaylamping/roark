@@ -44,7 +44,7 @@ class Router:
             k=float(os.getenv('FCOST')); self.step_cost=lambda net,L,p,q: k if L==CU[0] else 1.0
         self.collect_all = False   # escape_probe.py: free() lists every blocker instead of stopping at the first
         self.fine = []; self.fineshape = []
-        for ref in os.getenv('FINE','U1,U2,U7,U8').split(','):   # the .kicad_dru fine-pitch courtyards
+        for ref in os.getenv('FINE','U1').split(','):   # the .kicad_dru fine-pitch courtyards
             f = self.b.FindFootprintByReference(ref)
             self.fine.append(self.bb(f.GetCourtyard(pcbnew.F_CrtYd).BBox()))
             self.fineshape.append(pcbnew.SHAPE_POLY_SET(f.GetCourtyard(pcbnew.F_CrtYd)))
@@ -74,11 +74,13 @@ class Router:
                         self.add(L, z.GetNetname(), one, 'zone', UID(z))
         self.zones = zones
         self.hvzones = [z for z in zones if not z.GetIsRuleArea() and domains.is_hv(z.GetNetname())]
+        self.midzones = [z for z in zones if not z.GetIsRuleArea() and z.GetNetname() == '/MID']
 
     @staticmethod
     def bb(b): return MM(b.GetLeft()), MM(b.GetTop()), MM(b.GetRight()), MM(b.GetBottom())
     def incy(self, shape, bb):
-        """the fine-pitch courtyards (U1/U2/U7) the copper itself enters, as the .kicad_dru intersectsCourtyard() tests;
+        """U1's courtyard (the .kicad_dru estop_at_U1 scope), if the copper itself enters it, as the .kicad_dru intersectsCourtyard() tests
+        (the callers ask on F.Cu only, and never for a pour, as the rules do);
         a bounding-box overlap alone would relax the clearance for a long diagonal that only passes near the courtyard"""
         out = set()
         for i, f in enumerate(self.fine):
@@ -94,7 +96,7 @@ class Router:
             for y in range(math.floor(bb[1]/2), math.floor(bb[3]/2)+1): yield x, y
     def add(self, L, net, shape, kind, uid):
         bb = self.bb(shape.BBox())
-        cy = self.incy(shape, bb)
+        cy = self.incy(shape, bb) if L == CU[0] and kind != 'zone' else set()   # the .kicad_dru scope: F.Cu, never a pour
         ob = (net, shape, kind, bb, cy, uid)
         for c in self.cells(bb): self.idx.setdefault((L,)+c, []).append(ob)
     @staticmethod
@@ -106,7 +108,7 @@ class Router:
     def free(self, net, L, shape, via=False, diagnostics=None):
         bb = self.bb(shape.BBox()); margin = 1.51
         query = (bb[0]-margin, bb[1]-margin, bb[2]+margin, bb[3]+margin)
-        cy = self.incy(shape, bb)
+        cy = self.incy(shape, bb) if L == CU[0] else set()
         seen = set(); hit = False
         for c in self.cells(query):
             for ob in self.idx.get((L,)+c, ()):
@@ -127,7 +129,7 @@ class Router:
                 if n==net and not kind.startswith('keepout'): continue
                 if kind=='zone' and ((via and n=='/VBUS') or os.getenv('SOFTZ')=='1'): continue
                 cl = .001 if kind.startswith('keepout') else domains.clearance(net,n,L in OUT)
-                if not via and cy & ocy and not kind.startswith('keepout'): cl=min(cl,.15)
+                if not via and cy & ocy and not kind.startswith('keepout'): cl=min(cl,.2)   # U1's courtyard: the E-stop rule gives way to the pin gap
                 if sh.Collide(shape, IU(cl+MARGIN)):
                     if diagnostics is not None: diagnostics.add((kind,n,uid,cl))
                     if not self.collect_all: return False
@@ -138,8 +140,9 @@ class Router:
         return a[0]<=p[0]<=a[2] and a[1]<=p[1]<=a[3]
     @staticmethod
     def in_latch(net,box):
-        """54 V copper whose bbox (x0,y0,x1,y1) touches the latch block (domains.LATCH): banned on the inner layers"""
-        if not domains.is_hv(net): return False
+        """54 V copper, copper riding on 54 V or the latch supply chain, whose bbox (x0,y0,x1,y1) touches the latch block
+        (domains.LATCH): banned on the inner layers, the same set as route_checks check 4"""
+        if not domains.latch_inner_banned(net): return False
         lx0,lx1,ly0,ly1=domains.latch_page()
         return box[2]>=lx0 and box[0]<=lx1 and box[3]>=ly0 and box[1]<=ly1
     def seg(self,net,L,a,c,diag=None):
@@ -149,10 +152,12 @@ class Router:
         sh=pcbnew.SHAPE_SEGMENT(V(a),V(c),IU(self.width(net)))
         return self.free(net,L,sh,diagnostics=diag)
     def via(self,net,p):
-        if not self.inside(p) or (130<=p[0]<=160 and 180<=p[1]<=190): return False
+        if not self.inside(p) or domains.in_vbus_band(p): return False
         if hasattr(self,'via_filter') and not self.via_filter(net,p): return False
         if self.in_latch(net,(p[0]-.3,p[1]-.3,p[0]+.3,p[1]+.3)): return False   # a via is inner copper too
         if domains.is_estop(net) and any(z.Outline().Contains(V(p)) for z in self.hvzones): return False   # route_checks 5
+        # route_checks 7: no via of another net inside a MID pour outline, except the listed ones (domains.MID_VIA_OK)
+        if net != '/MID' and not domains.via_listed(p, domains.MID_VIA_OK, net) and any(z.Outline().Contains(V(p)) for z in self.midzones): return False
         sh=pcbnew.SHAPE_CIRCLE(V(p),IU(.3))
         return all(self.free(net,L,sh,via=True) for L in CU)
     @staticmethod
@@ -197,7 +202,12 @@ class Router:
     def component_anchors(self,it,other,base):
         ob=self.byid.get(it['uuid'])
         if not ob or ob.GetNetname()=='GND': return base
-        items=self.b.GetConnectivity().GetConnectedItems(ob)
+        # the whole connected piece, not only what touches the reported item: a via two segments away is an anchor too
+        con=self.b.GetConnectivity(); items=[]; seen={UID(ob)}; todo=[ob]
+        while todo and len(items)<80:
+            for t in con.GetConnectedItems(todo.pop()):
+                if not hasattr(t,'m_Uuid') or UID(t) in seen or t.GetClass() not in ('PCB_VIA','PCB_TRACK','PAD'): continue
+                seen.add(UID(t)); items.append(t); todo.append(t)
         candidates=list(base)
         via=[]
         for t in items:
@@ -307,7 +317,7 @@ class Router:
                 return result
             L,x,y=k; p=pt(k)
             ns=[((L,x+dx,y+dy),STEP*math.hypot(dx,dy),False) for dx,dy in ((1,0),(-1,0),(0,1),(0,-1),(1,1),(-1,1),(1,-1),(-1,-1))]
-            if net!='/G2': ns += [((K,x,y),3.,True) for K in RL if K!=L]
+            ns += [((K,x,y),3.,True) for K in RL if K!=L]
             for nk,cost,isvia in ns:
                 if not isvia and hasattr(self,'step_cost'): cost *= self.step_cost(net,L,p,pt(nk))
                 ng=g+cost
@@ -358,7 +368,6 @@ def main():
         if os.getenv('COMPONENTS')=='1':
             A0,B0=A,B
             A=r.component_anchors(u['items'][0],B0,A0); B=r.component_anchors(u['items'][1],A0,B0)
-        if n=='/G2': A=[a for a in A if a[1]==CU[0]]; B=[a for a in B if a[1]==CU[0]]
         length=min(math.dist(a[0],b[0]) for a in A for b in B)
         edges.append((length,i,n,A,B))
     done=[]

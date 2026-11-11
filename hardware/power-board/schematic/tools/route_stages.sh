@@ -58,4 +58,4 @@ if grep -qi 'failed to fetch schematic' "$W/drc.log"; then cat "$W/drc.log"; die
 "$PY" tools/open_nets.py "$W/drc.json" "$W/open_nets.csv" || die 'open_nets failed'
 "$KP" tools/route_checks.py "$W/routed.kicad_pcb" > "$W/checks.txt" 2>&1; rc=$?
 q < "$W/checks.txt" | grep -v '^    (' || true
-[ "$rc" = 0 ] || die "route_checks failed (exit $rc)"
+[ "$rc" = 0 ] || [ -n "${CHECKS_REPORT:-}" ] || die "route_checks failed (exit $rc)"   # CHECKS_REPORT=1 (tools/build_board.sh): report only, the blocks come after

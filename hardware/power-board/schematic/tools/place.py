@@ -88,8 +88,9 @@ FIX['RS9']=(-20.4,326.4,180,False); FIX['R53']=(45.5,270.3,0,False)
 # toward its Kelvin pads, GATE toward Q8 (UVLO leaves through a via under the body); U7 sense pins up toward RS9
 FIX['U1']=(-8.25,312.6,180,False); FIX['U7']=(-13.8,320.15,270,False)
 # gate resistors at the gate pins of the left FET of each bank (Q1: G1, Q8: GA1), in the bank B controller column just
-# left of the FET. Q2/Q9's gates have no room: the MID band, the SW_D strip and the 1.3 mm gap to Q1/Q8 fill it, so R2/R32
-# stay with their controllers (LAYOUT_RULES.md, gate loops)
+# left of the FET. Q2/Q9's gates have no room: the MID band, the SW_D strip and the 1.3 mm gap to Q1/Q8 fill it. R32 stays
+# with its controller; R2 sits at the GATE tee beside R1 since 2026-11-10 (tools/bank_block.py places it on a rebuild;
+# LAYOUT_RULES.md, gate loops)
 FIX['R1']=(-18.625,279.8,90,False); FIX['R31']=(-18.625,299.8,90,False)
 FIX['C87']=(-8.6,307.6,90,False); FIX['C88']=(-13.1,307.6,90,False)   # bank A drain ceramics, SW_D pad down onto the drain pour
 FIX['C89']=(5.8,312.4,90,False); FIX['C90']=(9.4,312.4,90,False); FIX['C91']=(-8.6,327.6,0,False); FIX['C92']=(-8.6,331.0,0,False)   # pack-entry ceramics on the BAT pour
@@ -123,7 +124,11 @@ fps={}
 for c in getall(get(N,'components'),'comp'):
     ref=str(get(c,'ref')[1]); f=str(get(c,'footprint')[1]); lib,name=f.split(':')
     fp=pcbnew.FootprintLoad(os.path.join(HERE,'marengo_revb.pretty') if lib=='marengo_revb' else FPDIR+lib+'.pretty',name)
-    fp.SetReference(ref); fp.SetValue(str(get(c,'value')[1])[:40]); fp.SetFPID(pcbnew.LIB_ID(lib,name))
+    fp.SetReference(ref); fp.SetValue(str(get(c,'value')[1])); fp.SetFPID(pcbnew.LIB_ID(lib,name))
+    # value, datasheet and attributes as on the symbol, so KiCad's schematic-parity check is clean (tools/sync_netlist.py
+    # does the same on an existing board)
+    ds=get(c,'datasheet'); fp.SetField('Datasheet',str(ds[1]) if ds and len(ds)>1 else '')
+    fp.SetExcludedFromBOM(any(str(get(p,'name')[1])=='exclude_from_bom' for p in getall(c,'property')))
     for pad in fp.Pads():
         ni=nets.get((ref,pad.GetNumber()))
         if ni: pad.SetNet(ni)
@@ -141,6 +146,18 @@ def place_at(fp,X,Y,rot=0,back=False):
     bb=bbox(fp); c=bb.GetCenter(); t=P(X,Y)
     fp.Move(pcbnew.VECTOR2I(t.x-c.x,t.y-c.y))
 FIX.update({r:(X,Y,rot,False) for r,(X,Y,rot) in PFIX.items()})
+# the small parts of each port sit at the designed template positions (tools/port_template.py PLACE, page mm, placed
+# after the packing below), so they aren't packed
+import port_template as PT, u8_block, latch_block, bank_block
+TEMPLATE={PT.refs(k)[role] for k in PORT for role in PT.PLACE}|set(u8_block.PLACE)|set(latch_block.PLACE)|set(latch_block.PLACE_ALL)|set(bank_block.PLACE_ALL)   # U8's block: tools/u8_block.py; the latch supply: tools/latch_block.py
+# single parts moved by hand after the packing (page mm: courtyard centre, pad 1): C81, the watchdog's CWD cap, beside
+# U25's pin 2 (the packer had put it 20 mm away)
+MOVED={'C81':((101.6,246.0),(101.6,246.775)),
+       # the heatsink tie (2026-11-10), south of the heatsink's edge at page Y 243.5: the lug wire's pad (a through hole,
+       # so outside the heatsink), its test point and the 100k to GND; tools/add_parts.py put them on the routed board
+       'J27':((150.0,246.2),None), 'TP17':((146.2,245.8),None), 'R139':((154.4,246.2),(152.94,246.2))}
+TEMPLATE|=set(MOVED)
+for r in TEMPLATE: G.pop(r,None)
 for r in FIX: G.pop(r,None)
 for r,(X,Y,rot,back) in FIX.items(): place_at(fps[r],X,Y,rot,back)
 rep={}
@@ -223,6 +240,9 @@ for blk,(X0,X1,Y0,Y1) in BLK.items():
         print(blk,'54 V strip',round(hs,1),'mm:',' '.join(hv)); r1=pack(blk,X0,X1,Y0,Y0+hs,hv); r2=pack(blk,X0,X1,Y0+hs+1.6,Y1,[r for r in refs if r not in hv])
         rep[blk]=dict(parts=r1['parts']+r2['parts'],fill=r2['fill'],hv_strip=round(hs,1),overflow=r1['overflow']+r2['overflow'])
     else: rep[blk]=pack(blk,X0,X1,Y0,Y1,refs)
+PT.FPS.update(fps)
+for k in PORT: PT.place(b,k)   # page mm = this file's P(): X+150, 440-Y
+u8_block.place(fps); u8_block.place(fps,MOVED); latch_block.place(fps); bank_block.place(fps)
 # J20 (JST GH horizontal, E-stop loop) must open toward the -X edge (KO_estop); maxrects only knows its box, so turn it 180
 # about the courtyard centre, which keeps the box
 if round(fps['J20'].GetOrientationDegrees())==90: fps['J20'].Rotate(bbox(fps['J20']).GetCenter(),pcbnew.EDA_ANGLE(180,pcbnew.DEGREES_T))
@@ -231,7 +251,7 @@ px=-50
 for blk in rep:
     for r in rep[blk]['overflow']:
         bb=bbox(fps[r]); w=pcbnew.ToMM(bb.GetWidth()); place_at(fps[r],px+w/2,YB-6); px+=w+1
-missing=[r for r in fps if r not in G and r not in FIX]
+missing=[r for r in fps if r not in G and r not in FIX and r not in TEMPLATE]
 # ---- outline, holes, keep-outs, notes
 def seg(layer,a,c,w=0.15):
     s=pcbnew.PCB_SHAPE(b); s.SetShape(pcbnew.SHAPE_T_RECT); s.SetLayer(layer); s.SetWidth(pcbnew.FromMM(w))
@@ -242,14 +262,14 @@ seg(pcbnew.Edge_Cuts,(-50,340),(50,YB),0.1)
 for sx_ in (-1,1):
     for Y in (YB+4,265,336):
         h=pcbnew.FootprintLoad(FPDIR+'MountingHole.pretty','MountingHole_3.2mm_M3_Pad'); h.SetReference(f'H{len([f for f in b.GetFootprints() if f.GetReference().startswith("H")])+1}')
-        b.Add(h); h.SetPosition(P(sx_*46,Y))
+        h.SetBoardOnly(True); b.Add(h); h.SetPosition(P(sx_*46,Y))
 TIE=[(-7.0,336.0),(23.0,336.0)]+[(s*45.0,Y-8.75) for s in (-1,1) for Y in (244.7,227.2,209.7)]  # one hole per pair: the tie loops through it and round the board edge
 for k,(X,Y) in enumerate(HSINK):
-    h=pcbnew.FootprintLoad(FPDIR+'MountingHole.pretty','MountingHole_3.2mm_M3'); h.SetReference(f'HS{k+1}'); b.Add(h); h.SetPosition(P(X,Y))
+    h=pcbnew.FootprintLoad(FPDIR+'MountingHole.pretty','MountingHole_3.2mm_M3'); h.SetReference(f'HS{k+1}'); h.SetBoardOnly(True); b.Add(h); h.SetPosition(P(X,Y))
 for X,Y in TIE:
     for d in (0,):
         h=pcbnew.FootprintLoad(FPDIR+'MountingHole.pretty','MountingHole_2.2mm_M2'); h.SetReference(f'TH{len([f for f in b.GetFootprints() if f.GetReference().startswith("TH")])+1}')
-        b.Add(h); h.SetPosition(P(X,Y))
+        h.SetBoardOnly(True); b.Add(h); h.SetPosition(P(X,Y))
 # copper keep-outs round the holes (rule areas, all copper layers): heatsink screws HS1/HS2 no copper within 2 mm of the
 # hole (LAYOUT_RULES.md, the screw and the heatsink are not insulated from it); tie holes and the M3 mounting pads
 # 0.6 mm (54 V pours and tracks otherwise close to 0.25 mm, IPC-2221B 0.6 mm for 51-100 V)
