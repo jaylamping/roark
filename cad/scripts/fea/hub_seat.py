@@ -81,7 +81,7 @@ def build():
             rad = lambda p: m_.hypot(p[0] - HX, p[2] - CZ)
             r45 = float(os.environ.get('HS_GROOVE_R45', '0.4'))      # 45 deg-side bottom corner; up to 1.0 clears the ridge's top tip corner
             sets = [('GROOVE_BOT_ROUND', 0.4, lambda p: abs(rad(p) - 34.3) < 0.03 and abs(p[1] - (y0 + 1.5 * t30)) < 0.05),
-                    ('GROOVE_BOT_ROUND45', r45, lambda p: abs(rad(p) - 34.3) < 0.03 and abs(p[1] - (y0 + 2.5)) < 0.05),
+                    ('GROOVE_BOT_ROUND45', r45, lambda p: abs(rad(p) - 34.3) < 0.03 and abs(p[1] - (YTOP - 1.5)) < 0.05),      # Y 300.4 rev C+, 300.5 before
                     ('SPIGOT_BOT_ROUND', 0.4, lambda p: abs(rad(p) - 35.8) < 0.03 and abs(p[1] - 296.0) < 0.05)]
             lf = float(os.environ.get('HS_LUG_FILLET', '1.0'))      # lug-to-spigot root on the lugs' X-facing sides only: the arm's hub posts sit
             if lf > 0:                                                # 0.1 under the spigot beside the Z-facing sides, so a fillet there would clash
