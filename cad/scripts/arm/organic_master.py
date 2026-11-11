@@ -160,19 +160,38 @@ def save(d, job):
     sw.CloseDoc(d.GetTitle)
 
 
-# ---- elbow internals (RobStride RS02 drawing: body Ø78.5 x 28, 41.5 overall; output Ø43, 3.5 proud, 6 x M4 x 7 and
-# 3 x Ø4 pins on Ø24; housing 9 x M3 x 8 on Ø73 on the shoulder behind the body; back Ø65)
-RS02_X = dict(back=151.8, shoulder=162.8, front=193.7, output=197.2)
-BULKHEAD = (156.8, 162.8)              # RS02 mounting ring (a separate part, organic_parts.py): screwed to the RS02 on the bench,
-RIB = (150.4, 156.8)                   # then dropped into the halves behind this rib, keyed by two dogs in its notches
+# ---- elbow internals. Positions are from the vendor model (marengo cad/_wip/left-arm-layout-import/envelope/stl/ELBOW_RS02.STL,
+# checked by cad/_wip/organic-arm/cad/rs02_fit.py): body Ø78.5 x 28 with the 9 x M3 x 8 flange face 28 behind the front;
+# back Ø65, 13.4 long behind the flange; output Ø43, 3.5 proud; 6 x M4 x 7 and 3 x Ø4 pins on Ø24. Two radial sockets
+# (power + CAN, in parallel) stand on the back, 180 deg apart, 26 deg wide, out to r 36.2, from the flange to 8.2 behind it.
+# Each covers one or two of the flange holes (vendor holes at 6.5 + 40k: 86.5 under one tab, 246.5 and 286.5 beside the other),
+# so 6 of the 9 can take screws. (Until 2026-11-10 the flange sat 30.9 behind the front here, a misreading of the drawing.)
+RS02_X = dict(back=152.3, shoulder=165.7, front=193.7, output=197.2)
+BULKHEAD = (153.8, 165.7)              # RS02 mounting ring (a separate part, organic_parts.py): screwed to the RS02 on the bench,
+RIB = (147.4, 153.8)                   # then dropped into the halves behind this rib (ring 11.8 thick since 2026-11-11), keyed by the rib's keys
 RIB_R0 = 33.5
-# Three straight-sided keys on the ring take the RS02 housing torque (the 9-mm arc dogs bent at their roots under 34 N.m). They
-# sit between the ring's screw heads (screws at 20 + 40k deg): two with Y-normal faces at phi 80 and 280, so the ring still
-# drops into the back half along -Z, and one at the top straddling the seam with Z-normal faces. (dy0, dy1, dz0, dz1) from the
-# elbow axis; each notch is its key plus 0.4 per side, open toward the seam / bore so the key slides in.
-KEYS = [(0.4, 12.0, -37.8, -33.6), (0.4, 12.0, 33.6, 37.8), (33.6, 39.0, -6.0, 6.0)]     # 1.1 mm or more of rib left on the wall
-NOTCHES = [(0.0, 12.4, -38.1, -30.0), (0.0, 12.4, 30.0, 38.1), (30.0, 39.3, -6.4, 6.4)]
-BEARS = ['y', 'y', 'z']           # which faces bear: Y-normal for the two side keys, Z-normal for the top one
+# RS02 clocking on the ring: the used socket faces the neck (phi 1.5), the only place a plug and its cable have room; the plug
+# goes in on the bench through a window in the ring. The other socket (phi 181.5) is not used (one trunk drop per motor, no
+# pass-through via a drive's second port: marengo hardware/electrical/pdb/PLAN.md) and sits in a clearance notch in the bore.
+SOCKET = dict(phi=1.5, other=181.5, half=16.0, notch_r=36.9)
+RING_SCREWS = [60.0, 100.0, 140.0, 220.0, 260.0, 300.0]     # the 6 usable flange holes; 20, 180 and 340 are under the tabs
+# Torque path ring -> halves (2026-11-11): four straight keys on the halves' rib, two per half, running from the rib face (+X)
+# through open slots in the ring to 0.3 mm short of the RS02 flange, so the key load reaches the flange with no lever through the
+# ring's thickness. Each key's bearing faces are Y-normal and it merges into the drum wall on its outer side.
+# Both parts carry the key load in their layer plane: the halves print seam face down (layers normal to Z), so the key's
+# bending (sigma x) and shear (tau xy) lie in the layers; the ring prints flat (layers normal to X) and its slot flanks take the
+# key in bearing (sigma y) and in-plane shear. Any one key carries the full 34 N.m (organic_fea.py RINGK / HALFK cases).
+# The ring drops into the back half along -Z and the front half closes along -Z, so every slot in the ring runs out through the
+# ring's rim in the direction its key comes from. (dy0, dy1, dz0, dz1) from the elbow axis; phi 80 and 120 in the back half,
+# 240 and 280 in the front half, between the ring screws. Keys 0 and 3 (phi 80, 280) are the main ones: each bears on either
+# face, so each alone carries 34 N.m in either direction. Keys 1 and 2 are smaller (the RS02 back and the skin squeeze them)
+# and only share load.
+RIB_KEYS = [(0.6, 13.6, -41.8, -34.6), (-24.2, -12.4, -36.5, -32.3), (-24.2, -12.4, 32.3, 36.5), (0.6, 13.6, 34.6, 41.8)]   # outer sides into the drum wall, inside the skin; inner sides 0.85+ mm off the ring bore after the slot relief
+KEY_TIP = BULKHEAD[1] - 0.3   # the keys run the ring's full thickness, 0.3 short of the RS02 flange; the ring slots go right through
+KEY_CL = 0.1             # slot clearance on the bearing faces; the crush ribs close it
+CRUSH = 0.25             # crush-rib height on the bearing faces
+KEY_CL_FREE = 1.0        # on the faces that must never bear first (keys 0 and 3, their +Y faces)
+KEY_ROOT_R = 0.8         # root round; the ring slot mouths are relieved 0.9 mm for it
 STUB = dict(x0=134.0, r_out=20.0, r_in=16.0)        # hollow inboard stub; 6808 (Ø40 / Ø52 x 7) on X 134-141
 STOP = dict(r0=29.5, r1=36.5, lug_phi=90.0, lug_span=60.0, travel=124.0, depth=6.0)   # the printed lug (commit b3f3984), kept for STOP_KIND 'lug'
 STOP_KIND = os.environ.get('STOP_KIND', 'lug')        # Joey 2026-11-10: printed lug, rated to the RS02's 17 N.m
@@ -234,12 +253,8 @@ def upper_details(d):
     x_revolve(d, 'STUB_BORE', [(STUB['x0'] - 1, 0), (DRUM['x0'] + 4, 0), (DRUM['x0'] + 4, STUB['r_in']), (STUB['x0'] - 1, STUB['r_in'])], cut=True)
     # RS02 seat: bulkhead ring at the shoulder, bore for the Ø65 back, 9 x M3 on Ø73
     x_revolve(d, 'RS02_RIB', [(RIB[0], RIB_R0), (RIB[1], RIB_R0), (RIB[1], DRUM['r'] - SHELL_T + 0.3), (RIB[0], DRUM['r'] - SHELL_T + 0.3)])   # just into the wall: under the neck opening it ends as a free edge, no lip
-    for k, q in enumerate(NOTCHES):
-        rect_x(d, f'RIB_NOTCH{k}', q, RIB[0] - 0.1, RIB[1] + 0.1, cut=True)
-        # mouth relief for the keys' R1 root fillets: 1.1 mm wider over the last 1.2 mm of the notch
-        g = 1.1        # only across the bearing faces (outward it would thin the rib left on the wall)
-        qq = (q[0] - g, q[1] + g, q[2], q[3]) if BEARS[k] == 'y' else (q[0], q[1], q[2] - g, q[3] + g)
-        rect_x(d, f'NOTCH_MOUTH{k}', qq, RIB[1] - 1.2, RIB[1] + 0.1, cut=True)
+    # the harness passes the rib at the top, from the neck to the stub: the rib is open there (phi -15 to 15)
+    arc_band(d, 'RIB_HARNESS_GAP', RIB_R0 - 0.5, DRUM['r'] - SHELL_T + 0.6, -15.0, 15.0, RIB[0] - 0.1, RIB[1] + 0.1, cut=True)
     # outboard end wall thickened to X 193.9: the RS02 housing face (r 22.5-39) stops on it, 0.2 mm axial play to the ring
     x_revolve(d, 'RS02_STOP', [(RS02_X['front'] + 0.2, 22.5), (DRUM['x1'] - 2.0, 22.5), (DRUM['x1'] - 2.0, DRUM['r'] - 1.0), (RS02_X['front'] + 0.2, DRUM['r'] - 1.0)])
     # hard stop: a lug on the drum's inboard end, running in a slot in the inboard cheek
@@ -270,6 +285,39 @@ def upper_details(d):
     rib_c = edges_where(d, lambda p: abs(math.hypot(p[1] - CY, p[2] - CZ) - (DRUM['r'] - SHELL_T)) < 0.1 and abs(p[0] - RIB[1]) < 0.05)   # ring side only: on the back face it left slivers at the neck opening
     print('  rib corner edges', len(rib_c), flush=True)
     fillet_edges(d, rib_c, (1.0, 0.8), 'RIB_CORNER')   # the ring's 1.2 chamfer clears R1
+    for k, q in enumerate(RIB_KEYS):                  # after the corner round: their outer sides merge into the wall
+        rect_x(d, f'RIB_KEY{k}', q, RIB[1] - 0.5, KEY_TIP, cut=False)
+    # root rounds where the keys leave the rib face (all round, except where they run into the wall)
+    def key_root(p0, p1):
+        if abs(p0[0] - RIB[1]) > 0.05 or abs(p1[0] - RIB[1]) > 0.05:
+            return False
+        r_wall = DRUM['r'] - SHELL_T - 0.05
+        if math.hypot(p0[1] - CY, p0[2] - CZ) > r_wall and math.hypot(p1[1] - CY, p1[2] - CZ) > r_wall:
+            return False
+        for q in RIB_KEYS:
+            inside = all(q[0] - 0.05 <= p[1] - CY <= q[1] + 0.05 and min(q[2], q[3]) - 0.05 <= p[2] - CZ <= max(q[2], q[3]) + 0.05 for p in (p0, p1))
+            on_y = any(abs(p0[1] - CY - v) < 0.05 and abs(p1[1] - CY - v) < 0.05 for v in (q[0], q[1]))
+            on_z = any(abs(p0[2] - CZ - v) < 0.05 and abs(p1[2] - CZ - v) < 0.05 for v in (q[2], q[3]))
+            if inside and (on_y or on_z):
+                return True
+        return False
+    roots = []
+    for b_ in d.GetBodies2(0, True):
+        es = b_.GetEdges
+        for e_ in ((es() if callable(es) else es) or []):
+            cp = e_.GetCurveParams3
+            if key_root(np.array(cp.StartPoint[:3]) * 1000.0, np.array(cp.EndPoint[:3]) * 1000.0):
+                roots.append(e_)
+    print('  key root edges', len(roots), flush=True)
+    fillet_edges(d, roots, (KEY_ROOT_R, 0.8), 'KEY_ROOTS')
+    # (the key-to-wall corners stay sharp: SolidWorks won't round them, and 45 deg gussets raised the peak, 2026-11-11)
+    # crush ribs on each key's bearing face: two 0.8-wide ribs standing 0.25 proud into the 0.1 slot clearance, running along Z
+    # (the way the ring slides on). They crush as the ring goes in, so both bearing keys of each direction start in contact.
+    for k, q in enumerate(RIB_KEYS):
+        lo, hi = sorted((q[2], q[3]))
+        face = (q[0] - CRUSH, q[0]) if k in (0, 3) else (q[1], q[1] + CRUSH)
+        for j, x in enumerate((RIB[1] + 2.0, RIB[1] + 8.0)):
+            rect_x(d, f'CRUSH{k}{j}', (face[0], face[1], lo + 0.6, hi - 0.6), x, x + 0.8, cut=False)
 
 
 def fore_details(d):

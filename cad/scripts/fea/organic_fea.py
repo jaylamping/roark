@@ -13,12 +13,12 @@ import sys
 
 from p3_fea import CASES, F, GOLD, PARTS, CY, CZ, I, cyl, pl, run, VARIANT, pythoncom
 
-PARTS['organic'] = F / os.environ.get('ORG_MODEL', 'UA_ORGANIC_BONDED_v14.SLDPRT')   # v4: ring chamfer as printed; v3: ring joined only through its dogs, lug root fillets
+PARTS['organic'] = F / os.environ.get('ORG_MODEL', 'UA_ORGANIC_BONDED_v23.SLDPRT')   # v4: ring chamfer as printed; v3: ring joined only through its dogs, lug root fillets
 FG, MG = 62.0, 17.2
 SEAT = cyl(35.9, [129, 295, -35, 212, 304, 47])
-RS02 = cyl(32.75, [156, 170, -30, 163.5, 250, 42])      # ring bore only: no rigid tie to the drum
+RS02 = cyl(32.75, [153, 170, -30, 166.0, 250, 42])      # ring bore only: no rigid tie to the drum
 P = lambda r, a: (CY + r * math.cos(math.radians(a)), CZ - r * math.sin(math.radians(a)))
-REGIONS = {'ring_zone_excluded': [151.5, 165.8, -45, 165.8, 255, 52], 'neck_blend': [130, 215, -45, 211, 262, 52], 'drum_wall': [144, 165, -45, 196, 255, 52],
+REGIONS = {'ring_zone_excluded': [147.0, 165.8, -45, 165.8, 255, 52], 'neck_blend': [130, 215, -45, 211, 262, 52], 'drum_wall': [144, 165, -45, 196, 255, 52],
            'rib': [151, 165, -45, 158, 255, 52], 'lug': [135, 165, -45, 145, 255, 52], 'neck': [130, 262, -45, 211, 296, 52]}
 LOADS = {}
 for th in (0, 45, 90, 135, 180):
@@ -29,7 +29,7 @@ for tag, sx in (('Lp', 1.0), ('Lm', -1.0)):
 LOADS['LC2'] = ((0, 0, 0), (0, 17, 0))
 LOADS['E34'] = ((0.0, 0.0, -FG), (34.0, 0.0, 0.0))
 LOADS['E17'] = ((0.0, 0.0, -FG), (17.0, 0.0, 0.0))          # the RS02's own peak on its housing
-RING_ZONE = [155.8, 140.0, -50.0, 165.8, 280.0, 60.0]   # merged ring and its corners into rib and wall: bond artefact, keys by hand
+RING_ZONE = [152.8, 140.0, -50.0, 165.8, 280.0, 60.0]   # merged ring and its corners into rib and wall: bond artefact, keys by hand
 for k, (f, m) in LOADS.items():
     base = dict(part='organic', fix=[('fixed', SEAT)], remote=(RS02, GOLD, f, m), regions=REGIONS, exclude=[RING_ZONE])
     CASES[k] = dict(base, el=3.0)
@@ -115,6 +115,73 @@ CASES['STUB_P90'] = dict(part='stub', fix=[('fixed', RING_TOP)], remote=(STUB_OD
 CASES['STUB_P90_fine'] = dict(CASES['STUB_P90'], el=1.0)
 CASES['STUB_TW'] = dict(part='stub', fix=[('fixed', RING_TOP)], remote=(STUB_OD, HP2, (0, 0, 0), (0, 14.0, 0)), el=1.5, regions={'stub': [148, 69, -20, 193, 93, 32]})
 
+# RS02 mounting ring on its own (organic_parts.py ring). The RS02 housing torque comes in through the screw holes as one rigid
+# connector at the elbow centre (the ring is clamped to the aluminium flange); each key is fixed on the face that bears for
+# that torque direction. RING_OLD is the ring before 2026-11-10 (9 screws, top key, no window), RING the current one.
+# 17 N.m is half of each stress (linear).
+PARTS['ring_old'] = F / 'RING_OLD_PADS.SLDPRT'
+RHOLES = cyl(1.7, [150, 160, -45, 170, 260, 57])
+KX = 153.2
+SIDE = lambda dy, dz: ('plane', (KX, CY + dy, CZ + dz), None, 'on')
+BEAR = {   # (torque sign) -> the pad faces that bear, per ring version (organic_parts.fea_ring: 0.3 mm pads)
+    ('ring_old', 1): [SIDE(12.3, -35.7), SIDE(0.1, 35.7), SIDE(36.3, 6.3)],
+    ('ring_old', -1): [SIDE(0.1, -35.7), SIDE(12.3, 35.7), SIDE(36.3, -6.3)],
+}
+RREG_RING = {'key_roots': [155.6, 150, -45, 158.0, 260, 57], 'key_patch': [150.5, 150, -45, 155.6, 260, 57], 'ring_body': [158.0, 150, -45, 166, 260, 57],
+             'window_side': [155, 235, -20, 166, 260, 32], 'notch_side': [158.0, 160, -20, 166, 185, 32]}
+# Force-loaded variants: the ring fixed at its screw holes (clamped to the RS02 flange), each bearing pad pushed by the rib
+# notch. Equal share over the three keys, and each key alone (print tolerance can leave one key carrying the torque before
+# the others close their 0.4 mm gaps). Forces for 34 N.m: arm 35.7 for the side keys, 38.85 for the bottom key, 36.3 for the
+# old top key.
+# the ring is clamped to the RS02 flange by six M3 (friction carries the torque: 6 x about 580 N x 0.3 x 36.5 mm = 38 N.m, the
+# screws in bearing behind it), so its flange face is the fixture; a rigid hole wall would put the load through one ligament
+RFIX = [('fixed', ('plane', (165.7,) + P(39.0, 40.0), None, 'on'))]
+RFIX_OLD = [('fixed', ('plane', (162.8,) + P(39.0, 40.0), None, 'on'))]
+for part, arms in (('ring_old', (35.7, 35.7, 36.3)),):
+    faces = BEAR[(part, 1)]
+    share = 34000.0 / sum(arms)
+    tag = part.upper()
+    CASES[f'{tag}F3'] = dict(part=part, fix=RFIX_OLD, forces=[(f, share, None) for f in faces], regions=RREG_RING, el=1.5)
+    CASES[f'{tag}F3_fine'] = dict(CASES[f'{tag}F3'], el=1.0)
+    for k, (f, a_) in enumerate(zip(faces, arms)):
+        CASES[f'{tag}F1k{k}'] = dict(part=part, fix=RFIX_OLD, forces=[(f, 34000.0 / a_, None)], regions=RREG_RING, el=1.5)
+        CASES[f'{tag}F1k{k}_fine'] = dict(CASES[f'{tag}F1k{k}'], el=1.0)
+for part in ('ring_old',):
+    for sg, tg in ((1, 'p'), (-1, 'm')):
+        base = dict(part=part, fix=[('fixed', s_) for s_ in BEAR[(part, sg)]], remote=(RHOLES, GOLD, (0.0, 0.0, -FG), (34.0 * sg, 0.0, 0.0)), regions=RREG_RING)
+        CASES[f'{part.upper()}34{tg}'] = dict(base, el=1.5)
+        CASES[f'{part.upper()}34{tg}_fine'] = dict(base, el=1.0)
+
+
+# The current torque path (2026-11-10): four keys on the halves' rib into slots in the ring. One key carries the full 34 N.m
+# (F = 34000 / arm, the arm being the key's bearing-face centre height |dz|), as a normal force on its bearing face: on the
+# ring's slot flank (ring fixed at its six screw holes, clamped to the RS02 flange), and on the key in the halves (master,
+# halves as one body, fixed at the hub seat). Keys 0 (phi 80) and 1 (phi 120) in the back half; 2 and 3 mirror them.
+PARTS['ring'] = F / 'RING_v10.SLDPRT'
+PARTS['halves'] = F / 'UA_HALVES_v22.SLDPRT'
+# Bearing faces (main flanks): key 0 its -Y face, key 3 its -Y face, keys 1 and 2 their +Y faces. (key face dy, ring flank
+# offset, face centre dz, key x, ring x). +T (ring turning +X): keys 0 and 2 bear; -T: keys 3 and 1.
+KEYF = {'0': (0.6, -0.1, -38.0), '3': (0.6, -0.1, 38.0), '1': (-12.4, 0.1, -34.4), '2': (-12.4, 0.1, 34.4)}
+KX_KEY, KX_RING = 160.9, 160.5      # between the crush ribs on the key; mid-thickness on the ring
+face_k = lambda k: ('plane', (KX_KEY, CY + KEYF[k][0], CZ + KEYF[k][2]), None, 'on')
+face_r = lambda k: ('plane', (KX_RING, CY + KEYF[k][0] + KEYF[k][1], CZ + KEYF[k][2]), None, 'on')
+HREG = {'key_and_rib': [145, 150, -60, 160.5, 260, 60], 'drum_wall': [140, 150, -60, 200, 260, 60]}
+for k, (fy, off, fz) in KEYF.items():
+    f_ = round(34000.0 / abs(fz), 1)          # one key, 34 N.m; 17 N.m is half of every stress
+    CASES[f'RINGK{k}'] = dict(part='ring', fix=RFIX, forces=[(face_r(k), f_, None)], el=1.5, regions={'slot': [150, 150, -60, 166, 260, 60]})
+    CASES[f'RINGK{k}_fine'] = dict(CASES[f'RINGK{k}'], el=1.0)
+    CASES[f'HALFK{k}'] = dict(part='halves', fix=[('fixed', SEAT)], forces=[(face_k(k), f_, None)], el=2.5, ctrl=[(face_k(k), 0.8)], regions=HREG)
+    CASES[f'HALFK{k}_fine'] = dict(CASES[f'HALFK{k}'], el=1.8, ctrl=[(face_k(k), 0.5)])
+for a, b in (('0', '2'), ('3', '1')):          # two keys sharing 34 N.m: 17 N.m each
+    fa, fb = round(17000.0 / abs(KEYF[a][2]), 1), round(17000.0 / abs(KEYF[b][2]), 1)
+    CASES[f'RINGK{a}{b}'] = dict(part='ring', fix=RFIX, forces=[(face_r(a), fa, None), (face_r(b), fb, None)], el=1.5, regions={'slot': [150, 150, -60, 166, 260, 60]})
+    CASES[f'RINGK{a}{b}_fine'] = dict(CASES[f'RINGK{a}{b}'], el=1.0)
+    CASES[f'HALFK{a}{b}'] = dict(part='halves', fix=[('fixed', SEAT)], forces=[(face_k(a), fa, None), (face_k(b), fb, None)], el=2.5, ctrl=[(face_k(a), 0.8), (face_k(b), 0.8)], regions=HREG)
+    CASES[f'HALFK{a}{b}_fine'] = dict(CASES[f'HALFK{a}{b}'], el=1.8, ctrl=[(face_k(a), 0.5), (face_k(b), 0.5)])
+
 if __name__ == '__main__':
     for n in sys.argv[1:]:
-        run(('a2_' if CASES[n]['part'] in ('rot', 'stub') else 'fa_' if CASES[n]['part'] == 'fore' else 'con_' if CASES[n]['part'] == 'contact' else 'org12_') + n, CASES[n])
+        if (F / f'SKIP_{n}').exists():          # dropped from a running queue
+            continue
+        run(('a2_' if CASES[n]['part'] in ('rot', 'stub') else 'fa_' if CASES[n]['part'] == 'fore' else 'con_' if CASES[n]['part'] == 'contact' else 'ring_' if CASES[n]['part'].startswith('ring') else 'half_' if CASES[n]['part'] == 'halves' else 'org16_') + n, CASES[n])
+

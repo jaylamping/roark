@@ -2,8 +2,8 @@
 
 Upper arm: front and back halves split on the side plane Z 5.99, each printed cut face down; two M3 seam posts in the neck
 (inserts in the front half, heads from the back). Today's hub is held by an M3 seam bolt through each of its two lugs. The RS02
-is screwed (9 x M3 x 10 button heads) to a separate mounting ring on the bench; ring and RS02 drop into the back half (the
-ring behind a rib, its two dogs in the rib notches, the housing face on the thickened end wall) and the front half closes
+is screwed (6 x M3 x 16 button heads) to a separate mounting ring on the bench; ring and RS02 drop into the back half (the
+ring behind a rib, the rib's four keys in its slots, the housing face on the thickened end wall) and the front half closes
 over them, so no screw has to be driven inside the closed drum.
 
 Forearm: inboard and outboard shells split on X 170.49; the cheek discs come off on lap joint A so the RS02 mating face and
@@ -297,25 +297,48 @@ def disc(side):
 
 
 def ring():
-    """RS02 mounting ring: bore for the RS02's Ø65 back, 9 x M3 on Ø73 (button heads in 2 mm counterbores on the rib side),
-    two dogs on the rib side into the rib notches. Prints flat on its RS02 face."""
+    """RS02 mounting ring: bore for the RS02's Ø65 back, 6 x M3 on Ø73 (button heads in 2 mm counterbores on the rib side),
+    four slots on the rib side for the halves' keys, a window for the RS02's plug and a notch for its unused socket. Prints
+    flat on its RS02 face."""
     region, name = NAMES['ring']
     p = DIRS[region] / (name + '.SLDPRT')
     d = M.new_part(p)
     x0, x1 = M.BULKHEAD[0] + 0.1, M.BULKHEAD[1]
     r_in, r_out = 32.75, M.DRUM['r'] - M.SHELL_T - 0.2
     x_revolve(d, 'RING', [(x0, r_in), (x1, r_in), (x1, r_out), (x0, r_out)])
-    for k, q in enumerate(M.KEYS):
-        M.rect_x(d, f'KEY{k}', q, M.RIB[0] + 0.2, x0 + 0.01, cut=False)
-    # R1 root fillets where the keys leave the ring face (the keys bend across the print layers there)
-    roots = edges_where(d, lambda p: abs(p[0] - x0) < 0.05 and any(q[0] - 0.05 <= p[1] - CY <= q[1] + 0.05 and q[2] - 0.05 <= p[2] - CZ <= q[3] + 0.05 for q in M.KEYS))
-    print('  key root edges', len(roots), flush=True)
-    fillet_edges(d, roots, (1.0, 0.8, 0.5), 'KEY_ROOTS')
-    holes = [P(36.5, 20.0 + 40.0 * k) for k in range(9)]
+    # slots for the halves' four keys, each running out through the rim the way its key comes in (back half -Z, front +Z)
+    for k, q in enumerate(M.RIB_KEYS):
+        c, cf = M.KEY_CL, (M.KEY_CL_FREE if q[0] > -20 else M.KEY_CL)    # keys 0 and 3: their +Y faces never bear first
+        out = (q[2] - 20.0, q[3] + c) if q[2] < 0 else (q[2] - c, q[3] + 20.0)
+        M.rect_x(d, f'KEY_SLOT{k}', (q[0] - c, q[1] + cf, out[0], out[1]), x0 - 1.0, x1 + 1.0, cut=True)     # right through
+        g = M.KEY_ROOT_R + 0.1      # mouth relief for the keys' root rounds, all round
+        inner = (out[0], out[1] + g) if q[2] < 0 else (out[0] - g, out[1])
+        M.rect_x(d, f'SLOT_MOUTH{k}', (q[0] - c - g, q[1] + cf + (g if cf == c else 0.0), *inner), x0 - 1.0, x0 + g, cut=True)   # the free faces' 1 mm clears the root round
+    # trim the wedges where a slot wall meets the rim at a grazing angle (they would print as slivers)
+    for k, q in enumerate(M.RIB_KEYS):
+        sz = -1 if q[2] < 0 else 1
+        if q[0] < -20:      # keys 1 and 2: the slot's outer wall runs out almost along the rim
+            inner = q[3] if q[2] < 0 else q[2]
+            box_ = (-45.0, q[0] + 0.2, *sorted((sz * (abs(inner) - M.KEY_ROOT_R - 0.1), sz * 60.0)))   # from the mouth relief's inner edge
+        else:               # keys 0 and 3: the tip of the wedge beside the slot's outer wall, below the flank
+            box_ = (q[1] + M.KEY_CL_FREE - 0.3, q[1] + M.KEY_CL_FREE + 3.0, *sorted((sz * 38.4, sz * 44.0)))
+        M.rect_x(d, f'SLOT_TRIM{k}', box_, x0 - 1.0, x1 + 1.0, cut=True)
+        if q[0] > -20:      # keys 0 and 3: clear the round where the key meets the drum wall, at the flank's outer end
+            M.rect_x(d, f'SLOT_WALL_ROUND{k}', (q[0] - 2.5, q[0] + 0.1, *sorted((sz * 40.3, sz * 44.0))), x0 - 1.0, x1 + 1.0, cut=True)
+    holes = [P(36.5, a) for a in M.RING_SCREWS]
     # 1.2 x 45 deg chamfer on the rib-side outer edge: clears the R1 fillet where the rib meets the drum wall
     x_revolve(d, 'RIB_CLEAR', [(x0 - 0.1, r_out - 1.3), (x0 + 1.3, r_out + 0.1), (x0 - 0.1, r_out + 0.1)], cut=True)   # clears the R1 rib fillet, not the keys
     x_holes(d, 'RS02_SCREWS', holes, 1.7, x0 - 1, x1 + 1)
     x_holes(d, 'RS02_CBORES', holes, 3.1, x0 - 0.01, x0 + 2.0)
+    # socket window (the plug goes in through it on the bench and its cable leaves up the neck) and the notch for the unused socket
+    S = M.SOCKET
+    arc_band(d, 'SOCKET_WINDOW', r_in - 1.0, r_out + 1.0, S['phi'] - S['half'], S['phi'] + S['half'], x0 - 1.0, x1 + 1.0, cut=True)
+    # the screw heads that hold the socket tabs stand 2.4 proud of the flange (Ø5.6 on r 36.5 at phi 20, 180 and 340)
+    # (the two beside the window as 3 mm deep steps running on from the window edges, so no sliver is left between them)
+    x_holes(d, 'TAB_HEAD_BOTTOM', [P(36.5, 180.0)], 3.7, x1 - 3.0, x1 + 1.0)
+    arc_band(d, 'TAB_HEAD_STEP_HI', r_in - 1.0, 40.4, S['phi'] + S['half'] - 0.5, 26.0, x1 - 3.0, x1 + 1.0, cut=True)
+    arc_band(d, 'TAB_HEAD_STEP_LO', r_in - 1.0, 40.4, 334.0, 360.0 + S['phi'] - S['half'] + 0.5, x1 - 3.0, x1 + 1.0, cut=True)
+    arc_band(d, 'SOCKET_NOTCH', r_in - 1.0, S['notch_r'], S['other'] - S['half'], S['other'] + S['half'], x0 - 1.0, x1 + 1.0, cut=True)
     d.ForceRebuild3(False)
     e, w = L(), L()
     d.Save3(1, e, w)
@@ -353,15 +376,49 @@ def fea_upper():
     the lug end faces carry the stop load where the slot end bears (X 135.7-139.4)."""
     sim = CAD / '_sim' / 'upper-arm'
     sim.mkdir(parents=True, exist_ok=True)
-    p = sim / 'UA_ORGANIC_BONDED_v14.SLDPRT'
+    p = sim / 'UA_ORGANIC_BONDED_v23.SLDPRT'
     shutil.copy(M.OUT['upper'], p)
     e, w = L(), L()
     d = sw.OpenDoc6(str(p), 1, 1, '', e, w)
     r_wall = M.DRUM['r'] - M.SHELL_T
     x_revolve(d, 'RING_BONDED', [(M.RIB[1] - 0.05, 32.75), (M.BULKHEAD[1], 32.75), (M.BULKHEAD[1], r_wall + 0.05), (M.RIB[1] - 0.05, r_wall + 0.05)])
+    S = M.SOCKET
+    arc_band(d, 'RING_WINDOW', 31.0, r_wall - 0.2, S['phi'] - S['half'], S['phi'] + S['half'], M.RIB[1] + 0.05, M.BULKHEAD[1] + 0.5, cut=True)
+    arc_band(d, 'RING_NOTCH', 31.0, S['notch_r'], S['other'] - S['half'], S['other'] + S['half'], M.RIB[1] + 0.05, M.BULKHEAD[1] + 0.5, cut=True)
     lo_, hi_ = M.STOP['lug_phi'] - M.STOP['lug_span'] / 2, M.STOP['lug_phi'] + M.STOP['lug_span'] / 2
     arc_band(d, 'PAD_LO', M.STOP['r0'] + 0.6, M.STOP['r1'] - 0.6, lo_ - 0.4, lo_ + 0.05, 135.7, 139.4, cut=False)
     arc_band(d, 'PAD_HI', M.STOP['r0'] + 0.6, M.STOP['r1'] - 0.6, hi_ - 0.05, hi_ + 0.4, 135.7, 139.4, cut=False)
+    d.ForceRebuild3(False)
+    print('  bodies', bodies(d), flush=True)
+    if len(bodies(d)) != 1:
+        raise SystemExit('expected one body')
+    d.Save3(1, e, w)
+    sw.CloseDoc(d.GetTitle)
+
+
+OLD_KEYS = [(0.4, 12.0, -37.8, -33.6), (0.4, 12.0, 33.6, 37.8), (33.6, 39.0, -6.0, 6.0)]     # the ring before 2026-11-10
+
+
+def fea_ring(old=False):
+    """RS02 ring FEA model: the ring with 0.3 mm pads on its keys' bearing faces over X 150.9-155.5, where the rib notch
+    bears (the notch mouth is relieved over the last 1.2 mm, so the rib never touches the key root). Each pad face is a fixture;
+    the torque comes in through the screw holes. old: the ring before 2026-11-10 (9 screws, a top key, no window)."""
+    sim = CAD / '_sim' / 'upper-arm'
+    src = sim / 'RING_OLD.SLDPRT' if old else DIRS['upper'] / (NAMES['ring'][1] + '.SLDPRT')
+    p = sim / ('RING_OLD_PADS.SLDPRT' if old else 'RING_PADS_v3.SLDPRT')
+    shutil.copy(src, p)
+    e, w = L(), L()
+    d = sw.OpenDoc6(str(p), 1, 1, '', e, w)
+    keys, bears = (OLD_KEYS, ['y', 'y', 'z']) if old else (M.KEYS, M.BEARS)
+    for k, (q, bear) in enumerate(zip(keys, bears)):
+        if bear == 'y':
+            for s_, v in ((0, q[0]), (1, q[1])):
+                pad = (v - 0.3, v, q[2] + 0.3, q[3] - 0.3) if s_ == 0 else (v, v + 0.3, q[2] + 0.3, q[3] - 0.3)
+                M.rect_x(d, f'PAD{k}{s_}', pad, 150.9, 155.5, cut=False)
+        else:
+            for s_, v in ((0, q[2]), (1, q[3])):
+                pad = (q[0] + 0.3, q[1] - 0.3, v - 0.3, v) if s_ == 0 else (q[0] + 0.3, q[1] - 0.3, v, v + 0.3)
+                M.rect_x(d, f'PAD{k}{s_}', pad, 150.9, 155.5, cut=False)
     d.ForceRebuild3(False)
     print('  bodies', bodies(d), flush=True)
     if len(bodies(d)) != 1:
@@ -447,7 +504,7 @@ def cap(side):
 if __name__ == '__main__':
     jobs = dict(front=lambda: upper_half(True), back=lambda: upper_half(False), inboard=lambda: fore_shell('in'),
                 outboard=lambda: fore_shell('out'), disc_in=lambda: disc('in'), disc_out=lambda: disc('out'),
-                caps=lambda: (cap('in'), cap('out')), ring=ring, pin=pin, fea_upper=fea_upper, fea_fore=fea_fore, fea_contact=fea_contact)
+                caps=lambda: (cap('in'), cap('out')), ring=ring, pin=pin, fea_upper=fea_upper, fea_fore=fea_fore, fea_contact=fea_contact, fea_ring_old=lambda: fea_ring(True))
     for k in sys.argv[1:] or jobs:
         print('==', k, flush=True)
         jobs[k]()
