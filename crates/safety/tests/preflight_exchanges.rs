@@ -119,8 +119,8 @@ fn the_caps_are_written_from_the_skeleton_and_read_back_as_written() {
         Refusal::CapUnset(CapKind::Torque),
         Refusal::CapOutOfRange {
             cap: CapKind::Speed,
-            value: 21.0,
-            max: 20.0,
+            value: speed(21.0),
+            max: speed(20.0),
         },
         Refusal::Cap {
             register: Register::LimitCur,

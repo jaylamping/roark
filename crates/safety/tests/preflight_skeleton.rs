@@ -5,11 +5,12 @@
 mod common;
 
 use common::{joint, skeleton};
-use robstride::{Amps, NewtonMeters, RadPerSec};
+use robstride::{Amps, NewtonMeters, ParamValue, RadPerSec};
 use safety::{CapKind, JointFact, Refusal, RuleId, Target};
 
 /// Guards: safety - `drive.caps`: a cap outside what the drive's model can be set to refuses before anything is sent,
-/// naming the skeleton's value and the model's highest (RS03: 60 N·m, 43 A, 20 rad/s; the model's highest passes).
+/// naming the skeleton's value and the model's highest with their unit (RS03: 60 N·m, 43 A, 20 rad/s; the model's
+/// highest passes).
 #[test]
 fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
     let skeleton = skeleton();
@@ -22,6 +23,9 @@ fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
         ..rs03.clone()
     };
     assert_eq!(target(&at_max), Ok(()));
+    let nm = |v| ParamValue::NewtonMeters(NewtonMeters::new(v).unwrap());
+    let amps = |v| ParamValue::Amps(Amps::new(v).unwrap());
+    let rad_s = |v| ParamValue::RadPerSec(RadPerSec::new(v).unwrap());
     for (joint, cap, value, max) in [
         (
             skeleton::Joint {
@@ -29,8 +33,8 @@ fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
                 ..rs03.clone()
             },
             CapKind::Torque,
-            60.5,
-            60.0,
+            nm(60.5),
+            nm(60.0),
         ),
         (
             skeleton::Joint {
@@ -38,8 +42,8 @@ fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
                 ..rs03.clone()
             },
             CapKind::Current,
-            43.5,
-            43.0,
+            amps(43.5),
+            amps(43.0),
         ),
         (
             skeleton::Joint {
@@ -47,8 +51,8 @@ fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
                 ..rs03.clone()
             },
             CapKind::Speed,
-            20.5,
-            20.0,
+            rad_s(20.5),
+            rad_s(20.0),
         ),
         // Below the range too: a negative cap is no cap a drive can be set to.
         (
@@ -57,8 +61,8 @@ fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
                 ..rs03.clone()
             },
             CapKind::Torque,
-            -1.0,
-            60.0,
+            nm(-1.0),
+            nm(60.0),
         ),
     ] {
         assert_eq!(
@@ -67,15 +71,26 @@ fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
             "{cap:?}"
         );
     }
-    assert_eq!(
-        Refusal::CapOutOfRange {
-            cap: CapKind::Torque,
-            value: 60.5,
-            max: 60.0
-        }
-        .message("arm_joint_one"),
-        "refused (drive.caps): arm_joint_one torque_cap_nm is 60.5 in the skeleton, expected 0 to 60 for its drive"
-    );
+    for (cap, value, max, said) in [
+        (
+            CapKind::Torque,
+            nm(60.5),
+            nm(60.0),
+            "torque_cap_nm is 60.5 N·m in the skeleton, expected 0 to 60 N·m",
+        ),
+        (
+            CapKind::Speed,
+            rad_s(20.5),
+            rad_s(20.0),
+            "speed_cap_rad_s is 20.5 rad/s in the skeleton, expected 0 to 20 rad/s",
+        ),
+    ] {
+        assert_eq!(
+            Refusal::CapOutOfRange { cap, value, max }.message("arm_joint_one"),
+            format!("refused (drive.caps): arm_joint_one {said} for its drive"),
+            "the value and the bound with their unit"
+        );
+    }
 }
 
 /// Guards: safety - `host.preflight`: a joint whose direction, zero or hard limits haven't been verified on the hardware

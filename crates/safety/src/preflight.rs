@@ -201,18 +201,33 @@ impl Target {
         if joint.hard_rad.is_none() {
             return Err(Refusal::FactUnset(JointFact::HardLimits));
         }
-        let out = |cap, value: f64, max: f64| Refusal::CapOutOfRange { cap, value, max };
+        let out = |cap, value, max| Refusal::CapOutOfRange { cap, value, max };
         Ok(Self {
             drive,
             address,
             uid: joint.uid,
             can_timeout: Write::can_timeout(drive),
-            torque: Write::limit_torque(drive, torque)
-                .map_err(|_| out(CapKind::Torque, torque.get(), ranges.torque_max.get()))?,
-            current: Write::limit_cur(drive, current)
-                .map_err(|_| out(CapKind::Current, current.get(), ranges.current_max.get()))?,
-            speed: Write::limit_spd(drive, speed)
-                .map_err(|_| out(CapKind::Speed, speed.get(), ranges.speed_max.get()))?,
+            torque: Write::limit_torque(drive, torque).map_err(|_| {
+                out(
+                    CapKind::Torque,
+                    ParamValue::NewtonMeters(torque),
+                    ParamValue::NewtonMeters(ranges.torque_max),
+                )
+            })?,
+            current: Write::limit_cur(drive, current).map_err(|_| {
+                out(
+                    CapKind::Current,
+                    ParamValue::Amps(current),
+                    ParamValue::Amps(ranges.current_max),
+                )
+            })?,
+            speed: Write::limit_spd(drive, speed).map_err(|_| {
+                out(
+                    CapKind::Speed,
+                    ParamValue::RadPerSec(speed),
+                    ParamValue::RadPerSec(ranges.speed_max),
+                )
+            })?,
             vbus: power.vbus_v,
         })
     }

@@ -83,10 +83,10 @@ pub enum Refusal {
     CapOutOfRange {
         /// The cap.
         cap: CapKind,
-        /// The skeleton's value.
-        value: f64,
-        /// The model's highest.
-        max: f64,
+        /// The skeleton's value, in the register's unit.
+        value: ParamValue,
+        /// The model's highest, in the same unit.
+        max: ParamValue,
     },
     /// The skeleton has no verified value for this fact: unverified is null, and null refuses enable (tenets, fail
     /// closed).
@@ -198,8 +198,10 @@ impl Refusal {
                 cap.field()
             ),
             Self::CapOutOfRange { cap, value, max } => format!(
-                "{} is {value} in the skeleton, expected 0 to {max} for its drive",
-                cap.field()
+                "{} is {} in the skeleton, expected 0 to {} for its drive",
+                cap.field(),
+                amount(*value),
+                amount(*max)
             ),
             Self::FactUnset(fact) => {
                 format!(
