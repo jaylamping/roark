@@ -418,6 +418,22 @@ impl BusTick {
         }
     }
 
+    /// Count a re-arm answer control's ring couldn't take.
+    pub(crate) fn rearm_dropped(&mut self) {
+        self.counters.rearms_dropped += 1;
+    }
+
+    /// Whether a stop of limb `limb` or of the whole bus has been asked for and not yet taken: it is taken at the next
+    /// tick's start, before any send.
+    pub(crate) fn stop_pending(&self, limb: usize) -> bool {
+        self.pending_stop.is_some()
+            || self
+                .limbs
+                .get(limb)
+                .and_then(Option::as_ref)
+                .is_some_and(|l| l.pending.is_some())
+    }
+
     /// Whether every limb is idle: nothing was ever enabled, or every limb was re-armed.
     #[must_use]
     pub(crate) fn all_idle(&self) -> bool {

@@ -405,7 +405,8 @@ pub struct Counters {
     pub slow_expired: u64,
     /// Answers to control's re-arm orders that its ring was too full to take.
     pub rearms_dropped: u64,
-    /// Stop orders naming a limb this bus doesn't have (`StopReason::BadOrder`), each stopping the bus.
+    /// Stop orders naming a limb this bus doesn't have (`StopReason::BadOrder`), whether or not one stopped anything:
+    /// an earlier stop may already have stopped every limb.
     pub bad_orders: u64,
 }
 

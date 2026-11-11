@@ -14,8 +14,8 @@ pub enum Order {
     /// Stop every limb on the bus (`StopReason::Requested`).
     StopAll,
     /// Re-arm a stopped limb: the operator's clear (`BusTick::rearm`). Answered by exactly one [`Rearmed`] with the
-    /// same tag. Refused while a stop of the limb or the bus is still waiting for the next plan, so a clear never
-    /// undoes a stop ordered before it; a limb not on this bus is refused (`NoSuchLimb`), nothing stopped.
+    /// same tag. Refused while a stop of the limb or the bus is still waiting for the next plan (`StopPending`), so a
+    /// clear never undoes a stop ordered before it; a limb not on this bus is refused (`NoSuchLimb`), nothing stopped.
     Rearm {
         /// Control's tag, echoed in the answer.
         tag: u64,
@@ -36,8 +36,8 @@ pub struct Rearmed {
 }
 
 impl BusTick {
-    /// Take one of control's orders at `now_ns`, before [`Self::begin`]: a stop is planned at that `begin`, and a
-    /// re-arm is done now and answered.
+    /// Take one of control's orders at `now_ns`: a stop is planned at the next [`Self::begin`], and a re-arm is done now
+    /// and answered. The shell takes stops at the tick's start and re-arms in the slack (crates/can/README.md).
     pub fn order(&mut self, order: Order, now_ns: u64) -> Option<Rearmed> {
         match order {
             Order::StopLimb(limb) => {
@@ -54,21 +54,11 @@ impl BusTick {
                 self.request_stop();
                 None
             }
-            Order::Rearm { tag, limb } => {
-                // A stop asked before the clear, of the limb or of the bus and not yet planned, wins: a clear never
-                // undoes a stop it came after (push order).
-                let limb_pending = self
-                    .limbs
-                    .get(limb)
-                    .and_then(Option::as_ref)
-                    .is_some_and(|l| l.pending.is_some());
-                let outcome = if limb_pending || self.pending_stop.is_some() {
-                    Err(RearmRefused::StopPending(limb))
-                } else {
-                    self.rearm(limb, now_ns)
-                };
-                Some(Rearmed { tag, limb, outcome })
-            }
+            Order::Rearm { tag, limb } => Some(Rearmed {
+                tag,
+                limb,
+                outcome: self.rearm(limb, now_ns),
+            }),
         }
     }
 }

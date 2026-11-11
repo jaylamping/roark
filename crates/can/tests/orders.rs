@@ -5,9 +5,13 @@
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
-use can::{LimbState, MAX_DRIVES, Order, RearmRefused, Rearmed, SendKind, StopReason};
-use common::{MS, PERIOD, batch, deadline, hold, limb, run_tick, running, status, two_limbs};
-use robstride::Mode;
+use can::{Drain, LimbState, MAX_DRIVES, Order, RearmRefused, Rearmed, SendKind, StopReason};
+use common::{
+    MS, PERIOD, batch, deadline, hold, id, limb, record, run_tick, running, status, status_frame,
+    two_limbs,
+};
+use robstride::{Mode, StatusFault, encode};
+use telemetry::Direction;
 
 /// Guards: safety - `host.hang`: a stop order naming a limb the bus doesn't have can't be aimed, so it stops every
 /// limb at the next plan, with no command to either, and is counted even when an earlier whole-bus stop already
@@ -100,6 +104,46 @@ fn a_rearm_order_is_answered_under_its_tag_and_never_undoes_an_earlier_stop() {
     assert!(matches!(
         limb(&snap, 0),
         (LimbState::Stopping { .. }, Some(StopReason::LimbRequested))
+    ));
+    assert_eq!(snap.limb(0).map(|l| l.generation), Some(1));
+}
+
+/// Guards: safety - `host.fault`: a fault read after a clear is not wiped by it: the cleared limb's drive reporting a
+/// fault in the next drain stops the limb at the check before the send, so control's Enable to it never goes out
+/// (PLAN.md item 6 Faults row; a clear is taken in the slack, before the next drain).
+#[test]
+fn a_fault_read_after_a_clear_stops_the_limb_before_its_enable() {
+    let (mut bus, tick) = limb_0_stopped();
+    let now = tick * PERIOD;
+    assert_eq!(
+        bus.order(Order::Rearm { tag: 1, limb: 0 }, now),
+        Some(Rearmed {
+            tag: 1,
+            limb: 0,
+            outcome: Ok(()),
+        })
+    );
+    let next = tick + 1;
+    let faulted = status_frame(
+        101,
+        Mode::Reset,
+        [StatusFault::Overcurrent].into_iter().collect(),
+    );
+    bus.on_frame(
+        next * PERIOD - MS,
+        &record(faulted.id(), faulted.data(), Direction::TxOther),
+    );
+    bus.drained(Drain::Emptied);
+    let enable = batch(next, &[Some(encode::enable(id(101))), Some(hold(102))]);
+    let sent = run_tick(&mut bus, next, Some(&enable), &[]);
+    assert_eq!(sent, [(0, SendKind::Disable), (1, SendKind::Command)]);
+    let snap = bus.end(deadline(next));
+    assert!(matches!(
+        limb(&snap, 0),
+        (
+            LimbState::Stopping { .. },
+            Some(StopReason::DriveFault { slot: 0 })
+        )
     ));
     assert_eq!(snap.limb(0).map(|l| l.generation), Some(1));
 }

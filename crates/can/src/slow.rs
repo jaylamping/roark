@@ -407,8 +407,7 @@ impl BusTick {
             return Err(SlowRefusal::LimbStopped);
         };
         // A stop asked for but not yet taken counts: it is taken at the next tick's start, before any send.
-        if self.pending_stop.is_some()
-            || limb.pending.is_some()
+        if self.stop_pending(drive.limb)
             || !limb.state.takes_commands()
             || self.limb_stop_due(drive.limb).is_some()
         {

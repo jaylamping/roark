@@ -10,7 +10,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use can::{BusConfig, BusLinks, CommandBatch, LimbState, Order, Rearmed, Snapshot, StopReason};
+use can::{
+    BusConfig, BusLinks, CommandBatch, LimbState, Order, RearmRefused, Rearmed, Snapshot,
+    StopReason,
+};
 use common::{HZ, Shutdown, drive, hold, id, info, limbs, next_snapshot, soon, timing};
 use robstride::{Drive, Frame, Mode, Model, Uid, encode};
 use sim_drive::{SimDrive, ensure_vcan, serve};
@@ -189,8 +192,10 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         }
         assert_eq!(snap.counters.bad_orders, 1);
 
-        // Told to exit, the bus finishes the stop and ends once control has taken a snapshot showing it.
+        // Told to exit, the bus finishes the stop and ends once control has taken a snapshot showing it. A clear sent
+        // as it exits never undoes that stop: refused (limb 0 still stopping) or left for the end (`Ended`).
         exit.store(true, Ordering::Release);
+        assert!(orders.push(Order::Rearm { tag: 6, limb: 0 }).is_ok());
         while !bus.thread.is_finished() {
             if let Ok(s) = snapshots.pop() {
                 snap = s;
@@ -201,10 +206,74 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         let done = bus.thread.join().unwrap();
         assert!(done.error.is_none(), "{:?}", done.error);
         assert!(done.last.is_some_and(|s| s.stopped()), "{:?}", done.last);
+        let answer = rearmed.pop().unwrap();
+        assert_eq!((answer.tag, answer.limb), (6, 0));
+        assert!(
+            matches!(
+                answer.outcome,
+                Err(RearmRefused::Ended | RearmRefused::NotStopped(0))
+            ),
+            "{answer:?}"
+        );
         assert!(rearmed.pop().is_err(), "one answer per re-arm order");
         recorder.close(vec![done.recorder]).unwrap();
         stop_sim.store(true, Ordering::Release);
         sim.join().unwrap().unwrap();
     });
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+/// Guards: safety - a bus that ends answers every clear still in its order ring `Ended`, takes none of them on the
+/// way out, and counts each answer control's full ring can't take, so a clear is never silently lost (PLAN item 6: a
+/// latched stop clears only by an operator clear; logging.md section 4: nothing fails in silence).
+#[test]
+fn a_bus_that_ends_answers_every_queued_clear_and_counts_the_drops_on_vcan() {
+    ensure_vcan(BUS).unwrap();
+    let root = std::env::temp_dir().join(format!("sim-suite-orders-end-{}", std::process::id()));
+    let exit = Arc::new(AtomicBool::new(true));
+    let session = Session::start(&root, info(BUS), 1_000_000_000).unwrap();
+    let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
+    let epoch = recording.epoch();
+    let recorder = Recorder::spawn(recording).unwrap();
+    let (mut orders, orders_rx) = rtrb::RingBuffer::new(4);
+    // Room for one answer: the other two are dropped and counted.
+    let (rearmed_tx, mut rearmed) = rtrb::RingBuffer::new(1);
+    for tag in 1..=3 {
+        assert!(orders.push(Order::Rearm { tag, limb: 0 }).is_ok());
+    }
+    // Told to exit before its first tick with every limb idle, the bus ends at its first drain.
+    let bus = can::spawn(
+        BusConfig {
+            name: BUS.to_owned(),
+            drives: vec![drive(101, 0)],
+            timing: timing(),
+        },
+        BusLinks {
+            commands: rtrb::RingBuffer::new(1).1,
+            snapshots: rtrb::RingBuffer::new(1).0,
+            recorder: buses.remove(0),
+            requests: rtrb::RingBuffer::new(1).1,
+            results: rtrb::RingBuffer::new(1).0,
+            orders: orders_rx,
+            rearmed: rearmed_tx,
+            epoch,
+            start: soon(),
+            exit: Arc::clone(&exit),
+        },
+    )
+    .unwrap();
+    let done = bus.thread.join().unwrap();
+    assert!(done.error.is_none(), "{:?}", done.error);
+    assert_eq!(
+        rearmed.pop(),
+        Ok(Rearmed {
+            tag: 1,
+            limb: 0,
+            outcome: Err(RearmRefused::Ended),
+        })
+    );
+    assert!(rearmed.pop().is_err());
+    assert_eq!(done.counters.rearms_dropped, 2);
+    recorder.close(vec![done.recorder]).unwrap();
     let _ = std::fs::remove_dir_all(&root);
 }
