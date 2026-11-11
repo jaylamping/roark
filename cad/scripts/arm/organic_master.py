@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from shapely.geometry import Point as SPoint, box as sbox
 
 from swg import *
 
@@ -186,7 +187,7 @@ RING_SCREWS = [60.0, 100.0, 140.0, 220.0, 260.0, 300.0]     # the 6 usable flang
 # 240 and 280 in the front half, between the ring screws. Keys 0 and 3 (phi 80, 280) are the main ones: each bears on either
 # face, so each alone carries 34 N.m in either direction. Keys 1 and 2 are smaller (the RS02 back and the skin squeeze them)
 # and only share load.
-RIB_KEYS = [(0.6, 13.6, -41.8, -34.6), (-24.2, -12.4, -36.5, -32.3), (-24.2, -12.4, 32.3, 36.5), (0.6, 13.6, 34.6, 41.8)]   # outer sides into the drum wall, inside the skin; inner sides 0.85+ mm off the ring bore after the slot relief
+RIB_KEYS = [(0.6, 13.6, -41.8, -34.6), (-24.2, -12.4, -42.5, -32.3), (-24.2, -12.4, 32.3, 42.5), (0.6, 13.6, 34.6, 41.8)]   # clipped to r 42.1, so every key runs into the drum wall; inner sides 0.85+ mm off the ring bore after the slot relief
 KEY_TIP = BULKHEAD[1] - 0.3   # the keys run the ring's full thickness, 0.3 short of the RS02 flange; the ring slots go right through
 KEY_CL = 0.1             # slot clearance on the bearing faces; the crush ribs close it
 CRUSH = 0.25             # crush-rib height on the bearing faces
@@ -286,7 +287,22 @@ def upper_details(d):
     print('  rib corner edges', len(rib_c), flush=True)
     fillet_edges(d, rib_c, (1.0, 0.8), 'RIB_CORNER')   # the ring's 1.2 chamfer clears R1
     for k, q in enumerate(RIB_KEYS):                  # after the corner round: their outer sides merge into the wall
-        rect_x(d, f'RIB_KEY{k}', q, RIB[1] - 0.5, KEY_TIP, cut=False)
+        # each key is its rectangle clipped to r 42.1 (0.6 into the 3 mm wall): its outer side follows the wall, inside the skin
+        r_c = DRUM['r'] - SHELL_T + 0.6
+        lo, hi = sorted((q[2], q[3]))
+        box_ = sbox(q[0], lo, q[1], hi).intersection(SPoint(0, 0).buffer(r_c, 256))
+        xm = (RIB[1] - 0.5 + KEY_TIP) / 2
+        with Sk(d, plane(d, 'X', xm, f'RIB_KEY{k}_P'), f'RIB_KEY{k}') as s_:
+            s_.poly([(xm, CY + a_, CZ + b_) for a_, b_ in list(box_.exterior.coords)[:-1]])
+        feat(d, s_.feat, f'RIB_KEY{k}', KEY_TIP - RIB[1] + 0.5, False, mode=MID, lo=0.01)
+    # past each key's tip, a wall thickening that tapers out over 4.5 mm in three steps (r 39.8 / 40.6 / 41.4 to the wall),
+    # outside the RS02 body (r 39.25): the key's joint to the wall no longer ends abruptly at its tip
+    for k, q in enumerate(RIB_KEYS):
+        a0, a1 = sorted(math.degrees(math.acos(v / 41.0)) for v in (q[0], q[1]))
+        if q[2] > 0:
+            a0, a1 = 360.0 - a1, 360.0 - a0
+        for j, (r0, x0_, x1_) in enumerate(((39.8, KEY_TIP - 0.5, KEY_TIP + 1.5), (40.6, KEY_TIP + 1.5, KEY_TIP + 3.0), (41.4, KEY_TIP + 3.0, KEY_TIP + 4.5))):
+            arc_band(d, f'KEY_TAPER{k}{j}', r0, DRUM['r'] - SHELL_T + 0.8, a0 + 1.0, a1 - 1.0, x0_, x1_, cut=False)   # 1 deg inside the key's faces: clear of the ring's slot flanks
     # root rounds where the keys leave the rib face (all round, except where they run into the wall)
     def key_root(p0, p1):
         if abs(p0[0] - RIB[1]) > 0.05 or abs(p1[0] - RIB[1]) > 0.05:

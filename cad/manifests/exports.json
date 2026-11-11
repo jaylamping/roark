@@ -277,54 +277,54 @@
       "source": "upper-arm/upper_arm_organic_back_left.SLDPRT",
       "config": "",
       "settings": "STEP AP214",
-      "sourceSha256": "5c62cb42cbfbf597258e563caeaffebae6f5dafefb7cca98cb8a29f0515eaacd",
-      "exportSha256": "b58240ef75d1667836351e91952409ea01d3e19617694e525fdab467e47cc42c",
-      "recorded": "2026-11-11T03:37:58Z"
+      "sourceSha256": "4c2f20b08c2dfca72cdc6421825aaf74c0dc0231b2a397848070784569482cad",
+      "exportSha256": "821ad05ca0038e95f40323d2964f921b7bab43ebe8c8d303d1954b6ee035eb20",
+      "recorded": "2026-11-11T07:02:57Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_organic_back_left.STL",
       "source": "upper-arm/upper_arm_organic_back_left.SLDPRT",
       "config": "",
       "settings": "STL binary, SolidWorks default resolution",
-      "sourceSha256": "5c62cb42cbfbf597258e563caeaffebae6f5dafefb7cca98cb8a29f0515eaacd",
-      "exportSha256": "3119e3732b39ba71420f9a502f82110b05209cfe881887115eaa6e55902c8052",
-      "recorded": "2026-11-11T03:37:58Z"
+      "sourceSha256": "4c2f20b08c2dfca72cdc6421825aaf74c0dc0231b2a397848070784569482cad",
+      "exportSha256": "3a1285d3d5229036302a54599c6c989d2ba9318c30a6dce482761f6567d1c150",
+      "recorded": "2026-11-11T07:02:57Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_organic_front_left.step",
       "source": "upper-arm/upper_arm_organic_front_left.SLDPRT",
       "config": "",
       "settings": "STEP AP214",
-      "sourceSha256": "4a530690ee6a413dc27af656b691e869dbb2aaed567592c0568b1325cc3c3f37",
-      "exportSha256": "ec1039e1a0b225f5449e501c592565b053c41cd1cd88d208103a15ec183c8e71",
-      "recorded": "2026-11-11T03:37:58Z"
+      "sourceSha256": "c65eaab5e2fb89cf3e36f9ed8fca91f04d0888f63ab07d793b83c1a706206a23",
+      "exportSha256": "5e10b47f87038fde6b416ad3ea5fce5b000ef6e5245bdc57b287d11de25fd790",
+      "recorded": "2026-11-11T07:02:57Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_organic_front_left.STL",
       "source": "upper-arm/upper_arm_organic_front_left.SLDPRT",
       "config": "",
       "settings": "STL binary, SolidWorks default resolution",
-      "sourceSha256": "4a530690ee6a413dc27af656b691e869dbb2aaed567592c0568b1325cc3c3f37",
-      "exportSha256": "cf43ee84384292d1fabc801dd94c8c31a2be02dabef32b9eeb710053353c0f08",
-      "recorded": "2026-11-11T03:37:57Z"
+      "sourceSha256": "c65eaab5e2fb89cf3e36f9ed8fca91f04d0888f63ab07d793b83c1a706206a23",
+      "exportSha256": "a4d5764222b42492ed16954d1e40b816ca12fb20263308d34560fd9923421f24",
+      "recorded": "2026-11-11T07:02:57Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_organic_rs02_ring_left.step",
       "source": "upper-arm/upper_arm_organic_rs02_ring_left.SLDPRT",
       "config": "",
       "settings": "STEP AP214",
-      "sourceSha256": "fc5fd5b0fc6f9712e58db636e40448593efc0a47fb6c6f582beab7771172aa47",
-      "exportSha256": "e80e0d93de1371e6bf8abe3a1591d4e26285a9b3ded9dc8343d21b90bc305094",
-      "recorded": "2026-11-11T03:37:58Z"
+      "sourceSha256": "5e67e0df473846ce5be634b54efff985ffcf585d2779c095ab62c6f154756d53",
+      "exportSha256": "0b5f05f642e5584f454745791f401fc1de076cefad5cea7b5dd041d0038fef8b",
+      "recorded": "2026-11-11T07:02:57Z"
     },
     {
       "export": "exports/upper-arm/upper_arm_organic_rs02_ring_left.STL",
       "source": "upper-arm/upper_arm_organic_rs02_ring_left.SLDPRT",
       "config": "",
       "settings": "STL binary, SolidWorks default resolution",
-      "sourceSha256": "fc5fd5b0fc6f9712e58db636e40448593efc0a47fb6c6f582beab7771172aa47",
+      "sourceSha256": "5e67e0df473846ce5be634b54efff985ffcf585d2779c095ab62c6f154756d53",
       "exportSha256": "7e31fb6b3cabe6cd826a67e0b28c7268bc6a2f8fec4f10102c6b051aa332299f",
-      "recorded": "2026-11-11T03:37:58Z"
+      "recorded": "2026-11-11T07:02:57Z"
     }
   ]
 }

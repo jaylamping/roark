@@ -35,21 +35,17 @@ also listed in the project as one we changed on purpose, which should stop that.
 
 | Order | File | Down on the plate | Time | Filament |
 | --- | --- | --- | --- | --- |
-| 1 | `upper_arm_organic_stub_coupon.3mf` | both half-stubs, cut face down | 37 min | 6.4 g |
-| 2 | `upper_arm_organic_ring.3mf` | the RS02 face (smooth flat side) | 58 min | 19 g |
-| 3 | `upper_arm_organic_back.3mf` | the seam face | 5 h 08 min | 119 g |
-| 4 | `upper_arm_organic_front.3mf` | the seam face | 4 h 37 min | 106 g |
-| (test) | `upper_arm_organic_key_coupon.3mf` | the seam face, like the back half | 37 min | 12 g |
+| 1 | `upper_arm_organic_ring.3mf` | the RS02 face (smooth flat side) | 58 min | 19 g |
+| 2 | `upper_arm_organic_back.3mf` | the seam face | 5 h 02 min | 116 g |
+| 3 | `upper_arm_organic_front.3mf` | the seam face | 4 h 36 min | 104 g |
+| (test) | `upper_arm_organic_key_coupon.3mf` | the seam face, like the back half | 32 min | 10 g |
+| (done) | `upper_arm_organic_stub_coupon.3mf` | both half-stubs, cut face down | 37 min | 6.4 g |
 
 Times and weights are from Bambu Studio's own slice, support and brim included.
 
-**The stub coupon goes first.** It is the Ø40.0 stub that the 6808's inner race sits on, cut from both halves (front and
-back), sliced as a fit coupon: 3 walls, 15% infill. It tests only the stub. The 6808's Ø52 outer seat is in the forearm's
-inboard cheek, which isn't in this package.
-
-Hold its two halves together, seam faces touching, and slide a 6808 inner race onto the stub by hand. Tell me:
-1. Does it go on by hand with a firm push and no rock, or is it tight (needs force or won't go), or loose (rocks or drops on)?
-2. The stub's diameter with calipers, across the seam and across the other way. It's modelled at Ø40.0.
+**Stub coupon: done, 2026-11-11.** Joey printed it (3 walls, 15%) and a 6808 inner race fits perfectly on the two
+half-stubs with the seam closed. No caliper reading was taken. The Ø40.0 stub stays as modelled. The coupon file is kept
+for reference.
 
 ## After printing
 
