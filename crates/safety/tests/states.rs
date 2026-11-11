@@ -102,6 +102,7 @@ fn every_bus_layer_stop_is_named_by_its_rule() {
         (StopReason::ControlSilent, Some("host.hang")),
         (StopReason::LateWake, Some("host.hang")),
         (StopReason::BadBatch { slot: 0 }, Some("host.hang")),
+        (StopReason::BadOrder { limb: 0 }, Some("host.hang")),
         (StopReason::Backlog, Some("host.bus")),
         (StopReason::Bus(BusError::BusOff), Some("host.bus")),
         (StopReason::Requested, None),

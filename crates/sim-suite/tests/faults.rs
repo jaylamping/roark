@@ -49,6 +49,8 @@ fn start_bus(
             recorder,
             requests: rtrb::RingBuffer::new(1).1,
             results: rtrb::RingBuffer::new(1).0,
+            orders: rtrb::RingBuffer::new(1).1,
+            rearmed: rtrb::RingBuffer::new(1).0,
             epoch,
             start: soon(),
             exit: Arc::clone(exit),

@@ -21,13 +21,18 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   `sim-drive` refuses under its rule, and a drive silent after preflight fails its enable. Control stalling on the
   sequence for over 50 ms after the reporting off's echo refuses the enable with no Enable sent (`Stalled`), and an
   Enable in a batch the bus holds back as expired stops the limb as an Enable not seen to go out (`NoEnableEcho`).
+- `orders.rs`: control's order to stop one limb stops it alone while the other limb runs on, and once the stop has
+  ended a re-arm order (the operator's clear) is answered under its tag and gives the limb a new generation; a stop
+  order naming a limb the bus doesn't have, pushed with the clear, stops both limbs in the same tick; a clear sent as
+  the bus exits never undoes its stop; and a bus that ends answers every clear left in its ring `Ended`, counting the
+  answers control's ring can't take and every stop order left naming a limb it doesn't have.
 - `exit.rs`: a bus of two active limbs told to exit with control's snapshot ring full stops every limb and returns
   once the ring takes a snapshot with every limb stopped, once control drops the ring, or after its wait when control
   never reads again, each time at the next tick's drain; a bus of two stopping limbs with no time to collect records
   its last reporting off through that drain; and a bus that ends counts the slow results control's ring can't take.
 
 Every frame on a bus reaches every socket on it, so two tests that run at the same time never share a bus. Each test
-on `can1` to `can4` has its bus to itself; the tests in `exit.rs`, `slow.rs`, `faults.rs` and `enable.rs` all use
+on `can1` to `can4` has its bus to itself; the tests in `exit.rs`, `slow.rs`, `faults.rs`, `enable.rs` and `orders.rs` all use
 `can0` and run one at a time (nextest's `can0` test group, `.config/nextest.toml`). A new test either takes a bus no
 other test uses or joins that group.
 

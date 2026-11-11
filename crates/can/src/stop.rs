@@ -235,8 +235,8 @@ impl BusTick {
     /// that is the safety layer's.
     ///
     /// # Errors
-    /// [`RearmRefused`] when the limb isn't on this bus, isn't stopped, the bus has failed, or a drive isn't known to
-    /// be disabled yet.
+    /// [`RearmRefused`] when the limb isn't on this bus, isn't stopped, the bus has failed, a stop of the limb or the
+    /// bus is asked for and not yet taken, or a drive isn't known to be disabled yet.
     pub fn rearm(&mut self, limb: usize, now_ns: u64) -> Result<(), RearmRefused> {
         let Some(state) = limb_state(&self.limbs, limb) else {
             return Err(RearmRefused::NoSuchLimb(limb));
@@ -246,6 +246,10 @@ impl BusTick {
         }
         if state != LimbState::Stopped {
             return Err(RearmRefused::NotStopped(limb));
+        }
+        // A stop asked before this clear and not yet taken stands: a clear never undoes a stop that came before it.
+        if self.stop_pending(limb) {
+            return Err(RearmRefused::StopPending(limb));
         }
         let quiet_ns = DRIVE_TIMEOUT_NS.saturating_add(self.timing.period_ns);
         for (slot, d) in self.drives.iter().enumerate() {
@@ -261,7 +265,6 @@ impl BusTick {
         if let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut) {
             l.state = LimbState::Idle;
             l.stop = None;
-            l.pending = None;
             l.generation = l.generation.saturating_add(1);
         }
         for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {

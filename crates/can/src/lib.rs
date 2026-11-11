@@ -5,8 +5,13 @@ mod batch;
 #[cfg(target_os = "linux")]
 mod bus;
 #[cfg(target_os = "linux")]
+mod bus_orders;
+#[cfg(target_os = "linux")]
 mod clock;
 mod error_frame;
+#[cfg(any(target_os = "linux", test))]
+mod exit_wait;
+mod order;
 mod read;
 #[cfg(target_os = "linux")]
 mod slack;
@@ -26,6 +31,7 @@ mod types;
 pub use bus::{BusConfig, BusExit, BusLinks, BusRunError, Spawned, bus_info, spawn};
 
 pub use error_frame::{BusError, classify};
+pub use order::{Order, Rearmed};
 pub use slow::{SLOW_SLOTS, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, SlowResult, Unsent};
 /// The frame record [`BusTick::on_frame`] reads, so a caller feeding a tick by hand needs no `telemetry` of its own.
 pub use telemetry::{Direction, FrameRecord};

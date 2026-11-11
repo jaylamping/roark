@@ -228,6 +228,8 @@ fn attempt_under(uid: Uid, start: Option<Fault>, after: After, control: Control)
                 recorder: buses.remove(0),
                 requests: requests_rx,
                 results: results_tx,
+                orders: rtrb::RingBuffer::new(1).1,
+                rearmed: rtrb::RingBuffer::new(1).0,
                 epoch,
                 start: soon(),
                 exit: Arc::clone(&exit),

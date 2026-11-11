@@ -13,31 +13,32 @@ Each tick, on the monotonic clock:
    thread started after the origin begins at the first tick not yet due. Waking later than the send window is a missed
    deadline; ticks a stall slept through are skipped, each counted as a missed deadline. Either stops every active limb.
    It doesn't stop an idle limb: that tick only the batch's Disables and reporting off go and the rest is held; the
-   batch checks in step 4 still apply.
-2. **Drain** the socket to empty, so what is read after the send came after the backlog. It is not a strict barrier:
+   batch checks in step 5 still apply.
+2. **Take control's orders** (`order`, below), every one in the ring.
+3. **Drain** the socket to empty, so what is read after the send came after the backlog. It is not a strict barrier:
    a frame landing between the drain and the write counts as after it, which is still evidence of the drive then.
-3. **Check** what the drain read, before anything is sent: a drive of an idle or active limb that shows a fault, has
+4. **Check** what the drain read, before anything is sent: a drive of an idle or active limb that shows a fault, has
    left Run after it was seen in Run (latched when read, so a later Run status can't hide it), or has left
    `silence_misses` (3) commands in a row unanswered stops its limb now (`DriveFault`, `DriveMode`, `DriveSilent`, each
    naming the slot), so no command, Enable included, goes to it this tick. A Disable from control isn't leaving Run:
    its Reset answer is expected. A drive this host never enabled isn't watched for mode: this check doesn't stop its limb
    when it shows a mode other than Reset; `out_of_reset` records that mode for preflight and the enable sequence, and
    preflight refuses one found already in Run.
-4. **Plan** with `BusTick::begin`: the newest `CommandBatch` from control, only if it is for this tick and unexpired.
+5. **Plan** with `BusTick::begin`: the newest `CommandBatch` from control, only if it is for this tick and unexpired.
    A batch for another tick, or a missing one, sends nothing; one for this tick past its expiry sends only its Disables
    and reporting off. Either is a silent tick, and two silent ticks while a limb runs stop the bus. A batch for this
    tick, expired or not, carries only motion, Enable, Disable and the enable sequence's reporting off and `run_mode` =
    MIT write; anything else (Set Zero, set-ID, other parameter traffic) is a bad batch and stops the bus. An MIT frame to a drive whose fresh status is older than
    three periods is refused and stops its limb. A batch's frames for a stopping or stopped limb are dropped and counted
    (`refused_frames`); the other limbs' frames still go.
-5. **Send** each planned frame once and feed the outcome back (`sent`). A command goes out only before the send
+6. **Send** each planned frame once and feed the outcome back (`sent`). A command goes out only before the send
    window closes; a Disable or reporting off goes out even late, whoever planned it, since late it is still the right
    one. A full queue drops the frame and counts it; it is never retried within the tick. Any other socket write
    failure goes to `lost_bus`, which latches every limb stopped, as well as to `sent` as `Failed`; `Failed` on its own
    records only that the frame wasn't taken and never latches.
-6. **Collect** until the collect deadline (about 60 % of the period), feeding each frame to `on_frame`.
-7. **Publish** the `Snapshot` (`end`) to control and hand every frame of the tick to the recorder.
-8. **Slack:** cancel and expire queued requests (`open_slack`), hand control the results held, take new requests,
+7. **Collect** until the collect deadline (about 60 % of the period), feeding each frame to `on_frame`.
+8. **Publish** the `Snapshot` (`end`) to control and hand every frame of the tick to the recorder.
+9. **Slack:** cancel and expire queued requests (`open_slack`), hand control the results held, take new requests,
    send at most one (`slow_send`; none on a held tick), then hand control the new results.
 
 A drive's status read after a command the socket took is its **fresh** status, and it **answered** the tick if read by
@@ -54,7 +55,7 @@ Each drive's last echo of this host's frames to it of a kind a batch carries (`l
 read) is kept, for the enable sequence's "reporting-off echo plus one tick".
 
 A limb stop (`stop_limb`, named `LimbRequested`; the check above; expired feedback) stops that limb; a bus stop
-(`request_stop`, control silent, or a bad batch) stops every limb not already stopping or stopped; a late wake, a stall
+(`request_stop`, control silent, a bad batch, or a stop order naming a limb the bus doesn't have) stops every limb not already stopping or stopped; a late wake, a stall
 or a backlog stops every active limb (below). A stopping limb follows PLAN item 2 Stop, every bound from `Timing`:
 
 - Disable to each of its drives not yet confirmed, every tick of the confirm window (`stop_confirm_ns`, 100 ms).
@@ -91,6 +92,18 @@ A latched bus error (bus-off in an error frame, or any socket failure) sends not
 limb is `Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's
 `bus_error`, even if a stop was already under way; `healthy` is false while there is one or the controller is
 error-passive.
+
+Control asks for stops and clears by **order** (`Order`, through `BusTick::order`), never with Disables in a batch:
+`StopLimb` is `stop_limb`, `StopAll` is `request_stop`, and `Rearm` is `rearm` below, answered by one `Rearmed` under
+the order's tag. A stop order naming a limb the bus doesn't have can't be aimed, so it stops every limb (`BadOrder`;
+every such order is counted in `bad_orders`, whether or not it stopped anything); a re-arm naming one is only refused
+(`NoSuchLimb`). The thread takes every order in the ring at the tick's start, before the drain, in the order control
+pushed them: a stop goes out in that tick's sends, and a frame the drain reads after a re-arm (a fault, say) latches
+afresh and is checked before the send. A re-arm is refused while a stop of its limb or of the bus waits for the plan
+(`StopPending`), so a clear never undoes a stop ordered before it. A bus told to exit asks its stop before taking the
+orders, so a re-arm then is refused the same way; every order still in the ring as the thread ends is taken only to
+answer it (a re-arm `Ended`, a stop naming a limb the bus doesn't have counted in `bad_orders`), and an answer
+control's ring can't take is counted in `rearms_dropped` (the final count in `BusExit::counters`).
 
 Only the operator's clear undoes a stop: `rearm(limb, now)` makes a `Stopped` limb idle again, with a new `generation`,
 its drives' stop outcomes, fault history (`fault_seen`), modes out of Reset (`out_of_reset`) and miss counts started
@@ -176,8 +189,9 @@ error stays latched. Open an interface that isn't `vcan` before the real adapter
 ## Talks to
 
 `robstride` for the frames (it builds them, this crate only sends `Frame`s) and `telemetry` for the recording: each
-tick's frames go to a `BusRecorder`. Control is on the other side of `rtrb` queues: batches and slow requests in, snapshots and slow
-results out; a full outgoing ring drops and counts (`snapshots_dropped`, `slow_results_dropped`).
+tick's frames go to a `BusRecorder`. Control is on the other side of `rtrb` queues: batches, orders and slow requests in, snapshots,
+re-arm answers and slow results out; a full outgoing ring drops and counts (`snapshots_dropped`, `rearms_dropped`,
+`slow_results_dropped`).
 The runtime that wires those up doesn't exist yet; the sim suite drives the shell against `sim-drive` on `vcan`. See
 the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
 
@@ -188,7 +202,7 @@ frame to `on_frame`, and report how the drain went with `drained`; `begin`, writ
 feed every frame read with `on_frame`; and `end` for the snapshot. In the slack after `end`: `open_slack`, take the
 results held with `take_slow_result`, `submit` new requests while `slow_room` allows, send what `slow_send` returns and
 report it with `slow_sent`, then take the new results; when the thread ends, `end_slow` and take what is left.
-`request_stop` and `stop_limb` ask for a stop at the next `begin`, `skipped` counts ticks a stall slept through, and
+`order` takes control's orders (at the tick's start, before the drain); `request_stop` and `stop_limb` ask for a stop at the next `begin`, `skipped` counts ticks a stall slept through, and
 `lost_bus` latches every limb stopped when the socket fails. On Linux, `spawn` runs exactly that on a socket.
 
 ```rust

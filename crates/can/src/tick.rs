@@ -9,7 +9,7 @@
 //! acknowledgement.
 //!
 //! The drives on a bus belong to limbs. Each limb runs and stops on its own; a stop of the whole bus (control gone
-//! silent, a bad batch, a requested bus stop) stops every limb not already stopping or stopped, a failed bus stops
+//! silent, a bad batch, a requested bus stop, a stop order naming a limb the bus lacks) stops every limb not already stopping or stopped, a failed bus stops
 //! every limb at once, and a late wake or a backlog stops every active limb, an idle one having nothing enabled to stop
 //! ([`StopReason`] has the scope of each). Frames in are read in `read.rs`, limb stops are planned in `stop.rs`, and
 //! control's batch is checked and planned in `batch.rs`.
@@ -416,6 +416,22 @@ impl BusTick {
             self.counters.missed_deadlines += count;
             self.skipped_since += count;
         }
+    }
+
+    /// Count a re-arm answer control's ring couldn't take: the shell's, like [`Self::snapshot_dropped`].
+    pub fn rearm_dropped(&mut self) {
+        self.counters.rearms_dropped += 1;
+    }
+
+    /// Whether a stop of limb `limb` or of the whole bus has been asked for and not yet taken: it is taken at the next
+    /// tick's start, before any send.
+    pub(crate) fn stop_pending(&self, limb: usize) -> bool {
+        self.pending_stop.is_some()
+            || self
+                .limbs
+                .get(limb)
+                .and_then(Option::as_ref)
+                .is_some_and(|l| l.pending.is_some())
     }
 
     /// Whether every limb is idle: nothing was ever enabled, or every limb was re-armed.

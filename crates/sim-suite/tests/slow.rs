@@ -55,6 +55,8 @@ fn slow_requests_reach_a_drive_on_vcan_and_come_back() {
                 recorder: buses.remove(0),
                 requests,
                 results: results_tx,
+                orders: rtrb::RingBuffer::new(1).1,
+                rearmed: rtrb::RingBuffer::new(1).0,
                 epoch,
                 start: soon(),
                 exit: Arc::clone(&exit),
