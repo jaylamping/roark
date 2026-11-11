@@ -212,7 +212,8 @@ fn the_enable_sequence_gives_up_on_no_run_or_a_fault() {
 
 /// Guards: safety - `host.bus` and `host.mode`: a drive whose `run_mode` = MIT write isn't read back within 50 ms of
 /// being planned, or isn't answered by a fresh Run status in that time, is never handed to control: the drive may not
-/// be in MIT mode, or has left Run (a status or a version reply in another mode ends it at once, named by that mode);
+/// be in MIT mode, or has left Run (a status or a version reply in another mode ends it at once, named by that mode,
+/// though a Run of the other kind came later);
 /// since its Enable went out the limb is stopped.
 #[test]
 fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
@@ -283,6 +284,46 @@ fn the_enable_sequence_gives_up_without_the_mit_write_echo() {
         Next::Stop(EnableFailure::LeftRun {
             last: Some(Mode::Reset)
         })
+    );
+    // A status and a version reply after the write, in one drain: a Run in either doesn't hide a Reset in the other,
+    // whichever came last.
+    let (mut status_reset, run, mit_at) = to_mit(t0);
+    let reset_then_run = DriveView {
+        mode: Some(ModeSeen {
+            mode: Mode::Run,
+            read_ns: mit_at + 21,
+        }),
+        ..echoed(with_status(run, Mode::Reset, mit_at + 20), MIT, mit_at + 10)
+    };
+    assert_eq!(
+        status_reset.step(
+            shown(&superseded(reset_then_run, t0 + 2 * PERIOD + ECHO_NS + 1)).seen(),
+            4,
+            mit_at + PERIOD
+        ),
+        Next::Stop(EnableFailure::LeftRun {
+            last: Some(Mode::Reset)
+        }),
+        "a Reset status, then a Run version reply"
+    );
+    let (mut version_reset, run, mit_at) = to_mit(t0);
+    let run_then_reset = DriveView {
+        mode: Some(ModeSeen {
+            mode: Mode::Reset,
+            read_ns: mit_at + 21,
+        }),
+        ..echoed(with_status(run, Mode::Run, mit_at + 20), MIT, mit_at + 10)
+    };
+    assert_eq!(
+        version_reset.step(
+            shown(&superseded(run_then_reset, t0 + 2 * PERIOD + ECHO_NS + 1)).seen(),
+            4,
+            mit_at + PERIOD
+        ),
+        Next::Stop(EnableFailure::LeftRun {
+            last: Some(Mode::Reset)
+        }),
+        "a Run status, then a Reset version reply"
     );
     let (mut silent, run, mit_at) = to_mit(t0);
     let echo_only = echoed(run, MIT, mit_at + 10);

@@ -15,7 +15,7 @@
 //! stamps its views with (`telemetry::Epoch`); a bare `u64` like the bus layer's own, so they compare with its fields
 //! as is.
 
-use can::{DriveView, LimbState, SlowKind, SlowOutcome, SlowRequest, SlowResult};
+use can::{DriveView, LimbState, ModeSeen, SlowKind, SlowOutcome, SlowRequest, SlowResult};
 use robstride::{
     Amps, CanTimeout, Damper, Drive, Mode, NewtonMeters, Param, ParamOutcome, ParamValue,
     RadPerSec, Uid, Volts, Write,
@@ -661,13 +661,20 @@ impl Preflight {
 /// since `since_ns`, when preflight began, counts: the latch stays until the limb's re-arm, which an idle limb can't
 /// have, and an excursion before preflight began is one its own checks then saw end, in a status in Reset read since.
 pub(crate) fn left_reset(view: &DriveView, since_ns: u64) -> Option<Mode> {
-    let latest = view.mode.map(|m| (m.mode, m.read_ns));
-    let status = view.observed.map(|o| (o.status.header.mode, o.read_ns));
-    let latched = view.out_of_reset.map(|m| (m.mode, m.read_ns));
-    [latest, status, latched]
-        .into_iter()
-        .flatten()
-        .filter(|(_, read_ns)| *read_ns >= since_ns)
-        .map(|(mode, _)| mode)
+    modes_shown(view)
+        .chain(view.out_of_reset)
+        .filter(|m| m.read_ns >= since_ns)
+        .map(|m| m.mode)
         .find(|mode| *mode != Mode::Reset)
+}
+
+/// The modes the drive's bus last showed, each with its read time: its latest status header (`mode`, a version reply's
+/// included) and its last status (`observed`), which a later version reply doesn't replace. One can show a mode the
+/// other has moved past in the same drain, so a check for a mode judges both.
+pub(crate) fn modes_shown(view: &DriveView) -> impl Iterator<Item = ModeSeen> {
+    let status = view.observed.map(|o| ModeSeen {
+        mode: o.status.header.mode,
+        read_ns: o.read_ns,
+    });
+    view.mode.into_iter().chain(status)
 }

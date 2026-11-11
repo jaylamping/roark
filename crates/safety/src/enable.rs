@@ -18,13 +18,13 @@
 //! Set Zero has no command in this stack yet. When it gets one, this sequence gains the "no Set Zero to this drive in
 //! the last 800 ms" step before Enable.
 
-use can::{DriveView, ModeSeen, StopReason};
+use can::{DriveView, StopReason};
 use robstride::{
     Drive, EchoKind, Frame, Mode, Param, ParamValue, Reporting, RunMode, StatusFaults, Write,
     encode,
 };
 
-use crate::preflight::{PreflightPassed, left_reset};
+use crate::preflight::{PreflightPassed, left_reset, modes_shown};
 use crate::refusal::stopped_by;
 use crate::rule::RuleId;
 use crate::seen::{DriveAddress, Seen};
@@ -58,8 +58,9 @@ pub enum EnableFailure {
         /// The last mode the drive reported.
         last: Option<Mode>,
     },
-    /// The drive left Run after the Enable's answer: its latest status shows another mode, or the `run_mode` = MIT
-    /// write was echoed but no fresh Run status answered it within [`RUN_WITHIN_NS`]; the last mode seen since, if any.
+    /// The drive left Run after the Enable's answer: its latest status header (a version reply's included) or its last
+    /// status shows another mode, or the `run_mode` = MIT write was echoed but no fresh Run status answered it within
+    /// [`RUN_WITHIN_NS`]; the last mode seen since, if any.
     LeftRun {
         /// The last mode the drive reported.
         last: Option<Mode>,
@@ -360,11 +361,12 @@ impl Enabling {
                     value: ParamValue::RunMode(RunMode::Mit),
                 };
                 // Strictly after the Enable's answer, so that one status never answers both frames. The drive's latest
-                // mode (a status's or a version reply's), if read after that and other than Run, is the drive leaving
-                // Run, fresh or not. A Reset hidden by a later Run in one snapshot is the bus layer's to catch: it
-                // latches the drop out of Run and stops the limb, which ends this at the next step (`LimbStopped`).
-                let left = latest_mode(view)
-                    .filter(|m| m.read_ns > run_read_ns && m.mode != Mode::Run)
+                // status header (a version reply's included) or its last status, either read after that and other than
+                // Run, is the drive leaving Run, fresh or not: a Run in one doesn't hide a Reset in the other. A Reset
+                // hidden by a later Run of the same kind in one snapshot is the bus layer's to catch: it latches the drop
+                // out of Run and stops the limb, which ends this at the next step (`LimbStopped`).
+                let left = modes_shown(view)
+                    .find(|m| m.read_ns > run_read_ns && m.mode != Mode::Run)
                     .map(|m| m.mode);
                 let answer = fresh_since(view, since_ns)
                     .filter(|a| a.read_ns > run_read_ns)
@@ -519,22 +521,10 @@ fn fresh_since(view: &DriveView, since_ns: u64) -> Option<Answer> {
     })
 }
 
-/// The last mode reported since a step planned at `since_ns`, fresh or not, in or after its window.
+/// The last mode reported since a step planned at `since_ns`, fresh or not, in or after its window: the drive's latest
+/// status header, a version reply's included.
 fn mode_since(view: &DriveView, since_ns: u64) -> Option<Mode> {
-    latest_mode(view)
-        .filter(|m| m.read_ns >= since_ns)
-        .map(|m| m.mode)
-}
-
-/// The drive's latest mode: the last status header the bus read, a version reply's included (`mode`), else its last
-/// status.
-fn latest_mode(view: &DriveView) -> Option<ModeSeen> {
-    view.mode.or_else(|| {
-        view.observed.map(|o| ModeSeen {
-            mode: o.status.header.mode,
-            read_ns: o.read_ns,
-        })
-    })
+    view.mode.filter(|m| m.read_ns >= since_ns).map(|m| m.mode)
 }
 
 /// Whether the drive's last echo is `kind`, read inside the window of a step planned at `since_ns`.
