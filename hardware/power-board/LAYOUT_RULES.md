@@ -9,23 +9,39 @@
   (the 12 V distribution and its Micro-Fit outputs went to the buck board in split S1, 2026-11-09); the latch and soft start widened to the left edge. Power path, banks, heatsink and ports
   kept their coordinates. M3 holes at X ±46, Y 174 / 265 / 336.
 - **Single-sided: every part on the front face.** The rear has 6 mm to the carrier, and a back-side part would need a second reflow pass (Joey, 2026-11-07).
-- 4 layers, 1.6 mm, **2 oz outer / 1 oz inner** (JLC's standard stackup; rev B5 thermal option D takes the FET heat into a heatsink, so the copper only carries current).
-  - L1: positive pours and parts.
-  - L2: solid GND, unbroken under the banks, the absorber, the bus caps and the port FETs.
-  - L3: GND in the return corridor (the second GND return plane), signals where needed.
-  - L4: positive mirror, with GND wherever the positive path isn't.
-- Rating to lay out for: **60 A continuous, under 90 A peak.** Keep at least 30 mm of effective main-path width on at least 3 layers, and at least 2 layers of GND return. At layer changes, use about 1 A per 0.3 mm via: 60 or more vias per main-path transition.
+- **6 layers, 1.6 mm, 2 oz outer / 0.5 oz inner, OSP** (Joey, 2026-11-09: JLC quoted $82.80 for 5, against $96.47 for
+  4 layers with 2 oz outer and $44.00 for 6 layers with 1 oz; the thermal vias are filled and capped at no charge). 2 oz
+  outer was chosen over 1 oz plus soldered copper bars: no bar parts or bar soldering, and the VBUS spine can stay on L6
+  beside the heatsink pads. [tools/stack.py](schematic/tools/stack.py) holds the
+  stack for the tools:
+  - L1 (F.Cu): parts, positive pours, short escapes.
+  - L2 (In1): solid GND, unbroken under the banks, the absorber, the bus caps and the port FETs.
+  - L3, L4 (In2, In3): signals between the two GND planes (Kelvin pairs, gates, UVLO), GND fill elsewhere.
+  - L5 (In4): solid GND, the second return plane.
+  - L6 (B.Cu): positive mirrors, the bare heatsink pads, GND wherever the positive path isn't.
+- Rating to lay out for: **60 A continuous, under 90 A peak.** A 2 oz outer pour carries about 30 A in 10.5 mm at 20 °C
+  rise (IPC-2221B, external), and about 27.5 mm carries 60 A. So the 60 A path (BAT, SW_D, MID, VBUS) needs about 27.5 mm
+  of outer copper in total (one layer, or L1 plus L6 stitched with vias), and each 30 A port leg about 10.5 mm in total.
+  No bars. Pour widths on the routed board (2026-11-09): BAT 27 mm on L1; VBUS 25 mm on L6 plus about 3–7 mm on L1;
+  MID 23 mm on L6 plus up to 27 mm on L1; SW_D 22 mm on L6 plus 13 mm on L1; port legs about 5 mm on each outer layer. **Open before fab:** BAT (27 mm, L1 only) and the port legs (about 10 mm
+  in total) sit just under their targets: widen them or mirror BAT on L6. The two 0.5 oz GND planes return 60 A across
+  about 90 mm (about 0.8 mOhm, about 3 W spread over the board). By IPC-2221B's internal curve the two planes alone rise
+  about 44 °C at 60 A (about 7,900 mil² for 20 °C, about 4,900 mil² there); the GND fill on L1 and L6 carries part of
+  the return, but its width along the path isn't measured yet. **Open before fab:** measure the outer GND return and
+  show the rise, or add outer GND copper. At layer changes, use about 1 A per 0.3 mm via.
 
 ## Power path
 
 - **Flow order down the board:** BAT pair (top edge) → absorber cluster and RS1 → bank A → bank B (under the upper fan) → bus caps → port breakers → limb pigtails. Remove the old B → A → B detour.
-- **Pack entry:** the BAT and GND 8 AWG pair (4.5 mm holes, 8 mm pads, 14 mm pitch; to an XT90) sits side by side on the top edge, in the frame's pack cable path. **Keep-out: no components in X −5..25, Y 315–340** (the leads run up the face and bend over the top edge at R15 from about Y 330); the pads sit in that strip. Solid connections to all four layers, no thermal reliefs. A cable-tie hole each side of the pair.
+- **Pack entry:** the BAT and GND 8 AWG pair (4.5 mm holes, 8 mm pads, 14 mm pitch; to an XT90) sits side by side on the top edge, in the frame's pack cable path. **Keep-out: no components in X −5..25, Y 315–340** (the leads run up the face and bend over the top edge at R15 from about Y 330); the pads sit in that strip. Solid connections to every copper layer, no thermal reliefs. A cable-tie hole each side of the pair.
 - **Absorber cluster:**
   - D7, D21 and the eight cans in one cluster at the BAT entry; R53 (the ABS_N to GND link) under the can stack.
   - ABS and ABS_N are pours directly over unbroken L2.
-  - R53 is at least 5 mm wide, with 10 or more vias to L2 and L3.
-  - **Loop:** extracted from the routed copper by `schematic/tools/absorber_loop.py`: **LABS 5.4 nH**, LBAR 2.0 nH. Microstrip over In1
-    (h 0.21 mm) per segment, weighted by its share of the current, plus assumed part ESLs: 1.5 nH per SMC diode, 3 nH per
+  - R53 is at least 5 mm wide, with 10 or more vias to the GND planes, L2 and L5 (In1, In4).
+  - **Loop:** extracted from the 4-layer routed copper by `schematic/tools/absorber_loop.py`: **LABS 5.4 nH**, LBAR 2.0 nH.
+    **Rerun absorber_loop.py and absorber_sim on the 6-layer board before fab.** Microstrip over In1
+    (h 0.21 mm; tools/stack.py keeps it until JLC confirms the 2 oz 6-layer prepreg, since a thinner one only lowers the
+    loop) per segment, weighted by its share of the current, plus assumed part ESLs: 1.5 nH per SMC diode, 3 nH per
     can, 1 nH for RS1. The ABS_N spine down to R53 is the largest term (about 2.4 nH), because R53 sits at the bottom of
     the stack. 2 nH isn't reachable with these parts; the ceramics below take the fast edge instead.
 - **Pack-entry ceramics C89–C92** (4 × 4.7 µF 100 V 1210, BAT to GND, about 8.8 µF at 54 V bias): two between RS1 and D7,
@@ -34,9 +50,9 @@
   with a 3–5 nH absorber loop; **at the extracted 5.4 / 2.0 nH: BAT 73.8 V, bank A drain 84.5 V** (100 V FETs).
 - **FET copper and the heatsink (option D, [THERMAL_OPTION.md](THERMAL_OPTION.md)):**
   - 2.7 W per FET at 60 A goes down into a finned heatsink under the board (X −33..33, Y 200–305).
-  - About 50 × 0.3 mm vias per tab, at the pad edge and under it, tented on L4 and kept out of the paste aperture so they
+  - About 50 × 0.3 mm vias per tab, at the pad edge and under it, filled and capped (free at 6 layers) so they
     don't wick solder on the hot plate.
-  - L4: bare copper (no mask, ENIG) 15 × 15 mm under each FET, for the insulating gap pad. Nothing else on L4 inside
+  - L6: bare copper (no mask, OSP) 15 × 15 mm under each FET, for the insulating gap pad. Nothing else on L6 inside
     the heatsink zone except those pads and GND fill.
   - Heatsink holes HS1 (0, 286) and HS2 (0, 204), M3, no copper within 2 mm; the MID pour flows around HS1.
   - Keep all four bank FETs inside the upper fan footprint (|X| ≤ 20, Y 264–304).
@@ -52,11 +68,11 @@
   - the shunt Kelvin pair runs to both the TPS48111 (VS, CS+ through 100 Ω, CS−) and the INA237.
 - **D2PAK-7 drain lead:** pin 4 (the centre lead) and the tab are the same drain but separate pads; a 0.5 mm track joins
   them under the package body (it keeps 0.6 mm to pins 3 and 5). Pin 4 splits the source pins, so pins 2–3 reach the
-  source copper through vias at their outer ends into the L4 mirror. Pins 5–7 carry the source current on L1; three of
+  source copper through vias at their outer ends into the L6 mirror. Pins 5–7 carry the source current on L1; three of
   the five source leads are plenty for 30 A.
 - **Left limb ports** are the right ports' power row turned 180° (shunt, FET, output clamp, pigtail, meter), so every port
   FET has its gate pin on the inner side and its source pins facing the pigtail.
-- **Brake headers J3/J25:** VBUS and CL_D run up the can column on L4 as 2 mm tracks (X 34.5 and 40.5).
+- **Brake headers J3/J25:** VBUS and CL_D run up the can column on L6 as 2 mm tracks (X 34.5 and 40.5).
 - **Limb outputs:** each limb's + and return are on one pigtail pair at the board edge, twisted from the exit. Add a strain-relief tie hole beside each pair.
 - **Brake headers J3/J25:** at the top edge. The −X pair runs above the board, not through the 6 mm gap behind it.
 
@@ -91,7 +107,7 @@
 - Net class **ESTOP_SAFE:** RUN, RUN_A, RUN_B, RUN_P, UVLO, EN_A, FLT_A, FLT_D, LOOP_*, RST_*, L_B, L_E, L_PB, L_PC, MID_B, VB_B, INT_B, WDO_N, VWD.
 - At least 1.5 mm (2 mm preferred) to any BAT, SW_D, MID, VBUS, ABS, CL_D, BRK_*, SH* or V_L* copper, on all layers, with a GND guard trace or pour between them.
 - Why: 0.44 MΩ of leakage from 54 V into UVLO enables bank B by itself.
-- No 54 V plane on L2–L4 under the latch block.
+- No 54 V copper on L2–L5 under the latch block.
 - Wash off the flux. The whole board is conformal-coated after bring-up (Clearance below; PRODUCTION_RUN step 10).
 - J20 (the loop connector) sits on the far side of the latch block from the converter soft start.
 

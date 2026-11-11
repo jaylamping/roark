@@ -2,9 +2,9 @@
 """Stage 3 input for Freerouting: export the Specctra DSN and make it safe to autoroute around the power copper.
 Freerouting reads every (plane) and every polygon wire as a non-obstacle conduction area, so other nets would be routed
 straight through the power pours. This script therefore:
-  - removes every plane; In1 stays solid GND because no class may route on it, and GND is not autorouted (see below);
-  - drops the GND fills on L1, In2 and L4 (they are refilled around the signals after import);
-  - exports every other filled zone (power pours, +12V_RAW strip) as fixed traces of its own net: scan lines 0.5 mm wide
+  - removes every plane; In1 and In4 stay solid GND because no class may route on them, and GND is not autorouted (see below);
+  - drops the GND fills on F.Cu, In2, In3 and B.Cu (they are refilled around the signals after import);
+  - exports every other filled zone (power pours) as fixed traces of its own net: scan lines 0.5 mm wide
     at 0.4 mm pitch inside the fill. They are obstacles to other nets, and their own net's pins can still connect to them;
   - sets the net classes: POWER (54 V copper) 0.35 mm clearance (PWRCL; Freerouting applies class clearance between
     same-net vias too, so 0.6 mm turns every 1 mm via array into violations; the 0.6 mm outer-layer rule is checked
@@ -41,7 +41,8 @@ def scan(poly):
             if c-a>0.05: segs.append((a,c,y))
         y+=PITCH
     return segs
-LN={pcbnew.F_Cu:'F.Cu',pcbnew.In1_Cu:'In1.Cu',pcbnew.In2_Cu:'In2.Cu',pcbnew.B_Cu:'B.Cu'}
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import stack
+LN=dict(zip(stack.kicad_layers(pcbnew),stack.NAMES))
 wires=[]; nseg={}; HATCH=[]
 for z in b.Zones():
     n=z.GetNetname()
@@ -62,7 +63,7 @@ for z in b.Zones():
 # own net connects to them. The GND fills go: a GND plane on In1 stops other nets' vias through it (fanout escaped 43 % of
 # the pins with it, 90 % without), and a class use_layer that leaves out In1 drops every via type that crosses it. In1 is
 # priced out in <dsn>.rules instead (marking it inactive blocks every via through it too); it stays (nearly) solid GND. GND is class GNDC: tools/gnd_fanout.py has already dropped a
-# via at almost every GND pad, and Freerouting connects the rest (fine-pitch IC pins). The L1/In2/L4 GND fills are refilled
+# via at almost every GND pad, and Freerouting connects the rest (fine-pitch IC pins). The F.Cu/In2/In3/B.Cu GND fills are refilled
 # around the signals after import. HATCH=1 rebuilds the earlier fixed-trace stand-ins for comparison.
 HATCHMODE=os.environ.get('HATCH')=='1'
 def drop_scopes(text,head,keep=lambda scope: False):
@@ -88,7 +89,7 @@ names=re.findall(r'"[^"]*"|[^\s"]+',m.group(1))
 ESTN=[n for n in names if domains.is_estop(n.strip('"'))]
 HVN=[n for n in names if domains.is_hv(n.strip('"')) and n.strip('"') not in POWER+P12]
 rest=[n for n in names if n.strip('"') not in POWER+P12+['GND'] and n not in ESTN+HVN]
-def cls(name,nets,w,cl): return f'    (class {name} {" ".join(nets)}\n      (circuit\n        (use_via "Via[0-3]_600:300_um")\n      )\n      (rule\n        (width {w})\n        (clearance {cl})\n      )\n    )\n'
+def cls(name,nets,w,cl): return f'    (class {name} {" ".join(nets)}\n      (circuit\n        (use_via "{stack.via_name()}")\n      )\n      (rule\n        (width {w})\n        (clearance {cl})\n      )\n    )\n'
 start=s.rfind('    (class kicad_default',0,m.end()); end=s.find('\n    )\n',m.end())+len('\n    )\n')
 # coated (MARENGO_COATED=1, tools/domains.py): 0.2 mm between 54 V domains; E-stop nets keep 1.5 mm to 54 V copper
 # through class-to-class rules (route_checks.py re-checks it after import)
@@ -99,9 +100,11 @@ s=s[:start]+cls('kicad_default',rest,200,200)+cls('ESTOPC',ESTN,200,200)+cls('HV
 # ---- append the hatch to the wiring
 k=s.rfind('  (wiring'); e=s.find('\n  )\n',k)
 if HATCHMODE: s=s[:e]+'\n'+'\n'.join(wires)+s[e:]
-# In1: active (an inactive layer also blocks every via through it) but 50x the trace cost, so the router keeps off it;
+# In1 and In4 (the GND planes): active (an inactive layer also blocks every via through it) but 50x the trace cost, so the
+# router keeps off them;
 # tools/ses_import.py reports anything left on In1
-open(os.path.splitext(sys.argv[2])[0]+'.rules','w').write('(rules PCB pdu\n  (autoroute_settings\n    (layer_rule In1.Cu (active on) (preferred_direction_trace_costs 50.0) (against_preferred_direction_trace_costs 50.0))\n  )\n)\n')
+PL=''.join(f'    (layer_rule {stack.NAMES[i]} (active on) (preferred_direction_trace_costs 50.0) (against_preferred_direction_trace_costs 50.0))\n' for i in sorted(stack.GNDPLANE))
+open(os.path.splitext(sys.argv[2])[0]+'.rules','w').write('(rules PCB pdu\n  (autoroute_settings\n'+PL+'  )\n)\n')
 open(sys.argv[2],'w',encoding='utf-8').write(s)
 json.dump(HATCH if HATCHMODE else [],open(sys.argv[2]+'.hatch.json','w'))   # tools/ses_import.py deletes exactly these after the import
 print('dsn',sys.argv[2],'hatch segments',sum(nseg.values()),{k:v for k,v in sorted(nseg.items())})

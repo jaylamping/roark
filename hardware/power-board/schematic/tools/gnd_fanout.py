@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Stage 2d, before signal routing: a GND via beside every front-side GND pad it can reach, so Freerouting has little GND left.
-In1 is solid GND (and In2/L4 GND fills where they are free), so each GND pad needs only a via and a short stub. Pads that
+In1 and In4 are solid GND (tools/stack.py), so each GND pad needs only a via and a short stub. Pads that
 already have a GND via within reach (power-stage via grids, in-pad vias) are skipped. Each via goes to the nearest free
 spot within 1.6 mm of the pad edge (0.25 mm grid): 0.25 mm from every other net on F.Cu and B.Cu (0.6 mm from 54 V copper, tools/domains.py), off every hole, and
 outside other nets' pours on every layer it passes through. The stub is 0.25 mm wide and must clear other nets' pads.
@@ -8,17 +8,18 @@ A second pass serves what is left (mostly fine-pitch IC pins): a 0.2 mm pad-to-p
 part within 1.3 mm, else a 0.2 mm dog-leg out along the pin's axis to a via up to about 2 mm further on, never within
 0.55 mm of any pad. A pad counts as served only if it has its own via or link, or a via was already there before this
 script ran (power-stage grids, in-pad vias); a via another pad just got never serves it by distance alone.
-Pads it can't serve are listed; the router connects those (GND is routable, never on In1).
+Pads it can't serve are listed; the router connects those (GND is routable, never on the In1 and In4 planes).
 Run with KiCad's Python, in place: <kicad python> tools/gnd_fanout.py <board.kicad_pcb>"""
 import os,sys
 import pcbnew
-sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import domains
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import domains, stack
 b=pcbnew.LoadBoard(sys.argv[1]); mm=pcbnew.FromMM
+stack.check_board(b)
 pcbnew.ZONE_FILLER(b).Fill(b.Zones())
 G=b.FindNet('GND'); g=G.GetNetCode()
 PADS=[p for p in b.GetPads()]; TRK=[t for t in b.GetTracks()]
 ZONES=[(z,L,z.GetFilledPolysList(L)) for z in b.Zones() if not z.GetIsRuleArea() and z.GetNetCode()!=g for L in z.GetLayerSet().Seq()
-       if L in (pcbnew.F_Cu,pcbnew.In1_Cu,pcbnew.In2_Cu,pcbnew.B_Cu)]
+       if L in stack.kicad_layers(pcbnew)]
 CL=mm(0.25)
 OUTER=(pcbnew.F_Cu,pcbnew.B_Cu)
 import functools
@@ -40,7 +41,7 @@ def clear(item,layers):
         for z,zl,fp in ZONES:
             if zl==L and fp.OutlineCount() and fp.Collide(s,cl(z.GetNetname(),L)): return False
     return True
-VL=(pcbnew.F_Cu,pcbnew.In2_Cu,pcbnew.B_Cu)   # In1 is GND everywhere
+VL=tuple(stack.kicad_layers(pcbnew)[i] for i in range(stack.NL) if i not in stack.GNDPLANE)   # In1 and In4 are GND everywhere
 PRE=[t for t in TRK if t.GetClass()=='PCB_VIA' and t.GetNetCode()==g]   # GND vias already on the board
 def has_via(p):
     c=p.GetPosition(); r=max(p.GetSize(pcbnew.F_Cu).x,p.GetSize(pcbnew.F_Cu).y)//2+mm(1.0)

@@ -11,7 +11,8 @@ HERE=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 N=parse(open(sys.argv[1]).read())
 OX,OY=100,100                       # page offset, mm
 def P(X,Y): return pcbnew.VECTOR2I(pcbnew.FromMM(OX+X+50),pcbnew.FromMM(OY+340-Y))
-b=pcbnew.BOARD(); b.SetCopperLayerCount(4)
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import stack
+b=pcbnew.BOARD(); b.SetCopperLayerCount(stack.NL)
 # board bottom edge: 170 is the 100 x 170 board (option A, Joey 2026-11-07: routing room); PDU_YBOT=190 rebuilds the old
 # 100 x 150 placement, whose control blocks were too dense to route (74-84 % fill). The extra 20 mm go to
 # the bottom, under the ports, so the pack entry, absorber, banks, heatsink and ports keep their coordinates
@@ -267,8 +268,8 @@ for sx_ in (-1,1):
     for Y in (YB+4,265,336): keepout(sx_*46,Y,3.2+0.6,f'KO_H_{sx_*46}_{Y:g}')
 for a,c,t in (((-40,304),(40,264),'Fan zone (upper)'),((-40,233),(40,193),'Fan zone (lower)')):
     seg(pcbnew.Cmts_User,a,c); txt(pcbnew.Cmts_User,a[0]+12,a[1]-1.5,t)
-for (a,c,t) in (((-15,304),(15,287),'Thermal: bank A drain SW_D, all 4 layers (2 oz outer / 1 oz inner), via field under each tab (route_power.py)'),
-                ((-15,286),(15,266),'Thermal: bank B drain MID, all 4 layers (2 oz outer / 1 oz inner), via field under each tab (route_power.py)')):
+for (a,c,t) in (((-15,304),(15,287),'Thermal: bank A drain SW_D, all 6 layers (2 oz outer / 0.5 oz inner), filled via field under each tab (route_power.py)'),
+                ((-15,286),(15,266),'Thermal: bank B drain MID, all 6 layers (2 oz outer / 0.5 oz inner), filled via field under each tab (route_power.py)')):
     seg(pcbnew.User_1,a,c,0.3); txt(pcbnew.User_1,a[0]+1,c[1]+1.5,t,1.0)
 for blk,(X0,X1,Y0,Y1) in BLK.items():
     seg(pcbnew.User_2,(X0,Y1),(X1,Y0),0.1); txt(pcbnew.User_2,X0+0.8,Y1-0.8,blk,0.9)
