@@ -3,9 +3,30 @@
 Torso-side interface of the roll drum and fork concept ([CONCEPT.md](CONCEPT.md)), for the torso frame work. The right
 shoulder is the mirror image about X = 0.
 
-**Read this first:** every torso number here comes from `TORSO.step` (`marengo_torso_asm.STEP`, exported 2026-11-05). If
-the frame has changed since then (stepped upper box, gussets, rail positions), the cage numbers below need re-measuring.
-The shoulder numbers do not change.
+**Read this first: the numbers below are in the OLD frame's coordinates.** `TORSO.step` (`marengo_torso_asm.STEP`,
+exported 2026-11-05) is the old 150-wide cage. The rev A stepped frame is 38 mm wider per side in its upper box, and the
+shoulder moves outboard with it. Nothing inside the shoulder changes.
+
+| | Old frame (this page, CONCEPT.md) | Rev A frame |
+|---|---|---|
+| Cage side face at the shoulder | X 75 | X 113 |
+| Pitch output face | X 97 | X 135 |
+| Roll and yaw axes | X 170.49 | X 208.49 |
+| Cover ring | X 75-98.5 | X 113-136.5 |
+| Below the step (Y < 353.62) | side at X 75 | lower box side stays at X 75: 38 mm further from the arm |
+
+**Agreed with the torso frame work (2026-11-11), replacing the back entry of section 2:**
+
+- The back entry does not fit rev A. It clashes with the pitch wing (X 78.4-93, Y 400-450, Z ±69), a rear gusset screw
+  head at Y 410-420, the temporary gussets (to Z ±76) and the shell's back and spine pads.
+- **The feed enters from below.** The two bundles rise through the void under the step overhang (rev A X 75-113,
+  Y 285-353, outside the lower box, inside the shell) into the bottom of the cover at about Y 349. Second choice: over the
+  top side rail at Y 495.
+- **Cover screws** go into T-nuts in the X 113 outward slots: upper posts (Z ±60, Y about 425), step side rail (Y 363.6)
+  and top side rail (Y 485). Nothing on the frame is cut or drilled.
+- The cover ring clears rev A: nothing sits outboard of X 113 within r 80 of the pitch axis.
+- Still to do: re-check the arm against the rev A frame once its STEP exists. The inward roll contact found on the old
+  frame was measured against a side face that is now 38 mm further away below the step.
 
 Frame: X outboard (left), Y up, Z forward, mm. Pitch axis along X through Y 424.86, Z 0.
 
