@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 
 use robstride::DeviceId;
 
+use crate::commissioning::CommissioningCaps;
 use crate::error::ProblemKind;
 use crate::joint::{Site, bus_name, read_joint};
 use crate::read::{Reader, integer, text};
@@ -194,12 +195,14 @@ pub(crate) fn cross_joint(
                 },
             );
         }
-        // Every joint with a bus can be named in one enable (tenet 1), so every written cap counts against the
-        // budget. A null cap refuses enable (PLAN item 1, "Null is not permission"), so it adds nothing.
-        current_sum_a += site
-            .current_cap_a
-            .flatten()
-            .map_or(0.0, robstride::Amps::get);
+        // Every joint with a bus can be named in one enable (tenet 1), so each counts against the budget at the most
+        // it can be enabled at: its own cap if written, else its model's commissioning cap (PLAN item 1). An actuator
+        // that didn't parse is reported already.
+        current_sum_a += match (site.current_cap_a.flatten(), site.actuator) {
+            (Some(cap), _) => cap.get(),
+            (None, Some(model)) => CommissioningCaps::of(model).map_or(0.0, |c| c.current.get()),
+            (None, None) => 0.0,
+        };
     }
 
     if let Some((budget_a, line)) = budget

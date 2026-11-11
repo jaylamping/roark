@@ -18,9 +18,10 @@ control thread runs it; the bus layer (`can`) does the pre-send veto, and this c
   refuses. Only a pass makes a `PreflightPassed`, which proves the drive was right then; the runtime runs every named
   drive's preflight, enables them together from their proofs, drops the proofs on any event that voids them, and runs
   preflight again for every enable. Each `Refusal` names its rule, the measured and the expected value, and what the
-  operator does about it (safety.md section 5). A null cap, a cap the drive's model can't take, a null `direction`,
-  `zero_rad` or `hard_rad`, a model whose MIT scales aren't settled, or an unwired joint refuses before anything is
-  sent.
+  operator does about it (safety.md section 5). A cap the drive's model can't take, a model whose MIT scales
+  aren't settled, or an unwired joint refuses before anything is sent. A null cap, `direction`, `zero_rad` or
+  `hard_rad` doesn't: the joint is uncommissioned, and preflight writes and reads back its model's commissioning caps
+  (`skeleton::CommissioningCaps`), or its own cap where lower (PLAN item 1).
 - **The enable sequence** (`Enabling`): takes a `PreflightPassed` by value, so an enable without a preflight doesn't
   compile and one preflight enables once. Reporting off, its echo plus one tick, Enable, a fresh Run status within 50 ms
   of its being planned (if none comes, an Enable not read back in that time is told apart, and still stops the limb),

@@ -165,11 +165,9 @@ fn enabled(rig: &mut Rig, enabler: &mut Enabler, names: &[&str]) {
 }
 
 /// Guards: safety - an enable is refused before anything is sent when it names nothing or an index the roster doesn't
-/// have, a joint whose skeleton entry can't pass preflight (a null fact or cap, no bus), a joint already enabled or of a
-/// limb held on another bus, while
-/// the recording has failed (`host.logging`), or while another enable runs; one that can pass starts a preflight per
-/// named joint, each with its own block of slow-request tags on its bus (PLAN item 6: null refuses enable; enable runs
-/// preflight first).
+/// have, a joint with no bus, a joint already enabled or of a limb held on another bus, while the recording has failed
+/// (`host.logging`), or while another enable runs; one that can pass starts a preflight per named joint, each with its
+/// own block of slow-request tags on its bus (PLAN item 6: enable runs preflight first).
 #[test]
 fn an_enable_is_refused_before_anything_is_sent_unless_every_joint_can_pass() {
     let mut rig = Rig::new();
@@ -205,12 +203,7 @@ fn an_enable_is_refused_before_anything_is_sent_unless_every_joint_can_pass() {
             }
         )
     );
-    // The right arm's joints have null facts and caps; the leg's joint has no bus.
-    let b_one = rig.joint("arm_b_one");
-    assert!(matches!(
-        rig.take(&mut enabler, 3, &["arm_a_one", "arm_b_one"]),
-        Some(EnableReply { tag: 3, outcome: Err(EnableRefused::Preflight { joint, .. }) }) if joint == b_one
-    ));
+    // The leg's joint has no bus.
     let leg = rig.joint("leg_a_one");
     assert_eq!(
         rig.take(&mut enabler, 4, &["leg_a_one"]),
@@ -254,7 +247,7 @@ fn an_enable_is_refused_before_anything_is_sent_unless_every_joint_can_pass() {
             }
         )
     );
-    enabler.phases[b_one] = Phase::Off;
+    enabler.phases[rig.joint("arm_b_one")] = Phase::Off;
     assert!(enabler.run.is_none());
     assert!(rig.slow.iter().all(|s| s.next_tag == 0));
     // The left arm can pass: its preflights start, on can1, with tags in separate blocks.

@@ -6,7 +6,8 @@ mod common;
 
 use common::{joint, skeleton};
 use robstride::{Amps, NewtonMeters, ParamValue, RadPerSec};
-use safety::{CapKind, JointFact, Refusal, RuleId, Target};
+use safety::{CapKind, Refusal, RuleId, Target};
+use skeleton::CommissioningCaps;
 
 /// Guards: safety - `drive.caps`: a cap outside what the drive's model can be set to refuses before anything is sent,
 /// naming the skeleton's value and the model's highest with their unit (RS03: 60 N·m, 43 A, 20 rad/s; the model's
@@ -93,62 +94,81 @@ fn a_cap_the_model_cant_take_refuses_before_anything_is_sent() {
     }
 }
 
-/// Guards: safety - `host.preflight`: a joint whose direction, zero or hard limits haven't been verified on the hardware
-/// (null in the skeleton), or whose drive model has no settled MIT scales, is refused before anything is sent (tenets,
-/// fail closed; PLAN item 1, null is not permission; item 2, the RS00's scales).
+/// Guards: safety - `drive.caps`: null is not a refusal (PLAN item 1). A joint with a null `direction`, `zero_rad`,
+/// `hard_rad` or cap is uncommissioned and gets its model's commissioning caps (5 % of the torque and current ranges,
+/// 0.5 rad/s; RS03: 3 N·m, 2.15 A), or its own cap where that is lower; a commissioned joint keeps its own. A model
+/// whose MIT scales aren't settled is still refused before anything is sent (item 2, the RS00's scales).
 #[test]
-fn a_null_direction_or_zero_refuses_before_anything_is_sent() {
+fn an_uncommissioned_joint_runs_at_its_models_commissioning_caps() {
     let skeleton = skeleton();
     let set = joint(&skeleton, 0);
-    let target = |joint: &skeleton::Joint| Target::new(joint, &skeleton.power).map(|_| ());
-    assert_eq!(target(&set), Ok(()));
-    let no_direction = skeleton::Joint {
-        direction: None,
-        ..set.clone()
+    let caps = |joint: &skeleton::Joint| {
+        let target = Target::new(joint, &skeleton.power).unwrap();
+        (target.commissioned(), target.caps().map(|w| w.value()))
     };
-    let no_zero = skeleton::Joint {
-        zero_rad: None,
-        ..set.clone()
-    };
-    let neither = skeleton::Joint {
-        direction: None,
-        zero_rad: None,
-        ..set.clone()
-    };
+    let own = caps(&set);
+    assert!(own.0);
+    let floor = CommissioningCaps::of(robstride::Model::Rs03).unwrap();
     assert_eq!(
-        target(&no_direction),
-        Err(Refusal::FactUnset(JointFact::Direction))
+        (floor.torque.get(), floor.current.get(), floor.speed.get()),
+        (3.0, 43.0 * 0.05, 0.5)
     );
-    assert_eq!(target(&no_zero), Err(Refusal::FactUnset(JointFact::Zero)));
-    assert_eq!(
-        target(&neither),
-        Err(Refusal::FactUnset(JointFact::Direction))
+    // As the drive stores them, rounded to f32: what a commissioned joint with these caps would write.
+    let at_floor = (
+        false,
+        caps(&skeleton::Joint {
+            torque_cap_nm: Some(floor.torque),
+            current_cap_a: Some(floor.current),
+            speed_cap_rad_s: Some(floor.speed),
+            ..set.clone()
+        })
+        .1,
     );
-    let no_limits = skeleton::Joint {
-        hard_rad: None,
+    for uncommissioned in [
+        skeleton::Joint {
+            direction: None,
+            ..set.clone()
+        },
+        skeleton::Joint {
+            zero_rad: None,
+            ..set.clone()
+        },
+        skeleton::Joint {
+            hard_rad: None,
+            ..set.clone()
+        },
+        skeleton::Joint {
+            torque_cap_nm: None,
+            current_cap_a: None,
+            speed_cap_rad_s: None,
+            direction: None,
+            zero_rad: None,
+            hard_rad: None,
+            ..set.clone()
+        },
+    ] {
+        assert_eq!(caps(&uncommissioned), at_floor, "{uncommissioned:?}");
+    }
+    // Its own cap where lower: an uncommissioned joint never runs above what the skeleton agreed.
+    let low = skeleton::Joint {
+        direction: None,
+        torque_cap_nm: NewtonMeters::new(1.0),
         ..set.clone()
     };
     assert_eq!(
-        target(&no_limits),
-        Err(Refusal::FactUnset(JointFact::HardLimits))
+        caps(&low).1[0],
+        ParamValue::NewtonMeters(NewtonMeters::new(1.0).unwrap())
     );
     let rs00 = skeleton::Joint {
         actuator: robstride::Model::Rs00,
         ..set.clone()
     };
     assert_eq!(
-        target(&rs00),
+        Target::new(&rs00, &skeleton.power).map(|_| ()),
         Err(Refusal::UnvouchedModel(robstride::Model::Rs00))
     );
     assert_eq!(
         Refusal::UnvouchedModel(robstride::Model::Rs00).rule(),
         RuleId::HostPreflight
-    );
-    for fact in [JointFact::Direction, JointFact::Zero, JointFact::HardLimits] {
-        assert_eq!(Refusal::FactUnset(fact).rule(), RuleId::HostPreflight);
-    }
-    assert_eq!(
-        Refusal::FactUnset(JointFact::Zero).message("arm_joint_one"),
-        "refused (host.preflight): arm_joint_one zero_rad is null in the skeleton, expected a verified value"
     );
 }

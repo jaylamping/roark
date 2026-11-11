@@ -32,29 +32,6 @@ impl CapKind {
     }
 }
 
-/// A joint fact the skeleton holds only once it is verified on the hardware (PLAN item 1).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum JointFact {
-    /// `direction`, set after the sign check.
-    Direction,
-    /// `zero_rad`, set after referencing (PLAN item 1, Zero convention).
-    Zero,
-    /// `hard_rad`, the joint's hard limits inside its physical stops.
-    HardLimits,
-}
-
-impl JointFact {
-    /// The skeleton field.
-    #[must_use]
-    pub const fn field(self) -> &'static str {
-        match self {
-            Self::Direction => "direction",
-            Self::Zero => "zero_rad",
-            Self::HardLimits => "hard_rad",
-        }
-    }
-}
-
 /// How a request went unanswered.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Unanswered {
@@ -77,8 +54,6 @@ pub enum Unanswered {
 /// the operator, with the joint, and [`Refusal::remedy`] what to do.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Refusal {
-    /// The skeleton has no value for this cap: null is not permission (PLAN item 1).
-    CapUnset(CapKind),
     /// The skeleton's cap is outside what the drive's model can be set to (0 to `max`).
     CapOutOfRange {
         /// The cap.
@@ -88,9 +63,6 @@ pub enum Refusal {
         /// The model's highest, in the same unit.
         max: ParamValue,
     },
-    /// The skeleton has no verified value for this fact: unverified is null, and null refuses enable (tenets, fail
-    /// closed).
-    FactUnset(JointFact),
     /// The joint has no bus: it is offline and can't be enabled.
     Unwired,
     /// The joint's drive model has no settled MIT scales, so control can't command it.
@@ -175,7 +147,7 @@ impl Refusal {
     #[must_use]
     pub const fn rule(&self) -> RuleId {
         match self {
-            Self::CapUnset(_) | Self::CapOutOfRange { .. } | Self::Cap { .. } => RuleId::DriveCaps,
+            Self::CapOutOfRange { .. } | Self::Cap { .. } => RuleId::DriveCaps,
             Self::CanTimeout { .. } => RuleId::DriveCanTimeout,
             Self::DamperOff => RuleId::DriveDamper,
             Self::Uid { .. } => RuleId::HostIdentity,
@@ -185,7 +157,6 @@ impl Refusal {
             | Self::WrongView { .. }
             | Self::LimbActive
             | Self::LimbStopped { .. }
-            | Self::FactUnset(_)
             | Self::Vbus { .. }
             | Self::Faults { .. }
             | Self::FaultSeen
@@ -198,22 +169,12 @@ impl Refusal {
     #[must_use]
     pub fn message(&self, joint: &str) -> String {
         let what = match self {
-            Self::CapUnset(cap) => format!(
-                "{} is null in the skeleton, expected the agreed cap",
-                cap.field()
-            ),
             Self::CapOutOfRange { cap, value, max } => format!(
                 "{} is {} in the skeleton, expected 0 to {} for its drive",
                 cap.field(),
                 amount(*value),
                 amount(*max)
             ),
-            Self::FactUnset(fact) => {
-                format!(
-                    "{} is null in the skeleton, expected a verified value",
-                    fact.field()
-                )
-            }
             Self::Unwired => "has no bus in the skeleton, expected its bus".to_owned(),
             Self::UnvouchedModel(model) => {
                 format!(
@@ -279,17 +240,8 @@ impl Refusal {
     #[must_use]
     pub const fn remedy(&self) -> &'static str {
         match self {
-            Self::CapUnset(_) | Self::CapOutOfRange { .. } => {
+            Self::CapOutOfRange { .. } => {
                 "Agree the cap with the hardware side and put it in the skeleton"
-            }
-            Self::FactUnset(JointFact::Direction) => {
-                "Run the sign check with the hardware side and put the direction in the skeleton"
-            }
-            Self::FactUnset(JointFact::Zero) => {
-                "Reference the joint with the hardware side and put zero_rad in the skeleton"
-            }
-            Self::FactUnset(JointFact::HardLimits) => {
-                "Measure the joint's stops with the hardware side and put hard_rad in the skeleton"
             }
             Self::Unwired => "Wire the joint and give it its bus in the skeleton",
             Self::UnvouchedModel(_) => {

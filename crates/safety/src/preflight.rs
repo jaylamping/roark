@@ -22,7 +22,7 @@ use robstride::{
 };
 use skeleton::{Joint, Power, Window};
 
-use crate::refusal::{CapKind, JointFact, Refusal, Unanswered};
+use crate::refusal::{CapKind, Refusal, Unanswered};
 use crate::rule::RuleId;
 use crate::seen::{DriveAddress, Seen};
 
@@ -161,6 +161,30 @@ pub struct Target {
     current: Write,
     speed: Write,
     vbus: Window<Volts>,
+    commissioned: bool,
+}
+
+/// `joint`'s three caps and whether it is commissioned: its skeleton caps if so; otherwise each the lower of its
+/// model's commissioning cap and its own, if set. `None` only if the model's commissioning caps can't be made.
+fn caps(joint: &Joint) -> Option<(NewtonMeters, Amps, RadPerSec, bool)> {
+    let facts = joint.direction.is_some() && joint.zero_rad.is_some() && joint.hard_rad.is_some();
+    match (
+        joint.torque_cap_nm,
+        joint.current_cap_a,
+        joint.speed_cap_rad_s,
+    ) {
+        (Some(torque), Some(current), Some(speed)) if facts => Some((torque, current, speed, true)),
+        (torque, current, speed) => {
+            let floor = skeleton::CommissioningCaps::of(joint.actuator)?;
+            let lower = |own: Option<f64>, floor: f64| own.map_or(floor, |own| own.min(floor));
+            Some((
+                NewtonMeters::new(lower(torque.map(NewtonMeters::get), floor.torque.get()))?,
+                Amps::new(lower(current.map(Amps::get), floor.current.get()))?,
+                RadPerSec::new(lower(speed.map(RadPerSec::get), floor.speed.get()))?,
+                false,
+            ))
+        }
+    }
 }
 
 impl Target {
@@ -168,8 +192,10 @@ impl Target {
     ///
     /// # Errors
     /// [`Refusal::Unwired`] for a joint with no bus, [`Refusal::UnvouchedModel`] for a model whose MIT scales aren't
-    /// settled, [`Refusal::CapUnset`] for a null cap, [`Refusal::FactUnset`] for a null direction, zero or hard limits,
-    /// [`Refusal::CapOutOfRange`] for a cap its model can't take.
+    /// settled, [`Refusal::CapOutOfRange`] for a cap its model can't take.
+    ///
+    /// Null is not a refusal (PLAN item 1): a joint with any cap, `direction`, `zero_rad` or `hard_rad` null is
+    /// uncommissioned, and gets its model's [`skeleton::CommissioningCaps`], or its own cap where that is lower.
     pub fn new(joint: &Joint, power: &Power) -> Result<Self, Refusal> {
         // The skeleton holds every bus name to the kernel's limit, so a name that doesn't fit an address is one no
         // parsed skeleton has: no bus this host can open, so the joint is offline.
@@ -184,24 +210,8 @@ impl Target {
             return Err(Refusal::UnvouchedModel(drive.model()));
         }
         let ranges = drive.model().ranges();
-        let torque: NewtonMeters = joint
-            .torque_cap_nm
-            .ok_or(Refusal::CapUnset(CapKind::Torque))?;
-        let current: Amps = joint
-            .current_cap_a
-            .ok_or(Refusal::CapUnset(CapKind::Current))?;
-        let speed: RadPerSec = joint
-            .speed_cap_rad_s
-            .ok_or(Refusal::CapUnset(CapKind::Speed))?;
-        if joint.direction.is_none() {
-            return Err(Refusal::FactUnset(JointFact::Direction));
-        }
-        if joint.zero_rad.is_none() {
-            return Err(Refusal::FactUnset(JointFact::Zero));
-        }
-        if joint.hard_rad.is_none() {
-            return Err(Refusal::FactUnset(JointFact::HardLimits));
-        }
+        let (torque, current, speed, commissioned) =
+            caps(joint).ok_or(Refusal::UnvouchedModel(drive.model()))?;
         let out = |cap, value, max| Refusal::CapOutOfRange { cap, value, max };
         Ok(Self {
             drive,
@@ -230,7 +240,15 @@ impl Target {
                 )
             })?,
             vbus: power.vbus_v,
+            commissioned,
         })
+    }
+
+    /// Whether the joint is commissioned, so runs at its skeleton caps: every cap, `direction`, `zero_rad` and
+    /// `hard_rad` set. One that isn't runs at its model's commissioning caps (PLAN item 1).
+    #[must_use]
+    pub const fn commissioned(&self) -> bool {
+        self.commissioned
     }
 
     /// The drive.
@@ -243,6 +261,12 @@ impl Target {
     #[must_use]
     pub const fn address(&self) -> DriveAddress {
         self.address
+    }
+
+    /// The three cap writes preflight sends and reads back: `limit_torque`, `limit_cur`, `limit_spd`.
+    #[must_use]
+    pub const fn caps(&self) -> [Write; 3] {
+        [self.torque, self.current, self.speed]
     }
 
     const fn write(&self, register: Register) -> Option<Write> {

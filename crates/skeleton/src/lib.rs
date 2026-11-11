@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 mod check;
+mod commissioning;
 mod error;
 mod joint;
 mod read;
@@ -10,6 +11,7 @@ mod yaml;
 use std::io::Read;
 use std::path::Path;
 
+pub use commissioning::{COMMISSIONING_SHARE, COMMISSIONING_SPEED_RAD_S, CommissioningCaps};
 pub use error::{LoadError, Problem, ProblemKind};
 pub use types::{
     Bus, BusName, Direction, Joint, JointName, Limb, LimbName, Power, PowerSource, Skeleton, Uid,

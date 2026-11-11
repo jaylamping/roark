@@ -1,6 +1,7 @@
 //! The checked skeleton. Every value here has passed the loader; nothing downstream re-checks it (rust.md section 3).
 //!
-//! `None` means the value isn't known yet. It loads fine and refuses enable ("Null is not permission", PLAN item 1).
+//! `None` means the value isn't known yet. It loads fine and refuses only the motion that needs it, never the enable: a
+//! joint with a null cap, `direction`, `zero_rad` or `hard_rad` runs at its model's commissioning caps (PLAN item 1).
 
 use core::fmt;
 

@@ -3,7 +3,7 @@
 
 use std::f64::consts::TAU;
 
-use skeleton::{LoadError, ProblemKind};
+use skeleton::{COMMISSIONING_SHARE, LoadError, ProblemKind};
 
 /// Five limbs, some wired and some offline. One joint is fully commissioned so the checks that need a zero and a
 /// direction have something to check.
@@ -243,7 +243,7 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
                 at(
                     "power.current_budget_a",
                     ProblemKind::CurrentBudget {
-                        sum_a: 26.0,
+                        sum_a: 12.0 + 14.0 + 16.0 * COMMISSIONING_SHARE,
                         budget_a: 25.0,
                     },
                 ),
@@ -336,12 +336,13 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
         ),
         (
             "current caps on joints with a bus sum above the budget",
-            // 12 A + 14 A on wired joints; the offline joint's 43 A doesn't count, it can't be enabled.
+            // 12 A + 14 A on wired joints, and the RS00's null cap at its commissioning current (5 % of 16 A); the offline
+            // joint's 43 A doesn't count, it can't be enabled.
             edit("current_cap_a: 10.0", "current_cap_a: 14.0"),
             vec![at(
                 "power.current_budget_a",
                 ProblemKind::CurrentBudget {
-                    sum_a: 26.0,
+                    sum_a: 12.0 + 14.0 + 16.0 * COMMISSIONING_SHARE,
                     budget_a: 25.0,
                 },
             )],
