@@ -13,9 +13,14 @@ use can::{
     BusConfig, BusLinks, CommandBatch, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, Snapshot,
 };
 use common::{HZ, drive, id, info, next_snapshot, soon, timing};
-use robstride::{Drive, Mode, Model, Uid};
+use robstride::drive::{Command, HostFrame};
+use robstride::{
+    CanTimeout, Damper, Drive, Mode, Model, NewtonMeters, Param, ParamValue, StatusFault,
+    StatusFaults, Uid, Volts,
+};
 use safety::{
-    EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal, RuleId, Seen, Step, Target,
+    EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal, Register, RuleId, Seen,
+    Step, Target,
 };
 use sim_drive::{Fault, SimDrive, ensure_vcan, serve};
 use telemetry::{Epoch, Recorder, Recording, Session};
@@ -73,6 +78,25 @@ enum After {
     /// Answers nothing from then on: it never reaches Run as far as the host can tell. The sim stops serving when
     /// preflight passes and serves the silent drive again, and nothing it could have missed in between would answer.
     Silent,
+    /// Put in Run by something other than this host once preflight has passed, as another controller's Enable leaves
+    /// it: in Run (`Fault::Mode`), answering that Enable with a Run status on the bus. The sim stops serving when
+    /// preflight passes and serves again from there; control begins the enable sequence once that status shows, as it
+    /// would if it came in the ticks before the Enable.
+    RunByAnother,
+}
+
+impl After {
+    /// Whether what the drive does after preflight shows in `seen`, the proof made at `proved_ns`, so control can begin
+    /// the enable sequence.
+    fn shown(self, seen: Seen<'_>, proved_ns: u64) -> bool {
+        match self {
+            Self::Answers | Self::Silent => true,
+            Self::RunByAnother => seen
+                .view()
+                .mode
+                .is_some_and(|m| m.mode == Mode::Run && m.read_ns >= proved_ns),
+        }
+    }
 }
 
 /// How control's attempt ended.
@@ -134,9 +158,22 @@ fn attempt(uid: Uid, start: Option<Fault>, after: After) -> Ended {
             if let Some(fault) = start {
                 drives[0].inject(Instant::now(), fault).unwrap();
             }
-            if let After::Silent = after {
-                serve(BUS, &mut drives, &passed, &mut |_| {})?;
-                drives[0].inject(Instant::now(), Fault::Silent).unwrap();
+            match after {
+                After::Answers => {}
+                After::Silent => {
+                    serve(BUS, &mut drives, &passed, &mut |_| {})?;
+                    drives[0].inject(Instant::now(), Fault::Silent).unwrap();
+                }
+                After::RunByAnother => {
+                    serve(BUS, &mut drives, &passed, &mut |_| {})?;
+                    let now = Instant::now();
+                    drives[0].inject(now, Fault::Mode(Mode::Run)).unwrap();
+                    let enable = HostFrame {
+                        target: id(101),
+                        command: Command::Enable,
+                    };
+                    drives[0].receive(now, enable);
+                }
             }
             applied.store(true, Ordering::Release);
             serve(BUS, &mut drives, &stop_sim, &mut |_| {})
@@ -234,7 +271,9 @@ fn attempt(uid: Uid, start: Option<Fault>, after: After) -> Ended {
                         Step::Spent => (None, Some(Ended::Refused(Refusal::NoStatus))),
                     }
                 }
-                Phase::Handing(proof) if applied.load(Ordering::Acquire) => {
+                Phase::Handing(proof)
+                    if applied.load(Ordering::Acquire) && after.shown(seen, proof.at_ns()) =>
+                {
                     (Some(Phase::Enabling(Enabling::new(proof, now))), None)
                 }
                 Phase::Handing(proof) => (Some(Phase::Handing(proof)), None),
@@ -344,4 +383,84 @@ fn a_drive_not_in_reset_is_refused_on_vcan() {
         return;
     };
     assert_eq!(refusal.rule(), RuleId::HostPreflight);
+}
+
+impl Ended {
+    /// The rule it was refused or stopped under, if it was.
+    fn rule(&self) -> Option<RuleId> {
+        match self {
+            Self::Refused(refusal) => Some(refusal.rule()),
+            Self::GaveUp(failure) | Self::Stop(failure) => Some(failure.rule()),
+            Self::Enabled => None,
+        }
+    }
+}
+
+/// Guards: safety - `drive.can_timeout`, `drive.caps`, `drive.damper` and `host.preflight` on a real socket: each
+/// failure injected in `sim-drive` (a write not kept, the damper off, VBUS out of its window, a fault bit, a drive put
+/// in Run by something else after its preflight) refuses the enable under its rule, with no Enable sent (PLAN item 6
+/// drive layer and Preflight row: proven on `vcan`).
+#[test]
+fn each_preflight_failure_refuses_the_enable_on_vcan() {
+    let rs03 = Model::Rs03.ranges();
+    let window = skeleton::parse(SKELETON).unwrap().power.vbus_v;
+    let over: StatusFaults = [StatusFault::Overcurrent].into_iter().collect();
+    let volts = |v| Volts::new(v).unwrap();
+    let rows = [
+        // Writes answered but not kept: canTimeout reads its power-up 0, limit_torque the model's highest.
+        (
+            Some(Fault::IgnoreWrites(Param::CanTimeout)),
+            After::Answers,
+            Ended::Refused(Refusal::CanTimeout {
+                read: CanTimeout::OFF,
+            }),
+            RuleId::DriveCanTimeout,
+        ),
+        (
+            Some(Fault::IgnoreWrites(Param::LimitTorque)),
+            After::Answers,
+            Ended::Refused(Refusal::Cap {
+                register: Register::LimitTorque,
+                written: ParamValue::NewtonMeters(NewtonMeters::new(10.0).unwrap()),
+                read: ParamValue::NewtonMeters(rs03.torque_max),
+            }),
+            RuleId::DriveCaps,
+        ),
+        // Registers preflight only reads: an injected value holds.
+        (
+            Some(Fault::Param(
+                Param::Damper,
+                ParamValue::Damper(Damper::ProtectionOff),
+            )),
+            After::Answers,
+            Ended::Refused(Refusal::DamperOff),
+            RuleId::DriveDamper,
+        ),
+        (
+            Some(Fault::Param(Param::Vbus, ParamValue::Volts(volts(30.0)))),
+            After::Answers,
+            Ended::Refused(Refusal::Vbus {
+                read: volts(30.0),
+                window,
+            }),
+            RuleId::HostPreflight,
+        ),
+        (
+            Some(Fault::FaultBits(over)),
+            After::Answers,
+            Ended::Refused(Refusal::Faults { bits: over }),
+            RuleId::HostPreflight,
+        ),
+        (
+            None,
+            After::RunByAnother,
+            Ended::GaveUp(EnableFailure::NotReset { mode: Mode::Run }),
+            RuleId::HostPreflight,
+        ),
+    ];
+    for (start, after, expected, rule) in rows {
+        let ended = attempt(UID, start, after);
+        assert_eq!(ended, expected, "{start:?}");
+        assert_eq!(ended.rule(), Some(rule), "{start:?}");
+    }
 }
