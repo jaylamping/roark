@@ -127,12 +127,6 @@ impl<'a> Seen<'a> {
         self.bus
     }
 
-    /// The drive's slot in the snapshot.
-    #[must_use]
-    pub const fn slot(&self) -> usize {
-        self.slot
-    }
-
     /// The drive.
     #[must_use]
     pub const fn view(&self) -> &'a DriveView {
