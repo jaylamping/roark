@@ -74,6 +74,11 @@ impl Schedule {
     }
 }
 
+/// Whether `at` has passed.
+pub(crate) fn passed(at: Instant) -> bool {
+    mono_now() >= at
+}
+
 /// The monotonic clock, read only here and in [`wall_ns`].
 #[expect(
     clippy::disallowed_methods,

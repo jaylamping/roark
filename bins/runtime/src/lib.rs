@@ -22,8 +22,7 @@ mod start;
 pub use control::{ControlExit, View};
 pub use plan::{BusPlan, PlanError, offline, plan};
 pub use request::{
-    Clear, ClearAt, ClearRefused, Reply, Routed, Scope, StopLatch, Stops, reply, route_clear,
-    route_stop,
+    BusStop, Clear, ClearAt, ClearRefused, Reply, Scope, StopAt, route_clear, route_stop,
 };
 #[cfg(target_os = "linux")]
 pub use start::{BusEnd, EndError, Runtime, RuntimeConfig, RuntimeExit, StartError, StartInfo};

@@ -70,12 +70,25 @@ mod linux {
             config.hz,
             info.session.display()
         ));
-        for (p, rcvbuf) in info.plans.iter().zip(&info.receive_buffer_bytes) {
+        for ((p, socket), rcvbuf) in info
+            .plans
+            .iter()
+            .zip(&info.sockets)
+            .zip(&info.receive_buffer_bytes)
+        {
             let joints: Vec<&str> = p.joints.iter().map(skeleton::JointName::as_str).collect();
             say(&format!(
-                "{}: {} bit/s, receive buffer {rcvbuf} bytes, joints {}",
+                "{}: {} bit/s, {:?} timestamps, receive filters {}, error filter {:#010x}, receive buffer {rcvbuf} bytes, \
+                 joints {}",
                 p.name,
-                p.bitrate_bps,
+                socket.bitrate,
+                socket.timestamps,
+                if socket.receive_filters.is_empty() {
+                    "none (every ID)".to_owned()
+                } else {
+                    format!("{:?}", socket.receive_filters)
+                },
+                socket.error_filter,
                 joints.join(" ")
             ));
         }
@@ -159,17 +172,30 @@ mod linux {
         clean
     }
 
+    /// The panic hook: one line to fd 2, formatted on the stack and written with one `write`, so it takes no lock (a
+    /// thread that panicked holding stderr's lock can't hang it) and allocates nothing (rust.md section 4). A message
+    /// longer than the buffer is cut.
+    fn panic_line(info: &std::panic::PanicHookInfo<'_>) {
+        let mut buf = [0u8; 1024];
+        let mut cursor = std::io::Cursor::new(&mut buf[..]);
+        let thread = std::thread::current();
+        // Full is fine: the line is cut, and the write below takes what fitted.
+        let _ = writeln!(
+            cursor,
+            "runtime: panic in thread {}: {info}",
+            thread.name().unwrap_or("unnamed")
+        );
+        let end = usize::try_from(cursor.position()).unwrap_or(0);
+        if let Some(line) = buf.get(..end) {
+            // Nothing to do if stderr is gone: the abort follows either way.
+            let _ = nix::unistd::write(std::io::stderr(), line);
+        }
+    }
+
     pub(super) fn main() -> ExitCode {
         // Panics abort the process (Cargo.toml, rust.md section 4); the hook makes sure the reason reaches the journal
         // first, once, naming the thread. The drives go limp 50 ms after the last command (`drive.can_timeout`).
-        std::panic::set_hook(Box::new(|info| {
-            let thread = std::thread::current();
-            let _ = writeln!(
-                std::io::stderr(),
-                "runtime: panic in thread {}: {info}",
-                thread.name().unwrap_or("unnamed")
-            );
-        }));
+        std::panic::set_hook(Box::new(panic_line));
         let config = match args() {
             Ok(c) => c,
             Err(e) => {
@@ -197,12 +223,14 @@ mod linux {
         startup(&runtime, &config);
         // Without the watcher a run that ends on its own goes unnoticed until a signal: end now rather than run blind.
         let mut clean = true;
-        if let Err(e) = watch(runtime.finished()) {
+        let finished = runtime.finished();
+        if let Err(e) = watch(Arc::clone(&finished)) {
             say(&format!("can't start the watcher ({e}): ending"));
             clean = false;
         } else {
             match signals.wait() {
-                Ok(Signal::SIGUSR1) => {
+                // The watcher's, unless someone else sent it: then it is a request to end like the others.
+                Ok(Signal::SIGUSR1) if finished.load(Ordering::Acquire) => {
                     say("the run ended on its own: ending");
                     clean = false;
                 }

@@ -12,14 +12,15 @@ use can::{BusConfig, BusExit, BusLinks, BusRunError, Counters, Snapshot, Timing,
 use rtrb::{Consumer, Producer, RingBuffer};
 use skeleton::JointName;
 use telemetry::{
-    RING_BATCHES, RecordError, Recorder, Recording, Session, SessionInfo, SkeletonRef, Stage,
+    BusInfo, RING_BATCHES, RecordError, Recorder, Recording, Session, SessionInfo, SkeletonRef,
+    Stage,
 };
 
 use crate::clock::{Schedule, mono_now, wall_ns};
 use crate::control::{self, BusEnds, ControlExit, ControlLinks, View};
-use crate::dispatch::BusOrders;
+use crate::dispatch::{BusOrders, StopLatch};
 use crate::plan::{BusPlan, PlanError, offline, plan};
-use crate::request::{Clear, Reply, Scope, StopLatch};
+use crate::request::{Clear, Reply, Scope};
 
 /// Ring sizes: a tick's worth of traffic with room to spare. The bus takes the newest batch, so a few are plenty.
 const COMMANDS: usize = 4;
@@ -98,6 +99,9 @@ pub enum StartError {
 pub struct StartInfo {
     /// The bus threads, in the order replies and views name them.
     pub plans: Vec<BusPlan>,
+    /// Each bus socket's settings as the session records them (bitrate, timestamps, receive and error filters), in plan
+    /// order.
+    pub sockets: Vec<BusInfo>,
     /// Each bus socket's receive buffer as the kernel reports it, in plan order.
     pub receive_buffer_bytes: Vec<usize>,
     /// The joints on no bus.
@@ -183,6 +187,10 @@ impl Runtime {
             source,
         })?;
         let skeleton_ref = SkeletonRef::of(&config.skeleton, text.as_bytes());
+        let sockets: Vec<BusInfo> = plans
+            .iter()
+            .map(|p| can::bus_info(&p.name, p.bitrate_bps))
+            .collect();
         let session = Session::start(
             &config.sessions,
             SessionInfo {
@@ -190,10 +198,7 @@ impl Runtime {
                 operator: config.operator.clone(),
                 stage: STAGE,
                 skeleton: skeleton_ref.clone(),
-                buses: plans
-                    .iter()
-                    .map(|p| can::bus_info(&p.name, p.bitrate_bps))
-                    .collect(),
+                buses: sockets.clone(),
             },
             wall_ns(),
         )?;
@@ -209,13 +214,15 @@ impl Runtime {
 
         let start = mono_now() + Duration::from_nanos(ORIGIN_PERIODS * timing.period_ns);
         let mut ends = Vec::new();
+        let mut orders = Vec::new();
         let mut receive_buffer_bytes = Vec::new();
         for (p, recorder) in plans.iter().zip(recorders) {
             match spawn_bus(p, timing, recorder, epoch, start, &threads.end) {
-                Ok((thread, bus_ends, rcvbuf)) => {
-                    threads.buses.push((p.name.clone(), thread));
-                    ends.push(bus_ends);
-                    receive_buffer_bytes.push(rcvbuf);
+                Ok(bus) => {
+                    threads.buses.push((p.name.clone(), bus.thread));
+                    ends.push(bus.ends);
+                    orders.push(bus.orders);
+                    receive_buffer_bytes.push(bus.receive_buffer_bytes);
                 }
                 Err(e) => return Err(threads.unwind(e.into())),
             }
@@ -236,6 +243,7 @@ impl Runtime {
         };
         let links = ControlLinks {
             buses: ends,
+            orders,
             stops: Arc::clone(&stops),
             clears: clears_rx,
             replies: replies_tx,
@@ -246,7 +254,9 @@ impl Runtime {
         let control_plans = plans.clone();
         let control = std::thread::Builder::new()
             .name("control".to_owned())
-            .spawn(move || control::run(&control_plans, &schedule, epoch, timing, links));
+            .spawn(move || {
+                control::run(&control_plans, &schedule, |at| epoch.ns(at), timing, links)
+            });
         match control {
             Ok(handle) => threads.control = Some(handle),
             Err(e) => return Err(threads.unwind(StartError::Thread(e))),
@@ -259,6 +269,7 @@ impl Runtime {
             finished,
             info: StartInfo {
                 plans,
+                sockets,
                 receive_buffer_bytes,
                 offline: offline(&skeleton),
                 skeleton: skeleton_ref,
@@ -293,8 +304,9 @@ impl Runtime {
         Arc::clone(&self.finished)
     }
 
-    /// End the run: every bus stops its limbs and ends once control has taken a snapshot showing every limb at rest,
-    /// then control ends and the recording closes.
+    /// End the run: every bus stops its limbs and ends once control has taken a snapshot showing every limb at rest (or,
+    /// should control stop reading, after its exit wait's limit), then control ends and the recording closes. Clears
+    /// still queued are refused `Ending`.
     ///
     /// # Errors
     /// A thread panicked, or the recording didn't close cleanly.
@@ -375,6 +387,15 @@ impl Threads {
     }
 }
 
+/// A bus thread as started.
+struct SpawnedBus {
+    thread: JoinHandle<BusExit>,
+    /// Control's ends of its rings.
+    ends: BusEnds,
+    orders: BusOrders,
+    receive_buffer_bytes: usize,
+}
+
 /// One bus thread, control's ends of its rings, and its socket's receive buffer.
 fn spawn_bus(
     p: &BusPlan,
@@ -383,7 +404,7 @@ fn spawn_bus(
     epoch: telemetry::Epoch,
     start: std::time::Instant,
     exit: &Arc<AtomicBool>,
-) -> Result<(JoinHandle<BusExit>, BusEnds, usize), BusRunError> {
+) -> Result<SpawnedBus, BusRunError> {
     let (commands, commands_rx) = RingBuffer::new(COMMANDS);
     let (snapshots_tx, snapshots) = RingBuffer::new(SNAPSHOTS);
     let (orders, orders_rx): (Producer<_>, Consumer<_>) = RingBuffer::new(ORDERS);
@@ -408,14 +429,14 @@ fn spawn_bus(
             exit: Arc::clone(exit),
         },
     )?;
-    Ok((
-        spawned.thread,
-        BusEnds {
+    Ok(SpawnedBus {
+        thread: spawned.thread,
+        ends: BusEnds {
             commands,
             snapshots,
-            orders: BusOrders::new(orders),
             rearmed,
         },
-        spawned.receive_buffer_bytes,
-    ))
+        orders: BusOrders::new(orders),
+        receive_buffer_bytes: spawned.receive_buffer_bytes,
+    })
 }

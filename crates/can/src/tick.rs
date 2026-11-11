@@ -333,6 +333,10 @@ impl BusTick {
 
     /// Whether a bus error has latched (bus-off, or the socket failed): there is nothing to send on.
     #[must_use]
+    #[cfg_attr(
+        not(target_os = "linux"),
+        expect(dead_code, reason = "only the Linux shell (`bus.rs`) asks")
+    )]
     pub(crate) fn bus_lost(&self) -> bool {
         self.bus_error.is_some()
     }
@@ -436,6 +440,10 @@ impl BusTick {
 
     /// Whether every limb is idle: nothing was ever enabled, or every limb was re-armed.
     #[must_use]
+    #[cfg_attr(
+        not(target_os = "linux"),
+        expect(dead_code, reason = "only the Linux shell (`bus.rs`) asks")
+    )]
     pub(crate) fn all_idle(&self) -> bool {
         self.limbs
             .iter()
