@@ -45,7 +45,7 @@ sync() {
 # The copy has no .git, so the build can't see its revision: hand it over (bins/runtime/build.rs).
 revision() {
     local head
-    head=$(git -C "$repo" rev-parse HEAD 2>/dev/null) || { echo unknown; return; }
+    head=$(git -C "$repo" rev-parse HEAD 2>/dev/null) || return 0   # nothing: the build warns and records unknown
     if [ -n "$(git -C "$repo" status --porcelain 2>/dev/null || echo failed)" ]; then
         echo "$head-dirty"
     else
@@ -117,7 +117,8 @@ case "$cmd" in
     doctor) doctor ;;
     run) run "$@" ;;
     sync) sync ;;
-    shell) sync && ssh -t "$host" "cd '$remote' && export ROARK_GIT_REVISION='$(revision)' && exec bash -l" ;;
+    # No revision handed to the shell: the copy may be re-synced while it stays open, and a stale one would be wrong.
+    shell) sync && ssh -t "$host" "cd '$remote' && exec bash -l" ;;
     ssh-config) ssh_config ;;
     *) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
 esac

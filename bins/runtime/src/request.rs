@@ -1,5 +1,5 @@
-//! The operator's requests and how control turns them into each bus's orders. Pure, so it is tested on any OS; the
-//! control thread (Linux) carries the orders to the rings.
+//! The operator's requests, their answers, and which buses each goes to. Pure, so it is tested on any OS; what control
+//! does with them each tick is in `dispatch`.
 
 use can::RearmRefused;
 use skeleton::LimbName;
@@ -26,7 +26,7 @@ pub struct Clear {
     pub limb: LimbName,
 }
 
-/// The answer to a [`Clear`], one per bus the limb is on.
+/// The answer to a [`Clear`]: one per bus the limb is on, or one with no bus when it is on none.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Reply {
     /// The clear's tag.

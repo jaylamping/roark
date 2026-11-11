@@ -23,7 +23,8 @@ thread per wired bus and the control thread on one schedule origin, and takes th
   else for that bus.
 - **Clears** (`Clear`, through the in-process queue `Runtime::clears`) re-arm one stopped limb on every bus it is on,
   answered by one `Reply` per bus under the requester's tag. A clear behind a stop still waiting for its bus is refused
-  (`Busy`), as is one to a bus thread that has ended (`BusEnded`) and one of a limb on no bus (`Offline`).
+  (`Busy`), as is one to a bus thread that has ended (`BusEnded`), one while the run ends (`Ending`, once per bus), and one
+  of a limb on no bus (`Offline`, once). A clear pushed after the run has finished gets no reply.
 - **The run ends** with `Runtime::end` (or SIGINT and SIGTERM in the binary): every bus stops its limbs and ends once
   control has taken a snapshot with every limb at rest, then the session closes. It also ends on its own if control loses
   its clock or a bus thread ends: `Runtime::finished` is set, and the binary then ends the runtime and exits with failure.
@@ -53,7 +54,7 @@ scripts/devbox.sh run cargo run -p runtime -- --sessions /tmp/sessions
 ```
 
 Defaults: `config/skeleton.yaml`, `/var/lib/robot/sessions`, 250 Hz. It logs what it checked at startup (build, skeleton
-hash, each bus's settings and joints, the offline joints) and, at the end, control's counts. The build's git revision,
+hash, each bus's settings and joints, the offline joints) and, at the end, control's counts. SIGUSR1 also ends it: the binary raises it itself when the run ends on its own. The build's git revision,
 with `-dirty` for a changed tree, is embedded at build time and recorded in every session.
 
 In code, the plan and the routing are pure. With the test robot in `tests/skeleton.yaml`, whose right arm spans two

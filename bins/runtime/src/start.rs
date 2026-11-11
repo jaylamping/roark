@@ -114,9 +114,11 @@ pub struct StartInfo {
 
 /// A running runtime: stops and clears in, replies and each bus's newest snapshot out.
 pub struct Runtime {
-    /// The operator's clears.
+    /// The operator's clears. Each is answered once per bus its limb is on (by the bus, or refused `Busy`, `BusEnded`
+    /// or `Ending`), or once with no bus when the limb is on none (`Offline`). A clear pushed after the run has
+    /// [`finished`](Runtime::finished) gets no reply: nobody takes it.
     pub clears: Producer<Clear>,
-    /// One reply per clear and bus, or one refusal.
+    /// The answers to clears.
     pub replies: Consumer<Reply>,
     /// Each bus's newest snapshot, once a tick, when [`RuntimeConfig::views`] asked for them.
     pub views: Option<Consumer<View>>,
@@ -227,6 +229,9 @@ impl Runtime {
                 Err(e) => return Err(threads.unwind(e.into())),
             }
         }
+        // The origin is after the epoch (the recording was made first), so tick times on the epoch are the origin's plus
+        // their offset.
+        let origin_ns = epoch.ns(start);
         let schedule = match Schedule::new(start, timing.period_ns) {
             Ok(s) => s,
             Err(e) => return Err(threads.unwind(StartError::Clock(e))),
@@ -254,9 +259,7 @@ impl Runtime {
         let control_plans = plans.clone();
         let control = std::thread::Builder::new()
             .name("control".to_owned())
-            .spawn(move || {
-                control::run(&control_plans, &schedule, |at| epoch.ns(at), timing, links)
-            });
+            .spawn(move || control::run(&control_plans, &schedule, origin_ns, timing, links));
         match control {
             Ok(handle) => threads.control = Some(handle),
             Err(e) => return Err(threads.unwind(StartError::Thread(e))),

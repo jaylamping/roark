@@ -298,8 +298,8 @@ mod tests {
             (0..plans.len()).map(|_| RingBuffer::new(8)).unzip();
         let mut orders_of: Vec<BusOrders> = rings.into_iter().map(BusOrders::new).collect();
         let latch = StopLatch::default();
-        // The operator: a clear of the left arm, then a stop of the right arm and a clear of it, then a stop of the
-        // waist after the last clear and a clear of the offline leg; control pops them in turn.
+        // The operator: a clear of the left arm, then a stop of the right arm and a clear of it, then a clear of the
+        // offline leg, then a stop of the waist after the last clear; control pops them in turn.
         let mut script = vec![
             (
                 None,
@@ -330,12 +330,13 @@ mod tests {
             &mut orders_of,
             &latch,
             || {
-                let (stop, clear) = script.next()?;
+                let Some((stop, clear)) = script.next() else {
+                    // Asked after the last clear was taken: the trailing take sends it this tick.
+                    latch.ask(Scope::Limb(LimbName::Waist));
+                    return None;
+                };
                 if let Some(scope) = stop {
                     latch.ask(scope);
-                }
-                if clear.tag == 3 {
-                    latch.ask(Scope::Limb(LimbName::Waist));
                 }
                 Some(clear)
             },
@@ -369,6 +370,11 @@ mod tests {
                 outcome: Err(ClearRefused::Offline)
             }]
         );
+        // A tick with no clears: a stop latched before it goes all the same.
+        latch.ask(Scope::Limb(LimbName::LeftArm));
+        assert_eq!(orders(&plans, &mut orders_of, &latch, || None, |_| {}), 0);
+        assert_eq!(drain(&mut buses[0]), []);
+        assert_eq!(drain(&mut buses[1]), [Order::StopLimb(0)]);
     }
 
     /// Guards: safety - a bus's re-arm answer comes back under the requester's tag and the skeleton limb it stands

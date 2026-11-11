@@ -14,7 +14,7 @@ use rtrb::{Consumer, Producer};
 use crate::clock::{Schedule, passed, sleep_period};
 use crate::dispatch::{BusOrders, StopLatch, orders, reply};
 use crate::plan::BusPlan;
-use crate::request::{Clear, ClearRefused, Reply};
+use crate::request::{Clear, ClearAt, ClearRefused, Reply, route_clear};
 
 /// One bus's newest snapshot, for the runtime's readers.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -43,8 +43,9 @@ pub(crate) struct ControlLinks {
     pub(crate) replies: Producer<Reply>,
     /// `None` when nobody reads the views.
     pub(crate) views: Option<Producer<View>>,
-    /// The run's end, and every bus thread's exit flag: one flag, so no bus can be told to exit while control still
-    /// runs as if it weren't. Set by the runtime to end the run, or by control when it can't go on.
+    /// The run's end, and every bus thread's exit flag: one flag for both, so the buses and control learn of an end
+    /// from the same store (control reads it per bus and again before the orders). Set by the runtime to end the run,
+    /// or by control when it can't go on.
     pub(crate) end: Arc<AtomicBool>,
     /// Set by control as it returns, so the runtime's owner learns of a run that ended on its own.
     pub(crate) finished: Arc<AtomicBool>,
@@ -87,7 +88,7 @@ fn phase(timing: Timing) -> u64 {
 pub(crate) fn run(
     plans: &[BusPlan],
     schedule: &Schedule,
-    epoch_ns: impl Fn(std::time::Instant) -> u64,
+    origin_ns: u64,
     timing: Timing,
     mut links: ControlLinks,
 ) -> ControlExit {
@@ -116,13 +117,13 @@ pub(crate) fn run(
         if links.buses.iter().all(|b| b.snapshots.is_abandoned()) {
             // A bus may have answered a clear between its last read and its end.
             read(plans, n, &mut links, &mut exit);
-            refuse_clears(&mut links, &mut exit);
+            refuse_clears(plans, &mut links, &mut exit);
             links.finished.store(true, Ordering::Release);
             return exit;
         }
         // Read again: an end asked during the reads stops the orders and batches at once.
         if links.end.load(Ordering::Acquire) {
-            refuse_clears(&mut links, &mut exit);
+            refuse_clears(plans, &mut links, &mut exit);
         } else {
             let replies = &mut links.replies;
             let clears = &mut links.clears;
@@ -138,7 +139,11 @@ pub(crate) fn run(
                 |r| push_reply(replies, r, &mut exit.replies_dropped),
             );
             let next = n.saturating_add(1);
-            let expires = epoch_ns(schedule.at(next, timing.send_window_ns));
+            // The schedule's origin on the session's epoch, plus the next tick's send window.
+            let expires = next
+                .saturating_mul(timing.period_ns)
+                .saturating_add(timing.send_window_ns)
+                .saturating_add(origin_ns);
             for ends in &mut links.buses {
                 if ends
                     .commands
@@ -156,20 +161,33 @@ pub(crate) fn run(
     }
 }
 
-/// Every clear still queued, refused: the run is ending.
-fn refuse_clears(links: &mut ControlLinks, exit: &mut ControlExit) {
+/// Every clear still queued, refused as a clear is: `Ending` once per bus its limb is on, `Offline` when it is on none.
+fn refuse_clears(plans: &[BusPlan], links: &mut ControlLinks, exit: &mut ControlExit) {
     for _ in 0..links.clears.buffer().capacity() {
         let Ok(clear) = links.clears.pop() else {
             break;
         };
         exit.clears_ending += 1;
-        let r = Reply {
-            tag: clear.tag,
-            limb: clear.limb,
-            bus: None,
-            outcome: Err(ClearRefused::Ending),
-        };
-        push_reply(&mut links.replies, r, &mut exit.replies_dropped);
+        let mut routed_any = false;
+        for ClearAt { bus, .. } in route_clear(plans, clear.limb) {
+            routed_any = true;
+            let r = Reply {
+                tag: clear.tag,
+                limb: clear.limb,
+                bus: Some(bus),
+                outcome: Err(ClearRefused::Ending),
+            };
+            push_reply(&mut links.replies, r, &mut exit.replies_dropped);
+        }
+        if !routed_any {
+            let r = Reply {
+                tag: clear.tag,
+                limb: clear.limb,
+                bus: None,
+                outcome: Err(ClearRefused::Offline),
+            };
+            push_reply(&mut links.replies, r, &mut exit.replies_dropped);
+        }
     }
 }
 
@@ -184,7 +202,7 @@ fn read(plans: &[BusPlan], n: u64, links: &mut ControlLinks, exit: &mut ControlE
         let ended = ends.snapshots.is_abandoned();
         // Read now, not once a pass: an end asked during this pass makes every bus exit, which isn't a bus failing.
         let ending = links.end.load(Ordering::Acquire);
-        if !ending && !ended && exit.error.is_none() && newest.is_none_or(|s| s.tick != n) {
+        if !ending && !ended && exit.error.is_none() && newest.is_none_or(|s| s.tick < n) {
             exit.stale_ticks += 1;
         }
         if let (Some(snapshot), Some(views)) = (newest, &mut links.views)
@@ -264,11 +282,14 @@ mod tests {
         };
         let control = std::thread::spawn({
             let plans = plans.clone();
-            move || run(&plans, &schedule, |_| 0, timing, links)
+            move || run(&plans, &schedule, 0, timing, links)
         });
         // can1 ends on its own; control ends the run for it.
         drop(threads.pop());
+        // A limit on every wait (rust.md section 4): far past the few ticks control needs.
+        let deadline = mono_now() + std::time::Duration::from_secs(10);
         while !end.load(Ordering::Acquire) {
+            assert!(mono_now() < deadline, "control never ended the run");
             std::thread::yield_now();
         }
         // A clear while the run ends is refused, not lost.
@@ -280,20 +301,23 @@ mod tests {
                 })
                 .is_ok()
         );
-        let reply = loop {
+        // One refusal per bus the right arm is on.
+        let mut got = Vec::new();
+        while got.len() < 2 {
+            assert!(mono_now() < deadline, "the clear wasn't refused: {got:?}");
             if let Ok(r) = replies.pop() {
-                break r;
+                got.push(r);
             }
             std::thread::yield_now();
-        };
+        }
         assert_eq!(
-            reply,
-            Reply {
+            got,
+            [0, 1].map(|bus| Reply {
                 tag: 5,
                 limb: LimbName::RightArm,
-                bus: None,
+                bus: Some(bus),
                 outcome: Err(ClearRefused::Ending)
-            }
+            })
         );
         assert!(!finished.load(Ordering::Acquire));
         // can0 ends as asked; control finishes.

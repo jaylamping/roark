@@ -143,13 +143,16 @@ mod linux {
             say(&format!("{} ended before the run did", bus.name));
         }
         say(&format!(
-            "control: {} stale, {} skipped ticks; dropped {} batches, {} replies, {} views; {} stops deferred",
+            "control: {} stale, {} skipped ticks, {} late batches; dropped {} batches, {} replies, {} views; {} stops \
+             deferred; {} clears refused while ending",
             c.stale_ticks,
             c.skipped_ticks,
+            c.late_batches,
             c.batches_dropped,
             c.replies_dropped,
             c.views_dropped,
-            c.stops_deferred
+            c.stops_deferred,
+            c.clears_ending
         ));
         for bus in &exit.buses {
             if let Some(e) = &bus.error {
@@ -172,7 +175,7 @@ mod linux {
         clean
     }
 
-    /// The panic hook: one line to fd 2, formatted on the stack and written with one `write`, so it takes no lock (a
+    /// The panic hook: the message (which may span lines) to fd 2, formatted on the stack and written with one `write`, so it takes no lock (a
     /// thread that panicked holding stderr's lock can't hang it) and allocates nothing (rust.md section 4). A message
     /// longer than the buffer is cut.
     fn panic_line(info: &std::panic::PanicHookInfo<'_>) {
@@ -204,7 +207,7 @@ mod linux {
             }
         };
         // Blocked before any thread starts, so every thread inherits the mask and only the wait below takes them.
-        // SIGUSR1 is the watcher's: the run ended on its own.
+        // SIGUSR1 is the watcher's (the run ended on its own); one from elsewhere is a request to end like the others.
         let mut signals = SigSet::empty();
         signals.add(Signal::SIGINT);
         signals.add(Signal::SIGTERM);
