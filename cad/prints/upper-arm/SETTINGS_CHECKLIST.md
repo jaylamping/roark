@@ -22,7 +22,8 @@ infill of the ring and the coupons are different.
 | Filament | Generic PETG, nozzle 255 °C | filament |
 | Process | 0.20 mm Standard | process |
 | Walls | **6** | Strength > Walls |
-| Sparse infill | **50% zig-zag** on the halves; **100%** on the ring and both coupons | Strength > Sparse infill |
+| Walls, stub coupon | **3** (a fit coupon) | Strength > Walls |
+| Sparse infill | **50% zig-zag** on the halves; **100%** on the ring and the key coupon; **15%** on the stub coupon | Strength > Sparse infill |
 | Infill modifier | on each half, a part called **loaded_zones_100** under the object, at **100%** | object list |
 | Supports | **on**, **tree(auto)**, style **Tree Hybrid**, threshold 45° | Support |
 | Brim | **outer only**, **5 mm** | Others > Brim |
@@ -34,7 +35,7 @@ also listed in the project as one we changed on purpose, which should stop that.
 
 | Order | File | Down on the plate | Time | Filament |
 | --- | --- | --- | --- | --- |
-| 1 | `upper_arm_organic_stub_coupon.3mf` | both half-stubs, cut face down | 37 min | 7 g |
+| 1 | `upper_arm_organic_stub_coupon.3mf` | both half-stubs, cut face down | 37 min | 6.4 g |
 | 2 | `upper_arm_organic_ring.3mf` | the RS02 face (smooth flat side) | 58 min | 19 g |
 | 3 | `upper_arm_organic_back.3mf` | the seam face | 5 h 08 min | 119 g |
 | 4 | `upper_arm_organic_front.3mf` | the seam face | 4 h 37 min | 106 g |
@@ -42,9 +43,13 @@ also listed in the project as one we changed on purpose, which should stop that.
 
 Times and weights are from Bambu Studio's own slice, support and brim included.
 
-**The stub coupon goes first.** Hold its two halves together and slide a 6808 inner race onto the Ø40 stub. A firm hand
-push with no rock is right. If it is loose or won't go on, tell me before printing the halves. The coupon only checks the
-stub, so it doesn't have the halves' 50% infill.
+**The stub coupon goes first.** It is the Ø40.0 stub that the 6808's inner race sits on, cut from both halves (front and
+back), sliced as a fit coupon: 3 walls, 15% infill. It tests only the stub. The 6808's Ø52 outer seat is in the forearm's
+inboard cheek, which isn't in this package.
+
+Hold its two halves together, seam faces touching, and slide a 6808 inner race onto the stub by hand. Tell me:
+1. Does it go on by hand with a firm push and no rock, or is it tight (needs force or won't go), or loose (rocks or drops on)?
+2. The stub's diameter with calipers, across the seam and across the other way. It's modelled at Ø40.0.
 
 ## After printing
 

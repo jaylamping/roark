@@ -38,6 +38,7 @@ SYS = Path.home() / 'AppData/Roaming/BambuStudio/system/BBL'
 COMMON = {}       # all already in the seed: brim outer 5, SuperTack, tree hybrid, support on, 6 walls
 HALF = {'sparse_infill_density': '50%'}
 SOLID = {'sparse_infill_density': '100%'}
+FIT = {'wall_loops': '3', 'sparse_infill_density': '15%'}      # fit coupons only check a fit (as test pass 1)
 
 
 # ---- orientations: CAD (arm frame) -> plate, proper rotations only
@@ -90,7 +91,7 @@ def stub_coupon():
     a = trimesh.Trimesh(va, a.faces)
     b = trimesh.Trimesh(vb, b.faces)
     b.apply_translation((a.bounds[1, 0] - b.bounds[0, 0] + 12.0, a.bounds[0, 1] - b.bounds[0, 1], a.bounds[0, 2] - b.bounds[0, 2]))
-    return trimesh.util.concatenate([a, b]), [], {}
+    return trimesh.util.concatenate([a, b]), [], FIT
 
 
 def key_coupon():
