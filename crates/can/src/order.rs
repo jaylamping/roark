@@ -1,6 +1,7 @@
 //! (rt) Control's orders to a bus besides the batch: stop one limb, stop the bus, or re-arm a stopped limb (the
 //! operator's clear). Control asks for a stop this way, never with Disables in a batch (step 7 design, D2); the bus
-//! takes each order before the next tick's plan, so a stop asked in tick n's slack goes out in tick n+1's sends.
+//! takes every order at the next tick's start, before its drain, so a stop asked in tick n's slack goes out in tick
+//! n+1's sends.
 
 use crate::tick::BusTick;
 use crate::types::{RearmRefused, StopReason};
@@ -36,8 +37,9 @@ pub struct Rearmed {
 }
 
 impl BusTick {
-    /// Take one of control's orders at `now_ns`: a stop is planned at the next [`Self::begin`], and a re-arm is done now
-    /// and answered. The shell takes stops at the tick's start and re-arms in the slack (crates/can/README.md).
+    /// Take one of control's orders at `now_ns`, before the tick's drain: a stop is planned at that tick's
+    /// [`Self::begin`], and a re-arm is done now and answered; a frame the drain then reads latches afresh and is checked
+    /// before the send.
     pub fn order(&mut self, order: Order, now_ns: u64) -> Option<Rearmed> {
         match order {
             Order::StopLimb(limb) => {

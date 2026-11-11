@@ -13,7 +13,6 @@ use rtrb::{Consumer, Producer};
 use socketcan::{CanDataFrame, CanSocket, EmbeddedFrame, ExtendedId, Socket, SocketOptions};
 use telemetry::{BusInfo, BusRecorder, Epoch, TickBatch, TimestampSource};
 
-use crate::bus_orders::Take;
 use crate::clock::{Clock, mono_now, sleep_relative, wall_ns};
 use crate::error_frame::BusError;
 use crate::exit_wait::{ExitWait, Pushed};
@@ -160,8 +159,9 @@ pub struct BusLinks {
     /// (`Counters::slow_results_dropped`, and in all at the end [`BusExit::slow_results_dropped`]), and the requester
     /// times out.
     pub results: Producer<SlowResult>,
-    /// Control's orders: stop a limb, stop the bus, re-arm a stopped limb, taken in the order control pushed them: stops
-    /// at the tick's start up to the first re-arm, the rest in the slack. A bus exiting takes stops only.
+    /// Control's orders: stop a limb, stop the bus, re-arm a stopped limb. Every order in the ring is taken at the next
+    /// tick's start, before its drain, in the order control pushed them. On a bus exiting a re-arm is refused
+    /// (`StopPending`: the exit's stop is asked first); one left when the thread ends is answered `Ended`.
     pub orders: Consumer<Order>,
     /// Each re-arm order's one answer. When the ring is full the answer is dropped and counted
     /// (`Counters::rearms_dropped`); control still sees the limb's state and generation in the snapshots. A re-arm still
@@ -331,22 +331,24 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
         // The overflow count is the last one seen; a frame read this tick may update it.
         batch.kernel_drops = outcome.last.map_or(0, |s| s.counters.kernel_drops);
 
-        // Control's stop orders, up to its first re-arm, so a stop goes out in this tick's sends. Not on the way out: a
-        // bus leaving has published the snapshot with every limb stopped that ends it.
-        if !leaving {
-            bus_orders::take(
-                &clock,
-                &mut tick,
-                &mut links.orders,
-                &mut links.rearmed,
-                Take::Stops,
-            );
+        let exiting = links.exit.load(Ordering::Acquire);
+        if exiting {
+            // Every limb not already stopping or stopped is stopped first; the exit is decided once a snapshot with
+            // every limb stopped is published. Asked before the orders, so a clear can't undo it (`StopPending`).
+            tick.request_stop();
+        }
+        // Ending this tick, unless the drain loses the bus: after the stop, or told to exit with nothing ever enabled.
+        let ending = leaving || (exiting && tick.all_idle());
+        // Control's orders, before the drain: a stop goes out in this tick's sends, and a frame the drain reads after a
+        // clear latches afresh and is checked before the send. Not on the way out: every order left is answered at the
+        // end.
+        if !ending && bus_orders::take(&clock, &mut tick, &mut links.orders, &mut links.rearmed) {
+            exit_wait.rearmed();
         }
         // Drain what arrived in the slack before anything is sent.
         if let Err(e) = drain(socket, &clock, &mut tick, &mut batch) {
             lose(&mut tick, &mut outcome, e);
         }
-        let exiting = links.exit.load(Ordering::Acquire);
         if leaving || (exiting && tick.all_idle()) {
             // The frames this drain read are still recorded, with the health they left the bus in: for a bus leaving
             // after its stop, the echoes of a last send the previous tick wrote after its collect deadline, which only
@@ -354,11 +356,6 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             batch.valid = tick.healthy();
             outcome.recorder.record(batch);
             break;
-        }
-        if exiting {
-            // Every limb not already stopping or stopped is stopped first; the exit is decided once a snapshot with
-            // every limb stopped is published.
-            tick.request_stop();
         }
         let command = newest(&mut links.commands);
         // Planned against the tick's own schedule: a wake past its send window is a missed deadline.
@@ -404,19 +401,6 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             taken,
         };
         leaving = exit_wait.done(pushed, exiting, links.snapshots.is_abandoned());
-        // Every order left, a re-arm judged on all this tick read; a frame read after it latches afresh and is checked
-        // before the next send. After the exit's decision on this tick's snapshot, which a re-arm makes stale. A bus
-        // exiting takes stops only: a re-arm waits, to be answered `Ended`.
-        let take = if exiting { Take::Stops } else { Take::All };
-        if bus_orders::take(
-            &clock,
-            &mut tick,
-            &mut links.orders,
-            &mut links.rearmed,
-            take,
-        ) {
-            exit_wait.rearmed();
-        }
         n += 1;
     }
     finish(

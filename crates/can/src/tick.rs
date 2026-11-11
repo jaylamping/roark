@@ -418,8 +418,13 @@ impl BusTick {
         }
     }
 
-    /// Count a re-arm answer control's ring couldn't take.
-    pub(crate) fn rearm_dropped(&mut self) {
+    /// Whether limb `limb` is on this bus.
+    pub(crate) fn has_limb(&self, limb: usize) -> bool {
+        limb_state(&self.limbs, limb).is_some()
+    }
+
+    /// Count a re-arm answer control's ring couldn't take: the shell's, like [`Self::snapshot_dropped`].
+    pub fn rearm_dropped(&mut self) {
         self.counters.rearms_dropped += 1;
     }
 

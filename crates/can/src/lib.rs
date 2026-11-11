@@ -9,7 +9,7 @@ mod bus_orders;
 #[cfg(target_os = "linux")]
 mod clock;
 mod error_frame;
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", test))]
 mod exit_wait;
 mod order;
 mod read;

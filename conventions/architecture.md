@@ -50,7 +50,7 @@ The queues between the control thread and each bus thread, all bounded `rtrb` ri
 | Ring | From → to | When full |
 |---|---|---|
 | Command batches | control → bus | Control's push fails and that batch is never sent. The bus empties the ring each tick and takes the newest; a batch for another tick, or none, sends nothing, and an expired one for the tick sends only its Disables and reporting off |
-| Orders (stop a limb, stop the bus, re-arm a stopped limb) | control → bus | Control's push fails and the order isn't taken; control keeps a stop it couldn't push and pushes it next tick. The bus takes stops at each tick's start, before its drain, and re-arms in its slack, in push order |
+| Orders (stop a limb, stop the bus, re-arm a stopped limb) | control → bus | Control's push fails and the order isn't taken; control keeps a stop it couldn't push and pushes it next tick. The bus takes every order at each tick's start, before its drain, in push order |
 | Re-arm answers, one per re-arm order | bus → control | Dropped and counted (`rearms_dropped`); the limb's state and generation still show in the snapshots |
 | Slow requests (parameter reads, allowlisted writes, get-ID) | control → bus | Control's push fails and that request gets no result. The bus takes them only as its slots free up |
 | Slow results, one per request | bus → control | Dropped and counted (`slow_results_dropped`); the requester times out |

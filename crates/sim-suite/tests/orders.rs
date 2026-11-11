@@ -37,9 +37,9 @@ fn batch(epoch: Epoch, snap: &Snapshot, frames: [Option<Frame>; 2]) -> CommandBa
 
 /// Guards: safety - on a real socket, control's order to stop one limb stops that limb alone (`LimbRequested`) while
 /// the bus's other limb keeps its commands and answers; once the stop has ended, a re-arm order (the operator's clear)
-/// is answered once under its tag and makes the limb idle with a new generation; and a stop order naming a limb the
-/// bus doesn't have stops every limb (PLAN item 6: a stop names its scope, a latched stop clears only by an operator
-/// clear, `host.hang`).
+/// is answered once under its tag and gives the limb a new generation; a stop order naming a limb the bus doesn't have,
+/// pushed right behind it, stops every limb in the same tick; and a clear sent as the bus exits never undoes its stop
+/// (PLAN item 6: a stop names its scope, a latched stop clears only by an operator clear, `host.hang`).
 #[test]
 #[expect(clippy::too_many_lines, reason = "one control loop, start to end")]
 fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
@@ -137,63 +137,49 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         }
         assert_eq!(snap.limb(0).map(|l| l.generation), Some(0));
 
-        // The operator's clear.
+        // The operator's clear, with a stop order naming a limb the bus doesn't have pushed right behind it: both are
+        // taken at the same tick's start, so the clear is answered and the bad stop then stops both limbs, the running
+        // one included, the cleared one with its new generation.
         assert!(orders.push(Order::Rearm { tag: 5, limb: 0 }).is_ok());
-        let answer = loop {
+        assert!(orders.push(Order::StopLimb(7)).is_ok());
+        let mut answer = None;
+        while answer.is_none() || limbs(&snap)[1].0 == LimbState::Active {
             assert!(
                 commands
                     .push(batch(epoch, &snap, [None, Some(hold(102))]))
                     .is_ok()
             );
             snap = next_snapshot(&mut snapshots, end).unwrap();
-            if let Ok(answer) = rearmed.pop() {
-                break answer;
+            assert_ne!(
+                limbs(&snap)[0].0,
+                LimbState::Idle,
+                "the clear and the stop behind it are taken in one tick: {snap:?}"
+            );
+            if let Ok(a) = rearmed.pop() {
+                assert!(answer.is_none(), "one answer per re-arm order");
+                answer = Some(a);
             }
-        };
+        }
         assert_eq!(
             answer,
-            Rearmed {
+            Some(Rearmed {
                 tag: 5,
                 limb: 0,
                 outcome: Ok(()),
-            }
+            })
         );
-        // This thread may read snapshots behind the bus: the clear shows in the first one made after it was taken.
-        while snap.limb(0).is_some_and(|l| l.generation == 0) {
-            assert_eq!(
-                limbs(&snap)[0],
-                (LimbState::Stopped, Some(StopReason::LimbRequested))
-            );
-            assert!(
-                commands
-                    .push(batch(epoch, &snap, [None, Some(hold(102))]))
-                    .is_ok()
-            );
-            snap = next_snapshot(&mut snapshots, end).unwrap();
-        }
-        assert_eq!(limbs(&snap)[0], (LimbState::Idle, None), "{snap:?}");
-        assert_eq!(snap.limb(0).map(|l| l.generation), Some(1));
-        assert_eq!(snap.counters.rearms_dropped, 0);
-
-        // A stop order naming a limb the bus doesn't have stops both limbs, the running one included.
-        assert!(orders.push(Order::StopLimb(7)).is_ok());
-        while limbs(&snap)[1].0 == LimbState::Active {
-            assert!(
-                commands
-                    .push(batch(epoch, &snap, [None, Some(hold(102))]))
-                    .is_ok()
-            );
-            snap = next_snapshot(&mut snapshots, end).unwrap();
-        }
         let bad = Some(StopReason::BadOrder { limb: 7 });
         for (state, stop) in limbs(&snap) {
             assert!(matches!(state, LimbState::Stopping { .. }), "{snap:?}");
             assert_eq!(stop, bad, "{snap:?}");
         }
+        assert_eq!(snap.limb(0).map(|l| l.generation), Some(1));
         assert_eq!(snap.counters.bad_orders, 1);
+        assert_eq!(snap.counters.rearms_dropped, 0);
 
         // Told to exit, the bus finishes the stop and ends once control has taken a snapshot showing it. A clear sent
-        // as it exits never undoes that stop: refused (limb 0 still stopping) or left for the end (`Ended`).
+        // as it exits never undoes that stop: refused (limb 0 still stopping, or the exit's stop pending) or left for
+        // the end (`Ended`).
         exit.store(true, Ordering::Release);
         assert!(orders.push(Order::Rearm { tag: 6, limb: 0 }).is_ok());
         while !bus.thread.is_finished() {
@@ -211,9 +197,17 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         assert!(
             matches!(
                 answer.outcome,
-                Err(RearmRefused::Ended | RearmRefused::NotStopped(0))
+                Err(RearmRefused::Ended
+                    | RearmRefused::NotStopped(0)
+                    | RearmRefused::StopPending(0))
             ),
             "{answer:?}"
+        );
+        assert!(
+            done.last
+                .is_some_and(|s| s.limb(0).is_some_and(|l| l.generation == 1)),
+            "{:?}",
+            done.last
         );
         assert!(rearmed.pop().is_err(), "one answer per re-arm order");
         recorder.close(vec![done.recorder]).unwrap();

@@ -265,7 +265,6 @@ impl BusTick {
         if let Some(l) = self.limbs.get_mut(limb).and_then(Option::as_mut) {
             l.state = LimbState::Idle;
             l.stop = None;
-            l.pending = None;
             l.generation = l.generation.saturating_add(1);
         }
         for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {

@@ -72,7 +72,7 @@ fn limb_0_stopped() -> (can::BusTick, u64) {
 /// Guards: safety - the operator's clear by order: answered once, under its tag, with the re-arm's own outcome;
 /// refused while a stop of the limb or the bus ordered before it waits for the plan, so a clear never undoes a stop
 /// ordered before it; taken once the limb's stop has ended with its drive confirmed in Reset, and a stop ordered after
-/// it stops the limb again (PLAN.md item 6: a latched stop clears only by an operator clear).
+/// it, of that limb or the other, goes out in the same tick (PLAN.md item 6: a latched stop clears only by an operator clear).
 #[test]
 fn a_rearm_order_is_answered_under_its_tag_and_never_undoes_an_earlier_stop() {
     let rearm = |tag| Order::Rearm { tag, limb: 0 };
@@ -106,6 +106,14 @@ fn a_rearm_order_is_answered_under_its_tag_and_never_undoes_an_earlier_stop() {
         (LimbState::Stopping { .. }, Some(StopReason::LimbRequested))
     ));
     assert_eq!(snap.limb(0).map(|l| l.generation), Some(1));
+
+    // A stop of the other limb pushed behind the clear goes out in the same tick's sends.
+    let (mut bus, tick) = limb_0_stopped();
+    let now = tick * PERIOD;
+    assert_eq!(bus.order(rearm(9), now), answer(9, Ok(())));
+    assert_eq!(bus.order(Order::StopLimb(1), now), None);
+    let sent = run_tick(&mut bus, tick, Some(&holds), &[]);
+    assert_eq!(sent, [(1, SendKind::Disable)]);
 }
 
 /// Guards: safety - `host.fault`: a fault read after a clear is not wiped by it: the cleared limb's drive reporting a
