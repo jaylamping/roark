@@ -1,6 +1,6 @@
 //! (rt) The control thread's clocks on Linux, the one place it reads them: the shared schedule on `CLOCK_MONOTONIC`
 //! (absolute sleeps, as the bus threads keep it), the session's epoch for batch deadlines, and the wall clock for the
-//! session's start.
+//! session's start. It repeats the few lines of `can`'s private clock rather than widen `can`'s API for them.
 
 use std::io;
 use std::time::{Duration, Instant, SystemTime};
@@ -47,6 +47,15 @@ impl Schedule {
         u64::try_from(behind.div_ceil(u128::from(self.period_ns))).unwrap_or(u64::MAX)
     }
 
+    /// The last tick whose start plus `offset_ns` has passed: the pass in progress, after a wake that may have come
+    /// whole ticks late.
+    pub(crate) fn current(&self, offset_ns: u64) -> u64 {
+        let elapsed = mono_now()
+            .saturating_duration_since(self.start + Duration::from_nanos(offset_ns))
+            .as_nanos();
+        u64::try_from(elapsed / u128::from(self.period_ns)).unwrap_or(u64::MAX)
+    }
+
     /// Sleep until `at`, absolute, so a slow pass never shifts the next.
     pub(crate) fn sleep_until(&self, at: Instant) -> io::Result<()> {
         let target =
@@ -83,4 +92,13 @@ pub(crate) fn wall_ns() -> u64 {
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .map_or(0, |d| u64::try_from(d.as_nanos()).unwrap_or(u64::MAX))
+}
+
+/// Sleep one period, relative: only once the absolute clock has failed, to keep the thread from spinning while it ends.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the absolute sleep failed; this only paces the way out"
+)]
+pub(crate) fn sleep_period(period_ns: u64) {
+    std::thread::sleep(Duration::from_nanos(period_ns));
 }

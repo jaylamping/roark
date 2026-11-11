@@ -10,15 +10,12 @@ publish.workspace = true
 [dependencies]
 can.workspace = true
 skeleton.workspace = true
+rtrb.workspace = true
 thiserror = { workspace = true, features = ["std"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 nix.workspace = true
-rtrb.workspace = true
 telemetry.workspace = true
 
 [lints]
 workspace = true
-
-[dev-dependencies]
-robstride.workspace = true

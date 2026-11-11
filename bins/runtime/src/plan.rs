@@ -30,6 +30,9 @@ impl BusPlan {
 /// Why the skeleton's buses can't be run.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum PlanError {
+    /// No bus has a joint on it: nothing to run.
+    #[error("no bus has a joint on it")]
+    NoBus,
     /// More drives on one bus than a bus thread holds.
     #[error("{bus} has {drives} drives; a bus thread holds at most {MAX_DRIVES}")]
     TooManyDrives {
@@ -44,7 +47,7 @@ pub enum PlanError {
 /// joint gets no thread (nothing to command or watch); a joint with no bus (its limb not wired) is offline and on none.
 ///
 /// # Errors
-/// A bus with more drives than a bus thread holds.
+/// A bus with more drives than a bus thread holds, or no bus with a joint on it.
 pub fn plan(skeleton: &Skeleton) -> Result<Vec<BusPlan>, PlanError> {
     let mut plans = Vec::new();
     for bus in &skeleton.buses {
@@ -82,60 +85,80 @@ pub fn plan(skeleton: &Skeleton) -> Result<Vec<BusPlan>, PlanError> {
             plans.push(plan);
         }
     }
+    if plans.is_empty() {
+        return Err(PlanError::NoBus);
+    }
     Ok(plans)
+}
+
+/// The joints on no bus: their limbs aren't wired yet, so they are offline and nothing runs them (tenet 1).
+#[must_use]
+pub fn offline(skeleton: &Skeleton) -> Vec<JointName> {
+    skeleton
+        .limbs
+        .iter()
+        .flat_map(|l| &l.joints)
+        .filter(|j| j.bus.is_none())
+        .map(|j| j.name.clone())
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// Guards: safety - the skeleton in `config/` maps onto bus threads as the bus layer expects: one per wired bus,
-    /// slots limb by limb in file order, and each bus's limb indices naming the skeleton limb they stand for, so a stop
-    /// or clear aimed at a limb reaches its slots and no other (PLAN item 6: a stop names its scope).
+    /// The runtime's test robot (`tests/skeleton.yaml`).
+    fn fixture() -> Skeleton {
+        skeleton::parse(include_str!("../tests/skeleton.yaml")).unwrap()
+    }
+
+    /// Guards: safety - the skeleton maps onto bus threads as the bus layer expects: one per wired bus, slots limb by
+    /// limb in file order, and each bus's limb indices naming the skeleton limb they stand for, so a stop or clear aimed
+    /// at a limb reaches its slots and no other (PLAN item 6: a stop names its scope); a joint on no bus is offline.
     #[test]
     fn the_skeleton_maps_onto_bus_threads_limb_by_limb() {
-        let skeleton = skeleton::load(std::path::Path::new("../../config/skeleton.yaml")).unwrap();
+        let skeleton = fixture();
         let plans = plan(&skeleton).unwrap();
-        for p in &plans {
-            let bus = skeleton
-                .buses
+        let ids = |p: &BusPlan| {
+            p.drives
                 .iter()
-                .find(|b| b.name.as_str() == p.name)
-                .unwrap();
-            assert_eq!(p.bitrate_bps, bus.bitrate_bps);
-            assert_eq!(p.drives.len(), p.joints.len());
-            // Each slot's limb index names the skeleton limb that joint belongs to, and its ID is the joint's.
-            for (drive, joint) in p.drives.iter().zip(&p.joints) {
-                let limb = skeleton
-                    .limbs
-                    .iter()
-                    .find(|l| l.joints.iter().any(|j| &j.name == joint))
-                    .unwrap();
-                let entry = limb.joints.iter().find(|j| &j.name == joint).unwrap();
-                assert_eq!(p.limbs[drive.limb], limb.name, "{joint:?}");
-                assert_eq!(drive.device, entry.id);
-                assert_eq!(
-                    entry.bus.as_ref().map(skeleton::BusName::as_str),
-                    Some(p.name.as_str())
-                );
-            }
-            // Slots run limb by limb: once a limb's slots end, it never comes back.
-            let mut seen = Vec::new();
-            for d in &p.drives {
-                if seen.last() != Some(&d.limb) {
-                    assert!(!seen.contains(&d.limb), "{p:?}");
-                    seen.push(d.limb);
-                }
-            }
-        }
-        // Every wired joint has exactly one slot; an unwired one has none.
-        let wired = skeleton
-            .limbs
-            .iter()
-            .flat_map(|l| &l.joints)
-            .filter(|j| j.bus.is_some())
-            .count();
-        assert_eq!(plans.iter().map(|p| p.drives.len()).sum::<usize>(), wired);
-        assert!(plans.iter().all(|p| !p.drives.is_empty()));
+                .map(|d| (d.device.get(), d.limb))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            plans.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(),
+            ["can0", "can1"]
+        );
+        // can0: the right arm's first two joints, then the waist.
+        assert_eq!(plans[0].limbs, [LimbName::RightArm, LimbName::Waist]);
+        assert_eq!(ids(&plans[0]), [(21, 0), (22, 0), (31, 1)]);
+        // can1: the left arm, then the right arm's third joint, under can1's own index for it.
+        assert_eq!(plans[1].limbs, [LimbName::LeftArm, LimbName::RightArm]);
+        assert_eq!(ids(&plans[1]), [(11, 0), (12, 0), (23, 1)]);
+        assert_eq!(plans[1].joints[2].as_str(), "arm_b_three");
+        assert!(plans.iter().all(|p| p.bitrate_bps == 1_000_000));
+        // The leg's joint is on no bus: offline, and in no plan.
+        assert_eq!(
+            offline(&skeleton)
+                .iter()
+                .map(JointName::as_str)
+                .collect::<Vec<_>>(),
+            ["leg_a_one"]
+        );
+        assert_eq!(plans[0].limb_index(LimbName::LeftLeg), None);
+        assert_eq!(plans[1].limb_index(LimbName::LeftLeg), None);
+    }
+
+    /// Guards: safety - a skeleton with no joint on any bus is refused rather than run with no bus thread, where control
+    /// would end at once and the runtime would sit with nothing to stop (architecture.md section 5: refuse to start).
+    #[test]
+    fn a_skeleton_with_no_wired_joint_is_refused() {
+        let text = include_str!("../tests/skeleton.yaml")
+            .replace("bus: can0", "bus: null")
+            .replace("bus: can1", "bus: null");
+        assert_eq!(
+            plan(&skeleton::parse(&text).unwrap()),
+            Err(PlanError::NoBus)
+        );
     }
 }

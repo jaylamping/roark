@@ -57,6 +57,15 @@ The queues between the control thread and each bus thread, all bounded `rtrb` ri
 | Snapshots | bus → control | The newest is dropped and counted (`snapshots_dropped`) |
 | Recorded frames | bus → telemetry | Counted in the recording as a loss, never blocking the tick |
 
+And between the control thread and the rest of `runtime` (`runtime::Runtime`), until the `api` takes its side:
+
+| Ring or latch | From → to | When full |
+|---|---|---|
+| Stop latch (robot, or a limb) | operator → control | Never full: a bit per scope, so a stop asked again before control takes it is the same stop. Control takes it each tick before any clear (PLAN item 3a) |
+| Clears | operator → control | The operator's push fails; nothing was asked. Control takes them after the stops, in push order |
+| Clear replies, one per bus the limb is on, or one refusal | control → operator | Dropped and counted (`replies_dropped`); the limb's state and generation still show in the views |
+| Views, each bus's newest snapshot once a tick (only when asked for) | control → operator | Dropped and counted (`views_dropped`) |
+
 ## 2. Process boundaries are failure domains
 
 - **One process owns motion.** Only `runtime` transmits on CAN (tenet 5). Every other process can crash, hang or be restarted

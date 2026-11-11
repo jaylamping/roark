@@ -52,14 +52,21 @@ impl SkeletonRef {
     /// # Errors
     /// The file can't be read.
     pub fn read(path: &Path) -> io::Result<Self> {
-        let digest = Sha256::digest(std::fs::read(path)?);
-        Ok(Self {
+        Ok(Self::of(path, &std::fs::read(path)?))
+    }
+
+    /// The file at `path` whose bytes are `bytes`, for a caller that has read it already and must record exactly what
+    /// it loaded.
+    #[must_use]
+    pub fn of(path: &Path, bytes: &[u8]) -> Self {
+        let digest = Sha256::digest(bytes);
+        Self {
             path: path.display().to_string(),
             sha256: digest.iter().fold(String::with_capacity(64), |mut hex, b| {
                 let _ = write!(hex, "{b:02x}");
                 hex
             }),
-        })
+        }
     }
 }
 

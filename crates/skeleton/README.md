@@ -25,7 +25,7 @@ by every binary that needs the robot's shape: today `sim-drive`, later `runtime`
 ## Using it
 
 `load` reads and checks a file; `parse` checks text. Either gives the whole `Skeleton` or every problem in it, never a
-partly checked one.
+partly checked one. `read` is `load`'s read alone, for a caller that hashes exactly the text it then parses.
 
 ```rust
 /// A small skeleton: two drives wired on one bus, one joint not wired yet, and the other limbs empty.

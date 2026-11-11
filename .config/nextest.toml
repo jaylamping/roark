@@ -14,7 +14,7 @@ default-filter = "package(sim-suite)"
 can0 = { max-threads = 1 }
 
 # Every sim test on `can0`: the exit tests, the slow-request round trip, the fault tests, the enable tests, the order
-# test and the runtime test. The runtime test also uses `can1`, as the skeleton does, so the bus tests (on `can1` to
+# test and the runtime test. The runtime test also uses `can1`, as its test robot does, so the bus tests (on `can1` to
 # `can3`) join the group; `vcan.rs` has `can4` to itself and may run beside them.
 [[profile.sim.overrides]]
 filter = "package(sim-suite) & (binary(exit) | binary(slow) | binary(faults) | binary(enable) | binary(orders) | binary(runtime) | binary(bus))"

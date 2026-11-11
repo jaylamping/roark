@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ALLOWED_DEPS = {
     "can": {"robstride", "telemetry"},
     "robstride": set(),
-    "runtime": {"can", "robstride", "skeleton", "telemetry"},
+    "runtime": {"can", "skeleton", "telemetry"},
     "safety": {"can", "robstride", "skeleton"},
     "skeleton": {"robstride"},
     "sim-drive": {"robstride", "skeleton"},

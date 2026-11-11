@@ -1,5 +1,6 @@
-//! The `runtime` binary: `runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>]`. Runs until SIGINT or SIGTERM,
-//! then stops every limb, waits for the buses to confirm, and closes the session.
+//! The `runtime` binary: `runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>]`. Runs until SIGINT or SIGTERM, or
+//! until the run ends on its own (a clock error or a bus thread that ended), then stops every limb, waits for the buses
+//! to confirm, and closes the session.
 
 #[cfg(target_os = "linux")]
 fn main() -> std::process::ExitCode {
@@ -17,10 +18,14 @@ mod linux {
     use std::io::Write as _;
     use std::path::PathBuf;
     use std::process::ExitCode;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::time::Duration;
 
     use can::LimbState;
-    use nix::sys::signal::{SigSet, Signal};
-    use runtime::{Runtime, RuntimeConfig};
+    use nix::sys::signal::{SigSet, Signal, kill};
+    use nix::unistd::getpid;
+    use runtime::{Runtime, RuntimeConfig, RuntimeExit};
 
     /// Write one line to stderr, which journald keeps; the logger thread comes with `api` (logging.md).
     fn say(line: &str) {
@@ -33,9 +38,9 @@ mod linux {
             sessions: PathBuf::from("/var/lib/robot/sessions"),
             hz: 250,
             operator: std::env::var("USER").unwrap_or_else(|_| "unknown".to_owned()),
-            git_revision: option_env!("ROARK_GIT_REVISION")
-                .unwrap_or("unknown")
-                .to_owned(),
+            git_revision: env!("ROARK_GIT_REVISION").to_owned(),
+            // Nothing in the binary reads them until the `api` does.
+            views: false,
         };
         let mut it = std::env::args().skip(1);
         while let Some(flag) = it.next() {
@@ -54,13 +59,116 @@ mod linux {
         Ok(config)
     }
 
+    /// What was checked at startup (logging.md section 4).
+    fn startup(runtime: &Runtime, config: &RuntimeConfig) {
+        let info = runtime.info();
+        say(&format!(
+            "build {}; skeleton {} sha256 {}; {} Hz; session {}",
+            config.git_revision,
+            info.skeleton.path,
+            info.skeleton.sha256,
+            config.hz,
+            info.session.display()
+        ));
+        for (p, rcvbuf) in info.plans.iter().zip(&info.receive_buffer_bytes) {
+            let joints: Vec<&str> = p.joints.iter().map(skeleton::JointName::as_str).collect();
+            say(&format!(
+                "{}: {} bit/s, receive buffer {rcvbuf} bytes, joints {}",
+                p.name,
+                p.bitrate_bps,
+                joints.join(" ")
+            ));
+        }
+        let offline: Vec<&str> = info
+            .offline
+            .iter()
+            .map(skeleton::JointName::as_str)
+            .collect();
+        say(&format!(
+            "offline: {}; nothing enabled",
+            if offline.is_empty() {
+                "none".to_owned()
+            } else {
+                offline.join(" ")
+            }
+        ));
+    }
+
+    /// Raise SIGUSR1 once the run has ended on its own, so the signal wait wakes for it too.
+    fn watch(finished: Arc<AtomicBool>) -> std::io::Result<()> {
+        std::thread::Builder::new()
+            .name("watch".to_owned())
+            .spawn(move || {
+                while !finished.load(Ordering::Acquire) {
+                    pause();
+                }
+                if let Err(e) = kill(getpid(), Signal::SIGUSR1) {
+                    say(&format!(
+                        "can't wake the main thread ({e}); stop it with SIGTERM"
+                    ));
+                }
+            })
+            .map(drop)
+    }
+
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the watcher is off the realtime path; a run that ends on its own is noticed within 50 ms"
+    )]
+    fn pause() {
+        std::thread::sleep(Duration::from_millis(50));
+    }
+
+    /// Log how the run ended; true when it ended cleanly, every bus at rest.
+    fn report(exit: &RuntimeExit) -> bool {
+        let c = &exit.control;
+        let mut clean = c.error.is_none() && c.bus_ended.is_none();
+        if let Some(e) = &c.error {
+            say(&format!("control lost its clock: {e}"));
+        }
+        if let Some(bus) = c.bus_ended.and_then(|b| exit.buses.get(b)) {
+            say(&format!("{} ended before the run did", bus.name));
+        }
+        say(&format!(
+            "control: {} stale, {} skipped ticks; dropped {} batches, {} replies, {} views; {} stops deferred",
+            c.stale_ticks,
+            c.skipped_ticks,
+            c.batches_dropped,
+            c.replies_dropped,
+            c.views_dropped,
+            c.stops_deferred
+        ));
+        for bus in &exit.buses {
+            if let Some(e) = &bus.error {
+                say(&format!("{}: {e}", bus.name));
+                clean = false;
+            }
+            match bus.last {
+                // Ended before its first tick (a stop asked during the start): nothing ran.
+                None => say(&format!("{}: ended before its first tick", bus.name)),
+                // A limb never enabled is idle at the end; every other is stopped.
+                Some(s)
+                    if s.limbs()
+                        .all(|(_, l)| matches!(l.state, LimbState::Idle | LimbState::Stopped)) => {}
+                Some(_) => {
+                    say(&format!("{}: ended with a limb not stopped", bus.name));
+                    clean = false;
+                }
+            }
+        }
+        clean
+    }
+
     pub(super) fn main() -> ExitCode {
         // Panics abort the process (Cargo.toml, rust.md section 4); the hook makes sure the reason reaches the journal
-        // first. The drives go limp 50 ms after the last command (`drive.can_timeout`).
-        let default = std::panic::take_hook();
-        std::panic::set_hook(Box::new(move |info| {
-            say(&format!("panic: {info}"));
-            default(info);
+        // first, once, naming the thread. The drives go limp 50 ms after the last command (`drive.can_timeout`).
+        std::panic::set_hook(Box::new(|info| {
+            let thread = std::thread::current();
+            let _ = writeln!(
+                std::io::stderr(),
+                "runtime: panic in thread {}: {info}",
+                thread.name().unwrap_or("unnamed")
+            );
         }));
         let config = match args() {
             Ok(c) => c,
@@ -70,9 +178,11 @@ mod linux {
             }
         };
         // Blocked before any thread starts, so every thread inherits the mask and only the wait below takes them.
+        // SIGUSR1 is the watcher's: the run ended on its own.
         let mut signals = SigSet::empty();
         signals.add(Signal::SIGINT);
         signals.add(Signal::SIGTERM);
+        signals.add(Signal::SIGUSR1);
         if let Err(e) = signals.thread_block() {
             say(&format!("can't block signals: {e}"));
             return ExitCode::FAILURE;
@@ -84,35 +194,28 @@ mod linux {
                 return ExitCode::FAILURE;
             }
         };
-        say(&format!(
-            "running {} bus(es) at {} Hz; session {}; nothing enabled",
-            runtime.plans().len(),
-            config.hz,
-            runtime.session().display()
-        ));
-        match signals.wait() {
-            Ok(signal) => say(&format!("{signal}: stopping")),
-            Err(e) => say(&format!("signal wait failed ({e}): stopping")),
-        }
-        match runtime.stop() {
-            Ok(exit) => {
-                let mut clean = exit.control.error.is_none();
-                for bus in &exit.buses {
-                    if let Some(e) = &bus.error {
-                        say(&format!("{}: {e}", bus.name));
-                        clean = false;
-                    }
-                    // A limb never enabled is idle at the end; every other is stopped.
-                    let at_rest = bus.last.is_some_and(|s| {
-                        s.limbs()
-                            .all(|(_, l)| matches!(l.state, LimbState::Idle | LimbState::Stopped))
-                    });
-                    if !at_rest {
-                        say(&format!("{}: ended with a limb not stopped", bus.name));
-                        clean = false;
-                    }
+        startup(&runtime, &config);
+        // Without the watcher a run that ends on its own goes unnoticed until a signal: end now rather than run blind.
+        let mut clean = true;
+        if let Err(e) = watch(runtime.finished()) {
+            say(&format!("can't start the watcher ({e}): ending"));
+            clean = false;
+        } else {
+            match signals.wait() {
+                Ok(Signal::SIGUSR1) => {
+                    say("the run ended on its own: ending");
+                    clean = false;
                 }
-                if clean {
+                Ok(signal) => say(&format!("{signal}: ending")),
+                Err(e) => {
+                    say(&format!("signal wait failed ({e}): ending"));
+                    clean = false;
+                }
+            }
+        }
+        match runtime.end() {
+            Ok(exit) => {
+                if report(&exit) && clean {
                     ExitCode::SUCCESS
                 } else {
                     ExitCode::FAILURE

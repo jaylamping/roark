@@ -10,14 +10,16 @@ use std::time::Duration;
 
 use can::{BusConfig, BusExit, BusLinks, BusRunError, Counters, Snapshot, Timing, TimingError};
 use rtrb::{Consumer, Producer, RingBuffer};
+use skeleton::JointName;
 use telemetry::{
     RING_BATCHES, RecordError, Recorder, Recording, Session, SessionInfo, SkeletonRef, Stage,
 };
 
 use crate::clock::{Schedule, mono_now, wall_ns};
 use crate::control::{self, BusEnds, ControlExit, ControlLinks, View};
-use crate::plan::{BusPlan, PlanError, plan};
-use crate::request::{Reply, Request};
+use crate::dispatch::BusOrders;
+use crate::plan::{BusPlan, PlanError, offline, plan};
+use crate::request::{Clear, Reply, Scope, StopLatch};
 
 /// Ring sizes: a tick's worth of traffic with room to spare. The bus takes the newest batch, so a few are plenty.
 const COMMANDS: usize = 4;
@@ -25,8 +27,15 @@ const COMMANDS: usize = 4;
 const SNAPSHOTS: usize = 8;
 /// Orders to a bus, and re-arm answers back.
 const ORDERS: usize = 16;
-/// Requests in, replies and views out.
+/// Clears in, replies and views out.
 const REQUESTS: usize = 64;
+/// How far out the schedule's origin is, in periods: time for every thread to be spawned and asleep before tick 0 (a
+/// spawn takes far less than a period), and short enough that nobody waits on it. A thread that starts late anyway runs
+/// from the tick in progress and counts the ones it missed.
+const ORIGIN_PERIODS: u64 = 4;
+/// `vcan` for every session: the bus layer refuses any other interface until the real adapter is supported (PLAN step
+/// 8).
+const STAGE: Stage = Stage::Vcan;
 
 /// How the runtime is started.
 #[derive(Clone, Debug)]
@@ -39,8 +48,10 @@ pub struct RuntimeConfig {
     pub hz: u64,
     /// Who started it, for the session's header.
     pub operator: String,
-    /// The git revision the binary was built from.
+    /// The git revision the binary was built from, with `-dirty` if the tree had changes.
     pub git_revision: String,
+    /// Whether anyone reads [`Runtime::views`]; without a reader control doesn't make them.
+    pub views: bool,
 }
 
 /// Why the runtime didn't start. Nothing is left running when it doesn't.
@@ -49,9 +60,6 @@ pub enum StartError {
     /// The skeleton didn't load.
     #[error("the skeleton didn't load: {0}")]
     Skeleton(#[from] skeleton::LoadError),
-    /// The skeleton file couldn't be read for its hash.
-    #[error("the skeleton file couldn't be read: {0}")]
-    SkeletonFile(io::Error),
     /// The skeleton's buses can't be run.
     #[error(transparent)]
     Plan(#[from] PlanError),
@@ -69,26 +77,49 @@ pub enum StartError {
     /// A thread couldn't be started.
     #[error("a thread couldn't start: {0}")]
     Thread(io::Error),
+    /// The monotonic clock couldn't be read for the schedule.
+    #[error("the clock couldn't be read: {0}")]
+    Clock(io::Error),
     /// A bus thread couldn't be started.
     #[error(transparent)]
     Bus(#[from] BusRunError),
+    /// The start failed, and ending the threads already started didn't end cleanly either. They have all ended.
+    #[error("{error}; ending the threads already started: {unwind}")]
+    Unwound {
+        /// Why the start failed.
+        error: Box<StartError>,
+        /// How the unwind failed.
+        unwind: EndError,
+    },
 }
 
-/// A running runtime: requests in, replies and each bus's newest snapshot out.
+/// What the runtime started with, for its startup log (logging.md section 4: startup logs what was checked).
+#[derive(Clone, Debug)]
+pub struct StartInfo {
+    /// The bus threads, in the order replies and views name them.
+    pub plans: Vec<BusPlan>,
+    /// Each bus socket's receive buffer as the kernel reports it, in plan order.
+    pub receive_buffer_bytes: Vec<usize>,
+    /// The joints on no bus.
+    pub offline: Vec<JointName>,
+    /// The skeleton file and the hash of exactly the bytes loaded.
+    pub skeleton: SkeletonRef,
+    /// The session's directory.
+    pub session: PathBuf,
+}
+
+/// A running runtime: stops and clears in, replies and each bus's newest snapshot out.
 pub struct Runtime {
-    /// The operator's requests.
-    pub requests: Producer<Request>,
+    /// The operator's clears.
+    pub clears: Producer<Clear>,
     /// One reply per clear and bus, or one refusal.
     pub replies: Consumer<Reply>,
-    /// Each bus's newest snapshot, once a tick.
-    pub views: Consumer<View>,
-    plans: Vec<BusPlan>,
-    session: PathBuf,
-    end: Arc<AtomicBool>,
-    bus_exit: Arc<AtomicBool>,
-    control: Option<JoinHandle<ControlExit>>,
-    buses: Vec<JoinHandle<BusExit>>,
-    recorder: Option<Recorder>,
+    /// Each bus's newest snapshot, once a tick, when [`RuntimeConfig::views`] asked for them.
+    pub views: Option<Consumer<View>>,
+    stops: Arc<StopLatch>,
+    finished: Arc<AtomicBool>,
+    info: StartInfo,
+    threads: Threads,
 }
 
 /// How one bus thread ended.
@@ -96,7 +127,7 @@ pub struct Runtime {
 pub struct BusEnd {
     /// The interface.
     pub name: String,
-    /// Its last snapshot.
+    /// Its last snapshot; `None` if it ended before its first tick.
     pub last: Option<Snapshot>,
     /// Its counters as it ended.
     pub counters: Counters,
@@ -117,7 +148,7 @@ pub struct RuntimeExit {
 
 /// Why the runtime didn't end cleanly. Every thread has ended either way.
 #[derive(Debug, thiserror::Error)]
-pub enum StopError {
+pub enum EndError {
     /// A thread panicked. Release builds abort on panic, so only a test build sees this.
     #[error("a thread panicked")]
     Panicked,
@@ -126,126 +157,184 @@ pub enum StopError {
     Record(#[from] RecordError),
 }
 
+/// Every thread the runtime started, ended in one place.
+struct Threads {
+    /// The run's end, which is also every bus thread's exit flag.
+    end: Arc<AtomicBool>,
+    control: Option<JoinHandle<ControlExit>>,
+    buses: Vec<(String, JoinHandle<BusExit>)>,
+    recorder: Option<Recorder>,
+}
+
 impl Runtime {
     /// Load the skeleton, start the session, and start every bus thread and the control thread on one schedule origin.
     /// Nothing is enabled: the runtime never enables on its own.
     ///
     /// # Errors
-    /// The skeleton, the timing, the session or a thread failed; any thread already started is ended first.
+    /// The skeleton, the timing, the session, the clock or a thread failed; any thread already started is ended first.
     pub fn start(config: &RuntimeConfig) -> Result<Self, StartError> {
-        let skeleton = skeleton::load(&config.skeleton)?;
+        // Read once: the session's hash is of exactly the bytes parsed.
+        let text = skeleton::read(&config.skeleton)?;
+        let skeleton = skeleton::parse(&text)?;
         let plans = plan(&skeleton)?;
         let timing = Timing::at_hz(config.hz);
         timing.check().map_err(|source| StartError::Timing {
             hz: config.hz,
             source,
         })?;
-        let info = SessionInfo {
-            git_revision: config.git_revision.clone(),
-            operator: config.operator.clone(),
-            stage: stage(&plans),
-            skeleton: SkeletonRef::read(&config.skeleton).map_err(StartError::SkeletonFile)?,
-            buses: plans
-                .iter()
-                .map(|p| can::bus_info(&p.name, p.bitrate_bps))
-                .collect(),
-        };
-        let session = Session::start(&config.sessions, info, wall_ns())?;
+        let skeleton_ref = SkeletonRef::of(&config.skeleton, text.as_bytes());
+        let session = Session::start(
+            &config.sessions,
+            SessionInfo {
+                git_revision: config.git_revision.clone(),
+                operator: config.operator.clone(),
+                stage: STAGE,
+                skeleton: skeleton_ref.clone(),
+                buses: plans
+                    .iter()
+                    .map(|p| can::bus_info(&p.name, p.bitrate_bps))
+                    .collect(),
+            },
+            wall_ns(),
+        )?;
         let session_dir = session.dir().to_path_buf();
         let (recording, recorders) = Recording::new(session, RING_BATCHES);
         let epoch = recording.epoch();
-        let recorder = Recorder::spawn(recording).map_err(StartError::Thread)?;
-
-        // One origin for every thread, a few ticks out so each is waiting before tick 0.
-        let start = mono_now() + Duration::from_nanos(4 * timing.period_ns);
-        let end = Arc::new(AtomicBool::new(false));
-        let bus_exit = Arc::new(AtomicBool::new(false));
-        let mut runtime = Self {
-            requests: RingBuffer::new(REQUESTS).0,
-            replies: RingBuffer::new(REQUESTS).1,
-            views: RingBuffer::new(REQUESTS).1,
-            plans: plans.clone(),
-            session: session_dir,
-            end: Arc::clone(&end),
-            bus_exit: Arc::clone(&bus_exit),
+        let mut threads = Threads {
+            end: Arc::new(AtomicBool::new(false)),
             control: None,
             buses: Vec::new(),
-            recorder: Some(recorder),
+            recorder: Some(Recorder::spawn(recording).map_err(StartError::Thread)?),
         };
+
+        let start = mono_now() + Duration::from_nanos(ORIGIN_PERIODS * timing.period_ns);
         let mut ends = Vec::new();
+        let mut receive_buffer_bytes = Vec::new();
         for (p, recorder) in plans.iter().zip(recorders) {
-            match spawn_bus(p, timing, recorder, epoch, start, &bus_exit) {
-                Ok((thread, bus_ends)) => {
-                    runtime.buses.push(thread);
+            match spawn_bus(p, timing, recorder, epoch, start, &threads.end) {
+                Ok((thread, bus_ends, rcvbuf)) => {
+                    threads.buses.push((p.name.clone(), thread));
                     ends.push(bus_ends);
+                    receive_buffer_bytes.push(rcvbuf);
                 }
-                Err(e) => {
-                    let _ = runtime.end_threads();
-                    return Err(e.into());
-                }
+                Err(e) => return Err(threads.unwind(e.into())),
             }
         }
-        let (requests, requests_rx) = RingBuffer::new(REQUESTS);
-        let (replies_tx, replies) = RingBuffer::new(REQUESTS);
-        let (views_tx, views) = RingBuffer::new(REQUESTS);
-        let links = ControlLinks {
-            buses: ends,
-            requests: requests_rx,
-            replies: replies_tx,
-            views: views_tx,
-            end,
-            bus_exit,
-        };
         let schedule = match Schedule::new(start, timing.period_ns) {
             Ok(s) => s,
-            Err(e) => {
-                let _ = runtime.end_threads();
-                return Err(StartError::Thread(e));
-            }
+            Err(e) => return Err(threads.unwind(StartError::Clock(e))),
         };
+        let stops = Arc::new(StopLatch::default());
+        let finished = Arc::new(AtomicBool::new(false));
+        let (clears, clears_rx) = RingBuffer::new(REQUESTS);
+        let (replies_tx, replies) = RingBuffer::new(REQUESTS);
+        let (views_tx, views) = if config.views {
+            let (tx, rx) = RingBuffer::new(REQUESTS);
+            (Some(tx), Some(rx))
+        } else {
+            (None, None)
+        };
+        let links = ControlLinks {
+            buses: ends,
+            stops: Arc::clone(&stops),
+            clears: clears_rx,
+            replies: replies_tx,
+            views: views_tx,
+            end: Arc::clone(&threads.end),
+            finished: Arc::clone(&finished),
+        };
+        let control_plans = plans.clone();
         let control = std::thread::Builder::new()
             .name("control".to_owned())
-            .spawn(move || control::run(&plans, &schedule, epoch, timing, links));
+            .spawn(move || control::run(&control_plans, &schedule, epoch, timing, links));
         match control {
-            Ok(handle) => runtime.control = Some(handle),
-            Err(e) => {
-                let _ = runtime.end_threads();
-                return Err(StartError::Thread(e));
-            }
+            Ok(handle) => threads.control = Some(handle),
+            Err(e) => return Err(threads.unwind(StartError::Thread(e))),
         }
-        runtime.requests = requests;
-        runtime.replies = replies;
-        runtime.views = views;
-        Ok(runtime)
+        Ok(Self {
+            clears,
+            replies,
+            views,
+            stops,
+            finished,
+            info: StartInfo {
+                plans,
+                receive_buffer_bytes,
+                offline: offline(&skeleton),
+                skeleton: skeleton_ref,
+                session: session_dir,
+            },
+            threads,
+        })
     }
 
-    /// The bus threads, in the order replies and views name them.
+    /// What the runtime started with.
     #[must_use]
-    pub fn plans(&self) -> &[BusPlan] {
-        &self.plans
+    pub const fn info(&self) -> &StartInfo {
+        &self.info
     }
 
     /// The session's directory.
     #[must_use]
     pub fn session(&self) -> &Path {
-        &self.session
+        &self.info.session
     }
 
-    /// End the run: every bus stops its limbs and ends once control has taken a snapshot showing every limb stopped,
+    /// The operator's stop of `scope`: always accepted, never waits, and taken by control ahead of any clear on its
+    /// next pass (PLAN item 3a).
+    pub fn stop(&self, scope: Scope) {
+        self.stops.ask(scope);
+    }
+
+    /// Set once the control thread has ended: after [`Runtime::end`], or on its own when its clock failed or a bus
+    /// thread ended, in which case every bus has stopped its drives and the owner should end the runtime.
+    #[must_use]
+    pub fn finished(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.finished)
+    }
+
+    /// End the run: every bus stops its limbs and ends once control has taken a snapshot showing every limb at rest,
     /// then control ends and the recording closes.
     ///
     /// # Errors
     /// A thread panicked, or the recording didn't close cleanly.
-    pub fn stop(mut self) -> Result<RuntimeExit, StopError> {
-        self.end_threads()
+    pub fn end(mut self) -> Result<RuntimeExit, EndError> {
+        self.threads.end()
+    }
+}
+
+impl Drop for Runtime {
+    /// A runtime dropped without [`Runtime::end`] still stops its drives and ends its threads.
+    fn drop(&mut self) {
+        if self.threads.running() {
+            // A drop has nobody to hand the error to, and every thread has ended either way (EndError says so); the
+            // owner who wants the outcome calls `end`.
+            let _ = self.threads.end();
+        }
+    }
+}
+
+impl Threads {
+    fn running(&self) -> bool {
+        self.control.is_some() || !self.buses.is_empty() || self.recorder.is_some()
+    }
+
+    /// End every thread after a failed start, keeping the start's error first.
+    fn unwind(mut self, error: StartError) -> StartError {
+        match self.end() {
+            Ok(_) => error,
+            Err(unwind) => StartError::Unwound {
+                error: Box::new(error),
+                unwind,
+            },
+        }
     }
 
     /// Ask every thread to end and join them: control (which takes the buses' last snapshots while they stop), then
-    /// the buses, then the recorder.
-    fn end_threads(&mut self) -> Result<RuntimeExit, StopError> {
+    /// the buses, then the recorder. With no control thread, nobody takes the buses' snapshots; they end on their exit
+    /// wait's limit.
+    fn end(&mut self) -> Result<RuntimeExit, EndError> {
         self.end.store(true, Ordering::Release);
-        // With no control thread, nobody takes the buses' snapshots; they end on their exit wait's limit.
-        self.bus_exit.store(true, Ordering::Release);
         let mut panicked = false;
         let control = match self.control.take().map(JoinHandle::join) {
             Some(Ok(exit)) => exit,
@@ -257,12 +346,12 @@ impl Runtime {
         };
         let mut buses = Vec::new();
         let mut recorders = Vec::new();
-        for (handle, p) in self.buses.drain(..).zip(&self.plans) {
+        for (name, handle) in self.buses.drain(..) {
             match handle.join() {
                 Ok(exit) => {
                     recorders.push(exit.recorder);
                     buses.push(BusEnd {
-                        name: p.name.clone(),
+                        name,
                         last: exit.last,
                         counters: exit.counters,
                         error: exit.error,
@@ -276,7 +365,7 @@ impl Runtime {
             None => telemetry::wire::End { buses: Vec::new() },
         };
         if panicked {
-            return Err(StopError::Panicked);
+            return Err(EndError::Panicked);
         }
         Ok(RuntimeExit {
             buses,
@@ -286,16 +375,7 @@ impl Runtime {
     }
 }
 
-impl Drop for Runtime {
-    /// A runtime dropped without [`Runtime::stop`] still stops its drives and ends its threads.
-    fn drop(&mut self) {
-        if self.control.is_some() || !self.buses.is_empty() || self.recorder.is_some() {
-            let _ = self.end_threads();
-        }
-    }
-}
-
-/// One bus thread and control's ends of its rings.
+/// One bus thread, control's ends of its rings, and its socket's receive buffer.
 fn spawn_bus(
     p: &BusPlan,
     timing: Timing,
@@ -303,10 +383,10 @@ fn spawn_bus(
     epoch: telemetry::Epoch,
     start: std::time::Instant,
     exit: &Arc<AtomicBool>,
-) -> Result<(JoinHandle<BusExit>, BusEnds), BusRunError> {
+) -> Result<(JoinHandle<BusExit>, BusEnds, usize), BusRunError> {
     let (commands, commands_rx) = RingBuffer::new(COMMANDS);
     let (snapshots_tx, snapshots) = RingBuffer::new(SNAPSHOTS);
-    let (orders, orders_rx) = RingBuffer::new(ORDERS);
+    let (orders, orders_rx): (Producer<_>, Consumer<_>) = RingBuffer::new(ORDERS);
     let (rearmed_tx, rearmed) = RingBuffer::new(ORDERS);
     let spawned = can::spawn(
         BusConfig {
@@ -333,14 +413,9 @@ fn spawn_bus(
         BusEnds {
             commands,
             snapshots,
-            orders,
+            orders: BusOrders::new(orders),
             rearmed,
         },
+        spawned.receive_buffer_bytes,
     ))
-}
-
-/// `vcan` for interfaces named so in sim: the bus layer refuses any other until the real adapter is supported (PLAN step
-/// 8), so every session today runs on `vcan`.
-const fn stage(_plans: &[BusPlan]) -> Stage {
-    Stage::Vcan
 }

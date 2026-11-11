@@ -1,25 +1,29 @@
-//! The runtime end to end on `vcan` against `sim-drive`, with the real skeleton (`config/skeleton.yaml`): it starts a
-//! bus thread per wired bus and the control thread on one schedule, never enables anything, routes the operator's stop
-//! and clear to the right buses and limbs, and ends with every limb at rest and the session closed.
+//! The runtime end to end on `vcan` against `sim-drive`, with its test robot (`bins/runtime/tests/skeleton.yaml`: five
+//! limbs, one over two buses, one offline): it starts a bus thread per wired bus and the control thread on one schedule,
+//! never enables anything, routes the operator's stops and clears to the right buses and limbs, and ends with every limb
+//! at rest and the session closed.
 #![cfg(target_os = "linux")]
 
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use can::{LimbState, RearmRefused, Snapshot};
+use can::{LimbState, Snapshot};
 use common::HZ;
-use robstride::Uid;
 use robstride::drive::{Command, command};
-use runtime::{ClearRefused, Reply, Request, Runtime, RuntimeConfig, Scope};
+use robstride::{Reporting, Uid};
+use runtime::{Clear, ClearRefused, Reply, Runtime, RuntimeConfig, Scope};
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use skeleton::{LimbName, Skeleton};
 use socketcan::{CanFrame, CanSocket, EmbeddedFrame, Id, Socket};
 
-const SKELETON: &str = "../../config/skeleton.yaml";
+/// The runtime's test robot, never the live skeleton (testing.md rule 3).
+fn skeleton_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bins/runtime/tests/skeleton.yaml")
+}
 
 /// The simulated drives the skeleton puts on `bus`.
 fn drives(skeleton: &Skeleton, bus: &str) -> Vec<SimDrive> {
@@ -67,7 +71,7 @@ fn until(
     done: impl Fn(usize, &Snapshot) -> bool,
 ) -> bool {
     while Instant::now() < end {
-        while let Ok(view) = runtime.views.pop() {
+        while let Some(Ok(view)) = runtime.views.as_mut().map(rtrb::Consumer::pop) {
             if let Some(slot) = newest.get_mut(view.bus) {
                 *slot = Some(view.snapshot);
             }
@@ -106,18 +110,18 @@ fn replies(runtime: &mut Runtime, n: usize, end: Instant) -> Vec<Reply> {
     got
 }
 
-/// Guards: safety - the runtime started on the real skeleton enables nothing (no Enable, MIT, Set Zero, set-ID or
-/// parameter write reaches any bus, before or after a stop and clear: PLAN item 2, the runtime never enables on its
-/// own); the operator's stop reaches every limb on every bus, the clear only the limb it names, on its bus, and a clear
-/// of a limb wired to no bus is refused; and the runtime ends with every limb at rest, its threads joined and the
-/// session closed (PLAN item 3a: stop always accepted; item 6: a stop names its scope).
+/// Guards: safety - the runtime enables nothing (no Enable, MIT, Set Zero, set-ID or parameter write reaches any bus,
+/// before or after stops and clears: PLAN item 3, the runtime never enables on its own); the operator's robot stop
+/// reaches every limb on every bus, a limb's stop and clear reach that limb on every bus it is on and nothing else, and a
+/// clear of a limb on no bus is refused (PLAN item 3a: stop always accepted; item 6: a stop names its scope); and the
+/// runtime ends with every limb at rest, its threads joined, every batch taken and the session closed.
 #[test]
 #[expect(clippy::too_many_lines, reason = "one run, start to end")]
-fn the_runtime_runs_the_skeleton_stops_and_clears_and_never_enables_on_vcan() {
-    let skeleton = skeleton::load(Path::new(SKELETON)).unwrap();
-    let plans = runtime::plan(&skeleton).unwrap();
-    let names: Vec<String> = plans.iter().map(|p| p.name.clone()).collect();
-    for name in &names {
+fn the_runtime_runs_stops_and_clears_every_bus_and_never_enables_on_vcan() {
+    let path = skeleton_path();
+    let skeleton = skeleton::load(&path).unwrap();
+    let names = ["can0", "can1"];
+    for name in names {
         ensure_vcan(name).unwrap();
     }
     let root = std::env::temp_dir().join(format!("sim-suite-runtime-{}", std::process::id()));
@@ -139,14 +143,30 @@ fn the_runtime_runs_the_skeleton_stops_and_clears_and_never_enables_on_vcan() {
             .collect();
 
         let mut runtime = Runtime::start(&RuntimeConfig {
-            skeleton: SKELETON.into(),
+            skeleton: path.clone(),
             sessions: root.clone(),
             hz: HZ,
             operator: "sim-suite".to_owned(),
             git_revision: "test".to_owned(),
+            views: true,
         })
         .unwrap();
-        assert_eq!(runtime.plans(), plans.as_slice());
+        let plans = runtime.info().plans.clone();
+        assert_eq!(
+            plans.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(),
+            names
+        );
+        let bus_of = |limb| {
+            plans
+                .iter()
+                .enumerate()
+                .filter_map(|(bus, p)| Some((bus, p.limb_index(limb)?)))
+                .collect::<Vec<_>>()
+        };
+        // The right arm is on both buses.
+        let right = bus_of(LimbName::RightArm);
+        assert_eq!(right.len(), 2);
+        let is_right = |bus: usize, limb: usize| right.contains(&(bus, limb));
         let end = Instant::now() + Duration::from_secs(10);
         let mut newest = vec![None; plans.len()];
 
@@ -158,19 +178,19 @@ fn the_runtime_runs_the_skeleton_stops_and_clears_and_never_enables_on_vcan() {
         );
 
         // The operator's stop reaches every limb on every bus.
-        assert!(runtime.requests.push(Request::Stop(Scope::Robot)).is_ok());
+        runtime.stop(Scope::Robot);
         assert!(
             until(&mut runtime, &mut newest, end, |_, s| s.stopped()),
             "{newest:?}"
         );
 
-        // A clear of the waist, wired to no bus, is refused.
+        // A clear of the left leg, whose only joint is on no bus, is refused.
         assert!(
             runtime
-                .requests
-                .push(Request::Clear {
+                .clears
+                .push(Clear {
                     tag: 1,
-                    limb: LimbName::Waist
+                    limb: LimbName::LeftLeg
                 })
                 .is_ok()
         );
@@ -178,53 +198,36 @@ fn the_runtime_runs_the_skeleton_stops_and_clears_and_never_enables_on_vcan() {
             replies(&mut runtime, 1, end),
             [Reply {
                 tag: 1,
-                limb: LimbName::Waist,
+                limb: LimbName::LeftLeg,
                 bus: None,
                 outcome: Err(ClearRefused::Offline),
             }]
         );
-        // A clear of the left arm re-arms it on its bus alone. A drive that never confirmed the stop (one whose
-        // status waits for its MIT scales, say) must first be quiet past its timeout, so the operator asks again
-        // until the bus takes it.
-        let left = plans
-            .iter()
-            .position(|p| p.limb_index(LimbName::LeftArm).is_some())
-            .unwrap();
-        let mut tag = 1;
-        loop {
-            tag += 1;
-            assert!(
-                runtime
-                    .requests
-                    .push(Request::Clear {
-                        tag,
-                        limb: LimbName::LeftArm
-                    })
-                    .is_ok()
-            );
-            let got = replies(&mut runtime, 1, end);
-            assert_eq!(got.len(), 1, "one reply per clear: {got:?}");
-            let reply = got[0];
-            assert_eq!(
-                (reply.tag, reply.limb, reply.bus),
-                (tag, LimbName::LeftArm, Some(left))
-            );
-            if reply.outcome.is_ok() {
-                break;
-            }
-            assert!(
-                matches!(
-                    reply.outcome,
-                    Err(ClearRefused::Bus(RearmRefused::DriveNotQuiet { .. }))
-                ),
-                "{reply:?}"
-            );
-        }
+        // A clear of the right arm re-arms it on both its buses, one reply each, and nothing else.
+        assert!(
+            runtime
+                .clears
+                .push(Clear {
+                    tag: 2,
+                    limb: LimbName::RightArm
+                })
+                .is_ok()
+        );
+        let mut got = replies(&mut runtime, 2, end);
+        got.sort_by_key(|r| r.bus);
+        assert_eq!(
+            got,
+            [0, 1].map(|bus| Reply {
+                tag: 2,
+                limb: LimbName::RightArm,
+                bus: Some(bus),
+                outcome: Ok(()),
+            })
+        );
         assert!(
             until(&mut runtime, &mut newest, end, |bus, s| {
                 s.limbs().all(|(i, l)| {
-                    let cleared = bus == left && plans[bus].limbs[i] == LimbName::LeftArm;
-                    if cleared {
+                    if is_right(bus, i) {
                         l.state == LimbState::Idle && l.generation == 1
                     } else {
                         l.state == LimbState::Stopped && l.generation == 0
@@ -233,12 +236,25 @@ fn the_runtime_runs_the_skeleton_stops_and_clears_and_never_enables_on_vcan() {
             }),
             "{newest:?}"
         );
+        // The right arm's own stop reaches it on both buses again; the others stay as they were.
+        runtime.stop(Scope::Limb(LimbName::RightArm));
+        assert!(
+            until(&mut runtime, &mut newest, end, |bus, s| {
+                s.limbs().all(|(i, l)| {
+                    l.state == LimbState::Stopped && l.generation == u32::from(is_right(bus, i))
+                })
+            }),
+            "{newest:?}"
+        );
         let session = runtime.session().to_path_buf();
+        assert!(!runtime.finished().load(Ordering::Acquire));
 
-        // Ended, every bus at rest (the cleared limb idle, the others stopped), the session closed.
-        let exit = runtime.stop().unwrap();
+        // Ended, every bus at rest, every batch taken, the session closed.
+        let exit = runtime.end().unwrap();
         assert!(exit.control.error.is_none(), "{:?}", exit.control);
+        assert_eq!(exit.control.bus_ended, None, "{:?}", exit.control);
         assert_eq!(exit.control.replies_dropped, 0);
+        assert_eq!(exit.control.batches_dropped, 0);
         assert_eq!(exit.buses.len(), plans.len());
         for bus in &exit.buses {
             assert!(bus.error.is_none(), "{bus:?}");
@@ -264,12 +280,12 @@ fn the_runtime_runs_the_skeleton_stops_and_clears_and_never_enables_on_vcan() {
     });
     let _ = std::fs::remove_dir_all(&root);
 
-    // Only the stop's frames went out: Disables and reporting off, to every drive of every wired bus.
+    // Only the stops' frames went out: Disables and reporting off, to every drive of every bus.
     for (name, commands) in names.iter().zip(&seen) {
         assert!(
             commands
                 .iter()
-                .all(|c| matches!(c, Command::Disable | Command::Reporting(_))),
+                .all(|c| matches!(c, Command::Disable | Command::Reporting(Reporting::Off))),
             "{name}: {commands:?}"
         );
         assert!(commands.contains(&Command::Disable), "{name}: {commands:?}");
