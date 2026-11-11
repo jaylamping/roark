@@ -11,7 +11,7 @@ mod yaml;
 use std::io::Read;
 use std::path::Path;
 
-pub use commissioning::{COMMISSIONING_SHARE, COMMISSIONING_SPEED_RAD_S, CommissioningCaps};
+pub use commissioning::Caps;
 pub use error::{LoadError, Problem, ProblemKind};
 pub use types::{
     Bus, BusName, Direction, Joint, JointName, Limb, LimbName, Power, PowerSource, Skeleton, Uid,
