@@ -1,0 +1,26 @@
+{
+ "job": "ring",
+ "mesh_gate": "PASS",
+ "slice": {
+  "time_s": 3362,
+  "grams": 18.54,
+  "height_mm": 11.8,
+  "warnings": []
+ },
+ "support_geometry": {
+  "support_mm2": 116.9,
+  "outer_mm2": 0.0,
+  "inner_mm2": 116.9
+ },
+ "visible_support_spots_over_1mm2": [],
+ "gcode_support": {
+  "moves": 1206,
+  "kinds": [
+   "Support",
+   "Support interface",
+   "Support transition"
+  ],
+  "part_faces_touched_mm2": 162.5,
+  "visible_faces_touched_mm2": 0.0
+ }
+}

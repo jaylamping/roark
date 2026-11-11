@@ -1,0 +1,20 @@
+{
+ "job": "key_coupon",
+ "mesh_gate": "PASS",
+ "slice": {
+  "time_s": 1969,
+  "grams": 9.97,
+  "height_mm": 17.5,
+  "warnings": []
+ },
+ "support_geometry": "coupon: not judged for visibility",
+ "gcode_support": {
+  "moves": 9087,
+  "kinds": [
+   "Support",
+   "Support interface",
+   "Support transition"
+  ],
+  "part_faces_touched_mm2": 1041.2
+ }
+}

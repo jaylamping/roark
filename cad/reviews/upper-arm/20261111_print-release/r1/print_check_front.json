@@ -1,0 +1,59 @@
+{
+ "job": "front",
+ "mesh_gate": "PASS",
+ "slice": {
+  "time_s": 16521,
+  "grams": 104.52,
+  "height_mm": 44.5,
+  "warnings": []
+ },
+ "support_geometry": {
+  "support_mm2": 6132.8,
+  "outer_mm2": 32.0,
+  "inner_mm2": 6100.8
+ },
+ "visible_support_spots_over_1mm2": [
+  {
+   "mm2": 8.0,
+   "plate_xyz": [
+    151.0,
+    272.0,
+    10.0
+   ]
+  },
+  {
+   "mm2": 8.0,
+   "plate_xyz": [
+    190.0,
+    272.0,
+    10.0
+   ]
+  },
+  {
+   "mm2": 8.0,
+   "plate_xyz": [
+    147.5,
+    292.0,
+    15.1
+   ]
+  },
+  {
+   "mm2": 8.0,
+   "plate_xyz": [
+    193.5,
+    292.0,
+    15.1
+   ]
+  }
+ ],
+ "gcode_support": {
+  "moves": 151169,
+  "kinds": [
+   "Support",
+   "Support interface",
+   "Support transition"
+  ],
+  "part_faces_touched_mm2": 7189.9,
+  "visible_faces_touched_mm2": 0.0
+ }
+}
