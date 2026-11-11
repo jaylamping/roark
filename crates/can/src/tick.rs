@@ -118,10 +118,11 @@ impl DriveState {
     /// What a status header's mode, read at `read_ns`, says about the drive's run, from a status, a report or a version
     /// reply alike; it is the drive's latest mode (`mode`) from here. Run after an Enable is the drive running, counted
     /// only from an ordered read while its limb is active; any other mode after running, without a Disable from this
-    /// host, is latched as having left Run; Reset from an ordered read after a Disable confirms the drive off. A mode other than the fresh status's supersedes it (`fresh_status` goes), the
-    /// age of the last fresh reply (`fresh_ns`) staying. Any mode but Reset withdraws a stop's confirmation, whatever
-    /// the read order: frames from one drive are read in the order it sent them, so the drive left Reset after the
-    /// status that confirmed it and isn't known disabled any more.
+    /// host, is latched as having left Run; Reset from an ordered read after a Disable confirms the drive off. A mode
+    /// other than the fresh status's supersedes it (`fresh_status` goes), the age of the last fresh reply (`fresh_ns`)
+    /// staying. Any mode but Reset withdraws a stop's confirmation, whatever the read order: frames from one drive are
+    /// read in the order it sent them, so the drive left Reset after the status that confirmed it and isn't known
+    /// disabled any more.
     pub(crate) fn note_mode(
         &mut self,
         mode: Mode,
