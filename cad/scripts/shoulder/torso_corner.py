@@ -1,7 +1,11 @@
-"""Cut the torso STEP down to what the left shoulder sees (2020 cage corner, torso pitch mount, pitch RS03) and save it as a
-small reference STEP in the torso frame (X outboard, Y up, Z forward, mm).
+"""Cut the old torso STEP (TORSO.step, 2026-11-05, old 150-wide cage) down to what the left shoulder sees, in the torso frame
+(X outboard, Y up, Z forward, mm):
 
-    python torso_corner.py TORSO.step OUT.step
+    PART=cage python torso_corner.py TORSO.step torso_cage_left.step         2020 cage corner and torso pitch mount
+    PART=pitch_rs03 python torso_corner.py TORSO.step raw.step; python sew_solid.py raw.step torso_pitch_rs03_left.step
+                                                                             the pitch RS03 as placed (open shells in TORSO.step, sewn)
+
+The pitch RS03 moves outboard with the shoulder in the rev A frame, the cage does not, so they are separate references.
 """
 import sys
 from OCP.STEPCAFControl import STEPCAFControl_Reader
@@ -15,7 +19,7 @@ from OCP.Bnd import Bnd_Box
 from OCP.BRepBndLib import BRepBndLib
 import cadquery as cq
 import os
-SKIP5 = os.environ.get('NO_PITCH_MOTOR') == '1'   # leave the pitch RS03 out (it is placed from the vendor model instead)
+PART = os.environ.get('PART', 'cage')   # 'cage': 2020 cage corner and pitch mount; 'pitch_rs03': the pitch RS03 only (NAUO5)
 
 doc = TDocStd_Document(TCollection_ExtendedString('d'))
 r = STEPCAFControl_Reader(); r.SetNameMode(True)
@@ -45,7 +49,7 @@ def walk(lab, loc, path):
     x0, y0, z0, x1, y1, z1 = b.Get()
     # the corner of the cage round the left shoulder, the pitch mount and the pitch motor; clip long rails by their bbox only
     top = path[1] if len(path) > 1 else ''
-    if top in ('NAUO1', 'NAUO8') or (SKIP5 and top == 'NAUO5'):   # torso body and inner rail: not near the arm
+    if top in ('NAUO1', 'NAUO8') or (PART == 'cage') == (top == 'NAUO5'):   # torso body and inner rail: not near the arm
         return
     if x1 > 20 and y1 > 330 and y0 < 540 and z0 < 150 and z1 > -150:
         keep.append(('/'.join(path), s, (x0, y0, z0, x1, y1, z1)))

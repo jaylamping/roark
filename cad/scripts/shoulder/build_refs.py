@@ -1,11 +1,12 @@
 """Reference parts for the left shoulder assembly, imported into SolidWorks as multibody parts.
 
-    python build_refs.py [TORSO_CORNER_STEP] [UPPER_ARM_EXPORT_DIR]
+    python build_refs.py [UPPER_ARM_EXPORT_DIR]
 
 - Vendor RS03 / RS02: cad/vendor/robstride/*.step re-written as one compound (so SolidWorks imports one multibody part, not
   an assembly) and saved as cad/vendor/robstride/vendor_robstride_rs03.SLDPRT / _rs02.SLDPRT, in the vendor frame.
-- Torso corner (2020 cage round the left shoulder, torso pitch mount, pitch RS03 as placed in TORSO.step), made by
-  torso_corner.py: cad/reference/shoulder/torso_corner_left.step -> cad/shoulder/left/ref/shoulder_ref_torso_corner_left.SLDPRT.
+- Old-frame torso (TORSO.step, 2026-11-05), cut by torso_corner.py: the 2020 cage corner with the pitch mount
+  (torso_cage_left.step -> shoulder_ref_torso_cage_left.SLDPRT) and the pitch RS03 as placed (torso_pitch_rs03_left.step ->
+  shoulder_ref_pitch_rs03_left.SLDPRT). The pitch motor goes with the shoulder; the cage hangs on one mate in the assembly.
 - Frozen organic upper arm (left-arm-organic exports, torso frame): front and back halves and the RS02 ring ->
   cad/shoulder/left/ref/shoulder_ref_upper_arm_*_left.SLDPRT.
 The placements of the motors in the torso frame are in build_asm.py.
@@ -60,15 +61,14 @@ def sw_import(step, target):
     return ok
 
 
+
 if __name__ == '__main__':
-    torso = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(r'J:/code/_transfer/shoulder/torso_corner.step')
-    ua = Path(sys.argv[2]) if len(sys.argv) > 2 else Path(r'J:/code/roark-wt/left-arm-organic/cad/exports/upper-arm')
+    ua = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(r'J:/code/roark-wt/left-arm-organic/cad/exports/upper-arm')
     for src, name in ((VENDOR / 'vendor_robstride_rs03.stp', 'vendor_robstride_rs03'), (VENDOR / 'vendor_robstride_rs02.step', 'vendor_robstride_rs02')):
         sw_import(compound(src, TMP / f'{name}.step'), VENDOR / f'{name}.SLDPRT')
-    dst = RSTEP / 'torso_corner_left.step'
-    if not dst.exists():
-        shutil.copy2(torso, dst)
-    sw_import(dst, REF / 'shoulder_ref_torso_corner_left.SLDPRT')
+    # made by torso_corner.py from the old TORSO.step (PART=cage / PART=pitch_rs03)
+    sw_import(RSTEP / 'torso_cage_left.step', REF / 'shoulder_ref_torso_cage_left.SLDPRT')
+    sw_import(RSTEP / 'torso_pitch_rs03_left.step', REF / 'shoulder_ref_pitch_rs03_left.SLDPRT')
     for part in ('front', 'back', 'rs02_ring'):
         src = ua / f'upper_arm_organic_{part}_left.step'
         dst = RSTEP / src.name

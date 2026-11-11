@@ -352,35 +352,35 @@ def build_fork_cap():
 
 
 # ========================================================================================================== pitch cover
+def feed_outline(xa, xc, yr, y0, y1, h, z):
+    """Closed L/J outline (plane Z = z) of a duct of half-thickness h: up at X xa from y0 to the run at Y yr, along +X to
+    xc, up to y1."""
+    return [(xa - h, y0, z), (xa + h, y0, z), (xa + h, yr - h, z), (xc + h, yr - h, z), (xc + h, y1, z), (xc - h, y1, z),
+            (xc - h, yr + h, z), (xa - h, yr + h, z)]
+
+
 def build_cover():
     d = new_part(OUT / f"{NAMES['cover']}.SLDPRT")
     c = COVER
     f = FEED
-    # feed ducts first, clipped inside r 75.7 of the pitch axis; then the walls
-    extrude(d, xsk(d, f['x0'] - WALL, 'FEED_A', lambda s: s.rpoly(rect_pts((f['x0'] - WALL, f['y'], f['z']), Y, Z, SHW, SHH), [2] * 4)),
-            'FEED_A', f['x'] + 4.0 + WALL - (f['x0'] - WALL), X)
-    zin = -math.sqrt(c['out'][0] ** 2 - 6.0 ** 2)
-    extrude(d, zsk(d, f['z'] - 4.0, 'FEED_B', lambda s: s.rpoly(rect_pts((f['x'], f['y'], f['z'] - 4.0), Y, X, SHW, SHH), [2] * 4)),
-            'FEED_B', zin - (f['z'] - 4.0), Z)
-    pitch_rev(d, 'CLIP', [(0, 60), (c['out'][1] - 0.2, 60), (c['out'][1] - 0.2, 110), (0, 110)], cut=True)
     pitch_rev(d, 'WALLS', [(c['in_'][0], c['back_x'][0]), (c['out'][1], c['back_x'][0]), (c['out'][1], c['x1']), (c['out'][0], c['x1']),
                            (c['out'][0], c['back_x'][1]), (c['in_'][1], c['back_x'][1]), (c['in_'][1], c['in_x1']), (c['in_'][0], c['in_x1'])],
               [0.5, 3.0, 0.9, 0.9, 1.5, 1.5, 0.9, 0.9])
-    # mounting bosses on the back wall (inserts from the cage side)
-    ang = [45.0 + 90 * k for k in range(4)]
-    extrude(d, xsk(d, c['back_x'][1], 'BOSSES', lambda s: [s.circle(pitch_pt(COVER_MOUNT_R, a, c['back_x'][1]), 6.0) for a in ang]), 'BOSSES', 3.6, X)
-    extrude(d, xsk(d, c['back_x'][0] - 1, 'INSERTS', lambda s: [s.circle(pitch_pt(COVER_MOUNT_R, a, c['back_x'][0] - 1), 2.8) for a in ang]), 'INSERTS', 7.0, X, cut=True)
-    # channels
-    def ch_a(s):
-        s.rpoly(rect_pts((f['x0'] - WALL - 1, f['y'] + P_OFF, f['z']), Y, Z, PW, PH), [1] * 4)
-        s.rpoly(rect_pts((f['x0'] - WALL - 1, f['y'] + S_OFF, f['z']), Y, Z, SW, SH), [1] * 4)
-    extrude(d, xsk(d, f['x0'] - WALL - 1, 'FEED_A_CH', ch_a), 'FEED_A_CH', f['x'] + 4.0 - (f['x0'] - WALL - 1), X, cut=True)
-
-    def ch_b(s):
-        s.rpoly(rect_pts((f['x'], f['y'] + P_OFF, f['z'] - 4.0), Y, X, PW, PH), [1] * 4)
-        s.rpoly(rect_pts((f['x'], f['y'] + S_OFF, f['z'] - 4.0), Y, X, SW, SH), [1] * 4)
-    extrude(d, zsk(d, f['z'] - 4.0, 'FEED_B_CH', ch_b), 'FEED_B_CH', zin + 1.0 - (f['z'] - 4.0), Z, cut=True)
-    return finish_part(d, 'cover')
+    # fixing tabs (placeholders): local 5 mm pads on the back wall, M5 clearance, screws from outboard into T-nuts
+    bx = c['back_x'][0]
+    extrude(d, xsk(d, c['back_x'][1], 'TABS', lambda s: [s.circle((c['back_x'][1], y, z), 7.0) for y, z in COVER_TABS]), 'TABS', 5.0 - (c['back_x'][1] - bx), X)
+    extrude(d, xsk(d, bx - 1, 'TAB_HOLES', lambda s: [s.circle((bx - 1, y, z), 2.75) for y, z in COVER_TABS]), 'TAB_HOLES', 8.0, X, cut=True)
+    # bottom feed (FEED_*): riser in the void under the step overhang, run outboard under the cover, up into its bottom
+    ytop = RY - c['out'][0] - 0.3            # shells stop just inside the outer wall
+    h2 = SHH / 2
+    xa, xc, yr = f['x_rise'], f['x_up'], f['y_run']
+    extrude(d, zsk(d, f['z'] - SHW / 2, 'FEED_SHELL', lambda s: s.rpoly(feed_outline(xa, xc, yr, f['y0'], ytop, h2, f['z'] - SHW / 2), [0, 0, 4, 6, 0, 0, 4, 6])),
+            'FEED_SHELL', SHW, Z)
+    for nm, off, w, h in (('POWER', P_OFF, PW, PH), ('SIGNAL', S_OFF, SW, SH)):
+        z0 = f['z'] + off - w / 2
+        extrude(d, zsk(d, z0, f'FEED_{nm}', lambda s, h=h, z0=z0: s.rpoly(feed_outline(xa, xc, yr, f['y0'] - 1, ytop + 6.0, h / 2, z0), [0, 0, 2, 4, 0, 0, 2, 4])),
+                f'FEED_{nm}', w, Z, cut=True)
+    return finish_part(d, 'cover', dict(Note='Feed (FEED_*) and fixing tabs are placeholders: rev A frame, 2026-11-11'))
 
 
 # ================================================================================================================== hub

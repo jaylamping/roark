@@ -42,8 +42,16 @@ RING = dict(ri=42.0, ro=77.5, x0=104.5, x1=106.3)   # 1.8 thick, printed flat
 # ---- pitch loop cover (torso side, fixed); CHANGED: outer wall runs on to 2 mm short of the ring (X 104.5)
 COVER = dict(ri=56.0, back_x=(75.0, 77.4), out=(73.5, 75.9), in_=(55.0, 57.4), in_x1=98.5)
 COVER['x1'] = RING['x0'] - 2.0
-COVER_MOUNT_R, COVER_MOUNT_ANGLES = 66.0, [0.0, 90.0, 180.0, 270.0]
-FEED = dict(y=RY + 6.0, z=-79.0, x0=50.0, x=86.5)
+# CHANGED (torso interface, 2026-11-11): the cable feed enters the cover from BELOW (the back entry does not fit the rev A
+# frame). Two separate risers (power 16 x 6, signal 10 x 5, 2.4 walls) come straight up into the bottom of the channel.
+# Placeholder position until the rev A frame model exists: one feature group (FEED_*) driven by these numbers.
+# Rev A: the bundles rise in the void under the step overhang (rev A X 75-113 = old X 37-75, Y 300-353), run outboard
+# under the cover and turn up into its bottom. Old-frame X below; rev A = +38. Duct section as the trunk (power and signal
+# side by side across Z, 2 mm rib, 2.4 walls), the flat side across Z so both bends are about the bundles' thin axis.
+FEED = dict(x_rise=69.0, x_up=88.0, y0=300.0, y_run=337.6, z=0.0)
+# Cover fixing (placeholders): M5 into T-nuts in the rev A X 113 outward slots: upper posts (Z +-60, Y 425),
+# step side rail (Y 363.6), top side rail (Y 485). (Y, Z) of each screw, old-frame coordinates.
+COVER_TABS = [(RY, 60.0), (RY, -60.0), (363.6, 30.0), (485.0, -30.0)]
 # ---- wire passages (power 16 x 6, signal 10 x 5, 2 mm rib, 2.4 walls) ----
 PW, PH, SW, SH, RIB, WALL = 16.0, 6.0, 10.0, 5.0, 2.0, 2.4
 TOT = PW + RIB + SW
