@@ -28,6 +28,16 @@ Each part is one named solid, `<group>__<id>`, grouped by `group`. The groups ar
 actuator, electronics, harness reserves, shell hardpoints, shell parts (spine pads, shoulder collars), waist and proposed
 compute. Left out: the third compute board (no home yet) and the pelvis draft.
 
+## Superseded entries
+
+Two shell parts in this model no longer match the design. The shell's shoulder opening grew from r 60 to r 80 round the
+pitch axis (shoulder study, `hardware/shoulder/study-20261111/shell-opening/OPTIONS.md`):
+
+- `shellpart__collar_±1`, the r 60 collar at X 135 to 137, is gone.
+- `shellpart__spine_upper_±1`, the upper spine pads, must now end inboard of |X| 140.
+
+The frame itself is unchanged.
+
 ## Simplifications
 
 - 2020 profiles are solid boxes, with no slots.
