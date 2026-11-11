@@ -50,7 +50,10 @@ def build():
         from swg import revolve as revolve_, centerline as centerline_
         def groove(name, sgn, depth, angle):      # revolve-cut the profile, truncated at r 35.8 - depth, centred on theta 90 (sgn +1) / 270 (-1)
             rb = 35.8 - depth
-            prof = [(36.5, y0 - 0.7 * t30), (rb, y0 + depth * t30), (rb, y0 + 2.5 + 1.5 - depth), (36.5, y0 + 4.7)] if depth < 1.5 else                    [(36.5, y0 - 0.7 * t30), (34.3, y0 + 1.5 * t30), (34.3, y0 + 2.5), (36.5, y0 + 4.7)]
+            # the 45 deg flank stops at the disc face (r 35.8, Y y0 + 4 = 302): the cut must not undercut the disc (2026-11-11: running it
+            # on to (36.5, 302.7) notched a wedge into the disc underside, a knife edge under the arm's end face, 1,447 MPa at STOP_0)
+            prof = [(36.5, y0 - 0.7 * t30), (rb, y0 + depth * t30), (rb, y0 + 2.5 + 1.5 - depth), (35.8, y0 + 4.0), (36.5, y0 + 4.0)] if depth < 1.5 else \
+                   [(36.5, y0 - 0.7 * t30), (34.3, y0 + 1.5 * t30), (34.3, y0 + 2.5), (35.8, y0 + 4.0), (36.5, y0 + 4.0)]
             with M.Sk(h, M.plane(h, 'X', HX, name + '_P'), name) as sk_:
                 sk_.poly([(HX, y_, CZ + sgn * r_) for r_, y_ in prof])
                 centerline_(sk_, (HX, 250.0, CZ), (HX, 340.0, CZ))
@@ -63,7 +66,9 @@ def build():
         h.ForceRebuild3(False)
         if os.environ.get('HS_ROUNDS', '1') == '1':      # 2026-11-11: hub rounds the shoulder thread is adding to the real hub
             rad = lambda p: m_.hypot(p[0] - HX, p[2] - CZ)
-            sets = [('GROOVE_BOT_ROUND', 0.4, lambda p: abs(rad(p) - 34.3) < 0.03 and (abs(p[1] - (y0 + 1.5 * t30)) < 0.05 or abs(p[1] - (y0 + 2.5)) < 0.05)),
+            r45 = float(os.environ.get('HS_GROOVE_R45', '0.4'))      # 45 deg-side bottom corner; up to 1.0 clears the ridge's top tip corner
+            sets = [('GROOVE_BOT_ROUND', 0.4, lambda p: abs(rad(p) - 34.3) < 0.03 and abs(p[1] - (y0 + 1.5 * t30)) < 0.05),
+                    ('GROOVE_BOT_ROUND45', r45, lambda p: abs(rad(p) - 34.3) < 0.03 and abs(p[1] - (y0 + 2.5)) < 0.05),
                     ('SPIGOT_BOT_ROUND', 0.4, lambda p: abs(rad(p) - 35.8) < 0.03 and abs(p[1] - 296.0) < 0.05)]
             lf = float(os.environ.get('HS_LUG_FILLET', '1.0'))      # lug-to-spigot root on the lugs' X-facing sides only: the arm's hub posts sit
             if lf > 0:                                                # 0.1 under the spigot beside the Z-facing sides, so a fillet there would clash
@@ -74,9 +79,19 @@ def build():
                 if nm == 'LUG_ROOT_FILLET':      # only edges running along Z
                     es = [e for e in es if abs(e.GetCurveParams3.StartPoint[0] - e.GetCurveParams3.EndPoint[0]) * 1000 < 0.01]
                 print(f'  {nm}: {len(es)} edges', flush=True)
-                if M.fillet_edges(h, es, (rr,), nm) is None:
-                    ok = sum(M.fillet_edges(h, [e], (rr,), f'{nm}{i}') is not None for i, e in enumerate(es))
-                    print(f'  {nm}: {ok}/{len(es)} built edge by edge', flush=True)
+                if M.fillet_edges(h, es, (rr,), nm) is None:      # edge by edge, re-selecting each time (edge handles go stale after a fillet)
+                    ok, n0 = 0, len(es)
+                    for i in range(n0):
+                        es = M.edges_where(h, test)
+                        if nm == 'LUG_ROOT_FILLET':
+                            es = [e for e in es if abs(e.GetCurveParams3.StartPoint[0] - e.GetCurveParams3.EndPoint[0]) * 1000 < 0.01]
+                        if i - ok >= len(es):
+                            break
+                        try:
+                            ok += M.fillet_edges(h, [es[i - ok]], (rr,), f'{nm}{i}') is not None
+                        except Exception as ex:
+                            print(f'  {nm}{i}: {str(ex)[:80]}', flush=True)
+                    print(f'  {nm}: {ok}/{n0} built edge by edge', flush=True)
             h.ForceRebuild3(False)
         from swg import bodies as bodies_
         print('  grooved hub bodies', bodies_(h), flush=True)
