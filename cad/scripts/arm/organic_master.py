@@ -285,7 +285,7 @@ def upper_details(d):
     # the rib meets the drum wall in a concave corner on both faces: R1.5
     rib_c = edges_where(d, lambda p: abs(math.hypot(p[1] - CY, p[2] - CZ) - (DRUM['r'] - SHELL_T)) < 0.1 and abs(p[0] - RIB[1]) < 0.05)   # ring side only: on the back face it left slivers at the neck opening
     print('  rib corner edges', len(rib_c), flush=True)
-    fillet_edges(d, rib_c, (1.0, 0.8), 'RIB_CORNER')   # the ring's 1.2 chamfer clears R1
+    fillet_edges(d, rib_c, (2.0, 1.5, 1.0), 'RIB_CORNER')   # R2 (2026-11-11: the elbow torque peaks here at the neck-opening edges); the ring's 2.2 chamfer clears it
     for k, q in enumerate(RIB_KEYS):                  # after the corner round: their outer sides merge into the wall
         # each key is its rectangle clipped to r 42.1 (0.6 into the 3 mm wall): its outer side follows the wall, inside the skin
         r_c = DRUM['r'] - SHELL_T + 0.6

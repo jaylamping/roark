@@ -327,7 +327,7 @@ def ring():
             M.rect_x(d, f'SLOT_WALL_ROUND{k}', (q[0] - 2.5, q[0] + 0.1, *sorted((sz * 40.3, sz * 44.0))), x0 - 1.0, x1 + 1.0, cut=True)
     holes = [P(36.5, a) for a in M.RING_SCREWS]
     # 1.2 x 45 deg chamfer on the rib-side outer edge: clears the R1 fillet where the rib meets the drum wall
-    x_revolve(d, 'RIB_CLEAR', [(x0 - 0.1, r_out - 1.3), (x0 + 1.3, r_out + 0.1), (x0 - 0.1, r_out + 0.1)], cut=True)   # clears the R1 rib fillet, not the keys
+    x_revolve(d, 'RIB_CLEAR', [(x0 - 0.1, r_out - 2.3), (x0 + 2.3, r_out + 0.1), (x0 - 0.1, r_out + 0.1)], cut=True)   # 2.2 x 45 deg: clears the R2 rib corner round
     x_holes(d, 'RS02_SCREWS', holes, 1.7, x0 - 1, x1 + 1)
     x_holes(d, 'RS02_CBORES', holes, 3.1, x0 - 0.01, x0 + 2.0)
     # socket window (the plug goes in through it on the bench and its cable leaves up the neck) and the notch for the unused socket
@@ -376,7 +376,7 @@ def fea_upper():
     the lug end faces carry the stop load where the slot end bears (X 135.7-139.4)."""
     sim = CAD / '_sim' / 'upper-arm'
     sim.mkdir(parents=True, exist_ok=True)
-    p = sim / 'UA_ORGANIC_BONDED_v25.SLDPRT'
+    p = sim / 'UA_ORGANIC_BONDED_v26.SLDPRT'
     shutil.copy(M.OUT['upper'], p)
     e, w = L(), L()
     d = sw.OpenDoc6(str(p), 1, 1, '', e, w)
