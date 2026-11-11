@@ -81,9 +81,10 @@ impl RuleId {
             StopReason::DriveSilent { .. } | StopReason::ExpiredFeedback { .. } => {
                 Some(Self::HostSilence)
             }
-            StopReason::ControlSilent | StopReason::LateWake | StopReason::BadBatch { .. } => {
-                Some(Self::HostHang)
-            }
+            StopReason::ControlSilent
+            | StopReason::LateWake
+            | StopReason::BadBatch { .. }
+            | StopReason::BadOrder { .. } => Some(Self::HostHang),
             StopReason::Backlog | StopReason::Bus(_) => Some(Self::HostBus),
             StopReason::Requested | StopReason::LimbRequested => None,
         }

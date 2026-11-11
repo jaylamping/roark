@@ -214,7 +214,7 @@ pub struct EchoSeen {
 
 /// Why a limb stopped. `ExpiredFeedback`, `DriveFault`, `DriveMode`, `DriveSilent` and `LimbRequested`
 /// (`BusTick::stop_limb`) stop only that limb; `LateWake` and `Backlog` stop every active limb; the rest, `Requested`
-/// (`BusTick::request_stop`) and `BadBatch` included, stop every limb on the bus.
+/// (`BusTick::request_stop`), `BadBatch` and `BadOrder` included, stop every limb on the bus.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StopReason {
     /// No fresh batch for `Timing::silent_ticks` ticks while a limb was active (PLAN.md item 3).
@@ -248,6 +248,12 @@ pub enum StopReason {
     BadBatch {
         /// The slot.
         slot: usize,
+    },
+    /// Control ordered a stop of a limb this bus doesn't have (`Order::StopLimb`): a bug upstream, and the bus can't
+    /// tell which limb was meant.
+    BadOrder {
+        /// The limb index the order named.
+        limb: usize,
     },
     /// More frames were queued before the send than the tick may read.
     Backlog,
@@ -397,6 +403,8 @@ pub struct Counters {
     pub slow_results_dropped: u64,
     /// Slow requests that expired unsent, queued for `Timing::slow_queue_ticks` ticks.
     pub slow_expired: u64,
+    /// Answers to control's re-arm orders that its ring was too full to take.
+    pub rearms_dropped: u64,
 }
 
 /// The bus at the end of a tick, for control and the safety layer.
@@ -509,6 +517,9 @@ pub enum RearmRefused {
     /// The bus itself failed; only a new bus thread and socket bring it back.
     #[error("the bus failed ({0:?}); it comes back only with a new bus thread")]
     BusFailed(BusError),
+    /// The bus thread ended before it took the order.
+    #[error("the bus thread ended before the clear")]
+    Ended,
     /// The limb is running or still stopping: only a stopped limb is re-armed.
     #[error("limb {0} isn't stopped")]
     NotStopped(usize),

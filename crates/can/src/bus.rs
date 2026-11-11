@@ -15,9 +15,11 @@ use telemetry::{BusInfo, BusRecorder, Epoch, TickBatch, TimestampSource};
 
 use crate::clock::{Clock, mono_now, sleep_relative, wall_ns};
 use crate::error_frame::BusError;
+use crate::order::{Order, Rearmed};
 use crate::slow::{SlowRequest, SlowResult};
 use crate::tick::BusTick;
 use crate::timing::Timing;
+use crate::types::RearmRefused;
 use crate::types::{BusDrive, CommandBatch, ConfigError, Drain, SendList, SendOutcome, Snapshot};
 use crate::{slack, sys};
 
@@ -152,6 +154,13 @@ pub struct BusLinks {
     /// (`Counters::slow_results_dropped`, and in all at the end [`BusExit::slow_results_dropped`]), and the requester
     /// times out.
     pub results: Producer<SlowResult>,
+    /// Control's orders: stop a limb, stop the bus, re-arm a stopped limb. Every order in the ring is taken at the next
+    /// tick, after its drain and before its plan, in the order control pushed them.
+    pub orders: Consumer<Order>,
+    /// Each re-arm order's one answer. When the ring is full the answer is dropped and counted
+    /// (`Counters::rearms_dropped`); control still sees the limb's state and generation in the snapshots. A re-arm still
+    /// in `orders` when the thread ends is answered `RearmRefused::Ended`.
+    pub rearmed: Producer<Rearmed>,
     /// Snapshots out. When control falls behind and the ring is full, the newest is dropped and counted
     /// (`Counters::snapshots_dropped`), so control must keep up.
     pub snapshots: Producer<Snapshot>,
@@ -362,6 +371,8 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
             outcome.recorder.record(batch);
             break;
         }
+        // Control's orders, before the exit's own stop: a limb re-armed while the bus exits is stopped again below.
+        take_orders(&clock, &mut tick, &mut links.orders, &mut links.rearmed);
         if exiting {
             // Every limb not already stopping or stopped is stopped first; the exit is decided once a snapshot with
             // every limb stopped is published.
@@ -412,7 +423,49 @@ fn run(socket: &CanSocket, mut tick: BusTick, mut links: BusLinks) -> BusExit {
     outcome.slow_results_dropped =
         slack::end_slow(&mut tick, &mut links.requests, &mut links.results);
     outcome.slow_expired = tick.counters.slow_expired;
+    end_orders(&mut links.orders, &mut links.rearmed);
     outcome
+}
+
+/// Take every order in the ring, at most its capacity, and hand each re-arm's answer back; a full ring drops the answer
+/// and counts it.
+fn take_orders(
+    clock: &Clock,
+    tick: &mut BusTick,
+    orders: &mut Consumer<Order>,
+    rearmed: &mut Producer<Rearmed>,
+) {
+    for _ in 0..orders.buffer().capacity() {
+        let Ok(order) = orders.pop() else {
+            break;
+        };
+        if let Some(answer) = tick.order(order, clock.ns(mono_now()))
+            && rearmed.push(answer).is_err()
+        {
+            tick.counters.rearms_dropped += 1;
+        }
+    }
+}
+
+/// The thread is ending: a re-arm still in the ring gets its one answer, a refusal. Stops left there are moot, every
+/// limb having stopped on the way out. No snapshot follows, so an answer the ring can't take is not counted.
+fn end_orders(orders: &mut Consumer<Order>, rearmed: &mut Producer<Rearmed>) {
+    for _ in 0..orders.buffer().capacity() {
+        let Ok(order) = orders.pop() else {
+            break;
+        };
+        if let Order::Rearm { tag, limb } = order {
+            let answer = Rearmed {
+                tag,
+                limb,
+                outcome: Err(RearmRefused::Ended),
+            };
+            // A full ring: the requester's wait for the answer ends with the thread's join.
+            if rearmed.push(answer).is_err() {
+                break;
+            }
+        }
+    }
 }
 
 /// Write each planned send once, in order, and report it to the tick. Once the bus is lost (a write or read failed, or

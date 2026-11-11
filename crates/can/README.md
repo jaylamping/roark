@@ -54,7 +54,7 @@ Each drive's last echo of this host's frames to it of a kind a batch carries (`l
 read) is kept, for the enable sequence's "reporting-off echo plus one tick".
 
 A limb stop (`stop_limb`, named `LimbRequested`; the check above; expired feedback) stops that limb; a bus stop
-(`request_stop`, control silent, or a bad batch) stops every limb not already stopping or stopped; a late wake, a stall
+(`request_stop`, control silent, a bad batch, or an order naming a limb the bus doesn't have) stops every limb not already stopping or stopped; a late wake, a stall
 or a backlog stops every active limb (below). A stopping limb follows PLAN item 2 Stop, every bound from `Timing`:
 
 - Disable to each of its drives not yet confirmed, every tick of the confirm window (`stop_confirm_ns`, 100 ms).
@@ -91,6 +91,13 @@ A latched bus error (bus-off in an error frame, or any socket failure) sends not
 limb is `Stopped` at once and the drives time out on their own (`canTimeout`). The first such error stays in every snapshot's
 `bus_error`, even if a stop was already under way; `healthy` is false while there is one or the controller is
 error-passive.
+
+Control asks for stops and clears by **order** (`Order`, through `BusTick::order`), never with Disables in a batch:
+`StopLimb` is `stop_limb`, `StopAll` is `request_stop`, and `Rearm` is `rearm` below, answered by one `Rearmed` under
+the order's tag. An order naming a limb the bus doesn't have can't be aimed, so it stops every limb (`BadOrder`). The
+thread takes every order in its ring each tick, after the drain and before the plan, in the order control pushed them,
+so a stop ordered in one tick's slack goes out in the next tick's sends. A re-arm while the thread is exiting is done,
+and the exit's own stop then stops the limb again; one still in the ring when the thread ends is answered `Ended`.
 
 Only the operator's clear undoes a stop: `rearm(limb, now)` makes a `Stopped` limb idle again, with a new `generation`,
 its drives' stop outcomes, fault history (`fault_seen`), modes out of Reset (`out_of_reset`) and miss counts started
@@ -176,8 +183,9 @@ error stays latched. Open an interface that isn't `vcan` before the real adapter
 ## Talks to
 
 `robstride` for the frames (it builds them, this crate only sends `Frame`s) and `telemetry` for the recording: each
-tick's frames go to a `BusRecorder`. Control is on the other side of `rtrb` queues: batches and slow requests in, snapshots and slow
-results out; a full outgoing ring drops and counts (`snapshots_dropped`, `slow_results_dropped`).
+tick's frames go to a `BusRecorder`. Control is on the other side of `rtrb` queues: batches, orders and slow requests in, snapshots,
+re-arm answers and slow results out; a full outgoing ring drops and counts (`snapshots_dropped`, `rearms_dropped`,
+`slow_results_dropped`).
 The runtime that wires those up doesn't exist yet; the sim suite drives the shell against `sim-drive` on `vcan`. See
 the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
 
@@ -188,7 +196,7 @@ frame to `on_frame`, and report how the drain went with `drained`; `begin`, writ
 feed every frame read with `on_frame`; and `end` for the snapshot. In the slack after `end`: `open_slack`, take the
 results held with `take_slow_result`, `submit` new requests while `slow_room` allows, send what `slow_send` returns and
 report it with `slow_sent`, then take the new results; when the thread ends, `end_slow` and take what is left.
-`request_stop` and `stop_limb` ask for a stop at the next `begin`, `skipped` counts ticks a stall slept through, and
+`order` takes control's orders before `begin`; `request_stop` and `stop_limb` ask for a stop at the next `begin`, `skipped` counts ticks a stall slept through, and
 `lost_bus` latches every limb stopped when the socket fails. On Linux, `spawn` runs exactly that on a socket.
 
 ```rust
