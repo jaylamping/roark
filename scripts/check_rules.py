@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # table fails the check: add it here and to the map in the same PR.
 ALLOWED_DEPS = {
     "can": {"robstride", "telemetry"},
+    "robot-cli": {"robstride", "skeleton"},
     "robstride": set(),
     "runtime": {"can", "skeleton", "telemetry"},
     "safety": {"can", "robstride", "skeleton"},
@@ -38,6 +39,7 @@ ALLOWED_DEPS = {
 # example that runs as a doc test; a binary or the sim suite shows its commands. A package missing here fails the check.
 DOC_KIND = {
     "can": "library",
+    "robot-cli": "library",  # its library is the stop as plain values; the README also covers the binary
     "robstride": "library",
     "runtime": "library",  # its library is what the sim suite drives; the README also covers the binary
     "safety": "library",

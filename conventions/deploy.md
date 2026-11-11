@@ -50,7 +50,7 @@ a sudden power cut corrupts data.
 | `/etc/robot/` | `skeleton.yaml`, `dynamics.yaml` and other config from the repo | The deploy script (`ConfigurationDirectory=robot`) |
 | `/var/lib/robot/sessions/` | One directory per session (PLAN "Observability") | The runtime (`StateDirectory=robot`) |
 | `/var/lib/robot/candump/` | Rotated, compressed black-box logs | The `candump@` units |
-| `/run/robot/` | The `api` socket | systemd (`RuntimeDirectory=robot`) |
+| `/run/robot/` | The runtime's lock (`runtime.lock`, held while it runs; `robot-cli disable` refuses while it is held), later the `api` socket | systemd (`RuntimeDirectory=robot`) |
 
 - **No robot name in paths,** units or users (tenet 7). It's `robot`, not the robot's current name.
 - **Bulk data lives in `/var/lib/robot`, not `/var/log`.** `/var/log` and journald are for text logs.
