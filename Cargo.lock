@@ -431,6 +431,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "robot-cli"
+version = "0.1.0"
+dependencies = [
+ "nix",
+ "robstride",
+ "skeleton",
+ "socketcan",
+ "thiserror",
+]
+
+[[package]]
 name = "robstride"
 version = "0.1.0"
 dependencies = [
