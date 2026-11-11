@@ -24,11 +24,16 @@ Y 424.86, Z 0.
 | Item | Now | Change |
 | --- | --- | --- |
 | Opening round the pitch axis, both sides | r 60 | **r 80**. r 77.9 is the least that clears the fixed cable cover (r 75.9 + 2). r 79.5 also clears the moving flange ring |
-| Shell collar at X 135-137 and its 7 screws at r ≈ 45 | fitted | **Removed.** The screw heads sit where the shoulder drum's spokes turn |
+| Shell collar at X 135-137 and its 8 screws at r ≈ 45 | fitted | **Removed.** The screw heads sit where the shoulder drum's spokes turn |
+| Lower spine pad (X 119.4-129, Y 202-276) | ends at X 129 | **Proposed, not yet chosen:** trim up to 3 mm off the outboard end, to end at about X 126, so the pad keeps 3 mm from the upper arm at the 11° inward stop. Today it comes within 0.01 mm of the arm at pitch -30°, yaw -45°. The other fix is moving the inward stop from 11° to 8°, with no trim |
 | Upper spine pad (X 68-147, Y 368-481, Z -124 to -77) | ends at X 147 | **End it inboard of X 140.** It overlaps the moving flange ring (r 77.5, X 142.5-144.3) by about 0.5 mm and is 1.1 mm from the fixed cover |
 | Fixed cable cover ring (X 113-140.5) | | Stands 4-7 mm proud of the skin (outer face X ≈ 136). The opening edge needs a finish that suits a part passing through it |
 
 Check at the rebuild:
+
+- The skin itself needs no trim for the 11° inward stop: it stays 3.5 mm or more from the arm, and first contact comes at
+  13-15°. Pitch +90° had not been swept yet when this was written
+  ([CAD_NOTES.md](../shoulder/study-20261111/cad-pass1/CAD_NOTES.md)).
 
 - The moving flange ring sits outboard of the skin and overlaps the opening edge as a labyrinth. Keep at least 2 mm between
   the edge and the ring through full pitch travel.
