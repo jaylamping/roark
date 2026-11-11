@@ -36,6 +36,14 @@ FORE_T = 2.1              # forearm belly skin: belly FEA bulk SF 7.8 at 2.4 mm;
 OUT = {'upper': CAD / 'upper-arm' / 'upper_arm_organic_master_left.SLDPRT',
        'fore': CAD / 'forearm' / 'forearm_organic_master_left.SLDPRT'}
 WIP = CAD / '_wip' / 'organic-arm' / 'cad'
+# R2 (2026-11-11, trial): the neck opening narrowed to phi +-15 next to the rib, inside the drum only. ARM_R2=1 builds it into
+# cad/_wip/r2 so R1's master and its STL stay as they are.
+R2 = os.environ.get('ARM_R2') == '1'
+R2_NECK = dict(x0=145.0, x1=156.0, hi=(15.0, 48.0), lo=(-32.0, -15.0), runout=(3.0, 2.0, 1.5))
+if R2:
+    WIP = CAD / '_wip' / 'r2'
+    OUT['upper'] = WIP / 'upper_arm_organic_master_left_r2.SLDPRT'
+    WIP.mkdir(parents=True, exist_ok=True)
 
 # (y, x+ half-width, x- half-width, z front, z back, superellipse n); concept A after the flex sweep
 HUB_JOINT = 302.0                      # today's hub disc (Y 302-319.86) stays: the skin starts under it
@@ -270,6 +278,37 @@ def upper_details(d):
     x_revolve(d, 'RS02_RIB', [(RIB[0], RIB_R0), (RIB[1], RIB_R0), (RIB[1], DRUM['r'] - SHELL_T + 0.3), (RIB[0], DRUM['r'] - SHELL_T + 0.3)])   # just into the wall: under the neck opening it ends as a free edge, no lip
     # the harness passes the rib at the top, from the neck to the stub: the rib is open there (phi -15 to 15)
     arc_band(d, 'RIB_HARNESS_GAP', RIB_R0 - 0.5, DRUM['r'] - SHELL_T + 0.6, -15.0, 15.0, RIB[0] - 0.1, RIB[1] + 0.1, cut=True)
+    if R2:
+        # wall continued across the neck opening from phi 15 (and -15) out past its edges (phi -21..39 at mid-wall), X 145-156:
+        # r 41.5-44.5 lies inside the drum cylinder, so the outside is unchanged. The harness keeps phi +-15 (22 mm at r 42) and
+        # the RS02 plug (X 157-163.5) its old opening. The band's outboard end runs out in a round.
+        n2 = R2_NECK
+        for tag, (a0, a1) in (('HI', n2['hi']), ('LO', n2['lo'])):
+            arc_band(d, f'R2_NECK_{tag}', DRUM['r'] - SHELL_T, DRUM['r'], a0, a1, n2['x0'], n2['x1'], cut=False)
+        ro = []      # the band end face's radial edges (new and old opening edges), not its faceted arcs
+        for bd in d.GetBodies2(0, True):
+            es = bd.GetEdges
+            for e in ((es() if callable(es) else es) or []):
+                cp = e.GetCurveParams3
+                a, c = np.array(cp.StartPoint[:3]) * 1000.0, np.array(cp.EndPoint[:3]) * 1000.0
+                ra, rc = math.hypot(a[1] - CY, a[2] - CZ), math.hypot(c[1] - CY, c[2] - CZ)
+                if abs(a[0] - n2['x1']) < 0.05 and abs(c[0] - n2['x1']) < 0.05 and abs(ra - rc) > 1.0 and min(ra, rc) > DRUM['r'] - SHELL_T - 0.2:
+                    ro.append(e)
+        print('  R2 run-out edges', len(ro), flush=True)
+        for i, e in enumerate(ro):      # one at a time: a corner that won't take a round mustn't block the others
+            fillet_edges(d, [e], n2['runout'] + (1.0, 0.5), f'R2_NECK_RUNOUT{i}')
+        # iteration 1: the rib's inboard face now meets the band's wall in a sharp concave corner (E34 layer SF 1.06 there):
+        # round it R2 like the ring side, over the band's angles
+        def at_rib_back(p):
+            r = math.hypot(p[1] - CY, p[2] - CZ)
+            ph = math.degrees(math.atan2(-(p[2] - CZ), p[1] - CY))
+            in_band = n2['hi'][0] - 0.5 <= ph <= n2['hi'][1] + 0.5 or n2['lo'][0] - 0.5 <= ph <= n2['lo'][1] + 0.5
+            return abs(p[0] - RIB[0]) < 0.05 and abs(r - (DRUM['r'] - SHELL_T)) < 0.1 and in_band
+        rb = edges_where(d, at_rib_back)
+        print('  R2 rib inboard corner edges', len(rb), flush=True)
+        if fillet_edges(d, rb, (2.0, 1.5, 1.0), 'R2_RIB_BACK') is None:
+            for i, e in enumerate(rb):
+                fillet_edges(d, [e], (2.0, 1.5, 1.0), f'R2_RIB_BACK{i}')
     # outboard end wall thickened to X 193.9: the RS02 housing face (r 22.5-39) stops on it, 0.2 mm axial play to the ring
     x_revolve(d, 'RS02_STOP', [(RS02_X['front'] + STOP_PLAY, 22.5), (DRUM['x1'] - 2.0, 22.5), (DRUM['x1'] - 2.0, DRUM['r'] - 1.0), (RS02_X['front'] + STOP_PLAY, DRUM['r'] - 1.0)])
     # hard stop: a lug on the drum's inboard end, running in a slot in the inboard cheek

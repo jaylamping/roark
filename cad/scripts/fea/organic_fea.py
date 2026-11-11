@@ -158,7 +158,7 @@ for part in ('ring_old',):
 # ring's slot flank (ring fixed at its six screw holes, clamped to the RS02 flange), and on the key in the halves (master,
 # halves as one body, fixed at the hub seat). Keys 0 (phi 80) and 1 (phi 120) in the back half; 2 and 3 mirror them.
 PARTS['ring'] = F / 'RING_v13.SLDPRT'
-PARTS['halves'] = F / 'UA_HALVES_v28.SLDPRT'
+PARTS['halves'] = F / os.environ.get('HALVES_MODEL', 'UA_HALVES_v28.SLDPRT')
 # Bearing faces (main flanks): key 0 its -Y face, key 3 its -Y face, keys 1 and 2 their +Y faces. (key face dy, ring flank
 # offset, face centre dz, key x, ring x). +T (ring turning +X): keys 0 and 2 bear; -T: keys 3 and 1.
 KEYF = {'0': (0.6, -0.1, -38.0), '3': (0.6, -0.1, 38.0), '1': (-12.4, 0.1, -36.0), '2': (-12.4, 0.1, 36.0)}
@@ -178,6 +178,21 @@ for a, b in (('0', '2'), ('3', '1')):          # two keys sharing 34 N.m: 17 N.m
     CASES[f'RINGK{a}{b}_fine'] = dict(CASES[f'RINGK{a}{b}'], el=1.0)
     CASES[f'HALFK{a}{b}'] = dict(part='halves', fix=[('fixed', SEAT)], forces=[(face_k(a), fa, None), (face_k(b), fb, None)], el=2.5, ctrl=[(face_k(a), 0.8), (face_k(b), 0.8)], regions=HREG)
     CASES[f'HALFK{a}{b}_fine'] = dict(CASES[f'HALFK{a}{b}'], el=1.8, ctrl=[(face_k(a), 0.5), (face_k(b), 0.5)])
+
+# neck-corner mesh convergence (2026-11-11): local mesh control on the small faces at the rib-to-wall corner where the neck
+# opening's edges meet the rib (back half phi ~41, front half phi ~336), at 1.0 / 0.5 / 0.25 mm
+CORNER = [('touch', [152.0, 235.0, -28.0, 158.0, 247.0, -15.0], 400.0), ('touch', [152.0, 242.0, 16.0, 158.0, 254.0, 29.0], 400.0)]
+for k in ('HALFK31', 'HALFK02', 'HALFK0', 'E34'):
+    for tag, s in (('c10', 1.0), ('c05', 0.5), ('c025', 0.25)):
+        c = dict(CASES[k + '_fine'])
+        c['ctrl'] = list(c.get('ctrl', [])) + [(sel, s) for sel in CORNER]
+        CASES[f'{k}_{tag}'] = c
+
+try:      # hub seat with the hub as its own body (hub_seat.py): HS_STOP_0, HS_STOP_124, HS_G90 (+ _fine)
+    import hub_seat
+    hub_seat.register(CASES, PARTS, pythoncom, VARIANT, I)
+except Exception as ex:
+    print('hub_seat cases not registered:', ex)
 
 if __name__ == '__main__':
     for n in sys.argv[1:]:

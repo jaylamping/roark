@@ -39,7 +39,7 @@ everything against it.
 - **Axial stack:**
   - The flange (9 × M3 × 8 on Ø73) is 28 mm behind the front face.
   - The ring meets the flange at X 165.7.
-  - The front face sits 0.2 mm off the drum's end-wall stop.
+  - The front face sits 0.4 mm off the drum's end-wall stop (R1; 0.2 until 2026-11-11). Axial freedom 0.5 mm nominal, 0.1 worst case.
 - **Plug:**
   - Two radial sockets (power + CAN, in parallel) stand 180° apart on the back.
   - The used one is clocked to face the neck (φ 1.5°), the only place a plug and cable have room. The plug goes in on the
@@ -109,6 +109,10 @@ the CAD dimensions (everything else).
 TABLE
 
 ## Bench tests
+
+Full steps for the printed bench article (assembly, inspection, key coupon, stop proof load, whole-arm torque test to
+17 N·m, when to stop): [BENCH_TESTS.md](BENCH_TESTS.md). The list below is the summary.
+
 
 1. **Stub coupon** (`prints/upper-arm/upper_arm_organic_stub_coupon.3mf`), **done 2026-11-11:** a 6808 inner race fits
    perfectly on the printed Ø40.0 stub (two half-stubs, seam closed, 3 walls / 15%). No caliper reading. The stub stays at

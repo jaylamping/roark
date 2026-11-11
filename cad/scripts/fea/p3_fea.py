@@ -171,6 +171,10 @@ def pick(d, sel):
             q = sel[2]
             if all(lo[i] >= q[i] - .01 and hi[i] <= q[i + 3] + .01 for i in range(3)):
                 out.append(f)
+        if sel[0] == 'touch':      # any face whose box meets the given box and whose area is under the limit (local mesh control)
+            q, amax = sel[1], sel[2]
+            if all(lo[i] <= q[i + 3] and hi[i] >= q[i] for i in range(3)) and a <= amax:
+                out.append(f)
         if sel[0] == 'plane' and t == 'plane':
             p = sel[1]
             if all(lo[i] - .3 <= p[i] <= hi[i] + .3 for i in range(3)) and (sel[2] is None or abs(a - sel[2]) < sel[2] * .3):
@@ -248,11 +252,16 @@ def run(name, c):
     post = c['pre_mesh'](st, d, lbc) if 'pre_mesh' in c else None     # contacts, connectors: returns a result hook
     mesh = st.Mesh
     mesh.Quality = 1
-    try:      # defaults this script does not set: logged so runs on different machines can be compared
-        print(' options solver', st.StudyOptions.SolverType, 'mesher', mesh.MesherType, 'jacobian', mesh.JacobianPoints,
-              'auto_transition', mesh.AutomaticTransition, flush=True)
-    except Exception as ex:
-        print(' options not readable', ex, flush=True)
+    opts = {}      # defaults this script does not set: logged so runs on different machines can be compared
+    for k, o, a in (('solver', st, 'StaticStudyOptions.SolverType'), ('mesher', mesh, 'MesherType'), ('jacobian', mesh, 'JacobianPoints'),
+                    ('auto_transition', mesh, 'AutomaticTransition'), ('jacobian_check', mesh, 'UseJacobianCheck')):
+        try:
+            for part in a.split('.'):
+                o = getattr(o, part)
+            opts[k] = o
+        except Exception:
+            opts[k] = '?'
+    print(' options', opts, flush=True)
     for sel, size in c.get('ctrl', []):
         fs = pick(d, sel)
         q = mesh.ApplyMeshControl(fs, I())
