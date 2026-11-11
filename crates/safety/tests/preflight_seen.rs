@@ -82,6 +82,11 @@ fn preflight_refuses_a_fault_or_a_drive_not_in_reset() {
         preflight.poll(shown(&faulted), 3_000),
         Step::Refused(Refusal::Faults { bits: over })
     );
+    assert_eq!(
+        Refusal::NotReset { mode: Mode::Run }.remedy(),
+        "Find what put it in that mode; power-cycle the drive, then run preflight again",
+        "no clear: the limb stays idle, and a clear of an idle limb is refused"
+    );
     for refusal in [
         Refusal::Faults { bits: over },
         Refusal::FaultSeen,
