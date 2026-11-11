@@ -17,8 +17,10 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   drive's limb; a drive gone silent, and one that also loses its Disable, stop their limb for the silence. The rest of
   the fault tests (PLAN item 4, "Done when") join them as the safety layer lands.
 - `enable.rs`: `safety`'s preflight and enable sequence played as control would, over the bus layer's rings: a truthful
-  drive passes and enables, another UID or a drive not in Reset is refused, and a drive silent after preflight fails
-  its enable.
+  drive passes and enables, another UID or a drive not in Reset is refused, each preflight failure injected in
+  `sim-drive` refuses under its rule, and a drive silent after preflight fails its enable. Control stalling on the
+  sequence for over 50 ms after the reporting off's echo refuses the enable with no Enable sent (`Stalled`), and an
+  Enable in a batch the bus holds back as expired stops the limb as an Enable not seen to go out (`NoEnableEcho`).
 - `exit.rs`: a bus of two active limbs told to exit with control's snapshot ring full stops every limb and returns
   once the ring takes a snapshot with every limb stopped, once control drops the ring, or after its wait when control
   never reads again, each time at the next tick's drain; a bus of two stopping limbs with no time to collect records

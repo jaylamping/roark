@@ -15,12 +15,12 @@ use can::{
 use common::{HZ, drive, id, info, next_snapshot, soon, timing};
 use robstride::drive::{Command, HostFrame};
 use robstride::{
-    CanTimeout, Damper, Drive, Mode, Model, NewtonMeters, Param, ParamValue, StatusFault,
-    StatusFaults, Uid, Volts,
+    CanTimeout, Damper, Drive, EchoKind, Mode, Model, NewtonMeters, Param, ParamValue, Reporting,
+    StatusFault, StatusFaults, Uid, Volts, encode,
 };
 use safety::{
-    EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal, Register, RuleId, Seen,
-    Step, Target,
+    EnableFailure, Enabling, Next, Preflight, PreflightPassed, RUN_WITHIN_NS, Refusal, Register,
+    RuleId, Seen, Step, Target,
 };
 use sim_drive::{Fault, SimDrive, ensure_vcan, serve};
 use telemetry::{Epoch, Recorder, Recording, Session};
@@ -99,6 +99,31 @@ impl After {
     }
 }
 
+/// What control does with the enable sequence, besides stepping it every tick.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Control {
+    /// Steps it every tick and sends what it asks in that tick's batch.
+    Steady,
+    /// Stops stepping it once its reporting off's echo shows, until 50 ms after that echo was read, still sending an
+    /// empty batch every tick: control stalled on the sequence alone. With no Enable sent the limb is idle, so the
+    /// bus's control-silence stop doesn't apply either way.
+    StallAfterEcho,
+    /// Puts the Enable in a batch already expired: the bus counts it stale and holds its commands back, so the Enable
+    /// never goes out, as on a tick control handed over late.
+    ExpireEnable,
+}
+
+impl Control {
+    /// Whether control skips stepping the sequence this tick, at `now_ns`.
+    fn holds(self, seen: Seen<'_>, now_ns: u64) -> bool {
+        self == Self::StallAfterEcho
+            && seen.view().last_echo.is_some_and(|echo| {
+                echo.kind == EchoKind::Reporting(Reporting::Off)
+                    && now_ns <= echo.read_ns + RUN_WITHIN_NS
+            })
+    }
+}
+
 /// How control's attempt ended.
 #[derive(Debug, PartialEq)]
 enum Ended {
@@ -129,15 +154,20 @@ impl Drop for Stop<'_> {
     }
 }
 
+/// [`attempt_under`] with control steady.
+fn attempt(uid: Uid, start: Option<Fault>, after: After) -> Ended {
+    attempt_under(uid, start, after, Control::Steady)
+}
+
 /// Run preflight and, if it passes, the enable sequence for drive 101 on `BUS`, playing control on the bus layer's
-/// rings, against a sim drive answering with `uid`, with `start` applied before it serves, and doing `after` once
-/// preflight passes.
+/// rings as `control` says, against a sim drive answering with `uid`, with `start` applied before it serves, and doing
+/// `after` once preflight passes.
 #[expect(
     clippy::unwrap_used,
     clippy::too_many_lines,
     reason = "test helper: one control loop, start to end"
 )]
-fn attempt(uid: Uid, start: Option<Fault>, after: After) -> Ended {
+fn attempt_under(uid: Uid, start: Option<Fault>, after: After, control: Control) -> Ended {
     ensure_vcan(BUS).unwrap();
     let root = std::env::temp_dir().join(format!("sim-suite-enable-{}", std::process::id()));
     let (passed, applied, stop_sim) = (
@@ -277,8 +307,14 @@ fn attempt(uid: Uid, start: Option<Fault>, after: After) -> Ended {
                     (Some(Phase::Enabling(Enabling::new(proof, now))), None)
                 }
                 Phase::Handing(proof) => (Some(Phase::Handing(proof)), None),
+                Phase::Enabling(enabling) if control.holds(seen, now) => {
+                    (Some(Phase::Enabling(enabling)), None)
+                }
                 Phase::Enabling(mut enabling) => match enabling.step(seen, snap.tick + 1, now) {
                     Next::Send(frame) => {
+                        if control == Control::ExpireEnable && frame == encode::enable(id(101)) {
+                            batch = CommandBatch::new(snap.tick + 1, 0);
+                        }
                         assert!(batch.set(0, frame));
                         (Some(Phase::Enabling(enabling)), None)
                     }
@@ -463,4 +499,24 @@ fn each_preflight_failure_refuses_the_enable_on_vcan() {
         assert_eq!(ended, expected, "{start:?}");
         assert_eq!(ended.rule(), Some(rule), "{start:?}");
     }
+}
+
+/// Guards: safety - `host.bus` on a real socket: control stalling on the sequence for more than 50 ms after its
+/// reporting off's echo, before the tick that would plan the Enable, refuses the enable when it resumes, with no Enable
+/// sent: the proof is that much older (PLAN item 2, Enable one drive; item 6 Bus row).
+#[test]
+fn a_stall_after_the_reporting_off_refuses_the_enable_on_vcan() {
+    let ended = attempt_under(UID, None, After::Answers, Control::StallAfterEcho);
+    assert_eq!(ended, Ended::GaveUp(EnableFailure::Stalled));
+    assert_eq!(ended.rule(), Some(RuleId::HostBus));
+}
+
+/// Guards: safety - `host.bus` on a real socket: an Enable the bus never sends (its batch expired, so the bus held it
+/// back) and no Run within 50 ms of its planning ends the sequence as an Enable not seen to go out, and since it may
+/// have gone the limb is stopped (PLAN item 2, Enable one drive; item 6 Bus row).
+#[test]
+fn an_enable_the_bus_never_sends_stops_the_limb_on_vcan() {
+    let ended = attempt_under(UID, None, After::Answers, Control::ExpireEnable);
+    assert_eq!(ended, Ended::Stop(EnableFailure::NoEnableEcho));
+    assert_eq!(ended.rule(), Some(RuleId::HostBus));
 }
