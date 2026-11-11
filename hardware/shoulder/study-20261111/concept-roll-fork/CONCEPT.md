@@ -1,9 +1,7 @@
 # Left shoulder concept: roll drum and fork (DRAFT, 2026-11-11)
 
-**Status: draft.** The build, the pictures and one full interference sweep are done. The mass/size/hub-section numbers
-(`scripts/numbers_concept.py`) and the second geometry pass that fixes the clashes below are **still pending**: holly-pc
-blue-screened at about 09:28Z with a faulty-memory code. The sweep in `data/check.json` ran on that RAM. After the memory
-test, about 30 of its poses get re-run as a spot check before any of these numbers is trusted (section 9).
+**Status: draft, second pass in progress on Joey-PC.** The first-pass sweep in `data/check.json` (run on holly-pc, whose RAM
+is suspect) was spot-checked on Joey-PC and holds (section 9). The geometry fixes, mass trim and full re-sweep follow.
 
 Feasibility mock-up in cadquery, not final CAD. It is built in the torso STEP frame of the
 [measurement study](../MEASUREMENTS.md): X outboard, Y up, Z forward, mm. All three motors are the vendor models, at the
@@ -122,10 +120,21 @@ These sections are pending:
   the bearing grows to about 6818.
 - what is not checked.
 
-## 9. RAM caveat
+## 9. Spot check of the first-pass sweep (Joey-PC, 2026-11-11)
 
-holly-pc blue-screened at about 09:28Z with a faulty-memory code, during or near this sweep. After the memory test, about
-30 of the poses above are re-run and compared before these numbers are relied on. Their result will be written here.
+holly-pc blue-screened with a faulty-memory code during or near the first-pass sweep. The first-pass model was rebuilt on
+Joey-PC from the committed `build_concept.py` (all part volumes came out identical to `data/parts.json`), the study inputs
+were regenerated (`torso.py` from TORSO.step, `mesh.py`, upper arm from the `left-arm-organic` branch at 7ad4452), and
+`scripts/spot_check.py` re-ran **29 poses** against `data/check.json`:
+
+- all 10 pair minima under 1 mm (the seven contact rows of section 3 and the three other sub-mm fork/drum/cap pairs) at the
+  pose where they were found, plus 8 other pair minima spread from 1.5 to 26 mm;
+- every frame pair at roll -20 / 13 / 52 / 91 / 110 (pitch 0, yaw 0), every roll-group pair at roll -30 / -9 / 30 / 72 / 120,
+  every yaw pair at yaw -90 / -25 / 20 / 90.
+
+**Result: 315 pair values, 277 identical, largest difference 0.28 mm** (fork rear to pitch loop cover at roll -20: 0.35 then,
+0.63 now), **none beyond the ±0.4 mm method tolerance.** Every contact reproduced as a contact. The first-pass numbers stand
+and the whole sweep was not re-run. Detail: `data/spot_check_firstpass.json`.
 
 ## Pictures
 
