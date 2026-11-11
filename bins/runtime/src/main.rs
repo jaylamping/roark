@@ -1,6 +1,7 @@
-//! The `runtime` binary: `runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>]`. Runs until SIGINT or SIGTERM, or
-//! until the run ends on its own (a clock error or a bus thread that ended), then stops every limb, waits for the buses
-//! to confirm, and closes the session.
+//! The `runtime` binary: `runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>] [--lock <file>]`. Takes its lock
+//! first and refuses to start if it is held, then runs until SIGINT or SIGTERM, or until the run ends on its own (a
+//! clock error or a bus thread that ended), then stops every limb, waits for the buses to confirm, and closes the
+//! session.
 
 #[cfg(target_os = "linux")]
 fn main() -> std::process::ExitCode {
@@ -15,14 +16,17 @@ fn main() -> std::process::ExitCode {
 
 #[cfg(target_os = "linux")]
 mod linux {
+    use std::fs::{File, OpenOptions};
     use std::io::Write as _;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::process::ExitCode;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
     use std::time::Duration;
 
     use can::LimbState;
+    use nix::errno::Errno;
+    use nix::fcntl::{Flock, FlockArg};
     use nix::sys::signal::{SigSet, Signal, kill};
     use nix::unistd::getpid;
     use runtime::{Runtime, RuntimeConfig, RuntimeExit};
@@ -32,7 +36,39 @@ mod linux {
         let _ = writeln!(std::io::stderr(), "runtime: {line}");
     }
 
-    fn args() -> Result<RuntimeConfig, String> {
+    /// The lock this process holds for as long as it runs, in the `RuntimeDirectory` systemd makes
+    /// (conventions/deploy.md section 2). `robot-cli disable` takes the same lock (its `LOCK_PATH`) and refuses while it
+    /// is held, so the independent stop never sends while a runtime is alive; a second runtime is refused the same way,
+    /// so two never write to one bus. The kernel drops the lock when this process dies, by `kill -9` too.
+    const LOCK_PATH: &str = "/run/robot/runtime.lock";
+
+    const USAGE: &str =
+        "usage: runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>] [--lock <file>]";
+
+    /// Take the lock at `path` without waiting. It is never released before the process ends: leaked, so no drop can
+    /// let it go early.
+    fn lock(path: &Path) -> Result<(), String> {
+        let file: File = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path)
+            .map_err(|e| format!("can't open the lock {}: {e}", path.display()))?;
+        match Flock::lock(file, FlockArg::LockExclusiveNonblock) {
+            Ok(lock) => {
+                Box::leak(Box::new(lock));
+                Ok(())
+            }
+            Err((_, Errno::EWOULDBLOCK)) => Err(format!(
+                "{} is held: another runtime, or robot-cli disable, is running",
+                path.display()
+            )),
+            Err((_, e)) => Err(format!("can't take the lock {}: {e}", path.display())),
+        }
+    }
+
+    fn args() -> Result<(RuntimeConfig, PathBuf), String> {
         let mut config = RuntimeConfig {
             skeleton: PathBuf::from("config/skeleton.yaml"),
             sessions: PathBuf::from("/var/lib/robot/sessions"),
@@ -42,21 +78,19 @@ mod linux {
             // Nothing in the binary reads them until the `api` does.
             views: false,
         };
+        let mut lock = PathBuf::from(LOCK_PATH);
         let mut it = std::env::args().skip(1);
         while let Some(flag) = it.next() {
             let mut value = || it.next().ok_or(format!("{flag} needs a value"));
             match flag.as_str() {
+                "--lock" => lock = PathBuf::from(value()?),
                 "--skeleton" => config.skeleton = PathBuf::from(value()?),
                 "--sessions" => config.sessions = PathBuf::from(value()?),
                 "--hz" => config.hz = value()?.parse().map_err(|e| format!("--hz: {e}"))?,
-                other => {
-                    return Err(format!(
-                        "unknown argument {other}; usage: runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>]"
-                    ));
-                }
+                other => return Err(format!("unknown argument {other}; {USAGE}")),
             }
         }
-        Ok(config)
+        Ok((config, lock))
     }
 
     /// What was checked at startup (logging.md section 4).
@@ -204,13 +238,18 @@ mod linux {
         // Panics abort the process (Cargo.toml, rust.md section 4); the hook makes sure the reason reaches the journal
         // first, once, naming the thread. The drives go limp 50 ms after the last command (`drive.can_timeout`).
         std::panic::set_hook(Box::new(panic_line));
-        let config = match args() {
+        let (config, lock_path) = match args() {
             Ok(c) => c,
             Err(e) => {
                 say(&e);
                 return ExitCode::FAILURE;
             }
         };
+        // Before any socket opens: a runtime that can't hold the lock never sends.
+        if let Err(e) = lock(&lock_path) {
+            say(&e);
+            return ExitCode::FAILURE;
+        }
         // Blocked before any thread starts, so every thread inherits the mask and only the wait below takes them.
         // SIGUSR1 is the watcher's (the run ended on its own); one from elsewhere is a request to end like the others.
         let mut signals = SigSet::empty();

@@ -41,7 +41,7 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
 | `api` server | The one external interface | Clients over the network; the realtime side over queues | Block the realtime side, or write hardware facts |
 | `telemetry` | MCAP files, metrics, structured logs | Event queues in, disk and Prometheus out | Be in the stop path (a slow disk never delays a stop) |
 | `ui/`, `mcp/`, `robot-cli` | Nothing about the hardware | `api` only | Open a CAN socket (the one exception below) |
-| `robot-cli disable` | Nothing | The bus directly, after `runtime` has exited | Run while `runtime` is alive |
+| `robot-cli disable` | Nothing | The bus directly, after `runtime` has exited; the runtime's lock (`/run/robot/runtime.lock`), which the runtime holds while it runs and `disable` refuses while held | Run while `runtime` is alive |
 | `sim-drive` | Simulated drive state | `vcan` through the same `robstride` codec (its drive side, `robstride::drive`) | Be linked into `runtime`, or open an interface that isn't `vcan` |
 
 The queues between the control thread and each bus thread, all bounded `rtrb` rings made before the first tick
@@ -96,7 +96,8 @@ telemetry (leaf for producers: takes events, depends on nothing above; can hands
 can --> robstride, telemetry        safety --> can, robstride, skeleton
 runtime --> can, robstride, safety, skeleton, telemetry
 
-sim-drive (bin) --> robstride, skeleton        sim-suite (tests only) --> can, runtime, safety, sim-drive, skeleton, robstride, telemetry
+robot-cli (bin) --> robstride, skeleton        sim-drive (bin) --> robstride, skeleton
+sim-suite (tests only) --> can, runtime, safety, sim-drive, skeleton, robstride, telemetry
 ```
 
 - Arrows only point toward the leaves. No cycles, no "utils" or "common" crate that everything imports.
@@ -110,7 +111,7 @@ sim-drive (bin) --> robstride, skeleton        sim-suite (tests only) --> can, r
   to the robot's drives can send a drive's frame, whichever crates a build compiles together. **Why:** a cargo feature
   can't hold this, because a workspace build turns a feature on for every crate in it.
 - **Only named crates open a CAN socket.** `deny.toml` bans `socketcan` except as a direct dependency of `can`,
-  `sim-drive` and `sim-suite`. `sim-drive`, every sim test and, until the real adapter is supported (PLAN step 8), `can`
+  `robot-cli` (for `disable` alone), `sim-drive` and `sim-suite`. `sim-drive`, every sim test and, until the real adapter is supported (PLAN step 8), `can`
   check an interface is `vcan` before the first frame, because the sim's buses carry the robot's real bus names.
 - **Clients depend on `api`, never on `runtime` internals.** If a client needs something, it becomes an `api` message.
 - A new crate needs a separate reason to exist: a different owner, a different realtime class, or reuse by two binaries. "It
