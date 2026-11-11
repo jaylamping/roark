@@ -312,12 +312,20 @@ def upper_details(d):
         ec = float(os.environ.get('ARM_END_CHAMFER', '0.5'))
         if ec > 0:      # bore-to-end-face edge (r 35.9, Y 302): 0.5 x 45 chamfer, inside only, for the hub's R0.3 spigot-to-disc corner (rev C+)
             y_revolve(d, 'SEAT_END_CHAMFER', [(SEAT_R, HUB_JOINT - ec), (SEAT_R + ec, HUB_JOINT), (SEAT_R + ec, HUB_JOINT + 0.3), (SEAT_R, HUB_JOINT + 0.3)], cut=True)
+            if os.environ.get('ARM_RIDGE_REVCP', '1') == '1':      # the ridge's 45 flank (Y = r + 265.8) runs parallel to the chamfer 0.2 above it,
+                # leaving a 0.2-tall wedge on the ridge top at the bore (mesh gate, 2026-11-11): flatten the ridge top at the chamfer's start
+                y_revolve(d, 'RIDGE_TOP_FLAT', [(35.6, HUB_JOINT - ec), (SEAT_R + 0.01, HUB_JOINT - ec), (SEAT_R + 0.01, HUB_JOINT + 0.3), (35.6, HUB_JOINT + 0.3)], cut=True)
         rf = float(os.environ.get('ARM_FLOOR_FILLET', '0.25'))
         if rf > 0:      # (b) bore-to-floor corner (r 35.9, Y 296), where the spigot's bottom edge bore (STOP_0 vm SF 0.94 at 0.5 mm).
             # 0.25 clears the hub spigot's 0.4 bottom round by ~0.06; it would touch a sharp-cornered spigot by ~0.1 (needs the rounded hub)
             # built as a revolved 45 deg corner ring (edge fillets here go stale after the first edge and fail); where there is no
             # floor it is a 0.25 lip at the foot of the collar, facing -Y (a vertical wall with the halves seam-face down)
-            y_revolve(d, 'SEAT_FLOOR_CORNER', [(SEAT_R - rf, 296.0), (SEAT_R + 0.3, 296.0), (SEAT_R + 0.3, 296.0 + rf + 0.3), (SEAT_R, 296.0 + rf)])
+            # only where the arm has a floor at Y 296 (theta 69.5-109.5, front half only, from the R1c export); elsewhere the hollow
+            # inside reaches the collar's foot and a full ring left a free 0.25 wedge lip (mesh gate, 2026-11-11)
+            with Sk(d, plane(d, 'X', HX, 'SEAT_FLOOR_CORNER_P'), 'SEAT_FLOOR_CORNER') as sk_:
+                sk_.poly([(HX, y_, CZ + r_) for r_, y_ in [(SEAT_R - rf, 296.0), (SEAT_R + 0.3, 296.0), (SEAT_R + 0.3, 296.0 + rf + 0.3), (SEAT_R, 296.0 + rf)]])
+                centerline(sk_, (HX, 150, CZ), (HX, 340, CZ))
+            revolve(d, sk_.feat, 'SEAT_FLOOR_CORNER', None, False, angle=36.0, mid=True, lo=0.01)
     if R1C and os.environ.get('ARM_SEAT_RIBS', '1') == '1':      # seat crush ribs (2026-11-11): the seat must be gap-free, or the hub's lugs and bolts carry the moment.
         # Six axial ribs on the r 35.9 bore over Y 296-302 at theta 45/90/135 in each half (from +X toward +Z about the hub
         # axis), 1 wide at the tip, tip 0.15 proud of the r 35.8 spigot; the halves still close on the seam and the ribs crush.

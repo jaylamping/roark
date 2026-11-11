@@ -78,7 +78,7 @@ def box(lo, hi):
 def loaded_zones():
     """100% infill zones in CAD coordinates (the same for both halves; each half only meets its own side)."""
     z = [box((128.0, 150.0, -50.0), (171.0, 262.0, 62.0)),            # drum inboard end: lug + backing, stub, rib, the four keys to their tips and the wall tapers past them
-         box((128.0, 283.0, -50.0), (214.0, 312.0, 62.0))]            # hub band: seat, lug posts
+         box((128.0, float(os.environ.get('ARM_PRINT_HUBBAND_Y0', '283.0')), -50.0), (214.0, 312.0, 62.0))]      # hub band: seat, lug posts (R1c: from Y 274, over the fins)
     for x, y in [(151.0, 272.0), (190.0, 272.0)]:                       # seam posts (organic_parts.UA_POSTS)
         z.append(cyl_z(x, y, 7.0, -50.0, 62.0))
     return z
