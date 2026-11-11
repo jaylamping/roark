@@ -36,6 +36,9 @@ pub const RUN_WITHIN_NS: u64 = can::ENABLE_TO_RUN_NS;
 pub enum EnableFailure {
     /// The reporting-off frame wasn't read back from the socket in time.
     NoEcho,
+    /// The reporting-off frame was read back, but no later tick came to plan the Enable within [`RUN_WITHIN_NS`] of the
+    /// reporting off: the bus or control stalled, and the proof is that much older.
+    Stalled,
     /// The `run_mode` = MIT write wasn't read back from the socket in time: the drive may not be in MIT mode.
     NoModeEcho,
     /// No fresh Run status within [`RUN_WITHIN_NS`] of the Enable; the last mode seen since, if any.
@@ -81,7 +84,7 @@ impl EnableFailure {
     #[must_use]
     pub const fn rule(self) -> RuleId {
         match self {
-            Self::NoEcho | Self::NoModeEcho => RuleId::HostBus,
+            Self::NoEcho | Self::Stalled | Self::NoModeEcho => RuleId::HostBus,
             Self::WrongView { .. } | Self::LimbStopped { .. } | Self::NotReset { .. } => {
                 RuleId::HostPreflight
             }
@@ -96,6 +99,11 @@ impl EnableFailure {
         let what = match self {
             Self::NoEcho => {
                 "reporting off wasn't read back within 50 ms, expected its echo".to_owned()
+            }
+            Self::Stalled => {
+                "had its reporting off read back, but no tick came within 50 ms of it to plan the Enable, expected the \
+                 next tick"
+                    .to_owned()
             }
             Self::NoModeEcho => {
                 "the run_mode = MIT write wasn't read back within 50 ms, expected its echo"
@@ -147,6 +155,9 @@ impl EnableFailure {
             Self::NoEcho => {
                 "Frames aren't reaching the adapter: check the bus and the runtime's log, then enable again"
             }
+            Self::Stalled => {
+                "The bus thread or the runtime stalled: check the runtime's log and the Pi's load, then run preflight and enable again"
+            }
             Self::NoModeEcho => {
                 "Frames aren't reaching the adapter: check the bus and the runtime's log, clear the limb, then run preflight and enable again"
             }
@@ -188,6 +199,8 @@ enum Stage {
     },
     Settle {
         echo_tick: u64,
+        /// When the reporting off was planned: the Enable is planned inside its window or not at all.
+        since_ns: u64,
     },
     AwaitRun {
         since_ns: u64,
@@ -267,15 +280,25 @@ impl Enabling {
             ),
             Stage::AwaitEcho { since_ns } => {
                 if echoed(view, EchoKind::Reporting(Reporting::Off), since_ns) {
-                    (Stage::Settle { echo_tick: tick }, Next::Wait)
+                    (
+                        Stage::Settle {
+                            echo_tick: tick,
+                            since_ns,
+                        },
+                        Next::Wait,
+                    )
                 } else if late(since_ns, now_ns) {
                     self.failed(EnableFailure::NoEcho)
                 } else {
                     (self.stage, Next::Wait)
                 }
             }
-            // One tick after the echo.
-            Stage::Settle { echo_tick } if tick > echo_tick => (
+            // One tick after the echo, inside the reporting off's window: a stall past it would plan the Enable on a
+            // proof that much older.
+            Stage::Settle { since_ns, .. } if late(since_ns, now_ns) => {
+                self.failed(EnableFailure::Stalled)
+            }
+            Stage::Settle { echo_tick, .. } if tick > echo_tick => (
                 Stage::AwaitRun { since_ns: now_ns },
                 Next::Send(encode::enable(self.drive.id())),
             ),

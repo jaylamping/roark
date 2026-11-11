@@ -623,3 +623,43 @@ fn the_enable_sequence_refuses_a_drive_out_of_reset_before_its_enable() {
         Next::Send(encode::enable(joint(&skeleton(), 0).id))
     );
 }
+
+/// Guards: safety - `host.bus`: the Enable is planned inside the reporting off's 50 ms window or not at all: a stall of
+/// the bus or of control that holds the tick after the echo back past it ends the sequence before any Enable, so no
+/// Enable goes on a proof that much older; at 50 ms it still goes (PLAN item 2, Enable one drive).
+#[test]
+fn the_enable_sequence_gives_up_on_a_stall_before_its_enable() {
+    let t0 = 100 * PERIOD;
+    let echo = echoed(quiet(), EchoKind::Reporting(Reporting::Off), t0 + 10);
+    let enable = Next::Send(encode::enable(joint(&skeleton(), 0).id));
+    for (tick, at, expected) in [
+        (2, t0 + RUN_WITHIN_NS, enable),
+        (
+            2,
+            t0 + RUN_WITHIN_NS + 1,
+            Next::Failed(EnableFailure::Stalled),
+        ),
+        // No later tick at all by then.
+        (
+            1,
+            t0 + RUN_WITHIN_NS + 1,
+            Next::Failed(EnableFailure::Stalled),
+        ),
+    ] {
+        let mut enabling = Enabling::new(passed(), t0);
+        let _ = enabling.step(shown(&quiet()), 0, t0);
+        assert_eq!(enabling.step(shown(&echo), 1, t0 + PERIOD), Next::Wait);
+        assert_eq!(
+            enabling.step(shown(&echo), tick, at),
+            expected,
+            "tick {tick} at {at}"
+        );
+        assert_eq!(enabling.enable_planned(), expected == enable);
+    }
+    assert_eq!(EnableFailure::Stalled.rule(), RuleId::HostBus);
+    assert_eq!(
+        EnableFailure::Stalled.message("arm_joint_one"),
+        "enable failed (host.bus): arm_joint_one had its reporting off read back, but no tick came within 50 ms of it \
+         to plan the Enable, expected the next tick"
+    );
+}
