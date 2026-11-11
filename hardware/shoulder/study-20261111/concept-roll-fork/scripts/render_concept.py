@@ -10,7 +10,7 @@ import sys, os
 import numpy as np, trimesh
 from PIL import Image, ImageDraw, ImageFont
 
-W, C, OUTD = sys.argv[1], sys.argv[2], sys.argv[3]
+W, C, OUTD = sys.argv[1], os.path.abspath(sys.argv[2]), os.path.abspath(sys.argv[3])
 sys.path.insert(0, W); os.chdir(W)
 from rv import load_all, render
 import matplotlib
