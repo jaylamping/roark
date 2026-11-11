@@ -84,14 +84,31 @@ def cuff_section(y, inset=0.0, n=N_ANG):
     """Cuff round the RS02 about the yaw axis: the round cuff profile (CUFF), swelled toward the back to meet the fork rear
     arm (0.5 mm static gap), so cuff and arm read as one sleeve."""
     c = CUFF
-    ys = [c['y0'], c['ro_mid'][1], SEAT_Y[0] - 2.0, SEAT_Y[0] + 2.0]
-    rs = [c['ro_bot'], c['ro_mid'][0], c['ro_top'], c['ro_top']]
+    ys = [c['y0'], c['ro_mid'][1], SEAT_Y[0] - 2.0, SEAT_Y[0] + 2.0, SEAT_Y[1]]
+    rs = [c['ro_bot'], c['ro_mid'][0], c['ro_top'], c['ro_top'] + 1.0, SEAT_RO + 0.3]
     ro = float(np.interp(y, ys, rs)) - inset
     rear = (YZ - (JZ0 + 0.5)) - inset           # to Z JZ0 + 0.5 straight behind the axis
     pts = []
     for k in range(n):
         a = 2 * math.pi * k / n
-        w = max(0.0, -math.sin(a)) ** 3
+        w = max(0.0, -math.sin(a)) ** 1.5      # wide enough at the back-inboard to take the socket-tap sector (r 49)
         r = ro + (rear - ro) * w
         pts.append((RX + r * math.cos(a), y, YZ + r * math.sin(a)))
+    return pts
+
+
+# fork rear arm: (Y, centre X offset from RX, half width, back depth) stations; the front is the flat joint plane Z JZ0
+ARM_STATIONS = [(402.0, 0.0, 17.0, 10.3), (380.0, 0.0, 18.0, 11.8), (364.0, 0.0, 23.0, 13.0), (352.0, 0.0, 23.0, 13.0),
+                (344.0, -3.0, 15.0, 12.0), (334.0, -6.0, 11.4, 11.6), (318.0, -6.0, 11.4, 11.6)]
+
+
+def arm_section(y, cx, w, depth, n=25, e=2.6):
+    """D section: flat front on the joint plane, soft superellipse back."""
+    pts = []
+    for k in range(n):
+        t = math.pi * k / (n - 1)                 # 0 -> pi: from +X round the back to -X
+        c, s_ = math.cos(t), math.sin(t)
+        x = w * math.copysign(abs(c) ** (2 / e), c)
+        z = depth * abs(s_) ** (2 / e)
+        pts.append((RX + cx + x, y, JZ0 - z))
     return pts

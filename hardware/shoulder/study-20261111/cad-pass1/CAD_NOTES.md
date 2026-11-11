@@ -178,6 +178,36 @@ What changed against the organic round:
 - **Pictures:** D1-D6 as before, plus [D7_top_down.png](D7_top_down.png) and
   [D8_drum_top_view.png](D8_drum_top_view.png) (the review screenshot's camera).
 
+### Back view (2026-11-11, after review of D3)
+
+- **Fork rear arm:** the flat rounded bar is replaced by one loft of D sections.
+  - The front is flat on the joint plane (Z -45.9), so the bolted joint keeps full face contact.
+  - The back is a soft superellipse, depth 10.3-13.
+  - It grows out of the rear cheek, flares to ±23 over the joint, narrows into the cable duct and closes at Y 314.
+  - The joint screws sit in pockets from the back.
+- **The foot:** the cuff's egg loft now runs up to the seat-ring top (Y 361.9). The fork front's joint pad and the socket-tap
+  sector sit inside it, so no foot or boss shows beside the cuff.
+- **The crease where the bell meets the drum swell is still there.** The blend fillet does not build in SolidWorks. A
+  cross-loft or boundary surface across the two lofts was not tried in this round.
+- **Masses:** fork rear 64.2 g (+4.3), fork front 134.2 g (+2.9). Shoulder total **611.1 g**.
+- **Clearance sweep on these parts:** every moving pair is 2.0 mm or more; the tooth on the slot ends is the only contact
+  (0.01 mm). The tightest five:
+
+  | Pair | Min (mm) |
+  |---|---|
+  | Ring ↔ cover | 2.00 (designed) |
+  | Cuff ↔ hub | 2.05 |
+  | Fork rear ↔ hub | 2.17 |
+  | Drum ↔ RS02 | 2.60 |
+  | Ring ↔ fork front | 2.62 |
+
+- **Pictures:** [D9_back_straight.png](D9_back_straight.png) (straight from behind) and
+  [D10_back_below.png](D10_back_below.png) (behind and below, three-quarter).
+- **Still not clean from behind:**
+  - the cuff's top rim edge
+  - the flat bottom end of the arm's duct
+  - the yaw-exit duct under the cuff (seen from below)
+
 ## Rev A frame and shell: inward roll from 0 to -25 deg
 
 `check_reva.py`: roll in 1 deg steps, yaw -90…+90 in 15 deg steps. Contact means under 0.5 mm.

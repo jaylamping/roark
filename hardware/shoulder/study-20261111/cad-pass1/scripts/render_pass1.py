@@ -223,6 +223,11 @@ def main():
     Fs = np.array([RX - 15, RY + 20, 0.0])
     render(shoulder_items(with_frame=False), OUT / 'D8_drum_top_view.png', Fs + np.array([330.0, 300.0, 420.0]), Fs, size=(1600, 1200),
            title='Front-outboard, looking down on the drum top (the camera of the review screenshot)')
+    Fb = np.array([RX - 10, RY - 45, -20.0])
+    render(shoulder_items(with_frame=False), OUT / 'D9_back_straight.png', Fb + np.array([0.0, 20.0, -700.0]), Fb, size=(1400, 1500), angle=30,
+           title='Straight from behind (no frame or shell)')
+    render(shoulder_items(with_frame=False), OUT / 'D10_back_below.png', Fb + np.array([420.0, -330.0, -520.0]), Fb, size=(1600, 1300), angle=32,
+           title='From behind and below, three-quarter (no frame or shell)')
     bare = [Path(p) for p in sys.argv[2:4]] if len(sys.argv) > 3 else []
     if bare:
         rows = []
