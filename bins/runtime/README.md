@@ -48,12 +48,15 @@ through bounded rings, and a full ring drops and counts.
 ## Using it
 
 ```bash
-runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>]
+runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>] [--lock <file>]
 # on the dev box, with vcan up and sim-drive serving the skeleton's buses:
-scripts/devbox.sh run cargo run -p runtime -- --sessions /tmp/sessions
+scripts/devbox.sh run cargo run -p runtime -- --sessions /tmp/sessions --lock /tmp/runtime.lock
 ```
 
-Defaults: `config/skeleton.yaml`, `/var/lib/robot/sessions`, 250 Hz. It logs what it checked at startup (build, skeleton
+Defaults: `config/skeleton.yaml`, `/var/lib/robot/sessions`, 250 Hz, `/run/robot/runtime.lock`. Before anything else it
+takes its lock and refuses to start if the lock is held: by another runtime, so two never write to one bus, or by
+`robot-cli disable`, which refuses in turn while a runtime holds it. The kernel drops the lock when the process dies.
+systemd runs `robot-cli disable` after every exit (`deploy/systemd/runtime.service`). It logs what it checked at startup (build, skeleton
 hash, each bus's settings and joints, the offline joints) and, at the end, control's counts. SIGUSR1 also ends it: the binary raises it itself when the run ends on its own. The build's git revision,
 with `-dirty` for a changed tree, is embedded at build time and recorded in every session.
 
