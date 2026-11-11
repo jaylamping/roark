@@ -1,6 +1,6 @@
 //! The enable sequence for one drive (PLAN item 2, "Enable one drive"): preflight passed → active reporting off → its
-//! echo plus one tick → Enable → a fresh Run status within 50 ms → `run_mode` = MIT, its echo and a fresh Run status
-//! answering it. Every frame goes in control's batch; no MIT frame is sent before Run is seen, and only
+//! echo plus one tick → Enable → its echo and a fresh Run status within 50 ms of that echo → `run_mode` = MIT, its echo
+//! and a fresh Run status answering it. Every frame goes in control's batch; no MIT frame is sent before Run is seen, and only
 //! [`Next::Enabled`] lets control command the drive. Each wait takes only a reply read inside its 50 ms window, however
 //! late the sequence is stepped. An echo proves only that the frame reached the controller, so the `run_mode` write
 //! counts once a fresh status read after it still shows Run: the drive took a frame and stayed enabled.
@@ -26,9 +26,12 @@ use crate::refusal::stopped_by;
 use crate::rule::RuleId;
 use crate::seen::{DriveAddress, Seen};
 
-/// How long each step has for its reply after its frame is planned: Run after the Enable (PLAN item 2, "refuse after
-/// 50 ms"; 1.4 to 10.3 ms measured), and the echo of the reporting off and of the `run_mode` write. The bus layer's
-/// enable-to-Run window, so a drive the bus doesn't yet count silent is one this sequence still waits for.
+/// How long each step has: the echo of each frame (reporting off, Enable, the `run_mode` write) from when the frame is
+/// planned, with the tick after the reporting off's echo inside the reporting off's window; Run from the Enable's echo
+/// (PLAN item 2, "refuse after 50 ms"; 1.4 to 10.3 ms measured); and the fresh Run answering the `run_mode` write from
+/// when the write is planned. The bus layer's enable-to-Run window ([`can::ENABLE_TO_RUN_NS`]) runs from when the socket
+/// took the Enable, which is before its echo is read, so this sequence's Run window never closes before the bus's: a
+/// drive the bus doesn't yet count silent is one this sequence still waits for.
 pub const RUN_WITHIN_NS: u64 = can::ENABLE_TO_RUN_NS;
 
 /// Why a drive's enable sequence gave up. Once an Enable may have gone out, the limb is stopped, not just refused.
@@ -39,9 +42,13 @@ pub enum EnableFailure {
     /// The reporting-off frame was read back, but no later tick came to plan the Enable within [`RUN_WITHIN_NS`] of the
     /// reporting off: the bus or control stalled, and the proof is that much older.
     Stalled,
+    /// The Enable wasn't read back from the socket within [`RUN_WITHIN_NS`] of being planned: it wasn't seen to go out
+    /// (a held tick or a full queue drops it), but it may have, so the limb is stopped.
+    NoEnableEcho,
     /// The `run_mode` = MIT write wasn't read back from the socket in time: the drive may not be in MIT mode.
     NoModeEcho,
-    /// No fresh Run status within [`RUN_WITHIN_NS`] of the Enable; the last mode seen since, if any.
+    /// No fresh Run status within [`RUN_WITHIN_NS`] of the Enable's echo; the last mode seen since the Enable was
+    /// planned, if any.
     NoRun {
         /// The last mode the drive reported.
         last: Option<Mode>,
@@ -84,7 +91,7 @@ impl EnableFailure {
     #[must_use]
     pub const fn rule(self) -> RuleId {
         match self {
-            Self::NoEcho | Self::Stalled | Self::NoModeEcho => RuleId::HostBus,
+            Self::NoEcho | Self::Stalled | Self::NoEnableEcho | Self::NoModeEcho => RuleId::HostBus,
             Self::WrongView { .. } | Self::LimbStopped { .. } | Self::NotReset { .. } => {
                 RuleId::HostPreflight
             }
@@ -103,6 +110,10 @@ impl EnableFailure {
             Self::Stalled => {
                 "had its reporting off read back, but no tick came within 50 ms of it to plan the Enable, expected the \
                  next tick"
+                    .to_owned()
+            }
+            Self::NoEnableEcho => {
+                "had its Enable not read back within 50 ms, so it may not have gone out, expected its echo"
                     .to_owned()
             }
             Self::NoModeEcho => {
@@ -158,7 +169,7 @@ impl EnableFailure {
             Self::Stalled => {
                 "The bus thread or the runtime stalled: check the runtime's log and the Pi's load, then run preflight and enable again"
             }
-            Self::NoModeEcho => {
+            Self::NoEnableEcho | Self::NoModeEcho => {
                 "Frames aren't reaching the adapter: check the bus and the runtime's log, clear the limb, then run preflight and enable again"
             }
             Self::WrongView { .. } => "A runtime bug: stop and report it with the log",
@@ -203,7 +214,10 @@ enum Stage {
         since_ns: u64,
     },
     AwaitRun {
+        /// When the Enable was planned.
         since_ns: u64,
+        /// When its echo was read, once it has been: the Run window runs from here.
+        sent_ns: Option<u64>,
     },
     AwaitModeEcho {
         since_ns: u64,
@@ -299,26 +313,15 @@ impl Enabling {
                 self.failed(EnableFailure::Stalled)
             }
             Stage::Settle { echo_tick, .. } if tick > echo_tick => (
-                Stage::AwaitRun { since_ns: now_ns },
+                Stage::AwaitRun {
+                    since_ns: now_ns,
+                    sent_ns: None,
+                },
                 Next::Send(encode::enable(self.drive.id())),
             ),
             Stage::Settle { .. } => (self.stage, Next::Wait),
-            Stage::AwaitRun { since_ns } => {
-                if let Some(answer) = fresh_since(view, since_ns).filter(|a| a.mode == Mode::Run) {
-                    (
-                        Stage::AwaitModeEcho {
-                            since_ns: now_ns,
-                            run_read_ns: answer.read_ns,
-                        },
-                        Next::Send(encode::param_write(&Write::mit_mode(self.drive))),
-                    )
-                } else if late(since_ns, now_ns) {
-                    self.failed(EnableFailure::NoRun {
-                        last: mode_since(view, since_ns),
-                    })
-                } else {
-                    (self.stage, Next::Wait)
-                }
+            Stage::AwaitRun { since_ns, sent_ns } => {
+                self.await_run(view, since_ns, sent_ns, now_ns)
             }
             Stage::AwaitModeEcho {
                 since_ns,
@@ -364,6 +367,48 @@ impl Enabling {
         };
         self.stage = stage;
         next
+    }
+
+    /// The step awaiting the Enable's answer, planned at `since_ns`, its echo read at `sent_ns` if it has been. The Run
+    /// window runs from the Enable's echo, as the bus's runs from the send: an Enable dropped unsent on a held tick or
+    /// a full queue is told apart from a drive that never answered it.
+    fn await_run(
+        &self,
+        view: &DriveView,
+        since_ns: u64,
+        sent_ns: Option<u64>,
+        now_ns: u64,
+    ) -> (Stage, Next) {
+        match sent_ns.or_else(|| echo_read(view, EchoKind::Enable, since_ns)) {
+            None if late(since_ns, now_ns) => self.failed(EnableFailure::NoEnableEcho),
+            None => (self.stage, Next::Wait),
+            Some(sent_ns) => {
+                let until_ns = sent_ns.saturating_add(RUN_WITHIN_NS);
+                if let Some(answer) =
+                    fresh_between(view, since_ns, until_ns).filter(|a| a.mode == Mode::Run)
+                {
+                    (
+                        Stage::AwaitModeEcho {
+                            since_ns: now_ns,
+                            run_read_ns: answer.read_ns,
+                        },
+                        Next::Send(encode::param_write(&Write::mit_mode(self.drive))),
+                    )
+                } else if late(sent_ns, now_ns) {
+                    self.failed(EnableFailure::NoRun {
+                        last: mode_since(view, since_ns),
+                    })
+                } else {
+                    (
+                        Stage::AwaitRun {
+                            since_ns,
+                            sent_ns: Some(sent_ns),
+                        },
+                        Next::Wait,
+                    )
+                }
+            }
+        }
     }
 
     /// The sequence gives up with `failure`, remembering whether the Enable had been planned.
@@ -437,9 +482,14 @@ struct Answer {
 /// duplicate, a report) leaves it standing; one that contradicts it takes it back: awaiting the Enable's Run the step
 /// waits, awaiting the write's answer a status in another mode ends the sequence by itself.
 fn fresh_since(view: &DriveView, since_ns: u64) -> Option<Answer> {
+    fresh_between(view, since_ns, since_ns.saturating_add(RUN_WITHIN_NS))
+}
+
+/// As [`fresh_since`], for a window from `since_ns` to `until_ns`, both included.
+fn fresh_between(view: &DriveView, since_ns: u64, until_ns: u64) -> Option<Answer> {
     let fresh = view
         .fresh_status
-        .filter(|o| in_window(o.read_ns, since_ns))?;
+        .filter(|o| o.read_ns >= since_ns && o.read_ns <= until_ns)?;
     let contradicted = view
         .observed
         .is_some_and(|o| o.status.header.mode != fresh.status.header.mode);
@@ -458,6 +508,13 @@ fn mode_since(view: &DriveView, since_ns: u64) -> Option<Mode> {
 
 /// Whether the drive's last echo is `kind`, read inside the window of a step planned at `since_ns`.
 fn echoed(view: &DriveView, kind: EchoKind, since_ns: u64) -> bool {
+    echo_read(view, kind, since_ns).is_some()
+}
+
+/// When the drive's last echo was read, if it is `kind` and was read inside the window of a step planned at
+/// `since_ns`.
+fn echo_read(view: &DriveView, kind: EchoKind, since_ns: u64) -> Option<u64> {
     view.last_echo
-        .is_some_and(|e| e.kind == kind && in_window(e.read_ns, since_ns))
+        .filter(|e| e.kind == kind && in_window(e.read_ns, since_ns))
+        .map(|e| e.read_ns)
 }
