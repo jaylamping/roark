@@ -1,3 +1,4 @@
+import os
 """Left shoulder, roll drum and fork: every dimension of the first SolidWorks pass, in one place.
 
 Torso STEP frame, mm: X outboard, Y up, Z forward (hardware/shoulder/study-20261111/MEASUREMENTS.md section 0).
@@ -37,11 +38,18 @@ PORT_ANGLE = 0.0                 # the one window through the skin: driver acces
 SKIN_RI = 54.0                   # DRESSED: closed outer skin r 55-57 over the roll RS03; pockets r 51.5-55 between the lug ribs
 POCKET_Z = (DRUM_Z0 + 9.5, LIP_Z0 - 3.0)   # SMOOTH: start deeper, the cap screws' inserts go into the rear end
 DRUM_CROWN = [(DRUM_Z0, 54.5), (-24.0, 56.2), (-14.0, 57.0), (14.0, 57.0), (27.0, 56.2), (33.0, 55.2), (LIP_Z1, 54.5)]
+LOOK = os.environ.get('LOOK', '')
+if LOOK:
+    # LOOK options (match the arm): the drum as a bobbin like the forearm cheeks (forearm_organic_cheek_*: rolled rims at both
+    # ends, a slightly smaller middle). Never above the round-1 r 57, so every clearance to the drum holds.
+    DRUM_CROWN = [(DRUM_Z0, 54.0), (-26.0, 56.0), (-22.0, 57.0), (-17.5, 56.2), (-11.0, 55.5), (17.0, 55.5), (23.0, 56.2), (27.5, 57.0),
+                  (31.5, 56.0), (LIP_Z1, 54.0)]
 # ORGANIC: the drum skin is a loft through these (Z, r) circles: crowned, r 57 at most (RS02 passes 2.6 mm below it)
 CAP_RIM_R = 54.5                 # ORGANIC: the cap rim continues the drum's rear end
 FRONT_CROWN = dict(z0=42.0, z1=49.0, inset=9.0)   # ORGANIC: the fork front face crowns forward to Z 49 (was flat at 47)
 CAP_FLOOR = 45.0                 # floor of the press-in cap recess (cap top 48.5: 0.5 below the crown, like the arm's caps)
-BELL = dict(x=(106.3, 113.0, 120.0, 127.0, 134.0), top=60.0, bot=41.0, front=34.0, rear=27.0, wall=2.5)
+BELL = dict(x=(106.3, 113.0, 120.0, 127.0, 134.0, 141.0), top=60.0, bot=41.0, front=34.0, rear=27.0, wall=2.5,
+            top_taper=((127.0, 60.0), (141.0, 56.0) if not LOOK else (141.0, 54.5)))   # CREASE: the top dives under the drum skin (r 57) instead of ending in a 3 mm step at X 134
 # SMOOTH: the pitch adaptor is an egg-section bell round the pitch axis (top r 60 over the trunk, bottom r 41 clear of the
 # fork and RS02 swing, Z +34 / -27 inside the drum's span), hollow (2.5 wall), replacing the neck tube and flare
 CAP_SCREW_ANGLES = [0.0, 180.0, 270.0]   # SMOOTH: 3 x M3 thread-forming, axial, inside the outline, into 2.6 mm pilots in the drum wall
@@ -126,8 +134,12 @@ HUB = dict(spigot_ext_on=0, spigot_ext_len=6.0, spigot_taper=0.0, spigot_ri=28.0
            # at r 35.8, bottom r 34.3 from Y 297.87 to 299.50, load flank (low Y) 30 deg from the radial plane, high flank 45 deg;
            # full depth over theta 50-130 and 230-310 (theta from +X toward +Z about the yaw axis; seam at 0/180), run-outs to
            # full wall at 40/140 and 220/320
-           groove=dict(r_out=35.8, r_bot=34.3, y_open=(297.0, 301.0), y_bot=(297.87, 299.50), centres=(90.0, 270.0), full_half=40.0,
-                       runout=10.0, steps=3),
+           groove=dict(r_out=35.8, r_bot=34.3, y_open=(298.0, 302.0), y_bot=(298.87, 300.50), centres=(90.0, 270.0), full_half=60.0,
+                       runout=10.0, steps=4),
+           # REV C (arm thread, roark 7ad03f9 ridge_groove_profile_land2.png): 2 mm land Y 296-298, groove Y 298-302, full depth
+           # 30-150 / 210-330, smooth run-outs to 20/160 and 200/340 (lofted)
+           band_fill=dict(on=1, r=(30.0, 39.3), y=(302.3, 312.8), sectors=((60.0, 120.0), (240.0, 300.0))),
+           # REV C: the window band is filled over the two sectors the fore-aft moment loads (clear of the cable window at 8 deg)
            lug2_on=0, lug2_angle=90.0, lug_r=(19.0, 30.0), lug_half_deg=15.0, lug_y=(288.0, 296.0))
 
 # ---- print bed ----

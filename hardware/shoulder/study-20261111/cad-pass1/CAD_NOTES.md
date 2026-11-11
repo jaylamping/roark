@@ -23,6 +23,7 @@ SolidWorks parts, dressed twice for the look of the organic arm.
 | `shoulder_fork_front_left.SLDPRT` | Dome cap on the roll output (r 55), RS02 seat ring, cuff round the RS02, socket pockets and tap, joint pad |
 | `shoulder_fork_rear_left.SLDPRT` | Rear cheek with the 6808 seat (Ø52), arm with power and signal channels, yaw exit |
 | `shoulder_fork_cap_left.SLDPRT` | Domed press-in cap over the 6 front screws |
+| `shoulder_roll_drum_port_cap_left.SLDPRT` | Press-in cap closing the drum's driver port flush with the skin |
 | `shoulder_hub_left.SLDPRT` | Hub with the dished top, on the frozen hub; spigot extension and second lug pair prepared, suppressed |
 | `shoulder_pitch_loop_cover_left.SLDPRT` | Fixed cover round the pitch motor, bottom feed (FEED_*), 4 M5 placeholder pads |
 | `shoulder_left_asm.SLDASM` | Everything above plus the motors, the 6808, the frozen upper arm and the rev A frame |
@@ -207,6 +208,82 @@ What changed against the organic round:
   - the cuff's top rim edge
   - the flat bottom end of the arm's duct
   - the yaw-exit duct under the cuff (seen from below)
+
+### Sleeve round (2026-11-11, review of D9/D10)
+
+What changed:
+
+- **One sleeve.** The cuff (fork front) and the lower part of the fork rear arm now share one outline about the yaw axis
+  (`envelope.SLEEVE`), split only at the joint plane: fork front Z ≥ JZ0 + 0.5, fork rear Z ≤ JZ0.
+  - The front is round, r 42.9-43.8, with no flare at the top.
+  - The back has one swell, out to r 63.5, that carries the 16 x 6 passage and its 2.4 mm wall inside the outline.
+  - At the socket tap (Y 353-359) the swell reaches round to the inboard side, holding about 2.5 mm of skin over the tap
+    arc. Lower down it is held tight to the duct behind the axis, and its inboard reach is capped (`x_in`).
+  - The arm's duct no longer runs down the outside of the cuff, and no flat cut end remains. Above the cuff the arm
+    tapers out of the sleeve into the D-section arm.
+  - The joint screws keep their pockets; the pocket floor is 5.5 mm behind the joint plane.
+- **The yaw exit** is inside the outline: a skirt runs down to Y 314.5 (bore r 41.5, 2.2 mm off the hub) over the cable
+  turn, with a soft bottom edge. The cable path is unchanged: the passage still ends at r 41.5, Y 316.55-322.55.
+- **The cuff top** is rounded (4 mm) at the front and sides, and the rounding fades out only where the arm rises out of
+  the sleeve, so there is no ledge either side of the arm. The seat ring's outer material is now the sleeve itself.
+- **The drum's oval slot** is the driver access to the 6 pitch-pad screws, so it stays. It gets a flush press-in cap
+  (`shoulder_roll_drum_port_cap_left`, 2.0 g): the outer face is the drum skin sampled along the slot edges, 13.9 wide in
+  the 14 slot, with a 0.8 mm hook at each end that snaps under the skin into the pocket.
+- **The bell-to-drum "crease"** was the bell's flat end face at X 134, standing 3 mm out of the drum (bell top 60
+  against drum r 57). The bell now runs to X 141 with its top tapered from 60 (X 127) to 56, so it dives under the drum
+  skin. One clean intersection is left, and a 6 mm blend builds on it (`BELL_BLEND`). The multi-edge blend on the old
+  end face never built.
+
+Masses:
+
+| Part | g |
+|---|---|
+| Drum | 230.8 |
+| Flange ring | 29.3 |
+| Cap | 84.5 |
+| Fork front | 143.4 |
+| Fork rear | 60.0 |
+| Fork cap | 5.5 |
+| Drum port cap | 2.0 |
+| Hub (rev C) | 72.5 |
+| **Total** | **628.0** |
+
+Against the back-view round: fork front +9.2, fork rear -4.2, drum +6.7 (the bell run-on), port cap +2.0.
+
+Clearances, moving pairs over the sweep (`check_clearance.py`). The stop tooth on the slot ends (0.05) is the intended
+contact. The tightest five inside -11…+110:
+
+| Pair | Min (mm) |
+|---|---|
+| Ring ↔ cover | 2.00 (designed) |
+| Cuff ↔ hub | 2.13 (roll -11, yaw -66) |
+| Ring ↔ fork front | 2.20 (roll -11; 1.15 at -12, past the stop) |
+| Drum ↔ RS02 | 2.60 |
+| Port cap ↔ RS02 | 2.61 |
+
+The first sleeve version broke two rules, and both are fixed in the parts above:
+
+- The inboard swell came within 0.93 mm of the flange ring at the stop. Capping the inboard reach brought it to 2.20.
+- The skirt touched the shell skin at roll -9 to -10. Narrowing the low swell and raising the skirt to Y 314.5 fixed it.
+
+Rev A frame, gussets and shell option A, on these parts (`check_reva.py`):
+
+- **Frame, gusset allowance and pitch wing:** no contact inside -11…+110. At the stop the nearest frame point is
+  25.5 mm away. The first frame contact is at roll -20/-21 (upper arm on hardpoint H5).
+- **Shell skin, r 80 opening:** at the stop the fork front clears it by 2.24 mm (pitch -30), 3.7 mm (pitch 0) and
+  2.98 mm (pitch +24). The first skin contact is at -13. The pitch +90 run was still going at commit time; in every
+  earlier run it had no contact.
+- The shell collar with its screws, and the upper and lower spine pads, are touched as before. They are already on the
+  shell option A change list.
+
+**Frame decision** (Joey, 18:07Z: "nope frame is fine as is if that works"): rev A is built as drawn and the inward stop
+stays at -11 deg. Pictures: [frame-options/F1_frame_as_drawn_stop_m11.png](frame-options/F1_frame_as_drawn_stop_m11.png),
+[frame-options/F2_frame_first_contact_m21.png](frame-options/F2_frame_first_contact_m21.png).
+
+Still not clean:
+
+- The seam at the joint plane shows as a line down the sleeve's back sides (a part split, like the arm's seams).
+- The pitch cover's bottom feed is still an L-shaped duct (inside the torso shell, behind the skin).
 
 ## Rev A frame and shell: inward roll from 0 to -25 deg
 

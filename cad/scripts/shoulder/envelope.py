@@ -70,7 +70,9 @@ def bell_section(x, inset=0.0):
     for k in range(N_ANG):
         t = 2 * math.pi * k / N_ANG              # psi from +Y toward +Z
         c, s = math.cos(t), math.sin(t)
-        a = (b['top'] if c >= 0 else b['bot']) - inset
+        tt = b.get('top_taper')
+        top = float(np.interp(x, [q[0] for q in tt], [q[1] for q in tt])) if tt and x > tt[0][0] else b['top']
+        a = (top if c >= 0 else b['bot']) - inset
         bz = (b['front'] if s >= 0 else b['rear']) - inset
         # superellipse-ish blend so the top stays full over the trunk
         e = 2.4
@@ -112,3 +114,75 @@ def arm_section(y, cx, w, depth, n=25, e=2.6):
         z = depth * abs(s_) ** (2 / e)
         pts.append((RX + cx + x, y, JZ0 - z))
     return pts
+
+
+# ---- SLEEVE (back-view round 2): the cuff and the fork rear arm's lower duct are one outline about the yaw axis, split
+# only at the joint plane (fork front Z >= JZ0 + 0.5, fork rear Z <= JZ0). Round at the front, one rearward swell that takes
+# the 16 x 6 passage with its wall, the socket-tap arc and the joint screws; a skirt to Y 313.6 hides the yaw exit.
+SLEEVE = dict(y_bot=314.5, bore_skirt=41.5, a_c=-100.0, p=1.0, top_round=4.0, round_free=(30.0, 60.0),
+              ys=[314.5, 320.36, 336.0, SEAT_Y[0] - 2.0, SEAT_Y[0] + 2.0, SEAT_Y[1]],
+              ro=[43.6, 43.4, 42.9, 43.0, 43.4, 43.8] if not LOOK else [43.6, 43.0, 41.9, 42.6, 43.4, 43.8],   # LOOK: waisted like the upper arm's neck      # no flare at the top (round 1 flared to 45.3: read as a flange)
+              rb_ys=[314.5, 320.0, SEAT_Y[1]], rb=[62.0, 63.5, 63.5],
+              x_in=48.9, shape_y=[345.0, 351.0], a_c_y=[-95.0, -100.0], p_y=[2.5, 1.0])
+
+
+def sleeve_r(a_deg, y, inset=0.0, top=0.0):
+    c = SLEEVE
+    ro = float(np.interp(y, c['ys'], c['ro']))
+    rb = float(np.interp(y, c['rb_ys'], c['rb']))
+    # the swell reaches round to the inboard side only at the socket tap (Y 353-359); lower down it is held to the 16 x 6
+    # duct behind the axis, clear of the shell skin when the fork rolls inward (round 1 touched it at roll -9 to -10)
+    a_c = float(np.interp(y, c['shape_y'], c['a_c_y']))
+    p_ = float(np.interp(y, c['shape_y'], c['p_y']))
+    da = abs(((a_deg - a_c) + 180.0) % 360.0 - 180.0)
+    w = max(0.0, math.cos(math.radians(da))) ** p_
+    r = ro + (rb - ro) * w
+    # inboard reach held to X >= RX - x_in (smooth min): the pitch flange ring passes 2 mm off it at the -11 stop, and the
+    # socket-tap arc (r 47.5, -168..-94 deg) keeps about 2 mm of skin
+    ca = math.cos(math.radians(a_deg))
+    if ca < -1e-3:
+        cap, k = c['x_in'] / -ca, 0.4
+        r = -k * math.log(math.exp(-r / k) + math.exp(-cap / k))
+    r -= inset
+    if top:
+        f0, f1 = c['round_free']
+        t = min(1.0, max(0.0, (da - f0) / (f1 - f0)))
+        r -= top * t * t * (3 - 2 * t)                 # rounded top edge at the front and sides, none where the arm rises
+    return r
+
+
+def sleeve_section(y, inset=0.0, top=0.0, n=144):
+    out = []
+    for k in range(n):
+        a = 360.0 * k / n
+        r = sleeve_r(a, y, inset, top)
+        out.append((RX + r * math.cos(math.radians(a)), y, YZ + r * math.sin(math.radians(a))))
+    return out
+
+
+def sleeve_clip(y, side, inset=0.0, top=0.0, n=720):
+    """Open curve of the outline on one side of the joint plane plus its two end points on the plane:
+    side 'front' keeps Z >= JZ0 + 0.5, 'rear' keeps Z <= JZ0. Returns (curve pts, start, end) ordered so the closing
+    line runs end -> start along the plane."""
+    zc = JZ0 + 0.5 if side == 'front' else JZ0
+    keep = (lambda z: z >= zc) if side == 'front' else (lambda z: z <= zc)
+    pts = sleeve_section(y, inset, top, n)
+    m = len(pts)
+    flags = [keep(p[2]) for p in pts]
+    # start at the first kept point after a dropped one
+    i0 = next(i for i in range(m) if flags[i] and not flags[i - 1])
+    seq = []
+    i = i0
+    while flags[i % m]:
+        seq.append(pts[i % m])
+        i += 1
+    # exact crossings on the plane
+    def cross(pa, pb):
+        t = (zc - pa[2]) / (pb[2] - pa[2])
+        return (pa[0] + t * (pb[0] - pa[0]), y, zc)
+    a = cross(pts[(i0 - 1) % m], pts[i0 % m])
+    b = cross(pts[(i - 1) % m], pts[i % m])
+    # thin the curve to about 40 points
+    step = max(1, len(seq) // 40)
+    seq = [a] + seq[1:-1:step] + [b]
+    return seq

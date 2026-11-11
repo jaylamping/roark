@@ -103,7 +103,7 @@ def frame_samples(path=None, sp=1.0):
 def load():
     t0 = time.time()
     P = {}
-    for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'fork_cap', 'hub', 'cover'):
+    for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'fork_cap', 'hub', 'cover', 'port_cap'):
         P[k] = samp(trimesh.load(STL / f'{k}.stl'), 0.7)
     P['roll_rs03'] = samp(mesh_step(VENDOR / 'vendor_robstride_rs03.stp', T_ROLL_RS03), 0.7)
     P['rs02'] = samp(mesh_step(VENDOR / 'vendor_robstride_rs02.step', T_RS02), 0.7)
@@ -126,14 +126,14 @@ def load():
     return P
 
 
-GROUP = dict(cover='fixed', torso='fixed', drum='pitch', ring='pitch', cap='pitch', stops='pitch', roll_rs03='pitch',
+GROUP = dict(cover='fixed', torso='fixed', port_cap='pitch', drum='pitch', ring='pitch', cap='pitch', stops='pitch', roll_rs03='pitch',
              fork_front='roll', fork_rear='roll', fork_cap='roll', rs02='roll', hub='yaw', upper_arm='yaw')
 ORDER = ['fixed', 'pitch', 'roll', 'yaw']
 # pairs that are bolted or seated together (static fits), not running clearances
 STATIC = {frozenset(p) for p in [('drum', 'ring'), ('drum', 'cap'), ('drum', 'roll_rs03'), ('cap', 'roll_rs03'), ('ring', 'cap'),
                                   ('fork_front', 'fork_rear'), ('fork_front', 'rs02'), ('fork_rear', 'rs02'), ('fork_front', 'fork_cap'),
                                   ('fork_rear', 'fork_cap'), ('hub', 'upper_arm'), ('stops', 'cap'), ('stops', 'drum'),
-                                  ('stops', 'roll_rs03'), ('stops', 'ring'), ('cover', 'torso'), ('fork_cap', 'rs02')]}
+                                  ('stops', 'roll_rs03'), ('stops', 'ring'), ('cover', 'torso'), ('fork_cap', 'rs02'), ('port_cap', 'drum')]}
 
 
 def xf(p, M):

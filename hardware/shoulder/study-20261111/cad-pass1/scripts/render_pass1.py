@@ -7,6 +7,7 @@ placed as in build_asm.py, the pitch RS03, the frozen upper arm, the rev A frame
 moved -38 X into the old-frame coordinates of the parts) and today's shoulder (cad/reference/shoulder) for the comparison.
 """
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -27,7 +28,7 @@ from check_clearance import named_solids, tess  # noqa: E402
 from dims import *  # noqa: E402
 
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE.parents[1]
-STL = REPO / 'cad' / '_wip' / 'shoulder-pass1' / 'stl'
+STL = REPO / 'cad' / '_wip' / 'shoulder-pass1' / os.environ.get('RENDER_STL', 'stl')
 REF = REPO / 'cad' / 'reference' / 'shoulder'
 WHITE, CAPC, DARK, GREY, FRAMEC = (0.93, 0.93, 0.91), (0.86, 0.87, 0.88), (0.24, 0.25, 0.27), (0.72, 0.73, 0.75), (0.58, 0.60, 0.63)
 STEEL, RED, BLUE, OLDC = (0.78, 0.79, 0.81), (0.85, 0.12, 0.10), (0.12, 0.30, 0.85), (0.93, 0.62, 0.30)
@@ -45,7 +46,7 @@ def step_mesh(path, M=None, tol=0.2):
 
 SRC = np.array([[-1, 0, 0, 97], [0, 0, 1, 424.860667548201], [0, 1, 0, -0.0141253439872], [0, 0, 0, 1]], float)   # left source -> torso
 print('loading', flush=True)
-P = {k: trimesh.load(STL / f'{k}.stl') for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'fork_cap', 'hub', 'cover')}
+P = {k: trimesh.load(STL / f'{k}.stl') for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'fork_cap', 'hub', 'cover', 'port_cap')}
 brg = trimesh.creation.annulus(r_min=20.0, r_max=26.0, height=7.0, sections=96)
 brg.apply_translation((RX, RY, (BRG_Z[0] + BRG_Z[1]) / 2))
 M = dict(roll_rs03=step_mesh(REPO / 'cad/vendor/robstride/vendor_robstride_rs03.stp', T_ROLL_RS03),
@@ -63,7 +64,7 @@ FRAME.apply_translation((-FRAME_SHIFT, 0, 0))
 TODAY = dict(p1=step_mesh(REF / 'shoulder_pitch_bracket_left_l01.step', SRC), p2=step_mesh(REF / 'shoulder_roll_bracket_left_l04b.step', SRC),
              spacer=step_mesh(REF / 'shoulder_roll_spacer_left_pf03.step', SRC), hub=step_mesh(REF / 'upper_arm_hub_left.step'))
 
-COL = dict(drum=WHITE, ring=WHITE, cap=WHITE, fork_front=WHITE, fork_rear=WHITE, fork_cap=CAPC, hub=WHITE, cover=GREY,
+COL = dict(port_cap=WHITE, drum=WHITE, ring=WHITE, cap=WHITE, fork_front=WHITE, fork_rear=WHITE, fork_cap=CAPC, hub=WHITE, cover=GREY,
            roll_rs03=DARK, rs02=DARK, pitch_rs03=DARK, bearing=STEEL)
 
 

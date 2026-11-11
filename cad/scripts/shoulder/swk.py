@@ -19,7 +19,9 @@ sys.path.insert(0, str(REPO / 'tools' / 'solidworks'))
 from sw_instance import session, end_session  # noqa: E402
 
 CAD = REPO / 'cad'
-OUT = CAD / 'shoulder' / 'left'
+LOOK = os.environ.get('LOOK', '')          # look-option variants build into _wip/look/<x>, never over the real parts
+OUT = CAD / '_wip' / 'look' / LOOK if LOOK else CAD / 'shoulder' / 'left'
+OUT.mkdir(parents=True, exist_ok=True)
 VENDOR = CAD / 'vendor' / 'robstride'
 WIP = CAD / '_wip' / 'shoulder-pass1'
 WIP.mkdir(parents=True, exist_ok=True)

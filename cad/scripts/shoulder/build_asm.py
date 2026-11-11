@@ -60,6 +60,7 @@ PARTS = [  # (key, file, group, base transform, colour)
     ('pitch_rs03', REF / 'shoulder_ref_pitch_rs03_left.SLDPRT', 'fixed', None, 'motor'),
     ('drum', OUT / 'shoulder_roll_drum_left.SLDPRT', 'pitch', None, 'petg'),
     ('ring', OUT / 'shoulder_pitch_flange_ring_left.SLDPRT', 'pitch', None, 'petg'),
+    ('port_cap', OUT / 'shoulder_roll_drum_port_cap_left.SLDPRT', 'pitch', None, 'petg'),
     ('cap', OUT / 'shoulder_roll_cap_left.SLDPRT', 'pitch', None, 'petg'),
     ('bearing', BRG, 'pitch', T_BRG, 'steel'),
     ('roll_rs03', VENDOR / 'vendor_robstride_rs03.SLDPRT', 'pitch', T_ROLL_RS03, 'motor'),

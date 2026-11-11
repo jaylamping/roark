@@ -2,11 +2,19 @@
  "method": "surface samples 0.7 mm (frame/arm 1.0), KD-tree, +-0.4 mm; rotors split off",
  "min_over_all": {
   "cap|fork_rear": [
-   0.01,
+   0.05,
    [
-    -30.0,
+    0.0,
     110.0,
-    -90.0
+    0.0
+   ]
+  ],
+  "ring|fork_front": [
+   1.15,
+   [
+    0.0,
+    -12.0,
+    0.0
    ]
   ],
   "ring|cover": [
@@ -18,35 +26,27 @@
    ]
   ],
   "fork_front|hub": [
-   2.05,
+   2.13,
    [
     0.0,
-    110.0,
-    -84.0
-   ]
-  ],
-  "fork_rear|hub": [
-   2.17,
-   [
-    0.0,
-    110.0,
-    84.0
+    -11.0,
+    -66.0
    ]
   ],
   "drum|rs02": [
    2.6,
    [
-    -30.0,
-    45.0,
+    0.0,
+    7.0,
     -90.0
    ]
   ],
-  "ring|fork_front": [
-   2.62,
+  "port_cap|rs02": [
+   2.61,
    [
     0.0,
-    -12.0,
-    0.0
+    97.0,
+    90.0
    ]
   ],
   "drum|fork_front": [
@@ -65,14 +65,6 @@
     12.0
    ]
   ],
-  "drum|cover": [
-   3.46,
-   [
-    18.0,
-    110.0,
-    0.0
-   ]
-  ],
   "drum|torso": [
    3.5,
    [
@@ -81,12 +73,20 @@
     -90.0
    ]
   ],
+  "drum|cover": [
+   3.52,
+   [
+    18.0,
+    -11.0,
+    0.0
+   ]
+  ],
   "fork_front|roll_rs03": [
    4.51,
    [
     0.0,
-    94.0,
-    -90.0
+    108.0,
+    0.0
    ]
   ],
   "cap|rs02": [
@@ -117,7 +117,7 @@
    7.63,
    [
     0.0,
-    28.0,
+    16.0,
     -90.0
    ]
   ],
@@ -130,11 +130,19 @@
    ]
   ],
   "fork_front|cover": [
-   8.01,
+   8.12,
    [
     0.0,
     -12.0,
     0.0
+   ]
+  ],
+  "fork_front|port_cap": [
+   9.78,
+   [
+    0.0,
+    106.0,
+    90.0
    ]
   ],
   "ring|torso": [
@@ -153,12 +161,20 @@
     0.0
    ]
   ],
-  "fork_rear|upper_arm": [
-   12.44,
+  "fork_rear|hub": [
+   12.6,
    [
     0.0,
     110.0,
-    6.0
+    30.0
+   ]
+  ],
+  "fork_front|upper_arm": [
+   12.77,
+   [
+    0.0,
+    -11.0,
+    42.0
    ]
   ],
   "fork_cap|roll_rs03": [
@@ -170,10 +186,10 @@
    ]
   ],
   "drum|fork_rear": [
-   15.62,
+   15.63,
    [
     0.0,
-    46.0,
+    103.0,
     90.0
    ]
   ],
@@ -186,10 +202,18 @@
    ]
   ],
   "fork_front|torso": [
-   16.87,
+   15.89,
    [
-    27.0,
+    -18.0,
     -11.0,
+    0.0
+   ]
+  ],
+  "ring|fork_rear": [
+   16.5,
+   [
+    0.0,
+    -12.0,
     0.0
    ]
   ],
@@ -201,12 +225,12 @@
     0.0
    ]
   ],
-  "fork_front|upper_arm": [
-   18.37,
+  "fork_rear|upper_arm": [
+   18.07,
    [
     0.0,
     -11.0,
-    -66.0
+    48.0
    ]
   ],
   "hub|cover": [
@@ -225,11 +249,19 @@
     0.0
    ]
   ],
-  "drum|fork_cap": [
-   21.26,
+  "fork_rear|cover": [
+   20.64,
    [
-    -30.0,
     0.0,
+    -12.0,
+    0.0
+   ]
+  ],
+  "drum|fork_cap": [
+   21.27,
+   [
+    0.0,
+    31.0,
     -90.0
    ]
   ],
@@ -265,20 +297,12 @@
     0.0
    ]
   ],
-  "ring|fork_rear": [
-   26.55,
+  "fork_rear|port_cap": [
+   27.3,
    [
-    0.0,
-    -12.0,
-    0.0
-   ]
-  ],
-  "fork_rear|cover": [
-   30.46,
-   [
-    0.0,
-    -12.0,
-    0.0
+    -30.0,
+    110.0,
+    -90.0
    ]
   ],
   "cover|roll_rs03": [
@@ -311,6 +335,22 @@
     0.0,
     -12.0,
     0.0
+   ]
+  ],
+  "fork_rear|torso": [
+   36.12,
+   [
+    18.0,
+    -11.0,
+    0.0
+   ]
+  ],
+  "fork_cap|port_cap": [
+   37.13,
+   [
+    0.0,
+    7.0,
+    -90.0
    ]
   ],
   "drum|hub": [
@@ -369,14 +409,6 @@
     -90.0
    ]
   ],
-  "fork_rear|torso": [
-   40.0,
-   [
-    -30.0,
-    0.0,
-    -90.0
-   ]
-  ],
   "fork_rear|stops": [
    40.0,
    [
@@ -425,6 +457,14 @@
     -90.0
    ]
   ],
+  "hub|port_cap": [
+   40.0,
+   [
+    -30.0,
+    0.0,
+    -90.0
+   ]
+  ],
   "hub|roll_rs03": [
    40.0,
    [
@@ -441,7 +481,31 @@
     -90.0
    ]
   ],
+  "cover|port_cap": [
+   40.0,
+   [
+    -30.0,
+    0.0,
+    -90.0
+   ]
+  ],
   "cover|stops": [
+   40.0,
+   [
+    -30.0,
+    0.0,
+    -90.0
+   ]
+  ],
+  "port_cap|torso": [
+   40.0,
+   [
+    -30.0,
+    0.0,
+    -90.0
+   ]
+  ],
+  "port_cap|upper_arm": [
    40.0,
    [
     -30.0,
@@ -490,12 +554,12 @@
    "min": {
     "cap|fork_rear": 1.94,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
     "drum|rs02": 2.62,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.57
    }
   },
   {
@@ -505,12 +569,12 @@
    "min": {
     "cap|fork_rear": 1.94,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.05,
-    "fork_rear|hub": 2.19,
+    "fork_front|hub": 2.18,
     "drum|rs02": 2.62,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.57
    }
   },
   {
@@ -520,12 +584,12 @@
    "min": {
     "cap|fork_rear": 1.94,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
     "drum|rs02": 2.62,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.45,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.57
    }
   },
   {
@@ -535,12 +599,12 @@
    "min": {
     "cap|fork_rear": 1.94,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
     "drum|rs02": 2.62,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.6
    }
   },
   {
@@ -550,12 +614,12 @@
    "min": {
     "cap|fork_rear": 1.94,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.05,
-    "fork_rear|hub": 2.19,
+    "fork_front|hub": 2.18,
     "drum|rs02": 2.62,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.6
    }
   },
   {
@@ -565,12 +629,12 @@
    "min": {
     "cap|fork_rear": 1.94,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
     "drum|rs02": 2.62,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.45,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.6
    }
   },
   {
@@ -580,12 +644,12 @@
    "min": {
     "cap|fork_rear": 1.94,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
     "drum|rs02": 2.62,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.58
    }
   },
   {
@@ -595,12 +659,12 @@
    "min": {
     "cap|fork_rear": 1.94,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.05,
-    "fork_rear|hub": 2.19,
+    "fork_front|hub": 2.18,
     "drum|rs02": 2.62,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.58
    }
   },
   {
@@ -610,12 +674,12 @@
    "min": {
     "cap|fork_rear": 1.94,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
     "drum|rs02": 2.62,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.45,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.58
    }
   },
   {
@@ -623,10 +687,10 @@
    "roll": -11.0,
    "yaw": -90.0,
    "min": {
-    "cap|fork_rear": 0.1,
+    "cap|fork_rear": 0.06,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
+    "ring|fork_front": 2.2,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
@@ -638,10 +702,10 @@
    "roll": -11.0,
    "yaw": 0.0,
    "min": {
-    "cap|fork_rear": 0.1,
+    "cap|fork_rear": 0.06,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.05,
-    "fork_rear|hub": 2.19,
+    "fork_front|hub": 2.18,
+    "ring|fork_front": 2.2,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
@@ -653,10 +717,10 @@
    "roll": -11.0,
    "yaw": 90.0,
    "min": {
-    "cap|fork_rear": 0.1,
+    "cap|fork_rear": 0.06,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
+    "ring|fork_front": 2.2,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.45,
@@ -668,10 +732,10 @@
    "roll": -11.0,
    "yaw": -90.0,
    "min": {
-    "cap|fork_rear": 0.1,
+    "cap|fork_rear": 0.06,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
+    "ring|fork_front": 2.2,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
@@ -683,10 +747,10 @@
    "roll": -11.0,
    "yaw": 0.0,
    "min": {
-    "cap|fork_rear": 0.1,
+    "cap|fork_rear": 0.06,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.05,
-    "fork_rear|hub": 2.19,
+    "fork_front|hub": 2.18,
+    "ring|fork_front": 2.2,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
@@ -698,10 +762,10 @@
    "roll": -11.0,
    "yaw": 90.0,
    "min": {
-    "cap|fork_rear": 0.1,
+    "cap|fork_rear": 0.06,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
+    "ring|fork_front": 2.2,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.45,
@@ -713,10 +777,10 @@
    "roll": -11.0,
    "yaw": -90.0,
    "min": {
-    "cap|fork_rear": 0.1,
+    "cap|fork_rear": 0.06,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
+    "ring|fork_front": 2.2,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
@@ -728,10 +792,10 @@
    "roll": -11.0,
    "yaw": 0.0,
    "min": {
-    "cap|fork_rear": 0.1,
+    "cap|fork_rear": 0.06,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.05,
-    "fork_rear|hub": 2.19,
+    "fork_front|hub": 2.18,
+    "ring|fork_front": 2.2,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
@@ -743,10 +807,10 @@
    "roll": -11.0,
    "yaw": 90.0,
    "min": {
-    "cap|fork_rear": 0.1,
+    "cap|fork_rear": 0.06,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
+    "ring|fork_front": 2.2,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.45,
@@ -760,12 +824,12 @@
    "min": {
     "cap|fork_rear": 1.93,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
-    "drum|rs02": 2.6,
+    "fork_front|hub": 2.16,
+    "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.57
    }
   },
   {
@@ -775,12 +839,12 @@
    "min": {
     "cap|fork_rear": 1.93,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.05,
-    "fork_rear|hub": 2.19,
-    "drum|rs02": 2.6,
+    "fork_front|hub": 2.18,
+    "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.57
    }
   },
   {
@@ -790,12 +854,12 @@
    "min": {
     "cap|fork_rear": 1.93,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
-    "drum|rs02": 2.6,
+    "fork_front|hub": 2.16,
+    "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.45,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.57
    }
   },
   {
@@ -805,12 +869,12 @@
    "min": {
     "cap|fork_rear": 1.93,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
-    "drum|rs02": 2.6,
+    "fork_front|hub": 2.16,
+    "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.6
    }
   },
   {
@@ -820,12 +884,12 @@
    "min": {
     "cap|fork_rear": 1.93,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.05,
-    "fork_rear|hub": 2.19,
-    "drum|rs02": 2.6,
+    "fork_front|hub": 2.18,
+    "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.6
    }
   },
   {
@@ -835,12 +899,12 @@
    "min": {
     "cap|fork_rear": 1.93,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
-    "drum|rs02": 2.6,
+    "fork_front|hub": 2.16,
+    "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.45,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.6
    }
   },
   {
@@ -850,12 +914,12 @@
    "min": {
     "cap|fork_rear": 1.93,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
-    "drum|rs02": 2.6,
+    "fork_front|hub": 2.16,
+    "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.58
    }
   },
   {
@@ -865,12 +929,12 @@
    "min": {
     "cap|fork_rear": 1.93,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.05,
-    "fork_rear|hub": 2.19,
-    "drum|rs02": 2.6,
+    "fork_front|hub": 2.18,
+    "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.58
    }
   },
   {
@@ -880,12 +944,12 @@
    "min": {
     "cap|fork_rear": 1.93,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
-    "drum|rs02": 2.6,
+    "fork_front|hub": 2.16,
+    "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.45,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.58
    }
   },
   {
@@ -893,14 +957,14 @@
    "roll": 110.0,
    "yaw": -90.0,
    "min": {
-    "cap|fork_rear": 0.01,
+    "cap|fork_rear": 0.05,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.57
    }
   },
   {
@@ -908,14 +972,14 @@
    "roll": 110.0,
    "yaw": 0.0,
    "min": {
-    "cap|fork_rear": 0.01,
+    "cap|fork_rear": 0.05,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.05,
-    "fork_rear|hub": 2.19,
+    "fork_front|hub": 2.18,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.57
    }
   },
   {
@@ -923,14 +987,14 @@
    "roll": 110.0,
    "yaw": 90.0,
    "min": {
-    "cap|fork_rear": 0.01,
+    "cap|fork_rear": 0.05,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.45,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.57
    }
   },
   {
@@ -938,14 +1002,14 @@
    "roll": 110.0,
    "yaw": -90.0,
    "min": {
-    "cap|fork_rear": 0.01,
+    "cap|fork_rear": 0.05,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.6
    }
   },
   {
@@ -953,14 +1017,14 @@
    "roll": 110.0,
    "yaw": 0.0,
    "min": {
-    "cap|fork_rear": 0.01,
+    "cap|fork_rear": 0.05,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.05,
-    "fork_rear|hub": 2.19,
+    "fork_front|hub": 2.18,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.6
    }
   },
   {
@@ -968,14 +1032,14 @@
    "roll": 110.0,
    "yaw": 90.0,
    "min": {
-    "cap|fork_rear": 0.01,
+    "cap|fork_rear": 0.05,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.45,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.6
    }
   },
   {
@@ -983,14 +1047,14 @@
    "roll": 110.0,
    "yaw": -90.0,
    "min": {
-    "cap|fork_rear": 0.01,
+    "cap|fork_rear": 0.05,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.58
    }
   },
   {
@@ -998,14 +1062,14 @@
    "roll": 110.0,
    "yaw": 0.0,
    "min": {
-    "cap|fork_rear": 0.01,
+    "cap|fork_rear": 0.05,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.05,
-    "fork_rear|hub": 2.19,
+    "fork_front|hub": 2.18,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.44,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.58
    }
   },
   {
@@ -1013,14 +1077,14 @@
    "roll": 110.0,
    "yaw": 90.0,
    "min": {
-    "cap|fork_rear": 0.01,
+    "cap|fork_rear": 0.05,
     "ring|cover": 2.0,
-    "fork_front|hub": 2.07,
-    "fork_rear|hub": 2.17,
+    "fork_front|hub": 2.16,
     "drum|rs02": 2.61,
     "drum|fork_front": 3.0,
     "hub|rs02": 3.45,
-    "drum|torso": 3.5
+    "drum|torso": 3.5,
+    "drum|cover": 3.58
    }
   }
  ],
@@ -1029,7 +1093,7 @@
    "arm_to_lug": 40.0,
    "closest_other": [
     "cap|fork_rear",
-    1.48
+    1.47
    ]
   },
   "-10.0": {
@@ -1043,35 +1107,35 @@
    "arm_to_lug": 40.0,
    "closest_other": [
     "cap|fork_rear",
-    0.1
+    0.06
    ]
   },
   "-12.0": {
    "arm_to_lug": 40.0,
    "closest_other": [
     "cap|fork_rear",
-    0.19
+    0.22
    ]
   },
   "108.0": {
    "arm_to_lug": 40.0,
    "closest_other": [
     "cap|fork_rear",
-    1.0
+    1.02
    ]
   },
   "110.0": {
    "arm_to_lug": 40.0,
    "closest_other": [
     "cap|fork_rear",
-    0.01
+    0.05
    ]
   },
   "111.0": {
    "arm_to_lug": 40.0,
    "closest_other": [
     "cap|fork_rear",
-    0.17
+    0.19
    ]
   }
  }

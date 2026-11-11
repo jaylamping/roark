@@ -26,7 +26,7 @@ F.mkdir(parents=True, exist_ok=True)
 RUNS = F / 'fea_runs.json'
 I = lambda v=0: VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, v)
 EX, NU, YIELD, LAYER, RHO = 1.9e9, 0.38, 45.0, 0.5, 1270.0
-PARTS = {'hub': F / 'hub_fea.SLDPRT'}
+PARTS = {'hub': F / os.environ.get('HUB_FEA_FILE', 'hub_fea.SLDPRT')}   # a second solve stream uses its own copy
 
 
 def cyl(r, box):
@@ -139,15 +139,15 @@ def run(name, c):
             raise SystemExit('fixture failed')
         fixed += fs
     loaded = []
-    if 'remote' in c:
-        sel, at, f, mm_ = c['remote']
+    rems = ([c['remote'] + (c.get('coupling', 0),)] if 'remote' in c else []) + [tuple(x) for x in c.get('remotes', [])]
+    for sel, at, f, mm_, cpl in rems:
         fs = [x for s_ in (sel if isinstance(sel, list) else [sel]) for x in pick(d, s_)]
         loaded += fs
         err = I()
         r = lbc.AddRemoteLoad(1, fs, 0, at[0], at[1], at[2], err)
         print(' remote', len(fs), 'err', err.value, flush=True)
         call(r, 'RemoteLoadBeginEdit')
-        r.ConnectionType = 0
+        r.ConnectionType = cpl                         # 0 rigid, 1 distributed
         r.ForceUnit = 0
         r.MomentUnit = 0
         r.SetForceOrTranslationValues2(any(f), f[0] != 0, float(f[0]), f[1] != 0, float(f[1]), f[2] != 0, float(f[2]))
@@ -290,6 +290,26 @@ GREG = {'load_flank_90': [150, 296.5, 25, 192, 298.2, 47], 'load_flank_270': [15
 for k_, f_, m_ in (('A', (0.0, -372.0, 0.0), (22.9, 17.0, 0.0)), ('B', (0.0, -62.0, 0.0), (7.0, 8.6, 14.7))):
     CASES['HUBG_' + k_] = dict(part='hub', fix=GROOVE_FIX, remote=(RS02_SIDE, AT, tuple(-v for v in f_), tuple(-v for v in m_)), el=1.5,
                                ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (('cone', [130, 296.8, -35, 212, 298.0, 47]), 0.4)], regions=GREG)
+
+# REV C: groove Y 298-302, cones of the load flank in Y 297.9-299.0; distributed coupling at the RS02 side; optional
+# end-face contact on the disc face at Y 302 (bilateral axial support: the optimistic bound of a compression-only contact)
+CONE_C = ('cone', [130, 297.8, -35, 212, 299.0, 47])
+FACE_302 = pl((RX, 302.0, YZ - 37.5))
+GREG_C = dict(GREG, load_flank_90=[150, 297.5, 25, 192, 299.2, 47], load_flank_270=[150, 297.5, -35, 192, 299.2, -13],
+              land_below=[130, 295.9, -35, 212, 298.05, 47], window_band=[130, 302.2, -35, 212, 312.8, 47])
+for k_, f_, m_ in (('A', (0.0, -372.0, 0.0), (22.9, 17.0, 0.0)), ('B', (0.0, -62.0, 0.0), (7.0, 8.6, 14.7))):
+    base = dict(part='hub', remote=(RS02_SIDE, AT, tuple(-v for v in f_), tuple(-v for v in m_)), coupling=1, el=1.5,
+                ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (CONE_C, float(os.environ.get('CONE_EL', '0.7')))], regions=GREG_C)
+    fx = [('radial', cyl(35.8, [130, 295.5, -35, 212, 302.5, 47])), ('axialY', CONE_C), ('fixed', LUG_HOLES[0]), ('fixed', LUG_HOLES[1])]
+    CASES['HUBC_' + k_] = dict(base, fix=fx)
+    CASES['HUBCF_' + k_] = dict(base, fix=fx + [('axialY', FACE_302)])
+
+# REV C, interim lug case (arm thread's earlier bolted run, no ridge; rough, +-20%): each lug about 230 N along -Y plus
+# about 170 N of opposed X shear (pulling the lugs apart), as a distributed remote load on each seam-bolt hole about the
+# hole centre; hub held at the RS02 side (hub screws and step-ring face fixed). An upper bound for the lug roots.
+CASES['HUBL_I'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5)], regions=GREG_C,
+                       remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (-170.0, -230.0, 0.0), (0.0, 0.0, 0.0), 1),
+                                (LUG_HOLES[1], (193.5, 292.0, YZ), (170.0, -230.0, 0.0), (0.0, 0.0, 0.0), 1)])
 
 if __name__ == '__main__':
     for n in sys.argv[1:]:

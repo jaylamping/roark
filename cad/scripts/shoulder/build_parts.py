@@ -5,6 +5,7 @@
 Every part is modelled in the torso frame (dims.py), so the assembly places each at the origin. Saves to cad/shoulder/left/
 and a fine STL of each to cad/_wip/shoulder-pass1/stl/ for the checks and pictures.
 """
+import inspect
 import math
 import sys
 
@@ -14,14 +15,14 @@ from dims import *
 from swk import *
 from swk import vol_com
 
-STL = WIP / 'stl'
+STL = WIP / ('stl' if not LOOK else f'stl_look_{LOOK}')
 STL.mkdir(parents=True, exist_ok=True)
-STEPD = WIP / 'step'
+STEPD = WIP / ('step' if not LOOK else f'step_look_{LOOK}')
 STEPD.mkdir(parents=True, exist_ok=True)
 NAMES = {
     'drum': 'shoulder_roll_drum_left', 'ring': 'shoulder_pitch_flange_ring_left', 'cap': 'shoulder_roll_cap_left',
     'fork_front': 'shoulder_fork_front_left', 'fork_rear': 'shoulder_fork_rear_left', 'fork_cap': 'shoulder_fork_cap_left',
-    'hub': 'shoulder_hub_left', 'cover': 'shoulder_pitch_loop_cover_left',
+    'hub': 'shoulder_hub_left', 'cover': 'shoulder_pitch_loop_cover_left', 'port_cap': 'shoulder_roll_drum_port_cap_left',
 }
 X, Y, Z = (1, 0, 0), (0, 1, 0), (0, 0, 1)
 NX, NY, NZ = (-1, 0, 0), (0, -1, 0), (0, 0, -1)
@@ -125,14 +126,20 @@ def build_drum():
     sk = zsk(d, DRUM_Z0 + 1, 'CLIP_REAR', lambda s: s.poly(rect_pts((115, RY, DRUM_Z0 + 1), X, Y, 60, 100)))
     extrude(d, sk, 'CLIP_REAR', 40, NZ, cut=True)
     # SMOOTH: the drum skin is a loft through sections that are the crown circle swelled (convex hull) over the cable ducts
-    zst = [DRUM_Z0, -24.0, -14.0, -4.0, 4.0, 10.0, 16.0, 20.0, 27.0, 33.0, LIP_Z1]
+    zst = [DRUM_Z0, -24.0, -14.0, -4.0, 4.0, 10.0, 16.0, 20.0, 27.0, 33.0, LIP_Z1] if not LOOK else [z_ for z_, _ in DRUM_CROWN]
     secs = [zsk(d, z, f'DRUM_S{i}', lambda s, z=z: s.spline([(x, y, z) for x, y in EV.drum_section(z)])) for i, z in enumerate(zst)]
     loft(d, secs, 'DRUM')
     roll_rev(d, 'LIP_BORE', [(0, LIP_Z0), (LIP_RI, LIP_Z0), (LIP_RI, LIP_Z1 + 1), (0, LIP_Z1 + 1)], cut=True)
     # blend where the bell's surface comes out of the drum swell (the intersection edges outboard of X 118, above the axis)
     blend = edges_where(d, lambda p: 117.0 < p[0] < 150.0 and p[1] > RY + 20 and -27.0 < p[2] < 35.0
                         and np.hypot(p[0] - RX, p[1] - RY) > DRUM_RO - 1.5)
-    fillet(d, blend, [8.0, 6.0, 4.0, 3.0], 'BELL_BLEND')
+    def ends(e_):
+        cp = e_.GetCurveParams3
+        cp = cp() if inspect.ismethod(cp) else cp
+        return np.array(cp.StartPoint[:3]) * 1e3, np.array(cp.EndPoint[:3]) * 1e3
+    keys = [ends(e_) for e_ in blend]
+    log('  BELL_BLEND edges', len(blend), [tuple(np.round((a_ + b_) / 2, 1)) for a_, b_ in keys])
+    fillet(d, blend, [6.0, 4.0, 3.0, 2.0], 'BELL_BLEND')      # with the tapered top, a light blend on the shallow intersection
     # spokes for the flange ring
     sp = SPOKES
 
@@ -209,7 +216,8 @@ def build_drum():
             'BRANCH_S', SW, NZ, cut=True)
     # pockets between the lug ribs, under the skin (rib half-width 8 at r 53)
     # pockets under the crowned skin: r 54 at the ends, r 55 over the middle band where the crown is r 57
-    for nm, z0_, z1_, ro_ in (('POCKETS', POCKET_Z[0], POCKET_Z[1], SKIN_RI), ('POCKETS_MID', -13.0, 13.0, SKIN_RI + 1.0)):
+    for nm, z0_, z1_, ro_ in ((('POCKETS', POCKET_Z[0], POCKET_Z[1], SKIN_RI), ('POCKETS_MID', -13.0, 13.0, SKIN_RI + 1.0)) if not LOOK else
+                              (('POCKETS', POCKET_Z[0], POCKET_Z[1], 53.5),)):     # LOOK: 2 mm skin over the bobbin's waist
         def pockets(s, z0_=z0_, ro_=ro_):
             for th in LUG_ANGLES:
                 if abs(((th + 22.5) - TRUNK_ANG + 180) % 360 - 180) < 30:      # the bay under trunk B stays solid
@@ -234,6 +242,30 @@ def build_drum():
         extrude(d, s.feat, f'PORT' if port else f'WIN{k}', 80 if port else SKIN_RI - 1.8, (math.cos(math.radians(th)), math.sin(math.radians(th)), 0), cut=True,
                 mode=THRU_ALL if port else BLIND)
     return finish_part(d, 'drum')
+
+
+# ======================================================================================================= drum port cap
+def build_port_cap():
+    """Press-in cap that closes the drum's driver port (pitch pad screws) flush with the skin. Outer face = the drum skin
+    (sampled from the built drum along the slot's long edges), 13.9 wide in the 14 slot, inner face r 54, and a 0.8 mm hook
+    at each end that snaps under the skin into the pocket (r 51.5-54 there)."""
+    import trimesh
+    m_ = trimesh.load(STL / 'drum.stl')
+    ray = trimesh.ray.ray_triangle.RayMeshIntersector(m_)
+    prof = []
+    for z in np.arange(-20.0, 24.01, 1.0):
+        rr = []
+        for dy in (-7.6, 7.6):
+            loc, _, _ = ray.intersects_location([[RX + 100, RY + dy, z]], [[-1.0, 0, 0]])
+            rr.append(float(np.hypot(loc[:, 0].max() - RX, dy)))
+        prof.append((float(np.mean(rr)), float(z)))
+    d = new_part(OUT / f"{NAMES['port_cap']}.SLDPRT")
+    extrude(d, xsk(d, RX + 45.0, 'CAP_SLOT', lambda s: s.slot((RX + 45.0, RY, -11.0), (RX + 45.0, RY, 15.0), 13.9)), 'CAP_SLOT', 20.0, X)
+    roll_rev(d, 'SKIN_TRIM', prof + [(80.0, prof[-1][1]), (80.0, prof[0][1])], cut=True)
+    roll_rev(d, 'INNER', [(0.0, -30.0), (54.0, -30.0), (54.0, 30.0), (0.0, 30.0)], cut=True)
+    # end hooks: under the skin past the slot ends (slot ends Z -18 / +22, pocket Z -19 to 25.3)
+    extrude(d, xsk(d, RX + 53.2, 'HOOKS', lambda s: [s.rpoly(rect_pts((RX + 53.2, RY, zc), Y, Z, 8.0, 2.4), [0.6] * 4) for zc in (-17.4, 21.4)]), 'HOOKS', 0.8, X)
+    return finish_part(d, 'port_cap', dict(Note='press-in cap for the drum driver port, flush with the skin'))
 
 
 # ========================================================================================================== flange ring
@@ -402,35 +434,48 @@ def build_fork_front():
     loft(d, secs, 'CHEEK_EDGE')
     extrude(d, zsk(d, ROLL_OUT, 'BOSS', lambda s: s.circle((RX, RY, ROLL_OUT), 22.0)), 'BOSS', FRONT_Z[0] + 0.5 - ROLL_OUT, Z)
     def seat(s):
-        s.circle((RX, SEAT_Y[0], YZ), SEAT_RO)
+        s.circle((RX, SEAT_Y[0], YZ), 41.0)          # SLEEVE: the outer material is the sleeve loft
         s.circle((RX, SEAT_Y[0], YZ), SEAT_RI)
     extrude(d, ysk(d, SEAT_Y[0], 'SEAT', seat), 'SEAT', SEAT_Y[1] - SEAT_Y[0], Y)
     extrude(d, ysk(d, SEAT_Y[0], 'TAP_SECTOR', lambda s: sector(s, lambda r, a: ypt(r, a, SEAT_Y[0]), SEAT_RI + 1, 49.0, -170, -100, 3.0)),
             'TAP_SECTOR', SEAT_Y[1] - SEAT_Y[0], Y)
-    # DRESSED: cuff round the RS02 housing, down to just above the hub
     cf = CUFF
-    # SMOOTH: the cuff is a loft of egg sections, round at the front and sides, swelled back to meet the fork rear arm
+    # SLEEVE: the cuff is the front half of the sleeve outline (envelope.SLEEVE); skirt down to Y 313.6 over the yaw exit,
+    # rounded top edge at the front and sides
     import envelope as EV
-    cys = [cf['y0'], 328.0, cf['ro_mid'][1], 344.0, SEAT_Y[0] + 2.0, SEAT_Y[1]]
-    csecs = [ysk(d, y_, f'CUFF_S{i}', lambda s, y_=y_: s.spline(EV.cuff_section(y_))) for i, y_ in enumerate(cys)]
+    SL = EV.SLEEVE
+
+    def clip_sk(y_, inset=0.0, top=0.0, nm=''):
+        def drw(s_):
+            pts = EV.sleeve_clip(y_, 'front', inset, top)
+            s_.spline(pts, closed=False)
+            s_.line(pts[-1], pts[0])
+        return ysk(d, y_, nm, drw)
+    csecs = [clip_sk(y_, k_, t_, f'CUFF_S{i}') for i, (y_, k_, t_) in enumerate(((SL['y_bot'], 0.8, 0.0), (SL['y_bot'] + 1.2, 0.25, 0.0), (cf['y0'], 0.0, 0.0), (328.0, 0.0, 0.0), (336.0, 0.0, 0.0), (344.0, 0.0, 0.0),
+                                                                             (SEAT_Y[0], 0.0, 0.0), (356.0, 0.0, 0.0), (358.5, 0.0, 0.8), (360.5, 0.0, 2.0), (SEAT_Y[1], 0.0, SL['top_round'])))]
     loft(d, csecs, 'CUFF')
-    yaw_rev(d, 'CUFF_BORE', [(0, cf['y0'] - 1), (cf['ri'], cf['y0'] - 1), (cf['ri'], SEAT_Y[0]), (0, SEAT_Y[0])], cut=True)
-    # hollow the rear swell to a 2 mm skin (open at the bottom)
-    hsecs = [ysk(d, y_, f'CUFF_IN_S{i}', lambda s, y_=y_: s.spline(EV.cuff_section(y_, 2.0))) for i, y_ in enumerate([cf['y0'] - 0.5, cf['ro_mid'][1], SEAT_Y[0] - 2.5])]
+    yaw_rev(d, 'CUFF_BORE', [(0, SL['y_bot'] - 1), (SL['bore_skirt'], SL['y_bot'] - 1), (SL['bore_skirt'], cf['y0']), (cf['ri'], cf['y0']),
+                             (cf['ri'], SEAT_Y[0]), (0, SEAT_Y[0])], cut=True)
+    # hollow the sleeve to a 2 mm skin (open at the bottom and toward the joint plane, where the fork rear closes it)
+    hsecs = [ysk(d, y_, f'CUFF_IN_S{i}', lambda s, y_=y_: s.spline(EV.sleeve_section(y_, 2.0))) for i, y_ in enumerate([SL['y_bot'] - 0.5, 336.0, SEAT_Y[0] - 2.5])]
     d.ClearSelection2(True)
     for k in hsecs:
         k.Select2(True, 1)
     fh = d.FeatureManager.InsertCutBlend(False, True, False, 1.0, 0, 0, False, 0, 0, 0, True, True)
     log('  CUFF_HOLLOW', fh is not None)
     ym = (SEAT_Y[0] + SEAT_Y[1]) / 2
-    extrude(d, zsk(d, JZ0, 'JOINT_PAD', lambda s: s.rpoly(rect_pts((RX, ym, JZ0), X, Y, 2 * JX, SEAT_Y[1] - SEAT_Y[0]), [4, 4, 4, 4])),
-            'JOINT_PAD', -30.0 - JZ0, Z)
+    # the joint face: the 0.5 mm from the sleeve's back (JZ0 + 0.5) down to the joint plane, over the bolted pad
+    extrude(d, zsk(d, JZ0 + 1.0, 'JOINT_PAD', lambda s: s.rpoly(rect_pts((RX, ym, JZ0 + 1.0), X, Y, 2 * JX, SEAT_Y[1] - SEAT_Y[0]), [4, 4, 4, 4])),
+            'JOINT_PAD', 1.0, NZ, lo=-1.0)
     # (the round-2 rear web is dropped: it sat 0.5 mm off the fork rear arm, carried no load and cost 6.5 g)
     # ---- cuts
     extrude(d, zsk(d, z0 - 1, 'DOME_POCKETS', lambda s: [sector(s, lambda r, a: rpt(r, a, z0 - 1), dm['pocket_r'][0], dm['pocket_r'][1], a0, a1, 3.0)
                                                          for a0, a1 in dm['pockets']]), 'DOME_POCKETS', z1 - z0 - dm['back_t'] + 1, Z, cut=True)
-    extrude(d, ysk(d, cf['y0'] - 1, 'CUFF_NOTCH', lambda s: sector(s, lambda r, a: ypt(r, a, cf['y0'] - 1), cf['ri'] - 1, YZ - JZ0 + 3.0, cf['notch'][0], cf['notch'][1], 2.0)),
-            'CUFF_NOTCH', Y_EX + 3 + WALL + 1.5 - (cf['y0'] - 1), Y, cut=True)
+    try:     # the sleeve's back is open toward the fork rear, so the notch may find nothing left to cut
+        extrude(d, ysk(d, SL['y_bot'] - 1, 'CUFF_NOTCH', lambda s: sector(s, lambda r, a: ypt(r, a, SL['y_bot'] - 1), cf['ri'] - 1, YZ - JZ0 + 3.0, cf['notch'][0], cf['notch'][1], 2.0)),
+                'CUFF_NOTCH', Y_EX + 3 + WALL + 1.5 - (SL['y_bot'] - 1), Y, cut=True)
+    except SystemExit:
+        log('  CUFF_NOTCH: nothing to cut (sleeve open at the back)')
     extrude(d, ysk(d, SEAT_Y[0] - 1, 'SEAT_BORE', lambda s: s.circle((RX, SEAT_Y[0] - 1, YZ), SEAT_RI)), 'SEAT_BORE', 12, Y, cut=True)
     extrude(d, zsk(d, ROLL_OUT - 1, 'ROLL_BORE', lambda s: s.circle((RX, RY, ROLL_OUT - 1), 10.75)), 'ROLL_BORE', 30, Z, cut=True)
     extrude(d, zsk(d, ROLL_OUT - 1, 'OUT_HOLES', lambda s: [s.circle(rpt(15.2, 30 + 60 * k, ROLL_OUT - 1), 2.25) for k in range(6)]), 'OUT_HOLES', 30, Z, cut=True)
@@ -443,6 +488,19 @@ def build_fork_front():
     extrude(d, ysk(d, TAP_Y[0], 'TAP_ARC', lambda s: sector(s, lambda r, a: ypt(r, a, TAP_Y[0]), 40.5, 47.5, -168, -94)), 'TAP_ARC', TAP_Y[1] - TAP_Y[0], Y, cut=True)
     tz = YZ - 41.0
     extrude(d, zsk(d, tz, 'TAP_LINK', lambda s: s.poly(rect_pts((RX - 4.0, sum(TAP_Y) / 2, tz), X, Y, 7.0, 6.0))), 'TAP_LINK', tz - RZ, NZ, cut=True)
+    if LOOK == 'c':
+        # LOOK c: the arm's front/back seam (upper_arm_organic_front/back split plane through the yaw axis, seen on the arm's
+        # outboard and inboard sides) carried up the cuff as a 1.0 x 0.6 mm shut line at yaw 0 and 180 deg
+        prof = []
+        for y_ in np.arange(EV.SLEEVE['y_bot'], SEAT_Y[1] - 4.0 + 0.01, 1.0):
+            prof.append(y_)
+        pl0 = plane(d, 'Z', YZ, 'P_Z_YZ')
+        with Sk(d, pl0, 'SEAM_LINES') as s_:
+            for sg, a_ in ((1, 0.0), (-1, 180.0)):
+                inner = [(RX + sg * (EV.sleeve_r(a_, y_) - 0.6), y_, YZ) for y_ in prof]
+                outer = [(RX + sg * (EV.sleeve_r(a_, y_) + 3.0), y_, YZ) for y_ in prof[::-1]]
+                s_.poly(inner + outer)
+        extrude(d, s_.feat, 'SEAM_LINES', 1.0, (0, 0, 1), cut=True, mode=MID)
     extrude(d, zsk(d, JZ0 - 1, 'JOINT_INSERTS', lambda s: [s.circle((RX + dx, (SEAT_Y[0] + SEAT_Y[1]) / 2, JZ0 - 1), 2.8) for dx in (-JX + 4.5, JX - 4.5)]),
             'JOINT_INSERTS', 12, Z, cut=True)
     return finish_part(d, 'fork_front')
@@ -453,10 +511,24 @@ def build_fork_rear():
     d = new_part(OUT / f"{NAMES['fork_rear']}.SLDPRT")
     roll_rev(d, 'CHEEK', [(0, JZ0), (CHEEK_R, JZ0), (CHEEK_R, BACK_Z), (0, BACK_Z)], [0, 1.0, 6.0, 0])   # DRESSED 2: R6 back edge (arm drum R7)
     extrude(d, zsk(d, HOUSE_Z0, 'HOUSING', lambda s: s.circle((RX, RY, HOUSE_Z0), HOUSE_R)), 'HOUSING', HOUSE_Z0 - JZ0, NZ)
-    # SMOOTH: the arm, the joint flare and the duct are one loft of D sections (flat front on the joint plane, soft back)
+    # SLEEVE: above the cuff the arm is the D-section loft; from the cuff top down it is the rear half of the sleeve
+    # outline the fork front's cuff shares (envelope.SLEEVE), so cuff and arm read as one surface split at the joint plane
     import envelope as EV
+    SL = EV.SLEEVE
     asecs = []
-    for i, (y_, cx_, w_, dp_) in enumerate(EV.ARM_STATIONS):
+
+    def clip_sk(y_, side, inset=0.0, top=0.0, nm=''):
+        def drw(s_):
+            pts = EV.sleeve_clip(y_, side, inset, top)
+            if side == 'rear':
+                pts = pts[::-1]
+            s_.spline(pts, closed=False)
+            s_.line(pts[-1], pts[0])
+        return ysk(d, y_, nm, drw)
+    for i, (y_, k_, top_) in enumerate(((SL['y_bot'], 0.8, 0.0), (SL['y_bot'] + 1.2, 0.25, 0.0), (320.0, 0.0, 0.0), (328.0, 0.0, 0.0), (336.0, 0.0, 0.0), (344.0, 0.0, 0.0), (352.0, 0.0, 0.0),
+                                    (356.0, 0.0, 0.0), (358.5, 0.0, 0.8), (360.5, 0.0, 2.0), (SEAT_Y[1], 0.0, SL['top_round']))):
+        asecs.append(clip_sk(y_, 'rear', k_, top_, f'SLEEVE_R{i}'))
+    for i, (y_, cx_, w_, dp_) in enumerate(EV.ARM_STATIONS[:2][::-1]):
         def drw(s_, y_=y_, cx_=cx_, w_=w_, dp_=dp_):
             pts = EV.arm_section(y_, cx_, w_, dp_)
             s_.spline(pts, closed=False)
@@ -464,19 +536,19 @@ def build_fork_rear():
         asecs.append(ysk(d, y_, f'ARM_S{i}', drw))
     loft(d, asecs, 'ARM')
     ym = (SEAT_Y[0] + SEAT_Y[1]) / 2
-    # rounded bottom end of the duct
-    y_l = EV.ARM_STATIONS[-1]
-    def drw_end(s_):
-        pts = EV.arm_section(y_l[0], y_l[1], y_l[2], y_l[3])
-        s_.spline(pts, closed=False)
-        s_.line(pts[-1], pts[0])
-    extrude(d, ysk(d, y_l[0], 'ARM_END', drw_end), 'ARM_END', y_l[0] - Y_BOT, NY, lo=-1.0)
-    extrude(d, zsk(d, RZ, 'EXIT', lambda s: s.poly(rect_pts((RX - 6.0, Y_EX, RZ), X, Y, 16.0 + 2 * WALL, 6.0 + 2 * WALL))), 'EXIT', (YZ - 37.0) - RZ, Z)
     # SMOOTH: the stop tooth on the housing's front face runs in the cap's arc slot (2 mm all round, contact at the stops)
     ss = STOP_SLOT
     extrude(d, zsk(d, HOUSE_Z0, 'STOP_TOOTH', lambda s: sector(s, lambda r, a: rpt(r, a, HOUSE_Z0), ss['tooth_r'][0], ss['tooth_r'][1],
                                                                ss['tooth_angle'] - ss['tooth_half'], ss['tooth_angle'] + ss['tooth_half'], 0.8)),
             'STOP_TOOTH', (ss['z_floor'] - 2.0) - HOUSE_Z0, Z)
+    hs = [clip_sk(y_, 'rear', 2.0, 0.0, f'SLEEVE_R_IN{i}') for i, y_ in enumerate((SL['y_bot'] + 2.0, 330.0, 349.0))]
+    d.ClearSelection2(True)
+    for k in hs:
+        k.Select2(True, 1)
+    v0 = vol(d)
+    fh = d.FeatureManager.InsertCutBlend(False, True, False, 1.0, 0, 0, False, 0, 0, 0, True, True)
+    d.ForceRebuild3(False)
+    log('  SLEEVE_R_HOLLOW', fh is not None, round(v0 - vol(d), 1))
     # ---- cuts
     roll_rev(d, 'SEAT', [(0, HOUSE_Z0 + 1), (BRG_SEAT_R, HOUSE_Z0 + 1), (BRG_SEAT_R, BRG_Z[1]), (BRG_LIP_R, BRG_Z[1]), (BRG_LIP_R, RZ), (0, RZ)],
              [0, 0, 0, 0, 0, 0], cut=True)
@@ -490,12 +562,12 @@ def build_fork_rear():
         s.rpoly(rect_pts((RX + S_OFF, (RY + 9.0 + sig_end) / 2, zc), X, Y, SW, RY + 9.0 - sig_end), [1] * 4)
     extrude(d, zsk(d, zc, 'CH_S', ch_s), 'CH_S', SH, NZ, cut=True)
     extrude(d, zsk(d, zc, 'CH_JOIN', lambda s: s.poly(rect_pts((RX + 3.0, sig_end + 3.0, zc), X, Y, 6.0, 6.0))), 'CH_JOIN', SH, NZ, cut=True)
-    extrude(d, zsk(d, RZ - 3.0, 'EXIT_CH', lambda s: s.poly(rect_pts((RX - 6.0, Y_EX, RZ - 3.0), X, Y, 16.0, 6.0))), 'EXIT_CH', (YZ - 37.0) - RZ + 3.0 + 1, Z, cut=True)
-    extrude(d, zsk(d, BACK_Z - 1, 'JOINT_HOLES', lambda s: [s.circle((RX + dx, ym, BACK_Z - 1), 2.25) for dx in (-JX + 4.5, JX - 4.5)]), 'JOINT_HOLES', SHH + 2, Z, cut=True)
-    extrude(d, zsk(d, BACK_Z - 1, 'JOINT_CB', lambda s: [s.circle((RX + dx, ym, BACK_Z - 1), 4.0) for dx in (-JX + 4.5, JX - 4.5)]), 'JOINT_CB', 4.5, Z, cut=True)
+    extrude(d, zsk(d, RZ - 3.0, 'EXIT_CH', lambda s: s.poly(rect_pts((RX - 6.0, Y_EX, RZ - 3.0), X, Y, 16.0, 6.0))), 'EXIT_CH', (YZ - 37.0) - RZ + 3.0 + 1, Z, cut=True, lo=-1.0)
+    extrude(d, zsk(d, BACK_Z - 4, 'JOINT_HOLES', lambda s: [s.circle((RX + dx, ym, BACK_Z - 4), 2.25) for dx in (-JX + 4.5, JX - 4.5)]), 'JOINT_HOLES', SHH + 5, Z, cut=True)
+    extrude(d, zsk(d, BACK_Z - 4, 'JOINT_CB', lambda s: [s.circle((RX + dx, ym, BACK_Z - 4), 4.0) for dx in (-JX + 4.5, JX - 4.5)]), 'JOINT_CB', (JZ0 - 5.5) - (BACK_Z - 4), Z, cut=True)
     tz = YZ - 41.0
-    extrude(d, zsk(d, JZ0 + 0.5, 'TAP_LINK', lambda s: s.poly(rect_pts((RX - 4.0, sum(TAP_Y) / 2, JZ0 + 0.5), X, Y, 7.0, 6.0))), 'TAP_LINK', JZ0 + 0.5 - RZ, NZ, cut=True)
-    extrude(d, ysk(d, Y_BOT - 5, 'YAW_CLEAR', lambda s: s.circle((RX, Y_BOT - 5, YZ), 41.5)), 'YAW_CLEAR', SEAT_Y[0] - (Y_BOT - 5), Y, cut=True)
+    extrude(d, zsk(d, JZ0 + 0.5, 'TAP_LINK', lambda s: s.poly(rect_pts((RX - 4.0, sum(TAP_Y) / 2, JZ0 + 0.5), X, Y, 7.0, 6.0))), 'TAP_LINK', JZ0 + 0.5 - RZ, NZ, cut=True, lo=-1.0)
+    # (YAW_CLEAR, the r 41.5 cylinder, no longer touches the fork rear: everything of it is behind the joint plane)
     # DRESSED: soft back edges
     fillet(d, edges_where(d, lambda p: abs(p[2] - BACK_Z) < 0.05 and np.hypot(p[0] - (RX + 30), p[1] - 357) > 6.0 and np.hypot(p[0] - (RX - 30), p[1] - 357) > 6.0), [3.0, 2.0, 1.5], 'BACK_ROUND')
     return finish_part(d, 'fork_rear')
@@ -676,7 +748,7 @@ def build_hub():
 
 
 BUILD = dict(drum=build_drum, ring=build_ring, cap=lambda: finish_part(build_cap(), 'cap'), fork_front=build_fork_front, fork_rear=build_fork_rear,
-             fork_cap=build_fork_cap, cover=build_cover, hub=build_hub)
+             fork_cap=build_fork_cap, cover=build_cover, hub=build_hub, port_cap=build_port_cap)
 
 if __name__ == '__main__':
     which = sys.argv[1:] or list(BUILD)

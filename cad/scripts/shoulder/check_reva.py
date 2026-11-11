@@ -74,7 +74,7 @@ def main():
         if 'spine' in nm:
             T['shellpart:' + nm.split('__')[1]] = (cKDTree(p), None)
 
-    movers = [k for k in P if GROUP[k] in ('pitch', 'roll', 'yaw') and k != 'stops'] + ['stops']
+    movers = [k for k in P if GROUP[k] in ('pitch', 'roll', 'yaw') and k != 'stops'] + (['stops'] if len(P.get('stops', [])) else [])
     res = {}
     for pitch in [float(v) for v in os.environ.get('PITCHES', '-30,0,24,90').split(',')]:
         for tname, (tree, tn) in T.items():
