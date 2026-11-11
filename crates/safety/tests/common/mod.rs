@@ -167,6 +167,7 @@ pub(crate) fn quiet() -> DriveView {
         limb: 0,
         observed: None,
         mode: None,
+        out_of_reset: None,
         fresh_ns: None,
         fresh_status: None,
         answered: false,

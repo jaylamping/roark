@@ -225,7 +225,7 @@ impl BusTick {
     }
 
     /// The operator cleared limb `limb` (PLAN.md item 6: a latched stop clears only by an operator `clear`): idle again,
-    /// with its stop outcomes, fault history and miss counts started afresh, and a new generation. Each drive must
+    /// with its stop outcomes, fault history, modes out of Reset and miss counts started afresh, and a new generation. Each drive must
     /// first be confirmed in Reset by the stop, or have been sent nothing by this host for longer than the drive timeout
     /// since the last write the socket took (plus a period of margin for the adapter's queue), so it has dropped to
     /// Reset on its own. A read in another mode does not itself hold the re-arm off once that quiet time since the
@@ -267,6 +267,7 @@ impl BusTick {
         for d in self.drives.iter_mut().flatten().filter(|d| d.limb == limb) {
             d.stop = DriveStop::None;
             d.fault_seen = false;
+            d.out_of_reset = None;
             d.misses = 0;
             d.phase = Phase::Off;
             d.outstanding = None;

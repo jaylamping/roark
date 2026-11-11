@@ -232,7 +232,8 @@ pub enum StopReason {
         slot: usize,
     },
     /// A drive seen in Run after its Enable later reported another mode with no Disable from this host (PLAN.md item 6
-    /// States). A drive this host never enabled isn't watched here: preflight refuses one found already in Run.
+    /// States). A drive this host never enabled doesn't stop its limb here: its excursions out of Reset are latched in
+    /// [`DriveView::out_of_reset`], and preflight and the enable sequence refuse it.
     DriveMode {
         /// That drive's slot.
         slot: usize,
@@ -311,6 +312,13 @@ pub struct DriveView {
     /// the frames that carry one (an identity, parameter or fault reply carries none). The drive's latest word on its
     /// mode, answer or not; the stop logic reads the same headers.
     pub mode: Option<ModeSeen>,
+    /// The last mode other than Reset a status header showed while this host hadn't enabled the drive (never enabled
+    /// since start or its limb's last re-arm, or seen in Reset after this host's Disable) or had disabled it, and when
+    /// it was read. Kept until the limb's next re-arm, so a drive that went to Run and back to Reset between two
+    /// snapshots, or across snapshots control never read, still shows it; this host's own Enable and the Run that
+    /// answers it never set it. Preflight and the enable sequence read it to refuse a drive something else took out
+    /// of Reset since preflight began.
+    pub out_of_reset: Option<ModeSeen>,
     /// When its last fresh status was read: the first status after a command the socket took. Freshness, not
     /// acknowledgement: the protocol has no sequence numbers, so which command a status answers can't be proven. Read
     /// time, not arrival: for every status motion is sent on, it trails the kernel's receipt by at most period -

@@ -43,11 +43,12 @@ A drive's status read after a command the socket took is its **fresh** status, a
 the collect deadline. That is evidence the drive is there and what state it was in, never an acknowledgement: there
 are no sequence numbers to prove which command a status answers. Faults are never filtered: a status or report
 updates what the drive was seen saying, and any status, report, version reply or type-21 fault report with a fault set
-latches `fault_seen`. Missing replies aren't counted toward a drive's silence for an Enable or Disable, or inside the
-Silence windows of PLAN item 2, which say which drives and Disables they cover: the enable-to-Run window
-(`ENABLE_TO_RUN_NS`, 50 ms, while the drive hasn't shown Run), the post-Disable window (`stop_confirm_ns`, 100 ms),
-and a drive that is offline (here: never enabled since start or its limb's clear, or seen in Reset after this host's
-Disable).
+latches `fault_seen`. Any mode but Reset in a status header while this host hasn't enabled the drive, or has disabled
+it, latches in `out_of_reset` with its read time, so an excursion between two snapshots still shows. Missing replies
+aren't counted toward a drive's silence for an Enable or Disable, or inside the Silence windows of PLAN item 2, which
+say which drives and Disables they cover: the enable-to-Run window (`ENABLE_TO_RUN_NS`, 50 ms, while the drive hasn't
+shown Run), the post-Disable window (`stop_confirm_ns`, 100 ms), and a drive that is offline (here: never enabled since
+start or its limb's clear, or seen in Reset after this host's Disable).
 Each drive's last echo of this host's frames to it of a kind a batch carries (`last_echo`: its kind and when it was
 read) is kept, for the enable sequence's "reporting-off echo plus one tick".
 
@@ -91,7 +92,8 @@ limb is `Stopped` at once and the drives time out on their own (`canTimeout`). T
 error-passive.
 
 Only the operator's clear undoes a stop: `rearm(limb, now)` makes a `Stopped` limb idle again, with a new `generation`,
-its drives' stop outcomes, fault history (`fault_seen`) and miss counts started afresh. It is refused while the bus has
+its drives' stop outcomes, fault history (`fault_seen`), modes out of Reset (`out_of_reset`) and miss counts started
+afresh. It is refused while the bus has
 a latched error (that bus is rebuilt instead), while the limb is running or still stopping, and until every drive in it
 is known disabled: confirmed in Reset by the stop and not seen in another mode since, or sent nothing for longer than
 the drives' 50 ms timeout plus a period since the socket took its last frame (stamped when it was written, so a late
