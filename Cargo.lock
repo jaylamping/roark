@@ -91,6 +91,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "can-bench"
+version = "0.1.0"
+dependencies = [
+ "nix",
+ "serde_json",
+ "socketcan",
+]
+
+[[package]]
 name = "cc"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

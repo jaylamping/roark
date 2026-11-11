@@ -43,6 +43,7 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
 | `ui/`, `mcp/`, `robot-cli` | Nothing about the hardware | `api` only | Open a CAN socket (the one exception below) |
 | `robot-cli disable` | Nothing | The bus directly, after `runtime` has exited; the runtime's lock (`/run/robot/runtime.lock`), which the runtime holds while it runs and `disable` refuses while held | Run while `runtime` is alive |
 | `sim-drive` | Simulated drive state | `vcan` through the same `robstride` codec (its drive side, `robstride::drive`) | Be linked into `runtime`, or open an interface that isn't `vcan` |
+| `can-bench` | Nothing about the robot | One CAN interface, with its own frames that no drive acts on ([comparison](../docs/can-interface-comparison.md)) | Run with a drive or another host on the bus, or alongside `runtime` |
 
 The queues between the control thread and each bus thread, all bounded `rtrb` rings made before the first tick
 (`can::BusLinks`):
@@ -96,6 +97,7 @@ telemetry (leaf for producers: takes events, depends on nothing above; can hands
 can --> robstride, telemetry        safety --> can, robstride, skeleton
 runtime --> can, robstride, safety, skeleton, telemetry
 
+can-bench (bin) --> nothing in the workspace
 robot-cli (bin) --> robstride, skeleton        sim-drive (bin) --> robstride, skeleton
 sim-suite (tests only) --> can, runtime, safety, sim-drive, skeleton, robstride, telemetry
 ```
@@ -111,8 +113,10 @@ sim-suite (tests only) --> can, runtime, safety, sim-drive, skeleton, robstride,
   to the robot's drives can send a drive's frame, whichever crates a build compiles together. **Why:** a cargo feature
   can't hold this, because a workspace build turns a feature on for every crate in it.
 - **Only named crates open a CAN socket.** `deny.toml` bans `socketcan` except as a direct dependency of `can`,
-  `robot-cli` (for `disable` alone), `sim-drive` and `sim-suite`. `sim-drive`, every sim test and, until the real adapter is supported (PLAN step 8), `can`
-  check an interface is `vcan` before the first frame, because the sim's buses carry the robot's real bus names.
+  `can-bench`, `robot-cli` (for `disable` alone), `sim-drive` and `sim-suite`. `sim-drive`, every sim test and, until the real adapter is supported (PLAN step 8), `can`
+  check an interface is `vcan` before the first frame, because the sim's buses carry the robot's real bus names. `can-bench`
+  opens real interfaces on purpose, to measure them: it sends only frames no drive acts on and refuses a bus where
+  anything else talks (its README).
 - **Clients depend on `api`, never on `runtime` internals.** If a client needs something, it becomes an `api` message.
 - A new crate needs a separate reason to exist: a different owner, a different realtime class, or reuse by two binaries. "It
   felt big" is a reason for a module, not a crate.
