@@ -34,7 +34,12 @@ PORT_ANGLE = 0.0                 # the one window through the skin: driver acces
 SKIN_RI = 55.0                   # DRESSED: closed outer skin r 55-57 over the roll RS03; pockets r 51.5-55 between the lug ribs
 POCKET_Z = (DRUM_Z0 + 4.0, LIP_Z0 - 3.0)
 FLARE = dict(x0=105.0, x1=119.0, x2=124.0, r=56.0, fillet=12.0)   # DRESSED: neck flares into the drum (pitch axis)
-CUFF = dict(ri=41.3, ro=43.5, y0=326.0)   # DRESSED: fork front cuff round the RS02 housing (r 39.25) down to Y 326
+CUFF = dict(ri=39.75, ro_top=43.5, ro_bot=41.7, y0=317.8, notch=(-122.0, -78.0))
+# DRESSED 2: cuff round the RS02 housing (r 39.25), tapering to r 41.7 and down to 2 mm above the hub rim (Y 315.8), to
+# continue the arm's top (r 39 at Y 302); notched round the fork rear's yaw exit
+DOME = dict(r=55.0, edge=5.0, back_t=2.4, pocket_r=(24.5, 52.6), pockets=[(-20.0, 40.0), (50.0, 130.0), (140.0, 200.0)])
+# DRESSED 2: fork front as a full dome cap r 55 (drum skin r 57: the dome sits 3 mm in front of the lip face), R5-ish
+# front edge (arm cheeks R5, drum R7), pocketed from the back
 RS03_BUMP = dict(x0=RX - 53.0, x1=RX - 46.0, y=9.5, z0=18.6)   # relief for the RS03 housing boss at r 50.25 inboard (Z 19.6-28.1)
 TOPWIN = dict(x=14.0, z0=-28.5, z1=-6.0)   # window over the roll RS03 top connector bay (half width X)
 # pitch adaptor
@@ -93,6 +98,9 @@ BRG_SEAT_R, BRG_LIP_R = 26.0, 24.0
 # ---- hub (frozen interface; dished top) ----
 DISH_R0, DISH_Y = 23.5, 315.8
 HUB_WIN_A = 7.9
+# Hub lower half, prepared for the arm joint work (all OFF by default; the frozen interface is unchanged when off):
+HUB = dict(spigot_ext_on=0, spigot_ext_len=6.0, spigot_taper=0.0, spigot_ri=28.0, spigot_ro=35.8, spigot_y0=296.0,
+           lug2_on=0, lug2_angle=90.0, lug_r=(19.0, 30.0), lug_half_deg=15.0, lug_y=(288.0, 296.0))
 
 # ---- print bed ----
 BED = 256.0

@@ -202,6 +202,20 @@ def main():
     # dressed views without the frame, and bare (first commit of this pass) against dressed
     render(shoulder_items(with_frame=False), OUT / 'D2_front_clean.png', eye_front, F, title='Dressed: front-outboard, no frame or shell')
     render(shoulder_items(with_frame=False), OUT / 'D3_back_clean.png', eye_back, F, title='Dressed: back, no frame or shell')
+    # whole arm (upper arm and forearm of left-arm-organic, read-only exports) for the family look, and the elbow beside it
+    FA = Path(r'J:/code/roark-wt/left-arm-organic/cad/exports/forearm')
+    fore = [(trimesh.load(f), (0.95, 0.95, 0.93) if 'cap' not in f.name else (0.86, 0.87, 0.88), 1.0) for f in sorted(FA.glob('*.STL'))]
+    Fw = np.array([RX - 10, 300.0, 10.0])
+    render(shoulder_items(with_frame=False) + fore, OUT / 'D5_whole_arm.png', Fw + np.array([620.0, 120.0, 820.0]), Fw, size=(1400, 1800), angle=34,
+           title='Dressed shoulder with the whole organic left arm (front-outboard)')
+    elbow_png = Path(r'J:/code/roark-wt/left-arm-organic/cad/_wip/organic-arm/cad/a2_90_q34.png')
+    if elbow_png.exists():
+        a = Image.open(OUT / 'D2_front_clean.png').convert('RGB')
+        b = Image.open(elbow_png).convert('RGB')
+        b = b.resize((int(b.width * a.height / b.height), a.height))
+        row = Image.new('RGB', (a.width + b.width, a.height), 'white'); row.paste(a, (0, 0)); row.paste(b, (a.width, 0))
+        ImageDraw.Draw(row).text((a.width + 24, 20), "The organic arm's own render (left-arm-organic, a2_90_q34)", fill=(20, 20, 20), font=FONT)
+        row.save(OUT / 'D6_shoulder_vs_arm_render.png')
     bare = [Path(p) for p in sys.argv[2:4]] if len(sys.argv) > 3 else []
     if bare:
         rows = []

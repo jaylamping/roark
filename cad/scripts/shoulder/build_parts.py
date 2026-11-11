@@ -111,6 +111,8 @@ def build_drum():
     fl = FLARE
     pitch_rev(d, 'FLARE', [(n['ri'], fl['x0']), (n['ro'], fl['x0']), (n['ro'], fl['x1']), (fl['r'], fl['x1']), (fl['r'], fl['x2']), (n['ri'], fl['x2'])],
               [0, 0, fl['fillet'], 3.0, 0, 0])
+    # the flare's lower part is where the fork front's tap sector and the RS02 swing in at the inward stop: trim it
+    extrude(d, zsk(d, DRUM_Z0 - 2, 'FLARE_TRIM', lambda s: s.poly(rect_pts(((108 + 127) / 2, RY - 41 - 30, DRUM_Z0 - 2), X, Y, 19, 60))), 'FLARE_TRIM', 80, Z, cut=True)
     sk = zsk(d, LIP_Z1, 'CLIP_FRONT', lambda s: s.poly(rect_pts((115, RY, LIP_Z1), X, Y, 60, 100)))
     extrude(d, sk, 'CLIP_FRONT', 40, Z, cut=True)
     sk = zsk(d, DRUM_Z0 + 1, 'CLIP_REAR', lambda s: s.poly(rect_pts((115, RY, DRUM_Z0 + 1), X, Y, 60, 100)))
@@ -142,8 +144,27 @@ def build_drum():
     extrude(d, zsk(d, 4 + WALL, 'TRUNK_B', lambda s: s.rpoly(rect_pts((TRUNK_X, TRUNK_Y, 4 + WALL), tu, tv, SHW, SHH), [2, 2, 2, 2])),
             'TRUNK_B', 4 + WALL - DRUM_Z0, NZ)
     b0, b1 = (TRUNK_X, TRUNK_Y, -17.0 + SHW / 2), (RX - 8, 474.5, -17.0 + SHW / 2)
+    bn_ = np.cross((0, 0, 1), np.subtract(b1, b0))
     extrude(d, zsk(d, b0[2], 'BRANCH', lambda s: s.rpoly(seg_rect(b0, b1, (0, 0, 0) if False else np.cross((0, 0, 1), np.subtract(b1, b0)), SHH, 2 + WALL, 2 + WALL),
                                                          [2, 2, 2, 2])), 'BRANCH', b0[2] - DRUM_Z0, NZ)
+    # DRESSED 2: spine fairing over trunk B and the branch, hollow from the back (opens toward the cap spoke)
+    from shapely.geometry import Polygon, Point
+    from shapely.ops import unary_union
+    tbr = Polygon([(p[0], p[1]) for p in rect_pts((TRUNK_X, TRUNK_Y, 0), tu, tv, SHW, SHH)])
+    brr = Polygon([(p[0], p[1]) for p in seg_rect(b0, b1, bn_, SHH, 2 + WALL, 2 + WALL)])
+    arc = [(RX + DRUM_RO * math.cos(math.radians(a)), RY + DRUM_RO * math.sin(math.radians(a))) for a in np.linspace(78, 142, 17)]
+    hullp = unary_union([tbr, brr, Polygon(arc + [(RX, RY)])]).convex_hull
+    hv = list(hullp.exterior.coords)[:-1]
+    zf = 4 + WALL
+    extrude(d, zsk(d, DRUM_Z0, 'SPINE', lambda s: s.rpoly([(x, y, DRUM_Z0) for x, y in hv], [4.0] * len(hv))), 'SPINE', zf - DRUM_Z0, Z)
+    q = hullp.buffer(-WALL).difference(Point(RX, RY).buffer(DRUM_RO + WALL, 96)).difference(tbr.buffer(0.3)).difference(brr.buffer(0.3))
+    polys = [g for g in getattr(q, 'geoms', [q]) if g.area > 40.0]
+    if polys:
+        def spine_pock(s):
+            for g in polys:
+                pts = list(g.simplify(0.3).exterior.coords)[:-1]
+                s.poly([(x, y, DRUM_Z0 - 1) for x, y in pts])
+        extrude(d, zsk(d, DRUM_Z0 - 1, 'SPINE_POCKET', spine_pock), 'SPINE_POCKET', zf - WALL - (DRUM_Z0 - 1), Z, cut=True)
     # DRESSED: soften the trunk shells (long edges)
     along_x = lambda a, b: abs(a[0] - b[0]) > 10.0 and abs(a[1] - b[1]) < 0.05 and abs(a[2] - b[2]) < 0.05
     fillet(d, edges_where(d, lambda p: p[1] > 482.0, along_x), [3.0, 2.0], 'TRUNK_A_ROUND')
@@ -228,7 +249,7 @@ def stop_lug(d, ax, key, phi_deg, lug_side):
     base = np.array([RX, RY, 0.0]) + side * ARM_HW
     with Sk(d, fl, f'STOP_{key}') as s:
         q = lambda sv, z: tuple(base + dirv * sv + np.array([0, 0, z]))
-        s.rpoly([q(40.5, z0), q(48.0, z0), q(48.0, z1), q(40.5, z1)], [1.5, 1.5, 0, 0])
+        s.rpoly([q(40.5, z0), q(48.0, z0), q(48.0, z1), q(40.5, z1)], [3.0, 3.0, 0, 0])
     extrude(d, s.feat, f'STOP_{key}', 14.0, tuple(side))
     return pl
 
@@ -237,7 +258,7 @@ def build_cap():
     d = new_part(OUT / f"{NAMES['cap']}.SLDPRT")
     roll_rev(d, 'CAP', [(0, DRUM_Z0), (BOSS_R, DRUM_Z0), (BOSS_R, CAP_Z1 + CAP_T), (DRUM_RO - RIM_T, CAP_Z1 + CAP_T), (DRUM_RO - RIM_T, DRUM_Z0),
                         (DRUM_RO, DRUM_Z0), (DRUM_RO, CAP_Z1), (LAND_R, CAP_Z1), (LAND_R, LAND_Z), (STUB_R, LAND_Z), (STUB_R, BRG_Z[1]),
-                        (0, BRG_Z[1])], [0, 0.8, 1.5, 1.5, 0.5, 0.5, 4.5, 1.0, 0.3, 0.3, 0.6, 0])
+                        (0, BRG_Z[1])], [0, 0.8, 1.5, 1.5, 0.5, 0.5, 6.0, 1.0, 0.3, 0.3, 0.6, 0])
     # spoke from the trunk end to the axis, carrying the radial channel
     dvec = np.array([RX - TRUNK_X, RY - TRUNK_Y, 0.0])
     dvec /= np.linalg.norm(dvec)
@@ -271,6 +292,21 @@ def build_cap():
 
 
 # ===================================================================================================== fork front cheek
+def loft(d, sketches, name):
+    v0 = vol(d)
+    for merge in (True, False):
+        d.ClearSelection2(True)
+        for k in sketches:
+            k.Select2(True, 1)
+        f = d.FeatureManager.InsertProtrusionBlend2(False, True, False, 1.0, 0, 0, 1.0, 1.0, True, True, False, 0, 0, 0, True, merge, merge, 0)
+        if f is not None:
+            f.Name = name
+            d.ForceRebuild3(False)
+            log(f'  {name}: added {vol(d) - v0:.0f} mm3')
+            return f
+    raise SystemExit(name + ' loft failed')
+
+
 def hull_pts(circles, n=36, out=48):
     from scipy.spatial import ConvexHull
     pts = np.array([(x + r * math.cos(t), y + r * math.sin(t)) for (x, y, r) in circles for t in np.linspace(0, 2 * math.pi, n, endpoint=False)])
@@ -286,8 +322,17 @@ def ypt(r, a, y):
 
 def build_fork_front():
     d = new_part(OUT / f"{NAMES['fork_front']}.SLDPRT")
-    H = hull_pts([(RX, RY, 34.0), (RX - 22, 362.0, 10.0), (RX + 22, 362.0, 10.0)])
-    extrude(d, zsk(d, FRONT_Z[0], 'CHEEK', lambda s: s.spline([(x, y, FRONT_Z[0]) for x, y in H])), 'CHEEK', FRONT_Z[1] - FRONT_Z[0], Z)
+    dm = DOME
+    hull = lambda k: hull_pts([(RX, RY, dm['r'] - k), (RX - 22, 362.0, 10.0 - k), (RX + 22, 362.0, 10.0 - k)])
+    z0, z1, e = FRONT_Z[0], FRONT_Z[1], dm['edge']
+    extrude(d, zsk(d, z0, 'CHEEK', lambda s: s.spline([(x, y, z0) for x, y in hull(0.0)])), 'CHEEK', z1 - e - z0, Z)
+    # soft front edge: loft through insets of a quarter round (R5)
+    secs = []
+    for i, a in enumerate((0.0, 30.0, 60.0, 85.0)):
+        t = math.radians(a)
+        zz, k = z1 - e + e * math.sin(t), e * (1 - math.cos(t))
+        secs.append(zsk(d, zz, f'CHEEK_EDGE{i}', lambda s, zz=zz, k=k: s.spline([(x, y, zz) for x, y in hull(k)])))
+    loft(d, secs, 'CHEEK_EDGE')
     extrude(d, zsk(d, ROLL_OUT, 'BOSS', lambda s: s.circle((RX, RY, ROLL_OUT), 22.0)), 'BOSS', FRONT_Z[0] + 0.5 - ROLL_OUT, Z)
     def seat(s):
         s.circle((RX, SEAT_Y[0], YZ), SEAT_RO)
@@ -297,11 +342,20 @@ def build_fork_front():
             'TAP_SECTOR', SEAT_Y[1] - SEAT_Y[0], Y)
     # DRESSED: cuff round the RS02 housing, down to just above the hub
     cf = CUFF
-    yaw_rev(d, 'CUFF', [(cf['ri'], cf['y0']), (cf['ro'], cf['y0']), (cf['ro'], SEAT_Y[0] + 2.0), (cf['ri'], SEAT_Y[0] + 2.0)], [1.0, 1.0, 0, 0])
+    yaw_rev(d, 'CUFF', [(cf['ri'], cf['y0']), (cf['ro_bot'], cf['y0']), (cf['ro_top'], SEAT_Y[0] - 2.0), (cf['ro_top'], SEAT_Y[0] + 2.0),
+                        (cf['ri'], SEAT_Y[0] + 2.0)], [0.8, 1.2, 6.0, 0, 0])
     ym = (SEAT_Y[0] + SEAT_Y[1]) / 2
-    extrude(d, zsk(d, JZ0, 'JOINT_PAD', lambda s: s.rpoly(rect_pts((RX, ym, JZ0), X, Y, 2 * JX, SEAT_Y[1] - SEAT_Y[0]), [0, 0, 0, 0])),
+    extrude(d, zsk(d, JZ0, 'JOINT_PAD', lambda s: s.rpoly(rect_pts((RX, ym, JZ0), X, Y, 2 * JX, SEAT_Y[1] - SEAT_Y[0]), [4, 4, 4, 4])),
             'JOINT_PAD', -30.0 - JZ0, Z)
+    # DRESSED 2: web from the cuff back to the fork rear arm (0.5 mm static gap), so the rear arm reads as part of the cuff
+    zw = JZ0 + 0.5
+    extrude(d, zsk(d, zw, 'REAR_WEB', lambda s: s.rpoly(rect_pts((RX - 6.0, (cf['y0'] + 8.7 + SEAT_Y[0]) / 2, zw), X, Y, 16.0 + 2 * WALL, SEAT_Y[0] - cf['y0'] - 8.7),
+                                                            [3, 3, 0, 0])), 'REAR_WEB', YZ - cf['ri'] + 1.0 - zw, Z)
     # ---- cuts
+    extrude(d, zsk(d, z0 - 1, 'DOME_POCKETS', lambda s: [sector(s, lambda r, a: rpt(r, a, z0 - 1), dm['pocket_r'][0], dm['pocket_r'][1], a0, a1, 3.0)
+                                                         for a0, a1 in dm['pockets']]), 'DOME_POCKETS', z1 - z0 - dm['back_t'] + 1, Z, cut=True)
+    extrude(d, ysk(d, cf['y0'] - 1, 'CUFF_NOTCH', lambda s: sector(s, lambda r, a: ypt(r, a, cf['y0'] - 1), cf['ri'] - 1, cf['ro_top'] + 2, cf['notch'][0], cf['notch'][1], 2.0)),
+            'CUFF_NOTCH', Y_EX + 3 + WALL + 1.5 - (cf['y0'] - 1), Y, cut=True)
     extrude(d, ysk(d, SEAT_Y[0] - 1, 'SEAT_BORE', lambda s: s.circle((RX, SEAT_Y[0] - 1, YZ), SEAT_RI)), 'SEAT_BORE', 12, Y, cut=True)
     extrude(d, zsk(d, ROLL_OUT - 1, 'ROLL_BORE', lambda s: s.circle((RX, RY, ROLL_OUT - 1), 10.75)), 'ROLL_BORE', 30, Z, cut=True)
     extrude(d, zsk(d, ROLL_OUT - 1, 'OUT_HOLES', lambda s: [s.circle(rpt(15.2, 30 + 60 * k, ROLL_OUT - 1), 2.25) for k in range(6)]), 'OUT_HOLES', 30, Z, cut=True)
@@ -316,15 +370,13 @@ def build_fork_front():
     extrude(d, zsk(d, tz, 'TAP_LINK', lambda s: s.poly(rect_pts((RX - 4.0, sum(TAP_Y) / 2, tz), X, Y, 7.0, 6.0))), 'TAP_LINK', tz - RZ, NZ, cut=True)
     extrude(d, zsk(d, JZ0 - 1, 'JOINT_INSERTS', lambda s: [s.circle((RX + dx, (SEAT_Y[0] + SEAT_Y[1]) / 2, JZ0 - 1), 2.8) for dx in (-JX + 4.5, JX - 4.5)]),
             'JOINT_INSERTS', 12, Z, cut=True)
-    # DRESSED: soft front edge on the cheek outline
-    fillet(d, edges_where(d, lambda p: abs(p[2] - FRONT_Z[1]) < 0.05 and p[1] > 355.0 and np.hypot(p[0] - RX, p[1] - RY) > 25.0), [4.0, 3.0, 2.0], 'CHEEK_ROUND')
     return finish_part(d, 'fork_front')
 
 
 # ====================================================================================================== fork rear cheek
 def build_fork_rear():
     d = new_part(OUT / f"{NAMES['fork_rear']}.SLDPRT")
-    extrude(d, zsk(d, JZ0, 'CHEEK', lambda s: s.circle((RX, RY, JZ0), CHEEK_R)), 'CHEEK', JZ0 - BACK_Z, NZ)
+    roll_rev(d, 'CHEEK', [(0, JZ0), (CHEEK_R, JZ0), (CHEEK_R, BACK_Z), (0, BACK_Z)], [0, 1.0, 6.0, 0])   # DRESSED 2: R6 back edge (arm drum R7)
     extrude(d, zsk(d, HOUSE_Z0, 'HOUSING', lambda s: s.circle((RX, RY, HOUSE_Z0), HOUSE_R)), 'HOUSING', HOUSE_Z0 - JZ0, NZ)
     extrude(d, zsk(d, JZ0, 'ARM', lambda s: s.poly(rect_pts((RX, (RY + SEAT_Y[0]) / 2, JZ0), X, Y, 2 * ARM_HW, RY - SEAT_Y[0]))), 'ARM', JZ0 - BACK_Z, NZ)
     extrude(d, zsk(d, JZ0, 'DUCT', lambda s: s.rpoly(rect_pts((RX - 6.0, (SEAT_Y[0] + 4.0 + Y_BOT) / 2, JZ0), X, Y, 16.0 + 2 * WALL, SEAT_Y[0] + 4.0 - Y_BOT),
@@ -424,6 +476,42 @@ def build_hub():
     with Sk(d, pl, 'HUB_WIN') as s:
         s.rpoly(seg_rect(p0, p1, np.cross(np.subtract(p1, p0), (-u[2], 0, u[0])), 9.0), [1.5] * 4)
     extrude(d, s.feat, 'HUB_WIN', 16.0, (0, 0, 0), cut=True, mode=MID)
+    # ---- prepared, suppressed by default: spigot extension below Y 296 (length, taper) and a second lug pair (angle)
+    hb = HUB
+    sk = ysk(d, hb['spigot_y0'], 'SPIGOT_EXT', lambda s: [s.circle((RX, hb['spigot_y0'], YZ), hb['spigot_ro']), s.circle((RX, hb['spigot_y0'], YZ), hb['spigot_ri'])])
+    d.ClearSelection2(True); sk.Select2(False, 0)
+    f = None
+    for rev in (False, True):
+        f = d.FeatureManager.FeatureExtrusion3(True, False, rev, 0, 0, hb['spigot_ext_len'] * m, 0, True, False, False, False,
+                                                math.radians(max(hb['spigot_taper'], 0.01)), 0, False, False, False, False, True, False, True, 0, 0, False)
+        if f is not None:
+            d.ForceRebuild3(False)
+            lo, hi = f.GetFaces[0].GetBox[1] * 1e3, f.GetFaces[0].GetBox[4] * 1e3
+            if min(lo, hi) < hb['spigot_y0'] - 1:
+                break
+            d.EditUndo2(1); d.ClearSelection2(True); sk.Select2(False, 0); f = None
+    if f is not None:
+        f.Name = 'SPIGOT_EXT'
+    t2 = math.radians(hb['lug2_angle'])
+    u2 = (math.cos(t2), 0.0, math.sin(t2))
+    pl2, _ = plane_axis_angle(d, ax, d.FeatureByName('Front Plane'), hb['lug2_angle'] % 180, u2, 'P_LUG2')
+    w2 = 2 * hb['lug_r'][1] * math.sin(math.radians(hb['lug_half_deg']))
+    with Sk(d, pl2, 'LUG2') as s:
+        for sg in (1, -1):
+            r0, r1 = hb['lug_r']
+            s.rpoly([(RX + sg * r0 * u2[0], hb['lug_y'][0], YZ + sg * r0 * u2[2]), (RX + sg * r1 * u2[0], hb['lug_y'][0], YZ + sg * r1 * u2[2]),
+                     (RX + sg * r1 * u2[0], hb['lug_y'][1], YZ + sg * r1 * u2[2]), (RX + sg * r0 * u2[0], hb['lug_y'][1], YZ + sg * r0 * u2[2])], [0, 1.5, 0, 0])
+    extrude(d, s.feat, 'LUG2', w2, (0, 0, 0), mode=MID)
+    for k, v in (('SPIGOT_EXT_ON', hb['spigot_ext_on']), ('SPIGOT_EXT_LEN', hb['spigot_ext_len']), ('SPIGOT_TAPER', hb['spigot_taper']),
+                 ('LUG2_ON', hb['lug2_on']), ('LUG2_ANGLE', hb['lug2_angle'])):
+        add_global(d, k, v)
+    for dims_ in (('D1@SPIGOT_EXT', '"SPIGOT_EXT_LEN"'), ('D1@P_LUG2', '"LUG2_ANGLE"')):
+        link_dim(d, *dims_)
+    em = d.GetEquationMgr
+    for feat_, var in (('SPIGOT_EXT', 'SPIGOT_EXT_ON'), ('LUG2', 'LUG2_ON')):
+        em.Add2(-1, f'"{feat_}" = IIF("{var}" = 1, "unsuppressed", "suppressed")', True)
+    d.ForceRebuild3(False)
+    log('  hub prepared features:', [(n, d.FeatureByName(n).IsSuppressed2(1, NUL)[0] if d.FeatureByName(n) else None) for n in ('SPIGOT_EXT', 'LUG2')])
     return finish_part(d, 'hub', dict(Note='Interface frozen: spigot, lugs, seam bolts, hub screws from upper_arm_hub_left'))
 
 

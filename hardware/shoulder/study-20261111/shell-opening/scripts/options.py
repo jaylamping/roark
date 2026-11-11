@@ -239,6 +239,7 @@ def render(opt, out, shell_opacity=1.0, cables=False, size=(1600, 1200)):
     cam.SetPosition(*(f + np.array([480.0, 70.0, 600.0])))
     cam.SetViewUp(0, 1, 0)
     cam.SetViewAngle(30)
+    ren.ResetCameraClippingRange()
     rw = vtk.vtkRenderWindow(); rw.SetOffScreenRendering(1); rw.SetAlphaBitPlanes(1); rw.SetMultiSamples(0); rw.AddRenderer(ren); rw.SetSize(*size)
     rw.Render()
     w = vtk.vtkWindowToImageFilter(); w.SetInput(rw); w.Update()

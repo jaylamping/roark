@@ -13,6 +13,7 @@ Same method as check_clearance.py (surface samples, KD-trees, +-0.4 mm; contact 
 Writes cad/_wip/shoulder-pass1/reva.json.
 """
 import json
+import os
 import sys
 import time
 
@@ -66,18 +67,22 @@ def main():
     SH60, SH80 = SP[~(near_open & (rp < 60))], SP[~(near_open & (rp < 80))]
     print('targets', len(FR), len(FRG), len(SH60), round(time.time() - t0), 's', flush=True)
     T = dict(frame=(cKDTree(FR), FRN), frame_petg=(cKDTree(FRG), FRGN), shell_open60=(cKDTree(SH60), None), shell_open80=(cKDTree(SH80), None))
+    col = [p for nm, p in other.items() if 'collar' in nm or nm.startswith('fastener__c1_')]
+    if col:
+        T['shell_collar_and_screws'] = (cKDTree(np.vstack(col)), None)
     for nm, p in other.items():
-        T['shellpart:' + nm.split('__')[1]] = (cKDTree(p), None)
+        if 'spine' in nm:
+            T['shellpart:' + nm.split('__')[1]] = (cKDTree(p), None)
 
     movers = [k for k in P if GROUP[k] in ('pitch', 'roll', 'yaw') and k != 'stops'] + ['stops']
     res = {}
-    for pitch in (-30.0, 0.0, 24.0, 90.0):
+    for pitch in [float(v) for v in os.environ.get('PITCHES', '-30,0,24,90').split(',')]:
         for tname, (tree, tn) in T.items():
             first = None
             at11 = None
             curve = {}
             for roll in range(0, -26, -1):
-                best = (99.0, None, None)
+                best = (99.0, None, None, None)
                 for yaw in range(-90, 91, 15):
                     for k in movers:
                         M = pose_matrix(GROUP[k], pitch, float(roll), float(yaw))
