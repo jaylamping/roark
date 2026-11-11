@@ -21,7 +21,7 @@ use runtime::{
 };
 use safety::EnableFailure;
 use sim_drive::{Fault, SimDrive, Trigger, ensure_vcan, serve};
-use skeleton::{CommissioningCaps, LimbName, Skeleton};
+use skeleton::{LimbName, Skeleton};
 use socketcan::{CanFrame, CanSocket, EmbeddedFrame, Id, Socket};
 
 /// The runtime's test robot, never the live skeleton (testing.md rule 3).
@@ -639,16 +639,22 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
             seen[0]
         );
     }
-    // The waist's drive got its model's commissioning caps, written as preflight writes any cap.
-    let floor = CommissioningCaps::of(robstride::Model::Rs03).unwrap();
-    let waist = robstride::Drive::new(common::id(31), robstride::Model::Rs03);
+    // The waist's drive (uncommissioned) got the caps it is enabled at, written as preflight writes any cap.
+    let joint = skeleton
+        .limbs
+        .iter()
+        .flat_map(|l| &l.joints)
+        .find(|j| j.id == common::id(31))
+        .unwrap();
+    let caps = joint.caps();
+    let waist = robstride::Drive::new(joint.id, joint.actuator);
     let expected = [
-        robstride::Write::limit_torque(waist, floor.torque).unwrap(),
-        robstride::Write::limit_cur(waist, floor.current).unwrap(),
-        robstride::Write::limit_spd(waist, floor.speed).unwrap(),
+        robstride::Write::limit_torque(waist, caps.torque).unwrap(),
+        robstride::Write::limit_cur(waist, caps.current).unwrap(),
+        robstride::Write::limit_spd(waist, caps.speed).unwrap(),
     ]
     .map(|w| w.value());
-    let caps: Vec<ParamValue> = seen[0]
+    let written: Vec<ParamValue> = seen[0]
         .iter()
         .filter(|(_, f)| f.target == common::id(31))
         .filter_map(|(_, f)| match f.command {
@@ -659,7 +665,7 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
             _ => None,
         })
         .collect();
-    assert_eq!(caps, expected);
+    assert_eq!(written, expected);
     let to = |id: u8| -> Vec<(Instant, Command)> {
         seen[1]
             .iter()
