@@ -14,10 +14,22 @@ thread per wired bus and the control thread on one schedule origin, and takes th
   out. Nothing is enabled: the runtime never enables on its own, not at start and not after a restart (PLAN item 3). A
   start that fails ends every thread it started.
 - **The control thread** runs once a tick, a quarter of the slack after the buses' collect deadline. It takes each bus's
-  newest snapshot (handed on as a `View` when asked for) and its re-arm answers, turns the operator's stops and then
-  clears into each bus's orders, and publishes the next tick's batch. Hold only for now: every batch is empty, which still
-  tells each bus control is alive. It counts what it can't do on time (`ControlExit`): stale snapshots, ticks it slept
-  through, dropped batches, replies and views.
+  newest snapshot (handed on as a `View` when asked for) and its re-arm answers, steps the operator's enable and holds
+  every enabled joint into the next tick's batches, turns the operator's stops (and any its enables and holds asked) and
+  then clears into each bus's orders, and publishes the batches. A batch with nothing in it still tells its bus control
+  is alive. It counts what it can't do on time (`ControlExit`): stale snapshots, ticks it slept through, dropped batches,
+  replies and views.
+- **Enables** (`Enable`, through `Runtime::enables`, of joints named by `Runtime::joints`) are answered by one
+  `EnableReply`. One runs at a time. An enable is refused before anything is sent if it names nothing, a joint already
+  enabled, or a joint whose skeleton entry can't pass (a null fact or cap, no bus, a model without settled MIT scales).
+  Otherwise every named joint's preflight runs (`safety`, over its bus's slow requests); in the tick the last one passes
+  every enable sequence starts, and once every drive is in Run and MIT mode the enable is answered `Ok`. A refusal before
+  any Enable may have gone stops nothing; a failure after one stops every limb the enable named. A part of a limb
+  stopped on another bus refuses the enable too: a limb over two buses enables only once both are cleared.
+- **The hold**: every enabled joint gets a slack MIT command each tick (zero gains, zero torque: in Run and watched by
+  every rule, holding nothing) until real control modes and gains exist. A joint stops being held when its limb stops on
+  any bus, and a stop on one bus is then asked of the whole limb. While a limb is held, a drive of it that this host never
+  enabled seen out of Reset stops the whole limb (`host.mode`, PLAN item 6).
 - **Stops** (`Runtime::stop(Scope)`) go through a latch, never a queue: always accepted, never waiting, and taken each tick
   before any clear (PLAN item 3a). A stop a bus's full order ring didn't take is pushed again each tick, ahead of anything
   else for that bus.
@@ -29,19 +41,20 @@ thread per wired bus and the control thread on one schedule origin, and takes th
   control has taken a snapshot with every limb at rest, then the session closes. It also ends on its own if control loses
   its clock or a bus thread ends: `Runtime::finished` is set, and the binary then ends the runtime and exits with failure.
 
-Preflight, enable and hold, the `api` socket, `mlockall`, `SCHED_FIFO` and the systemd units come in the PRs that follow
-(PLAN step 7). A clear of a limb on two buses can be taken on one and refused on the other; nothing can enable it yet,
-and enable (4b-2) will need every bus's clear.
+The `api` socket (and so any way for the binary's operator to enable), `mlockall`, `SCHED_FIFO` and the systemd units
+come in the PRs that follow (PLAN step 7). Stops that control asks (an enable's failure, `host.mode`) reach the bus as
+operator stops: the session records them as such until a stop carries its cause.
 
 ## Must never
 
-Enable a drive on its own. Send Disables in a batch: a stop is an order to the bus (step 7 design, D2). Let a clear reach a
+Enable a drive on its own, or one an enable didn't name. Send an Enable before every named joint's preflight has passed. Send Disables in a batch: a stop is an order to the bus (step 7 design, D2). Let a clear reach a
 bus before a stop asked before it. Block the control thread on a client: stops go through a latch, clears and replies
 through bounded rings, and a full ring drops and counts.
 
 ## Talks to
 
-`can` (bus threads and their rings), `skeleton` (the file it runs), `telemetry` (the session). The sim suite drives it on
+`can` (bus threads and their rings), `safety` (preflight and the enable sequence), `robstride` (the hold's MIT
+frames), `skeleton` (the file it runs), `telemetry` (the session). The sim suite drives it on
 `vcan` (`crates/sim-suite/tests/runtime.rs`). See the
 [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
 

@@ -92,7 +92,7 @@ api       (message types; used by runtime, ui bridge, mcp, robot-cli)
 telemetry (leaf for producers: takes events, depends on nothing above; can hands it each tick's frames)
 
 can --> robstride, telemetry        safety --> can, robstride, skeleton
-runtime --> can, skeleton, telemetry (control and safety join it with 4b-2)
+runtime --> can, robstride, safety, skeleton, telemetry
 
 sim-drive (bin) --> robstride, skeleton        sim-suite (tests only) --> can, runtime, safety, sim-drive, skeleton, robstride, telemetry
 ```

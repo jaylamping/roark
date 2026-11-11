@@ -144,7 +144,8 @@ mod linux {
         }
         say(&format!(
             "control: {} stale, {} skipped ticks, {} late batches; dropped {} batches, {} replies, {} views; {} stops \
-             deferred; {} clears refused while ending",
+             deferred; {} clears and {} enables refused while ending; {} stray slow results; {} limbs stopped for \
+             host.mode; {} holds ended by a stop",
             c.stale_ticks,
             c.skipped_ticks,
             c.late_batches,
@@ -152,7 +153,11 @@ mod linux {
             c.replies_dropped,
             c.views_dropped,
             c.stops_deferred,
-            c.clears_ending
+            c.clears_ending,
+            c.enables_ending,
+            c.stray_results,
+            c.mode_stops,
+            c.holds_ended
         ));
         for bus in &exit.buses {
             if let Some(e) = &bus.error {

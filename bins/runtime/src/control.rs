@@ -1,8 +1,9 @@
 //! (rt) The control thread on Linux, on the bus threads' schedule: once a tick, a margin after the buses' collect
-//! deadline, it takes each bus's newest snapshot and re-arm answers, turns the operator's stops and then clears into each
-//! bus's orders, and publishes the next tick's batch. Hold only, with nothing enabled: every batch is empty, which still
-//! tells each bus control is alive (`can::CommandBatch::new`). It never enables anything (PLAN item 3: the runtime never
-//! enables on its own).
+//! deadline, it takes each bus's newest snapshot and re-arm answers, steps the operator's enable and holds every enabled
+//! joint into the next tick's batches, turns the operator's stops (and any its enables and holds asked) and then clears
+//! into each bus's orders, and publishes the batches. A batch with nothing in it still tells its bus control is alive
+//! (`can::CommandBatch::new`). It enables only what an operator's enable names (PLAN item 3: the runtime never enables
+//! on its own).
 
 use std::io;
 use std::sync::Arc;
@@ -11,10 +12,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use can::{CommandBatch, Rearmed, Snapshot, Timing};
 use rtrb::{Consumer, Producer};
 
-use crate::clock::{Schedule, passed, sleep_period};
+use crate::clock::{Schedule, mono_now, passed, sleep_period};
 use crate::dispatch::{BusOrders, StopLatch, orders, reply};
+use crate::enable::{Buses, Counts, Enable, EnableRefused, EnableReply, Enabler, SlowEnds};
 use crate::plan::BusPlan;
 use crate::request::{Clear, ClearAt, ClearRefused, Reply, route_clear};
+use crate::roster::Roster;
 
 /// One bus's newest snapshot, for the runtime's readers.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -41,6 +44,12 @@ pub(crate) struct ControlLinks {
     pub(crate) stops: Arc<StopLatch>,
     pub(crate) clears: Consumer<Clear>,
     pub(crate) replies: Producer<Reply>,
+    /// Every joint, as enables name them.
+    pub(crate) roster: Roster,
+    /// Each bus's slow-request rings, in plan order: preflight's reads.
+    pub(crate) slow: Vec<SlowEnds>,
+    pub(crate) enables: Consumer<Enable>,
+    pub(crate) enable_replies: Producer<EnableReply>,
     /// `None` when nobody reads the views.
     pub(crate) views: Option<Producer<View>>,
     /// The run's end, and every bus thread's exit flag: one flag for both, so the buses and control learn of an end
@@ -54,7 +63,7 @@ pub(crate) struct ControlLinks {
 /// What the control thread hands back when it ends.
 #[derive(Debug, Default)]
 pub struct ControlExit {
-    /// Replies the runtime's ring couldn't take.
+    /// Replies (to clears and enables) the runtime's rings couldn't take.
     pub replies_dropped: u64,
     /// Views the runtime's ring couldn't take.
     pub views_dropped: u64,
@@ -71,6 +80,14 @@ pub struct ControlExit {
     pub late_batches: u64,
     /// Clears refused because the run was ending.
     pub clears_ending: u64,
+    /// Enables refused because the run was ending, the one running included.
+    pub enables_ending: u64,
+    /// Slow results that answered no preflight running: dropped.
+    pub stray_results: u64,
+    /// Limbs stopped because a drive of a held limb that this host never enabled was seen out of Reset (`host.mode`).
+    pub mode_stops: u64,
+    /// Enabled joints no longer held because their limb was stopped.
+    pub holds_ended: u64,
     /// The first bus thread that ended before the run did (a socket or clock error): control then ended the run.
     pub bus_ended: Option<usize>,
     /// The clock error that cost the thread its schedule, if any: it then ended the run and paced itself with relative
@@ -93,6 +110,11 @@ pub(crate) fn run(
     mut links: ControlLinks,
 ) -> ControlExit {
     let mut exit = ControlExit::default();
+    let mut enabler = Enabler::new(&links.roster);
+    let mut counts = Counts::default();
+    // Each bus's newest snapshot so far, and whether its thread has ended, for the enables and holds.
+    let mut newest: Vec<Option<Snapshot>> = vec![None; links.buses.len()];
+    let mut ended = vec![false; links.buses.len()];
     let phase = phase(timing);
     let mut n = schedule.next(phase);
     loop {
@@ -113,18 +135,60 @@ pub(crate) fn run(
         }
         // Once set, each bus stops every limb and ends once a snapshot with every limb at rest is taken, which the
         // reads below do.
-        read(plans, n, &mut links, &mut exit);
-        if links.buses.iter().all(|b| b.snapshots.is_abandoned()) {
+        read(plans, n, &mut links, &mut newest, &mut exit);
+        for (bus, ends) in links.buses.iter().enumerate() {
+            if let Some(e) = ended.get_mut(bus) {
+                *e = ends.snapshots.is_abandoned();
+            }
+        }
+        if ended.iter().all(|e| *e) {
             // A bus may have answered a clear between its last read and its end.
-            read(plans, n, &mut links, &mut exit);
+            read(plans, n, &mut links, &mut newest, &mut exit);
             refuse_clears(plans, &mut links, &mut exit);
+            refuse_enables(&mut enabler, &mut links, &mut exit);
+            add(&mut exit, counts);
             links.finished.store(true, Ordering::Release);
             return exit;
         }
-        // Read again: an end asked during the reads stops the orders and batches at once.
+        // Read again: an end asked during the reads stops the enables, orders and batches at once.
         if links.end.load(Ordering::Acquire) {
             refuse_clears(plans, &mut links, &mut exit);
+            refuse_enables(&mut enabler, &mut links, &mut exit);
         } else {
+            let next = n.saturating_add(1);
+            // The schedule's origin on the session's epoch, plus the next tick's send window.
+            let expires = next
+                .saturating_mul(timing.period_ns)
+                .saturating_add(timing.send_window_ns)
+                .saturating_add(origin_ns);
+            let mut batches = vec![CommandBatch::new(next, expires); links.buses.len()];
+            // Enables and holds first, so a stop they ask goes out in this pass's orders.
+            // On the session's epoch, as the snapshots' times are, for the preflights' and sequences' windows.
+            let now_ns = origin_ns.saturating_add(since(schedule.at(0, 0)));
+            for _ in 0..links.enables.buffer().capacity() {
+                let Ok(enable) = links.enables.pop() else {
+                    break;
+                };
+                if let Some(r) = enabler.take(&links.roster, enable, &mut links.slow, now_ns) {
+                    push_enable_reply(&mut links.enable_replies, r, &mut exit.replies_dropped);
+                }
+            }
+            let mut buses = Buses {
+                snapshots: &newest,
+                slow: &mut links.slow,
+                batches: &mut batches,
+                ended: &ended,
+            };
+            if let Some(r) = enabler.tick(
+                &links.roster,
+                &mut buses,
+                &links.stops,
+                next,
+                now_ns,
+                &mut counts,
+            ) {
+                push_enable_reply(&mut links.enable_replies, r, &mut exit.replies_dropped);
+            }
             let replies = &mut links.replies;
             let clears = &mut links.clears;
             let mut budget = clears.buffer().capacity();
@@ -138,18 +202,8 @@ pub(crate) fn run(
                 },
                 |r| push_reply(replies, r, &mut exit.replies_dropped),
             );
-            let next = n.saturating_add(1);
-            // The schedule's origin on the session's epoch, plus the next tick's send window.
-            let expires = next
-                .saturating_mul(timing.period_ns)
-                .saturating_add(timing.send_window_ns)
-                .saturating_add(origin_ns);
-            for ends in &mut links.buses {
-                if ends
-                    .commands
-                    .push(CommandBatch::new(next, expires))
-                    .is_err()
-                {
+            for (ends, batch) in links.buses.iter_mut().zip(batches) {
+                if ends.commands.push(batch).is_err() {
                     exit.batches_dropped += 1;
                 }
             }
@@ -191,13 +245,54 @@ fn refuse_clears(plans: &[BusPlan], links: &mut ControlLinks, exit: &mut Control
     }
 }
 
-/// Each bus's newest snapshot and re-arm answers, handed on; a bus that ended before the run did ends the run.
-fn read(plans: &[BusPlan], n: u64, links: &mut ControlLinks, exit: &mut ControlExit) {
+/// The enable running and every enable still queued, refused `Ending`.
+fn refuse_enables(enabler: &mut Enabler, links: &mut ControlLinks, exit: &mut ControlExit) {
+    if let Some(r) = enabler.end() {
+        exit.enables_ending += 1;
+        push_enable_reply(&mut links.enable_replies, r, &mut exit.replies_dropped);
+    }
+    for _ in 0..links.enables.buffer().capacity() {
+        let Ok(enable) = links.enables.pop() else {
+            break;
+        };
+        exit.enables_ending += 1;
+        let r = EnableReply {
+            tag: enable.tag,
+            outcome: Err(EnableRefused::Ending),
+        };
+        push_enable_reply(&mut links.enable_replies, r, &mut exit.replies_dropped);
+    }
+}
+
+/// Nanoseconds from `at` to now (0 before it).
+fn since(at: std::time::Instant) -> u64 {
+    u64::try_from(mono_now().saturating_duration_since(at).as_nanos()).unwrap_or(u64::MAX)
+}
+
+/// The enabler's counts, into the exit.
+const fn add(exit: &mut ControlExit, counts: Counts) {
+    exit.stray_results += counts.stray_results;
+    exit.mode_stops += counts.mode_stops;
+    exit.holds_ended += counts.holds_ended;
+}
+
+/// Each bus's newest snapshot (kept in `latest`) and re-arm answers, handed on; a bus that ended before the run did ends
+/// the run.
+fn read(
+    plans: &[BusPlan],
+    n: u64,
+    links: &mut ControlLinks,
+    latest: &mut [Option<Snapshot>],
+    exit: &mut ControlExit,
+) {
     for (bus, ends) in links.buses.iter_mut().enumerate() {
         let mut newest = None;
         for _ in 0..ends.snapshots.buffer().capacity() {
             let Ok(s) = ends.snapshots.pop() else { break };
             newest = Some(s);
+        }
+        if let (Some(s), Some(kept)) = (newest, latest.get_mut(bus)) {
+            *kept = Some(s);
         }
         let ended = ends.snapshots.is_abandoned();
         // Read now, not once a pass: an end asked during this pass makes every bus exit, which isn't a bus failing.
@@ -231,6 +326,12 @@ fn push_reply(replies: &mut Producer<Reply>, r: Reply, dropped: &mut u64) {
     }
 }
 
+fn push_enable_reply(replies: &mut Producer<EnableReply>, r: EnableReply, dropped: &mut u64) {
+    if replies.push(r).is_err() {
+        *dropped += 1;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rtrb::RingBuffer;
@@ -245,8 +346,8 @@ mod tests {
     /// (PLAN item 3: the runtime never runs blind).
     #[test]
     fn a_bus_that_ends_on_its_own_ends_the_run() {
-        let plans =
-            crate::plan(&skeleton::parse(include_str!("../tests/skeleton.yaml")).unwrap()).unwrap();
+        let skeleton = skeleton::parse(include_str!("../tests/skeleton.yaml")).unwrap();
+        let plans = crate::plan(&skeleton).unwrap();
         let timing = Timing::at_hz(250);
         let schedule = Schedule::new(mono_now(), timing.period_ns).unwrap();
         let mut buses = Vec::new();
@@ -276,6 +377,10 @@ mod tests {
             stops: Arc::new(StopLatch::default()),
             clears: clears_rx,
             replies: replies_tx,
+            roster: Roster::new(&skeleton, &plans).unwrap(),
+            slow: Vec::new(),
+            enables: RingBuffer::new(1).1,
+            enable_replies: RingBuffer::new(1).0,
             views: None,
             end: Arc::clone(&end),
             finished: Arc::clone(&finished),

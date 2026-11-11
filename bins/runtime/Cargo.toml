@@ -9,6 +9,8 @@ publish.workspace = true
 
 [dependencies]
 can.workspace = true
+robstride.workspace = true
+safety.workspace = true
 skeleton.workspace = true
 rtrb.workspace = true
 thiserror = { workspace = true, features = ["std"] }
