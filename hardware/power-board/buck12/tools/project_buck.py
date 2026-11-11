@@ -9,9 +9,6 @@ H=os.path.dirname(os.path.abspath(__file__)); PB=os.path.join(H,'..','..')
 sch=json.load(open(os.path.join(H,'..','buck12.kicad_pro')))
 main=json.load(open(os.path.join(PB,'layout','power_board_revb.kicad_pro')))
 sch['board']=main['board']
-# U1's stock footprint (Texas_RGY ..._ThermalVias) has 0.2 mm thermal vias in its exposed pad: the one drill under 0.3 mm on
-# this board (JLC's 6-layer minimum is 0.15 mm); they sit in a pad, so they are filled and capped like the main board's
-sch['board']['design_settings']['rules']['min_through_hole_diameter']=0.2
 ns=sch['net_settings']; ns['classes']=[main['net_settings']['classes'][0]]; ns['netclass_patterns']=[]; ns['netclass_assignments']=None
 os.makedirs(os.path.join(H,'..','layout'),exist_ok=True)
 json.dump(sch,open(os.path.join(H,'..','layout','buck12.kicad_pro'),'w',newline='\n'),indent=2)
