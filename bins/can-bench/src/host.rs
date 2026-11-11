@@ -6,7 +6,7 @@
 
 use std::fmt::Write as _;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write as _};
+use std::io::{self, BufWriter, Write as _};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -107,9 +107,10 @@ fn check(args: &HostArgs) -> Result<Times, String> {
     })
 }
 
-/// Run the host side and write `ticks.csv` and `summary.txt` under `args.out`. Returns the summary and whether the run
-/// met the pass mark. Once the run has started, an error ends it but the summary is still written, saying why.
-pub(crate) fn run(args: &HostArgs) -> Result<(String, bool), String> {
+/// Run the host side, print the summary, and write `ticks.csv` and `summary.txt` under `args.out`. Returns whether the
+/// run met the pass mark. Once the run has started, an error ends it but the summary is still printed and written,
+/// saying why.
+pub(crate) fn run(args: &HostArgs) -> Result<bool, String> {
     let times = check(args)?;
     let _runtime_lock = link::exclude_runtime()?;
     let bus = args.bus.as_str();
@@ -142,9 +143,13 @@ pub(crate) fn run(args: &HostArgs) -> Result<(String, bool), String> {
         after: after.as_ref(),
         ended: ended.as_deref(),
     });
+    // Printed first, so a summary.txt that can't be written loses no numbers.
+    io::stdout()
+        .write_all(summary.as_bytes())
+        .map_err(|e| e.to_string())?;
     let path = args.out.join("summary.txt");
     fs::write(&path, &summary).map_err(|e| format!("{}: {e}", path.display()))?;
-    Ok((summary, pass))
+    Ok(pass)
 }
 
 /// Everything a run carries from tick to tick.
@@ -170,8 +175,10 @@ impl State {
         })
     }
 
-    /// Every tick of the run, in order. A wake past a tick's reading time skips to the tick in progress, as the bus
-    /// thread does (`can` clock): the ticks slept through are counted, never sent late or counted as missing replies.
+    /// Every tick of the run, in order. A wake after a tick's period skips to the tick in progress, as the bus thread
+    /// does (`can` clock): the ticks slept through are counted as skipped, never sent late or counted as missing
+    /// replies. Unlike the bus thread, which runs the tick in progress late, the bench also skips it when its reading
+    /// time is already over, since it could only count every reply missing.
     fn ticks(
         &mut self,
         socket: &CanSocket,
@@ -179,7 +186,10 @@ impl State {
         requests: &[ExtendedId],
     ) -> Result<(), String> {
         let t = self.times;
-        let origin = now_ns()? + u64::try_from(LEAD.as_nanos()).map_err(|e| e.to_string())?;
+        // Ticks fall on whole periods of the monotonic clock, so hosts on one machine at one rate tick together, as the
+        // runtime's bus threads do on one schedule.
+        let lead = now_ns()? + u64::try_from(LEAD.as_nanos()).map_err(|e| e.to_string())?;
+        let origin = lead.div_ceil(t.period) * t.period;
         let mut k = 0;
         while k < t.ticks {
             let scheduled = origin + k * t.period;
@@ -187,14 +197,14 @@ impl State {
             let woke = now_ns()?;
             let late = woke.saturating_sub(scheduled);
             self.results.wake_late.push(late);
-            if late > t.send_window {
-                self.results.counts.past_send_window += 1;
-            }
-            // The tick in progress, and whether its reading time is already over.
-            let current = (woke - origin) / t.period;
+            // The tick in progress, and whether its reading time is already over. A stall past the run's end ends it.
+            let current = ((woke - origin) / t.period).min(t.ticks);
             if current > k {
                 self.results.counts.skipped += current - k;
                 k = current;
+                if k >= t.ticks {
+                    break;
+                }
             }
             let start = origin + k * t.period;
             if woke >= start + t.read_end {
@@ -227,7 +237,7 @@ impl State {
         }
         self.sent_at.fill(None);
         self.read_at.fill(None);
-        self.send(socket, bus, requests, tick)?;
+        self.send(socket, bus, requests, tick, start)?;
         self.collect(socket, bus, tick, start)?;
 
         let missing = self
@@ -252,15 +262,21 @@ impl State {
         writeln!(self.csv, "{row}").map_err(|e| format!("ticks.csv: {e}"))
     }
 
-    /// Send one request per slot, once each; a full queue drops it and counts it, as the bus thread does.
+    /// Send one request per slot, once each; a full queue drops it and counts it, as the bus thread does. A write
+    /// started after the tick's send window (a late wake, or a stall after it) counts the tick once as past the
+    /// window, where the bus thread would stop the bus.
     fn send(
         &mut self,
         socket: &CanSocket,
         bus: &str,
         requests: &[ExtendedId],
         tick: u32,
+        start: u64,
     ) -> Result<(), String> {
+        let send_by = start + self.times.send_window;
+        let mut past_window = false;
         for (slot, id) in requests.iter().enumerate() {
+            past_window |= now_ns()? > send_by;
             let frame = CanDataFrame::new(*id, &frames::payload(tick, self.sent_count))
                 .ok_or("frame build")?;
             match socket.write_frame(&CanFrame::Data(frame)) {
@@ -273,6 +289,9 @@ impl State {
                 Err(e) if link::queue_full(&e) => self.results.counts.tx_full += 1,
                 Err(e) => return Err(format!("{bus}: write: {e}")),
             }
+        }
+        if past_window {
+            self.results.counts.past_send_window += 1;
         }
         Ok(())
     }

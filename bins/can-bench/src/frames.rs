@@ -61,7 +61,8 @@ mod tests {
 
     /// Guards: safety - no drive can act on a bench frame (README "Must never"): every request and reply has a
     /// communication type no RobStride manual defines (above 25) and both address bytes above every drive ID (above
-    /// 127), and each ID maps back to its own slot only.
+    /// 127), and each ID maps back to its own slot only. Every request's ID is below every reply's, so a host's
+    /// requests win arbitration over the replies to the tick before.
     #[test]
     fn no_drive_can_act_on_a_bench_frame() {
         for slot in 0..MAX_SLOTS {
@@ -79,7 +80,14 @@ mod tests {
             }
             assert_eq!(request_id(slot).and_then(reply_slot), None);
             assert_eq!(reply_id(slot).and_then(request_slot), None);
+            for other in 0..MAX_SLOTS {
+                assert!(
+                    request_id(slot) < reply_id(other),
+                    "request {slot} after reply {other}"
+                );
+            }
         }
         assert_eq!(request_id(MAX_SLOTS), None);
+        assert_eq!(reply_id(MAX_SLOTS), None);
     }
 }

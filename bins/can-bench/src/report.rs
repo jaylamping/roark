@@ -225,3 +225,93 @@ fn verdict(
     }
     fails
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Counts, verdict};
+    use crate::stats::Spread;
+
+    /// The verdict on 1000 wakes at `wake` ns (none if `None`), `in_time` of `expected` replies, `drops` kernel drops,
+    /// and the counts `set` leaves.
+    fn fails(
+        wake: Option<u64>,
+        set: fn(&mut Counts),
+        in_time: u64,
+        expected: u64,
+        drops: Option<u64>,
+    ) -> usize {
+        let wake_late = Spread::new(wake.map_or_else(Vec::new, |w| vec![w; 1000]));
+        let mut c = Counts::default();
+        set(&mut c);
+        #[expect(clippy::cast_precision_loss, reason = "test input")]
+        let share = if expected == 0 {
+            0.0
+        } else {
+            in_time as f64 * 100.0 / expected as f64
+        };
+        verdict(&wake_late, &c, share, in_time, expected, drops).len()
+    }
+
+    /// Guards: number - the pass mark (docs/can-interface-comparison.md, "Pass mark"): each row fails a run on its own,
+    /// at its edge, and late or foreign frames alone don't.
+    #[test]
+    fn each_pass_mark_row_fails_a_run_on_its_own() {
+        let none = |_: &mut Counts| {};
+        assert_eq!(
+            fails(Some(499_999), none, 999, 1000, Some(0)),
+            0,
+            "a run at every edge passes"
+        );
+        assert_eq!(
+            fails(Some(500_000), none, 1000, 1000, Some(0)),
+            1,
+            "wake at the budget"
+        );
+        assert_eq!(fails(None, none, 1000, 1000, Some(0)), 1, "no wakes");
+        assert_eq!(
+            fails(Some(0), none, 998, 1000, Some(0)),
+            1,
+            "998 of 1000 in time"
+        );
+        assert_eq!(fails(Some(0), none, 0, 0, Some(0)), 1, "nothing expected");
+        assert_eq!(
+            fails(Some(0), none, 1000, 1000, Some(1)),
+            1,
+            "a kernel drop"
+        );
+        assert_eq!(
+            fails(Some(0), none, 1000, 1000, None),
+            1,
+            "kernel counters unread"
+        );
+        assert_eq!(
+            fails(Some(0), |c| c.missing = 1, 1000, 1000, Some(0)),
+            1,
+            "a missing reply"
+        );
+        assert_eq!(
+            fails(Some(0), |c| c.tx_full = 1, 1000, 1000, Some(0)),
+            1,
+            "a refused request"
+        );
+        assert_eq!(
+            fails(Some(0), |c| c.past_send_window = 1, 1000, 1000, Some(0)),
+            1,
+            "past the window"
+        );
+        assert_eq!(
+            fails(Some(0), |c| c.skipped = 1, 1000, 1000, Some(0)),
+            1,
+            "a skipped tick"
+        );
+        let late_foreign = |c: &mut Counts| {
+            c.late = 1;
+            c.foreign = 1;
+        };
+        assert_eq!(
+            fails(Some(0), late_foreign, 1000, 1000, Some(0)),
+            0,
+            "late and foreign frames"
+        );
+    }
+}

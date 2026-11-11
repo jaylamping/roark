@@ -330,14 +330,15 @@ names** (`ip link add dev can1 type vcan`), so the runtime runs literally unchan
 
 - **Before any drive:** the [interface comparison](docs/can-interface-comparison.md) measures each candidate interface
   against the realtime budget (item 3, Open with Joey 9) with no drive on the bus, and picks the one every bus uses.
-- Confirm the adapter: `dmesg` shows `gs_usb` (not slcan); write its link file; `ip -details link show can1` lists it.
+- Confirm the interface the comparison chose: `dmesg` shows its driver (`mcp251xfd` for the CAN FD HAT; `gs_usb`, not
+  slcan, for the USB fallback); `ip -details link show can1` lists it.
 - Bench harness per [left-shoulder-bench-harness.md](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/wiring/left-shoulder-bench-harness.md):
-  120 Ω at each end (the adapter's termination jumper replaces the HAT end), about 60 Ω across CAN_H/CAN_L with power off, one
+  120 Ω at each end (the interface's termination jumper is one end), about 60 Ω across CAN_H/CAN_L with power off, one
   ground tie.
 - Scan, set IDs one drive at a time, then a 1 h idle soak (error frames, RX overflow, error counters, bus load). Then measure
-  round-trip latency and per-tick jitter at 250 Hz. Record the adapter's firmware version and check its bus-off behaviour
-  (item 3) by shorting CAN_H to CAN_L with no drive enabled. **Done when** the soak is clean and the numbers are committed. Only then buy
-  adapters for the other buses.
+  round-trip latency and per-tick jitter at 250 Hz. Record the interface's driver (and firmware, for a USB adapter) and check its bus-off behaviour
+  (item 3) by shorting CAN_H to CAN_L with no drive enabled. **Done when** the soak is clean and the numbers are committed. Only then build or buy
+  the interfaces for the other buses.
 
 ## 6. Safety: the three layers (tenet 3)
 
@@ -503,9 +504,10 @@ Defaults apply until Joey answers.
 
 1. **Zero persistence and reference poses.** Default: treat the drive zero as volatile until the persistence test (§1) says
    otherwise; reference poses documented per joint in the skeleton.
-2. **HAT during milestone 1.** Default: keep the HAT fitted for the right arm on `can0`; disable its `can1` and give that name
-   to the USB adapter.
-3. **Right arm at milestone 2.** Default: its own adapter; retire the HAT.
+2. **CAN interface during milestone 1.** Default: the HAT the [interface comparison](docs/can-interface-comparison.md)
+   picks, on the Pi's header; its `can1` runs the left arm and its `can0` stays for the right arm. No USB adapter.
+3. **Right arm at milestone 2.** Default: that HAT's `can0`; the CAN board on the header replaces the HAT when the waist and
+   legs need buses.
 4. **Bus names for the waist and legs.** Default: ADR 0001 ID blocks; buses `can2` to `can4` named by the hardware ADR when it
    lands.
 5. **Who may enable and clear.** Default: a human at the CLI or UI; agents plan, run on `vcan`, start approved plans and stop.

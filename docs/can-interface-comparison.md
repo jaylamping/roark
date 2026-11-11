@@ -62,8 +62,9 @@ a PCIe CAN card behind a PCIe switch, run through the same steps.
 
 Then, once the CAN board exists:
 
-6. **Every bus at once.** One host per bus on the Pi, each bus wired to a responder on a second
-   CAN board, started together under the same load. This shows whether the buses slow each other down on the
+6. **Every bus at once.** One host per bus on the Pi, each bus wired to its own responder channel on a
+   second CAN board, started together under the same load. Hosts at one rate tick on whole periods of the Pi's monotonic clock,
+   so every bus starts its tick at the same moment, as the runtime's bus threads do. This shows whether the buses slow each other down on the
    Pi's SPI controllers and interrupt lines. One process per bus stands in for the runtime's bus threads, so the pass
    mark is the same per bus.
 
@@ -77,8 +78,8 @@ any of them, on the loaded run:
 
 | What | Pass |
 |---|---|
-| Wake late, 99.9 % | under 500 µs |
-| Replies read by the collect deadline (60 %, 2.4 ms at 250 Hz) | 99.9 % or more |
+| Wake late, 99.9 % | PLAN item 9's tick-start jitter |
+| Replies read by the collect deadline (`--deadline-pct`, 60 % by default) | PLAN item 9's share |
 | Missing replies | none over the hour (proposed) |
 | Requests refused by a full queue, wakes past the send window, ticks skipped | none (proposed) |
 | Kernel `rx over_errors` and `dropped` | no change (proposed) |
@@ -96,7 +97,7 @@ Each run's `--out` folder (`ticks.csv`, `summary.txt`), plus the identify output
 - Commit each run's `summary.txt` and the identify output under `docs/bench-results/can-interfaces/<date>/`, with a short
   README: the commit, which interface ran where, and anything that went wrong. The CSVs are too big for the repo
   (`tools/check_file_sizes.py`); keep them on the Pi's data partition and name where.
-- The choice and its numbers go into PLAN (the adapter row of "When the hardware is ready", and item 5), and the
+- The choice and its numbers go into PLAN (the "CAN interface" row of "When the hardware is ready", item 5, and Open with Joey items 2 and 3), and the
   hardware side's STATUS.md through Joey.
 - If the chosen interface's collect timing differs from what `can::Timing` assumes (60 % of the period), that change is
   its own PR, with the numbers linked.

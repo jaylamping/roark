@@ -15,7 +15,6 @@ mod stats;
 
 #[cfg(target_os = "linux")]
 fn main() -> Result<(), String> {
-    use std::io::Write;
     use std::path::PathBuf;
 
     const USAGE: &str = "usage: can-bench host --bus <if> [--hz 250] [--slots 6] [--seconds 3600] \
@@ -23,6 +22,12 @@ fn main() -> Result<(), String> {
 
     let mut it = std::env::args().skip(1);
     let mode = it.next().ok_or(USAGE)?;
+    // Every binary knows its build (rust.md): both ends say theirs, so a run's record shows the two match.
+    std::io::Write::write_all(
+        &mut std::io::stderr(),
+        format!("can-bench {mode}, build {}\n", env!("ROARK_GIT_REVISION")).as_bytes(),
+    )
+    .map_err(|e| e.to_string())?;
     let mut args = host::HostArgs {
         bus: String::new(),
         hz: 250,
@@ -52,10 +57,7 @@ fn main() -> Result<(), String> {
             if args.out.as_os_str().is_empty() {
                 return Err(format!("--out is required; {USAGE}"));
             }
-            let (summary, pass) = host::run(&args)?;
-            std::io::stdout()
-                .write_all(summary.as_bytes())
-                .map_err(|e| e.to_string())?;
+            let pass = host::run(&args)?;
             // A run below the pass mark exits non-zero, so a script can tell; the reasons are the summary's last line.
             if pass {
                 Ok(())

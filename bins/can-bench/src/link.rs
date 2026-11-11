@@ -3,7 +3,7 @@
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::os::fd::AsFd;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use nix::errno::Errno;
@@ -38,39 +38,79 @@ pub(crate) enum Role {
     Responder,
 }
 
-/// Keep the runtime off the bus for the whole run. While a runtime has run since boot, its lock exists: take it shared
-/// (the runtime takes it exclusive, so a running runtime refuses the bench and a runtime can't start under it, while
-/// both bench ends may run on one machine). When it doesn't exist (stopped, so systemd removed `/run/robot`), refuse
-/// unless the unit is masked or not installed, so nothing can start it during the run. The lock file is the runtime's
-/// and never made here: one made by root under `sudo` could keep the `User=robot` runtime from opening it.
+/// How long `systemctl` may take to answer.
+const SYSTEMCTL_DEADLINE: Duration = Duration::from_secs(5);
+
+/// Keep the runtime off the bus for the whole run. First the unit: refuse unless it is masked or not installed, so
+/// nothing can start a runtime during the run (a lock alone can't promise that: systemd deletes `/run/robot` on every
+/// stop, so a restarted runtime locks a fresh file). Then, if the runtime's lock exists, take it shared and refuse if a
+/// runtime holds it, which catches one still running from before the mask. Shared, so both bench ends may run on one
+/// machine. The lock file is the runtime's and never made here: one made by root under `sudo` could keep the
+/// `User=robot` runtime from opening it.
 pub(crate) fn exclude_runtime() -> Result<Option<Flock<File>>, String> {
+    unit_cannot_start()?;
     match OpenOptions::new().read(true).write(true).open(RUNTIME_LOCK) {
         Ok(file) => match Flock::lock(file, FlockArg::LockSharedNonblock) {
-            Ok(lock) => return Ok(Some(lock)),
-            Err((_, Errno::EWOULDBLOCK)) => {
-                return Err(format!(
-                    "{RUNTIME_LOCK} is held: a runtime is running; stop it before can-bench"
-                ));
-            }
-            Err((_, e)) => return Err(format!("{RUNTIME_LOCK}: {e}")),
+            Ok(lock) => Ok(Some(lock)),
+            Err((_, Errno::EWOULDBLOCK)) => Err(format!(
+                "{RUNTIME_LOCK} is held: a runtime is running; stop it before can-bench"
+            )),
+            Err((_, e)) => Err(format!("{RUNTIME_LOCK}: {e}")),
         },
-        Err(e) if e.kind() == io::ErrorKind::NotFound => {}
-        Err(e) => return Err(format!("{RUNTIME_LOCK}: {e}")),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(format!("{RUNTIME_LOCK}: {e}")),
     }
-    // `systemctl is-enabled` prints the unit file's state; nothing (and a non-zero exit) when the unit isn't installed,
-    // as on the dev box, or when there is no systemd.
-    let state = Command::new("systemctl")
-        .args(["is-enabled", RUNTIME_UNIT])
-        .output()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
-        .unwrap_or_default();
-    if state.is_empty() || state == "not-found" || state.starts_with("masked") {
-        Ok(None)
-    } else {
+}
+
+/// `Ok` only when systemd positively can't start the runtime: no systemd on this machine, or `systemctl is-enabled`
+/// says the unit is masked or not installed. Any other answer, a failed query or no answer in time refuses.
+fn unit_cannot_start() -> Result<(), String> {
+    if !std::path::Path::new("/run/systemd/system").exists() {
+        return Ok(());
+    }
+    let refuse = |why: String| {
         Err(format!(
-            "{RUNTIME_UNIT} is {state}: something could start it during the run; \
-             `sudo systemctl mask --runtime --now {RUNTIME_UNIT}` first (unmasked at the next boot)"
+            "{RUNTIME_UNIT}: {why}; something could start it during the run. \
+             Run `sudo systemctl mask --runtime --now {RUNTIME_UNIT}` first (undone at the next boot)"
         ))
+    };
+    let mut child = match Command::new("systemctl")
+        .args(["is-enabled", RUNTIME_UNIT])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+    {
+        Ok(child) => child,
+        Err(e) => return refuse(format!("systemctl failed to start ({e})")),
+    };
+    let give_up = Instant::now() + SYSTEMCTL_DEADLINE;
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => break,
+            Ok(None) if Instant::now() < give_up => std::thread::sleep(Duration::from_millis(20)),
+            Ok(None) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return refuse("systemctl gave no answer in time".to_owned());
+            }
+            Err(e) => return refuse(format!("systemctl: {e}")),
+        }
+    }
+    let out = child
+        .wait_with_output()
+        .map_err(|e| format!("systemctl: {e}"))?;
+    let state = String::from_utf8_lossy(&out.stdout).trim().to_owned();
+    let err = String::from_utf8_lossy(&out.stderr);
+    // Older systemd prints nothing for a unit that isn't installed and says so on stderr.
+    if state == "not-found"
+        || state.starts_with("masked")
+        || (state.is_empty() && err.contains("No such file"))
+    {
+        Ok(())
+    } else if state.is_empty() {
+        refuse(format!("systemctl gave no state ({})", err.trim()))
+    } else {
+        refuse(format!("is {state}"))
     }
 }
 
