@@ -14,7 +14,7 @@
 //! stamps its views with (`telemetry::Epoch`); a bare `u64` like the bus layer's own, so they compare with its fields
 //! as is.
 
-use can::{DriveView, LimbState, SlowKind, SlowOutcome};
+use can::{DriveView, LimbState, SlowKind, SlowOutcome, SlowRequest, SlowResult};
 use robstride::{
     Amps, CanTimeout, Damper, Drive, Mode, NewtonMeters, Param, ParamOutcome, ParamValue,
     RadPerSec, Uid, Volts, Write,
@@ -107,6 +107,17 @@ const EXCHANGES: [Exchange; 11] = [
     Exchange::Read(Register::Damper),
     Exchange::Read(Register::Vbus),
 ];
+
+/// How many exchanges there are, as a tag count.
+const fn exchange_count() -> u32 {
+    let mut count: u32 = 0;
+    let mut i = 0;
+    while i < EXCHANGES.len() {
+        count += 1;
+        i += 1;
+    }
+    count
+}
 
 /// One of preflight's slow requests.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -275,8 +286,8 @@ impl PreflightPassed {
 /// What preflight wants next.
 #[derive(Debug, PartialEq)]
 pub enum Step {
-    /// Submit this slow request to the drive's bus, then report its result to [`Preflight::answered`].
-    Submit(SlowKind),
+    /// Submit this slow request, as it is, to the drive's bus, then hand its result to [`Preflight::answered`].
+    Submit(SlowRequest),
     /// A request is in flight.
     Wait,
     /// Every check passed. Given once.
@@ -300,9 +311,20 @@ enum State {
 
 /// One drive's preflight, run by the control thread over the drive's bus's slow requests. Not `Copy` or `Clone`: a copy
 /// could give a second proof.
+///
+/// It issues its own requests, each for its drive's slot and with its own tag, and takes a result only for the request
+/// in flight: one for another slot, or with another tag (an earlier, aborted preflight's, say), is ignored and counted
+/// ([`Preflight::ignored`]). Ignoring fails closed without letting a stray result kill a fresh preflight: it never
+/// answers a request, so the request in flight still needs its own result, or refuses as unanswered.
 #[derive(Debug, PartialEq)]
 pub struct Preflight {
     target: Target,
+    /// The drive's slot on its bus.
+    slot: usize,
+    /// The tag of the first exchange; exchange `n` is tagged `first_tag + n`.
+    first_tag: u32,
+    /// Results handed over that answered no request in flight.
+    ignored: u32,
     started_ns: u64,
     /// The limb's `generation` at the first poll.
     generation: Option<u32>,
@@ -310,11 +332,20 @@ pub struct Preflight {
 }
 
 impl Preflight {
-    /// Begin preflight at `now_ns`: a status read before this proves nothing about the drive now.
+    /// The tags one preflight puts on its requests: one per exchange.
+    pub const TAGS: u32 = exchange_count();
+
+    /// Begin preflight at `now_ns` for the drive in `slot` of its bus: a status read before this proves nothing about
+    /// the drive now. Its requests take the [`Self::TAGS`] tags from `first_tag` on (wrapping), so `first_tag` must
+    /// start a block no other request on the bus uses while this preflight runs: control moves its tag counter on by
+    /// [`Self::TAGS`] for each preflight, and so tells an earlier preflight's results from this one's.
     #[must_use]
-    pub const fn start(target: Target, now_ns: u64) -> Self {
+    pub const fn start(target: Target, slot: usize, first_tag: u32, now_ns: u64) -> Self {
         Self {
             target,
+            slot,
+            first_tag,
+            ignored: 0,
             started_ns: now_ns,
             generation: None,
             state: State::Asking {
@@ -328,6 +359,13 @@ impl Preflight {
     #[must_use]
     pub const fn drive(&self) -> Drive {
         self.target.drive
+    }
+
+    /// Results handed to [`Self::answered`] that answered no request in flight: another slot's, another tag's, or one
+    /// with nothing in flight. For the log; each was ignored.
+    #[must_use]
+    pub const fn ignored(&self) -> u32 {
+        self.ignored
     }
 
     /// The next step, given what the drive's bus last showed of it and the time. A view of another drive (by ID or by
@@ -372,15 +410,19 @@ impl Preflight {
                         Step::Wait
                     }
                 }
-                (Some(&exchange), None) => match self.kind(exchange) {
-                    Some(kind) => {
+                (Some(&exchange), None) => match (self.kind(exchange), self.tag(next)) {
+                    (Some(kind), Some(tag)) => {
                         self.state = State::Asking {
                             next,
                             submitted_ns: Some(now_ns),
                         };
-                        Step::Submit(kind)
+                        Step::Submit(SlowRequest {
+                            tag,
+                            slot: self.slot,
+                            kind,
+                        })
                     }
-                    None => self.refuse(Refusal::NoAnswer {
+                    (None, _) | (_, None) => self.refuse(Refusal::NoAnswer {
                         exchange,
                         how: Unanswered::WrongAnswer,
                     }),
@@ -401,17 +443,30 @@ impl Preflight {
         }
     }
 
-    /// The result of the request in flight, handed over at `now_ns`. A result with none in flight is ignored; one
-    /// handed over after [`ANSWER_WITHIN_NS`] refuses as [`Unanswered::Late`]. Call it before [`poll`](Self::poll) in a tick: a poll first would refuse the same request as `TimedOut`.
-    pub fn answered(&mut self, outcome: SlowOutcome, now_ns: u64) {
-        let State::Asking {
-            next,
-            submitted_ns: Some(at),
-        } = self.state
-        else {
-            return;
+    /// A result from the drive's bus, handed over at `now_ns`. Only the result of the request in flight counts, by its
+    /// slot and tag; any other is ignored and counted ([`Self::ignored`]). The result of the request in flight handed
+    /// over after [`ANSWER_WITHIN_NS`] refuses as [`Unanswered::Late`]. The order of `answered` and [`poll`](Self::poll)
+    /// in a tick doesn't change the verdict for the same `now_ns`: a request past its window is refused either way,
+    /// named `Late` when its result is handed over first and `TimedOut` when the poll comes first.
+    pub fn answered(&mut self, result: SlowResult, now_ns: u64) {
+        let in_flight = match self.state {
+            State::Asking {
+                next,
+                submitted_ns: Some(at),
+            } => EXCHANGES
+                .get(next)
+                .copied()
+                .zip(self.tag(next))
+                .filter(|(_, tag)| result.slot == self.slot && result.tag == *tag)
+                .map(|(exchange, _)| (next, at, exchange)),
+            State::Asking {
+                submitted_ns: None, ..
+            }
+            | State::Refused(_)
+            | State::Spent => None,
         };
-        let Some(&exchange) = EXCHANGES.get(next) else {
+        let Some((next, at, exchange)) = in_flight else {
+            self.ignored = self.ignored.saturating_add(1);
             return;
         };
         let checked = if overdue(at, now_ns) {
@@ -420,7 +475,7 @@ impl Preflight {
                 how: Unanswered::Late,
             })
         } else {
-            self.check(exchange, outcome)
+            self.check(exchange, result.outcome)
         };
         self.state = match checked {
             Ok(()) => State::Asking {
@@ -429,6 +484,14 @@ impl Preflight {
             },
             Err(refusal) => State::Refused(refusal),
         };
+    }
+
+    /// Exchange `next`'s tag, or `None` past the last exchange.
+    fn tag(&self, next: usize) -> Option<u32> {
+        u32::try_from(next)
+            .ok()
+            .filter(|n| *n < Self::TAGS)
+            .map(|n| self.first_tag.wrapping_add(n))
     }
 
     fn refuse(&mut self, refusal: Refusal) -> Step {

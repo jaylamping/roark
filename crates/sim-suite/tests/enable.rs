@@ -210,19 +210,18 @@ fn attempt(uid: Uid, start: Option<Fault>, after: After) -> Ended {
                 assert!(commands.push(batch).is_ok());
                 continue;
             }
+            // Preflight's tags follow the get-IDs': it tells its own results by them.
             let current = phase
                 .take()
-                .unwrap_or_else(|| Phase::Preflight(Preflight::start(target, now)));
+                .unwrap_or_else(|| Phase::Preflight(Preflight::start(target, 0, tag + 1, now)));
             let (next, ended) = match current {
                 Phase::Preflight(mut preflight) => {
                     if let Ok(result) = results.pop() {
-                        assert_eq!(result.tag, tag, "one request at a time");
-                        preflight.answered(result.outcome, now);
+                        preflight.answered(result, now);
+                        assert_eq!(preflight.ignored(), 0, "one request at a time: {result:?}");
                     }
                     match preflight.poll(seen, now) {
-                        Step::Submit(kind) => {
-                            tag += 1;
-                            let request = SlowRequest { tag, slot: 0, kind };
+                        Step::Submit(request) => {
                             assert!(requests.push(request).is_ok());
                             (Some(Phase::Preflight(preflight)), None)
                         }

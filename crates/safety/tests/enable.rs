@@ -28,14 +28,14 @@ const PERIOD: u64 = can::Timing::at_hz(250).period_ns;
 fn passed() -> PreflightPassed {
     let skeleton = skeleton();
     let target = Target::new(&joint(&skeleton, 0), &skeleton.power).unwrap();
-    let mut preflight = Preflight::start(target, 0);
+    let mut preflight = Preflight::start(target, 0, 1, 0);
     let mut view = quiet();
     let mut written = Vec::new();
     for n in 1..32 {
         let now = n * PERIOD;
         match preflight.poll(shown(&view), now) {
-            Step::Submit(kind) => {
-                let outcome = match kind {
+            Step::Submit(request) => {
+                let outcome = match request.kind {
                     SlowKind::GetId => can::SlowOutcome::Identity(Uid([
                         0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
                     ])),
@@ -55,7 +55,14 @@ fn passed() -> PreflightPassed {
                             .value(),
                     })),
                 };
-                preflight.answered(outcome, now);
+                preflight.answered(
+                    can::SlowResult {
+                        tag: request.tag,
+                        slot: request.slot,
+                        outcome,
+                    },
+                    now,
+                );
             }
             Step::Passed(passed) => return passed,
             step => panic!("{step:?}"),

@@ -4,8 +4,10 @@
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
-use can::{DriveView, LimbState, LimbView, ModeSeen, SlowKind, SlowOutcome, StopReason};
-use common::preflight::{Drive, UID, run};
+use can::{
+    DriveView, LimbState, LimbView, ModeSeen, SlowKind, SlowOutcome, SlowRequest, StopReason,
+};
+use common::preflight::{Drive, SLOT, UID, answer, run};
 use common::{BUS0, IDLE, joint, on, quiet, seen, shown, skeleton, status};
 use robstride::{Mode, StatusFault, StatusFaults};
 use safety::{DriveAddress, Preflight, Refusal, RuleId, Step, Target};
@@ -71,6 +73,8 @@ fn preflight_refuses_a_fault_or_a_drive_not_in_reset() {
     let skeleton = skeleton();
     let mut preflight = Preflight::start(
         Target::new(&joint(&skeleton, 0), &skeleton.power).unwrap(),
+        SLOT,
+        1,
         1_000,
     );
     let faulted = seen(status(Mode::Reset, over, 2_000));
@@ -99,6 +103,11 @@ fn a_version_reply_out_of_reset_refuses() {
     let reset = status(Mode::Reset, StatusFaults::default(), 2_000);
     let calibration = status(Mode::Calibration, StatusFaults::default(), 2_000);
     let header = |mode, read_ns| Some(ModeSeen { mode, read_ns });
+    let get_id = SlowRequest {
+        tag: 1,
+        slot: SLOT,
+        kind: SlowKind::GetId,
+    };
     for (view, expected) in [
         (
             DriveView {
@@ -123,10 +132,10 @@ fn a_version_reply_out_of_reset_refuses() {
                 mode: header(Mode::Run, 500),
                 ..seen(reset)
             },
-            Step::Submit(SlowKind::GetId),
+            Step::Submit(get_id),
         ),
     ] {
-        let mut preflight = Preflight::start(target, 1_000);
+        let mut preflight = Preflight::start(target, SLOT, 1, 1_000);
         assert_eq!(preflight.poll(shown(&view), 3_000), expected, "{view:?}");
     }
 }
@@ -174,12 +183,14 @@ fn preflight_refuses_another_drives_view_or_a_limb_not_idle() {
         rows.push((on(&BUS0, &view, limb), *refusal));
     }
     for (seen, refusal) in rows {
-        let mut preflight = Preflight::start(target, 1_000);
-        assert_eq!(
-            preflight.poll(shown(&view), 2_000),
-            Step::Submit(SlowKind::GetId)
-        );
-        preflight.answered(SlowOutcome::Identity(UID), 3_000);
+        let mut preflight = Preflight::start(target, SLOT, 1, 1_000);
+        let get_id = SlowRequest {
+            tag: 1,
+            slot: SLOT,
+            kind: SlowKind::GetId,
+        };
+        assert_eq!(preflight.poll(shown(&view), 2_000), Step::Submit(get_id));
+        preflight.answered(answer(get_id, SlowOutcome::Identity(UID)), 3_000);
         assert_eq!(
             preflight.poll(seen, 3_000),
             Step::Refused(refusal),

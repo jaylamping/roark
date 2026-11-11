@@ -1,6 +1,6 @@
 //! Running a whole preflight against a drive that answers every request truthfully except the one a row changes.
 
-use can::{DriveView, SlowKind, SlowOutcome};
+use can::{DriveView, SlowKind, SlowOutcome, SlowRequest, SlowResult};
 use robstride::{
     CanTimeout, Damper, Mode, Param, ParamOutcome, ParamValue, StatusFaults, Uid, Volts,
 };
@@ -10,6 +10,9 @@ use super::{joint, quiet, seen, shown, skeleton, status};
 
 /// The default tick (`can::Timing`'s at PLAN item 3's 250 Hz): the bus sends at most one slow request a tick.
 pub(crate) const PERIOD: u64 = can::Timing::at_hz(250).period_ns;
+
+/// The slot the rows' drives are in on their bus.
+pub(crate) const SLOT: usize = 0;
 
 /// The fixture's UID for `arm_joint_one`.
 pub(crate) const UID: Uid = Uid([0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]);
@@ -86,15 +89,15 @@ pub(crate) fn run(n: usize, drive: &Drive) -> (Result<(), Refusal>, Vec<(Param, 
         Err(refusal) => return (Err(refusal), Vec::new()),
     };
     let mut now = 1_000;
-    let mut preflight = Preflight::start(target, now);
+    let mut preflight = Preflight::start(target, SLOT, 1, now);
     let mut view = drive.before;
     let mut written = Vec::new();
     for _ in 0..32 {
         now += PERIOD;
         // The row's views are drive 101's; joint `n`'s drive may have another ID.
         view.device = target.drive().id();
-        let kind = match preflight.poll(shown(&view), now) {
-            Step::Submit(kind) => kind,
+        let request = match preflight.poll(shown(&view), now) {
+            Step::Submit(request) => request,
             Step::Passed(passed) => {
                 assert_eq!(passed.drive(), target.drive());
                 assert_eq!(
@@ -112,6 +115,8 @@ pub(crate) fn run(n: usize, drive: &Drive) -> (Result<(), Refusal>, Vec<(Param, 
             Step::Wait,
             "one request at a time"
         );
+        assert_eq!(request.slot, SLOT, "its drive's slot");
+        let kind = request.kind;
         let truth = match kind {
             SlowKind::GetId => SlowOutcome::Identity(UID),
             SlowKind::Write(w) => {
@@ -135,7 +140,7 @@ pub(crate) fn run(n: usize, drive: &Drive) -> (Result<(), Refusal>, Vec<(Param, 
                 ..seen(status(mode, faults, now + 500_000))
             };
         }
-        preflight.answered(outcome, now);
+        preflight.answered(answer(request, outcome), now);
     }
     unreachable_end()
 }
@@ -163,4 +168,13 @@ pub(crate) fn volts(v: f64) -> ParamValue {
 #[expect(clippy::panic, reason = "test helper; the rows' voltages are finite")]
 fn refusal_volts(v: f64) -> Volts {
     panic!("{v} isn't a voltage")
+}
+
+/// The result of `request`, as the bus hands it back.
+pub(crate) const fn answer(request: SlowRequest, outcome: SlowOutcome) -> SlowResult {
+    SlowResult {
+        tag: request.tag,
+        slot: request.slot,
+        outcome,
+    }
 }
