@@ -513,5 +513,5 @@ Defaults apply until Joey answers.
 9. **Realtime budget.** Default: 0.5 ms tick-start jitter, 99.9 % of replies before the collect deadline, 1 h soak.
 10. **Operator UI at milestone 1.** Default: none; CLI and agent tools only.
 11. **Commissioning caps** (item 1). Default: 5 % of the model's `limit_torque` range (RS03 3 N·m, RS02 and RS00 0.7 N·m,
-    RS04 6 N·m), the same share of its current range, and 0.5 rad/s. Enough to turn an unloaded drive; say if a loaded
-    joint needs more to break away.
+    RS04 6 N·m), the same share of its current range, and 0.5 rad/s. Accepted as a starting point (Joey, 2026-11-11);
+    set them from logged runs once a full limb is connected and moving.
