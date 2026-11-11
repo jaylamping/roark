@@ -1,5 +1,5 @@
 //! Preflight and the enable sequence on `vcan`: `safety` played as control would, over the bus layer's slow requests
-//! and batches, against `sim-drive` (safety.md section 7: each rule proven on `vcan`).
+//! and batches, against `sim-drive` (safety.md section 6: each rule proven on `vcan`).
 #![cfg(target_os = "linux")]
 
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
