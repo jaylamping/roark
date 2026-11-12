@@ -152,8 +152,13 @@ window: how long after its check a frame may go out) plus the most a read trails
 50 ms timeout; and each silence count must be at least one, and its span (the silent ticks; the missed replies plus
 the tick that stops on them) plus the write slack must stay under that timeout. With the default timing the last sets
 the slowest rate: three misses, the stopping tick and a quarter-period send window, 4.25 periods, so at least 86 Hz.
-The Linux shell (`spawn`) owns the socket: it
-opens only `vcan` until the real adapter is supported (PLAN step 8), takes every ID (no kernel filter), and reads each
+The Linux shell (`spawn`) owns the socket. Before it opens one it checks the interface (`interface`, can.md section 2):
+`vcan` is the simulator's bus and is taken as it is; a CAN controller runs only if it is up, its driver, bitrate and
+sample point are the skeleton's (`InterfaceSpec`), its state is error-active or error-warning, and loopback, listen-only
+and presume-ack are off, since each makes a frame look sent when nothing reached the wire or was acknowledged. Anything
+else, or a report it can't read, is refused with every mismatch named (`BusRunError::Interface`), and the interface as
+checked goes back in `Spawned::interface` for the startup log. The runtime doesn't set an interface up; `deploy/` link
+setup does. The socket takes every ID (no kernel filter), and reads each
 frame with its kernel timestamp, its direction and the overflow count in one `recvmsg`. `bus_info` is the session's
 record of that socket, from the same constants `open` applies, and `spawn` returns the receive buffer the kernel
 actually gave (`Spawned::receive_buffer_bytes`) for the runtime's startup log. Each tick's recorded batch is `valid`
@@ -184,7 +189,7 @@ Send a command late, retry one, or re-send a stale batch. Treat a TX echo or any
 Allocate, lock, log or wait without a deadline in the tick, or take a lock shared with non-realtime code. Let anyone
 but the runtime transmit. Retry a slow request, or send one to a stopped limb or while control is silent. Undo a stop
 on its own: a stopping or stopped limb gets none of control's frames until the operator's `rearm`, and a latched bus
-error stays latched. Open an interface that isn't `vcan` before the real adapter's checks exist (PLAN step 8).
+error stays latched. Open an interface that isn't `vcan` without checking it against the skeleton first, or set one up.
 
 ## Talks to
 

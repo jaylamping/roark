@@ -11,6 +11,8 @@ mod clock;
 mod error_frame;
 #[cfg(any(target_os = "linux", test))]
 mod exit_wait;
+#[cfg(target_os = "linux")]
+mod interface;
 mod order;
 mod read;
 #[cfg(target_os = "linux")]
@@ -31,6 +33,8 @@ mod types;
 pub use bus::{BusConfig, BusExit, BusLinks, BusRunError, Spawned, bus_info, spawn};
 
 pub use error_frame::{BusError, classify};
+#[cfg(target_os = "linux")]
+pub use interface::{Interface, InterfaceSpec, Mismatch, RealInterface, Refusal};
 pub use order::{Order, Rearmed};
 pub use slow::{SLOW_SLOTS, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, SlowResult, Unsent};
 /// The frame record [`BusTick::on_frame`] reads, so a caller feeding a tick by hand needs no `telemetry` of its own.

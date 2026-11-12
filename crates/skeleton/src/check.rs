@@ -62,14 +62,22 @@ pub(crate) fn read_buses(r: &mut Reader, node: &Node) -> Option<BusTable> {
             _ => Err(ProblemKind::OutOfRange("1 to 1000000")),
         });
         let sample_point = r.required(&mut bf, "sample_point", crate::sample_point);
+        let driver = r.required(&mut bf, "driver", |n| text(n).map(str::to_owned));
         let adapter_serial = r.nullable(&mut bf, "adapter_serial", |n| text(n).map(str::to_owned));
         bf.finish(r);
-        match (name, bitrate_bps, sample_point, adapter_serial) {
-            (Some(name), Some(bitrate_bps), Some(sample_point), Some(adapter_serial)) => {
+        match (name, bitrate_bps, sample_point, driver, adapter_serial) {
+            (
+                Some(name),
+                Some(bitrate_bps),
+                Some(sample_point),
+                Some(driver),
+                Some(adapter_serial),
+            ) => {
                 out.buses.push(Bus {
                     name,
                     bitrate_bps,
                     sample_point,
+                    driver,
                     adapter_serial,
                 });
             }

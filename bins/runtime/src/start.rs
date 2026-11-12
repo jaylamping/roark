@@ -109,6 +109,8 @@ pub struct StartInfo {
     pub sockets: Vec<BusInfo>,
     /// Each bus socket's receive buffer as the kernel reports it, in plan order.
     pub receive_buffer_bytes: Vec<usize>,
+    /// Each bus's interface as checked against the skeleton, in plan order.
+    pub interfaces: Vec<can::Interface>,
     /// The joints on no bus.
     pub offline: Vec<JointName>,
     /// Every joint, where it is wired and what its preflight checks, in the order enables and their replies name them.
@@ -223,6 +225,7 @@ impl Runtime {
         let mut orders = Vec::new();
         let mut slow = Vec::new();
         let mut receive_buffer_bytes = Vec::new();
+        let mut interfaces = Vec::new();
         for (p, recorder) in plans.iter().zip(recorders) {
             match spawn_bus(p, timing, recorder, epoch, start, &threads.end) {
                 Ok(bus) => {
@@ -231,6 +234,7 @@ impl Runtime {
                     orders.push(bus.orders);
                     slow.push(bus.slow);
                     receive_buffer_bytes.push(bus.receive_buffer_bytes);
+                    interfaces.push(bus.interface);
                 }
                 Err(e) => return Err(threads.unwind(e.into())),
             }
@@ -284,6 +288,7 @@ impl Runtime {
                 plans,
                 sockets,
                 receive_buffer_bytes,
+                interfaces,
                 offline: offline(&skeleton),
                 roster,
                 skeleton: skeleton_ref,
@@ -449,6 +454,7 @@ struct SpawnedBus {
     orders: BusOrders,
     slow: SlowEnds,
     receive_buffer_bytes: usize,
+    interface: can::Interface,
 }
 
 /// One bus thread, control's ends of its rings, and its socket's receive buffer.
@@ -469,6 +475,7 @@ fn spawn_bus(
     let spawned = can::spawn(
         BusConfig {
             name: p.name.clone(),
+            interface: p.interface.clone(),
             drives: p.drives.clone(),
             timing,
         },
@@ -495,5 +502,6 @@ fn spawn_bus(
         orders: BusOrders::new(orders),
         slow: SlowEnds::new(requests_tx, results_rx),
         receive_buffer_bytes: spawned.receive_buffer_bytes,
+        interface: spawned.interface,
     })
 }

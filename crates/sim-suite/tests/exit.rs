@@ -18,7 +18,7 @@ use can::{
     BusConfig, BusLinks, CommandBatch, LimbState, SlowKind, SlowOutcome, SlowRefusal, SlowRequest,
     SlowResult, Snapshot, StopOutcome, StopReason, Timing,
 };
-use common::{HZ, Shutdown, drive, hold, id, info, next_snapshot, soon};
+use common::{HZ, Shutdown, drive, hold, id, info, interface, next_snapshot, soon};
 use robstride::{Drive, Frame, Mode, Model, Param, Reporting, Uid, encode};
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use telemetry::wire::{self, Frames, Stamp};
@@ -329,6 +329,7 @@ fn run_bus(label: &str, timing: Timing, control: impl FnOnce(Control<'_>) -> Pla
         let bus = can::spawn(
             BusConfig {
                 name: BUS.to_owned(),
+                interface: interface(),
                 drives: vec![drive(101, 0), drive(102, 1)],
                 timing,
             },
@@ -596,6 +597,7 @@ fn a_bus_that_ends_counts_the_slow_results_control_cant_take() {
     let bus = can::spawn(
         BusConfig {
             name: BUS.to_owned(),
+            interface: interface(),
             drives: vec![drive(101, 0)],
             timing: timing(),
         },

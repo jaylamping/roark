@@ -25,6 +25,15 @@ pub(crate) fn timing() -> Timing {
     }
 }
 
+/// A bus interface as a skeleton describes one; on `vcan` the bus layer takes the interface as it is.
+pub(crate) fn interface() -> can::InterfaceSpec {
+    can::InterfaceSpec {
+        bitrate_bps: 1_000_000,
+        sample_point: 0.75,
+        driver: "mcp251xfd".to_owned(),
+    }
+}
+
 #[expect(
     clippy::unwrap_used,
     reason = "test helper: IDs here are constants in range"

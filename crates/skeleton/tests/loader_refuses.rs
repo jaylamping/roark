@@ -18,10 +18,12 @@ buses:
   bus0:
     bitrate_bps: 1000000
     sample_point: 0.75
+    driver: mcp251xfd
     adapter_serial: null
   bus1:
     bitrate_bps: 1000000
     sample_point: 0.75
+    driver: mcp251xfd
     adapter_serial: \"ABC123\"
 limbs:
   left_arm:

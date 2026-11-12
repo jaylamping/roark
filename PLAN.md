@@ -143,7 +143,7 @@ schema: 1
 name: roark                     # the only place the robot's name appears
 power: { source: bench_24v, vbus_min_v: 22, vbus_max_v: 26 }
 buses:
-  can1: { bitrate: 1000000, sample_point: 0.75, adapter_serial: "<USB serial, for its link file>" }
+  can1: { bitrate: 1000000, sample_point: 0.75, driver: mcp251xfd, adapter_serial: null }  # serial only for a USB adapter
 limbs:
   left_arm:
     joints:

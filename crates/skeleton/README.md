@@ -44,6 +44,7 @@ buses:
   bus0:
     bitrate_bps: 1000000
     sample_point: 0.75
+    driver: mcp251xfd
     adapter_serial: null
 limbs:
   left_arm:

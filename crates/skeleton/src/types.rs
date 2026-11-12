@@ -48,6 +48,9 @@ pub struct Bus {
     pub bitrate_bps: u32,
     /// Sample point as a fraction of the bit, between 0 and 1.
     pub sample_point: f64,
+    /// The Linux driver of the interface the bus runs on, as `/sys/class/net/<bus>/device/driver` names it
+    /// (`mcp251xfd` for the MCP2518FD). The runtime refuses a real interface with another driver; `vcan` (sim) has none.
+    pub driver: String,
     /// USB serial of the adapter, for its link file (PLAN item 3). `None` until the adapter exists.
     pub adapter_serial: Option<String>,
 }
