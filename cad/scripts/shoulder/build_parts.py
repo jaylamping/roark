@@ -458,6 +458,37 @@ def hull_pts(circles, n=36, out=48):
     return np.c_[np.interp(s, seg, np.r_[P[:, 0], P[0, 0]]), np.interp(s, seg, np.r_[P[:, 1], P[0, 1]])]
 
 
+SC = bool(os.environ.get('SIDE_CENTRE'))
+SC_BEND_R = 24.0      # side-centre: the power channel bends into the yaw exit on this radius (centreline), no sharp corner
+
+
+def exit_bend(d, name):
+    """SIDE CENTRE: the 16 x 6 power channel turns from straight down (centre Z RZ) into the yaw exit (centre Y Y_EX)
+    on a SC_BEND_R arc about an axis along X, instead of the old square corner (vertical run to Y 316.6, radial exit)."""
+    ys_, za = Y_EX + SC_BEND_R, RZ + SC_BEND_R
+    pl_ = plane(d, 'Y', ys_, 'P_SC_BEND')
+    with Sk(d, pl_, name) as s_:
+        s_.poly(rect_pts((RX + P_OFF, ys_, RZ), X, Z, PW, PH))
+        s_.cline((RX - 80, ys_, za), (RX + 80, ys_, za))
+    for rev in (False, True):
+        v0, m0 = vol_com(d)
+        d.ClearSelection2(True)
+        s_.feat.Select2(False, 0)
+        f = d.FeatureManager.FeatureRevolve2(True, True, False, True, rev, False, 0, 0, math.radians(90.0), 0, False, False, 0, 0, 0, 0, 0, True, False, True)
+        d.ForceRebuild3(False)
+        v1, m1 = vol_com(d)
+        if f is not None and v0 - v1 > 1:
+            cen = (m0 - m1) / (v0 - v1)
+            if cen[1] < ys_ - 1.0:
+                f.Name = name
+                log(f'  {name}: cut {v0 - v1:.0f} mm3, centroid Y {cen[1]:.1f} Z {cen[2]:.1f} (rev={rev})')
+                return f
+        if f is not None:
+            d.EditUndo2(1)
+            d.ForceRebuild3(False)
+    log(f'  {name}: nothing to cut on the bend side')
+
+
 def ypt(r, a, y):
     return yaw_pt(r, a, y)
 
@@ -651,6 +682,8 @@ def build_fork_front():
                 'CUFF_NOTCH', Y_EX + 3 + WALL + 1.5 - (SL['y_bot'] - 1), Y, cut=True)
     except SystemExit:
         log('  CUFF_NOTCH: nothing to cut (sleeve open at the back)')
+    if SC:
+        exit_bend(d, 'EXIT_BEND')
     extrude(d, ysk(d, SEAT_Y[0] - 1, 'SEAT_BORE', lambda s: s.circle((RX, SEAT_Y[0] - 1, YZ), SEAT_RI)), 'SEAT_BORE', 12, Y, cut=True)
     extrude(d, zsk(d, ROLL_OUT - 1, 'ROLL_BORE', lambda s: s.circle((RX, RY, ROLL_OUT - 1), 10.75)), 'ROLL_BORE', 30, Z, cut=True)
     extrude(d, zsk(d, ROLL_OUT - 1, 'OUT_HOLES', lambda s: [s.circle(rpt(15.2, 30 + 60 * k, ROLL_OUT - 1), 2.25) for k in range(6)]), 'OUT_HOLES', 30, Z, cut=True)
@@ -718,7 +751,8 @@ def build_fork_rear():
             'STOP_TOOTH', (ss['z_floor'] - 2.0) - HOUSE_Z0, Z)
     # the hollow stops 1.6 short of the joint plane: a front plate, so the skin does not run out to a knife edge where the
     # outline meets the plane at a shallow angle (the cable channel cuts through the plate where the cables pass)
-    hs = [clip_sk(y_, 'rear', 2.0, 0.0, f'SLEEVE_R_IN{i}', zc=JZ0 - 1.6) for i, y_ in enumerate((SL['y_bot'] + 2.0, 322.0, 330.0, 338.0, 344.0, 349.0))]
+    hy = [y_ for y_ in (SL['y_bot'] + 2.0, 322.0, 330.0, 338.0, 344.0, 349.0) if min(q[2] for q in EV.sleeve_section(y_, 2.0)) < JZ0 - 1.6 - 1.0]
+    hs = [clip_sk(y_, 'rear', 2.0, 0.0, f'SLEEVE_R_IN{i}', zc=JZ0 - 1.6) for i, y_ in enumerate(hy)]   # SIDE CENTRE: the thin bottom stays solid
     d.ClearSelection2(True)
     for k in hs:
         k.Select2(True, 1)
@@ -730,7 +764,8 @@ def build_fork_rear():
     roll_rev(d, 'SEAT', [(0, HOUSE_Z0 + 1), (BRG_SEAT_R, HOUSE_Z0 + 1), (BRG_SEAT_R, BRG_Z[1]), (BRG_LIP_R, BRG_Z[1]), (BRG_LIP_R, RZ), (0, RZ)],
              [0, 0, 0, 0, 0, 0], cut=True)
     zc = RZ + PH / 2
-    extrude(d, zsk(d, zc, 'CH_P', lambda s: s.rpoly(rect_pts((RX + P_OFF, (RY + 9.0 + Y_EX - 3.0) / 2, zc), X, Y, PW, RY + 9.0 - (Y_EX - 3.0)), [1] * 4)),
+    ch_lo = (Y_EX + SC_BEND_R) if SC else (Y_EX - 3.0)       # SIDE CENTRE: the straight run stops where the bend starts
+    extrude(d, zsk(d, zc, 'CH_P', lambda s: s.rpoly(rect_pts((RX + P_OFF, (RY + 9.0 + ch_lo) / 2, zc), X, Y, PW, RY + 9.0 - ch_lo), [1] * 4)),
             'CH_P', PH, NZ, cut=True)
     zc = RZ + SH / 2
     sig_end = SEAT_Y[0] + WALL
@@ -739,7 +774,10 @@ def build_fork_rear():
         s.rpoly(rect_pts((RX + S_OFF, (RY + 9.0 + sig_end) / 2, zc), X, Y, SW, RY + 9.0 - sig_end), [1] * 4)
     extrude(d, zsk(d, zc, 'CH_S', ch_s), 'CH_S', SH, NZ, cut=True)
     extrude(d, zsk(d, zc, 'CH_JOIN', lambda s: s.poly(rect_pts((RX + 3.0, sig_end + 3.0, zc), X, Y, 6.0, 6.0))), 'CH_JOIN', SH, NZ, cut=True)
-    extrude(d, zsk(d, RZ - 3.0, 'EXIT_CH', lambda s: s.poly(rect_pts((RX - 6.0, Y_EX, RZ - 3.0), X, Y, 16.0, 6.0))), 'EXIT_CH', (YZ - 37.0) - RZ + 3.0 + 1, Z, cut=True, lo=-1.0)
+    if SC:
+        exit_bend(d, 'EXIT_BEND')
+    else:
+        extrude(d, zsk(d, RZ - 3.0, 'EXIT_CH', lambda s: s.poly(rect_pts((RX - 6.0, Y_EX, RZ - 3.0), X, Y, 16.0, 6.0))), 'EXIT_CH', (YZ - 37.0) - RZ + 3.0 + 1, Z, cut=True, lo=-1.0)
     extrude(d, zsk(d, BACK_Z - 4, 'JOINT_HOLES', lambda s: [s.circle((RX + dx, ym, BACK_Z - 4), 2.25) for dx in (-JX + 4.5, JX - 4.5)]), 'JOINT_HOLES', SHH + 5, Z, cut=True)
     extrude(d, zsk(d, BACK_Z - 4, 'JOINT_CB', lambda s: [s.circle((RX + dx, ym, BACK_Z - 4), 4.0) for dx in (-JX + 4.5, JX - 4.5)]), 'JOINT_CB', (JZ0 - 5.5) - (BACK_Z - 4), Z, cut=True)
     tz = YZ - 41.0

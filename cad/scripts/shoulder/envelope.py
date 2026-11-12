@@ -130,6 +130,17 @@ SLEEVE = dict(y_bot=314.5, bore_skirt=41.5, a_c=-100.0, p=1.0, top_round=4.0, ro
               x_in=48.9, shape_y=[345.0, 351.0], a_c_y=[-95.0, -100.0], p_y=[2.5, 1.0])
 
 
+# SIDE CENTRE mock-up (look-options/side_centre, Joey 2026-11-12 02:58Z: "curve that rear side and make that transition not
+# so abrupt"): below Y 350 the rear swell curves in toward the arm as it goes down (vertical at the top, about 34 deg from
+# vertical at the bottom edge, printable upright), from r 66.5 to SC_RB_BOT. Limit: the fork rear owns the sleeve behind the
+# joint plane (r 51.9 behind the axis) and keeps 2.6 mm there at the bottom edge.
+SC_RB_BOT, SC_Y_TOP = 54.5, 350.0
+if os.environ.get('SIDE_CENTRE'):
+    _ys = list(np.linspace(SLEEVE['y_bot'], SC_Y_TOP, 9))
+    _rb = [SC_RB_BOT + (66.5 - SC_RB_BOT) * (1 - ((SC_Y_TOP - y_) / (SC_Y_TOP - SLEEVE['y_bot'])) ** 2) for y_ in _ys]
+    SLEEVE['rb_ys'], SLEEVE['rb'] = _ys + [354.0], _rb + [67.0]
+
+
 def sleeve_r(a_deg, y, inset=0.0, top=0.0):
     c = SLEEVE
     ro = float(np.interp(y, c['ys'], c['ro']))
