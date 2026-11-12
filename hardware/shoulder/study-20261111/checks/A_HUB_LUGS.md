@@ -448,3 +448,11 @@ Case A re-run with a 0.5 × 45° chamfer on the six screw-hole rims at the RS02 
 - **For the arm thread and the whole-robot view:** please run the same check on every printed-to-RobStride joint (fork
   front on the RS03 roll output, the arm's hub seat, and the others).
 
+**Locating holes, built (2026-11-12):**
+- The two Ø3.8 locating holes (-142° and 38°) are in the build script for every hub.
+- Look builds:
+  - `_wip/look/hubCloc`: rev C+ with the holes, 77.3 g
+  - `_wip/look/hubD`: rev D with the holes, 78.3 g
+- The rev D candidate export is refreshed with the holes: `shoulder_hub_left_revD_candidate`.
+- The released rev C+ hub part and its exports are unchanged until the rev D decision.
+
