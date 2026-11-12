@@ -117,3 +117,21 @@ flanks are self-supporting. The 0.9-1.2 mm tip bridges between them, and it has 
 **Mesh gate.** Front PASS. Back FAIL: with the post tops at Y 295.7, only 0.45-0.48 mm of skin was left over the back posts'
 Ø6.5 bolt-head counterbores (their tops are at Y 295.25). Fix: the R1d counterbore is Ø6.0, which leaves 0.7 mm. Use a
 DIN 912 socket head (Ø5.5); a Ø5.7 button head is tight. This needs a rebuild of the print halves, so SolidWorks.
+
+## Release basis if the gap solves are not available (option D)
+
+The tapered R1d baseline (5-segment ramps, about 1.2 mm faces) meshes in 39 s, 0.93 M nodes at 0.5 mm on the ridge and groove.
+
+1. **Geometry: the ridge takes the tie before the bolts.**
+   - The 0.1 flank gap closes after 0.115 mm of axial travel.
+   - The lug bolts only bear after 0.2 mm, because the lug holes are Ø3.4 on M3. At Ø3.6, the shoulder thread's option, that
+     becomes 0.3 mm.
+   - Nothing else restrains the arm along −Y: the floor is 0.3 clear, and the posts are 0.1 clear of the lugs.
+   - So, from the first loading, the joint behaves like the nominal model (flank seated) plus a 0.115 mm rigid shift.
+2. **Strength: the nominal solves.** These are the crush ribs seated on the flank: tapered geometry, real lug-hole
+   clearance, posts 0.1 clear. They cover STOP_0, G90 and STOP_124, with worst averages and interlayer shear.
+3. **Bench limit carries the rest.** After assembly there must be no measurable axial play (under 0.05 mm). Play means
+   the ribs did not seat, the gap is open, and the load could reach the bolts first. In that case: do not proof-load, report.
+   - Staged proof to 515 N, with split-and-inspect after.
+   - What it does not cover: how the gap closes under the G90 tilt. Points far from the tilt axis move more than the
+     0.115 mm average, so a lug could touch its bolt before the whole flank seats. The 0.1 gap solve was meant to settle that.
