@@ -13,6 +13,8 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   enable, hold and a shutdown stop, recorded by `telemetry`; the recording is checked frame by frame against an
   independent `candump -L -x` capture (needs `can-utils`). Also a thread started after the schedule joining it.
 - `slow.rs`: slow requests (get-ID, a write, its read-back) reaching a drive and coming back.
+- `scan.rs`: every ID on a bus probed: a drive in the bus's table, one outside it and two sharing an ID are found and
+  nothing else answers; a set-ID moves the stray drive to a new ID, where it answers, and its old ID falls silent.
 - `faults.rs`: a fault injected into one drive is caught by the bus thread before the next send, stopping only that
   drive's limb; a drive gone silent, and one that also loses its Disable, stop their limb for the silence. The rest of
   the fault tests (PLAN item 4, "Done when") join them as the safety layer lands.

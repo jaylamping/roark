@@ -104,6 +104,8 @@ impl BusTick {
                 }
                 None => self.counters.unexpected += 1,
             },
+            // A probe or set-ID in flight takes a type-0 reply from its ID, whether or not the ID is in the table.
+            Ok(Inbound::Identity { device, uid }) if self.slow_found_reply(device, uid) => {}
             Ok(Inbound::Identity { device, uid }) => match self.slot_index(device) {
                 Some(slot) => {
                     if !self.slow_identity_reply(slot, uid) {

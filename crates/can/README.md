@@ -145,6 +145,17 @@ fault, a drop out of Run, too many misses), while control has been silent for th
 tick, with every limb idle or stopped too), or on a failed bus is refused, and one already queued is cancelled as the
 next slack opens, so slow traffic never keeps a drive alive past a stop (`canTimeout` counts from any frame).
 
+**A scan's probe and the set-ID** are slow requests too, named by ID rather than slot, since the drive they look for
+may be in no slot: `Probe(id)` sends type 0 to `id` and `SetId { old, new }` sends type 7. Each is answered by every
+type-0 reply from its ID (the probe's, or the set-ID's new one, as the manual has a drive answer type 7 with its type-0
+frame) read before the next tick's start, so a second drive with another UID on the same ID shows (`Found { uid, other }`);
+nothing from that ID is `TimedOut`, which for a probe means no drive answers there. Either goes only while every limb on
+the bus is idle, none due to stop or with a stop asked (`BusNotIdle`), since its frame reaches whichever drive holds the
+ID; one queued is cancelled as the next slack opens once that stops being so. The bus checks nothing more: the
+"exactly one drive answering" that PLAN item 2 asks before a set-ID is the requester's scan to prove, and whether the ID
+took is the requester's probes of both IDs to see. Each drive in the table the frame may have reached (the probed ID, or
+a set-ID's old and new) has its last send stamped, so a re-arm counts the drives' timeout from it.
+
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
 a drive table past `MAX_DRIVES`, a drive listed twice, a limb index past the table, and timing that breaks its
 promises (`Timing::check`, whose doc lists every rule). For one, the feedback limit plus the write slack (the send
