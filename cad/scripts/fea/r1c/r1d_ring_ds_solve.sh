@@ -6,6 +6,7 @@
 # Clean stop = stop the client, then end our session (swlib.finish). No force-kill of anything else.
 mode=${1:-saved}
 MTAG=${MTAG:-ringg01p}; CASE=${CASE:-HS_STOP_0_fine}      # model tag (UA_HUBSEAT_r1d_<MTAG>) and case
+[[ "$MTAG" == *i ]] && export R1C_INSERTS=1      # as-built insert/bolt models (tag ending in i): hub_r1c classifies the inserts and bolt heads
 cd /j/code/roark-wt/left-arm-organic
 R=J:/code/roark-wt/left-arm-organic/cad
 L=cad/_wip/r1d_ring_ds.log

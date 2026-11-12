@@ -1,0 +1,93 @@
+{
+ "fillet": "R1.2 at the lug root (lug face |Z| 5.0, spigot underside Y 296.0)",
+ "post": "face |Z| 5.1, top Y 295.7",
+ "clearance_to_fillet_mm": {
+  "none": 0.0,
+  "chamfer": 0.426,
+  "round": 0.182
+ },
+ "break_lowest_Y_on_face": 294.3,
+ "insert_hole_top_Y (front, Dia 4.0)": 294.0,
+ "clearance_hole_top_Y (back, Dia 3.4)": 293.7,
+ "fin_top_Y": 291.4,
+ "ligament_on_face_to_insert_mouth_mm": 0.3,
+ "ligament_on_face_to_back_hole_mm": 0.6,
+ "bearing": {
+  "front X148": {
+   "bearing_mm2": 48.4,
+   "removed_mm2": 7.2,
+   "removed_pct": 15.0,
+   "contact_Y": [
+    288.0,
+    295.7
+   ],
+   "contact_X": [
+    143.0,
+    151.75
+   ],
+   "post_section_bounds": [
+    137.5,
+    284.0,
+    152.0,
+    295.7
+   ]
+  },
+  "front X194": {
+   "bearing_mm2": 48.4,
+   "removed_mm2": 7.2,
+   "removed_pct": 15.0,
+   "contact_Y": [
+    288.0,
+    295.7
+   ],
+   "contact_X": [
+    189.25,
+    198.0
+   ],
+   "post_section_bounds": [
+    189.0,
+    284.0,
+    203.5,
+    295.7
+   ]
+  },
+  "back X148": {
+   "bearing_mm2": 51.8,
+   "removed_mm2": 7.2,
+   "removed_pct": 14.0,
+   "contact_Y": [
+    288.0,
+    295.7
+   ],
+   "contact_X": [
+    143.0,
+    151.75
+   ],
+   "post_section_bounds": [
+    137.5,
+    284.0,
+    152.0,
+    295.7
+   ]
+  },
+  "back X194": {
+   "bearing_mm2": 51.8,
+   "removed_mm2": 7.2,
+   "removed_pct": 14.0,
+   "contact_Y": [
+    288.0,
+    295.7
+   ],
+   "contact_X": [
+    189.25,
+    198.0
+   ],
+   "post_section_bounds": [
+    189.0,
+    284.0,
+    203.5,
+    295.7
+   ]
+  }
+ }
+}

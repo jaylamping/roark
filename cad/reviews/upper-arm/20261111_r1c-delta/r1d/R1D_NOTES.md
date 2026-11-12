@@ -244,3 +244,23 @@ Re-post-processed with the new split (files here replaced; the tapered one is `r
 - Ring STOP_0 (repeat, post/lug control): arm hub posts pass, 1.94 / 1.61 / 1.38 at 0.5 mm. Joint regions change by a few
   percent (in the notes and the report).
 - A layer average of "-" in the tables means no tensile average anywhere (all compression). It used to print as 0.00.
+
+## Slot edge break for the shoulder thread's lug-root fillet (2026-11-12, prepared, not solved, not released)
+
+The shoulder thread adds R1.2 at the hub lug roots (lug Z faces at CZ ± 5 meeting the spigot underside at Y 296). Our slot walls
+(the posts' lug-facing faces at CZ ± 5.1) run up to the floor at Y 295.7, so their top edges must be broken.
+`slot_edge_break.py` (section study plus the printed halves and rev D meshes), `slot_edge_break.json`:
+- Lug-bearing face per post: 48.4 mm² (front, with the Ø4.0 insert hole) and 51.8 mm² (back, Ø3.4 hole), contact Y 288.0-295.7.
+- Clearance to the fillet, ligament on the face above the insert mouth (Ø4.0 hole top at Y 294.0), and face area removed:
+  - 1.4 × 45° chamfer: 0.43 mm clearance, 0.3 mm ligament (back hole 0.6), 7.2 mm² removed (14-15 %).
+  - 1.4 round: 0.18 mm clearance, under the 0.2 target.
+  - 1.2 (down the face) × 1.6 (across the post top) chamfer: 0.28 mm clearance, 0.5 mm ligament (back 0.8), 6.2 mm²
+    removed (13 %), 37° from vertical as printed. Preferred.
+  - 1.1 × 1.5: 0.22 mm clearance, 0.6 mm ligament, 5.7 mm² removed.
+  - 1.0 × anything: 0.14 mm clearance, too little. The face leg (a) sets the clearance; b only sets the print angle.
+- Fins top out at Y 291.4, 2.9 below the break. No ridge, rib, end face, bore or outside surface is touched.
+- Print: the post's lug face is a ceiling over the slot when the halves print seam face down, and it already prints on support. A
+  chamfer steeper than 45° from vertical self-supports along its slope. A round's lower part runs toward horizontal and leans on
+  the ceiling's support, and it under-clears anyway. So: chamfer.
+- Prepared in code as `ARM_SLOT_BREAK="a,b"` (organic_parts.r1d_slot_break: the printed halves, and the FEA hub-seat posts),
+  along each lug's X span + 0.5. Off unless set.

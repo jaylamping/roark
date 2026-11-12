@@ -221,6 +221,28 @@ def r1d_post_trim(d):
         M.y_revolve(d, 'R1D_POST_TRIM', [(0.0, M.FLOOR_Y), (M.SEAT_R, M.FLOOR_Y), (M.SEAT_R, 296.3), (0.0, 296.3)], cut=True)
 
 
+SLOT_BREAK_X = [(142.5, 152.25), (188.75, 198.5)]      # the hub lugs' X spans (143.0-151.75, 189.25-198.0) + 0.5
+
+
+def r1d_slot_break(d, sg, zl):
+    """R1d, ARM_SLOT_BREAK="a,b" (2026-11-12, prepared, not released): break the lug slot's top edges, where each post's lug-facing
+    face (Z = zl) meets the floor / post top (Y FLOOR_Y), so they clear the R1.2 fillet the shoulder thread adds at the hub lug
+    roots (lug Z faces meeting the spigot underside at Y 296). A chamfer a down the face (Y) by b across the post top (Z), along
+    each lug's X span only, inside the seat (no outside surface). The thin end is on the face, so the print sees a slope a over b
+    (steeper than 45 deg when b > a) under the face's own support. Not near the ridge, ribs, end face or bore."""
+    v = os.environ.get('ARM_SLOT_BREAK')
+    if not (M.R1D and v):
+        return
+    a, b = (float(t) for t in v.split(','))
+    top = M.FLOOR_Y
+    for i, (x0, x1) in enumerate(SLOT_BREAK_X):
+        xm = (x0 + x1) / 2
+        name = f'SLOT_BREAK{i}{"F" if sg > 0 else "B"}'
+        with Sk(d, plane(d, 'X', xm, name + '_P'), name) as s:
+            s.poly([(xm, top - a, zl - sg * 0.3), (xm, top - a, zl), (xm, top, zl + sg * b), (xm, top + 0.3, zl + sg * b), (xm, top + 0.3, zl - sg * 0.3)])
+        feat(d, s.feat, name, x1 - x0, True, mode=MID, lo=0.01)
+
+
 def r1c_fins(d, sg, zl):
     # R1c fins: each hub post carries the hub joint's lift-off tie as Y-shear at its lug face (about 155 N per post at G90,
     # 43 MPa across the layers at a bare Dia 9 post root). A 9 mm fin from the post toward -Y (Y 276 to the post's centre),
@@ -251,6 +273,7 @@ def upper_half(front):
     if M.R1C:
         r1c_fins(d, sg, zl)
         r1d_post_trim(d)
+        r1d_slot_break(d, sg, zl)
     if front:
         z_cyl(d, 'SEAM_INSERTS', UA_POSTS, 2.0, CZ - 0.01, CZ + 6.5, True)
         z_cyl(d, 'SEAM_PILOTS', UA_POSTS, 1.6, CZ + 6.4, CZ + 10.0, True)

@@ -155,6 +155,8 @@ def build():
         for sg in (1, -1):
             OP.r1c_fins(d, sg, CZ + sg * (OP.HUB_LUG_HZ + (OP.CL if R1D else 0.0)))
         OP.r1d_post_trim(d)
+        for sg in (1, -1):
+            OP.r1d_slot_break(d, sg, CZ + sg * (OP.HUB_LUG_HZ + (OP.CL if R1D else 0.0)))      # ARM_SLOT_BREAK only
     if BOLTED and INSERTS_ON:      # the holes as in the printed halves (organic_parts.upper_half)
         OP.z_cyl(d, 'HS_BACK_HOLES', OP.HUB_COLS, 1.7, CZ - 60.0, LUG_FACE_B + 0.5, True)
         OP.z_cyl(d, 'HS_BACK_CBORES', OP.HUB_COLS, 3.0, CZ - 60.0, BOLT_SEAT, True)
