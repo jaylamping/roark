@@ -10,8 +10,8 @@ runtime exits (`ExecStopPost`, PLAN item 3). Scan, set-ID, parameter reads and c
   skeleton changes what is sent. A joint with no bus is offline and gets nothing.
 - **`disable`** opens each bus itself, one named thread (`disable-<bus>`) and one socket per bus, so a bus that is gone
   or slow never delays another (PLAN item 2, Stop). Each wake reads at most 64 frames before it steps the stop, so a
-  flooded bus still gets its Disables on time. Frames still queued are read before anything else until the stop ends
-  at 310 ms; a drive confirmed with frames still unread then is reported `unread`. Error frames are
+  flooded bus still gets its Disables on time. Frames still queued are read before any wait until the stop ends at
+  310 ms; every drive that would be ok with frames still unread then is reported `unread`. Error frames are
   read too. Bus-off fails every drive on that bus, confirmed or not, as the runtime latches on it (can.md, Errors and
   bus-off), since a late report or Run may have been lost; an RX overflow, frames known lost, makes every drive that
   would be ok `unread`. Warning, passive and ACK errors count for nothing.

@@ -10,6 +10,14 @@
 //! `can::Timing`; this crate can't depend on `can` (PLAN item 3: `disable` depends on nothing else), so each is cited
 //! here instead. The report grace and watch and `END` are this stop's own.
 
+#![cfg_attr(
+    not(target_os = "linux"),
+    expect(
+        dead_code,
+        reason = "only the Linux bus thread drives the stop from a socket; the stop and its tests build everywhere"
+    )
+)]
+
 use std::fmt;
 use std::time::Duration;
 
@@ -80,7 +88,7 @@ pub(crate) enum Drain {
 pub(crate) enum Wait {
     /// The stop is over: report.
     Done,
-    /// Frames are still queued: read them before anything else.
+    /// Frames are still queued: read them before any wait.
     DrainAgain,
     /// Wait for a frame, or until this time.
     Until(Duration),
@@ -128,7 +136,8 @@ impl BusFault {
 /// What became of one drive.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Outcome {
-    /// Read in Reset after a Disable and not seen out of it since; reporting off sent and no report read after it.
+    /// Read in Reset after a Disable and not seen out of it since; reporting off sent and no report read more than
+    /// `REPORT_GRACE` after it.
     Stopped,
     /// Nothing read from it (off, unpowered or not wired), with no bus-off read on the bus after its socket opened and
     /// its error frames readable: Disables and reporting off were sent to it anyway. Lesser error frames (warning, passive, ACK) don't
@@ -154,8 +163,8 @@ pub enum Outcome {
 }
 
 impl Outcome {
-    /// True when nothing about this drive needs a person: it is stopped, or it never answered on a bus that never went
-    /// bus-off and whose errors could be seen.
+    /// True when nothing about this drive needs a person: it is stopped, or it never answered, with no bus-off read on
+    /// its bus and its errors readable.
     #[must_use]
     pub const fn ok(self) -> bool {
         matches!(self, Self::Stopped | Self::Silent)

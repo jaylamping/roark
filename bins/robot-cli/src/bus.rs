@@ -19,7 +19,7 @@ use crate::stop::{BusFault, BusStop, Drain, DriveStop, OsError, Outcome, RESEND,
 /// The most frames one wake reads before it steps the stop. A 1 Mbit/s bus carries about 8 frames a millisecond and a
 /// wake is at most `RESEND` (4 ms) after the last, so this is twice a full bus's worth: a flooded bus still gets its
 /// Disables on time (rust.md section 4: every loop has a bound). A drain that hits it says so; before `END` the queue
-/// is read again before anything else, and at `END` the drives it could have withdrawn are reported `unread`.
+/// is read again before any wait, and at `END` every drive that would be ok is reported `unread`.
 const MAX_DRAIN: usize = 64;
 
 /// One bus's result.

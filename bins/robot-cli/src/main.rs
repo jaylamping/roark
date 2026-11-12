@@ -91,8 +91,13 @@ mod linux {
             } else {
                 ""
             };
+            let lost = if report.frames_lost {
+                ", an RX overflow among them (frames were lost)"
+            } else {
+                ""
+            };
             out(&format!(
-                "{}: {} error frames{off}",
+                "{}: {} error frames{off}{lost}",
                 report.bus, report.error_frames
             ));
         }
