@@ -180,8 +180,8 @@ mod linux {
             .name("watch".to_owned())
             .spawn(move || {
                 let mut seen = progress.load(Ordering::Acquire);
-                // Main has logged a failed READY=1 already.
-                let mut failed = !ready;
+                // Whether a failed WATCHDOG=1 has been logged.
+                let mut failed = false;
                 while !finished.load(Ordering::Acquire) {
                     // The socket never waits, so a full one drops READY=1, and a lost one would leave systemd to kill
                     // a healthy start.
@@ -189,17 +189,10 @@ mod linux {
                         && !ending.load(Ordering::Acquire)
                         && let Some(notify) = &notify
                     {
-                        match notify.send("READY=1") {
-                            Ok(()) => {
-                                ready = true;
-                                failed = false;
-                                say("told systemd READY=1 on a retry");
-                            }
-                            Err(e) if !failed => {
-                                failed = true;
-                                say(&format!("can't tell systemd READY=1 yet: {e}"));
-                            }
-                            Err(_) => {}
+                        // Main logged the first failure; the retries stay quiet until one goes.
+                        if notify.send("READY=1").is_ok() {
+                            ready = true;
+                            say("told systemd READY=1 on a retry");
                         }
                     }
                     pause();
@@ -361,7 +354,8 @@ mod linux {
         let notify = notify.map(Arc::new);
         let ending = Arc::new(AtomicBool::new(false));
         // Every thread runs: systemd may now count the service started, and its watchdog starts. Here, before the
-        // signal wait, so it comes before STOPPING=1 whenever it goes; the watcher retries it if it didn't.
+        // signal wait, so this send comes before STOPPING=1. If it fails, the watcher retries it, and a retry can
+        // rarely land after STOPPING=1 (see `watch`).
         let ready = tell(notify.as_deref(), "READY=1");
         if let Err(e) = watch(
             Arc::clone(&finished),
