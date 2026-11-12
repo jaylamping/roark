@@ -465,7 +465,8 @@ def ypt(r, a, y):
 def build_fork_front():
     d = new_part(OUT / f"{NAMES['fork_front']}.SLDPRT")
     dm = DOME
-    FB = os.environ.get('FRONT_BLEND', '')       # front-blend variants (look-options/front_blend): '1' plain, '2' wrap
+    FB = os.environ.get('FRONT_BLEND', FRONT_BLEND)   # look-options/front_blend: '3' true wrap (adopted 2026-11-12); '1'/'2' earlier variants; '0' the old cheek
+    FB = '' if FB == '0' else FB
     # FB: the two lower circles move up and out, so the cheek flares to the cuff's width; the chin / cowl below takes it in
     xl_, yl_, rl_ = (33.8, 372.0, 10.0) if FB == '3' else (22.0, 362.0, 10.0)   # FB 3: the cheek reaches the cuff's full width (+-43.8): no waist
     Y_CUT = 372.0 if FB in ('1', '2') else 392.0   # FB: the cheek is cut flat here; the chin / wrap loft continues its exact section

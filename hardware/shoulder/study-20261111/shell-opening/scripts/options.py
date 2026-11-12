@@ -82,7 +82,7 @@ def spiral(r0, r1, turns, x, n=400):
 
 # ----------------------------------------------------------------------------------------------------------------- load
 print('loading', flush=True)
-OLD = {k: trimesh.load(WIP / 'stl' / f'{k}.stl') for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'fork_cap', 'hub', 'cover')}
+OLD = {k: trimesh.load(WIP / 'stl' / f'{k}.stl') for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'hub', 'cover', 'access_plugs')}   # fork cap dropped (look option a); plugs (front blend 3)
 MOT = dict(roll_rs03=step_mesh(REPO / 'cad/vendor/robstride/vendor_robstride_rs03.stp', T_ROLL_RS03),
            rs02=step_mesh(REPO / 'cad/vendor/robstride/vendor_robstride_rs02.step', T_RS02),
            pitch_rs03=step_mesh(REPO / 'cad/reference/shoulder/torso_pitch_rs03_left.step', tol=0.4))
@@ -117,7 +117,7 @@ def shell_cut(r):
 
 # --------------------------------------------------------------------------------------------------------------- option A
 def option_a():
-    moving = {k: mv(OLD[k], S) for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'fork_cap', 'hub')}
+    moving = {k: mv(OLD[k], S) for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'access_plugs', 'hub')}
     fixed = {'cover': mv(OLD['cover'], S)}
     mot = {'roll_rs03': mv(MOT['roll_rs03'], S), 'rs02': mv(MOT['rs02'], S), 'pitch_rs03': mv(MOT['pitch_rs03'], S)}
     # cable route (rev A): feed up the void, run under the cover, loop in the channel, trunk over the drum, cap channel,
@@ -168,7 +168,7 @@ def option_b():
     dm = mv(tess(dr, 0.2), S + B_SHIFT)
     web = pitch_ring(22.0, 46.0, x_end + 2.0, drum_x_now + B_SHIFT + 4.0)
     moving = {'drum': dm, 'web': web, 'hub_tube': hub}
-    for k in ('cap', 'fork_front', 'fork_rear', 'fork_cap', 'hub'):
+    for k in ('cap', 'fork_front', 'fork_rear', 'access_plugs', 'hub'):
         moving[k] = mv(OLD[k], S + B_SHIFT)
     mot = {'roll_rs03': mv(MOT['roll_rs03'], S + B_SHIFT), 'rs02': mv(MOT['rs02'], S + B_SHIFT), 'pitch_rs03': mv(MOT['pitch_rs03'], S)}
     # feed: up the void under the step, outboard under the housing inside the shell, along the housing bottom in the r 53-60

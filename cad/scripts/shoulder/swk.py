@@ -102,13 +102,20 @@ def save(d):
 def export(d, path, stl_fine=True):
     sw = app()
     old = sw.GetUserPreferenceIntegerValue(78)
+    od2, od3 = sw.GetUserPreferenceDoubleValue(2), sw.GetUserPreferenceDoubleValue(3)
     if stl_fine:
-        sw.SetUserPreferenceIntegerValue(78, 2)
+        # custom: 0.01 mm deviation, 3 deg angle (the 'fine' preset left sliver triangles at face boundaries, which the
+        # pictures' 40 deg feature-edge pass drew as lines across smooth blends)
+        sw.SetUserPreferenceIntegerValue(78, 3)
+        sw.SetUserPreferenceDoubleValue(2, 1e-5)
+        sw.SetUserPreferenceDoubleValue(3, 0.0524)
     try:
         e, w = L(), L()
         ok = d.Extension.SaveAs(str(path), 0, 1, NUL, e, w)
     finally:
         sw.SetUserPreferenceIntegerValue(78, old)
+        sw.SetUserPreferenceDoubleValue(2, od2)
+        sw.SetUserPreferenceDoubleValue(3, od3)
     log('  export', Path(path).name, ok, e.value)
     return ok
 

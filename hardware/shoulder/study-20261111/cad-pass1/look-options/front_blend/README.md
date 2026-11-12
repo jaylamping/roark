@@ -84,3 +84,56 @@ plane):
   driver's way.
 
 **Masses:** variant 2 fork front 137.7 g plus plugs 0.7 g (current 144.6). Variant 1: 137.6 g.
+
+
+## Variant 3: true wrap (2026-11-12), adopted
+
+Joey on variant 2: *"I kind of like variant two, wrapping around the cuff.. if it actually wrapped around the cuff.. that
+joint looks sickly to me"*. Variant 3 is built as the coordinator specified. Joey on the result: *"that looks much better"*.
+It is now the real fork front (`FRONT_BLEND = '3'` in `dims.py`).
+
+![sheet v3](SHEET_front_blend_v3.png)
+
+Rows: front close-up (framed like Joey's screenshot), front, front three-quarter with the arm, side, back three-quarter.
+Columns: the old fork front, variant 3.
+
+**How it is built** (`build_fork_front`, `FB == '3'`):
+- The cheek's two lower hull circles move out and up (X ±33.8, Y 372, r 10), so the cheek reaches the cuff's full width.
+- **One loft (`WRAP`)** runs from the cuff's whole front half (±90° about the yaw axis) at Y 354, below the cuff's top
+  round, up into the cheek's exact crowned section at Y 392.5, and on 6 mm inside the cheek.
+  - No chin is glued on, and there is no section line at Y 372.
+  - The skirt wraps the front of the cuff and fades into the cuff's top edge toward the back.
+- **Section matching:** each loft section is matched at four anchors: top centre, outboard side, bottom centre, inboard
+  side. Before this, the start point was the highest point, which on the flat cheek sat 35 mm off centre. The cuff's
+  side then ran into the cheek's crown, which made the waist.
+- **Blend curve:** a soft-start ease-out. It leaves the cuff tangentially, then reaches the cheek's shape early. That
+  keeps the front skin at least 4.4 mm above the drum cut where the drum's 59 mm circle widens. Smoothstep left 0.7 mm
+  there, and the drum cut broke through as two slits.
+- **Clearance cuts after the loft:**
+  - the drum's 2 mm envelope: everything within 59 of the roll axis, behind Z 38.5, below Y 392
+  - the RS02 rear cap: r 34.5 below Y 367.3
+  - the two Ø7 RS02 access bores at 64° and 104°
+- **The RS02 screws cannot move:** the RS02 hole pattern is fixed (5 of PCD 73, MEASUREMENTS.md row D). The plugs stay
+  as in variant 2: Ø6.9, 7 deep, trimmed to the dome, with a pry notch.
+- **The faint lines** in the old pictures were the renderer's 40° feature-edge pass catching sliver triangles at STL face
+  boundaries. The real slope change there is 6° or less. STL export is now custom (0.01 mm, 3°).
+
+**Results:**
+
+| | Old fork front | Variant 3 |
+|---|---|---|
+| Mass (g) | 144.6 | **150.5** + plugs 0.7 |
+| Narrowest section modulus on the roll load path (front half, Y-cuts) | 4834 at Y 394.5 (the dome) | **6782** at Y 395.5 |
+| Drum ↔ fork front | 3.00 | **2.0** (1.98 sampled; the designed 2 mm envelope) |
+| Ring ↔ fork front at -11 | 2.20 | 2.13 (1.06 at -12, past the stop) |
+| Cuff ↔ hub | 2.13 | 2.11 |
+| Port cap ↔ fork front | 9.8 | 2.63 |
+| Fork front ↔ roll RS03 | | 4.51 |
+| Shell skin at -11, pitch -30 (r 80 opening) | 2.29 | 2.27 |
+
+- The section modulus is measured on the same front-half Y-cuts as variant 2. The old part read 6088 just above the seat
+  (Y 363) with these cuts; its weakest link was the dome at Y 394.5.
+- Variant 3 is above the 6088 target everywhere: the wider cheek also stiffens the dome's narrowest cut.
+- `clearance_fb3.json` holds the full moving-pair sweep. Every other pair is unchanged within sampling. The cap ↔ fork rear
+  0.03 is the stop tooth, the intended contact.
+- Script: `../../scripts/render_front_blend.py` with `FB_SET=3`.

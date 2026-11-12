@@ -152,7 +152,7 @@ def sleeve_r(a_deg, y, inset=0.0, top=0.0):
         f0, f1 = c['round_free']
         t = min(1.0, max(0.0, (da - f0) / (f1 - f0)))
         k_ = t * t * (3 - 2 * t)                       # rounded top edge at the front and sides, none where the arm rises
-        if os.environ.get('FRONT_BLEND'):
+        if os.environ.get('FRONT_BLEND', FRONT_BLEND) not in ('', '0'):
             # front blend: no top round across the front, where the chin carries the cheek into the cuff
             df = abs(((a_deg - 90.0) + 180.0) % 360.0 - 180.0)
             tf = min(1.0, max(0.0, (df - 35.0) / 25.0))

@@ -40,6 +40,7 @@ POCKET_Z = (DRUM_Z0 + 9.5, LIP_Z0 - 3.0)   # SMOOTH: start deeper, the cap screw
 DRUM_CROWN = [(DRUM_Z0, 54.5), (-24.0, 56.2), (-14.0, 57.0), (14.0, 57.0), (27.0, 56.2), (33.0, 55.2), (LIP_Z1, 54.5)]
 LOOK = os.environ.get('LOOK', '')
 SHAPE_A = True       # look option a, chosen by Joey 2026-11-11 20:01Z (look-options/OPTIONS.md)
+FRONT_BLEND = '3'    # front blend variant 3, the true wrap: adopted by Joey 2026-11-12 02:54Z (look-options/front_blend)
 if SHAPE_A:
     # option a (match the arm): the drum as a bobbin like the forearm cheeks (forearm_organic_cheek_*: rolled rims at both
     # ends, a slightly smaller middle). Never above the round-1 r 57, so every clearance to the drum holds.

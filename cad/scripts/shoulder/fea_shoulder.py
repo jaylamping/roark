@@ -27,6 +27,7 @@ RUNS = F / 'fea_runs.json'
 I = lambda v=0: VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, v)
 EX, NU, YIELD, LAYER, RHO = 1.9e9, 0.38, 45.0, 0.5, 1270.0
 PARTS = {'hub': F / os.environ.get('HUB_FEA_FILE', 'hub_fea.SLDPRT')}   # a second solve stream uses its own copy
+PARTS['fork'] = F / os.environ.get('FORK_FEA_FILE', 'fork_fea.SLDPRT')   # fork front + fork rear, two bodies (fork_fea_part.py)
 
 
 def cyl(r, box):
@@ -182,7 +183,12 @@ def run(name, c):
     loaded = []
     rems = ([c['remote'] + (c.get('coupling', 0),)] if 'remote' in c else []) + [tuple(x) for x in c.get('remotes', [])]
     for sel, at, f, mm_, cpl in rems:
-        fs = [x for s_ in (sel if isinstance(sel, list) else [sel]) for x in pick(d, s_)]
+        fs, seen_ = [], set()
+        for x in [x for s_ in (sel if isinstance(sel, list) else [sel]) for x in pick(d, s_)]:
+            k_ = tuple(round(v, 3) for v in info(x)[3])
+            if k_ not in seen_:
+                seen_.add(k_)
+                fs.append(x)
         loaded += fs
         err = I()
         r = lbc.AddRemoteLoad(1, fs, 0, at[0], at[1], at[2], err)
@@ -210,7 +216,7 @@ def run(name, c):
         so_ = st.StaticStudyOptions
         try:
             so_.UseSoftSpring = 1
-            so_.SolverType = 7
+            so_.SolverType = int(os.environ.get('FEA_SOLVER', '7'))   # 7 Intel direct sparse; 2 FFEPlus (iterative) if direct runs out of memory
         except Exception as e_:
             print(' study options failed', e_, flush=True)
     opts = {}      # defaults this script does not set: logged so runs on different machines can be compared
@@ -260,6 +266,30 @@ def run(name, c):
     s = np.array(s[0] if isinstance(s, tuple) and len(s) == 2 else s, float).reshape(-1, 12)
     pos = np.array([xyz[int(i)] for i in s[:, 0]])
     np.savez(str(F / (name + '.npz')), pos=pos, s=s)      # saved first: the fixture readback below has failed on contact models
+    extra = {}
+    if c.get('react') or c.get('disp'):
+        try:
+            err = I()
+            u = res.GetDisplacement(0, 1, NUL, 0, err)
+            u = np.array(u[0] if isinstance(u, tuple) and len(u) == 2 else u, float).reshape(-1, 5)
+            upos = np.array([xyz[int(i)] for i in u[:, 0]])
+            extra['u_max'] = round(float(u[:, 4].max()), 4)
+            for k_, box in c.get('disp', {}).items():         # mean displacement (as the solver reports it) of the nodes in a box
+                mk = np.all((upos >= np.array(box[:3])) & (upos <= np.array(box[3:])), axis=1)
+                extra['u_' + k_] = [round(float(v), 4) for v in u[mk, 1:5].mean(axis=0)] + [int(mk.sum())]
+            np.savez(str(F / (name + '_u.npz')), pos=upos, u=u)
+        except Exception as ex:
+            extra['u_err'] = str(ex)[:120]
+        for k_, sels in c.get('react', {}).items():
+            try:
+                fs_ = [x for s_ in sels for x in pick(d, s_)]
+                err = I()
+                r_ = res.GetReactionForcesAndMoments(1, NUL, fs_, 0, err)
+                r_ = r_[0] if isinstance(r_, tuple) and len(r_) == 2 else r_
+                extra['R_' + k_] = [round(float(v), 2) for v in list(r_)[:8]] + [len(fs_), err.value]
+            except Exception as ex:
+                extra['R_' + k_ + '_err'] = str(ex)[:120]
+        print(' extra', extra, flush=True)
     try:
         err = I()
         q = res.GetStressForEntities2(True, 9, 1, NUL, fixed, 3, err)
@@ -281,7 +311,7 @@ def run(name, c):
     vm = s[:, 10]
     np.savez(str(F / (name + '.npz')), pos=pos, s=s)
     i = np.flatnonzero(away)[np.argmax(vm[away])]
-    out = dict(case=name, part=c['part'], el=el, nodes=int(mesh.NodeCount), elements=int(mesh.ElementCount), peak_vm=round(float(vm.max()), 2), vm=round(float(vm[i]), 2), at=pos[i].round(1).tolist(), sf=round(YIELD / float(vm[i]), 2))
+    out = dict(extra, case=name, part=c['part'], el=el, nodes=int(mesh.NodeCount), elements=int(mesh.ElementCount), peak_vm=round(float(vm.max()), 2), vm=round(float(vm[i]), 2), at=pos[i].round(1).tolist(), sf=round(YIELD / float(vm[i]), 2))
     for label, n in (('x', (1, 0, 0)), ('y', (0, 1, 0)), ('z', (0, 0, 1))):
         ln = layer(pos, s[:, 1:7], None, n, None)
         j = np.flatnonzero(away)[np.argmax(ln[away])]
@@ -482,6 +512,24 @@ for k_ in ('A', 'B'):
 for k_, pre_ in (('A', 690.0), ('B', 690.0), ('Ah', 345.0)):
     base_ = CASES['HUBD_' + k_[0]]
     CASES['HUBB_' + k_] = dict(base_, dummy=dict(base_['dummy'], bolts=True), pre_mesh=bolt_setup(pre_), stabilise=True)
+
+# (c) roll joint load share and deflection. The fork front and fork rear as two bonded bodies (fork_fea_part.py). The
+# arm load of check (a) (310 N down, 23 N.m bending, 17 N.m yaw torque at the hub point) goes in through the RS02 seat
+# (seat face and the five screw holes, rigid). RS03 output: the boss face bolted to it, fixed (a rigid output bearing).
+# 'free': no 6808 (all load to the RS03); 'brg': 6808 seat held radially (rigid stub, outer race floating axially), its
+# reaction is the 6808's share. The truth sits between these two and the pinned-RS03 statics (written in checks/).
+FK_BOSS = pl((RX + 16.0, RY, ROLL_OUT))
+FK_SEAT6808 = cyl(26.0, [RX - 27, RY - 27, -47.4, RX + 27, RY + 27, -40.7])
+_sa = [-150.0, -116.0, -76.0, 84.0, 130.0]
+FK_RS02 = [pl((RX + 37.0 * math.cos(math.radians(a_)), SEAT_Y[0], YZ + 37.0 * math.sin(math.radians(a_)))) for a_ in _sa] +           [cyl(1.8, [RX - 45, SEAT_Y[0] - 6, YZ - 45, RX + 45, SEAT_Y[1] + 0.1, YZ + 45])]
+FK_DISP = dict(seat6808=[RX - 27, RY - 27, -47.4, RX + 27, RY + 27, -40.7], rs02_seat=[RX - 45, SEAT_Y[0] - 0.2, YZ - 45, RX + 45, SEAT_Y[0] + 0.2, YZ + 45],
+               cheek_top=[RX - 50, RY + 45, 38.0, RX + 50, RY + 60, 50.0], rear_top=[RX - 40, RY + 25, -57.0, RX + 40, RY + 40, -45.0])
+for tag, f_, mom in (('MX', (0.0, -310.0, 0.0), (23.0, YAW_T, 0.0)), ('MZ', (0.0, -310.0, 0.0), (0.0, YAW_T, 23.0)),
+                     ('G', (0.0, -100.0, 0.0), (0.0, 0.0, 0.0)), ('GZ', (0.0, 0.0, -100.0), (0.0, 0.0, 0.0)), ('GX', (-100.0, 0.0, 0.0), (0.0, 0.0, 0.0))):
+    for sup in ('free', 'brg'):
+        CASES[f'FORK_{tag}_{sup}'] = dict(part='fork', fix=[('fixed', FK_BOSS)] + ([('radial', FK_SEAT6808)] if sup == 'brg' else []),
+                                          remote=(FK_RS02, AT, f_, mom), coupling=0, el=2.5, disp=FK_DISP,
+                                          react=dict(boss=[FK_BOSS], **({'seat6808': [FK_SEAT6808]} if sup == 'brg' else {})))
 
 if __name__ == '__main__':
     for n in sys.argv[1:]:

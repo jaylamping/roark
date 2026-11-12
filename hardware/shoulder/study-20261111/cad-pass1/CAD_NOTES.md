@@ -494,3 +494,25 @@ The hub as committed at fd0cef8 (rev C+, wall fill to r 23). The working copy is
 
 - The seam-bolt (lug) holes in the hub are Ø3.4 (r 1.7), for M3 bolts (r 1.5).
 - Bounds (mm, model frame): X 131.19-209.79, Y 288.00-319.86, Z -33.31-45.29.
+
+## Front blend 3: the true wrap, adopted (2026-11-12)
+
+- Joey chose variant 3 (02:54Z: *"that looks much better"*). The fork front is now one loft from the cuff's front half
+  into the cheek (`FRONT_BLEND = '3'` in `dims.py`; `FRONT_BLEND=0` builds the old cheek).
+- Details, clearances and the section modulus: [look-options/front_blend/README.md](look-options/front_blend/README.md).
+- **New part:** `shoulder_fork_access_plugs_left`, two press-in plugs for the RS02 access bores, 0.7 g.
+- **Masses:**
+  - fork front 150.5 g (+5.9 against 144.6), plugs 0.7 g
+  - shoulder total **640.4 g**
+- **Clearances:**
+  - drum ↔ fork front 2.0, the designed envelope (was 3.0)
+  - ring ↔ fork front 2.13 at -11
+  - cuff ↔ hub 2.11
+  - port cap ↔ fork front 2.63
+- **Shell and frame:** the shell at the -11 stop clears by 2.27 at pitch -30 (was 2.29). The rest of the rev A sweep was
+  still running when this was written; see the next update.
+- **Pictures:** D1-D3 and D5-D10 re-rendered with the wrap and the plugs. D4 is the first-pass comparison and is left as it
+  was.
+- **STL export:** custom 0.01 mm / 3° (`swk.export`). The 'fine' preset left sliver triangles that the pictures' 40°
+  feature-edge pass drew as false lines.
+
