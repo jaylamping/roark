@@ -14,7 +14,7 @@ for f in sys.argv[1:]:
     d = np.load(f)
     p, s = d['pos'], d['s']
     r = np.hypot(p[:, 0] - HX, p[:, 2] - CZ)
-    on = np.abs(p[:, 1] - 302.0) < 0.03
+    on = np.abs(p[:, 1] - float(__import__("os").environ.get("EF_Y", "302.0"))) < 0.03      # EF_Y: the bearing plane (R1e shim: 301.3 arm-shim, 302.0 shim-disc)
     band = on & (r > 36.45) & (r < float(__import__("os").environ.get("EF_ROUT", "38.45")))      # 2026-11-12: the real common annulus with the rev D disc is r 36.4-38.7 (38.5 at theta 180); was 37.55
     edge = on & (r >= 36.35) & (r <= 36.45)
     sy = s[:, 2]

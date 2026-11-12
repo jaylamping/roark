@@ -43,6 +43,12 @@ else:            # bolts bonded in a Dia 3.0 bore, Z CZ + 4 +- 32
         return (rb_all < 1.5 - m) & (zz > CZ - 28.0 + m) & (zz < CZ + 36.0 - m)
     def brass_in(m):
         return np.zeros(N, bool)
+SHIM_T = float(_os.environ.get('R1C_SHIM', '0'))      # R1e shim ring as its own body (r 36.2-38.4, Y 302 - t to 302)
+def shim_in(m):
+    if SHIM_T <= 0:
+        return np.zeros(N, bool)
+    rr = np.hypot(p[:, 0] - HX, zz - CZ)
+    return (rr > 36.2 + m) & (rr < 38.4 - m) & (yy > 302.0 - SHIM_T + m) & (yy < 302.0 - m)
 def pad_in(m):
     k = np.zeros(N, bool)
     for x0, dz in PAD_PTS:
@@ -59,12 +65,13 @@ lab[sd > 0.2] = 1
 lab[steel_in(0.05)] = 2
 lab[brass_in(0.05)] = 3
 lab[pad_in(0.05)] = 4
-lab[(lab == 0) & (steel_in(-0.05) | brass_in(-0.05) | pad_in(-0.05))] = -1      # near a small body's surface: decide by node order
-small_in = steel_in(0.05) | brass_in(0.05) | pad_in(0.05)
-compat = np.zeros((5, N), bool)      # which bodies a node can geometrically belong to (interface nodes: more than one)
+lab[shim_in(0.05)] = 5
+lab[(lab == 0) & (steel_in(-0.05) | brass_in(-0.05) | pad_in(-0.05) | shim_in(-0.05))] = -1      # near a small body's surface: decide by node order
+small_in = steel_in(0.05) | brass_in(0.05) | pad_in(0.05) | shim_in(0.05)
+compat = np.zeros((6, N), bool)      # which bodies a node can geometrically belong to (interface nodes: more than one)
 compat[0] = (sd < 0.15) & ~small_in
 compat[1] = (sd > -0.15) & ~small_in
-compat[2] = steel_in(-0.05); compat[3] = brass_in(-0.05); compat[4] = pad_in(-0.05)
+compat[2] = steel_in(-0.05); compat[3] = brass_in(-0.05); compat[4] = pad_in(-0.05); compat[5] = shim_in(-0.05)
 cert = np.flatnonzero(lab >= 0)
 body = lab.copy()
 if len(cert):
@@ -80,15 +87,15 @@ if len(cert):
         k = int(np.argmin(bad_a + bad_b))
         body[seg[:k]] = A; body[seg[k:]] = B
 body = body.astype(np.int8)
-bad_arm = (body == 0) & ((sd > 0.15) | steel_in(0.05) | brass_in(0.05) | pad_in(0.05))
-bad_hub = (body == 1) & ((sd < -0.15) | steel_in(0.05) | brass_in(0.05) | pad_in(0.05))
+bad_arm = (body == 0) & ((sd > 0.15) | small_in)
+bad_hub = (body == 1) & ((sd < -0.15) | small_in)
 if bad_arm.any() or bad_hub.any():
     for k in np.flatnonzero(bad_arm | bad_hub)[:10]:
         print('GUARD: node', k, p[k].round(3).tolist(), 'assigned', ['arm', 'hub'][body[k]], 'sd', round(float(sd[k]), 3), 'r from bolt', round(float(rb_all[k]), 3))
     raise SystemExit(f'GUARD FAILED: {int(bad_arm.sum())} arm and {int(bad_hub.sum())} hub nodes lie inside another body')
 runs = np.flatnonzero(np.diff(body)) + 1
 blocks = [(int(a), int(b - 1), int(body[a])) for a, b in zip(np.r_[0, runs], np.r_[runs, N])]
-names = ['arm', 'hub', 'steel', 'brass', 'pad']
+names = ['arm', 'hub', 'steel', 'brass', 'pad', 'shim']
 big = [f'{names[c]} {a}-{b}' for a, b, c in blocks if b - a > 50]
 print(f'bodies by geometry + node order ({len(blocks)} runs, {sum(b - a <= 50 for a, b, c in blocks)} of 50 nodes or fewer): ' + ', '.join(big))
 print(f'GUARD OK: no arm or hub node inside another body (unsure nodes decided by node order: {int((lab < 0).sum())})')
