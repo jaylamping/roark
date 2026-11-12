@@ -379,8 +379,14 @@ Case A re-run with a 0.5 × 45° chamfer on the six screw-hole rims at the RS02 
    - Two of the six at 180° are enough; six gives margin.
    - Cost: about 1 each. **The hub screw holes are in the frozen interface,** so this needs the arm thread's agreement:
      Ø4.3 → Ø5.0 reamed.
-2. **Dowel pins** (Ø3 h6) in extra holes, if the RS02 output flange has spare tapped or plain holes. Its vendor model
-   should be checked for them. This keeps the six screw holes as they are.
+2. **Dowel pins in the RS02's own locating holes: preferred if the arm thread keeps the screw holes frozen.**
+   - The vendor RS02 output flange has, besides the six tapped M4 (Ø3.3 at -142, -82, -22, 38, 98, 158°), **three plain
+     Ø4.0-4.1 holes at -172, -52 and 68° on the same r 12**, 120° apart, at least 2 mm deep from the face.
+   - Ø4 m6 × 10 dowels there, engaging three new printed bosses in the hub's lightening pocket (tube r 2.0-4.4 like the
+     screw bosses, Y about 312-319.86, holes printed Ø3.8 and reamed Ø4.0).
+   - This locates the yaw torque with no backlash and leaves the six screw holes as they are.
+   - Bearing: 17 N·m / (3 × 12 mm) = 472 N per dowel, on a Ø4 × 7 wall = 17 MPa. That is in the layer plane for a
+     vertical boss, so acceptable, but the bosses should be at least 7 mm deep.
 3. **Not enough on its own: larger washers to raise the allowable preload.** The boss OD (8.8 mm) limits the bearing
    area. Even at 0.69 kN the friction margin is only 1.31, and creep takes it away.
 
