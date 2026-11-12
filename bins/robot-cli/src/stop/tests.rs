@@ -53,7 +53,7 @@ fn run(
 ) -> Run {
     let mut log = Vec::new();
     let mut now = Duration::ZERO;
-    while !stop.done(now) {
+    while stop.wait(now) != Wait::Done {
         for inbound in answer(ms(now), &log) {
             stop.heard(now, &inbound);
         }
@@ -278,7 +278,7 @@ fn socket_failures_and_error_frames_need_a_person() {
     let mut unseen = BusStop::new([id(11)]);
     unseen.cant_see_errors(OsError(92));
     let (_, end) = run(&mut unseen, &|_, _| Vec::new(), &|_, _| Ok(()));
-    assert_eq!(outcomes(&unseen, end), [Outcome::SilentOnFaultyBus]);
+    assert_eq!(outcomes(&unseen, end), [Outcome::SilentErrorsUnseen]);
     let mut lesser = BusStop::new([id(11)]);
     lesser.heard_error_frame(0x04);
     lesser.heard_error_frame(0x20);
@@ -289,7 +289,8 @@ fn socket_failures_and_error_frames_need_a_person() {
 
 /// Guards: safety - a drive is reported stopped only on what was read (PLAN item 2, Stop): frames still queued when
 /// the stop ends (a drain stopped at its bound) may hold a Run that withdraws a Reset, so a confirmed drive then needs
-/// a person; before the end, queued frames are read before anything else.
+/// a person; before the end, queued frames are read before anything else; and a stop cut before a drive's watch ends
+/// doesn't report it stopped.
 #[test]
 fn frames_left_unread_when_the_stop_ends_need_a_person() {
     let echo = |now: u64, sent: &Sent| -> Vec<Inbound> {
@@ -311,4 +312,12 @@ fn frames_left_unread_when_the_stop_ends_need_a_person() {
     assert_eq!(early.wait(MS), Wait::DrainAgain);
     early.drained(Drain::Emptied);
     assert_eq!(early.wait(MS), Wait::Until(RESEND));
+
+    // Read in Reset, then cut before its reporting off's watch ends.
+    let mut cut = BusStop::new([id(11)]);
+    cut.step(Duration::ZERO, &mut |_| Ok(()));
+    cut.heard(MS, &from(11, false, false));
+    let off = MS + SILENCE + RESEND;
+    cut.step(off, &mut |_| Ok(()));
+    assert_eq!(outcomes(&cut, off + MS), [Outcome::WatchCut]);
 }

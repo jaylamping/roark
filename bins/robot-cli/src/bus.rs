@@ -14,14 +14,12 @@ use socketcan::{
 };
 
 use crate::BusTargets;
-use crate::stop::{
-    BusFault, BusStop, Drain, DriveStop, END, OsError, Outcome, RESEND, SendError, Wait,
-};
+use crate::stop::{BusFault, BusStop, Drain, DriveStop, OsError, Outcome, RESEND, SendError, Wait};
 
 /// The most frames one wake reads before it steps the stop. A 1 Mbit/s bus carries about 8 frames a millisecond and a
 /// wake is at most `RESEND` (4 ms) after the last, so this is twice a full bus's worth: a flooded bus still gets its
-/// Disables on time (rust.md section 4: every loop has a bound). A drain that hits it says so, and the stop isn't
-/// finished while frames are still queued.
+/// Disables on time (rust.md section 4: every loop has a bound). A drain that hits it says so; before `END` the queue
+/// is read again before anything else, and at `END` the drives it could have withdrawn are reported `unread`.
 const MAX_DRAIN: usize = 64;
 
 /// One bus's result.
@@ -149,10 +147,6 @@ fn run(t: &BusTargets) -> BusReport {
         }
         let now = start.elapsed();
         stop.step(now, &mut send);
-        if now >= END + RESEND {
-            // `wait` ends the stop by `END`, so this is only reached if steps stop being taken in time.
-            return report(t, &stop, now);
-        }
         let next = match stop.wait(now) {
             Wait::Done => return report(t, &stop, now),
             Wait::DrainAgain => continue,
@@ -186,26 +180,39 @@ fn run(t: &BusTargets) -> BusReport {
     }
 }
 
-/// Read the frames queued, at most `MAX_DRAIN`, handing each to the stop.
+/// Read the frames queued, at most `MAX_DRAIN` and one more to tell a full queue from an emptied one, handing each to
+/// the stop.
 fn drain(socket: &CanSocket, stop: &mut BusStop, start: Instant) -> Result<Drain, OsError> {
-    for _ in 0..MAX_DRAIN {
+    for n in 0..=MAX_DRAIN {
         match socket.read_frame() {
-            Ok(CanFrame::Data(frame)) => {
-                if let Id::Extended(id) = frame.id()
-                    && let Ok(inbound) = decode(id.as_raw(), frame.data())
-                {
-                    stop.heard(start.elapsed(), &inbound);
+            Ok(frame) => {
+                heard(stop, start, &frame);
+                if n == MAX_DRAIN {
+                    return Ok(Drain::Capped);
                 }
             }
-            Ok(CanFrame::Error(frame)) => stop.heard_error_frame(frame.error_bits()),
-            // A remote frame carries no drive's word.
-            Ok(CanFrame::Remote(_)) => {}
             Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(Drain::Emptied),
             Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
             Err(e) => return Err(OsError::from(&e)),
         }
     }
     Ok(Drain::Capped)
+}
+
+/// Hand one frame read to the stop.
+fn heard(stop: &mut BusStop, start: Instant, frame: &CanFrame) {
+    match frame {
+        CanFrame::Data(frame) => {
+            if let Id::Extended(id) = frame.id()
+                && let Ok(inbound) = decode(id.as_raw(), frame.data())
+            {
+                stop.heard(start.elapsed(), &inbound);
+            }
+        }
+        CanFrame::Error(frame) => stop.heard_error_frame(frame.error_bits()),
+        // A remote frame carries no drive's word.
+        CanFrame::Remote(_) => {}
+    }
 }
 
 fn write(socket: &CanSocket, frame: Frame) -> Result<(), SendError> {

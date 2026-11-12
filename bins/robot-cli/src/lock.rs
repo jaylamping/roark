@@ -25,7 +25,8 @@ pub enum LockError {
     #[error("{0} is held: a runtime (or another disable) is running")]
     Held(PathBuf),
     /// It doesn't exist: no runtime using this path is running (the runtime makes it at start; `/run` is cleared at
-    /// boot, and systemd removes `/run/robot` after the runtime and its `ExecStopPost` end).
+    /// boot, and systemd removes `/run/robot` once the runtime is stopped, after its `ExecStopPost`, but not before an
+    /// automatic restart).
     #[error("{0} doesn't exist: no runtime using it is running")]
     Missing(PathBuf),
     /// It exists but couldn't be opened or locked (permissions, for one): whether a runtime holds it isn't known.

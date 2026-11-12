@@ -10,7 +10,8 @@ runtime exits (`ExecStopPost`, PLAN item 3). Scan, set-ID, parameter reads and c
   skeleton changes what is sent. A joint with no bus is offline and gets nothing.
 - **`disable`** opens each bus itself, one named thread (`disable-<bus>`) and one socket per bus, so a bus that is gone
   or slow never delays another (PLAN item 2, Stop). Each wake reads at most 64 frames before it steps the stop, so a
-  flooded bus still gets its Disables on time, and the stop isn't over while frames are still queued. Error frames are
+  flooded bus still gets its Disables on time. Frames still queued are read before anything else until the stop ends
+  at 310 ms; a drive confirmed with frames still unread then is reported `unread`. Error frames are
   read too; bus-off is the class that counts, as in the runtime (can.md, Errors and bus-off): it fails every drive on
   that bus, confirmed or not, since a late report or Run may have been lost.
 - **`stop::BusStop`** is one bus's stop as plain values, timed from when it began:
@@ -74,10 +75,10 @@ robot-cli disable --skeleton /etc/robot/skeleton.yaml --json   # the same, as on
 
 `--json` prints `{build, buses: [{bus, fault: {kind, detail} | null, error_frames, bus_off, errors_unseen, drives:
 [{id, joint, outcome, ok, disables, reset_ms, reporting_offs, reporting_off_ms}]}], need_a_person, drive_count}`.
-`outcome` is one of `stopped`, `silent`, `silent_on_faulty_bus`, `not_reset`, `still_reporting`, `watch_cut`, `unread`,
+`outcome` is one of `stopped`, `silent`, `silent_errors_unseen`, `not_reset`, `still_reporting`, `watch_cut`, `unread`,
 `queue_full` and `bus_failed`; `fault.kind` one of `open`, `spawn`, `write` and `read`. A refusal prints no document.
 
-Exit 0 when every drive was read in Reset or never answered on a bus that never went bus-off; 1 when any drive needs a person; 2 when it
+Exit 0 when every drive is `stopped` or `silent`; 1 when any drive needs a person; 2 when it
 refused (a runtime holds the lock, or the lock can't be checked, bad arguments, or a skeleton that won't load).
 
 One bus's stop, driven by hand: a drive read in Reset gets its reporting off once its silence is over.

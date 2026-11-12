@@ -3,7 +3,7 @@
 //! `robot-cli disable [--skeleton <file>] [--lock <file>] [--json]`: Disable, then active reporting off, to every
 //! drive the skeleton wires to a bus, each bus on its own socket and thread. Refuses while the runtime holds its lock,
 //! or when it can't tell whether it does. Prints one line per drive to stdout, or one JSON document with `--json`.
-//! Exit 0 when every drive was read in Reset or never answered on a bus that never went bus-off; 1 when any drive needs a person; 2
+//! Exit 0 when every drive is stopped or silent; 1 when any drive needs a person; 2
 //! when it refused or couldn't start.
 
 #[cfg(target_os = "linux")]

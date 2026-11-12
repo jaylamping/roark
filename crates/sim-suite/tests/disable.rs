@@ -353,7 +353,18 @@ fn after_kill_9_disable_leaves_every_drive_in_reset_with_reporting_off() {
     let _ = std::fs::remove_dir_all(&dir);
 
     assert_eq!(refused.status.code(), Some(2), "{refused:?}");
-    assert!(refused.stderr.contains("is held"), "{refused:?}");
+    assert_eq!(
+        refused.stderr.lines().last(),
+        Some(
+            format!(
+                "robot-cli: {} is held: a runtime (or another disable) is running; refusing (stop the runtime with \
+                 systemctl, which runs this after it exits)",
+                lock.display()
+            )
+            .as_str()
+        ),
+        "{refused:?}"
+    );
     assert!(refused.outcomes.is_empty(), "{refused:?}");
     assert!(run, "the drives never reached Run with reporting on");
     assert_eq!(done.status.code(), Some(0), "{done:?}");
@@ -436,13 +447,23 @@ fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
     let _ = std::fs::remove_dir_all(&dir);
 
     assert_eq!(unknown.status.code(), Some(2), "{unknown:?}");
+    assert_eq!(
+        unknown.stderr.lines().last(),
+        Some(
+            format!(
+                "robot-cli: {}: Not a directory (os error 20); can't tell whether a runtime holds it, refusing",
+                path.join("runtime.lock").display()
+            )
+            .as_str()
+        ),
+        "{unknown:?}"
+    );
     assert!(unknown.outcomes.is_empty(), "{unknown:?}");
     assert_eq!(done.status.code(), Some(1), "{done:?}");
     assert!(done.took < Duration::from_secs(1), "{done:?}");
-    assert!(
-        done.faults
-            .get("can9")
-            .is_some_and(|f| f.as_deref().is_some_and(|f| f == "open")),
+    assert_eq!(
+        done.faults.get("can9"),
+        Some(&Some("open".to_owned())),
         "{done:?}"
     );
     assert_eq!(done.faults.get("can1"), Some(&None), "{done:?}");
