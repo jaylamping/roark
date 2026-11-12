@@ -55,8 +55,10 @@ enum Close {
     Drain(Drain),
     /// The socket failed in the window.
     Failed,
-    /// The kernel reported a dropped frame in the window.
+    /// A frame read in the window carried a new overflow count.
     KernelDrop,
+    /// A frame read in the window carried the overflow count already seen.
+    SameDrops,
 }
 
 /// Send `kind`, expecting `frame`, read `replies` in the window, close it as `close` says, and start the next tick: the
@@ -90,6 +92,7 @@ fn window(
         Close::Drain(drain) => bus.drained(drain),
         Close::Failed => bus.lost_bus(BusError::InterfaceGone),
         Close::KernelDrop => bus.note_kernel_drops(1),
+        Close::SameDrops => bus.note_kernel_drops(0),
     }
     run_tick(&mut bus, 1, Some(&batch(1, &[])), &[]);
     let _ = bus.end(deadline(1));
@@ -158,6 +161,17 @@ fn rows() -> Vec<Row> {
             Close::Drain(Drain::Emptied),
             SlowOutcome::TimedOut,
         ),
+    ]
+    .into_iter()
+    .chain(untrusted_rows())
+    .collect()
+}
+
+/// The rows whose window can't be trusted, and the one that can despite a frame carrying an overflow count.
+fn untrusted_rows() -> Vec<Row> {
+    let found = |uid| SlowOutcome::Found { uid, other: None };
+    let one = Uid([1; 8]);
+    vec![
         (
             "an error frame in the window",
             probe(50),
@@ -187,10 +201,24 @@ fn rows() -> Vec<Row> {
             SlowOutcome::Unsure,
         ),
         (
-            "a backlog emptied: every answer was read",
+            "a backlog: an overflow comes with one",
             probe(50),
             vec![identity(50, one)],
             Close::Drain(Drain::Backlog),
+            SlowOutcome::Unsure,
+        ),
+        (
+            "a set-ID, nothing heard, the socket failed",
+            set_id(127, 11),
+            vec![],
+            Close::Failed,
+            SlowOutcome::Unsure,
+        ),
+        (
+            "a frame with the same overflow count: no drop",
+            probe(50),
+            vec![identity(50, one)],
+            Close::SameDrops,
             found(one),
         ),
         (
@@ -212,10 +240,11 @@ fn rows() -> Vec<Row> {
 
 /// Guards: protocol - a probe is a type 0 to any ID, in the bus's table or not, and a set-ID a type 7 from the old ID
 /// to the new; each is answered by the type-0 replies from its ID (the probe's, or the set-ID's new one) read before the
-/// next tick's start, a second drive with another UID on that ID included, and nothing answering is a timeout; a window
-/// with an error frame or a kernel drop in it (two drives on one ID collide on a real bus), closed by a drain that left
-/// frames unread, or on a failed bus is unsure, never a count of drives; a backlog the drain emptied is still trusted (RS03 manual §4.1.1 type 0, §4.1.5 type 7 "effective immediately", answered by the
-/// type-0 broadcast frame; PLAN.md item 2: type 7 only with exactly one drive answering).
+/// next tick's start, a second drive with another UID on that ID included, and nothing answering is a timeout. A window
+/// with an error frame in it (assumed, until the bench, to be how two drives on one ID collide) or a new kernel overflow
+/// count, closed by a drain that read a backlog or left frames unread, or on a failed bus is unsure, never a count of
+/// drives (RS03 manual §4.1.1 type 0, §4.1.5 type 7 "effective immediately", answered by the type-0 broadcast frame;
+/// PLAN.md item 2: type 7 only with exactly one drive answering).
 #[test]
 fn probes_and_set_id_are_answered_by_type_0_from_their_id() {
     for (what, (kind, frame), replies, close, outcome) in rows() {

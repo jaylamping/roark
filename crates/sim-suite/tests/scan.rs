@@ -27,13 +27,13 @@ struct Control<'a> {
     results: rtrb::Consumer<can::SlowResult>,
     epoch: &'a telemetry::Epoch,
     tag: u32,
-    stalls: u32,
+    retries: u32,
 }
 
 impl Control<'_> {
     /// Ask `kind` and keep the bus fed until its result. A stall of this thread can leave control silent for a tick, or
-    /// a loaded machine can leave a drain unemptied; such a refusal or unsure window is asked again, a few times at
-    /// most in the whole run.
+    /// a loaded machine can leave a drain unemptied; such a refusal, or a probe's unsure window, is asked again, a few
+    /// times at most in the whole run. A set-ID's unsure window is returned as it is.
     #[expect(
         clippy::unwrap_used,
         reason = "test helper: a bus that stops publishing fails the test"
@@ -65,12 +65,13 @@ impl Control<'_> {
             }
             if let Ok(result) = self.results.pop() {
                 assert_eq!(result.tag, self.tag);
-                if matches!(
-                    result.outcome,
-                    SlowOutcome::Refused(SlowRefusal::ControlSilent) | SlowOutcome::Unsure
-                ) && self.stalls < 5
+                // A set-ID is never sent twice: an unsure one is settled by the probes after it.
+                let probe = matches!(kind, SlowKind::Probe(_));
+                if (result.outcome == SlowOutcome::Refused(SlowRefusal::ControlSilent)
+                    || (probe && result.outcome == SlowOutcome::Unsure))
+                    && self.retries < 5
                 {
-                    self.stalls += 1;
+                    self.retries += 1;
                     self.tag += 1;
                     asked = false;
                     continue;
@@ -139,7 +140,7 @@ fn a_scan_finds_every_drive_and_a_set_id_moves_one() {
             results,
             epoch: &epoch,
             tag: 0,
-            stalls: 0,
+            retries: 0,
         };
 
         scan_and_set_id(&mut control, [known, stray, first, second]);
@@ -202,13 +203,12 @@ fn scan_and_set_id(control: &mut Control<'_>, [known, stray, first, second]: [Ui
         uid: stray,
         other: None,
     };
-    assert_eq!(
-        control.ask(SlowKind::SetId {
-            old: id(127),
-            new: id(11),
-        }),
-        moved
-    );
+    // An unsure window on a loaded machine is settled by the probes that follow.
+    let set = control.ask(SlowKind::SetId {
+        old: id(127),
+        new: id(11),
+    });
+    assert!(set == moved || set == SlowOutcome::Unsure, "{set:?}");
     assert_eq!(control.ask(SlowKind::Probe(id(11))), moved);
     assert_eq!(control.ask(SlowKind::Probe(id(127))), SlowOutcome::TimedOut);
 }

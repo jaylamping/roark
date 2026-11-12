@@ -4,15 +4,14 @@
 
 use robstride::{DeviceId, Uid};
 
-use crate::slow::{SlowEntry, SlowKind, SlowOutcome, SlowRefusal, SlowState};
+use super::{SlowEntry, SlowKind, SlowOutcome, SlowRefusal, SlowState};
 use crate::tick::BusTick;
 use crate::types::LimbState;
 
 impl SlowKind {
     /// The ID whose type-0 replies answer this request: a probe's ID, or a set-ID's new one. `None` for a request
     /// named by slot.
-    #[must_use]
-    pub const fn answer_id(self) -> Option<DeviceId> {
+    pub(super) const fn answer_id(self) -> Option<DeviceId> {
         match self {
             Self::Probe(id) | Self::SetId { new: id, .. } => Some(id),
             Self::Read(_) | Self::Write(_) | Self::GetId => None,
@@ -22,12 +21,15 @@ impl SlowKind {
 
 impl BusTick {
     /// What `entry`, in flight, ends as once its reply window is over. A probe or set-ID ends [`SlowOutcome::Unsure`]
-    /// if its window was disturbed (an error frame or a kernel drop in it), the last drain left frames unread, or the
-    /// bus has failed (a failed drain never reports how it went): an answer may be among what wasn't read. Otherwise it
+    /// if its window was disturbed (an error frame, or a frame carrying a new kernel overflow count, read in it), the
+    /// drain that closed it read a backlog (an overflow comes with one, and the frame that would report it may not be
+    /// read yet) or left frames unread, or the bus has failed (a failed drain never reports how it went): an answer may
+    /// be among what wasn't read. Otherwise it
     /// ends `Found` with what it heard, or timed out. Any other request is timed out.
     pub(crate) fn window_closed(&self, entry: &SlowEntry) -> SlowOutcome {
         let by_id = entry.request.kind.answer_id().is_some();
-        if by_id && (entry.disturbed || self.unordered || self.bus_error.is_some()) {
+        if by_id && (entry.disturbed || self.backlog || self.unordered || self.bus_error.is_some())
+        {
             return SlowOutcome::Unsure;
         }
         match entry.state {
@@ -38,7 +40,7 @@ impl BusTick {
         }
     }
 
-    /// An error frame was read, or the kernel dropped frames: a probe or set-ID in flight can no longer say it heard
+    /// An error frame was read, or a frame carried a new kernel overflow count: a probe or set-ID in flight can no longer say it heard
     /// every answer.
     pub(crate) fn slow_disturbed(&mut self) {
         for e in self.slow.iter_mut().flatten() {

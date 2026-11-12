@@ -146,13 +146,15 @@ tick, with every limb idle or stopped too), or on a failed bus is refused, and o
 next slack opens, so slow traffic never keeps a drive alive past a stop (`canTimeout` counts from any frame).
 
 **A scan's probe and the set-ID** are slow requests too, named by ID rather than slot, since the drive they look for
-may be in no slot: `Probe(id)` sends type 0 to `id` and `SetId { old, new }` sends type 7 (`src/by_id.rs`). Each is
-answered by every type-0 reply from its ID read before the next tick's start: the probe's, or the set-ID's new one. The
-manual has a drive answer type 7 with its type-0 frame but doesn't say from which ID; the new one is assumed until the
-bench shows it. Its window ends one of three ways:
+may be in no slot: `Probe(id)` sends type 0 to `id` and `SetId { old, new }` sends type 7. When they may go, what
+answers them and how their window closes is in `src/slow/by_id.rs`. Each is answered by every type-0 reply from its ID
+read before the next tick's start: the probe's, or the set-ID's new one. The manual has a drive answer type 7 with its
+type-0 frame but doesn't say from which ID; the new one is assumed until the bench shows it. Its window ends one of
+three ways:
 
-- `Unsure`, whatever it heard, when it can't be trusted to hold every answer: an error frame was read in it, the
-  kernel dropped frames in it, the drain that closed it left frames unread, or the bus failed (a failed drain never
+- `Unsure`, whatever it heard, when it can't be trusted to hold every answer: an error frame was read in it, a frame
+  read in it carried a new kernel overflow count, the drain that closed it read a backlog (an overflow comes with one,
+  and the frame reporting it may not be read yet) or left frames unread, or the bus failed (a failed drain never
   reports how it went). Two drives answering one ID on a real bus send the same CAN ID with different data and
   collide; that is assumed to show as an error frame, and the bench checks it (whether it needs `berr-reporting` on
   the link included). Until then `Found` with one UID is no proof that one drive holds the ID.

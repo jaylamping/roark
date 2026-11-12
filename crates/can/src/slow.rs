@@ -7,6 +7,8 @@
 
 use robstride::{DeviceId, EchoKind, Frame, Param, ParamOutcome, Uid, Write, encode};
 
+mod by_id;
+
 use crate::batch::batch_may_carry;
 use crate::tick::{BusTick, Reply};
 use crate::types::{LimbState, SendOutcome};
@@ -83,8 +85,9 @@ pub enum SlowOutcome {
         other: Option<Uid>,
     },
     /// A probe's or set-ID's window closed on reads that can't be trusted to hold every answer: an error frame was read
-    /// in it (two drives answering one ID collide on a real bus), the kernel dropped frames in it, the drain that closed
-    /// it left frames unread, or the bus failed. What
+    /// in it (assumed, until the bench shows it, to be how two drives answering one ID collide on a real bus), a frame
+    /// read in it carried a new kernel overflow count, the drain that closed it read a backlog or left frames unread, or
+    /// the bus failed. What
     /// answered can't be told; probe again.
     Unsure,
     /// The drive sent a status after the write. That says nothing about the value: read it back.
@@ -158,15 +161,15 @@ pub(crate) struct SlowEntry {
     seq: u64,
     /// The tick it was submitted in, for [`Timing::slow_queue_ticks`](crate::Timing::slow_queue_ticks).
     submitted_tick: u64,
-    pub(crate) request: SlowRequest,
-    pub(crate) state: SlowState,
+    request: SlowRequest,
+    state: SlowState,
     /// A probe or set-ID in flight whose window can no longer be trusted to hold every answer (an error frame or a
     /// kernel drop): it ends [`SlowOutcome::Unsure`].
-    pub(crate) disturbed: bool,
+    disturbed: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum SlowState {
+enum SlowState {
     Queued,
     /// Handed to the shell; [`BusTick::slow_sent`] says whether the socket took it.
     Sending,
@@ -183,7 +186,7 @@ pub(crate) enum SlowState {
 
 impl SlowState {
     /// Handed to the shell or taken by the socket, with no result yet: the one exchange a bus has in flight.
-    pub(crate) const fn in_flight(self) -> bool {
+    const fn in_flight(self) -> bool {
         match self {
             Self::Sending | Self::Waiting | Self::Heard { .. } => true,
             Self::Queued | Self::Done(_) => false,
@@ -520,7 +523,7 @@ impl BusTick {
     /// Whether limb `limb`, in `state`, is stopping, stopped or due to stop: a stop asked for and not yet taken (it is
     /// taken at the next tick's start, before any send) or what the veto stops on, on any drive of it. Every slow
     /// request's refusal asks this, so a new stop condition reaches them all.
-    pub(crate) fn limb_halting(&self, limb: usize, state: LimbState) -> bool {
+    fn limb_halting(&self, limb: usize, state: LimbState) -> bool {
         self.stop_pending(limb) || !state.takes_commands() || self.limb_stop_due(limb).is_some()
     }
 
