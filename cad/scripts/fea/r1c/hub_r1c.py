@@ -16,12 +16,27 @@ if hub.bounds[1][1] < 1.0:          # exported in metres
     hub.apply_scale(1000.0)
 out = {}
 rb_all = np.min([np.hypot(p[:, 0] - x0, p[:, 1] - BOLT_Y) for x0 in BOLT_X], axis=0)
-near = np.flatnonzero((p[:, 1] > 265) & np.all((p >= hub.bounds[0] - 0.5) & (p <= hub.bounds[1] + 0.5), axis=1))
-# chunked (one call on ~300k points took ~8 GB on 2026-11-11): 20k points at a time
-sd = np.concatenate([trimesh.proximity.signed_distance(hub, p[near[i:i + 20000]]).astype(np.float32) for i in range(0, len(near), 20000)])        # + inside
-in_hub = np.zeros(len(p), bool); in_hub[near[sd > -0.03]] = True
-bolt = (rb_all < 1.6) & (np.abs(p[:, 2] - CZ) < 46)
-arm = np.flatnonzero(~in_hub & ~bolt); hb = np.flatnonzero(in_hub & ~bolt); bl = np.flatnonzero(bolt)
+# Classify by BODY (2026-11-11, review): the solver writes nodes body by body (arm, hub, bolts). A distance-to-hub-mesh test put
+# every arm node on a line-to-line contact face (the load flank, the end face) into the hub. Boundaries are found from nodes
+# clearly inside one body (|signed distance| > 0.2 mm, or on a bolt axis), sampled along the index, then refined node by node.
+def sdist(ix):
+    return np.concatenate([trimesh.proximity.signed_distance(hub, p[ix[i:i + 20000]]) for i in range(0, len(ix), 20000)]) if len(ix) else np.zeros(0)
+def label(ix):
+    sd_ = sdist(ix)
+    return np.where(rb_all[ix] < 1.55, 2, np.where(sd_ > 0.2, 1, np.where(sd_ < -0.2, 0, -1)))     # 0 arm, 1 hub, 2 bolt, -1 unsure
+N = len(p); smp = np.arange(0, N, 97); ls = label(smp)
+h_first = smp[np.argmax(ls == 1)]                                  # first sampled hub node
+b_first = smp[len(ls) - np.argmax((ls[::-1] != 2) & (ls[::-1] != -1))]   # start of the trailing bolt run
+def refine(lo, hi, want):
+    ix = np.arange(max(lo, 0), min(hi, N)); lb = label(ix)
+    k = np.flatnonzero(lb == want); return int(ix[k[0]]) if len(k) else int(lo)
+h0 = refine(h_first - 200, h_first + 1, 1); b0 = refine(b_first - 200, b_first + 200, 2)
+body = np.zeros(N, np.int8); body[h0:] = 1; body[b0:] = 2
+arm = np.flatnonzero(body == 0); hb = np.flatnonzero(body == 1); bl = np.flatnonzero(body == 2)
+in_hub = body == 1; bolt = body == 2
+chk = label(smp); bad = int(((chk == 0) & (body[smp] != 0)).sum() + ((chk == 1) & (body[smp] != 1)).sum())
+print(f'bodies by node index: arm 0-{h0 - 1}, hub {h0}-{b0 - 1}, bolts {b0}-{N - 1}; sampled nodes contradicting the split: {bad}')
+out['body_split'] = dict(arm=[0, h0 - 1], hub=[h0, b0 - 1], bolts=[b0, N - 1], contradicting_samples=bad)
 r = np.hypot(p[:, 0] - HX, p[:, 2] - CZ); y = p[:, 1]; th = np.degrees(np.arctan2(p[:, 2] - CZ, p[:, 0] - HX)) % 360
 ridge_arc = ((th > 33) & (th < 147)) | ((th > 213) & (th < 327))
 groove_arc = ((th > 18) & (th < 162)) | ((th > 198) & (th < 342))
@@ -50,6 +65,7 @@ ALL = np.ones(len(p), bool)
 print(f'nodes: arm {len(arm)}, hub {len(hb)}, bolts {len(bl)}')
 # arm side (layer = sigma z, column 3)
 rep('arm', 'WHOLE ARM (nothing excluded)', ALL, 3)
+rep('arm', 'ridge load flank (within 0.15 of the 30 deg flank, r 34.6-35.9)', ridge_arc & (r > 34.6) & (r < 35.9) & (np.abs((y - (298.0 + (35.8 - r) * np.tan(np.radians(30)))) * np.cos(np.radians(30))) < 0.15), 3)
 rep('arm', 'ridge body (r < 35.9, Y 297.5-302)', ridge_arc & (r < 35.9) & (y > 297.5) & (y < 302.05), 3)
 rep('arm', 'ridge root / bore wall (r 35.9-37.5, Y 297.5-302)', ridge_arc & (r >= 35.9) & (r < 37.5) & (y > 297.5) & (y < 302.05), 3)
 rep('arm', 'seat bore + end face elsewhere (Y 295-302.6, r<38)', ~(ridge_arc & (y > 297.5) & (y < 302.05) & (r < 37.5)) & (y > 295) & (y < 302.6) & (r < 38) & (r > 33), 3)
@@ -79,4 +95,10 @@ for name, (x0, x1) in (('lug -X', (141.0, 151.75)), ('lug +X', (189.25, 200.0)))
     fy, fx, fz = s[idx, 2].mean() * A, s[idx, 4].mean() * A, s[idx, 6].mean() * A
     out[name] = dict(nodes=int(len(idx)), Fy_axial=round(float(fy)), Fx_shear=round(float(fx)), Fz_shear=round(float(fz)))
     print(f'{name}: nodes {len(idx)}, axial Fy ~ {fy:7.0f} N, shear Fx ~ {fx:6.0f} N, shear Fz ~ {fz:6.0f} N (section {A:.0f} mm2)')
+flags = []
+for k_ in ('lug -X', 'lug +X'):
+    if k_ in out and abs(out[k_]['Fy_axial']) > 50: flags.append(f"{k_} axial {out[k_]['Fy_axial']} N > 50 N: ridge not carrying the tie?")
+if 'bolts' in out and out['bolts']['vm_peak'] > 200: flags.append(f"bolt vm {out['bolts']['vm_peak']} MPa > 200: ridge not carrying the tie?")
+out['sanity_flags'] = flags
+print('SANITY:', 'OK' if not flags else '; '.join(flags))
 json.dump(out, open(npz + '.r1c.json', 'w'), indent=1)
