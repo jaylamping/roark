@@ -89,6 +89,29 @@ become:
      after 24 h.
    - Check the arm turns freely on the RS02, and that the witness lines line up.
 
+## 2b. R1d hub-end fit coupon (before printing the R1d halves)
+
+`prints/upper-arm/` (when released): the hub end of each R1d half, cut flat at Y 284. Back about 70 min, front about 64 min,
+34 g. Each has the bore, ridge, crush ribs, end face, floor, the slot edge breaks and the four hub posts with their insert and
+clearance holes. It closes on a printed rev D hub with the two lug bolts, as the arm does; there are no seam screws in the
+coupon.
+
+1. Inspect, then press the two inserts into the front coupon (Ø4.0 drill by hand first), as for the halves.
+2. **Close:** lay the hub into the back coupon (lugs between the posts), then close the front coupon over it. Fit the two lug
+   bolts (M3 × 25 DIN 912) and torque to 0.5 N·m.
+   - Note the closing effort: by hand, firm, or forced. Forced = stop and tell me.
+   - Note any gap at the seam faces. Seam faces must meet all round; a 0.1 feeler must not enter.
+3. **Play, before rocking:** clamp the hub. Push and pull the coupon along the hub axis, then rock it by hand. At the end face
+   against the hub disc, try go / no-go feelers 0.05, 0.10, 0.15, 0.20 at four places round the ring, both while pushing and
+   while pulling. Write down the largest that enters at each place.
+4. **Ten firm hand-rocking cycles** in each direction, then repeat step 3.
+5. **Open and inspect:** take the bolts out and the front coupon off. Look at the rib tips (crushed, shaved, burr), the ridge
+   flanks, and the hub's groove flank (marks, scoring, a shiny band). Photograph them.
+6. Re-close at 0.5 N·m and repeat step 3 once.
+
+**Pass, before the halves are printed:** it closes without forcing, no visible seam gap, and **no 0.10 feeler enters after the
+rocking cycles**. Otherwise stop: the ribs get redesigned before the halves print.
+
 ## 3. Key coupon test (before the whole-arm test)
 
 `prints/upper-arm/upper_arm_organic_key_coupon.3mf` (33 min) is the back half's key 0, with its rib and a patch of wall.

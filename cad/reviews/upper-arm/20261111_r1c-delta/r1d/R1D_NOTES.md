@@ -410,3 +410,36 @@ The bench notes' split-and-inspect step now looks at that edge and the hub disc 
   - Without the 100 % hub band the times barely change (Y 284: 70 + 64 min). Time is set by the geometry: a 39 mm tall
     half-ring of walls with the crown on support.
   - Under 45 min would need cutting the ring into a sector, which loses the closing behaviour the coupon exists to test.
+
+## R2 rib option, sized on paper only (2026-11-12; no build, no solve)
+
+- G90 flank load, any pose: the lift-off side can be at any θ, so size for the peak of a cosine distribution all round.
+  - Peak line load at the flank's mean radius 35.35: q = 22.9e3 / (π · 35.35²) + 62 / (2π · 35.35) = 5.83 + 0.28 = 6.1 N/mm
+    axial, or 7.1 N/mm normal to the 30° flank.
+  - At 12 ribs (30°, 18.5 mm of arc each) a rib takes about 131 N normal. At 24 ribs, about 65 N.
+- Ribs that carry that at 1.5 with no further yield (45 MPa):
+  - 4.4 mm² per rib at 12 ribs, i.e. about 4.8 mm of arc on the 0.92 mm flank face; or 2.2 mm² (2.4 mm arc) at 24 ribs.
+  - Either way, 26 % of the flank ring is rib face, about 53 mm² in all.
+- Closing force to crush them 0.15:
+  - plastic flow at about 45-55 MPa over 53 mm² is about 2.6 kN normal to the flank;
+  - through the 30° wedge (closing force about 0.76 × normal at the crown) that is about 2 kN of closing force.
+  - Two lug bolts and two seam screws at 0.5 N·m give at most about 0.8 kN each in theory (F = T / (0.2 d)), less in PETG
+    inserts, and 2 kN would bend the halves. **Ribs strong enough to carry G90 cannot also be crush-fitted.** Load-carrying and
+    take-up conflict, so ribs stay take-up only.
+  - Today's 12 ribs (about 0.92 mm² each) crush at about 46 N normal each, about 35 N of closing per crown rib: easy for the
+    screws.
+- Near-seam ribs (θ 15, 165, 195, 345, and partly 45 / 135):
+  - The halves close along Z, which is almost tangent to the ring at θ 15 / 165. Those ribs are not pressed into the flank;
+    they are dragged sideways across it through the 0.15 interference, over the last few mm of travel.
+  - Physically they shave: the rib is planed toward flush, leaving a smear or burr, and may score the hub flank. They give
+    little lasting take-up.
+  - Ribs near the crown (θ 75 / 105) approach radially and crush by wedge action (0.3 radial travel for 0.15 normal).
+  - That matches the closing-path check: contact up to 0.18 at every rib angle, deepest near the crown, sliding near the seam.
+- Simpler alternatives:
+  - **Wedge seat, seam relieved at the hub end.** Make the flank line-to-line as printed, and relieve the seam faces 0.15 over
+    the hub end only, so tightening the lug bolts pulls the halves together and the conical flank wedges the ridge axially into
+    the groove: a preloaded, play-free seat whatever the print tolerance. Catch: the hub-end seam stays visibly 0.1-0.2 open,
+    the halves bend slightly there (PETG creep relaxes the preload over time), and the seam faces carry nothing at the hub end.
+  - **Tapered gap around θ.** Flank gap 0 at the crowns (θ 90 / 270, where closing is radial and wedges) growing to 0.2 at the
+    seam (where closing would shave). Catch: for poses whose lift-off side is near the seam, the play is the full 0.2 (axial
+    0.23).
