@@ -1,0 +1,329 @@
+{
+ "shoulder_hub_left_revD_candidate.STL @ shoulder_hub_bc16e97": {
+  "10": {
+   "disc_starts_r": 36.026,
+   "spigot_wall_r": 35.152,
+   "foot_height_at_r35_9": -0.067,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.006,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.007
+   }
+  },
+  "30": {
+   "disc_starts_r": 36.04,
+   "spigot_wall_r": 35.149,
+   "foot_height_at_r35_9": -0.077,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.0,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.006
+   }
+  },
+  "60": {
+   "disc_starts_r": 36.026,
+   "spigot_wall_r": 35.153,
+   "foot_height_at_r35_9": -0.074,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.0,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.006
+   }
+  },
+  "90": {
+   "disc_starts_r": 36.029,
+   "spigot_wall_r": 35.153,
+   "foot_height_at_r35_9": -0.072,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.006,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.007
+   }
+  },
+  "120": {
+   "disc_starts_r": 36.034,
+   "spigot_wall_r": 35.153,
+   "foot_height_at_r35_9": -0.069,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.005,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.007
+   }
+  },
+  "150": {
+   "disc_starts_r": 36.04,
+   "spigot_wall_r": 35.151,
+   "foot_height_at_r35_9": -0.077,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.003,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.007
+   }
+  },
+  "170": {
+   "disc_starts_r": 36.026,
+   "spigot_wall_r": 35.15,
+   "foot_height_at_r35_9": -0.067,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.0,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.006
+   }
+  },
+  "200": {
+   "disc_starts_r": 36.029,
+   "spigot_wall_r": 35.141,
+   "foot_height_at_r35_9": -0.067,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.001,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.006
+   }
+  },
+  "270": {
+   "disc_starts_r": 36.034,
+   "spigot_wall_r": 35.148,
+   "foot_height_at_r35_9": -0.067,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.0,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.006
+   }
+  },
+  "330": {
+   "disc_starts_r": 36.023,
+   "spigot_wall_r": 35.147,
+   "foot_height_at_r35_9": -0.067,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.002,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.007
+   }
+  }
+ },
+ "HUB_RING_ZF.STL @ ua2": {
+  "10": {
+   "disc_starts_r": 35.792,
+   "spigot_wall_r": 35.199,
+   "foot_height_at_r35_9": 0.0,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.004,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.007
+   }
+  },
+  "30": {
+   "disc_starts_r": 35.769,
+   "spigot_wall_r": 35.179,
+   "foot_height_at_r35_9": 0.0,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.004,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.007
+   }
+  },
+  "60": {
+   "disc_starts_r": 35.788,
+   "spigot_wall_r": 35.198,
+   "foot_height_at_r35_9": 0.0,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.007,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.001,
+    "round0.8": 0.008
+   }
+  },
+  "90": {
+   "disc_starts_r": 35.814,
+   "spigot_wall_r": 35.2,
+   "foot_height_at_r35_9": 0.0,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.001,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.006
+   }
+  },
+  "120": {
+   "disc_starts_r": 35.779,
+   "spigot_wall_r": 35.201,
+   "foot_height_at_r35_9": 0.0,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.007,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.001,
+    "round0.8": 0.008
+   }
+  },
+  "150": {
+   "disc_starts_r": 35.752,
+   "spigot_wall_r": 35.197,
+   "foot_height_at_r35_9": 0.0,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.007,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.008
+   }
+  },
+  "170": {
+   "disc_starts_r": 35.773,
+   "spigot_wall_r": 35.197,
+   "foot_height_at_r35_9": 0.0,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.002,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.007
+   }
+  },
+  "200": {
+   "disc_starts_r": 35.744,
+   "spigot_wall_r": 35.193,
+   "foot_height_at_r35_9": 0.0,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.005,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.007
+   }
+  },
+  "270": {
+   "disc_starts_r": 35.785,
+   "spigot_wall_r": 35.197,
+   "foot_height_at_r35_9": 0.0,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.0,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.006
+   }
+  },
+  "330": {
+   "disc_starts_r": 35.755,
+   "spigot_wall_r": 35.176,
+   "foot_height_at_r35_9": 0.0,
+   "clearance": {
+    "none0": 0.0,
+    "chamfer0.5": 0.0,
+    "chamfer0.6": 0.0,
+    "chamfer0.7": 0.002,
+    "round0.5": 0.0,
+    "round0.6": 0.0,
+    "round0.7": 0.0,
+    "round0.8": 0.007
+   }
+  }
+ },
+ "arm upper_arm_organic_front_left.STL": {
+  "45": {
+   "end_face_r": [
+    36.4,
+    37.597
+   ],
+   "bore_top_Y": 301.5
+  },
+  "90": {
+   "end_face_r": [
+    36.4,
+    37.598
+   ],
+   "bore_top_Y": 301.5
+  },
+  "135": {
+   "end_face_r": [
+    36.4,
+    37.598
+   ],
+   "bore_top_Y": 301.5
+  }
+ }
+}
