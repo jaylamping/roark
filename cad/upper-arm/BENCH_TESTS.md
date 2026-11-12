@@ -82,8 +82,9 @@ become:
      flank are not.
 8. **Assemble:** the RS02 + ring and the cable in the back half as above. Then the hub into the back half (ridge into groove,
    lugs between the posts). Then the front half closed over both.
-   - Then the two seam screws (M3 × 18 into the inserts) and the two hub lug bolts (M3 × 25, Ø5.5 socket or Ø5.7 button
-     head, no washer) into the front-half inserts.
+   - Then the two seam screws (M3 × 18 into the inserts) and the two hub lug bolts (M3 × 25 DIN 912
+     socket head, Ø5.5, no washer) into the front-half inserts. Use socket heads: R1d's head counterbores are Ø6.0, too tight
+     for a Ø5.7 button head.
    - Torque all four to **0.5 N·m**. That is my figure for M3 into these inserts in PETG, not a datasheet value. Retorque
      after 24 h.
    - Check the arm turns freely on the RS02, and that the witness lines line up.
