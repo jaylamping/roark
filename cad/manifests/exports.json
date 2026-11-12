@@ -27,7 +27,7 @@
       "settings": "rev D candidate: LOOK=hubD HUB_GROOVE_RING=1 build_parts.py port_cap hub (full-ring groove, full-ring wall fill)",
       "sourceSha256": "d4706ed86917d9b868fca99216ee24d15d15b1d0b3606bc2fee506705c4b20cb",
       "exportSha256": "cc1f27d763723163ea06e41db5308e53bc79e7232871ea83ee6e70d9553c0ba8",
-      "recorded": "2026-11-12T09:23:41Z"
+      "recorded": "2026-11-12T09:24:10Z"
     },
     {
       "export": "exports/shoulder/shoulder_hub_left_revD_candidate.STL",
@@ -36,7 +36,7 @@
       "settings": "rev D candidate: LOOK=hubD HUB_GROOVE_RING=1 build_parts.py port_cap hub (full-ring groove, full-ring wall fill)",
       "sourceSha256": "d4706ed86917d9b868fca99216ee24d15d15b1d0b3606bc2fee506705c4b20cb",
       "exportSha256": "6fc5188cc9d7de8f931b8bf638c679f45ab2f5cfd6ba64e18a53b1b34df56eaa",
-      "recorded": "2026-11-12T09:23:41Z"
+      "recorded": "2026-11-12T09:24:10Z"
     }
   ]
 }
