@@ -1,0 +1,11 @@
+mesh check: front
+faces 3730, bounds [[131.52, 284.0, 0.0], [209.46, 301.3, 38.96]]
+[PASS] bodies 1 (allowed 1), watertight True
+[PASS] sharp vertices over 150 deg: 0 unlisted, 0 listed design corners
+[PASS] knife edges (fold over 170 deg, edge over 1 mm): 0 unlisted, 0 listed
+[INFO] needle triangles (min angle under 1 deg, edge over 2 mm): 154, tessellation only unless a check above fails
+[PASS] walls thinner than 0.6 mm over 0.5 mm2: 0 unlisted, 3 listed
+    listed   14.7 mm2, min 0.28 mm, box [143.1, 284.0, 21.2] to [178.7, 284.0, 28.7]: R1e hub-end fit coupon only: the coupon is the hub end cut flat at Y 284, so where that cut crosses the skin, the posts or the fins at a grazing angle it leaves thin slivers on the coupon's bottom face. Not a part of the arm.
+    listed   4.2 mm2, min 0.3 mm, box [178.7, 284.0, 15.6] to [202.3, 284.0, 28.7]: R1e hub-end fit coupon only: the coupon is the hub end cut flat at Y 284, so where that cut crosses the skin, the posts or the fins at a grazing angle it leaves thin slivers on the coupon's bottom face. Not a part of the arm.
+    listed   1.9 mm2, min 0.25 mm, box [136.7, 284.0, 0.0] to [143.1, 284.0, 21.2]: R1e hub-end fit coupon only: the coupon is the hub end cut flat at Y 284, so where that cut crosses the skin, the posts or the fins at a grazing angle it leaves thin slivers on the coupon's bottom face. Not a part of the arm.
+RESULT: PASS

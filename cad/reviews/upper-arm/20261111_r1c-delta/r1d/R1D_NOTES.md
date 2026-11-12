@@ -620,3 +620,31 @@ covered the band r 36.45-37.55 only.
 - **Code** (all off by default): `ARM_END_DROP` (master: the end face, chamfer and ridge-top flat move down; the flat starts where
   the 45° flank meets it), `ARM_SEAM_LEADIN`, and ARM_FLANK_GAP 0 with ARM_RIB_PROUD 0. The R1e halves are building in
   `cad/_wip/r1e_print` (r1e_print.sh): slice, gate, closing path against bc16e97 with a 0.70 ring, then the coupon cut at Y 284.
+
+## R1e halves built, checked; first 0 gap result (2026-11-12 14:40)
+
+- Built in `cad/_wip/r1d_r1e_print` (r1e_print.sh): gap 0, no ribs, slot break 1.2 × 1.6, end face lowered 0.70 (END_DROP cut
+  513 mm³), seam lead-ins 0.1 × 2 mm (0.5 mm³ each), slot breaks 3.5 mm³ each.
+- Slice and mesh gate: back PASS 5 h 25 / 123.8 g, front PASS 4 h 44 / 107.3 g.
+  - The back half's three counterbore exits are the same features as the accepted entries. The surface diff against the R1d
+    ring half: ≤0.05 mm there; 0.38-0.45 mm only where the slot break and end-face drop cut. The new tessellation merged two exit
+    regions and stretched two others 1-2 mm up the counterbore wall, so they no longer sat inside the accepted boxes.
+  - Three entries added with that reason (`r1e/print_whitelist.json`).
+- Coupon (1), cut at Y 284: back PASS 69 min / 16.9 g, front PASS 64 min / 16.1 g. Its cut-plane slivers at Y 284 are accepted
+  only in a coupon list (`print_whitelist_r1e_coupon.json`, selected by PRINT_WHITELIST), not in the halves' list.
+- Closing path against bc16e97 with a 0.70 ring on the disc (`r1e/close_path_bc16e97_shim070.json`):
+  - path collisions 0 (hub + ring, RS02, RS02 ring); the end face on the ring counts as a contact plane (CLOSE_EXTRA_PLANES 301.3);
+  - final overlap: front at most 0.041 mm, back 0.039 mm, only along the load flank (r 34.8-35.8, Y 298.0-298.5). That is
+    line-to-line measured through two faceted meshes. None within about 9° of the seam (the lead-ins).
+- close_path_r1c.py needed smaller chunks to run under the 6 GB cap: ray casting 2,000 points, inside tests 200, signed
+  distance 300.
+- Groove-band refinement probe on the 0 gap model: 2.99 M nodes at 0.3, 2.28 M at 0.5. The joint faces are full rings, so the
+  whole band refines in both bodies. Skipped; the 0 gap STOP_0 / STOP_124 run with 0.3 on the lug roots only (24 + 26 faces,
+  applied now that the control comes first).
+- **0 gap G90** (r1e_g00_g90; flank line-to-line, shim lumped into the end face): all ≥ 1.5.
+  - Lowest: the end-face corner θ 296, shear 1.68 / 3.48 / 11.14 at 0.5 / 1 / 2 mm (it was 0.81 at the 0.1 gap).
+  - hub groove bottom and spigot core layer 2.20; posts layer 2.38; arm ridge flank 7.24 / 6.50 / 4.62; hub flank 4.91 / 2.60
+    / 3.37; lugs unloaded in G90.
+- Renders (`../../20261112_ring-delta/r1e_*.png`): hub end closed on bc16e97 with a 0.70 ring, plain white, front and back
+  three-quarter views and a close-up of the shadow line. The shoulder cuff's skirt ends about Y 313.6 (bc16e97 build_parts.py),
+  so it does not cover the line at Y 301.3-302.

@@ -7,6 +7,7 @@ cd /j/code/roark-wt/left-arm-organic
 R=J:/code/roark-wt/left-arm-organic/cad
 L=cad/_wip/r1e_print.log
 PYC="python $R/scripts/fea/r1c/capped.py --mb 6144 -- python"
+if [ "$R1E_SKIP_BUILD" != 1 ]; then
 until grep -qE "BUILT ringg00zi|HUB_BUILD_FAILED ringg00zi|BUILD_FAILED ringg00" cad/_wip/r1d_combined.log; do sleep 30; done
 sleep 60
 waitfree() { until ! python "C:/joe/code/roark-wt/sw-hang-fix/tools/solidworks/sw_instance.py" --status 2>/dev/null | grep -q "busy"; do sleep 30; done; }
@@ -18,8 +19,10 @@ export ARM_R1C=1 ARM_R1D=1 ARM_SEAT_RIBS=0 ARM_RIDGE_RING=1 ARM_RIDGE_TAPER=0 AR
 export ARM_SLOT_BREAK=1.2,1.6 ARM_END_DROP=0.70 ARM_SEAM_LEADIN=0.1,2.0
 bash cad/scripts/fea/r1c/rebuild_ua.sh "master:upper parts:front parts:back"; cp -p cad/_wip/organic-arm/rebuild_ua.log cad/_wip/r1e_build_print.log
 grep -q "STOP at" cad/_wip/organic-arm/rebuild_ua.log && { echo "BUILD_FAILED $(grep 'STOP at' cad/_wip/organic-arm/rebuild_ua.log | tail -1)" >> $L; exit 1; }
+fi
+[ "$R1E_SKIP_BUILD" = 1 ] && export ARM_R1C=1 ARM_R1D=1 ARM_FLANK_GAP=0 CAD_WRITER='upper-arm-r1:2bcc415b'
 echo "BUILT r1e halves $(date +%H:%M) $(grep -E 'END_DROP|SEAM_LEADIN|SLOT_BREAK0F' cad/_wip/r1e_build_print.log | tr '\n' ' ' | cut -c1-240)" >> $L
-X=$R/_wip/r1e_print
+X=$R/_wip/r1d_r1e_print      # the WIP folder of ARM_WIP_TAG _r1e_print (master WIP = _wip/r1d<tag>)
 mkdir -p $X/exports $X/checks
 cp -p cad/exports/upper-arm/upper_arm_organic_rs02_ring_left.STL $X/exports/
 (cd cad/scripts/arm && ARM_EXPORTS=$X/exports ARM_PRINT_OUT=$X/print ARM_PRINT_SUFFIX=_r1e ARM_PRINT_HUBBAND_Y0=274.0 ARM_PRINT_FLANK_BLOCKER=1 ARM_FLANK_GAP=0 $PYC organic_print.py back front > $X/slice.log 2>&1)

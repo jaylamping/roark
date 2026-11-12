@@ -40,20 +40,21 @@ def dense(m, step=0.4):
 def sweep(src_pts, target, direction, label):
     d = np.tile(direction, (len(src_pts), 1)).astype(float)
     L, RI = [], []
-    for i in range(0, len(src_pts), 20000):      # chunked to keep memory down
-        l_, r_, _ = target.ray.intersects_location(src_pts[i:i + 20000], d[i:i + 20000], multiple_hits=False)
-        L.append(l_); RI.append(r_ + i)
+    for i in range(0, len(src_pts), 2000):      # chunked to keep memory down (2000: the 6 GB cap, 2026-11-12)
+        l_, r_, _ = target.ray.intersects_location(src_pts[i:i + 2000], d[i:i + 2000], multiple_hits=False)
+        L.append(np.asarray(l_, float).reshape(-1, 3)); RI.append(np.asarray(r_, int).reshape(-1) + i)
     loc, ri = np.vstack(L) if L else np.zeros((0, 3)), np.concatenate(RI) if RI else np.zeros(0, int)
     if len(ri) == 0:
         print(label, '{"hits": 0}', flush=True)
         return dict(hits=0)
     dist = np.einsum('ij,ij->i', loc - src_pts[ri], d[ri])
     # a ray that starts inside the target is a final-position overlap; one that starts outside and hits is a path collision
-    inside = np.concatenate([target.contains(src_pts[ri[i:i + 20000]]) for i in range(0, len(ri), 20000)]) if target.is_watertight and len(ri) else np.zeros(len(ri), bool)
+    # chunks of 200 points: the 6 GB cap (2026-11-12; 2000 still made 21 M ray-triangle candidates against the hub)
+    inside = np.concatenate([target.contains(src_pts[ri[i:i + 200]]) for i in range(0, len(ri), 200)]) if target.is_watertight and len(ri) else np.zeros(len(ri), bool)
     far = (dist > 0.05) & ~inside
     yk = src_pts[ri, 1]
     cop = np.zeros(len(ri), bool)
-    for yp in (296.0, 302.0):      # coplanar contact planes (bore floor on the spigot's Y 296 face, end face on the disc at Y 302): grazing rays
+    for yp in (296.0, 302.0) + tuple(float(v) for v in __import__('os').environ.get('CLOSE_EXTRA_PLANES', '').split(',') if v):      # coplanar contact planes (R1e: + the lowered end face on the shim, CLOSE_EXTRA_PLANES=301.3) (bore floor on the spigot's Y 296 face, end face on the disc at Y 302): grazing rays
         cop |= np.abs(yk - yp) < 0.03
     res_cop = int((far & cop).sum())
     far &= ~cop
@@ -93,7 +94,7 @@ for n, h in halves.items():
 hubm = others['hub_grooved']
 for n, h in halves.items():
     P = dense(h, 0.25); P = P[(P[:, 1] > 285.0) & (P[:, 1] < 303.0)]
-    sd = np.concatenate([trimesh.proximity.signed_distance(hubm, P[i:i + 20000]) for i in range(0, len(P), 20000)])
+    sd = np.concatenate([trimesh.proximity.signed_distance(hubm, P[i:i + 300]) for i in range(0, len(P), 300)])      # 300: the 6 GB cap (1000 still hit it on the back half)
     k = sd > 0.02
     r_ = np.hypot(P[:, 0] - HX, P[:, 2] - CZ); th_ = np.degrees(np.arctan2(P[:, 2] - CZ, P[:, 0] - HX)) % 360
     res = dict(points=int(len(P)), into_hub_over_0p02=int(k.sum()), max_into_hub=round(float(sd.max()), 3))
