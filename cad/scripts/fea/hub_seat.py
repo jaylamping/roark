@@ -449,8 +449,13 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 flag = CAD / '_wip' / 'hs_root_mesh' / (Path(os.environ.get('ARM_FEA_DIR', 'x')).name + '.txt')
                 rm = os.environ.get('HS_ROOT_MESH') or (flag.read_text().strip() if flag.exists() else '')
                 ram = os.environ.get('HS_ROOT_MESH_AMAX', '150')
-                if ',' in rm:      # "size,max face area" (2026-11-12: at 150 mm2 the lug faces came in too, 1.18 M nodes; 20 keeps the R1.2 fillets)
-                    rm, ram = rm.split(',', 1)
+                gel = None
+                if ',' in rm:      # "size,max face area[,global size]" (2026-11-12: at 150 mm2 the lug faces came in too, 1.18 M nodes; 20 keeps the
+                    # R1.2 fillets; 0.3 on the fillets at global 4.0 still gave 458 k nodes, over the solver memory limit, so the refined runs
+                    # coarsen the global size, which is far from the joint)
+                    parts_ = rm.split(',')
+                    rm, ram = parts_[0], parts_[1]
+                    gel = float(parts_[2]) if len(parts_) > 2 else None
                 if rm:
                     for x0, x1 in ((139.5, 149.0), (192.0, 201.5)):
                         # FIRST in the list: a face already under a control keeps it (a later control on the same face had no effect,
@@ -463,7 +468,9 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 gm = os.environ.get('HS_GROOVE_MESH') or (gflag.read_text().strip() if gflag.exists() else '')
                 if gm:
                     c['ctrl'] = [(('touch', [128.0, 298.7, -40.0, 213.0, 302.05, 50.0], 2000.0), float(gm))] + list(c.get('ctrl', []))      # first: see the root control
-                if os.environ.get('HS_GLOBAL_EL'):      # 2026-11-12: coarser away from the joint (direct sparse memory); the seat control stays
+                if rm and gel:
+                    c['el'] = gel
+                elif os.environ.get('HS_GLOBAL_EL'):      # 2026-11-12: coarser away from the joint (direct sparse memory); the seat control stays
                     c['el'] = float(os.environ['HS_GLOBAL_EL'])
                 CASES['HS_' + k + sfx] = c
 
