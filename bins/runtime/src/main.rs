@@ -147,39 +147,46 @@ mod linux {
         ));
     }
 
-    /// Tell systemd `state`, if it asked to be told; a failure is logged and otherwise ignored: systemd ends a service
-    /// that never says it is ready (`TimeoutStartSec`), and one that ends needs no word.
-    fn tell(notify: Option<&Notify>, state: &str) {
-        if let Some(n) = notify
-            && let Err(e) = n.send(state)
-        {
-            say(&format!("can't tell systemd {state}: {e}"));
+    /// Tell systemd `state`, if it asked to be told; true when it went or nobody asked. A failure is logged; the
+    /// watcher retries a lost `READY=1` (`watch`), and a lost `STOPPING=1` needs no word.
+    fn tell(notify: Option<&Notify>, state: &str) -> bool {
+        match notify.map(|n| n.send(state)) {
+            None | Some(Ok(())) => true,
+            Some(Err(e)) => {
+                say(&format!("can't tell systemd {state}: {e}"));
+                false
+            }
         }
     }
 
     /// How often the watcher looks: well under half of the unit's `WatchdogSec`, as `sd_watchdog_enabled(3)` asks.
     const WATCH: Duration = Duration::from_millis(50);
 
-    /// The watcher: tell systemd `READY=1`, then feed its watchdog each time it looks and the run has made progress since the last look
-    /// (`Runtime::progress`), so a hung control thread, or a bus in an active run that falls behind, starves it and
-    /// systemd kills the process, after which `ExecStopPost` runs the independent disable. Once the run has ended on
-    /// its own, stop feeding it and raise SIGUSR1, so the signal wait wakes for that too.
+    /// The watcher: feed systemd's watchdog each time it looks and the run has made progress since the last look
+    /// (`Runtime::progress`), so a hung control thread, or any bus that falls behind (the rule is
+    /// `control::progressing`), starves it and systemd kills the process, after which `ExecStopPost` runs the
+    /// independent disable. Until `ready` (main's `READY=1` went), it retries `READY=1` each look instead, and stops
+    /// offering it once `ending` is set, so it never follows `STOPPING=1`. Once the run has ended on its own, stop
+    /// feeding it and raise SIGUSR1, so the signal wait wakes for that too.
     fn watch(
         finished: Arc<AtomicBool>,
+        ending: Arc<AtomicBool>,
         progress: Arc<AtomicU64>,
         notify: Option<Arc<Notify>>,
+        mut ready: bool,
     ) -> std::io::Result<()> {
         std::thread::Builder::new()
             .name("watch".to_owned())
             .spawn(move || {
                 let mut seen = progress.load(Ordering::Acquire);
                 let mut failed = false;
-                // Every thread runs: systemd may now count the service started, and its watchdog starts. Sent here,
-                // first, and again each look until it goes: the socket never waits, so a full one drops it, and a
-                // lost READY=1 would leave systemd to kill a healthy start.
-                let mut ready = notify.is_none();
                 while !finished.load(Ordering::Acquire) {
-                    if !ready && let Some(notify) = &notify {
+                    // The socket never waits, so a full one drops READY=1, and a lost one would leave systemd to kill
+                    // a healthy start.
+                    if !ready
+                        && !ending.load(Ordering::Acquire)
+                        && let Some(notify) = &notify
+                    {
                         match notify.send("READY=1") {
                             Ok(()) => {
                                 ready = true;
@@ -349,7 +356,17 @@ mod linux {
         let mut clean = true;
         let finished = runtime.finished();
         let notify = notify.map(Arc::new);
-        if let Err(e) = watch(Arc::clone(&finished), runtime.progress(), notify.clone()) {
+        let ending = Arc::new(AtomicBool::new(false));
+        // Every thread runs: systemd may now count the service started, and its watchdog starts. Here, before the
+        // signal wait, so it can't follow STOPPING=1; the watcher retries it if it didn't go.
+        let ready = tell(notify.as_deref(), "READY=1");
+        if let Err(e) = watch(
+            Arc::clone(&finished),
+            Arc::clone(&ending),
+            runtime.progress(),
+            notify.clone(),
+            ready,
+        ) {
             say(&format!("can't start the watcher ({e}): ending"));
             clean = false;
         } else {
@@ -366,6 +383,7 @@ mod linux {
                 }
             }
         }
+        ending.store(true, Ordering::Release);
         tell(notify.as_deref(), "STOPPING=1");
         match runtime.end() {
             Ok(exit) => {

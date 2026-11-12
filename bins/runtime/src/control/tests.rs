@@ -103,29 +103,32 @@ fn harness() -> Harness {
 }
 
 /// Play every bus once: take each batch control has handed it and, for a bus in `answering`, publish that batch's
-/// tick's snapshot, as a bus does after that tick's collect. Returns the newest batch tick taken from each bus.
-fn serve(threads: &mut [BusThread], answering: &[bool]) -> Vec<Option<u64>> {
+/// tick's snapshot, as a bus does after that tick's collect. Returns, for each bus, how many batches it took and the
+/// newest one's tick: each batch is one control pass.
+fn serve(threads: &mut [BusThread], answering: &[bool]) -> Vec<(u64, Option<u64>)> {
     threads
         .iter_mut()
         .zip(answering)
         .map(|((commands, snapshots, _, _), on)| {
-            let mut newest = None;
+            let (mut taken, mut newest) = (0, None);
             while let Ok(batch) = commands.pop() {
                 if *on {
-                    // Control takes one a pass and a batch comes once a pass, so the ring never fills.
+                    // Never full: control drains the snapshot ring every pass, so it holds at most the snapshots of
+                    // the batches taken since, and the command ring (4) is half the snapshot ring (8).
                     snapshots.push(snapshot(batch.tick)).unwrap();
                 }
+                taken += 1;
                 newest = Some(batch.tick);
             }
-            newest
+            (taken, newest)
         })
         .collect()
 }
 
 /// Guards: safety - systemd's watchdog is fed only while the control loop and every bus make progress (PLAN item 3;
 /// `progressing`): the count rises while every bus publishes each tick, stops for as long as one bus publishes nothing
-/// though all its limbs show idle (a bus takes up a first Enable or a stop's Disables before a snapshot shows them),
-/// and rises again once it publishes. Counted in control's passes, not in time.
+/// though all its limbs show idle (a bus takes up a first Enable or a stop's Disables before a snapshot shows them), or
+/// has never published, and rises again once it publishes. Counted in control's passes, not in time.
 #[test]
 fn the_progress_count_stops_while_any_bus_is_behind() {
     let Harness {
@@ -149,26 +152,35 @@ fn the_progress_count_stops_while_any_bus_is_behind() {
         std::thread::yield_now();
     };
 
+    // can1 has published nothing yet: no pass counts.
+    let mut passes = 0;
+    while passes < 10 {
+        passes += serve(&mut threads, &[true, false])[0].0;
+        wait("control never handed can0 a batch");
+    }
+    assert_eq!(progress.load(Ordering::Acquire), 0, "can1 never published");
     while progress.load(Ordering::Acquire) < 10 {
         serve(&mut threads, &[true, true]);
         wait("every bus on time, and the count never rose");
     }
     // can1 stops publishing. Its last snapshot is of the newest batch it answered, tick `last`: no pass after `last`
     // counts. Control's batch for `last + 3` comes from pass `last + 2`, after pass `last` has counted or not.
-    let mut last = serve(&mut threads, &[true, true])[1];
+    let mut last = serve(&mut threads, &[true, true])[1].1;
     while last.is_none() {
-        last = serve(&mut threads, &[true, true])[1];
+        last = serve(&mut threads, &[true, true])[1].1;
         wait("can1 never got a batch");
     }
     let last = last.unwrap_or_default();
     let mut can0 = 0;
     while can0 < last + 3 {
-        can0 = serve(&mut threads, &[true, false])[0].unwrap_or(can0);
+        can0 = serve(&mut threads, &[true, false])[0].1.unwrap_or(can0);
         wait("control stopped handing can0 batches");
     }
     let frozen = progress.load(Ordering::Acquire);
-    while can0 < last + 13 {
-        can0 = serve(&mut threads, &[true, false])[0].unwrap_or(can0);
+    // Ten passes, counted by the batches they hand can0 (a stalled control skips tick numbers, never batches).
+    passes = 0;
+    while passes < 10 {
+        passes += serve(&mut threads, &[true, false])[0].0;
         wait("control stopped handing can0 batches");
     }
     assert_eq!(

@@ -1,7 +1,7 @@
 //! The runtime under systemd's notify protocol, as `deploy/systemd/runtime.service` runs it (`Type=notify`,
 //! `WatchdogSec`): the real binary on `vcan` with the runtime's test robot (`bins/runtime/tests/skeleton.yaml`) and a
 //! socket standing in for systemd's. Which passes feed the watchdog is the control thread's unit test
-//! (`a_bus_behind_holds_the_watchdog_back_only_while_it_has_a_run`); this is the binary saying it.
+//! (`control::progressing`, proven by `the_progress_count_stops_while_any_bus_is_behind`); this is the binary saying it.
 //!
 //! The binary comes from the build `scripts/sim.sh` makes before it runs the suite.
 #![cfg(target_os = "linux")]
