@@ -218,3 +218,29 @@ instance with RunMacro2:
   moment about the hub axis. The full-ring ridge and groove cannot carry torque about that axis (frictionless), so the lugs carry
   all of it.
 - Stop lug (stop_post.py, 2 mm pad exclusion): lug root 1.99 / 1.61, elsewhere 2.14 / 1.34. Matches the record.
+
+## Post-processor body split rewritten, with a guard (2026-11-12 09:45)
+
+The old split (hub_r1c.py since 2026-11-11) cut the node list into arm / hub / bolts by index ranges. The solver lists each body's
+SURFACE nodes before its interior nodes, which broke it in two ways:
+- The -X bolt (nodes 0-4705: surface first, then interior) was counted as arm. The ring runs' "arm hub posts" peaks, layer
+  76.6 MPa at the bolt-bore mouth, were bolt surface nodes at r 1.500.
+- About 15,500 hub surface nodes, between the last arm node and the hub's first interior node, were counted as arm. That shifted
+  the arm ridge, seat and flank figures in every r1c/r1d result since 2026-11-11.
+
+New split:
+- Each node gets a certain geometric label where it can: inside a bolt shank or head, inside an insert sleeve, inside a pad,
+  inside the hub mesh by more than 0.2, or outside it by more than 0.2.
+- Unsure (interface) nodes between two certain blocks of different bodies get one cut point, placed where the fewest nodes land
+  in a body they can't geometrically belong to.
+- GUARD: the run stops (SystemExit) if any arm or hub node lies inside another body: the hub/arm mesh by more than 0.15 (the STL
+  facets cut curved faces by up to about 0.1), or a bolt / insert / pad by more than 0.05.
+- The run list is printed, e.g. "steel 0-4705, pad 4706-5280, arm 5281-192539, pad 192540-192728, hub 192729-386238,
+  steel 386239-390950".
+
+Re-post-processed with the new split (files here replaced; the tapered one is `r1d7_tg01p_stop.post_resplit.txt`):
+- Tapered 0.1 gap STOP_0 still fails at the ridge end, θ 143: arm vm 0.64, shear 0.71; hub flank shear 0.67. So the move to the
+  ring stands.
+- Ring STOP_0 (repeat, post/lug control): arm hub posts pass, 1.94 / 1.61 / 1.38 at 0.5 mm. Joint regions change by a few
+  percent (in the notes and the report).
+- A layer average of "-" in the tables means no tensile average anywhere (all compression). It used to print as 0.00.

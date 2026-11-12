@@ -20,37 +20,81 @@ PAD_PTS = [(147.5, 15.0), (193.5, 15.0), (147.5, -15.0), (193.5, -15.0)]      # 
 pad_all = np.zeros(len(p), bool)
 for x0, dz in PAD_PTS:
     pad_all |= (np.hypot(p[:, 0] - x0, p[:, 2] - (CZ + dz)) < 0.95) & (p[:, 1] > 295.65) & (p[:, 1] < 296.05)
-# Classify by BODY (2026-11-11, review): the solver writes nodes body by body (arm, hub, bolts). A distance-to-hub-mesh test put
-# every arm node on a line-to-line contact face (the load flank, the end face) into the hub. Boundaries are found from nodes
-# clearly inside one body (|signed distance| > 0.2 mm, or on a bolt axis), sampled along the index, then refined node by node.
-def sdist(ix):
-    return np.concatenate([trimesh.proximity.signed_distance(hub, p[ix[i:i + 20000]]) for i in range(0, len(ix), 20000)]) if len(ix) else np.zeros(0)
-def label(ix):
-    sd_ = sdist(ix)
-    return np.where((rb_all[ix] < 1.55) | pad_all[ix], 2, np.where(sd_ > 0.2, 1, np.where(sd_ < -0.2, 0, -1)))     # 0 arm, 1 hub, 2 bolt, -1 unsure
-N = len(p); smp = np.arange(0, N, 97); ls = label(smp)
-h_first = smp[np.argmax(ls == 1)]                                  # first sampled hub node
-b_first = smp[len(ls) - np.argmax((ls[::-1] != 2) & (ls[::-1] != -1))]   # start of the trailing bolt run
-def refine(lo, hi, want):
-    ix = np.arange(max(lo, 0), min(hi, N)); lb = label(ix)
-    k = np.flatnonzero(lb == want); return int(ix[k[0]]) if len(k) else int(lo)
-h0 = refine(h_first - 200, h_first + 1, 1); b0 = refine(b_first - 200, b_first + 200, 2)
-body = np.zeros(N, np.int8); body[h0:] = 1; body[b0:] = 2
-# 2026-11-12: a bolt can also come FIRST in the node order (the -X bolt was nodes 557-4624, counted as arm: the "arm hub posts"
-# peak was a steel bolt node). Every contiguous run of bolt-interior nodes (r < 1.3 from a bolt axis) marks a bolt block; a block
-# is taken only if all its nodes lie within the bolt radius.
-_inner = np.flatnonzero(rb_all < 1.3)
-if len(_inner):
-    _cuts = np.flatnonzero(np.diff(_inner) > 200)
-    for _lo, _hi in zip(np.r_[_inner[0], _inner[_cuts + 1]], np.r_[_inner[_cuts], _inner[-1]]):
-        if rb_all[_lo:_hi + 1].max() <= 1.52 and body[_lo] != 2:
-            body[_lo:_hi + 1] = 2
-            print(f'bolt block found at nodes {_lo}-{_hi} (inside the arm/hub index range), reclassified as bolt')
-arm = np.flatnonzero(body == 0); hb = np.flatnonzero(body == 1); bl = np.flatnonzero(body == 2)
-in_hub = body == 1; bolt = body == 2
-chk = label(smp); bad = int(((chk == 0) & (body[smp] != 0)).sum() + ((chk == 1) & (body[smp] != 1)).sum())
-print(f'bodies by node index: arm 0-{h0 - 1}, hub {h0}-{b0 - 1}, bolts {b0}-{N - 1}; sampled nodes contradicting the split: {bad}')
-out['body_split'] = dict(arm=[0, h0 - 1], hub=[h0, b0 - 1], bolts=[b0, N - 1], contradicting_samples=bad)
+# Classify by BODY (rewritten 2026-11-12 after a steel bolt node was scored as PETG: the -X bolt sat at the START of the node order
+# and the old index-range split counted it as arm). Every node gets a geometric label where it is certain:
+#   steel bolt (inside the bolt shank or head, 0.05 margin), brass insert (inside the sleeve, R1C_INSERTS=1), soft pad (inside a
+#   pad), hub (signed distance into the hub mesh > 0.2), arm (outside the hub by > 0.2 and not in any of the above);
+# nodes on an interface (within those margins) take the body of the nearest certain node in node order (the solver writes nodes
+# body by body). GUARD: afterwards no arm or hub node may lie inside the other (by > 0.15: the STL facets cut curved faces by up to
+# ~0.1) or inside a bolt / an insert / a pad by more than
+# 0.05 mm; if one does, the run stops (SystemExit) instead of scoring it.
+import os as _os
+INSERTS = _os.environ.get('R1C_INSERTS') == '1'
+LUG_F, LUG_B = CZ + 5.1, CZ - 5.1
+SEAT = LUG_B - 7.0
+N = len(p); zz = p[:, 2]; yy = p[:, 1]
+if INSERTS:      # M3 x 25 DIN 912 from the back counterbore seat, Dia 4.0 x 5.7 insert from the front lug face
+    def steel_in(m):
+        return ((rb_all < 1.5 - m) & (zz > SEAT + m) & (zz < SEAT + 25.0 - m)) | ((rb_all < 2.75 - m) & (zz > SEAT - 3.0 + m) & (zz < SEAT - m))
+    def brass_in(m):
+        return (rb_all > 1.5 + m) & (rb_all < 2.0 - m) & (zz > LUG_F + m) & (zz < LUG_F + 5.7 - m)
+else:            # bolts bonded in a Dia 3.0 bore, Z CZ + 4 +- 32
+    def steel_in(m):
+        return (rb_all < 1.5 - m) & (zz > CZ - 28.0 + m) & (zz < CZ + 36.0 - m)
+    def brass_in(m):
+        return np.zeros(N, bool)
+def pad_in(m):
+    k = np.zeros(N, bool)
+    for x0, dz in PAD_PTS:
+        k |= (np.hypot(p[:, 0] - x0, zz - (CZ + dz)) < 0.9 - m) & (yy > 295.7 + m) & (yy < 296.0 - m)
+    return k
+lo_b, hi_b = hub.bounds[0] - 0.5, hub.bounds[1] + 0.5
+near_hub = np.all((p >= lo_b) & (p <= hi_b), axis=1)
+sd = np.full(N, -99.0)
+ix = np.flatnonzero(near_hub)
+sd[ix] = np.concatenate([trimesh.proximity.signed_distance(hub, p[ix[i:i + 20000]]) for i in range(0, len(ix), 20000)]) if len(ix) else []
+lab = np.full(N, -1, np.int8)
+lab[sd < -0.2] = 0
+lab[sd > 0.2] = 1
+lab[steel_in(0.05)] = 2
+lab[brass_in(0.05)] = 3
+lab[pad_in(0.05)] = 4
+lab[(lab == 0) & (steel_in(-0.05) | brass_in(-0.05) | pad_in(-0.05))] = -1      # near a small body's surface: decide by node order
+small_in = steel_in(0.05) | brass_in(0.05) | pad_in(0.05)
+compat = np.zeros((5, N), bool)      # which bodies a node can geometrically belong to (interface nodes: more than one)
+compat[0] = (sd < 0.15) & ~small_in
+compat[1] = (sd > -0.15) & ~small_in
+compat[2] = steel_in(-0.05); compat[3] = brass_in(-0.05); compat[4] = pad_in(-0.05)
+cert = np.flatnonzero(lab >= 0)
+body = lab.copy()
+if len(cert):
+    body[:cert[0]] = lab[cert[0]]; body[cert[-1] + 1:] = lab[cert[-1]]
+    gaps = np.flatnonzero(np.diff(cert) > 1)
+    for g in gaps:      # unsure nodes between two certain ones
+        i, j = cert[g], cert[g + 1]; A, B = lab[i], lab[j]; seg = np.arange(i + 1, j)
+        if A == B:
+            body[seg] = A
+            continue
+        # bodies are contiguous in node order: one cut; put it where the fewest nodes end up in a body they cannot belong to
+        bad_a = np.r_[0, np.cumsum(~compat[A, seg])]; bad_b = np.r_[np.cumsum((~compat[B, seg])[::-1])[::-1], 0]
+        k = int(np.argmin(bad_a + bad_b))
+        body[seg[:k]] = A; body[seg[k:]] = B
+body = body.astype(np.int8)
+bad_arm = (body == 0) & ((sd > 0.15) | steel_in(0.05) | brass_in(0.05) | pad_in(0.05))
+bad_hub = (body == 1) & ((sd < -0.15) | steel_in(0.05) | brass_in(0.05) | pad_in(0.05))
+if bad_arm.any() or bad_hub.any():
+    for k in np.flatnonzero(bad_arm | bad_hub)[:10]:
+        print('GUARD: node', k, p[k].round(3).tolist(), 'assigned', ['arm', 'hub'][body[k]], 'sd', round(float(sd[k]), 3), 'r from bolt', round(float(rb_all[k]), 3))
+    raise SystemExit(f'GUARD FAILED: {int(bad_arm.sum())} arm and {int(bad_hub.sum())} hub nodes lie inside another body')
+runs = np.flatnonzero(np.diff(body)) + 1
+blocks = [(int(a), int(b - 1), int(body[a])) for a, b in zip(np.r_[0, runs], np.r_[runs, N])]
+names = ['arm', 'hub', 'steel', 'brass', 'pad']
+big = [f'{names[c]} {a}-{b}' for a, b, c in blocks if b - a > 50]
+print(f'bodies by geometry + node order ({len(blocks)} runs, {sum(b - a <= 50 for a, b, c in blocks)} of 50 nodes or fewer): ' + ', '.join(big))
+print(f'GUARD OK: no arm or hub node inside another body (unsure nodes decided by node order: {int((lab < 0).sum())})')
+arm = np.flatnonzero(body == 0); hb = np.flatnonzero(body == 1); bl = np.flatnonzero(body == 2); br = np.flatnonzero(body == 3)
+in_hub = body == 1; bolt = (body == 2) | (body == 3)
+out['body_split'] = dict(runs=big, unsure_nodes=int((lab < 0).sum()), guard='ok')
 r = np.hypot(p[:, 0] - HX, p[:, 2] - CZ); y = p[:, 1]; th = np.degrees(np.arctan2(p[:, 2] - CZ, p[:, 0] - HX)) % 360
 ridge_arc = ((th > 33) & (th < 147)) | ((th > 213) & (th < 327))
 import os as _os
@@ -93,13 +137,13 @@ def rep(body, name, mask, layer_col, allow_layer=22.5):
                         worst_avg=[round(x, 1) for x in av], sf_avg=[round(al / x, 2) if x > 0 else None for x in av],
                         worst_avg_at=[p[w[1]].round(1).tolist() for w in worst], nodes_in_05=worst[0][2], allowable=al)
         print(f'{body:3s} {name:44s} {lab:5s} peak {v[i]:6.1f} SF {al / v[i] if v[i] > 0 else 0:5.2f} at {p[i].round(1).tolist()} th {th[i]:.0f} | worst avg .5/1/2 '
-              f'SF {al / av[0] if av[0] > 0 else 0:4.2f}/{al / av[1] if av[1] > 0 else 0:4.2f}/{al / av[2] if av[2] > 0 else 0:4.2f} '
+              f'SF {"/".join(f"{al / x:4.2f}" if x > 0 else "-" for x in av)} '      # '-': no tensile average (all compression)
               f'(0.5 mm: {worst[0][2]} nodes at {p[j5].round(1).tolist()} th {th[j5]:.0f})')
     out[f'{body}: {name}'] = row
 
 
 ALL = np.ones(len(p), bool)
-print(f'nodes: arm {len(arm)}, hub {len(hb)}, bolts {len(bl)}')
+print(f'nodes: arm {len(arm)}, hub {len(hb)}, bolts {len(bl)}, inserts {len(br)}')
 # arm side (layer = sigma z, column 3)
 rep('arm', 'WHOLE ARM (nothing excluded)', ALL, 3)
 rep('arm', 'ridge load flank (within 0.25 of the 30 deg flank, r 34.6-35.9)', ridge_arc & (r > 34.6) & (r < 35.9) & (np.abs((y - (298.0 + (35.8 - r) * np.tan(np.radians(30)))) * np.cos(np.radians(30))) < 0.25), 3)
@@ -138,6 +182,9 @@ rep('hub', 'lugs incl. roots (Y < 297.5)', lugs, 2)
 rep('hub', 'lug roots (Y 294-297.5)', lugs & (y > 294), 2)
 if len(bl):
     i = bl[np.argmax(vm[bl])]; out['bolts'] = dict(vm_peak=round(float(vm[i]), 0), at=p[i].round(1).tolist(), sf_vs_640=round(640.0 / vm[i], 2))
+if len(br):
+    i = br[np.argmax(vm[br])]; out['inserts'] = dict(vm_peak=round(float(vm[i]), 0), at=p[i].round(1).tolist(), sf_vs_240=round(240.0 / vm[i], 2))
+    print(f'inserts: vm peak {vm[i]:.0f} MPa at {p[i].round(1).tolist()} (SF vs 240 MPa brass yield {240.0 / vm[i]:.2f})')
     print(f'bolts: vm peak {vm[i]:.0f} MPa at {p[i].round(1).tolist()} (SF vs 640 MPa yield {640.0 / vm[i]:.2f})')
 # lug forces: slab across each lug just below the root, hub nodes only
 for name, (x0, x1) in (('lug -X', (141.0, 151.75)), ('lug +X', (189.25, 200.0))):

@@ -31,6 +31,18 @@ GROOVE = os.environ.get('HS_GROOVE') == '1'      # option (d): groove in the hub
 BOLTED = os.environ.get('HS_BOLTED') == '1'     # lugs in frictionless contact, steel M3 bodies bonded in the post bores, no preload
 MODEL = F / os.environ.get('HS_MODEL', ('UA_HUBSEAT_v31' if R1C else 'UA_HUBSEAT_v28') + ('_bolted' if BOLTED else '') + '.SLDPRT')
 BOLTS = F / 'HS_BOLTS.SLDPRT'
+# HS_INSERT_MODEL (2026-11-12, coordinator "M"): the lug bolt joint as built. Front post: the Ruthex M3 x 5.7 insert (Dia 4.0
+# hole, so the insert is a Dia 4.0 x 5.7 brass sleeve; its knurl crests sit in the PETG) bonded in the post from the lug face, the
+# bolt bonded inside it, the rest of the 6.5 insert hole and the Dia 3.2 pilot left open. Back post: Dia 3.4 clearance hole and the
+# Dia 6.0 counterbore 7 below the lug face (R1d); the M3 x 25 DIN 912 bolt (head Dia 5.5 x 3) in no-penetration contact there,
+# head underside on its seat, shank in the clearance hole, and in the hub lug hole (Dia 3.4) as before. No preload.
+INSERTS_ON = os.environ.get('HS_INSERT_MODEL') == '1'
+if INSERTS_ON:
+    BOLTS = F / 'HS_BOLTS_INS.SLDPRT'
+INSERTS = F / 'HS_INSERTS.SLDPRT'
+LUG_FACE_F = 5.985875 + 5.0 + 0.1      # front / back post faces at the lug (HUB_LUG_HZ 5.0 + the printed 0.1)
+LUG_FACE_B = 5.985875 - 5.0 - 0.1
+BOLT_SEAT = LUG_FACE_B - 7.0
 PADS_ON = os.environ.get('HS_PADS') == '1'      # R1d gap cases: four soft bonded pads stabilise the arm (soft springs crash SolidWorks here)
 PADS = F / 'HS_PADS.SLDPRT'
 PAD_PTS = [(147.5, 15.0), (193.5, 15.0), (147.5, -15.0), (193.5, -15.0)]      # X, Z - CZ: post-top strips under the hub fill (theta 147 / 33 / 213 / 327)
@@ -143,7 +155,40 @@ def build():
         for sg in (1, -1):
             OP.r1c_fins(d, sg, CZ + sg * (OP.HUB_LUG_HZ + (OP.CL if R1D else 0.0)))
         OP.r1d_post_trim(d)
-    if BOLTED:      # M3 bores through both posts at each lug (the real holes are 3.4 / inserts; here the bolt fills its bore)
+    if BOLTED and INSERTS_ON:      # the holes as in the printed halves (organic_parts.upper_half)
+        OP.z_cyl(d, 'HS_BACK_HOLES', OP.HUB_COLS, 1.7, CZ - 60.0, LUG_FACE_B + 0.5, True)
+        OP.z_cyl(d, 'HS_BACK_CBORES', OP.HUB_COLS, 3.0, CZ - 60.0, BOLT_SEAT, True)
+        OP.z_cyl(d, 'HS_INSERT_HOLES', OP.HUB_COLS, 2.0, LUG_FACE_F - 0.01, LUG_FACE_F + 6.5, True)
+        OP.z_cyl(d, 'HS_PILOTS', OP.HUB_COLS, 1.6, LUG_FACE_F + 6.4, LUG_FACE_F + 10.0, True)
+        d.ForceRebuild3(False)
+        d.Save3(1, e, w)
+        import organic_master as M
+        b = M.new_part(BOLTS)
+        for i, q in enumerate(OP.HUB_COLS):
+            with M.Sk(b, M.plane(b, 'Z', BOLT_SEAT - 1.5, f'HEAD{i}_P'), f'HEAD{i}') as s_:
+                s_.circle((q[0], q[1], BOLT_SEAT - 1.5), 2.75)
+            M.feat(b, s_.feat, f'HEAD{i}', 3.0, False, mode=M.MID, lo=0.01)
+            with M.Sk(b, M.plane(b, 'Z', BOLT_SEAT + 12.5, f'BOLT{i}_P'), f'BOLT{i}') as s_:
+                s_.circle((q[0], q[1], BOLT_SEAT + 12.5), 1.5)
+            M.feat(b, s_.feat, f'BOLT{i}', 25.0, False, mode=M.MID, lo=0.01)
+        e2, w2 = L(), L()
+        b.Save3(1, e2, w2)
+        print('  bolt bodies', len(bodies(b)), flush=True)
+        sw.CloseDoc(b.GetTitle)
+        n = M.new_part(INSERTS)
+        for i, q in enumerate(OP.HUB_COLS):
+            zm = LUG_FACE_F + 2.85
+            with M.Sk(n, M.plane(n, 'Z', zm, f'INSERT{i}_P'), f'INSERT{i}') as s_:
+                s_.circle((q[0], q[1], zm), 2.0)
+                s_.circle((q[0], q[1], zm), 1.5)
+            M.feat(n, s_.feat, f'INSERT{i}', 5.7, False, mode=M.MID, lo=0.01)
+        e2, w2 = L(), L()
+        n.Save3(1, e2, w2)
+        print('  insert bodies', len(bodies(n)), flush=True)
+        sw.CloseDoc(n.GetTitle)
+        e, w = L(), L()
+        d = sw.OpenDoc6(str(MODEL), 1, 1, '', e, w)
+    elif BOLTED:      # M3 bores through both posts at each lug (the real holes are 3.4 / inserts; here the bolt fills its bore)
         OP.z_cyl(d, 'HS_BOLT_BORES', OP.HUB_COLS, 1.5, CZ - 45.0, CZ + 50.0, True)
         d.ForceRebuild3(False)
         d.Save3(1, e, w)          # new_part below closes every open document
@@ -170,6 +215,10 @@ def build():
         fb = d.InsertPart3(str(BOLTS), 1, '')
         d.ForceRebuild3(False)
         print('  bolts', fb is not None, bodies(d), flush=True)
+        if INSERTS_ON:
+            fi = d.InsertPart3(str(INSERTS), 1, '')
+            d.ForceRebuild3(False)
+            print('  inserts', fi is not None, bodies(d), flush=True)
     if PADS_ON:      # pads from the trimmed post tops (Y 295.7) to the hub fill's underside (Y 296.0)
         d.Save3(1, e, w)
         import organic_master as M
@@ -231,11 +280,13 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
             return post
         bs = sorted(d.GetBodies2(0, True), key=lambda b: b.GetMassProperties(1190)[3])
         n_pads = sum('HS_PADS' in b.Name.upper() for b in bs)      # pads are found by name, whatever HS_PADS says
-        want = (4 if BOLTED else 2) + n_pads
+        n_ins = sum('HS_INSERTS' in b.Name.upper() for b in bs)
+        want = (4 if BOLTED else 2) + n_pads + n_ins
         if len(bs) != want:
             raise SystemExit(f'expected {want} bodies, got {len(bs)}')
         hub, arm = bs[-2], bs[-1]
-        bolts = [b for b in bs[:-2] if 'HS_BOLTS' in b.Name.upper()] if n_pads else bs[:-2]
+        bolts = [b for b in bs[:-2] if 'HS_BOLTS' in b.Name.upper()] if (n_pads or n_ins) else bs[:-2]
+        inserts = [b for b in bs[:-2] if 'HS_INSERTS' in b.Name.upper()]
         print(' bodies', [b.Name for b in bs], 'bolts', len(bolts), flush=True)
         if BOLTED:      # the two smallest bodies are the bolts: steel
             comp = st.SolidManager.GetComponentAt(0, I())
@@ -252,6 +303,13 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                     for kk, v in (('EX', PAD_E * 1e6), ('NUXY', 0.3), ('GXY', PAD_E * 1e6 / 2.6), ('DENS', 100.0), ('SIGYLD', 1.0e6)):
                         m.SetPropertyByName2(kk, v, False)
                     print(' pad material', nm, cb.SetSolidBodyMaterial(m), flush=True)
+                if 'HS_INSERTS' in str(nm).upper():      # brass inserts
+                    m = cb.GetDefaultMaterial
+                    m.MaterialUnits = 0
+                    m.MaterialName = 'brass'
+                    for kk, v in (('EX', 1.0e11), ('NUXY', 0.34), ('GXY', 3.7e10), ('DENS', 8500.0), ('SIGYLD', 2.4e8)):
+                        m.SetPropertyByName2(kk, v, False)
+                    print(' insert material', nm, cb.SetSolidBodyMaterial(m), flush=True)
                 if 'HS_BOLTS' in str(nm).upper():      # the inserted bolt bodies only (the arm body can carry its HS_BOLT_BORES feature's name)
                     m = cb.GetDefaultMaterial
                     m.MaterialUnits = 0
@@ -277,10 +335,22 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 lo, hi = (min(b[0], b[3]), min(b[1], b[4]), min(b[2], b[5])), (max(b[0], b[3]), max(b[1], b[4]), max(b[2], b[5]))
                 return hi[1] > 287.5 and lo[1] < 294.2 and abs((lo[2] + hi[2]) / 2 - CZ) < 12.0 and (hi[0] < 153.0 or lo[0] > 188.0)
             lf = [f for f in faces(hub) if near_lugs(box(f))]
-            pf = [f for f in faces(arm) if near_lugs(box(f))] + [f for bb in bolts for f in faces(bb)]
+            pf = [f for f in faces(arm) if near_lugs(box(f))] + [f for bb in bolts for f in faces(bb)] + [f for bb in inserts for f in faces(bb)]
             err = I()
             cs2 = cm.CreateContactSet(0, VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, lf), VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, pf), err)
             print(' lug contact set', cs2 is not None, 'faces hub', len(lf), 'arm+bolts', len(pf), 'err', err.value, flush=True)
+        if BOLTED and inserts:      # bolt head on its seat and shank in the back clearance hole: no penetration, no bond
+            def near_back_hole(b):
+                lo, hi = (min(b[0], b[3]), min(b[1], b[4]), min(b[2], b[5])), (max(b[0], b[3]), max(b[1], b[4]), max(b[2], b[5]))
+                return (hi[2] < LUG_FACE_B + 0.6 and any(lo[0] > x0 - 3.1 and hi[0] < x0 + 3.1 for x0 in (147.5, 193.5))
+                        and lo[1] > 292.0 - 3.1 and hi[1] < 292.0 + 3.1)
+            hf3 = [f for f in faces(arm) if near_back_hole(box(f))]
+            bf3 = [f for bb in bolts for f in faces(bb)]
+            err = I()
+            cs3 = cm.CreateContactSet(0, VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, bf3), VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, hf3), err)
+            print(' bolt seat contact set', cs3 is not None, 'faces bolts', len(bf3), 'arm (back hole, counterbore)', len(hf3), 'err', err.value, flush=True)
+            if not hf3:
+                raise SystemExit('no back-hole faces found')
         if err.value or cm.ContactSetCount == 0:
             raise SystemExit('contact failed')
         # no soft springs by default (setting them crashed SolidWorks intermittently, 2026-11-11). R1d gap cases (2026-11-12): with
