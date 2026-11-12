@@ -143,10 +143,12 @@ from the scan, a joint's `direction` from the sign check, a taught limit, and `z
 test below passed) come out of `robot-cli` as an edit to the skeleton: only the fields that changed, with comments and order
 kept, and a comment beside each value naming the session that measured it; a re-check that confirms a value still rewrites
 that comment. The edit carries the hash of the skeleton the session loaded (from `session.json`), and `robot-cli` refuses to
-produce it against a checkout whose skeleton differs; that catches an edit made from an old skeleton, not two edits open at
-once. The runtime never writes the file; the person applies the edit in a checkout and opens the PR, which is reviewed like
-any skeleton change. No value is copied in from legacy files: the right arm's legacy signs and limits are what its
-milestone-2 re-check compares against, and they enter the skeleton only as that re-check's edit.
+produce it against a checkout whose skeleton differs. That catches an edit applied to a different skeleton than the session
+ran; it doesn't catch a checkout behind `main` or two edits open at once, which the skeleton review (skeleton.md section 6)
+still covers. The runtime never writes the file; the person applies the edit in a checkout and opens the PR, which is
+reviewed like any skeleton change. No value is copied in from legacy files ([skeleton.md](conventions/skeleton.md) section 6,
+check 3): the right arm's legacy values are only what its milestone-2 re-check compares against, and the re-checked values
+enter the skeleton only as that re-check's edit.
 
 Shape (the builder may adjust field names; the content is required):
 
@@ -499,9 +501,10 @@ evaluated only against a named need.
 
 ## Before the legacy code is deleted (milestone 2)
 
-1. The right arm is in the skeleton on `can0`, IDs 1 to 5, with its directions and hard limits null. Its legacy directions
-   (`marengo/config/motors.yaml`, sign-checked 2026-08-11) and bench envelopes are what step 3's re-check compares
-   against; the envelopes are relative to the legacy reference. The re-checked values enter as `robot-cli`'s edit (item 1).
+1. The right arm is in the skeleton on `can0`, IDs 1 to 5, with its directions, hard limits and caps null. Step 3's sign
+   check compares against its legacy directions (`marengo/config/motors.yaml`, sign-checked 2026-08-11), and the result
+   enters as `robot-cli`'s edit (item 1). Where its hard limits and caps come from on this stack is open
+   ([Open with Joey](#open-with-joey) 12); the legacy bench envelopes are relative to the legacy reference.
 2. Don't carry the `control.yaml` gains: the RS03 gains were tuned while the drive saw 0.4 × the commanded velocity. Friction
    fits move to `config/dynamics.yaml` only after a re-check. `right_lower_arm_yaw`'s URDF axis is wrong (`kinematics.md`).
 3. Give `can0` its own adapter with its own link file and retire the HAT; rewrite `canTimeout` from 600 to 1000; run the sign check
@@ -533,3 +536,7 @@ Defaults apply until Joey answers.
 11. **Commissioning caps** (item 1). Default: 5 % of the model's `limit_torque` range (RS03 3 N·m, RS02 and RS00 0.7 N·m,
     RS04 6 N·m), the same share of its current range, and 0.5 rad/s. Accepted as a starting point (Joey, 2026-11-11);
     set them from logged runs once a full limb is connected and moving.
+12. **The right arm's hard limits and caps on this stack** (milestone 2). Its legacy bench envelopes are relative to the
+    legacy reference and aren't copied in (item 1). Options: STATUS.md's documented hardware stops, as for the left arm;
+    the envelopes re-referenced after the C1 re-check; or a measured procedure. Each needs the test that verifies it
+    (skeleton.md section 6, check 3). Default until decided: null, so the right arm runs at the commissioning caps.
