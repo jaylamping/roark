@@ -168,6 +168,9 @@ hands and faces clear of the arm while it is loaded. PETG can let go without war
    - the end face's inner edge: the ring where the small 45° chamfer at the top of the bore meets the end face (it bears on the
      hub's disc, all round), and the matching ring on the underside of the hub disc. Look for crushing, a shiny flattened band,
      or whitening. The model puts its highest local contact pressure on that edge, in the stop case and in normal lifting (G90).
+   - R1e: the shim ring. Measure it with the calliper at four places and compare with its marked thickness (or the reading from
+     2b step 1). It carries all the axial load, so a ring now thinner by 0.03 or more, a shiny flattened band, or a cut inner edge
+     means it is creeping or crushing: stop and tell me.
    Then close it and re-check the axial play (step 7 of the R1c / R1d assembly). Play that wasn't there before means
    something yielded: stop and tell me.
 

@@ -48,7 +48,8 @@ R1e checks (`../20261111_r1c-delta/r1d/r1e/`):
 | Hub-end fit coupon (cut at Y 284) | Back PASS 69 min / 16.9 g; front PASS 64 min / 16.1 g; cut-plane slivers accepted in a coupon-only list. Procedure: BENCH_TESTS.md section 2b, pass rule included. |
 | 0 gap G90 (flank line-to-line, shim lumped into the end face) | All ≥ 1.5. Lowest: end-face corner θ 296, shear 1.68 / 3.48 / 11.14 at 0.5 / 1 / 2 mm (0.81 at the 0.1 gap). Hub groove bottom / spigot core layer 2.20; posts layer 2.38. |
 | 0 gap STOP_0, STOP_124 | *running* (0.4 mm on the lug-root fillets, global 5.0: the 0.3 refinement exceeded the solver's memory limit) |
-| Shim as its own PETG body, G90 + STOP_0 | *running* |
+| Shim as its own PETG body, G90 | All ≥ 1.5; lowest 2.79 / 4.96 / 9.08 (arm post root layer, θ 133). Shim bearing (PETG, compression): mean 2.8 MPa over the closed side (θ 210-330), worst 0.5 / 1 / 2 mm average 8.3 / 6.2 / 4.4 MPa, peak node 10.3 MPa at the ring's outer top edge (its bonded edge on the disc, θ 265). Contact checked from nodal displacements: the ring lifts off our end face by 8-13 µm (max 24 µm) over θ 0-180 and stays closed over θ 210-330, so it carries compression only. (The +0.6 / +2 MPa axial "tension" read at the shim / end-face nodes is stress extrapolated onto the opened faces, not load.) Lugs, inserts (15 MPa) and bolts (31 MPa) low. `shim_gap.py` |
+| Shim as its own PETG body, STOP_0 | *queued*: the first try (0.3 on the lug roots, 1.19 M nodes) stalled at the factorisation and was ended; re-run with the probe-sized lug-root mesh |
 
 Rejected variants, and why:
 1. **R1c / R1d partial ridge with tapered ends:** failed at the ridge ends in STOP_0 (arm vm 0.64 / shear 0.71 at θ 143, confirmed
@@ -76,6 +77,7 @@ Open caveats:
   full rings (2.3-3.0 M nodes).
 - **Model:** frictionless contact, no bolt preload, linear PETG, isotropic stiffness with layer allowables. The shim ring is held
   on the disc by the touching-face bond, with no-penetration against our end face.
+- **Shim creep:** in G90 (a held pose) the ring sees about 3 MPa mean and 6-8 MPa locally on the loaded side, about 1/7-1/5 of PETG compressive strength, through its layers. Long-term creep at that level is a few µm on a 0.7 ring; the bench split-and-inspect step re-measures the ring thickness after the cycles.
 - **Shim thickness:** printed accuracy about ±0.03-0.05 (first-layer squish on SuperTack). The pick by trial absorbs it; a set
   offset as a whole is reprinted shifted, never the arm.
 - **Before the halves print:** the hub-end coupon must pass (closes by hand with a ring, seam shut, no rock after ten cycles,
