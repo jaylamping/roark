@@ -47,12 +47,14 @@ A witness line that breaks or shifts means something slipped or yielded.
    - fit the two seam bolts through the lugs and the two hub screws.
    - Check the arm turns freely on the RS02 over its range. Check the witness lines line up.
 
-### R1c / R1d halves: hub and assembly order (2026-11-12)
+### R1c / R1d / R1e halves: hub and assembly order (2026-11-12)
 
-R1c and R1d halves have a ridge inside the hub seat that closes around a groove in the hub spigot. R1d also has 12 small crush
-ribs on the ridge's low-Y flank (6 per half, about 1 × 1 mm, 0.25 proud). The ribs are meant to be squashed when the halves
-close: that is how the flank seats without play. Don't file them off.
-- **They need the grooved hub, rev C+** (shoulder thread, `shoulder_hub_left.SLDPRT`, fd0cef8 or later).
+R1c, R1d and R1e halves have a ridge inside the hub seat that closes around a groove in the hub spigot.
+- **R1e** (the play-free version): no crush ribs. The ridge's flank is line-to-line with the groove, and a printed shim ring
+  between the end face and the hub disc takes up the rest. Pick the ring once, by trial, on the coupon (section 2b), and use the
+  same ring in the arm. The ring goes over the hub spigot, flat against the disc, before the hub goes into the back half.
+- R1d (superseded): 12 small crush ribs on the ridge's low-Y flank, meant to be squashed on closing.
+- **They need the grooved hub:** R1e the rev D hub (shoulder thread, bc16e97 or later); R1c / R1d rev C+.
 - **They will not close around today's hub.** The ridge sits 1.3 mm into its plain spigot, about 220 mm³ of overlap per half.
   Don't force it.
 - **Once assembled, the hub is captive.** It can only come out by splitting the arm (seam screws and lug bolts out, front half
@@ -71,17 +73,16 @@ become:
    path while the hub goes in. The hub drops in along Z and would pinch a cable left across the seat.
 7. **Dry test fit, with no screws and before any load:**
    - Lay the hub into the back half: its groove takes the back ridge, and its lugs sit between the back posts.
-   - Close the front half over it slowly. Seat it on the RS02 ring's keys first, then press it down over the hub: the
-     ribs crush in the last 0.1-0.2 mm.
+   - R1e: the chosen shim ring is on the spigot, against the disc.
+   - Close the front half over it slowly, by hand. Seat it on the RS02 ring's keys first, then press it down over the hub.
+     R1d only: the ribs crush in the last 0.1-0.2 mm.
    - The seam faces must meet all round, with no gap a 0.1 mm feeler enters.
-   - With the halves held closed, try to push the hub in and out along its axis. **R1d: no play you can feel or measure**
-     (under 0.05 mm with a dial gauge). The ribs should take it all up.
-   - **Stop and tell me** if the seam won't close, or if there is play. Play means the ribs didn't print proud enough, and
-     the load would go to the lug bolts first. Don't force or sand anything.
-   - Take it apart and look at the ridge flanks and the ribs for marks. Crushed rib tips are expected; marks along the whole
-     flank are not.
-8. **Assemble:** the RS02 + ring and the cable in the back half as above. Then the hub into the back half (ridge into groove,
-   lugs between the posts). Then the front half closed over both.
+   - With the halves held closed, try to push the hub in and out along its axis, and rock it. **No play you can feel.**
+   - **Stop and tell me** if the seam won't close by hand, or if there is play. R1e: the ring is too thick (seam won't close)
+     or too thin (play); go one ring thinner or thicker as in section 2b. Don't force it with the screws, and don't sand anything.
+   - Take it apart and look at the ridge flank and the hub's groove flank for marks (R1d: crushed rib tips are expected).
+8. **Assemble:** the RS02 + ring and the cable in the back half as above. Then the hub, with the shim ring on its spigot (R1e),
+   into the back half (ridge into groove, lugs between the posts). Then the front half closed over both.
    - Then the two seam screws (M3 × 18 into the inserts) and the two hub lug bolts (M3 × 25 DIN 912
      socket head, Ø5.5, no washer) into the front-half inserts. Use socket heads: R1d's head counterbores are Ø6.0, too tight
      for a Ø5.7 button head.
@@ -89,28 +90,46 @@ become:
      after 24 h.
    - Check the arm turns freely on the RS02, and that the witness lines line up.
 
-## 2b. R1d hub-end fit coupon (before printing the R1d halves)
+## 2b. R1e shim ring and hub-end fit coupon (before printing the R1e halves)
 
-`prints/upper-arm/` (when released): the hub end of each R1d half, cut flat at Y 284. Back about 70 min, front about 64 min,
-34 g. Each has the bore, ridge, crush ribs, end face, floor, the slot edge breaks and the four hub posts with their insert and
-clearance holes. It closes on a printed rev D hub with the two lug bolts, as the arm does; there are no seam screws in the
-coupon.
+**Picking the ring: start with the thickest ring, and work down until the front half closes by hand with the seam shut. Use that
+one.**
 
-1. Inspect, then press the two inserts into the front coupon (Ø4.0 drill by hand first), as for the halves.
-2. **Close:** lay the hub into the back coupon (lugs between the posts), then close the front coupon over it. Fit the two lug
-   bolts (M3 × 25 DIN 912) and torque to 0.5 N·m.
-   - Note the closing effort: by hand, firm, or forced. Forced = stop and tell me.
-   - Note any gap at the seam faces. Seam faces must meet all round; a 0.1 feeler must not enter.
-3. **Play, before rocking:** clamp the hub. Push and pull the coupon along the hub axis, then rock it by hand. At the end face
-   against the hub disc, try go / no-go feelers 0.05, 0.10, 0.15, 0.20 at four places round the ring, both while pushing and
-   while pulling. Write down the largest that enters at each place.
-4. **Ten firm hand-rocking cycles** in each direction, then repeat step 3.
-5. **Open and inspect:** take the bolts out and the front coupon off. Look at the rib tips (crushed, shaved, burr), the ridge
-   flanks, and the hub's groove flank (marks, scoring, a shiny band). Photograph them.
-6. Re-close at 0.5 N·m and repeat step 3 once.
+R1e has no play by design. A thin printed PETG ring sits between the arm's end face and the hub disc, and you pick its thickness
+by trial, once, at assembly.
+- **Rings:** 22 rings on three plates, 55 min and 9 g in all. Each ring's thickness is marked by notches in its inner edge:
+  thickness = 0.25 + 0.05 × (number of notches). 1 notch = 0.30 mm ... 17 notches = 1.10 mm.
+  - The two thinnest (0.30, 0.35) are held to a thin outer skirt by three small tabs; snap the skirt off.
+  - Keep the rings flat. Don't sand them.
+- **Coupon:** the hub end of each R1e half, cut flat at Y 284. Back about 70 min, front about 64 min, 34 g. It has the seat,
+  ridge, end face, floor, slot breaks and the four hub posts with their insert and clearance holes. It closes on a printed rev D
+  hub with the two lug bolts, as the arm does.
 
-**Pass, before the halves are printed:** it closes without forcing, no visible seam gap, and **no 0.10 feeler enters after the
-rocking cycles**. Otherwise stop: the ribs get redesigned before the halves print.
+1. **Optional calliper check:** measure three rings (for example 0.40, 0.70, 1.00) at four places each. If all three read thicker
+   or thinner than marked by the same amount, the whole set is offset (first-layer squish on the plate). Note it; the pick below
+   works anyway.
+2. Press the two inserts into the front coupon (clear the holes with a Ø4.0 drill by hand first).
+3. **Pick the ring:**
+   - Slide the thickest ring (17 notches) over the hub's spigot, flat against the disc.
+   - Lay the hub into the back coupon (lugs between the posts), then close the front coupon over it **by hand, no screws**.
+   - If the seam doesn't close fully, take it apart and try the next thinner ring. Keep going down until the front closes by hand
+     with the seam shut. That ring is the one.
+   - **Never force it closed with the screws.** A ring that's too thick only closes by crushing the ridge flank, which makes play
+     later.
+4. With the chosen ring in, fit the two lug bolts (M3 × 25 DIN 912) and torque to 0.5 N·m. The seam must stay shut: no gap a
+   0.1 mm feeler enters, if you have one; otherwise none you can see against a light.
+5. **Rock check:** clamp the hub. Push and pull the coupon along the hub axis, then rock it firmly by hand in every direction.
+   There should be no movement and no click. Then do ten firm rocking cycles and check again.
+6. **Open and look:** take the bolts out and the front coupon off. Check the ring (flat, not cut or crushed at its inner edge),
+   the ridge flank and the hub's groove flank (marks, scuffing), especially near the seam. Photograph them.
+7. Close again with the same ring at 0.5 N·m and repeat the rock check once.
+
+**Pass, before the halves are printed:** a ring was found that closes by hand with the seam shut, the rock check shows no
+movement after the ten cycles, and nothing is cut or scored. **Otherwise stop and tell me.**
+- Every ring too thick (even the thinnest won't close), or every ring too loose (even the thickest rocks): the set is offset.
+  Reprint the set shifted (I'll send the file); the coupon and the arm stay as they are.
+
+The same ring then goes into the arm, together with the same printed hub.
 
 ## 3. Key coupon test (before the whole-arm test)
 
