@@ -29,6 +29,9 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
 - `runtime.rs`: the `runtime` crate on its test robot (two buses, one limb on both, one offline), against `sim-drive`
   on `can0` and `can1`: nothing enabled, a robot stop and a limb's stop reaching it on both buses, a clear re-arming a
   limb on both buses and one of the offline limb refused, and an end with every bus at rest and the session closed.
+- `blackbox.rs`: `candump-rotate` running `candump` as `candump@<bus>.service` does (needs `can-utils`): every frame
+  sent lands in its files exactly once, in order, across two cuts; SIGTERM to it alone ends `candump` and closes the
+  last file cleanly; and killed mid-file it leaves a file that reads back to its last one-second block.
 - `exit.rs`: a bus of two active limbs told to exit with control's snapshot ring full stops every limb and returns
   once the ring takes a snapshot with every limb stopped, once control drops the ring, or after its wait when control
   never reads again, each time at the next tick's drain; a bus of two stopping limbs with no time to collect records
@@ -36,8 +39,8 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
 
 Every frame on a bus reaches every socket on it, so two tests that run at the same time never share a bus. The tests in
 `exit.rs`, `slow.rs`, `faults.rs`, `enable.rs` and `orders.rs` use `can0`, `runtime.rs` uses `can0` and `can1` (its test
-robot's two buses) and `bus.rs` uses `can1` to `can3`, so all of them run one at a time (nextest's `can0` test group,
-`.config/nextest.toml`); `vcan.rs` has `can4` to itself. A new test either takes a bus no other test uses or joins that
+robot's two buses), `bus.rs` uses `can1` to `can3` and `blackbox.rs` uses `can3`, so all of them run one at a time
+(nextest's `can0` test group, `.config/nextest.toml`); `vcan.rs` has `can4` to itself. A new test either takes a bus no other test uses or joins that
 group.
 
 nextest's default profile leaves this crate out, so `scripts/check.sh` stays runnable on any machine; the `sim` profile
@@ -53,7 +56,7 @@ sleep to wait: wait on a reply with a deadline (testing.md rule 6).
 
 `sim-drive` (the drives under test), `can` (the bus thread under test), `safety` (preflight and the enable sequence
 under test), `skeleton` (their joint), `telemetry` (its recording, read back), `robstride` (the host's frames and the
-decoder), `vcan` through `socketcan`, and `candump`. See the
+decoder), `vcan` through `socketcan`, `candump`, and the `candump-rotate` binary (run, not linked). See the
 [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
 
 ## Using it

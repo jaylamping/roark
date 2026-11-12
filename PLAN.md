@@ -466,7 +466,8 @@ Not built before milestone 4; when it is, the sim drive gains a power-board mode
   `{bus, id, dlc, data, t_kernel, t_mono, dir}`, decoded joint state, commands, injected faults, events: state changes, stops,
   limit hits, operator actions with the client's identity) and `session.json` (skeleton file and hash, git revision, operator,
   stage).
-- **Black box:** `candump -L` per bus as its own systemd service, to `/var/lib/robot/candump/<bus>-<UTC>.log`, independent of the runtime.
+- **Black box:** `candump -L` per bus as its own systemd service (`candump@<bus>`), to `/var/lib/robot/candump/<bus>-<UTC>.log.zst`,
+  cut hourly and kept 7 days by `candump-rotate`, independent of the runtime.
 - **Logging runs inside the runtime on a non-realtime thread**, fed by a lock-free ring. When full it drops and counts. It can
   fail without affecting motion (tenet 5); see the logging row in §6.
 - **One clock:** the Pi disciplined by chrony; MCAP carries kernel CAN timestamps and monotonic time; the Jetson joins via chrony
