@@ -480,3 +480,47 @@ Y-plane sections every 0.5 mm, Y 280-296, of our printed ring halves and the bc1
 - Through the middle: our parts put nothing inside r 19.2. The elbow RS02 cable and the harness trunk come up the neck and pass
   into the shoulder through the hub's centre. Their bundle size is not modelled here (it belongs to the electrical plan), so the
   hub web must leave the hub's own cable window clear.
+
+## R1e (play-free joint): first numbers, before any new solve (2026-11-12)
+
+Joey's decision: wait for a play-free joint. The gap-and-ribs fit is retired. The ring ridge, full-ring groove, fins, slot break,
+end chamfer and as-built bolt joint stay; the hub interface is frozen.
+
+### Wedge direction (confirmed)
+- The 30° load flank is Y = 298.0 + (35.8 - r)·tan 30. On the arm, its normal points +Y and outward (0.866 Y, 0.5 r).
+- A half closing inward at the crown is pushed +Y, onto the hub disc. So the end face stays the axial datum and is pulled onto
+  the disc, as wanted.
+
+### Seam-relief wedge: not feasible with these halves
+- The halves close along Z, which is radial only at the crowns. Radial motion δr closes the flank by δr·sin 30 = 0.5 δr.
+- Flank and groove each ±0.1 give ±0.2 along the flank normal, so each half's crown must move ±0.4 in Z to seat across the band.
+  Hub-end seam relief would be at least 0.4 + 0.1 margin per half: a seam gap of 0.2 mm (loose extreme) up to 1.8 mm (tight
+  extreme), 1.0 mm nominal.
+- A half can move its hub end 0.4 only by:
+  - rigid translation, which needs the whole seam relieved. That opens the elbow end too: the RS02 Ø40 stub bore goes oval by
+    0.8-1.0, and the ring keys shift.
+  - bending: the hub end (Y 296-302) is a half-tube about 30 mm from the nearest seam screws (Y 272). With E 2 GPa and I about
+    1e5 mm⁴, F = 3EIδ / L³ ≈ 3 × 2000 × 1e5 × 0.4 / 27,000 ≈ 9 kN. The lug bolts and seam screws give at most about 0.8 kN each
+    (0.5 N·m, F = T / (0.2 d)), and less in PETG.
+- So the hub end cannot be pulled in by screws, and relieving the seam would only leave a visible gap.
+
+### What can be play-free with the hub frozen
+1. **Selective shim at the end face (recommended).** The axial play is a fixed stack: the ridge load flank to the end face
+   (arm) against the groove flank to the disc underside (hub).
+   - Lower the arm's end face by 0.4 (nominal), and fill the measured gap with a shim ring between the end face and the hub
+     disc. The shim slides over the hub spigot from its free end before assembly, so a full ring works with no split.
+   - Thickness picked from a set in 0.05 steps (0.20-0.60) after a feeler check on the closed assembly. Then both rigid stops
+     touch: no play, no preload needed, so creep doesn't matter. Residual play is at most half a step (0.025), about 0.15 mm at
+     the wrist.
+   - Catch: one measure-and-pick step at assembly. A stock shim ring (DIN 988) is wider than the 1.2 mm end face (sizes near
+     Ø72 × 82 overhang the r 38 skin), so either a custom ring (shim stock, laser-cut, or printed PETG in 0.05 steps, whose
+     thickness accuracy needs checking) or a wider end face.
+2. **Split clamp band (shaft-collar style).** Separate the inner collar band (the ridge, end face and hub posts, r 35.9-37.4)
+   from the skin by slots, so the band halves can close 0.4 under the lug bolts while the skin seam stays closed; the band's own
+   seam gap is hidden inside.
+   - Catch: the band must flex 0.4 under about 1 kN yet carry the G90 / stop loads into the skin through its connections. That
+     trade-off is hard in PETG, and it is a big redesign of the hub end.
+3. **Spring bias (TPU ring in the end-face gap).** Biases the flank seated, so nothing rattles.
+   - Catch: on the push side the joint is only as stiff as the TPU. Ring about 280 mm² × 1 mm at E 30 MPa gives a rocking
+     stiffness of about 5.7e6 N·mm/rad, so G90 would rock about 4 mrad, 1.6 mm at the wrist: worse than the 0.66 mm of play.
+     Not recommended.
