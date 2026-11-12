@@ -206,3 +206,20 @@ artificial fixed edge at the pad.)
 - **My recommendation:** 1 + the root fillet and pad blend, plus the controller limit as the second layer. Option 2 only
   if Joey wants the stop to survive a stall on its own.
 
+### Option 4 (a stop on the motor side, so the fork joint is out of the path): checked, dropped
+
+- **The idea:** a fixed lug on the drum's front lip (Z 28.3-36, r 43-56), engaging an arc groove in the fork front's back
+  face (Z 39 → 44), right beside the RS03 output.
+- **Why it doesn't fit:**
+  - **Groove window.** The fork front's two RS02 access bores (Ø7, at X +16 and -8.8, running up through the cheek)
+    cross the groove's radius band (r 42-53) at ±67.6…72.4° and ±99.6…102.1° about the roll axis. Keeping 2 mm of wall
+    to them leaves one window, 109.6°…250.4°: 140.8°. The groove needs 121° of travel plus the lug width plus 2 × 2 mm.
+  - **Lug strength.** The drum prints with its axis vertical (layers normal to Z). A lug standing up in Z and loaded
+    tangentially bends across its layers.
+    - At the only width that fits (15°): layer SF 0.49-0.71 at a 60 N·m stall.
+    - Lugs strong enough (20° at 6 mm high: layer SF 1.27; 25°: 1.98) need 146-151° of groove, which don't fit.
+  - **The reverse** (a tooth on the fork front, a groove in the lip): the lip's 8 × M4 counterbores at r 49 leave only
+    33.8° of free arc between them.
+  - Inside r 43 is the RS03's own face, which can't be cut.
+- So the stop stays on the cap, and the fork joint stays in the torque path. Option 1 follows.
+

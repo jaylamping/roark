@@ -105,6 +105,12 @@ ARM_STATIONS = [(402.0, 0.0, 17.0, 10.3), (380.0, 0.0, 18.0, 11.8), (364.0, 0.0,
                 (344.0, -3.0, 15.0, 12.0), (334.0, -6.0, 11.4, 11.6), (318.0, -6.0, 11.4, 11.6)]
 
 
+# LEG2 mock-up (checks/B_ROLL_STOPS.md, roll stop torque path): the rear leg 2 mm wider each side and 2 mm deeper where the
+# stop tooth loads it (stations Y 380 and 402); not on the real parts until Joey has seen it
+if os.environ.get('LEG2'):
+    ARM_STATIONS = [(y_, cx_, w_ + 2.0, d_ + 2.0) if y_ >= 380.0 else (y_, cx_, w_, d_) for y_, cx_, w_, d_ in ARM_STATIONS]
+
+
 def arm_section(y, cx, w, depth, n=25, e=2.6):
     """D section: flat front on the joint plane, soft superellipse back."""
     pts = []

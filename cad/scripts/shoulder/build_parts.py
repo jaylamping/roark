@@ -721,7 +721,11 @@ def build_fork_front():
                 outer = [(RX + sg * (EV.sleeve_r(a_, y_) + 3.0), y_, YZ) for y_ in prof[::-1]]
                 s_.poly(inner + outer)
         extrude(d, s_.feat, 'SEAM_LINES', 1.0, (0, 0, 1), cut=True, mode=MID)
-    extrude(d, zsk(d, JZ0 - 1, 'JOINT_INSERTS', lambda s: [s.circle((RX + dx, (SEAT_Y[0] + SEAT_Y[1]) / 2, JZ0 - 1), 2.8) for dx in (-JX + 4.5, JX - 4.5)]),
+    # the outer joint pair (X +-27): insert bosses inside the sleeve's hollow, from the joint face 13 mm in
+    for dx in JOINT_DX[2:]:
+        extrude(d, zsk(d, JZ0 + 0.5, f'INSERT_BOSS_{"L" if dx < 0 else "R"}', lambda s, dx=dx: s.circle((RX + dx, (SEAT_Y[0] + SEAT_Y[1]) / 2, JZ0 + 0.5), 4.5)),
+                f'INSERT_BOSS_{"L" if dx < 0 else "R"}', 11.0, Z, lo=-1.0)   # 11: 1.1 mm off the socket-tap arc (r 47.5); the cuff is mostly solid here already
+    extrude(d, zsk(d, JZ0 - 1, 'JOINT_INSERTS', lambda s: [s.circle((RX + dx, (SEAT_Y[0] + SEAT_Y[1]) / 2, JZ0 - 1), 2.8) for dx in JOINT_DX]),
             'JOINT_INSERTS', 12, Z, cut=True)
     return finish_part(d, 'fork_front')
 
@@ -735,7 +739,7 @@ def build_fork_rear():
     # the joint plane, so nothing outside the present outline changes)
     _ss = STOP_SLOT
     extrude(d, zsk(d, HOUSE_Z0, 'STOP_PAD', lambda s: sector(s, lambda r, a: rpt(r, a, HOUSE_Z0), _ss['pad_r'][0] - 1.0, _ss['pad_r'][1],
-                                                            _ss['tooth_angle'] - _ss['pad_half'], _ss['tooth_angle'] + _ss['pad_half'], 2.0)),
+                                                            _ss['tooth_angle'] - _ss['pad_half'], _ss['tooth_angle'] + _ss['pad_half'], _ss['pad_corner'])),
             'STOP_PAD', HOUSE_Z0 - JZ0, NZ)
     # SLEEVE: above the cuff the arm is the D-section loft; from the cuff top down it is the rear half of the sleeve
     # outline the fork front's cuff shares (envelope.SLEEVE), so cuff and arm read as one surface split at the joint plane
@@ -770,6 +774,11 @@ def build_fork_rear():
     extrude(d, zsk(d, HOUSE_Z0, 'STOP_TOOTH', lambda s: sector(s, lambda r, a: rpt(r, a, HOUSE_Z0), ss['tooth_r'][0], ss['tooth_r'][1],
                                                                ss['tooth_angle'] - ss['tooth_half'], ss['tooth_angle'] + ss['tooth_half'], 0.8)),
             'STOP_TOOTH', (ss['z_floor'] - 2.0) - HOUSE_Z0, Z)
+    def _in_root(p):
+        r_ = math.hypot(p[0] - RX, p[1] - RY)
+        a_ = math.degrees(math.atan2(p[1] - RY, p[0] - RX)) % 360.0
+        return abs(p[2] - HOUSE_Z0) < 0.05 and ss['tooth_r'][0] - 0.6 < r_ < ss['tooth_r'][1] + 0.6 and abs(a_ - ss['tooth_angle']) < ss['tooth_half'] + 2.0
+    fillet(d, edges_where(d, _in_root), [ss['root_r'], 1.0], 'TOOTH_ROOT')
     # the hollow stops 1.6 short of the joint plane: a front plate, so the skin does not run out to a knife edge where the
     # outline meets the plane at a shallow angle (the cable channel cuts through the plate where the cables pass)
     hy = [y_ for y_ in ((Y_SPLIT - 0.5, 344.0, 349.0) if SC47 else (SL['y_bot'] + 2.0, 322.0, 330.0, 338.0, 344.0, 349.0)) if min(q[2] for q in EV.sleeve_section(y_, 2.0)) < JZ0 - 1.6 - 1.0]
@@ -790,23 +799,37 @@ def build_fork_rear():
     extrude(d, zsk(d, HOUSE_Z0 + 1, 'SEAT_TEARDROP', lambda s_: s_.poly([(RX - _t, RY + _t, HOUSE_Z0 + 1), (RX - _f, RY + BRG_SEAT_R + 0.4, HOUSE_Z0 + 1),
                                                                           (RX + _f, RY + BRG_SEAT_R + 0.4, HOUSE_Z0 + 1), (RX + _t, RY + _t, HOUSE_Z0 + 1), (RX, RY, HOUSE_Z0 + 1)])),
             'SEAT_TEARDROP', (HOUSE_Z0 + 1) - BRG_LIP_Z, NZ, cut=True, lo=-1.0)
-    zc = RZ + PH / 2
+    zc = RZ + PH / 2 + CH_DZ
     ch_lo = (Y_EX + SC_BEND_R) if SC else (Y_EX - 3.0)       # SIDE CENTRE: the straight run stops where the bend starts
-    extrude(d, zsk(d, zc, 'CH_P', lambda s: s.rpoly(rect_pts((RX + P_OFF, (RY + 9.0 + ch_lo) / 2, zc), X, Y, PW, RY + 9.0 - ch_lo), [1] * 4)),
+    extrude(d, zsk(d, zc, 'CH_P', lambda s: s.rpoly(rect_pts((RX + P_OFF + CH_DX, (RY + 9.0 + ch_lo) / 2, zc), X, Y, PW, RY + 9.0 - ch_lo), [1] * 4)),
             'CH_P', PH, NZ, cut=True)
-    zc = RZ + SH / 2
+    zc = RZ + SH / 2 + CH_DZ
     sig_end = SEAT_Y[0] + WALL
 
     def ch_s(s):
-        s.rpoly(rect_pts((RX + S_OFF, (RY + 9.0 + sig_end) / 2, zc), X, Y, SW, RY + 9.0 - sig_end), [1] * 4)
+        s.rpoly(rect_pts((RX + S_OFF + CH_DX, (RY + 9.0 + sig_end) / 2, zc), X, Y, SW, RY + 9.0 - sig_end), [1] * 4)
     extrude(d, zsk(d, zc, 'CH_S', ch_s), 'CH_S', SH, NZ, cut=True)
-    extrude(d, zsk(d, zc, 'CH_JOIN', lambda s: s.poly(rect_pts((RX + 3.0, sig_end + 3.0, zc), X, Y, 6.0, 6.0))), 'CH_JOIN', SH, NZ, cut=True)
+    extrude(d, zsk(d, zc, 'CH_JOIN', lambda s: s.poly(rect_pts((RX + 3.0 + CH_DX, sig_end + 3.0, zc), X, Y, 6.0, 6.0))), 'CH_JOIN', SH, NZ, cut=True)
     if SC:
         exit_bend(d, 'EXIT_BEND')
     else:
-        extrude(d, zsk(d, RZ - 3.0, 'EXIT_CH', lambda s: s.poly(rect_pts((RX - 6.0, Y_EX, RZ - 3.0), X, Y, 16.0, 6.0))), 'EXIT_CH', (YZ - 37.0) - RZ + 3.0 + 1, Z, cut=True, lo=-1.0)
-    extrude(d, zsk(d, BACK_Z - 4, 'JOINT_HOLES', lambda s: [s.circle((RX + dx, ym, BACK_Z - 4), 2.25) for dx in (-JX + 4.5, JX - 4.5)]), 'JOINT_HOLES', SHH + 5, Z, cut=True)
-    extrude(d, zsk(d, BACK_Z - 4, 'JOINT_CB', lambda s: [s.circle((RX + dx, ym, BACK_Z - 4), 4.0) for dx in (-JX + 4.5, JX - 4.5)]), 'JOINT_CB', (JZ0 - 5.5) - (BACK_Z - 4), Z, cut=True)
+        extrude(d, zsk(d, RZ - 3.0, 'EXIT_CH', lambda s: s.poly(rect_pts((RX - 6.0 + CH_DX, Y_EX, RZ - 3.0), X, Y, 16.0, 6.0))), 'EXIT_CH', (YZ - 37.0) - RZ + 3.0 + 1, Z, cut=True, lo=-1.0)
+    # the outer joint pair (X +-27): bosses through the sleeve's hollow, from the joint plane back to 1 mm inside the outline
+    _sec = EV.sleeve_section(ym, 0.0, 0.0, 720)
+    for dx in JOINT_DX[2:]:
+        zs_ = [q[2] for q in _sec if abs(q[0] - (RX + dx)) <= 4.5 and q[2] < JZ0]
+        z_end = max(zs_) + 1.0
+        extrude(d, zsk(d, JZ0, f'JOINT_BOSS_{"L" if dx < 0 else "R"}', lambda s, dx=dx: s.circle((RX + dx, ym, JZ0), 4.5)), f'JOINT_BOSS_{"L" if dx < 0 else "R"}', JZ0 - z_end, NZ, lo=-1.0)
+    extrude(d, zsk(d, BACK_Z - 4, 'JOINT_HOLES', lambda s: [s.circle((RX + dx, ym, BACK_Z - 4), 2.25) for dx in JOINT_DX]), 'JOINT_HOLES', SHH + 5, Z, cut=True)
+    # counterbores one at a time (the inner pair seats 5.5 behind the joint plane; the outer pair, where the sleeve is only
+    # about 6 mm deep behind it, 3.0)
+    for dx in JOINT_DX:
+        nm_ = f'JOINT_CB_{dx:+.0f}'.replace('+', 'p').replace('-', 'm')
+        zf_ = JZ0 - (5.5 if abs(dx) < 20 else 3.0)
+        try:
+            extrude(d, zsk(d, BACK_Z - 4, nm_, lambda s, dx=dx: s.circle((RX + dx, ym, BACK_Z - 4), 4.0)), nm_, zf_ - (BACK_Z - 4), Z, cut=True)
+        except SystemExit as e_:
+            log(f'  {nm_} failed: {e_}')
     tz = YZ - 41.0
     extrude(d, zsk(d, JZ0 + 0.5, 'TAP_LINK', lambda s: s.poly(rect_pts((RX - 4.0, sum(TAP_Y) / 2, JZ0 + 0.5), X, Y, 7.0, 6.0))), 'TAP_LINK', JZ0 + 0.5 - RZ, NZ, cut=True, lo=-1.0)
     # (YAW_CLEAR, the r 41.5 cylinder, no longer touches the fork rear: everything of it is behind the joint plane)

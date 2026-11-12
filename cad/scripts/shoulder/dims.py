@@ -1,10 +1,10 @@
-import os
 """Left shoulder, roll drum and fork: every dimension of the first SolidWorks pass, in one place.
 
 Torso STEP frame, mm: X outboard, Y up, Z forward (hardware/shoulder/study-20261111/MEASUREMENTS.md section 0).
 Values come from concept-roll-fork/CONCEPT.md and build_concept.py (second pass); changes against it are marked CHANGED.
 """
 import math
+import os
 
 # ---- axes (MEASUREMENTS.md section 0) ----
 RX, RY = 170.49, 424.86          # roll axis along Z through (RX, RY); pitch axis height
@@ -61,7 +61,7 @@ CAP_SCREW_R = 50.0
 # (normal to Y) are normal to the tooth's radial direction, so its bending and shear lie in the layer plane; r 30-40, +-14
 # deg; carries a 60 N.m stall (RS03 peak) with SF 1.65. Was r 27-33, +-10 deg at 193 deg (SF 0.44 at a stall).
 STOP_SLOT = dict(r=(28.0, 42.0), z_floor=-31.0, tooth_r=(30.0, 40.0), tooth_angle=270.0, tooth_half=14.0, ring_r=(26.0, 44.0),
-                 ring_past=20.0, pad_r=(33.0, 42.0), pad_half=24.0)
+                 ring_past=20.0, pad_r=(33.0, 42.0), pad_half=19.0, pad_corner=3.0, root_r=1.5)   # pad within the leg's width (X +-13.7 at r 42)
 # SMOOTH: roll stops inside the outline: a tooth on the fork rear cheek runs in an arc slot in a ring on the cap's rear face
 FLARE = dict(x0=105.0, x1=119.0, x2=124.0, r=56.0, fillet=12.0)   # DRESSED: neck flares into the drum (pitch axis)
 CUFF = dict(ri=39.75, ro_top=43.0, ro_bot=41.35, ro_mid=(42.9, 336.0), y0=DISH_Y + 2.0, notch=(-122.0, -78.0))
@@ -180,3 +180,8 @@ def pitch_pt(r, a, x):
 def roll_pt(r, a, z):
     t = math.radians(a)
     return (RX + r * math.cos(t), RY + r * math.sin(t), z)
+# STOP REV 2, torque path (checks/B_ROLL_STOPS.md): the fork rear's channels shifted 0.6 mm in the leg (side walls 1.6 / 2.4 mm
+# where the leg is narrowest, Y 380-395; were 1.0 / 3.0), and two more joint screws at X +-27 (span 54, was 34)
+CH_DX = 0.6      # 1.0 put the power channel's wall tangent to the X -17 counterbore; 0.6: walls 1.6 / 2.4 at Y 390 (were 1.0 / 3.0)
+JOINT_DX = (-JX + 4.5, JX - 4.5, -27.0, 27.0)
+CH_DZ = -1.0 if os.environ.get('LEG2') else 0.0   # LEG2 mock-up: the fork rear's channels 1 mm further back (front wall 3.4)
