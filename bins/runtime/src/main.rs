@@ -166,7 +166,8 @@ mod linux {
     /// (`Runtime::progress`), so a hung control thread, or any bus that falls behind (the rule is
     /// `control::progressing`), starves it and systemd kills the process, after which `ExecStopPost` runs the
     /// independent disable. Until `ready` (main's `READY=1` went), it retries `READY=1` each look instead, and stops
-    /// offering it once `ending` is set, so it never follows `STOPPING=1`. Once the run has ended on its own, stop
+    /// starting new tries once `ending` is set. A try already past that check can still land just after `STOPPING=1`:
+    /// only when main's own `READY=1` failed and an end came in that moment. Once the run has ended on its own, stop
     /// feeding it and raise SIGUSR1, so the signal wait wakes for that too.
     fn watch(
         finished: Arc<AtomicBool>,
@@ -179,7 +180,8 @@ mod linux {
             .name("watch".to_owned())
             .spawn(move || {
                 let mut seen = progress.load(Ordering::Acquire);
-                let mut failed = false;
+                // Main has logged a failed READY=1 already.
+                let mut failed = !ready;
                 while !finished.load(Ordering::Acquire) {
                     // The socket never waits, so a full one drops READY=1, and a lost one would leave systemd to kill
                     // a healthy start.
@@ -191,6 +193,7 @@ mod linux {
                             Ok(()) => {
                                 ready = true;
                                 failed = false;
+                                say("told systemd READY=1 on a retry");
                             }
                             Err(e) if !failed => {
                                 failed = true;
@@ -358,7 +361,7 @@ mod linux {
         let notify = notify.map(Arc::new);
         let ending = Arc::new(AtomicBool::new(false));
         // Every thread runs: systemd may now count the service started, and its watchdog starts. Here, before the
-        // signal wait, so it can't follow STOPPING=1; the watcher retries it if it didn't go.
+        // signal wait, so it comes before STOPPING=1 whenever it goes; the watcher retries it if it didn't.
         let ready = tell(notify.as_deref(), "READY=1");
         if let Err(e) = watch(
             Arc::clone(&finished),

@@ -49,8 +49,8 @@ thread per wired bus and the control thread on one schedule origin, and takes th
 - **The watchdog** (PLAN item 3: fed only when the control loop and every bus in an active run make progress): each
   control pass that completes counts up `Runtime::progress`, unless some bus hasn't published that tick's snapshot
   (the rule, and why every bus counts, is on `control::progressing`). Under systemd (`Type=notify`,
-  `deploy/systemd/runtime.service`) the binary's watcher says `READY=1` once every thread runs (again each look until
-  it goes), then sends `WATCHDOG=1` each time it looks (every 50 ms) and the count has risen; `STOPPING=1` goes as the
+  `deploy/systemd/runtime.service`) the binary says `READY=1` once every thread runs, before it waits for a signal; if
+  that send fails, the watcher retries it each look until it goes or the run is ending. The watcher then sends `WATCHDOG=1` each time it looks (every 50 ms) and the count has risen; `STOPPING=1` goes as the
   run ends. No send waits: a full socket fails it, logged. So a hung control thread, or a bus hanging or falling
   behind for the unit's `WatchdogSec`, gets the process killed, and `ExecStopPost` runs the independent disable. The
   count stops once the run ends on its own. Without `NOTIFY_SOCKET` (run by hand, or by a test) it tells nobody. The
