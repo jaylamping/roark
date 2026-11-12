@@ -1,0 +1,50 @@
+{
+ "r1d11_g01_stop": {
+  "band_nodes": 2172,
+  "mean_sigma_y_MPa": -0.18,
+  "mean_compressive_only_MPa": -0.41,
+  "peak_compression_MPa": -32.67,
+  "peak_at": [
+   205.53,
+   302.0,
+   17.32,
+   17.9
+  ],
+  "worst_avg_0.5mm_MPa": -9.32,
+  "sf_avg_0.5mm": 4.83,
+  "worst_avg_1.0mm_MPa": -4.82,
+  "sf_avg_1.0mm": 9.34,
+  "sf_peak": 1.38,
+  "inner_edge_peak_compression_MPa": -62.09,
+  "inner_edge_at": [
+   205.18,
+   302.0,
+   17.01,
+   17.6
+  ]
+ },
+ "r1d11_g01_g90": {
+  "band_nodes": 2172,
+  "mean_sigma_y_MPa": -0.64,
+  "mean_compressive_only_MPa": -0.99,
+  "peak_compression_MPa": -18.6,
+  "peak_at": [
+   194.14,
+   302.0,
+   -22.24,
+   310.0
+  ],
+  "worst_avg_0.5mm_MPa": -5.83,
+  "sf_avg_0.5mm": 7.72,
+  "worst_avg_1.0mm_MPa": -4.38,
+  "sf_avg_1.0mm": 10.27,
+  "sf_peak": 2.42,
+  "inner_edge_peak_compression_MPa": -52.82,
+  "inner_edge_at": [
+   186.33,
+   302.0,
+   -26.78,
+   295.8
+  ]
+ }
+}

@@ -393,6 +393,15 @@ def upper_details(d):
                 if not done:
                     raise SystemExit(f'rib {k_} plane failed')
         ec = float(os.environ.get('ARM_END_CHAMFER', '0.5'))
+        er = float(os.environ.get('ARM_END_ROUND', '0'))
+        if er > 0:      # (2026-11-12, option) a round tangent to the bore wall and the end face instead of the chamfer, so the end-face
+            # contact on the hub disc fades out instead of ending on an edge (G90 contact-corner value 0.81 at the chamfer's outer edge).
+            # R0.8 clears the rev D spigot-foot fillet by 0.23 and leaves r 36.7-37.6 bearing. The ridge top is taken down to the round's
+            # start (Y 302 - R) from where its 45 flank (Y = r + 265.8) reaches that height, so no step or knife edge is left.
+            ec = 0.0
+            yr = HUB_JOINT - er
+            arc = [(SEAT_R + er - er * math.cos(a), yr + er * math.sin(a)) for a in np.linspace(0.0, math.pi / 2, 13)]
+            y_revolve(d, 'SEAT_END_ROUND', [(yr - 265.8, yr)] + arc + [(SEAT_R + er, HUB_JOINT + 0.3), (yr - 265.8, HUB_JOINT + 0.3)], cut=True)
         if ec > 0:      # bore-to-end-face edge (r 35.9, Y 302): 0.5 x 45 chamfer, inside only, for the hub's R0.3 spigot-to-disc corner (rev C+)
             y_revolve(d, 'SEAT_END_CHAMFER', [(SEAT_R, HUB_JOINT - ec), (SEAT_R + ec, HUB_JOINT), (SEAT_R + ec, HUB_JOINT + 0.3), (SEAT_R, HUB_JOINT + 0.3)], cut=True)
             if os.environ.get('ARM_RIDGE_REVCP', '1') == '1':      # the ridge's 45 flank (Y = r + 265.8) runs parallel to the chamfer 0.2 above it,

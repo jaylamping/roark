@@ -352,3 +352,24 @@ The post-macro readback is now removed. The macro's own log and the benchmark lo
   - So our fixture face at the hub top (Y 319.86) is larger than rev D's. Joint and lug-root figures are representative. The
     hub's upper-region figures (outer ring above the groove) are this approximation, so the shoulder thread's own FEA governs
     there.
+
+## End-face inner edge: decision (2026-11-12, coordinator) and bearing
+
+Decision: keep the existing 0.5 × 45° chamfer. No geometry change.
+- The chamfer clears the rev D spigot-foot fillet by 0.248 (bc16e97 sections: the disc's flat face starts at r 36.02-36.04).
+  The end face (r 36.4-37.6) seats flat on the Y 302 datum.
+- The face is only 1.2 mm wide; a round would cost a quarter of it.
+- The G90 corner value is compressive, at a contact edge: shear 0.81 / 1.88 / 6.55 at 0.5 / 1 / 2 mm, on 9 nodes. A real PETG
+  edge beds in locally there.
+- It is recorded in the results as a contact-edge value below target at 0.5 mm.
+- An ARM_END_ROUND option (R0.8 tangent round) was prepared and is NOT used (default 0).
+
+End-face bearing on the hub disc (σy, both sides of the contact; face band r 36.45-37.55; PETG 45 MPa;
+`endface_pressure_r1d11.json`):
+
+| Case | Mean compression | Peak in the face | Worst 0.5 mm average | Worst 1 mm average | Inner-edge node |
+| --- | --- | --- | --- | --- | --- |
+| 0.1 gap STOP_0 | 0.41 MPa | 32.7 MPa (SF 1.38), θ 18 | 9.3 MPa (SF 4.8) | 4.8 MPa (SF 9.3) | 62 MPa |
+| 0.1 gap G90 | 0.99 MPa | 18.6 MPa (SF 2.42), θ 310 | 5.8 MPa (SF 7.7) | 4.4 MPa (SF 10.3) | 53 MPa |
+
+The bench notes' split-and-inspect step now looks at that edge and the hub disc for crushing or whitening.

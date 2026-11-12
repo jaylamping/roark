@@ -122,7 +122,10 @@ hands and faces clear of the arm while it is loaded. PETG can let go without war
    - cracks at the ridge root, especially at its ends (θ about 35°, 145°, 215° and 325°);
    - whitening on the low-Y flank;
    - marks on the hub's groove flank;
-   - the fins.
+   - the fins;
+   - the end face's inner edge: the ring where the small 45° chamfer at the top of the bore meets the end face (it bears on the
+     hub's disc, all round), and the matching ring on the underside of the hub disc. Look for crushing, a shiny flattened band,
+     or whitening. The model puts its highest local contact pressure on that edge, in the stop case and in normal lifting (G90).
    Then close it and re-check the axial play (step 7 of the R1c / R1d assembly). Play that wasn't there before means
    something yielded: stop and tell me.
 
