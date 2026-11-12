@@ -89,11 +89,14 @@ the post-processing files (`../20261111_r1c-delta/r1d/r1d11_*.post.txt`).
 | --- | --- | --- | --- | --- | --- |
 | 1. 0.1 gap STOP_0 | end-face corner θ 18, vm 1.18 / 2.15 / 6.13 (7) | 1.76 / 2.32 / 2.21 | 2.14 / 1.27 / 1.21 | 1.21 / 1.29 | 1.18 / 2.15 / 6.13; 1.24 / 2.14 / 5.92 |
 | 2. 0.1 gap G90 (target 1.5) | **end-face corner θ 296, shear 0.81 / 1.88 / 6.55 (9)** | 3.97 / 2.69 / 3.38 | 14.1 / 16.8 / 9.9 | 2.21 / 2.36 | 1.23 / 2.58 / 8.25; **0.81 / 1.88 / 6.55** |
-| 3. nominal STOP_0 (ribs 0.1 proud, touching) | **θ 135 crush rib: arm shear 0.36 / 0.66 / 1.41, vm 0.47 / 0.80 / 1.59 (20-21); hub flank shear 0.70 / 0.90 / 1.57, layer 0.85** | 1.87 / 1.85 / 2.26 | 2.01 / 1.33 / 1.26 | 0.97 / 1.20 | rib-dominated (bore wall by the rib 0.53 / 0.39) |
-| 4. nominal G90 (target 1.5) | **crown crush rib θ 105: arm shear 0.43 / 0.73 / 1.70, vm 0.60 / 0.93 / 1.94 (18-20); hub flank shear 0.83, layer 1.15** | 3.04 / 2.32 / 3.12 | 8.4 / 18.4 / 7.8 | 1.28 / 1.99 | rib-dominated (bore wall by the rib 0.77 / 0.49) |
+| 3. nominal STOP_0 (ribs 0.1 proud, touching): rib bedding | **θ 135 crush rib: arm shear 0.36 / 0.66 / 1.41, vm 0.47 / 0.80 / 1.59 (20-21); hub flank shear 0.70 / 0.90 / 1.57, layer 0.85** | 1.87 / 1.85 / 2.26 | 2.01 / 1.33 / 1.26 | 0.97 / 1.20 | rib-dominated (bore wall by the rib 0.53 / 0.39) |
+| 4. nominal G90 (target 1.5): rib bedding | **crown crush rib θ 105: arm shear 0.43 / 0.73 / 1.70, vm 0.60 / 0.93 / 1.94 (18-20); hub flank shear 0.83, layer 1.15** | 3.04 / 2.32 / 3.12 | 8.4 / 18.4 / 7.8 | 1.28 / 1.99 | rib-dominated (bore wall by the rib 0.77 / 0.49) |
 | 5. nominal STOP_124 | *running* | | | | |
 | 6. 0.2 gap STOP_0 | *queued* | | | | |
 | 7. 0.1 gap STOP_0 repeat, 0.3 mm on the lug-root fillets | *queued* | | | | |
+| 8. 0 gap (flank in contact, no ribs) G90 | *queued* | | | | |
+| 9. 0 gap STOP_0 | *queued* | | | | |
+| 10. 0.2 gap G90 | *queued* | | | | |
 
 Also per case: lug forces (-X lug about 190 N in Z at the stop: the ring carries no torque about the hub axis, so the lugs take
 the stop moment's twist), inserts about 60-70 MPa (SF ≥ 3.5 against brass), bolts about 56-60 MPa, pads ≤ 3.4 N.
@@ -109,7 +112,16 @@ End-face bearing on the hub disc (σy on the face, r 36.45-37.55):
    compressive contact edge, 1.88 by 1 mm and 6.55 by 2 mm. Decision: keep the chamfer, because the face is only 1.2 mm wide
    and a real PETG edge beds in. The bench split-and-inspect step looks at that edge and the hub disc for crushing or
    whitening.
-2. **Nominal stop: the θ 135 crush rib carries the flank load.** It is overloaded at the rib (arm shear 0.36 at 0.5 mm, 0.66
+2. **Rib bedding, expected, not a strength failure (cases 3 and 4).** With the ribs 0.1 proud and touching (the as-assembled
+   state), the crush ribs carry the flank load as point contacts: the θ 135 rib in the stop (arm shear 0.36 at 0.5 mm), the
+   crown ribs θ 75 / 105 in G90 (0.43). A rib's flank face (about 0.9 mm²) holds about 41-51 N before flattening; the crown ribs
+   see about 95-130 N normal in G90. So they bed in within the first routine cycles until the flank bears, which is the
+   strength case covered by the 0 / 0.1 / 0.2 gap runs. Play once bedded: axial 0.115 / 0.231 mm and rocking 0.09° / 0.18° for
+   gaps 0.1 / 0.2 (0.66 / 1.31 mm sideways at the wrist), showing only on load reversal.
+   **Flag: hub flank marking under a rib (hub shear 0.70 stop, 0.83 G90, local), for the shoulder thread and the reviewer.** R2
+   options: wider / longer ribs that crush flush on assembly, or a line-to-line flank. A fit coupon tests closing, crush and
+   play on a printed rev D hub.
+   Earlier wording of this item: **Nominal stop: the θ 135 crush rib carries the flank load.** It is overloaded at the rib (arm shear 0.36 at 0.5 mm, 0.66
    at 1 mm, on about 20 nodes), and the hub flank under it is marginal (0.70). Under the first full stop the rib should crush
    about another 0.1 until the flank engages, which is effectively case 1. That uses up part of the ribs' no-play fit and may
    mark the hub's groove flank. The bench notes already look for rib marks. **Open: accept, or change the ribs.**
