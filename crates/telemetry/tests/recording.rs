@@ -3,10 +3,13 @@
 use std::io::{self, Cursor, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
-use telemetry::wire::{Clock, Frames, Gap, SessionRecord, Stamp};
+use telemetry::wire::{
+    Clock, Event as EventMessage, EventTotals, Frames, Gap, SessionRecord, Stamp,
+};
 use telemetry::{
-    BusInfo, BusRecorder, Direction, FrameRecord, MAX_FRAMES_PER_TICK, Recorder, Recording,
-    Session, SessionInfo, Sink, SkeletonRef, Stage, TickBatch, TimestampSource,
+    BusInfo, BusRecorder, Direction, Event, EventKind, FrameRecord, Level, MAX_FRAMES_PER_TICK,
+    Recorder, Recording, Session, SessionInfo, Sink, SkeletonRef, Stage, TickBatch,
+    TimestampSource,
 };
 
 /// 2026-11-08T12:34:56Z.
@@ -288,6 +291,101 @@ fn a_full_ring_leaves_a_gap_in_the_file_and_recovers() {
             gap.last_tick
         ),
         ("can0", 2, 4, 2, 3)
+    );
+}
+
+/// Guards: protocol - control's events go to `/event` with their kind, their limb, joint and bus by name, their rule,
+/// and a wall time mapped from their monotonic one, before or after the clocks were read; events a full ring dropped are counted in the end marker, and the events still
+/// in the ring at close are written (safety.md section 8, logging.md section 8.4).
+#[test]
+fn control_events_are_written_by_name_and_their_losses_counted() {
+    let root = Dir::new("events");
+    let session = Session::start(&root.0, info(&["can0", "can1"]), START_NS).unwrap();
+    let dir = session.dir().to_owned();
+    let (mut recording, buses) = Recording::new(session, 2);
+    let mut events = recording.events(vec!["shoulder".to_owned(), "elbow".to_owned()], 2);
+    let stop = Event {
+        mono_ns: 3 * TICK_NS,
+        level: Level::Error,
+        kind: EventKind::LimbStopped,
+        limb: Some("left_arm"),
+        joint: Some(1),
+        bus: Some(1),
+        rule: Some("host.mode"),
+        reason: None,
+        tag: Some(7),
+    };
+    recording.step(5 * TICK_NS, START_NS + 5 * TICK_NS).unwrap();
+    assert!(events.record(stop));
+    assert!(events.record(Event {
+        kind: EventKind::EnableSucceeded,
+        level: Level::Info,
+        ..stop
+    }));
+    assert!(!events.record(stop), "a full ring drops the event");
+    recording.step(6 * TICK_NS, START_NS + 6 * TICK_NS).unwrap();
+    assert!(events.record(Event {
+        kind: EventKind::LimbCleared,
+        // Newer than the recorder's last reading of the clocks.
+        mono_ns: 8 * TICK_NS,
+        joint: None,
+        bus: None,
+        rule: None,
+        ..stop
+    }));
+    let summary = recording.close(buses, START_NS + 7 * TICK_NS).unwrap();
+
+    assert_eq!(
+        summary.events,
+        EventTotals {
+            written: 3,
+            lost: 1
+        }
+    );
+    let messages = read(&dir.join("0000.mcap"));
+    let written: Vec<EventMessage> = on(&messages, "/event").into_iter().map(parse).collect();
+    let first = written.first().unwrap();
+    assert_eq!(
+        (
+            first.kind,
+            first.limb.as_deref(),
+            first.joint.as_deref(),
+            first.bus.as_deref(),
+            first.rule.as_deref(),
+            first.tag,
+            first.level,
+        ),
+        (
+            EventKind::LimbStopped,
+            Some("left_arm"),
+            Some("elbow"),
+            Some("can1"),
+            Some("host.mode"),
+            Some(7),
+            Level::Error
+        )
+    );
+    assert_eq!(first.monotonic, Stamp::from_ns(3 * TICK_NS));
+    assert_eq!(
+        first.wall,
+        Stamp::from_ns(START_NS + 3 * TICK_NS),
+        "mapped through the clocks"
+    );
+    let kinds: Vec<_> = written.iter().map(|e| e.kind).collect();
+    assert_eq!(
+        kinds,
+        [
+            EventKind::LimbStopped,
+            EventKind::EnableSucceeded,
+            EventKind::LimbCleared
+        ]
+    );
+    let last = written.last().unwrap();
+    assert_eq!(last.joint, None);
+    assert_eq!(
+        last.wall,
+        Stamp::from_ns(START_NS + 8 * TICK_NS),
+        "an event after the clock reading is mapped forward, not clamped to it"
     );
 }
 

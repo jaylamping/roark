@@ -1,16 +1,14 @@
 //! (rt) What control does with the operator's stops and clears each tick, pure over the rings so it is tested on any OS:
-//! the stop latch, control's end of each bus's order ring (stops never lost to a full ring, clears that never jump a
+//! the stops taken from the latch ([`crate::latch`]), control's end of each bus's order ring (stops never lost to a full ring, clears that never jump a
 //! stop), and the answers back. The control thread (Linux) is its only user outside the tests.
-
-use std::sync::atomic::{AtomicU8, Ordering};
 
 use can::{MAX_DRIVES, Order, Rearmed};
 use rtrb::Producer;
-use skeleton::LimbName;
 
+use crate::latch::{StopLatch, Stops};
 use crate::plan::BusPlan;
 use crate::request::{
-    BusStop, Clear, ClearAt, ClearRefused, Reply, Scope, StopAt, route_clear, route_stop,
+    BusStop, Clear, ClearAt, ClearRefused, Reply, StopAt, route_clear, route_stop,
 };
 
 /// Stops a full order ring didn't take yet, pushed again before anything else for that bus.
@@ -111,33 +109,23 @@ impl BusOrders {
 
 /// One tick's orders for every bus: the stops still waiting, then each clear from `next_clear` in turn, each after the
 /// stops latched by the time it was taken, so no clear reaches a bus before a stop asked before it; then any stop
-/// latched since. Each clear is refused through `refuse` where it can't go, once per bus, or once when its limb is on no
-/// bus. Gives the stops deferred.
+/// latched since. Everything control should know of is told to `told`: each take of the latch that held stops, once,
+/// as its stops are routed, and each clear refused where it can't go, once per bus, or once when its limb is on no bus.
+/// Gives the stops deferred.
 pub(crate) fn orders(
     plans: &[BusPlan],
     buses: &mut [BusOrders],
     stops: &StopLatch,
     mut next_clear: impl FnMut() -> Option<Clear>,
-    mut refuse: impl FnMut(Reply),
+    mut told: impl FnMut(Told),
 ) -> u64 {
     let mut deferred = 0;
-    let mut take_stops = |buses: &mut [BusOrders]| {
-        for scope in stops.take().scopes() {
-            for StopAt { bus, stop } in route_stop(plans, scope) {
-                if let Some(orders) = buses.get_mut(bus)
-                    && orders.stop(stop) == Stopped::Deferred
-                {
-                    deferred += 1;
-                }
-            }
-        }
-    };
     for orders in buses.iter_mut() {
         orders.flush();
     }
     while let Some(clear) = next_clear() {
         // Taken after the clear was: a stop asked before it is in the latch by now.
-        take_stops(buses);
+        take_stops(plans, buses, stops, &mut told, &mut deferred);
         let mut routed_any = false;
         for ClearAt { bus, limb } in route_clear(plans, clear.limb) {
             routed_any = true;
@@ -145,25 +133,58 @@ pub(crate) fn orders(
                 continue;
             };
             if let Err(refused) = orders.clear(clear.tag, limb) {
-                refuse(Reply {
+                told(Told::Refused(Reply {
                     tag: clear.tag,
                     limb: clear.limb,
                     bus: Some(bus),
                     outcome: Err(refused),
-                });
+                }));
             }
         }
         if !routed_any {
-            refuse(Reply {
+            told(Told::Refused(Reply {
                 tag: clear.tag,
                 limb: clear.limb,
                 bus: None,
                 outcome: Err(ClearRefused::Offline),
-            });
+            }));
         }
     }
-    take_stops(buses);
+    take_stops(plans, buses, stops, &mut told, &mut deferred);
     deferred
+}
+
+/// What [`orders`] tells control.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Told {
+    /// The stops taken from the latch, before they are routed.
+    Stopped(Stops),
+    /// A clear refused.
+    Refused(Reply),
+}
+
+/// Take the latch and route its stops to every bus, telling `told` of them first; counts each stop a full ring kept.
+fn take_stops(
+    plans: &[BusPlan],
+    buses: &mut [BusOrders],
+    stops: &StopLatch,
+    told: &mut impl FnMut(Told),
+    deferred: &mut u64,
+) {
+    let taken = stops.take();
+    if taken.is_empty() {
+        return;
+    }
+    told(Told::Stopped(taken));
+    for scope in taken.scopes() {
+        for StopAt { bus, stop } in route_stop(plans, scope) {
+            if let Some(orders) = buses.get_mut(bus)
+                && orders.stop(stop) == Stopped::Deferred
+            {
+                *deferred += 1;
+            }
+        }
+    }
 }
 
 /// The reply for the bus at `bus`'s answer to a re-arm [`route_clear`](crate::route_clear) made; `None` for a limb index the plan doesn't
@@ -179,66 +200,16 @@ pub(crate) fn reply(plans: &[BusPlan], bus: usize, answer: Rearmed) -> Option<Re
     })
 }
 
-/// The operator's stops, latched until control takes them once a tick. Asking never fails, waits or allocates, and a
-/// stop asked again before control takes it is the same stop, so a burst of stops can't fill anything (PLAN item 3a:
-/// stop is always accepted and jumps the queue: control takes stops before any clear).
-#[derive(Debug, Default)]
-pub(crate) struct StopLatch(AtomicU8);
-
-/// The robot bit, above the five limb bits.
-const ROBOT: u8 = 1 << 5;
-
-/// A limb's bit in the latch.
-const fn limb_bit(limb: LimbName) -> u8 {
-    match limb {
-        LimbName::LeftArm => 1,
-        LimbName::RightArm => 1 << 1,
-        LimbName::Waist => 1 << 2,
-        LimbName::LeftLeg => 1 << 3,
-        LimbName::RightLeg => 1 << 4,
-    }
-}
-
-impl StopLatch {
-    /// Ask for a stop of `scope`.
-    pub(crate) fn ask(&self, scope: Scope) {
-        let bit = match scope {
-            Scope::Robot => ROBOT,
-            Scope::Limb(limb) => limb_bit(limb),
-        };
-        self.0.fetch_or(bit, Ordering::AcqRel);
-    }
-
-    /// Every stop asked since the last take, clearing the latch.
-    pub(crate) fn take(&self) -> Stops {
-        Stops(self.0.swap(0, Ordering::AcqRel))
-    }
-}
-
-/// The stops taken from a [`StopLatch`] at once.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) struct Stops(u8);
-
-impl Stops {
-    /// The scopes to stop: the robot alone when it was asked, since it covers every limb; otherwise each limb asked, in
-    /// [`LimbName::ALL`] order.
-    pub(crate) fn scopes(self) -> impl Iterator<Item = Scope> {
-        let robot = self.0 & ROBOT != 0;
-        robot.then_some(Scope::Robot).into_iter().chain(
-            LimbName::ALL
-                .into_iter()
-                .filter(move |l| !robot && self.0 & limb_bit(*l) != 0)
-                .map(Scope::Limb),
-        )
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use rtrb::{Consumer, RingBuffer};
 
     use super::*;
+    use crate::latch::asked;
+    use crate::request::Scope;
     use can::RearmRefused;
+    use safety::Cause;
+    use skeleton::LimbName;
 
     fn plans() -> Vec<BusPlan> {
         crate::plan(&skeleton::parse(include_str!("../tests/skeleton.yaml")).unwrap()).unwrap()
@@ -325,6 +296,7 @@ mod tests {
         ]
         .into_iter();
         let mut refused = Vec::new();
+        let mut taken = Vec::new();
         let deferred = orders(
             &plans,
             &mut orders_of,
@@ -332,17 +304,28 @@ mod tests {
             || {
                 let Some((stop, clear)) = script.next() else {
                     // Asked after the last clear was taken: the trailing take sends it this tick.
-                    latch.ask(Scope::Limb(LimbName::Waist));
+                    latch.ask(Scope::Limb(LimbName::Waist), Cause::Operator);
                     return None;
                 };
                 if let Some(scope) = stop {
-                    latch.ask(scope);
+                    latch.ask(scope, Cause::Operator);
                 }
                 Some(clear)
             },
-            |r| refused.push(r),
+            |told| match told {
+                Told::Refused(r) => refused.push(r),
+                Told::Stopped(stops) => taken.extend(asked(stops)),
+            },
         );
         assert_eq!(deferred, 0);
+        // Each stop taken is told once, with its cause.
+        assert_eq!(
+            taken,
+            [
+                (Scope::Limb(LimbName::RightArm), vec![Cause::Operator]),
+                (Scope::Limb(LimbName::Waist), vec![Cause::Operator])
+            ]
+        );
         // can0: the right arm (limb 0) stopped before its clear; the waist (limb 1) stopped after the clears.
         assert_eq!(
             drain(&mut buses[0]),
@@ -371,7 +354,7 @@ mod tests {
             }]
         );
         // A tick with no clears: a stop latched before it goes all the same.
-        latch.ask(Scope::Limb(LimbName::LeftArm));
+        latch.ask(Scope::Limb(LimbName::LeftArm), Cause::Operator);
         assert_eq!(orders(&plans, &mut orders_of, &latch, || None, |_| {}), 0);
         assert_eq!(drain(&mut buses[0]), []);
         assert_eq!(drain(&mut buses[1]), [Order::StopLimb(0)]);
@@ -402,37 +385,5 @@ mod tests {
         );
         assert_eq!(reply(&plans, 0, Rearmed { limb: 2, ..answer }), None);
         assert_eq!(reply(&plans, 2, answer), None);
-    }
-
-    /// Guards: safety - every stop asked before control takes the latch is taken, each limb once however often it was
-    /// asked, and a robot stop covers every limb; nothing is left for the next take (PLAN item 3a: stop is always
-    /// accepted).
-    #[test]
-    fn the_stop_latch_keeps_every_stop_asked_until_taken() {
-        let latch = StopLatch::default();
-        assert_eq!(latch.take().scopes().count(), 0);
-        latch.ask(Scope::Limb(LimbName::Waist));
-        latch.ask(Scope::Limb(LimbName::RightLeg));
-        latch.ask(Scope::Limb(LimbName::Waist));
-        latch.ask(Scope::Limb(LimbName::LeftArm));
-        assert_eq!(
-            latch.take().scopes().collect::<Vec<_>>(),
-            [
-                Scope::Limb(LimbName::LeftArm),
-                Scope::Limb(LimbName::Waist),
-                Scope::Limb(LimbName::RightLeg)
-            ]
-        );
-        assert_eq!(latch.take(), Stops::default());
-        latch.ask(Scope::Limb(LimbName::RightArm));
-        latch.ask(Scope::Robot);
-        assert_eq!(latch.take().scopes().collect::<Vec<_>>(), [Scope::Robot]);
-        for limb in LimbName::ALL {
-            latch.ask(Scope::Limb(limb));
-        }
-        assert_eq!(
-            latch.take().scopes().collect::<Vec<_>>(),
-            LimbName::ALL.map(Scope::Limb)
-        );
     }
 }

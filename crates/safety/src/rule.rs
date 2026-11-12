@@ -47,6 +47,52 @@ pub enum RuleId {
 }
 
 impl RuleId {
+    /// Every rule, in declaration order: `ALL[r.index()] == r`.
+    pub const ALL: [Self; 17] = [
+        Self::DriveCanTimeout,
+        Self::DriveCaps,
+        Self::DriveDamper,
+        Self::HostPreflight,
+        Self::HostIdentity,
+        Self::HostVbus,
+        Self::HostSilence,
+        Self::HostFault,
+        Self::HostMode,
+        Self::HostSoftLimit,
+        Self::HostTotalTorque,
+        Self::HostSign,
+        Self::HostTemperature,
+        Self::HostHang,
+        Self::HostBus,
+        Self::HostPiHealth,
+        Self::HostLogging,
+    ];
+
+    /// Its position in [`RuleId::ALL`], from a match the compiler holds complete: every rule has one. A rule left out
+    /// of `ALL` still has an index, but nothing decodes it; the check below covers only the rules `ALL` holds.
+    #[must_use]
+    pub const fn index(self) -> usize {
+        match self {
+            Self::DriveCanTimeout => 0,
+            Self::DriveCaps => 1,
+            Self::DriveDamper => 2,
+            Self::HostPreflight => 3,
+            Self::HostIdentity => 4,
+            Self::HostVbus => 5,
+            Self::HostSilence => 6,
+            Self::HostFault => 7,
+            Self::HostMode => 8,
+            Self::HostSoftLimit => 9,
+            Self::HostTotalTorque => 10,
+            Self::HostSign => 11,
+            Self::HostTemperature => 12,
+            Self::HostHang => 13,
+            Self::HostBus => 14,
+            Self::HostPiHealth => 15,
+            Self::HostLogging => 16,
+        }
+    }
+
     /// The ID as written in PLAN item 6, the logs and the UI.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
@@ -91,13 +137,26 @@ impl RuleId {
     }
 }
 
+// Every rule `ALL` holds is at its index, so a code built from `index` decodes through `ALL`.
+#[expect(
+    clippy::indexing_slicing,
+    reason = "checked at compile time: an index out of range fails the build"
+)]
+const _: () = {
+    let mut i = 0;
+    while i < RuleId::ALL.len() {
+        assert!(RuleId::ALL[i].index() == i, "RuleId::ALL is in index order");
+        i += 1;
+    }
+};
+
 impl core::fmt::Display for RuleId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
-/// Why a limb stopped: a rule, or someone asking.
+/// Why a limb stopped: a rule, someone asking, or a stop already made on another of its buses.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cause {
     /// A rule's verdict.
@@ -106,4 +165,7 @@ pub enum Cause {
     Operator,
     /// The runtime is exiting.
     Shutdown,
+    /// The limb was already stopped on one of its buses, for a cause recorded when that stop was asked: this carries it
+    /// to the limb's other buses.
+    Follows,
 }

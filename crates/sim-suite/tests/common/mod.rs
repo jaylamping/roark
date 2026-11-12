@@ -138,3 +138,48 @@ pub(crate) fn scratch(test: &str) -> PathBuf {
     std::fs::create_dir_all(&dir).unwrap();
     dir
 }
+
+/// Control's events in the session's file, in order (`/event`).
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: a session file that doesn't read back is the test failing"
+)]
+pub(crate) fn events(session: &Path) -> Vec<telemetry::wire::Event> {
+    let bytes = std::fs::read(session.join("0000.mcap")).unwrap();
+    mcap::MessageStream::new(&bytes)
+        .unwrap()
+        .map(Result::unwrap)
+        .filter(|m| m.channel.topic == "/event")
+        .map(|m| serde_json::from_slice(&m.data).unwrap())
+        .collect()
+}
+
+/// An event's fields, borrowed, for comparing.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Brief<'a> {
+    pub(crate) limb: Option<&'a str>,
+    pub(crate) joint: Option<&'a str>,
+    pub(crate) bus: Option<&'a str>,
+    pub(crate) rule: Option<&'a str>,
+    pub(crate) reason: Option<&'a str>,
+    pub(crate) tag: Option<u64>,
+}
+
+/// The events of `kind`, in order.
+pub(crate) fn of_kind(
+    events: &[telemetry::wire::Event],
+    kind: telemetry::EventKind,
+) -> Vec<Brief<'_>> {
+    events
+        .iter()
+        .filter(|e| e.kind == kind)
+        .map(|e| Brief {
+            limb: e.limb.as_deref(),
+            joint: e.joint.as_deref(),
+            bus: e.bus.as_deref(),
+            rule: e.rule.as_deref(),
+            reason: e.reason.as_deref(),
+            tag: e.tag,
+        })
+        .collect()
+}

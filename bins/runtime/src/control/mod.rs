@@ -11,12 +11,15 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use can::{CommandBatch, Rearmed, Snapshot, Timing};
 use rtrb::{Consumer, Producer};
+use safety::{Cause, RuleId};
 
 use crate::clock::{Schedule, mono_now, passed, sleep_period};
-use crate::dispatch::{BusOrders, StopLatch, orders, reply};
+use crate::dispatch::{BusOrders, Told, orders, reply};
 use crate::enable::{Buses, Counts, Enable, EnableRefused, EnableReply, Enabler, SlowEnds};
+use crate::events::Events;
+use crate::latch::StopLatch;
 use crate::plan::BusPlan;
-use crate::request::{Clear, ClearAt, ClearRefused, Reply, route_clear};
+use crate::request::{Clear, ClearAt, ClearRefused, Reply, Scope, route_clear};
 use crate::roster::Roster;
 
 /// One bus's newest snapshot, for the runtime's readers.
@@ -52,6 +55,8 @@ pub(crate) struct ControlLinks {
     pub(crate) enable_replies: Producer<EnableReply>,
     /// The recording's health: a failed recording refuses every new enable (PLAN item 6 `host.logging`).
     pub(crate) health: telemetry::Health,
+    /// Control's events, into the session's recording.
+    pub(crate) events: Events,
     /// `None` when nobody reads the views.
     pub(crate) views: Option<Producer<View>>,
     /// The run's end, and every bus thread's exit flag: one flag for both, so the buses and control learn of an end
@@ -125,12 +130,20 @@ pub(crate) fn run(
     let mut batches = vec![CommandBatch::new(0, 0); links.buses.len()];
     let phase = phase(timing);
     let mut n = schedule.next(phase);
+    // Whether a pass has seen the run's end.
+    let mut end_seen = false;
     loop {
         if exit.error.is_none() {
             if let Err(e) = schedule.sleep_until(schedule.at(n, phase)) {
-                // No clock to keep the schedule: end the run. The buses stop their drives on their own schedule.
+                // No clock to keep the schedule: end the run, a broken control side (`host.hang`). The buses stop
+                // their drives on their own schedule.
                 exit.error = Some(e);
-                links.end.store(true, Ordering::Release);
+                end_run(
+                    &links.end,
+                    &links.stops,
+                    Cause::Rule(RuleId::HostHang),
+                    end_seen,
+                );
             } else {
                 let current = schedule.current(phase);
                 if current > n {
@@ -141,9 +154,12 @@ pub(crate) fn run(
         } else {
             sleep_period(timing.period_ns);
         }
+        // On the session's epoch, as the snapshots' times are: the preflights' and sequences' windows, and the events.
+        let now_ns = origin_ns.saturating_add(since(schedule.at(0, 0)));
+        links.events.at(now_ns);
         // Once set, each bus stops every limb and ends once a snapshot with every limb at rest is taken, which the
         // reads below do.
-        read(plans, n, &mut links, &mut newest, &mut exit);
+        read(plans, n, &mut links, &mut newest, &mut exit, end_seen);
         for (bus, ends) in links.buses.iter().enumerate() {
             if let Some(e) = ended.get_mut(bus) {
                 *e = ends.snapshots.is_abandoned();
@@ -151,7 +167,8 @@ pub(crate) fn run(
         }
         if ended.iter().all(|e| *e) {
             // A bus may have answered a clear between its last read and its end.
-            read(plans, n, &mut links, &mut newest, &mut exit);
+            read(plans, n, &mut links, &mut newest, &mut exit, end_seen);
+            record_end(&links.stops, &mut links.events, &exit, &mut end_seen);
             refuse_clears(plans, &mut links, &mut exit);
             refuse_enables(&mut enabler, &mut links, &mut exit);
             add(&mut exit, counts);
@@ -160,6 +177,7 @@ pub(crate) fn run(
         }
         // Read again: an end asked during the reads stops the enables, orders and batches at once.
         if links.end.load(Ordering::Acquire) {
+            record_end(&links.stops, &mut links.events, &exit, &mut end_seen);
             refuse_clears(plans, &mut links, &mut exit);
             refuse_enables(&mut enabler, &mut links, &mut exit);
         } else {
@@ -173,8 +191,6 @@ pub(crate) fn run(
                 *batch = CommandBatch::new(next, expires);
             }
             // Enables and holds first, so a stop they ask goes out in this pass's orders.
-            // On the session's epoch, as the snapshots' times are, for the preflights' and sequences' windows.
-            let now_ns = origin_ns.saturating_add(since(schedule.at(0, 0)));
             let mut buses = Buses {
                 snapshots: &newest,
                 slow: &mut links.slow,
@@ -185,6 +201,7 @@ pub(crate) fn run(
                 enabler: &mut enabler,
                 counts: &mut counts,
                 replies_dropped: &mut exit.replies_dropped,
+                events: &mut links.events,
             };
             step.run(
                 &links.roster,
@@ -196,19 +213,7 @@ pub(crate) fn run(
                 next,
                 now_ns,
             );
-            let replies = &mut links.replies;
-            let clears = &mut links.clears;
-            let mut budget = clears.buffer().capacity();
-            exit.stops_deferred += orders(
-                plans,
-                &mut links.orders,
-                &links.stops,
-                || {
-                    budget = budget.checked_sub(1)?;
-                    clears.pop().ok()
-                },
-                |r| push_reply(replies, r, &mut exit.replies_dropped),
-            );
+            exit.stops_deferred += send_orders(plans, &mut links, &mut exit.replies_dropped);
             publish(&mut links.buses, &batches, &mut exit);
             if exit.error.is_none() && passed(schedule.at(next, 0)) {
                 exit.late_batches += 1;
@@ -245,6 +250,7 @@ struct EnableStep<'a> {
     enabler: &'a mut Enabler,
     counts: &'a mut Counts,
     replies_dropped: &'a mut u64,
+    events: &'a mut Events,
 }
 
 impl EnableStep<'_> {
@@ -269,19 +275,71 @@ impl EnableStep<'_> {
             let Ok(enable) = enables.pop() else {
                 break;
             };
-            if let Some(r) = self
+            match self
                 .enabler
                 .take(roster, enable, buses, health.failed(), now_ns)
             {
-                push_enable_reply(enable_replies, r, self.replies_dropped);
+                Some(r) => push_enable_reply(enable_replies, r, self.replies_dropped, self.events),
+                None => self.events.started(&enable),
             }
         }
         if let Some(r) = self
             .enabler
             .tick(roster, buses, stops, next, now_ns, self.counts)
         {
-            push_enable_reply(enable_replies, r, self.replies_dropped);
+            push_enable_reply(enable_replies, r, self.replies_dropped, self.events);
         }
+    }
+}
+
+/// This pass's orders for every bus: the stops latched and the clears queued, each stop and refused clear an event.
+/// Gives the stops a full ring kept for later.
+fn send_orders(plans: &[BusPlan], links: &mut ControlLinks, replies_dropped: &mut u64) -> u64 {
+    let replies = &mut links.replies;
+    let clears = &mut links.clears;
+    let events = &mut links.events;
+    let mut budget = clears.buffer().capacity();
+    orders(
+        plans,
+        &mut links.orders,
+        &links.stops,
+        || {
+            budget = budget.checked_sub(1)?;
+            clears.pop().ok()
+        },
+        |told| match told {
+            Told::Stopped(stops) => events.stops(stops),
+            Told::Refused(r) => push_reply(replies, r, replies_dropped, events),
+        },
+    )
+}
+
+/// Control ends the run, the robot's stop asked under `cause`. When the flag was already set and no pass has seen the
+/// end yet (`seen`), only the owner can have set it: its shutdown is asked too, since [`record_end`] then sees control's
+/// cause and won't. Every store control makes is followed by [`record_end`] in the same pass, so a flag found set once a
+/// pass has seen the end is control's own or an owner's end already recorded: nothing more to ask.
+fn end_run(end: &AtomicBool, stops: &StopLatch, cause: Cause, seen: bool) {
+    stops.ask(Scope::Robot, cause);
+    if end.swap(true, Ordering::AcqRel) && !seen {
+        stops.ask(Scope::Robot, Cause::Shutdown);
+    }
+}
+
+/// While the run ends, every bus stops every limb on its own, so control routes no stop: it records the stops asked.
+/// The end is the robot's stop, asked under its cause where control decided it ([`end_run`]: `host.hang` for a lost
+/// clock, `host.bus` for a bus thread that ended) or, for an end the owner asked, as a shutdown on the first pass that
+/// sees it. One take is written robot first, then each limb in [`LimbName::ALL`](skeleton::LimbName::ALL) order, each
+/// scope's causes in bit order, all with the pass's stamp.
+fn record_end(stops: &StopLatch, events: &mut Events, exit: &ControlExit, seen: &mut bool) {
+    if !*seen {
+        *seen = true;
+        if exit.error.is_none() && exit.bus_ended.is_none() {
+            stops.ask(Scope::Robot, Cause::Shutdown);
+        }
+    }
+    let taken = stops.take();
+    if !taken.is_empty() {
+        events.stops(taken);
     }
 }
 
@@ -301,7 +359,12 @@ fn refuse_clears(plans: &[BusPlan], links: &mut ControlLinks, exit: &mut Control
                 bus: Some(bus),
                 outcome: Err(ClearRefused::Ending),
             };
-            push_reply(&mut links.replies, r, &mut exit.replies_dropped);
+            push_reply(
+                &mut links.replies,
+                r,
+                &mut exit.replies_dropped,
+                &mut links.events,
+            );
         }
         if !routed_any {
             let r = Reply {
@@ -310,7 +373,12 @@ fn refuse_clears(plans: &[BusPlan], links: &mut ControlLinks, exit: &mut Control
                 bus: None,
                 outcome: Err(ClearRefused::Offline),
             };
-            push_reply(&mut links.replies, r, &mut exit.replies_dropped);
+            push_reply(
+                &mut links.replies,
+                r,
+                &mut exit.replies_dropped,
+                &mut links.events,
+            );
         }
     }
 }
@@ -319,7 +387,12 @@ fn refuse_clears(plans: &[BusPlan], links: &mut ControlLinks, exit: &mut Control
 fn refuse_enables(enabler: &mut Enabler, links: &mut ControlLinks, exit: &mut ControlExit) {
     if let Some(r) = enabler.end() {
         exit.enables_ending += 1;
-        push_enable_reply(&mut links.enable_replies, r, &mut exit.replies_dropped);
+        push_enable_reply(
+            &mut links.enable_replies,
+            r,
+            &mut exit.replies_dropped,
+            &mut links.events,
+        );
     }
     for _ in 0..links.enables.buffer().capacity() {
         let Ok(enable) = links.enables.pop() else {
@@ -330,7 +403,12 @@ fn refuse_enables(enabler: &mut Enabler, links: &mut ControlLinks, exit: &mut Co
             tag: enable.tag,
             outcome: Err(EnableRefused::Ending),
         };
-        push_enable_reply(&mut links.enable_replies, r, &mut exit.replies_dropped);
+        push_enable_reply(
+            &mut links.enable_replies,
+            r,
+            &mut exit.replies_dropped,
+            &mut links.events,
+        );
     }
 }
 
@@ -347,13 +425,14 @@ const fn add(exit: &mut ControlExit, counts: Counts) {
 }
 
 /// Each bus's newest snapshot (kept in `latest`) and re-arm answers, handed on; a bus that ended before the run did ends
-/// the run.
+/// the run (`end_seen`: whether a pass has seen the end already).
 fn read(
     plans: &[BusPlan],
     n: u64,
     links: &mut ControlLinks,
     latest: &mut [Option<Snapshot>],
     exit: &mut ControlExit,
+    end_seen: bool,
 ) {
     for (bus, ends) in links.buses.iter_mut().enumerate() {
         let mut newest = None;
@@ -380,23 +459,43 @@ fn read(
                 break;
             };
             if let Some(r) = reply(plans, bus, answer) {
-                push_reply(&mut links.replies, r, &mut exit.replies_dropped);
+                push_reply(
+                    &mut links.replies,
+                    r,
+                    &mut exit.replies_dropped,
+                    &mut links.events,
+                );
             }
         }
         if ended && !ending {
             exit.bus_ended.get_or_insert(bus);
-            links.end.store(true, Ordering::Release);
+            // A bus thread that ended stops the run (`host.bus`); the bus is named in the exit.
+            end_run(
+                &links.end,
+                &links.stops,
+                Cause::Rule(RuleId::HostBus),
+                end_seen,
+            );
         }
     }
 }
 
-fn push_reply(replies: &mut Producer<Reply>, r: Reply, dropped: &mut u64) {
+/// A clear's answer, to its requester and the event log.
+fn push_reply(replies: &mut Producer<Reply>, r: Reply, dropped: &mut u64, events: &mut Events) {
+    events.clear_reply(&r);
     if replies.push(r).is_err() {
         *dropped += 1;
     }
 }
 
-fn push_enable_reply(replies: &mut Producer<EnableReply>, r: EnableReply, dropped: &mut u64) {
+/// An enable's answer, to its requester and the event log.
+fn push_enable_reply(
+    replies: &mut Producer<EnableReply>,
+    r: EnableReply,
+    dropped: &mut u64,
+    events: &mut Events,
+) {
+    events.enable_reply(&r);
     if replies.push(r).is_err() {
         *dropped += 1;
     }

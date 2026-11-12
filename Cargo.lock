@@ -469,10 +469,12 @@ name = "runtime"
 version = "0.1.0"
 dependencies = [
  "can",
+ "mcap",
  "nix",
  "robstride",
  "rtrb",
  "safety",
+ "serde_json",
  "skeleton",
  "telemetry",
  "thiserror",
