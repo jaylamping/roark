@@ -58,13 +58,15 @@ def git(root: Path, *args: str) -> str:
 
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
-    """A throwaway repo with the real manifests and one LFS pointer committed and pushed (pointers are written by hand; no LFS needed)."""
+    """A throwaway repo with the real rule manifests, no export records, and one LFS pointer committed and pushed (pointers are written by hand; no LFS needed)."""
     git(tmp_path, "init", "-q", "-b", "main")
     git(tmp_path, "config", "commit.gpgsign", "false")
     manifests = {
         f"cad/manifests/{p.name}": p.read_text(encoding="utf-8")
         for p in ccl.LAYOUT_PATH.parent.glob("*.json")
     }
+    # The real export records name files this repo doesn't have.
+    manifests["cad/manifests/exports.json"] = json.dumps({"version": 1, "exports": []})
     build(
         tmp_path,
         {
