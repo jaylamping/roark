@@ -296,8 +296,8 @@ fn send_orders(plans: &[BusPlan], links: &mut ControlLinks, replies_dropped: &mu
 
 /// Control ends the run, the robot's stop asked under `cause`. When the flag was already set and no pass has seen the
 /// end yet (`seen`), only the owner can have set it: its shutdown is asked too, since [`record_end`] then sees control's
-/// cause and won't. Every store control makes is followed by [`record_end`] in the same pass, so a set flag after that
-/// is control's own.
+/// cause and won't. Every store control makes is followed by [`record_end`] in the same pass, so a flag found set once a
+/// pass has seen the end is control's own or an owner's end already recorded: nothing more to ask.
 fn end_run(end: &AtomicBool, stops: &StopLatch, cause: Cause, seen: bool) {
     stops.ask(Scope::Robot, cause);
     if end.swap(true, Ordering::AcqRel) && !seen {

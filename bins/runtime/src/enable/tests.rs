@@ -611,11 +611,9 @@ fn a_failed_enable_stops_its_limb_under_the_rule_its_refusal_names() {
         let joints = rig.roster.set(["arm_a_one"]).unwrap();
         let mut counts = Counts::default();
         let reply = enabler.fail(&rig.roster, 1, joints, failure, &rig.stops, &mut counts);
-        let rule = reply
-            .outcome
-            .err()
-            .and_then(|why| why.named().rule)
-            .expect("every failure that stops names a rule");
+        let rule = reply.outcome.err().and_then(|why| why.named().rule);
+        assert!(rule.is_some(), "{failure:?} names no rule");
+        let rule = rule.unwrap();
         assert_eq!(
             rig.stopped(),
             [(Scope::Limb(LimbName::LeftArm), Cause::Rule(rule))],

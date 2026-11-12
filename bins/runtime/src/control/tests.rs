@@ -114,6 +114,9 @@ enum Step {
     Pass,
 }
 
+/// A robot stop's rule and reason, as recorded.
+type Recorded = (Option<&'static str>, Option<&'static str>);
+
 /// Guards: safety - the run's end is recorded as one robot stop per cause that ended it: `host.bus` for a bus thread
 /// that ended, `host.hang` for a lost clock, `shutdown` for the owner's end, both when the owner had ended the run
 /// before control saw it, each once, and never a shutdown the owner didn't ask, even when control ends the run again
@@ -126,17 +129,22 @@ fn the_run_ends_recorded_under_each_cause_that_ended_it() {
     let roster = Roster::new(&skeleton, &plans).unwrap();
     let bus = Control(RuleId::HostBus);
     let clock = Control(RuleId::HostHang);
-    let (hang, bus_rule) = (RuleId::HostHang.as_str(), RuleId::HostBus.as_str());
-    let cases: [(&[Step], &[&str]); 7] = [
+    let hang = (Some(RuleId::HostHang.as_str()), None);
+    let bus_rule = (Some(RuleId::HostBus.as_str()), None);
+    let shutdown = (None, Some("shutdown"));
+    let cases: [(&[Step], &[Recorded]); 9] = [
         (&[bus, Pass, Pass], &[bus_rule]),
         (&[clock, Pass], &[hang]),
-        (&[Owner, Pass, Pass], &["shutdown"]),
-        (&[Owner, bus, Pass], &["shutdown", bus_rule]),
-        (&[Owner, clock, Pass], &["shutdown", hang]),
+        (&[Owner, Pass, Pass], &[shutdown]),
+        (&[Owner, bus, Pass], &[shutdown, bus_rule]),
+        (&[Owner, clock, Pass], &[shutdown, hang]),
         // Control ends the run again once a pass has seen its end: no owner asked a shutdown.
         (&[bus, Pass, clock, Pass], &[bus_rule, hang]),
         // The owner's shutdown, already recorded, isn't recorded again.
-        (&[Owner, Pass, clock, Pass], &["shutdown", hang]),
+        (&[Owner, Pass, clock, Pass], &[shutdown, hang]),
+        // An owner's end after control's own changes nothing and isn't recorded.
+        (&[bus, Owner, Pass], &[bus_rule]),
+        (&[bus, Pass, Owner, Pass], &[bus_rule]),
     ];
     for (steps, expected) in cases {
         let mut recorded = crate::events::TestRecording::new("end", &plans);
@@ -165,9 +173,17 @@ fn the_run_ends_recorded_under_each_cause_that_ended_it() {
             .into_iter()
             .map(|e| {
                 assert_eq!(e.kind, telemetry::EventKind::RobotStopped);
-                e.rule.or(e.reason).unwrap_or_default()
+                (e.rule, e.reason)
             })
             .collect();
+        let got: Vec<_> = got
+            .iter()
+            .map(|(rule, reason)| (rule.as_deref(), reason.as_deref()))
+            .collect();
         assert_eq!(got, expected, "{steps:?}");
+        assert!(
+            end.load(Ordering::Acquire),
+            "every end sets the flag: {steps:?}"
+        );
     }
 }

@@ -60,10 +60,11 @@ come in the PRs that follow (PLAN step 7).
     bus stop names no rule because it was asked (by the operator or control, whose own event names the cause) and
     control carries it to the whole limb. The stop latch keeps every cause asked of each scope until
     control takes it, in the same atomic word as the stop, so a stop is never taken without its cause. The run's end is
-    asked as the robot's stop, under `host.hang` for a lost clock or `host.bus` for a bus thread that ended where control
-    decides it, and as `shutdown` for the owner's end when the owner's comes first (control sees it first, or finds it
-    already asked as it decides its own before any pass has seen the end): one `robot.stopped` per cause that ended the
-    run. An owner's end that comes after control's own changes nothing and isn't recorded. The bus behind `host.bus` is named in the exit and on stderr, not in the event. A take is written robot
+    the robot's stop. Control asks it under `host.hang` for a lost clock or `host.bus` for a bus thread that ended. The
+    owner's end is asked as `shutdown` when it comes first: control sees it first, or finds it already set as it
+    decides its own before any pass has seen the end. Each cause is one `robot.stopped`. An owner's end after control's
+    own changes nothing and isn't recorded; a lost clock after the run has ended is still recorded under `host.hang`.
+    The bus behind `host.bus` is named in the exit and on stderr, not in the event. A take is written robot
     first, then each limb in `LimbName::ALL` order, each one's causes in bit order, all with the pass's stamp, so stops
     taken together aren't in the order they were asked. A cause bit nothing decodes is written as `unknown_cause`.
   - `enable.started`: one per joint of an enable that passed its checks, under its tag. `enable.succeeded` carries the
