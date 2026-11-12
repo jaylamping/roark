@@ -58,6 +58,9 @@ pub enum Trigger {
     /// As the drive takes its nth MIT command after the fault is scheduled, before answering it, so that command's
     /// reply already shows the fault. Counted from 1: 0 is refused.
     OnMit(u32),
+    /// As the drive takes its nth Enable after the fault is scheduled, before acting on it, so a fault that delays or
+    /// silences its frames reaches that Enable's Run status. Counted from 1: 0 is refused.
+    OnEnable(u32),
     /// At this time: the drive is brought up to it, the fault applied, then the drive goes on, however late it is
     /// stepped. Several due at once fire in time order, and in the order scheduled when tied. A time the drive has
     /// already been stepped past is refused.
@@ -84,6 +87,9 @@ pub enum FaultRefused {
     /// `OnMit(0)`: MIT commands are counted from 1.
     #[error("OnMit counts from 1")]
     OnMitZero,
+    /// `OnEnable(0)`: Enables are counted from 1.
+    #[error("OnEnable counts from 1")]
+    OnEnableZero,
     /// A time the drive has already been stepped past (an injection's, or an `At`): it can't take effect then any more.
     #[error("the drive is already past that time")]
     Past,
@@ -150,11 +156,13 @@ pub(crate) fn flag(flags: &mut [bool; Param::ALL.len()], param: Param) {
     }
 }
 
-/// A scheduled fault, with the MIT count when it was scheduled (for `OnMit`) and its place in the order scheduled.
+/// A scheduled fault, with the MIT and Enable counts when it was scheduled (for `OnMit` and `OnEnable`) and its place in
+/// the order scheduled.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Scheduled {
     trigger: Trigger,
     mits_then: u32,
+    enables_then: u32,
     seq: u64,
     fault: Fault,
 }
@@ -164,6 +172,7 @@ pub(crate) struct Scheduled {
 pub(crate) struct Plan {
     faults: [Option<Scheduled>; FAULT_PLAN],
     pub(crate) mits: u32,
+    pub(crate) enables: u32,
     /// Each with its place in the order recorded, so a slot freed and reused never jumps the queue.
     log: [Option<(u64, Injected)>; INJECTED_LOG],
     seq: u64,
@@ -173,8 +182,10 @@ pub(crate) struct Plan {
 impl Plan {
     /// Schedule `fault`, already checked by the drive.
     pub(crate) fn schedule(&mut self, trigger: Trigger, fault: Fault) -> Result<(), FaultRefused> {
-        if trigger == Trigger::OnMit(0) {
-            return Err(FaultRefused::OnMitZero);
+        match trigger {
+            Trigger::OnMit(0) => return Err(FaultRefused::OnMitZero),
+            Trigger::OnEnable(0) => return Err(FaultRefused::OnEnableZero),
+            Trigger::OnMit(_) | Trigger::OnEnable(_) | Trigger::At(_) => {}
         }
         let free = self
             .faults
@@ -184,6 +195,7 @@ impl Plan {
         *free = Some(Scheduled {
             trigger,
             mits_then: self.mits,
+            enables_then: self.enables,
             seq: self.seq,
             fault,
         });
@@ -191,10 +203,10 @@ impl Plan {
         Ok(())
     }
 
-    /// The next fault due by `now`, taken out of the plan: the earliest `At` at or before `now`, then any `OnMit`
-    /// whose count is reached (it fires at `now`), each in the order scheduled when tied.
+    /// The next fault due by `now`, taken out of the plan: the earliest `At` at or before `now`, then any `OnMit` or
+    /// `OnEnable` whose count is reached (it fires at `now`), each in the order scheduled when tied.
     pub(crate) fn due(&mut self, now: Instant) -> Option<(Instant, Fault)> {
-        let mits = self.mits;
+        let (mits, enables) = (self.mits, self.enables);
         let (slot, at, _) = self
             .faults
             .iter_mut()
@@ -203,6 +215,9 @@ impl Plan {
                 let at = match s.trigger {
                     Trigger::At(at) => (at <= now).then_some(at),
                     Trigger::OnMit(n) => (mits.saturating_sub(s.mits_then) >= n).then_some(now),
+                    Trigger::OnEnable(n) => {
+                        (enables.saturating_sub(s.enables_then) >= n).then_some(now)
+                    }
                 }?;
                 Some((slot, at, s.seq))
             })
@@ -218,7 +233,7 @@ impl Plan {
             .flatten()
             .filter_map(|s| match s.trigger {
                 Trigger::At(at) => Some(at),
-                Trigger::OnMit(_) => None,
+                Trigger::OnMit(_) | Trigger::OnEnable(_) => None,
             })
             .min()
     }

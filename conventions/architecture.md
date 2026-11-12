@@ -41,8 +41,9 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
 | `api` server | The one external interface | Clients over the network; the realtime side over queues | Block the realtime side, or write hardware facts |
 | `telemetry` | MCAP files, metrics, structured logs | Event queues in, disk and Prometheus out | Be in the stop path (a slow disk never delays a stop) |
 | `ui/`, `mcp/`, `robot-cli` | Nothing about the hardware | `api` only | Open a CAN socket (the one exception below) |
-| `robot-cli disable` | Nothing | The bus directly, after `runtime` has exited | Run while `runtime` is alive |
+| `robot-cli disable` | Nothing | The bus directly, after `runtime` has exited; the runtime's lock (`/run/robot/runtime.lock`), which the runtime holds while it runs and `disable` refuses while held | Run while `runtime` is alive |
 | `sim-drive` | Simulated drive state | `vcan` through the same `robstride` codec (its drive side, `robstride::drive`) | Be linked into `runtime`, or open an interface that isn't `vcan` |
+| `can-bench` | Nothing about the robot | One CAN interface, with its own frames that no drive acts on ([comparison](../docs/can-interface-comparison.md)) | Run with a drive or another host on the bus, or alongside `runtime` |
 
 The queues between the control thread and each bus thread, all bounded `rtrb` rings made before the first tick
 (`can::BusLinks`):
@@ -57,10 +58,23 @@ The queues between the control thread and each bus thread, all bounded `rtrb` ri
 | Snapshots | bus → control | The newest is dropped and counted (`snapshots_dropped`) |
 | Recorded frames | bus → telemetry | Counted in the recording as a loss, never blocking the tick |
 
+And between the control thread and the rest of `runtime` (`runtime::Runtime`), until the `api` takes its side:
+
+| Ring or latch | From → to | When full |
+|---|---|---|
+| Stop latch (robot, or a limb) | operator and control's own checks → control | Never full: one word of cause bits per scope (the operator, shutdown, a stop carried from another bus, each rule), so a stop asked again before control takes it is the same stop, with every cause kept. Control takes it each tick before any clear (PLAN item 3a) |
+| Clears | operator → control | The operator's push fails; nothing was asked. Control takes them after the stops, in push order |
+| Clear replies, one per bus the limb is on, or one refusal | control → operator | Dropped and counted (`replies_dropped`); the limb's state and generation still show in the views |
+| Enables, each of a set of joints | operator → control | The operator's push fails; nothing was asked. Control takes them after its reads, one running at a time: the rest are refused `Busy` |
+| Enable replies, one per enable | control → operator | Dropped and counted (`replies_dropped`); the limbs' states still show in the views |
+| Views, each bus's newest snapshot once a tick (only when asked for) | control → operator | Dropped and counted (`views_dropped`) |
+| Control's events (stops with their causes, enables, refusals, clears) | control → telemetry | Dropped and counted in the session file's end marker |
+
 ## 2. Process boundaries are failure domains
 
-- **One process owns motion.** Only `runtime` transmits on CAN (tenet 5). Every other process can crash, hang or be restarted
-  and the motors don't notice. **Why:** the legacy stack had several bus writers (motor-repl, an MCP tool that stopped the
+- **One process owns motion.** Only `runtime` transmits on a robot bus (tenet 5); `robot-cli disable` after it has
+  exited, and `can-bench` on a bench bus with no drive, are the named exceptions. Every other process can crash, hang or
+  be restarted and the motors don't notice. **Why:** the legacy stack had several bus writers (motor-repl, an MCP tool that stopped the
   service and launched its own owner), and nobody could say who moved a joint.
 - **A dead `runtime` stops the robot.** The drives' 50 ms CAN timeout makes them go limp, systemd's watchdog kills a hung
   process, and `ExecStopPost` runs the independent disable. Nothing tries to keep motion alive after the owner dies.
@@ -83,8 +97,11 @@ api       (message types; used by runtime, ui bridge, mcp, robot-cli)
 telemetry (leaf for producers: takes events, depends on nothing above; can hands it each tick's frames)
 
 can --> robstride, telemetry        safety --> can, robstride, skeleton
+runtime --> can, robstride, safety, skeleton, telemetry
 
-sim-drive (bin) --> robstride, skeleton        sim-suite (tests only) --> can, safety, sim-drive, skeleton, robstride, telemetry
+can-bench (bin) --> nothing in the workspace
+robot-cli (bin) --> robstride, skeleton        sim-drive (bin) --> robstride, skeleton
+sim-suite (tests only) --> can, runtime, safety, sim-drive, skeleton, robstride, telemetry
 ```
 
 - Arrows only point toward the leaves. No cycles, no "utils" or "common" crate that everything imports.
@@ -98,8 +115,11 @@ sim-drive (bin) --> robstride, skeleton        sim-suite (tests only) --> can, s
   to the robot's drives can send a drive's frame, whichever crates a build compiles together. **Why:** a cargo feature
   can't hold this, because a workspace build turns a feature on for every crate in it.
 - **Only named crates open a CAN socket.** `deny.toml` bans `socketcan` except as a direct dependency of `can`,
-  `sim-drive` and `sim-suite`. `sim-drive`, every sim test and, until the real adapter is supported (PLAN step 8), `can`
-  check an interface is `vcan` before the first frame, because the sim's buses carry the robot's real bus names.
+  `can-bench`, `robot-cli` (for `disable` alone), `sim-drive` and `sim-suite`. `sim-drive` and every sim test
+  check an interface is `vcan` before the first frame, because the sim's buses carry the robot's real bus names. `can`
+  opens `vcan`, or a real interface only once its driver, bit timing, state and modes match the skeleton. `can-bench`
+  opens real interfaces on purpose, to measure them: it sends only frames no drive acts on and refuses a bus where
+  anything else talks (its README).
 - **Clients depend on `api`, never on `runtime` internals.** If a client needs something, it becomes an `api` message.
 - A new crate needs a separate reason to exist: a different owner, a different realtime class, or reuse by two binaries. "It
   felt big" is a reason for a module, not a crate.
@@ -195,7 +215,7 @@ Each of these was in the marengo stack and was judged against the tenets in the
 | Degraded modes that keep drives powered after a fault | Tenet 3 says stop |
 | Limits and IDs held in several files | One fact, one place (tenet 2) |
 | Home-grown logging, storage and log viewers | Off-the-shelf stack (tenet 8) |
-| Tools that open the bus or stop the service | One CAN owner (tenet 5) |
+| Tools that open a robot bus or stop the service | One CAN owner (tenet 5); `can-bench` runs only on a bus with no drive |
 | Preflights that require every joint online | Missing drives are a state (tenet 1) |
 | Runtime that writes config or URDF | The skeleton is hand-agreed (tenet 2) |
 | Speculative ADRs and versioned interfaces nobody uses | Build only what's needed now (tenet 4) |

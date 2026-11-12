@@ -9,7 +9,7 @@ control thread runs it; the bus layer (`can`) does the pre-send veto, and this c
   `Guards:` lines and every event (safety.md section 2). `RuleId::of_stop` names the rule behind each of the bus
   layer's own stops; a requested stop carries its asker's `Cause`.
 - **Preflight** (`Preflight`): for one drive, over its bus's slow requests one at a time (each an `Exchange` on a
-  `Register`): get-ID and the UID check, write `canTimeout` 1000 and the skeleton's three caps, then read all four back
+  `Register`): get-ID and the UID check, write `canTimeout` 1000 and the joint's three caps, then read all four back
   with the damper and VBUS. Fault bits in the latest status since it began, any mode but Reset in a status or version
   reply since it began (even one a later Reset hid: the bus latches it, `out_of_reset`), a fault latched since the last
   clear, no status at all, another drive's view (another ID, or the same ID in another bus's snapshot: a drive is its
@@ -18,9 +18,10 @@ control thread runs it; the bus layer (`can`) does the pre-send veto, and this c
   refuses. Only a pass makes a `PreflightPassed`, which proves the drive was right then; the runtime runs every named
   drive's preflight, enables them together from their proofs, drops the proofs on any event that voids them, and runs
   preflight again for every enable. Each `Refusal` names its rule, the measured and the expected value, and what the
-  operator does about it (safety.md section 5). A null cap, a cap the drive's model can't take, a null `direction`,
-  `zero_rad` or `hard_rad`, a model whose MIT scales aren't settled, or an unwired joint refuses before anything is
-  sent.
+  operator does about it (safety.md section 5). A cap the drive's model can't take, a model whose MIT scales
+  aren't settled, or an unwired joint refuses before anything is sent. A null cap, `direction`, `zero_rad` or
+  `hard_rad` doesn't: the joint is uncommissioned, and preflight writes and reads back its model's commissioning caps
+  (`skeleton::Joint::caps`), or its own cap where lower (PLAN item 1).
 - **The enable sequence** (`Enabling`): takes a `PreflightPassed` by value, so an enable without a preflight doesn't
   compile and one preflight enables once. Reporting off, its echo plus one tick, Enable, a fresh Run status within 50 ms
   of its being planned (if none comes, an Enable not read back in that time is told apart, and still stops the limb),
@@ -34,6 +35,9 @@ control thread runs it; the bus layer (`can`) does the pre-send veto, and this c
   `Next::Refused`; after it, `Next::Stop`: the limb must be stopped, not just refused. A refusal speaks for its own
   drive only: control stops the limb if any sequence of the same enable has planned its Enable
   (`Enabling::enable_planned`). Each `EnableFailure` has its operator line and remedy too.
+- **`host.mode`'s limb-mate clause** (`limb_mates`): while a limb is held, a drive of it on any bus that this host
+  never enabled, seen out of Reset since the limb's last re-arm (`DriveView::out_of_reset`) or not seen at all, gives
+  `HoldVerdict::Stop(HostMode)`: control stops the whole limb (#25). The bus watches only the drives this host enabled.
 - **States** (`DriveState`, `LimbState`): PLAN item 6's machines as transition functions. An event a state doesn't
   take returns `None` and changes nothing.
 
@@ -43,8 +47,9 @@ come with their sim tests (step 7 design, PR 5).
 ## Must never
 
 - Do I/O, read a clock, or keep hidden state: every input is an argument (safety.md section 3).
-- Allow on an unknown: an unanswered or late request, an answer of the wrong kind, a null value or a stale status
-  refuses.
+- Allow on an unknown: an unanswered or late request, an answer of the wrong kind or a stale status refuses. A null
+  cap, `direction`, `zero_rad` or `hard_rad` is not an unknown: it lowers the caps (above). A null UID skips the UID
+  check (`host.identity`) until a UID is written; filling in the caps and facts doesn't bring it back.
 - Offer a way past a rule: no flag, mode or setting skips preflight or a check (safety.md section 4).
 
 ## Talks to

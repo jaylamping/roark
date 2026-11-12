@@ -9,7 +9,7 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
 
 - `vcan.rs`: `sim-drive` refuses anything that isn't `vcan`, and a simulated drive answers the host's frames through
   the kernel.
-- `bus.rs`: `can::spawn` refuses anything that isn't `vcan`, and the bus thread runs two simulated drives through
+- `bus.rs`: `can::spawn` refuses an interface it can't read or that isn't CAN, and the bus thread runs two simulated drives through
   enable, hold and a shutdown stop, recorded by `telemetry`; the recording is checked frame by frame against an
   independent `candump -L -x` capture (needs `can-utils`). Also a thread started after the schedule joining it.
 - `slow.rs`: slow requests (get-ID, a write, its read-back) reaching a drive and coming back.
@@ -26,23 +26,30 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   order naming a limb the bus doesn't have, pushed with the clear, stops both limbs in the same tick; a clear sent as
   the bus exits never undoes its stop; and a bus that ends answers every clear left in its ring `Ended`, counting the
   answers control's ring can't take and every stop order left naming a limb it doesn't have.
+- `runtime.rs`: the `runtime` crate on its test robot (two buses, one limb on both, one offline), against `sim-drive`
+  on `can0` and `can1`: nothing enabled, a robot stop and a limb's stop reaching it on both buses, a clear re-arming a
+  limb on both buses and one of the offline limb refused, and an end with every bus at rest and the session closed.
 - `exit.rs`: a bus of two active limbs told to exit with control's snapshot ring full stops every limb and returns
   once the ring takes a snapshot with every limb stopped, once control drops the ring, or after its wait when control
   never reads again, each time at the next tick's drain; a bus of two stopping limbs with no time to collect records
   its last reporting off through that drain; and a bus that ends counts the slow results control's ring can't take.
 
-Every frame on a bus reaches every socket on it, so two tests that run at the same time never share a bus. Each test
-on `can1` to `can4` has its bus to itself; the tests in `exit.rs`, `slow.rs`, `faults.rs`, `enable.rs` and `orders.rs` all use
-`can0` and run one at a time (nextest's `can0` test group, `.config/nextest.toml`). A new test either takes a bus no
-other test uses or joins that group.
+Every frame on a bus reaches every socket on it, so two tests that run at the same time never share a bus. The tests in
+`exit.rs`, `slow.rs`, `faults.rs`, `enable.rs` and `orders.rs` use `can0`, `runtime.rs` uses `can0` and `can1` (its test
+robot's two buses) and `bus.rs` uses `can1` to `can3`, so all of them run one at a time (nextest's `can0` test group,
+`.config/nextest.toml`); `vcan.rs` has `can4` to itself. A new test either takes a bus no other test uses or joins that
+group.
 
 nextest's default profile leaves this crate out, so `scripts/check.sh` stays runnable on any machine; the `sim` profile
 runs only this crate.
 
 ## Must never
 
-Open an interface without checking it is `vcan` first (`sim_drive::ensure_vcan`, and `can::spawn`'s own check): the
-sim's buses carry the robot's real names, so a test run on the Pi must not reach a real drive (testing.md rule 8). Never
+Open an interface without checking it is `vcan` first (`sim_drive::ensure_vcan`). The sim's buses carry the robot's real
+names and `can::spawn` opens a real interface that matches the skeleton, so this check is what keeps a test run on the
+Pi off a real drive (testing.md rule 8). The tests' skeletons and `common::interface` name a driver no real interface
+has (`sim_only`) as a second guard for `can::spawn`; `robot-cli disable` checks neither, so its tests rely on
+`ensure_vcan` alone. Never
 sleep to wait: wait on a reply with a deadline (testing.md rule 6).
 
 ## Talks to

@@ -42,10 +42,22 @@ sync() {
     rsync -az --delete --filter=':- .gitignore' --exclude .git/ "$repo/" "$host:$remote/"
 }
 
+# The copy has no .git, so the build can't see its revision: hand it over (bins/runtime/build.rs).
+revision() {
+    local head
+    head=$(git -C "$repo" rev-parse HEAD 2>/dev/null) || return 0   # nothing: the build warns and records unknown
+    if [ -n "$(git -C "$repo" status --porcelain 2>/dev/null || echo failed)" ]; then
+        echo "$head-dirty"
+    else
+        echo "$head"
+    fi
+}
+
 run() {
     [ $# -gt 0 ] || { echo "usage: $0 run <command...>" >&2; exit 2; }
     sync
-    ssh -o ConnectTimeout=30 "$host" "cd '$remote' && . ~/.cargo/env && $(printf '%q ' "$@")"
+    ssh -o ConnectTimeout=30 "$host" \
+        "cd '$remote' && . ~/.cargo/env && ROARK_GIT_REVISION='$(revision)' $(printf '%q ' "$@")"
 }
 
 ok() { printf '  ok    %s\n' "$1"; }
@@ -105,6 +117,7 @@ case "$cmd" in
     doctor) doctor ;;
     run) run "$@" ;;
     sync) sync ;;
+    # No revision handed to the shell: the copy may be re-synced while it stays open, and a stale one would be wrong.
     shell) sync && ssh -t "$host" "cd '$remote' && exec bash -l" ;;
     ssh-config) ssh_config ;;
     *) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;

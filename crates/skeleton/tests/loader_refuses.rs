@@ -1,4 +1,4 @@
-//! The loader's refusals, one row per rule in PLAN item 1 ("Loader refuses", "Null is not permission") and skeleton.md
+//! The loader's refusals, one row per rule in PLAN item 1 ("Loader refuses", "Null is not a number, and it doesn't block the bench") and skeleton.md
 //! section 5. Every row edits one small all-limb fixture, never the live skeleton (testing.md rule 3).
 
 use std::f64::consts::TAU;
@@ -8,7 +8,7 @@ use skeleton::{LoadError, ProblemKind};
 /// Five limbs, some wired and some offline. One joint is fully commissioned so the checks that need a zero and a
 /// direction have something to check.
 const FIXTURE: &str = "\
-schema: 1
+schema: 2
 name: test_robot
 power:
   source: bench_24v
@@ -18,10 +18,12 @@ buses:
   bus0:
     bitrate_bps: 1000000
     sample_point: 0.75
+    driver: mcp251xfd
     adapter_serial: null
   bus1:
     bitrate_bps: 1000000
     sample_point: 0.75
+    driver: mcp251xfd
     adapter_serial: \"ABC123\"
 limbs:
   left_arm:
@@ -127,7 +129,7 @@ const J1: &str = "limbs.left_arm.arm_joint_one";
 /// A row: what it checks, the edited file, and every problem expected, as (path, kind).
 type Row = (&'static str, String, Vec<(String, ProblemKind)>);
 
-/// Guards: safety - skeleton loader refusals, PLAN item 1 "Loader refuses" and "Null is not permission", skeleton.md section 5.
+/// Guards: safety - skeleton loader refusals, PLAN item 1 "Loader refuses" and "Null is not a number", skeleton.md section 5.
 #[test]
 #[expect(clippy::too_many_lines, reason = "one table, one row per loader rule")]
 fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
@@ -237,13 +239,13 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
         (
             "a bad power field doesn't hide the current budget",
             edit("source: bench_24v", "source: bench_48v")
-                .replace("current_cap_a: 10.0", "current_cap_a: 14.0"),
+                .replace("current_cap_a: 12.0", "current_cap_a: 24.0"),
             vec![
                 at("power.source", ProblemKind::Expected("bench_24v")),
                 at(
                     "power.current_budget_a",
                     ProblemKind::CurrentBudget {
-                        sum_a: 26.0,
+                        sum_a: 24.0 + 16.0 * 0.05 + 16.0 * 0.05,
                         budget_a: 25.0,
                     },
                 ),
@@ -279,7 +281,7 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
         ),
         (
             "a schema that isn't a number doesn't stop the rest of the file being checked",
-            edit("schema: 1", "schema: one")
+            edit("schema: 2", "schema: one")
                 .replace("name: test_robot", "name: test_robot\nextra_key: 1"),
             vec![
                 at(
@@ -335,16 +337,55 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
             )],
         ),
         (
-            "current caps on joints with a bus sum above the budget",
-            // 12 A + 14 A on wired joints; the offline joint's 43 A doesn't count, it can't be enabled.
-            edit("current_cap_a: 10.0", "current_cap_a: 14.0"),
+            "the currents joints with a bus are enabled at sum above the budget",
+            // The commissioned joint's 24 A, and the two uncommissioned wired joints at their commissioning current
+            // (Open with Joey 11), whatever cap they write; the offline joint's 43 A doesn't count, it can't be enabled.
+            edit("current_cap_a: 12.0", "current_cap_a: 24.0"),
             vec![at(
                 "power.current_budget_a",
                 ProblemKind::CurrentBudget {
-                    sum_a: 26.0,
+                    sum_a: 24.0 + 16.0 * 0.05 + 16.0 * 0.05,
                     budget_a: 25.0,
                 },
             )],
+        ),
+        (
+            "a joint with a field that didn't parse still counts at the current it is enabled at",
+            // arm_joint_two's ID doesn't parse, so it isn't loaded, but it counts as above at its commissioning
+            // current, not the 10 A it writes.
+            edit("current_cap_a: 12.0", "current_cap_a: 24.0").replace("id: 12", "id: 012"),
+            vec![
+                at(
+                    "power.current_budget_a",
+                    ProblemKind::CurrentBudget {
+                        sum_a: 24.0 + 16.0 * 0.05 + 16.0 * 0.05,
+                        budget_a: 25.0,
+                    },
+                ),
+                at(
+                    "limbs.left_arm.arm_joint_two.id",
+                    ProblemKind::Expected("a whole number without leading zeros"),
+                ),
+            ],
+        ),
+        (
+            "a commissioned joint with a fact that didn't parse still counts at its own current cap",
+            // Its direction is broken, not null, so it stays commissioned: 24 A, not its commissioning current.
+            edit("current_cap_a: 12.0", "current_cap_a: 24.0")
+                .replace("direction: -1", "direction: 2"),
+            vec![
+                at(
+                    "power.current_budget_a",
+                    ProblemKind::CurrentBudget {
+                        sum_a: 24.0 + 16.0 * 0.05 + 16.0 * 0.05,
+                        budget_a: 25.0,
+                    },
+                ),
+                at(
+                    &format!("{J1}.direction"),
+                    ProblemKind::Expected("1 or -1, unquoted"),
+                ),
+            ],
         ),
         (
             "misspelt field is unknown, and the real one is missing: both reported at once",
@@ -391,8 +432,8 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
         ),
         (
             "unknown schema version",
-            edit("schema: 1", "schema: 2"),
-            vec![at("schema", ProblemKind::UnknownSchema(2))],
+            edit("schema: 2", "schema: 1"),
+            vec![at("schema", ProblemKind::UnknownSchema(1))],
         ),
     ];
 
@@ -413,5 +454,16 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
         found.first().map(|p| p.line),
         hard_line,
         "line of the hard_rad problem"
+    );
+
+    // An old file is told which schema this loader reads.
+    assert_eq!(
+        skeleton::parse(&edit("schema: 2", "schema: 1"))
+            .err()
+            .map(|e| e.to_string()),
+        Some(
+            "the skeleton has 1 problem(s):\n  line 1: schema: schema 1 is not one this loader knows (expected 2)"
+                .to_owned()
+        )
     );
 }

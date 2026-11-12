@@ -4,8 +4,9 @@
 //! preflight doesn't compile (rust.md section 3).
 //!
 //! A write is answered by a plain status that names no register (`robstride` `param_write`), so a write proves nothing
-//! until its read-back. Every unknown fails closed: a request not answered in time, an answer of the wrong kind, a value
-//! the skeleton leaves null.
+//! until its read-back. Every unknown fails closed: a request not answered in time, or an answer of the wrong kind. A
+//! null cap, `direction`, `zero_rad` or `hard_rad` in the skeleton is not one: it lowers the caps written
+//! ([`skeleton::Joint::caps`], PLAN item 1). A null UID skips the UID check until a UID is written.
 //!
 //! Preflight is stepped with what its drive's bus last showed ([`Seen`]): a view of any other drive, by ID or by bus,
 //! or from another slot than its requests go to, refuses, and so does a limb that isn't idle, or that stopped or was
@@ -17,12 +18,11 @@
 
 use can::{DriveView, LimbState, ModeSeen, SlowKind, SlowOutcome, SlowRequest, SlowResult};
 use robstride::{
-    Amps, CanTimeout, Damper, Drive, Mode, NewtonMeters, Param, ParamOutcome, ParamValue,
-    RadPerSec, Uid, Volts, Write,
+    CanTimeout, Damper, Drive, Mode, Param, ParamOutcome, ParamValue, Uid, Volts, Write,
 };
 use skeleton::{Joint, Power, Window};
 
-use crate::refusal::{CapKind, JointFact, Refusal, Unanswered};
+use crate::refusal::{CapKind, Refusal, Unanswered};
 use crate::rule::RuleId;
 use crate::seen::{DriveAddress, Seen};
 
@@ -168,8 +168,10 @@ impl Target {
     ///
     /// # Errors
     /// [`Refusal::Unwired`] for a joint with no bus, [`Refusal::UnvouchedModel`] for a model whose MIT scales aren't
-    /// settled, [`Refusal::CapUnset`] for a null cap, [`Refusal::FactUnset`] for a null direction, zero or hard limits,
-    /// [`Refusal::CapOutOfRange`] for a cap its model can't take.
+    /// settled, [`Refusal::CapOutOfRange`] for a cap its model can't take.
+    ///
+    /// Null is not a refusal (PLAN item 1): the caps written are [`skeleton::Joint::caps`], a commissioned joint's own
+    /// or, for an uncommissioned one, each the lower of its model's commissioning cap and its own.
     pub fn new(joint: &Joint, power: &Power) -> Result<Self, Refusal> {
         // The skeleton holds every bus name to the kernel's limit, so a name that doesn't fit an address is one no
         // parsed skeleton has: no bus this host can open, so the joint is offline.
@@ -184,24 +186,11 @@ impl Target {
             return Err(Refusal::UnvouchedModel(drive.model()));
         }
         let ranges = drive.model().ranges();
-        let torque: NewtonMeters = joint
-            .torque_cap_nm
-            .ok_or(Refusal::CapUnset(CapKind::Torque))?;
-        let current: Amps = joint
-            .current_cap_a
-            .ok_or(Refusal::CapUnset(CapKind::Current))?;
-        let speed: RadPerSec = joint
-            .speed_cap_rad_s
-            .ok_or(Refusal::CapUnset(CapKind::Speed))?;
-        if joint.direction.is_none() {
-            return Err(Refusal::FactUnset(JointFact::Direction));
-        }
-        if joint.zero_rad.is_none() {
-            return Err(Refusal::FactUnset(JointFact::Zero));
-        }
-        if joint.hard_rad.is_none() {
-            return Err(Refusal::FactUnset(JointFact::HardLimits));
-        }
+        let skeleton::Caps {
+            torque,
+            current,
+            speed,
+        } = joint.caps();
         let out = |cap, value, max| Refusal::CapOutOfRange { cap, value, max };
         Ok(Self {
             drive,

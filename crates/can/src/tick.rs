@@ -333,6 +333,10 @@ impl BusTick {
 
     /// Whether a bus error has latched (bus-off, or the socket failed): there is nothing to send on.
     #[must_use]
+    #[cfg_attr(
+        not(target_os = "linux"),
+        expect(dead_code, reason = "only the Linux shell (`bus.rs`) asks")
+    )]
     pub(crate) fn bus_lost(&self) -> bool {
         self.bus_error.is_some()
     }
@@ -436,11 +440,22 @@ impl BusTick {
 
     /// Whether every limb is idle: nothing was ever enabled, or every limb was re-armed.
     #[must_use]
+    #[cfg_attr(
+        not(target_os = "linux"),
+        expect(dead_code, reason = "only the Linux shell (`bus.rs`) asks")
+    )]
     pub(crate) fn all_idle(&self) -> bool {
         self.limbs
             .iter()
             .flatten()
             .all(|l| l.state == LimbState::Idle)
+    }
+
+    /// The controller was error-passive when the bus started (the interface check read it, `can::check_interface`): the
+    /// bus counts as unhealthy from its first tick until an error frame says the controller recovered, as if a passive
+    /// error frame had been read before it.
+    pub fn start_error_passive(&mut self) {
+        self.error_passive = true;
     }
 
     /// Whether the bus is healthy now: no latched bus error and not error-passive. The snapshot's `healthy` is this at

@@ -5,7 +5,28 @@ and we buy every part ourselves. Joey wants **2 complete sets** (one in the robo
 so 5 + 5 bare boards are ordered and 2 + 2 are built. **All prices are estimates until the carts and fab quotes are run**
 (pricing research 2026-11-07, sources in section 5).
 
-## 1. Cost, 2 sets (cheapest route first)
+## 1. Cost
+
+**First build: one main board and one buck board (decided 2026-11-11).** Every port and feature fitted, spares only
+where they are nearly free. Priced line by line from live distributor prices on 2026-11-11
+([kit-first-build.csv](kit-first-build.csv), method in [SOURCING.md](SOURCING.md)):
+
+| Item | First build |
+| --- | --- |
+| DigiKey, 110 lines (includes solder paste $12.98 and flux $15.95) | $138 |
+| Mouser, 25 lines | $111 |
+| LCSC, 7 lines, with about 37.5 % US duty | $43 |
+| **Parts** | **$292** |
+| Shipping, three sellers (estimate) | about $35 |
+
+A second set later is about $200 in parts. The 22 AWG heatsink lead comes from wire on hand (the Alpha 3051 spool is $84),
+and the conformal coat is bought when the board is ready for it.
+
+**The two-set estimates below were wrong and are kept only as history.** They were made before any cart was priced. The
+two-set kit with spares came to $550.37 at DigiKey alone on 2026-11-11, about $830 with the Mouser and LCSC orders and
+shipping. No parts total goes in this file again without a per-line live price behind it.
+
+### Two-set estimate of 2026-11-07 (superseded)
 
 | Item | 2 sets |
 | --- | --- |
@@ -87,6 +108,9 @@ Both boards are ordered as **two separate designs in one JLC order**, not one pa
   3568 fuse holder, the pigtails and the 8 AWG pack pair) go on afterwards with the iron.
 
 ## 4. Kit list
+
+The first build is bought from [kit-first-build.csv](kit-first-build.csv): one main + one buck board, 142 lines, with the
+seller, the quantity to buy and the line cost (section 1). The two-set kit below stays as the reference for a second set.
 
 [kit-2sets.csv](kit-2sets.csv) lists every fitted line for 2 main + 2 buck boards, plus the assembly parts (plugs, crimps,
 the heatsink lug and its lead): 188 rows and 1,353 parts, counting spares. Spares, for a first hand build:

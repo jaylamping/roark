@@ -4,4 +4,6 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# The disable tests run the real runtime and robot-cli binaries, which nextest doesn't build for another package's tests.
+cargo build --workspace --bins --locked
 cargo nextest run --workspace --locked --profile sim
