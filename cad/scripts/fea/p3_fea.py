@@ -206,22 +206,37 @@ def run(name, c):
     doc = cw.ActiveDoc
     sm = doc.StudyManager
     err = I()
-    tag = name[:20] + time.strftime('_%H%M%S')
-    st = sm.CreateNewStudy3(tag, 0, 0, err)
-    print(name, 'study', err.value, flush=True)
-    sol = st.SolidManager
-    comp = sol.GetComponentAt(0, I())
-    b = comp.GetSolidBodyAt(0, I())
-    m = b.GetDefaultMaterial
-    m.MaterialUnits = 0
-    m.MaterialName = 'T'
-    for k, v in (('EX', EX), ('NUXY', NU), ('GXY', EX / (2 * (1 + NU))), ('DENS', RHO), ('SIGYLD', YIELD * 1e6), ('SIGXT', 50e6)):
-        m.SetPropertyByName2(k, v, False)
-    print(' material', [comp.GetSolidBodyAt(k, I()).SetSolidBodyMaterial(m) for k in range(comp.SolidBodyCount)], flush=True)
+    tag = os.environ.get('FEA_STUDY_NAME') or name[:20] + time.strftime('_%H%M%S')
+    # FEA_EXISTING_STUDY (2026-11-12): solve a study saved in the model as it is, e.g. with the solver set by hand in the GUI
+    # (StaticStudyOptions puts fail from these scripts). Its materials, fixtures, loads, contacts, controls and mesh are kept;
+    # the fixture / load faces are only re-picked here for the post-processing.
+    ex_name = os.environ.get('FEA_EXISTING_STUDY')
+    if ex_name:
+        names = [sm.GetStudy(k).Name for k in range(sm.StudyCount)]
+        if ex_name not in names:
+            raise SystemExit(f'study {ex_name} not in {PARTS[c["part"]]} (has {names})')
+        sm.ActiveStudy = names.index(ex_name)
+        st = sm.GetStudy(names.index(ex_name))
+        print(name, 'existing study', ex_name, 'solver reads', st.StaticStudyOptions.SolverType, flush=True)
+    else:
+        st = sm.CreateNewStudy3(tag, 0, 0, err)
+        print(name, 'study', tag, err.value, flush=True)
+        sol = st.SolidManager
+        comp = sol.GetComponentAt(0, I())
+        b = comp.GetSolidBodyAt(0, I())
+        m = b.GetDefaultMaterial
+        m.MaterialUnits = 0
+        m.MaterialName = 'T'
+        for k, v in (('EX', EX), ('NUXY', NU), ('GXY', EX / (2 * (1 + NU))), ('DENS', RHO), ('SIGYLD', YIELD * 1e6), ('SIGXT', 50e6)):
+            m.SetPropertyByName2(k, v, False)
+        print(' material', [comp.GetSolidBodyAt(k, I()).SetSolidBodyMaterial(m) for k in range(comp.SolidBodyCount)], flush=True)
     lbc = st.LoadsAndRestraintsManager
     fixed = []
     for kind, sel in c['fix']:
         fs = pick(d, sel)
+        if ex_name:
+            fixed += fs
+            continue
         err = I()
         lbc.AddRestraint({'fixed': 0, 'hinge': 4}[kind], fs, NUL, err)
         print(' fixture', kind, len(fs), 'err', err.value, flush=True)
@@ -233,6 +248,7 @@ def run(name, c):
         sel, at, f, mm_ = c['remote']
         fs = [x for s_ in (sel if isinstance(sel, list) else [sel]) for x in pick(d, s_)]
         loaded += fs
+    if 'remote' in c and not ex_name:
         err = I()
         r = lbc.AddRemoteLoad(1, fs, 0, at[0], at[1], at[2], err)
         print(' remote', len(fs), 'err', err.value, flush=True)
@@ -246,6 +262,8 @@ def run(name, c):
     for sel, newton, ref in c.get('forces', []):
         fs = pick(d, sel)
         loaded += fs
+        if ex_name:
+            continue
         err = I()
         lbc.AddForce3(1, 0, -1, 0, 0, 0, NUL, NUL, False, False, 0, 0, 0, float(newton), [1.0] * 6, False, False, fs, NUL, False, err)
         print(' normal force', len(fs), newton, 'err', err.value, flush=True)
@@ -253,7 +271,8 @@ def run(name, c):
             raise SystemExit('force failed')
     post = c['pre_mesh'](st, d, lbc) if 'pre_mesh' in c else None     # contacts, connectors: returns a result hook
     mesh = st.Mesh
-    mesh.Quality = 1
+    if not ex_name:
+        mesh.Quality = 1
     opts = {}      # defaults this script does not set: logged so runs on different machines can be compared
     for k, o, a in (('solver', st, 'StaticStudyOptions.SolverType'), ('mesher', mesh, 'MesherType'), ('jacobian', mesh, 'JacobianPoints'),
                     ('auto_transition', mesh, 'AutomaticTransition'), ('jacobian_check', mesh, 'UseJacobianCheck')):
@@ -264,7 +283,7 @@ def run(name, c):
         except Exception:
             opts[k] = '?'
     print(' options', opts, flush=True)
-    if os.environ.get('FEA_SOLVER'):      # 2026-11-12: e.g. direct sparse for contact runs the iterative solver will not converge
+    if os.environ.get('FEA_SOLVER') and not ex_name:      # 2026-11-12: e.g. direct sparse for contact runs the iterative solver will not converge
         try:
             so = st.StaticStudyOptions
             so.SolverType = int(os.environ['FEA_SOLVER'])
@@ -281,7 +300,7 @@ def run(name, c):
                 print(' solver set (typed) to', os.environ['FEA_SOLVER'], 'reads back', tso.SolverType, flush=True)
             except Exception as ex2:
                 print(' solver not set (typed):', str(ex2)[:140], flush=True)
-    for sel, size in c.get('ctrl', []):
+    for sel, size in ([] if ex_name else c.get('ctrl', [])):
         fs = pick(d, sel)
         q = mesh.ApplyMeshControl(fs, I())
         q = q[0] if isinstance(q, tuple) else q
@@ -291,10 +310,18 @@ def run(name, c):
         q.Ratio = 1.5
         print(' control', len(fs), size, call(q, 'MeshControlEndEdit'), flush=True)
     tm = time.time()
-    rc = st.CreateMesh(0, el, el * 0.05)
-    print(' mesh', rc, 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, round(time.time() - tm), 's', flush=True)
+    if ex_name and mesh.NodeCount:
+        rc = 0
+        print(' mesh kept', 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, flush=True)
+    else:
+        rc = st.CreateMesh(0, el, el * 0.05)
+        print(' mesh', rc, 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, round(time.time() - tm), 's', flush=True)
     if rc:
         raise SystemExit('mesh failed')
+    if os.environ.get('FEA_SAVE_STUDY') == '1':      # keep the study (and its mesh) in the model file, for a hand edit and FEA_EXISTING_STUDY
+        e2, w2 = L(), L()
+        ok = d.Save3(1, e2, w2)
+        print(' saved study', tag, 'in', d.GetPathName, 'ok', ok, 'errors', e2.value, 'warnings', w2.value, flush=True)
     if os.environ.get('FEA_MESH_ONLY') == '1':      # mesh-time diagnosis (2026-11-12): stop after meshing
         sw.CloseDoc(d.GetTitle)
         print(' mesh only: done', flush=True)

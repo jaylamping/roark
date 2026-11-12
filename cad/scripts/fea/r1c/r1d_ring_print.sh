@@ -4,7 +4,7 @@
 cd /j/code/roark-wt/left-arm-organic
 R=J:/code/roark-wt/left-arm-organic/cad
 L=cad/_wip/r1d_ring_print.log
-until grep -qE "(SOLVED|SOLVE_FAILED) r1d8_ringg01p_stop_m80" cad/_wip/r1d_chain4.log && ! grep -q "WATCH_STALL" cad/_wip/r1d_ring.log || grep -qE "(SOLVED|SOLVE_FAILED) r1d8_ringg01p_stop_m80ds" cad/_wip/r1d_chain4.log; do sleep 30; done
+# 2026-11-12 08:10: no longer waits on the ring stop solve (the solver could not be switched; that run is stopped). Waits only for a free instance.
 until ! python "C:/joe/code/roark-wt/sw-hang-fix/tools/solidworks/sw_instance.py" --status 2>/dev/null | grep -q "busy"; do sleep 30; done
 echo "start $(date)" >> $L
 export ARM_R1C=1 ARM_R1D=1 ARM_SEAT_RIBS=0 ARM_RIDGE_RING=1 ARM_RIDGE_TAPER=0 ARM_WIP_TAG=_ring_print ARM_FLANK_GAP=0.1 ARM_RIB_PROUD=0.25 SW_PART_TEMPLATE='C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2026\templates\MBD\part 0051mm to 0250mm.prtdot'

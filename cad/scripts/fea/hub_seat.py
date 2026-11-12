@@ -203,6 +203,32 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
         return [v * 1000 for v in f.GetBox]
 
     def pre(st, d, lbc):
+        def post(st_, res):
+            rx = {}
+            for args in ((0, NUL_, 0), (1, NUL_, 0)):      # fixture reactions (2026-11-12: the soft-spring sanity check needs them)
+                try:
+                    e_ = I()
+                    q_ = res.GetReactionForces2(*args, e_)
+                    q_ = list(q_[0] if isinstance(q_, tuple) and len(q_) == 2 else q_)
+                    rx = dict(args=list(args[::2]), raw=[round(float(v), 3) for v in q_[-8:]], err=e_.value)
+                    print(' reaction forces (last values; total Fx Fy Fz Fres expected last 4)', rx, flush=True)
+                    break
+                except Exception as ex:
+                    rx = dict(error=str(ex)[:120])
+            dx = {}
+            for comp in (3,):      # resultant displacement, min/max over the model (mm)
+                try:
+                    e_ = I()
+                    q_ = res.GetMinMaxDisplacement(comp, NUL_, 0, None if False else NUL_, e_) if False else res.GetMinMaxDisplacement(comp, 0, NUL_, 0, e_)
+                    q_ = list(q_[0] if isinstance(q_, tuple) and len(q_) == 2 else q_)
+                    dx = dict(raw=[round(float(v), 5) for v in q_], err=e_.value)
+                except Exception as ex:
+                    dx = dict(error=str(ex)[:120])
+            print(' displacement min/max', dx, flush=True)
+            return dict(model='hub as its own body, seat by contact, ' + ('lugs in frictionless contact with the posts and steel bolts (no preload)' if BOLTED else 'lugs bonded to posts'),
+                        soft_springs=os.environ.get('HS_SOFT_SPRING') == '1', reaction=rx, displacement=dx)
+        if os.environ.get('FEA_EXISTING_STUDY'):      # saved study: its contacts and materials are already in it
+            return post
         bs = sorted(d.GetBodies2(0, True), key=lambda b: b.GetMassProperties(1190)[3])
         n_pads = sum('HS_PADS' in b.Name.upper() for b in bs)      # pads are found by name, whatever HS_PADS says
         want = (4 if BOLTED else 2) + n_pads
@@ -267,30 +293,6 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
             except Exception as ex:
                 print(' soft springs not set', str(ex)[:80], flush=True)
 
-        def post(st_, res):
-            rx = {}
-            for args in ((0, NUL_, 0), (1, NUL_, 0)):      # fixture reactions (2026-11-12: the soft-spring sanity check needs them)
-                try:
-                    e_ = I()
-                    q_ = res.GetReactionForces2(*args, e_)
-                    q_ = list(q_[0] if isinstance(q_, tuple) and len(q_) == 2 else q_)
-                    rx = dict(args=list(args[::2]), raw=[round(float(v), 3) for v in q_[-8:]], err=e_.value)
-                    print(' reaction forces (last values; total Fx Fy Fz Fres expected last 4)', rx, flush=True)
-                    break
-                except Exception as ex:
-                    rx = dict(error=str(ex)[:120])
-            dx = {}
-            for comp in (3,):      # resultant displacement, min/max over the model (mm)
-                try:
-                    e_ = I()
-                    q_ = res.GetMinMaxDisplacement(comp, NUL_, 0, None if False else NUL_, e_) if False else res.GetMinMaxDisplacement(comp, 0, NUL_, 0, e_)
-                    q_ = list(q_[0] if isinstance(q_, tuple) and len(q_) == 2 else q_)
-                    dx = dict(raw=[round(float(v), 5) for v in q_], err=e_.value)
-                except Exception as ex:
-                    dx = dict(error=str(ex)[:120])
-            print(' displacement min/max', dx, flush=True)
-            return dict(model='hub as its own body, seat by contact, ' + ('lugs in frictionless contact with the posts and steel bolts (no preload)' if BOLTED else 'lugs bonded to posts'),
-                        soft_springs=os.environ.get('HS_SOFT_SPRING') == '1', reaction=rx, displacement=dx)
         return post
 
     for k in ('STOP_0', 'STOP_124', 'G90'):
