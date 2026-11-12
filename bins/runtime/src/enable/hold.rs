@@ -166,12 +166,8 @@ pub(super) fn limb_on<'a>(
 /// recorded when it was asked (the operator's, or control's own).
 fn ask_halt(roster: &Roster, snapshots: &[Option<Snapshot>], limb: LimbName, stops: &StopLatch) {
     let mut any_rule = false;
-    let rules = (0..roster.len())
-        .filter_map(|j| roster.joint(j))
-        .filter(|e| e.limb == limb)
-        .filter_map(|e| limb_on(snapshots, e))
-        .filter(|l| !l.state.takes_commands())
-        .filter_map(|l| l.stop.and_then(RuleId::of_stop));
+    let rules =
+        stopped_parts(roster, snapshots, limb).filter_map(|l| l.stop.and_then(RuleId::of_stop));
     for rule in rules {
         stops.ask(Scope::Limb(limb), Cause::Rule(rule));
         any_rule = true;
@@ -191,12 +187,22 @@ pub(super) fn halted(
     snapshots: &[Option<Snapshot>],
     limb: LimbName,
 ) -> Option<Option<StopReason>> {
+    stopped_parts(roster, snapshots, limb)
+        .next()
+        .map(|l| l.stop)
+}
+
+/// Each part of `limb` stopping or stopped, as the newest snapshot of the bus it is on shows it, once per joint.
+fn stopped_parts<'a>(
+    roster: &'a Roster,
+    snapshots: &'a [Option<Snapshot>],
+    limb: LimbName,
+) -> impl Iterator<Item = &'a LimbView> + 'a {
     (0..roster.len())
         .filter_map(|j| roster.joint(j))
-        .filter(|e| e.limb == limb)
+        .filter(move |e| e.limb == limb)
         .filter_map(|e| limb_on(snapshots, e))
-        .find(|l| !l.state.takes_commands())
-        .map(|l| l.stop)
+        .filter(|l| !l.state.takes_commands())
 }
 
 /// The hold every enabled drive gets until real control modes and their gains exist: zero gains and zero torque, so the

@@ -128,6 +128,8 @@ pub(crate) fn run(
     let mut batches = vec![CommandBatch::new(0, 0); links.buses.len()];
     let phase = phase(timing);
     let mut n = schedule.next(phase);
+    // Whether a pass has seen the run's end.
+    let mut end_seen = false;
     loop {
         if exit.error.is_none() {
             if let Err(e) = schedule.sleep_until(schedule.at(n, phase)) {
@@ -160,7 +162,7 @@ pub(crate) fn run(
         if ended.iter().all(|e| *e) {
             // A bus may have answered a clear between its last read and its end.
             read(plans, n, &mut links, &mut newest, &mut exit);
-            record_end(&mut links);
+            record_end(&mut links, &exit, &mut end_seen);
             refuse_clears(plans, &mut links, &mut exit);
             refuse_enables(&mut enabler, &mut links, &mut exit);
             add(&mut exit, counts);
@@ -169,7 +171,7 @@ pub(crate) fn run(
         }
         // Read again: an end asked during the reads stops the enables, orders and batches at once.
         if links.end.load(Ordering::Acquire) {
-            record_end(&mut links);
+            record_end(&mut links, &exit, &mut end_seen);
             refuse_clears(plans, &mut links, &mut exit);
             refuse_enables(&mut enabler, &mut links, &mut exit);
         } else {
@@ -288,9 +290,18 @@ fn send_orders(plans: &[BusPlan], links: &mut ControlLinks, replies_dropped: &mu
     )
 }
 
-/// While the run ends, every bus stops every limb on its own, so control routes no stop: it records the stops asked,
-/// the end's own among them (the robot's, asked under its cause where the end was decided), in the order they came.
-fn record_end(links: &mut ControlLinks) {
+/// While the run ends, every bus stops every limb on its own, so control routes no stop: it records the stops asked.
+/// The end is the robot's stop, asked under its cause where it was decided (`host.hang` for a lost clock, `host.bus`
+/// for a bus thread that ended) or, for an end control didn't decide, as a shutdown on the first pass that sees it.
+/// One take is written robot first, then each limb in [`LimbName::ALL`](skeleton::LimbName::ALL) order, each scope's
+/// causes in bit order, all with the pass's stamp.
+fn record_end(links: &mut ControlLinks, exit: &ControlExit, seen: &mut bool) {
+    if !*seen {
+        *seen = true;
+        if exit.error.is_none() && exit.bus_ended.is_none() {
+            links.stops.ask(Scope::Robot, Cause::Shutdown);
+        }
+    }
     let stops = links.stops.take();
     if !stops.is_empty() {
         links.events.stops(stops);

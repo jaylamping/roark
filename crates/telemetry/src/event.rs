@@ -69,8 +69,8 @@ pub struct Event {
     pub bus: Option<usize>,
     /// The safety rule behind it, if one is (safety.md section 2).
     pub rule: Option<&'static str>,
-    /// Why, in a word, when the rule alone doesn't say: a stop's `operator`, `shutdown` or `follows_bus_stop`, a
-    /// refusal's variant (`already_enabled`, `preflight`), a refused clear's (`offline`, `busy`).
+    /// Why, in a word, when the rule alone doesn't say: a stop's `operator`, `shutdown`, `follows_bus_stop` or
+    /// `unknown_cause`, a refusal's variant (`already_enabled`, `preflight`), a refused clear's (`offline`, `busy`).
     pub reason: Option<&'static str>,
     /// The request's tag, if a request caused it.
     pub tag: Option<u64>,

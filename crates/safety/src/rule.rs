@@ -68,8 +68,8 @@ impl RuleId {
         Self::HostLogging,
     ];
 
-    /// Its position in [`RuleId::ALL`], from a match the compiler holds complete, so a code built from it can't miss a
-    /// rule.
+    /// Its position in [`RuleId::ALL`], from a match the compiler holds complete: every rule has one. A rule left out
+    /// of `ALL` still has an index, but nothing decodes it; the check below covers only the rules `ALL` holds.
     #[must_use]
     pub const fn index(self) -> usize {
         match self {
@@ -137,7 +137,7 @@ impl RuleId {
     }
 }
 
-// `ALL` holds every rule at its index, so a code built from `index` decodes through `ALL`.
+// Every rule `ALL` holds is at its index, so a code built from `index` decodes through `ALL`.
 #[expect(
     clippy::indexing_slicing,
     reason = "checked at compile time: an index out of range fails the build"

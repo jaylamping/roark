@@ -60,8 +60,11 @@ come in the PRs that follow (PLAN step 7).
     bus stop names no rule because it was asked (by the operator or control, whose own event names the cause) and
     control carries it to the whole limb. The stop latch keeps every cause asked of each scope until
     control takes it, in the same atomic word as the stop, so a stop is never taken without its cause. The run's end is
-    asked as the robot's stop, under `host.hang` for a lost clock, `host.bus` for a bus thread that ended (the bus is
-    named in the exit), else `shutdown`, and recorded as one `robot.stopped` in its turn with any stop asked before it.
+    asked as the robot's stop, under `host.hang` for a lost clock or `host.bus` for a bus thread that ended where control
+    decides it, and as `shutdown` on the first pass that sees an end it didn't decide: one `robot.stopped` per cause that
+    ended the run. The bus behind `host.bus` is named in the exit and on stderr, not in the event. A take is written robot
+    first, then each limb in `LimbName::ALL` order, each one's causes in bit order, all with the pass's stamp, so stops
+    taken together aren't in the order they were asked. A cause bit nothing decodes is written as `unknown_cause`.
   - `enable.started`: one per joint of an enable that passed its checks, under its tag. `enable.succeeded` carries the
     tag; `enable.refused` carries the tag, the rule (none for a request that was wrong or came at the wrong time, which
     no rule refused), a reason word, and whichever of joint (with its limb), limb or bus the refusal names.

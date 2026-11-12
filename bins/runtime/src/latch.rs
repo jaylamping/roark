@@ -45,8 +45,8 @@ impl Causes {
             .filter(move |c| self.0 & Self::bit(*c) != 0)
     }
 
-    /// Whether a bit is set that no cause decodes to: a cause missing from [`Self::ALL`], which the compile-time check
-    /// above rules out, but which the event log would then say rather than drop.
+    /// Whether a bit is set that no cause decodes to: a rule left out of [`RuleId::ALL`] (the checks above cover only
+    /// the rules in it), which the event log then says (`unknown_cause`) rather than drops.
     pub(crate) fn unknown(self) -> bool {
         self.iter().fold(self.0, |left, c| left & !Self::bit(c)) != 0
     }
@@ -175,7 +175,10 @@ pub(crate) fn asked(stops: Stops) -> Vec<(Scope, Vec<Cause>)> {
     stops
         .asked()
         .map(|(scope, causes)| {
-            assert!(!causes.unknown(), "every bit decodes to a cause: {causes:?}");
+            assert!(
+                !causes.unknown(),
+                "every bit decodes to a cause: {causes:?}"
+            );
             (scope, causes.iter().collect())
         })
         .collect()
@@ -290,5 +293,14 @@ mod tests {
             (Scope::Limb(LimbName::Waist), c) if *c == [Cause::Rule(RuleId::HostMode)]
         )));
         assert!(latch.take().is_empty());
+    }
+
+    /// Guards: safety - a cause bit nothing decodes is reported, not dropped, so the event log says a stop had a cause
+    /// it can't name (safety.md section 8).
+    #[test]
+    fn a_bit_no_cause_decodes_is_reported() {
+        assert!(Causes(1 << 31).unknown());
+        assert!(Causes(1 << 31 | Causes::bit(Cause::Operator)).unknown());
+        assert!(!Causes(Causes::bit(Cause::Rule(RuleId::HostLogging))).unknown());
     }
 }
