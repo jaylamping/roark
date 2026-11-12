@@ -268,11 +268,7 @@ impl Runtime {
             finished: Arc::clone(&finished),
             progress: Arc::clone(&progress),
         };
-        let control_plans = plans.clone();
-        let control = std::thread::Builder::new()
-            .name("control".to_owned())
-            .spawn(move || control::run(&control_plans, &schedule, origin_ns, timing, links));
-        match control {
+        match spawn_control(plans.clone(), schedule, origin_ns, timing, links) {
             Ok(handle) => threads.control = Some(handle),
             Err(e) => return Err(threads.unwind(StartError::Thread(e))),
         }
@@ -466,6 +462,19 @@ fn start_session(
         },
         wall_ns(),
     )
+}
+
+/// The control thread, on the buses' schedule.
+fn spawn_control(
+    plans: Vec<BusPlan>,
+    schedule: Schedule,
+    origin_ns: u64,
+    timing: Timing,
+    links: ControlLinks,
+) -> io::Result<JoinHandle<ControlExit>> {
+    std::thread::Builder::new()
+        .name("control".to_owned())
+        .spawn(move || control::run(&plans, &schedule, origin_ns, timing, links))
 }
 
 /// The views' ring, when anyone reads them.
