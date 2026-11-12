@@ -188,7 +188,11 @@ def check_lines():
 
 
 def is_test_code(path, lines, i):
-    return "tests" in path.parts or any("#[cfg(test)]" in line for line in lines[:i])
+    return (
+        "tests" in path.parts
+        or path.name == "tests.rs"
+        or any("#[cfg(test)]" in line for line in lines[:i])
+    )
 
 
 def check_guards():
