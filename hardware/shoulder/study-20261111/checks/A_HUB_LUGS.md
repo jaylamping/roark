@@ -250,3 +250,40 @@ The arm side's contact model loads it through the ridge.
 
 **Section estimate:** 9.3 → 11.3 mm is +21.5% of section, so about -18% section tension. The arm's 1.16 over 0.5 mm
 goes to about 1.4, above its 1.2 target. The arm side's own run on this hub is the confirmation.
+
+## Rev D candidate: full-ring groove (2026-11-12, for the arm thread's split-collar stop case; default off)
+
+**Why:** the arm thread's print-tolerance stop case (515 N, 0.1 mm flank gap) fails at the ridge end near the -X lug
+(θ 143). The stop load is mostly a sideways moment whose tie belongs at θ 0/180, where today's groove arcs stop. The arm
+wants its ridge continuous through the seam, closing onto a full-ring groove in the hub. The interface is un-frozen only
+for the groove's angular extent.
+
+**The switch:** `dims.HUB_GROOVE_RING` (environment `HUB_GROOVE_RING=1`). Off by default; the released rev C+ is
+unchanged.
+- **Groove:** the same section revolved all the way round at full depth, no run-outs. Land Y 296-298; mouth Y 298-302 at
+  r 35.8; bottom r 34.3; 30°/45° flanks; rounds R0.4 / R1.0 at the bottom corners, R1.2 into the disc.
+- **Inward wall fill:** r 23-28.2, Y 296-302.3, a full ring (was 25-155° and 205-335°).
+- Section, spigot, lugs and bolts are unchanged.
+
+**Geometry, measured on the candidate mesh:**
+
+| | Rev C+ (released) | Rev D candidate |
+|---|---|---|
+| Mass | 77.1 g | **78.1 g** |
+| Wall behind the groove bottom (r 34.3), minimum over 360° at Y 298.9-300.5 | 6.3 (θ 0-26, 154-206, 334-360; no fill there) | **11.3** everywhere (full-ring fill) |
+| Groove band at Y 299.5, r 34.45-35.7 | cut only over the arcs | cut all round (0 mm² left) |
+| Outer ring above the groove (Y 302.6-307), thinnest | 2.71 at θ 180 | 2.70 at θ 180 (unchanged) |
+
+**Cable window (θ 7.9):**
+- At the groove's heights it runs at r 15.5-20, inside the spigot bore. Neither the groove nor the r 23 fill touches it.
+- No skip at θ 0 or 180 is needed, and the window doesn't move.
+- The thin "r 31-34.3" wall the arm thread read is in the window band higher up (Y 309-313), not in the groove's band.
+
+**Exports for the arm thread** (candidate names; the released exports are untouched):
+- `cad/exports/shoulder/shoulder_hub_left_revD_candidate.STEP` and `.STL`, recorded in `cad/manifests/exports.json`.
+
+**If rev D is adopted, re-run on the rev D geometry:**
+- hub-top bolted cases A (with the rim chamfer), B and Ah
+- the hub-lug cases HUBL_I and HUBCF
+- the clearance sweep: the hub's outer surfaces don't change, so expect no change there.
+

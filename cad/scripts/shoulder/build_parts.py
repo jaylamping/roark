@@ -965,7 +965,10 @@ def build_hub():
         ua = (math.cos(ta), 0.0, math.sin(ta))
         plg, _ = plane_axis_angle(d, ax, d.FeatureByName('Front Plane'), a_deg % 180, ua, f'P_GROOVE_{tag}')
         return plg, ua
-    for ci, cen in enumerate(g['centres']):
+    if HUB_GROOVE_RING:
+        # REV D candidate: the same section revolved all the way round (full depth, no run-outs)
+        yaw_rev(d, 'GROOVE_RING', groove_profile(1.0), GR, cut=True)
+    for ci, cen in enumerate(() if HUB_GROOVE_RING else g['centres']):
         a0, a1 = cen - g['full_half'], cen + g['full_half']
         plg, ua = gplane(a0, f'{ci}_full')
         with Sk(d, plg, f'GROOVE_{ci}_full') as s_:
@@ -1030,8 +1033,12 @@ def build_hub():
     # REV C+ lever (a): wall fill inside the spigot over the groove arcs (parametric: HUB['wall_fill'], global WALL_FILL_ON)
     wf = hb['wall_fill']
     if wf['on']:
-        extrude(d, ysk(d, wf['y'][0], 'WALL_FILL', lambda s: [sector(s, lambda r, a: ypt(r, a, wf['y'][0]), wf['r'][0], wf['r'][1], a0_, a1_, wf['end_r'])
-                                                             for a0_, a1_ in wf['sectors']]), 'WALL_FILL', wf['y'][1] - wf['y'][0], Y, lo=-1.0)
+        if HUB_GROOVE_RING:      # REV D candidate: the fill a full ring
+            extrude(d, ysk(d, wf['y'][0], 'WALL_FILL', lambda s: [s.circle((RX, wf['y'][0], YZ), wf['r'][1]), s.circle((RX, wf['y'][0], YZ), wf['r'][0])]),
+                    'WALL_FILL', wf['y'][1] - wf['y'][0], Y, lo=-1.0)
+        else:
+            extrude(d, ysk(d, wf['y'][0], 'WALL_FILL', lambda s: [sector(s, lambda r, a: ypt(r, a, wf['y'][0]), wf['r'][0], wf['r'][1], a0_, a1_, wf['end_r'])
+                                                                 for a0_, a1_ in wf['sectors']]), 'WALL_FILL', wf['y'][1] - wf['y'][0], Y, lo=-1.0)
     # REV C+: R0.3 in the concave corner between the spigot (r 35.8) and the disc face (Y 302.0); the arm breaks its bore-to-end-face
     # edge by 0.5 (20:33Z). A revolve boss of the fillet region, overlapping the solid by 0.05
     rc_ = hb['disc_corner_r']
