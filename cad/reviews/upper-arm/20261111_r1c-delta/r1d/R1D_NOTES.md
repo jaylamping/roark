@@ -288,3 +288,16 @@ Every run of mine that touched StaticStudyOptions from python logged one SLDWORK
 - each at the moment the call raised "The server threw an exception";
 - the instance carried on and closed cleanly each time.
 The post-macro readback is now removed. The macro's own log and the benchmark log are the record of the solver.
+
+## M (as-built insert and bolt), first solve r1d10: INVALID (2026-11-12 10:44)
+
+- Intel direct sparse ran 99 contact iterations. Then the solver raised a hidden prompt: "Excessive displacements detected …
+  Yes = restart with Large Displacement, No = finish, Cancel = stop". I answered No in our own instance, so it finished and closed
+  cleanly.
+- Maximum displacement 5.38e6 mm at node 2, the +X brass insert's inner end. The insert came loose: the global bond did not hold
+  it (its faces also sat in the lug no-penetration set).
+- The result files are kept only as `r1d10_ringg01i_stop.INVALID_rigid_body_escape.*`. None of its stresses mean anything.
+- Fix: explicit bonded contact sets (type 1) for insert outside ↔ arm insert hole and bolt shank ↔ insert bore. Only the insert's
+  mouth face stays in the lug no-penetration set. pre() now prints every contact set's type.
+  - CreateContactSet takes swsContactSetTypeStaticNonLinear_e: 0 = no penetration, 1 = bonded. So all earlier "type 0" sets
+    were no-penetration, as intended. "Error 24" is swsRunAnalysisErrorAnalysisFailed, a generic failure.

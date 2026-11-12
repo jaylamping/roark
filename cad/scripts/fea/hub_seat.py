@@ -337,10 +337,39 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 lo, hi = (min(b[0], b[3]), min(b[1], b[4]), min(b[2], b[5])), (max(b[0], b[3]), max(b[1], b[4]), max(b[2], b[5]))
                 return hi[1] > 287.5 and lo[1] < 294.2 and abs((lo[2] + hi[2]) / 2 - CZ) < 12.0 and (hi[0] < 153.0 or lo[0] > 188.0)
             lf = [f for f in faces(hub) if near_lugs(box(f))]
-            pf = [f for f in faces(arm) if near_lugs(box(f))] + [f for bb in bolts for f in faces(bb)] + [f for bb in inserts for f in faces(bb)]
+            def ins_mouth(b):      # the insert's end face at the lug face: the only insert face the hub lug can reach
+                return abs(b[2] - LUG_FACE_F) < 0.02 and abs(b[5] - LUG_FACE_F) < 0.02
+            pf = [f for f in faces(arm) if near_lugs(box(f))] + [f for bb in bolts for f in faces(bb)] + [f for bb in inserts for f in faces(bb) if ins_mouth(box(f))]
             err = I()
             cs2 = cm.CreateContactSet(0, VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, lf), VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, pf), err)
             print(' lug contact set', cs2 is not None, 'faces hub', len(lf), 'arm+bolts', len(pf), 'err', err.value, flush=True)
+        if BOLTED and inserts:      # explicit bonds (2026-11-12: with the global bond alone an insert came loose, 5e6 mm displacement):
+            # insert outside to the arm's insert hole, insert bore to the bolt shank. Contact set type 1 = bonded (type 0 = no
+            # penetration; swsContactSetTypeStaticNonLinear_e)
+            def wid(b):
+                return max(abs(b[3] - b[0]), abs(b[4] - b[1]))
+            def in_ins_zone(b):
+                return min(b[2], b[5]) > LUG_FACE_F - 0.05 and max(b[2], b[5]) < LUG_FACE_F + 6.55 and any(abs((b[0] + b[3]) / 2 - x0) < 0.5 for x0 in (147.5, 193.5)) and abs((b[1] + b[4]) / 2 - 292.0) < 0.5
+            ins_out = [f for bb in inserts for f in faces(bb) if abs(wid(box(f)) - 4.0) < 0.3 and abs(box(f)[5] - box(f)[2]) > 1.0]
+            ins_in = [f for bb in inserts for f in faces(bb) if abs(wid(box(f)) - 3.0) < 0.3 and abs(box(f)[5] - box(f)[2]) > 1.0]
+            hole = [f for f in faces(arm) if in_ins_zone(box(f)) and abs(wid(box(f)) - 4.0) < 0.3 and abs(box(f)[5] - box(f)[2]) > 1.0]
+            shank = [f for bb in bolts for f in faces(bb) if abs(wid(box(f)) - 3.0) < 0.3 and abs(box(f)[5] - box(f)[2]) > 5.0]
+            for nm_, a_, b_ in (('insert to arm hole', ins_out, hole), ('bolt shank to insert bore', shank, ins_in)):
+                err = I()
+                cb_ = cm.CreateContactSet(1, VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, a_), VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, b_), err)
+                try:
+                    ty_ = cb_.ContactSetType
+                except Exception:
+                    ty_ = '?'
+                print(' bonded set', nm_, cb_ is not None, 'faces', len(a_), len(b_), 'err', err.value, 'type', ty_, flush=True)
+                if cb_ is None or err.value or not a_ or not b_:
+                    raise SystemExit(f'bonded set failed: {nm_}')
+        for k_ in range(cm.ContactSetCount):
+            try:
+                cs_ = cm.GetContactSetAt(k_)
+                print(' contact set', k_, cs_.ContactName, 'type', cs_.ContactSetType, flush=True)
+            except Exception as ex:
+                print(' contact set', k_, 'not read', str(ex)[:60], flush=True)
         if BOLTED and inserts:      # bolt head on its seat and shank in the back clearance hole: no penetration, no bond
             def near_back_hole(b):
                 lo, hi = (min(b[0], b[3]), min(b[1], b[4]), min(b[2], b[5])), (max(b[0], b[3]), max(b[1], b[4]), max(b[2], b[5]))
