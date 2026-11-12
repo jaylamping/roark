@@ -24,6 +24,9 @@ VIEWS = [('front', F + np.array([0.0, 30.0, 620.0]), F, (1100, 1100), 30, False)
          ('side', F + np.array([650.0, 40.0, 0.0]), F, (1100, 1100), 30, False)]
 for v, (title, path) in VAR.items():
     P = dict(R.P); P['fork_front'] = trimesh.load(path)
+    plugs = path.parent / 'access_plugs.stl'
+    if v != 'now' and plugs.exists():
+        P['access_plugs'] = trimesh.load(plugs); R.COL.setdefault('access_plugs', R.COL['fork_front'])
     it = [(m, R.COL[k], 1.0) for k, m in P.items() if k != 'cover'] + [(m, R.COL[k], 1.0) for k, m in R.M.items()]
     it += [(m, (0.95, 0.95, 0.93) if n != 'rs02_ring' else R.DARK, 1.0) for n, m in R.UA.items()]
     for vn, eye, foc, size, ang, arm in VIEWS:

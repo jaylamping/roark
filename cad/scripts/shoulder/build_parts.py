@@ -293,6 +293,25 @@ def hub_lug_roots():
     return finish_part(d, 'hub')
 
 
+def build_access_plugs():
+    """FRONT BLEND mock-up: press-in plugs (Ø6.9 in the Ø7 RS02 access holes) at the dome's top, 7 deep, top trimmed to
+    the dome's r 55 surface about the roll axis; a 2 x 1 mm pry notch on the back edge (toward the drum, out of sight)
+    lifts them out with a small screwdriver."""
+    d = new_part(OUT / 'shoulder_fork_access_plugs_left.SLDPRT')
+    for i_, a_ in enumerate((64.0, 104.0)):
+        x_, _, z_ = ypt(36.5, a_, 0.0)
+        y_top = RY + math.sqrt(55.0 ** 2 - (x_ - RX) ** 2)
+        extrude(d, ysk(d, y_top - 7.0, f'PLUG{i_}', lambda s_, x_=x_, z_=z_, y_top=y_top: s_.circle((x_, y_top - 7.0, z_), 3.45)),
+                f'PLUG{i_}', 9.0, Y, merge=(i_ == 0))
+    roll_rev(d, 'PLUG_TRIM', [(55.0, -30.0), (90.0, -30.0), (90.0, 80.0), (55.0, 80.0)], cut=True)
+    for i_, a_ in enumerate((64.0, 104.0)):
+        x_, _, z_ = ypt(36.5, a_, 0.0)
+        y_top = RY + math.sqrt(55.0 ** 2 - (x_ - RX) ** 2)
+        extrude(d, ysk(d, y_top - 1.0, f'PRY{i_}', lambda s_, x_=x_, z_=z_, y_top=y_top: s_.poly(rect_pts((x_, y_top - 1.0, z_ - 3.2), X, Z, 2.0, 1.2))),
+                f'PRY{i_}', 3.0, Y, cut=True, lo=-1.0)
+    return finish_part(d, 'access_plugs', dict(Note='mock-up: press-in plugs for the RS02 access holes (front blend)'))
+
+
 # ========================================================================================================== flange ring
 def build_ring():
     d = new_part(OUT / f"{NAMES['ring']}.SLDPRT")
@@ -533,15 +552,28 @@ def build_fork_front():
             return [ex.interpolate((d0 + L_ * i / n) % L_).coords[0] for i in range(n)]
         r0, r3 = ring(cuff_sec(356.0, z0_)), ring(cheek_sec(Y_CUT + 0.5))
         lerp = lambda t: [(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t) for a, b in zip(r0, r3)]
-        z_mid = 38.5
-        r1 = lerp(0.35)
-        r2 = [(x, max(z, z_mid)) for x, z in lerp(0.65)]
+        # the drum rule (Z >= 38.5) only where the chin is within 59 of the roll axis: near the centre; the sides stay low
+        # (they are what carries the cheek into the seat ring, as the lobes did)
+        def drum_ok(pts, y_):
+            out = []
+            for x, z in pts:
+                if math.hypot(x - RX, RY - y_) < 59.0:
+                    z = max(z, 40.5)
+                out.append((x, z))
+            return out
+        r1 = drum_ok(lerp(0.35), 361.5)
+        r2 = drum_ok(lerp(0.65), 366.5)
+        r4 = ring(cheek_sec(Y_CUT + 6.0))
         secs_ = []
-        for i_, (y_, pts) in enumerate(((356.0, r0), (361.5, r1), (366.5, r2), (Y_CUT + 0.5, r3))):
+        for i_, (y_, pts) in enumerate(((356.0, r0), (361.5, r1), (366.5, r2), (Y_CUT + 0.5, r3), (Y_CUT + 6.0, r4))):
             secs_.append(ysk(d, y_, f'CHIN_S{i_}', lambda s_, pts=pts, y_=y_: s_.spline([(x, y_, z) for x, z in pts])))
         loft(d, secs_, 'CHIN')
         # keep the RS02 rear cap clear (r 32.5 + 2 above the seat)
         yaw_rev(d, 'CHIN_RS02_CLEAR', [(0, 361.0), (34.5, 361.0), (34.5, 367.0), (0, 367.0)], cut=True)
+        # chin root: the load path from the cheek into the seat ring, as the lobes carried it: a ring segment r 34.5-41 over the
+        # front (40-140 deg) from the seat top to Y 367, inside the chin's outer surface (RS02 cap r 32.5 + 2; drum rule held)
+        extrude(d, ysk(d, SEAT_Y[1], 'CHIN_ROOT', lambda s_: sector(s_, lambda r, a: ypt(r, a, SEAT_Y[1]), 34.5, 41.0, 40.0, 140.0, 2.0)),
+                'CHIN_ROOT', 367.0 - SEAT_Y[1], Y, lo=-1.0)
         # driver access to the two front RS02 screws (64 / 104 deg), blocked by the cheek: Ø7 straight up, plugged flush after
         extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, SEAT_Y[1] - 3.5), 3.5) for a_ in (64.0, 104.0)]),
                 'RS02_ACCESS', 140.0, Y, cut=True)
@@ -891,7 +923,7 @@ def build_hub():
 
 
 BUILD = dict(drum=build_drum, ring=build_ring, cap=lambda: finish_part(build_cap(), 'cap'), fork_front=build_fork_front, fork_rear=build_fork_rear,
-             fork_cap=build_fork_cap, cover=build_cover, hub=lambda: (build_hub(), hub_lug_roots())[-1], port_cap=build_port_cap)
+             fork_cap=build_fork_cap, cover=build_cover, hub=lambda: (build_hub(), hub_lug_roots())[-1], port_cap=build_port_cap, access_plugs=build_access_plugs)
 
 if __name__ == '__main__':
     which = sys.argv[1:] or list(BUILD)

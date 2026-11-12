@@ -47,3 +47,40 @@ The holes account for most of the mass drop below.
 - Both can be smoothed once one variant is chosen.
 
 Script: `../../scripts/render_front_blend.py`.
+
+
+## Round 2 on variant 2 (2026-11-12, coordinator's list)
+
+**Load path:** the lobes carried the cheek into the seat ring. Measured as the front half of each Y-cut (Z > 5.99) just
+above the seat, as area and section modulus for the roll torque (bending about an axis parallel to Z, in the layer
+plane):
+
+| | Narrowest W (mm³) | Where | Area there (mm²) |
+|---|---|---|---|
+| Current (lobes) | 6088 | Y 363 | 581 |
+| First variants | 1650 (v1) / 2307 (v2) | Y 363-365 | 294 / 381 |
+| **Variant 2 now** | **4296** | Y 363 | 476 |
+| Variant 1 now | 3569 | Y 367 | 406 |
+
+- The dome's own narrowest section on this path is W 4746 (Y 395). Variant 2 is now 9% under that existing weakest link.
+- At a peak roll torque of about 60 N·m, that is roughly 14 MPa across the layers, layer SF about 1.6, against about 1.8
+  at the current weakest link. **Flagged:** lower than today, but still above 1.5.
+- **How it got back:**
+  - The drum rule (Z ≥ 38.5) now applies only within 59 of the roll axis, so the chin's sides stay low.
+  - A chin root, a ring segment r 34.5-41 over 40-140°, carries the cheek into the seat ring from Y 361.9 to 367.
+
+**Faint line and dip:**
+- The chin now carries on 6 mm up inside the cheek with the cheek's own section, so it meets with matching tangent.
+- The cuff's 4 mm top round is switched off across the front (±35-60° fade), so the rim no longer dips beside the chin.
+- **Remaining:** a faint line still shows at Y 372, where the cheek's crowned edge loft ends. Removing it fully means
+  building cheek and chin as one loft from the dome down, which is a bigger rebuild. I'll do it on the chosen variant.
+
+**RS02 access plugs** (`shoulder_fork_access_plugs_left`, mock-up, 0.7 g for both):
+- Ø6.9 press-in in the Ø7 holes, 7 deep, top trimmed to the dome's r 55 surface.
+- Each has a 2 x 1.2 mm pry notch on the back edge (toward the drum, out of sight); a small screwdriver there lifts it out.
+- The 104° hole exits cleanly on the dome's top edge. The 64° hole sits on the cheek's back face (screw at Z 38.8 against
+  the cheek's back at Z 39), so it is a half-open groove on the back of the cheek with only part of its rim on top.
+- The RS02 goes onto the fork front on the bench, before the fork goes onto the roll output, so the drum is not in the
+  driver's way.
+
+**Masses:** variant 2 fork front 137.7 g plus plugs 0.7 g (current 144.6). Variant 1: 137.6 g.

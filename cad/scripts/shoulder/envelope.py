@@ -8,6 +8,7 @@ bell_section(x): the pitch adaptor's outline at X = x, about the pitch axis: an 
 held inside the drum's Z span at the sides.
 """
 import math
+import os
 
 import numpy as np
 from shapely.geometry import LineString, Point, Polygon
@@ -150,7 +151,13 @@ def sleeve_r(a_deg, y, inset=0.0, top=0.0):
     if top:
         f0, f1 = c['round_free']
         t = min(1.0, max(0.0, (da - f0) / (f1 - f0)))
-        r -= top * t * t * (3 - 2 * t)                 # rounded top edge at the front and sides, none where the arm rises
+        k_ = t * t * (3 - 2 * t)                       # rounded top edge at the front and sides, none where the arm rises
+        if os.environ.get('FRONT_BLEND'):
+            # front blend: no top round across the front, where the chin carries the cheek into the cuff
+            df = abs(((a_deg - 90.0) + 180.0) % 360.0 - 180.0)
+            tf = min(1.0, max(0.0, (df - 35.0) / 25.0))
+            k_ *= tf * tf * (3 - 2 * tf)
+        r -= top * k_
     return r
 
 
