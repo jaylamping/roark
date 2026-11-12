@@ -108,7 +108,7 @@ The plug bodies are not in the vendor model, so they still need checking on the 
   - the 10 x 5 signal channel, which joins above Y 357
   - the yaw exit, hidden behind the skirt
   - the bore, so cuff ↔ hub stays 2 mm
-- **Masses:** fork front 153.5 g, fork rear 62.7 g. Together about 0.4 g lighter than the current pair.
+- **Masses:** fork front 153.5 g, fork rear 62.7 g. Together 216.2 g, 4.7 g lighter than the current pair (150.5 + 70.4).
 
 ### Measured (Z from the yaw axis)
 
