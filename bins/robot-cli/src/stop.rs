@@ -6,8 +6,9 @@
 //! (type 24) once its post-Disable silence is over, because a drive drops every frame in that silence. A drive still
 //! reporting after its reporting off gets it again, a bounded number of times.
 //!
-//! The timings are PLAN item 2's. The runtime's bus layer holds the same provisional values in `can::Timing`; this
-//! crate can't depend on `can` (PLAN item 3: `disable` depends on nothing else), so each is cited here instead.
+//! The timings are PLAN item 2's. The runtime's bus layer holds the resend tick and the silence as provisional values in
+//! `can::Timing`; this crate can't depend on `can` (PLAN item 3: `disable` depends on nothing else), so each is cited
+//! here instead. The report grace and watch and `END` are this stop's own.
 
 use std::fmt;
 use std::time::Duration;
@@ -129,8 +130,8 @@ impl BusFault {
 pub enum Outcome {
     /// Read in Reset after a Disable and not seen out of it since; reporting off sent and no report read after it.
     Stopped,
-    /// Nothing read from it (off, unpowered or not wired) on a bus that never went bus-off and whose error frames could
-    /// be read: Disables and reporting off were sent to it anyway. Lesser error frames (warning, passive, ACK) don't
+    /// Nothing read from it (off, unpowered or not wired), with no bus-off read on the bus after its socket opened and
+    /// its error frames readable: Disables and reporting off were sent to it anyway. Lesser error frames (warning, passive, ACK) don't
     /// change this; a bus with no powered drive sends them.
     Silent,
     /// Nothing read from it, and the socket couldn't be asked for error frames, so a bus-off wouldn't have been seen:
@@ -187,10 +188,12 @@ impl fmt::Display for Outcome {
             Self::SilentErrorsUnseen => {
                 "FAILED: never answered, and the bus's error frames couldn't be read"
             }
-            Self::NotReset => "FAILED: answered, not in Reset when last read",
+            Self::NotReset => "FAILED: answered, but never read in Reset or read out of it since",
             Self::StillReporting => "FAILED: still reporting after reporting off",
             Self::WatchCut => "FAILED: the stop ended before reporting off could be checked",
-            Self::Unread => "FAILED: the stop ended with frames from the bus still unread",
+            Self::Unread => {
+                "FAILED: frames from the bus went unread (still queued at the end, or lost to an RX overflow)"
+            }
             Self::QueueFull => "FAILED: a frame never left, the socket's queue stayed full",
             Self::BusFailed => "FAILED: the bus failed or went bus-off",
         })
@@ -423,7 +426,8 @@ impl BusStop {
         }
         for drive in &mut self.drives {
             let due = match drive.off {
-                None => now >= drive.reporting_off_due(),
+                // Never before a Disable has left: PLAN item 2's order is Disable, then reporting off.
+                None => drive.disables > 0 && now >= drive.reporting_off_due(),
                 Some(_) => drive.still_reporting() && drive.tries < REPORTING_OFF_TRIES,
             };
             if !due {
@@ -497,6 +501,12 @@ impl BusStop {
     #[must_use]
     pub(crate) const fn error_frames(&self) -> u32 {
         self.error_frames
+    }
+
+    /// Whether an RX overflow error frame was read: frames were lost.
+    #[must_use]
+    pub(crate) const fn frames_lost(&self) -> bool {
+        self.frames_lost
     }
 
     /// Whether a bus-off error frame was read.

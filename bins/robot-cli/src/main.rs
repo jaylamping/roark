@@ -129,6 +129,7 @@ mod linux {
             "fault": report.fault.map(|f| json!({"kind": f.name(), "detail": f.to_string()})),
             "error_frames": report.error_frames,
             "bus_off": report.bus_off,
+            "frames_lost": report.frames_lost,
             "errors_unseen": report.errors_unseen.map(|e| e.to_string()),
             "read_fault": report.read_fault.map(|e| e.to_string()),
             "drives": report.drives.iter().map(|d| json!({

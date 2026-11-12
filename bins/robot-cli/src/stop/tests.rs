@@ -327,8 +327,8 @@ fn frames_left_unread_when_the_stop_ends_need_a_person() {
 }
 
 /// Guards: safety - a drive is reported ok only on what was sent and read (PLAN item 2, Stop): one whose Disable never
-/// left, or whose current reporting off never left after a withdrawn Reset, needs a person rather than counting as
-/// silent or stopped.
+/// left (and so gets no reporting off), whose reporting off left too late to be watched, or whose current reporting
+/// off never left after a withdrawn Reset, needs a person rather than counting as silent or stopped.
 #[test]
 fn a_frame_that_never_leaves_needs_a_person() {
     // The queue is full until the Disable window ends, then empty: drive 11 never got a Disable.
@@ -341,7 +341,25 @@ fn a_frame_that_never_leaves_needs_a_person() {
         }
     });
     assert_eq!(times(&sent, ('D', 11)), []);
+    assert_eq!(
+        times(&sent, ('R', 11)),
+        [],
+        "no reporting off before a Disable"
+    );
     assert_eq!(outcomes(&never, end), [Outcome::QueueFull]);
+
+    // Never answers; its Disable goes at 0 ms, then the queue is full until 290 ms, so its reporting off goes too late
+    // for its watch to end before the stop does.
+    let mut late = BusStop::new([id(12)]);
+    let (sent, end) = run(&mut late, &|_, _| Vec::new(), &|now, _| {
+        if now == 0 || now >= 290 {
+            Ok(())
+        } else {
+            Err(SendError::Full)
+        }
+    });
+    assert_eq!(times(&sent, ('R', 12)), [290]);
+    assert_eq!(outcomes(&late, end), [Outcome::WatchCut]);
 
     // Confirmed, its first reporting off goes, then it is seen in Run and in Reset again; from then on the queue is
     // full, so the new schedule's reporting off never leaves.

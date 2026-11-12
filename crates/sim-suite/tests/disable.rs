@@ -18,6 +18,7 @@ use sim_drive::{SimDrive, ensure_vcan, serve};
 use skeleton::Skeleton;
 use socketcan::{
     CanDataFrame, CanErrorFrame, CanFrame, CanSocket, EmbeddedFrame, ExtendedId, Id, Socket,
+    StandardId,
 };
 
 /// The runtime's test robot, never the live skeleton (testing.md rule 3).
@@ -566,5 +567,79 @@ fn a_bus_off_during_the_stop_fails_every_drive_on_its_bus() {
                 "{name} {n}: {done:?}"
             );
         }
+    }
+}
+
+/// Write frames from an ID no drive or `disable` uses (standard 0x7FF) on `socket`'s bus as fast as it takes them,
+/// until `stop`: a babbling node. Returns how many went.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: the frame is built from constants"
+)]
+fn flood(socket: &CanSocket, stop: &AtomicBool) -> u64 {
+    let frame = CanDataFrame::new(StandardId::new(0x7FF).unwrap(), &[0; 8]).unwrap();
+    let mut sent = 0;
+    while !stop.load(Ordering::Acquire) {
+        // A full queue only means the bus is as busy as it can be.
+        if socket.write_frame(&frame).is_ok() {
+            sent += 1;
+        }
+    }
+    sent
+}
+
+/// Guards: safety - a drive is reported stopped only on what was read (PLAN item 2, Stop): with a node flooding one
+/// bus for the whole stop, its socket's drain keeps reaching its bound, so no drive on that bus comes out ok (frames
+/// that could withdraw a Reset are still unread), while the other bus stops.
+#[test]
+fn a_flooded_bus_never_reports_a_drive_ok() {
+    let path = skeleton_path();
+    let skeleton = skeleton::load(&path).unwrap();
+    let names = ["can0", "can1"];
+    for name in names {
+        ensure_vcan(name).unwrap();
+    }
+    let dir = scratch("disable-flood");
+    let stop = AtomicBool::new(false);
+    let (run, flooded, done) = std::thread::scope(|scope| {
+        let _end = End(&stop);
+        for name in names {
+            let mut sim = drives(&skeleton, name, &[]);
+            let stop = &stop;
+            scope.spawn(move || serve(name, &mut sim, stop, &mut |_| {}));
+        }
+        let run = names
+            .iter()
+            .all(|name| run_and_report(name, &ids(&skeleton, name)));
+        let socket = CanSocket::open("can1").unwrap();
+        let stop = &stop;
+        let babbler = scope.spawn(move || flood(&socket, stop));
+        let done = disable(&path, &dir.join("runtime.lock"));
+        stop.store(true, Ordering::Release);
+        (run, babbler.join().unwrap(), done)
+    });
+    let _ = std::fs::remove_dir_all(&dir);
+
+    assert!(run, "the drives never reached Run with reporting on");
+    assert!(flooded > 0, "nothing was flooded");
+    assert_eq!(done.status.code(), Some(1), "{done:?}");
+    for n in ids(&skeleton, "can0") {
+        assert_eq!(
+            done.outcomes
+                .get(&("can0".to_owned(), n))
+                .map(String::as_str),
+            Some("stopped"),
+            "can0 {n}: {done:?}"
+        );
+    }
+    for n in ids(&skeleton, "can1") {
+        let outcome = done
+            .outcomes
+            .get(&("can1".to_owned(), n))
+            .map(String::as_str);
+        assert!(
+            !matches!(outcome, Some("stopped" | "silent") | None),
+            "can1 {n} came out {outcome:?}: {done:?}"
+        );
     }
 }

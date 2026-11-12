@@ -33,6 +33,8 @@ pub struct BusReport {
     pub error_frames: u32,
     /// One of them was bus-off.
     pub bus_off: bool,
+    /// One of them was an RX overflow: frames were lost.
+    pub frames_lost: bool,
     /// Why the socket couldn't be asked for error frames, if it couldn't.
     pub errors_unseen: Option<OsError>,
     /// The read failure, if reads failed, also when `fault` is a later write failure.
@@ -107,6 +109,7 @@ fn report(t: &BusTargets, stop: &BusStop, end: Duration) -> BusReport {
         fault: stop.fault(),
         error_frames: stop.error_frames(),
         bus_off: stop.bus_off(),
+        frames_lost: stop.frames_lost(),
         errors_unseen: stop.errors_unseen(),
         read_fault: stop.read_fault(),
         drives: t

@@ -27,10 +27,11 @@ runtime exits (`ExecStopPost`, PLAN item 3). Scan, set-ID, parameter reads and c
     nothing on that bus.
 - **The outcome per drive** (`stop::Outcome`) is what was read, not just what was sent:
   - `stopped`: read in Reset after a Disable, not seen out of Reset since, and watched after its reporting off.
-  - `silent`: never answered (unpowered or not wired) on a bus that never went bus-off and whose error frames could be
-    read. Warning, passive and ACK error frames, which a bus with no powered drive sends, don't count. Whether such a
+  - `silent`: never answered (unpowered or not wired), with no bus-off read on its bus after the socket opened and its
+    error frames readable. Warning, passive and ACK error frames, which a bus with no powered drive sends, don't count. Whether such a
     bus still lets every frame leave, or fills its queue (`queue_full`), is to be checked on the bench adapters.
-  - Everything else needs a person: answered but not in Reset when last read (a later Run withdraws a Reset), still
+  - Everything else needs a person: answered but never read in Reset or read out of it since (a later Run withdraws a
+    Reset), still
     reporting, the stop ending before its watch did or with frames still unread, a frame that never left, a failed or
     bus-off bus, or silence on a bus whose error frames can't be read.
 - **`claim`** takes the runtime's lock (`LOCK_PATH`, `/run/robot/runtime.lock`, or `--lock`). The runtime makes it and
@@ -74,7 +75,7 @@ robot-cli disable --skeleton /etc/robot/skeleton.yaml
 robot-cli disable --skeleton /etc/robot/skeleton.yaml --json   # the same, as one JSON document
 ```
 
-`--json` prints `{build, buses: [{bus, fault: {kind, detail} | null, error_frames, bus_off, errors_unseen, read_fault, drives:
+`--json` prints `{build, buses: [{bus, fault: {kind, detail} | null, error_frames, bus_off, frames_lost, errors_unseen, read_fault, drives:
 [{id, joint, outcome, ok, disables, reset_ms, reporting_offs, reporting_off_ms}]}], need_a_person, drive_count}`.
 `outcome` is one of `stopped`, `silent`, `silent_errors_unseen`, `not_reset`, `still_reporting`, `watch_cut`, `unread`,
 `queue_full` and `bus_failed`; `fault.kind` one of `open`, `spawn`, `write` and `read`. A refusal prints no document.
