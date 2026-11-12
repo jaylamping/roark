@@ -204,4 +204,4 @@ not been run, so `%APPDATA%\BambuStudio\system\BBL` didn't exist. Fall back to t
 
 Each printed part also has a requirements spec in its region folder, a pre-print gate report and a print log in
 `prints/<region>/`: [part-lifecycle.md](part-lifecycle.md). Sharing the CAD workstation between threads (worktrees, claims,
-the FEA queue): [joey-pc.md](joey-pc.md).
+the FEA queue): [cad-workstation.md](cad-workstation.md).

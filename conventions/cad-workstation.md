@@ -1,17 +1,21 @@
-# Sharing Joey-PC between threads
+# Sharing the CAD workstation between threads
 
 **Status:** proposed, 2026-11-09. Sections 1 and 2 apply now; section 3 is the next build; section 4 is a one-time setup
 for Joey.
 
-Several threads share one Windows PC, one SolidWorks install, one Bambu Studio and one git clone. Most of the time lost in
+The CAD workstation is holly-pc from 2026-11-11 ([cad.md section 9](cad.md#9-cad-workstation)); before that it was Joey-PC.
+Several threads share its one SolidWorks install, one Bambu Studio and one git clone. Most of the time lost on Joey-PC in
 the week of 2026-11-05 came from those shared pieces, not from design work:
 
 - a Remote Control session dropped overnight (2026-11-08, about 10:44Z) and the work sat idle until someone noticed;
 - SolidWorks hung after large FEA runs and had to be restarted, losing its in-memory state;
-- new SolidWorks windows stole focus while Joey was gaming, even with the hidden-instance rule;
+- new SolidWorks windows stole focus while Joey was using the PC, even with the hidden-instance rule (holly-pc has no
+  user while sessions run, so this one is gone);
 - one thread installed the CAD git hooks from its worktree, and since every worktree of a clone shares `.git/hooks`, commits
   broke in the power-board worktrees;
 - approvals Joey gave in a thread couldn't reach the PC, whose permission guard only trusts what is typed there.
+
+The paths below use `J:\code\roark`, which `subst J: C:\joe` maps to the clone on holly-pc (cad.md section 9).
 
 The rules below cut the shared state down to what can't be split, and make the rest visible. They are written so a future
 job runner can take them over without changing the files they use.
@@ -33,12 +37,11 @@ job runner can take them over without changing the files they use.
   ([RULES.md](../tools/solidworks/RULES.md)): one for modelling and, while a long study runs, one for FEA, so a 25-minute
   sweep doesn't block modelling (Joey, 2026-11-09, until the FEA queue in section 3 exists). Claim the FEA instance as its own
   session, `<session>-fea` (section 2), so both PIDs are on record. Never attach to another thread's instance and never close
-  one you didn't start. Each launch steals focus and takes about 1.5 GB, so start the second one only for a long study and
+  one you didn't start. Each launch takes about 1.5 GB, so start the second one only for a long study and
   close it when the study ends.
 - **CAD writer lock:** [cad.md section 6](cad.md#6-writer-lock-hooks-and-lfs-budget) still applies inside a worktree that more
-  than one session uses. With one worktree per thread it is uncontested, but take it anyway. The CAD hooks check it where
-  they are installed; after setup step 5 (section 4) the shared clone has none, so there nothing checks it until they are
-  installed from the main checkout.
+  than one session uses. With one worktree per thread it is uncontested, but take it anyway. The CAD hooks check it once
+  they are installed from the main checkout (setup step 5, section 4).
 - **Hooks:** never run a hook installer from a worktree (`install_hooks.py` refuses in one); the hooks are shared by every
   worktree of the clone. The hooks skip the CAD checks in a worktree without `tools/cad/hooks/` ([cad.md section 6](cad.md#6-writer-lock-hooks-and-lfs-budget)).
 
@@ -82,7 +85,7 @@ To build first on the upper-arm contact FEA, which is the next large study.
 
 ## 4. What threads may run, and what needs Joey
 
-**Routine (allowed in the PC's Claude Code settings, no prompt):** read-only git; `git add`, `git commit`, `git push` to a
+**Routine (allowed in the workstation's Claude Code settings, no prompt):** read-only git; `git add`, `git commit`, `git push` to a
 branch other than `main`; `git fetch`, `git pull`, `git switch`, `git worktree add`; `git lfs pull`, `fetch`, `ls-files`
 and `status`; `git config --worktree`; the CAD tools in `tools/cad/` except `cad_lock.py acquire`; `tools/pc/claims.py`.
 These are reversible and every change still lands by PR. Each allow line is the narrowest prefix that covers what threads
@@ -104,10 +107,9 @@ and `git lfs prune` (the shared LFS store). `cad_lock.py acquire` asks every tim
 
 A thread asks for these by name and says why. It doesn't ask for anything on the routine list.
 
-### One-time setup (about 5 minutes, at the PC)
+### One-time setup (about 5 minutes, at holly-pc)
 
-1. Open the Claude Code settings file the PC sessions use: `%USERPROFILE%\.claude\settings.json` (the file that already
-   allows `git push --force-with-lease`).
+1. Open the Claude Code settings file the workstation's sessions use: `%USERPROFILE%\.claude\settings.json`.
 2. Merge these into its `permissions` block (keep what is already there):
 
    ```json
@@ -140,11 +142,8 @@ A thread asks for these by name and says why. It doesn't ask for anything on the
 4. Turn on per-worktree git config: `git -C J:/code/roark config extensions.worktreeConfig true`. Without it,
    `git config --worktree` refuses in a clone with several worktrees, and in a clone with one it writes the shared
    `.git/config`.
-5. If not done yet, put back Git LFS's stock hooks in place of the CAD hooks the arm thread's install wrote: in
-   `J:\code\roark\.git\hooks`, delete `pre-commit` and rename `pre-push.lfs-orig` (Git LFS's own hook, kept by
-   `install_hooks.py`) back to `pre-push`. After this the shared clone runs no CAD hooks, so the writer lock is not
-   hook-checked there until the CAD hooks are installed from the main checkout
-   ([cad.md section 6](cad.md#6-writer-lock-hooks-and-lfs-budget)).
-6. Restart the "Joey-PC (code)" Remote Control server so it reloads the settings.
+5. Install the CAD hooks once, from the main checkout: `python tools/cad/install_hooks.py` in `J:\code\roark`
+   ([cad.md section 6](cad.md#6-writer-lock-hooks-and-lfs-budget)). It refuses in a worktree.
+6. Restart the "holly-pc (joe)" Remote Control server so it reloads the settings.
 
 After a week, count the approvals that still got stuck and trim the lists.

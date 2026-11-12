@@ -25,5 +25,5 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 else
   echo "file size and CAD layout checks: not a git checkout, skipped"
 fi
-# The CAD and Joey-PC tool tests.
+# The CAD and CAD workstation tool tests.
 python3 -m pytest -q tools/cad tools/pc

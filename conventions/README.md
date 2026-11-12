@@ -25,7 +25,7 @@ Read the page for the area you're touching before you write code. New to CAN? St
 | [git.md](git.md) | Branches, commits, pull requests and review |
 | [cad.md](cad.md) | CAD files in git: what is versioned, Git LFS, the size limit, folder layout and names |
 | [part-lifecycle.md](part-lifecycle.md) | Printed parts: the requirements spec, the pre-print gate and the print log |
-| [joey-pc.md](joey-pc.md) | Sharing Joey-PC between threads: worktrees, claims, heartbeats, the FEA queue, what needs Joey at the keyboard |
+| [cad-workstation.md](cad-workstation.md) | Sharing the CAD workstation (holly-pc) between threads: worktrees, claims, heartbeats, the FEA queue, what needs Joey at the keyboard |
 | [docs.md](docs.md) | Which doc holds what, and how docs are written and kept true |
 
 Each page explains the reason behind its rules. If a rule is wrong, change it on purpose in a PR, with the reason. Don't work

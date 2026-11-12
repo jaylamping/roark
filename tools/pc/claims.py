@@ -1,4 +1,4 @@
-"""Who is using what on Joey-PC, and whether they are still alive. conventions/joey-pc.md section 2.
+"""Who is using what on the CAD workstation, and whether they are still alive. conventions/cad-workstation.md section 2.
 
 Each session (a thread's Remote Control session, the FEA runner) keeps one small JSON file in the claims folder: its
 worktree, its SolidWorks PID, what it is doing and when it last said so. One file per session, so sessions never write the
@@ -111,7 +111,7 @@ def age_min(c: dict, t: float) -> float:
 
 
 def siblings(a: str, b: str) -> bool:
-    """A thread's FEA instance, `<session>-fea`, works in its parent's worktree (joey-pc.md section 1)."""
+    """A thread's FEA instance, `<session>-fea`, works in its parent's worktree (cad-workstation.md section 1)."""
     return a == b + FEA or b == a + FEA
 
 

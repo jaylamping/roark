@@ -1,4 +1,4 @@
-"""Tests for the Joey-PC claims (pytest; run by scripts/check.sh). Rules: conventions/joey-pc.md section 2."""
+"""Tests for the CAD workstation claims (pytest; run by scripts/check.sh). Rules: conventions/cad-workstation.md section 2."""
 
 import sys
 from pathlib import Path
@@ -69,7 +69,7 @@ def test_an_unreadable_claim_file_blocks_claims_until_removed_by_hand(tmp_path: 
 
 def test_a_threads_fea_instance_shares_its_worktree_but_not_its_pid(tmp_path: Path) -> None:
     """Guards: number - a thread runs up to two SolidWorks instances, the second claimed as `<session>-fea` in the same
-    worktree (conventions/joey-pc.md section 1)."""
+    worktree (conventions/cad-workstation.md section 1)."""
     wt = str(tmp_path / "wt-a")
     claims.claim(tmp_path, "arm", wt, 4242, "", t=0)
     assert claims.claim(tmp_path, "arm-fea", wt, 4343, "", t=0)["worktree"] == claims.norm(wt)
@@ -82,7 +82,7 @@ def test_a_threads_fea_instance_shares_its_worktree_but_not_its_pid(tmp_path: Pa
 
 
 def test_a_session_name_cannot_reach_outside_the_claims_folder(tmp_path: Path) -> None:
-    """Guards: safety - joey-pc.md section 4: deleting files outside the thread's own worktree needs Joey, and claims.py
+    """Guards: safety - cad-workstation.md section 4: deleting files outside the thread's own worktree needs Joey, and claims.py
     runs without a prompt, so release and beat must not touch a file a session name points elsewhere."""
     d = tmp_path / "claims"
     outside = tmp_path / "x.json"
