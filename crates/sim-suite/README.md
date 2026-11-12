@@ -9,7 +9,7 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
 
 - `vcan.rs`: `sim-drive` refuses anything that isn't `vcan`, and a simulated drive answers the host's frames through
   the kernel.
-- `bus.rs`: `can::spawn` refuses anything that isn't `vcan`, and the bus thread runs two simulated drives through
+- `bus.rs`: `can::spawn` refuses an interface it can't read or that isn't CAN, and the bus thread runs two simulated drives through
   enable, hold and a shutdown stop, recorded by `telemetry`; the recording is checked frame by frame against an
   independent `candump -L -x` capture (needs `can-utils`). Also a thread started after the schedule joining it.
 - `slow.rs`: slow requests (get-ID, a write, its read-back) reaching a drive and coming back.
@@ -47,8 +47,11 @@ runs only this crate.
 
 ## Must never
 
-Open an interface without checking it is `vcan` first (`sim_drive::ensure_vcan`, and `can::spawn`'s own check): the
-sim's buses carry the robot's real names, so a test run on the Pi must not reach a real drive (testing.md rule 8). Never
+Open an interface without checking it is `vcan` first (`sim_drive::ensure_vcan`). The sim's buses carry the robot's real
+names and `can::spawn` opens a real interface that matches the skeleton, so this check is what keeps a test run on the
+Pi off a real drive (testing.md rule 8). The tests' skeletons and `common::interface` name a driver no real interface
+has (`sim_only`) as a second guard for `can::spawn`; `robot-cli disable` checks neither, so its tests rely on
+`ensure_vcan` alone. Never
 sleep to wait: wait on a reply with a deadline (testing.md rule 6).
 
 ## Talks to

@@ -11,6 +11,14 @@ mod clock;
 mod error_frame;
 #[cfg(any(target_os = "linux", test))]
 mod exit_wait;
+#[cfg_attr(
+    all(not(target_os = "linux"), not(test)),
+    expect(
+        dead_code,
+        reason = "only the Linux bus layer reads an interface; the parser and its test build everywhere"
+    )
+)]
+mod interface;
 mod order;
 mod read;
 #[cfg(target_os = "linux")]
@@ -28,9 +36,12 @@ mod timing;
 mod types;
 
 #[cfg(target_os = "linux")]
-pub use bus::{BusConfig, BusExit, BusLinks, BusRunError, Spawned, bus_info, spawn};
+pub use bus::{
+    BusConfig, BusExit, BusLinks, BusRunError, Spawned, bus_info, check_interface, spawn,
+};
 
 pub use error_frame::{BusError, classify};
+pub use interface::{Interface, InterfaceSpec, Mismatch, RealInterface, Refusal};
 pub use order::{Order, Rearmed};
 pub use slow::{SLOW_SLOTS, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, SlowResult, Unsent};
 /// The frame record [`BusTick::on_frame`] reads, so a caller feeding a tick by hand needs no `telemetry` of its own.

@@ -114,8 +114,9 @@ sim-suite (tests only) --> can, runtime, safety, sim-drive, skeleton, robstride,
   to the robot's drives can send a drive's frame, whichever crates a build compiles together. **Why:** a cargo feature
   can't hold this, because a workspace build turns a feature on for every crate in it.
 - **Only named crates open a CAN socket.** `deny.toml` bans `socketcan` except as a direct dependency of `can`,
-  `can-bench`, `robot-cli` (for `disable` alone), `sim-drive` and `sim-suite`. `sim-drive`, every sim test and, until the real adapter is supported (PLAN step 8), `can`
-  check an interface is `vcan` before the first frame, because the sim's buses carry the robot's real bus names. `can-bench`
+  `can-bench`, `robot-cli` (for `disable` alone), `sim-drive` and `sim-suite`. `sim-drive` and every sim test
+  check an interface is `vcan` before the first frame, because the sim's buses carry the robot's real bus names. `can`
+  opens `vcan`, or a real interface only once its driver, bit timing, state and modes match the skeleton. `can-bench`
   opens real interfaces on purpose, to measure them: it sends only frames no drive acts on and refuses a bus where
   anything else talks (its README).
 - **Clients depend on `api`, never on `runtime` internals.** If a client needs something, it becomes an `api` message.

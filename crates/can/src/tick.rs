@@ -455,6 +455,13 @@ impl BusTick {
             .all(|l| l.state == LimbState::Idle)
     }
 
+    /// The controller was error-passive when the bus started (the interface check read it, `can::check_interface`): the
+    /// bus counts as unhealthy from its first tick until an error frame says the controller recovered, as if a passive
+    /// error frame had been read before it.
+    pub fn start_error_passive(&mut self) {
+        self.error_passive = true;
+    }
+
     /// Whether the bus is healthy now: no latched bus error and not error-passive. The snapshot's `healthy` is this at
     /// `end`.
     #[must_use]

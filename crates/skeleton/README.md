@@ -34,7 +34,7 @@ partly checked one. `read` is `load`'s read alone, for a caller that hashes exac
 ```rust
 /// A small skeleton: two drives wired on one bus, one joint not wired yet, and the other limbs empty.
 const ROBOT: &str = "\
-schema: 1
+schema: 2
 name: example
 power:
   source: bench_24v
@@ -44,6 +44,7 @@ buses:
   bus0:
     bitrate_bps: 1000000
     sample_point: 0.75
+    driver: mcp251xfd
     adapter_serial: null
 limbs:
   left_arm:
