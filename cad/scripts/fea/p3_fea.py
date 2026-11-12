@@ -322,6 +322,32 @@ def run(name, c):
         e2, w2 = L(), L()
         ok = d.Save3(1, e2, w2)
         print(' saved study', tag, 'in', d.GetPathName, 'ok', ok, 'errors', e2.value, 'warnings', w2.value, flush=True)
+        if os.environ.get('FEA_SOLVER_MACRO'):      # in-process try (2026-11-12): a plain-text SolidWorks Basic macro sets the solver
+            mlog = F / ('solver_macro_' + tag + '.log')
+            mac = F / ('solver_macro_' + tag + '.swb')
+            mac.write_text(chr(10).join([
+                'Dim swApp As Object', 'Sub main()', 'On Error Resume Next',
+                'Set swApp = Application.SldWorks',
+                'Open "%s" For Output As #1' % str(mlog),
+                'Set cwa = swApp.GetAddInObject("SldWorks.Simulation")', 'Print #1, "addin "; Err.Number; " "; Err.Description',
+                'Set cw = cwa.CosmosWorks', 'Set sm = cw.ActiveDoc.StudyManager', 'Print #1, "studies "; sm.StudyCount; " err "; Err.Number',
+                'For i = 0 To sm.StudyCount - 1', 'Set s = sm.GetStudy(i)',
+                'If s.Name = "%s" Then' % tag, 'Set so = s.StaticStudyOptions', 'Print #1, "before "; so.SolverType',
+                'Err.Clear', 'so.SolverType = %d' % int(os.environ['FEA_SOLVER_MACRO']), 'Print #1, "set err "; Err.Number; " "; Err.Description',
+                'Print #1, "after "; s.StaticStudyOptions.SolverType', 'End If', 'Next i', 'Close #1', 'End Sub', '']), encoding='ascii')
+            try:
+                me = L()
+                r_ = sw.RunMacro2(str(mac), '', 'main', 1, me)
+                print(' solver macro ran', r_, 'err', me.value, flush=True)
+            except Exception as ex:
+                print(' solver macro failed to run:', str(ex)[:120], flush=True)
+            print(' solver macro log:', mlog.read_text(errors='ignore').replace(chr(10), ' | ') if mlog.exists() else 'none', flush=True)
+            try:
+                print(' solver reads (python, after macro)', st.StaticStudyOptions.SolverType, flush=True)
+            except Exception as ex:
+                print(' solver readback failed', str(ex)[:80], flush=True)
+            e2, w2 = L(), L()
+            print(' saved again', d.Save3(1, e2, w2), e2.value, w2.value, flush=True)
     if os.environ.get('FEA_MESH_ONLY') == '1':      # mesh-time diagnosis (2026-11-12): stop after meshing
         sw.CloseDoc(d.GetTitle)
         print(' mesh only: done', flush=True)
