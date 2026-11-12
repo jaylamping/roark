@@ -45,7 +45,7 @@ adds the power board interface (item 10).
 | # | Milestone | Done when |
 |---|---|---|
 | 1 | **Left arm online**: loose drives on the bench, then the actuator test stand, then the printed arm on the torso with the camera calibration loop | (a) every §6 rule has a passing `vcan` fault test, each before the test that needs it (§6, Which rules a test waits for); (b) three loose drives scanned, IDs 11 to 13 set, preflight passes, and a deliberately wrong `canTimeout` is refused; (c) a 1 h idle soak with no error frames or RX overflow, and latency and jitter recorded in the repo; (d) `kill -9` while enabled leaves the drives limp within 50 ms and the `ExecStopPost` disable shows in candump; (e) a drive power-cycled while enabled (pull its drop fuse) can't be enabled again until preflight passes again; (f) all five joints sign-checked and zeroed (calibration stage C1); (g) the elbow rig has passed before the forearm is powered; (h) test stand files exist for RS03 and RS02; (i) calibration stages C0 to C2 pass attended, plus one clean unattended C3 |
-| 2 | **Right arm moved to this stack**, then the legacy code deleted | Both arms enable from one runtime and one skeleton; silence on one drive stops only its limb; the right arm's taught limits and directions are moved and re-checked; legacy tree deleted from marengo |
+| 2 | **Right arm moved to this stack**, then the legacy code deleted | Both arms enable from one runtime and one skeleton; silence on one drive stops only its limb; the right arm's directions and limits are re-checked on this stack and entered as `robot-cli`'s edit; legacy tree deleted from marengo |
 | 3 | Waist | The waist enables on its own bus with no new code path. Waits on the waist hardware, which is parked |
 | 4 | Power board and battery | Stopping the heartbeat drops the motor latch within its window; port-fault decode names the port; self-test runs only under its conditions (item 10) |
 | 5 | Legs | Five buses at 250 Hz with measured bus load under 70 % per bus; legs run on the support gantry |
@@ -55,8 +55,9 @@ adds the power board interface (item 10).
 1. **Joey, now, in parallel with the code:** order one Waveshare 2-CH isolated CAN FD HAT (MCP2518FD) for the [interface comparison](docs/can-interface-comparison.md) (item 5), and the
    luggage scale for the test stand.
 2. **Read** the tenets, this plan and [conventions/](conventions/).
-3. **Skeleton** (item 1): the `skeleton` crate and `config/skeleton.yaml` with all five limbs, including the right arm's
-   existing values. Putting two limbs in from day one exercises "no per-limb code" in sim long before milestone 2.
+3. **Skeleton** (item 1): the `skeleton` crate and `config/skeleton.yaml` with all five limbs, including the right arm's bus
+   and IDs (its signs and limits stay null until milestone 2 re-checks them). Putting two limbs in from day one exercises "no
+   per-limb code" in sim long before milestone 2.
 4. **Lift the legacy knowledge** into notes and test vectors (item 2).
 5. **Codec** (`robstride`) against the manual test vectors.
 6. **Bus loop and sim drive together** (items 3 and 4) on `vcan` interfaces named after the skeleton buses, with MCAP and
@@ -68,7 +69,7 @@ adds the power board interface (item 10).
    persistence test (item 1) and the caps-in-mode test (item 6).
 9. **First attended Enable** of the loose drives with Joey, as soon as the first row of
    [Which rules a test waits for](#which-rules-a-test-waits-for) passes: preflight, enable at the commissioning caps,
-   sign check, zero, unloaded jog. The UIDs and directions found, and the zeros if the persistence test passed, go into
+   sign check, zero, unloaded jog. The UIDs and directions found, and the zeros of models whose persistence test passed, go into
    the skeleton as `robot-cli`'s edit (item 1).
 10. Then the test stand (item 7), the elbow rig result into item 8's limits, and the camera loop (item 9).
 
@@ -138,14 +139,14 @@ the values. When hardware changes, the hardware side opens one PR here that touc
 line to STATUS.md the same day. The runtime never writes it; tools that teach limits produce a proposed diff for a PR.
 
 **Measured values reach the skeleton as a diff, not by hand.** The numbers commissioning finds on this stack (a drive's UID
-from the scan, a joint's `direction` from the sign check, a taught limit, and `zero_rad` only if the persistence test below
-passed) come out of `robot-cli` as an edit to the skeleton: only the fields that changed, with comments and order kept, and a
-comment beside each value naming the session that measured it. The edit carries the hash of the skeleton the session loaded
-(from `session.json`), and `robot-cli` refuses to produce it against a checkout whose skeleton differs, so a stale edit can't
-overwrite a newer value. The runtime never writes the file; the person applies the edit in a checkout and opens the PR, which
-is reviewed like any skeleton change. The one carry-over is the right arm's legacy values (Start here, step 3, and
-[Before the legacy code is deleted](#before-the-legacy-code-is-deleted-milestone-2)): copied once with their source file named,
-then re-checked on this stack, and the re-check's result arrives as this edit.
+from the scan, a joint's `direction` from the sign check, a taught limit, and `zero_rad` only for a model whose persistence
+test below passed) come out of `robot-cli` as an edit to the skeleton: only the fields that changed, with comments and order
+kept, and a comment beside each value naming the session that measured it; a re-check that confirms a value still rewrites
+that comment. The edit carries the hash of the skeleton the session loaded (from `session.json`), and `robot-cli` refuses to
+produce it against a checkout whose skeleton differs; that catches an edit made from an old skeleton, not two edits open at
+once. The runtime never writes the file; the person applies the edit in a checkout and opens the PR, which is reviewed like
+any skeleton change. No value is copied in from legacy files: the right arm's legacy signs and limits are what its
+milestone-2 re-check compares against, and they enter the skeleton only as that re-check's edit.
 
 Shape (the builder may adjust field names; the content is required):
 
@@ -498,9 +499,9 @@ evaluated only against a named need.
 
 ## Before the legacy code is deleted (milestone 2)
 
-1. Add the right arm to the skeleton: `can0`, IDs 1 to 5, directions from `marengo/config/motors.yaml` (sign-checked
-   2026-08-11), hard limits from its bench envelopes. The envelopes are relative to the legacy reference, so re-reference
-   before trusting them.
+1. The right arm is in the skeleton on `can0`, IDs 1 to 5, with its directions and hard limits null. Its legacy directions
+   (`marengo/config/motors.yaml`, sign-checked 2026-08-11) and bench envelopes are what step 3's re-check compares
+   against; the envelopes are relative to the legacy reference. The re-checked values enter as `robot-cli`'s edit (item 1).
 2. Don't carry the `control.yaml` gains: the RS03 gains were tuned while the drive saw 0.4 × the commanded velocity. Friction
    fits move to `config/dynamics.yaml` only after a re-check. `right_lower_arm_yaw`'s URDF axis is wrong (`kinematics.md`).
 3. Give `can0` its own adapter with its own link file and retire the HAT; rewrite `canTimeout` from 600 to 1000; run the sign check
