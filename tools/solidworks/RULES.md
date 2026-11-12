@@ -22,7 +22,7 @@ To reuse one instance across separate script runs, use `session(state_file)` wit
 
 ## Hidden by default
 
-Joey uses the PC while sessions work, so SolidWorks must never pop up or take focus. `launch()` and `session()` now start hidden. Pass `visible=True` only when someone needs to see the window.
+On Joey-PC, Joey uses the PC while sessions work, so SolidWorks must never pop up or take focus there. CAD work now runs on holly-pc ([cad.md, section 9](../../conventions/cad.md#9-cad-workstation)), where nobody is at the desk and a visible window is fine. `launch()` and `session()` now start hidden. Pass `visible=True` only when someone needs to see the window.
 
 A hidden launch does three things:
 
@@ -40,6 +40,22 @@ Anything hidden is logged to `sw_hidden_<pid>.log` in the temp folder, and `HAD 
 - Each launch can briefly take focus for the splash, main window, welcome screen and CAM window, during the first 20 s or so. A window hidden on show has no time to paint, and the hider hands focus back, but **Windows gives no way to refuse focus from another process, so a fullscreen game can still lose focus for a moment at launch.** Launch before starting a game, or keep launches few.
 
 No console windows showed, from Python, PowerShell, git or Bambu Studio.
+
+**What was still flashing on 2026-11-09:** a watcher logged every window, its ancestry and how long it stayed visible, over five launches.
+
+- The Simulation solver, `Simulation\star.exe`, shows a progress dialog titled with the study name. It runs below a helper (`SLDWORKS.exe` → `cwanalysisproc.exe` → `star.exe`) and lives only for the solve, so the 2 s child sweep missed it: it stayed on screen and took focus. The hider now treats any process with our instance among its ancestors as ours. It also covers a `star.exe` from the Simulation folder whose parent chain is broken, if it started after our instance and has no other SolidWorks among its ancestors, so another session's solver is never touched. After the fix the solver dialog was hidden before it painted.
+- Launch windows (splash, main window, welcome screen, the journal prompt) were hidden in 0 to 50 ms on a quiet PC, but the main window was once visible for 0.3 to 0.9 s. Window events reach the hider through its message loop, so slow work there delays the hide. Processes already judged foreign are now cached, so a busy desktop costs one lookup per process, not one per window event.
+- **Every launch still takes focus about 7 times in its first 20 s.** Threads must reuse one instance with `session()` and `end_session()`, never launch per script.
+
+## Sound
+
+Measured on 2026-11-09 with the Core Audio peak meters of every session (`python tools/solidworks/sw_audio.py` lists them):
+
+- SolidWorks never opened an audio session of its own in five launches. Its tones play through the shared **System Sounds** session, which carries every app's sounds, so it cannot be muted for our instance alone.
+- A tone played each time the hidden **"A journal file could not be created"** prompt (`#32770`, "SOLIDWORKS Design") showed. That prompt comes up whenever this instance is the third SolidWorks running. `launch()` dismisses it, but the message box has already beeped. Fewer instances, through `session()` reuse, is the fix. A second, quieter tone sometimes followed a few seconds later without any SolidWorks window to match it.
+- A rebuild error made through the API (a shell thicker than the part, What's Wrong count 1) played no tone.
+- The hider still mutes any audio session owned by our instance or its children, in case a sound such as collision detection ever plays through one. Windows saves an app's mute by exe path, so `close()` raises `sw_unmute_<pid>.flag` and unmutes before exit. That way Joey's own SolidWorks never starts muted. If an instance crashes while muted and Joey's SolidWorks goes quiet, unmute SolidWorks in the Windows volume mixer.
+- SolidWorks' own sound options live in the registry and are shared with Joey's SolidWorks. Do not change them.
 
 **A launch stalls at the splash screen while another instance is mid-solve.** It resumes once the solve stops. So coordinate a short hold with any thread that is solving before you launch, and hold between cases if another thread asks.
 
@@ -64,6 +80,21 @@ For Bambu Studio, use the CLI (`--slice`), which opens no window.
 
 solidworks-mcp servers start their instance through their own code, so they don't get this until that build is changed.
 
+## Hung, half-closed and orphaned instances
+
+`python tools/solidworks/sw_instance.py --status` lists every SolidWorks process with its age, threads, windows, committed memory and whether it answers. It only looks. Run it before reporting a hang.
+
+What went wrong on holly-pc on 2026-11-11, and what the module now does about each step:
+
+- A job ran as `timeout 7200 python job.py`. At two hours `timeout` killed the Python client in the middle of a COM call that was returning a 2.4 M-node result. **Do not wrap a SolidWorks job in a bare `timeout`.** If a job needs a time limit, the limit must be followed by `end_session(state_file)`, which now always ends the instance.
+- The cleanup then called `ExitApp` on that instance. It half-closed: no windows, one thread spinning a core, 3.6 GB still committed, still in the ROT. A COM call has no timeout, so the cleanup never returned and never reached its force-stop. `close()` now checks that the instance answers before any COM call, puts a deadline on each call, and force-stops the instance and everything it started when either fails.
+- The state file still named the half-closed instance, so the next run attached to it and hung for its whole time limit. `attach()` and `session()` now raise `NotAnswering` within 30 s without touching it, and `end_session()` force-stops an instance that does not answer and always removes the state file.
+- **A launch stalls at the splash screen while any other instance is not answering**, so one half-closed instance stopped every thread's launches. Seven launches sat at the splash for five minutes each. `launch()` now waits for a solving instance, and raises at once, naming the PID, when one is half-closed.
+- An instance that was 28 minutes into a real solve was taken for hung and killed. That left `cwanalysisproc.exe` and `star.exe` running on several cores and 4 GB with nothing to read the result. **An instance does not answer while it solves: that is not a hang.** `--status` shows `busy` for it and `HALF-CLOSED` for the real thing. `close()` and `end_session()` now stop the solver with the instance.
+- Committed memory grows with use: one instance reached 26 GB over about 30 rebuilds, with a working set of only 1.7 GB. Check `inst.private_mb()`, not `rss_mb()`, and start a fresh instance for each job or when it passes a few GB.
+
+Threads still cannot stop another session's process. For a half-closed instance whose owner is gone, give Joey the line `--status` points at: `taskkill /PID <pid> /T /F`. `/T` matters, it takes the solver too.
+
 ## Rules
 
 1. Each session starts its own instance with `launch()` and uses that handle. Keep it hidden.
@@ -71,7 +102,7 @@ solidworks-mcp servers start their instance through their own code, so they don'
 3. Never call `ExitApp`, close documents in, or kill a PID the session did not start.
 4. One file belongs to one session. Other sessions open a copy, read-only. Agree ownership before writing.
 5. Save after each step. A third instance has no Auto Recover, and an instance can crash.
-6. Concurrent Simulation solves are allowed, up to the two tested so far. Keep large solves to one at a time until a larger pair is tested.
+6. Concurrent Simulation solves are allowed, up to the two tested so far, and the limit is per machine (What was tested, below). Joey-PC ran a pair of 476k nodes each. On holly-pc a pair of about 390k nodes each crashed, so there solves that size run one at a time; smaller pairs ran together. Keep large solves to one at a time on any machine until a pair that size is tested there.
 7. Exit the instance when the work is done. Each one holds about 1 GB idle and about 1.6 GB after a solve.
 8. solidworks-mcp follows these rules from branch `feat/owned-instance`: each MCP server launches and owns one instance, attached by PID. **A server started before that build still attaches to the running SolidWorks until it restarts**, so do not use its tools alongside other sessions. Running servers are not restarted for you.
 
@@ -89,6 +120,20 @@ Joey-PC, SolidWorks 2026 SP0, 2026-11-06, with another session's instance open t
 | Exit own instance, other instance still responding | Pass |
 | RAM | About 950 MB idle, 1.3 GB with Simulation, 1.6 GB after the solve |
 
+holly-pc, SolidWorks 2026 SP0, 2026-11-11, one instance, hidden:
+
+| Check | Result |
+| --- | --- |
+| Launch to ready | Pass, 3.0 to 4.5 s |
+| Part, sketch, extrude, save | Pass |
+| Simulation add-in | Pass, 4 s, no license prompt |
+| Mesh and solve, Ø40 × 100 mm cylinder, 100 N axial, 48,724 nodes | Pass, 0.5 s mesh and 1.9 s solve; peak displacement 2.24 µm against 2.27 µm by hand |
+| RAM | About 740 MB |
+| Two instances solving at once, upper-arm halves, about 390k nodes each (2026-11-11, upper-arm R1 FEA) | **Fail:** crashed reading back the results. Run solves that size one at a time |
+
+`CreateMesh` takes element sizes in mm. A new install has no default part template until SolidWorks has been opened once
+by hand, so pass a template path to `NewDocument` until then.
+
 Hidden mode, Joey-PC, 2026-11-07:
 
 | Check | Result |
@@ -105,4 +150,4 @@ Two startup problems came up. `launch()` handles both:
 
 Four instances ran at once in the solidworks-mcp test, each in its own PID, with no modeling load on all four.
 
-`ExitApp` can leave a half-closed process with no documents and no Simulation license, so `close()` force-stops its own PID if it has not gone after 60 seconds.
+`ExitApp` can leave a half-closed process with no documents and no Simulation license, so `close()` force-stops its own PID, and what that PID started, if it has not gone after 60 seconds.
