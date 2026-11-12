@@ -13,9 +13,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use can::{
-    BusConfig, BusLinks, BusRunError, CommandBatch, LimbState, Snapshot, StopOutcome, StopReason,
+    BusConfig, BusLinks, BusRunError, CommandBatch, LimbState, Mismatch, Refusal, Snapshot,
+    StopOutcome, StopReason,
 };
-use common::{HZ, Shutdown, drive, hold, id, info, limbs, next_snapshot, soon, timing};
+use common::{HZ, Shutdown, drive, hold, id, info, interface, limbs, next_snapshot, soon, timing};
 use robstride::{Drive, Frame, Inbound, Mode, Model, Uid, decode, encode};
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use socketcan::{CanDataFrame, CanSocket, EmbeddedFrame, Socket, StandardId};
@@ -186,14 +187,12 @@ fn play_control(
     assert_eq!(snap.counters.foreign_host, 0);
 }
 
-/// Guards: safety - the bus layer opens nothing but `vcan` until the real adapter's checks exist, so a sim test or a
-/// mistaken name can't put frames on a real bus (PLAN step 8; testing.md rule 8).
+/// Guards: safety - the bus layer opens only `vcan` or a CAN interface that matches the skeleton, and nothing whose
+/// report it can't read, so a mistaken name can't put frames on another interface (can.md section 2, Socket setup).
 #[test]
-fn spawn_refuses_anything_but_vcan() {
+fn spawn_refuses_an_interface_it_cant_check() {
     let root = std::env::temp_dir().join(format!("sim-suite-refuse-{}", std::process::id()));
-    for (start_s, bus, vcan_kind_read) in
-        [(1, "lo", true), (2, "nosuchbus0", false), (3, "-v", false)]
-    {
+    for (start_s, bus, kind_read) in [(1, "lo", true), (2, "nosuchbus0", false), (3, "-v", false)] {
         let (_, commands) = rtrb::RingBuffer::new(1);
         let (snapshots, _) = rtrb::RingBuffer::new(1);
         // A session directory is named by its start time, so each case starts at its own second.
@@ -202,6 +201,7 @@ fn spawn_refuses_anything_but_vcan() {
         let refused = can::spawn(
             BusConfig {
                 name: bus.to_owned(),
+                interface: interface(),
                 drives: vec![drive(101, 0)],
                 timing: timing(),
             },
@@ -219,11 +219,17 @@ fn spawn_refuses_anything_but_vcan() {
             },
         );
         let kind = match &refused {
-            Err(BusRunError::NotVcan { .. }) => Some(true),
-            Err(BusRunError::Unchecked { .. }) => Some(false),
+            Err(BusRunError::Interface {
+                source: Refusal::Mismatch(m),
+                ..
+            }) if m == &[Mismatch::NotCan { kind: None }] => Some(true),
+            Err(BusRunError::Interface {
+                source: Refusal::Unreadable(_),
+                ..
+            }) => Some(false),
             _ => None,
         };
-        assert_eq!(kind, Some(vcan_kind_read), "{bus}: {refused:?}");
+        assert_eq!(kind, Some(kind_read), "{bus}: {refused:?}");
     }
     let _ = std::fs::remove_dir_all(&root);
 }
@@ -250,6 +256,7 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
     let bus = can::spawn(
         BusConfig {
             name: IDLE_BUS.to_owned(),
+            interface: interface(),
             drives: vec![drive(101, 0)],
             timing: timing(),
         },
@@ -342,6 +349,7 @@ fn a_bus_started_after_the_schedule_joins_it() {
     let bus = can::spawn(
         BusConfig {
             name: LATE_BUS.to_owned(),
+            interface: interface(),
             drives: vec![drive(101, 0)],
             timing: timing(),
         },
@@ -415,6 +423,7 @@ fn the_bus_loop_runs_against_sim_drive_and_its_recording_matches_candump() {
         let bus = can::spawn(
             BusConfig {
                 name: BUS.to_owned(),
+                interface: interface(),
                 drives: vec![drive(101, 0), drive(102, 1)],
                 timing: timing(),
             },

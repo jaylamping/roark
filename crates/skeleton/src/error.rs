@@ -131,7 +131,11 @@ impl fmt::Display for Problem {
             ProblemKind::NonFinite => f.write_str("not a finite number"),
             ProblemKind::OutOfRange(range) => write!(f, "out of range, must be {range}"),
             ProblemKind::UnknownSchema(v) => {
-                write!(f, "schema {v} is not one this loader knows (expected 1)")
+                write!(
+                    f,
+                    "schema {v} is not one this loader knows (expected {})",
+                    crate::SCHEMA
+                )
             }
             ProblemKind::UnknownActuator(name) => {
                 write!(f, "unknown actuator `{name}` (rs00, rs02, rs03 or rs04)")

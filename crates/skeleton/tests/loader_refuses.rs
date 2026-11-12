@@ -8,7 +8,7 @@ use skeleton::{LoadError, ProblemKind};
 /// Five limbs, some wired and some offline. One joint is fully commissioned so the checks that need a zero and a
 /// direction have something to check.
 const FIXTURE: &str = "\
-schema: 1
+schema: 2
 name: test_robot
 power:
   source: bench_24v
@@ -18,10 +18,12 @@ buses:
   bus0:
     bitrate_bps: 1000000
     sample_point: 0.75
+    driver: mcp251xfd
     adapter_serial: null
   bus1:
     bitrate_bps: 1000000
     sample_point: 0.75
+    driver: mcp251xfd
     adapter_serial: \"ABC123\"
 limbs:
   left_arm:
@@ -279,7 +281,7 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
         ),
         (
             "a schema that isn't a number doesn't stop the rest of the file being checked",
-            edit("schema: 1", "schema: one")
+            edit("schema: 2", "schema: one")
                 .replace("name: test_robot", "name: test_robot\nextra_key: 1"),
             vec![
                 at(
@@ -430,8 +432,8 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
         ),
         (
             "unknown schema version",
-            edit("schema: 1", "schema: 2"),
-            vec![at("schema", ProblemKind::UnknownSchema(2))],
+            edit("schema: 2", "schema: 1"),
+            vec![at("schema", ProblemKind::UnknownSchema(1))],
         ),
     ];
 
@@ -452,5 +454,16 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
         found.first().map(|p| p.line),
         hard_line,
         "line of the hard_rad problem"
+    );
+
+    // An old file is told which schema this loader reads.
+    assert_eq!(
+        skeleton::parse(&edit("schema: 2", "schema: 1"))
+            .err()
+            .map(|e| e.to_string()),
+        Some(
+            "the skeleton has 1 problem(s):\n  line 1: schema: schema 1 is not one this loader knows (expected 2)"
+                .to_owned()
+        )
     );
 }

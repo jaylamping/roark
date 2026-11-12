@@ -4,7 +4,7 @@ use robstride::{Amps, Model, NewtonMeters, RadPerSec};
 use skeleton::{Caps, Joint};
 
 const FIXTURE: &str = "\
-schema: 1
+schema: 2
 name: caps_robot
 power:
   source: bench_24v
@@ -14,6 +14,7 @@ buses:
   bus0:
     bitrate_bps: 1000000
     sample_point: 0.75
+    driver: mcp251xfd
     adapter_serial: null
 limbs:
   left_arm:

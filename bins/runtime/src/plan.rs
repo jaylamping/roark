@@ -5,12 +5,14 @@ use can::{BusDrive, MAX_DRIVES};
 use skeleton::{JointName, LimbName, Skeleton};
 
 /// One bus thread's share of the skeleton.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BusPlan {
     /// The interface, as the skeleton names it.
     pub name: String,
     /// Its bitrate, bit/s, for the recording's bus info.
     pub bitrate_bps: u32,
+    /// What its interface must be: the skeleton's bitrate, sample point and driver.
+    pub interface: can::InterfaceSpec,
     /// Its drives in slot order: limb by limb in skeleton order, each limb's joints in file order.
     pub drives: Vec<BusDrive>,
     /// The joint in each slot.
@@ -54,6 +56,11 @@ pub fn plan(skeleton: &Skeleton) -> Result<Vec<BusPlan>, PlanError> {
         let mut plan = BusPlan {
             name: bus.name.as_str().to_owned(),
             bitrate_bps: bus.bitrate_bps,
+            interface: can::InterfaceSpec {
+                bitrate_bps: bus.bitrate_bps,
+                sample_point: bus.sample_point,
+                driver: bus.driver.clone(),
+            },
             drives: Vec::new(),
             joints: Vec::new(),
             limbs: Vec::new(),

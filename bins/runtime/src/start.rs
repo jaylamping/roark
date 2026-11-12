@@ -36,9 +36,6 @@ const REQUESTS: usize = 64;
 /// spawn takes far less than a period), and short enough that nobody waits on it. A thread that starts late anyway runs
 /// from the tick in progress and counts the ones it missed.
 const ORIGIN_PERIODS: u64 = 4;
-/// `vcan` for every session: the bus layer refuses any other interface until the real adapter is supported (PLAN step
-/// 8).
-const STAGE: Stage = Stage::Vcan;
 
 /// How the runtime is started.
 #[derive(Clone, Debug)]
@@ -109,6 +106,8 @@ pub struct StartInfo {
     pub sockets: Vec<BusInfo>,
     /// Each bus socket's receive buffer as the kernel reports it, in plan order.
     pub receive_buffer_bytes: Vec<usize>,
+    /// Each bus's interface as checked against the skeleton, in plan order.
+    pub interfaces: Vec<can::Interface>,
     /// The joints on no bus.
     pub offline: Vec<JointName>,
     /// Every joint, where it is wired and what its preflight checks, in the order enables and their replies name them.
@@ -206,7 +205,7 @@ impl Runtime {
             .iter()
             .map(|p| can::bus_info(&p.name, p.bitrate_bps))
             .collect();
-        let session = start_session(config, &skeleton_ref, &sockets)?;
+        let session = start_session(config, stage(&plans)?, &skeleton_ref, &sockets)?;
         let session_dir = session.dir().to_path_buf();
         let (recording, recorders) = Recording::new(session, RING_BATCHES);
         let epoch = recording.epoch();
@@ -223,6 +222,7 @@ impl Runtime {
         let mut orders = Vec::new();
         let mut slow = Vec::new();
         let mut receive_buffer_bytes = Vec::new();
+        let mut interfaces = Vec::new();
         for (p, recorder) in plans.iter().zip(recorders) {
             match spawn_bus(p, timing, recorder, epoch, start, &threads.end) {
                 Ok(bus) => {
@@ -231,6 +231,7 @@ impl Runtime {
                     orders.push(bus.orders);
                     slow.push(bus.slow);
                     receive_buffer_bytes.push(bus.receive_buffer_bytes);
+                    interfaces.push(bus.interface);
                 }
                 Err(e) => return Err(threads.unwind(e.into())),
             }
@@ -284,6 +285,7 @@ impl Runtime {
                 plans,
                 sockets,
                 receive_buffer_bytes,
+                interfaces,
                 offline: offline(&skeleton),
                 roster,
                 skeleton: skeleton_ref,
@@ -412,9 +414,32 @@ impl Threads {
     }
 }
 
+/// Every bus's interface, checked before the session exists, so a refused start leaves no session behind and a run on
+/// any real bus is recorded as a bench session, never as sim.
+fn stage(plans: &[BusPlan]) -> Result<Stage, BusRunError> {
+    let interfaces = plans
+        .iter()
+        .map(|p| can::check_interface(&p.name, &p.interface))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(stage_of(&interfaces))
+}
+
+/// A session is sim only when every bus is: one real bus makes it a bench session.
+fn stage_of(interfaces: &[can::Interface]) -> Stage {
+    if interfaces
+        .iter()
+        .any(|i| matches!(i, can::Interface::Real(_)))
+    {
+        Stage::Bench
+    } else {
+        Stage::Vcan
+    }
+}
+
 /// The session, recorded with what the runtime starts from.
 fn start_session(
     config: &RuntimeConfig,
+    stage: Stage,
     skeleton: &SkeletonRef,
     sockets: &[BusInfo],
 ) -> Result<Session, RecordError> {
@@ -423,7 +448,7 @@ fn start_session(
         SessionInfo {
             git_revision: config.git_revision.clone(),
             operator: config.operator.clone(),
-            stage: STAGE,
+            stage,
             skeleton: skeleton.clone(),
             buses: sockets.to_vec(),
         },
@@ -449,6 +474,7 @@ struct SpawnedBus {
     orders: BusOrders,
     slow: SlowEnds,
     receive_buffer_bytes: usize,
+    interface: can::Interface,
 }
 
 /// One bus thread, control's ends of its rings, and its socket's receive buffer.
@@ -469,6 +495,7 @@ fn spawn_bus(
     let spawned = can::spawn(
         BusConfig {
             name: p.name.clone(),
+            interface: p.interface.clone(),
             drives: p.drives.clone(),
             timing,
         },
@@ -495,5 +522,35 @@ fn spawn_bus(
         orders: BusOrders::new(orders),
         slow: SlowEnds::new(requests_tx, results_rx),
         receive_buffer_bytes: spawned.receive_buffer_bytes,
+        interface: spawned.interface,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Guards: safety - a run on any real bus is recorded as a bench session, never as sim, which logging.md lets be
+    /// deleted on its own.
+    #[test]
+    fn one_real_bus_makes_a_bench_session() {
+        let real = can::Interface::Real(can::RealInterface {
+            driver: "mcp251xfd".to_owned(),
+            bitrate_bps: 1_000_000,
+            sample_point: "0.750".to_owned(),
+            state: "ERROR-ACTIVE".to_owned(),
+            modes: Vec::new(),
+            restart_ms: None,
+            clock_hz: None,
+            txqueuelen: None,
+        });
+        let rows = [
+            (vec![can::Interface::Sim, can::Interface::Sim], Stage::Vcan),
+            (vec![can::Interface::Sim, real.clone()], Stage::Bench),
+            (vec![real], Stage::Bench),
+        ];
+        for (interfaces, stage) in rows {
+            assert_eq!(stage_of(&interfaces), stage, "{interfaces:?}");
+        }
+    }
 }
