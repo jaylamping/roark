@@ -40,6 +40,12 @@ INSERTS_ON = os.environ.get('HS_INSERT_MODEL') == '1'
 if INSERTS_ON:
     BOLTS = F / 'HS_BOLTS_INS.SLDPRT'
 INSERTS = F / 'HS_INSERTS.SLDPRT'
+# HS_SHIM (2026-11-12, R1e): the printed PETG shim ring as its own body, r 36.2-38.4 x t, between the arm's lowered end face
+# (ARM_END_DROP = t) and the hub disc (Y 302). Held on the disc by the touching-face bond (friction keeps it there); no-penetration
+# contact against the arm's end face, so it carries compression only.
+SHIM_T = float(os.environ.get('HS_SHIM', '0'))
+SHIM = F / 'HS_SHIM.SLDPRT'
+HUB_JOINT_Y = 302.0
 LUG_FACE_F = 5.985875 + 5.0 + 0.1      # front / back post faces at the lug (HUB_LUG_HZ 5.0 + the printed 0.1)
 LUG_FACE_B = 5.985875 - 5.0 - 0.1
 BOLT_SEAT = LUG_FACE_B - 7.0
@@ -221,6 +227,23 @@ def build():
             fi = d.InsertPart3(str(INSERTS), 1, '')
             d.ForceRebuild3(False)
             print('  inserts', fi is not None, bodies(d), flush=True)
+    if SHIM_T > 0:
+        d.Save3(1, e, w)
+        import organic_master as M
+        sdoc = M.new_part(SHIM)
+        ym = HUB_JOINT_Y - SHIM_T / 2
+        with M.Sk(sdoc, M.plane(sdoc, 'Y', ym, 'SHIM_P'), 'SHIM') as s_:
+            s_.circle((HX, ym, CZ), 38.4)
+            s_.circle((HX, ym, CZ), 36.2)
+        M.feat(sdoc, s_.feat, 'SHIM', SHIM_T, False, mode=M.MID, lo=0.01)
+        e2, w2 = L(), L()
+        sdoc.Save3(1, e2, w2)
+        sw.CloseDoc(sdoc.GetTitle)
+        e, w = L(), L()
+        d = sw.OpenDoc6(str(MODEL), 1, 1, '', e, w)
+        fs_ = d.InsertPart3(str(SHIM), 1, '')
+        d.ForceRebuild3(False)
+        print('  shim', fs_ is not None, SHIM_T, bodies(d), flush=True)
     if PADS_ON:      # pads from the trimmed post tops (Y 295.7) to the hub fill's underside (Y 296.0)
         d.Save3(1, e, w)
         import organic_master as M
@@ -283,12 +306,14 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
         bs = sorted(d.GetBodies2(0, True), key=lambda b: b.GetMassProperties(1190)[3])
         n_pads = sum('HS_PADS' in b.Name.upper() for b in bs)      # pads are found by name, whatever HS_PADS says
         n_ins = sum('HS_INSERTS' in b.Name.upper() for b in bs)
-        want = (4 if BOLTED else 2) + n_pads + n_ins
+        n_shim = sum('HS_SHIM' in b.Name.upper() for b in bs)
+        want = (4 if BOLTED else 2) + n_pads + n_ins + n_shim
         if len(bs) != want:
             raise SystemExit(f'expected {want} bodies, got {len(bs)}')
         hub, arm = bs[-2], bs[-1]
         bolts = [b for b in bs[:-2] if 'HS_BOLTS' in b.Name.upper()] if (n_pads or n_ins) else bs[:-2]
         inserts = [b for b in bs[:-2] if 'HS_INSERTS' in b.Name.upper()]
+        shims = [b for b in bs[:-2] if 'HS_SHIM' in b.Name.upper()]
         print(' bodies', [b.Name for b in bs], 'bolts', len(bolts), flush=True)
         if BOLTED:      # the two smallest bodies are the bolts: steel
             comp = st.SolidManager.GetComponentAt(0, I())
@@ -364,6 +389,14 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 print(' bonded set', nm_, cb_ is not None, 'faces', len(a_), len(b_), 'err', err.value, 'type', ty_, flush=True)
                 if cb_ is None or err.value or not a_ or not b_:
                     raise SystemExit(f'bonded set failed: {nm_}')
+        if shims:      # the shim's underside against the arm's lowered end face: no penetration (compression only)
+            sb_ = [f for bb in shims for f in faces(bb) if abs(box(f)[1] - box(f)[4]) < 0.01 and min(box(f)[1], box(f)[4]) < HUB_JOINT_Y - 0.05]
+            ae_ = [f for f in faces(arm) if abs(box(f)[1] - box(f)[4]) < 0.01 and abs(max(box(f)[1], box(f)[4]) - min(box(g)[1] for g in sb_)) < 0.02] if sb_ else []
+            err = I()
+            cs4 = cm.CreateContactSet(0, VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, sb_), VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, ae_), err)
+            print(' shim contact set', cs4 is not None, 'faces shim', len(sb_), 'arm end face', len(ae_), 'err', err.value, flush=True)
+            if cs4 is None or not sb_ or not ae_ or err.value:
+                raise SystemExit('shim contact failed')
         for k_ in range(cm.ContactSetCount):
             try:
                 cs_ = cm.GetContactSetAt(k_)

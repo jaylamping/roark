@@ -648,3 +648,9 @@ covered the band r 36.45-37.55 only.
 - Renders (`../../20261112_ring-delta/r1e_*.png`): hub end closed on bc16e97 with a 0.70 ring, plain white, front and back
   three-quarter views and a close-up of the shadow line. The shoulder cuff's skirt ends about Y 313.6 (bc16e97 build_parts.py),
   so it does not cover the line at Y 301.3-302.
+- The step in the render band is bc16e97's own feature: the hub's outer wall steps out from r 38.76 to 39.3 from about Y 302.4
+  up, over θ 70-110 and 250-290 (sections every 10°). Our end face is at Y 301.3 on both halves at every angle and our skin is
+  smooth (r 38.9-39.1). Nothing to fix on our side.
+- Added `r1e_side_with_shoulder.png` (straight view from the front, +Z, the whole upper arm) and `r1e_junction_under_cuff.png`,
+  with the shoulder thread's WIP fork meshes (shoulder-study `cad/_wip/shoulder-pass1/stl/fork_front.STL` / `fork_rear.STL`,
+  saved 2026-11-12 05:41; not a released export). The fork starts at Y 314.5, so the cuff ends about 12.5 mm above the junction.

@@ -88,4 +88,11 @@ if __name__ == '__main__':
     p0 = np.array([HX + 38.9 * np.cos(a), 301.65, CZ + 38.9 * np.sin(a)])
     d = np.array([np.cos(a), -0.12, np.sin(a)])
     render(meshes, tuple(p0 + 80 * d), tuple(p0), out / 'r1e_shadow_line_closeup.png', angle=15.0, reset=False, size=(1200, 900))
+    ctx = [c for c in __import__('os').environ.get('R1E_CONTEXT', '').split(',') if c]      # e.g. the shoulder fork (cuff) meshes
+    if ctx:      # straight side view of the whole upper arm with the shoulder around the hub, from the front (+Z)
+        full = [front, back, hub, ring] + [trimesh.load(c) for c in ctx]
+        render(full, (HX, 320.0, CZ + 700.0), (HX, 320.0, CZ), out / 'r1e_side_with_shoulder.png', angle=20.0, size=(1000, 1400), zoom=1.0)
+        a2 = np.radians(90.0)      # and a close-up of the junction under the cuff, same direction
+        p2 = np.array([HX, 303.0, CZ + 39.0])
+        render(full, tuple(p2 + np.array([0.0, -10.0, 120.0])), tuple(p2), out / 'r1e_junction_under_cuff.png', angle=18.0, reset=False, size=(1200, 900))
     print('rendered', list(out.glob('r1e_*.png')))
