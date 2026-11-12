@@ -18,8 +18,12 @@ use crate::stop::{BusFault, BusStop, DriveStop, END, OsError, Outcome, RESEND, S
 
 /// The most frames one wake reads before it steps the stop. A 1 Mbit/s bus carries about 8 frames a millisecond and a
 /// wake is at most `RESEND` (4 ms) after the last, so this is twice a full bus's worth: a flooded bus still gets its
-/// Disables on time (rust.md section 7: every loop has a bound).
+/// Disables on time (rust.md section 4: every loop has a bound). A drain that hits it says so, and the stop isn't
+/// finished while frames are still queued.
 const MAX_DRAIN: usize = 64;
+
+/// The bus-off class bit of an error frame's ID (`CAN_ERR_BUSOFF`, linux/can/error.h).
+const CAN_ERR_BUSOFF: u32 = 0x40;
 
 /// One bus's result.
 #[derive(Clone, Debug)]
@@ -28,8 +32,12 @@ pub struct BusReport {
     pub bus: String,
     /// How the bus failed, if it did.
     pub fault: Option<BusFault>,
-    /// Error frames read on it.
+    /// Error frames read on it, of any class.
     pub error_frames: u32,
+    /// One of them was bus-off.
+    pub bus_off: bool,
+    /// Why the socket couldn't be asked for error frames, if it couldn't.
+    pub errors_unseen: Option<OsError>,
     /// Each drive's joint name, record and outcome, in skeleton order.
     pub drives: Vec<DriveReport>,
 }
@@ -99,6 +107,8 @@ fn report(t: &BusTargets, stop: &BusStop, end: Duration) -> BusReport {
         bus: t.bus.clone(),
         fault: stop.fault(),
         error_frames: stop.error_frames(),
+        bus_off: stop.bus_off(),
+        errors_unseen: stop.errors_unseen_by(),
         drives: t
             .drives
             .iter()
@@ -124,58 +134,63 @@ fn run(t: &BusTargets) -> BusReport {
         }
     };
     let mut stop = BusStop::new(ids(t));
-    // Error frames tell a bus that is down from drives that are off. A socket that can't be asked for them can't tell
-    // the two apart, so its silent drives are counted as on a faulty bus; the stop itself goes on.
-    if socket.set_error_filter_accept_all().is_err() {
-        stop.heard_error_frame();
+    // Bus-off tells a bus that is down from drives that are off. A socket that can't be asked for error frames can't
+    // tell the two apart, so its silent drives are counted as on a faulty bus; the stop itself goes on.
+    if let Err(e) = socket.set_error_filter_accept_all() {
+        stop.errors_unseen(OsError::from(&e));
     }
     let start = Instant::now();
     let mut send = |frame: Frame| write(&socket, frame);
-    let mut reading = true;
     loop {
-        if reading && let Err(e) = drain(&socket, &mut stop, start) {
-            stop.fail(BusFault::Read(e));
-            reading = false;
+        let mut backlog = false;
+        if stop.reading() {
+            match drain(&socket, &mut stop, start) {
+                Ok(emptied) => backlog = !emptied,
+                Err(e) => stop.fail(BusFault::Read(e)),
+            }
         }
         let now = start.elapsed();
         stop.step(now, &mut send);
-        let Some(next) = stop.next(now) else {
+        // Frames still queued may withdraw a Reset: the stop isn't over until they are read, or `END`.
+        let backlog = backlog && stop.sending() && now < END;
+        let next = stop.next(now);
+        if start.elapsed() >= END + RESEND || (next.is_none() && !backlog) {
             return report(t, &stop, now);
-        };
+        }
+        if backlog {
+            continue;
+        }
         // Wake at the next due time, a tick later at most, or on a frame.
         let wait = next
+            .unwrap_or(END)
             .saturating_sub(now)
             .clamp(Duration::from_millis(1), RESEND);
+        if !stop.reading() {
+            // Nothing to wait on but the time: a broken socket would end every poll at once.
+            std::thread::sleep(wait);
+            continue;
+        }
         let millis = u16::try_from(wait.as_millis()).unwrap_or(u16::MAX);
         let mut fds = [PollFd::new(socket.as_fd(), PollFlags::POLLIN)];
         match poll(&mut fds, PollTimeout::from(millis)) {
             // A signal only cuts the wait short.
             Ok(_) | Err(Errno::EINTR) => {}
-            Err(e) => {
-                stop.fail(BusFault::Read(OsError(e as i32)));
-                reading = false;
-            }
+            Err(e) => stop.fail(BusFault::Read(OsError(e as i32))),
         }
         let broken = PollFlags::POLLERR | PollFlags::POLLHUP | PollFlags::POLLNVAL;
-        if reading && fds[0].revents().is_some_and(|r| r.intersects(broken)) {
-            // The socket can't be waited on: the next drain reads its error, or this ends the reads.
-            if let Err(e) = drain(&socket, &mut stop, start) {
-                stop.fail(BusFault::Read(e));
-            } else {
-                stop.fail(BusFault::Read(OsError(Errno::EIO as i32)));
-            }
-            reading = false;
-        }
-        if start.elapsed() >= END + RESEND {
-            // `next` never passes `END`, so this is only reached if steps stop being taken in time.
-            let now = start.elapsed();
-            return report(t, &stop, now);
+        if stop.reading() && fds[0].revents().is_some_and(|r| r.intersects(broken)) {
+            // The socket can't be waited on: the drain reads its error, or this ends the reads.
+            let e = match drain(&socket, &mut stop, start) {
+                Err(e) => e,
+                Ok(_) => OsError(Errno::EIO as i32),
+            };
+            stop.fail(BusFault::Read(e));
         }
     }
 }
 
-/// Read the frames queued, at most `MAX_DRAIN`, handing each to the stop.
-fn drain(socket: &CanSocket, stop: &mut BusStop, start: Instant) -> Result<(), OsError> {
+/// Read the frames queued, at most `MAX_DRAIN`, handing each to the stop. True when the queue was emptied.
+fn drain(socket: &CanSocket, stop: &mut BusStop, start: Instant) -> Result<bool, OsError> {
     for _ in 0..MAX_DRAIN {
         match socket.read_frame() {
             Ok(CanFrame::Data(frame)) => {
@@ -185,15 +200,17 @@ fn drain(socket: &CanSocket, stop: &mut BusStop, start: Instant) -> Result<(), O
                     stop.heard(start.elapsed(), &inbound);
                 }
             }
-            Ok(CanFrame::Error(_)) => stop.heard_error_frame(),
+            Ok(CanFrame::Error(frame)) => {
+                stop.heard_error_frame(frame.error_bits() & CAN_ERR_BUSOFF != 0);
+            }
             // A remote frame carries no drive's word.
             Ok(CanFrame::Remote(_)) => {}
-            Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(()),
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(true),
             Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
             Err(e) => return Err(OsError::from(&e)),
         }
     }
-    Ok(())
+    Ok(false)
 }
 
 fn write(socket: &CanSocket, frame: Frame) -> Result<(), SendError> {

@@ -85,9 +85,20 @@ mod linux {
             out(&format!("{}: FAILED: {fault}", report.bus));
         }
         if report.error_frames > 0 {
+            let off = if report.bus_off {
+                ", bus-off among them"
+            } else {
+                ""
+            };
             out(&format!(
-                "{}: {} error frames",
+                "{}: {} error frames{off}",
                 report.bus, report.error_frames
+            ));
+        }
+        if let Some(e) = report.errors_unseen {
+            out(&format!(
+                "{}: error frames can't be read ({e}), so a bus-off wouldn't be seen",
+                report.bus
             ));
         }
         for d in &report.drives {
@@ -109,12 +120,14 @@ mod linux {
     fn to_json(report: &BusReport) -> Value {
         json!({
             "bus": report.bus,
-            "fault": report.fault.map(|f| f.to_string()),
+            "fault": report.fault.map(|f| json!({"kind": f.name(), "detail": f.to_string()})),
             "error_frames": report.error_frames,
+            "bus_off": report.bus_off,
+            "errors_unseen": report.errors_unseen.map(|e| e.to_string()),
             "drives": report.drives.iter().map(|d| json!({
                 "id": d.record.id.get(),
                 "joint": d.joint,
-                "outcome": format!("{:?}", d.outcome),
+                "outcome": d.outcome.name(),
                 "ok": d.outcome.ok(),
                 "disables": d.record.disables,
                 "reset_ms": ms_json(d.record.reset),
@@ -133,7 +146,8 @@ mod linux {
             }
         };
         say(&format!("build {REVISION}"));
-        // Held until the process ends, so a runtime can't start while the Disables go out.
+        // Held until the process ends, so a runtime using this path can't start while the Disables go out (unless the
+        // file is missing, below).
         let _claim = match claim(&args.lock) {
             Ok(c) => Some(c),
             Err(e @ LockError::Held(_)) => {
@@ -148,7 +162,9 @@ mod linux {
                 ));
                 return ExitCode::from(REFUSED);
             }
-            // No runtime using this path has run: nothing else is on the bus to send alongside.
+            // No runtime using this path is running, so nothing else is on the bus now. One started during the stop
+            // would make the file and take its lock unopposed; under systemd that can't happen, since the file exists
+            // through ExecStopPost and the next start waits for it to end.
             Err(e @ LockError::Missing(_)) => {
                 say(&format!("{e}; going on"));
                 None
@@ -167,7 +183,6 @@ mod linux {
         let targets = targets(&skeleton);
         if targets.is_empty() {
             say("no joint is wired to a bus; nothing to send");
-            return ExitCode::SUCCESS;
         }
         let reports = disable(&targets);
         let failed = reports

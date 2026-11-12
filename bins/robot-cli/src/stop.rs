@@ -76,6 +76,19 @@ pub enum BusFault {
     Read(OsError),
 }
 
+impl BusFault {
+    /// A stable name for machine-read output (`--json`).
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Open(_) => "open",
+            Self::Spawn(_) => "spawn",
+            Self::Write(_) => "write",
+            Self::Read(_) => "read",
+        }
+    }
+}
+
 /// What became of one drive.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Outcome {
@@ -84,7 +97,8 @@ pub enum Outcome {
     /// Nothing read from it (off, unpowered or not wired) on a bus that reported no errors: Disables and reporting off
     /// were sent to it anyway.
     Silent,
-    /// Nothing read from it, and the bus sent error frames: the silence may be the bus's, not the drive's.
+    /// Nothing read from it, and the bus went bus-off or its error frames couldn't be asked for: the silence may be the
+    /// bus's, not the drive's.
     SilentOnFaultyBus,
     /// It answered, but wasn't in Reset when last read.
     NotReset,
@@ -106,12 +120,31 @@ impl Outcome {
     }
 }
 
+impl Outcome {
+    /// A stable name for machine-read output (`--json`).
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Stopped => "stopped",
+            Self::Silent => "silent",
+            Self::SilentOnFaultyBus => "silent_on_faulty_bus",
+            Self::NotReset => "not_reset",
+            Self::StillReporting => "still_reporting",
+            Self::WatchCut => "watch_cut",
+            Self::QueueFull => "queue_full",
+            Self::BusFailed => "bus_failed",
+        }
+    }
+}
+
 impl fmt::Display for Outcome {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             Self::Stopped => "stopped",
             Self::Silent => "silent (never answered)",
-            Self::SilentOnFaultyBus => "FAILED: never answered, and the bus sent error frames",
+            Self::SilentOnFaultyBus => {
+                "FAILED: never answered, and the bus went bus-off (or its errors couldn't be read)"
+            }
             Self::NotReset => "FAILED: answered, not in Reset when last read",
             Self::StillReporting => "FAILED: still reporting after reporting off",
             Self::WatchCut => "FAILED: the stop ended before reporting off could be checked",
@@ -139,6 +172,8 @@ pub struct DriveStop {
     /// The last report (type 24) read from it.
     pub last_report: Option<Duration>,
     next_disable: Duration,
+    /// Reporting offs sent since its schedule last began: a Reset withdrawn after a reporting off starts it again.
+    tries: u8,
 }
 
 impl DriveStop {
@@ -152,6 +187,7 @@ impl DriveStop {
             reporting_off: None,
             last_report: None,
             next_disable: Duration::ZERO,
+            tries: 0,
         }
     }
 
@@ -175,7 +211,7 @@ impl DriveStop {
     fn settled(&self, now: Duration) -> bool {
         self.reporting_off
             .is_some_and(|off| now >= off + REPORT_WATCH)
-            && (!self.still_reporting() || self.reporting_offs >= REPORTING_OFF_TRIES)
+            && (!self.still_reporting() || self.tries >= REPORTING_OFF_TRIES)
     }
 }
 
@@ -183,10 +219,16 @@ impl DriveStop {
 #[derive(Clone, Debug)]
 pub struct BusStop {
     drives: Vec<DriveStop>,
-    /// The bus failed. Sending stops on any fault but a read fault.
-    fault: Option<BusFault>,
-    /// Error frames read.
+    /// Nothing more is sent: the bus couldn't be opened, its thread started, or a write failed.
+    send_fault: Option<BusFault>,
+    /// Nothing more is read; frames still go.
+    read_fault: Option<OsError>,
+    /// Error frames read, of any class.
     error_frames: u32,
+    /// A bus-off error frame was read (`CAN_ERR_BUSOFF`): the class the runtime latches on (can.md, Errors and bus-off).
+    bus_off: bool,
+    /// The socket couldn't be asked for error frames, so a bus-off wouldn't be seen.
+    errors_unseen: Option<OsError>,
 }
 
 impl BusStop {
@@ -195,14 +237,18 @@ impl BusStop {
     pub fn new(ids: impl IntoIterator<Item = DeviceId>) -> Self {
         Self {
             drives: ids.into_iter().map(DriveStop::new).collect(),
-            fault: None,
+            send_fault: None,
+            read_fault: None,
             error_frames: 0,
+            bus_off: false,
+            errors_unseen: None,
         }
     }
 
     /// A frame read at `now`. Only frames from this stop's drives count, and only once a Disable has gone to that
     /// drive. Any frame from it means it answered; a status, report or version reply also gives its mode: Reset
-    /// confirms it, and anything else withdraws a confirmation already made.
+    /// confirms it, and anything else withdraws a confirmation already made. A withdrawn drive gets Disables again
+    /// (while the window lasts) and its reporting off schedule starts over, since the new Disables bring a new silence.
     pub fn heard(&mut self, now: Duration, inbound: &Inbound) {
         let (device, mode, report) = match inbound {
             Inbound::Status(s) => (s.header.device, Some(s.header.mode), false),
@@ -227,36 +273,69 @@ impl BusStop {
             Some(Mode::Reset) => {
                 drive.reset.get_or_insert(now);
             }
-            Some(Mode::Run | Mode::Calibration) => drive.reset = None,
-            None => {}
+            Some(Mode::Run | Mode::Calibration) if drive.reset.is_some() => {
+                drive.reset = None;
+                drive.reporting_off = None;
+                drive.tries = 0;
+            }
+            _ => {}
         }
     }
 
-    /// An error frame was read: a drive that never answers may be behind a faulty bus rather than off.
-    pub const fn heard_error_frame(&mut self) {
+    /// An error frame was read; `bus_off` when it carries the bus-off class. Only bus-off makes a silent drive count as
+    /// behind a faulty bus: warning, passive and ACK errors are what a bus with no powered drive on it sends.
+    pub const fn heard_error_frame(&mut self, bus_off: bool) {
         self.error_frames = self.error_frames.saturating_add(1);
+        self.bus_off |= bus_off;
     }
 
-    /// The bus failed. The first fault is kept.
+    /// The socket couldn't be asked for error frames: a bus-off wouldn't be seen, so a silent drive can't be told from
+    /// one behind a dead bus.
+    pub const fn errors_unseen(&mut self, e: OsError) {
+        self.errors_unseen = Some(e);
+    }
+
+    /// The bus failed. A read fault ends the reads and lets frames go on; any other ends the sending. The first of each
+    /// is kept.
     pub fn fail(&mut self, fault: BusFault) {
-        self.fault.get_or_insert(fault);
+        if let BusFault::Read(e) = fault {
+            self.read_fault.get_or_insert(e);
+        } else {
+            self.send_fault.get_or_insert(fault);
+        }
     }
 
-    /// Whether anything more may be sent: not after a fault, but for a read fault, under which frames still go.
-    fn sending(&self) -> bool {
-        matches!(self.fault, None | Some(BusFault::Read(_)))
+    /// Whether anything more may be sent: until a fault other than a read fault.
+    #[must_use]
+    pub const fn sending(&self) -> bool {
+        self.send_fault.is_none()
+    }
+
+    /// Whether the socket is still read: until a read fault.
+    #[must_use]
+    pub const fn reading(&self) -> bool {
+        self.read_fault.is_none()
     }
 
     /// Hand every frame due at `now` to `send`, Disables to every drive before any reporting off. A full queue leaves
     /// the frame due for the next wake; any other failure fails the bus and nothing more is sent.
     pub fn step(&mut self, now: Duration, send: &mut dyn FnMut(Frame) -> Result<(), SendError>) {
-        for i in 0..self.drives.len() {
-            if !self.sending() {
-                return;
-            }
-            let Some(drive) = self.drives.get_mut(i) else {
-                return;
-            };
+        if !self.sending() {
+            return;
+        }
+        let failed = self.send_due(now, send);
+        if let Some(e) = failed {
+            self.fail(BusFault::Write(e));
+        }
+    }
+
+    /// `step`'s sending: the OS error that failed a write, if one did, after which nothing more is sent.
+    fn send_due(
+        &mut self,
+        now: Duration,
+        send: &mut dyn FnMut(Frame) -> Result<(), SendError>,
+    ) -> Option<OsError> {
+        for drive in &mut self.drives {
             if drive.reset.is_some() || now >= DISABLE_WINDOW || now < drive.next_disable {
                 continue;
             }
@@ -266,32 +345,28 @@ impl BusStop {
                     drive.next_disable = now + RESEND;
                 }
                 Err(SendError::Full) => {}
-                Err(SendError::Failed(e)) => self.fail(BusFault::Write(e)),
+                Err(SendError::Failed(e)) => return Some(e),
             }
         }
-        for i in 0..self.drives.len() {
-            if !self.sending() {
-                return;
-            }
-            let Some(drive) = self.drives.get_mut(i) else {
-                return;
-            };
+        for drive in &mut self.drives {
             let due = match drive.reporting_off {
                 None => now >= drive.reporting_off_due(),
-                Some(_) => drive.still_reporting() && drive.reporting_offs < REPORTING_OFF_TRIES,
+                Some(_) => drive.still_reporting() && drive.tries < REPORTING_OFF_TRIES,
             };
             if !due {
                 continue;
             }
             match send(encode::active_reporting(drive.id, Reporting::Off)) {
                 Ok(()) => {
-                    drive.reporting_offs += 1;
+                    drive.reporting_offs = drive.reporting_offs.saturating_add(1);
+                    drive.tries += 1;
                     drive.reporting_off = Some(now);
                 }
                 Err(SendError::Full) => {}
-                Err(SendError::Failed(e)) => self.fail(BusFault::Write(e)),
+                Err(SendError::Failed(e)) => return Some(e),
             }
         }
+        None
     }
 
     /// The next time after `now` that something falls due, if the stop isn't over. The caller wakes then or on a frame.
@@ -334,20 +409,32 @@ impl BusStop {
             .collect()
     }
 
-    /// How the bus failed, if it did.
+    /// How the bus failed, if it did: the fault that ended the sending, else the one that ended the reads.
     #[must_use]
-    pub const fn fault(&self) -> Option<BusFault> {
-        self.fault
+    pub fn fault(&self) -> Option<BusFault> {
+        self.send_fault.or(self.read_fault.map(BusFault::Read))
     }
 
-    /// Error frames read.
+    /// Error frames read, of any class.
     #[must_use]
     pub const fn error_frames(&self) -> u32 {
         self.error_frames
     }
 
+    /// Whether a bus-off error frame was read.
+    #[must_use]
+    pub const fn bus_off(&self) -> bool {
+        self.bus_off
+    }
+
+    /// Why the socket couldn't be asked for error frames, if it couldn't.
+    #[must_use]
+    pub const fn errors_unseen_by(&self) -> Option<OsError> {
+        self.errors_unseen
+    }
+
     fn outcome(&self, d: &DriveStop, now: Duration) -> Outcome {
-        if self.fault.is_some() {
+        if self.fault().is_some() {
             return Outcome::BusFailed;
         }
         if d.disables == 0 || d.reporting_offs == 0 {
@@ -360,254 +447,13 @@ impl BusStop {
             (Some(_), _) if !d.settled(now) => Outcome::WatchCut,
             (Some(_), _) => Outcome::Stopped,
             (None, true) => Outcome::NotReset,
-            (None, false) if self.error_frames > 0 => Outcome::SilentOnFaultyBus,
+            (None, false) if self.bus_off || self.errors_unseen.is_some() => {
+                Outcome::SilentOnFaultyBus
+            }
             (None, false) => Outcome::Silent,
         }
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use std::time::Duration;
-
-    use robstride::{DeviceId, Frame, Inbound, decode, drive};
-
-    use super::{
-        BusFault, BusStop, DISABLE_WINDOW, END, OsError, Outcome, REPORT_GRACE,
-        REPORTING_OFF_TRIES, RESEND, SILENCE, SendError,
-    };
-
-    const MS: Duration = Duration::from_millis(1);
-
-    /// Frames the stop sent, each with its time in milliseconds: `('D', n)` a Disable, `('R', n)` reporting off.
-    type Sent = [(u64, (char, u8))];
-    /// What `run` returns: every frame sent, and when the stop ended.
-    type Run = (Vec<(u64, (char, u8))>, Duration);
-
-    fn id(n: u8) -> DeviceId {
-        DeviceId::new(u64::from(n)).unwrap()
-    }
-
-    fn ms(d: Duration) -> u64 {
-        u64::try_from(d.as_millis()).unwrap()
-    }
-
-    /// A status (or report) from drive `n`: type 2 (or 24), mode in ID bits 23..22, the drive in bits 15..8.
-    fn from(n: u8, run: bool, report: bool) -> Inbound {
-        let kind: u32 = if report { 24 } else { 2 };
-        let mode: u32 = if run { 2 } else { 0 };
-        decode(
-            (kind << 24) | (mode << 22) | (u32::from(n) << 8) | 0xFD,
-            &[0x80, 0, 0x80, 0, 0x80, 0, 0, 0xFA],
-        )
-        .unwrap()
-    }
-
-    fn what(frame: Frame) -> (char, u8) {
-        let host = drive::command(frame.id(), &frame.data()).unwrap().unwrap();
-        let kind = match host.command {
-            drive::Command::Disable => 'D',
-            drive::Command::Reporting(robstride::Reporting::Off) => 'R',
-            _ => '?',
-        };
-        assert_ne!(kind, '?', "the stop sent {:?}", host.command);
-        (kind, host.target.get())
-    }
-
-    /// Run `stop` a millisecond at a time to its end, `answer` giving the drives' frames at each millisecond from the
-    /// frames sent so far. Returns every frame sent and when the stop ended.
-    fn run(
-        stop: &mut BusStop,
-        answer: &dyn Fn(u64, &Sent) -> Vec<Inbound>,
-        send: &dyn Fn(u64, (char, u8)) -> Result<(), SendError>,
-    ) -> Run {
-        let mut log = Vec::new();
-        let mut now = Duration::ZERO;
-        while !stop.done(now) {
-            for inbound in answer(ms(now), &log) {
-                stop.heard(now, &inbound);
-            }
-            let mut out = Vec::new();
-            stop.step(now, &mut |f| {
-                let w = what(f);
-                send(ms(now), w).map(|()| out.push((ms(now), w)))
-            });
-            log.extend(out);
-            now += MS;
-        }
-        assert!(now <= END + MS, "the stop ran past its end: {now:?}");
-        (log, now)
-    }
-
-    fn times(sent: &Sent, frame: (char, u8)) -> Vec<u64> {
-        sent.iter()
-            .filter(|(_, w)| *w == frame)
-            .map(|(t, _)| *t)
-            .collect()
-    }
-
-    fn outcomes(stop: &BusStop, end: Duration) -> Vec<Outcome> {
-        stop.outcomes(end).into_iter().map(|(_, o)| o).collect()
-    }
-
-    /// Guards: safety - the independent stop's sequence (PLAN item 2, Stop): a Disable to every drive at once, sent
-    /// again each tick to a drive not read in Reset for 100 ms; reporting off only after the post-Disable silence (54 ms
-    /// after the Reset read, 150 ms for a drive never read in Reset); and the outcome is what was read: a drive read in
-    /// Reset is stopped, one that never answered is silent, one that answered only in Run, or went back to Run after a
-    /// Reset, needs a person.
-    #[test]
-    fn disables_go_to_every_drive_until_reset_then_reporting_off_after_the_silence() {
-        // 11 answers each Disable 1 ms later in Reset; 12 never answers; 13 answers each Disable in Run; 14 answers in
-        // Reset, then reports in Run at 30 ms (another controller enabled it).
-        let answer = |now: u64, sent: &Sent| {
-            let mut out = Vec::new();
-            for (t, w) in sent {
-                if *t + 1 == now {
-                    match w {
-                        ('D', 11 | 14) => out.push(from(w.1, false, false)),
-                        ('D', 13) => out.push(from(13, true, false)),
-                        _ => {}
-                    }
-                }
-            }
-            if now == 30 {
-                out.push(from(14, true, true));
-            }
-            out
-        };
-        let mut stop = BusStop::new([id(11), id(12), id(13), id(14)]);
-        let (sent, end) = run(&mut stop, &answer, &|_, _| Ok(()));
-
-        // Every drive's first Disable goes in the first step, before any reporting off.
-        let first: Vec<(char, u8)> = sent.iter().take(4).map(|(_, w)| *w).collect();
-        assert_eq!(first, [('D', 11), ('D', 12), ('D', 13), ('D', 14)]);
-        let every_tick: Vec<u64> = (0..ms(DISABLE_WINDOW)).step_by(4).collect();
-        assert_eq!(times(&sent, ('D', 11)), [0]);
-        assert_eq!(times(&sent, ('D', 12)), every_tick);
-        assert_eq!(times(&sent, ('D', 13)), every_tick);
-        // 14's Disables start again once it is seen in Run, and it is confirmed again a tick later.
-        assert_eq!(times(&sent, ('D', 14)), [0, 30]);
-        assert_eq!(times(&sent, ('R', 11)), [ms(MS + SILENCE + RESEND)]);
-        assert_eq!(times(&sent, ('R', 12)), [ms(DISABLE_WINDOW + SILENCE)]);
-        assert_eq!(times(&sent, ('R', 13)), [ms(DISABLE_WINDOW + SILENCE)]);
-        assert_eq!(times(&sent, ('R', 14)), [ms(31 * MS + SILENCE + RESEND)]);
-        assert_eq!(
-            outcomes(&stop, end),
-            [
-                Outcome::Stopped,
-                Outcome::Silent,
-                Outcome::NotReset,
-                Outcome::Stopped
-            ]
-        );
-        assert!(stop.fault().is_none());
-    }
-
-    /// Guards: bug - drives left reporting by a faulted session flooded every later start, marengo
-    /// `docs/safety.md` "Reporting Off at exit (2026-10-04)": a drive still reporting after its reporting off gets it
-    /// again, at most `REPORTING_OFF_TRIES` times, and is reported as needing a person if it never stops; a report
-    /// already on its way when reporting off went doesn't count.
-    #[test]
-    fn reporting_off_is_sent_again_while_reports_keep_coming() {
-        // In Reset and reporting every 10 ms: 21 stops after its second reporting off, 22 never stops, and 23 stops
-        // after its first but sends one last report just inside the grace.
-        let answer = |now: u64, sent: &Sent| {
-            let mut out = Vec::new();
-            for (n, stops_after) in [(21, 2), (22, usize::MAX), (23, 1)] {
-                let offs = times(sent, ('R', n));
-                if now.is_multiple_of(10) && offs.len() < stops_after {
-                    out.push(from(n, false, true));
-                }
-                if n == 23
-                    && offs
-                        .first()
-                        .is_some_and(|off| now == off + ms(REPORT_GRACE) - 1)
-                {
-                    out.push(from(n, false, true));
-                }
-            }
-            out
-        };
-        let mut stop = BusStop::new([id(21), id(22), id(23)]);
-        let (sent, end) = run(&mut stop, &answer, &|_, _| Ok(()));
-        assert_eq!(times(&sent, ('R', 21)).len(), 2);
-        assert_eq!(
-            times(&sent, ('R', 22)).len(),
-            usize::from(REPORTING_OFF_TRIES)
-        );
-        assert_eq!(times(&sent, ('R', 23)).len(), 1);
-        assert_eq!(
-            outcomes(&stop, end),
-            [Outcome::Stopped, Outcome::StillReporting, Outcome::Stopped]
-        );
-    }
-
-    /// Guards: safety - a socket failure on one bus (PLAN item 6, `host.bus`): a full queue only delays a frame to the
-    /// next wake; any other write error fails the bus at once and sends nothing more on it; a read failure lets the
-    /// frames go on but confirms nothing; and a drive that never answers on a bus that sent error frames isn't taken
-    /// for one that is off. Each of these needs a person.
-    #[test]
-    fn socket_failures_and_error_frames_need_a_person() {
-        let echo = |now: u64, sent: &Sent| -> Vec<Inbound> {
-            sent.iter()
-                .filter(|(t, w)| *t + 1 == now && w.0 == 'D')
-                .map(|(_, w)| from(w.1, false, false))
-                .collect()
-        };
-        // The queue is full for the first 2 ms: every Disable goes at 2 ms, all at once.
-        let mut full = BusStop::new([id(11), id(12)]);
-        let (sent, end) = run(&mut full, &echo, &|now, _| {
-            if now < 2 {
-                Err(SendError::Full)
-            } else {
-                Ok(())
-            }
-        });
-        assert_eq!(times(&sent, ('D', 11)), [2]);
-        assert_eq!(times(&sent, ('D', 12)), [2]);
-        assert_eq!(outcomes(&full, end), [Outcome::Stopped, Outcome::Stopped]);
-
-        // The interface goes away on the second Disable of the first step: nothing more is sent, the stop is over.
-        let mut gone = BusStop::new([id(11), id(12)]);
-        let (sent, end) = run(&mut gone, &|_, _| Vec::new(), &|_, w| {
-            if w == ('D', 12) {
-                Err(SendError::Failed(OsError(19)))
-            } else {
-                Ok(())
-            }
-        });
-        assert_eq!(sent, [(0, ('D', 11))]);
-        assert_eq!(gone.fault(), Some(BusFault::Write(OsError(19))));
-        assert_eq!(
-            outcomes(&gone, end),
-            [Outcome::BusFailed, Outcome::BusFailed]
-        );
-
-        // Reads fail after 11 is confirmed: every frame still goes, and nothing on the bus counts as confirmed.
-        let mut deaf = BusStop::new([id(11), id(12)]);
-        let mut now = Duration::ZERO;
-        let mut sent = 0;
-        while !deaf.done(now) {
-            if now == MS {
-                deaf.heard(now, &from(11, false, false));
-                deaf.fail(BusFault::Read(OsError(5)));
-            }
-            deaf.step(now, &mut |_| {
-                sent += 1;
-                Ok(())
-            });
-            now += MS;
-        }
-        assert_eq!(sent, 1 + ms(DISABLE_WINDOW) / 4 + 2);
-        assert_eq!(
-            outcomes(&deaf, now),
-            [Outcome::BusFailed, Outcome::BusFailed]
-        );
-
-        // Error frames on the bus: a silent drive isn't reported as off.
-        let mut errors = BusStop::new([id(11)]);
-        errors.heard_error_frame();
-        let (_, end) = run(&mut errors, &|_, _| Vec::new(), &|_, _| Ok(()));
-        assert_eq!(outcomes(&errors, end), [Outcome::SilentOnFaultyBus]);
-    }
-}
+mod tests;

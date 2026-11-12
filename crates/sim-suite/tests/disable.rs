@@ -154,7 +154,7 @@ struct Disabled {
     stderr: String,
     /// Each drive's outcome by (bus, ID), from the JSON on stdout (empty when it refused).
     outcomes: BTreeMap<(String, u8), String>,
-    /// Each bus's fault, if any.
+    /// Each bus's fault kind, if any.
     faults: BTreeMap<String, Option<String>>,
     took: Duration,
 }
@@ -184,7 +184,11 @@ fn disable(skeleton: &Path, lock: &Path) -> Disabled {
             let name = bus.get("bus").unwrap().as_str().unwrap().to_owned();
             faults.insert(
                 name.clone(),
-                bus.get("fault").unwrap().as_str().map(str::to_owned),
+                bus.get("fault")
+                    .unwrap()
+                    .get("kind")
+                    .and_then(serde_json::Value::as_str)
+                    .map(str::to_owned),
             );
             for d in bus.get("drives").unwrap().as_array().unwrap() {
                 let id = u8::try_from(d.get("id").unwrap().as_u64().unwrap()).unwrap();
@@ -384,9 +388,9 @@ fn after_kill_9_disable_leaves_every_drive_in_reset_with_reporting_off() {
         assert_eq!(done.faults.get(*name), Some(&None), "{done:?}");
         for n in wired {
             let want = if silent.contains(&n) {
-                "Silent"
+                "silent"
             } else {
-                "Stopped"
+                "stopped"
             };
             assert_eq!(
                 done.outcomes
@@ -401,7 +405,7 @@ fn after_kill_9_disable_leaves_every_drive_in_reset_with_reporting_off() {
 
 /// Guards: safety - a lost bus never delays stops on healthy buses (PLAN item 2, Stop; PLAN item 6, `host.bus`): with
 /// one of the skeleton's buses missing, `disable` still stops every drive on the other on time, reports the missing
-/// bus's drives as needing a person and exits with failure.
+/// bus's drives as needing a person and exits with failure. And a lock it can't check makes it refuse, sending nothing.
 #[test]
 fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
     let text = std::fs::read_to_string(skeleton_path()).unwrap();
@@ -417,6 +421,8 @@ fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
     let dir = scratch("disable-missing");
     let path = dir.join("skeleton.yaml");
     std::fs::write(&path, &skeleton_text).unwrap();
+    // A lock that can't be checked (a path under a regular file) refuses before any socket is opened.
+    let unknown = disable(&path, &path.join("runtime.lock"));
     let stop = AtomicBool::new(false);
     let done = std::thread::scope(|scope| {
         let _end = End(&stop);
@@ -428,12 +434,15 @@ fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
     });
     let _ = std::fs::remove_dir_all(&dir);
 
+    assert_eq!(unknown.status.code(), Some(2), "{unknown:?}");
+    assert!(unknown.stderr.contains("can't tell"), "{unknown:?}");
+    assert!(unknown.outcomes.is_empty(), "{unknown:?}");
     assert_eq!(done.status.code(), Some(1), "{done:?}");
     assert!(done.took < Duration::from_secs(1), "{done:?}");
     assert!(
-        done.faults.get("can9").is_some_and(|f| f
-            .as_deref()
-            .is_some_and(|f| f.starts_with("can't open the interface"))),
+        done.faults
+            .get("can9")
+            .is_some_and(|f| f.as_deref().is_some_and(|f| f == "open")),
         "{done:?}"
     );
     assert_eq!(done.faults.get("can1"), Some(&None), "{done:?}");
@@ -442,7 +451,7 @@ fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
             done.outcomes
                 .get(&("can9".to_owned(), n))
                 .map(String::as_str),
-            Some("BusFailed"),
+            Some("bus_failed"),
             "{done:?}"
         );
     }
@@ -451,7 +460,7 @@ fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
             done.outcomes
                 .get(&("can1".to_owned(), n))
                 .map(String::as_str),
-            Some("Stopped"),
+            Some("stopped"),
             "{done:?}"
         );
     }
