@@ -33,7 +33,7 @@ const UID: Uid = Uid([0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]);
 
 /// One commissioned RS03 on `BUS`, every fact and cap set.
 const SKELETON: &str = "\
-schema: 1
+schema: 2
 name: sim_suite
 power:
   source: bench_24v
@@ -43,7 +43,7 @@ buses:
   can0:
     bitrate_bps: 1000000
     sample_point: 0.75
-    driver: mcp251xfd
+    driver: sim_only
     adapter_serial: null
 limbs:
   left_arm:

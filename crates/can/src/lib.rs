@@ -30,7 +30,9 @@ mod timing;
 mod types;
 
 #[cfg(target_os = "linux")]
-pub use bus::{BusConfig, BusExit, BusLinks, BusRunError, Spawned, bus_info, spawn};
+pub use bus::{
+    BusConfig, BusExit, BusLinks, BusRunError, Spawned, bus_info, check_interface, spawn,
+};
 
 pub use error_frame::{BusError, classify};
 #[cfg(target_os = "linux")]

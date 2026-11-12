@@ -25,12 +25,13 @@ pub(crate) fn timing() -> Timing {
     }
 }
 
-/// A bus interface as a skeleton describes one; on `vcan` the bus layer takes the interface as it is.
+/// A bus interface as a skeleton describes one. The bus layer takes `vcan` as it is; the driver is one no real interface
+/// has, so a test that forgot `ensure_vcan` is still refused on a real bus.
 pub(crate) fn interface() -> can::InterfaceSpec {
     can::InterfaceSpec {
         bitrate_bps: 1_000_000,
         sample_point: 0.75,
-        driver: "mcp251xfd".to_owned(),
+        driver: "sim_only".to_owned(),
     }
 }
 

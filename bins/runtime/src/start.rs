@@ -36,9 +36,6 @@ const REQUESTS: usize = 64;
 /// spawn takes far less than a period), and short enough that nobody waits on it. A thread that starts late anyway runs
 /// from the tick in progress and counts the ones it missed.
 const ORIGIN_PERIODS: u64 = 4;
-/// `vcan` for every session: the bus layer refuses any other interface until the real adapter is supported (PLAN step
-/// 8).
-const STAGE: Stage = Stage::Vcan;
 
 /// How the runtime is started.
 #[derive(Clone, Debug)]
@@ -208,7 +205,7 @@ impl Runtime {
             .iter()
             .map(|p| can::bus_info(&p.name, p.bitrate_bps))
             .collect();
-        let session = start_session(config, &skeleton_ref, &sockets)?;
+        let session = start_session(config, stage(&plans)?, &skeleton_ref, &sockets)?;
         let session_dir = session.dir().to_path_buf();
         let (recording, recorders) = Recording::new(session, RING_BATCHES);
         let epoch = recording.epoch();
@@ -418,8 +415,21 @@ impl Threads {
 }
 
 /// The session, recorded with what the runtime starts from.
+/// Every bus's interface, checked before the session exists, so a refused start leaves no session behind and a run on
+/// any real bus is recorded as a bench session, never as sim.
+fn stage(plans: &[BusPlan]) -> Result<Stage, BusRunError> {
+    let mut stage = Stage::Vcan;
+    for p in plans {
+        if let can::Interface::Real(_) = can::check_interface(&p.name, &p.interface)? {
+            stage = Stage::Bench;
+        }
+    }
+    Ok(stage)
+}
+
 fn start_session(
     config: &RuntimeConfig,
+    stage: Stage,
     skeleton: &SkeletonRef,
     sockets: &[BusInfo],
 ) -> Result<Session, RecordError> {
@@ -428,7 +438,7 @@ fn start_session(
         SessionInfo {
             git_revision: config.git_revision.clone(),
             operator: config.operator.clone(),
-            stage: STAGE,
+            stage,
             skeleton: skeleton.clone(),
             buses: sockets.to_vec(),
         },

@@ -139,7 +139,7 @@ line to STATUS.md the same day. The runtime never writes it; tools that teach li
 Shape (the builder may adjust field names; the content is required):
 
 ```yaml
-schema: 1
+schema: 2
 name: roark                     # the only place the robot's name appears
 power: { source: bench_24v, vbus_min_v: 22, vbus_max_v: 26 }
 buses:

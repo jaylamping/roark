@@ -19,7 +19,7 @@ pub(crate) mod preflight;
 /// torque cap null; `arm_joint_three` has no bus yet; `arm_joint_four` has every cap, a direction, a zero and hard
 /// limits, and no UID.
 pub(crate) const FIXTURE: &str = "\
-schema: 1
+schema: 2
 name: test_robot
 power:
   source: bench_24v

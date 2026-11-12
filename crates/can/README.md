@@ -154,10 +154,12 @@ the tick that stops on them) plus the write slack must stay under that timeout. 
 the slowest rate: three misses, the stopping tick and a quarter-period send window, 4.25 periods, so at least 86 Hz.
 The Linux shell (`spawn`) owns the socket. Before it opens one it checks the interface (`interface`, can.md section 2):
 `vcan` is the simulator's bus and is taken as it is; a CAN controller runs only if it is up, its driver, bitrate and
-sample point are the skeleton's (`InterfaceSpec`), its state is error-active or error-warning, and loopback, listen-only
-and presume-ack are off, since each makes a frame look sent when nothing reached the wire or was acknowledged. Anything
+sample point are the skeleton's (`InterfaceSpec`), its controller isn't bus-off, stopped or asleep (error-passive is taken:
+frames sent while the drives were unpowered leave it there, and the bus doesn't stop for it mid-run either), and the
+controller modes loopback, listen-only and presume-ack are off, since each makes a frame look sent when nothing reached the wire or was acknowledged. Anything
 else, or a report it can't read, is refused with every mismatch named (`BusRunError::Interface`), and the interface as
-checked goes back in `Spawned::interface` for the startup log. The runtime doesn't set an interface up; `deploy/` link
+checked goes back in `Spawned::interface` for the startup log. `check_interface` does the same check without opening
+anything, for the runtime to label its session before it starts. The runtime doesn't set an interface up; `deploy/` link
 setup does. The socket takes every ID (no kernel filter), and reads each
 frame with its kernel timestamp, its direction and the overflow count in one `recvmsg`. `bus_info` is the session's
 record of that socket, from the same constants `open` applies, and `spawn` returns the receive buffer the kernel

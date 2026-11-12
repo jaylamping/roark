@@ -31,7 +31,7 @@ pub struct RealInterface {
     pub bitrate_bps: u32,
     /// Sample point as `ip` prints it (three decimals).
     pub sample_point: String,
-    /// The controller state (`ERROR-ACTIVE` or `ERROR-WARNING`).
+    /// The controller state (`ERROR-ACTIVE`, `ERROR-WARNING` or `ERROR-PASSIVE`).
     pub state: String,
     /// The controller modes switched on (`ip`'s `ctrlmode`), none of them one the check refuses.
     pub modes: Vec<String>,
@@ -108,8 +108,8 @@ pub enum Mismatch {
         /// The interface's, as `ip` prints it.
         found: Option<String>,
     },
-    /// The controller is error-passive, bus-off, stopped or asleep: it can't carry the bus's traffic as it stands.
-    #[error("controller state {found} (restart the link to clear its error counters)")]
+    /// The controller is bus-off, stopped or asleep: it can't carry the bus's traffic as it stands.
+    #[error("controller state {found} (restart the link: ip link set <bus> down, then up)")]
     State {
         /// The state `ip` reports.
         found: String,
@@ -142,9 +142,11 @@ fn join(mismatches: &[Mismatch]) -> String {
         .join("; ")
 }
 
-/// States a controller may start a bus in. Error-warning means its counters passed 96 but it still sends and
-/// acknowledges as normal; anything worse can't carry the bus.
-const RUNNABLE_STATES: [&str; 2] = ["ERROR-ACTIVE", "ERROR-WARNING"];
+/// States a controller may start a bus in. Error-warning and error-passive still send and acknowledge; a controller
+/// whose frames went unacknowledged while the drives were unpowered (an E-stop, `robot-cli disable` on a dead bus) sits
+/// in error-passive until frames are acknowledged again, so refusing it would refuse every restart until someone resets
+/// the link. The bus layer doesn't stop for error-passive mid-run either. Bus-off, stopped and asleep carry nothing.
+const RUNNABLE_STATES: [&str; 3] = ["ERROR-ACTIVE", "ERROR-WARNING", "ERROR-PASSIVE"];
 
 /// Controller modes that make frames look sent when nothing reached the wire or was acknowledged: loopback (frames
 /// never leave the controller), listen-only (it never sends or acknowledges) and presume-ack (a missing receiver
@@ -173,9 +175,17 @@ pub(crate) fn check_bus(bus: &str, spec: &InterfaceSpec) -> Result<Interface, Re
             String::from_utf8_lossy(&out.stderr).trim().to_owned(),
         ));
     }
-    let driver = std::fs::read_link(Path::new("/sys/class/net").join(bus).join("device/driver"))
-        .ok()
-        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()));
+    // A virtual interface has no device, so no driver link; any other failure to read it is reported.
+    let driver =
+        match std::fs::read_link(Path::new("/sys/class/net").join(bus).join("device/driver")) {
+            Ok(p) => p.file_name().map(|n| n.to_string_lossy().into_owned()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+            Err(e) => {
+                return Err(Refusal::Unreadable(format!(
+                    "can't read {bus}'s driver from sysfs: {e}"
+                )));
+            }
+        };
     check(
         &String::from_utf8_lossy(&out.stdout),
         driver.as_deref(),
@@ -239,12 +249,7 @@ pub(crate) fn check(
             found: bitrate,
         });
     }
-    // `ip` prints the sample point as a string ("0.750"); take a number too, in case a version prints one.
-    let sample_point = timing.and_then(|t| t.get("sample_point")).and_then(|v| {
-        v.as_str()
-            .map(str::to_owned)
-            .or_else(|| v.as_f64().map(|n| format!("{n:.3}")))
-    });
+    let sample_point = sample_point(timing);
     let sample_matches = sample_point
         .as_deref()
         .and_then(|s| s.parse::<f64>().ok())
@@ -265,16 +270,7 @@ pub(crate) fn check(
             found: state.to_owned(),
         });
     }
-    let modes: Vec<String> = data
-        .and_then(|d| d.get("ctrlmode"))
-        .and_then(Value::as_array)
-        .map(|m| {
-            m.iter()
-                .filter_map(Value::as_str)
-                .map(str::to_owned)
-                .collect()
-        })
-        .unwrap_or_default();
+    let modes = modes(data)?;
     for mode in modes.iter().filter(|m| REFUSED_MODES.contains(&m.as_str())) {
         wrong.push(Mismatch::Mode { mode: mode.clone() });
     }
@@ -282,9 +278,12 @@ pub(crate) fn check(
     if !wrong.is_empty() {
         return Err(Refusal::Mismatch(wrong));
     }
+    // What the kernel reported; it matched the skeleton to get here.
     Ok(Interface::Real(RealInterface {
-        driver: spec.driver.clone(),
-        bitrate_bps: spec.bitrate_bps,
+        driver: driver.unwrap_or_default().to_owned(),
+        bitrate_bps: bitrate
+            .and_then(|b| u32::try_from(b).ok())
+            .unwrap_or_default(),
         sample_point: sample_point.unwrap_or_default(),
         state: state.to_owned(),
         modes,
@@ -294,6 +293,32 @@ pub(crate) fn check(
         clock_hz: data.and_then(|d| d.get("clock")).and_then(Value::as_u64),
         txqueuelen: link.get("txqlen").and_then(Value::as_u64),
     }))
+}
+
+/// The sample point as `ip` prints it: a string ("0.750"), or a number in case a version prints one.
+fn sample_point(timing: Option<&Value>) -> Option<String> {
+    timing.and_then(|t| t.get("sample_point")).and_then(|v| {
+        v.as_str()
+            .map(str::to_owned)
+            .or_else(|| v.as_f64().map(|n| format!("{n:.3}")))
+    })
+}
+
+/// The controller modes switched on. `ip` leaves `ctrlmode` out when no mode is on; one in any other shape than a list
+/// of names can't be read.
+fn modes(data: Option<&Value>) -> Result<Vec<String>, Refusal> {
+    let Some(m) = data.and_then(|d| d.get("ctrlmode")) else {
+        return Ok(Vec::new());
+    };
+    match m
+        .as_array()
+        .map(|a| a.iter().map(Value::as_str).collect::<Option<Vec<_>>>())
+    {
+        Some(Some(names)) => Ok(names.into_iter().map(str::to_owned).collect()),
+        _ => Err(Refusal::Unreadable(format!(
+            "ip's ctrlmode isn't a list of names: {m}"
+        ))),
+    }
 }
 
 #[cfg(test)]
@@ -460,15 +485,13 @@ mod tests {
                 }]),
             ),
             (
-                "error-passive",
+                "error-passive still carries the bus (frames unacknowledged while the drives were off)",
                 report(set(
                     &["linkinfo", "info_data", "state"],
                     json!("ERROR-PASSIVE"),
                 )),
                 mcp,
-                Err(vec![Mismatch::State {
-                    found: "ERROR-PASSIVE".to_owned(),
-                }]),
+                Ok(()),
             ),
             (
                 "listen-only and presume-ack",
@@ -512,6 +535,32 @@ mod tests {
             };
             assert_eq!(got, Some(want), "{name}");
         }
+        // What passes is what the kernel reported.
+        assert_eq!(
+            check(&report(|_| {}), mcp, &spec()),
+            Ok(Interface::Real(RealInterface {
+                driver: "mcp251xfd".to_owned(),
+                bitrate_bps: 1_000_000,
+                sample_point: "0.750".to_owned(),
+                state: "ERROR-ACTIVE".to_owned(),
+                modes: vec!["BERR-REPORTING".to_owned()],
+                restart_ms: Some(0),
+                clock_hz: Some(40_000_000),
+                txqueuelen: Some(10),
+            }))
+        );
+        // Modes in a shape that can't be read can't be checked, so the interface isn't opened.
+        assert!(matches!(
+            check(
+                &report(set(
+                    &["linkinfo", "info_data", "ctrlmode"],
+                    json!("LOOPBACK")
+                )),
+                mcp,
+                &spec()
+            ),
+            Err(Refusal::Unreadable(_))
+        ));
         // The simulator's bus is taken as it is: no driver, no bit timing.
         let vcan = serde_json::json!([{ "ifname": "can1", "flags": ["NOARP", "UP", "LOWER_UP"],
             "linkinfo": { "info_kind": "vcan" } }]);

@@ -4,7 +4,7 @@ use robstride::{Amps, Model, NewtonMeters, RadPerSec};
 use skeleton::{Caps, Joint};
 
 const FIXTURE: &str = "\
-schema: 1
+schema: 2
 name: caps_robot
 power:
   source: bench_24v

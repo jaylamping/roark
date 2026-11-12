@@ -1,7 +1,7 @@
 # The robot: every limb, joint and drive (tenet 2). Schema and checks: crates/skeleton, PLAN item 1.
 # How this file is written and changed: conventions/skeleton.md. Values come from the hardware side, each with its source.
 # Unknown is null, and null refuses the motion that needs it (PLAN item 1). Placeholders never become numbers.
-schema: 1
+schema: 2
 name: roark
 power:
   source: bench_24v

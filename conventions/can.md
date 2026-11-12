@@ -70,8 +70,8 @@ Every socket is opened by one function that sets, and logs at startup, all of:
 
 Interface settings (bitrate, sample point, TX queue length, restart) are applied by `deploy/` link setup, not by the runtime,
 and the runtime **checks** them at start (driver, bitrate, sample point, state) against the skeleton and refuses to run a bus
-that doesn't match, naming every mismatch. It also refuses loopback, listen-only and presume-ack, which make a frame look
-sent when nothing reached the wire or was acknowledged; `vcan` is the simulator and has none of these to check. **Why:** bit timing left to defaults is the classic cause of an error-prone bus (kernel SocketCAN docs).
+that doesn't match, naming every mismatch. It also refuses the controller modes loopback, listen-only and presume-ack (not the
+socket's loopback option above), which make a frame look sent when nothing reached the wire or was acknowledged; `vcan` is the simulator and has none of these to check. **Why:** bit timing left to defaults is the classic cause of an error-prone bus (kernel SocketCAN docs).
 
 ### Transmit
 

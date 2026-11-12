@@ -190,6 +190,19 @@ pub struct BusLinks {
     pub exit: Arc<AtomicBool>,
 }
 
+/// Check `bus`'s interface against what the skeleton says (`spec`) without opening it: `vcan` is taken as it is, a real
+/// interface must match. [`spawn`] does the same before it opens the socket; a caller that must know before then (the
+/// runtime, to label its session real or simulated) checks first.
+///
+/// # Errors
+/// [`BusRunError::Interface`]: the kernel's report couldn't be read, or the interface doesn't match.
+pub fn check_interface(bus: &str, spec: &InterfaceSpec) -> Result<Interface, BusRunError> {
+    interface::check_bus(bus, spec).map_err(|source| BusRunError::Interface {
+        bus: bus.to_owned(),
+        source,
+    })
+}
+
 /// Open the bus and start its thread, named `bus-<name>`.
 ///
 /// # Errors
@@ -200,12 +213,7 @@ pub fn spawn(config: BusConfig, links: BusLinks) -> Result<Spawned, BusRunError>
             bus: config.name.clone(),
             source,
         })?;
-    let interface = interface::check_bus(&config.name, &config.interface).map_err(|source| {
-        BusRunError::Interface {
-            bus: config.name.clone(),
-            source,
-        }
-    })?;
+    let interface = check_interface(&config.name, &config.interface)?;
     let socket = open(&config.name)?;
     let receive_buffer_bytes =
         sys::receive_buffer(socket.as_fd()).map_err(|source| BusRunError::Socket {
