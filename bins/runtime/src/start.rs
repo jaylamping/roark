@@ -204,10 +204,7 @@ impl Runtime {
             source,
         })?;
         let skeleton_ref = SkeletonRef::of(&config.skeleton, text.as_bytes());
-        let sockets: Vec<BusInfo> = plans
-            .iter()
-            .map(|p| can::bus_info(&p.name, p.bitrate_bps))
-            .collect();
+        let sockets = sockets(&plans);
         let session = start_session(config, stage(&plans)?, &skeleton_ref, &sockets)?;
         let session_dir = session.dir().to_path_buf();
         let (mut recording, recorders) = Recording::new(session, RING_BATCHES);
@@ -462,6 +459,14 @@ fn start_session(
         },
         wall_ns(),
     )
+}
+
+/// Each bus's socket, as the session records it.
+fn sockets(plans: &[BusPlan]) -> Vec<BusInfo> {
+    plans
+        .iter()
+        .map(|p| can::bus_info(&p.name, p.bitrate_bps))
+        .collect()
 }
 
 /// The views' ring, when anyone reads them.
