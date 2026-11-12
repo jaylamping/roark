@@ -47,7 +47,7 @@ run those one at a time.
 
 ## Machine paths to fix on a new machine
 
-- `J:/code/roark-wt/left-arm/...`, used by:
+- `J:/code/roark-wt/left-arm/...` (PR #28 worktree): no longer used (2026-11-12). Its files are copied, hash-noted, into `cad/_wip/hub_ref/`; the rev C+ hub comes from the shoulder branch at 6ee2b21 (`cad/_wip/shoulder_hub_6ee2b21/`). It was used by:
   - `print_check.py` and `a2_check.py` (`support_check.py`, `mesh_check` path)
   - `print_check.py` and `build_packet.py` (today's hub STL `cad/exports/upper-arm/upper_arm_hub_left.stl`)
   - `render_parts.py` (shoulder STLs, `concepts.py`)

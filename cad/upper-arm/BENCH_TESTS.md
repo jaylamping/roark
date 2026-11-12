@@ -47,30 +47,45 @@ A witness line that breaks or shifts means something slipped or yielded.
    - fit the two seam bolts through the lugs and the two hub screws.
    - Check the arm turns freely on the RS02 over its range. Check the witness lines line up.
 
-### R1c halves: hub and assembly order (2026-11-11)
+### R1c / R1d halves: hub and assembly order (2026-11-12)
 
-The R1c halves (`prints/upper-arm/upper_arm_organic_{back,front}_r1c.3mf`) have a ridge inside the hub seat. It closes
-around a groove in the hub spigot.
+R1c and R1d halves have a ridge inside the hub seat that closes around a groove in the hub spigot. R1d also has 12 small crush
+ribs on the ridge's low-Y flank (6 per half, about 1 × 1 mm, 0.25 proud). The ribs are meant to be squashed when the halves
+close: that is how the flank seats without play. Don't file them off.
 - **They need the grooved hub, rev C+** (shoulder thread, `shoulder_hub_left.SLDPRT`, fd0cef8 or later).
 - **They will not close around today's hub.** The ridge sits 1.3 mm into its plain spigot, about 220 mm³ of overlap per half.
   Don't force it.
+- **Once assembled, the hub is captive.** It can only come out by splitting the arm (seam screws and lug bolts out, front half
+  off).
 
-The hub can't go in from the end once the halves are closed. It goes on **before** the front half, so steps 6 and 7 above
+The hub can't go in from the end once the halves are closed. It goes on **before** the front half, so steps 5 to 7 above
 become:
 
-6. **Inspect the ridge** in each half before anything else. It prints on tree support (it hangs from the bore's ceiling,
-   seam face down). Pick the support off both flanks and the tip, and scrape any stub flat: the flanks are fit faces.
-   Don't sand the flank facing the hub's lugs (the low-Y side).
+5. **Inspect each half's hub end** before anything else, with the torch:
+   - **Ridge:** it prints on tree support, hanging from the bore's ceiling with the seam face down. Pick the support off the
+     tip and the high-Y flank, and scrape any stub flat. Keep the low-Y flank and its ribs clean, but don't sand them.
+   - **Fin undersides and post faces:** they face the hub's lugs with 0.1 clearance and also print on support. Clean them
+     and check the lug faces will sit flat.
+   - **Seat floor (Y 295.7) and the end face:** the end face bears on the hub disc, so it must be clean and flat.
+6. **Cable before the hub:** route the RS02 cable and the trunk up the neck. Then hold them clear of the spigot and the lugs'
+   path while the hub goes in. The hub drops in along Z and would pinch a cable left across the seat.
 7. **Dry test fit, with no screws and before any load:**
-   - Lay the hub into the back half: its groove takes the back ridge, and its lugs sit on the back posts.
-   - Close the front half over it by hand.
+   - Lay the hub into the back half: its groove takes the back ridge, and its lugs sit between the back posts.
+   - Close the front half over it slowly. Seat it on the RS02 ring's keys first, then press it down over the hub: the
+     ribs crush in the last 0.1-0.2 mm.
    - The seam faces must meet all round, with no gap a 0.1 mm feeler enters.
-   - The hub must not rock. Along the hub axis it should have at most about 0.3 mm of play.
-   - If the seam won't close, stop and tell me. Don't force or sand anything.
-   - Take it apart and look at the ridge flanks for rub marks.
-8. **Assemble:** RS02 + ring and the cable in the back half as above. Then the hub into the back half (ridge into
-   groove, lugs on posts). Then the front half closed over both. Then the two seam screws, the two seam bolts through the
-   lugs and the two hub screws.
+   - With the halves held closed, try to push the hub in and out along its axis. **R1d: no play you can feel or measure**
+     (under 0.05 mm with a dial gauge). The ribs should take it all up.
+   - **Stop and tell me** if the seam won't close, or if there is play. Play means the ribs didn't print proud enough, and
+     the load would go to the lug bolts first. Don't force or sand anything.
+   - Take it apart and look at the ridge flanks and the ribs for marks. Crushed rib tips are expected; marks along the whole
+     flank are not.
+8. **Assemble:** the RS02 + ring and the cable in the back half as above. Then the hub into the back half (ridge into groove,
+   lugs between the posts). Then the front half closed over both.
+   - Then the two seam screws (M3 × 18 into the inserts) and the two hub lug bolts (M3 × 25, Ø5.5 socket or Ø5.7 button
+     head, no washer) into the front-half inserts.
+   - Torque all four to **0.5 N·m**. That is my figure for M3 into these inserts in PETG, not a datasheet value. Retorque
+     after 24 h.
    - Check the arm turns freely on the RS02, and that the witness lines line up.
 
 ## 3. Key coupon test (before the whole-arm test)
@@ -91,10 +106,24 @@ The model says key 0 alone is SF 1.62 bulk at 17 N·m on the halves and 1.50 on 
 
 The stop lug is part of the back half, so a break means a reprint. On this article it gets a proof load only.
 
+**Safety:** wear eye protection. Stand to the side of the load line, never in line with the lever or the block, and keep
+hands and faces clear of the arm while it is loaded. PETG can let go without warning, and a lever under load springs.
+
 1. Clamp the hub.
 2. Push on one lug end face square to it, at r 33 from the elbow axis (the middle of the pad), with a block and the scale.
-3. Hold **515 N (52.5 kgf) for 10 s**, first at one end of travel, then at the other.
-4. After each, look at the lug root, the lug backing inside the drum, and the hub seat and lugs. Check the witness lines.
+3. **Load in stages:** 130, 260, 390, then 515 N (13, 26, 40 and 52.5 kgf). Hold each for 10 s and unload fully between
+   stages.
+   - After each stage, look at the lug root, the lug backing inside the drum, and the hub seat and lugs, and check the
+     witness lines.
+   - Stop at the first whitening, crack, creak or shifted line.
+   - Do one end of travel completely first, then the other.
+4. **R1c / R1d, after the last stage at each end:** take the front half off and look at the hidden ridge and ribs:
+   - cracks at the ridge root, especially at its ends (θ about 35°, 145°, 215° and 325°);
+   - whitening on the low-Y flank;
+   - marks on the hub's groove flank;
+   - the fins.
+   Then close it and re-check the axial play (step 7 of the R1c / R1d assembly). Play that wasn't there before means
+   something yielded: stop and tell me.
 
 The test to failure needs a separate stop coupon (lug and slot). Tell me if you want one made.
 

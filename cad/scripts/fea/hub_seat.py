@@ -21,7 +21,8 @@ from pathlib import Path
 ARM = Path(__file__).resolve().parents[1] / 'arm'
 CAD = Path(__file__).resolve().parents[2]
 F = Path(os.environ.get('ARM_FEA_DIR', CAD / '_sim' / 'ua2'))
-HUB_SRC = Path(r'J:/code/roark-wt/left-arm/cad/upper-arm/upper_arm_hub_left.SLDPRT')   # the native part its STEP/STL exports were recorded from
+HUB_SRC = CAD / '_wip' / 'hub_ref' / 'upper_arm_hub_left.SLDPRT'      # today's hub, copied from the left-arm worktree (PR #28) 2026-11-12
+HUB_SRC_SHA = '7b857f61855fb2a65fd4e6d73981605c4b9f12747af1e5abcfd2a75bc5ddcb0b'   # the native part its STEP/STL exports were recorded from
 HUB = F / ('HUB_GROOVE.SLDPRT' if os.environ.get('HS_GROOVE') == '1' else 'HUB_TODAY.SLDPRT')
 R1C = os.environ.get('ARM_R1C') == '1'
 R1D = os.environ.get('ARM_R1D') == '1'
@@ -41,6 +42,9 @@ def build():
     from organic_master import L, NUL, sw, bodies
     REUSE = os.environ.get('HS_REUSE_HUB') == '1' and HUB.exists()      # keep the grooved hub other runs' models reference
     if not REUSE:
+        import hashlib
+        if hashlib.sha256(HUB_SRC.read_bytes()).hexdigest() != HUB_SRC_SHA:
+            raise SystemExit(f'{HUB_SRC} is not the hub this model was built from (SHA-256 differs)')
         shutil.copy(HUB_SRC, HUB)          # (the STEP import hung behind a dialog in a hidden instance)
     if GROOVE and not REUSE:      # option (d): the groove in the hub spigot (profile with organic_master's ridge): full depth theta 30-150 / 210-330, run-outs beyond
         import math as m_
