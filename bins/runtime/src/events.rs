@@ -45,7 +45,7 @@ impl Events {
             }
             if causes.unknown() {
                 self.record(Event {
-                    limb: limb(scope),
+                    limb: scope_limb(scope),
                     reason: Some("unknown_cause"),
                     ..self.event(Level::Error, kind(scope))
                 });
@@ -62,7 +62,7 @@ impl Events {
             Cause::Follows => (None, Some("follows_bus_stop")),
         };
         self.record(Event {
-            limb: limb(scope),
+            limb: scope_limb(scope),
             rule,
             reason,
             ..self.event(Level::Error, kind(scope))
@@ -160,7 +160,7 @@ impl Events {
 }
 
 /// The limb a stop of `scope` names: none for the robot.
-const fn limb(scope: Scope) -> Option<&'static str> {
+const fn scope_limb(scope: Scope) -> Option<&'static str> {
     match scope {
         Scope::Robot => None,
         Scope::Limb(limb) => Some(limb.as_str()),
@@ -175,31 +175,19 @@ const fn kind(scope: Scope) -> EventKind {
     }
 }
 
+/// A session recording in a temporary directory, removed when dropped, for the tests of what records events.
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::enable::EnableReply;
+pub(crate) struct TestRecording {
+    root: std::path::PathBuf,
+    dir: std::path::PathBuf,
+    recording: Option<(telemetry::Recording, Vec<telemetry::BusRecorder>)>,
+}
 
-    /// The events in the session file at `dir`.
-    fn written(dir: &std::path::Path) -> Vec<telemetry::wire::Event> {
-        let bytes = std::fs::read(dir.join("0000.mcap")).unwrap();
-        mcap::MessageStream::new(&bytes)
-            .unwrap()
-            .map(Result::unwrap)
-            .filter(|m| m.channel.topic == "/event")
-            .map(|m| serde_json::from_slice(&m.data).unwrap())
-            .collect()
-    }
-
-    /// Guards: safety - a refused enable is recorded with every field its refusal names: a limb mate's limb, another
-    /// host's bus, a joint with its limb, and the rule that refused each (safety.md section 8: every verdict other than
-    /// `Allow` is an event with its joint and limb).
-    #[test]
-    fn a_refused_enable_is_recorded_with_what_its_refusal_names() {
-        let skeleton = skeleton::parse(include_str!("../tests/skeleton.yaml")).unwrap();
-        let plans = crate::plan(&skeleton).unwrap();
-        let roster = Roster::new(&skeleton, &plans).unwrap();
-        let root = std::env::temp_dir().join(format!("runtime-events-{}", std::process::id()));
+#[cfg(test)]
+impl TestRecording {
+    /// A fresh session named `name`, for the test robot's buses.
+    pub(crate) fn new(name: &str, plans: &[crate::BusPlan]) -> Self {
+        let root = std::env::temp_dir().join(format!("runtime-{name}-{}", std::process::id()));
         let info = telemetry::SessionInfo {
             git_revision: "test".to_owned(),
             operator: "test".to_owned(),
@@ -215,8 +203,56 @@ mod tests {
         };
         let session = telemetry::Session::start(&root, info, 1).unwrap();
         let dir = session.dir().to_path_buf();
-        let (mut recording, buses) = telemetry::Recording::new(session, 4);
-        let mut events = Events::new(Some(recording.events(roster.names(), 16)), &roster);
+        Self {
+            root,
+            dir,
+            recording: Some(telemetry::Recording::new(session, 4)),
+        }
+    }
+
+    /// Control's end of the event ring, for `roster`'s joints.
+    pub(crate) fn events(&mut self, roster: &Roster) -> Events {
+        let (recording, _) = self.recording.as_mut().unwrap();
+        Events::new(Some(recording.events(roster.names(), 64)), roster)
+    }
+
+    /// Close the session and read back every event written.
+    pub(crate) fn close(&mut self) -> Vec<telemetry::wire::Event> {
+        let (mut recording, buses) = self.recording.take().unwrap();
+        recording.step(1, 2).unwrap();
+        recording.close(buses, 3).unwrap();
+        let bytes = std::fs::read(self.dir.join("0000.mcap")).unwrap();
+        mcap::MessageStream::new(&bytes)
+            .unwrap()
+            .map(Result::unwrap)
+            .filter(|m| m.channel.topic == "/event")
+            .map(|m| serde_json::from_slice(&m.data).unwrap())
+            .collect()
+    }
+}
+
+#[cfg(test)]
+impl Drop for TestRecording {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.root);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::enable::EnableReply;
+
+    /// Guards: safety - a refused enable is recorded with every field its refusal names: a limb mate's limb, another
+    /// host's bus, a joint with its limb, and the rule that refused each (safety.md section 8: every verdict other than
+    /// `Allow` is an event with its joint and limb).
+    #[test]
+    fn a_refused_enable_is_recorded_with_what_its_refusal_names() {
+        let skeleton = skeleton::parse(include_str!("../tests/skeleton.yaml")).unwrap();
+        let plans = crate::plan(&skeleton).unwrap();
+        let roster = Roster::new(&skeleton, &plans).unwrap();
+        let mut recorded = TestRecording::new("refusals", &plans);
+        let mut events = recorded.events(&roster);
         let leg = roster.set(["leg_a_one"]).unwrap().iter().next().unwrap();
         for (tag, why) in [
             (
@@ -246,13 +282,11 @@ mod tests {
                 outcome: Err(why),
             });
         }
-        recording.step(1, 2).unwrap();
-        recording.close(buses, 3).unwrap();
-        let got: Vec<_> = written(&dir)
+        let got: Vec<_> = recorded
+            .close()
             .into_iter()
             .map(|e| (e.kind, e.limb, e.joint, e.bus, e.rule, e.reason, e.tag))
             .collect();
-        let _ = std::fs::remove_dir_all(&root);
         let s = |s: &str| Some(s.to_owned());
         let refused = EventKind::EnableRefused;
         assert_eq!(

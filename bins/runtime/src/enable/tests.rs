@@ -581,3 +581,45 @@ fn the_hold_commands_nothing() {
     let drive = Drive::new(DeviceId::new(11).unwrap(), Model::Rs03);
     assert!(encode::mit(drive, &command).is_ok());
 }
+
+/// Guards: safety - every way an enable can fail once an Enable may have gone stops its limb under a rule, the same
+/// rule its refusal names, so the stop and the refusal are never recorded under two rules or as a stop carried from
+/// another bus (safety.md section 8: every stop names its rule).
+#[test]
+fn a_failed_enable_stops_its_limb_under_the_rule_its_refusal_names() {
+    let mut rig = Rig::new();
+    let joint = rig.joint("arm_a_one");
+    let failures = [
+        Failed::Preflight {
+            joint,
+            refusal: Refusal::NoStatus,
+        },
+        Failed::Sequence {
+            joint,
+            failure: EnableFailure::NoEcho,
+        },
+        Failed::Ended { joint },
+        Failed::Foreign { bus: 1 },
+        Failed::Mode {
+            limb: LimbName::LeftArm,
+        },
+        Failed::Unseen { joint },
+    ];
+    for failure in failures {
+        let mut enabler = Enabler::new(&rig.roster, rig.plans.len());
+        enabled(&mut rig, &mut enabler, &["arm_a_one"]);
+        let joints = rig.roster.set(["arm_a_one"]).unwrap();
+        let mut counts = Counts::default();
+        let reply = enabler.fail(&rig.roster, 1, joints, failure, &rig.stops, &mut counts);
+        let rule = reply.outcome.err().and_then(|why| why.named().rule);
+        assert!(rule.is_some(), "{failure:?}: {reply:?} names no rule");
+        assert_eq!(
+            rig.stopped(),
+            [(
+                Scope::Limb(LimbName::LeftArm),
+                rule.map_or(Cause::Follows, Cause::Rule)
+            )],
+            "{failure:?}"
+        );
+    }
+}

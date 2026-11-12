@@ -482,8 +482,9 @@ impl Enabler {
             Failed::Foreign { bus } => EnableRefused::ForeignHost { bus, stopped },
             Failed::Unseen { joint } => EnableRefused::Unseen { joint, stopped },
         };
-        // The stop goes under the refusal's rule, as its event names it: every refusal built here has one (the enable
-        // tests check each), so the fallback, a stop carried for a cause recorded elsewhere, is never taken.
+        // The stop goes under the refusal's rule, as its event names it. Every refusal built here has one
+        // (`a_failed_enable_stops_its_limb_under_the_rule_its_refusal_names` checks each), so the fallback, a stop
+        // carried for a cause recorded elsewhere, is never taken.
         let cause = why.named().rule.map_or(Cause::Follows, Cause::Rule);
         for joint in joints.iter() {
             if let Some(phase) = self.phases.get_mut(joint) {

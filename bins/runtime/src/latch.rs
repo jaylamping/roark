@@ -295,8 +295,8 @@ mod tests {
         assert!(latch.take().is_empty());
     }
 
-    /// Guards: safety - a cause bit nothing decodes is reported, not dropped, so the event log says a stop had a cause
-    /// it can't name (safety.md section 8).
+    /// Guards: safety - a cause bit nothing decodes is reported as unknown, for the event log to say rather than drop
+    /// (safety.md section 8).
     #[test]
     fn a_bit_no_cause_decodes_is_reported() {
         assert!(Causes(1 << 31).unknown());
