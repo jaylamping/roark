@@ -22,6 +22,7 @@ for job in "$@"; do
   S="$R/_wip/$inst"; echo "START $folder $(date +%H:%M)" >> $L
   HS_SOFT_SPRING=$soft HS_SEAT_MESH=${mesh:-0.35} HS_MODEL=UA_HUBSEAT_r1d_$tag.SLDPRT ARM_FEA_NAME=UA_ORGANIC_BONDED_v32_$tag.SLDPRT ARM_SW_DIR="$S" ARM_FEA_DIR="$R/_sim/$folder" python cad/scripts/fea/organic_fea.py $case >> $D/run.log 2>&1
   fin "$S"
+  sleep 180      # shared machine (2026-11-12): 3 min with no instance of ours alive, so other threads' launches can register
   if ls $D/org16_$case.npz >/dev/null 2>&1; then
     python cad/scripts/fea/r1c/hub_r1c.py $D/org16_$case.npz $D/HUB_GROOVE_r1d.STL > $D/post.txt 2>&1
     cp $D/org16_$case.npz.r1c.json $RV/$folder.json; cp $D/post.txt $RV/$folder.post.txt; grep -E "mesh 0|solve |soft|reaction|displacement" $D/run.log | tail -5 >> $RV/$folder.post.txt

@@ -273,10 +273,15 @@ def run(name, c):
         q.ElementSize = size
         q.Ratio = 1.5
         print(' control', len(fs), size, call(q, 'MeshControlEndEdit'), flush=True)
+    tm = time.time()
     rc = st.CreateMesh(0, el, el * 0.05)
-    print(' mesh', rc, 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, flush=True)
+    print(' mesh', rc, 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, round(time.time() - tm), 's', flush=True)
     if rc:
         raise SystemExit('mesh failed')
+    if os.environ.get('FEA_MESH_ONLY') == '1':      # mesh-time diagnosis (2026-11-12): stop after meshing
+        sw.CloseDoc(d.GetTitle)
+        print(' mesh only: done', flush=True)
+        return
     rc = call(st, 'RunAnalysis')
     print(' solve', rc, round(time.time() - t0), 's', flush=True)
     res = st.Results
