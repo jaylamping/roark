@@ -169,12 +169,15 @@ impl Stops {
     }
 }
 
-/// Every scope a take holds, with its causes: for the tests here and of what uses the latch.
+/// Every scope a take holds, with its causes, each bit decoded: for the tests here and of what uses the latch.
 #[cfg(test)]
 pub(crate) fn asked(stops: Stops) -> Vec<(Scope, Vec<Cause>)> {
     stops
         .asked()
-        .map(|(scope, causes)| (scope, causes.iter().collect()))
+        .map(|(scope, causes)| {
+            assert!(!causes.unknown(), "every bit decodes to a cause: {causes:?}");
+            (scope, causes.iter().collect())
+        })
         .collect()
 }
 
