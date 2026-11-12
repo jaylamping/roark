@@ -6,7 +6,7 @@ LIB=next((p for p in (os.environ.get('KICAD_SYM'),'/Applications/KiCad/KiCad.app
 assert LIB,'set KICAD_SYM to the KiCad symbols folder'
 def wfile(path): return open(path,'w',encoding='utf-8',newline=chr(10))
 OUT=sys.argv[1]
-PROJ='marengo_pdu_revb'; LIBNAME='marengo_revb'; NS=uuid.UUID('b1d0f6a2-58a7-4a55-9e8e-2d4b6c7e1f02')
+PROJ='power_board_revb'; LIBNAME='power_board_revb'; NS=uuid.UUID('b1d0f6a2-58a7-4a55-9e8e-2d4b6c7e1f02')
 ROOT=str(uuid.uuid5(NS,'root'))
 PARTS=os.path.join(os.path.dirname(os.path.abspath(__file__)),'parts')
 def U(s): return str(uuid.uuid5(NS,s))
@@ -84,7 +84,7 @@ class Sheet:
         s.items.append(['global_label',S(t),['shape','passive'],['at',n(p[0]),n(p[1]),str(ang)],['fields_autoplaced','yes'],eff('right' if ang in(180,270) else 'left'),['uuid',S(s.id())],['property',S('Intersheetrefs'),S('${INTERSHEET_REFS}'),['at',n(p[0]),n(p[1]),'0'],eff(hide=True)]])
     def text(s,t,p,size=1.27,bold=False):
         s.items.append(['text',S(t),['exclude_from_sim','no'],['at',n(p[0]),n(p[1]),'0'],eff('left top',size=size,bold=bold),['uuid',S(s.id())]])
-    def sym(s,lid,ref,val,at,rot=0,fp='',unit=1,refat=None,valat=None,hideval=False,hideref=False,ds=''):
+    def sym(s,lid,ref,val,at,rot=0,fp='',unit=1,refat=None,valat=None,hideval=False,hideref=False,ds='',fields=None):
         l=libsym(lid); s.lib[lid]=l
         pw=lid.startswith('power:')
         rtext=90 if rot in(90,270) else 0
@@ -95,6 +95,7 @@ class Sheet:
         pr=lambda k,t,p,hide=False,j=just:['property',S(k),S(t),['at',n(p[0]),n(p[1]),str(rtext)],eff(j,hide=hide)]
         o=['symbol',['lib_id',S(lid)],['at',n(at[0]),n(at[1]),str(rot)],['unit','1'],['exclude_from_sim','no'],['in_bom','no' if pw else 'yes'],['on_board','no' if pw else 'yes'],['dnp','no'],['uuid',S(U(f'{s.key}/sym/{ref}'))],
            pr('Reference',ref,r,hide=pw or hideref),pr('Value',val,v,hide=hideval or lid=='power:PWR_FLAG'),pr('Footprint',fp,at,True),pr('Datasheet',ds or '~',at,True),pr('Description','',at,True)]
+        for k,v in (fields or {}).items(): o.append(pr(k,v,at,True))   # extra hidden fields (U1's temporary fitted part)
         for p in pins_of(l): o.append(['pin',S(p),['uuid',S(U(f'{s.key}/pin/{ref}/{p}'))]])
         o.append(['__inst__',ref])
         s.items.append(o); return l
@@ -111,7 +112,7 @@ class Sheet:
                     m=re.match(r'(#?[A-Z]+)(\d+)$',ref); return m[1]+str(int(m[2])+i*s.multi)
                 it.append(['instances',['project',S(PROJ)]+[['path',S(p),['reference',S(rr(i))],['unit','1']] for i,(p,_) in enumerate(path_uuid_list)]])
             items.append(it)
-        tb=['title_block',['title',S(s.title)],['date',S('2026-11-06')],['rev',S('B-wip')],['company',S('marengo')]]
+        tb=['title_block',['title',S(s.title)],['date',S('2026-11-06')],['rev',S('B-wip')],['company',S('')]]
         if s.comment: tb.append(['comment','1',S(s.comment)])
         doc=['kicad_sch',['version','20260306'],['generator',S('eeschema')],['generator_version',S('10.0')],['uuid',S(ROOT if s.key=='root' else U('file/'+s.key))],['paper',S(s.paper)],tb,['lib_symbols']+list(s.lib.values())]+items
         if s.key=='root': doc.append(['sheet_instances',['path',S('/'),['page',S('1')]]])
@@ -171,10 +172,10 @@ def ext(l):
         for p in getall(u,'pin'):
             ys.append(float(get(p,'at')[2]))
     return (min(ys),max(ys)) if ys else (-10,10)
-def nic(s,lid,ref,val,at,fp,nets,ds='',rot=0,L=5.08):
+def nic(s,lid,ref,val,at,fp,nets,ds='',rot=0,L=5.08,fields=None):
     at=(round(at[0]/1.27)*1.27,round(at[1]/1.27)*1.27)
     l=libsym(lid); lo,hi=ext(l)
-    s.sym(lid,ref,val,at,rot,fp,ds=ds,refat=(at[0]-5.08,at[1]-hi-(11.43)),valat=(at[0]-5.08,at[1]-lo+(11.43)))
+    s.sym(lid,ref,val,at,rot,fp,ds=ds,fields=fields,refat=(at[0]-5.08,at[1]-hi-(11.43)),valat=(at[0]-5.08,at[1]-lo+(11.43)))
     seen={}
     for u in getall(l,'symbol'):
         for p in getall(u,'pin'):

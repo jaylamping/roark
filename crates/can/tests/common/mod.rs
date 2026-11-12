@@ -1,7 +1,9 @@
-//! Helpers shared by the tick's test files: a two-drive bus at 250 Hz, frames as `vcan` delivers them, and one tick run
-//! by hand.
+//! Helpers shared by the tick's test files: a two-drive bus at 250 Hz in one limb or two, frames as `vcan` delivers
+//! them, and one tick run by hand.
 
-use can::{BusTick, CommandBatch, SendKind, SendOutcome, Timing};
+use can::{
+    BusDrive, BusTick, CommandBatch, LimbState, SendKind, SendOutcome, Snapshot, StopReason, Timing,
+};
 use robstride::drive::{self, DriveFrame};
 use robstride::{
     DeviceId, Drive, Feedback, Frame, MitCommand, Mode, Model, NewtonMeters, NmPerRad, NmSecPerRad,
@@ -24,10 +26,36 @@ pub(crate) fn drive(n: u8) -> Drive {
     Drive::new(id(n), Model::Rs03)
 }
 
-/// A bus of two drives at 250 Hz. The IDs are arbitrary, outside the skeleton's (testing.md rule 3).
+/// A bus of two drives in one limb at 250 Hz. The IDs are arbitrary, outside the skeleton's (testing.md rule 3).
 #[expect(clippy::unwrap_used, reason = "test helper: two drives fit")]
 pub(crate) fn bus() -> BusTick {
-    BusTick::new(&[id(101), id(102)], Timing::at_hz(250)).unwrap()
+    BusTick::new(&one_limb(&[id(101), id(102)]), Timing::at_hz(250)).unwrap()
+}
+
+/// `devices` all in limb 0.
+pub(crate) fn one_limb(devices: &[DeviceId]) -> Vec<BusDrive> {
+    devices
+        .iter()
+        .map(|&device| BusDrive { device, limb: 0 })
+        .collect()
+}
+
+/// Limb 0's state, on a bus whose drives are all in limb 0.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: limb 0 exists on every test bus"
+)]
+pub(crate) fn state_of(snap: &Snapshot) -> LimbState {
+    snap.limb(0).unwrap().state
+}
+
+/// Limb 0's stop, on a bus whose drives are all in limb 0.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: limb 0 exists on every test bus"
+)]
+pub(crate) fn stop_of(snap: &Snapshot) -> Option<StopReason> {
+    snap.limb(0).unwrap().stop
 }
 
 pub(crate) fn record(id: u32, data: [u8; 8], direction: Direction) -> FrameRecord {
@@ -121,7 +149,7 @@ pub(crate) fn run_tick(
     let list = bus.begin(tick, start, start, batch);
     let sent: Vec<_> = list.iter().map(|s| (s.slot, s.kind)).collect();
     for (index, _) in list.iter().enumerate() {
-        bus.sent(index, SendOutcome::Sent);
+        bus.sent(index, SendOutcome::Sent, start);
     }
     for (offset, frame) in replies {
         bus.on_frame(start + offset, frame);
@@ -139,4 +167,52 @@ pub(crate) fn error_frame(class: u32, crtl: u8) -> FrameRecord {
     let mut f = record(class, [0, crtl, 0, 0, 0, 0, 0, 0], Direction::Rx);
     f.error = true;
     f
+}
+
+/// Drive 101 in limb 0 and drive 102 in limb 1, at 250 Hz.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: two drives in two limbs fit"
+)]
+pub(crate) fn two_limbs() -> BusTick {
+    let drives = [
+        BusDrive {
+            device: id(101),
+            limb: 0,
+        },
+        BusDrive {
+            device: id(102),
+            limb: 1,
+        },
+    ];
+    BusTick::new(&drives, Timing::at_hz(250)).unwrap()
+}
+
+/// Limb `limb`'s state and stop.
+#[expect(clippy::unwrap_used, reason = "test helper: the limbs asked for exist")]
+pub(crate) fn limb(snap: &Snapshot, limb: usize) -> (LimbState, Option<StopReason>) {
+    let l = snap.limb(limb).unwrap();
+    (l.state, l.stop)
+}
+
+/// Both drives enabled at tick 0 and answering in Run, then held at tick 1 with both answering.
+pub(crate) fn running(bus: &mut BusTick) {
+    let enable = batch(
+        0,
+        &[Some(encode::enable(id(101))), Some(encode::enable(id(102)))],
+    );
+    run_tick(
+        bus,
+        0,
+        Some(&enable),
+        &[(MS, status(101, Mode::Run)), (MS, status(102, Mode::Run))],
+    );
+    let _ = bus.end(deadline(0));
+    run_tick(
+        bus,
+        1,
+        Some(&batch(1, &[Some(hold(101)), Some(hold(102))])),
+        &[(MS, status(101, Mode::Run)), (MS, status(102, Mode::Run))],
+    );
+    let _ = bus.end(deadline(1));
 }

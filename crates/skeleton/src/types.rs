@@ -1,6 +1,8 @@
 //! The checked skeleton. Every value here has passed the loader; nothing downstream re-checks it (rust.md section 3).
 //!
-//! `None` means the value isn't known yet. It loads fine and refuses enable ("Null is not permission", PLAN item 1).
+//! `None` means the value isn't known yet. It loads fine and refuses only the motion that needs it, never the enable: a
+//! joint with a null cap, `direction`, `zero_rad` or `hard_rad` runs at its model's commissioning caps, or its own where
+//! lower ([`Joint::caps`], PLAN item 1).
 
 use core::fmt;
 
@@ -26,7 +28,7 @@ pub struct Power {
     pub source: PowerSource,
     /// Drive bus voltage window for preflight and the running check (PLAN item 6).
     pub vbus_v: Window<Volts>,
-    /// Upper bound on the summed current caps of every joint that can be enabled together.
+    /// Upper bound on the summed current every joint that can be enabled together is enabled at (`Joint::caps`).
     pub current_budget_a: Amps,
 }
 

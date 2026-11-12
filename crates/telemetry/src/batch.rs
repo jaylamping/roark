@@ -94,7 +94,8 @@ impl Loss {
 /// One bus's tick: every frame the bus thread read or sent in it, in order, plus the tick's own clocks.
 #[derive(Clone, Copy, Debug)]
 pub struct TickBatch {
-    /// The tick number, counting from the bus thread's start.
+    /// The tick number, counting from the shared tick 0 every bus thread and the control thread are given (`can`'s
+    /// `BusLinks::start`), so the same number names the same instant on every bus.
     pub tick: u64,
     /// The tick's scheduled start on the monotonic clock, nanoseconds since the session's [`Epoch`](crate::Epoch).
     pub mono_ns: u64,

@@ -8,9 +8,9 @@ runtime never reads them (tenet 2).
 
 ## 1. What goes in git
 
-**Git holds the design of record. Joey-PC holds everything that led to it.**
+**Git holds the design of record. The CAD workstation holds everything that led to it.**
 
-| Versioned (binaries through Git LFS) | Ignored (stays on Joey-PC) |
+| Versioned (binaries through Git LFS) | Ignored (stays on the CAD workstation) |
 |---|---|
 | The one current file of each part and assembly: the file the robot assembly or a print uses today, in its region folder | Variants, studies, test and render copies: `_wip/<topic>/` |
 | The STEP/STL export of a current part that something uses (a print, a review, a URDF, another tool) | FEA and solver output: `_sim/<region>/`, `*.CWR`, `*.STE` |
@@ -43,9 +43,8 @@ nothing.
    being pushed; [scripts/check.sh](../scripts/check.sh) and CI run the working-tree check on every PR. Simplify or split a
    file that large, or keep it in `_wip/`. **Why:** GitHub rejects plain files of 100 MiB, and one large LFS file eats the
    quota. CI sees a file only after the push has uploaded it, so CI alone can't save the quota: check before pushing.
-6. **Prints:** commit the exact 3MF that was printed, its G-code, the settings checklist and its passing gate report
-   ([part-lifecycle.md section 3](part-lifecycle.md#3-pre-print-gate); CI fails a 3MF without one), overwriting the previous
-   print of that part. **Why:** the G-code is the true record of the print; Bambu Studio has changed saved 3MF settings on open.
+6. **Prints:** commit the exact 3MF that was printed, its G-code and the settings checklist, overwriting the previous print of
+   that part. **Why:** the G-code is the true record of the print; Bambu Studio has changed saved 3MF settings on open.
 7. **Reviews** pin the exact design they reviewed: commit the CAD first, then the packet, whose markdown carries a
    `Pinned commit: <full 40-character SHA>` line and links files by `https://github.com/jaylamping/roark/blob/<sha>/cad/...`.
    A packet holds markdown, key renders (each under about 2 MB) and small data; raw logs, prompts and bulky data stay in
@@ -113,7 +112,7 @@ drifts from its part is how a print or a URDF ends up built from the wrong geome
 
 ## 6. Writer lock, hooks and LFS budget
 
-**Writer lock.** Several sessions share the one checkout on Joey-PC. Before a session opens SolidWorks to change anything in
+**Writer lock.** Several sessions share the one checkout on the CAD workstation. Before a session opens SolidWorks to change anything in
 `cad/`, it takes the lock and names itself in that shell:
 
 ```bash
@@ -167,11 +166,42 @@ the pointer files. A plain `git clone` on a machine with Git LFS installed downl
 
 ## 8. Backup
 
-`_wip/`, `_sim/` and `_archive/` exist only on Joey-PC. Git is not their backup: they are covered by Joey-PC's own backup, or
-the design is promoted before it would hurt to lose it.
+`_wip/`, `_sim/` and `_archive/` exist only on the CAD workstation. Git is not their backup, and holly-pc has no backup of
+its own yet: promote a design before it would hurt to lose it. Joey-PC keeps the copies made when CAD moved to holly-pc.
 
-## 9. Requirements, gate and print log
+## 9. CAD workstation
+
+All SolidWorks, Simulation and KiCad work runs on **holly-pc**, a PC kept for it, from 2026-11-11. Joey-PC is Joey's own
+PC: it keeps the older copies as a backup and is not used for CAD runs.
+
+- The shared checkout is `C:\joe\code\roark`. `subst J: C:\joe` maps it to `J:\code\roark`, the same path it had on
+  Joey-PC, so scripts and SolidWorks references keep working. If `J:` is missing after a restart, run that line first.
+- Files are worked on from holly-pc's own disk, never over the network share from Joey-PC. **Why:** a dropped
+  connection mid-save can corrupt a SolidWorks file, and FEA output would load Joey-PC's disk and network.
+- Nobody uses holly-pc while sessions run, so SolidWorks may run visibly there; hidden stays the default
+  ([RULES.md](../tools/solidworks/RULES.md)).
+
+### SolidWorks and Bambu Studio settings on holly-pc
+
+holly-pc's SolidWorks is a fresh install. Its defaults differ from Joey-PC's in ways the scripts relied on without saying so
+(found while rebuilding the upper arm R1, 2026-11-11). Set these in the script that exports, not by hand, and log them:
+
+| Setting | Joey-PC (as the v26 exports show) | holly-pc default | What to do |
+| --- | --- | --- | --- |
+| Default part template | set, **IPS** units | **none** | Pass a template (`SW_PART_TEMPLATE`, e.g. `C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2026\templates\MBD\part 0051mm to 0250mm.prtdot`) and set the document to MMGS (`SetUserPreferenceInteger(263, 0, 5)`). STEP exports then come out in mm instead of inches; the geometry is the same. |
+| STL: do not translate to positive space (toggle 71) | on | **off**: STLs shift by the part's negative extents | Turn it on. Anything that reads an exported STL in the CAD frame breaks otherwise. |
+| STL binary (69), units (211 = mm), quality (78) | binary, mm, Fine | same | Set them anyway. Fine reproduced the v26 face counts. |
+| STEP AP (75) | AP203 | AP203 | Set it anyway. |
+| Simulation solver, mesher, Jacobian points | defaults | defaults | `p3_fea.py` logs them. The smoke test re-solved two Joey-PC cases within 2 %, with nearly the same node counts. |
+
+`cad/scripts/arm/organic_master.py` does all of this at startup; copy that block into other export scripts.
+
+Bambu Studio **2.09.01.70**, the version the upper-arm slices used, is installed at `C:\Program Files\Bambu Studio`. Its GUI had
+not been run, so `%APPDATA%\BambuStudio\system\BBL` didn't exist. Fall back to the presets the install ships in
+`resources\profiles\BBL`. Re-slicing the reviewed ring that way reproduced the stored slice exactly (3465 s, 19.04 g).
+
+## 10. Requirements, gate and print log
 
 Each printed part also has a requirements spec in its region folder, a pre-print gate report and a print log in
-`prints/<region>/`: [part-lifecycle.md](part-lifecycle.md). Sharing Joey-PC between sessions (worktrees, claims, the FEA
-queue): [joey-pc.md](joey-pc.md).
+`prints/<region>/`: [part-lifecycle.md](part-lifecycle.md). Sharing the CAD workstation between threads (worktrees, claims,
+the FEA queue): [joey-pc.md](joey-pc.md).

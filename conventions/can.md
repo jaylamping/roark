@@ -84,7 +84,8 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   `write` in the bus thread. Never raise `txqueuelen` to make `ENOBUFS` go away: it hides a bus problem (a linux-can thread
   traced exactly this to a duplicate sender).
 - **Only frames on the allowlist** (PLAN item 2) can be built for transmit; the check lives in the codec so nothing else can
-  bypass it.
+  bypass it. `can-bench` is outside this rule: it never links the codec and sends only its own frames, which no drive
+  acts on, on a bus with no drive.
 - **A TX echo isn't proof the frame reached the wire** (PLAN item 3). Latency in the recording is measured from the
   kernel RX timestamps of replies, and liveness from replies, never from echoes.
 
@@ -109,6 +110,32 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   details and sources). Code never treats "the interface is up again" as permission to continue.
 - **Error counters and drops are metrics** (per bus: bus errors, error-passive, bus-off count, RX overflow, TX drops, late
   ticks), exported every second and shown in the UI.
+
+### Stops and the schedule
+
+- **A stop names its scope.** A fault, a drop out of Run, a silent drive or motion on expired feedback stops that
+  drive's limb; a bad batch, a stop order naming a limb the bus doesn't have, control going silent, an operator's bus
+  stop or a bus error stops every limb on the bus not already stopping or stopped; a late wake or a backlog stops every
+  active limb on the bus (an idle limb has nothing running to stop). **Why:** the affected limb stops
+  ([architecture.md](architecture.md)), and the other arm on the same bus has done nothing wrong; a batch or a bus that
+  can't be trusted is trusted for no limb.
+- **Check before every send.** What the drain read before the send is checked before the tick's commands go out, so a
+  fault read in the slack stops its limb on that tick, not the next ([safety.md section 3](safety.md#3-how-a-rule-is-written)).
+- **Only an operator clear re-arms,** and only a stopped limb whose drives are known disabled (confirmed in Reset, or sent
+  nothing for longer than the drive timeout). A latched bus error is never re-armed in place: the bus thread and socket
+  are rebuilt. Nothing in the bus layer re-arms itself.
+- **Slow requests ride in the slack,** one in flight per bus, sent after the collect deadline only when the reply fits
+  before the next tick starts, never on a tick whose reads can't be trusted, never to a limb the veto would stop or
+  while control is silent, and writes only to an idle limb's drive with no command of that tick unanswered. A request
+  waits queued only a bounded number of ticks. The bus produces exactly one result for every request, including when the
+  thread ends, and retries none; a result control's full ring can't take is dropped and counted, and the requester times
+  out. **Why:** a parameter read must not crowd out a command. A write's answer is a plain status, like a command's, so
+  a write goes only where the two are least likely to be mixed up; a late status can still be taken for the other (both
+  ways are in the [`can` README](../crates/can/README.md), Slow requests), so a write's result proves nothing about the
+  value and preflight reads every write back. Since `canTimeout` counts from any frame, slow traffic must never keep a
+  stopped drive alive.
+- **One schedule for every bus.** Every bus thread and the control thread tick from the one origin the runtime picks, so
+  tick n is the same instant everywhere.
 
 ### Logging
 
@@ -137,6 +164,7 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
 - Can anything send a frame without a deadline, retry in a loop, or block the bus thread?
 - Is every queue bounded, and every drop counted?
 - Is any bus-off or interface error handled by anything other than stop and latch?
+- Does every new stop name its scope (the limb or the whole bus), and can anything but an operator clear re-arm one?
 - Are error frames on, loopback on, and the (empty) filter list recorded?
 
 ## Sources

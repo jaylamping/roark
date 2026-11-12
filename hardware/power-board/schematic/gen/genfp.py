@@ -1,4 +1,4 @@
-"""Rev B project footprints. Run: python3 -I gen/genfp.py marengo_revb.pretty"""
+"""Rev B project footprints. Run: python3 -I gen/genfp.py power_board_revb.pretty"""
 import sys,uuid
 OUT=sys.argv[1]; NS=uuid.UUID('b1d0f6a2-58a7-4a55-9e8e-2d4b6c7e1f03')
 BW,BH=57.9,36.8
@@ -9,7 +9,7 @@ def u(k): return str(uuid.uuid5(NS,k))
 def rect(x0,y0,x1,y1,l,w): return f'\t(fp_rect (start {x0} {y0}) (end {x1} {y1}) (stroke (width {w}) (type solid)) (fill no) (layer "{l}") (uuid "{u(l)}"))\n'
 t=f'''(footprint "IQB150W8"
 \t(version 20241229)
-\t(generator "marengo_revb_genfp")
+\t(generator "power_board_revb_genfp")
 \t(layer "F.Cu")
 \t(descr "Mean Well IQB150W8 quarter brick. Pins, holes and inserts from IQB150W8-SPEC 2026-06-23 page 8, body 57.9 x 36.8 x 12.7, pin length 4.1.")
 \t(tags "dc-dc quarter brick")
@@ -35,7 +35,7 @@ open(OUT+'/IQB150W8.kicad_mod','w',newline=chr(10)).write(t)
 D,OD,PIT='4.5','8.0',14.0
 t=f'''(footprint "SolderWire-8AWG_1x02_P14mm_D4.5mm_OD8mm"
 \t(version 20241229)
-\t(generator "marengo_revb_genfp")
+\t(generator "power_board_revb_genfp")
 \t(layer "F.Cu")
 \t(descr "Two soldered 8 AWG wires (pack pigtail), 4.5 mm holes, 8 mm pads, 14 mm pitch")
 \t(tags "solder wire 8AWG")
@@ -51,3 +51,15 @@ t+=f'\t(pad "1" thru_hole rect (at 0 0) (size {OD} {OD}) (drill {D}) (layers "*.
 t+=f'\t(pad "2" thru_hole circle (at {PIT} 0) (size {OD} {OD}) (drill {D}) (layers "*.Cu" "*.Mask") (uuid "{u("pp2")}"))\n'
 t+='\t(embedded_fonts no)\n)\n'
 open(OUT+'/SolderWire-8AWG_1x02_P14mm_D4.5mm_OD8mm.kicad_mod','w',newline=chr(10)).write(t)
+# Fine-pitch ICs at TI's land-pattern pad width: KiCad's library footprints leave 0.15 mm between these pads, under JLCPCB's
+# 0.2 mm minimum space for 2 oz outer copper. Copies of the library footprints with only the pad width across the pitch
+# changed: MSOP-10 (TI DGS, LM5069) 0.35 -> 0.30 mm, HVSSOP-8 (TI DGN, TPS7A4001) 0.50 -> 0.45 mm. Every gap is then 0.2 mm.
+import os
+FPDIR=os.environ.get('KICAD_FP') or next((p for p in ('/Applications/KiCad/KiCad.app/Contents/SharedSupport/footprints/','C:/Program Files/KiCad/10.0/share/kicad/footprints/') if os.path.isdir(p)),None)
+assert FPDIR,'set KICAD_FP to the KiCad footprints folder'
+for name,old,new in (('MSOP-10_3x3mm_P0.5mm','(size 1.5 0.35)','(size 1.5 0.3)'),
+                     ('HVSSOP-8-1EP_3x3mm_P0.65mm_EP1.57x1.89mm','(size 1.45 0.5)','(size 1.45 0.45)')):
+    t=open(FPDIR+'Package_SO.pretty/'+name+'.kicad_mod',encoding='utf-8').read()
+    assert t.count(old)>=8 and f'(footprint "{name}"' in t,name
+    t=t.replace(f'(footprint "{name}"',f'(footprint "{name}_TI"',1).replace(old,new)
+    open(OUT+'/'+name+'_TI.kicad_mod','w',newline=chr(10),encoding='utf-8').write(t)

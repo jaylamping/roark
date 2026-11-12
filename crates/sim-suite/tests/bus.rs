@@ -2,6 +2,9 @@
 //! against an independent `candump -L -x` capture of the same bus (logging.md section 8.6).
 #![cfg(target_os = "linux")]
 
+#[expect(dead_code, reason = "each test file uses some of the shared helpers")]
+mod common;
+
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -10,72 +13,20 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use can::{
-    BusConfig, BusLinks, BusRunError, BusState, CommandBatch, Snapshot, StopOutcome, StopReason,
-    Timing,
+    BusConfig, BusLinks, BusRunError, CommandBatch, LimbState, Snapshot, StopOutcome, StopReason,
 };
-use robstride::{
-    DeviceId, Drive, Frame, Inbound, MitCommand, Mode, Model, NewtonMeters, NmPerRad, NmSecPerRad,
-    RadPerSec, Radians, Uid, decode, encode,
-};
+use common::{HZ, Shutdown, drive, hold, id, info, limbs, next_snapshot, soon, timing};
+use robstride::{Drive, Frame, Inbound, Mode, Model, Uid, decode, encode};
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use socketcan::{CanDataFrame, CanSocket, EmbeddedFrame, Socket, StandardId};
 use telemetry::wire::Frames;
-use telemetry::{Direction, Epoch, Recorder, Recording, Session, SessionInfo, SkeletonRef, Stage};
+use telemetry::{Direction, Epoch, Recorder, Recording, Session};
 
 /// A bus no other sim test uses.
 const BUS: &str = "can2";
-/// Slow enough that the test thread, playing control, makes every tick on a loaded machine.
-const HZ: u64 = 100;
 const HOLD_TICKS: usize = 50;
-
-/// The tick at `HZ`, with the send window stretched to the collect deadline: these tests check the loop and its
-/// recording, not the wake budget, so a test thread that wakes a few milliseconds late on a loaded runner is not a
-/// late wake (the tick tests cover that).
-fn timing() -> Timing {
-    let at_hz = Timing::at_hz(HZ);
-    Timing {
-        send_window_ns: at_hz.collect_ns,
-        ..at_hz
-    }
-}
 /// The marker sent until `candump` has it, so the capture is known to cover the whole run.
 const MARKER: u16 = 0x7AB;
-
-#[expect(
-    clippy::unwrap_used,
-    reason = "test helper: IDs here are constants in range"
-)]
-fn id(n: u8) -> DeviceId {
-    DeviceId::new(u64::from(n)).unwrap()
-}
-
-#[expect(
-    clippy::unwrap_used,
-    reason = "test helper: a hold command is in range"
-)]
-fn hold(n: u8) -> Frame {
-    let command = MitCommand {
-        position: Radians::new(0.0).unwrap(),
-        velocity: RadPerSec::new(0.0).unwrap(),
-        kp: NmPerRad::new(5.0).unwrap(),
-        kd: NmSecPerRad::new(0.5).unwrap(),
-        torque: NewtonMeters::new(0.0).unwrap(),
-    };
-    encode::mit(Drive::new(id(n), Model::Rs03), &command).unwrap()
-}
-
-fn info() -> SessionInfo {
-    SessionInfo {
-        git_revision: "test".to_owned(),
-        operator: "sim-suite".to_owned(),
-        stage: Stage::Vcan,
-        skeleton: SkeletonRef {
-            path: "inline".to_owned(),
-            sha256: "00".repeat(32),
-        },
-        buses: vec![can::bus_info(BUS, 1_000_000)],
-    }
-}
 
 struct Candump {
     child: Child,
@@ -155,17 +106,6 @@ fn parse(line: &str) -> Line {
     }
 }
 
-/// The snapshot for the next tick, waiting at most a second.
-fn next_snapshot(snapshots: &mut rtrb::Consumer<Snapshot>, end: Instant) -> Option<Snapshot> {
-    while Instant::now() < end {
-        if let Ok(s) = snapshots.pop() {
-            return Some(s);
-        }
-        std::thread::yield_now();
-    }
-    None
-}
-
 /// Play control for the whole run, one batch per tick for the tick after the snapshot just read: enable both drives
 /// until both report Run, hold for `HOLD_TICKS`, then set `exit` as the runtime does at shutdown and see the bus stop
 /// the drives: both confirm Reset and take active reporting off.
@@ -212,7 +152,11 @@ fn play_control(
     for _ in 0..HOLD_TICKS {
         send(&snap, [Some(hold(101)), Some(hold(102))]);
         snap = next_snapshot(snapshots, end).unwrap();
-        assert_eq!(snap.state, BusState::Active, "{snap:?}");
+        assert_eq!(
+            limbs(&snap),
+            [(LimbState::Active, None), (LimbState::Active, None)],
+            "{snap:?}"
+        );
         answered += snap.drives().filter(|d| d.answered).count();
     }
     // One tick of slack: the test thread playing control may miss one tick on a loaded runner (two would stop the bus).
@@ -223,10 +167,16 @@ fn play_control(
     );
     // Shutdown while active: the thread stops the drives before it returns.
     exit.store(true, Ordering::Release);
-    while snap.state != BusState::Stopped {
+    while !snap.stopped() {
         snap = next_snapshot(snapshots, end).unwrap();
     }
-    assert_eq!(snap.stop, Some(StopReason::Requested));
+    assert_eq!(
+        limbs(&snap),
+        [
+            (LimbState::Stopped, Some(StopReason::Requested)),
+            (LimbState::Stopped, Some(StopReason::Requested))
+        ]
+    );
     assert!(
         snap.drives()
             .all(|d| d.stop == StopOutcome::Confirmed && d.reporting_off_sent),
@@ -234,16 +184,6 @@ fn play_control(
     );
     assert!(snap.healthy && snap.bus_error.is_none(), "{snap:?}");
     assert_eq!(snap.counters.foreign_host, 0);
-}
-
-/// Sets both stop flags when dropped, including while a failed assertion unwinds.
-struct Shutdown<'a>(&'a AtomicBool, Arc<AtomicBool>);
-
-impl Drop for Shutdown<'_> {
-    fn drop(&mut self) {
-        self.0.store(true, Ordering::Release);
-        self.1.store(true, Ordering::Release);
-    }
 }
 
 /// Guards: safety - the bus layer opens nothing but `vcan` until the real adapter's checks exist, so a sim test or a
@@ -257,19 +197,24 @@ fn spawn_refuses_anything_but_vcan() {
         let (_, commands) = rtrb::RingBuffer::new(1);
         let (snapshots, _) = rtrb::RingBuffer::new(1);
         // A session directory is named by its start time, so each case starts at its own second.
-        let session = Session::start(&root, info(), start_s * 1_000_000_000).unwrap();
+        let session = Session::start(&root, info(BUS), start_s * 1_000_000_000).unwrap();
         let (recording, mut buses) = Recording::new(session, 1);
         let refused = can::spawn(
             BusConfig {
                 name: bus.to_owned(),
-                drives: vec![id(101)],
+                drives: vec![drive(101, 0)],
                 timing: timing(),
             },
             BusLinks {
                 commands,
                 snapshots,
                 recorder: buses.remove(0),
+                requests: rtrb::RingBuffer::new(1).1,
+                results: rtrb::RingBuffer::new(1).0,
+                orders: rtrb::RingBuffer::new(1).1,
+                rearmed: rtrb::RingBuffer::new(1).0,
                 epoch: recording.epoch(),
+                start: soon(),
                 exit: Arc::new(AtomicBool::new(false)),
             },
         );
@@ -292,8 +237,7 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
     const LAST: u16 = 0x123;
     ensure_vcan(IDLE_BUS).unwrap();
     let root = std::env::temp_dir().join(format!("sim-suite-idle-{}", std::process::id()));
-    let mut info = info();
-    info.buses[0] = can::bus_info(IDLE_BUS, 1_000_000);
+    let info = info(IDLE_BUS);
     let session = Session::start(&root, info, 1_000_000_000).unwrap();
     let session_dir = session.dir().to_owned();
     let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
@@ -306,14 +250,19 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
     let bus = can::spawn(
         BusConfig {
             name: IDLE_BUS.to_owned(),
-            drives: vec![id(101)],
+            drives: vec![drive(101, 0)],
             timing: timing(),
         },
         BusLinks {
             commands,
             snapshots: snapshots_tx,
             recorder: buses.remove(0),
+            requests: rtrb::RingBuffer::new(1).1,
+            results: rtrb::RingBuffer::new(1).0,
+            orders: rtrb::RingBuffer::new(1).1,
+            rearmed: rtrb::RingBuffer::new(1).0,
             epoch,
+            start: soon(),
             exit: Arc::clone(&exit),
         },
     )
@@ -336,7 +285,7 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
             break s;
         }
     };
-    assert_eq!(dropped.state, BusState::Idle);
+    assert_eq!(limbs(&dropped), [(LimbState::Idle, None)]);
 
     // A frame on the bus, then the exit: the thread reads the frame (in this tick's collect or the next drain), sees
     // `exit` after a drain, records that drain's batch and returns.
@@ -370,6 +319,65 @@ fn an_idle_bus_counts_dropped_snapshots_and_records_its_exit_drain() {
     let _ = std::fs::remove_dir_all(&root);
 }
 
+/// Guards: safety - every bus thread ticks on the one schedule the runtime gives it: a thread started after tick 0
+/// begins at the first tick not yet due, numbered from that origin, instead of waking late and stopping its limbs
+/// (PLAN.md item 3: a thread that wakes late stops at once; missed deadlines are counted, never skipped silently).
+#[test]
+fn a_bus_started_after_the_schedule_joins_it() {
+    const LATE_BUS: &str = "can1";
+    const BEHIND: u64 = 100;
+    ensure_vcan(LATE_BUS).unwrap();
+    let root = std::env::temp_dir().join(format!("sim-suite-late-{}", std::process::id()));
+    let info = info(LATE_BUS);
+    let session = Session::start(&root, info, 1_000_000_000).unwrap();
+    let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
+    let epoch = recording.epoch();
+    let recorder = Recorder::spawn(recording).unwrap();
+    let (_commands_tx, commands) = rtrb::RingBuffer::new(1);
+    let (snapshots_tx, mut snapshots) = rtrb::RingBuffer::new(64);
+    let exit = Arc::new(AtomicBool::new(false));
+    let start = Instant::now()
+        .checked_sub(Duration::from_nanos(BEHIND * 1_000_000_000 / HZ))
+        .unwrap();
+    let bus = can::spawn(
+        BusConfig {
+            name: LATE_BUS.to_owned(),
+            drives: vec![drive(101, 0)],
+            timing: timing(),
+        },
+        BusLinks {
+            commands,
+            snapshots: snapshots_tx,
+            recorder: buses.remove(0),
+            requests: rtrb::RingBuffer::new(1).1,
+            results: rtrb::RingBuffer::new(1).0,
+            orders: rtrb::RingBuffer::new(1).1,
+            rearmed: rtrb::RingBuffer::new(1).0,
+            epoch,
+            start,
+            exit: Arc::clone(&exit),
+        },
+    )
+    .unwrap();
+    let _shutdown = Shutdown(&AtomicBool::new(false), Arc::clone(&exit));
+
+    let end = Instant::now() + Duration::from_secs(10);
+    let first = next_snapshot(&mut snapshots, end).unwrap();
+    let due = u64::try_from(start.elapsed().as_nanos() * u128::from(HZ) / 1_000_000_000).unwrap();
+    assert!(
+        (BEHIND..=due).contains(&first.tick),
+        "first tick {} not between {BEHIND} and {due}",
+        first.tick
+    );
+    assert_eq!(limbs(&first), [(LimbState::Idle, None)], "{first:?}");
+    assert_eq!(first.counters.missed_deadlines, 0, "{first:?}");
+    exit.store(true, Ordering::Release);
+    let done = bus.thread.join().unwrap();
+    assert!(done.error.is_none(), "{:?}", done.error);
+    recorder.close(vec![done.recorder]).unwrap();
+    let _ = std::fs::remove_dir_all(&root);
+}
+
 /// Guards: safety - the bus loop runs PLAN.md item 3's tick on a real socket: enable, hold, and a control stop that
 /// disables every drive, with the drives confirming Reset (PLAN.md item 2 Stop).
 /// Guards: protocol - every frame the bus thread read is in the MCAP with its kernel timestamp and direction, and an
@@ -392,12 +400,12 @@ fn the_bus_loop_runs_against_sim_drive_and_its_recording_matches_candump() {
                 SimDrive::new(Drive::new(id(101), Model::Rs03), Uid([1; 8]), 5),
                 SimDrive::new(Drive::new(id(102), Model::Rs03), Uid([2; 8]), 6),
             ];
-            serve(BUS, &mut drives, &stop_sim)
+            serve(BUS, &mut drives, &stop_sim, &mut |_| {})
         });
         let dump = candump(&dir);
 
         // The recorder and the bus.
-        let session = Session::start(&dir, info(), 1_794_178_885_000_000_000).unwrap();
+        let session = Session::start(&dir, info(BUS), 1_794_178_885_000_000_000).unwrap();
         let session_dir = session.dir().to_owned();
         let (recording, mut buses) = Recording::new(session, telemetry::RING_BATCHES);
         let epoch = recording.epoch();
@@ -407,14 +415,19 @@ fn the_bus_loop_runs_against_sim_drive_and_its_recording_matches_candump() {
         let bus = can::spawn(
             BusConfig {
                 name: BUS.to_owned(),
-                drives: vec![id(101), id(102)],
+                drives: vec![drive(101, 0), drive(102, 1)],
                 timing: timing(),
             },
             BusLinks {
                 commands: commands_rx,
                 snapshots: snapshots_tx,
                 recorder: buses.remove(0),
+                requests: rtrb::RingBuffer::new(1).1,
+                results: rtrb::RingBuffer::new(1).0,
+                orders: rtrb::RingBuffer::new(1).1,
+                rearmed: rtrb::RingBuffer::new(1).0,
                 epoch,
+                start: soon(),
                 exit: Arc::clone(&exit),
             },
         )

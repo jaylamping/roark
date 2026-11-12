@@ -1,0 +1,4 @@
+(fp_lib_table
+	(version 7)
+	(lib (name "buck12")(type "KiCad")(uri "${KIPRJMOD}/buck12.pretty")(options "")(descr "buck board footprints (tools/fp_buck.py)"))
+)

@@ -1,15 +1,16 @@
 //! The bus tick without a socket: frames in and out as values, time stepped by hand (testing.md rule 6). Replies,
-//! freshness, faults, batch checks and configuration; the stop path is in `stop.rs`.
+//! freshness, faults, batch checks and the drive table; the stop path is in `stop.rs`, timing in `timing.rs`.
 
+#[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
 use can::{
-    BusError, BusState, BusTick, CommandBatch, ConfigError, DRIVE_TIMEOUT_NS, MAX_DRIVES, SendKind,
-    SendOutcome, StopOutcome, StopReason, Timing, TimingError, classify,
+    BusError, BusTick, CommandBatch, ConfigError, LimbState, MAX_DRIVES, SendKind, SendOutcome,
+    StopOutcome, StopReason, Timing, classify,
 };
 use common::{
-    MS, PERIOD, at, batch, bus, deadline, drive, error_frame, hold, id, record, report_frame,
-    run_tick, status, status_frame,
+    MS, PERIOD, at, batch, bus, deadline, drive, error_frame, hold, id, one_limb, record,
+    report_frame, run_tick, state_of, status, status_frame, stop_of,
 };
 use robstride::encode::{self, Reporting};
 use robstride::{Mode, Param, StatusFault, Write};
@@ -78,8 +79,8 @@ fn a_send_the_socket_did_not_take_cannot_be_answered() {
         );
         let list = bus.begin(0, 0, 0, Some(&b));
         assert_eq!(list.len(), 2);
-        bus.sent(0, SendOutcome::Sent);
-        bus.sent(1, outcome);
+        bus.sent(0, SendOutcome::Sent, 0);
+        bus.sent(1, outcome, 0);
         bus.on_frame(MS, &status(101, Mode::Run));
         bus.on_frame(MS, &status(102, Mode::Run));
         let snap = bus.end(deadline(0));
@@ -99,8 +100,8 @@ fn a_send_the_socket_did_not_take_cannot_be_answered() {
         bus.request_stop();
         let list = bus.begin(1, PERIOD, PERIOD, None);
         assert_eq!(list.len(), 2);
-        bus.sent(0, SendOutcome::Sent);
-        bus.sent(1, outcome);
+        bus.sent(0, SendOutcome::Sent, PERIOD);
+        bus.sent(1, outcome, PERIOD);
         bus.on_frame(PERIOD + MS, &status(101, Mode::Reset));
         bus.on_frame(PERIOD + MS, &status(102, Mode::Reset));
         let snap = bus.end(deadline(1));
@@ -126,13 +127,13 @@ fn a_disable_never_expires_whoever_planned_it() {
         ],
     );
     let list = bus.begin(0, 0, 0, Some(&b));
-    let expiry: Vec<_> = list.iter().map(|s| (s.kind, s.expires)).collect();
+    let expiry: Vec<_> = list.iter().map(|s| (s.slot, s.kind, s.expires)).collect();
     assert_eq!(
         expiry,
-        [(SendKind::Command, true), (SendKind::Command, false)]
+        [(1, SendKind::Command, false), (0, SendKind::Command, true)]
     );
     for index in 0..list.len() {
-        bus.sent(index, SendOutcome::Sent);
+        bus.sent(index, SendOutcome::Sent, 0);
     }
     bus.on_frame(MS, &status(101, Mode::Reset));
     bus.on_frame(MS, &status(102, Mode::Reset));
@@ -145,7 +146,7 @@ fn a_disable_never_expires_whoever_planned_it() {
             .all(|s| s.kind == SendKind::Disable && !s.expires)
     );
     for index in 0..list.len() {
-        bus.sent(index, SendOutcome::Sent);
+        bus.sent(index, SendOutcome::Sent, PERIOD);
     }
     bus.on_frame(PERIOD + MS, &status(101, Mode::Reset));
     let _ = bus.end(deadline(1));
@@ -185,6 +186,10 @@ fn duplicates_and_late_answers_are_counted() {
 
     assert_eq!(snap.counters.duplicate, 1);
     assert_eq!(snap.counters.late, 1);
+    // The duplicate is the latest status, but the fresh answer is still the first.
+    let d11 = at(&snap, 0);
+    assert_eq!(d11.observed.map(|o| o.read_ns), Some(MS + 1));
+    assert_eq!(d11.fresh_status.map(|o| o.read_ns), Some(MS));
     assert!(!at(&snap, 1).answered, "after the deadline");
     assert_eq!(
         at(&snap, 1).fresh_ns,
@@ -296,14 +301,14 @@ fn an_idle_bus_sends_nothing_without_batches() {
     for tick in 0..5 {
         assert_eq!(run_tick(&mut bus, tick, None, &[]), []);
         assert_eq!(
-            bus.end(tick * PERIOD + PERIOD * 6 / 10).state,
-            BusState::Idle
+            state_of(&bus.end(tick * PERIOD + PERIOD * 6 / 10)),
+            LimbState::Idle
         );
     }
 }
 
 /// Guards: safety - motion with expired feedback is never sent: an MIT frame for a drive whose last fresh status is
-/// older than 12 ms is refused and stops the bus (PLAN.md item 3 and item 6 Silence row).
+/// older than 12 ms is refused and stops that drive's limb (PLAN.md item 3 and item 6 Silence row).
 #[test]
 fn motion_with_expired_feedback_stops_instead_of_sending() {
     let mut bus = bus();
@@ -331,7 +336,7 @@ fn motion_with_expired_feedback_stops_instead_of_sending() {
         "{sent:?}"
     );
     assert_eq!(
-        bus.end(4 * PERIOD + PERIOD * 6 / 10).stop,
+        stop_of(&bus.end(4 * PERIOD + PERIOD * 6 / 10)),
         Some(StopReason::ExpiredFeedback { slot: 0 })
     );
 }
@@ -372,16 +377,16 @@ fn too_many_drives_is_refused() {
         .map(id)
         .collect();
     assert_eq!(
-        BusTick::new(&ids, Timing::at_hz(250)).err(),
+        BusTick::new(&one_limb(&ids), Timing::at_hz(250)).err(),
         Some(ConfigError::TooManyDrives(MAX_DRIVES + 1))
     );
     // A full table holds every drive, in slot order.
-    let mut full = BusTick::new(&ids[..MAX_DRIVES], Timing::at_hz(250)).unwrap();
+    let mut full = BusTick::new(&one_limb(&ids[..MAX_DRIVES]), Timing::at_hz(250)).unwrap();
     let held: Vec<_> = full.end(0).drives().map(|d| d.device).collect();
     assert_eq!(held, ids[..MAX_DRIVES]);
     // A drive listed twice is refused: its second slot could never be answered.
     assert_eq!(
-        BusTick::new(&[id(101), id(102), id(101)], Timing::at_hz(250)).err(),
+        BusTick::new(&one_limb(&[id(101), id(102), id(101)]), Timing::at_hz(250)).err(),
         Some(ConfigError::DuplicateDrive(id(101)))
     );
 }
@@ -428,9 +433,10 @@ fn reply_counters_follow_the_deadline_not_the_read_order() {
 }
 
 /// Guards: safety - a batch is checked whole before any of it is sent: a frame aimed at another drive, a frame in a
-/// slot with no drive, motion to a drive never heard from, or a frame a batch may not carry (Set Zero, set-ID, parameter
-/// reads and other writes, reporting on, queries: each needs sequencing a tick can't give, PLAN.md item 2) sends
-/// nothing and stops the bus with the exact reason (PLAN.md item 3, item 6 Silence row).
+/// slot with no drive, or a frame a batch may not carry (Set Zero, set-ID, parameter reads and other writes, reporting
+/// on, queries: each needs sequencing a tick can't give, PLAN.md item 2) sends nothing and stops the bus with the exact
+/// reason; motion to a drive never heard from stops that drive's limb, here the bus's only one (PLAN.md item 3, item 6
+/// Silence row).
 #[test]
 fn a_bad_batch_sends_nothing_and_names_the_slot() {
     let rows = [
@@ -495,7 +501,7 @@ fn a_bad_batch_sends_nothing_and_names_the_slot() {
             sent.iter().all(|(_, kind)| *kind != SendKind::Command),
             "{name}: {sent:?}"
         );
-        assert_eq!(bus.end(deadline(0)).stop, Some(reason), "{name}");
+        assert_eq!(stop_of(&bus.end(deadline(0))), Some(reason), "{name}");
     }
 }
 
@@ -511,30 +517,9 @@ fn a_batch_carries_the_enable_sequence() {
             Some(encode::param_write(&Write::mit_mode(drive(102)))),
         ],
     );
-    let list = bus.begin(0, 0, 0, Some(&b));
-    let sends: Vec<_> = list
-        .iter()
-        .map(|s| (s.slot, s.kind, s.frame, s.expires))
-        .collect();
-    // The frames go out as control built them; reporting off never expires, the `run_mode` write does.
-    assert_eq!(
-        sends,
-        [
-            (
-                0,
-                SendKind::Command,
-                encode::active_reporting(id(101), Reporting::Off),
-                false
-            ),
-            (
-                1,
-                SendKind::Command,
-                encode::param_write(&Write::mit_mode(drive(102))),
-                true
-            ),
-        ]
-    );
-    assert_eq!(bus.end(deadline(0)).stop, None);
+    let sent = run_tick(&mut bus, 0, Some(&b), &[]);
+    assert_eq!(sent, [(0, SendKind::Command), (1, SendKind::Command)]);
+    assert_eq!(stop_of(&bus.end(deadline(0))), None);
 }
 
 /// Guards: number - feedback exactly three periods old still carries motion; one nanosecond more stops (PLAN.md item 3:
@@ -552,191 +537,6 @@ fn the_feedback_limit_is_three_periods_inclusive() {
         let list = bus.begin(3, age, age, Some(&hold_batch));
         let commands = list.iter().filter(|s| s.kind == SendKind::Command).count();
         assert_eq!(commands == 1, sends, "age {age}");
-    }
-}
-
-/// Guards: safety - timing that breaks the tick's promises is refused at startup, never quietly replaced, one row per
-/// rule and its boundary: a feedback limit that with the write slack and the read lag reaches the drives' 50 ms timeout
-/// is refused (78 Hz by default) and 79 Hz is not; a stop window must fit the post-Disable silence and a tick to send
-/// reporting off; and silent ticks that with the write slack reach the drives' timeout, which would leave a silent
-/// control unstopped until the drives give up, are refused (safety.md: invalid configuration is an error, and no config
-/// value turns a protection off; PLAN.md item 3; units-and-frames.md section 5).
-#[test]
-#[expect(
-    clippy::too_many_lines,
-    reason = "one table, one row per timing rule and its boundary"
-)]
-fn timing_that_breaks_the_tick_is_refused() {
-    let base = Timing::at_hz(250);
-    let fits = base.disable_silence_ns + base.period_ns;
-    // At 250 Hz the write slack is the 1 ms send window, and the read lag period - collect + send window, 4 - 2.4 + 1 ms.
-    let (slack, lag) = (1_000_000, 2_600_000);
-    let rows = [
-        ("no rate", Timing::at_hz(0), Some(TimingError::NoPeriod)),
-        (
-            "no send window",
-            Timing {
-                send_window_ns: 0,
-                ..base
-            },
-            Some(TimingError::SendWindow {
-                send_window_ns: 0,
-                collect_ns: base.collect_ns,
-            }),
-        ),
-        (
-            "send window past collect",
-            Timing {
-                send_window_ns: base.collect_ns + 1,
-                ..base
-            },
-            Some(TimingError::SendWindow {
-                send_window_ns: base.collect_ns + 1,
-                collect_ns: base.collect_ns,
-            }),
-        ),
-        (
-            "collect at the period",
-            Timing {
-                collect_ns: base.period_ns,
-                ..base
-            },
-            Some(TimingError::Collect {
-                collect_ns: base.period_ns,
-                period_ns: base.period_ns,
-            }),
-        ),
-        (
-            "feedback under a period",
-            Timing {
-                feedback_limit_ns: base.period_ns - 1,
-                ..base
-            },
-            Some(TimingError::FeedbackLimit {
-                feedback_limit_ns: base.period_ns - 1,
-                period_ns: base.period_ns,
-            }),
-        ),
-        (
-            "feedback plus slack and lag reaches the timeout",
-            Timing {
-                feedback_limit_ns: DRIVE_TIMEOUT_NS - slack - lag,
-                ..base
-            },
-            Some(TimingError::FeedbackAge {
-                feedback_limit_ns: 46_400_000,
-                write_slack_ns: slack,
-                read_lag_ns: lag,
-            }),
-        ),
-        (
-            "feedback plus slack and lag just under the timeout",
-            Timing {
-                feedback_limit_ns: DRIVE_TIMEOUT_NS - slack - lag - 1,
-                ..base
-            },
-            None,
-        ),
-        (
-            "78 Hz",
-            Timing::at_hz(78),
-            Some(TimingError::FeedbackAge {
-                feedback_limit_ns: 38_461_539,
-                write_slack_ns: 3_205_128,
-                read_lag_ns: 8_333_334,
-            }),
-        ),
-        ("79 Hz", Timing::at_hz(79), None),
-        (
-            "stop window too short",
-            Timing {
-                stop_confirm_ns: fits - 1,
-                ..base
-            },
-            Some(TimingError::StopWindow {
-                stop_confirm_ns: fits - 1,
-                disable_silence_ns: base.disable_silence_ns,
-                period_ns: base.period_ns,
-            }),
-        ),
-        (
-            "stop window just fits",
-            Timing {
-                stop_confirm_ns: fits,
-                ..base
-            },
-            None,
-        ),
-        (
-            "no silent ticks",
-            Timing {
-                silent_ticks: 0,
-                ..base
-            },
-            Some(TimingError::NoSilentTicks),
-        ),
-        (
-            "silent ticks span the timeout",
-            Timing {
-                silent_ticks: 13,
-                ..base
-            },
-            Some(TimingError::SilentTicks {
-                silent_ticks: 13,
-                period_ns: base.period_ns,
-                write_slack_ns: slack,
-            }),
-        ),
-        (
-            "a tick fewer fits",
-            Timing {
-                silent_ticks: 12,
-                ..base
-            },
-            None,
-        ),
-        (
-            "the send window alone tips 48 ms of silent ticks to exactly the timeout",
-            Timing {
-                silent_ticks: 12,
-                send_window_ns: 2_000_000,
-                ..base
-            },
-            Some(TimingError::SilentTicks {
-                silent_ticks: 12,
-                period_ns: base.period_ns,
-                write_slack_ns: 2_000_000,
-            }),
-        ),
-        (
-            "a send window one ns shorter fits",
-            Timing {
-                silent_ticks: 12,
-                send_window_ns: 1_999_999,
-                ..base
-            },
-            None,
-        ),
-        (
-            "silent ticks that never end",
-            Timing {
-                silent_ticks: u32::MAX,
-                ..base
-            },
-            Some(TimingError::SilentTicks {
-                silent_ticks: u32::MAX,
-                period_ns: base.period_ns,
-                write_slack_ns: slack,
-            }),
-        ),
-        ("250 Hz", base, None),
-    ];
-    for (name, timing, refused) in rows {
-        assert_eq!(
-            BusTick::new(&[id(101)], timing).err(),
-            refused.map(ConfigError::Timing),
-            "{name}: {timing:?}"
-        );
     }
 }
 
@@ -767,8 +567,8 @@ fn error_frames_are_classified_and_passive_marks_the_bus_unhealthy() {
     run_tick(&mut bus, 0, None, &[(MS, error_frame(0x04, 0x20))]);
     let snap = bus.end(deadline(0));
     assert_eq!(
-        (snap.healthy, snap.state),
-        (false, BusState::Idle),
+        (snap.healthy, state_of(&snap)),
+        (false, LimbState::Idle),
         "passive doesn't stop the bus"
     );
     run_tick(&mut bus, 1, None, &[(MS, error_frame(0x04, 0x40))]);

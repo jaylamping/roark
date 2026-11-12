@@ -50,7 +50,7 @@ a sudden power cut corrupts data.
 | `/etc/robot/` | `skeleton.yaml`, `dynamics.yaml` and other config from the repo | The deploy script (`ConfigurationDirectory=robot`) |
 | `/var/lib/robot/sessions/` | One directory per session (PLAN "Observability") | The runtime (`StateDirectory=robot`) |
 | `/var/lib/robot/candump/` | Rotated, compressed black-box logs | The `candump@` units |
-| `/run/robot/` | The `api` socket | systemd (`RuntimeDirectory=robot`) |
+| `/run/robot/` | The runtime's lock (`runtime.lock`, held while it runs; `robot-cli disable` refuses while it is held), later the `api` socket | systemd (`RuntimeDirectory=robot`) |
 
 - **No robot name in paths,** units or users (tenet 7). It's `robot`, not the robot's current name.
 - **Bulk data lives in `/var/lib/robot`, not `/var/log`.** `/var/log` and journald are for text logs.
@@ -85,8 +85,9 @@ PLAN lists the units and their main settings. The conventions for writing them:
   `RestrictRealtime=yes`**: it blocks the realtime threads.
 - **The runtime starts after its CAN interfaces exist** (`After=` and `BindsTo=` on each bus's device unit), but **doesn't depend
   on the network, Tailscale or the internet**.
-- **CAN links are configured by systemd-networkd files in `deploy/`:** a `.link` file per adapter matched on its USB serial
-  (stable name, short TX queue), and a `.network` file per bus (bitrate, sample point). `RequiredForOnline=no`, so boot doesn't
+- **CAN links are configured by systemd-networkd files in `deploy/`:** a `.link` file per CAN channel, matched on its
+  device path (the SPI device for a HAT or CAN board, the USB serial for an adapter), for a stable name and a short TX
+  queue, and a `.network` file per bus (bitrate, sample point). `RequiredForOnline=no`, so boot doesn't
   wait for CAN. No shell scripts calling `ip link` (PLAN item 2: don't copy the legacy `can-up.sh`).
 - **The `api` socket's group and mode** enforce motion authority together with the runtime's own rules
   ([remote-access.md section 4](remote-access.md#4-accounts-on-the-pi)).

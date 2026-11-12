@@ -3,7 +3,7 @@
 KiCad's SES import replaces every track and via with the session's wiring, which also carries the fixed power-stage copper
 and the hatch traces tools/dsn_prep.py used to stand in for the pours. This deletes exactly those hatch traces (from
 <dsn>.hatch.json: layer, net, y and x-span of each 0.5 mm scan line), keeps the rest, unlocks the signal tracks, refills
-the zones (the GND fills on L1, In2 and L4 come back around the new signals) and saves.
+the zones (the GND fills on L1, In2, In3 and B.Cu come back around the new signals) and saves.
 Run with KiCad's Python: <kicad python> tools/ses_import.py <board.kicad_pcb> <session.ses> <dsn.hatch.json> <out.kicad_pcb>"""
 import collections,json,sys
 import pcbnew
@@ -30,8 +30,11 @@ key=lambda t:(t.GetNetname(),t.GetLayer(),um(t.GetStart().x),um(t.GetStart().y),
 import os,re
 LOCK=re.compile(os.environ.get('LOCK','^$'))
 for t in ALL: t.SetLocked(bool(LOCK.match(t.GetNetname())) and key(t) in PRE0)
-on_in1=[t for t in ALL if t.GetClass()=='PCB_TRACK' and t.GetLayer()==pcbnew.In1_Cu]
-print('tracks on In1 (should be none; they cut the GND plane):',len(on_in1),sorted({t.GetNetname() for t in on_in1})[:20])
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); import stack
+PL={stack.kicad_layers(pcbnew)[i] for i in stack.GNDPLANE}
+on_in1=[t for t in ALL if t.GetClass()=='PCB_TRACK' and t.GetLayer() in PL]
+print('tracks on the GND planes (In1/In4; should be none, they cut the planes):',len(on_in1),sorted({t.GetNetname() for t in on_in1})[:20])
+if on_in1: sys.exit('ses_import: tracks on a GND plane layer')
 pcbnew.ZONE_FILLER(b).Fill(b.Zones())
 b.Save(sys.argv[4])
 n1=len(ALL)

@@ -30,7 +30,8 @@ to guess. The newtypes that enforce units in Rust are in [rust.md section 3](rus
 - **Celsius, not kelvin,** because the drives report °C and every limit we have (pause at 60 °C, stop at 75 °C) is written in
   °C. This is the one deliberate exception to strict SI.
 - **Milliseconds are fine in config when they read better** (`can_timeout_ms: 50`), as long as the key says so. Inside Rust
-  every span is a `Duration`, so the unit can't be lost. The one exception is the bus tick (section 5).
+  every span is a `Duration`, so the unit can't be lost. The exceptions are the bus tick and `safety`'s steppers (section
+  5).
 - **The drive's own encodings never leave the codec.** RobStride sends positions, velocities and torques as scaled integers
   (MIT mode `u16` ranges, parameter `f32`s with their own units). The `robstride` crate converts to the SI newtypes at the edge
   and nothing else ever sees a raw drive value. **Why:** the legacy RS03 velocity scale was wrong (±20 rad/s measured, not
@@ -73,7 +74,7 @@ between drive and joint, the zero convention and the persistence test are in
   reading goes through it. **Why:** when a joint moves the wrong way there is one place to look, and one `Guards: safety`
   test covers it.
 - **Unverified is `null`, never a guess.** A `direction` or `zero_rad` that hasn't been checked on the hardware stays `null`
-  and the joint is refused at enable (PLAN item 1, "Null is not permission"). Nobody writes `1` "for now".
+  and the joint moves only at its commissioning caps (PLAN item 1, "Null is not a number"). Nobody writes `1` "for now".
 - **No wrapping in joint space.** Joint positions are continuous values inside the joint's limits; code never normalises them
   into ±π. **Why:** no joint on this robot turns a full revolution, so a jump across ±π means a lost zero or a decode bug, and
   wrapping it would hide exactly the failure we need to see.
@@ -104,17 +105,23 @@ The values and the loader's checks are in [PLAN item 1](../PLAN.md#1-the-skeleto
   since it adds no arithmetic to the loop. **Why:** the tick runs every period on every bus, and
   `Instant`/`Duration` arithmetic (seconds and nanoseconds normalised on every add and compare) measured 32 % slower:
   57.3 against 43.5 ns for a two-drive tick on an M-series Mac, 2026-11-08. Nothing else gets the exception without a
-  measurement of its own.
+  measurement of its own, but for one case.
+- **The exception reaches `safety`'s steppers** (`Preflight`, `Enabling` and the proof between them): they take `now_ns`
+  and keep their windows as `u64` nanoseconds on the same `Epoch` (Joey, 2026-11-10). **Why:** every time they hold is
+  on the bus tick's `Epoch`, read by control alongside each snapshot; most are compared with a `Snapshot`'s own `_ns`
+  fields, and the rest (preflight's request window) with the same `now_ns`, so one clock and one unit run through the
+  stepper, and a `Duration` at that seam would be converted straight back and remove no way of losing the unit. It
+  reaches no further: anything that doesn't compare with the bus tick's fields takes a `Duration`.
 - CAN frames carry the **kernel RX timestamp** in the recording, not the time the user-space code got round to reading
   them. The bus tick matches replies and ages feedback on the monotonic time the bus thread read the frame instead
   (can.md section 2), because the kernel's stamp is wall-clock and can step. For every status motion is sent on,
   reading trailed arrival by at most the gap from the collect deadline to the close of the next tick's send window
-  (period - collect + send window: 2.6 ms at 250 Hz): a later wake or a drain backlog stops an active bus, and on an
-  idle bus holds the tick, which sends no motion and clears the freshness its drain stamped (`can::BusTick::begin`
-  states the rule). The motion frame goes out up to a send window (1 ms at 250 Hz) after its staleness check at the
-  wake. So at 250 Hz the three-period feedback limit allows at most 12 + 2.6 + 1 = 15.6 ms of real age when the frame
-  is written, well inside the drives' 50 ms timeout, and `Timing::check` refuses any timing whose limit plus that lag
-  and slack reaches it. The real adapter's queue age is measured at PLAN step 8.
+  (period - collect + send window: 2.6 ms at 250 Hz): a later wake or a drain backlog stops every active limb, and
+  holds the tick for every idle one, which sends it no motion and clears the freshness its drain stamped
+  (`can::BusTick::begin` states the rule). The motion frame goes out up to a send window (1 ms at 250 Hz) after its
+  staleness check at the wake. So at 250 Hz the three-period feedback limit allows at most 12 + 2.6 + 1 = 15.6 ms of
+  real age when the frame is written, well inside the drives' 50 ms timeout, and `Timing::check` refuses any timing
+  whose limit plus that lag and slack reaches it. The real adapter's queue age is measured at PLAN step 8.
 - Durations in logs use the same suffix rule as everything else (`latency_us`, `age_ms`).
 
 ## 6. Identity

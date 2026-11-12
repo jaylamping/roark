@@ -1,9 +1,22 @@
 #![doc = include_str!("../README.md")]
 #![warn(clippy::wildcard_enum_match_arm, clippy::as_conversions)]
 
+mod batch;
 #[cfg(target_os = "linux")]
 mod bus;
+#[cfg(target_os = "linux")]
+mod bus_orders;
+#[cfg(target_os = "linux")]
+mod clock;
 mod error_frame;
+#[cfg(any(target_os = "linux", test))]
+mod exit_wait;
+mod order;
+mod read;
+#[cfg(target_os = "linux")]
+mod slack;
+mod slow;
+mod stop;
 #[cfg(target_os = "linux")]
 #[expect(
     unsafe_code,
@@ -11,15 +24,21 @@ mod error_frame;
 )]
 mod sys;
 mod tick;
+mod timing;
 mod types;
 
 #[cfg(target_os = "linux")]
 pub use bus::{BusConfig, BusExit, BusLinks, BusRunError, Spawned, bus_info, spawn};
 
 pub use error_frame::{BusError, classify};
+pub use order::{Order, Rearmed};
+pub use slow::{SLOW_SLOTS, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, SlowResult, Unsent};
+/// The frame record [`BusTick::on_frame`] reads, so a caller feeding a tick by hand needs no `telemetry` of its own.
+pub use telemetry::{Direction, FrameRecord};
 pub use tick::BusTick;
+pub use timing::{DRIVE_TIMEOUT_NS, ENABLE_TO_RUN_NS, Timing, TimingError};
 pub use types::{
-    BusState, CommandBatch, ConfigError, Counters, DRIVE_TIMEOUT_NS, Drain, DriveView, MAX_DRIVES,
-    MAX_SENDS, Observed, Send, SendKind, SendList, SendOutcome, Snapshot, StopOutcome, StopReason,
-    Timing, TimingError,
+    BusDrive, CommandBatch, ConfigError, Counters, Drain, DriveView, EchoSeen, LimbState, LimbView,
+    MAX_DRIVES, MAX_SENDS, ModeSeen, NoSuchLimb, Observed, RearmRefused, Send, SendKind, SendList,
+    SendOutcome, Snapshot, StopOutcome, StopReason,
 };
