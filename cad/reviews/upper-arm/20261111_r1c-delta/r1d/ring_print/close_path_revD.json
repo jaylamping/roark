@@ -1,0 +1,326 @@
+{
+ "front vs hub_grooved": {
+  "half_points": {
+   "hits": 1852,
+   "touching_or_inside": 97,
+   "grazing_on_Y296_Y302": 1755,
+   "path_collisions": 0
+  },
+  "part_points": {
+   "hits": 1928,
+   "touching_or_inside": 60,
+   "grazing_on_Y296_Y302": 1838,
+   "path_collisions": 30,
+   "worst": [
+    {
+     "at": [
+      195.91,
+      298.03,
+      31.12
+     ],
+     "r": 35.75,
+     "theta": 44.7,
+     "dist": 0.09
+    },
+    {
+     "at": [
+      195.31,
+      298.07,
+      31.61
+     ],
+     "r": 35.67,
+     "theta": 45.9,
+     "dist": 0.09
+    },
+    {
+     "at": [
+      135.93,
+      298.05,
+      15.02
+     ],
+     "r": 35.72,
+     "theta": 165.3,
+     "dist": 0.1
+    },
+    {
+     "at": [
+      204.75,
+      298.09,
+      15.81
+     ],
+     "r": 35.65,
+     "theta": 16.0,
+     "dist": 0.13
+    },
+    {
+     "at": [
+      161.29,
+      298.0,
+      40.6
+     ],
+     "r": 35.81,
+     "theta": 104.9,
+     "dist": 0.15
+    },
+    {
+     "at": [
+      179.69,
+      297.99,
+      40.6
+     ],
+     "r": 35.82,
+     "theta": 75.1,
+     "dist": 0.16
+    },
+    {
+     "at": [
+      179.97,
+      297.97,
+      40.52
+     ],
+     "r": 35.81,
+     "theta": 74.7,
+     "dist": 0.17
+    },
+    {
+     "at": [
+      161.6,
+      297.95,
+      40.67
+     ],
+     "r": 35.81,
+     "theta": 104.4,
+     "dist": 0.18
+    }
+   ],
+   "box": [
+    [
+     135.9,
+     297.9,
+     15.0
+    ],
+    [
+     205.0,
+     298.5,
+     40.7
+    ]
+   ]
+  }
+ },
+ "front vs rs02_vendor": {
+  "half_points": {
+   "hits": 0
+  },
+  "part_points": {
+   "hits": 0
+  }
+ },
+ "front vs rs02_ring": {
+  "half_points": {
+   "hits": 156,
+   "touching_or_inside": 156,
+   "grazing_on_Y296_Y302": 0,
+   "path_collisions": 0
+  },
+  "part_points": {
+   "hits": 103,
+   "touching_or_inside": 103,
+   "grazing_on_Y296_Y302": 0,
+   "path_collisions": 0
+  }
+ },
+ "front ridge/bore final overlap": {
+  "n": 235,
+  "max_into_hub": 0.151,
+  "at": [
+   161.96,
+   298.39,
+   39.75
+  ]
+ },
+ "back vs hub_grooved": {
+  "half_points": {
+   "hits": 1847,
+   "touching_or_inside": 105,
+   "grazing_on_Y296_Y302": 1742,
+   "path_collisions": 0
+  },
+  "part_points": {
+   "hits": 1938,
+   "touching_or_inside": 57,
+   "grazing_on_Y296_Y302": 1851,
+   "path_collisions": 30,
+   "worst": [
+    {
+     "at": [
+      136.38,
+      298.19,
+      -3.72
+     ],
+     "r": 35.47,
+     "theta": 195.9,
+     "dist": 0.05
+    },
+    {
+     "at": [
+      145.93,
+      298.29,
+      -19.36
+     ],
+     "r": 35.29,
+     "theta": 225.9,
+     "dist": 0.07
+    },
+    {
+     "at": [
+      145.5,
+      298.02,
+      -19.59
+     ],
+     "r": 35.75,
+     "theta": 225.7,
+     "dist": 0.1
+    },
+    {
+     "at": [
+      144.98,
+      298.02,
+      -19.07
+     ],
+     "r": 35.76,
+     "theta": 224.5,
+     "dist": 0.11
+    },
+    {
+     "at": [
+      161.34,
+      298.01,
+      -28.61
+     ],
+     "r": 35.78,
+     "theta": 255.2,
+     "dist": 0.12
+    },
+    {
+     "at": [
+      179.66,
+      298.0,
+      -28.61
+     ],
+     "r": 35.79,
+     "theta": 284.8,
+     "dist": 0.12
+    },
+    {
+     "at": [
+      146.11,
+      298.42,
+      -19.23
+     ],
+     "r": 35.07,
+     "theta": 226.0,
+     "dist": 0.12
+    },
+    {
+     "at": [
+      194.89,
+      298.4,
+      -19.25
+     ],
+     "r": 35.1,
+     "theta": 314.0,
+     "dist": 0.13
+    }
+   ],
+   "box": [
+    [
+     136.0,
+     297.9,
+     -28.6
+    ],
+    [
+     205.0,
+     298.4,
+     -3.4
+    ]
+   ]
+  }
+ },
+ "back vs rs02_vendor": {
+  "half_points": {
+   "hits": 0
+  },
+  "part_points": {
+   "hits": 0
+  }
+ },
+ "back vs rs02_ring": {
+  "half_points": {
+   "hits": 157,
+   "touching_or_inside": 157,
+   "grazing_on_Y296_Y302": 0,
+   "path_collisions": 0
+  },
+  "part_points": {
+   "hits": 117,
+   "touching_or_inside": 117,
+   "grazing_on_Y296_Y302": 0,
+   "path_collisions": 0
+  }
+ },
+ "back ridge/bore final overlap": {
+  "n": 235,
+  "max_into_hub": 0.15,
+  "at": [
+   204.26,
+   298.39,
+   -2.54
+  ]
+ },
+ "front final overlap with the hub": {
+  "points": 65047,
+  "into_hub_over_0p02": 117,
+  "max_into_hub": 0.154,
+  "where": {
+   "r": [
+    34.83,
+    35.69
+   ],
+   "Y": [
+    297.93,
+    298.44
+   ],
+   "theta": [
+    15,
+    45,
+    75,
+    105,
+    135,
+    165
+   ]
+  }
+ },
+ "back final overlap with the hub": {
+  "points": 66740,
+  "into_hub_over_0p02": 96,
+  "max_into_hub": 0.15,
+  "where": {
+   "r": [
+    34.83,
+    35.66
+   ],
+   "Y": [
+    297.93,
+    298.5
+   ],
+   "theta": [
+    195,
+    225,
+    255,
+    285,
+    315,
+    345
+   ]
+  }
+ }
+}

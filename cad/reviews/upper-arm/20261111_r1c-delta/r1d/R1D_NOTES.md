@@ -149,3 +149,16 @@ for both. Switching to direct sparse through the API failed:
 - No Simulation solver default is stored under HKCU\Software\SolidWorks\SOLIDWORKS 2026\Simulation (only SolverOffload).
 - Probe: cad/scripts/fea/r1c/r1d_solver_probe.sh, mesh-only at 0.8 mm (796,472 nodes, 35 s per mesh), every instance ended
   cleanly.
+
+## Ring print geometry, provisional (WIP only, 2026-11-12 08:18; not released)
+
+Built from the ring variant (full-semicircle ridge per half, 0.1 flank gap, crush ribs 0.25 proud at θ 15/45/75/105/135/165 and
++180), exported, and sliced with the support blocker at the ridge crown. Files are in `cad/_wip/r1d_ring_print/`, hashes in
+`ring_print/SHA256SUMS_wip.txt`.
+- Mesh gate and slice: back PASS, 5 h 26 min, 123.7 g; front PASS, 4 h 45 min, 107.9 g.
+- Closing path against shoulder hub rev D (556cc44 STL):
+  - The final overlap is at the crush ribs only: max 0.154 mm (front) and 0.150 mm (back), at r 34.83-35.69, Y 297.9-298.5 and
+    exactly the 12 rib angles. That is the ribs' 0.25 proud minus the 0.1 gap, so it is the intended crush.
+  - Path contacts while closing: 30 per half, again at the rib angles, ≤0.18 mm.
+  - The halves' own sweep has no path collisions. The RS02 ring contacts are its designed seat.
+- Not a release: the ring STOP_0 FEA is still open (solver), and the print files are not in `prints/`.
