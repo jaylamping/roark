@@ -55,7 +55,7 @@ impl RealInterface {
     /// Whether the controller was error-passive when checked: the bus then starts unhealthy
     /// (`BusTick::start_error_passive`) until an error frame says it recovered.
     #[must_use]
-    pub fn starts_error_passive(&self) -> bool {
+    pub(crate) fn starts_error_passive(&self) -> bool {
         self.state == ERROR_PASSIVE
     }
 }
