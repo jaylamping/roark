@@ -9,7 +9,8 @@ use rtrb::{Consumer, Producer, RingBuffer};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-/// Room for a burst: every limb stopped and every joint of an enable refused in one pass, many times over.
+/// Room for a pass's worst burst many times over: one enable's joints started (one enable starts a pass), one answer
+/// per queued enable and clear, and a stop per scope and cause.
 pub const RING_EVENTS: usize = 1024;
 
 /// An event's level (logging.md section 2b).

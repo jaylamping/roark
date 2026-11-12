@@ -19,9 +19,10 @@ use telemetry::{
 
 use crate::clock::{Schedule, mono_now, wall_ns};
 use crate::control::{self, BusEnds, ControlExit, ControlLinks, View};
-use crate::dispatch::{BusOrders, StopLatch};
+use crate::dispatch::BusOrders;
 use crate::enable::{Enable, EnableReply, SLOW_RING, SlowEnds};
 use crate::events::Events;
+use crate::latch::StopLatch;
 use crate::plan::{BusPlan, PlanError, offline, plan};
 use crate::request::{Clear, Reply, Scope};
 use crate::roster::{JointSet, Roster, TooManyJoints, UnknownJoint};
@@ -340,6 +341,8 @@ impl Runtime {
     /// # Errors
     /// A thread panicked, or the recording didn't close cleanly.
     pub fn end(mut self) -> Result<RuntimeExit, EndError> {
+        // Recorded as the robot's stop, its cause the shutdown: every bus stops every limb as it ends.
+        self.stops.ask(Scope::Robot, Cause::Shutdown);
         self.threads.end()
     }
 }
@@ -350,6 +353,7 @@ impl Drop for Runtime {
         if self.threads.running() {
             // A drop has nobody to hand the error to, and every thread has ended either way (EndError says so); the
             // owner who wants the outcome calls `end`.
+            self.stops.ask(Scope::Robot, Cause::Shutdown);
             let _ = self.threads.end();
         }
     }

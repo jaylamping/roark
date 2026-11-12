@@ -82,17 +82,40 @@ pub(crate) fn of_the_enable_run(events: &[Event]) {
         ],
         "{events:?}"
     );
-    let tags = |kind| {
-        let mut tags: Vec<_> = common::of_kind(events, kind)
+    let joints_and_tags = |kind| {
+        common::of_kind(events, kind)
             .iter()
-            .filter_map(|e| e.tag)
-            .collect();
-        tags.dedup();
-        tags
+            .map(|e| (e.joint.unwrap_or_default(), e.tag.unwrap_or_default()))
+            .collect::<Vec<_>>()
     };
-    assert_eq!(tags(EventKind::EnableStarted), [2, 5, 7, 9, 11, 12]);
-    assert_eq!(tags(EventKind::EnableSucceeded), [2, 5, 9, 11, 12]);
-    assert_eq!(tags(EventKind::LimbCleared), [4, 6, 8, 10]);
+    // One event per joint of each enable that started, in roster order.
+    assert_eq!(
+        joints_and_tags(EventKind::EnableStarted),
+        [
+            ("arm_a_one", 2),
+            ("arm_a_two", 2),
+            ("arm_a_one", 5),
+            ("arm_a_two", 5),
+            ("arm_a_two", 7),
+            ("arm_a_one", 9),
+            ("arm_a_one", 11),
+            ("waist_one", 12),
+        ],
+        "{events:?}"
+    );
+    let tags = |kind| {
+        common::of_kind(events, kind)
+            .iter()
+            .map(|e| e.tag.unwrap_or_default())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        tags(EventKind::EnableSucceeded),
+        [2, 5, 9, 11, 12],
+        "{events:?}"
+    );
+    // The left arm is on one bus: one answer per clear.
+    assert_eq!(tags(EventKind::LimbCleared), [4, 6, 8, 10], "{events:?}");
     let stops = common::of_kind(events, EventKind::LimbStopped);
     assert!(
         stops.iter().all(|e| e.limb == Some("left_arm")),

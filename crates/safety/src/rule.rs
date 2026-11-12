@@ -137,6 +137,19 @@ impl RuleId {
     }
 }
 
+// `ALL` holds every rule at its index, so a code built from `index` decodes through `ALL`.
+#[expect(
+    clippy::indexing_slicing,
+    reason = "checked at compile time: an index out of range fails the build"
+)]
+const _: () = {
+    let mut i = 0;
+    while i < RuleId::ALL.len() {
+        assert!(RuleId::ALL[i].index() == i, "RuleId::ALL is in index order");
+        i += 1;
+    }
+};
+
 impl core::fmt::Display for RuleId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str(self.as_str())

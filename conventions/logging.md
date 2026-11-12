@@ -37,11 +37,11 @@ three into one home-grown store of about 20k lines.
 Events are the shared language of the robot's history. Each one is an event in the recording and a log line at the matching
 level.
 
-- **Every event has a `kind` from one closed list**, written as `area.past_tense_verb`: `drive.enabled`, `drive.went_silent`,
-  `limb.stopped`, `preflight.refused`, `limit.hit`, `fault.latched`, `fault.cleared`, `operator.requested`, `skeleton.loaded`,
-  `bus.off`. In Rust it's an enum, so adding a kind is a deliberate change, and the UI's types are generated from it.
-  The kinds written so far (`telemetry::EventKind`): `limb.stopped`, `robot.stopped`, `enable.started`,
-  `enable.succeeded`, `enable.refused`, `limb.cleared`, `clear.refused`.
+- **Every event has a `kind` from one closed list**, written as `area.past_tense_verb`. In Rust it's an enum
+  (`telemetry::EventKind`), so adding a kind is a deliberate change, made here in the same PR, and the UI's types are
+  generated from it. The list: `limb.stopped`, `robot.stopped`, `enable.started`, `enable.succeeded`, `enable.refused`,
+  `limb.cleared`, `clear.refused`. Planned as their sources arrive, in the same form: `drive.went_silent`,
+  `limit.hit`, `fault.latched`, `operator.requested`, `skeleton.loaded`, `bus.off`.
 - **Every event carries** a stamp (`stamp_ns`, [units-and-frames.md section 5](units-and-frames.md#5-time-and-timestamps)),
   its kind, and whichever shared fields apply (section 2a). Safety events add the measured value and the threshold.
 - **Event kinds and field names are an interface.** Renaming one breaks dashboards, replay scripts and every query anyone saved.
@@ -70,7 +70,7 @@ One set of names, used in log fields, event fields, MCAP messages, metric labels
 | `rule` | Safety rule ID ([safety.md section 2](safety.md#2-each-rule-has-a-stable-id)) | `host.silence` |
 | `client` | Who sent a request: UI, CLI, an agent, and the person if known | `robot-cli:joey` |
 | `reason` | Why, in a word, where no `rule` says: a stop's `operator`, `shutdown` or `follows_bus_stop`, a refusal's kind | `operator` |
-| `tag` | The requester's tag for a request, echoed in its reply and every event it caused | `7` |
+| `tag` | The requester's tag for a request, echoed in its reply and the events that answer it (not the stops it causes, which carry their rule) | `7` |
 
 Values carry units in the name when they're bare numbers (`temp_c`, `latency_us`), per
 [units-and-frames.md](units-and-frames.md). Adding a shared field is a change to this table.

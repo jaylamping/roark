@@ -15,8 +15,9 @@ drains every ring into the session's file:
 - `/event`: control's events (stops with their rule, enables, refused enables, clears; kinds from `EventKind`), from
   its own lock-free ring (`Recording::events` hands out its `EventRecorder`). Each carries its monotonic time and its
   wall time, mapped through the recorder's newest reading of the two clocks together (taken each drain, every 10 ms,
-  and once more at close; `/clock` records one a second, so a reader mapping from `/clock` agrees to within the clocks'
-  drift). Joints and buses are written by name. A full ring drops the event and counts it.
+  and once more at close; `/clock` records one a second, so a reader mapping from `/clock` agrees while the wall clock
+  runs on without a step; across a step, such as NTP's first sync on a Pi with no clock battery, the two disagree by
+  the step for up to a second). Joints and buses are written by name. A full ring drops the event and counts it.
 - `/session`: a header first (session, file number, git revision, skeleton hash, buses with their filters and
   timestamp source) and an end marker last (per-bus totals of what was written, lost and omitted, and the events written
   and lost).

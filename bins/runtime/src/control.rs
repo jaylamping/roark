@@ -14,9 +14,10 @@ use rtrb::{Consumer, Producer};
 use safety::{Cause, RuleId};
 
 use crate::clock::{Schedule, mono_now, passed, sleep_period};
-use crate::dispatch::{BusOrders, StopLatch, Told, orders, reply};
+use crate::dispatch::{BusOrders, Told, orders, reply};
 use crate::enable::{Buses, Counts, Enable, EnableRefused, EnableReply, Enabler, SlowEnds};
 use crate::events::Events;
+use crate::latch::StopLatch;
 use crate::plan::BusPlan;
 use crate::request::{Clear, ClearAt, ClearRefused, Reply, Scope, route_clear};
 use crate::roster::Roster;
@@ -127,13 +128,13 @@ pub(crate) fn run(
     let mut batches = vec![CommandBatch::new(0, 0); links.buses.len()];
     let phase = phase(timing);
     let mut n = schedule.next(phase);
-    // Whether the run's end has been recorded as the robot's stop.
-    let mut end_recorded = false;
     loop {
         if exit.error.is_none() {
             if let Err(e) = schedule.sleep_until(schedule.at(n, phase)) {
-                // No clock to keep the schedule: end the run. The buses stop their drives on their own schedule.
+                // No clock to keep the schedule: end the run, a broken control side (`host.hang`). The buses stop
+                // their drives on their own schedule.
                 exit.error = Some(e);
+                links.stops.ask(Scope::Robot, Cause::Rule(RuleId::HostHang));
                 links.end.store(true, Ordering::Release);
             } else {
                 let current = schedule.current(phase);
@@ -159,7 +160,7 @@ pub(crate) fn run(
         if ended.iter().all(|e| *e) {
             // A bus may have answered a clear between its last read and its end.
             read(plans, n, &mut links, &mut newest, &mut exit);
-            record_end(&mut links, &exit, &mut end_recorded);
+            record_end(&mut links);
             refuse_clears(plans, &mut links, &mut exit);
             refuse_enables(&mut enabler, &mut links, &mut exit);
             add(&mut exit, counts);
@@ -168,7 +169,7 @@ pub(crate) fn run(
         }
         // Read again: an end asked during the reads stops the enables, orders and batches at once.
         if links.end.load(Ordering::Acquire) {
-            record_end(&mut links, &exit, &mut end_recorded);
+            record_end(&mut links);
             refuse_clears(plans, &mut links, &mut exit);
             refuse_enables(&mut enabler, &mut links, &mut exit);
         } else {
@@ -287,21 +288,9 @@ fn send_orders(plans: &[BusPlan], links: &mut ControlLinks, replies_dropped: &mu
     )
 }
 
-/// While the run ends, every bus stops every limb on its own: the first pass that sees the end records it as the
-/// robot's stop, under its cause (a lost clock `host.hang`, a bus thread that ended `host.bus`, otherwise shutdown),
-/// and every pass records the stops still asked, which the buses' own stops already cover.
-fn record_end(links: &mut ControlLinks, exit: &ControlExit, recorded: &mut bool) {
-    if !*recorded {
-        *recorded = true;
-        let cause = if exit.error.is_some() {
-            Cause::Rule(RuleId::HostHang)
-        } else if exit.bus_ended.is_some() {
-            Cause::Rule(RuleId::HostBus)
-        } else {
-            Cause::Shutdown
-        };
-        links.events.stop(Scope::Robot, cause);
-    }
+/// While the run ends, every bus stops every limb on its own, so control routes no stop: it records the stops asked,
+/// the end's own among them (the robot's, asked under its cause where the end was decided), in the order they came.
+fn record_end(links: &mut ControlLinks) {
     let stops = links.stops.take();
     if !stops.is_empty() {
         links.events.stops(stops);
@@ -433,6 +422,8 @@ fn read(
         }
         if ended && !ending {
             exit.bus_ended.get_or_insert(bus);
+            // A bus thread that ended stops the run (`host.bus`); the bus is named in the exit.
+            links.stops.ask(Scope::Robot, Cause::Rule(RuleId::HostBus));
             links.end.store(true, Ordering::Release);
         }
     }

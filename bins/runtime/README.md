@@ -56,10 +56,12 @@ come in the PRs that follow (PLAN step 7).
   - `limb.stopped` and `robot.stopped`: one per cause the stop was asked for, each limb's kept even when a robot stop
     covers it. The cause is a rule (an enable's failure under its failure's rule, a limb mate under `host.mode`, a hold
     that couldn't be encoded or placed under `host.hang`, a bus's own stop of a held limb under that stop's rule when it
-    is one, as `host.fault` for a fault), or a reason: `operator`, `shutdown`, or `follows_bus_stop` when control carries
-    a stop already asked of one bus to the limb's others. The stop latch keeps every cause asked of each scope until
+    is one, as `host.fault` for a fault), or a reason: `operator`, `shutdown`, or `follows_bus_stop` when a held limb's
+    bus stop names no rule because it was asked (by the operator or control, whose own event names the cause) and
+    control carries it to the whole limb. The stop latch keeps every cause asked of each scope until
     control takes it, in the same atomic word as the stop, so a stop is never taken without its cause. The run's end is
-    one `robot.stopped`, under `host.hang` for a lost clock, `host.bus` for a bus thread that ended, else `shutdown`.
+    asked as the robot's stop, under `host.hang` for a lost clock, `host.bus` for a bus thread that ended (the bus is
+    named in the exit), else `shutdown`, and recorded as one `robot.stopped` in its turn with any stop asked before it.
   - `enable.started`: one per joint of an enable that passed its checks, under its tag. `enable.succeeded` carries the
     tag; `enable.refused` carries the tag, the rule (none for a request that was wrong or came at the wrong time, which
     no rule refused), a reason word, and whichever of joint (with its limb), limb or bus the refusal names.

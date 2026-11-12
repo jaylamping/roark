@@ -7,7 +7,7 @@ use safety::{Cause, HoldVerdict, Mate, RuleId, limb_mates};
 use skeleton::LimbName;
 
 use super::{Buses, Counts, Enabler, Phase, place};
-use crate::dispatch::StopLatch;
+use crate::latch::StopLatch;
 use crate::request::Scope;
 use crate::roster::{Roster, RosterJoint};
 
@@ -49,21 +49,14 @@ impl Enabler {
                     {
                         self.send_hold(joint, entry, buses, stops);
                     }
-                    LimbVerdict::Hold | LimbVerdict::Halted(_) | LimbVerdict::Mate(_) => {
+                    LimbVerdict::Hold | LimbVerdict::Halted | LimbVerdict::Mate(_) => {
                         self.drop_hold(joint, counts);
                     }
                 }
             }
             match verdict {
                 LimbVerdict::Hold => {}
-                // The bus's own stop under its rule, carried to the limb's other buses; a stop asked of the bus (by
-                // control or the operator) had its cause recorded when it was asked.
-                LimbVerdict::Halted(stop) => {
-                    let cause = stop
-                        .and_then(RuleId::of_stop)
-                        .map_or(Cause::Follows, Cause::Rule);
-                    stops.ask(Scope::Limb(limb), cause);
-                }
+                LimbVerdict::Halted => ask_halt(roster, buses.snapshots, limb, stops),
                 LimbVerdict::Mate(rule) => {
                     counts.mode_stops += 1;
                     stops.ask(Scope::Limb(limb), Cause::Rule(rule));
@@ -103,8 +96,8 @@ impl Enabler {
         snapshots: &[Option<Snapshot>],
         limb: LimbName,
     ) -> LimbVerdict {
-        if let Some(stop) = halted(roster, snapshots, limb) {
-            return LimbVerdict::Halted(stop);
+        if halted(roster, snapshots, limb).is_some() {
+            return LimbVerdict::Halted;
         }
         match limb_mates(self.mates(roster, snapshots, limb)) {
             HoldVerdict::Hold => LimbVerdict::Hold,
@@ -152,8 +145,8 @@ impl Enabler {
 pub(super) enum LimbVerdict {
     /// Held on.
     Hold,
-    /// Stopped on some bus, for this reason if its snapshot still says: stopped on every bus.
-    Halted(Option<StopReason>),
+    /// Stopped on some bus: stopped on every bus.
+    Halted,
     /// A drive of it this host didn't enable left Reset, or can't be seen: stopped under this rule (`host.mode`).
     Mate(RuleId),
 }
@@ -166,6 +159,26 @@ pub(super) fn limb_on<'a>(
     let (bus, slot) = entry.slot()?;
     let snapshot = snapshots.get(bus)?.as_ref()?;
     snapshot.limb(snapshot.drive(slot)?.limb)
+}
+
+/// A held `limb` stopped on some bus, stopped on every bus: under each rule its stopped parts' own stops name (a bus's
+/// `host.fault` or `host.silence`, say), or, when none names one, as following a stop asked of the bus, whose cause was
+/// recorded when it was asked (the operator's, or control's own).
+fn ask_halt(roster: &Roster, snapshots: &[Option<Snapshot>], limb: LimbName, stops: &StopLatch) {
+    let mut any_rule = false;
+    let rules = (0..roster.len())
+        .filter_map(|j| roster.joint(j))
+        .filter(|e| e.limb == limb)
+        .filter_map(|e| limb_on(snapshots, e))
+        .filter(|l| !l.state.takes_commands())
+        .filter_map(|l| l.stop.and_then(RuleId::of_stop));
+    for rule in rules {
+        stops.ask(Scope::Limb(limb), Cause::Rule(rule));
+        any_rule = true;
+    }
+    if !any_rule {
+        stops.ask(Scope::Limb(limb), Cause::Follows);
+    }
 }
 
 /// Why `limb` is stopping or stopped on some bus, if it is on any: the newest snapshot of every bus it is on.

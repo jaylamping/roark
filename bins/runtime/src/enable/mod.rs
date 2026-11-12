@@ -23,7 +23,7 @@ use safety::{
 };
 use skeleton::LimbName;
 
-use crate::dispatch::StopLatch;
+use crate::latch::StopLatch;
 use crate::request::Scope;
 use crate::roster::{JointSet, Roster, RosterJoint};
 
@@ -455,50 +455,36 @@ impl Enabler {
             Some(Phase::Enabled(_)) => true,
             Some(Phase::Off | Phase::Preflight { .. } | Phase::Passed(_)) | None => false,
         });
-        // Each failure that stops has its rule: the stop goes under it.
-        let (why, rule) = match failure {
+        let why = match failure {
             Failed::Preflight { joint, refusal } if !stopped => {
-                (EnableRefused::Preflight { joint, refusal }, refusal.rule())
+                EnableRefused::Preflight { joint, refusal }
             }
             // A preflight refusal can't come once an Enable is planned (every proof is in hand by then); counted as the
             // sequence's, so the reply says the limbs were stopped.
-            Failed::Preflight { joint, .. } => {
-                let failure = EnableFailure::LimbStopped {
+            Failed::Preflight { joint, .. } => EnableRefused::Sequence {
+                joint,
+                failure: EnableFailure::LimbStopped {
                     stop: None,
                     enable_planned: true,
-                };
-                let why = EnableRefused::Sequence {
-                    joint,
-                    failure,
-                    stopped,
-                };
-                (why, failure.rule())
-            }
-            Failed::Sequence { joint, failure } => {
-                let why = EnableRefused::Sequence {
-                    joint,
-                    failure,
-                    stopped,
-                };
-                (why, failure.rule())
-            }
-            Failed::Ended { joint } => {
-                (EnableRefused::BusEnded { joint, stopped }, RuleId::HostBus)
-            }
+                },
+                stopped,
+            },
+            Failed::Sequence { joint, failure } => EnableRefused::Sequence {
+                joint,
+                failure,
+                stopped,
+            },
+            Failed::Ended { joint } => EnableRefused::BusEnded { joint, stopped },
             Failed::Mode { limb } => {
                 counts.mode_stops += 1;
-                (EnableRefused::LimbMate { limb, stopped }, RuleId::HostMode)
+                EnableRefused::LimbMate { limb, stopped }
             }
-            Failed::Foreign { bus } => (
-                EnableRefused::ForeignHost { bus, stopped },
-                RuleId::HostPreflight,
-            ),
-            Failed::Unseen { joint } => (
-                EnableRefused::Unseen { joint, stopped },
-                RuleId::HostPreflight,
-            ),
+            Failed::Foreign { bus } => EnableRefused::ForeignHost { bus, stopped },
+            Failed::Unseen { joint } => EnableRefused::Unseen { joint, stopped },
         };
-        let cause = Cause::Rule(rule);
+        // The stop goes under the refusal's rule, as its event names it: every refusal built here has one (the enable
+        // tests check each), so the fallback, a stop carried for a cause recorded elsewhere, is never taken.
+        let cause = why.named().rule.map_or(Cause::Follows, Cause::Rule);
         for joint in joints.iter() {
             if let Some(phase) = self.phases.get_mut(joint) {
                 if let Phase::Enabled(_) = phase {

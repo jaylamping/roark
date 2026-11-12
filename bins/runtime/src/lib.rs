@@ -11,6 +11,9 @@ mod dispatch;
 // The control thread is its only user; its tests run everywhere.
 #[cfg(any(target_os = "linux", test))]
 mod enable;
+// The control thread and the runtime's stop are its users; its tests run everywhere.
+#[cfg(any(target_os = "linux", test))]
+mod latch;
 // The control thread is its only user; the recorder it writes to is Linux's.
 #[cfg(target_os = "linux")]
 mod events;
