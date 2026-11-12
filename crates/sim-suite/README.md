@@ -14,7 +14,10 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   independent `candump -L -x` capture (needs `can-utils`). Also a thread started after the schedule joining it.
 - `slow.rs`: slow requests (get-ID, a write, its read-back) reaching a drive and coming back.
 - `scan.rs`: every ID on a bus probed: a drive in the bus's table, one outside it and two sharing an ID are found and
-  nothing else answers; a set-ID moves the stray drive to a new ID, where it answers, and its old ID falls silent.
+  nothing else answers; a set-ID moves the stray drive to a new ID, where it answers, and its old ID falls silent. Then
+  the same through the runtime and its test robot: the scan's table, an enable refused while it runs, a set-ID moved
+  and confirmed, ones refused for nothing at the old ID, two drives there or a drive at the new, and one refused by the
+  bus with a limb on it stopped.
 - `faults.rs`: a fault injected into one drive is caught by the bus thread before the next send, stopping only that
   drive's limb; a drive gone silent, and one that also loses its Disable, stop their limb for the silence. The rest of
   the fault tests (PLAN item 4, "Done when") join them as the safety layer lands.
@@ -40,7 +43,7 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   its last reporting off through that drain; and a bus that ends counts the slow results control's ring can't take.
 
 Every frame on a bus reaches every socket on it, so two tests that run at the same time never share a bus. The tests in
-`exit.rs`, `slow.rs`, `scan.rs`, `faults.rs`, `enable.rs` and `orders.rs` use `can0`, `runtime.rs` uses `can0` and `can1` (its
+`exit.rs`, `slow.rs`, `faults.rs`, `enable.rs` and `orders.rs` use `can0`, `runtime.rs` and `scan.rs` use `can0` and `can1` (its
 test robot's two buses), `bus.rs` uses `can1` to `can3` and `blackbox.rs` uses `can3`, so all of them run one at a time
 (nextest's `can0` test group, `.config/nextest.toml`); `vcan.rs` has `can4` to itself. A new test either takes a bus no other test uses or joins that
 group.

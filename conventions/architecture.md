@@ -66,8 +66,10 @@ And between the control thread and the rest of `runtime` (`runtime::Runtime`), u
 | Stop latch (robot, or a limb) | operator and control's own checks → control | Never full: one word of cause bits per scope (the operator, shutdown, a stop carried from another bus, each rule), so a stop asked again before control takes it is the same stop, with every cause kept. Control takes it each tick before any clear (PLAN item 3a) |
 | Clears | operator → control | The operator's push fails; nothing was asked. Control takes them after the stops, in push order |
 | Clear replies, one per bus the limb is on, or one refusal | control → operator | Dropped and counted (`replies_dropped`); the limb's state and generation still show in the views |
-| Enables, each of a set of joints | operator → control | The operator's push fails; nothing was asked. Control takes them after its reads, one running at a time: the rest are refused `Busy` |
+| Enables, each of a set of joints | operator → control | The operator's push fails; nothing was asked. Control takes them after its reads, one running at a time: the rest, and any asked while a scan or set-ID runs, are refused `Busy` |
 | Enable replies, one per enable | control → operator | Dropped and counted (`replies_dropped`); the limbs' states still show in the views |
+| Scans and set-IDs, each of one bus | operator → control | The operator's push fails; nothing was asked. Control takes the next once the one running ends; one asked while an enable runs is refused `Busy` |
+| Scan and set-ID replies, one per request (a scan's carries its whole table) | control → operator | Dropped and counted (`replies_dropped`) |
 | Views, each bus's newest snapshot once a tick (only when asked for) | control → operator | Dropped and counted (`views_dropped`) |
 | Progress, a count of passes in which every bus was on time (`Runtime::progress`; the rule is `control::progressing`) | control → the binary's watcher, which feeds systemd's watchdog while it rises | Never full: a counter |
 | Control's events (stops with their causes, enables, refusals, clears) | control → telemetry | Dropped and counted in the session file's end marker |

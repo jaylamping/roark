@@ -30,6 +30,15 @@ thread per wired bus and the control thread on one schedule origin, and takes th
   bus fails the enable, so a limb over two buses enables only once both are cleared. Another host's frame on a named
   joint's bus during the enable fails it too, since its writes could change what preflight proved, as does a named
   drive its bus hasn't shown within preflight's answer window.
+- **Scans and set-IDs** (`IdentityRequest` naming a bus, through `Runtime::identity`) are answered by one
+  `IdentityReply`, one at a time, in turn, and never beside an enable: one asked while an enable runs is refused `Busy`,
+  and an enable asked while one runs is too. A scan probes every ID from 1 to 127 (type 0) and lists what answered at
+  each (`ScanTable`): one UID, two sharing the ID, or unsure once a probe's window couldn't be trusted three times. A
+  set-ID sends its type 7 only once probes have just shown exactly one drive at the old ID and none at the new, sends it
+  once, then probes the new ID and the old: `Moved` when the same UID answers at the new ID alone, `Unconfirmed` with
+  what answered at each otherwise (the only refusal that says a type 7 may have gone). The bus refuses every probe and
+  set-ID unless every limb on it is idle (`BusNotIdle`), so neither feeds a running or stopped drive (PLAN item 3, Scan
+  and identity; item 2). Neither is an event yet: their frames are in the session's recording.
 - **The hold**: every enabled joint gets a slack MIT command each tick from the tick its own drive is in Run (zero gains,
   zero torque: watched by the bus's rules, holding nothing, so the motion rules have nothing to check yet) until real
   control modes and gains exist. A joint stops being held when its limb stops on any bus, and a stop on one bus is then

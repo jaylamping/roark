@@ -1,5 +1,6 @@
 //! A scan and a set-ID on `vcan` (PLAN.md item 3, Scan and identity): every ID probed in the slack, a drive outside the
-//! bus's table found and given a new ID, against simulated drives.
+//! bus's table found and given a new ID, against simulated drives; first the bus layer played as control would, then
+//! through the runtime with its test robot (`bins/runtime/tests/skeleton.yaml`).
 #![cfg(target_os = "linux")]
 
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
@@ -10,11 +11,17 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use can::{
-    BusConfig, BusLinks, CommandBatch, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, Snapshot,
+    BusConfig, BusLinks, CommandBatch, LimbState, SlowKind, SlowOutcome, SlowRefusal, SlowRequest,
+    Snapshot,
 };
 use common::{HZ, Shutdown, drive, id, info, interface, next_snapshot, soon, timing};
 use robstride::{DeviceId, Drive, Model, Uid};
+use runtime::{
+    Answer, Enable, EnableRefused, IdentityAsk, IdentityDone, IdentityRefused, IdentityReply,
+    IdentityRequest, Runtime, RuntimeConfig, Scope,
+};
 use sim_drive::{SimDrive, ensure_vcan, serve};
+use skeleton::LimbName;
 use telemetry::{Recorder, Recording, Session};
 
 const BUS: &str = "can0";
@@ -212,4 +219,213 @@ fn scan_and_set_id(control: &mut Control<'_>, [known, stray, first, second]: [Ui
     assert!(set == moved || set == SlowOutcome::Unsure, "{set:?}");
     assert_eq!(control.ask(SlowKind::Probe(id(11))), moved);
     assert_eq!(control.ask(SlowKind::Probe(id(127))), SlowOutcome::TimedOut);
+}
+
+/// The runtime's test robot, never the live skeleton (testing.md rule 3).
+fn robot() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bins/runtime/tests/skeleton.yaml")
+}
+
+/// The UID the sims give drive `n`: the runtime test robot's.
+const fn sim_uid(n: u8) -> Uid {
+    Uid([b's', b'i', b'm', 0, n, 0, 0, 0])
+}
+
+/// The simulated drives the skeleton puts on `bus`, plus `extra`.
+fn sims(skeleton: &skeleton::Skeleton, bus: &str, extra: &[(u8, Uid)]) -> Vec<SimDrive> {
+    skeleton
+        .limbs
+        .iter()
+        .flat_map(|limb| &limb.joints)
+        .filter(|joint| joint.bus.as_ref().is_some_and(|b| b.as_str() == bus))
+        .map(|joint| (joint.id.get(), joint.actuator, sim_uid(joint.id.get())))
+        .chain(extra.iter().map(|(n, uid)| (*n, Model::Rs02, *uid)))
+        .map(|(n, model, uid)| SimDrive::new(Drive::new(id(n), model), uid, u64::from(n)))
+        .collect()
+}
+
+/// The answer to the scan or set-ID tagged `tag`, waiting until `end`.
+fn identity_reply(runtime: &mut Runtime, tag: u64, end: Instant) -> Option<IdentityReply> {
+    while Instant::now() < end {
+        if let Ok(r) = runtime.identity_replies.pop() {
+            assert_eq!(r.tag, tag, "{r:?}");
+            return Some(r);
+        }
+        std::thread::yield_now();
+    }
+    None
+}
+
+/// Guards: safety - through the runtime on `vcan`: a scan of a bus lists every drive answering on it, the skeleton's and
+/// ones it doesn't name, two sharing an ID among them, and no enable runs beside it; a set-ID moves a stray drive to a
+/// free ID and is confirmed there; one from an ID nothing answers at, or onto an ID a drive holds, sends no type 7; and
+/// one on a bus with a limb stopped is refused by the bus (PLAN item 3, Scan and identity: set-ID one drive at a time,
+/// only while every limb on that bus is disabled; item 2: type 7 only with exactly one drive answering; item 3a
+/// `scan(bus)`, `set_id(bus, old, new)`).
+#[test]
+#[expect(clippy::too_many_lines, reason = "one run, start to end")]
+#[expect(clippy::panic, reason = "a test fails by panicking")]
+fn the_runtime_scans_a_bus_and_sets_an_id_on_vcan() {
+    let path = robot();
+    let skeleton = skeleton::load(&path).unwrap();
+    let names: Vec<&str> = skeleton.buses.iter().map(|b| b.name.as_str()).collect();
+    for name in names.iter().copied() {
+        ensure_vcan(name).unwrap();
+    }
+    let root = std::env::temp_dir().join(format!("sim-suite-runtime-scan-{}", std::process::id()));
+    let (stray, first, second) = (Uid([7; 8]), Uid([8; 8]), Uid([9; 8]));
+    let stop_sim = AtomicBool::new(false);
+    let exit = Arc::new(AtomicBool::new(false));
+    std::thread::scope(|scope| {
+        let _shutdown = Shutdown(&stop_sim, Arc::clone(&exit));
+        let sims: Vec<_> = names
+            .iter()
+            .map(|name| {
+                let extra = if *name == BUS {
+                    vec![(127, stray), (50, first), (50, second)]
+                } else {
+                    vec![]
+                };
+                let mut sim = sims(&skeleton, name, &extra);
+                let stop = &stop_sim;
+                scope.spawn(move || serve(name, &mut sim, stop, &mut |_| {}))
+            })
+            .collect();
+        let mut runtime = Runtime::start(&RuntimeConfig {
+            skeleton: path.clone(),
+            sessions: root.clone(),
+            hz: HZ,
+            operator: "sim-suite".to_owned(),
+            git_revision: "test".to_owned(),
+            views: true,
+        })
+        .unwrap();
+        let bus = runtime
+            .info()
+            .plans
+            .iter()
+            .position(|p| p.name == BUS)
+            .unwrap();
+        // Running a few ticks first, so the sims are up before the first probe.
+        let end = Instant::now() + Duration::from_secs(5);
+        let mut ticks = 0;
+        while ticks < 5 {
+            assert!(Instant::now() < end, "the runtime never ran");
+            if let Some(Ok(_)) = runtime.views.as_mut().map(rtrb::Consumer::pop) {
+                ticks += 1;
+            }
+            std::thread::yield_now();
+        }
+        // The scan, and an enable asked once it has had a few passes to start: refused.
+        let scan = IdentityRequest {
+            tag: 1,
+            bus,
+            ask: IdentityAsk::Scan,
+        };
+        assert!(runtime.identity.push(scan).is_ok());
+        let joints = runtime.joints(["arm_a_one"]).unwrap();
+        let mut passes = 0;
+        while passes < 3 {
+            if let Some(Ok(v)) = runtime.views.as_mut().map(rtrb::Consumer::pop) {
+                passes += usize::from(v.bus == bus);
+            }
+            std::thread::yield_now();
+        }
+        assert!(runtime.enables.push(Enable { tag: 2, joints }).is_ok());
+        let end = Instant::now() + Duration::from_secs(10);
+        let mut enable = None;
+        while enable.is_none() && Instant::now() < end {
+            enable = runtime.enable_replies.pop().ok();
+        }
+        assert_eq!(enable.map(|r| r.outcome), Some(Err(EnableRefused::Busy)));
+        let reply = identity_reply(&mut runtime, 1, end).unwrap();
+        let Ok(IdentityDone::Scanned(table)) = reply.outcome else {
+            panic!("{reply:?}");
+        };
+        let heard: Vec<_> = table.heard().map(|(n, a)| (n.get(), a)).collect();
+        let fifty = heard.iter().find(|(n, _)| *n == 50).map(|(_, a)| *a);
+        assert!(
+            fifty
+                == Some(Answer::Several {
+                    uid: first,
+                    other: second
+                })
+                || fifty
+                    == Some(Answer::Several {
+                        uid: second,
+                        other: first
+                    }),
+            "{heard:?}"
+        );
+        assert_eq!(
+            heard
+                .iter()
+                .filter(|(n, _)| *n != 50)
+                .copied()
+                .collect::<Vec<_>>(),
+            [
+                (21, Answer::One(sim_uid(21))),
+                (22, Answer::One(sim_uid(22))),
+                (31, Answer::One(sim_uid(31))),
+                (127, Answer::One(stray)),
+            ]
+        );
+
+        // The stray moves to 30, and the IDs show it.
+        let set = |old, new| IdentityAsk::SetId {
+            old: id(old),
+            new: id(new),
+        };
+        let outcome = |runtime: &mut Runtime, tag, what| {
+            let request = IdentityRequest {
+                tag,
+                bus,
+                ask: what,
+            };
+            assert!(runtime.identity.push(request).is_ok());
+            let end = Instant::now() + Duration::from_secs(5);
+            identity_reply(runtime, tag, end).unwrap().outcome
+        };
+        assert_eq!(
+            outcome(&mut runtime, 3, set(127, 30)),
+            Ok(IdentityDone::Moved { uid: stray })
+        );
+        assert_eq!(
+            outcome(&mut runtime, 4, set(127, 30)),
+            Err(IdentityRefused::NotOne(Answer::Silent))
+        );
+        assert_eq!(
+            outcome(&mut runtime, 5, set(30, 21)),
+            Err(IdentityRefused::Taken(Answer::One(sim_uid(21))))
+        );
+        assert!(matches!(
+            outcome(&mut runtime, 6, set(50, 40)),
+            Err(IdentityRefused::NotOne(Answer::Several { .. }))
+        ));
+
+        // A limb on the bus stopped: the bus refuses the first probe.
+        runtime.stop(Scope::Limb(LimbName::Waist));
+        let end = Instant::now() + Duration::from_secs(5);
+        let mut stopped = false;
+        while !stopped && Instant::now() < end {
+            if let Some(Ok(v)) = runtime.views.as_mut().map(rtrb::Consumer::pop) {
+                stopped =
+                    v.bus == bus && v.snapshot.limbs().any(|(_, l)| l.state != LimbState::Idle);
+            }
+        }
+        assert!(stopped);
+        assert_eq!(
+            outcome(&mut runtime, 7, set(30, 40)),
+            Err(IdentityRefused::Bus(SlowRefusal::BusNotIdle))
+        );
+
+        let exit = runtime.end().unwrap();
+        assert!(exit.control.error.is_none(), "{:?}", exit.control);
+        assert_eq!(exit.control.replies_dropped, 0);
+        stop_sim.store(true, Ordering::Release);
+        for sim in sims {
+            sim.join().unwrap().unwrap();
+        }
+    });
+    let _ = std::fs::remove_dir_all(&root);
 }
