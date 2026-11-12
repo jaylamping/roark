@@ -92,8 +92,8 @@ the post-processing files (`../20261111_r1c-delta/r1d/r1d11_*.post.txt`).
 | 3. nominal STOP_0 (ribs 0.1 proud, touching): rib bedding | **θ 135 crush rib: arm shear 0.36 / 0.66 / 1.41, vm 0.47 / 0.80 / 1.59 (20-21); hub flank shear 0.70 / 0.90 / 1.57, layer 0.85** | 1.87 / 1.85 / 2.26 | 2.01 / 1.33 / 1.26 | 0.97 / 1.20 | rib-dominated (bore wall by the rib 0.53 / 0.39) |
 | 4. nominal G90 (target 1.5): rib bedding | **crown crush rib θ 105: arm shear 0.43 / 0.73 / 1.70, vm 0.60 / 0.93 / 1.94 (18-20); hub flank shear 0.83, layer 1.15** | 3.04 / 2.32 / 3.12 | 8.4 / 18.4 / 7.8 | 1.28 / 1.99 | rib-dominated (bore wall by the rib 0.77 / 0.49) |
 | 5. nominal STOP_124: rib bedding | **ribs θ 75 / 45: arm shear 0.36 / 0.60 / 1.41, vm 0.45 / 0.72 / 1.56 (18-22); hub flank shear 0.65, layer 0.86** | 1.74 / 1.64 / 1.91 | 2.42 / 1.48 / 1.46 | 0.93 / 1.35 | rib-dominated (bore wall by the rib shear 0.44) |
-| 6. 0.2 gap STOP_0 | *running* | | | | |
-| 7. 0.1 gap STOP_0 repeat, 0.3 mm on the lug-root fillets | *queued* | | | | |
+| 6. 0.2 gap STOP_0 | **hub lug root (fillet, -X lug +Z), shear 1.04 / 1.64 / 2.58, layer 1.11 / 1.65 / 2.73 (11)**; hub groove bottom layer 1.17; spigot core layer 1.19 | 1.79 / 2.72 / 2.46 | 1.83 / 1.11 / 1.04 | 1.17 / 1.25 | 1.25 / 2.28 / 6.19; 1.30 / 2.45 / 5.95 |
+| 7. 0.1 gap STOP_0 repeat, 0.3 mm on the lug-root fillets | *running* | | | | |
 | 8. 0 gap (flank in contact, no ribs) G90 | *queued* | | | | |
 | 9. 0 gap STOP_0 | *queued* | | | | |
 | 10. 0.2 gap G90 | *queued* | | | | |
