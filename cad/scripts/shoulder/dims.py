@@ -57,7 +57,11 @@ BELL = dict(x=(106.3, 113.0, 120.0, 127.0, 134.0, 141.0), top=60.0, bot=41.0, fr
 # fork and RS02 swing, Z +34 / -27 inside the drum's span), hollow (2.5 wall), replacing the neck tube and flare
 CAP_SCREW_ANGLES = [0.0, 180.0, 270.0]   # SMOOTH: 3 x M3 thread-forming, axial, inside the outline, into 2.6 mm pilots in the drum wall
 CAP_SCREW_R = 50.0
-STOP_SLOT = dict(r=(25.0, 35.0), z_floor=-31.0, tooth_r=(27.0, 33.0), tooth_angle=193.0, tooth_half=10.0, ring_r=(24.0, 37.0))
+# STOP REV 2 (A2, checks/B_ROLL_STOPS.md, approved 2026-11-12): one tooth at fork angle 270, where the fork rear's layers
+# (normal to Y) are normal to the tooth's radial direction, so its bending and shear lie in the layer plane; r 30-40, +-14
+# deg; carries a 60 N.m stall (RS03 peak) with SF 1.65. Was r 27-33, +-10 deg at 193 deg (SF 0.44 at a stall).
+STOP_SLOT = dict(r=(28.0, 42.0), z_floor=-31.0, tooth_r=(30.0, 40.0), tooth_angle=270.0, tooth_half=14.0, ring_r=(26.0, 44.0),
+                 ring_past=20.0, pad_r=(33.0, 42.0), pad_half=24.0)
 # SMOOTH: roll stops inside the outline: a tooth on the fork rear cheek runs in an arc slot in a ring on the cap's rear face
 FLARE = dict(x0=105.0, x1=119.0, x2=124.0, r=56.0, fillet=12.0)   # DRESSED: neck flares into the drum (pitch axis)
 CUFF = dict(ri=39.75, ro_top=43.0, ro_bot=41.35, ro_mid=(42.9, 336.0), y0=DISH_Y + 2.0, notch=(-122.0, -78.0))

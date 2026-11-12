@@ -365,8 +365,8 @@ def build_cap():
             DRUM_Z0 - CAP_Z1, NZ, lo=-1.0)
     # SMOOTH: stop ring on the inside of the rear face; the fork rear's tooth runs in an arc slot in it
     ss = STOP_SLOT
-    a_lo = ss['tooth_angle'] - ss['tooth_half'] + ROLL_STOP_IN - 15.0
-    a_hi = ss['tooth_angle'] + ss['tooth_half'] + ROLL_STOP_OUT + 15.0       # only round the slot, 15 deg past each end
+    a_lo = ss['tooth_angle'] - ss['tooth_half'] + ROLL_STOP_IN - ss['ring_past']
+    a_hi = ss['tooth_angle'] + ss['tooth_half'] + ROLL_STOP_OUT + ss['ring_past']       # only round the slot, ring_past deg past each end
     extrude(d, zsk(d, DRUM_Z0 - 1.0, 'STOP_RING', lambda s: sector(s, lambda r, a: rpt(r, a, DRUM_Z0 - 1.0), ss['ring_r'][0], ss['ring_r'][1], a_lo, a_hi, 2.0)),
             'STOP_RING', (DRUM_Z0 - 1.0) - (CAP_Z1 + 0.5), NZ, lo=-1.0)
     # ---- cuts
@@ -731,6 +731,12 @@ def build_fork_rear():
     d = new_part(OUT / f"{NAMES['fork_rear']}.SLDPRT")
     roll_rev(d, 'CHEEK', [(0, JZ0), (CHEEK_R, JZ0), (CHEEK_R, BACK_Z), (0, BACK_Z)], [0, 1.0, 6.0, 0])   # DRESSED 2: R6 back edge (arm drum R7)
     extrude(d, zsk(d, HOUSE_Z0, 'HOUSING', lambda s: s.circle((RX, RY, HOUSE_Z0), HOUSE_R)), 'HOUSING', HOUSE_Z0 - JZ0, NZ)
+    # STOP REV 2: a pad on the housing under the tooth (sector outside the housing's r 33, between the housing face and
+    # the joint plane, so nothing outside the present outline changes)
+    _ss = STOP_SLOT
+    extrude(d, zsk(d, HOUSE_Z0, 'STOP_PAD', lambda s: sector(s, lambda r, a: rpt(r, a, HOUSE_Z0), _ss['pad_r'][0] - 1.0, _ss['pad_r'][1],
+                                                            _ss['tooth_angle'] - _ss['pad_half'], _ss['tooth_angle'] + _ss['pad_half'], 2.0)),
+            'STOP_PAD', HOUSE_Z0 - JZ0, NZ)
     # SLEEVE: above the cuff the arm is the D-section loft; from the cuff top down it is the rear half of the sleeve
     # outline the fork front's cuff shares (envelope.SLEEVE), so cuff and arm read as one surface split at the joint plane
     import envelope as EV
