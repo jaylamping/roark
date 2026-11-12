@@ -702,6 +702,9 @@ def build_fork_front():
     extrude(d, ysk(d, SEAT_Y[0] - 1, 'SEAT_BORE', lambda s: s.circle((RX, SEAT_Y[0] - 1, YZ), SEAT_RI)), 'SEAT_BORE', 12, Y, cut=True)
     extrude(d, zsk(d, ROLL_OUT - 1, 'ROLL_BORE', lambda s: s.circle((RX, RY, ROLL_OUT - 1), 10.75)), 'ROLL_BORE', 30, Z, cut=True)
     extrude(d, zsk(d, ROLL_OUT - 1, 'OUT_HOLES', lambda s: [s.circle(rpt(15.2, 30 + 60 * k, ROLL_OUT - 1), 2.25) for k in range(6)]), 'OUT_HOLES', 30, Z, cut=True)
+    # roll-output pins (C_LOAD_SHARE.md): three blind holes at 0 and +-120 deg on r 15.2, matching the RS03's plain locating
+    # holes; printed 3.8, hand-reamed 4.00, 9 deep, for 4 x 16 pins (8 mm each side)
+    extrude(d, zsk(d, ROLL_OUT - 1, 'PIN_HOLES', lambda s: [s.circle(rpt(15.2, 120.0 * k, ROLL_OUT - 1), 1.9) for k in range(3)]), 'PIN_HOLES', 1.0 + 9.0, Z, cut=True)
     extrude(d, zsk(d, CAP_FLOOR - 2, 'OUT_CB', lambda s: [s.circle(rpt(15.2, 30 + 60 * k, CAP_FLOOR - 2), 4.25) for k in range(6)]), 'OUT_CB', 10, Z, cut=True)
     extrude(d, zsk(d, CAP_FLOOR, 'CAP_RECESS', lambda s: s.circle((RX, RY, CAP_FLOOR), 24.0)), 'CAP_RECESS', 8, Z, cut=True)
     extrude(d, ysk(d, SEAT_Y[0] - 5, 'RS02_HOLES', lambda s: [s.circle(ypt(36.5, a, SEAT_Y[0] - 5), 1.8) for a in RS02_SCREWS]), 'RS02_HOLES', 30, Y, cut=True)
@@ -1094,6 +1097,16 @@ def build_hub():
         em.Add2(-1, f'"{feat_}" = IIF("{var}" = 1, "unsuppressed", "suppressed")', True)
     d.ForceRebuild3(False)
     log('  hub prepared features:', [(n, d.FeatureByName(n).IsSuppressed2(1, NUL)[0] if d.FeatureByName(n) else None) for n in ('SPIGOT_EXT', 'LUG2')])
+    # locating holes (A_HUB_LUGS.md, "Cheapest fix"): two of the six hub-top screw holes, at -142 and 38 deg (180 deg apart),
+    # printed 3.8 and hand-reamed 4.00 so the plain shank of an M4 x 30 partially threaded screw locates the hub in yaw;
+    # the other four stay 4.3 clearance (the RS02 pattern's own tolerance)
+    for a_ in (-142.0, 38.0):
+        t_ = math.radians(a_)
+        cx_, cz_ = RX + 12.0 * math.cos(t_), YZ + 12.0 * math.sin(t_)
+        extrude(d, ysk(d, 298.06, f'LOC_FILL_{a_:+.0f}'.replace('+', 'p').replace('-', 'm'), lambda s_, cx_=cx_, cz_=cz_: s_.circle((cx_, 298.06, cz_), 2.2)),
+                f'LOC_FILL_{a_:+.0f}'.replace('+', 'p').replace('-', 'm'), RS02_OUT - 298.06, Y, lo=-1.0)
+        extrude(d, ysk(d, 297.0, f'LOC_HOLE_{a_:+.0f}'.replace('+', 'p').replace('-', 'm'), lambda s_, cx_=cx_, cz_=cz_: s_.circle((cx_, 297.0, cz_), 1.9)),
+                f'LOC_HOLE_{a_:+.0f}'.replace('+', 'p').replace('-', 'm'), RS02_OUT + 1.0 - 297.0, Y, cut=True)
     if HUB_RIM_CHAMFER:
         # hub-top fix: a small chamfer on the six screw-hole rims at the RS02 output face (case A's layer peak sat on a rim)
         hc = []
