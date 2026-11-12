@@ -393,10 +393,58 @@ Case A re-run with a 0.5 × 45° chamfer on the six screw-hole rims at the RS02 
 **Setting the torque in practice:**
 - With K ≈ 0.2 (dry M4 in the RS02's aluminium threads), 0.35 kN ≈ **0.28 N·m**. My earlier "0.4-0.5 N·m" was too high:
   that would be about 0.5-0.6 kN.
-- **Tool:** a hobby or precision torque screwdriver covering 0.1-0.6 N·m, for example the Wiha TorqueVario-S
-  0.1-0.6 N·m, or a fixed 0.3 N·m preset driver.
-- Set 0.3 N·m, with medium threadlocker. Re-torque once after 24 h; PETG creeps most in the first day.
+- **Tool:** see "Cheapest fix" below. A hex key and a hook scale at a measured lever does it for $0.
+- Set 0.3 N·m. **No threadlocker in testing.** Re-torque after 24 h and after the first bench session; PETG creeps most
+  in the first day.
 - A turn-of-nut rule from snug is not reliable here: the PETG boss is soft and its stiffness varies with print settings.
 - If a coupon is wanted: a printed boss and an M4 into an aluminium block on a kitchen scale under a lever. It only
   calibrates the screwdriver; it doesn't replace it.
+
+### Cheapest fix: close-fit screw holes (recommended) (2026-11-12; Joey's rules: cheapest that works, print everything, no threadlocker in testing)
+
+- **Two locating holes at 180°, four clearance holes.**
+  - At -142° and 38° (180° apart): print the hub hole Ø3.8 and hand-ream to **Ø4.00** with a 4 mm H7 hand reamer or a
+    sharp 4.0 drill turned by hand.
+  - The other four stay Ø4.3 clearance, so the joint still assembles against the RS02 pattern's own position tolerance.
+    Six close-fit holes would fight the pattern tolerance.
+- **Screws:** ISO 4762 / DIN 912 **M4 × 30, partially threaded**.
+  - Thread b = 20, so 10 mm of plain Ø4 shank sits under the head. The shank fills the reamed hole in the bottom 10 mm of
+    the 21.8 mm boss (Y 298-308).
+  - About 8 mm of thread engages the RS02's tapped hole. **Check its depth with a probe** before choosing 30 rather than 28.
+- **Backlash:**
+  - The plain shank of a real M4 is 3.96-3.99 against a Ø4.00-4.02 reamed hole: radial clearance 0.005-0.03 mm at r 12,
+    so **0.02-0.14° of yaw**.
+  - Choosing screws whose shank measures ≥ 3.98 (calipers; reject the rest) holds it to **≤ 0.1°**.
+- **Bearing at 17 N·m** (two locating screws, no help from friction):
+  - 17 / (2 × 0.012) = 708 N each, on a Ø4 × 10 shank: **17.7 MPa**.
+  - The hub prints with the yaw axis vertical, so this load lies in the layer plane: bulk SF 2.5.
+  - With friction carrying its 6.5-11 N·m share, about 9 MPa.
+- **Friction now only has to resist prying,** which the low preload does (see above).
+- **Upgrades if the bench shows slip or wear:**
+  1. ISO 7379 shoulder screws (Ø5 h8) in reamed Ø5.0 holes. About 1 each, so it needs Joey's OK on the parts list.
+  2. Ø4 dowels in the RS02's own three plain locating holes (-172, -52, 68°), with three printed bosses in the hub.
+- **Arm interface:** this does not touch anything the arm thread uses.
+  - No arm part comes within r 19.2 of the yaw axis between Y 285 and 322. The screws (heads r 8.2-15.8 at Y 298) go in
+    before the arm halves (MEASUREMENTS.md assembly order: hub onto RS02 (E), then the arm (F)).
+  - The arm's interface is groove, spigot, lugs and lug bolts. The six hub-top screws are ours.
+- **Torque tool, cheapest adequate:**
+  - **$0:** a hex key plus a luggage or kitchen hook scale. Pull the key's long arm at a measured lever L from the screw
+    axis: F = 0.3 N·m / L. At L = 60 mm that is 5.0 N, a 0.51 kg reading. Repeatable to about ±15%, which is enough
+    here.
+  - **Bought, if wanted:** the cheapest 0.05-0.6 N·m adjustable found is $84.99 (Digital Zakka, generic copy of the
+    Bernstein 4-563). Others: a generic 0.1-0.6 N·m preset at $139 CAD (Fruugo), Tohnichi RNTD60CN $140, Bernstein 4-563
+    €107-125. Joey decides; nothing is on a list.
+
+### For the whole robot: printed-to-RobStride joints
+
+- **Every joint where a printed part clamps a RobStride output has the same question.** At the 0.2-0.4 kN per screw a
+  printed boss can hold, μ ≈ 0.25 friction on a small bolt circle usually carries less than the motor's peak torque.
+  - RS02 peak 17 N·m against about 6-11 N·m here.
+  - RS03 is 60 N·m.
+- **So each such joint needs positive rotational location:**
+  - close-fit or reamed screw holes (2 at 180°)
+  - shoulder screws
+  - or dowels in the motor's own locating holes (the RS02 output has three plain Ø4 holes; check each RobStride model)
+- **For the arm thread and the whole-robot view:** please run the same check on every printed-to-RobStride joint (fork
+  front on the RS03 roll output, the arm's hub seat, and the others).
 
