@@ -373,3 +373,40 @@ End-face bearing on the hub disc (σy, both sides of the contact; face band r 36
 | 0.1 gap G90 | 0.99 MPa | 18.6 MPa (SF 2.42), θ 310 | 5.8 MPa (SF 7.7) | 4.4 MPa (SF 10.3) | 53 MPa |
 
 The bench notes' split-and-inspect step now looks at that edge and the hub disc for crushing or whitening.
+
+## Crush ribs: decision C (2026-11-12, coordinator), bedding, play, fit coupon
+
+- Decision: no rib change now. The ribs are take-up features, not the strength path. In nominal STOP_0 and G90 (cases 3 and 4)
+  the ribs, 0.1 proud and touching, carry the flank load as point contacts (arm shear 0.36 / 0.43 at 0.5 mm). That is rib
+  bedding, expected, and not a strength failure. As assembled, the ribs are already crushed 0.15 and sitting at yield; under
+  load they flatten until the flank bears.
+- The strength claim rests on the flank bearing across the print's gap band. Done: 0.1 gap STOP_0 and G90. Queued: 0.2 gap
+  STOP_0 and G90; 0 gap (flank in contact, no ribs) G90 and STOP_0.
+- Hub flank marking risk: the hub shows shear 0.70 (stop) and 0.83 (G90) at 0.5 mm, locally, under a rib. Flagged for the
+  shoulder thread and the reviewer.
+- Rib flattening load:
+  - A rib's flank face is 0.8 mm radial (0.92 mm along the 30° flank) × 1.0 mm, so about 0.9 mm² once fully engaged. At PETG
+    45-55 MPa that holds about 41-51 N before it flattens further.
+  - Crown-rib load in G90: the 22.9 N·m moment over a couple of about 70 mm puts about 330 N on the lift-off side, shared by 3-4
+    ribs 30° apart: 80-110 N axial, 95-130 N normal to the flank, plus about 5 N from the 62 N axial.
+  - So the crown ribs bed in under routine G90, within the first few cycles, not only on a hard stop. The FEA agrees: the rib
+    averages are already past yield.
+- Play once bedded in (flank gap g, set normal to the 30° flank):
+  - axial play = g / cos 30: 0.115 mm (g 0.1), 0.231 mm (g 0.2);
+  - rocking about the end-face rim against the opposite flank (about 72 mm apart): 1.6 mrad (0.09°) / 3.2 mrad (0.18°);
+  - at the wrist, about 410 mm out: 0.66 / 1.31 mm sideways and 0.12 / 0.23 mm along the arm, plus up to ±0.1 mm from the
+    0.1 radial bore clearance.
+  - G90 loads the joint one way, so the play shows only when the load reverses (the arm pushed up, or decelerating).
+- R2 options:
+  - (B) the 0.1 gap with short, wide ribs that crush flush on assembly (about 0.12-0.15 printed, about 3 mm of arc each, or 24
+    ribs), so the flank is the load path from the start;
+  - (A) the flank line-to-line as printed, with little or no rib.
+- Fit coupon: the hub end of the final halves, cut flat at a Y plane, sliced with the halves' pipeline (same orientation,
+  settings, zones and crown blocker; no settings difference to the seed).
+  Trial cuts on the pre-break ring halves:
+  - Y ≥ 266, keeping the seam posts and screws: back 1 h 43 / 34.7 g, front 1 h 32 / 29.0 g. Total about 3 h 15, 64 g.
+  - Y ≥ 284, the seat, ridge, ribs, end face, floor, slot breaks and the four hub posts with their insert and clearance holes;
+    closes on the two lug bolts: back 1 h 10 / 17.4 g, front 1 h 04 / 16.2 g. Total about 2 h 14, 34 g.
+  - Without the 100 % hub band the times barely change (Y 284: 70 + 64 min). Time is set by the geometry: a 39 mm tall
+    half-ring of walls with the crown on support.
+  - Under 45 min would need cutting the ring into a sector, which loses the closing behaviour the coupon exists to test.
