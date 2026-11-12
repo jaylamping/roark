@@ -304,6 +304,10 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 if ms > 0:      # R1d (review 2026-11-12): mesh control on the ridge, groove, collar foot and bore faces (any face meeting the seat
                     # box, up to 400 mm2 so the large skin and spigot faces are left at the global size)
                     c['ctrl'] = list(c.get('ctrl', [])) + [(('touch', [128.0, 297.5, -40.0, 213.0, 302.05, 50.0], float(os.environ.get('HS_SEAT_MESH_AMAX', '150'))), ms)]      # 2026-11-12: ridge and groove faces only (the wider box gave 2.4 M nodes)
+                pm = float(os.environ.get('HS_POST_MESH', '0'))
+                if pm > 0:      # 2026-11-12: the hub lugs and roots, the arm posts they bear on and the fins where they meet the posts (Y 268-297.5, |Z - CZ| < 12), both sides
+                    for x0, x1 in ((128.0, 153.5), (187.5, 213.0)):
+                        c['ctrl'] = list(c.get('ctrl', [])) + [(('touch', [x0, 268.0, CZ - 12.0, x1, 297.5, CZ + 12.0], float(os.environ.get('HS_POST_MESH_AMAX', '150'))), pm)]
                 if os.environ.get('HS_GLOBAL_EL'):      # 2026-11-12: coarser away from the joint (direct sparse memory); the seat control stays
                     c['el'] = float(os.environ['HS_GLOBAL_EL'])
                 CASES['HS_' + k + sfx] = c

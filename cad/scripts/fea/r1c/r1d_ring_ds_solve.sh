@@ -5,11 +5,12 @@
 # Memory watch (coordinator, 2026-11-12): stop cleanly if our instance's processes pass 12 GB or the machine drops under 4 GB free.
 # Clean stop = stop the client, then end our session (swlib.finish). No force-kill of anything else.
 mode=${1:-saved}
+MTAG=${MTAG:-ringg01p}; CASE=${CASE:-HS_STOP_0_fine}      # model tag (UA_HUBSEAT_r1d_<MTAG>) and case
 cd /j/code/roark-wt/left-arm-organic
 R=J:/code/roark-wt/left-arm-organic/cad
 L=cad/_wip/r1d_ring_ds.log
 RV=cad/reviews/upper-arm/20261111_r1c-delta/r1d
-export ARM_R1C=1 ARM_R1D=1 HS_GROOVE=1 HS_BOLTED=1 HS_REUSE_HUB=1 HS_HUB_FILE=HUB_GROOVE_RING.SLDPRT HS_PAD_E=0.5 HS_SEAT_MESH=0.8 HS_SEAT_MESH_AMAX=600 R1C_RING=1 CAD_WRITER='upper-arm-r1:2bcc415b'
+export ARM_R1C=1 ARM_R1D=1 HS_GROOVE=1 HS_BOLTED=1 HS_REUSE_HUB=1 HS_HUB_FILE=HUB_GROOVE_RING.SLDPRT HS_PAD_E=${PADE:-0.5} HS_SEAT_MESH=0.8 HS_SEAT_MESH_AMAX=600 R1C_RING=1 CAD_WRITER='upper-arm-r1:2bcc415b'
 S="$R/_wip/arm-sw-fea"
 until ! python "C:/joe/code/roark-wt/sw-hang-fix/tools/solidworks/sw_instance.py" --status 2>/dev/null | grep -q "busy"; do sleep 30; done
 ls cad/_wip/arm-sw*/HUNG_PID >/dev/null 2>&1 && { echo "STOPPED: HUNG_PID present" >> $L; exit 1; }
@@ -20,11 +21,11 @@ if [ "$mode" = saved ]; then
   ENVX="FEA_EXISTING_STUDY=RING_G01_STOP0_DS HS_MODEL=UA_HUBSEAT_r1d_ringg01p_ds.SLDPRT"
 else
   folder=${FOLDER:-r1d8_ringg01p_stop_ds_new}; D=cad/_sim/$folder; rm -rf $D; mkdir -p $D
-  cp cad/_sim/ua2/UA_HUBSEAT_r1d_ringg01p.SLDPRT $D/; cp cad/_sim/ua2/HUB_GROOVE_RING.STL $D/HUB_GROOVE_r1d.STL
-  ENVX="HS_MODEL=UA_HUBSEAT_r1d_ringg01p.SLDPRT FEA_SOLVER_MACRO=${DS_SOLVER:-1} FEA_STUDY_NAME=${FOLDER:-RING_DS_NEW}"
+  cp cad/_sim/ua2/UA_HUBSEAT_r1d_$MTAG.SLDPRT $D/; cp cad/_sim/ua2/HUB_GROOVE_RING.STL $D/HUB_GROOVE_r1d.STL
+  ENVX="HS_MODEL=UA_HUBSEAT_r1d_$MTAG.SLDPRT FEA_SOLVER_MACRO=${DS_SOLVER:-1} FEA_STUDY_NAME=${FOLDER:-RING_DS_NEW}"
 fi
 echo "START $folder ($mode) $(date +%H:%M) free $(free) MB" >> $L
-env $ENVX ARM_FEA_NAME=UA_ORGANIC_BONDED_v32_ringg01p.SLDPRT ARM_SW_DIR="$S" ARM_FEA_DIR="$R/_sim/$folder" python cad/scripts/fea/organic_fea.py HS_STOP_0_fine >> $D/run.log 2>&1 &
+env $ENVX ARM_FEA_NAME=UA_ORGANIC_BONDED_v32_ringg01p.SLDPRT ARM_SW_DIR="$S" ARM_FEA_DIR="$R/_sim/$folder" python cad/scripts/fea/organic_fea.py $CASE >> $D/run.log 2>&1 &
 cpid=$!
 free0=$(free)      # our use = drop in free RAM since our start (the private-page sum overcounts the solver's mapped files)
 peak=0
@@ -45,14 +46,14 @@ while kill -0 $cpid 2>/dev/null; do
 done
 wait $cpid 2>/dev/null
 (cd cad/scripts/arm && ARM_SW_DIR="$S" python -c "from swlib import finish; finish(); print('ended')") >> $L 2>&1
-echo "peak ours ${peak} MB; solver in .OUT: $(grep -h -m1 'SOLVER TYPE' $D/*.OUT 2>/dev/null | tr -s ' ' | tail -c 40)" >> $L
+echo "peak ours ${peak} MB; solver: Intel-solver lines in the benchmark log $(cat $D/*BenchMark-Solver.txt 2>/dev/null | grep -c INTEL-SOLVER), iterative lines $(cat $D/*BenchMark-Solver.txt 2>/dev/null | grep -c -i -E "PCG|FFE|ITERATIVE")" >> $L
 sleep 180
-if ls $D/org16_HS_STOP_0_fine.npz >/dev/null 2>&1; then
-  python cad/scripts/fea/r1c/hub_r1c.py $D/org16_HS_STOP_0_fine.npz $D/HUB_GROOVE_r1d.STL > $D/post.txt 2>&1
-  cp $D/org16_HS_STOP_0_fine.npz.r1c.json $RV/$folder.json; cp $D/post.txt $RV/$folder.post.txt; grep -E "mesh|solve |reaction|displacement|solver" $D/run.log | tail -8 >> $RV/$folder.post.txt
+if ls $D/org16_$CASE.npz >/dev/null 2>&1; then
+  python cad/scripts/fea/r1c/hub_r1c.py $D/org16_$CASE.npz $D/HUB_GROOVE_r1d.STL > $D/post.txt 2>&1
+  cp $D/org16_$CASE.npz.r1c.json $RV/$folder.json; cp $D/post.txt $RV/$folder.post.txt; grep -E "mesh|solve |reaction|displacement|solver" $D/run.log | tail -8 >> $RV/$folder.post.txt
   echo "SOLVED $folder $(date +%H:%M) $(grep -E 'solve ' $D/run.log | tail -1) $(grep SANITY $D/post.txt)" >> $L
   until mkdir cad/_wip/.r1d_git_lock 2>/dev/null; do sleep 5; done
-  git add $RV >/dev/null 2>&1; git commit -q -m "cad: R1d ring STOP_0 direct sparse result ($folder)" >/dev/null 2>&1
+  git add $RV >/dev/null 2>&1; git commit -q -m "cad: R1d ring $CASE direct sparse result ($folder)" >/dev/null 2>&1
   for t in 1 2 3; do git push -q origin left-arm-organic-r1 >/dev/null 2>&1 && break; sleep 10; done; rmdir cad/_wip/.r1d_git_lock
 else
   echo "SOLVE_FAILED $folder $(date +%H:%M) $(grep -E 'solve |never registered|Error|existing study' $D/run.log | tail -2 | tr '\n' ' ' | cut -c1-200)" >> $L
