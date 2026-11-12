@@ -57,15 +57,8 @@ hub lug roots (Y 294-297.5)                      vm    peak   26.9 SF  1.68 at [
 hub lug roots (Y 294-297.5)                      layer peak   25.2 SF  0.89 at [145.2, 296.0, 11.0] th 169 | worst avg .5/1/2 SF 1.23/2.00/3.23 (0.5 mm: 11 nodes at [144.6, 295.7, 11.0] th 169)
 hub lug roots (Y 294-297.5)                      shear peak   14.5 SF  0.90 at [140.8, 295.9, 1.0] th 190 | worst avg .5/1/2 SF 1.33/2.32/3.43 (0.5 mm: 9 nodes at [140.7, 295.7, 1.0] th 190)
 inserts: vm peak 58 MPa at [145.8, 290.9, 11.1] (SF vs 240 MPa brass yield 4.14)
-bolts: vm peak 58 MPa at [145.8, 290.9, 11.1] (SF vs 640 MPa yield 11.03)
+bolts: vm peak 59 MPa at [195.0, 292.3, -5.5] (SF vs 640 MPa yield 10.88)
 lug -X: nodes 2097, axial Fy ~      34 N, shear Fx ~     38 N, shear Fz ~    174 N (section 108 mm2)
 lug +X: nodes 2083, axial Fy ~       3 N, shear Fx ~      0 N, shear Fz ~   -115 N (section 108 mm2)
 soft pads: axial force each (N) [1.464, 0.361, 1.464, -0.121], sum 3.410 N
 SANITY: OK
- options {'solver': 0, 'mesher': 2, 'jacobian': 16, 'auto_transition': False, 'jacobian_check': '?'}
- mesh 0 nodes 387144 elements 237591 25 s
- solver macro ran True err 0
- solver macro log: addin  0   | studies  1  err  0  | before  0  | set err  0   | after  7  | 
- solve 0 412 s
- displacement min/max {'raw': [2885.0, 0.0, 201179.0, 1.34024], 'err': 0}
-{"case": "org16_HS_STOP_0_fine", "part": "hubseat", "el": 4.0, "nodes": 387144, "elements": 237591, "peak_vm": 60.71, "vm": 60.71, "at": [139.4, 227.8, -25.1], "sf": 0.74, "layer_x": {"mpa": 31.17, "at": [146.7, 290.2, 11.1], "sf": 0.72}, "layer_y": {"mpa": 32.99, "at": [144.8, 295.2, 31.6], "sf": 0.68}, "layer_z": {"mpa": 63.12, "at": [195.0, 292.3, -5.5], "sf": 0.36}, "region_ring_zone_excluded": {"vm": 21.26, "at": [153.8, 250.0, -4.8], "sf": 2.12, "p1": 23.41, "p3": -21.57, "layer_x": 17.51}, "region_neck_blend": {"vm": 60.71, "at": [139.4, 227.8, -25.1], "sf": 0.74, "p1": 34.55, "p3": -91.05, "layer_x": 29.81}, "region_drum_wall": {"vm": 21.26, "at": [153.8, 250.0, -4.8], "sf": 2.12, "p1": 23.41, "p3": -21.57, "layer_x": 17.51}, "region_rib": {"vm": 21.26, "at": [153.8, 250.0, -4.8], "sf": 2.12, "p1": 22.1, "p3": -18.38, "layer_x": 17.51}, "region_lug": {"vm": 60.71, "at": [139.4, 227.8, -25.1], "sf": 0.74, "p1": 34.55, "p3": -91.05, "layer_x": 29.81}, "region_neck": {"vm": 58.82, "at": [195.0, 292.3, -5.5], "sf": 0.77, "p1": 63.71, "p3": -80.09, "layer_x": 31.17}, "clear": {"vm": 58.82, "at": [195.0, 292.3, -5.5], "sf": 0.77, "layer_x": {"sf": 0.72, "at": [146.7, 290.2, 11.1]}, "layer_z": {"sf": 0.36, "at": [195.0, 292.3, -5.5]}}, "model": "hub as its own body, seat by contact, lugs in frictionless contact with the posts and steel bolts (no preload)", "soft_springs": false, "reaction": {"error": "<unknown>.GetReactionForces2"}, "displacement": {"raw": [2885.0, 0.0, 201179.0, 1.34024], "err": 0}, "model_sha256": "2d5ee18ebb463ca6dd4d3b46dba3449d497ace2046bbb9145a142f57f358a756"} 611 s

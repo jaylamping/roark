@@ -185,6 +185,8 @@ if len(bl):
 if len(br):
     i = br[np.argmax(vm[br])]; out['inserts'] = dict(vm_peak=round(float(vm[i]), 0), at=p[i].round(1).tolist(), sf_vs_240=round(240.0 / vm[i], 2))
     print(f'inserts: vm peak {vm[i]:.0f} MPa at {p[i].round(1).tolist()} (SF vs 240 MPa brass yield {240.0 / vm[i]:.2f})')
+if len(bl):
+    i = bl[np.argmax(vm[bl])]
     print(f'bolts: vm peak {vm[i]:.0f} MPa at {p[i].round(1).tolist()} (SF vs 640 MPa yield {640.0 / vm[i]:.2f})')
 # lug forces: slab across each lug just below the root, hub nodes only
 for name, (x0, x1) in (('lug -X', (141.0, 151.75)), ('lug +X', (189.25, 200.0))):

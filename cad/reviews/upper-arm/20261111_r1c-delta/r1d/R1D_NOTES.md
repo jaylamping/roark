@@ -317,3 +317,23 @@ The post-macro readback is now removed. The macro's own log and the benchmark lo
   - Outside the fillet the front lug face sits 0.014 proud of |Z| 5.0, so the slot gap there is 0.086 instead of 0.1. Same on
     556cc44 (`slot_unbroken_vs_556cc44.json`): not new.
 - M re-run (r1d10b) with explicit bonded sets: both bonds formed (2 + 2 faces, type 1); the four other sets read back as type 0.
+
+## M confirmed: ring 0.1 gap STOP_0 with the lug bolt joint as built (r1d10b, 2026-11-12 10:59)
+
+- Intel direct sparse, 387,144 nodes, solve 412 s; max displacement 1.34 mm, stable. Bodies by the new split: brass 0-2785,
+  hub, pads, steel × 2, arm. Guard OK.
+- Worst average SF at 0.5 mm (vm / layer / interlayer shear):
+  - arm hub posts: 1.98 / 2.47 / 2.40, the lowest at the -X front post by the insert mouth, [143.3, 293.0, 11.1].
+  - fins: 2.93 / 2.94 / 2.30.
+  - arm ridge load flank: 3.65 / 4.58 / 2.70; ridge body: 3.65 / 4.06 / 2.70.
+  - arm ridge root, end-face corner θ 18: vm 1.37 / 2.28 / 6.35 at 0.5 / 1 / 2 mm (7 nodes); θ 338 shear 1.34 / 2.33 / 5.99.
+  - hub load flank: 2.49 / 1.70 / 1.53.
+  - hub groove bottom + 45° flank: 2.31 / 1.22 / 1.26.
+  - spigot ring above the groove: 2.82 / 1.53 / 1.62; spigot core: 2.69 / 1.22 / 1.91.
+  - outer ring and θ 0/180: 3.90 / 1.90 / 3.56.
+  - hub lug roots: 2.22 / 1.23 / 1.33, layer at [144.6, 295.7, 11.0] (-X lug, +Z face, Y 296: the root the shoulder thread
+    fillets).
+- Inserts 58 MPa (SF 4.1 against 240 MPa brass); bolts 59 MPa (SF 10.9).
+- Lug forces: -X axial 34 N, Fx 38 N, Fz 174 N; +X 3 / 0 / -115 N.
+- Pads 3.4 N in total. Sanity OK.
+- So the as-built joint changes nothing material: the posts pass, and the joint and the 1.2-1.3 hub across-layer values hold.
