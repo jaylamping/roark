@@ -200,11 +200,12 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
 
     def pre(st, d, lbc):
         bs = sorted(d.GetBodies2(0, True), key=lambda b: b.GetMassProperties(1190)[3])
-        want = (4 if BOLTED else 2) + (4 if PADS_ON else 0)
+        n_pads = sum('HS_PADS' in b.Name.upper() for b in bs)      # pads are found by name, whatever HS_PADS says
+        want = (4 if BOLTED else 2) + n_pads
         if len(bs) != want:
             raise SystemExit(f'expected {want} bodies, got {len(bs)}')
         hub, arm = bs[-2], bs[-1]
-        bolts = [b for b in bs[:-2] if 'HS_BOLTS' in b.Name.upper()] if PADS_ON else bs[:-2]
+        bolts = [b for b in bs[:-2] if 'HS_BOLTS' in b.Name.upper()] if n_pads else bs[:-2]
         print(' bodies', [b.Name for b in bs], 'bolts', len(bolts), flush=True)
         if BOLTED:      # the two smallest bodies are the bolts: steel
             comp = st.SolidManager.GetComponentAt(0, I())
