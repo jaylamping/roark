@@ -141,13 +141,18 @@ SLEEVE = dict(y_bot=314.5, bore_skirt=41.5, a_c=-100.0, p=1.0, top_round=4.0, ro
 # vertical at the bottom edge, printable upright), from r 66.5 to SC_RB_BOT. Limit: the fork rear owns the sleeve behind the
 # joint plane (r 51.9 behind the axis) and keeps 2.6 mm there at the bottom edge.
 SC_RB_BOT, SC_Y_TOP = 54.5, 350.0
-if os.environ.get('SIDE_CENTRE') == '47':
+if SIDE_CENTRE == '47':
     # r 47 version: the lower sleeve is a closed ring on the fork front (the split steps up to Y 340), so the rear can come in
     # to the channel's limit: its R 24 bend into the yaw exit plus the 2 mm skin
     SC_RB_BOT, SC_Y_TOP = 48.0, 352.0
-if os.environ.get('SIDE_CENTRE'):
+if SIDE_CENTRE:
     _ys = list(np.linspace(SLEEVE['y_bot'], SC_Y_TOP, 9))
-    _rb = [SC_RB_BOT + (66.5 - SC_RB_BOT) * (1 - ((SC_Y_TOP - y_) / (SC_Y_TOP - SLEEVE['y_bot'])) ** 2) for y_ in _ys]
+    _rq = lambda y_: SC_RB_BOT + (66.5 - SC_RB_BOT) * (1 - ((SC_Y_TOP - y_) / (SC_Y_TOP - SLEEVE['y_bot'])) ** 2)
+    _rb = [_rq(y_) for y_ in _ys]
+    if SIDE_CENTRE == '47':
+        # the bottom 3.5 mm leans at most 40 deg from vertical (upright print, no support): below Y 318 a straight 0.84 slope
+        _ys = [SLEEVE['y_bot'], 316.0, 318.0] + [y_ for y_ in _ys if y_ > 318.5]
+        _rb = [_rq(318.0) - 0.84 * (318.0 - y_) if y_ <= 318.0 else _rq(y_) for y_ in _ys]
     SLEEVE['rb_ys'], SLEEVE['rb'] = _ys + [354.0], _rb + [67.0]
 
 

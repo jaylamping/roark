@@ -183,8 +183,16 @@ def roll_pt(r, a, z):
 # STOP REV 2, torque path (checks/B_ROLL_STOPS.md): the fork rear's channels shifted 0.6 mm in the leg (side walls 1.6 / 2.4 mm
 # where the leg is narrowest, Y 380-395; were 1.0 / 3.0), and two more joint screws at X +-27 (span 54, was 34)
 CH_DX = 0.6      # 1.0 put the power channel's wall tangent to the X -17 counterbore; 0.6: walls 1.6 / 2.4 at Y 390 (were 1.0 / 3.0)
-JOINT_DX = (-JX + 4.5, JX - 4.5, -27.0, 27.0)
+# SIDE CENTRE r 47 (Joey 2026-11-12 05:33Z, go): the lower sleeve a closed ring on the fork front, split at Y 340.
+# SIDE_CENTRE=0 builds the earlier sleeve; 1 the r 54.5 mock-up.
+SIDE_CENTRE = os.environ.get('SIDE_CENTRE', '47')
+SIDE_CENTRE = '' if SIDE_CENTRE == '0' else SIDE_CENTRE
+JY = (SEAT_Y[0] + SEAT_Y[1]) / 2   # joint screw row (Y 356.9)
+# fork joint screws (X offset from RX, Y): the original pair at +-17, the outer pair at +-27 (stop torque path), and with
+# the r 47 sleeve a lower pair at +-22, Y 345.5 (the fork rear now reaches down to Y 340): the stop couple per screw drops
+# by about a third against four
+JOINT_PTS = [(-JX + 4.5, JY), (JX - 4.5, JY), (-27.0, JY), (27.0, JY)] + ([(-22.0, 345.5), (22.0, 345.5)] if SIDE_CENTRE == '47' else [])
 if os.environ.get('JOINT2'):          # the earlier two-screw joint, for the look-options/rear_screws comparison only
-    JOINT_DX = JOINT_DX[:2]
+    JOINT_PTS = JOINT_PTS[:2]
 HUB_RIM_CHAMFER = 0.5 if os.environ.get('HUB_CHAMFER') else 0.0   # hub-top fix (A_HUB_LUGS): 0.5 x 45 on the six screw-hole rims at the RS02 face
 CH_DZ = -1.0 if os.environ.get('LEG2') else 0.0   # LEG2 mock-up: the fork rear's channels 1 mm further back (front wall 3.4)

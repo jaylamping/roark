@@ -549,7 +549,7 @@ CASES['STOP_A2_TOOTH'] = dict(part='stop_fr', el=1.5,
                               ctrl=[(('touch', [RX - 14, RY - 44, -46.5, RX + 14, RY - 27, -32.5], 400.0), 0.5)],
                               regions=dict(tooth=[RX - 14, RY - 44, -46.5, RX + 14, RY - 27, -32.5]))
 # the realistic hold: the two joint screws (the torque goes down the leg to the fork front) and the 6808 seat held radially
-CASES['STOP_A2_TOOTH_J'] = dict(CASES['STOP_A2_TOOTH'], fix=[('fixed', cyl(2.25, [RX - 33, 350, -70, RX + 33, 364, JZ0 + 1])),
+CASES['STOP_A2_TOOTH_J'] = dict(CASES['STOP_A2_TOOTH'], fix=[('fixed', cyl(2.25, [RX - 33, 340, -70, RX + 33, 364, JZ0 + 1])),
                                                             ('radial', cyl(BRG_SEAT_R, [RX - 27, RY - 27, BRG_LIP_Z - 0.1, RX + 27, RY + 27, HOUSE_Z0 + 1.1]))])
 CASES['STOP_A2_TOOTH_LEG2'] = dict(CASES['STOP_A2_TOOTH_J'], part='stop_fr_leg2')   # the outward-leg mock-up
 CASES['STOP_A2_CAP'] = dict(part='stop_cap', el=1.5,

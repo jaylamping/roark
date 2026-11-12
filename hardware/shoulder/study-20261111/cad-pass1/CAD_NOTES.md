@@ -516,3 +516,81 @@ The hub as committed at fd0cef8 (rev C+, wall fill to r 23). The working copy is
 - **STL export:** custom 0.01 mm / 3° (`swk.export`). The 'fine' preset left sliver triangles that the pictures' 40°
   feature-edge pass drew as false lines.
 
+## Side centre r 47, adopted (2026-11-12)
+
+Joey (05:33Z) gave the go on the r 47 sleeve ([look-options/side_centre/README.md](look-options/side_centre/README.md)). It
+is now on the real fork front and fork rear (`dims.SIDE_CENTRE = '47'`; `SIDE_CENTRE=0` builds the earlier sleeve).
+Pictures of the real parts: [look-options/side_centre/real/](look-options/side_centre/real/).
+
+**What changed:**
+- **Fork front:** below Y 340 the sleeve is one closed lofted ring round the RS02, with a 2 mm skin, hollow, and open at
+  the bottom.
+- **Fork rear:** starts on the ring's flat top at Y 340, which is its first print layer. That leaves a horizontal shut
+  line across the back at Y 340.
+- **Back profile:** curves in from r 66.5 (Y 352) to r 48.4 at the bottom edge. The bottom 3.5 mm leans at most 40°
+  from vertical, so it prints without support.
+- **Fore-aft centre:** the sleeve's centre is now 2.3 mm behind the yaw axis at the bottom edge (was 11.4). The back step
+  to the arm's top band is about 9 mm (was 27).
+- **Power channel:** the 16 × 6 channel bends into the yaw exit on a 24 mm radius through the ring's back cavity. The
+  10 × 5 signal channel joins it above Y 357.
+- **Fork joint, now six M4:**
+  - X ±17 and ±27 at Y 356.9
+  - X ±22 at Y 345.5, the lower pair, which the fork rear now reaches
+  - Heads recessed in counterbores.
+  - Seen from behind: **six holes**, four in a row at Y 356.9 and two lower at Y 345.5 just above the shut line.
+  - The fork front's joint pad runs down to Y 341.5. Insert bosses for the lower pair sit inside its hollow.
+
+**Masses (g):**
+
+| Part | g |
+|---|---|
+| Drum | 226.5 |
+| Flange ring | 29.3 |
+| Cap (stop rev 2, 6808 land) | 85.2 |
+| Fork front (wrap, ring, six inserts) | 154.6 |
+| Fork rear (from Y 340, tooth, 6808 seat) | 63.7 |
+| Drum port cap | 1.4 |
+| Hub (rev C+) | 77.1 |
+| Access plugs | 0.7 |
+| **Total** | **638.5** |
+
+**Clearances** (`check_clearance.py`, roll -11…+110, all yaw; `clearance_r47.json`):
+- **The stop tooth on the slot ends:** 0.05 at -11 and +110. This is the intended contact; elsewhere 2.0.
+- **Ring ↔ fork front:** 2.12 at -11 (1.05 at -12, past the stop).
+- **Drum ↔ fork front:** 1.99 (the 2 mm envelope, sampled).
+- **Ring ↔ cover:** 2.00 (designed).
+- **Cuff ↔ hub:** 2.20.
+- **Drum ↔ RS02:** 2.60.
+- **Port cap ↔ fork front:** 2.62.
+- Every other pair 3.0 or more.
+
+**Print (upright, Y up):**
+- Both parts are a single shell: no enclosed cavity.
+- The ring's bore needs no support. Its only overhang is the 1.75 mm ledge where the r 41.5 skirt steps to the r 39.75
+  bore.
+- Supports, all open from below and removable:
+  - fork front: the sleeve hollow's roof (Y 340-350), the RS02-cap clearance roof (Y 361-367), and the dome pocket ceilings
+  - fork rear: its hollow's roof (Y 340-349), and under the stop tooth's outer face
+
+**Assembly order:**
+1. Lay the 16 × 6 and 10 × 5 bundles in the ring's back cavity, separately (24 mm bend).
+2. Slide the RS02 in bare from below. The vendor body is r 39.30 at most against the r 39.75 bore, so 0.45-0.50 mm
+   radial clearance.
+3. Connect the plugs.
+4. Fit the fork rear.
+
+**RS02 plugs: they do not fit as modelled. This predates r 47.**
+- The RS02 uses one combined power and CAN connector: AMASS XT30PB(2+2)-M on the board, XT30(2+2)-F on the lead (RS02
+  manual 260713 §2.3). There are two sockets (in and out) at X ±31…36, r 32.6-36.2, Z -4…16, tops at Y 360.1.
+- **The way out is blocked:**
+  - Above each socket, the seat ring's top 1 mm (Y 360.9-361.9) roofs the socket pocket: 51% of the plug's column is
+    blocked at Y 361.5.
+  - The fb3 wrap edge and the cuff top fill 25% → 7% of it from Y 362.5 to 367.5.
+  - Above that it is clear to the drum's 2 mm envelope at about Y 375-378.
+  - Sideways, the cuff wall (r 41-45) closes the pocket.
+- **To fix:**
+  - open each pocket upward through the seat ring's top and the wrap edge, about 16 × 9 mm at X ±30…38, up to Y 368
+  - check the plug body's length and lead bend against the 15-18 mm to the drum envelope
+  - this needs the real plug's dimensions: measure an XT30(2+2)-F with its leads
+- The opening shows as a notch in the cuff top at each side. It is not done yet.
+
