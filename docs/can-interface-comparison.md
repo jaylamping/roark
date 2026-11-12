@@ -15,7 +15,7 @@ connect through the GPIO header over SPI.
 
 | Interface | Driver | What it tests |
 |---|---|---|
-| The Waveshare 2-CH isolated CAN HAT already on the Pi (MCP2515 + SN65HVD230) | `mcp251x` | The interface we have. The MCP2515 holds two received frames, so a host stall drops replies |
+| The Waveshare 2-CH isolated CAN HAT (MCP2515 + SN65HVD230) | `mcp251x` | The HAT Joey owned before the FD HAT. The MCP2515 holds two received frames, so a host stall drops replies |
 | Waveshare 2-CH isolated CAN **FD** HAT (MCP2518FD + MCP2562FD, about $55) | `mcp251xfd` | The same SPI path with the MCP2518FD's 2 KB on-chip RAM: a stall makes replies late instead of lost, with no USB in the path |
 
 Each HAT tests itself: one channel runs the host, the other the responder, wired together on one short bus. A run where
@@ -101,4 +101,5 @@ Each run's `--out` folder (`ticks.csv`, `summary.txt`), plus the identify output
   hardware side's STATUS.md through Joey.
 - If the chosen interface's collect timing differs from what `can::Timing` assumes (60 % of the period), that change is
   its own PR, with the numbers linked.
-- Hardware left as found: the MCP2515 HAT and its overlay back on the Pi unless the result replaces it.
+- Hardware left as the robot runs it: the CAN FD HAT and its overlay on the Pi ([pi-setup.md](pi-setup.md) section 11), so
+  the skeleton's `driver` lines still match; if the result picks the MCP2515 HAT, that is a skeleton change through Joey.

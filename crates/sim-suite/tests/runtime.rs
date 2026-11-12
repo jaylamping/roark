@@ -130,8 +130,9 @@ fn replies(runtime: &mut Runtime, n: usize, end: Instant) -> Vec<Reply> {
 fn the_runtime_runs_stops_and_clears_every_bus_and_never_enables_on_vcan() {
     let path = skeleton_path();
     let skeleton = skeleton::load(&path).unwrap();
-    let names = ["can0", "can1"];
-    for name in names {
+    // Every bus the skeleton names, so a bus added to it is checked before anything opens it.
+    let names: Vec<&str> = skeleton.buses.iter().map(|b| b.name.as_str()).collect();
+    for name in names.iter().copied() {
         ensure_vcan(name).unwrap();
     }
     let root = std::env::temp_dir().join(format!("sim-suite-runtime-{}", std::process::id()));
@@ -344,8 +345,9 @@ impl Drop for Flags<'_> {
 fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
     let path = skeleton_path();
     let skeleton = skeleton::load(&path).unwrap();
-    let names = ["can0", "can1"];
-    for name in names {
+    // Every bus the skeleton names, so a bus added to it is checked before anything opens it.
+    let names: Vec<&str> = skeleton.buses.iter().map(|b| b.name.as_str()).collect();
+    for name in names.iter().copied() {
         ensure_vcan(name).unwrap();
     }
     let root =

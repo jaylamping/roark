@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use can::{BusConfig, BusLinks, CommandBatch, LimbState, Snapshot, Spawned, StopReason};
-use common::{HZ, Shutdown, drive, hold, id, info, limbs, next_snapshot, soon, timing};
+use common::{HZ, Shutdown, drive, hold, id, info, interface, limbs, next_snapshot, soon, timing};
 use robstride::{Drive, Frame, Mode, Model, StatusFault, StatusFaults, Uid, Write, encode};
 use sim_drive::{Fault, Injected, SimDrive, Trigger, ensure_vcan, serve};
 use telemetry::{BusRecorder, Epoch, Recorder, Recording, Session};
@@ -40,6 +40,7 @@ fn start_bus(
     let bus = can::spawn(
         BusConfig {
             name: FAULT_BUS.to_owned(),
+            interface: interface(),
             drives: vec![drive(101, 0), drive(102, 1)],
             timing: timing(),
         },

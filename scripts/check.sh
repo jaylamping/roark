@@ -19,8 +19,11 @@ python3 scripts/check_rules.py count
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   python3 tools/check_file_sizes.py
   python3 tools/cad/check_cad_layout.py --repo
+  # Every committed print file has a passing pre-print gate report for that exact 3MF, export and spec
+  # (conventions/part-lifecycle.md section 3).
+  python3 tools/cad/gate.py --verify
 else
   echo "file size and CAD layout checks: not a git checkout, skipped"
 fi
-# The CAD tool tests.
-python3 -m pytest -q tools/cad
+# The CAD and CAD workstation tool tests.
+python3 -m pytest -q tools/cad tools/pc

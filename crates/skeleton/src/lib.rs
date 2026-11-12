@@ -24,7 +24,7 @@ use crate::read::{Reader, integer, number, positive, range, text};
 use crate::yaml::Node;
 
 /// The schema version this loader reads. Bumped when an older file no longer loads (skeleton.md section 1).
-const SCHEMA: u64 = 1;
+const SCHEMA: u64 = 2;
 
 /// Upper bound on the file's size. The real file is a few kB; this stops a wrong path (a log, a disk image) from being
 /// read whole.
