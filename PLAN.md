@@ -68,7 +68,7 @@ adds the power board interface (item 10).
    persistence test (item 1) and the caps-in-mode test (item 6).
 9. **First attended Enable** of the loose drives with Joey, as soon as the first row of
    [Which rules a test waits for](#which-rules-a-test-waits-for) passes: preflight, enable at the commissioning caps,
-   sign check, zero, unloaded jog.
+   sign check, zero, unloaded jog. The UIDs, directions and zeros found go into the skeleton as `robot-cli`'s edit (item 1).
 10. Then the test stand (item 7), the elbow rig result into item 8's limits, and the camera loop (item 9).
 
 Create each crate when an item first needs it. The crate table below is the naming target, not a to-do list.
@@ -135,6 +135,12 @@ it lives once, as `name:` in the skeleton. The architecture map, with owners and
 One file, `config/skeleton.yaml`, describes the whole robot. The software owns the schema and the loader; the hardware side owns
 the values. When hardware changes, the hardware side opens one PR here that touches only the skeleton and adds a change-log
 line to STATUS.md the same day. The runtime never writes it; tools that teach limits produce a proposed diff for a PR.
+
+**Measured values reach the skeleton as a diff, not by hand.** The numbers commissioning finds (a drive's UID from the scan,
+a joint's `direction` from the sign check, its `zero_rad`, a taught limit) come out of `robot-cli` as an edit to the skeleton
+file the runtime loaded: only the fields that changed, with comments and order kept, and the session ID that measured each
+value as its source. The runtime itself never writes the file; the person applies the edit in a checkout and opens the PR,
+which is reviewed like any skeleton change. Nobody types a measured number into the skeleton.
 
 Shape (the builder may adjust field names; the content is required):
 

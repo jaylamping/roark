@@ -148,6 +148,15 @@ sim-suite (tests only) --> can, runtime, safety, sim-drive, skeleton, robstride,
   record which session. They live in their own files, are reviewed like code, and are never written by the running robot.
 - **Runtime state is not configuration.** What the robot is doing now lives in memory and in the logs, not in a file the next
   run reads back.
+- **No database.** Facts live in reviewed files in git, live state in memory, and the record in MCAP and `session.json`.
+  No SQL server, embedded database or key-value store sits in the runtime or in its boot path. **Why:** a changed row has no
+  diff and no reviewer, so it would bypass the review every fact goes through; a database server is one more thing that must
+  start before the robot can, and can corrupt on a power cut; and `vcan` runs and CI read the same files from the same commit
+  with nothing to populate first. The legacy stack had a SQLite store for logs, sessions and settings, and the review deleted
+  it. An index over past sessions, if one is ever wanted, runs off the robot (dev box or Jetson) and reads the recordings.
+- **Tools write the diff, people review it.** A measured value (UID, direction, zero, taught limit, friction fit) reaches its
+  file as an edit a tool produces from a logged session and a person opens as a PR (PLAN item 1). **Why:** the legacy stack's
+  config pain came from many files and many writers, not from the file format.
 
 ## 6. State is explicit
 
