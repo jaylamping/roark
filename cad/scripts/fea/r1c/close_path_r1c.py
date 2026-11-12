@@ -13,7 +13,9 @@ from rs02_fit import place, CLOCK
 
 HX, CZ = 170.49, 5.985875
 E = Path(os.environ.get('ARM_EXPORTS', r'J:/code/roark-wt/left-arm-organic/cad/_wip/r1c/exports'))
-HUBP = Path(r'J:/code/roark-wt/left-arm-organic/cad/_sim/ua2/HUB_GROOVE.STL')
+HUBP = Path(os.environ.get('HUB_STL', r'J:/code/roark-wt/left-arm-organic/cad/_sim/ua2/HUB_GROOVE.STL'))
+RING = Path(os.environ.get('RING_STL', str(E / 'upper_arm_organic_rs02_ring_left.STL')))
+OUTJ = Path(os.environ.get('CLOSE_JSON', str(Path(__file__).parent / 'close_path_r1c.json')))
 
 
 def mm(m):
@@ -24,7 +26,7 @@ def mm(m):
 
 halves = {n: mm(trimesh.load(E / f'upper_arm_organic_{n}_left.STL')) for n in ('front', 'back')}
 others = {'hub_grooved': mm(trimesh.load(HUBP)), 'rs02_vendor': place(CLOCK),
-          'rs02_ring': mm(trimesh.load(E / 'upper_arm_organic_rs02_ring_left.STL'))}
+          'rs02_ring': mm(trimesh.load(RING))}
 out = {}
 
 
@@ -86,4 +88,18 @@ for n, h in halves.items():
     i = int(np.argmax(sd))
     out[f'{n} ridge/bore final overlap'] = dict(n=int(sel.sum()), max_into_hub=round(float(sd[i]), 3), at=v[sel][i].round(2).tolist())
     print(f'  {n}: ridge/bore vertices {sel.sum()}, max into hub {sd[i]:.3f} mm at {v[sel][i].round(2).tolist()}', flush=True)
-json.dump(out, open(Path(__file__).parent / 'close_path_r1c.json', 'w'), indent=1)
+# final position, all of each half near the seat (review 2026-11-12): signed distance of vertices + surface samples into the hub;
+# anything over 0.02 mm is reported with where it is (the R1d crush ribs are meant to be 0.15 into the hub's flank)
+hubm = others['hub_grooved']
+for n, h in halves.items():
+    P = dense(h, 0.25); P = P[(P[:, 1] > 285.0) & (P[:, 1] < 303.0)]
+    sd = np.concatenate([trimesh.proximity.signed_distance(hubm, P[i:i + 20000]) for i in range(0, len(P), 20000)])
+    k = sd > 0.02
+    r_ = np.hypot(P[:, 0] - HX, P[:, 2] - CZ); th_ = np.degrees(np.arctan2(P[:, 2] - CZ, P[:, 0] - HX)) % 360
+    res = dict(points=int(len(P)), into_hub_over_0p02=int(k.sum()), max_into_hub=round(float(sd.max()), 3))
+    if k.any():
+        res['where'] = dict(r=[round(float(r_[k].min()), 2), round(float(r_[k].max()), 2)], Y=[round(float(P[k, 1].min()), 2), round(float(P[k, 1].max()), 2)],
+                            theta=sorted(set(int(round(t / 3.0) * 3) for t in th_[k])))
+    out[f'{n} final overlap with the hub'] = res
+    print(f'  {n}: final overlap with the hub', json.dumps(res)[:500], flush=True)
+json.dump(out, open(OUTJ, 'w'), indent=1)
