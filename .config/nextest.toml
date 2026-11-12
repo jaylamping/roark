@@ -4,10 +4,11 @@ retries = 0
 slow-timeout = { period = "5s", terminate-after = 12 }
 fail-fast = false
 # The sim suite needs Linux with vcan can0 to can4 up; it runs only as `--profile sim` (scripts/sim.sh, CI gate 7).
-default-filter = "not package(sim-suite)"
+default-filter = "not package(sim-suite) & not test(/_on_vcan$/)"
 
 [profile.sim]
-default-filter = "package(sim-suite)"
+# robot-cli's socket test (`bus.rs`, on `can2`) runs here too: it needs vcan.
+default-filter = "package(sim-suite) | (package(robot-cli) & test(/_on_vcan$/))"
 
 # Tests that share a vcan bus run one at a time: frames on one bus reach every socket on it.
 [test-groups]
@@ -15,8 +16,8 @@ can0 = { max-threads = 1 }
 
 # Every sim test on `can0`: the exit tests, the slow-request round trip, the scan, the fault tests, the enable tests, the
 # order test, the runtime test, the disable tests and the watchdog test. The runtime, disable and watchdog tests also use
-# `can1`, as their test robot does, so the bus tests (on `can1` to `can3`) and the black box tests (on `can3`) join the
-# group; `vcan.rs` has `can4` to itself and may run beside them.
+# `can1`, as their test robot does, so the bus tests (on `can1` to `can3`), the black box tests (on `can3`) and robot-cli's drain test (on `can2`) join
+# the group; `vcan.rs` has `can4` to itself and may run beside them.
 [[profile.sim.overrides]]
-filter = "package(sim-suite) & (binary(exit) | binary(slow) | binary(scan) | binary(faults) | binary(enable) | binary(orders) | binary(runtime) | binary(disable) | binary(watchdog) | binary(bus) | binary(blackbox))"
+filter = "(package(robot-cli) & test(/_on_vcan$/)) | (package(sim-suite) & (binary(exit) | binary(slow) | binary(scan) | binary(faults) | binary(enable) | binary(orders) | binary(runtime) | binary(disable) | binary(watchdog) | binary(bus) | binary(blackbox)))"
 test-group = "can0"

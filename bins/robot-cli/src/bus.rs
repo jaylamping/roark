@@ -241,3 +241,43 @@ fn write(socket: &CanSocket, frame: Frame) -> Result<(), SendError> {
         Err(e) => Err(SendError::Failed(OsError::from(&e))),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::Instant;
+
+    use socketcan::{CanDataFrame, CanSocket, EmbeddedFrame, Socket, StandardId};
+
+    use super::drain;
+    use crate::stop::{BusStop, Drain};
+
+    /// Guards: safety - a drive is reported stopped only on what was read (PLAN item 2, Stop): on a real socket, the
+    /// drain says frames are still queued only when more than its bound were, so a backlog at the end is never missed
+    /// (confirmed drives become `unread`) and an emptied queue is never taken for one. vcan delivers a write to every
+    /// other socket on the bus before the write returns, so the queue is set up with no clock. Runs in the sim profile.
+    #[test]
+    fn drain_tells_a_queue_left_full_from_an_emptied_one_on_vcan() {
+        let reader = CanSocket::open("can2").unwrap();
+        reader.set_nonblocking(true).unwrap();
+        let writer = CanSocket::open("can2").unwrap();
+        // An ID no drive or `disable` uses.
+        let frame = CanDataFrame::new(StandardId::new(0x7FF).unwrap(), &[0; 8]).unwrap();
+        let mut stop = BusStop::new([]);
+        for (queued, want) in [
+            (10, Drain::Emptied),
+            (64, Drain::Emptied),
+            (65, Drain::Capped),
+            (100, Drain::Capped),
+        ] {
+            while reader.read_frame().is_ok() {}
+            for _ in 0..queued {
+                writer.write_frame(&frame).unwrap();
+            }
+            assert_eq!(
+                drain(&reader, &mut stop, Instant::now()),
+                Ok(want),
+                "{queued} queued"
+            );
+        }
+    }
+}

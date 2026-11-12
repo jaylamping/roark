@@ -293,7 +293,7 @@ fn socket_failures_and_error_frames_need_a_person() {
 
 /// Guards: safety - a drive is reported stopped only on what was read (PLAN item 2, Stop): frames still queued when
 /// the stop ends (a drain stopped at its bound) may hold a Run that withdraws a Reset, so a confirmed drive then needs
-/// a person; before the end, queued frames are read before anything else; and a stop cut before a drive's watch ends
+/// a person; before the end, queued frames are read before any wait; and a stop cut before a drive's watch ends
 /// doesn't report it stopped.
 #[test]
 fn frames_left_unread_when_the_stop_ends_need_a_person() {

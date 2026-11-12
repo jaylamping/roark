@@ -53,7 +53,8 @@ runtime exits (`ExecStopPost`, PLAN item 3). Scan, set-ID, parameter reads and c
   `robstride::encode`.
 - Run while the runtime is alive
   ([architecture.md](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md) section 1: one process
-  owns motion). The one accepted gap is the missing lock file above: a runtime started by hand during the stop.
+  owns motion). The one accepted gap is the missing lock file above: a runtime started by hand during the stop. Both
+  take the same `--lock`, or a runtime on another path can't be seen.
 - Depend on anything but the skeleton's (bus, ID) pairs (and joint names, for the report) and the bus. No session, no `api`, no runtime state.
 - Wait without a deadline.
 
