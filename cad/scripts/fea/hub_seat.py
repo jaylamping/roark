@@ -448,11 +448,14 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 # the large spigot underside face stays at its own size)
                 flag = CAD / '_wip' / 'hs_root_mesh' / (Path(os.environ.get('ARM_FEA_DIR', 'x')).name + '.txt')
                 rm = os.environ.get('HS_ROOT_MESH') or (flag.read_text().strip() if flag.exists() else '')
+                ram = os.environ.get('HS_ROOT_MESH_AMAX', '150')
+                if ',' in rm:      # "size,max face area" (2026-11-12: at 150 mm2 the lug faces came in too, 1.18 M nodes; 20 keeps the R1.2 fillets)
+                    rm, ram = rm.split(',', 1)
                 if rm:
                     for x0, x1 in ((139.5, 149.0), (192.0, 201.5)):
                         # FIRST in the list: a face already under a control keeps it (a later control on the same face had no effect,
                         # case r1d11_g01_stop_rep meshed to the same node count as without it)
-                        c['ctrl'] = [(('touch', [x0, 292.5, CZ - 8.5, x1, 296.6, CZ + 8.5], float(os.environ.get('HS_ROOT_MESH_AMAX', '150'))), float(rm))] + list(c.get('ctrl', []))
+                        c['ctrl'] = [(('touch', [x0, 292.5, CZ - 8.5, x1, 296.6, CZ + 8.5], float(ram)), float(rm))] + list(c.get('ctrl', []))
                 # 2026-11-12: groove-region refinement (coordinator, the settled 0.2 gap run): HS_GROOVE_MESH or a flag file
                 # cad/_wip/hs_groove_mesh/<run folder>.txt. The joint faces are full rings, so this refines every face meeting the
                 # groove band (Y 298.7-302.05, both bodies), not only the θ of the peak
