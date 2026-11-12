@@ -443,3 +443,20 @@ The bench notes' split-and-inspect step now looks at that edge and the hub disc 
   - **Tapered gap around θ.** Flank gap 0 at the crowns (θ 90 / 270, where closing is radial and wedges) growing to 0.2 at the
     seam (where closing would shave). Catch: for poses whose lift-off side is near the seam, the play is the full 0.2 (axial
     0.23).
+
+### The wedge seat, thought through (coordinator question, notes only)
+
+- Closing is along Z, so the wedge only preloads directly near the crowns (θ 90 / 270, radial approach). Near the seam
+  (θ 0 / 180) the closing motion is tangential, so no wedge forms there.
+- Rigid halves: the axial pull from the crown wedge moves the whole half's ridge in Y. A rigid half therefore seats near the
+  seam too, and what remains there is only the local print deviation of the flank and the groove (about 0-0.1), not the design
+  gap. Lift-off near the seam: about 0-0.1 normal (0-0.12 axial play).
+- Flexible hub-end band: if the band twists between the crown and the seam, the seam region lags by that twist and keeps up to
+  its printed gap. The band (collar, ridge and skin over Y 295.7-302) is stiff in that direction compared with 0.1 mm, so this
+  should be closer to the rigid case. Not computed.
+- Hoop compliance near the hub end does not help: the motion needed is axial, not radial. Relieving the seam so each half can
+  tilt about X (rock in) lets the crown pull rotate the half instead of translating it, which would reduce the near-seam
+  seating. Better to relieve the seam faces uniformly along the hub end (pure translation).
+- Strength: the 0 gap solves (flank line-to-line, no ribs) are this design's bearing case, flank in contact all round. The
+  wedge preload is not in them: it adds a steady axial compression on the flank and the end face, and tension in the lug bolts
+  and the hub-end skin. To be checked with a preload step if the design is pursued.
