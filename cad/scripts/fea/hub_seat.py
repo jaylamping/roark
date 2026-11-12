@@ -23,7 +23,7 @@ CAD = Path(__file__).resolve().parents[2]
 F = Path(os.environ.get('ARM_FEA_DIR', CAD / '_sim' / 'ua2'))
 HUB_SRC = CAD / '_wip' / 'hub_ref' / 'upper_arm_hub_left.SLDPRT'      # today's hub, copied from the left-arm worktree (PR #28) 2026-11-12
 HUB_SRC_SHA = '7b857f61855fb2a65fd4e6d73981605c4b9f12747af1e5abcfd2a75bc5ddcb0b'   # the native part its STEP/STL exports were recorded from
-HUB = F / ('HUB_GROOVE.SLDPRT' if os.environ.get('HS_GROOVE') == '1' else 'HUB_TODAY.SLDPRT')
+HUB = F / (os.environ.get('HS_HUB_FILE', 'HUB_GROOVE.SLDPRT') if os.environ.get('HS_GROOVE') == '1' else 'HUB_TODAY.SLDPRT')
 R1C = os.environ.get('ARM_R1C') == '1'
 R1D = os.environ.get('ARM_R1D') == '1'
 ARM_MODEL = os.environ.get('ARM_FEA_NAME', 'UA_ORGANIC_BONDED_v32.SLDPRT') if R1D else 'UA_ORGANIC_BONDED_v31.SLDPRT' if R1C else 'UA_ORGANIC_BONDED_v28.SLDPRT'
@@ -76,18 +76,22 @@ def build():
         span = M.RIDGE_ARC[1] - M.RIDGE_ARC[0] + 10.0      # full depth 30-150 (ridge 35-145 plus 5 each end)
         # run-out depth past the full-depth end (deg -> mm); rev C+ is a revolved taper, modelled as 1-deg steps at the mid-step depth
         ro = ([(0.0, 1.5), (1.3, 1.48), (3.9, 1.28), (6.5, 0.90), (8.9, 0.34), (10.0, 0.0)] if REVCP else [(0.0, 1.5), (11.0, 0.0)])
+        GFULL = os.environ.get('HS_GROOVE_FULL') == '1'      # 2026-11-12: full-ring groove for the ring ridge
+        if GFULL:
+            groove('SPIGOT_GROOVE_RING', 1, 1.5, 360.0)
         for sgn, tag in ((1, 'F'), (-1, 'B')):
-            groove(f'SPIGOT_GROOVE{tag}', sgn, 1.5, span)
-            for k in range(1, 11):
+            if not GFULL:
+                groove(f'SPIGOT_GROOVE{tag}', sgn, 1.5, span)
+            for k in (range(1, 11) if not GFULL else ()):
                 dk = float(np.interp(k - 0.5 if REVCP else k, [a for a, _ in ro], [b for _, b in ro]))
                 if dk > 0.02:
                     groove(f'GROOVE_RUNOUT{tag}{k}', sgn, dk, span + 2.0 * k)
-            if REVCP and os.environ.get('HS_FILL', '1') == '1':      # spigot inside filled r 28 -> 25 over the groove arcs (wall under the groove 9.25)
+            if REVCP and os.environ.get('HS_FILL', '1') == '1' and not (GFULL and sgn < 0):      # spigot inside filled r 28 -> 25 over the groove arcs (wall under the groove 9.25); full ring: once, 360 deg
                 with M.Sk(h, M.plane(h, 'X', HX, f'SPIGOT_FILL{tag}_P'), f'SPIGOT_FILL{tag}') as sk_:
                     fr0 = float(os.environ.get('HS_FILL_R0', '25.0'))      # shoulder hub fd0cef8: r 23 (their 1.2 rounded fill ends not modelled)
                     sk_.poly([(HX, y_, CZ + sgn * r_) for r_, y_ in [(fr0, 296.0), (28.3, 296.0), (28.3, 302.3), (fr0, 302.3)]])
                     centerline_(sk_, (HX, 250.0, CZ), (HX, 340.0, CZ))
-                revolve_(h, sk_.feat, f'SPIGOT_FILL{tag}', None, False, angle=130.0, mid=True, lo=0.01)
+                revolve_(h, sk_.feat, f'SPIGOT_FILL{tag}', None, False, angle=360.0 if GFULL else 130.0, mid=True, lo=0.01)
         h.ForceRebuild3(False)
         if os.environ.get('HS_ROUNDS', '1') == '1':      # 2026-11-11: hub rounds the shoulder thread is adding to the real hub
             rad = lambda p: m_.hypot(p[0] - HX, p[2] - CZ)

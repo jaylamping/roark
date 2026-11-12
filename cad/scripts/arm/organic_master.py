@@ -325,12 +325,15 @@ def upper_details(d):
         prof = [(36.3, ly(36.3))] + tip + top + [(35.9, ny(35.9)), (36.3, ny(35.9))]      # stays inside Y 302 (the arm's end face)
         # two partial revolves, one per arc, centred on theta 90 / 270 (2026-11-11: a full revolve trimmed back to r 35.88 left a
         # 0.02 mm band proud of the bore all round, which broke the FEA mesh)
-        for sgn, tag in ((1, 'F'), (-1, 'B')):
+        RING = R1D and os.environ.get('ARM_RIDGE_RING') == '1'      # 2026-11-12: full-ring ridge (each half a full semicircle through the seam)
+        if RING:
+            y_revolve(d, 'SEAT_RIDGE_RING', prof)
+        for sgn, tag in (() if RING else ((1, 'F'), (-1, 'B'))):
             with Sk(d, plane(d, 'X', HX, f'SEAT_RIDGE{tag}_P'), f'SEAT_RIDGE{tag}') as sk_:
                 sk_.poly([(HX, y_, CZ + sgn * r_) for r_, y_ in prof])
                 centerline(sk_, (HX, 150, CZ), (HX, 340, CZ))
             revolve(d, sk_.feat, f'SEAT_RIDGE{tag}', None, False, angle=RIDGE_ARC[1] - RIDGE_ARC[0], mid=True, lo=0.01)
-        if R1D and os.environ.get('ARM_RIDGE_TAPER', '1') == '1':      # 2026-11-12 (R1d baseline): the ridge ends governed at the stop
+        if R1D and os.environ.get('ARM_RIDGE_TAPER', '1') == '1' and os.environ.get('ARM_RIDGE_RING') != '1':      # 2026-11-12 (R1d baseline): the ridge ends governed at the stop
             # (abrupt full-depth ends). The tip radius ramps smoothly (half cosine: no kink where the full-height tip starts) from r 34.8
             # at theta 45 / 135 / 225 / 315 to the bore (r 35.9) at 35 / 145 / 215 / 325: no flat end faces. Cut by a Y-extrude of the
             # region r 33 .. r_tip(theta), over Y 297.9-301.7 only (the ridge's span), running 0.5 deg past the end at the bore radius.
@@ -362,7 +365,7 @@ def upper_details(d):
                 q = [(A[0] + 0.25 * s30, A[1] + 0.25 * c30), (B[0] + 0.25 * s30, B[1] + 0.25 * c30), (B[0] - rp * s30, B[1] - rp * c30), (A[0] - rp * s30, A[1] - rp * c30)]
                 c_, s_ = math.cos(math.radians(th)), math.sin(math.radians(th))
                 return [(HX + r_ * c_, y_, CZ + r_ * s_) for r_, y_ in q]
-            rib_th = (49.0, 65.0, 81.0, 99.0, 115.0, 131.0) if os.environ.get('ARM_RIDGE_TAPER', '1') == '1' else (45.0, 63.0, 81.0, 99.0, 117.0, 135.0)      # ribs on the full-height part only
+            rib_th = (15.0, 45.0, 75.0, 105.0, 135.0, 165.0) if os.environ.get('ARM_RIDGE_RING') == '1' else (49.0, 65.0, 81.0, 99.0, 115.0, 131.0) if os.environ.get('ARM_RIDGE_TAPER', '1') == '1' else (45.0, 63.0, 81.0, 99.0, 117.0, 135.0)      # ribs on the full-height part only
             for k_, th in enumerate(rib_th):
                 a_ = th - 90.0
                 pts_ = rib_pts(th) + rib_pts(th + 180.0)

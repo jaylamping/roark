@@ -43,7 +43,12 @@ print(f'bodies by node index: arm 0-{h0 - 1}, hub {h0}-{b0 - 1}, bolts {b0}-{N -
 out['body_split'] = dict(arm=[0, h0 - 1], hub=[h0, b0 - 1], bolts=[b0, N - 1], contradicting_samples=bad)
 r = np.hypot(p[:, 0] - HX, p[:, 2] - CZ); y = p[:, 1]; th = np.degrees(np.arctan2(p[:, 2] - CZ, p[:, 0] - HX)) % 360
 ridge_arc = ((th > 33) & (th < 147)) | ((th > 213) & (th < 327))
+import os as _os
+if _os.environ.get('R1C_RING') == '1':      # full-ring ridge and groove
+    ridge_arc = np.ones(len(p), bool)
 groove_arc = ((th > 18) & (th < 162)) | ((th > 198) & (th < 342))
+if _os.environ.get('R1C_RING') == '1':
+    groove_arc = np.ones(len(p), bool)
 posts = (np.abs(p[:, 0] - 147.5) < 7) | (np.abs(p[:, 0] - 193.5) < 7)
 trees = {'arm': (arm, cKDTree(p[arm])), 'hub': (hb, cKDTree(p[hb]))}
 
@@ -116,6 +121,8 @@ rep('hub', 'groove bottom + 45 flank (Y 299.1-302, arcs)', groove_arc & (y >= 29
 rep('hub', '2 mm land (Y 295.5-298, r 33-35.85)', (y > 295.5) & (y < 298.0) & (r > 33) & (r < 35.85), 2)
 rep('hub', 'spigot ring above groove (Y 300.5-302.2, r 31-34.3)', (y > 300.5) & (y < 302.2) & (r > 31) & (r < 34.3), 2)
 rep('hub', 'spigot core behind groove (Y 297.5-301, r 31-34.3)', (y > 297.5) & (y <= 300.5) & (r > 31) & (r < 34.3), 2)
+rep('hub', 'outer ring above groove (r 35.8-39.3, Y 302.5-308)', (y > 302.5) & (y < 308.0) & (r > 35.8) & (r < 39.3), 2)
+rep('hub', 'same, near the seam (theta 0 +-25, 180 +-25)', (y > 302.5) & (y < 308.0) & (r > 35.8) & (r < 39.3) & ((th < 25) | (th > 335) | (np.abs(th - 180) < 25)), 2)
 lugs = ((p[:, 0] < 152.5) | (p[:, 0] > 188.5)) & (np.abs(p[:, 2] - CZ) < 6.5) & (y < 297.5)
 rep('hub', 'lugs incl. roots (Y < 297.5)', lugs, 2)
 rep('hub', 'lug roots (Y 294-297.5)', lugs & (y > 294), 2)
