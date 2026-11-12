@@ -1,6 +1,12 @@
 #![doc = include_str!("../README.md")]
 
-#[cfg(any(target_os = "linux", test))]
+#[cfg_attr(
+    not(target_os = "linux"),
+    expect(
+        dead_code,
+        reason = "only the Linux main writes files; the tests still run everywhere"
+    )
+)]
 mod files;
 
 #[cfg(target_os = "linux")]
@@ -66,8 +72,10 @@ mod linux {
                 "--dir" => dir = Some(PathBuf::from(value)),
                 "--cut-secs" => cut = Some(Duration::from_secs(number(&value)?)),
                 "--keep-days" => {
-                    let days = number(&value)?;
-                    keep = Some(Duration::from_hours(days.saturating_mul(24)));
+                    let secs = number(&value)?
+                        .checked_mul(86_400)
+                        .ok_or(format!("{flag} is too large"))?;
+                    keep = Some(Duration::from_secs(secs));
                 }
                 other => return Err(format!("unknown argument {other}; {USAGE}")),
             }
@@ -105,7 +113,8 @@ mod linux {
         }
     }
 
-    fn report_closed(args: &Args, closed: Option<Closed>) {
+    /// Report a closed file, then prune, sparing the file now open.
+    fn report_closed(args: &Args, closed: Option<Closed>, open: Option<&std::path::Path>) {
         if let Some(c) = closed {
             say(&format!(
                 "{}: closed {}, {} lines",
@@ -113,7 +122,7 @@ mod linux {
                 c.path.display(),
                 c.lines
             ));
-            report_prune(args, None);
+            report_prune(args, open);
         }
     }
 
@@ -156,6 +165,7 @@ mod linux {
             .name("signals".to_owned())
             .spawn(move || {
                 while let Ok(signal) = signals.wait() {
+                    // The command may already have ended; then there is nothing to pass on.
                     let _ = kill(pid, signal);
                 }
             })
@@ -176,7 +186,7 @@ mod linux {
                     let closed = rotator
                         .line(&line, SystemTime::now(), Instant::now())
                         .map_err(failed)?;
-                    report_closed(args, closed);
+                    report_closed(args, closed, rotator.current());
                 }
                 Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => break,
@@ -184,12 +194,12 @@ mod linux {
             let now = Instant::now();
             if now >= next_tick {
                 let closed = rotator.tick(now).map_err(failed)?;
-                report_closed(args, closed);
+                report_closed(args, closed, rotator.current());
                 next_tick = now + FLUSH_EVERY;
             }
         }
         let closed = rotator.close().map_err(failed)?;
-        report_closed(args, closed);
+        report_closed(args, closed, rotator.current());
         Ok(())
     }
 
@@ -245,6 +255,7 @@ mod linux {
         let written = started.and_then(|rx| write_lines(&args, &rx));
         if let Err(e) = &written {
             say(e);
+            // Fails only if the command has already ended, which is what this is for.
             let _ = child.kill();
         }
         let status = child.wait();

@@ -63,7 +63,8 @@ impl Drop for BlackBox {
     }
 }
 
-/// Start the black box on `BUS` into `dir`, cutting every `cut_secs`, with the unit's `candump` flags.
+/// Start the black box on `BUS` into `dir`, cutting every `cut_secs`, with the unit's `candump` flags but `-r`, which
+/// needs `CAP_NET_ADMIN` past `rmem_max` and changes nothing on `vcan`.
 #[expect(clippy::unwrap_used, reason = "test helper: the black box must start")]
 fn start(dir: &Path, cut_secs: u32) -> BlackBox {
     ensure_vcan(BUS).unwrap();
@@ -242,8 +243,9 @@ fn every_frame_lands_once_across_cuts_and_a_stop_closes_cleanly() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// Guards: safety - a black box killed mid-file (a crash, a power cut) leaves a file that reads back up to its last
-/// one-second block, so it covers what the runtime's recording lost in the same crash (logging.md section 8.4).
+/// Guards: safety - a black box killed mid-file (a crash) leaves a file that reads back up to its last one-second block,
+/// so it covers what the runtime's recording lost in the same crash (logging.md section 8.4). A power cut also needs
+/// the sync after each block, which this can't show.
 #[test]
 fn a_killed_black_box_leaves_a_file_that_reads_back() {
     let dir = scratch("blackbox-kill");

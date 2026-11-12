@@ -38,15 +38,31 @@ fn civil_from_days(days: u64) -> (u64, u64, u64) {
     (year, month, day)
 }
 
-/// Whether `name` is one of `bus`'s files. The dash keeps `can1` from claiming `can10`'s.
+/// Whether `name` is a file this program made for `bus`: exactly `<bus>-YYYYMMDDTHHMMSSZ.log.zst`, or with `_NN`
+/// before the suffix. Anything else, `can10`'s files for `can1` or a hand-placed `can1-notes.log.zst`, is not.
 fn is_bus_file(name: &str, bus: &str) -> bool {
-    name.strip_prefix(bus)
-        .and_then(|rest| rest.strip_prefix('-'))
-        .is_some_and(|rest| rest.ends_with(SUFFIX))
+    let Some(rest) = name
+        .strip_prefix(bus)
+        .and_then(|r| r.strip_prefix('-'))
+        .and_then(|r| r.strip_suffix(SUFFIX))
+    else {
+        return false;
+    };
+    let (stamp, counter) = rest.split_at_checked(16).unwrap_or((rest, "x"));
+    let stamp_ok = stamp.char_indices().all(|(i, c)| match i {
+        8 => c == 'T',
+        15 => c == 'Z',
+        _ => c.is_ascii_digit(),
+    }) && stamp.len() == 16;
+    let counter_ok = counter.is_empty()
+        || counter
+            .strip_prefix('_')
+            .is_some_and(|n| n.len() == 2 && n.bytes().all(|b| b.is_ascii_digit()));
+    stamp_ok && counter_ok
 }
 
-/// Make `<bus>-<UTC start>.log.zst` in `dir`, never over an existing file: a restart within the same second gets `-1`,
-/// `-2` and so on.
+/// Make `<bus>-<UTC start>.log.zst` in `dir`, never over an existing file: a restart within the same second gets
+/// `_01`, `_02` and so on, which sort after the first (`_` comes after `.`).
 fn create(dir: &Path, bus: &str, start: SystemTime) -> io::Result<(PathBuf, File)> {
     let secs = start.duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs());
     let stamp = utc_stamp(secs);
@@ -54,7 +70,7 @@ fn create(dir: &Path, bus: &str, start: SystemTime) -> io::Result<(PathBuf, File
         let name = if n == 0 {
             format!("{bus}-{stamp}{SUFFIX}")
         } else {
-            format!("{bus}-{stamp}-{n}{SUFFIX}")
+            format!("{bus}-{stamp}_{n:02}{SUFFIX}")
         };
         let path = dir.join(name);
         match OpenOptions::new().write(true).create_new(true).open(&path) {
@@ -103,6 +119,11 @@ impl Rotator {
         }
     }
 
+    /// The file being written, if any, so pruning can never take it.
+    pub(crate) fn current(&self) -> Option<&Path> {
+        self.current.as_ref().map(|c| c.path.as_path())
+    }
+
     /// Write one line, newline included, to the open file, first closing it if its time is up and opening the next.
     /// `wall` names a new file; `now` times the cut. Returns the file it closed.
     pub(crate) fn line(
@@ -134,7 +155,7 @@ impl Rotator {
     }
 
     /// Run once a second: close the file if its time is up (so a bus gone quiet doesn't leave it open), otherwise
-    /// end a zstd block so everything written so far reads back after a crash.
+    /// end a zstd block and sync it, so everything written so far reads back after a crash or a power cut.
     pub(crate) fn tick(&mut self, now: Instant) -> io::Result<Option<Closed>> {
         if self.due(now) {
             return self.close();
@@ -143,6 +164,7 @@ impl Rotator {
             && c.unflushed
         {
             c.encoder.flush()?;
+            c.encoder.get_ref().sync_data()?;
             c.unflushed = false;
         }
         Ok(None)
@@ -241,18 +263,65 @@ mod tests {
             path
         };
         let old = make("can1-20260101T000000Z.log.zst", 8 * day);
-        let old_again = make("can1-20260101T000000Z-1.log.zst", 8 * day);
+        let old_again = make("can1-20260101T000000Z_01.log.zst", 8 * day);
         let recent = make("can1-20261110T000000Z.log.zst", day);
         let open = make("can1-20260102T000000Z.log.zst", 8 * day);
         let other_bus = make("can10-20260101T000000Z.log.zst", 8 * day);
         let not_ours = make("can1-notes.txt", 8 * day);
+        let hand_placed = make("can1-notes.log.zst", 8 * day);
+        let other_counter = make("can1-20260101T000000Z-1.log.zst", 8 * day);
 
         let (mut deleted, error) = prune(&dir, "can1", 7 * day, now, Some(&open));
         deleted.sort();
         assert!(error.is_none(), "{error:?}");
-        assert_eq!(deleted, vec![old_again, old]);
-        for kept in [recent, open, other_bus, not_ours] {
+        assert_eq!(deleted, vec![old, old_again]);
+        for kept in [
+            recent,
+            open,
+            other_bus,
+            not_ours,
+            hand_placed,
+            other_counter,
+        ] {
             assert!(kept.is_file(), "{} was deleted", kept.display());
+        }
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Guards: safety - the black box never writes over a file: a restart in the same second gets the next name, and it
+    /// sorts after the first, so `zstdcat <bus>-*` reads a bus's files in order (logging.md section 8.6).
+    #[test]
+    fn a_restart_in_the_same_second_gets_a_later_name() {
+        let dir =
+            std::env::temp_dir().join(format!("candump-rotate-create-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let start = UNIX_EPOCH + Duration::from_secs(1_793_746_002);
+        let names: Vec<String> = (0..3)
+            .map(|_| {
+                let (path, mut file) = create(&dir, "can1", start).unwrap();
+                file.write_all(b"x").unwrap();
+                path.file_name().unwrap().to_str().unwrap().to_owned()
+            })
+            .collect();
+        assert_eq!(
+            names,
+            [
+                "can1-20261103T224642Z.log.zst",
+                "can1-20261103T224642Z_01.log.zst",
+                "can1-20261103T224642Z_02.log.zst"
+            ]
+        );
+        let mut sorted = names.clone();
+        sorted.sort();
+        assert_eq!(sorted, names);
+        assert!(names.iter().all(|n| is_bus_file(n, "can1")));
+        for name in &names {
+            assert_eq!(
+                fs::read(dir.join(name)).unwrap(),
+                b"x",
+                "{name} was overwritten"
+            );
         }
         fs::remove_dir_all(&dir).unwrap();
     }

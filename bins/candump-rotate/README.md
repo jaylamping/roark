@@ -8,18 +8,19 @@ still here.
 
 ## What it does
 
-- **Runs the command after `--`** (in the unit, `candump -L -x -d -D` on the bus with every error frame) with its output
-  on a pipe, and reads it a line at a time. `candump` can't cut its own files, and restarting it to cut one would leave
+- **Runs the command after `--`** (in the unit, `candump -L -x -d -D -r 8388608` on the bus with every error frame)
+  with its output on a pipe, and reads it a line at a time. `candump` can't cut its own files, and restarting it to cut one would leave
   a gap; one long-running `candump` and a cut on a line boundary leave none.
 - **Writes `<dir>/<bus>-<UTC start>.log.zst`**, zstd at the default level, with the start in ISO 8601 basic form
-  (`can0-20261112T032642Z.log.zst`). A restart in the same second gets `-1`, `-2`, never overwriting a file. A file is
-  opened at the first line after a cut, so a quiet bus makes no empty files.
-- **Ends a zstd block every second.** A file cut off by a crash or a power loss still reads back (`zstdcat` prints
-  everything up to the last block, then complains about the end), losing at most the last second.
+  (`can0-20261112T032642Z.log.zst`). A restart in the same second gets `_01`, `_02`, which sort after the first, never
+  overwriting a file. A file is opened at the first line after a cut, so a quiet bus makes no empty files.
+- **Ends a zstd block every second and syncs it to disk** (`fdatasync`). A file cut off by a crash or a power loss
+  still reads back (`zstdcat` prints everything up to the last block, then complains about the end), losing at most the
+  last second.
 - **Cuts every `--cut-secs`** on the next line or the next second's check, whichever is first: the zstd frame is ended,
   the file synced, and the next line opens the next file. A file that ends cleanly decompresses without error.
-- **Deletes this bus's files last written more than `--keep-days` ago**, at start and after every cut, and says each one
-  it deleted in the journal. Other buses' files and anything else in the directory are left alone. The session's MCAP
+- **Deletes this bus's files last written more than `--keep-days` ago** (only names of exactly its own form, never the
+  open file), at start and after every cut, and says each one it deleted in the journal. Other buses' files and anything else in the directory are left alone. The session's MCAP
   holds the same frames (logging.md section 8.7).
 - **Holds up to 65,536 lines** between reading and writing, so a disk stall of a few seconds costs nothing. Past that,
   `candump` waits, the kernel drops frames, and `candump -d` writes the drop count into the log as a `DROPCOUNT` line.
@@ -38,8 +39,9 @@ Reading a file back: `zstdcat can0-20261112T032642Z.log.zst`, or feed it to `can
 
 ## Talks to
 
-No workspace crate: only `zstd` and `nix` (signals), so a bug in the runtime's code can't reach the black box. Its input is
-`candump` from can-utils. See the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
+No workspace crate: only `zstd` and `nix` (signals), so a bug in the runtime's code can't reach the black box. It
+shares only the runtime's build script (`bins/runtime/build.rs`), which embeds the git revision and nothing else. Its
+input is `candump` from can-utils. See the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
 
 ## Using it
 
