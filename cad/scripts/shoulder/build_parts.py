@@ -467,8 +467,8 @@ def build_fork_front():
     dm = DOME
     FB = os.environ.get('FRONT_BLEND', '')       # front-blend variants (look-options/front_blend): '1' plain, '2' wrap
     # FB: the two lower circles move up and out, so the cheek flares to the cuff's width; the chin / cowl below takes it in
-    xl_, yl_, rl_ = (22.0, 362.0, 10.0)
-    Y_CUT = 372.0                                  # FB: the cheek is cut flat here; the chin loft continues its exact section
+    xl_, yl_, rl_ = (33.8, 372.0, 10.0) if FB == '3' else (22.0, 362.0, 10.0)   # FB 3: the cheek reaches the cuff's full width (+-43.8): no waist
+    Y_CUT = 372.0 if FB in ('1', '2') else 392.0   # FB: the cheek is cut flat here; the chin / wrap loft continues its exact section
     hull = lambda k: hull_pts([(RX, RY, dm['r'] - k), (RX - xl_, yl_ + 0.5 * k, max(rl_ - k, 3.0)), (RX + xl_, yl_ + 0.5 * k, max(rl_ - k, 3.0))])
     fc = FRONT_CROWN
     z0, z1 = FRONT_Z[0], fc['z1']
@@ -517,7 +517,71 @@ def build_fork_front():
     # the joint face: the 0.5 mm from the sleeve's back (JZ0 + 0.5) down to the joint plane, over the bolted pad
     extrude(d, zsk(d, JZ0 + 1.0, 'JOINT_PAD', lambda s: s.rpoly(rect_pts((RX, ym, JZ0 + 1.0), X, Y, 2 * JX, SEAT_Y[1] - SEAT_Y[0]), [4, 4, 4, 4])),
             'JOINT_PAD', 1.0, NZ, lo=-1.0)
-    if FB:
+    if FB == '3':
+        # FRONT BLEND 3, true wrap: ONE loft from the cuff's whole front half (+-90 deg about the yaw axis) at the seat top up
+        # into the cheek's exact crowned section at Y 392 (and on inside the cheek), so cuff, skirt and cheek are one
+        # surface. Then the drum's 2 mm envelope (everything within 59 of the roll axis, behind Z 38.5, below Y 392) and the
+        # RS02 rear cap (r 34.5 below Y 367.3) are cut out: the wrap hugs the drum's underside with an even shut line.
+        from shapely.geometry import Polygon as _Poly, Point as _Pt, LineString as _LS, box as _box
+        H_ = _Poly(hull(0.0))
+
+        def cheek_sec(y_, n=41):
+            cut = H_.intersection(_LS([(RX - 100, y_), (RX + 100, y_)]))
+            xa, xb = cut.bounds[0], cut.bounds[2]
+            pts = []
+            for i in range(n):
+                x_ = xa + (xb - xa) * i / (n - 1)
+                dd = H_.exterior.distance(_Pt(x_, y_))
+                t_ = math.acos(max(-1.0, 1.0 - min(dd, fc['inset']) / fc['inset']))
+                pts.append((x_, fc['z0'] + (fc['z1'] - fc['z0']) * math.sin(t_)))
+            return pts + [(xb, z0), (xa, z0)]
+
+        def cuff_front(y_):
+            P_ = _Poly([(q[0], q[2]) for q in EV.sleeve_section(y_)]).buffer(0).intersection(_box(RX - 90, YZ, RX + 90, 90))
+            return list(P_.exterior.coords)[:-1]
+
+        def ring(pts, n=72):
+            # matched by four anchors (top centre, outboard side, bottom centre, inboard side) so every station's points
+            # correspond: the cuff's side runs to the cheek's side, not to a point on its crown (that made the waist)
+            P_ = _Poly(pts).buffer(0)
+            ex = P_.exterior
+            if ex.is_ccw:
+                ex = type(ex)(list(ex.coords)[::-1])
+            L_ = ex.length
+            zc = P_.centroid.y
+            an = [ex.project(_Pt(q)) for q in ((RX, 300.0), (RX + 400.0, zc), (RX, -300.0), (RX - 400.0, zc))]
+            out = []
+            for k in range(4):
+                a0, a1 = an[k], an[(k + 1) % 4]
+                span = (a1 - a0) % L_
+                out += [ex.interpolate((a0 + span * i / (n // 4)) % L_).coords[0] for i in range(n // 4)]
+            return out
+        rA, rB = ring(cuff_front(361.9)), ring(cheek_sec(Y_CUT + 0.5))
+        def lerp(t):
+            # soft-start ease-out: leaves the cuff tangentially, then reaches the cheek's shape early, so the front skin
+            # stays >= 4.4 mm above the drum cut (Z 38.5) where the drum's 59 circle widens (smoothstep left 0.7: slits)
+            s_ = (1 - (1 - t) ** 2) * (lambda u: u * u * (3 - 2 * u))(min(1.0, t / 0.25))
+            return [(a[0] + (b[0] - a[0]) * s_, a[1] + (b[1] - a[1]) * s_) for a, b in zip(rA, rB)]
+        ys = [354.0, 357.5, 361.9, 364.0, 366.5, 369.0, 372.0, 375.0, 378.5, 382.0, 386.0, Y_CUT + 0.5, Y_CUT + 6.0]
+        secs_ = []
+        for i_, y_ in enumerate(ys):
+            if y_ <= 361.9:
+                pts = ring(cuff_front(y_))
+            elif y_ >= Y_CUT + 0.4:
+                pts = ring(cheek_sec(y_))
+            else:
+                pts = lerp((y_ - 361.9) / (Y_CUT + 0.5 - 361.9))
+            secs_.append(ysk(d, y_, f'WRAP_S{i_}', lambda s_, pts=pts, y_=y_: s_.spline([(x, y_, z) for x, z in pts])))
+        loft(d, secs_, 'WRAP')
+        # the drum's 2 mm envelope: within 59 of the roll axis, Z -31..38.5, below Y 392 (nothing else of the part is there)
+        from shapely.geometry import box as _bx
+        env = _Pt(RX, RY).buffer(59.0, 180).intersection(_bx(RX - 70, 300.0, RX + 70, Y_CUT))
+        env_pts = [(x, y, -31.0) for x, y in list(env.exterior.coords)[:-1]]
+        extrude(d, zsk(d, -31.0, 'DRUM_ENV', lambda s_: s_.poly(env_pts)), 'DRUM_ENV', 38.5 + 31.0, Z, cut=True, lo=-1.0)
+        yaw_rev(d, 'WRAP_RS02_CLEAR', [(0, 361.0), (34.5, 361.0), (34.5, 367.3), (0, 367.3)], cut=True)
+        extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, SEAT_Y[1] - 3.5), 3.5) for a_ in (64.0, 104.0)]),
+                'RS02_ACCESS', 140.0, Y, cut=True)
+    elif FB:
         # FRONT BLEND: one loft from the cuff's own front (Y 356) into the cheek's exact crowned section at the flat cut
         # (Y 372), so the cheek runs down into the cuff as one surface. '1' plain: the cuff front from Z 40.5;
         # '2' wrap: from Z 24, so the bottom wraps round the cuff. Above Y 361 the chin keeps r >= 34.5 (RS02 rear cap,
