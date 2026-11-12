@@ -12,7 +12,9 @@ from dims import *
 
 OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
 W = R.REPO / 'cad' / '_wip' / 'shoulder-pass1'
-VAR = {'two': ('Two screws (X +-17)', W / 'stl_look_rs2' / 'fork_rear.stl'), 'six': ('Six screws (real): X +-17, +-27 at Y 357; +-22 at Y 345.5', W / 'stl' / 'fork_rear.stl')}
+VAR = {'six': ('Now: +-17, +-27 at Y 357; +-22 at Y 345.5 (+27, +22 break the edge)', W / 'stl' / 'fork_rear.stl'),
+       'G': ('(a) G: +-12, +-24 at Y 357; +-20 at Y 345.5, all closed', W / 'stl_look_rsG' / 'fork_rear.stl'),
+       'Gc': ('(b) G with flush printed caps (shut circles only)', W / 'stl_look_rsGc' / 'fork_rear.stl')}
 Fb = np.array([RX, 352.0, -40.0])
 VIEWS = [('back', Fb + np.array([0.0, 10.0, -420.0]), Fb, 26), ('back34', Fb + np.array([300.0, 60.0, -380.0]), Fb, 26)]
 for v, (title, path) in VAR.items():
@@ -22,7 +24,7 @@ for v, (title, path) in VAR.items():
     for vn, eye, foc, ang in VIEWS:
         R.render(it, OUT / f'{v}_{vn}.png', eye, foc, size=(1100, 1000), angle=ang, title=title)
 CW, CH = 1000, 910
-sheet = Image.new('RGB', (2 * CW, CH * len(VIEWS)), 'white')
+sheet = Image.new('RGB', (len(VAR) * CW, CH * len(VIEWS)), 'white')
 for j, (vn, *_) in enumerate(VIEWS):
     for i, v in enumerate(VAR):
         im = Image.open(OUT / f'{v}_{vn}.png').convert('RGB'); k = min(CW / im.width, CH / im.height)
