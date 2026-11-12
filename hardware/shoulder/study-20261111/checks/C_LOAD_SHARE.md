@@ -93,3 +93,38 @@ The radial 310 N splits about 25 / 75 in all cases: 78 N to the 6808.
   gauge at 100 mm under a known moment).
 - The bolted joint pad between fork front and fork rear (2 × M4): assumed rigid here. The FEA treats it as bonded.
 - Dynamic loads beyond the check (a) design set.
+
+## The fork front on the RS03 roll output: rotational location (2026-11-12, paper)
+
+**The joint:**
+- Six M4 (counterbored, heads at Z 43) clamp the fork front's 12.4 mm boss to the RS03 output face (Z 30.64).
+- The screws sit on r 15.2 at ±30°, ±90° and ±150°, in Ø4.5 clearance holes.
+- The boss face is r 10.75-22, so the friction radius is 17.0.
+- **Torque through it:** the whole roll torque, 20 N·m rated and 60 N·m at a stall (RS03 manual 261013 §1.3). At the
+  stops this includes the full stop reaction (checks/B_ROLL_STOPS.md).
+
+**Friction alone:** 6 × 0.35 kN × 0.25 × 17.0 mm = **8.9 N·m** (5.1 once crept). That is under the rated 20. It slips, and
+the Ø4.5 holes allow up to **0.94°** of roll backlash.
+
+**Two close-fit screws are not enough here.** An M4 × 25 partially threaded has only 5 mm of plain shank in the 12.4 mm
+boss: 33 MPa bearing at rated.
+
+**Cheapest fix: three dowels in the RS03's own locating holes.**
+- The vendor RS03 output has, besides the six tapped M4, **three plain Ø4.0 holes at 0° and ±120° on r 15.2**.
+- Ø4 × 16 steel pins, half in the RS03 and half in the fork front boss.
+- In the fork front: holes printed Ø3.8, hand-reamed Ø4.00.
+- **The pins can be free:** the plain shank of an M4 × 30 partially threaded screw, cut to 16 mm, is a Ø3.96-3.99 pin.
+  Buying Ø4 m6 dowels is better but optional (about 0.10 each in a kit, so a kit is over Joey's $5 line).
+- **Check the depth of the RS03's plain holes** with a probe first; they must take about 8 mm of pin.
+
+| Torque | Load per pin | Bearing on the Ø4 × 8 printed wall | Bulk SF |
+|---|---|---|---|
+| Rated 20 N·m | 439 N | 13.7 MPa | 3.3 |
+| Stall 60 N·m | 1316 N | 41 MPa | 1.09 |
+
+- The stall case is the same open question as the roll stops (Joey's call).
+- **Backlash:** a shank of 3.98 or more in a reamed 4.00 gives ≤ 0.02 mm radial, about **0.08°**.
+- The six screws stay in clearance holes at 0.3 N·m (hook-scale method, A_HUB_LUGS.md). No threadlocker in testing.
+- **Model:** add three Ø3.8 holes at 0° and ±120° on r 15.2 through the fork front boss. This is queued for the next
+  SolidWorks gap, with the hub's two Ø3.8 locating holes.
+
