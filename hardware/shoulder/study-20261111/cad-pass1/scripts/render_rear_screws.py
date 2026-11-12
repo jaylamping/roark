@@ -12,9 +12,12 @@ from dims import *
 
 OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
 W = R.REPO / 'cad' / '_wip' / 'shoulder-pass1'
-VAR = {'six': ('Now: +-17, +-27 at Y 357; +-22 at Y 345.5 (+27, +22 break the edge)', W / 'stl' / 'fork_rear.stl'),
-       'G': ('(a) G: +-12, +-24 at Y 357; +-20 at Y 345.5, all closed', W / 'stl_look_rsG' / 'fork_rear.stl'),
-       'Gc': ('(b) G with flush printed caps (shut circles only)', W / 'stl_look_rsGc' / 'fork_rear.stl')}
+VAR = {'six': ('Before: +-17, +-27 at Y 357; +-22 at Y 345.5 (+27 and +22 break the edge)', W / 'stl' / 'fork_rear.stl'),
+       'N': ('Layout N (real): -27, -17, +17, +26 at Y 357; -22, +20 at Y 345.5, all closed', W / 'stl_look_rsN' / 'fork_rear.stl'),
+       'G': ('Rejected: symmetric G (+-12, +-24; +-20), joint SF 1.33', W / 'stl_look_rsG' / 'fork_rear.stl')}
+import os
+if (W / 'stl_look_rsNc' / 'fork_rear.stl').exists():
+    VAR['Nc'] = ('N with flush printed caps (option b)', W / 'stl_look_rsNc' / 'fork_rear.stl')
 Fb = np.array([RX, 352.0, -40.0])
 VIEWS = [('back', Fb + np.array([0.0, 10.0, -420.0]), Fb, 26), ('back34', Fb + np.array([300.0, 60.0, -380.0]), Fb, 26)]
 for v, (title, path) in VAR.items():

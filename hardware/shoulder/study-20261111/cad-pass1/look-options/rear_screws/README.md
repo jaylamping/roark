@@ -15,3 +15,18 @@ r 47 sleeve.
 **One untidy spot:** the outer ±27 counterbores sit right at the fork rear's side edge, by the split, so each reads as a
 hole partly open at that edge. Moving them in to ±25 would clear the edge, at a small cost in joint margin. Say if Joey
 would rather have that.
+
+## Update 2026-11-12: layout N adopted
+
+![sheet](SHEET_rear_screws.png)
+
+Columns: before, layout N (going onto the real parts), and the rejected symmetric layout G.
+
+- **N:** top row X -27, -17, +17, +26 at Y 357; lower row -22, +20 at Y 345.5.
+  - Every counterbore is fully closed, with at least 1.5 mm of skin to the fork rear's edge. The swell is off-centre, so
+    the right edge allows only +26.6 / +21.
+  - Rated-torque joint layer SF **1.49** (FEA), against 1.5. Accepted as inside FEA scatter.
+- **G** (symmetric ±12/±24, ±20) looks tidier but drops the joint to 1.33. Rejected.
+- **Screws:** all six are ISO 7380 M4 button heads, because the outer recesses are only about 3.1 mm deep.
+- **Caps option (b) on N:** queued. The caps pictures above are on G.
+
