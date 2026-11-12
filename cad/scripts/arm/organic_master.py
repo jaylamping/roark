@@ -330,6 +330,21 @@ def upper_details(d):
                 sk_.poly([(HX, y_, CZ + sgn * r_) for r_, y_ in prof])
                 centerline(sk_, (HX, 150, CZ), (HX, 340, CZ))
             revolve(d, sk_.feat, f'SEAT_RIDGE{tag}', None, False, angle=RIDGE_ARC[1] - RIDGE_ARC[0], mid=True, lo=0.01)
+        if R1D and os.environ.get('ARM_RIDGE_TAPER', '1') == '1':      # 2026-11-12 (R1d baseline): the ridge ends governed at the stop
+            # (abrupt full-depth ends). The tip radius ramps smoothly (half cosine: no kink where the full-height tip starts) from r 34.8
+            # at theta 45 / 135 / 225 / 315 to the bore (r 35.9) at 35 / 145 / 215 / 325: no flat end faces. Cut by a Y-extrude of the
+            # region r 33 .. r_tip(theta), over Y 297.9-301.7 only (the ridge's span), running 0.5 deg past the end at the bore radius.
+            for k_, (t_end, t_full) in enumerate(((35.0, 45.0), (145.0, 135.0), (215.0, 225.0), (325.0, 315.0))):
+                sgn_ = np.sign(t_full - t_end)
+                ths = np.r_[t_end - 0.5 * sgn_, np.linspace(t_end, t_full, 41)]
+                def rc(t, t_end=t_end, t_full=t_full):
+                    s_ = min(max(abs(t - t_full) / abs(t_full - t_end), 0.0), 1.0)      # 0 at full height, 1 at the end
+                    return 35.9 if abs(t - t_full) > abs(t_full - t_end) else 34.8 + (35.9 - 34.8) * (1.0 - math.cos(0.5 * math.pi * s_))
+                pts = [(HX + rc(t) * math.cos(math.radians(t)), 299.8, CZ + rc(t) * math.sin(math.radians(t))) for t in ths]
+                pts += [(HX + 33.0 * math.cos(math.radians(t)), 299.8, CZ + 33.0 * math.sin(math.radians(t))) for t in ths[::-1]]
+                with Sk(d, plane(d, 'Y', 299.8, f'RIDGE_TAPER{k_}_P'), f'RIDGE_TAPER{k_}') as sk_:
+                    sk_.poly(pts)
+                feat(d, sk_.feat, f'RIDGE_TAPER{k_}', 3.8, True, mode=MID, lo=0.01)
         rp = float(os.environ.get('ARM_RIB_PROUD', '0.25')) if R1D else 0.0
         if rp > 0:      # R1d crush ribs on the load flank: 6 per arc, 1 wide (tangential), over r 34.95-35.75, rp proud of the flank
             # (0.25 to print: 0.15 interference on the 0.1 gap; 0.1 in the FEA = touching). Each lies in a plane through the hub axis,
@@ -345,7 +360,8 @@ def upper_details(d):
                 q = [(A[0] + 0.25 * s30, A[1] + 0.25 * c30), (B[0] + 0.25 * s30, B[1] + 0.25 * c30), (B[0] - rp * s30, B[1] - rp * c30), (A[0] - rp * s30, A[1] - rp * c30)]
                 c_, s_ = math.cos(math.radians(th)), math.sin(math.radians(th))
                 return [(HX + r_ * c_, y_, CZ + r_ * s_) for r_, y_ in q]
-            for k_, th in enumerate((45.0, 63.0, 81.0, 99.0, 117.0, 135.0)):
+            rib_th = (49.0, 65.0, 81.0, 99.0, 115.0, 131.0) if os.environ.get('ARM_RIDGE_TAPER', '1') == '1' else (45.0, 63.0, 81.0, 99.0, 117.0, 135.0)      # ribs on the full-height part only
+            for k_, th in enumerate(rib_th):
                 a_ = th - 90.0
                 pts_ = rib_pts(th) + rib_pts(th + 180.0)
                 done = False
