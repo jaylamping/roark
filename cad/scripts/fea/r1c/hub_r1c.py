@@ -36,6 +36,16 @@ def refine(lo, hi, want):
     k = np.flatnonzero(lb == want); return int(ix[k[0]]) if len(k) else int(lo)
 h0 = refine(h_first - 200, h_first + 1, 1); b0 = refine(b_first - 200, b_first + 200, 2)
 body = np.zeros(N, np.int8); body[h0:] = 1; body[b0:] = 2
+# 2026-11-12: a bolt can also come FIRST in the node order (the -X bolt was nodes 557-4624, counted as arm: the "arm hub posts"
+# peak was a steel bolt node). Every contiguous run of bolt-interior nodes (r < 1.3 from a bolt axis) marks a bolt block; a block
+# is taken only if all its nodes lie within the bolt radius.
+_inner = np.flatnonzero(rb_all < 1.3)
+if len(_inner):
+    _cuts = np.flatnonzero(np.diff(_inner) > 200)
+    for _lo, _hi in zip(np.r_[_inner[0], _inner[_cuts + 1]], np.r_[_inner[_cuts], _inner[-1]]):
+        if rb_all[_lo:_hi + 1].max() <= 1.52 and body[_lo] != 2:
+            body[_lo:_hi + 1] = 2
+            print(f'bolt block found at nodes {_lo}-{_hi} (inside the arm/hub index range), reclassified as bolt')
 arm = np.flatnonzero(body == 0); hb = np.flatnonzero(body == 1); bl = np.flatnonzero(body == 2)
 in_hub = body == 1; bolt = body == 2
 chk = label(smp); bad = int(((chk == 0) & (body[smp] != 0)).sum() + ((chk == 1) & (body[smp] != 1)).sum())

@@ -195,3 +195,26 @@ instance with RunMacro2:
   machine). The memory stop ended it cleanly. No singularity message.
 - Conclusion: error 24 was the Intel direct sparse factorisation of 2.37 M equations running out of memory. Next: a coarser
   global mesh (HS_GLOBAL_EL) with the 0.8 mm seat control kept.
+
+## Ring 0.1 gap STOP_0: repeat with the post/lug control (2026-11-12 09:27); queue stopped
+
+- Run: r1d9_ringg01_stop_pm. Intel direct sparse, set by macro; the benchmark log shows Intel-solver lines only. 390,951 nodes:
+  0.8 mm on the seat and on the lug/post/fin faces (Y 268-297.5), 4.0 mm global. Solve 414 s.
+- Post-processor fix (hub_r1c.py): the -X bolt is nodes 557-4677, at the START of the node order. The index split counted it as
+  arm, so the "arm hub posts" peak in both ring runs was a steel bolt node. Both runs have been re-post-processed; the review
+  files here are the corrected ones.
+- The joint regions repeat within a few percent of the first run.
+- Arm ridge root / bore wall at θ 18, Y 302.0 (the inner corner of the end face against the hub disc):
+  - vm 1.22 / 2.33 / 6.72 and shear 1.24 / 2.42 / 6.35 at 0.5 / 1 / 2 mm, with 9 and 8 nodes at 0.5 mm.
+  - It halves from 0.5 to 1 mm and is gone by 2 mm: a contact-corner concentration, not a section.
+- Posts, corrected (bolt excluded), fine mesh: vm 1.02 / 1.18 / 1.70, layer 0.63 / 0.71 / 1.18, shear 0.93 / 1.48 / 1.73
+  (2 / 12 / 42 nodes).
+  - The peak is at [147.1, 293.5, 11.1]: the front-half -X post, at the mouth of the bolt bore (r 1.55 from the bolt axis) on
+    the face the hub lug bears on.
+  - In the model the steel bolt is bonded along the whole bore. In the part, that face is the seam face where the brass insert
+    sits.
+  - σz within 1 / 2 / 3 mm of the peak: +34 / +18 / +5 MPa (tension).
+- Lug forces: -X axial 55 N (sanity flag over 50 N), shear Fx 40 N, Fz 169 N; +X 2 / 0 / -112 N. The Fz pair is the stop
+  moment about the hub axis. The full-ring ridge and groove cannot carry torque about that axis (frictionless), so the lugs carry
+  all of it.
+- Stop lug (stop_post.py, 2 mm pad exclusion): lug root 1.99 / 1.61, elsewhere 2.14 / 1.34. Matches the record.
