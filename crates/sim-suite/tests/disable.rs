@@ -241,8 +241,9 @@ fn bus(seen: &[Seen], from: Instant, quiet: Instant) -> Bus {
 fn after_kill_9_disable_leaves_every_drive_in_reset_with_reporting_off() {
     let path = skeleton_path();
     let skeleton = skeleton::load(&path).unwrap();
-    let names = ["can0", "can1"];
-    for name in names {
+    // Every bus the skeleton names, so a bus added to it is checked before anything opens it.
+    let names: Vec<&str> = skeleton.buses.iter().map(|b| b.name.as_str()).collect();
+    for name in names.iter().copied() {
         ensure_vcan(name).unwrap();
     }
     let dir = scratch("disable");

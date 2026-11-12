@@ -6,12 +6,19 @@
 //! sysfs, and refuses a bus that doesn't match before the first frame. Every mismatch is reported at once.
 
 use std::fmt;
-use std::path::Path;
-use std::process::Command;
 
 use serde_json::Value;
 
-use crate::types::InterfaceSpec;
+/// What the skeleton says a bus's interface must be.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InterfaceSpec {
+    /// Bit rate, bit/s.
+    pub bitrate_bps: u32,
+    /// Sample point, as a fraction of the bit.
+    pub sample_point: f64,
+    /// The Linux driver, as `/sys/class/net/<bus>/device/driver` names it.
+    pub driver: String,
+}
 
 /// The interface a bus opened on, for the runtime's startup log.
 #[derive(Clone, Debug, PartialEq)]
@@ -127,7 +134,7 @@ pub enum Mismatch {
 #[derive(Clone, Debug, PartialEq, thiserror::Error)]
 pub enum Refusal {
     /// The kernel's report couldn't be read, so nothing is opened.
-    #[error("can't tell what kind of interface it is: {0}")]
+    #[error("can't read the interface: {0}")]
     Unreadable(String),
     /// It is a real interface that doesn't match the skeleton.
     #[error("{}", join(.0))]
@@ -146,7 +153,10 @@ fn join(mismatches: &[Mismatch]) -> String {
 /// whose frames went unacknowledged while the drives were unpowered (an E-stop, `robot-cli disable` on a dead bus) sits
 /// in error-passive until frames are acknowledged again, so refusing it would refuse every restart until someone resets
 /// the link. The bus layer doesn't stop for error-passive mid-run either. Bus-off, stopped and asleep carry nothing.
-const RUNNABLE_STATES: [&str; 3] = ["ERROR-ACTIVE", "ERROR-WARNING", "ERROR-PASSIVE"];
+const RUNNABLE_STATES: [&str; 3] = ["ERROR-ACTIVE", "ERROR-WARNING", ERROR_PASSIVE];
+
+/// The state `ip` names error-passive: the bus starts unhealthy in it (`BusTick::start_error_passive`).
+pub(crate) const ERROR_PASSIVE: &str = "ERROR-PASSIVE";
 
 /// Controller modes that make frames look sent when nothing reached the wire or was acknowledged: loopback (frames
 /// never leave the controller), listen-only (it never sends or acknowledges) and presume-ack (a missing receiver
@@ -160,7 +170,11 @@ const SAMPLE_POINT_TOLERANCE: f64 = 0.0005;
 ///
 /// # Errors
 /// [`Refusal`]: the report couldn't be read, or the interface doesn't match.
+#[cfg(target_os = "linux")]
 pub(crate) fn check_bus(bus: &str, spec: &InterfaceSpec) -> Result<Interface, Refusal> {
+    use std::path::Path;
+    use std::process::Command;
+
     if bus.is_empty() || bus.starts_with('-') || bus.contains('/') {
         return Err(Refusal::Unreadable(format!(
             "{bus:?} is not an interface name"
@@ -364,6 +378,20 @@ mod tests {
         serde_json::json!([link]).to_string()
     }
 
+    /// What the check reports for [`report`]'s interface in `state`: the kernel's values.
+    fn passed(state: &str) -> RealInterface {
+        RealInterface {
+            driver: "mcp251xfd".to_owned(),
+            bitrate_bps: 1_000_000,
+            sample_point: "0.750".to_owned(),
+            state: state.to_owned(),
+            modes: vec!["BERR-REPORTING".to_owned()],
+            restart_ms: Some(0),
+            clock_hz: Some(40_000_000),
+            txqueuelen: Some(10),
+        }
+    }
+
     fn set(path: &[&str], value: Value) -> impl FnOnce(&mut Value) {
         let path: Vec<String> = path.iter().map(|s| (*s).to_owned()).collect();
         move |v| {
@@ -382,16 +410,16 @@ mod tests {
     #[expect(clippy::too_many_lines, reason = "one table, one row per check")]
     fn a_real_interface_runs_only_as_the_skeleton_says() {
         use serde_json::json;
-        /// A row: what it shows, `ip`'s report, the driver, and what the check finds wrong (`Ok` passes).
+        /// A row: what it shows, `ip`'s report, the driver, and what the check reports on a pass or finds wrong.
         type Row = (
             &'static str,
             String,
             Option<&'static str>,
-            Result<(), Vec<Mismatch>>,
+            Result<RealInterface, Vec<Mismatch>>,
         );
         let mcp = Some("mcp251xfd");
         let rows: Vec<Row> = vec![
-            ("as set up", report(|_| {}), mcp, Ok(())),
+            ("as set up", report(|_| {}), mcp, Ok(passed("ERROR-ACTIVE"))),
             (
                 "error-warning still carries the bus",
                 report(set(
@@ -399,7 +427,7 @@ mod tests {
                     json!("ERROR-WARNING"),
                 )),
                 mcp,
-                Ok(()),
+                Ok(passed("ERROR-WARNING")),
             ),
             (
                 "the sample point as a number",
@@ -408,7 +436,7 @@ mod tests {
                     json!(0.75),
                 )),
                 mcp,
-                Ok(()),
+                Ok(passed("ERROR-ACTIVE")),
             ),
             (
                 "another adapter took the name",
@@ -491,7 +519,7 @@ mod tests {
                     json!("ERROR-PASSIVE"),
                 )),
                 mcp,
-                Ok(()),
+                Ok(passed("ERROR-PASSIVE")),
             ),
             (
                 "listen-only and presume-ack",
@@ -529,28 +557,14 @@ mod tests {
         ];
         for (name, json, driver, want) in rows {
             let got = match check(&json, driver, &spec()) {
-                Ok(Interface::Real(_)) => Some(Ok(())),
+                Ok(Interface::Real(real)) => Some(Ok(real)),
                 Err(Refusal::Mismatch(found)) => Some(Err(found)),
                 Ok(Interface::Sim) | Err(Refusal::Unreadable(_)) => None,
             };
             assert_eq!(got, Some(want), "{name}");
         }
-        // What passes is what the kernel reported.
-        assert_eq!(
-            check(&report(|_| {}), mcp, &spec()),
-            Ok(Interface::Real(RealInterface {
-                driver: "mcp251xfd".to_owned(),
-                bitrate_bps: 1_000_000,
-                sample_point: "0.750".to_owned(),
-                state: "ERROR-ACTIVE".to_owned(),
-                modes: vec!["BERR-REPORTING".to_owned()],
-                restart_ms: Some(0),
-                clock_hz: Some(40_000_000),
-                txqueuelen: Some(10),
-            }))
-        );
         // Modes in a shape that can't be read can't be checked, so the interface isn't opened.
-        assert!(matches!(
+        assert_eq!(
             check(
                 &report(set(
                     &["linkinfo", "info_data", "ctrlmode"],
@@ -559,8 +573,10 @@ mod tests {
                 mcp,
                 &spec()
             ),
-            Err(Refusal::Unreadable(_))
-        ));
+            Err(Refusal::Unreadable(
+                "ip's ctrlmode isn't a list of names: \"LOOPBACK\"".to_owned()
+            ))
+        );
         // The simulator's bus is taken as it is: no driver, no bit timing.
         let vcan = serde_json::json!([{ "ifname": "can1", "flags": ["NOARP", "UP", "LOWER_UP"],
             "linkinfo": { "info_kind": "vcan" } }]);

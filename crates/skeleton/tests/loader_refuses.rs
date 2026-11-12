@@ -455,4 +455,14 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
         hard_line,
         "line of the hard_rad problem"
     );
+
+    // An old file is told which schema this loader reads.
+    let old = skeleton::parse(&edit("schema: 2", "schema: 1"))
+        .err()
+        .map(|e| e.to_string())
+        .unwrap_or_default();
+    assert!(
+        old.contains("schema 1 is not one this loader knows (expected 2)"),
+        "{old}"
+    );
 }

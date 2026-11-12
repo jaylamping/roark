@@ -414,19 +414,29 @@ impl Threads {
     }
 }
 
-/// The session, recorded with what the runtime starts from.
 /// Every bus's interface, checked before the session exists, so a refused start leaves no session behind and a run on
 /// any real bus is recorded as a bench session, never as sim.
 fn stage(plans: &[BusPlan]) -> Result<Stage, BusRunError> {
-    let mut stage = Stage::Vcan;
-    for p in plans {
-        if let can::Interface::Real(_) = can::check_interface(&p.name, &p.interface)? {
-            stage = Stage::Bench;
-        }
-    }
-    Ok(stage)
+    let interfaces = plans
+        .iter()
+        .map(|p| can::check_interface(&p.name, &p.interface))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(stage_of(&interfaces))
 }
 
+/// A session is sim only when every bus is: one real bus makes it a bench session.
+fn stage_of(interfaces: &[can::Interface]) -> Stage {
+    if interfaces
+        .iter()
+        .any(|i| matches!(i, can::Interface::Real(_)))
+    {
+        Stage::Bench
+    } else {
+        Stage::Vcan
+    }
+}
+
+/// The session, recorded with what the runtime starts from.
 fn start_session(
     config: &RuntimeConfig,
     stage: Stage,
@@ -514,4 +524,33 @@ fn spawn_bus(
         receive_buffer_bytes: spawned.receive_buffer_bytes,
         interface: spawned.interface,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Guards: safety - a run on any real bus is recorded as a bench session, never as sim, which logging.md lets be
+    /// deleted on its own.
+    #[test]
+    fn one_real_bus_makes_a_bench_session() {
+        let real = can::Interface::Real(can::RealInterface {
+            driver: "mcp251xfd".to_owned(),
+            bitrate_bps: 1_000_000,
+            sample_point: "0.750".to_owned(),
+            state: "ERROR-ACTIVE".to_owned(),
+            modes: Vec::new(),
+            restart_ms: None,
+            clock_hz: None,
+            txqueuelen: None,
+        });
+        let rows = [
+            (vec![can::Interface::Sim, can::Interface::Sim], Stage::Vcan),
+            (vec![can::Interface::Sim, real.clone()], Stage::Bench),
+            (vec![real], Stage::Bench),
+        ];
+        for (interfaces, stage) in rows {
+            assert_eq!(stage_of(&interfaces), stage, "{interfaces:?}");
+        }
+    }
 }

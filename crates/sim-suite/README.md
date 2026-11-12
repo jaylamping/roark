@@ -48,7 +48,8 @@ runs only this crate.
 Open an interface without checking it is `vcan` first (`sim_drive::ensure_vcan`). The sim's buses carry the robot's real
 names and `can::spawn` opens a real interface that matches the skeleton, so this check is what keeps a test run on the
 Pi off a real drive (testing.md rule 8). The tests' skeletons and `common::interface` name a driver no real interface
-has (`sim_only`) as a second guard. Never
+has (`sim_only`) as a second guard for `can::spawn`; `robot-cli disable` checks neither, so its tests rely on
+`ensure_vcan` alone. Never
 sleep to wait: wait on a reply with a deadline (testing.md rule 6).
 
 ## Talks to

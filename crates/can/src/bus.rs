@@ -15,14 +15,13 @@ use telemetry::{BusInfo, BusRecorder, Epoch, TickBatch, TimestampSource};
 use crate::clock::{Clock, mono_now, sleep_relative, wall_ns};
 use crate::error_frame::BusError;
 use crate::exit_wait::{ExitWait, Pushed};
-use crate::interface::{self, Interface, Refusal};
+use crate::interface::{self, Interface, InterfaceSpec, Refusal};
 use crate::order::{Order, Rearmed};
 use crate::slow::{SlowRequest, SlowResult};
 use crate::tick::BusTick;
 use crate::timing::Timing;
 use crate::types::{
-    BusDrive, CommandBatch, ConfigError, Counters, Drain, InterfaceSpec, SendList, SendOutcome,
-    Snapshot,
+    BusDrive, CommandBatch, ConfigError, Counters, Drain, SendList, SendOutcome, Snapshot,
 };
 use crate::{bus_orders, slack, sys};
 
@@ -208,12 +207,17 @@ pub fn check_interface(bus: &str, spec: &InterfaceSpec) -> Result<Interface, Bus
 /// # Errors
 /// [`BusRunError`] before any frame is sent.
 pub fn spawn(config: BusConfig, links: BusLinks) -> Result<Spawned, BusRunError> {
-    let tick =
+    let mut tick =
         BusTick::new(&config.drives, config.timing).map_err(|source| BusRunError::Config {
             bus: config.name.clone(),
             source,
         })?;
     let interface = check_interface(&config.name, &config.interface)?;
+    if let Interface::Real(real) = &interface
+        && real.state == interface::ERROR_PASSIVE
+    {
+        tick.start_error_passive();
+    }
     let socket = open(&config.name)?;
     let receive_buffer_bytes =
         sys::receive_buffer(socket.as_fd()).map_err(|source| BusRunError::Socket {
