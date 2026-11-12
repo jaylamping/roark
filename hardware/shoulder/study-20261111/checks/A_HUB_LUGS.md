@@ -287,3 +287,25 @@ unchanged.
 - the hub-lug cases HUBL_I and HUBCF
 - the clearance sweep: the hub's outer surfaces don't change, so expect no change there.
 
+## Hub-top bolted contact, cases B and Ah (2026-11-12, rev C+)
+
+Both cases are solved with FFEPlus, because the direct solver failed with code 24 even running alone. 577,952 nodes.
+Post-processing is `hub_post.py`, with tensile-only layer averages. SF is peak / 1 mm average.
+
+| Region | A (690 N preload, MX) | B (690 N, MZ) | Ah (345 N, relaxed, MX) |
+|---|---|---|---|
+| Hub top, layer | 0.41 / **1.41** | 0.66 / 2.24 | 0.48 / 1.64 |
+| Lug B, layer | 0.41 / **1.16** | 0.87 / 2.42 | 0.42 / 1.19 |
+| Lug A, layer | 0.68 / 1.65 | 1.12 / 3.01 | 0.62 / 1.68 |
+| Window band, layer | 0.91 / 1.87 | 1.53 / 2.63 | 0.85 / 1.68 |
+| Groove bottom, bulk (compressive) | 0.33 / 0.76 | 0.51 / 1.14 | 0.37 / 0.86 |
+| Spigot ring / disc corner, bulk (compressive, p3 to about -107 MPa) | 0.31 / 2.54 | 0.47 / 0.72 | 0.31 / 2.52 |
+
+- **Case A at full preload governs** the hub top (1.41 at the 1 mm average, under 1.5), so the cheap fix applies: a
+  0.5 × 45° chamfer on the six screw-hole rims at the RS02 face (`HUB_CHAMFER=1`). Case A is being re-run on it.
+- **Relaxing the preload to half** (creep) lifts the hub top to 1.64. Lug B stays the lowest layer average (about 1.2) in
+  both A and Ah, as in earlier runs.
+- **The bulk minima are compressive** contact and bearing peaks at the spigot ring, disc corner and groove bottom. They are
+  not tensile failures.
+- **If rev D (full-ring groove) is adopted,** A (with chamfer), B and Ah need re-running on rev D.
+
