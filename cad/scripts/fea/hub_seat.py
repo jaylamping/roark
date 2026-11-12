@@ -409,6 +409,15 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 if pm > 0:      # 2026-11-12: the hub lugs and roots, the arm posts they bear on and the fins where they meet the posts (Y 268-297.5, |Z - CZ| < 12), both sides
                     for x0, x1 in ((128.0, 153.5), (187.5, 213.0)):
                         c['ctrl'] = list(c.get('ctrl', [])) + [(('touch', [x0, 268.0, CZ - 12.0, x1, 297.5, CZ + 12.0], float(os.environ.get('HS_POST_MESH_AMAX', '150'))), pm)]
+                # 2026-11-12: lug-root refinement (coordinator: the settled repeat case). HS_ROOT_MESH, or a flag file
+                # cad/_wip/hs_root_mesh/<run folder>.txt holding the size, puts that size on every face meeting each lug-root box:
+                # the R1.2 Z-root fillets, the lug faces next to them, and any small adjoining face (under HS_ROOT_MESH_AMAX mm2;
+                # the large spigot underside face stays at its own size)
+                flag = CAD / '_wip' / 'hs_root_mesh' / (Path(os.environ.get('ARM_FEA_DIR', 'x')).name + '.txt')
+                rm = os.environ.get('HS_ROOT_MESH') or (flag.read_text().strip() if flag.exists() else '')
+                if rm:
+                    for x0, x1 in ((139.5, 149.0), (192.0, 201.5)):
+                        c['ctrl'] = list(c.get('ctrl', [])) + [(('touch', [x0, 292.5, CZ - 8.5, x1, 296.6, CZ + 8.5], float(os.environ.get('HS_ROOT_MESH_AMAX', '150'))), float(rm))]
                 if os.environ.get('HS_GLOBAL_EL'):      # 2026-11-12: coarser away from the joint (direct sparse memory); the seat control stays
                     c['el'] = float(os.environ['HS_GLOBAL_EL'])
                 CASES['HS_' + k + sfx] = c
