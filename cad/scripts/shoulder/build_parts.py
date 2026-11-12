@@ -711,7 +711,7 @@ def build_fork_front():
     extrude(d, ysk(d, TAP_Y[0], 'TAP_ARC', lambda s: sector(s, lambda r, a: ypt(r, a, TAP_Y[0]), 40.5, 47.5, -168, -94)), 'TAP_ARC', TAP_Y[1] - TAP_Y[0], Y, cut=True)
     tz = YZ - 41.0
     extrude(d, zsk(d, tz, 'TAP_LINK', lambda s: s.poly(rect_pts((RX - 4.0, sum(TAP_Y) / 2, tz), X, Y, 7.0, 6.0))), 'TAP_LINK', tz - RZ, NZ, cut=True)
-    if os.environ.get('PLUG_POCKET', 'a') == 'a':      # adopted 2026-11-12 (hidden; PLUG_POCKET=0 builds without it)
+    if os.environ.get('PLUG_POCKET') == 'a':      # mock-up only: the power leads' bend does not fit under the drum at the worst-credible plug height (plug_pocket/README.md)
         # PLUG POCKET (a) mock-up (look-options/plug_pocket): a hidden column straight up from the 173 deg RS02 socket, inside
         # the wall (2-4 mm to the outer skin), opening only into the drum-facing surface: room for the XT30(2+2)-F pushed
         # down from above and its lead's U-turn into the socket pocket and tap

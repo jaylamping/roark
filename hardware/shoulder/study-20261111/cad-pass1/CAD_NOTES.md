@@ -603,8 +603,10 @@ Pictures of the real parts: [look-options/side_centre/real/](look-options/side_c
 
 **RS02 plug: decided (coordinator, 2026-11-12)**
 - One socket per motor, robot-wide (Joey's rule). The 173° socket takes the plug. The -7° socket stays capped.
-- The plug pocket is option (a), a hidden column ([look-options/plug_pocket/README.md](look-options/plug_pocket/README.md)).
-  It goes on the real fork front once its mock-up passes clearances.
+- The plug pocket was to be option (a), a hidden column ([look-options/plug_pocket/README.md](look-options/plug_pocket/README.md)).
+  **Its check failed:** the power lead's bend needs 5.2-6.6 mm above the plug, and there are 3.7 mm under the drum at
+  the worst-credible plug height. Not on the real part. It stands or falls on Joey's measurement; the fallback is a
+  right-angle adapter board.
 - It is sized for the worst credible plug: about 15 mm above the socket's top. Joey's measurement of a real XT30(2+2)-F
   confirms it or reopens it.
 - **Assembly step:** with the fork front on the bench and the RS02 in, feed the lead down the column into the tap. Then

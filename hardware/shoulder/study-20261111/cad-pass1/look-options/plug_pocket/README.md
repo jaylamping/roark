@@ -93,3 +93,44 @@ Sideways, the cuff wall (r 41-45) closes the pocket.
 - Mock-up of (a), `LOOK=pp_a`: front, side and three-quarter pictures, plus a section through the pocket. It is queued
   for the next SolidWorks gap.
 - The real parts stay untouched until Joey has seen it.
+
+## Check of (a), 2026-11-12: the power lead's bend does not fit. Not on the real part.
+
+![sheet](SHEET_plug_pocket.png) ![section](section_plug_pocket.png)
+
+**What passes:**
+- **Hidden:** front, inboard side, front three-quarter and top views are identical to the real part. The column opens
+  only into the drum-facing surface.
+- **Drum, at every roll angle:** the plug moves with the fork and the drum's 2 mm envelope is a cylinder about the roll
+  axis. So the gap between the plug and the drum is the same at every roll angle, not only in the section.
+- **Clearances:** the column only removes material (569 mm³), so all moving pairs are unchanged.
+
+**What fails: the lead's bend above the plug.**
+- **Wires assumed:**
+  - power pair AWG20 (RS02 at 48 V: 7 Apk rated phase current, 23 Apk peak; manual 260713 §2.1), silicone, OD 1.9
+  - CAN pair AWG26, OD 1.0
+  - minimum bend radius about 3 × OD: R 5.7 for power, R 3.0 for CAN
+- **Room:** the worst-credible plug's top (socket top + 8 + 3 for cups) is at Y 371.1. The drum envelope over the plug is
+  at Y 374.8, so there is 3.7 mm above the plug.
+
+| Lead | 90° turn needs | U-turn needs |
+|---|---|---|
+| AWG20 power | 6.6 mm | 13.3 wide × 6.6 high |
+| AWG22 power | 5.2 mm | 10.5 × 5.2 |
+| AWG26 CAN | 3.5 mm | 7.0 × 3.5 |
+
+- The section's R 2 U-turn was drawn too tight. Splitting power and CAN into two thin leads doesn't save it, because the
+  power pair alone needs 5.2-6.6 mm.
+- **(a) works only if the real plug stands at most about 4 mm above the socket's top** (cups included). Then the power
+  pair can turn 90° at R 5.7 and run back along a widened column top to the tap, not U-turn.
+- **Joey's measurement decides:** the plug's height above the mated socket, and the wire gauges on the RS02 lead.
+
+**There is no right-angle cable version of the XT30(2+2)-F.**
+- AMASS's right-angle female (XT30PW-F family) is a PCB part. The angled wire-exit XT30AW is male only.
+- **Fallbacks, in order:**
+  1. **A small right-angle adapter.** An XT30PW(2+2)-F soldered to a thumbnail PCB, leads leaving sideways. It lowers the
+     stack to the female body plus the board, about 7-8 mm above the socket, and needs no bend above it. Its outline goes
+     into the column. It is a custom part, like the power board.
+  2. **(c) Notch with a flush printed cover,** so the lead turns sideways through the wall under a cover. Look-affecting.
+- **The real fork front is unchanged** (`PLUG_POCKET` is a mock-up switch again).
+
