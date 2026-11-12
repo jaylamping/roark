@@ -19,13 +19,14 @@ if [ "$mode" = saved ]; then
   D=cad/_sim/r1d8_ring_saved; folder=r1d8_ring_saved
   ENVX="FEA_EXISTING_STUDY=RING_G01_STOP0_DS HS_MODEL=UA_HUBSEAT_r1d_ringg01p_ds.SLDPRT"
 else
-  folder=r1d8_ringg01p_stop_ds_new; D=cad/_sim/$folder; rm -rf $D; mkdir -p $D
+  folder=${FOLDER:-r1d8_ringg01p_stop_ds_new}; D=cad/_sim/$folder; rm -rf $D; mkdir -p $D
   cp cad/_sim/ua2/UA_HUBSEAT_r1d_ringg01p.SLDPRT $D/; cp cad/_sim/ua2/HUB_GROOVE_RING.STL $D/HUB_GROOVE_r1d.STL
-  ENVX="HS_MODEL=UA_HUBSEAT_r1d_ringg01p.SLDPRT"
+  ENVX="HS_MODEL=UA_HUBSEAT_r1d_ringg01p.SLDPRT FEA_SOLVER_MACRO=${DS_SOLVER:-1} FEA_STUDY_NAME=${FOLDER:-RING_DS_NEW}"
 fi
 echo "START $folder ($mode) $(date +%H:%M) free $(free) MB" >> $L
 env $ENVX ARM_FEA_NAME=UA_ORGANIC_BONDED_v32_ringg01p.SLDPRT ARM_SW_DIR="$S" ARM_FEA_DIR="$R/_sim/$folder" python cad/scripts/fea/organic_fea.py HS_STOP_0_fine >> $D/run.log 2>&1 &
 cpid=$!
+free0=$(free)      # our use = drop in free RAM since our start (the private-page sum overcounts the solver's mapped files)
 peak=0
 while kill -0 $cpid 2>/dev/null; do
   sleep 60
@@ -34,10 +35,11 @@ while kill -0 $cpid 2>/dev/null; do
   # our instance and every process under it (the solver may run as a child), private MB
   mb=$(powershell -NoProfile -c "\$ps=Get-CimInstance Win32_Process; \$ids=@($pid); do { \$n=\$ids.Count; \$ids=@(\$ids + (\$ps | ? { \$ids -contains \$_.ParentProcessId -and \$ids -notcontains \$_.ProcessId } | % ProcessId)) } while (\$ids.Count -ne \$n); [int]((\$ps | ? { \$ids -contains \$_.ProcessId } | Measure-Object PrivatePageCount -Sum).Sum/1MB)")
   fr=$(free); [ "${mb:-0}" -gt $peak ] && peak=$mb
-  echo "mem $(date +%H:%M) ours ${mb} MB free ${fr} MB $(tail -c 300 $D/run.log | tr '\n' ' ' | tail -c 120)" >> cad/_wip/r1d_ring_ds_mem.log
-  if [ "${mb:-0}" -gt 12288 ] || [ "${fr:-99999}" -lt 4096 ]; then
+  used=$(( free0 - ${fr:-$free0} ))
+  echo "mem $(date +%H:%M) ours ${mb} MB (private sum) used ${used:-?} MB free ${fr} MB $(tail -c 300 $D/run.log | tr '\n' ' ' | tail -c 120)" >> cad/_wip/r1d_ring_ds_mem.log
+  if [ "$used" -gt 12288 ] || [ "${fr:-99999}" -lt 4096 ]; then
     echo "MEM_STOP $(date +%H:%M) ours ${mb} MB free ${fr} MB: stopping the client, then ending our instance" >> $L
-    kill $cpid 2>/dev/null; sleep 5
+    (cd cad/scripts/arm && ARM_SW_DIR="$S" python -c "from swlib import finish; finish(); print('ended (memory stop)')") >> $L 2>&1      # clean close of our instance; the client then returns
     break
   fi
 done
