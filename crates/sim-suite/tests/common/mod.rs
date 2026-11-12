@@ -1,5 +1,6 @@
 //! Helpers shared by the sim suite's test files: drives, commands, a session, and playing control's side of the rings.
 
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
@@ -22,6 +23,16 @@ pub(crate) fn timing() -> Timing {
     Timing {
         send_window_ns: at_hz.collect_ns,
         ..at_hz
+    }
+}
+
+/// A bus interface as a skeleton describes one. The bus layer takes `vcan` as it is; the driver is one no real interface
+/// has, so a test that forgot `ensure_vcan` is still refused on a real bus.
+pub(crate) fn interface() -> can::InterfaceSpec {
+    can::InterfaceSpec {
+        bitrate_bps: 1_000_000,
+        sample_point: 0.75,
+        driver: "sim_only".to_owned(),
     }
 }
 
@@ -102,4 +113,49 @@ impl Drop for Shutdown<'_> {
         self.0.store(true, Ordering::Release);
         self.1.store(true, Ordering::Release);
     }
+}
+
+/// Control's events in the session's file, in order (`/event`).
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: a session file that doesn't read back is the test failing"
+)]
+pub(crate) fn events(session: &Path) -> Vec<telemetry::wire::Event> {
+    let bytes = std::fs::read(session.join("0000.mcap")).unwrap();
+    mcap::MessageStream::new(&bytes)
+        .unwrap()
+        .map(Result::unwrap)
+        .filter(|m| m.channel.topic == "/event")
+        .map(|m| serde_json::from_slice(&m.data).unwrap())
+        .collect()
+}
+
+/// An event's fields, borrowed, for comparing.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Brief<'a> {
+    pub(crate) limb: Option<&'a str>,
+    pub(crate) joint: Option<&'a str>,
+    pub(crate) bus: Option<&'a str>,
+    pub(crate) rule: Option<&'a str>,
+    pub(crate) reason: Option<&'a str>,
+    pub(crate) tag: Option<u64>,
+}
+
+/// The events of `kind`, in order.
+pub(crate) fn of_kind(
+    events: &[telemetry::wire::Event],
+    kind: telemetry::EventKind,
+) -> Vec<Brief<'_>> {
+    events
+        .iter()
+        .filter(|e| e.kind == kind)
+        .map(|e| Brief {
+            limb: e.limb.as_deref(),
+            joint: e.joint.as_deref(),
+            bus: e.bus.as_deref(),
+            rule: e.rule.as_deref(),
+            reason: e.reason.as_deref(),
+            tag: e.tag,
+        })
+        .collect()
 }

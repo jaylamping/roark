@@ -14,7 +14,7 @@ use can::{
     BusConfig, BusLinks, CommandBatch, LimbState, Order, RearmRefused, Rearmed, Snapshot,
     StopReason,
 };
-use common::{HZ, Shutdown, drive, hold, id, info, limbs, next_snapshot, soon, timing};
+use common::{HZ, Shutdown, drive, hold, id, info, interface, limbs, next_snapshot, soon, timing};
 use robstride::{Drive, Frame, Mode, Model, Uid, encode};
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use telemetry::{Epoch, Recorder, Recording, Session};
@@ -71,6 +71,7 @@ fn a_stop_order_stops_one_limb_and_a_rearm_order_clears_it_on_vcan() {
         let bus = can::spawn(
             BusConfig {
                 name: BUS.to_owned(),
+                interface: interface(),
                 drives: vec![drive(101, 0), drive(102, 1)],
                 timing: timing(),
             },
@@ -343,6 +344,7 @@ fn a_bus_that_ends_answers_every_queued_clear_and_counts_the_drops_on_vcan() {
     let bus = can::spawn(
         BusConfig {
             name: BUS.to_owned(),
+            interface: interface(),
             drives: vec![drive(101, 0)],
             timing: timing(),
         },

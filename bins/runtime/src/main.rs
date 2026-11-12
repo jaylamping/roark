@@ -104,18 +104,18 @@ mod linux {
             config.hz,
             info.session.display()
         ));
-        for ((p, socket), rcvbuf) in info
+        for (((p, socket), rcvbuf), interface) in info
             .plans
             .iter()
             .zip(&info.sockets)
             .zip(&info.receive_buffer_bytes)
+            .zip(&info.interfaces)
         {
             let joints: Vec<&str> = p.joints.iter().map(skeleton::JointName::as_str).collect();
             say(&format!(
-                "{}: {} bit/s, {:?} timestamps, receive filters {}, error filter {:#010x}, receive buffer {rcvbuf} bytes, \
-                 joints {}",
+                "{}: {interface}; {:?} timestamps, receive filters {}, error filter {:#010x}, receive buffer {rcvbuf} \
+                 bytes, joints {}",
                 p.name,
-                socket.bitrate,
                 socket.timestamps,
                 if socket.receive_filters.is_empty() {
                     "none (every ID)".to_owned()

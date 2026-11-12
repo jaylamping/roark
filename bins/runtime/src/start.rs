@@ -10,16 +10,19 @@ use std::time::Duration;
 
 use can::{BusConfig, BusExit, BusLinks, BusRunError, Counters, Snapshot, Timing, TimingError};
 use rtrb::{Consumer, Producer, RingBuffer};
+use safety::Cause;
 use skeleton::JointName;
 use telemetry::{
-    BusInfo, RING_BATCHES, RecordError, Recorder, Recording, Session, SessionInfo, SkeletonRef,
-    Stage,
+    BusInfo, RING_BATCHES, RING_EVENTS, RecordError, Recorder, Recording, Session, SessionInfo,
+    SkeletonRef, Stage,
 };
 
 use crate::clock::{Schedule, mono_now, wall_ns};
 use crate::control::{self, BusEnds, ControlExit, ControlLinks, View};
-use crate::dispatch::{BusOrders, StopLatch};
+use crate::dispatch::BusOrders;
 use crate::enable::{Enable, EnableReply, SLOW_RING, SlowEnds};
+use crate::events::Events;
+use crate::latch::StopLatch;
 use crate::plan::{BusPlan, PlanError, offline, plan};
 use crate::request::{Clear, Reply, Scope};
 use crate::roster::{JointSet, Roster, TooManyJoints, UnknownJoint};
@@ -36,9 +39,6 @@ const REQUESTS: usize = 64;
 /// spawn takes far less than a period), and short enough that nobody waits on it. A thread that starts late anyway runs
 /// from the tick in progress and counts the ones it missed.
 const ORIGIN_PERIODS: u64 = 4;
-/// `vcan` for every session: the bus layer refuses any other interface until the real adapter is supported (PLAN step
-/// 8).
-const STAGE: Stage = Stage::Vcan;
 
 /// How the runtime is started.
 #[derive(Clone, Debug)]
@@ -109,6 +109,8 @@ pub struct StartInfo {
     pub sockets: Vec<BusInfo>,
     /// Each bus socket's receive buffer as the kernel reports it, in plan order.
     pub receive_buffer_bytes: Vec<usize>,
+    /// Each bus's interface as checked against the skeleton, in plan order.
+    pub interfaces: Vec<can::Interface>,
     /// The joints on no bus.
     pub offline: Vec<JointName>,
     /// Every joint, where it is wired and what its preflight checks, in the order enables and their replies name them.
@@ -202,13 +204,11 @@ impl Runtime {
             source,
         })?;
         let skeleton_ref = SkeletonRef::of(&config.skeleton, text.as_bytes());
-        let sockets: Vec<BusInfo> = plans
-            .iter()
-            .map(|p| can::bus_info(&p.name, p.bitrate_bps))
-            .collect();
-        let session = start_session(config, &skeleton_ref, &sockets)?;
+        let sockets = sockets(&plans);
+        let session = start_session(config, stage(&plans)?, &skeleton_ref, &sockets)?;
         let session_dir = session.dir().to_path_buf();
-        let (recording, recorders) = Recording::new(session, RING_BATCHES);
+        let (mut recording, recorders) = Recording::new(session, RING_BATCHES);
+        let events = recording.events(roster.names(), RING_EVENTS);
         let epoch = recording.epoch();
         let health = recording.health();
         let mut threads = Threads {
@@ -223,6 +223,7 @@ impl Runtime {
         let mut orders = Vec::new();
         let mut slow = Vec::new();
         let mut receive_buffer_bytes = Vec::new();
+        let mut interfaces = Vec::new();
         for (p, recorder) in plans.iter().zip(recorders) {
             match spawn_bus(p, timing, recorder, epoch, start, &threads.end) {
                 Ok(bus) => {
@@ -231,6 +232,7 @@ impl Runtime {
                     orders.push(bus.orders);
                     slow.push(bus.slow);
                     receive_buffer_bytes.push(bus.receive_buffer_bytes);
+                    interfaces.push(bus.interface);
                 }
                 Err(e) => return Err(threads.unwind(e.into())),
             }
@@ -260,6 +262,7 @@ impl Runtime {
             enables: enables_rx,
             enable_replies: enable_replies_tx,
             health,
+            events: Events::new(Some(events), &roster),
             views: views_tx,
             end: Arc::clone(&threads.end),
             finished: Arc::clone(&finished),
@@ -284,6 +287,7 @@ impl Runtime {
                 plans,
                 sockets,
                 receive_buffer_bytes,
+                interfaces,
                 offline: offline(&skeleton),
                 roster,
                 skeleton: skeleton_ref,
@@ -319,7 +323,7 @@ impl Runtime {
     /// The operator's stop of `scope`: always accepted, never waits, and taken by control ahead of any clear on its
     /// next pass (PLAN item 3a).
     pub fn stop(&self, scope: Scope) {
-        self.stops.ask(scope);
+        self.stops.ask(scope, Cause::Operator);
     }
 
     /// Set once the control thread has ended: after [`Runtime::end`], or on its own when its clock failed or a bus
@@ -399,7 +403,10 @@ impl Threads {
         }
         let recording = match self.recorder.take() {
             Some(r) => r.close(recorders)?,
-            None => telemetry::wire::End { buses: Vec::new() },
+            None => telemetry::wire::End {
+                buses: Vec::new(),
+                events: telemetry::wire::EventTotals::default(),
+            },
         };
         if panicked {
             return Err(EndError::Panicked);
@@ -412,9 +419,32 @@ impl Threads {
     }
 }
 
+/// Every bus's interface, checked before the session exists, so a refused start leaves no session behind and a run on
+/// any real bus is recorded as a bench session, never as sim.
+fn stage(plans: &[BusPlan]) -> Result<Stage, BusRunError> {
+    let interfaces = plans
+        .iter()
+        .map(|p| can::check_interface(&p.name, &p.interface))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(stage_of(&interfaces))
+}
+
+/// A session is sim only when every bus is: one real bus makes it a bench session.
+fn stage_of(interfaces: &[can::Interface]) -> Stage {
+    if interfaces
+        .iter()
+        .any(|i| matches!(i, can::Interface::Real(_)))
+    {
+        Stage::Bench
+    } else {
+        Stage::Vcan
+    }
+}
+
 /// The session, recorded with what the runtime starts from.
 fn start_session(
     config: &RuntimeConfig,
+    stage: Stage,
     skeleton: &SkeletonRef,
     sockets: &[BusInfo],
 ) -> Result<Session, RecordError> {
@@ -423,12 +453,20 @@ fn start_session(
         SessionInfo {
             git_revision: config.git_revision.clone(),
             operator: config.operator.clone(),
-            stage: STAGE,
+            stage,
             skeleton: skeleton.clone(),
             buses: sockets.to_vec(),
         },
         wall_ns(),
     )
+}
+
+/// Each bus's socket, as the session records it.
+fn sockets(plans: &[BusPlan]) -> Vec<BusInfo> {
+    plans
+        .iter()
+        .map(|p| can::bus_info(&p.name, p.bitrate_bps))
+        .collect()
 }
 
 /// The views' ring, when anyone reads them.
@@ -449,6 +487,7 @@ struct SpawnedBus {
     orders: BusOrders,
     slow: SlowEnds,
     receive_buffer_bytes: usize,
+    interface: can::Interface,
 }
 
 /// One bus thread, control's ends of its rings, and its socket's receive buffer.
@@ -469,6 +508,7 @@ fn spawn_bus(
     let spawned = can::spawn(
         BusConfig {
             name: p.name.clone(),
+            interface: p.interface.clone(),
             drives: p.drives.clone(),
             timing,
         },
@@ -495,5 +535,35 @@ fn spawn_bus(
         orders: BusOrders::new(orders),
         slow: SlowEnds::new(requests_tx, results_rx),
         receive_buffer_bytes: spawned.receive_buffer_bytes,
+        interface: spawned.interface,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Guards: safety - a run on any real bus is recorded as a bench session, never as sim, which logging.md lets be
+    /// deleted on its own.
+    #[test]
+    fn one_real_bus_makes_a_bench_session() {
+        let real = can::Interface::Real(can::RealInterface {
+            driver: "mcp251xfd".to_owned(),
+            bitrate_bps: 1_000_000,
+            sample_point: "0.750".to_owned(),
+            state: "ERROR-ACTIVE".to_owned(),
+            modes: Vec::new(),
+            restart_ms: None,
+            clock_hz: None,
+            txqueuelen: None,
+        });
+        let rows = [
+            (vec![can::Interface::Sim, can::Interface::Sim], Stage::Vcan),
+            (vec![can::Interface::Sim, real.clone()], Stage::Bench),
+            (vec![real], Stage::Bench),
+        ];
+        for (interfaces, stage) in rows {
+            assert_eq!(stage_of(&interfaces), stage, "{interfaces:?}");
+        }
+    }
 }

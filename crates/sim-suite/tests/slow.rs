@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use can::{
     BusConfig, BusLinks, CommandBatch, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, SlowResult,
 };
-use common::{HZ, Shutdown, drive, id, info, next_snapshot, soon, timing};
+use common::{HZ, Shutdown, drive, id, info, interface, next_snapshot, soon, timing};
 use robstride::{Drive, Model, Uid};
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use telemetry::{Recorder, Recording, Session};
@@ -46,6 +46,7 @@ fn slow_requests_reach_a_drive_on_vcan_and_come_back() {
         let bus = can::spawn(
             BusConfig {
                 name: SLOW_BUS.to_owned(),
+                interface: interface(),
                 drives: vec![drive(101, 0)],
                 timing: timing(),
             },

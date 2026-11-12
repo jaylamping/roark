@@ -293,8 +293,9 @@ fn bus(seen: &[Seen], from: Instant) -> Bus {
 fn after_kill_9_disable_leaves_every_drive_in_reset_with_reporting_off() {
     let path = skeleton_path();
     let skeleton = skeleton::load(&path).unwrap();
-    let names = ["can0", "can1"];
-    for name in names {
+    // Every bus the skeleton names, so a bus added to it is checked before anything opens it.
+    let names: Vec<&str> = skeleton.buses.iter().map(|b| b.name.as_str()).collect();
+    for name in names.iter().copied() {
         ensure_vcan(name).unwrap();
     }
     let dir = scratch("disable");
@@ -429,7 +430,15 @@ fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
         !Path::new("/sys/class/net/can9").exists(),
         "can9 must not exist for this test"
     );
-    ensure_vcan("can1").unwrap();
+    // Every other bus the edited skeleton names is checked before anything opens it.
+    for bus in skeleton
+        .buses
+        .iter()
+        .map(|b| b.name.as_str())
+        .filter(|&b| b != "can9")
+    {
+        ensure_vcan(bus).unwrap();
+    }
     let dir = scratch("disable-missing");
     let path = dir.join("skeleton.yaml");
     std::fs::write(&path, &skeleton_text).unwrap();

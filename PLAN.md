@@ -52,7 +52,7 @@ adds the power board interface (item 10).
 
 ## Start here
 
-1. **Joey, now, in parallel with the code:** order one isolated STM32F0 adapter running mainline candleLight (item 5), and the
+1. **Joey, now, in parallel with the code:** order one Waveshare 2-CH isolated CAN FD HAT (MCP2518FD) for the [interface comparison](docs/can-interface-comparison.md) (item 5), and the
    luggage scale for the test stand.
 2. **Read** the tenets, this plan and [conventions/](conventions/).
 3. **Skeleton** (item 1): the `skeleton` crate and `config/skeleton.yaml` with all five limbs, including the right arm's
@@ -78,11 +78,11 @@ Create each crate when an item first needs it. The crate table below is the nami
 | Hardware | State on 2026-11-08 | Software needed by then |
 |---|---|---|
 | Left shoulder and upper-arm drives (RS03 ×2, RS02), loose on the bench, 24 V supply | **Ready now** (drives owned, bench harness planned) | Items 1 to 6 |
-| USB-CAN adapter | Not bought. Buy **one** isolated STM32F0 board running mainline candleLight (Openlight CANable Pro class, ~$60), pre-flashed or flashed before use; not a "CANable 2.0 Pro" G431 clone, which ships with slcan firmware | Item 5 |
+| CAN interface | The Pi's USB ports face out the back for external use (Joey, 2026-11-11), so the buses connect over SPI. Buy one Waveshare 2-CH isolated CAN FD HAT (MCP2518FD, ~$55) and measure it against the MCP2515 HAT in the [interface comparison](docs/can-interface-comparison.md), with no drive on the bus. If it passes, the robot's buses need a CAN board on the header with one MCP2518FD and isolated transceiver per bus (hardware side). A USB adapter on an internal hub (MKS CANable V1.0 Pro, gs_usb) is the fallback | Item 5 |
 | Actuator test stand, RS03 waist unit first | Designed for all four sizes, waiting for Joey's review and print; luggage scale to buy | Item 7 |
-| Upper arm (printed) | Being redone as clamshells | Item 8 before it moves under power |
+| Upper arm (printed) | Redesigned as concept A (drum and caps) | Item 8 before it moves under power |
 | Elbow dummy-output rig | 6808 bearings arrive Mon 2026-11-09; rig is hand-loaded | **None.** No drive is used |
-| Forearm and RS00 | Designed, not printed | Item 8, after the elbow rig passes; the RS00 scale question (item 2) settled first |
+| Forearm and RS00 | Redesigned as concept A; not printed | Item 8, after the elbow rig passes; the RS00 scale question (item 2) settled first |
 | Camera rig (Logitech BRIO, AprilTag plates) | Plan approved; camera owned; plates not printed | Item 9 |
 | Arm on the robot torso | Waits for Joey's rebuilt torso frame | Items 8 and 9 on the real geometry |
 | Power board (rev B5) | Being routed; review, then fab | Item 10. The bench uses the 24 V supply and a physical E-stop until then |
@@ -139,11 +139,11 @@ line to STATUS.md the same day. The runtime never writes it; tools that teach li
 Shape (the builder may adjust field names; the content is required):
 
 ```yaml
-schema: 1
+schema: 2
 name: roark                     # the only place the robot's name appears
 power: { source: bench_24v, vbus_min_v: 22, vbus_max_v: 26 }
 buses:
-  can1: { bitrate: 1000000, sample_point: 0.75, adapter_serial: "<USB serial, for its link file>" }
+  can1: { bitrate: 1000000, sample_point: 0.75, driver: mcp251xfd, adapter_serial: null }  # serial only for a USB adapter
 limbs:
   left_arm:
     joints:
@@ -281,9 +281,10 @@ Per [can-stack-for-marengo.md](https://github.com/jaylamping/marengo/blob/main/h
   file, per [deploy.md](conventions/deploy.md)); disable the HAT's `can1` before the
   adapter takes that name. At start, check each interface's driver against the skeleton.
 - **Only the realtime process transmits.** Scan, set-ID and parameter reads are runtime commands through `api`; `robot-cli` is
-  a client. The one exception is `robot-cli disable`: it reads only (bus, ID) pairs from the skeleton, opens the sockets itself,
+  a client. The one exception on a robot bus is `robot-cli disable`: it reads only (bus, ID) pairs from the skeleton, opens the sockets itself,
   sends Disable then active reporting off to every ID, depends on nothing else, and runs only after the runtime has exited
-  (systemd `ExecStopPost`).
+  (systemd `ExecStopPost`). `can-bench` also transmits, but only its own frames, which no drive acts on, on a bus with no
+  drive, and never while `runtime` can run.
 - **A hung control thread must let the drives time out.** Each command batch carries a tick number and an expiry. A bus thread
   sends only a fresh batch and never re-sends a stale one. If control hasn't published for two ticks, the bus thread stops its
   limbs. The systemd watchdog is fed only when the control loop and every bus in an active run are making progress.
@@ -327,14 +328,17 @@ names** (`ip link add dev can1 type vcan`), so the runtime runs literally unchan
 
 ## 5. Bench bring-up (milestone 1: `can1`)
 
-- Confirm the adapter: `dmesg` shows `gs_usb` (not slcan); write its link file; `ip -details link show can1` lists it.
+- **Before any drive:** the [interface comparison](docs/can-interface-comparison.md) measures each candidate interface
+  against the realtime budget (item 3, Open with Joey 9) with no drive on the bus, and picks the one every bus uses.
+- Confirm the interface the comparison chose: `dmesg` shows its driver (`mcp251xfd` for the CAN FD HAT; `gs_usb`, not
+  slcan, for the USB fallback); `ip -details link show can1` lists it.
 - Bench harness per [left-shoulder-bench-harness.md](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/wiring/left-shoulder-bench-harness.md):
-  120 Ω at each end (the adapter's termination jumper replaces the HAT end), about 60 Ω across CAN_H/CAN_L with power off, one
+  120 Ω at each end (the interface's termination jumper is one end), about 60 Ω across CAN_H/CAN_L with power off, one
   ground tie.
 - Scan, set IDs one drive at a time, then a 1 h idle soak (error frames, RX overflow, error counters, bus load). Then measure
-  round-trip latency and per-tick jitter at 250 Hz. Record the adapter's firmware version and check its bus-off behaviour
-  (item 3) by shorting CAN_H to CAN_L with no drive enabled. **Done when** the soak is clean and the numbers are committed. Only then buy
-  adapters for the other buses.
+  round-trip latency and per-tick jitter at 250 Hz. Record the interface's driver (and firmware, for a USB adapter) and check its bus-off behaviour
+  (item 3) by shorting CAN_H to CAN_L with no drive enabled. **Done when** the soak is clean and the numbers are committed. Only then build or buy
+  the interfaces for the other buses.
 
 ## 6. Safety: the three layers (tenet 3)
 
@@ -500,9 +504,10 @@ Defaults apply until Joey answers.
 
 1. **Zero persistence and reference poses.** Default: treat the drive zero as volatile until the persistence test (§1) says
    otherwise; reference poses documented per joint in the skeleton.
-2. **HAT during milestone 1.** Default: keep the HAT fitted for the right arm on `can0`; disable its `can1` and give that name
-   to the USB adapter.
-3. **Right arm at milestone 2.** Default: its own adapter; retire the HAT.
+2. **CAN interface during milestone 1.** Default: the HAT the [interface comparison](docs/can-interface-comparison.md)
+   picks, on the Pi's header; its `can1` runs the left arm and its `can0` stays for the right arm. No USB adapter.
+3. **Right arm at milestone 2.** Default: that HAT's `can0`; the CAN board on the header replaces the HAT when the waist and
+   legs need buses.
 4. **Bus names for the waist and legs.** Default: ADR 0001 ID blocks; buses `can2` to `can4` named by the hardware ADR when it
    lands.
 5. **Who may enable and clear.** Default: a human at the CLI or UI; agents plan, run on `vcan`, start approved plans and stop.

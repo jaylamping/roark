@@ -48,15 +48,40 @@ thread per wired bus and the control thread on one schedule origin, and takes th
   its clock or a bus thread ends: `Runtime::finished` is set, and the binary then ends the runtime and exits with failure.
 
 The `api` socket (and so any way for the binary's operator to enable), `mlockall`, `SCHED_FIFO` and the watchdog come in
-the PRs that follow (PLAN step 7); the unit is `deploy/systemd/runtime.service`. Stops that control asks (an enable's failure, `host.mode`) reach the bus as
-operator stops, and control's enables and refusals emit no event yet: the session records them only as limb stops until
-a stop carries its cause and control has an event queue, the next PR, before any real drive is enabled (step 8).
+the PRs that follow (PLAN step 7); the unit is `deploy/systemd/runtime.service`.
+
+- **Events** (safety.md section 8): every stop control takes, enable it starts, enable answer and clear answer is an
+  event on the session's `/event` channel, handed to the recorder through its lock-free event ring (`Recording::events`),
+  so control never writes to disk. Kinds are `telemetry::EventKind` (logging.md section 2):
+  - `limb.stopped` and `robot.stopped`: one per cause the stop was asked for, each limb's kept even when a robot stop
+    covers it. The cause is a rule (an enable's failure under its failure's rule, a limb mate under `host.mode`, a hold
+    that couldn't be encoded or placed under `host.hang`, a bus's own stop of a held limb under that stop's rule when it
+    is one, as `host.fault` for a fault), or a reason: `operator`, `shutdown`, or `follows_bus_stop` when a held limb's
+    bus stop names no rule because it was asked (by the operator or control, whose own event names the cause) and
+    control carries it to the whole limb. The stop latch keeps every cause asked of each scope until
+    control takes it, in the same atomic word as the stop, so a stop is never taken without its cause. The run's end is
+    the robot's stop. Control asks it under `host.hang` for a lost clock or `host.bus` for a bus thread that ended. The
+    owner's end is asked as `shutdown` when it comes first: control sees it first, or finds it already set as it
+    decides its own before any pass has seen the end. Each cause is one `robot.stopped`. An owner's end after control's
+    own changes nothing and isn't recorded; a lost clock after the run has ended is still recorded under `host.hang`.
+    The bus behind `host.bus` is named in the exit and on stderr, not in the event. A take is written robot
+    first, then each limb in `LimbName::ALL` order, each one's causes in bit order, all with the pass's stamp, so stops
+    taken together aren't in the order they were asked. A cause bit nothing decodes is written as `unknown_cause`.
+  - `enable.started`: one per joint of an enable that passed its checks, under its tag. `enable.succeeded` carries the
+    tag; `enable.refused` carries the tag, the rule (none for a request that was wrong or came at the wrong time, which
+    no rule refused), a reason word, and whichever of joint (with its limb), limb or bus the refusal names.
+  - `limb.cleared` and `clear.refused`: per bus, with the limb, the bus, the tag and, refused, a reason word.
+
+  Events carry no measured values yet: the operator's message (`Refusal::message`) has them, and the client gets the
+  reply itself. Stops a bus thread makes on its own are in its snapshots, not yet on `/event`, except as the cause of the
+  stop control carries to the limb's other buses.
 
 Known limits, each failing closed or only delaying a stop by a pass: control decides on the newest snapshots, so a stop
 seen on one bus reaches the limb's other buses a control pass later; a limb-mate's view carries no age, so a bus that
 missed its tick shows its last one; a bus with no snapshot yet when an enable is taken counts every other host's frame
 it later reports as new, refusing the enable; the recording's `Health` fails on write errors only, not on frames the
-recorder's ring dropped; and a full slow ring is reported as `NoStatus`.
+recorder's ring dropped; a full slow ring is reported as `NoStatus`; a full event ring drops the event, counted in the
+file's end marker.
 
 One limit does not fail closed, pending the bench: a drive that reboots after its preflight passed, while its enable
 waits for a mate's proof, loses its `canTimeout` with nothing on the bus to say so, and is enabled with no host-loss

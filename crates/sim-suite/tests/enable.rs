@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use can::{
     BusConfig, BusLinks, CommandBatch, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, Snapshot,
 };
-use common::{HZ, drive, id, info, next_snapshot, soon, timing};
+use common::{HZ, drive, id, info, interface, next_snapshot, soon, timing};
 use robstride::drive::{Command, HostFrame};
 use robstride::{
     CanTimeout, Damper, Drive, EchoKind, Mode, Model, NewtonMeters, Param, ParamValue, Reporting,
@@ -33,7 +33,7 @@ const UID: Uid = Uid([0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]);
 
 /// One commissioned RS03 on `BUS`, every fact and cap set.
 const SKELETON: &str = "\
-schema: 1
+schema: 2
 name: sim_suite
 power:
   source: bench_24v
@@ -43,6 +43,7 @@ buses:
   can0:
     bitrate_bps: 1000000
     sample_point: 0.75
+    driver: sim_only
     adapter_serial: null
 limbs:
   left_arm:
@@ -219,6 +220,7 @@ fn attempt_under(uid: Uid, start: Option<Fault>, after: After, control: Control)
         let bus = can::spawn(
             BusConfig {
                 name: BUS.to_owned(),
+                interface: interface(),
                 drives: vec![drive(101, 0)],
                 timing: timing(),
             },

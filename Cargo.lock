@@ -85,9 +85,19 @@ dependencies = [
  "nix",
  "robstride",
  "rtrb",
+ "serde_json",
  "socketcan",
  "telemetry",
  "thiserror",
+]
+
+[[package]]
+name = "can-bench"
+version = "0.1.0"
+dependencies = [
+ "nix",
+ "serde_json",
+ "socketcan",
 ]
 
 [[package]]
@@ -460,10 +470,12 @@ name = "runtime"
 version = "0.1.0"
 dependencies = [
  "can",
+ "mcap",
  "nix",
  "robstride",
  "rtrb",
  "safety",
+ "serde_json",
  "skeleton",
  "telemetry",
  "thiserror",
