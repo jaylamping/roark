@@ -336,7 +336,9 @@ def upper_details(d):
             # region r 33 .. r_tip(theta), over Y 297.9-301.7 only (the ridge's span), running 0.5 deg past the end at the bore radius.
             for k_, (t_end, t_full) in enumerate(((35.0, 45.0), (145.0, 135.0), (215.0, 225.0), (325.0, 315.0))):
                 sgn_ = np.sign(t_full - t_end)
-                ths = np.r_[t_end - 0.5 * sgn_, np.linspace(t_end, t_full, 41)]
+                # 5 segments per ramp (2 deg, ~1.2 mm each): 40 left ~0.15 mm strip faces that stalled the mesher (2026-11-12);
+                # no overrun past the end along the bore (a coincident boundary)
+                ths = np.linspace(t_end, t_full, int(os.environ.get('ARM_TAPER_SEGS', '5')) + 1)
                 def rc(t, t_end=t_end, t_full=t_full):
                     s_ = min(max(abs(t - t_full) / abs(t_full - t_end), 0.0), 1.0)      # 0 at full height, 1 at the end
                     return 35.9 if abs(t - t_full) > abs(t_full - t_end) else 34.8 + (35.9 - 34.8) * (1.0 - math.cos(0.5 * math.pi * s_))
