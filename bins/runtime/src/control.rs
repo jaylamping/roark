@@ -7,9 +7,9 @@
 
 use std::io;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use can::{CommandBatch, Rearmed, Snapshot, Timing};
+use can::{CommandBatch, LimbState, Rearmed, Snapshot, Timing};
 use rtrb::{Consumer, Producer};
 
 use crate::clock::{Schedule, mono_now, passed, sleep_period};
@@ -60,6 +60,8 @@ pub(crate) struct ControlLinks {
     pub(crate) end: Arc<AtomicBool>,
     /// Set by control as it returns, so the runtime's owner learns of a run that ended on its own.
     pub(crate) finished: Arc<AtomicBool>,
+    /// Counted up by each pass that made progress ([`progressing`]); what the binary feeds systemd's watchdog from.
+    pub(crate) progress: Arc<AtomicU64>,
 }
 
 /// What the control thread hands back when it ends.
@@ -215,8 +217,32 @@ pub(crate) fn run(
             if exit.error.is_none() && passed(schedule.at(next, 0)) {
                 exit.late_batches += 1;
             }
+            // Last, so a pass that hangs anywhere above counts nothing.
+            if exit.error.is_none() && progressing(n, &newest) {
+                links.progress.fetch_add(1, Ordering::Release);
+            }
         }
         n = n.saturating_add(1);
+    }
+}
+
+/// Whether a pass at tick `n` counts as progress for systemd's watchdog (PLAN item 3: fed only when the control loop
+/// and every bus in an active run are making progress): every bus with a limb in a run, active or stopping, has
+/// published tick `n`'s snapshot. A bus whose limbs are all idle or stopped commands nothing, so a late one doesn't
+/// hold the count back; nor does one with no snapshot yet, which has nothing in a run either. The pass itself is the
+/// control loop's part: a control thread that hangs counts nothing.
+fn progressing(n: u64, newest: &[Option<Snapshot>]) -> bool {
+    newest
+        .iter()
+        .flatten()
+        .all(|s| s.tick >= n || !s.limbs().any(|(_, l)| in_run(l.state)))
+}
+
+/// Whether a limb in `state` needs its bus every tick: enabled, or being stopped.
+const fn in_run(state: LimbState) -> bool {
+    match state {
+        LimbState::Active | LimbState::Stopping { .. } => true,
+        LimbState::Idle | LimbState::Stopped => false,
     }
 }
 
@@ -390,6 +416,80 @@ mod tests {
     use super::*;
     use crate::clock::mono_now;
 
+    /// A snapshot of `tick` with one limb in `state`.
+    fn snapshot(tick: u64, state: LimbState) -> Snapshot {
+        let mut limbs = [None; can::MAX_DRIVES];
+        limbs[0] = Some(can::LimbView {
+            state,
+            stop: None,
+            generation: 0,
+        });
+        Snapshot::from_parts(
+            tick,
+            None,
+            can::Counters::default(),
+            limbs,
+            [None; can::MAX_DRIVES],
+        )
+    }
+
+    /// Guards: safety - systemd's watchdog is fed only while the control loop and every bus in an active run make
+    /// progress (PLAN item 3, "A hung control thread"; deploy/systemd/runtime.service): a bus behind the pass's tick
+    /// holds the count back while one of its limbs is enabled or stopping, and not while they are all idle or stopped.
+    #[test]
+    fn a_bus_behind_holds_the_watchdog_back_only_while_it_has_a_run() {
+        let stopping = LimbState::Stopping { since_ns: 1 };
+        let cases = [
+            // (the pass's tick, each bus's newest snapshot, counts as progress)
+            (
+                5,
+                vec![
+                    Some(snapshot(5, LimbState::Active)),
+                    Some(snapshot(5, stopping)),
+                ],
+                true,
+            ),
+            (
+                5,
+                vec![
+                    Some(snapshot(5, LimbState::Active)),
+                    Some(snapshot(4, LimbState::Active)),
+                ],
+                false,
+            ),
+            (
+                5,
+                vec![
+                    Some(snapshot(4, stopping)),
+                    Some(snapshot(5, LimbState::Idle)),
+                ],
+                false,
+            ),
+            (
+                5,
+                vec![
+                    Some(snapshot(4, LimbState::Idle)),
+                    Some(snapshot(5, LimbState::Active)),
+                ],
+                true,
+            ),
+            (
+                5,
+                vec![
+                    Some(snapshot(4, LimbState::Stopped)),
+                    Some(snapshot(5, LimbState::Active)),
+                ],
+                true,
+            ),
+            (5, vec![None, Some(snapshot(5, LimbState::Active))], true),
+            // A bus ahead of control (control woke late) is not behind.
+            (5, vec![Some(snapshot(6, LimbState::Active))], true),
+        ];
+        for (n, newest, want) in cases {
+            assert_eq!(progressing(n, &newest), want, "{n} {newest:?}");
+        }
+    }
+
     /// Guards: safety - a bus thread that ends before the run does (a socket or clock error) ends the whole run: control
     /// sets the end, so every other bus stops its limbs, names the bus that ended, refuses the clears that come in while
     /// the run ends, and says it has finished, which is what wakes the binary to end the runtime and exit with failure
@@ -435,6 +535,7 @@ mod tests {
             views: None,
             end: Arc::clone(&end),
             finished: Arc::clone(&finished),
+            progress: Arc::new(AtomicU64::new(0)),
         };
         let control = std::thread::spawn({
             let plans = plans.clone();

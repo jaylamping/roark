@@ -46,9 +46,18 @@ thread per wired bus and the control thread on one schedule origin, and takes th
 - **The run ends** with `Runtime::end` (or SIGINT and SIGTERM in the binary): every bus stops its limbs and ends once
   control has taken a snapshot with every limb at rest, then the session closes. It also ends on its own if control loses
   its clock or a bus thread ends: `Runtime::finished` is set, and the binary then ends the runtime and exits with failure.
+- **The watchdog** (PLAN item 3: fed only when the control loop and every bus in an active run make progress): each
+  control pass that completes counts up `Runtime::progress`, unless a bus with a limb enabled or stopping hasn't
+  published that tick's snapshot. A bus whose limbs are all idle or stopped commands nothing and doesn't hold it back.
+  Under systemd (`Type=notify`, `deploy/systemd/runtime.service`) the binary says `READY=1` once every thread runs,
+  sends `WATCHDOG=1` each time it looks (every 50 ms) and the count has risen, and says `STOPPING=1` as it ends. So a
+  hung control thread, or such a bus hanging or falling behind for the unit's `WatchdogSec`, gets the process killed,
+  and `ExecStopPost` runs the independent disable. The count stops once the run ends on its own. Without
+  `NOTIFY_SOCKET` (run by hand, or by a test) it tells nobody. The power board's heartbeat is to come from the same
+  count (PLAN item 10).
 
-The `api` socket (and so any way for the binary's operator to enable), `mlockall`, `SCHED_FIFO` and the systemd units
-come in the PRs that follow (PLAN step 7). Stops that control asks (an enable's failure, `host.mode`) reach the bus as
+The `api` socket (and so any way for the binary's operator to enable), `mlockall` and `SCHED_FIFO` come in the PRs
+that follow (PLAN step 7). Stops that control asks (an enable's failure, `host.mode`) reach the bus as
 operator stops, and control's enables and refusals emit no event yet: the session records them only as limb stops until
 a stop carries its cause and control has an event queue, the next PR, before any real drive is enabled (step 8).
 

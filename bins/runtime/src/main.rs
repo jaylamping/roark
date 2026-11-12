@@ -1,7 +1,11 @@
 //! The `runtime` binary: `runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>] [--lock <file>]`. Takes its lock
 //! first and refuses to start if it is held, then runs until SIGINT or SIGTERM, or until the run ends on its own (a
 //! clock error or a bus thread that ended), then stops every limb, waits for the buses to confirm, and closes the
-//! session.
+//! session. Under systemd (`Type=notify`) it says when it is ready and when it stops, and feeds the watchdog only
+//! while the run makes progress (`Runtime::progress`).
+
+#[cfg(target_os = "linux")]
+mod notify;
 
 #[cfg(target_os = "linux")]
 fn main() -> std::process::ExitCode {
@@ -21,7 +25,7 @@ mod linux {
     use std::path::{Path, PathBuf};
     use std::process::ExitCode;
     use std::sync::Arc;
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
     use std::time::Duration;
 
     use can::LimbState;
@@ -30,6 +34,8 @@ mod linux {
     use nix::sys::signal::{SigSet, Signal, kill};
     use nix::unistd::getpid;
     use runtime::{Runtime, RuntimeConfig, RuntimeExit};
+
+    use crate::notify::{Notify, watchdog_usec};
 
     /// Write one line to stderr, which journald keeps; the logger thread comes with `api` (logging.md).
     fn say(line: &str) {
@@ -141,13 +147,48 @@ mod linux {
         ));
     }
 
-    /// Raise SIGUSR1 once the run has ended on its own, so the signal wait wakes for it too.
-    fn watch(finished: Arc<AtomicBool>) -> std::io::Result<()> {
+    /// Tell systemd `state`, if it asked to be told; a failure is logged and otherwise ignored: systemd ends a service
+    /// that never says it is ready (`TimeoutStartSec`), and one that ends needs no word.
+    fn tell(notify: Option<&Notify>, state: &str) {
+        if let Some(n) = notify
+            && let Err(e) = n.send(state)
+        {
+            say(&format!("can't tell systemd {state}: {e}"));
+        }
+    }
+
+    /// How often the watcher looks: well under half of the unit's `WatchdogSec`, as `sd_watchdog_enabled(3)` asks.
+    const WATCH_MS: u64 = 50;
+
+    /// The watcher: feed systemd's watchdog each time it looks and the run has made progress since the last look
+    /// (`Runtime::progress`), so a hung control thread, or a bus in an active run that falls behind, starves it and
+    /// systemd kills the process, after which `ExecStopPost` runs the independent disable. Once the run has ended on
+    /// its own, stop feeding it and raise SIGUSR1, so the signal wait wakes for that too.
+    fn watch(
+        finished: Arc<AtomicBool>,
+        progress: Arc<AtomicU64>,
+        notify: Option<Arc<Notify>>,
+    ) -> std::io::Result<()> {
         std::thread::Builder::new()
             .name("watch".to_owned())
             .spawn(move || {
+                let mut seen = progress.load(Ordering::Acquire);
+                let mut failed = false;
                 while !finished.load(Ordering::Acquire) {
                     pause();
+                    let now = progress.load(Ordering::Acquire);
+                    if now == seen {
+                        continue;
+                    }
+                    seen = now;
+                    if let Some(notify) = &notify
+                        && let Err(e) = notify.send("WATCHDOG=1")
+                        && !failed
+                    {
+                        // Once: systemd ends the process if it keeps failing, and the journal needs only the cause.
+                        failed = true;
+                        say(&format!("can't feed the watchdog: {e}"));
+                    }
                 }
                 if let Err(e) = kill(getpid(), Signal::SIGUSR1) {
                     say(&format!(
@@ -160,10 +201,10 @@ mod linux {
 
     #[expect(
         clippy::disallowed_methods,
-        reason = "the watcher is off the realtime path; a run that ends on its own is noticed within 50 ms"
+        reason = "the watcher is off the realtime path; a run that ends on its own is noticed within WATCH_MS"
     )]
     fn pause() {
-        std::thread::sleep(Duration::from_millis(50));
+        std::thread::sleep(Duration::from_millis(WATCH_MS));
     }
 
     /// Log how the run ended; true when it ended cleanly, every bus at rest.
@@ -250,6 +291,13 @@ mod linux {
             say(&e);
             return ExitCode::FAILURE;
         }
+        let notify = match Notify::from_env() {
+            Ok(n) => n,
+            Err(e) => {
+                say(&e);
+                return ExitCode::FAILURE;
+            }
+        };
         // Blocked before any thread starts, so every thread inherits the mask and only the wait below takes them.
         // SIGUSR1 is the watcher's (the run ended on its own); one from elsewhere is a request to end like the others.
         let mut signals = SigSet::empty();
@@ -268,10 +316,22 @@ mod linux {
             }
         };
         startup(&runtime, &config);
-        // Without the watcher a run that ends on its own goes unnoticed until a signal: end now rather than run blind.
+        match watchdog_usec() {
+            Some(usec) if usec < 4 * WATCH_MS * 1000 => say(&format!(
+                "watchdog {usec} µs is under four of the watcher's {WATCH_MS} ms looks: a slow look may trip it"
+            )),
+            Some(usec) => say(&format!("watchdog {usec} µs")),
+            None => say("no watchdog"),
+        }
+        // Without the watcher a run that ends on its own goes unnoticed until a signal, and the watchdog is never fed:
+        // end now rather than run blind.
         let mut clean = true;
         let finished = runtime.finished();
-        if let Err(e) = watch(Arc::clone(&finished)) {
+        let notify = notify.map(Arc::new);
+        // Every thread runs: systemd may now count the service started, and its watchdog starts. Before the watcher,
+        // so the first word systemd gets is this one.
+        tell(notify.as_deref(), "READY=1");
+        if let Err(e) = watch(Arc::clone(&finished), runtime.progress(), notify.clone()) {
             say(&format!("can't start the watcher ({e}): ending"));
             clean = false;
         } else {
@@ -288,6 +348,7 @@ mod linux {
                 }
             }
         }
+        tell(notify.as_deref(), "STOPPING=1");
         match runtime.end() {
             Ok(exit) => {
                 if report(&exit) && clean {
