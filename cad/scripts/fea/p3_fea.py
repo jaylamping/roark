@@ -264,6 +264,13 @@ def run(name, c):
         except Exception:
             opts[k] = '?'
     print(' options', opts, flush=True)
+    if os.environ.get('FEA_SOLVER'):      # 2026-11-12: e.g. direct sparse for contact runs the iterative solver will not converge
+        try:
+            so = st.StaticStudyOptions
+            so.SolverType = int(os.environ['FEA_SOLVER'])
+            print(' solver set to', os.environ['FEA_SOLVER'], 'reads back', st.StaticStudyOptions.SolverType, flush=True)
+        except Exception as ex:
+            print(' solver not set:', str(ex)[:100], flush=True)
     for sel, size in c.get('ctrl', []):
         fs = pick(d, sel)
         q = mesh.ApplyMeshControl(fs, I())
