@@ -337,3 +337,18 @@ The post-macro readback is now removed. The macro's own log and the benchmark lo
 - Lug forces: -X axial 34 N, Fx 38 N, Fz 174 N; +X 3 / 0 / -115 N.
 - Pads 3.4 N in total. Sanity OK.
 - So the as-built joint changes nothing material: the posts pass, and the joint and the 1.2-1.3 hub across-layer values hold.
+
+## Combined pass: FEA hub (2026-11-12 11:05)
+
+- HUB_RING_ZF = our ring FEA hub plus the shoulder thread's R1.2 Z-root fillet, with their exact edge selection (Y 296,
+  |Z - CZ| 5, r 18-31.5 from the hub axis): 8 edge segments.
+- Check against our unfilleted hub (`hub_zf_vs_ring.json`): Y sections differ only at Y 295.0-295.75, the fillet. The X-section
+  differences of about 1 mm² across the middle come from STL export resolution (the new hub was exported finer).
+- Clearance from the 1.2 × 1.6 break to this fillet: 0.286 / 0.292 front, 0.446 / 0.452 back, the same as to bc16e97.
+- Against bc16e97 itself (`hub_zf_vs_bc16e97.json`):
+  - the joint zone matches (Y 295.5-300 section areas within 0.1 %);
+  - above Y 300.5 rev D differs: slightly larger outer radius from Y 302.5, and a much smaller top boss (r about 24 at Y 319,
+    ours 38.7).
+  - So our fixture face at the hub top (Y 319.86) is larger than rev D's. Joint and lug-root figures are representative. The
+    hub's upper-region figures (outer ring above the groove) are this approximation, so the shoulder thread's own FEA governs
+    there.
