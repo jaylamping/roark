@@ -172,7 +172,8 @@ its own yet: promote a design before it would hurt to lose it. Joey-PC keeps the
 ## 9. CAD workstation
 
 All SolidWorks, Simulation and KiCad work runs on **holly-pc**, a PC kept for it, from 2026-11-11. Joey-PC is Joey's own
-PC: it keeps the older copies as a backup and is not used for CAD runs.
+PC: it keeps the older copies as a backup and is the fallback CAD machine. There SolidWorks runs hidden only, never
+visible, because Joey may be using it.
 
 - The shared checkout is `C:\joe\code\roark`. `subst J: C:\joe` maps it to `J:\code\roark`, the same path it had on
   Joey-PC, so scripts and SolidWorks references keep working. If `J:` is missing after a restart, run that line first.
@@ -199,3 +200,9 @@ holly-pc's SolidWorks is a fresh install. Its defaults differ from Joey-PC's in 
 Bambu Studio **2.09.01.70**, the version the upper-arm slices used, is installed at `C:\Program Files\Bambu Studio`. Its GUI had
 not been run, so `%APPDATA%\BambuStudio\system\BBL` didn't exist. Fall back to the presets the install ships in
 `resources\profiles\BBL`. Re-slicing the reviewed ring that way reproduced the stored slice exactly (3465 s, 19.04 g).
+
+## 10. Requirements, gate and print log
+
+Each printed part also has a requirements spec in its region folder, a pre-print gate report and a print log in
+`prints/<region>/`: [part-lifecycle.md](part-lifecycle.md). Sharing the CAD workstation between threads (worktrees, claims,
+the FEA queue): [cad-workstation.md](cad-workstation.md).
