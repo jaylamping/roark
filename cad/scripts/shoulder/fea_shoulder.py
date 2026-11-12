@@ -27,7 +27,8 @@ RUNS = F / 'fea_runs.json'
 I = lambda v=0: VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, v)
 EX, NU, YIELD, LAYER, RHO = 1.9e9, 0.38, 45.0, 0.5, 1270.0
 PARTS = {'hub': F / os.environ.get('HUB_FEA_FILE', 'hub_fea.SLDPRT')}   # a second solve stream uses its own copy
-PARTS['fork'] = F / os.environ.get('FORK_FEA_FILE', 'fork_fea.SLDPRT')   # fork front + fork rear, two bodies (fork_fea_part.py)
+PARTS['fork'] = F / os.environ.get('FORK_FEA_FILE', 'fork_fea.SLDPRT')
+PARTS['fork1'] = F / 'fork1_fea.SLDPRT'      # fork front alone (debug of the two-body model)   # fork front + fork rear, two bodies (fork_fea_part.py)
 
 
 def cyl(r, box):
@@ -530,6 +531,8 @@ for tag, f_, mom in (('MX', (0.0, -310.0, 0.0), (23.0, YAW_T, 0.0)), ('MZ', (0.0
         CASES[f'FORK_{tag}_{sup}'] = dict(part='fork', fix=[('fixed', FK_BOSS)] + ([('radial', FK_SEAT6808)] if sup == 'brg' else []),
                                           remote=(FK_RS02, AT, f_, mom), coupling=0, el=2.5, disp=FK_DISP,
                                           react=dict(boss=[FK_BOSS], **({'seat6808': [FK_SEAT6808]} if sup == 'brg' else {})))
+
+CASES['FORK1_G_free'] = dict(CASES['FORK_G_free'], part='fork1')
 
 if __name__ == '__main__':
     try:
