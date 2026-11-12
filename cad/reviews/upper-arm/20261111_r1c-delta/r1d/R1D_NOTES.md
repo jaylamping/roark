@@ -264,3 +264,27 @@ The shoulder thread adds R1.2 at the hub lug roots (lug Z faces at CZ ± 5 meeti
   the ceiling's support, and it under-clears anyway. So: chamfer.
 - Prepared in code as `ARM_SLOT_BREAK="a,b"` (organic_parts.r1d_slot_break: the printed halves, and the FEA hub-seat posts),
   along each lug's X span + 0.5. Off unless set.
+
+## Memory cap on every python job (2026-11-12, coordinator rule)
+
+At 09:47 the first version of slot_edge_break.py (a point-in-mesh test over the whole half meshes) reached 61 GB committed and
+took holly-pc to 3 GB free; Remote Control showed the machine offline at 15:47Z. It was stopped at about 09:53. The memory watch
+had already ended my M solve's instance cleanly at 09:51. No other thread's SolidWorks instance crashed: the application log's
+SolidWorks faults today are all my own instances, see below.
+- `cad/scripts/fea/r1c/capped.py`: `python capped.py --mb 6144 -- python script.py ...`. It starts the job suspended, puts it in a
+  Windows job object with a 6 GB per-process and per-job committed-memory limit and kill-on-close, then resumes it. Over the
+  limit, allocations fail (MemoryError, non-zero exit) and it prints "CAPPED: ...".
+  - Tested: a 4 GB array under a 1 GB cap fails cleanly; gradual growth stops at 785 of 800 MB with the CAPPED line.
+- Used for all post-processing, geometry checks and slicing in the chain scripts (hub_r1c, organic_print + Bambu, print_check,
+  close_path).
+- Not for the SolidWorks clients: they launch SLDWORKS.exe, which would land in the same job under the same cap and be killed
+  when the client exits. The solve memory watch (12 GB used / 4 GB free) covers those.
+- Mesh work uses plane sections or 20k-point chunks, never whole-mesh point-in-mesh tests.
+
+## SolidWorks application-error events at the solver-option readback (2026-11-12)
+
+Every run of mine that touched StaticStudyOptions from python logged one SLDWORKS.exe access violation in the Application log:
+- the SolverType probe puts (07:53-08:01), and the post-macro readback (08:22, 08:26, 08:38, 08:53, 09:14, 09:50, 09:56);
+- each at the moment the call raised "The server threw an exception";
+- the instance carried on and closed cleanly each time.
+The post-macro readback is now removed. The macro's own log and the benchmark log are the record of the solver.

@@ -343,10 +343,8 @@ def run(name, c):
             except Exception as ex:
                 print(' solver macro failed to run:', str(ex)[:120], flush=True)
             print(' solver macro log:', mlog.read_text(errors='ignore').replace(chr(10), ' | ') if mlog.exists() else 'none', flush=True)
-            try:
-                print(' solver reads (python, after macro)', st.StaticStudyOptions.SolverType, flush=True)
-            except Exception as ex:
-                print(' solver readback failed', str(ex)[:80], flush=True)
+            # no readback from python here: reading StaticStudyOptions from out of process faults inside SolidWorks (logged as an
+            # application error each time, 2026-11-12); the macro's own log has the value, and the benchmark log confirms the solver
             e2, w2 = L(), L()
             print(' saved again', d.Save3(1, e2, w2), e2.value, w2.value, flush=True)
     if os.environ.get('FEA_MESH_ONLY') == '1':      # mesh-time diagnosis (2026-11-12): stop after meshing

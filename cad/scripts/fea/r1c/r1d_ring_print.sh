@@ -13,10 +13,10 @@ grep -q "STOP at" cad/_wip/organic-arm/rebuild_ua.log && { echo "BUILD_FAILED" >
 echo "BUILT ring print $(date +%H:%M)" >> $L
 X=$R/_wip/r1d_ring_print
 cp -p cad/exports/upper-arm/upper_arm_organic_rs02_ring_left.STL $X/exports/
-(cd cad/scripts/arm && ARM_EXPORTS=$X/exports ARM_PRINT_OUT=$X/print ARM_PRINT_SUFFIX=_r1d_ring ARM_PRINT_HUBBAND_Y0=274.0 ARM_PRINT_FLANK_BLOCKER=1 ARM_FLANK_GAP=0.1 python organic_print.py back front > $X/slice.log 2>&1)
-(cd cad/_wip/organic-arm/cad && ARM_EXPORTS=$X/exports ARM_PRINT_OUT=$X/print python print_check.py back front > $X/print_check.log 2>&1)
+(cd cad/scripts/arm && ARM_EXPORTS=$X/exports ARM_PRINT_OUT=$X/print ARM_PRINT_SUFFIX=_r1d_ring ARM_PRINT_HUBBAND_Y0=274.0 ARM_PRINT_FLANK_BLOCKER=1 ARM_FLANK_GAP=0.1 python J:/code/roark-wt/left-arm-organic/cad/scripts/fea/r1c/capped.py --mb 6144 -- python organic_print.py back front > $X/slice.log 2>&1)
+(cd cad/_wip/organic-arm/cad && ARM_EXPORTS=$X/exports ARM_PRINT_OUT=$X/print python J:/code/roark-wt/left-arm-organic/cad/scripts/fea/r1c/capped.py --mb 6144 -- python print_check.py back front > $X/print_check.log 2>&1)
 echo "SLICED+GATED $(grep -E '\"job\"' $X/print_check.log | sed -E 's/.*\"job\": \"([a-z]+)\", \"mesh_gate\": \"([A-Z]+)\".*\"time_s\": ([0-9]+), \"grams\": ([0-9.]+).*/\1 \2 \3s \4g/' | tr '\n' ' ')" >> $L
 mkdir -p $X/checks
-(cd cad/_wip/organic-arm/cad && ARM_EXPORTS=$X/exports FIT_JSON=$X/checks/rs02_fit.json HUB_STL=$R/_wip/shoulder_hub_556cc44/shoulder_hub_left_revD_candidate.STL CLOSE_JSON=$X/checks/close_path_revD.json PYTHONPATH=. python ../../../scripts/fea/r1c/close_path_r1c.py > $X/checks/close_path_revD.log 2>&1)
+(cd cad/_wip/organic-arm/cad && ARM_EXPORTS=$X/exports FIT_JSON=$X/checks/rs02_fit.json HUB_STL=$R/_wip/shoulder_hub_556cc44/shoulder_hub_left_revD_candidate.STL CLOSE_JSON=$X/checks/close_path_revD.json PYTHONPATH=. python J:/code/roark-wt/left-arm-organic/cad/scripts/fea/r1c/capped.py --mb 6144 -- python ../../../scripts/fea/r1c/close_path_r1c.py > $X/checks/close_path_revD.log 2>&1)
 echo "CLOSE_CHECKED $(grep -E 'final overlap|path_collisions' $X/checks/close_path_revD.log | grep -E 'hub|final' | tr -s ' ' | cut -c1-200 | tr '\n' ' ')" >> $L
 echo "RING_PRINT_DONE $(date)" >> $L

@@ -24,7 +24,7 @@ for job in "$@"; do
   fin "$S"
   sleep 180      # shared machine (2026-11-12): 3 min with no instance of ours alive, so other threads' launches can register
   if ls $D/org16_$case.npz >/dev/null 2>&1; then
-    python cad/scripts/fea/r1c/hub_r1c.py $D/org16_$case.npz $D/HUB_GROOVE_r1d.STL > $D/post.txt 2>&1
+    python J:/code/roark-wt/left-arm-organic/cad/scripts/fea/r1c/capped.py --mb 6144 -- python cad/scripts/fea/r1c/hub_r1c.py $D/org16_$case.npz $D/HUB_GROOVE_r1d.STL > $D/post.txt 2>&1
     cp $D/org16_$case.npz.r1c.json $RV/$folder.json; cp $D/post.txt $RV/$folder.post.txt; grep -E "mesh 0|solve |soft|reaction|displacement" $D/run.log | tail -5 >> $RV/$folder.post.txt
     echo "SOLVED $folder $(date +%H:%M) $(grep -E 'mesh 0' $D/run.log | tail -1) $(grep SANITY $D/post.txt)" >> $L
     push "cad: R1d FEA result $folder"

@@ -50,7 +50,7 @@ wait $cpid 2>/dev/null
 echo "peak ours ${peak} MB; solver: Intel-solver lines in the benchmark log $(cat $D/*BenchMark-Solver.txt 2>/dev/null | grep -c INTEL-SOLVER), iterative lines $(cat $D/*BenchMark-Solver.txt 2>/dev/null | grep -c -i -E "PCG|FFE|ITERATIVE")" >> $L
 sleep 180
 if ls $D/org16_$CASE.npz >/dev/null 2>&1; then
-  python cad/scripts/fea/r1c/hub_r1c.py $D/org16_$CASE.npz $D/HUB_GROOVE_r1d.STL > $D/post.txt 2>&1
+  python J:/code/roark-wt/left-arm-organic/cad/scripts/fea/r1c/capped.py --mb 6144 -- python cad/scripts/fea/r1c/hub_r1c.py $D/org16_$CASE.npz $D/HUB_GROOVE_r1d.STL > $D/post.txt 2>&1
   cp $D/org16_$CASE.npz.r1c.json $RV/$folder.json; cp $D/post.txt $RV/$folder.post.txt; grep -E "mesh|solve |reaction|displacement|solver" $D/run.log | tail -8 >> $RV/$folder.post.txt
   echo "SOLVED $folder $(date +%H:%M) $(grep -E 'solve ' $D/run.log | tail -1) $(grep SANITY $D/post.txt)" >> $L
   until mkdir cad/_wip/.r1d_git_lock 2>/dev/null; do sleep 5; done
