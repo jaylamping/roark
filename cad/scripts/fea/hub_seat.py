@@ -231,7 +231,7 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 ms = float(os.environ.get('HS_SEAT_MESH', '0.35' if R1D else '0'))
                 if ms > 0:      # R1d (review 2026-11-12): mesh control on the ridge, groove, collar foot and bore faces (any face meeting the seat
                     # box, up to 400 mm2 so the large skin and spigot faces are left at the global size)
-                    c['ctrl'] = list(c.get('ctrl', [])) + [(('touch', [128.0, 294.0, -40.0, 213.0, 302.2, 50.0], 400.0), ms)]
+                    c['ctrl'] = list(c.get('ctrl', [])) + [(('touch', [128.0, 297.5, -40.0, 213.0, 302.05, 50.0], float(os.environ.get('HS_SEAT_MESH_AMAX', '150'))), ms)]      # 2026-11-12: ridge and groove faces only (the wider box gave 2.4 M nodes)
                 CASES['HS_' + k + sfx] = c
 
 
