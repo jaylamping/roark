@@ -50,7 +50,8 @@ The spec holds:
 8. **Printed parts** (`[[part]]`): the parts the gate runs on (section 3).
 
 Template (the seeded specs [upper_arm_requirements.md](../cad/upper-arm/upper_arm_requirements.md) and
-[forearm_requirements.md](../cad/forearm/forearm_requirements.md) are worked examples):
+[forearm_requirements.md](../cad/forearm/forearm_requirements.md) show sections 1 to 7; their `[[part]]` tables and evidence
+files arrive with the concept A arm PR):
 
 ```toml
 +++

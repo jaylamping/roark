@@ -82,7 +82,7 @@ Create each crate when an item first needs it. The crate table below is the nami
 | Actuator test stand, RS03 waist unit first | Designed for all four sizes, waiting for Joey's review and print; luggage scale to buy | Item 7 |
 | Upper arm (printed) | Redesigned as concept A (drum and caps) | Item 8 before it moves under power |
 | Elbow dummy-output rig | 6808 bearings arrive Mon 2026-11-09; rig is hand-loaded | **None.** No drive is used |
-| Forearm and RS00 | Designed, not printed | Item 8, after the elbow rig passes; the RS00 scale question (item 2) settled first |
+| Forearm and RS00 | Redesigned as concept A; not printed | Item 8, after the elbow rig passes; the RS00 scale question (item 2) settled first |
 | Camera rig (Logitech BRIO, AprilTag plates) | Plan approved; camera owned; plates not printed | Item 9 |
 | Arm on the robot torso | Waits for Joey's rebuilt torso frame | Items 8 and 9 on the real geometry |
 | Power board (rev B5) | Being routed; review, then fab | Item 10. The bench uses the 24 V supply and a physical E-stop until then |

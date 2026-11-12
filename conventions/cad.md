@@ -172,7 +172,8 @@ its own yet: promote a design before it would hurt to lose it. Joey-PC keeps the
 ## 9. CAD workstation
 
 All SolidWorks, Simulation and KiCad work runs on **holly-pc**, a PC kept for it, from 2026-11-11. Joey-PC is Joey's own
-PC: it keeps the older copies as a backup and is not used for CAD runs.
+PC: it keeps the older copies as a backup and is the fallback CAD machine. There SolidWorks runs hidden only, never
+visible, because Joey may be using it.
 
 - The shared checkout is `C:\joe\code\roark`. `subst J: C:\joe` maps it to `J:\code\roark`, the same path it had on
   Joey-PC, so scripts and SolidWorks references keep working. If `J:` is missing after a restart, run that line first.

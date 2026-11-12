@@ -4,7 +4,7 @@ region = "upper-arm"
 sides = ["left", "right"]
 status = "draft"
 agreed = ""
-interfaces = ["RS02 upper-arm yaw output", "RS02 elbow housing", "spring carrier", "6808-2RS", "Ruthex M3 inserts", "elbow back loop"]
+interfaces = ["RS02 upper-arm yaw output", "RS02 elbow housing", "Ruthex M3 inserts", "elbow back loop"]
 
 # Governing case, Joey 2026-11-07 19:59Z: arm straight, 5 kg at the hand (about 0.5 m from the shoulder pitch axis),
 # from rest, slow sweep through the full shoulder pitch range. Absolute worst-case sustained load; must not fail.
@@ -96,8 +96,8 @@ The `[[load_case]]` table above is the list the gate checks. In words:
 
 ## Motion
 
-- Upper-arm yaw (RS02 at the hub): range **TBD**, to agree with the controls side (the arm thread owns the number).
-- Elbow (RS02 at the ring): 0–124°, folds forward (Joey, left-arm thread). Printed stop carries 17 N·m.
+- Upper-arm yaw (RS02 at the top of the link): range **TBD**, to agree with the controls side (the arm thread owns the number).
+- Elbow (RS02 at the bottom of the link): 0–124°, folds forward (Joey, left-arm thread). Printed stop carries 17 N·m.
 
 ## Mass and CoM
 
@@ -108,10 +108,10 @@ The `[[load_case]]` table above is the list the gate checks. In words:
 
 ## Interfaces
 
-- **Top:** upper-arm yaw RS02 output face, clamped by the hub. Vendor model and drawing disagree on the RS02 shoulder-to-output
-  length (31.5–32.0 vs 33.9 mm); Joey to caliper a real RS02 (open since 11-07).
-- **Bottom:** elbow RS02 housing in the ring; spring carrier; 6808-2RS elbow bearing.
-- **Inserts:** Ruthex M3 heat-sets; M3 seam screws from the back half only.
+- **Top:** upper-arm yaw RS02 output face (draft 3: clamped by the hub). Vendor model and drawing disagree on the RS02
+  shoulder-to-output length (31.5–32.0 vs 33.9 mm); Joey to caliper a real RS02 (open since 11-07).
+- **Bottom:** elbow RS02 housing (draft 3: in the ring, with the spring carrier and a 6808-2RS elbow bearing).
+- **Inserts:** Ruthex M3 heat-sets (draft 3: M3 seam screws from the back half only).
 - **Check against the vendor RS02 model** including its housing tab (print log lesson `rs02-housing-tab`). For the gate's
   interference check, export the two RS02 models in arm coordinates to `exports/upper-arm/` and list them under `mates`.
 
