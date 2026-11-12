@@ -32,7 +32,9 @@ PARTS['fork1'] = F / 'fork1_fea.SLDPRT'
 PARTS['stop_fr'] = F / 'stop_fork_rear.SLDPRT'   # stop rev 2 checks
 PARTS['stop_cap'] = F / 'stop_cap.SLDPRT'
 PARTS['stop_fr_leg2'] = F / 'stop_fork_rear_leg2.SLDPRT'
-PARTS['stop_fr_G'] = F / 'stop_fork_rear_G.SLDPRT'      # fork front alone (debug of the two-body model)   # fork front + fork rear, two bodies (fork_fea_part.py)
+PARTS['stop_fr_G'] = F / 'stop_fork_rear_G.SLDPRT'
+PARTS['stop_fr_N'] = F / 'stop_fork_rear_N.SLDPRT'
+PARTS['stop_fr_N2'] = F / 'stop_fork_rear_N2.SLDPRT'      # fork front alone (debug of the two-body model)   # fork front + fork rear, two bodies (fork_fea_part.py)
 
 
 def cyl(r, box):
@@ -105,7 +107,7 @@ def layer(nodes, S, near, n, exclude):
 def run(name, c):
     sw = app()
     t0 = time.time()
-    el = c.get('el', 3.0)
+    el = float(os.environ.get('FEA_EL', c.get('el', 3.0)))
     sw.CloseAllDocuments(True)        # a failed case leaves its model open, and a second copy by the same name won't open
     e, w = L(), L()
     d = sw.OpenDoc6(str(PARTS[c['part']]), 1, 1, '', e, w)
@@ -224,6 +226,11 @@ def run(name, c):
             so_.SolverType = int(os.environ.get('FEA_SOLVER', '7'))   # 7 Intel direct sparse; 2 FFEPlus (iterative) if direct runs out of memory
         except Exception as e_:
             print(' study options failed', e_, flush=True)
+    if os.environ.get('FEA_SOLVER') and not c.get('stabilise'):
+        try:
+            st.StaticStudyOptions.SolverType = int(os.environ['FEA_SOLVER'])   # 2 FFEPlus (iterative)
+        except Exception as e_:
+            print(' solver override failed', e_, flush=True)
     opts = {}      # defaults this script does not set: logged so runs on different machines can be compared
     for k, o, a in (('solver', st, 'StaticStudyOptions.SolverType'), ('mesher', mesh, 'MesherType'), ('jacobian', mesh, 'JacobianPoints'),
                     ('auto_transition', mesh, 'AutomaticTransition'), ('jacobian_check', mesh, 'UseJacobianCheck')):
@@ -523,8 +530,8 @@ for k_, pre_ in (('A', 690.0), ('B', 690.0), ('Ah', 345.0)):
 # (seat face and the five screw holes, rigid). RS03 output: the boss face bolted to it, fixed (a rigid output bearing).
 # 'free': no 6808 (all load to the RS03); 'brg': 6808 seat held radially (rigid stub, outer race floating axially), its
 # reaction is the 6808's share. The truth sits between these two and the pinned-RS03 statics (written in checks/).
-FK_BOSS = pl((RX + 16.0, RY, ROLL_OUT))
-FK_SEAT6808 = cyl(26.0, [RX - 27, RY - 27, -47.4, RX + 27, RY + 27, -40.7])
+FK_BOSS = pl((RX + 9.0, RY + 15.59, ROLL_OUT))   # r 18 at 60 deg: clear of the screw holes (30/90) and the pin holes (0/120)
+FK_SEAT6808 = cyl(BRG_SEAT_R, [RX - 27, RY - 27, BRG_LIP_Z - 0.1, RX + 27, RY + 27, HOUSE_Z0 + 1.1])   # follows the seat (r 26.1 since check (d))
 _sa = [-150.0, -116.0, -76.0, 84.0, 130.0]
 FK_RS02 = [pl((RX + 37.0 * math.cos(math.radians(a_)), SEAT_Y[0], YZ + 37.0 * math.sin(math.radians(a_)))) for a_ in _sa] +           [cyl(1.8, [RX - 45, SEAT_Y[0] - 6, YZ - 45, RX + 45, SEAT_Y[1] + 0.1, YZ + 45])]
 FK_DISP = dict(seat6808=[RX - 27, RY - 27, -47.4, RX + 27, RY + 27, -40.7], rs02_seat=[RX - 45, SEAT_Y[0] - 0.2, YZ - 45, RX + 45, SEAT_Y[0] + 0.2, YZ + 45],
@@ -554,6 +561,8 @@ CASES['STOP_A2_TOOTH_J'] = dict(CASES['STOP_A2_TOOTH'], fix=[('fixed', cyl(2.25,
                                                             ('radial', cyl(BRG_SEAT_R, [RX - 27, RY - 27, BRG_LIP_Z - 0.1, RX + 27, RY + 27, HOUSE_Z0 + 1.1]))])
 CASES['STOP_A2_TOOTH_LEG2'] = dict(CASES['STOP_A2_TOOTH_J'], part='stop_fr_leg2')   # the outward-leg mock-up
 CASES['STOP_A2_TOOTH_G'] = dict(CASES['STOP_A2_TOOTH_J'], part='stop_fr_G')   # rear_screws layout G
+CASES['STOP_A2_TOOTH_N'] = dict(CASES['STOP_A2_TOOTH_J'], part='stop_fr_N')   # rear_screws layout N
+CASES['STOP_A2_TOOTH_N2'] = dict(CASES['STOP_A2_TOOTH_J'], part='stop_fr_N2')
 CASES['STOP_A2_CAP'] = dict(part='stop_cap', el=1.5,
                             fix=[('fixed', cyl(1.7, [RX - 60, RY - 60, CAP_Z1 - 2, RX + 60, RY + 60, DRUM_Z0 + 1])), ('fixed', ('plane', _rp(54.0, 225.0, DRUM_Z0), None, 'on'))],
                             forces=[(('plane', _rp(35.0, _ta - _th + ROLL_STOP_IN, -36.0), None, 'on'), STOP_F, None)],

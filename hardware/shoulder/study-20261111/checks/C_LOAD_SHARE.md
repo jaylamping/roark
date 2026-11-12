@@ -1,8 +1,13 @@
 # Check (c): roll joint load share (RS03 output vs 6808 stub) and deflection (2026-11-12, beam model)
 
-**Status:** hand and beam model. An FEA of the fork front and fork rear as two bonded bodies (`fea_shoulder.py`
-`FORK_*`: RS03 boss fixed, 6808 seat free or held radially, reactions read back) is set up. Its first solves failed and
-are being debugged, so the FEA confirmation is to follow.
+**Status: the beam model below is the result.** The FEA of the fork front and fork rear as two bodies (`fea_shoulder.py`
+`FORK_*`, from `fork_fea_part.py`) fails to solve with code 24.
+- Attempts: the direct solver (2.5 mm mesh), and on 2026-11-12 the one allowed retry on FFEPlus with a 3.5 mm mesh
+  (51,215 nodes, 226 s, `fea_fork_MX_brg.txt` alongside).
+- **Probable cause:** the two inserted bodies are not treated as bonded at the joint face (they touch at X 149-192,
+  Y 352-361.5, Z -45.9). So the fork rear floats. A singular stiffness fails the same way on either solver.
+- **Not pursued further,** per the coordinator. To fix it later: set the global contact to bonded explicitly, or
+  model the joint screws as bolt connectors.
 
 ## The joint
 

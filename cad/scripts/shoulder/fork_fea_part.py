@@ -22,4 +22,12 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    finally:
+        from swk import app, finish
+        try:
+            app().CloseAllDocuments(True)
+        except Exception:
+            pass
+        finish()
