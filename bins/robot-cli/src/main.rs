@@ -3,7 +3,7 @@
 //! `robot-cli disable [--skeleton <file>] [--lock <file>] [--json]`: Disable, then active reporting off, to every
 //! drive the skeleton wires to a bus, each bus on its own socket and thread. Refuses while the runtime holds its lock,
 //! or when it can't tell whether it does. Prints one line per drive to stdout, or one JSON document with `--json`.
-//! Exit 0 when every drive was read in Reset or never answered on a healthy bus; 1 when any drive needs a person; 2
+//! Exit 0 when every drive was read in Reset or never answered on a bus that never went bus-off; 1 when any drive needs a person; 2
 //! when it refused or couldn't start.
 
 #[cfg(target_os = "linux")]
@@ -163,8 +163,8 @@ mod linux {
                 return ExitCode::from(REFUSED);
             }
             // No runtime using this path is running, so nothing else is on the bus now. One started during the stop
-            // would make the file and take its lock unopposed; under systemd that can't happen, since the file exists
-            // through ExecStopPost and the next start waits for it to end.
+            // would make the file and take its lock unopposed. Under systemd the file exists through ExecStopPost and
+            // the gap before an automatic restart (RuntimeDirectoryPreserve=restart), so only a start by hand can.
             Err(e @ LockError::Missing(_)) => {
                 say(&format!("{e}; going on"));
                 None
@@ -196,7 +196,7 @@ mod linux {
                 "build": REVISION,
                 "buses": reports.iter().map(to_json).collect::<Vec<_>>(),
                 "need_a_person": failed,
-                "drives": total,
+                "drive_count": total,
             });
             out(&doc.to_string());
         } else {

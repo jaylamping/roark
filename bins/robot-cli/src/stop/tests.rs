@@ -3,8 +3,8 @@ use std::time::Duration;
 use robstride::{DeviceId, Frame, Inbound, decode, drive};
 
 use super::{
-    BusFault, BusStop, DISABLE_WINDOW, END, OsError, Outcome, REPORT_GRACE, REPORTING_OFF_TRIES,
-    RESEND, SILENCE, SendError,
+    BusFault, BusStop, DISABLE_WINDOW, Drain, END, OsError, Outcome, REPORT_GRACE,
+    REPORTING_OFF_TRIES, RESEND, SILENCE, SendError, Wait,
 };
 
 const MS: Duration = Duration::from_millis(1);
@@ -263,20 +263,52 @@ fn socket_failures_and_error_frames_need_a_person() {
     assert!(!down.sending());
     assert_eq!(down.fault(), Some(BusFault::Write(OsError(100))));
 
-    // Bus-off, or errors that can't be seen: a silent drive isn't reported as off. Lesser error frames are what an
-    // unpowered bus sends, and don't count.
-    let mut off = BusStop::new([id(11)]);
-    off.heard_error_frame(false);
-    off.heard_error_frame(true);
-    let (_, end) = run(&mut off, &|_, _| Vec::new(), &|_, _| Ok(()));
-    assert_eq!(outcomes(&off, end), [Outcome::SilentOnFaultyBus]);
+    // Bus-off, even after a drive was confirmed, fails every drive on the bus: a late report or Run may have been
+    // lost. Errors that can't be seen make a silent drive need a person. Lesser error frames (controller 0x04, ACK
+    // 0x20) are what an unpowered bus sends, and don't count.
+    let mut off = BusStop::new([id(11), id(12)]);
+    let (_, end) = run(&mut off, &echo, &|_, _| Ok(()));
+    assert_eq!(outcomes(&off, end), [Outcome::Stopped, Outcome::Stopped]);
+    off.heard_error_frame(0x40);
+    assert!(off.bus_off());
+    assert_eq!(
+        outcomes(&off, end),
+        [Outcome::BusFailed, Outcome::BusFailed]
+    );
     let mut unseen = BusStop::new([id(11)]);
-    unseen.errors_unseen(OsError(92));
+    unseen.cant_see_errors(OsError(92));
     let (_, end) = run(&mut unseen, &|_, _| Vec::new(), &|_, _| Ok(()));
     assert_eq!(outcomes(&unseen, end), [Outcome::SilentOnFaultyBus]);
-    let mut passive = BusStop::new([id(11)]);
-    passive.heard_error_frame(false);
-    let (_, end) = run(&mut passive, &|_, _| Vec::new(), &|_, _| Ok(()));
-    assert_eq!(outcomes(&passive, end), [Outcome::Silent]);
-    assert_eq!(passive.error_frames(), 1);
+    let mut lesser = BusStop::new([id(11)]);
+    lesser.heard_error_frame(0x04);
+    lesser.heard_error_frame(0x20);
+    let (_, end) = run(&mut lesser, &|_, _| Vec::new(), &|_, _| Ok(()));
+    assert_eq!(outcomes(&lesser, end), [Outcome::Silent]);
+    assert_eq!(lesser.error_frames(), 2);
+}
+
+/// Guards: safety - a drive is reported stopped only on what was read (PLAN item 2, Stop): frames still queued when
+/// the stop ends (a drain stopped at its bound) may hold a Run that withdraws a Reset, so a confirmed drive then needs
+/// a person; before the end, queued frames are read before anything else.
+#[test]
+fn frames_left_unread_when_the_stop_ends_need_a_person() {
+    let echo = |now: u64, sent: &Sent| -> Vec<Inbound> {
+        sent.iter()
+            .filter(|(t, w)| *t + 1 == now && w.0 == 'D')
+            .map(|(_, w)| from(w.1, false, false))
+            .collect()
+    };
+    let mut stop = BusStop::new([id(11)]);
+    let (_, end) = run(&mut stop, &echo, &|_, _| Ok(()));
+    assert_eq!(outcomes(&stop, end), [Outcome::Stopped]);
+    stop.drained(Drain::Capped);
+    assert_eq!(stop.wait(END), Wait::Done);
+    assert_eq!(outcomes(&stop, end), [Outcome::Unread]);
+
+    let mut early = BusStop::new([id(11)]);
+    early.step(Duration::ZERO, &mut |_| Ok(()));
+    early.drained(Drain::Capped);
+    assert_eq!(early.wait(MS), Wait::DrainAgain);
+    early.drained(Drain::Emptied);
+    assert_eq!(early.wait(MS), Wait::Until(RESEND));
 }

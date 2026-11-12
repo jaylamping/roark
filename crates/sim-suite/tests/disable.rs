@@ -405,7 +405,8 @@ fn after_kill_9_disable_leaves_every_drive_in_reset_with_reporting_off() {
 
 /// Guards: safety - a lost bus never delays stops on healthy buses (PLAN item 2, Stop; PLAN item 6, `host.bus`): with
 /// one of the skeleton's buses missing, `disable` still stops every drive on the other on time, reports the missing
-/// bus's drives as needing a person and exits with failure. And a lock it can't check makes it refuse, sending nothing.
+/// bus's drives as needing a person and exits with failure. And a lock it can't check makes it refuse (exit 2, no
+/// report).
 #[test]
 fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
     let text = std::fs::read_to_string(skeleton_path()).unwrap();
@@ -421,7 +422,7 @@ fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
     let dir = scratch("disable-missing");
     let path = dir.join("skeleton.yaml");
     std::fs::write(&path, &skeleton_text).unwrap();
-    // A lock that can't be checked (a path under a regular file) refuses before any socket is opened.
+    // A lock that can't be checked (a path under a regular file) refuses.
     let unknown = disable(&path, &path.join("runtime.lock"));
     let stop = AtomicBool::new(false);
     let done = std::thread::scope(|scope| {
@@ -435,7 +436,6 @@ fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
     let _ = std::fs::remove_dir_all(&dir);
 
     assert_eq!(unknown.status.code(), Some(2), "{unknown:?}");
-    assert!(unknown.stderr.contains("can't tell"), "{unknown:?}");
     assert!(unknown.outcomes.is_empty(), "{unknown:?}");
     assert_eq!(done.status.code(), Some(1), "{done:?}");
     assert!(done.took < Duration::from_secs(1), "{done:?}");

@@ -14,16 +14,15 @@ use socketcan::{
 };
 
 use crate::BusTargets;
-use crate::stop::{BusFault, BusStop, DriveStop, END, OsError, Outcome, RESEND, SendError};
+use crate::stop::{
+    BusFault, BusStop, Drain, DriveStop, END, OsError, Outcome, RESEND, SendError, Wait,
+};
 
 /// The most frames one wake reads before it steps the stop. A 1 Mbit/s bus carries about 8 frames a millisecond and a
 /// wake is at most `RESEND` (4 ms) after the last, so this is twice a full bus's worth: a flooded bus still gets its
 /// Disables on time (rust.md section 4: every loop has a bound). A drain that hits it says so, and the stop isn't
 /// finished while frames are still queued.
 const MAX_DRAIN: usize = 64;
-
-/// The bus-off class bit of an error frame's ID (`CAN_ERR_BUSOFF`, linux/can/error.h).
-const CAN_ERR_BUSOFF: u32 = 0x40;
 
 /// One bus's result.
 #[derive(Clone, Debug)]
@@ -80,7 +79,7 @@ pub fn disable(targets: &[BusTargets]) -> Vec<BusReport> {
             .map(|(t, thread)| match thread {
                 Ok(thread) => thread.join().unwrap_or_else(|_| {
                     // Panics abort the process (Cargo.toml), so a join error can't come back; report it anyway.
-                    report(t, &failed(t, BusFault::Spawn(OsError(5))), Duration::ZERO)
+                    report(t, &failed(t, BusFault::Spawn(OsError::EIO)), Duration::ZERO)
                 }),
                 Err(e) => report(
                     t,
@@ -108,7 +107,7 @@ fn report(t: &BusTargets, stop: &BusStop, end: Duration) -> BusReport {
         fault: stop.fault(),
         error_frames: stop.error_frames(),
         bus_off: stop.bus_off(),
-        errors_unseen: stop.errors_unseen_by(),
+        errors_unseen: stop.errors_unseen(),
         drives: t
             .drives
             .iter()
@@ -137,32 +136,30 @@ fn run(t: &BusTargets) -> BusReport {
     // Bus-off tells a bus that is down from drives that are off. A socket that can't be asked for error frames can't
     // tell the two apart, so its silent drives are counted as on a faulty bus; the stop itself goes on.
     if let Err(e) = socket.set_error_filter_accept_all() {
-        stop.errors_unseen(OsError::from(&e));
+        stop.cant_see_errors(OsError::from(&e));
     }
     let start = Instant::now();
     let mut send = |frame: Frame| write(&socket, frame);
     loop {
-        let mut backlog = false;
         if stop.reading() {
             match drain(&socket, &mut stop, start) {
-                Ok(emptied) => backlog = !emptied,
+                Ok(drain) => stop.drained(drain),
                 Err(e) => stop.fail(BusFault::Read(e)),
             }
         }
         let now = start.elapsed();
         stop.step(now, &mut send);
-        // Frames still queued may withdraw a Reset: the stop isn't over until they are read, or `END`.
-        let backlog = backlog && stop.sending() && now < END;
-        let next = stop.next(now);
-        if start.elapsed() >= END + RESEND || (next.is_none() && !backlog) {
+        if now >= END + RESEND {
+            // `wait` ends the stop by `END`, so this is only reached if steps stop being taken in time.
             return report(t, &stop, now);
         }
-        if backlog {
-            continue;
-        }
+        let next = match stop.wait(now) {
+            Wait::Done => return report(t, &stop, now),
+            Wait::DrainAgain => continue,
+            Wait::Until(next) => next,
+        };
         // Wake at the next due time, a tick later at most, or on a frame.
         let wait = next
-            .unwrap_or(END)
             .saturating_sub(now)
             .clamp(Duration::from_millis(1), RESEND);
         if !stop.reading() {
@@ -182,15 +179,15 @@ fn run(t: &BusTargets) -> BusReport {
             // The socket can't be waited on: the drain reads its error, or this ends the reads.
             let e = match drain(&socket, &mut stop, start) {
                 Err(e) => e,
-                Ok(_) => OsError(Errno::EIO as i32),
+                Ok(_) => OsError::EIO,
             };
             stop.fail(BusFault::Read(e));
         }
     }
 }
 
-/// Read the frames queued, at most `MAX_DRAIN`, handing each to the stop. True when the queue was emptied.
-fn drain(socket: &CanSocket, stop: &mut BusStop, start: Instant) -> Result<bool, OsError> {
+/// Read the frames queued, at most `MAX_DRAIN`, handing each to the stop.
+fn drain(socket: &CanSocket, stop: &mut BusStop, start: Instant) -> Result<Drain, OsError> {
     for _ in 0..MAX_DRAIN {
         match socket.read_frame() {
             Ok(CanFrame::Data(frame)) => {
@@ -200,17 +197,15 @@ fn drain(socket: &CanSocket, stop: &mut BusStop, start: Instant) -> Result<bool,
                     stop.heard(start.elapsed(), &inbound);
                 }
             }
-            Ok(CanFrame::Error(frame)) => {
-                stop.heard_error_frame(frame.error_bits() & CAN_ERR_BUSOFF != 0);
-            }
+            Ok(CanFrame::Error(frame)) => stop.heard_error_frame(frame.error_bits()),
             // A remote frame carries no drive's word.
             Ok(CanFrame::Remote(_)) => {}
-            Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(true),
+            Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(Drain::Emptied),
             Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
             Err(e) => return Err(OsError::from(&e)),
         }
     }
-    Ok(false)
+    Ok(Drain::Capped)
 }
 
 fn write(socket: &CanSocket, frame: Frame) -> Result<(), SendError> {
