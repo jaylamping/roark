@@ -460,3 +460,23 @@ The bench notes' split-and-inspect step now looks at that edge and the hub disc 
 - Strength: the 0 gap solves (flank line-to-line, no ribs) are this design's bearing case, flank in contact all round. The
   wedge preload is not in them: it adds a steady axial compression on the flank and the end face, and tension in the lug bolts
   and the hub-end skin. To be checked with a preload step if the design is pursued.
+
+## Free space around the hub lugs for a hub web (shoulder thread question, 2026-11-12)
+
+Y-plane sections every 0.5 mm, Y 280-296, of our printed ring halves and the bc16e97 hub (`lug_envelope.py`,
+`lug_envelope.json`). The slot edge break (Y 294.3-295.7 at the lug faces) is not in these halves; it only removes material.
+- Lugs (bc16e97): r 18.8-29.8 from the hub axis, Y 288-296, |Z - CZ| ≤ 5.0.
+- Inboard of the lugs: none of our material lies inside r 19.2 anywhere (all θ) for Y 280-296. The nearest is the inner edge of
+  the four hub posts (Ø9 at X 147.5 / 193.5), which start at the lug faces (|Z - CZ| ≥ 5.1) and reach r 19.2 there.
+  **Free with 0.5 clearance: r ≤ 18.7, all θ, Y 280-296.**
+- Between each lug's outer end and our wall below Y 296, in the lug's own band (|Z - CZ| ≤ 4.6, i.e. 0.5 inside the post faces):
+  our nearest material is the arm's inside wall at r 30.3 (Y 280), 33.4 (Y 288), 34.1 (Y 290), 34.8 (Y 292), 35.3 (Y 294),
+  35.4 (Y 295). **Free with 0.5 clearance: r from the lug's outer end (29.8) to about 32.9 + 0.43 × (Y - 288), i.e. 32.9 at
+  Y 288 up to 34.9 at Y 295.**
+- In Z, the lug cannot grow: our posts sit 0.1 off its faces (|Z - CZ| ≥ 5.1) from r 19.2 outward over Y 285-295.7, with the
+  fins below them (Y 276-291.4) and the 1.2 × 1.6 break at their top edges.
+- Below the lugs (Y < 288), within |Z - CZ| ≤ 4.6: free down to Y 280 at least, for r ≤ about 29.8 (the inside wall is at r ≥ 30.3
+  there).
+- Through the middle: our parts put nothing inside r 19.2. The elbow RS02 cable and the harness trunk come up the neck and pass
+  into the shoulder through the hub's centre. Their bundle size is not modelled here (it belongs to the electrical plan), so the
+  hub web must leave the hub's own cable window clear.

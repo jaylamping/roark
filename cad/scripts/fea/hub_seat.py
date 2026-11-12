@@ -417,7 +417,16 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 rm = os.environ.get('HS_ROOT_MESH') or (flag.read_text().strip() if flag.exists() else '')
                 if rm:
                     for x0, x1 in ((139.5, 149.0), (192.0, 201.5)):
-                        c['ctrl'] = list(c.get('ctrl', [])) + [(('touch', [x0, 292.5, CZ - 8.5, x1, 296.6, CZ + 8.5], float(os.environ.get('HS_ROOT_MESH_AMAX', '150'))), float(rm))]
+                        # FIRST in the list: a face already under a control keeps it (a later control on the same face had no effect,
+                        # case r1d11_g01_stop_rep meshed to the same node count as without it)
+                        c['ctrl'] = [(('touch', [x0, 292.5, CZ - 8.5, x1, 296.6, CZ + 8.5], float(os.environ.get('HS_ROOT_MESH_AMAX', '150'))), float(rm))] + list(c.get('ctrl', []))
+                # 2026-11-12: groove-region refinement (coordinator, the settled 0.2 gap run): HS_GROOVE_MESH or a flag file
+                # cad/_wip/hs_groove_mesh/<run folder>.txt. The joint faces are full rings, so this refines every face meeting the
+                # groove band (Y 298.7-302.05, both bodies), not only the θ of the peak
+                gflag = CAD / '_wip' / 'hs_groove_mesh' / (Path(os.environ.get('ARM_FEA_DIR', 'x')).name + '.txt')
+                gm = os.environ.get('HS_GROOVE_MESH') or (gflag.read_text().strip() if gflag.exists() else '')
+                if gm:
+                    c['ctrl'] = [(('touch', [128.0, 298.7, -40.0, 213.0, 302.05, 50.0], 2000.0), float(gm))] + list(c.get('ctrl', []))      # first: see the root control
                 if os.environ.get('HS_GLOBAL_EL'):      # 2026-11-12: coarser away from the joint (direct sparse memory); the seat control stays
                     c['el'] = float(os.environ['HS_GLOBAL_EL'])
                 CASES['HS_' + k + sfx] = c

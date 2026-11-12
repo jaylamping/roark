@@ -1,0 +1,599 @@
+[
+{
+"Y": 280.0,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.27,
+"arm_min_r_within_10deg": 30.29
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.2,
+"arm_min_r_within_10deg": 30.34
+},
+"arm_inside_r20": 447,
+"arm_min_r_anywhere": 19.2
+},
+{
+"Y": 280.5,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.26,
+"arm_min_r_within_10deg": 30.47
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.22,
+"arm_min_r_within_10deg": 30.53
+},
+"arm_inside_r20": 453,
+"arm_min_r_anywhere": 19.22
+},
+{
+"Y": 281.0,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.25,
+"arm_min_r_within_10deg": 30.66
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.23,
+"arm_min_r_within_10deg": 30.73
+},
+"arm_inside_r20": 449,
+"arm_min_r_anywhere": 19.23
+},
+{
+"Y": 281.5,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.24,
+"arm_min_r_within_10deg": 30.85
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.24,
+"arm_min_r_within_10deg": 30.89
+},
+"arm_inside_r20": 450,
+"arm_min_r_anywhere": 19.24
+},
+{
+"Y": 282.0,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.24,
+"arm_min_r_within_10deg": 31.04
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.26,
+"arm_min_r_within_10deg": 31.06
+},
+"arm_inside_r20": 448,
+"arm_min_r_anywhere": 19.24
+},
+{
+"Y": 282.5,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.23,
+"arm_min_r_within_10deg": 31.23
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.27,
+"arm_min_r_within_10deg": 31.27
+},
+"arm_inside_r20": 448,
+"arm_min_r_anywhere": 19.23
+},
+{
+"Y": 283.0,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.22,
+"arm_min_r_within_10deg": 31.42
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.28,
+"arm_min_r_within_10deg": 31.46
+},
+"arm_inside_r20": 451,
+"arm_min_r_anywhere": 19.22
+},
+{
+"Y": 283.5,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.21,
+"arm_min_r_within_10deg": 31.62
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.28,
+"arm_min_r_within_10deg": 31.63
+},
+"arm_inside_r20": 452,
+"arm_min_r_anywhere": 19.21
+},
+{
+"Y": 284.0,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.2,
+"arm_min_r_within_10deg": 31.81
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.28,
+"arm_min_r_within_10deg": 31.79
+},
+"arm_inside_r20": 448,
+"arm_min_r_anywhere": 19.2
+},
+{
+"Y": 284.5,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.2,
+"arm_min_r_within_10deg": 32.01
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.28,
+"arm_min_r_within_10deg": 31.99
+},
+"arm_inside_r20": 449,
+"arm_min_r_anywhere": 19.2
+},
+{
+"Y": 285.0,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.21,
+"arm_min_r_within_10deg": 32.21
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.29,
+"arm_min_r_within_10deg": 32.19
+},
+"arm_inside_r20": 451,
+"arm_min_r_anywhere": 19.21
+},
+{
+"Y": 285.5,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.2,
+"arm_min_r_within_10deg": 32.4
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.29,
+"arm_min_r_within_10deg": 32.4
+},
+"arm_inside_r20": 451,
+"arm_min_r_anywhere": 19.2
+},
+{
+"Y": 286.0,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.19,
+"arm_min_r_within_10deg": 32.6
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.29,
+"arm_min_r_within_10deg": 32.57
+},
+"arm_inside_r20": 454,
+"arm_min_r_anywhere": 19.19
+},
+{
+"Y": 286.5,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.29,
+"arm_min_r_within_10deg": 32.79
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.21,
+"arm_min_r_within_10deg": 32.76
+},
+"arm_inside_r20": 454,
+"arm_min_r_anywhere": 19.21
+},
+{
+"Y": 287.0,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.27,
+"arm_min_r_within_10deg": 32.98
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.21,
+"arm_min_r_within_10deg": 32.96
+},
+"arm_inside_r20": 448,
+"arm_min_r_anywhere": 19.21
+},
+{
+"Y": 287.5,
+"-X lug (theta 180)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.27,
+"arm_min_r_within_10deg": 33.18
+},
+"+X lug (theta 0)": {
+"lug_r": null,
+"arm_min_r_within_25deg": 19.22,
+"arm_min_r_within_10deg": 33.15
+},
+"arm_inside_r20": 451,
+"arm_min_r_anywhere": 19.22
+},
+{
+"Y": 288.0,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 19.26,
+"arm_min_r_within_10deg": 33.37
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 19.23,
+"arm_min_r_within_10deg": 33.33
+},
+"arm_inside_r20": 449,
+"arm_min_r_anywhere": 19.23
+},
+{
+"Y": 288.5,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 19.24,
+"arm_min_r_within_10deg": 33.54
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 19.25,
+"arm_min_r_within_10deg": 33.55
+},
+"arm_inside_r20": 448,
+"arm_min_r_anywhere": 19.24
+},
+{
+"Y": 289.0,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 19.23,
+"arm_min_r_within_10deg": 33.73
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 19.3,
+"arm_min_r_within_10deg": 33.7
+},
+"arm_inside_r20": 214,
+"arm_min_r_anywhere": 19.23
+},
+{
+"Y": 289.5,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 19.18,
+"arm_min_r_within_10deg": 33.92
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 19.29,
+"arm_min_r_within_10deg": 33.91
+},
+"arm_inside_r20": 455,
+"arm_min_r_anywhere": 19.18
+},
+{
+"Y": 290.0,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 19.27,
+"arm_min_r_within_10deg": 34.1
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 19.24,
+"arm_min_r_within_10deg": 34.14
+},
+"arm_inside_r20": 223,
+"arm_min_r_anywhere": 19.24
+},
+{
+"Y": 290.5,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 19.21,
+"arm_min_r_within_10deg": 34.29
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 19.27,
+"arm_min_r_within_10deg": 34.28
+},
+"arm_inside_r20": 451,
+"arm_min_r_anywhere": 19.21
+},
+{
+"Y": 291.0,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 19.27,
+"arm_min_r_within_10deg": 34.47
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 19.23,
+"arm_min_r_within_10deg": 34.43
+},
+"arm_inside_r20": 446,
+"arm_min_r_anywhere": 19.23
+},
+{
+"Y": 291.5,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 19.21,
+"arm_min_r_within_10deg": 34.61
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 19.28,
+"arm_min_r_within_10deg": 34.59
+},
+"arm_inside_r20": 452,
+"arm_min_r_anywhere": 19.21
+},
+{
+"Y": 292.0,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 19.24,
+"arm_min_r_within_10deg": 34.75
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 19.33,
+"arm_min_r_within_10deg": 34.75
+},
+"arm_inside_r20": 401,
+"arm_min_r_anywhere": 19.24
+},
+{
+"Y": 292.5,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 19.37,
+"arm_min_r_within_10deg": 34.87
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 19.42,
+"arm_min_r_within_10deg": 34.89
+},
+"arm_inside_r20": 309,
+"arm_min_r_anywhere": 19.37
+},
+{
+"Y": 293.0,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 19.58,
+"arm_min_r_within_10deg": 35.0
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 19.59,
+"arm_min_r_within_10deg": 35.01
+},
+"arm_inside_r20": 163,
+"arm_min_r_anywhere": 19.58
+},
+{
+"Y": 293.5,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 19.78,
+"arm_min_r_within_10deg": 35.14
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 19.77,
+"arm_min_r_within_10deg": 35.13
+},
+"arm_inside_r20": 59,
+"arm_min_r_anywhere": 19.77
+},
+{
+"Y": 294.0,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 20.06,
+"arm_min_r_within_10deg": 35.25
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 20.06,
+"arm_min_r_within_10deg": 35.25
+},
+"arm_inside_r20": 0,
+"arm_min_r_anywhere": 20.06
+},
+{
+"Y": 294.5,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.8
+],
+"arm_min_r_within_25deg": 20.44,
+"arm_min_r_within_10deg": 35.34
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.82
+],
+"arm_min_r_within_25deg": 20.46,
+"arm_min_r_within_10deg": 35.35
+},
+"arm_inside_r20": 0,
+"arm_min_r_anywhere": 20.44
+},
+{
+"Y": 295.0,
+"-X lug (theta 180)": {
+"lug_r": [
+18.79,
+29.81
+],
+"arm_min_r_within_25deg": 21.01,
+"arm_min_r_within_10deg": 35.44
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.81,
+29.83
+],
+"arm_min_r_within_25deg": 20.97,
+"arm_min_r_within_10deg": 35.43
+},
+"arm_inside_r20": 0,
+"arm_min_r_anywhere": 20.97
+},
+{
+"Y": 295.5,
+"-X lug (theta 180)": {
+"lug_r": [
+18.82,
+29.98
+],
+"arm_min_r_within_25deg": 21.85,
+"arm_min_r_within_10deg": 35.53
+},
+"+X lug (theta 0)": {
+"lug_r": [
+18.78,
+30.03
+],
+"arm_min_r_within_25deg": 21.87,
+"arm_min_r_within_10deg": 35.51
+},
+"arm_inside_r20": 0,
+"arm_min_r_anywhere": 21.85
+},
+{
+"Y": 296.0,
+"-X lug (theta 180)": {
+"lug_r": [
+0.1,
+35.4
+],
+"arm_min_r_within_25deg": 35.83,
+"arm_min_r_within_10deg": 35.83
+},
+"+X lug (theta 0)": {
+"lug_r": [
+0.1,
+35.4
+],
+"arm_min_r_within_25deg": 35.83,
+"arm_min_r_within_10deg": 35.83
+},
+"arm_inside_r20": 0,
+"arm_min_r_anywhere": 35.82
+}
+]
