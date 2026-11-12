@@ -1,0 +1,38 @@
+# The black box for one bus (PLAN "Observability"; conventions/logging.md section 8.6). candump-rotate runs candump and
+# writes /var/lib/robot/candump/<bus>-<UTC start>.log.zst, cut every hour, each bus's files kept 7 days.
+#
+# Independent of the runtime: it never sends, takes no lock, and runs whether or not the runtime does. Enable one per
+# skeleton bus (`systemctl enable candump@can0.service`); each starts when its interface appears and stops when it goes.
+
+[Unit]
+Description=CAN black box on %i
+BindsTo=sys-subsystem-net-devices-%i.device
+After=sys-subsystem-net-devices-%i.device
+RequiresMountsFor=/var/lib/robot
+# Keep restarting for as long as the interface exists.
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+User=robot
+Group=robot
+# candump: log format (-L), R or T per frame (-x), the kernel's drop count as DROPCOUNT lines (-d), still running while
+# the link is down (-D), an 8 MiB receive buffer (-r) so a slow disk costs no frames, and every data and error frame.
+ExecStart=/opt/robot/current/bin/candump-rotate --bus %i --dir /var/lib/robot/candump --cut-secs 3600 --keep-days 7 -- /usr/bin/candump -L -x -d -D -r 8388608 %i,0:0,#FFFFFFFF
+Restart=always
+RestartSec=2s
+# SIGTERM to both: candump ends, then candump-rotate closes its file.
+TimeoutStopSec=5s
+
+StateDirectory=robot/candump
+
+# Only for candump's -r: SO_RCVBUFFORCE past net.core.rmem_max. Without it candump takes the kernel's cap and goes on.
+AmbientCapabilities=CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_ADMIN
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=sys-subsystem-net-devices-%i.device

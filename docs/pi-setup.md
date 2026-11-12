@@ -262,6 +262,8 @@ the SPI device path, in `deploy/` **(→ deploy/)**.
 sudo apt install -y can-utils rt-tests stress-ng
 ```
 
+`can-utils` stays installed: its `candump` is what the black box runs (`candump@<bus>.service`, logging.md section 8.6).
+
 `rt-tests` gives `cyclictest`. Set the CPU governor to `performance` when measuring (it resets at reboot)
 **(→ deploy/)**:
 

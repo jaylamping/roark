@@ -3,7 +3,6 @@
 # Not here yet, each with its own PR:
 # - After=/BindsTo= on each bus's device unit: comes with the .link and .network files when the adapter is named by its
 #   serial (PLAN step 8).
-# - The candump@<bus> black box: comes with its rotator (conventions/logging.md section 8.6).
 
 [Unit]
 Description=Robot runtime: the only CAN writer
