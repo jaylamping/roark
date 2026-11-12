@@ -136,7 +136,12 @@ pub(crate) fn run(
                 // No clock to keep the schedule: end the run, a broken control side (`host.hang`). The buses stop
                 // their drives on their own schedule.
                 exit.error = Some(e);
-                end_run(&links.end, &links.stops, Cause::Rule(RuleId::HostHang));
+                end_run(
+                    &links.end,
+                    &links.stops,
+                    Cause::Rule(RuleId::HostHang),
+                    end_seen,
+                );
             } else {
                 let current = schedule.current(phase);
                 if current > n {
@@ -152,7 +157,7 @@ pub(crate) fn run(
         links.events.at(now_ns);
         // Once set, each bus stops every limb and ends once a snapshot with every limb at rest is taken, which the
         // reads below do.
-        read(plans, n, &mut links, &mut newest, &mut exit);
+        read(plans, n, &mut links, &mut newest, &mut exit, end_seen);
         for (bus, ends) in links.buses.iter().enumerate() {
             if let Some(e) = ended.get_mut(bus) {
                 *e = ends.snapshots.is_abandoned();
@@ -160,7 +165,7 @@ pub(crate) fn run(
         }
         if ended.iter().all(|e| *e) {
             // A bus may have answered a clear between its last read and its end.
-            read(plans, n, &mut links, &mut newest, &mut exit);
+            read(plans, n, &mut links, &mut newest, &mut exit, end_seen);
             record_end(&links.stops, &mut links.events, &exit, &mut end_seen);
             refuse_clears(plans, &mut links, &mut exit);
             refuse_enables(&mut enabler, &mut links, &mut exit);
@@ -289,11 +294,13 @@ fn send_orders(plans: &[BusPlan], links: &mut ControlLinks, replies_dropped: &mu
     )
 }
 
-/// Control ends the run, the robot's stop asked under `cause`; when the owner had already ended it, its shutdown is
-/// asked too, since [`record_end`] then sees control's cause and won't.
-fn end_run(end: &AtomicBool, stops: &StopLatch, cause: Cause) {
+/// Control ends the run, the robot's stop asked under `cause`. When the flag was already set and no pass has seen the
+/// end yet (`seen`), only the owner can have set it: its shutdown is asked too, since [`record_end`] then sees control's
+/// cause and won't. Every store control makes is followed by [`record_end`] in the same pass, so a set flag after that
+/// is control's own.
+fn end_run(end: &AtomicBool, stops: &StopLatch, cause: Cause, seen: bool) {
     stops.ask(Scope::Robot, cause);
-    if end.swap(true, Ordering::AcqRel) {
+    if end.swap(true, Ordering::AcqRel) && !seen {
         stops.ask(Scope::Robot, Cause::Shutdown);
     }
 }
@@ -398,13 +405,14 @@ const fn add(exit: &mut ControlExit, counts: Counts) {
 }
 
 /// Each bus's newest snapshot (kept in `latest`) and re-arm answers, handed on; a bus that ended before the run did ends
-/// the run.
+/// the run (`end_seen`: whether a pass has seen the end already).
 fn read(
     plans: &[BusPlan],
     n: u64,
     links: &mut ControlLinks,
     latest: &mut [Option<Snapshot>],
     exit: &mut ControlExit,
+    end_seen: bool,
 ) {
     for (bus, ends) in links.buses.iter_mut().enumerate() {
         let mut newest = None;
@@ -442,7 +450,12 @@ fn read(
         if ended && !ending {
             exit.bus_ended.get_or_insert(bus);
             // A bus thread that ended stops the run (`host.bus`); the bus is named in the exit.
-            end_run(&links.end, &links.stops, Cause::Rule(RuleId::HostBus));
+            end_run(
+                &links.end,
+                &links.stops,
+                Cause::Rule(RuleId::HostBus),
+                end_seen,
+            );
         }
     }
 }
@@ -469,172 +482,4 @@ fn push_enable_reply(
 }
 
 #[cfg(test)]
-mod tests {
-    use rtrb::RingBuffer;
-    use skeleton::LimbName;
-
-    use super::*;
-    use crate::clock::mono_now;
-
-    /// Guards: safety - a bus thread that ends before the run does (a socket or clock error) ends the whole run: control
-    /// sets the end, so every other bus stops its limbs, names the bus that ended, refuses the clears that come in while
-    /// the run ends, and says it has finished, which is what wakes the binary to end the runtime and exit with failure
-    /// (PLAN item 3: the runtime never runs blind).
-    #[test]
-    fn a_bus_that_ends_on_its_own_ends_the_run() {
-        let skeleton = skeleton::parse(include_str!("../tests/skeleton.yaml")).unwrap();
-        let plans = crate::plan(&skeleton).unwrap();
-        let timing = Timing::at_hz(250);
-        let schedule = Schedule::new(mono_now(), timing.period_ns).unwrap();
-        let mut buses = Vec::new();
-        let mut orders = Vec::new();
-        // The bus threads' ends: dropping one is that thread ending.
-        let mut threads = Vec::new();
-        for _ in &plans {
-            let (commands, commands_rx) = RingBuffer::new(4);
-            let (snapshots_tx, snapshots) = RingBuffer::<Snapshot>::new(8);
-            let (orders_tx, orders_rx) = RingBuffer::new(16);
-            let (rearmed_tx, rearmed) = RingBuffer::<Rearmed>::new(16);
-            buses.push(BusEnds {
-                commands,
-                snapshots,
-                rearmed,
-            });
-            orders.push(BusOrders::new(orders_tx));
-            threads.push((commands_rx, snapshots_tx, orders_rx, rearmed_tx));
-        }
-        let end = Arc::new(AtomicBool::new(false));
-        let finished = Arc::new(AtomicBool::new(false));
-        let (mut clears, clears_rx) = RingBuffer::new(4);
-        let (replies_tx, mut replies) = RingBuffer::new(4);
-        let roster = Roster::new(&skeleton, &plans).unwrap();
-        let links = ControlLinks {
-            buses,
-            orders,
-            stops: Arc::new(StopLatch::default()),
-            clears: clears_rx,
-            replies: replies_tx,
-            events: Events::new(None, &roster),
-            roster,
-            slow: Vec::new(),
-            enables: RingBuffer::new(1).1,
-            enable_replies: RingBuffer::new(1).0,
-            health: telemetry::Health::default(),
-            views: None,
-            end: Arc::clone(&end),
-            finished: Arc::clone(&finished),
-        };
-        let control = std::thread::spawn({
-            let plans = plans.clone();
-            move || run(&plans, &schedule, 0, timing, links)
-        });
-        // can1 ends on its own; control ends the run for it.
-        drop(threads.pop());
-        // A limit on every wait (rust.md section 4): far past the few ticks control needs.
-        let deadline = mono_now() + std::time::Duration::from_secs(10);
-        while !end.load(Ordering::Acquire) {
-            assert!(mono_now() < deadline, "control never ended the run");
-            std::thread::yield_now();
-        }
-        // A clear while the run ends is refused, not lost.
-        assert!(
-            clears
-                .push(Clear {
-                    tag: 5,
-                    limb: LimbName::RightArm
-                })
-                .is_ok()
-        );
-        // One refusal per bus the right arm is on.
-        let mut got = Vec::new();
-        while got.len() < 2 {
-            assert!(mono_now() < deadline, "the clear wasn't refused: {got:?}");
-            if let Ok(r) = replies.pop() {
-                got.push(r);
-            }
-            std::thread::yield_now();
-        }
-        assert_eq!(
-            got,
-            [0, 1].map(|bus| Reply {
-                tag: 5,
-                limb: LimbName::RightArm,
-                bus: Some(bus),
-                outcome: Err(ClearRefused::Ending)
-            })
-        );
-        assert!(!finished.load(Ordering::Acquire));
-        // can0 ends as asked; control finishes.
-        drop(threads);
-        let exit = control.join().unwrap();
-        assert_eq!(exit.bus_ended, Some(1));
-        assert_eq!(exit.clears_ending, 1);
-        assert!(exit.error.is_none());
-        assert!(finished.load(Ordering::Acquire));
-    }
-
-    /// Guards: safety - the run's end is recorded as one robot stop per cause that ended it: `host.bus` for a bus thread
-    /// that ended, `host.hang` for a lost clock, `shutdown` for the owner's end, and both when the owner had already
-    /// ended the run as control decided to; never a shutdown that didn't happen (safety.md section 8).
-    #[test]
-    fn the_run_ends_recorded_under_each_cause_that_ended_it() {
-        let skeleton = skeleton::parse(include_str!("../tests/skeleton.yaml")).unwrap();
-        let plans = crate::plan(&skeleton).unwrap();
-        let roster = Roster::new(&skeleton, &plans).unwrap();
-        let bus = || ControlExit {
-            bus_ended: Some(1),
-            ..ControlExit::default()
-        };
-        let clock = || ControlExit {
-            error: Some(io::Error::other("clock")),
-            ..ControlExit::default()
-        };
-        let host = |rule: RuleId| (Some(rule.as_str().to_owned()), None);
-        let reason = |r: &str| (None, Some(r.to_owned()));
-        let cases = [
-            (
-                Some(RuleId::HostBus),
-                false,
-                bus(),
-                vec![host(RuleId::HostBus)],
-            ),
-            (
-                Some(RuleId::HostHang),
-                false,
-                clock(),
-                vec![host(RuleId::HostHang)],
-            ),
-            (None, true, ControlExit::default(), vec![reason("shutdown")]),
-            (
-                Some(RuleId::HostBus),
-                true,
-                bus(),
-                vec![reason("shutdown"), host(RuleId::HostBus)],
-            ),
-        ];
-        for (decided, owner_ended, exit, expected) in cases {
-            let mut recorded = crate::events::TestRecording::new("end", &plans);
-            let mut events = recorded.events(&roster);
-            let stops = StopLatch::default();
-            let end = AtomicBool::new(owner_ended);
-            if let Some(rule) = decided {
-                end_run(&end, &stops, Cause::Rule(rule));
-            }
-            let mut seen = false;
-            record_end(&stops, &mut events, &exit, &mut seen);
-            // A later pass records nothing more.
-            record_end(&stops, &mut events, &exit, &mut seen);
-            drop(events);
-            let got: Vec<_> = recorded
-                .close()
-                .into_iter()
-                .map(|e| {
-                    assert_eq!(e.kind, telemetry::EventKind::RobotStopped);
-                    (e.rule, e.reason)
-                })
-                .collect();
-            assert_eq!(got, expected, "{decided:?}, owner ended: {owner_ended}");
-            assert!(end.load(Ordering::Acquire));
-        }
-    }
-}
+mod tests;

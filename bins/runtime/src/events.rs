@@ -188,6 +188,8 @@ impl TestRecording {
     /// A fresh session named `name`, for the test robot's buses.
     pub(crate) fn new(name: &str, plans: &[crate::BusPlan]) -> Self {
         let root = std::env::temp_dir().join(format!("runtime-{name}-{}", std::process::id()));
+        // A run killed before its drop left its directory: start clean.
+        let _ = std::fs::remove_dir_all(&root);
         let info = telemetry::SessionInfo {
             git_revision: "test".to_owned(),
             operator: "test".to_owned(),
