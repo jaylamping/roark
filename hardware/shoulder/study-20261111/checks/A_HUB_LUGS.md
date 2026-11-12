@@ -324,8 +324,73 @@ Case A re-run with a 0.5 × 45° chamfer on the six screw-hole rims at the RS02 
 - **Why it got worse:** the chamfer takes away seat area right round each hole. The clamped contact pressure moves out
   onto the chamfer's edge and concentrates there.
 - **What does help is preload.** Ah, at 345 N (half the 690 N of A), gives 1.64 at the hub top with no geometry change.
-- **Recommendation:** keep the rev C+ hub top as it is, and specify the six hub M4 at **about 0.35 kN preload**: roughly
-  0.4-0.5 N·m dry on M4 into the dummy-equivalent threads, to be confirmed on the bench. Not "tight".
+- **Recommendation:** keep the rev C+ hub top as it is, and specify the six hub M4 at **about 0.35 kN preload**: about
+  0.28-0.3 N·m dry (see the paper check below). Not "tight". Low preload alone does not hold the yaw torque, though:
+  see the fitted shoulder screws below.
 - A counterbore relief would move contact away from the rims in the same way as the chamfer, so I expect the same
   result. Not tried.
+
+### Paper check: does the RS02-to-hub joint hold at low preload? (2026-11-12)
+
+**The joint:**
+- Six M4 on PCD 24 (r 12), through a 21.8 mm PETG boss. Bearing under the head: 46.3 mm².
+- The seat is the step ring on the RS02 output: r 19.5-23.4. Friction radius 21.5.
+- **Loads from check (a):**
+  - 310 N axial pull
+  - 23 N·m bending (doubled, 46 N·m, as a stop/tip-over stand-in)
+  - RS02 peak yaw torque: 17 N·m (RS02 manual 260713 §4.1.2, MIT T ±17)
+- **Preload:**
+  - 0.35 kN per screw installed (2.1 kN in total)
+  - about 0.2 kN after PETG creep (the same "about half" relaxation assumed for case Ah)
+- **Friction:** PETG on aluminium, μ 0.25 dry (0.2-0.35).
+
+**Separation (prying):**
+- **Rigid tip-over about the seat's outer edge:** the joint opens at (6 F_p − 310 N) × 23.4 mm.
+
+| Preload per screw | Opens at | Margin at 23 N·m | Margin at 46 N·m |
+|---|---|---|---|
+| 0.35 kN | 41.9 N·m | 1.82 | 0.91 |
+| 0.2 kN (relaxed) | 20.8 N·m | 0.91 | 0.45 |
+
+- **This is conservative.** The steel screw (85 kN/mm) is about 20 times stiffer than the PETG boss it clamps (4.0 kN/mm).
+  So external tension takes only about 5% of its value off the clamp, and the screws carry almost all of it: about
+  0.65 kN extra per screw at 23 N·m, well within M4. The real opening moment is several times the rigid figure.
+- **Verdict:** gapping is not the limit at 23 N·m. It is marginal only for a doubled stop moment on a fully crept joint.
+
+**Slip (yaw torque): this is where low preload fails.**
+
+| Preload per screw | Friction torque | Margin at 17 N·m |
+|---|---|---|
+| 0.35 kN | 11.3 N·m | **0.66** |
+| 0.2 kN (relaxed) | 6.5 N·m | **0.38** |
+| 0.69 kN | 22.3 N·m | 1.31, but only until it creeps |
+
+- After slipping, the screws bear on the hub's hole walls: 236 N each, 2.7 MPa, which is fine. But that comes **after up
+  to 0.72° of yaw backlash** (0.15 mm radial clearance in the Ø4.3 holes at r 12). That is unacceptable for the yaw
+  joint's position control.
+- **The spigot centres the hub radially but locates nothing in rotation.**
+
+**What does hold it:**
+1. **Fitted shoulder screws: recommended.**
+   - ISO 7379, Ø5 shoulder, M4 thread, shoulder 20 mm (shorter than the 21.8 mm boss, so the head still clamps the hub).
+   - In holes printed Ø4.8 and reamed to Ø5.0.
+   - Zero backlash. Each shoulder carries the 236 N in bearing on a Ø5 × 20 wall: 2.4 MPa.
+   - Preload then only has to resist prying, so the low 0.35 kN is fine.
+   - Two of the six at 180° are enough; six gives margin.
+   - Cost: about 1 each. **The hub screw holes are in the frozen interface,** so this needs the arm thread's agreement:
+     Ø4.3 → Ø5.0 reamed.
+2. **Dowel pins** (Ø3 h6) in extra holes, if the RS02 output flange has spare tapped or plain holes. Its vendor model
+   should be checked for them. This keeps the six screw holes as they are.
+3. **Not enough on its own: larger washers to raise the allowable preload.** The boss OD (8.8 mm) limits the bearing
+   area. Even at 0.69 kN the friction margin is only 1.31, and creep takes it away.
+
+**Setting the torque in practice:**
+- With K ≈ 0.2 (dry M4 in the RS02's aluminium threads), 0.35 kN ≈ **0.28 N·m**. My earlier "0.4-0.5 N·m" was too high:
+  that would be about 0.5-0.6 kN.
+- **Tool:** a hobby or precision torque screwdriver covering 0.1-0.6 N·m, for example the Wiha TorqueVario-S
+  0.1-0.6 N·m, or a fixed 0.3 N·m preset driver.
+- Set 0.3 N·m, with medium threadlocker. Re-torque once after 24 h; PETG creeps most in the first day.
+- A turn-of-nut rule from snug is not reliable here: the PETG boss is soft and its stiffness varies with print settings.
+- If a coupon is wanted: a printed boss and an M4 into an aluminium block on a kitchen scale under a lever. It only
+  calibrates the screwdriver; it doesn't replace it.
 
