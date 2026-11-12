@@ -1,10 +1,13 @@
-//! Slow requests: parameter reads, allowlisted writes and get-ID, for preflight and the once-a-second reads. Each waits
+//! Slow requests: parameter reads, allowlisted writes and get-ID, for preflight and the once-a-second reads, and a scan's
+//! probes and the set-ID, which go only while every limb on the bus is idle. Each waits
 //! in one of [`SLOW_SLOTS`], is cancelled or expired as a slack opens ([`BusTick::open_slack`]), goes alone in the slack
 //! after the collect deadline ([`BusTick::slow_send`]), is answered or timed out by the next tick's start, and ends in
 //! one [`SlowResult`]. Which requests are refused, what answers each kind and what a write's answer proves are in
 //! crates/can/README.md, Slow requests; the rule is conventions/can.md section 2.
 
-use robstride::{EchoKind, Frame, Param, ParamOutcome, Uid, Write, encode};
+use robstride::{DeviceId, EchoKind, Frame, Param, ParamOutcome, Uid, Write, encode};
+
+mod by_id;
 
 use crate::batch::batch_may_carry;
 use crate::tick::{BusTick, Reply};
@@ -13,12 +16,13 @@ use crate::types::{LimbState, SendOutcome};
 /// Slow requests a bus holds at once, queued, in flight or with a result not yet taken.
 pub const SLOW_SLOTS: usize = 8;
 
-/// A slow request for the drive in `slot`.
+/// A slow request: for the drive in `slot`, or for a probe or set-ID, for the IDs its kind names.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SlowRequest {
     /// The requester's own tag, handed back with the result.
     pub tag: u32,
-    /// The drive's slot on this bus.
+    /// The drive's slot on this bus. A probe or set-ID names its IDs in its kind and doesn't read it; its result hands
+    /// it back all the same.
     pub slot: usize,
     /// What to ask.
     pub kind: SlowKind,
@@ -33,6 +37,23 @@ pub enum SlowKind {
     Write(Write),
     /// The drive's MCU UID (type 0).
     GetId,
+    /// A type 0 to `id`, which needn't be in the bus's drive table: one step of a scan (PLAN item 3, Scan and identity).
+    /// Every type-0 reply from `id` read before the next tick's start answers it ([`SlowOutcome::Found`]); none, in a
+    /// window that can be trusted, is [`SlowOutcome::TimedOut`]: no drive answers at that ID. A window that can't be
+    /// trusted ends [`SlowOutcome::Unsure`] whatever it heard.
+    Probe(DeviceId),
+    /// Type 7: give the drive at `old` the ID `new`. PLAN item 2 allows it only from the set-ID command with exactly
+    /// one drive answering on the bus; the requester proves that with a scan, the bus only that every limb is idle.
+    /// Answered like a probe of `new`: the drive answers with its type-0 frame (manual §4.1.5, "Answer motor broadcast
+    /// frame"), assumed from its new ID since the change is "effective immediately"; the manual doesn't say, and the
+    /// bench checks it. A reply only from the old ID ends [`SlowOutcome::TimedOut`] (or `Unsure`, like a probe). Either
+    /// way the requester probes both IDs after to see what took.
+    SetId {
+        /// The drive's ID now.
+        old: DeviceId,
+        /// The ID to give it.
+        new: DeviceId,
+    },
 }
 
 /// What became of a slow request.
@@ -53,6 +74,22 @@ pub enum SlowOutcome {
     Read(ParamOutcome),
     /// The drive's UID.
     Identity(Uid),
+    /// A probe's or set-ID's answers, every type-0 reply from its ID read before the next tick's start: the first UID,
+    /// and another if a second drive with a different UID answered on the same ID. On a real bus two drives answering
+    /// together collide, which is assumed to show as an error frame and so end the window [`Self::Unsure`]; the bench
+    /// checks that. Until it does, `other: None` is no proof that one drive holds the ID.
+    Found {
+        /// The first answer's UID.
+        uid: Uid,
+        /// The first UID that differs from `uid`, if any: two drives share the ID.
+        other: Option<Uid>,
+    },
+    /// A probe's or set-ID's window closed on reads that can't be trusted to hold every answer: an error frame was read
+    /// in it (assumed, until the bench shows it, to be how two drives answering one ID collide on a real bus), a frame
+    /// read in it carried a new kernel overflow count, the drain that closed it read a backlog or left frames unread, or
+    /// the bus failed. What answered can't be told. A probe may be sent again; after a set-ID the requester probes
+    /// both IDs and never sends the type 7 again.
+    Unsure,
     /// The drive sent a status after the write. That says nothing about the value: read it back.
     WriteAnswered,
     /// Sent, but no reply was read by the next tick's start.
@@ -107,6 +144,10 @@ pub enum SlowRefusal {
     /// The bus has a latched error.
     #[error("the bus has failed")]
     BusFailed,
+    /// A probe or set-ID while a limb on the bus isn't idle (running, stopping, stopped or due to stop, or a stop of
+    /// it asked for): one goes only while nothing on the bus is enabled or being stopped.
+    #[error("a limb on the bus isn't idle")]
+    BusNotIdle,
     /// Every slot holds a request or a result not yet taken.
     #[error("the slow queue is full")]
     QueueFull,
@@ -122,6 +163,9 @@ pub(crate) struct SlowEntry {
     submitted_tick: u64,
     request: SlowRequest,
     state: SlowState,
+    /// A probe or set-ID in flight whose window can no longer be trusted to hold every answer (an error frame, or a
+    /// frame carrying a new kernel overflow count, read in it): it ends [`SlowOutcome::Unsure`].
+    disturbed: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -131,6 +175,12 @@ enum SlowState {
     Sending,
     /// The socket took it; the reply is due by the next tick's start.
     Waiting,
+    /// A probe or set-ID with an answer, still taking more until the next tick's start, when it ends `Found` (or
+    /// `Unsure`, [`BusTick::window_closed`]).
+    Heard {
+        uid: Uid,
+        other: Option<Uid>,
+    },
     Done(SlowOutcome),
 }
 
@@ -138,7 +188,7 @@ impl SlowState {
     /// Handed to the shell or taken by the socket, with no result yet: the one exchange a bus has in flight.
     const fn in_flight(self) -> bool {
         match self {
-            Self::Sending | Self::Waiting => true,
+            Self::Sending | Self::Waiting | Self::Heard { .. } => true,
             Self::Queued | Self::Done(_) => false,
         }
     }
@@ -161,6 +211,7 @@ impl BusTick {
             submitted_tick: self.tick,
             request,
             state: SlowState::Queued,
+            disturbed: false,
         });
         self.slow_seq += 1;
         Ok(())
@@ -222,15 +273,18 @@ impl BusTick {
             self.finish_slow(i, SlowOutcome::Refused(refusal));
             return None;
         }
-        let device = self
-            .drives
-            .get(entry.request.slot)
-            .and_then(Option::as_ref)?
-            .device;
+        let device = || {
+            self.drives
+                .get(entry.request.slot)
+                .and_then(Option::as_ref)
+                .map(|d| d.device)
+        };
         let frame = match entry.request.kind {
-            SlowKind::Read(param) => encode::param_read(device, param),
+            SlowKind::Read(param) => encode::param_read(device()?, param),
             SlowKind::Write(write) => encode::param_write(&write),
-            SlowKind::GetId => encode::get_id(device),
+            SlowKind::GetId => encode::get_id(device()?),
+            SlowKind::Probe(id) => encode::get_id(id),
+            SlowKind::SetId { old, new } => encode::set_id(old, new),
         };
         if let Some(e) = self.slow.get_mut(i).and_then(Option::as_mut) {
             e.state = SlowState::Sending;
@@ -246,12 +300,34 @@ impl BusTick {
         };
         match outcome {
             SendOutcome::Sent => {
-                let slot = self.slow.get(i).copied().flatten().map(|e| e.request.slot);
-                if let Some(d) = slot
-                    .and_then(|s| self.drives.get_mut(s))
-                    .and_then(Option::as_mut)
-                {
-                    d.last_sent_ns = Some(sent_ns);
+                // Every drive in the table the frame may have reached: a re-arm counts the drives' timeout from it. A
+                // set-ID's drive answers on its new ID from then on, so a drive the table has there counts as reached.
+                let reached = match self.slow.get(i).copied().flatten().map(|e| e.request) {
+                    Some(SlowRequest {
+                        kind: SlowKind::Read(_) | SlowKind::Write(_) | SlowKind::GetId,
+                        slot,
+                        ..
+                    }) => self
+                        .drives
+                        .get(slot)
+                        .and_then(Option::as_ref)
+                        .map(|d| (d.device, None)),
+                    Some(SlowRequest {
+                        kind: SlowKind::Probe(id),
+                        ..
+                    }) => Some((id, None)),
+                    Some(SlowRequest {
+                        kind: SlowKind::SetId { old, new },
+                        ..
+                    }) => Some((old, Some(new))),
+                    None => None,
+                };
+                if let Some((id, new)) = reached {
+                    for d in self.drives.iter_mut().flatten() {
+                        if d.device == id || Some(d.device) == new {
+                            d.last_sent_ns = Some(sent_ns);
+                        }
+                    }
                 }
                 if let Some(e) = self.slow.get_mut(i).and_then(Option::as_mut) {
                     e.state = SlowState::Waiting;
@@ -282,7 +358,10 @@ impl BusTick {
                 let e = e.as_ref()?;
                 let outcome = match e.state {
                     SlowState::Done(outcome) => outcome,
-                    SlowState::Queued | SlowState::Sending | SlowState::Waiting => return None,
+                    SlowState::Queued
+                    | SlowState::Sending
+                    | SlowState::Waiting
+                    | SlowState::Heard { .. } => return None,
                 };
                 let result = SlowResult {
                     tag: e.request.tag,
@@ -299,7 +378,8 @@ impl BusTick {
         Some(result)
     }
 
-    /// The thread is ending: every request held ends now. One in flight has timed out; queued ones are refused with
+    /// The thread is ending: every request held ends now. One in flight ends as its window closing would end it
+    /// (timed out, or a probe's or set-ID's `Found`, `Unsure` or `TimedOut`); queued ones are refused with
     /// the returned reason ([`SlowRefusal::BusFailed`] on a failed bus, else [`SlowRefusal::Ended`]), which the shell
     /// gives the requests still in its ring too. Take the results with [`Self::take_slow_result`].
     pub fn end_slow(&mut self) -> SlowRefusal {
@@ -309,10 +389,15 @@ impl BusTick {
             SlowRefusal::Ended
         };
         for i in 0..SLOW_SLOTS {
-            let outcome = match self.slow.get(i).copied().flatten().map(|e| e.state) {
-                Some(SlowState::Queued) => SlowOutcome::Refused(refusal),
-                Some(SlowState::Sending | SlowState::Waiting) => SlowOutcome::TimedOut,
-                Some(SlowState::Done(_)) | None => continue,
+            let Some(entry) = self.slow.get(i).copied().flatten() else {
+                continue;
+            };
+            let outcome = match entry.state {
+                SlowState::Queued => SlowOutcome::Refused(refusal),
+                SlowState::Sending | SlowState::Waiting | SlowState::Heard { .. } => {
+                    self.window_closed(&entry)
+                }
+                SlowState::Done(_) => continue,
             };
             self.finish_slow(i, outcome);
         }
@@ -325,10 +410,14 @@ impl BusTick {
         self.counters.slow_results_dropped += 1;
     }
 
-    /// At a tick's start: a slow request still unanswered has timed out.
+    /// At a tick's start: a slow request still unanswered has timed out, and a probe's or set-ID's window closes
+    /// ([`Self::window_closed`]).
     pub(crate) fn time_out_slow(&mut self) {
-        if let Some(i) = self.slow_index(|e| e.state.in_flight()) {
-            self.finish_slow(i, SlowOutcome::TimedOut);
+        if let Some(i) = self.slow_index(|e| e.state.in_flight())
+            && let Some(entry) = self.slow.get(i).copied().flatten()
+        {
+            let outcome = self.window_closed(&entry);
+            self.finish_slow(i, outcome);
         }
     }
 
@@ -382,6 +471,9 @@ impl BusTick {
     }
 
     fn slow_refusal(&self, request: &SlowRequest) -> Result<(), SlowRefusal> {
+        if request.kind.answer_id().is_some() {
+            return self.bus_request_refusal();
+        }
         let drive = self
             .drives
             .get(request.slot)
@@ -406,11 +498,7 @@ impl BusTick {
         let Some(limb) = self.limbs.get(drive.limb).and_then(Option::as_ref) else {
             return Err(SlowRefusal::LimbStopped);
         };
-        // A stop asked for but not yet taken counts: it is taken at the next tick's start, before any send.
-        if self.stop_pending(drive.limb)
-            || !limb.state.takes_commands()
-            || self.limb_stop_due(drive.limb).is_some()
-        {
+        if self.limb_halting(drive.limb, limb.state) {
             return Err(SlowRefusal::LimbStopped);
         }
         if self.silent >= self.timing.silent_ticks {
@@ -430,6 +518,13 @@ impl BusTick {
             }
         }
         Ok(())
+    }
+
+    /// Whether limb `limb`, in `state`, is stopping, stopped or due to stop: a stop asked for and not yet taken (it is
+    /// taken at the next tick's start, before any send) or what the veto stops on, on any drive of it. Every slow
+    /// request's refusal asks this, so a new stop condition reaches them all.
+    fn limb_halting(&self, limb: usize, state: LimbState) -> bool {
+        self.stop_pending(limb) || !state.takes_commands() || self.limb_stop_due(limb).is_some()
     }
 
     fn slow_index(&self, pick: impl Fn(&SlowEntry) -> bool) -> Option<usize> {

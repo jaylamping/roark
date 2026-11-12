@@ -33,7 +33,8 @@ something that answers like the real drives before any real drive is enabled.
 - **The `sim-drive` binary** simulates every drive the skeleton puts on each bus, one thread per bus.
 
 Where neither the manuals nor a bench capture says what a drive does, the sim says so in a comment: it answers nothing to
-set-ID, the version query or the reporting switch, and most parameter defaults are sim values. An RS00 answers no
+the version query or the reporting switch, answers a set-ID from its new ID (the manual says a type-0 frame, not from
+which ID), and most parameter defaults are sim values. An RS00 answers no
 status until its MIT scales are settled (PLAN item 2); `dropped` counts what it couldn't send. A fault bit leaves the
 mode as it is: no capture says a drive changes mode on a fault. Bus-level faults (bus-off, an interface going away) are
 the bus's, not a drive's.

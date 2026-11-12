@@ -6,12 +6,16 @@
 //! The binaries come from the build `scripts/sim.sh` makes before it runs the suite.
 #![cfg(target_os = "linux")]
 
+#[expect(dead_code, reason = "each test file uses some of the shared helpers")]
+mod common;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
+use common::{binary, scratch};
 use robstride::drive::{self, Command as HostCommand};
 use robstride::{DeviceId, Inbound, Mode, Reporting, Uid, decode, encode};
 use sim_drive::{SimDrive, ensure_vcan, serve};
@@ -24,30 +28,6 @@ use socketcan::{
 /// The runtime's test robot, never the live skeleton (testing.md rule 3).
 fn skeleton_path() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bins/runtime/tests/skeleton.yaml")
-}
-
-/// A workspace binary from the same build as this test: `target/<profile>/<name>`, next to this test's `deps/`.
-#[expect(clippy::unwrap_used, reason = "test helper: a test binary has a path")]
-fn binary(name: &str) -> PathBuf {
-    let exe = std::env::current_exe().unwrap();
-    let path = exe.parent().and_then(Path::parent).unwrap().join(name);
-    assert!(
-        path.is_file(),
-        "{} is missing: run the suite with scripts/sim.sh, which builds the binaries first",
-        path.display()
-    );
-    path
-}
-
-/// A scratch directory for this test.
-#[expect(
-    clippy::unwrap_used,
-    reason = "test helper: the temp directory is writable"
-)]
-fn scratch(test: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("sim-suite-{test}-{}", std::process::id()));
-    std::fs::create_dir_all(&dir).unwrap();
-    dir
 }
 
 /// The simulated drives for the skeleton's joints on `bus`, but for `silent`.

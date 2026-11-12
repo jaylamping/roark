@@ -201,8 +201,14 @@ impl SimDrive {
                     self.blackout = Some((start, start + self.rng.between(ZERO_BLACKOUT_LEN_US)));
                 }
             }
-            // No capture or manual line says what a drive answers to these, so the sim answers nothing.
-            Command::SetId { new } => self.drive = Drive::new(new, self.drive.model()),
+            // The new ID takes effect at once and the drive answers with its type-0 frame (manual §4.1.5, "Answer motor
+            // broadcast frame"), sent here from the new ID. Which ID a real drive answers from is for the bench.
+            Command::SetId { new } => {
+                self.drive = Drive::new(new, self.drive.model());
+                self.outbox
+                    .send(now, Some(wire::identity(self.id(), self.uid)));
+            }
+            // No capture or manual line says what a drive answers to this, so the sim answers nothing.
             Command::VersionQuery => {}
             Command::ParamRead(param) => {
                 let reply = self

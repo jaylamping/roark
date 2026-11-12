@@ -14,6 +14,7 @@ impl BusTick {
     pub fn on_frame(&mut self, read_ns: u64, frame: &FrameRecord) {
         if frame.error {
             self.counters.error_frames += 1;
+            self.slow_disturbed();
             // Of what an error frame can say, only bus-off stops the bus for good: the adapter may restart the bus by
             // itself (PLAN.md item 3, item 6 Bus-off row). The interface errors come from the socket, through
             // `lost_bus`; the controller's state is read below.
@@ -104,14 +105,20 @@ impl BusTick {
                 }
                 None => self.counters.unexpected += 1,
             },
-            Ok(Inbound::Identity { device, uid }) => match self.slot_index(device) {
-                Some(slot) => {
-                    if !self.slow_identity_reply(slot, uid) {
-                        self.counters.unsolicited += 1;
-                    }
+            Ok(Inbound::Identity { device, uid }) => {
+                // A probe or set-ID in flight takes a type-0 reply from its ID, whether or not the ID is in the table.
+                if self.slow_found_reply(device, uid) {
+                    return;
                 }
-                None => self.counters.unexpected += 1,
-            },
+                match self.slot_index(device) {
+                    Some(slot) => {
+                        if !self.slow_identity_reply(slot, uid) {
+                            self.counters.unsolicited += 1;
+                        }
+                    }
+                    None => self.counters.unexpected += 1,
+                }
+            }
         }
     }
 

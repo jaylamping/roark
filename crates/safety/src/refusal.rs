@@ -331,9 +331,11 @@ impl Unanswered {
                     "The bus failed or its thread ended: check the adapter and cable, then restart the runtime"
                 }
                 SlowRefusal::QueueFull => "The bus was too busy: run preflight again",
-                SlowRefusal::NoSuchSlot | SlowRefusal::WrongTarget | SlowRefusal::BatchOnly => {
-                    "A runtime bug: stop and report it with the log"
-                }
+                // Preflight asks only its drive's reads, writes and get-ID, never a probe or set-ID.
+                SlowRefusal::NoSuchSlot
+                | SlowRefusal::WrongTarget
+                | SlowRefusal::BatchOnly
+                | SlowRefusal::BusNotIdle => "A runtime bug: stop and report it with the log",
             },
         }
     }
