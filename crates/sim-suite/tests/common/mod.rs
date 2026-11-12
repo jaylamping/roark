@@ -105,7 +105,7 @@ impl Drop for Shutdown<'_> {
     }
 }
 
-/// Control's events in the session's file, in order (`/events`).
+/// Control's events in the session's file, in order (`/event`).
 #[expect(
     clippy::unwrap_used,
     reason = "test helper: a session file that doesn't read back is the test failing"
@@ -115,32 +115,37 @@ pub(crate) fn events(session: &Path) -> Vec<telemetry::wire::Event> {
     mcap::MessageStream::new(&bytes)
         .unwrap()
         .map(Result::unwrap)
-        .filter(|m| m.channel.topic == "/events")
+        .filter(|m| m.channel.topic == "/event")
         .map(|m| serde_json::from_slice(&m.data).unwrap())
         .collect()
 }
 
-/// The events of `kind`, each as its limb, joint, rule, reason and tag.
-pub(crate) type Brief<'a> = (
-    Option<&'a str>,
-    Option<&'a str>,
-    Option<&'a str>,
-    Option<&'a str>,
-    Option<u64>,
-);
+/// An event's fields, borrowed, for comparing.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Brief<'a> {
+    pub(crate) limb: Option<&'a str>,
+    pub(crate) joint: Option<&'a str>,
+    pub(crate) bus: Option<&'a str>,
+    pub(crate) rule: Option<&'a str>,
+    pub(crate) reason: Option<&'a str>,
+    pub(crate) tag: Option<u64>,
+}
 
-pub(crate) fn of_kind<'a>(events: &'a [telemetry::wire::Event], kind: &str) -> Vec<Brief<'a>> {
+/// The events of `kind`, in order.
+pub(crate) fn of_kind(
+    events: &[telemetry::wire::Event],
+    kind: telemetry::EventKind,
+) -> Vec<Brief<'_>> {
     events
         .iter()
         .filter(|e| e.kind == kind)
-        .map(|e| {
-            (
-                e.limb.as_deref(),
-                e.joint.as_deref(),
-                e.rule.as_deref(),
-                e.reason.as_deref(),
-                e.tag,
-            )
+        .map(|e| Brief {
+            limb: e.limb.as_deref(),
+            joint: e.joint.as_deref(),
+            bus: e.bus.as_deref(),
+            rule: e.rule.as_deref(),
+            reason: e.reason.as_deref(),
+            tag: e.tag,
         })
         .collect()
 }

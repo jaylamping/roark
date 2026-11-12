@@ -18,12 +18,12 @@ mod tests;
 use can::{CommandBatch, Snapshot};
 use robstride::Drive;
 use safety::{
-    ANSWER_WITHIN_NS, EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal, RuleId,
-    Seen,
+    ANSWER_WITHIN_NS, Cause, EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal,
+    RuleId, Seen,
 };
 use skeleton::LimbName;
 
-use crate::dispatch::{StopLatch, Why};
+use crate::dispatch::StopLatch;
 use crate::request::Scope;
 use crate::roster::{JointSet, Roster, RosterJoint};
 
@@ -455,35 +455,50 @@ impl Enabler {
             Some(Phase::Enabled(_)) => true,
             Some(Phase::Off | Phase::Preflight { .. } | Phase::Passed(_)) | None => false,
         });
-        let why = match failure {
+        // Each failure that stops has its rule: the stop goes under it.
+        let (why, rule) = match failure {
             Failed::Preflight { joint, refusal } if !stopped => {
-                EnableRefused::Preflight { joint, refusal }
+                (EnableRefused::Preflight { joint, refusal }, refusal.rule())
             }
             // A preflight refusal can't come once an Enable is planned (every proof is in hand by then); counted as the
             // sequence's, so the reply says the limbs were stopped.
-            Failed::Preflight { joint, .. } => EnableRefused::Sequence {
-                joint,
-                failure: EnableFailure::LimbStopped {
+            Failed::Preflight { joint, .. } => {
+                let failure = EnableFailure::LimbStopped {
                     stop: None,
                     enable_planned: true,
-                },
-                stopped,
-            },
-            Failed::Sequence { joint, failure } => EnableRefused::Sequence {
-                joint,
-                failure,
-                stopped,
-            },
-            Failed::Ended { joint } => EnableRefused::BusEnded { joint, stopped },
+                };
+                let why = EnableRefused::Sequence {
+                    joint,
+                    failure,
+                    stopped,
+                };
+                (why, failure.rule())
+            }
+            Failed::Sequence { joint, failure } => {
+                let why = EnableRefused::Sequence {
+                    joint,
+                    failure,
+                    stopped,
+                };
+                (why, failure.rule())
+            }
+            Failed::Ended { joint } => {
+                (EnableRefused::BusEnded { joint, stopped }, RuleId::HostBus)
+            }
             Failed::Mode { limb } => {
                 counts.mode_stops += 1;
-                EnableRefused::LimbMate { limb, stopped }
+                (EnableRefused::LimbMate { limb, stopped }, RuleId::HostMode)
             }
-            Failed::Foreign { bus } => EnableRefused::ForeignHost { bus, stopped },
-            Failed::Unseen { joint } => EnableRefused::Unseen { joint, stopped },
+            Failed::Foreign { bus } => (
+                EnableRefused::ForeignHost { bus, stopped },
+                RuleId::HostPreflight,
+            ),
+            Failed::Unseen { joint } => (
+                EnableRefused::Unseen { joint, stopped },
+                RuleId::HostPreflight,
+            ),
         };
-        // The stop goes under the failure's rule; every failure that stops has one.
-        let cause = why.rule().map_or(Why::Operator, Why::Rule);
+        let cause = Cause::Rule(rule);
         for joint in joints.iter() {
             if let Some(phase) = self.phases.get_mut(joint) {
                 if let Phase::Enabled(_) = phase {
@@ -558,7 +573,7 @@ fn place(buses: &mut Buses<'_>, stops: &StopLatch, entry: &RosterJoint, frame: r
     });
     if !placed {
         // The plan keeps every slot in range, so this is a runtime bug: a broken control side (`host.hang`).
-        stops.ask(Scope::Limb(entry.limb), Why::Rule(RuleId::HostHang));
+        stops.ask(Scope::Limb(entry.limb), Cause::Rule(RuleId::HostHang));
     }
 }
 

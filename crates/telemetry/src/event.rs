@@ -22,8 +22,35 @@ pub enum Level {
     Error,
 }
 
+/// What happened: the closed list of event kinds, each `area.past_tense_verb` (logging.md section 2). Adding one is a
+/// change to logging.md's list in the same PR.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub enum EventKind {
+    /// Control stopped one limb, on every bus it is on.
+    #[serde(rename = "limb.stopped")]
+    LimbStopped,
+    /// Control stopped the whole robot.
+    #[serde(rename = "robot.stopped")]
+    RobotStopped,
+    /// An enable passed its checks and its joint's preflight started: one per joint it names.
+    #[serde(rename = "enable.started")]
+    EnableStarted,
+    /// An enable ended with every joint it named enabled and held.
+    #[serde(rename = "enable.succeeded")]
+    EnableSucceeded,
+    /// An enable was refused, before anything was sent or once its preflights or sequences failed.
+    #[serde(rename = "enable.refused")]
+    EnableRefused,
+    /// A stopped limb was re-armed on one bus.
+    #[serde(rename = "limb.cleared")]
+    LimbCleared,
+    /// A clear was refused, on one bus or for a limb on none.
+    #[serde(rename = "clear.refused")]
+    ClearRefused,
+}
+
 /// One event, as plain `Copy` data, so handing it over never allocates. Every name is a `'static` string from the
-/// fixed vocabularies the event's source owns (limb names, rule IDs); a joint is its index in the joint table the ring
+/// fixed vocabularies the event's source owns (limb names, rule IDs, reasons); a joint is its index in the joint table the ring
 /// was made with, and a bus its index in the session's bus table, both written out by name in the file.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Event {
@@ -31,8 +58,8 @@ pub struct Event {
     pub mono_ns: u64,
     /// Its level.
     pub level: Level,
-    /// What happened: `stop`, `enable`, `enabled`, `enable_refused`, `cleared` or `clear_refused`.
-    pub kind: &'static str,
+    /// What happened.
+    pub kind: EventKind,
     /// The limb, if it concerns one.
     pub limb: Option<&'static str>,
     /// The joint, as its index in the ring's joint table, if it concerns one.
@@ -41,7 +68,8 @@ pub struct Event {
     pub bus: Option<usize>,
     /// The safety rule behind it, if one is (safety.md section 2).
     pub rule: Option<&'static str>,
-    /// Why, in a word or two, when the rule alone doesn't say (`operator`, `limb_active`).
+    /// Why, in a word, when the rule alone doesn't say: a stop's `operator`, `shutdown` or `follows_bus_stop`, a
+    /// refusal's variant (`already_enabled`, `preflight`), a refused clear's (`offline`, `busy`).
     pub reason: Option<&'static str>,
     /// The request's tag, if a request caused it.
     pub tag: Option<u64>,

@@ -1,6 +1,6 @@
 //! What an enable asks and how it is answered.
 
-use safety::{EnableFailure, Refusal, RuleId};
+use safety::{EnableFailure, Refusal};
 use skeleton::LimbName;
 
 use crate::roster::JointSet;
@@ -110,65 +110,4 @@ pub enum EnableRefused {
     /// The run is ending.
     #[error("the run is ending")]
     Ending,
-}
-
-impl EnableRefused {
-    /// The safety rule it falls under; `None` for a request that was wrong or came at the wrong time, which no rule
-    /// refused.
-    #[must_use]
-    pub const fn rule(&self) -> Option<RuleId> {
-        match self {
-            Self::Empty
-            | Self::UnknownJoint { .. }
-            | Self::Busy
-            | Self::AlreadyEnabled { .. }
-            | Self::Ending => None,
-            Self::Logging => Some(RuleId::HostLogging),
-            Self::Preflight { refusal, .. } => Some(refusal.rule()),
-            Self::Sequence { failure, .. } => Some(failure.rule()),
-            Self::BusEnded { .. } => Some(RuleId::HostBus),
-            // Preflight's no-status clause (a drive the bus shows nothing of can't be proved), and another host's writes
-            // that may have changed what preflight proved.
-            Self::Unseen { .. } | Self::ForeignHost { .. } => Some(RuleId::HostPreflight),
-            Self::LimbMate { .. } => Some(RuleId::HostMode),
-        }
-    }
-
-    /// A word for it in the event log.
-    #[must_use]
-    pub const fn reason(&self) -> &'static str {
-        match self {
-            Self::Empty => "empty",
-            Self::UnknownJoint { .. } => "unknown_joint",
-            Self::Busy => "busy",
-            Self::Logging => "logging",
-            Self::AlreadyEnabled { .. } => "already_enabled",
-            Self::Preflight { .. } => "preflight",
-            Self::Sequence { .. } => "sequence",
-            Self::BusEnded { .. } => "bus_ended",
-            Self::Unseen { .. } => "unseen",
-            Self::ForeignHost { .. } => "foreign_host",
-            Self::LimbMate { .. } => "limb_mate",
-            Self::Ending => "ending",
-        }
-    }
-
-    /// The joint it names, if one.
-    #[must_use]
-    pub const fn joint(&self) -> Option<usize> {
-        match self {
-            Self::UnknownJoint { joint }
-            | Self::AlreadyEnabled { joint }
-            | Self::Preflight { joint, .. }
-            | Self::Sequence { joint, .. }
-            | Self::BusEnded { joint, .. }
-            | Self::Unseen { joint, .. } => Some(*joint),
-            Self::Empty
-            | Self::Busy
-            | Self::Logging
-            | Self::ForeignHost { .. }
-            | Self::LimbMate { .. }
-            | Self::Ending => None,
-        }
-    }
 }

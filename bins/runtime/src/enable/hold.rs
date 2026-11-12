@@ -3,11 +3,11 @@
 
 use can::{LimbState, LimbView, Snapshot, StopReason};
 use robstride::{MitCommand, NewtonMeters, NmPerRad, NmSecPerRad, RadPerSec, Radians, encode};
-use safety::{HoldVerdict, Mate, RuleId, limb_mates};
+use safety::{Cause, HoldVerdict, Mate, RuleId, limb_mates};
 use skeleton::LimbName;
 
 use super::{Buses, Counts, Enabler, Phase, place};
-use crate::dispatch::{StopLatch, Why};
+use crate::dispatch::StopLatch;
 use crate::request::Scope;
 use crate::roster::{Roster, RosterJoint};
 
@@ -49,17 +49,24 @@ impl Enabler {
                     {
                         self.send_hold(joint, entry, buses, stops);
                     }
-                    LimbVerdict::Hold | LimbVerdict::Halted | LimbVerdict::Mate(_) => {
+                    LimbVerdict::Hold | LimbVerdict::Halted(_) | LimbVerdict::Mate(_) => {
                         self.drop_hold(joint, counts);
                     }
                 }
             }
             match verdict {
                 LimbVerdict::Hold => {}
-                LimbVerdict::Halted => stops.ask(Scope::Limb(limb), Why::Elsewhere),
+                // The bus's own stop under its rule, carried to the limb's other buses; a stop asked of the bus (by
+                // control or the operator) had its cause recorded when it was asked.
+                LimbVerdict::Halted(stop) => {
+                    let cause = stop
+                        .and_then(RuleId::of_stop)
+                        .map_or(Cause::Follows, Cause::Rule);
+                    stops.ask(Scope::Limb(limb), cause);
+                }
                 LimbVerdict::Mate(rule) => {
                     counts.mode_stops += 1;
-                    stops.ask(Scope::Limb(limb), Why::Rule(rule));
+                    stops.ask(Scope::Limb(limb), Cause::Rule(rule));
                 }
             }
         }
@@ -84,7 +91,7 @@ impl Enabler {
         match encode::mit(*drive, &slack()) {
             Ok(frame) => place(buses, stops, entry, frame),
             // A model without MIT scales never passes preflight, so this is a runtime bug; stop rather than hold blind.
-            Err(_) => stops.ask(Scope::Limb(entry.limb), Why::Rule(RuleId::HostHang)),
+            Err(_) => stops.ask(Scope::Limb(entry.limb), Cause::Rule(RuleId::HostHang)),
         }
     }
 
@@ -96,8 +103,8 @@ impl Enabler {
         snapshots: &[Option<Snapshot>],
         limb: LimbName,
     ) -> LimbVerdict {
-        if halted(roster, snapshots, limb).is_some() {
-            return LimbVerdict::Halted;
+        if let Some(stop) = halted(roster, snapshots, limb) {
+            return LimbVerdict::Halted(stop);
         }
         match limb_mates(self.mates(roster, snapshots, limb)) {
             HoldVerdict::Hold => LimbVerdict::Hold,
@@ -145,8 +152,8 @@ impl Enabler {
 pub(super) enum LimbVerdict {
     /// Held on.
     Hold,
-    /// Stopped on some bus: stopped on every bus.
-    Halted,
+    /// Stopped on some bus, for this reason if its snapshot still says: stopped on every bus.
+    Halted(Option<StopReason>),
     /// A drive of it this host didn't enable left Reset, or can't be seen: stopped under this rule (`host.mode`).
     Mate(RuleId),
 }

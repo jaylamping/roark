@@ -112,8 +112,9 @@ impl Roster {
     }
 
     /// Every joint's name, by index: the table control's events name joints by.
+    #[cfg(target_os = "linux")]
     #[must_use]
-    pub fn names(&self) -> Vec<String> {
+    pub(crate) fn names(&self) -> Vec<String> {
         self.joints
             .iter()
             .map(|j| j.name.as_str().to_owned())

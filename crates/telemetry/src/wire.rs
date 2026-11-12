@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::batch::{Direction, FrameRecord, TickBatch};
-use crate::event::Level;
+use crate::event::{EventKind, Level};
 use crate::session::SessionInfo;
 
 /// A time: seconds and nanoseconds since the Unix epoch for wall-clock times, since the session's
@@ -127,18 +127,19 @@ pub struct Clock {
     pub wall: Stamp,
 }
 
-/// `/events`: one of control's events (safety.md section 8; logging.md's shared field names).
+/// `/event`: one of control's events (safety.md section 8; logging.md sections 2 and 2a).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[schemars(rename = "roark.Event")]
 pub struct Event {
     /// When, on the session's monotonic clock.
     pub monotonic: Stamp,
-    /// When, on the wall clock: the monotonic time mapped through the recorder's latest pair of clock readings.
+    /// When, on the wall clock: the monotonic time mapped through the recorder's newest reading of the two clocks
+    /// together (taken each drain; `/clock` records one a second).
     pub wall: Stamp,
     /// Its level.
     pub level: Level,
-    /// What happened: `stop`, `enable`, `enabled`, `enable_refused`, `cleared` or `clear_refused`.
-    pub kind: String,
+    /// What happened.
+    pub kind: EventKind,
     /// The limb.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub limb: Option<String>,
@@ -151,7 +152,7 @@ pub struct Event {
     /// The safety rule behind it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rule: Option<String>,
-    /// Why, when the rule alone doesn't say.
+    /// Why, in a word, when the rule alone doesn't say.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     /// The request's tag.

@@ -151,9 +151,9 @@ impl<W: Sink> Recording<W> {
                     break;
                 };
                 // Before the first clock reading there is no mapping; the wall time is then left at 0.
-                let wall_ns = self.clocks.map_or(0, |(mono, wall)| {
-                    wall.saturating_sub(mono.saturating_sub(event.mono_ns))
-                });
+                let wall_ns = self
+                    .clocks
+                    .map_or(0, |(mono, wall)| to_wall(event.mono_ns, mono, wall));
                 self.session.file.event(&event, &drain.joints, wall_ns)?;
             }
             self.session
@@ -253,9 +253,20 @@ impl<W: Sink + 'static> Recorder<W> {
             self.health.fail();
             RecordError::Panicked
         })?;
-        let (_, wall_ns) = clocks(recording.epoch);
+        let mut recording = recording;
+        // A last step reads the clocks afresh for what is drained at the end (control's last events among it); a
+        // failure is kept in the recording, and close returns it.
+        let (mono_ns, wall_ns) = clocks(recording.epoch);
+        let _ = recording.step(mono_ns, wall_ns);
         recording.close(buses, wall_ns)
     }
+}
+
+/// `mono_ns` on the wall clock, given the two clocks read together as `mono` and `wall`: the same offset either side of
+/// the reading, saturating only at the ends of the range.
+fn to_wall(mono_ns: u64, mono: u64, wall: u64) -> u64 {
+    let ns = i128::from(wall) + i128::from(mono_ns) - i128::from(mono);
+    u64::try_from(ns.max(0)).unwrap_or(u64::MAX)
 }
 
 /// The monotonic clock since `epoch` and the wall clock, read together.

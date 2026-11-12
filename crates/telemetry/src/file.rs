@@ -72,7 +72,7 @@ impl<W: Write + Seek> McapFile<W> {
         let session_schema = schema::<SessionRecord>(&mut mcap, "roark.Session")?;
         let session_channel = channel(&mut mcap, session_schema, "/session")?;
         let event_schema = schema::<wire::Event>(&mut mcap, "roark.Event")?;
-        let events = channel(&mut mcap, event_schema, "/events")?;
+        let events = channel(&mut mcap, event_schema, "/event")?;
         let totals = info
             .buses
             .iter()
@@ -152,7 +152,7 @@ impl<W: Write + Seek> McapFile<W> {
             monotonic: Stamp::from_ns(event.mono_ns),
             wall: Stamp::from_ns(wall_ns),
             level: event.level,
-            kind: event.kind.to_owned(),
+            kind: event.kind,
             limb: event.limb.map(str::to_owned),
             // An index outside the table is the source's bug; the number is kept rather than the event dropped.
             joint: event

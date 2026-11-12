@@ -5,20 +5,20 @@
 //! (`can::CommandBatch::new`). It enables only what an operator's enable names (PLAN item 3: the runtime never enables
 //! on its own).
 
-use std::cell::RefCell;
 use std::io;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use can::{CommandBatch, Rearmed, Snapshot, Timing};
 use rtrb::{Consumer, Producer};
+use safety::{Cause, RuleId};
 
 use crate::clock::{Schedule, mono_now, passed, sleep_period};
-use crate::dispatch::{BusOrders, StopLatch, orders, reply};
+use crate::dispatch::{BusOrders, StopLatch, Told, orders, reply};
 use crate::enable::{Buses, Counts, Enable, EnableRefused, EnableReply, Enabler, SlowEnds};
 use crate::events::Events;
 use crate::plan::BusPlan;
-use crate::request::{Clear, ClearAt, ClearRefused, Reply, route_clear};
+use crate::request::{Clear, ClearAt, ClearRefused, Reply, Scope, route_clear};
 use crate::roster::Roster;
 
 /// One bus's newest snapshot, for the runtime's readers.
@@ -127,6 +127,8 @@ pub(crate) fn run(
     let mut batches = vec![CommandBatch::new(0, 0); links.buses.len()];
     let phase = phase(timing);
     let mut n = schedule.next(phase);
+    // Whether the run's end has been recorded as the robot's stop.
+    let mut end_recorded = false;
     loop {
         if exit.error.is_none() {
             if let Err(e) = schedule.sleep_until(schedule.at(n, phase)) {
@@ -157,6 +159,7 @@ pub(crate) fn run(
         if ended.iter().all(|e| *e) {
             // A bus may have answered a clear between its last read and its end.
             read(plans, n, &mut links, &mut newest, &mut exit);
+            record_end(&mut links, &exit, &mut end_recorded);
             refuse_clears(plans, &mut links, &mut exit);
             refuse_enables(&mut enabler, &mut links, &mut exit);
             add(&mut exit, counts);
@@ -165,6 +168,7 @@ pub(crate) fn run(
         }
         // Read again: an end asked during the reads stops the enables, orders and batches at once.
         if links.end.load(Ordering::Acquire) {
+            record_end(&mut links, &exit, &mut end_recorded);
             refuse_clears(plans, &mut links, &mut exit);
             refuse_enables(&mut enabler, &mut links, &mut exit);
         } else {
@@ -200,23 +204,7 @@ pub(crate) fn run(
                 next,
                 now_ns,
             );
-            let replies = &mut links.replies;
-            let clears = &mut links.clears;
-            let mut budget = clears.buffer().capacity();
-            // Both the refusals and the stops are events; one borrow, taken in turn.
-            let events = RefCell::new(&mut links.events);
-            let replies_dropped = &mut exit.replies_dropped;
-            exit.stops_deferred += orders(
-                plans,
-                &mut links.orders,
-                &links.stops,
-                || {
-                    budget = budget.checked_sub(1)?;
-                    clears.pop().ok()
-                },
-                |r| push_reply(replies, r, replies_dropped, &mut events.borrow_mut()),
-                |scope, why| events.borrow_mut().stop(scope, why),
-            );
+            exit.stops_deferred += send_orders(plans, &mut links, &mut exit.replies_dropped);
             for (ends, batch) in links.buses.iter_mut().zip(&batches) {
                 if ends.commands.push(*batch).is_err() {
                     exit.batches_dropped += 1;
@@ -260,12 +248,12 @@ impl EnableStep<'_> {
             let Ok(enable) = enables.pop() else {
                 break;
             };
-            self.events.enable(&enable);
-            if let Some(r) = self
+            match self
                 .enabler
                 .take(roster, enable, buses, health.failed(), now_ns)
             {
-                push_enable_reply(enable_replies, r, self.replies_dropped, self.events);
+                Some(r) => push_enable_reply(enable_replies, r, self.replies_dropped, self.events),
+                None => self.events.started(&enable),
             }
         }
         if let Some(r) = self
@@ -274,6 +262,49 @@ impl EnableStep<'_> {
         {
             push_enable_reply(enable_replies, r, self.replies_dropped, self.events);
         }
+    }
+}
+
+/// This pass's orders for every bus: the stops latched and the clears queued, each stop and refused clear an event.
+/// Gives the stops a full ring kept for later.
+fn send_orders(plans: &[BusPlan], links: &mut ControlLinks, replies_dropped: &mut u64) -> u64 {
+    let replies = &mut links.replies;
+    let clears = &mut links.clears;
+    let events = &mut links.events;
+    let mut budget = clears.buffer().capacity();
+    orders(
+        plans,
+        &mut links.orders,
+        &links.stops,
+        || {
+            budget = budget.checked_sub(1)?;
+            clears.pop().ok()
+        },
+        |told| match told {
+            Told::Stopped(stops) => events.stops(stops),
+            Told::Refused(r) => push_reply(replies, r, replies_dropped, events),
+        },
+    )
+}
+
+/// While the run ends, every bus stops every limb on its own: the first pass that sees the end records it as the
+/// robot's stop, under its cause (a lost clock `host.hang`, a bus thread that ended `host.bus`, otherwise shutdown),
+/// and every pass records the stops still asked, which the buses' own stops already cover.
+fn record_end(links: &mut ControlLinks, exit: &ControlExit, recorded: &mut bool) {
+    if !*recorded {
+        *recorded = true;
+        let cause = if exit.error.is_some() {
+            Cause::Rule(RuleId::HostHang)
+        } else if exit.bus_ended.is_some() {
+            Cause::Rule(RuleId::HostBus)
+        } else {
+            Cause::Shutdown
+        };
+        links.events.stop(Scope::Robot, cause);
+    }
+    let stops = links.stops.take();
+    if !stops.is_empty() {
+        links.events.stops(stops);
     }
 }
 
@@ -467,18 +498,19 @@ mod tests {
         let finished = Arc::new(AtomicBool::new(false));
         let (mut clears, clears_rx) = RingBuffer::new(4);
         let (replies_tx, mut replies) = RingBuffer::new(4);
+        let roster = Roster::new(&skeleton, &plans).unwrap();
         let links = ControlLinks {
             buses,
             orders,
             stops: Arc::new(StopLatch::default()),
             clears: clears_rx,
             replies: replies_tx,
-            roster: Roster::new(&skeleton, &plans).unwrap(),
+            events: Events::new(None, &roster),
+            roster,
             slow: Vec::new(),
             enables: RingBuffer::new(1).1,
             enable_replies: RingBuffer::new(1).0,
             health: telemetry::Health::default(),
-            events: Events::new(None),
             views: None,
             end: Arc::clone(&end),
             finished: Arc::clone(&finished),

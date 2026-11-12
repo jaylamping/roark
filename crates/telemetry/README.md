@@ -12,9 +12,11 @@ drains every ring into the session's file:
 - `/can/<bus>/frames`: one message per bus per tick, with every frame, its kernel timestamp and its direction.
 - `/recorder/gap`: batches a full ring dropped, written where the hole is, including any dropped just before a stop.
 - `/clock`: the monotonic and wall clocks read together, once a second.
-- `/events`: control's events (stops with their rule, enables, refused enables, clears), from its own lock-free ring
-  (`Recording::events` hands out its `EventRecorder`). Each carries its monotonic time and the wall time mapped through
-  the latest `/clock` pair; joints and buses are written by name. A full ring drops the event and counts it.
+- `/event`: control's events (stops with their rule, enables, refused enables, clears; kinds from `EventKind`), from
+  its own lock-free ring (`Recording::events` hands out its `EventRecorder`). Each carries its monotonic time and its
+  wall time, mapped through the recorder's newest reading of the two clocks together (taken each drain, every 10 ms,
+  and once more at close; `/clock` records one a second, so a reader mapping from `/clock` agrees to within the clocks'
+  drift). Joints and buses are written by name. A full ring drops the event and counts it.
 - `/session`: a header first (session, file number, git revision, skeleton hash, buses with their filters and
   timestamp source) and an end marker last (per-bus totals of what was written, lost and omitted, and the events written
   and lost).

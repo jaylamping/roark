@@ -47,7 +47,7 @@ pub enum RuleId {
 }
 
 impl RuleId {
-    /// Every rule, in PLAN item 6's order.
+    /// Every rule, in declaration order: `ALL[r.index()] == r`.
     pub const ALL: [Self; 17] = [
         Self::DriveCanTimeout,
         Self::DriveCaps,
@@ -67,6 +67,31 @@ impl RuleId {
         Self::HostPiHealth,
         Self::HostLogging,
     ];
+
+    /// Its position in [`RuleId::ALL`], from a match the compiler holds complete, so a code built from it can't miss a
+    /// rule.
+    #[must_use]
+    pub const fn index(self) -> usize {
+        match self {
+            Self::DriveCanTimeout => 0,
+            Self::DriveCaps => 1,
+            Self::DriveDamper => 2,
+            Self::HostPreflight => 3,
+            Self::HostIdentity => 4,
+            Self::HostVbus => 5,
+            Self::HostSilence => 6,
+            Self::HostFault => 7,
+            Self::HostMode => 8,
+            Self::HostSoftLimit => 9,
+            Self::HostTotalTorque => 10,
+            Self::HostSign => 11,
+            Self::HostTemperature => 12,
+            Self::HostHang => 13,
+            Self::HostBus => 14,
+            Self::HostPiHealth => 15,
+            Self::HostLogging => 16,
+        }
+    }
 
     /// The ID as written in PLAN item 6, the logs and the UI.
     #[must_use]
@@ -118,7 +143,7 @@ impl core::fmt::Display for RuleId {
     }
 }
 
-/// Why a limb stopped: a rule, or someone asking.
+/// Why a limb stopped: a rule, someone asking, or a stop already made on another of its buses.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cause {
     /// A rule's verdict.
@@ -127,4 +152,7 @@ pub enum Cause {
     Operator,
     /// The runtime is exiting.
     Shutdown,
+    /// The limb was already stopped on one of its buses, for a cause recorded when that stop was asked: this carries it
+    /// to the limb's other buses.
+    Follows,
 }

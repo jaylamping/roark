@@ -10,7 +10,7 @@ pub mod wire;
 
 pub use batch::{Direction, FrameRecord, Loss, MAX_FRAMES_PER_TICK, TickBatch};
 pub use bus::{BusRecorder, RING_BATCHES};
-pub use event::{Event, EventRecorder, Level, RING_EVENTS};
+pub use event::{Event, EventKind, EventRecorder, Level, RING_EVENTS};
 pub use recording::{Epoch, Health, Recorder, Recording};
 pub use session::{
     BusInfo, CanFilter, Session, SessionInfo, Sink, SkeletonRef, Stage, TimestampSource,

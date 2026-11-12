@@ -136,8 +136,12 @@ impl Rig {
     }
 
     /// The limbs asked to stop since the last call, each with its cause.
-    fn stopped(&self) -> Vec<(Scope, Option<Why>)> {
-        self.stops.take().scopes().collect()
+    fn stopped(&self) -> Vec<(Scope, Cause)> {
+        self.stops
+            .take()
+            .asked()
+            .flat_map(|(scope, causes)| causes.iter().map(move |c| (scope, c)))
+            .collect()
     }
 
     /// Bus `bus`'s batch with a slack hold for each joint named.
@@ -323,7 +327,7 @@ fn a_limb_mate_out_of_reset_on_another_bus_stops_the_whole_held_limb() {
         rig.stopped(),
         [(
             Scope::Limb(LimbName::RightArm),
-            Some(Why::Rule(RuleId::HostMode))
+            Cause::Rule(RuleId::HostMode)
         )]
     );
     assert_eq!(rig.tick(&mut enabler), None);
@@ -344,7 +348,7 @@ fn a_limb_mate_out_of_reset_on_another_bus_stops_the_whole_held_limb() {
         rig.stopped(),
         [(
             Scope::Limb(LimbName::RightArm),
-            Some(Why::Rule(RuleId::HostMode))
+            Cause::Rule(RuleId::HostMode)
         )]
     );
 }
@@ -364,7 +368,7 @@ fn a_held_limb_stopped_on_one_bus_is_stopped_on_every_bus() {
     assert_eq!(rig.batches[0], CommandBatch::new(1, u64::MAX));
     assert_eq!(
         rig.stopped(),
-        [(Scope::Limb(LimbName::RightArm), Some(Why::Elsewhere))]
+        [(Scope::Limb(LimbName::RightArm), Cause::Follows)]
     );
     assert_eq!(rig.counts.holds_ended, 2);
     // Held on can0, stopped there (a fault, say): the part on can1, idle, is stopped too.
@@ -381,7 +385,7 @@ fn a_held_limb_stopped_on_one_bus_is_stopped_on_every_bus() {
     assert_eq!(rig.batches[0], CommandBatch::new(1, u64::MAX));
     assert_eq!(
         rig.stopped(),
-        [(Scope::Limb(LimbName::RightArm), Some(Why::Elsewhere))]
+        [(Scope::Limb(LimbName::RightArm), Cause::Follows)]
     );
     assert_eq!(rig.counts.holds_ended, 2);
     assert_eq!(rig.tick(&mut enabler), None);
@@ -431,7 +435,7 @@ fn an_enable_that_fails_stops_its_limbs_once_an_enable_may_have_gone() {
         rig.stopped(),
         [(
             Scope::Limb(LimbName::LeftArm),
-            Some(Why::Rule(RuleId::HostPreflight))
+            Cause::Rule(RuleId::HostPreflight)
         )]
     );
     assert!(enabler.phases.iter().all(|p| matches!(p, Phase::Off)));
@@ -475,11 +479,8 @@ fn an_enable_that_fails_stops_its_limbs_once_an_enable_may_have_gone() {
                 })
             })
         );
-        let expected: &[(Scope, Option<Why>)] = if stopped {
-            &[(
-                Scope::Limb(LimbName::LeftArm),
-                Some(Why::Rule(RuleId::HostBus)),
-            )]
+        let expected: &[(Scope, Cause)] = if stopped {
+            &[(Scope::Limb(LimbName::LeftArm), Cause::Rule(RuleId::HostBus))]
         } else {
             &[]
         };
@@ -531,7 +532,7 @@ fn an_enable_whose_limb_mate_leaves_reset_fails_with_its_limb_stopped() {
         rig.stopped(),
         [(
             Scope::Limb(LimbName::RightArm),
-            Some(Why::Rule(RuleId::HostMode))
+            Cause::Rule(RuleId::HostMode)
         )]
     );
     assert_eq!(

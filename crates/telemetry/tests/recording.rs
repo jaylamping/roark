@@ -7,8 +7,9 @@ use telemetry::wire::{
     Clock, Event as EventMessage, EventTotals, Frames, Gap, SessionRecord, Stamp,
 };
 use telemetry::{
-    BusInfo, BusRecorder, Direction, Event, FrameRecord, Level, MAX_FRAMES_PER_TICK, Recorder,
-    Recording, Session, SessionInfo, Sink, SkeletonRef, Stage, TickBatch, TimestampSource,
+    BusInfo, BusRecorder, Direction, Event, EventKind, FrameRecord, Level, MAX_FRAMES_PER_TICK,
+    Recorder, Recording, Session, SessionInfo, Sink, SkeletonRef, Stage, TickBatch,
+    TimestampSource,
 };
 
 /// 2026-11-08T12:34:56Z.
@@ -293,8 +294,8 @@ fn a_full_ring_leaves_a_gap_in_the_file_and_recovers() {
     );
 }
 
-/// Guards: protocol - control's events go to `/events` with their limb, joint and bus by name, their rule, and a wall
-/// time mapped from their monotonic one; events a full ring dropped are counted in the end marker, and the events still
+/// Guards: protocol - control's events go to `/event` with their kind, their limb, joint and bus by name, their rule,
+/// and a wall time mapped from their monotonic one, before or after the clocks were read; events a full ring dropped are counted in the end marker, and the events still
 /// in the ring at close are written (safety.md section 8, logging.md section 8.4).
 #[test]
 fn control_events_are_written_by_name_and_their_losses_counted() {
@@ -306,7 +307,7 @@ fn control_events_are_written_by_name_and_their_losses_counted() {
     let stop = Event {
         mono_ns: 3 * TICK_NS,
         level: Level::Error,
-        kind: "stop",
+        kind: EventKind::LimbStopped,
         limb: Some("left_arm"),
         joint: Some(1),
         bus: Some(1),
@@ -317,14 +318,16 @@ fn control_events_are_written_by_name_and_their_losses_counted() {
     recording.step(5 * TICK_NS, START_NS + 5 * TICK_NS).unwrap();
     assert!(events.record(stop));
     assert!(events.record(Event {
-        kind: "enabled",
+        kind: EventKind::EnableSucceeded,
         level: Level::Info,
         ..stop
     }));
     assert!(!events.record(stop), "a full ring drops the event");
     recording.step(6 * TICK_NS, START_NS + 6 * TICK_NS).unwrap();
     assert!(events.record(Event {
-        kind: "cleared",
+        kind: EventKind::LimbCleared,
+        // Newer than the recorder's last reading of the clocks.
+        mono_ns: 8 * TICK_NS,
         joint: None,
         bus: None,
         rule: None,
@@ -340,11 +343,11 @@ fn control_events_are_written_by_name_and_their_losses_counted() {
         }
     );
     let messages = read(&dir.join("0000.mcap"));
-    let written: Vec<EventMessage> = on(&messages, "/events").into_iter().map(parse).collect();
+    let written: Vec<EventMessage> = on(&messages, "/event").into_iter().map(parse).collect();
     let first = written.first().unwrap();
     assert_eq!(
         (
-            first.kind.as_str(),
+            first.kind,
             first.limb.as_deref(),
             first.joint.as_deref(),
             first.bus.as_deref(),
@@ -353,7 +356,7 @@ fn control_events_are_written_by_name_and_their_losses_counted() {
             first.level,
         ),
         (
-            "stop",
+            EventKind::LimbStopped,
             Some("left_arm"),
             Some("elbow"),
             Some("can1"),
@@ -368,9 +371,22 @@ fn control_events_are_written_by_name_and_their_losses_counted() {
         Stamp::from_ns(START_NS + 3 * TICK_NS),
         "mapped through the clocks"
     );
-    let kinds: Vec<_> = written.iter().map(|e| e.kind.as_str()).collect();
-    assert_eq!(kinds, ["stop", "enabled", "cleared"]);
-    assert_eq!(written.last().unwrap().joint, None);
+    let kinds: Vec<_> = written.iter().map(|e| e.kind).collect();
+    assert_eq!(
+        kinds,
+        [
+            EventKind::LimbStopped,
+            EventKind::EnableSucceeded,
+            EventKind::LimbCleared
+        ]
+    );
+    let last = written.last().unwrap();
+    assert_eq!(last.joint, None);
+    assert_eq!(
+        last.wall,
+        Stamp::from_ns(START_NS + 8 * TICK_NS),
+        "an event after the clock reading is mapped forward, not clamped to it"
+    );
 }
 
 /// Guards: protocol - loss right before a stop is still written as a gap, logging.md section 8.4.
