@@ -192,6 +192,15 @@ JY = (SEAT_Y[0] + SEAT_Y[1]) / 2   # joint screw row (Y 356.9)
 # the r 47 sleeve a lower pair at +-22, Y 345.5 (the fork rear now reaches down to Y 340): the stop couple per screw drops
 # by about a third against four
 JOINT_PTS = [(-JX + 4.5, JY), (JX - 4.5, JY), (-27.0, JY), (27.0, JY)] + ([(-22.0, 345.5), (22.0, 345.5)] if SIDE_CENTRE == '47' else [])
+if SIDE_CENTRE == '47':
+    # layout N (adopted 2026-11-12): every counterbore closed with >= 1.5 mm to the fork rear's edge, whose swell is off-centre
+    # (counterbore centres within X -32.8..+26.6 on the top row, -26..+21 on the lower). Rated joint layer SF 1.49 (FEA).
+    # Screws: ISO 7380 M4 button heads, all six (the outer recesses are only about 3.1 mm deep)
+    JOINT_PTS = [(-17.0, JY), (17.0, JY), (-27.0, JY), (26.0, JY), (-22.0, 345.5), (20.0, 345.5)]
+if os.environ.get('JOINT_LAYOUT') == 'N2':  # N with the top row 1.1 mm higher (Y 358.0): more spread between the rows
+    JOINT_PTS = [(-17.0, 358.0), (17.0, 358.0), (-27.0, 358.0), (26.0, 358.0), (-22.0, 345.5), (20.0, 345.5)]
+if os.environ.get('JOINT_LAYOUT') == 'N':   # rear_screws (a), as built: today's spread with the two right-hand holes moved in 1-2 mm
+    JOINT_PTS = [(-17.0, JY), (17.0, JY), (-27.0, JY), (26.0, JY), (-22.0, 345.5), (20.0, 345.5)]
 if os.environ.get('JOINT_LAYOUT') == 'G':   # rear_screws mock-up (a): symmetric two rows, every counterbore >= 1.5 mm from the edge
     JOINT_PTS = [(-12.0, JY), (12.0, JY), (-24.0, JY), (24.0, JY), (-20.0, 345.5), (20.0, 345.5)]
 if os.environ.get('JOINT2'):          # the earlier two-screw joint, for the look-options/rear_screws comparison only

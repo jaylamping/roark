@@ -309,3 +309,23 @@ Post-processing is `hub_post.py`, with tensile-only layer averages. SF is peak /
   not tensile failures.
 - **If rev D (full-ring groove) is adopted,** A (with chamfer), B and Ah need re-running on rev D.
 
+### The hole-rim chamfer makes it worse: not adopted (2026-11-12)
+
+Case A re-run with a 0.5 × 45° chamfer on the six screw-hole rims at the RS02 face (`HUB_CHAMFER=1`, built in
+`_wip/look/hubc`; FFEPlus, 577,829 nodes):
+
+| Region (layer, peak / 1 mm average) | A, no chamfer | A, chamfered |
+|---|---|---|
+| Hub top | 0.41 / **1.41** (hole rim, 162.0 / 319.9 / -2.7) | 0.41 / **0.88** (chamfer's outer edge, 168.4 / 319.9 / 19.5) |
+| Lug B | 0.41 / 1.16 | 0.42 / 1.18 |
+| Lug A | 0.68 / 1.65 | 0.62 / 1.64 |
+| Window band | 0.91 / 1.87 | 1.01 / 1.93 |
+
+- **Why it got worse:** the chamfer takes away seat area right round each hole. The clamped contact pressure moves out
+  onto the chamfer's edge and concentrates there.
+- **What does help is preload.** Ah, at 345 N (half the 690 N of A), gives 1.64 at the hub top with no geometry change.
+- **Recommendation:** keep the rev C+ hub top as it is, and specify the six hub M4 at **about 0.35 kN preload**: roughly
+  0.4-0.5 N·m dry on M4 into the dummy-equivalent threads, to be confirmed on the bench. Not "tight".
+- A counterbore relief would move contact away from the rims in the same way as the chamfer, so I expect the same
+  result. Not tried.
+

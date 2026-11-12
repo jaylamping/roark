@@ -261,3 +261,25 @@ SF at the 1 mm average. Layer is tensile σy (the fork rear prints upright). Rat
   - Surviving a full stall in print would need more than leg2 (leg2 reaches 0.55-1.08 layer).
   - **This is Joey's call:** a stall-proof printed stop, or the controller limits above as the stall protection.
 
+## Fork joint screw layout N, adopted (2026-11-12)
+
+The first six-screw layout put the +27 and +22 counterbores through the fork rear's side edge: open, half holes. That is a
+defect. The fork rear's swell is off-centre, so to keep 1.5 mm of skin round each Ø8 counterbore, the centres must stay
+within X -32.8…+26.6 on the top row (Y 356.9) and -26…+21 on the lower row (Y 345.5).
+
+| Layout | Top row (Y 356.9) | Lower row (Y 345.5) | Rated joint layer SF (FEA, 1 mm average) |
+|---|---|---|---|
+| First six-screw | ±17, ±27 | ±22 | 1.64 (but +27 and +22 break the edge) |
+| G (symmetric, tidy) | ±12, ±24 | ±20 | 1.33: rejected |
+| **N (adopted)** | -27, -17, +17, **+26** | -22, **+20** | **1.49** |
+
+- **N is accepted at 1.49 against the 1.5 target.** The gap is inside the FEA's scatter: mesh and averaging changes move
+  it by more than 0.01, and G's simple screw-force scaling was off by far more.
+- With N, tooth, pad and leg at rated are 4.81 / 2.01 / 1.89.
+- **Screws: ISO 7380 M4 button heads for all six,** one type for the joint.
+  - The outer counterbores are only about 3.1 mm deep, because the sleeve is only about 6 mm deep behind the joint plane
+    there. A DIN 912 socket head (4.0 mm) would stand about 0.9 mm proud.
+  - The button head (Ø7.6) bears on more area than the socket head (Ø7.0): 29.5 against 22.6 mm² round the Ø4.5 hole. So
+    nothing is lost under the head.
+  - The inner pair's 5.5 mm recesses are unchanged; their heads just sit lower.
+
