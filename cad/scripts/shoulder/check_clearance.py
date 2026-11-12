@@ -104,7 +104,7 @@ def load():
     t0 = time.time()
     P = {}
     for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'hub', 'cover', 'port_cap'):   # fork cap dropped (look option a)
-        P[k] = samp(trimesh.load(STL / f'{k}.stl'), 0.7)
+        P[k] = samp(trimesh.load((WIP / os.environ['PART_STL_DIR'] if k in os.environ.get('PART_STL_PARTS', '').split(',') else STL) / f'{k}.stl'), 0.7)
     P['roll_rs03'] = samp(mesh_step(VENDOR / 'vendor_robstride_rs03.stp', T_ROLL_RS03), 0.7)
     P['rs02'] = samp(mesh_step(VENDOR / 'vendor_robstride_rs02.step', T_RS02), 0.7)
     pm = samp(mesh_step(UA / 'torso_pitch_rs03_left.step', tol=0.3), 0.7)
@@ -186,7 +186,7 @@ def run():
         lug[str(r_)] = dict(arm_to_lug=o.get('stops|fork_rear', o.get('fork_rear|stops')), closest_other=min(others.items(), key=lambda kv: kv[1]))
     out = dict(method='surface samples 0.7 mm (frame/arm 1.0), KD-tree, +-0.4 mm; rotors split off',
                min_over_all=dict(sorted(res.items(), key=lambda kv: kv[1][0])), brief_poses=at_pose, stops=lug)
-    (WIP / 'clearance.json').write_text(json.dumps(out, indent=1))
+    (WIP / os.environ.get('CLEAR_JSON', 'clearance.json')).write_text(json.dumps(out, indent=1))
     for k, v in list(out['min_over_all'].items())[:25]:
         print(f'{k:28s} {v[0]:7.2f}  at {v[1]}')
     print('stops', json.dumps(lug, indent=0))

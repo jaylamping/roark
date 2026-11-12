@@ -6,6 +6,7 @@ Every part is modelled in the torso frame (dims.py), so the assembly places each
 and a fine STL of each to cad/_wip/shoulder-pass1/stl/ for the checks and pictures.
 """
 import inspect
+import os
 import math
 import sys
 
@@ -445,7 +446,11 @@ def ypt(r, a, y):
 def build_fork_front():
     d = new_part(OUT / f"{NAMES['fork_front']}.SLDPRT")
     dm = DOME
-    hull = lambda k: hull_pts([(RX, RY, dm['r'] - k), (RX - 22, 362.0 + 0.5 * k, max(10.0 - k, 3.0)), (RX + 22, 362.0 + 0.5 * k, max(10.0 - k, 3.0))])
+    FB = os.environ.get('FRONT_BLEND', '')       # front-blend variants (look-options/front_blend): '1' plain, '2' wrap
+    # FB: the two lower circles move up and out, so the cheek flares to the cuff's width; the chin / cowl below takes it in
+    xl_, yl_, rl_ = (22.0, 362.0, 10.0)
+    Y_CUT = 372.0                                  # FB: the cheek is cut flat here; the chin loft continues its exact section
+    hull = lambda k: hull_pts([(RX, RY, dm['r'] - k), (RX - xl_, yl_ + 0.5 * k, max(rl_ - k, 3.0)), (RX + xl_, yl_ + 0.5 * k, max(rl_ - k, 3.0))])
     fc = FRONT_CROWN
     z0, z1 = FRONT_Z[0], fc['z1']
     extrude(d, zsk(d, z0, 'CHEEK', lambda s: s.spline([(x, y, z0) for x, y in hull(0.0)])), 'CHEEK', fc['z0'] - z0, Z)
@@ -456,6 +461,8 @@ def build_fork_front():
         zz, k = fc['z0'] + (fc['z1'] - fc['z0']) * math.sin(t), fc['inset'] * (1 - math.cos(t))
         secs.append(zsk(d, zz, f'CHEEK_EDGE{i}', lambda s, zz=zz, k=k: s.spline([(x, y, zz) for x, y in hull(k)])))
     loft(d, secs, 'CHEEK_EDGE')
+    if FB:
+        extrude(d, ysk(d, Y_CUT, 'CHEEK_CUT', lambda s_: s_.poly(rect_pts((RX, Y_CUT, 0.0), X, Z, 140.0, 120.0))), 'CHEEK_CUT', 40.0, NY, cut=True)
     extrude(d, zsk(d, ROLL_OUT, 'BOSS', lambda s: s.circle((RX, RY, ROLL_OUT), 22.0)), 'BOSS', FRONT_Z[0] + 0.5 - ROLL_OUT, Z)
     def seat(s):
         s.circle((RX, SEAT_Y[0], YZ), 41.0)          # SLEEVE: the outer material is the sleeve loft
@@ -491,6 +498,53 @@ def build_fork_front():
     # the joint face: the 0.5 mm from the sleeve's back (JZ0 + 0.5) down to the joint plane, over the bolted pad
     extrude(d, zsk(d, JZ0 + 1.0, 'JOINT_PAD', lambda s: s.rpoly(rect_pts((RX, ym, JZ0 + 1.0), X, Y, 2 * JX, SEAT_Y[1] - SEAT_Y[0]), [4, 4, 4, 4])),
             'JOINT_PAD', 1.0, NZ, lo=-1.0)
+    if FB:
+        # FRONT BLEND: one loft from the cuff's own front (Y 356) into the cheek's exact crowned section at the flat cut
+        # (Y 372), so the cheek runs down into the cuff as one surface. '1' plain: the cuff front from Z 40.5;
+        # '2' wrap: from Z 24, so the bottom wraps round the cuff. Above Y 361 the chin keeps r >= 34.5 (RS02 rear cap,
+        # r 32.5) and, where it is within 59 of the roll axis, Z >= 38.5 (2.5 off the drum's front).
+        from shapely.geometry import Polygon as _Poly, Point as _Pt, LineString as _LS, box as _box
+        z0_ = 40.5 if FB == '1' else 24.0
+        H_ = _Poly(hull(0.0))
+
+        def cheek_sec(y_, n=41):
+            cut = H_.intersection(_LS([(RX - 100, y_), (RX + 100, y_)]))
+            xa, xb = cut.bounds[0], cut.bounds[2]
+            pts = []
+            for i in range(n):
+                x_ = xa + (xb - xa) * i / (n - 1)
+                dd = H_.exterior.distance(_Pt(x_, y_))
+                t_ = math.acos(max(-1.0, 1.0 - min(dd, fc['inset']) / fc['inset']))
+                pts.append((x_, fc['z0'] + (fc['z1'] - fc['z0']) * math.sin(t_)))
+            return pts + [(xb, z0), (xa, z0)]      # front crown left to right, then the back on the cheek's back face (Z 39)
+
+        def cuff_sec(y_, zl):
+            P_ = _Poly([(q[0], q[2]) for q in EV.sleeve_section(y_)]).buffer(0).intersection(_box(RX - 80, zl, RX + 80, 90))
+            return list(P_.exterior.coords)[:-1]
+
+        def ring(pts, n=60):
+            P_ = _Poly(pts).buffer(0)
+            ex = P_.exterior
+            if ex.is_ccw:
+                ex = type(ex)(list(ex.coords)[::-1])
+            L_ = ex.length
+            c0 = max(ex.coords, key=lambda q: q[1])
+            d0 = ex.project(_Pt(c0))
+            return [ex.interpolate((d0 + L_ * i / n) % L_).coords[0] for i in range(n)]
+        r0, r3 = ring(cuff_sec(356.0, z0_)), ring(cheek_sec(Y_CUT + 0.5))
+        lerp = lambda t: [(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t) for a, b in zip(r0, r3)]
+        z_mid = 38.5
+        r1 = lerp(0.35)
+        r2 = [(x, max(z, z_mid)) for x, z in lerp(0.65)]
+        secs_ = []
+        for i_, (y_, pts) in enumerate(((356.0, r0), (361.5, r1), (366.5, r2), (Y_CUT + 0.5, r3))):
+            secs_.append(ysk(d, y_, f'CHIN_S{i_}', lambda s_, pts=pts, y_=y_: s_.spline([(x, y_, z) for x, z in pts])))
+        loft(d, secs_, 'CHIN')
+        # keep the RS02 rear cap clear (r 32.5 + 2 above the seat)
+        yaw_rev(d, 'CHIN_RS02_CLEAR', [(0, 361.0), (34.5, 361.0), (34.5, 367.0), (0, 367.0)], cut=True)
+        # driver access to the two front RS02 screws (64 / 104 deg), blocked by the cheek: Ø7 straight up, plugged flush after
+        extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, SEAT_Y[1] - 3.5), 3.5) for a_ in (64.0, 104.0)]),
+                'RS02_ACCESS', 140.0, Y, cut=True)
     # (the round-2 rear web is dropped: it sat 0.5 mm off the fork rear arm, carried no load and cost 6.5 g)
     # ---- cuts
     extrude(d, zsk(d, z0 - 1, 'DOME_POCKETS', lambda s: [sector(s, lambda r, a: rpt(r, a, z0 - 1), dm['pocket_r'][0], dm['pocket_r'][1], a0, a1, 3.0)
