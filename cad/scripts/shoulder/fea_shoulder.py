@@ -452,7 +452,7 @@ def hole_centres(d):
                     continue
                 cp = cv.CircleParams
                 cx_, cy_, cz_, r_ = cp[0] * 1e3, cp[1] * 1e3, cp[2] * 1e3, cp[6] * 1e3
-                if abs(r_ - 2.15) < 0.1 and math.hypot(cx_ - nx, cz_ - nz) < 0.5:
+                if (abs(r_ - 2.15) < 0.1 or abs(r_ - 1.9) < 0.1) and math.hypot(cx_ - nx, cz_ - nz) < 0.5:   # 1.9: the two locating holes (Ø3.8)
                     found = (cx_, cz_)
                     break
             if found:
@@ -475,7 +475,7 @@ def bolt_setup(preload):
         out = []
         for a_, (cx, cz) in zip(SCREW_ANGLES, hole_centres(d)):
             head = edges_where(d, lambda p, cx=cx, cz=cz: abs(p[1] - HEAD_SEAT_Y) < 0.08 and math.hypot(p[0] - cx, p[2] - cz) < 2.3,
-                               pair=lambda p0, p1, cx=cx, cz=cz: all(abs(math.hypot(q[0] - cx, q[2] - cz) - 2.145) < 0.12 for q in (p0, p1)))
+                               pair=lambda p0, p1, cx=cx, cz=cz: all(min(abs(math.hypot(q[0] - cx, q[2] - cz) - 2.145), abs(math.hypot(q[0] - cx, q[2] - cz) - 1.9)) < 0.12 for q in (p0, p1)))   # Ø4.3 clearance or Ø3.8 locating
             thr = pick(d, cyl(1.65, [cx - 2, RS02_OUT - 0.1, cz - 2, cx + 2, RS02_OUT + 8.2, cz + 2]))
             err = I()
             b = lbc.AddBoltConnector(2, head[:1], thr, err)
