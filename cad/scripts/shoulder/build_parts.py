@@ -280,6 +280,65 @@ def build_port_cap():
     return finish_part(d, 'port_cap', dict(Note='press-in cap for the drum driver port, flush with the skin'))
 
 
+def hub_d2(d, gplane):
+    """REV D2 bolster (see dims.HUB_D2). Partial revolves about the yaw axis; the direction of each is checked by the centroid
+    of the added volume (as for the groove run-outs)."""
+    def part_rev(name, prof, a_start, sweep):
+        plg, ua = gplane(a_start, name)
+        with Sk(d, plg, name) as s_:
+            s_.poly([(RX + r_ * ua[0], y_, YZ + r_ * ua[2]) for r_, y_ in prof])
+            s_.cline((RX, 280.0, YZ), (RX, 330.0, YZ))
+        want_ = math.radians(a_start + sweep / 2)
+        for rev in (False, True):
+            v0, m0 = vol_com(d)
+            d.ClearSelection2(True)
+            s_.feat.Select2(False, 0)
+            f = d.FeatureManager.FeatureRevolve2(True, True, False, False, rev, False, 0, 0, math.radians(sweep), 0, False, False, 0, 0, 0, 0, 0, True, False, True)
+            d.ForceRebuild3(False)
+            v1, m1 = vol_com(d)
+            if f is not None and v1 - v0 > 1.0:
+                cen_ = (m1 - m0) / (v1 - v0)
+                ang = math.atan2(cen_[2] - YZ, cen_[0] - RX)
+                if abs(((ang - want_ + math.pi) % (2 * math.pi)) - math.pi) < 0.12:
+                    f.Name = name
+                    log(f'  {name}: added {v1 - v0:.0f} mm3, centroid {math.degrees(ang):.1f} deg')
+                    return v1 - v0
+            if f is not None:
+                d.EditUndo2(1)
+                d.ForceRebuild3(False)
+        log(f'  {name} FAILED')
+        return 0.0
+    CS = (-22.0, 38.0)       # cable sector: the slot (HUB_WIN, 7.9 deg, +-8 normal) and the bundle's way up the bore
+    # 1. fill: bore r 20.0 straight up from Y 296 to the old fill's top (Y 302.3), so the whole wall behind the groove deepens
+    #    (r 20-34.3, was 23-34.3); then a 45 deg cone outward into the floor (Y 313, r 30.7), replacing the flat ceiling at
+    #    Y 302.3 that printed as a 13 mm overhang. The outer side merges into the spigot wall below Y 302.3 (r 30, clear of
+    #    the groove at r 34.3) and the outer wall above (r 36.3). Not r 19.4: there the bore lands exactly on the lugs' inner
+    #    corners (flat inner faces 18.76 off the axis meet the Z faces at r 19.4) and the R1.2 Z-root fillets do not build
+    prof = [(20.0, 296.0), (30.0, 296.0), (30.0, 302.3), (36.3, 302.3), (36.3, 313.0), (30.7, 313.0), (20.0, 302.3)]
+    if HUB_D2 in ('1', '2'):
+        part_rev('D2_FILL', prof, CS[1], 360.0 - (CS[1] - CS[0]))
+    elif HUB_D2 == 'e':
+        # 'e': D2's full profile (r 20 bore to Y 302.3, then the 45 deg cone into the floor) over the -X lug's sector only;
+        # the cone is what lifts the root's outer end (it ties the spigot ring to the floor), the r 20 bore its inner end
+        part_rev('D2_SECTOR', prof, 140.0, 80.0)
+    else:
+        # 'c' / 'd' (trimmed, 2026-11-12 22:00Z): the gain is at the -X lug root's inner end, which on rev D runs out at the
+        # r 23 bore; so only there: the bore brought to r 20 over 140-220 deg, Y 296 up to a 45 deg top (r 20 at Y 299.3 to
+        # r 23 at Y 302.3, so it prints without support); the rest of rev D (and its print) unchanged
+        part_rev('D2_LOCAL', [(20.0, 296.0), (23.5, 296.0), (23.5, 302.3), (23.0, 302.3), (20.0, 299.3)], 140.0, 80.0)
+    # 2. the cable sector: the wall fill only deepened to r 21, Y 296-302.3
+    part_rev('D2_FILL_CS', [(21.0, 296.0), (23.5, 296.0), (23.5, 302.3), (21.0, 302.3)], CS[0], CS[1] - CS[0])
+    if HUB_D2 in ('2', 'd'):
+        # 3. backing behind the -X lug: r 14.5-19.4 over 166-194 deg below Y 296, down to the lug's bottom (Y 288). At 19.4 it
+        #    stays inside the lug's own band (|z| <= 4.7, x >= 18.8), so nothing grows past the lug outline; elsewhere it is
+        #    inside r 18.7 (the arm's free zone). Carried up as a 45 deg band into the fill so it prints without support; then
+        #    the hub-screw driver columns (r 12 at 158 and 218 deg, R 5.0) are cut back out of it below the boss tubes (Y 298.5)
+        prof = [(14.5, 288.0), (19.4, 288.0), (19.4, 296.0), (20.2, 296.0), (36.3, 312.1), (36.3, 313.2), (31.7, 313.2), (14.5, 296.0)]
+        part_rev('D2_BACK', prof, 166.0, 28.0)
+        extrude(d, ysk(d, 286.0, 'D2_DRIVER', lambda s: [s.circle(ypt(12.0, a_, 286.0), 5.0) for a_ in (158.0, 218.0)]),
+                'D2_DRIVER', 298.4 - 286.0, Y, cut=True, lo=-1.0)
+
+
 def hub_lug_roots():
     """REV C+: R1.0 at the lugs' X-facing roots (flat outer faces at r 29.5 meeting the spigot underside at Y 296), on the
     saved hub (the edges are not found inside the build). Nothing on the Z-facing sides; no lug thickening."""
@@ -1050,6 +1109,8 @@ def build_hub():
         else:
             extrude(d, ysk(d, wf['y'][0], 'WALL_FILL', lambda s: [sector(s, lambda r, a: ypt(r, a, wf['y'][0]), wf['r'][0], wf['r'][1], a0_, a1_, wf['end_r'])
                                                                  for a0_, a1_ in wf['sectors']]), 'WALL_FILL', wf['y'][1] - wf['y'][0], Y, lo=-1.0)
+    if HUB_D2:
+        hub_d2(d, gplane)
     # REV C+: R0.3 in the concave corner between the spigot (r 35.8) and the disc face (Y 302.0); the arm breaks its bore-to-end-face
     # edge by 0.5 (20:33Z). A revolve boss of the fillet region, overlapping the solid by 0.05
     rc_ = hb['disc_corner_r']

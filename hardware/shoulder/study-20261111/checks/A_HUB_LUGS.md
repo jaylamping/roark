@@ -552,3 +552,65 @@ least the 1.5 hub target. For the lug cases, pass means at least the arm side's 
 **Verdict:** rev D with the R1.2 Z-facing roots is at least as strong as rev C+ wherever the comparison is clean (hub top
 in Ah and B, lugs, land, disc corner and window band). It also passes the arm's stop case at the lug roots. Adoption
 stays the arm thread's call: `cad/scripts/shoulder/adopt_hub_revD.sh` is prepared and not run.
+
+## Rev D2: bolster on the hub alone (2026-11-12, in progress)
+
+**Why:** the arm's combined pass on the filleted rev D showed three spots just under its 1.2 target (0.5 mm average) at a
+0.2 mm print gap. The arm's fit has since changed to 0 gap with a selective shim on the disc face, so that case no longer
+applies, but the lug loads grew: -X lug Fz up to 228 N (STOP_124 nominal), Fx 40 N, 56 N axial; +X lug Fz -134 N.
+
+**Rule:** no interface surface changes: groove section, spigot r 35.8, lug faces and holes, the R1.2 fillets, land. All
+variants sit behind the switch `dims.HUB_D2` (default off, needs `HUB_GROOVE_RING`).
+
+**Limits inside the hub** (measured on the rev D mesh and the arm's envelope):
+- Bore above Y 296: the arm has nothing there (its parts reach r 34.5 above Y 296).
+- Cable sector, -22..38 deg (the HUB_WIN slot at 7.9 deg, ±8 mm, and the bundle's way up the bore at r 15.5-20): the
+  bore can go to **r 21** (bundle + 1 mm). The +X lug sits in this sector.
+- Elsewhere: the hub-screw boss tubes (r 12, outer r 16.5, Y 298.5-319.5; heads seat at Y 298.5, driver from below).
+  So **r 17.5** in principle.
+- **r 20 used:** the lugs' flat inner faces (18.76 off the axis) meet their Z faces at r 19.4. A bore at r 19.4 lands
+  exactly on those corners and the R1.2 Z-root fillets will not build. At r 20 they run out on the bore, as on rev D at r 23.
+- **Below Y 296** (arm envelope): free inside r 18.7 at every angle; nothing may grow in Z beside the lugs.
+
+**Variants** (masses from the build):
+
+| | What | Mass |
+|---|---|---|
+| Rev D | the candidate (bc16e97) | 78.3 g |
+| D2 (`HUB_D2=1`) | bore r 20 all round outside the cable sector, Y 296-302.3, then a 45 deg cone into the floor at Y 313; cable sector r 21 | 95.9 g (+17.6) |
+| D2b (`2`) | D2 + backing behind the -X lug below Y 296 (r 14.5-19.4, 166-194 deg, carried up at 45 deg, driver columns R 5 cut out) | 96.3 g (+18.0) |
+| D2c (`c`) | trimmed: bore r 20 only behind the -X lug (140-220 deg, Y 296-302.3, 45 deg top); cable sector r 21 | 79.0 g (+0.7) |
+| D2d (`d`) | D2c + the backing | 80.3 g (+2.0) |
+| D2e (`e`) | D2's full profile (bore + cone) over 140-220 deg only; cable sector r 21 | queued |
+
+**Print:**
+- D2's cone replaces rev D's flat 13 mm ceiling at Y 302.3 (an overhang in the RS02-side-down orientation) with a 45 deg
+  slope. Only the cable sector keeps the old ceiling.
+- D2c and D2e use 45 deg tops, so they add no new overhang.
+- The backing prints on its own 45 deg band.
+
+**Like-for-like FEA, `HUBL_STOP3`:**
+- **Loads:** -X lug Fz 228 N, Fx 40, 56 N axial; +X lug Fz -134 N.
+- **Mesh:** 1.5 mm, plus 0.35 mm on the -X lug's two R1.2 roots, 0.4 mm on the small faces round the -X lug root, and
+  0.5 mm in the lug holes. 590-690k nodes.
+- **Solver and post:** FFEPlus, read back as 2. Post-processing is `hub_stop2_post.py`.
+- **Not resolved by this case:** the groove bottom and bore are single full-ring faces, so they are not refined, and this
+  lug-only case barely loads the groove.
+
+Layer SF (σy, tensile part) as peak / 0.5 mm / 1 mm average at the -X lug's Z root (the tension side). The root's inner end
+is r 20-23, its outer end r 29.9:
+
+| | Mass | Inner end | Outer end | Governing | Across-layer shear, peak / 0.5 mm | Spigot core |
+|---|---|---|---|---|---|---|
+| Rev D | 78.3 | 0.79 / 1.57 / 2.54 | 0.99 / 1.59 / 2.32 | **0.79 / 1.57 / 2.54** | 40 / 19 MPa | 0.98 / 2.68 / 3.70 |
+| D2 | +17.6 | 1.37 / 2.66 / 3.79 | 1.50 / 2.43 / 3.64 | **1.37 / 2.43 / 3.64** | 15 / 12 | 2.60 / 4.79 / 5.50 |
+| D2c | +0.7 | 1.23 / 2.62 / 3.96 | 1.11 / 1.77 / 2.61 | **1.11 / 1.77 / 2.61** | 25 / 19 | 1.74 / 5.06 / 6.33 |
+
+**Where the gain comes from:**
+- **The root's inner end** (rev D's peak, where the R1.2 runs out on the r 23 bore) is fixed by the local r 20 bore
+  alone. D2c gets nearly all of D2's gain there, for 0.7 g.
+- **The outer end** then governs. D2 lifts it as well, through the cone tying the spigot ring to the floor, but D2c does
+  not. D2e tests that cone over the -X lug sector only.
+- **Gain on the governing value, per gram:**
+  - D2c: +41% peak, +13% over 0.5 mm, +3% over 1 mm, for 0.7 g.
+  - D2: +73% / +55% / +43% for 17.6 g.

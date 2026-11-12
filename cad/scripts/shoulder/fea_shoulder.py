@@ -67,7 +67,18 @@ def info(f):
     elif s.IsPlane:
         t = 'plane'
         n = [round(v, 3) for v in f.Normal]
+    elif s.IsTorus:
+        t = 'tor'
+        tp = s.TorusParams
+        r = (tp[6] * 1000, tp[7] * 1000)      # major, minor
     return t, r, n, box, f.GetArea * 1e6 if not callable(f.GetArea) else f.GetArea() * 1e6
+
+
+def _safe(f, default=None):
+    try:
+        return f()
+    except Exception:
+        return default
 
 
 def pick(d, sel):
@@ -79,6 +90,8 @@ def pick(d, sel):
             q = sel[2]
             if all(lo[i] >= q[i] - .01 and hi[i] <= q[i + 3] + .01 for i in range(3)):
                 out.append(f)
+        if sel[0] == 'tor' and t == 'tor' and abs(r[1] - sel[1]) < 0.02 and sel[2][0] <= r[0] <= sel[2][1]:   # minor radius, major range
+            out.append(f)
         if sel[0] == 'cone' and f.GetSurface.IsCone:      # cones whose box lies inside the given box
             q = sel[1]
             if all(lo[i] >= q[i] - .01 and hi[i] <= q[i + 3] + .01 for i in range(3)):
@@ -254,6 +267,9 @@ def run(name, c):
     print(' options', opts, flush=True)
     for sel, size in c.get('ctrl', []):
         fs = pick(d, sel)
+        if not fs and c.get('ctrl_optional'):      # like-for-like runs on variants: a face set one geometry lacks is skipped
+            print(' control', sel[0], 'no faces: skipped', flush=True)
+            continue
         q = mesh.ApplyMeshControl(fs, I())
         q = q[0] if isinstance(q, tuple) else q
         call(q, 'MeshControlBeginEdit')
@@ -334,7 +350,7 @@ def run(name, c):
     vm = s[:, 10]
     np.savez(str(F / (name + '.npz')), pos=pos, s=s)
     i = np.flatnonzero(away)[np.argmax(vm[away])]
-    out = dict(extra, case=name, part=c['part'], el=el, nodes=int(mesh.NodeCount), elements=int(mesh.ElementCount), peak_vm=round(float(vm.max()), 2), vm=round(float(vm[i]), 2), at=pos[i].round(1).tolist(), sf=round(YIELD / float(vm[i]), 2))
+    out = dict(extra, case=name, part=c['part'], el=el, nodes=int(len(pos)), elements=int(_safe(lambda: mesh.ElementCount, -1)), peak_vm=round(float(vm.max()), 2), vm=round(float(vm[i]), 2), at=pos[i].round(1).tolist(), sf=round(YIELD / float(vm[i]), 2))
     for label, n in (('x', (1, 0, 0)), ('y', (0, 1, 0)), ('z', (0, 0, 1))):
         ln = layer(pos, s[:, 1:7], None, n, None)
         j = np.flatnonzero(away)[np.argmax(ln[away])]
@@ -440,6 +456,27 @@ for k_, f_, m_ in (('A', (0.0, -372.0, 0.0), (22.9, 17.0, 0.0)), ('B', (0.0, -62
 CASES['HUBL_I'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5)], regions=GREG_C,
                        remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (-170.0, -230.0, 0.0), (0.0, 0.0, 0.0), 1),
                                 (LUG_HOLES[1], (193.5, 292.0, YZ), (170.0, -230.0, 0.0), (0.0, 0.0, 0.0), 1)])
+
+# REV D2 comparison (2026-11-12): the arm's grown stop loads (its STOP_124 nominal: -X lug Fz 228 N, Fx 40, 56 N axial;
+# +X lug Fz -134 N), same mesh on rev D, D2 and D2b: 0.4 mm on the lug-root R1.2 fillets, the groove bottom (r 34.3 and its
+# bottom rounds) and the bore faces of the inward fill (r 23 on rev D; r 20 / 21 and the 45 deg cone on D2)
+CASES['HUBL_STOP2'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl_optional=1, regions=dict(GREG_C, lug_A=[143, 286, -2, 158, 297, 14], lug_B=[183, 286, -2, 198, 297, 14]),
+    ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [137, 294.5, -1.5, 205, 296.2, 13.5]), 0.4),
+          (cyl(34.3, [130, 297.5, -35, 212, 302.0, 47]), 0.4), (('tor', 0.4, (34.0, 35.0)), 0.4), (('tor', 1.0, (34.0, 35.6)), 0.4),
+          # the bore faces: SolidWorks gives large faces loose boxes, so a wide box; the radius alone picks them
+          (cyl(23.0, [110, 285, -50, 231, 320, 62]), 0.4), (cyl(20.0, [110, 285, -50, 231, 320, 62]), 0.4), (cyl(21.0, [110, 285, -50, 231, 320, 62]), 0.4),
+          (('cone', [130, 295.9, -35, 212, 313.5, 47]), 0.4)],
+    remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (40.0, -56.0, 228.0), (0.0, 0.0, 0.0), 1),
+             (LUG_HOLES[1], (193.5, 292.0, YZ), (0.0, 0.0, -134.0), (0.0, 0.0, 0.0), 1)])
+
+# HUBL_STOP2 loads with a light, identical mesh for every variant (coordinator, 21:58Z: under about 700k nodes): 0.35 mm on
+# the -X lug's two R1.2 Z roots, 0.4 mm on the small faces round the -X lug's root (its Z faces, inner face, outer R1.0
+# roots and any local backing; large faces such as the bore and underside rings are excluded by area), 0.5 mm in the lug
+# holes, 1.5 mm elsewhere. The groove bottom and bore are single full-ring faces, so they are not refined (a face control
+# cannot be limited to an arc)
+CASES['HUBL_STOP3'] = dict(CASES['HUBL_STOP2'], ctrl_optional=1,
+    ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [137, 294.5, -1.5, 153.5, 296.2, 13.5]), 0.35),
+          (('touch', [137, 293.5, -2.0, 154.0, 297.5, 14.0], 160.0), 0.4)])
 
 # REV D, the arm thread's stop case on the full-ring joint (its fine-mesh repeat, roark 3c7114b): the full-ring ridge and groove
 # are axisymmetric and frictionless, so they carry no torque about the hub axis; that part of the stop moment goes into the
@@ -601,4 +638,13 @@ if __name__ == '__main__':
                 app().CloseAllDocuments(True)
             except Exception:
                 pass
-            end_session(STATE)
+            try:
+                end_session(STATE)
+            except Exception as e_:      # a dropped COM handle (AttributeError) escapes end_session: stop our own instance
+                import sw_instance as SI
+                print(' end_session failed:', type(e_).__name__, e_, '- stopping our instance', flush=True)
+                pid_ = SI._session_pid(str(STATE))
+                if pid_ is not None:
+                    SI.kill_tree(pid_, SI._started(pid_))
+                if os.path.exists(str(STATE)):
+                    os.remove(str(STATE))

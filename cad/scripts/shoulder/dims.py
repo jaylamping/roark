@@ -209,4 +209,11 @@ HUB_RIM_CHAMFER = 0.5 if os.environ.get('HUB_CHAMFER') else 0.0
 # REV D candidate (arm thread's split-collar stop case, 2026-11-12): the groove a full ring at full depth (no run-outs) and the
 # inward wall fill a full ring (r 23-28.2). Default off until the arm thread's result says it fixes the stop case.
 HUB_GROOVE_RING = bool(os.environ.get('HUB_GROOVE_RING'))   # hub-top fix (A_HUB_LUGS): 0.5 x 45 on the six screw-hole rims at the RS02 face
+# REV D2 (bolster on rev D, default off; needs HUB_GROOVE_RING): '1' the inward fill deepened to r 20 (the lugs' inner
+# corners are at r 19.4) and carried up to the floor as a 45 deg cone, outside the cable sector (-22..38 deg), where it only goes to
+# r 21 (bundle r 15.5-20 + 1); '2' adds a backing block (r 14.5-19.4) behind the -X lug below Y 296, clear of the hub-screw
+# driver columns at 158 and 218 deg. No interface surface changes (groove, r 35.8, lug faces, holes, land).
+# 'c' trimmed: the r 20 bore only behind the -X lug (140-220 deg, Y 296-302.3, 45 deg top) plus the cable-sector r 21; 'd' = 'c'
+# plus the backing; 'e' D2's full profile (bore + 45 deg cone into the floor) over 140-220 deg only, plus the cable-sector r 21
+HUB_D2 = os.environ.get('HUB_D2', '') if HUB_GROOVE_RING else ''
 CH_DZ = -1.0 if os.environ.get('LEG2') else 0.0   # LEG2 mock-up: the fork rear's channels 1 mm further back (front wall 3.4)
