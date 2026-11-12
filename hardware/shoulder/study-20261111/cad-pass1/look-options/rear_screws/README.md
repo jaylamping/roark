@@ -20,7 +20,8 @@ would rather have that.
 
 ![sheet](SHEET_rear_screws.png)
 
-Columns: before, layout N (going onto the real parts), and the rejected symmetric layout G.
+Columns: layout N (on the real parts since 8130d8e), the rejected symmetric layout G, and N with flush printed caps
+(option b, mock-up for Joey's pick). The edge-breaking "before" layout is shown in the sheet at commit 9b4569c.
 
 - **N:** top row X -27, -17, +17, +26 at Y 357; lower row -22, +20 at Y 345.5.
   - Every counterbore is fully closed, with at least 1.5 mm of skin to the fork rear's edge. The swell is off-centre, so
@@ -28,5 +29,5 @@ Columns: before, layout N (going onto the real parts), and the rejected symmetri
   - Rated-torque joint layer SF **1.49** (FEA), against 1.5. Accepted as inside FEA scatter.
 - **G** (symmetric ±12/±24, ±20) looks tidier but drops the joint to 1.33. Rejected.
 - **Screws:** all six are ISO 7380 M4 button heads, because the outer recesses are only about 3.1 mm deep.
-- **Caps option (b) on N:** queued. The caps pictures above are on G.
+- **Caps option (b) on N:** a 0.3 mm shut circle round each Ø8 cap, flush with the surface. Mock-up only.
 

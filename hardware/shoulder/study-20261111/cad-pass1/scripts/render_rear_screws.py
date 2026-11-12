@@ -12,8 +12,7 @@ from dims import *
 
 OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
 W = R.REPO / 'cad' / '_wip' / 'shoulder-pass1'
-VAR = {'six': ('Before: +-17, +-27 at Y 357; +-22 at Y 345.5 (+27 and +22 break the edge)', W / 'stl' / 'fork_rear.stl'),
-       'N': ('Layout N (real): -27, -17, +17, +26 at Y 357; -22, +20 at Y 345.5, all closed', W / 'stl_look_rsN' / 'fork_rear.stl'),
+VAR = {'N': ('Layout N (real parts): -27, -17, +17, +26 at Y 357; -22, +20 at Y 345.5, all closed', W / 'stl' / 'fork_rear.stl'),
        'G': ('Rejected: symmetric G (+-12, +-24; +-20), joint SF 1.33', W / 'stl_look_rsG' / 'fork_rear.stl')}
 import os
 if (W / 'stl_look_rsNc' / 'fork_rear.stl').exists():
