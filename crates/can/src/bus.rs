@@ -15,13 +15,14 @@ use telemetry::{BusInfo, BusRecorder, Epoch, TickBatch, TimestampSource};
 use crate::clock::{Clock, mono_now, sleep_relative, wall_ns};
 use crate::error_frame::BusError;
 use crate::exit_wait::{ExitWait, Pushed};
-use crate::interface::{self, Interface, InterfaceSpec, Refusal};
+use crate::interface::{self, Interface, Refusal};
 use crate::order::{Order, Rearmed};
 use crate::slow::{SlowRequest, SlowResult};
 use crate::tick::BusTick;
 use crate::timing::Timing;
 use crate::types::{
-    BusDrive, CommandBatch, ConfigError, Counters, Drain, SendList, SendOutcome, Snapshot,
+    BusDrive, CommandBatch, ConfigError, Counters, Drain, InterfaceSpec, SendList, SendOutcome,
+    Snapshot,
 };
 use crate::{bus_orders, slack, sys};
 

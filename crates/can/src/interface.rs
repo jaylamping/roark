@@ -11,16 +11,7 @@ use std::process::Command;
 
 use serde_json::Value;
 
-/// What the skeleton says a bus's interface must be.
-#[derive(Clone, Debug, PartialEq)]
-pub struct InterfaceSpec {
-    /// Bit rate, bit/s.
-    pub bitrate_bps: u32,
-    /// Sample point, as a fraction of the bit.
-    pub sample_point: f64,
-    /// The Linux driver, as `/sys/class/net/<bus>/device/driver` names it.
-    pub driver: String,
-}
+use crate::types::InterfaceSpec;
 
 /// The interface a bus opened on, for the runtime's startup log.
 #[derive(Clone, Debug, PartialEq)]

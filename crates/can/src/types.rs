@@ -559,3 +559,14 @@ pub enum RearmRefused {
         slot: usize,
     },
 }
+
+/// What the skeleton says a bus's interface must be.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InterfaceSpec {
+    /// Bit rate, bit/s.
+    pub bitrate_bps: u32,
+    /// Sample point, as a fraction of the bit.
+    pub sample_point: f64,
+    /// The Linux driver, as `/sys/class/net/<bus>/device/driver` names it.
+    pub driver: String,
+}
