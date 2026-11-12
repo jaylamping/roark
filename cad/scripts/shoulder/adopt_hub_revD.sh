@@ -31,6 +31,7 @@ PYEOF
 until ! $PY $ST --status 2>/dev/null | grep -qE "busy|HALF"; do sleep 30; done
 SW_STATE_NAME=.sw_instance_pid_adoptD $PY -u build_parts.py port_cap hub > $W/build_adopt_revD.txt 2>&1
 grep -q "GROOVE_RING" $W/build_adopt_revD.txt || { echo 'rev D groove not in the build log: stopping'; exit 1; }
+grep -q "LUG_ZROOTS: R1.2" $W/build_adopt_revD.txt || { echo 'R1.2 Z-root fillet not in the build log: stopping'; exit 1; }
 grep -q "== shoulder_hub_left" $W/build_adopt_revD.txt || { echo 'hub build did not finish: stopping'; exit 1; }
 
 # 3. exports

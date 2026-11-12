@@ -173,6 +173,10 @@ def run(name, c):
     fixed = []
     for kind, sel in c['fix']:
         fs = pick(d, sel)
+        if kind.endswith('?'):          # optional: only where the part has these faces
+            if not fs:
+                continue
+            kind = kind[:-1]
         err = I()
         if kind in ('radial', 'axialY'):
             # radial only on cylinders (type 7: radial, circumferential, axial), or only normal to the Top plane (type 5)
@@ -373,7 +377,8 @@ def run(name, c):
 # (r 2.15 on PCD 24) and the step ring face that bears on the RS02 output. All the arm load is put through the lugs (the
 # spigot's bearing on the arm's hub seat is ignored): conservative for the lugs. Hub prints with the yaw axis vertical:
 # layers normal to Y, so the layer stress is sigma_y.
-HUB_FIX = [('fixed', cyl(2.15, [150, 297, -20, 192, 321, 30])), ('fixed', pl((RX + 21.5, RS02_OUT, YZ)))]
+HUB_FIX = [('fixed', cyl(2.15, [150, 297, -20, 192, 321, 30])), ('fixed', pl((RX + 21.5, RS02_OUT, YZ))),
+           ('fixed?', cyl(1.9, [150, 297, -20, 192, 321, 30]))]   # ?: the two Ø3.8 locating holes, where the hub has them
 LUG_HOLES = [cyl(1.7, [144, 289, 0, 151, 295, 12]), cyl(1.7, [190, 289, 0, 197, 295, 12])]
 AT = (RX, 292.0, YZ)
 YAW_T = 17.0          # RS02 peak torque (the arm thread's rating, 17 N.m)
@@ -396,7 +401,7 @@ CASES['HUBS_B'] = dict(CASES['HUBS_MX'], remote=(LUG_HOLES + [SPIGOT], AT, (0.0,
 # ---- groove model (hub rev B + groove): spigot held radially only (roller on the r 35.8 cylinder), axially only on the
 # groove's load flanks (roller on the 30 deg cones, low-Y side), lugs bolted (fixed holes). The arm loads go in as their
 # reaction at the RS02 side (remote load on the hub screws and the step-ring face, -F and -M about the same point).
-RS02_SIDE = [cyl(2.15, [150, 297, -20, 192, 321, 30]), pl((RX + 21.5, RS02_OUT, YZ))]
+RS02_SIDE = [cyl(2.15, [150, 297, -20, 192, 321, 30]), pl((RX + 21.5, RS02_OUT, YZ)), cyl(1.9, [150, 297, -20, 192, 321, 30])]   # + the Ø3.8 locating holes where present
 GROOVE_FIX = [('radial', cyl(35.8, [130, 295.5, -35, 212, 302.5, 47])), ('axialY', ('cone', [130, 296.8, -35, 212, 298.0, 47])),
               ('fixed', LUG_HOLES[0]), ('fixed', LUG_HOLES[1])]
 GREG = {'load_flank_90': [150, 296.5, 25, 192, 298.2, 47], 'load_flank_270': [150, 296.5, -35, 192, 298.2, -13],
@@ -428,6 +433,13 @@ for k_, f_, m_ in (('A', (0.0, -372.0, 0.0), (22.9, 17.0, 0.0)), ('B', (0.0, -62
 CASES['HUBL_I'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5)], regions=GREG_C,
                        remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (-170.0, -230.0, 0.0), (0.0, 0.0, 0.0), 1),
                                 (LUG_HOLES[1], (193.5, 292.0, YZ), (170.0, -230.0, 0.0), (0.0, 0.0, 0.0), 1)])
+
+# REV D, the arm thread's stop case on the full-ring joint (its fine-mesh repeat, roark 3c7114b): the full-ring ridge and groove
+# are axisymmetric and frictionless, so they carry no torque about the hub axis; that part of the stop moment goes into the
+# lugs as a Z-force pair. -X lug: Fz +169 N, Fx +40 N, 55 N axial (taken as a pull along -Y, like HUBL_I); +X lug: Fz -112 N.
+CASES['HUBL_STOP'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5)], regions=dict(GREG_C, lug_A=[143, 286, -2, 158, 297, 14], lug_B=[183, 286, -2, 198, 297, 14]),
+                          remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (40.0, -55.0, 169.0), (0.0, 0.0, 0.0), 1),
+                                   (LUG_HOLES[1], (193.5, 292.0, YZ), (0.0, 0.0, -112.0), (0.0, 0.0, 0.0), 1)])
 
 SCREW_ANGLES = [-142.0, -82.0, -22.0, 38.0, 98.0, 158.0]     # hub screws on PCD 24 (measured on the hub)
 HEAD_SEAT_Y = 298.06                                          # bottom face of each screw boss (tube r 2.15-4.4 in the lightening

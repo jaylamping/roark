@@ -24,19 +24,19 @@
       "export": "exports/shoulder/shoulder_hub_left_revD_candidate.STEP",
       "source": "scripts/shoulder/build_parts.py",
       "config": "",
-      "settings": "rev D candidate with the two \u00d83.8 locating holes: LOOK=hubD HUB_GROOVE_RING=1 build_parts.py port_cap hub",
-      "sourceSha256": "c0065d3126bbaea6e98a8d9a275660da894d95ccebfac32d644f07e589462c72",
-      "exportSha256": "93adae2e26add729b1f16c62f8ab739e27fb41fe55157acf7ecf72775a691b74",
-      "recorded": "2026-11-12T12:24:37Z"
+      "settings": "rev D candidate with the two \u00d83.8 locating holes and R1.2 Z-facing lug roots: LOOK=hubD HUB_GROOVE_RING=1 build_parts.py port_cap hub",
+      "sourceSha256": "9bb4a997a00f84ce2d9deea4bbe8f17fdf7f80771e8d0309c8cec56aef097a46",
+      "exportSha256": "3c9a836dd1860e0b698fb8bf0c1bd0f3c8f01a9158c0a1b9acfc3c5c96bde92c",
+      "recorded": "2026-11-12T16:43:08Z"
     },
     {
       "export": "exports/shoulder/shoulder_hub_left_revD_candidate.STL",
       "source": "scripts/shoulder/build_parts.py",
       "config": "",
-      "settings": "rev D candidate with the two \u00d83.8 locating holes: LOOK=hubD HUB_GROOVE_RING=1 build_parts.py port_cap hub",
-      "sourceSha256": "c0065d3126bbaea6e98a8d9a275660da894d95ccebfac32d644f07e589462c72",
-      "exportSha256": "2aab289564db6ecf853dbc4fbcf6ef68ce89afcd528437911171afaf3f684585",
-      "recorded": "2026-11-12T12:24:37Z"
+      "settings": "rev D candidate with the two \u00d83.8 locating holes and R1.2 Z-facing lug roots: LOOK=hubD HUB_GROOVE_RING=1 build_parts.py port_cap hub",
+      "sourceSha256": "9bb4a997a00f84ce2d9deea4bbe8f17fdf7f80771e8d0309c8cec56aef097a46",
+      "exportSha256": "18db56760e94540fd333bca3d591ad4c369cd6497baa27573556708fb8d2f61e",
+      "recorded": "2026-11-12T16:43:08Z"
     }
   ]
 }

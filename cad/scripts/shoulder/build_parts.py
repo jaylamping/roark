@@ -290,6 +290,14 @@ def hub_lug_roots():
                         pair=lambda p0, p1: all(29.2 < _r(q) < 31.0 for q in (p0, p1)))
     log('  LUG_ROOTS (post) edges', len(roots))
     fillet(d, roots, [1.0], 'LUG_ROOTS')
+    if HUB_GROOVE_RING:
+        # REV D (agreed with the arm thread, 2026-11-12): R1.2 on the Z-facing lug roots, the lug faces at Z +-5 meeting the
+        # spigot underside at Y 296, both lugs. The stop case loads the lugs mainly in Z, so these roots govern; the arm
+        # breaks its slot's top edges by 1.4 to clear them
+        zroots = edges_where(d, lambda p: abs(p[1] - 296.0) < 0.05 and abs(abs(p[2] - YZ) - 5.0) < 0.1 and 18.0 < _r(p) < 31.5,   # the R1.0 outer root stretches them to r 30.5
+                             pair=lambda p0, p1: all(abs(abs(q[2] - YZ) - 5.0) < 0.1 for q in (p0, p1)))
+        log('  LUG_ZROOTS (post) edges', len(zroots))
+        fillet(d, zroots, [1.2], 'LUG_ZROOTS')
     return finish_part(d, 'hub')
 
 
