@@ -711,6 +711,12 @@ def build_fork_front():
     extrude(d, ysk(d, TAP_Y[0], 'TAP_ARC', lambda s: sector(s, lambda r, a: ypt(r, a, TAP_Y[0]), 40.5, 47.5, -168, -94)), 'TAP_ARC', TAP_Y[1] - TAP_Y[0], Y, cut=True)
     tz = YZ - 41.0
     extrude(d, zsk(d, tz, 'TAP_LINK', lambda s: s.poly(rect_pts((RX - 4.0, sum(TAP_Y) / 2, tz), X, Y, 7.0, 6.0))), 'TAP_LINK', tz - RZ, NZ, cut=True)
+    if os.environ.get('PLUG_POCKET') == 'a':
+        # PLUG POCKET (a) mock-up (look-options/plug_pocket): a hidden column straight up from the 173 deg RS02 socket, inside
+        # the wall (2-4 mm to the outer skin), opening only into the drum-facing surface: room for the XT30(2+2)-F pushed
+        # down from above and its lead's U-turn into the socket pocket and tap
+        extrude(d, ysk(d, 360.0, 'PLUG_COLUMN', lambda s_: sector(s_, lambda r, a: ypt(r, a, 360.0), 30.5, 41.0, 159.0, 187.0, 2.0)),
+                'PLUG_COLUMN', 374.0 - 360.0, Y, cut=True)
     if LOOK == 'c':
         # LOOK c: the arm's front/back seam (upper_arm_organic_front/back split plane through the yaw axis, seen on the arm's
         # outboard and inboard sides) carried up the cuff as a 1.0 x 0.6 mm shut line at yaw 0 and 180 deg

@@ -1,0 +1,95 @@
+# RS02 plug pocket: getting the XT30(2+2)-F onto the RS02 (2026-11-12)
+
+**The problem:** the r 47 assembly check found that the RS02's plug cannot reach its socket as modelled. This predates
+r 47. See [CAD_NOTES.md](../../CAD_NOTES.md), "Side centre r 47, adopted".
+
+## The connector
+
+- **What it is:** one combined power + CAN connector, two per RS02 (in and out, for the daisy chain). Source: RobStride
+  RS02 User Manual 260713, §2.3 (in jaylamping/marengo `hardware/docs/robstride/`).
+  - board end: AMASS XT30PB(2+2)-M
+  - lead end: AMASS XT30(2+2)-F
+- **Board side**, AMASS XT30PW(2+2)-M drawing (LCSC-hosted AMASS spec, the horizontal variant of the same family):
+  - mating face 15.50 × 5.20 mm, body 12.53 mm deep
+  - power pins 5.0 apart, signal pins 2.0 apart, 3.85 between the power and signal rows
+  - The vendor RS02 model's socket boss matches the 15.5 × 5.2 face, lying tangential on the rear face. So **the plug
+    mates straight down (-Y) onto the socket**, and its lead leaves upward.
+- **Lead side, XT30(2+2)-F:** 12.30 × 4.20 × 11.80 mm (retailer listing, bto.pl; no AMASS drawing found yet). Joey will
+  measure a real one as confirmation.
+- **Allowance used here:**
+  - the plug stands up to 8 mm above the socket's top (Y 360.1), with partial engagement on the 4.6 mm exposed boss
+  - +3 mm for solder cups and heat-shrink
+  - a lead bend of R 4 for the 2 × power + 2 × CAN wires, which go flat and separate from the plug on
+  - **total about 15 mm above Y 360.1**
+- **Sockets on the vendor RS02:**
+  - at yaw angles 173° (inboard, X -34, Z +10) and -7° (outboard, X +34, Z +2)
+  - r 32.6-36.2, Y 355.5-360.1
+- **The existing socket tap** (`TAP_ARC`, r 40.5-47.5, -168…-94°, Y 353.4-359.4) leads from the 173° socket to the back.
+  So the 173° socket is the one in use. The -7° socket stays bare unless the arm's downstream motors chain from it (then
+  it needs a mirrored tap on the outboard side).
+
+## Where it is blocked today
+
+Above each socket (X ±30.5…37.5, Z -5…17), as a fraction of the plug's column filled by the fork front:
+
+| Y | 360.5 | 361.5 | 362.5-365.5 | 366.5 | 367.5 | 368.5 and up |
+|---|---|---|---|---|---|---|
+| filled | 0 | 0.51 (the seat ring's top 1 mm) | 0.26-0.20 (fb3 wrap edge, cuff top) | 0.13 | 0.07 | 0 (clear to the drum envelope at Y 375-378) |
+
+Sideways, the cuff wall (r 41-45) closes the pocket.
+
+## Options
+
+### a. Hidden column inside the wall: recommended
+
+- **What it is:**
+  - Open a column straight up from the 173° socket: r 30.5-41, ±14° about 173° (16.5 mm tangential), from the socket top
+    to Y 374.
+  - It stays inside the wall: 2-4 mm to the outer skin, which is r 43-45 there.
+  - At its top it meets the fork front's concave drum-facing surface (the r 59 cut), so its only opening is under the
+    drum, invisible from outside.
+  - The outer cuff skin and the top rim stay continuous. Nothing shows.
+- **Lead path:** the plug's lead leaves upward, U-turns down in the column's outer part (r 38-41, R 4) and enters the
+  existing socket tap at Y 359 → back cavity → yaw exit. Power and signal stay flat and separate after the plug.
+- **Headroom:** the plug plus lead bend needs about 15 mm above Y 360.1. There is 15.4 mm to the drum's 2 mm envelope
+  over the socket's whole width. **Tight:** the real plug's measurement decides it. With the retailer's 11.8 mm body it
+  fits with about 2 mm to spare.
+- **Assembly** (fork front on the bench, before it goes onto the roll output, so the drum is not there):
+  1. Lay the bundles in the ring's back cavity.
+  2. Slide the RS02 in bare from below. Fit its screws.
+  3. Feed the lead in through the column's top opening, down past the socket into the tap, then push the plug straight
+     down onto the socket from above.
+     - It takes a push-stick or long-nose pliers on the plug body: the opening is 16.5 × 10 mm, too small for fingers.
+     - To unplug: the same pliers, pulling straight up. There is no side access.
+  4. Fit the fork rear, then put the fork on the roll output.
+- **Print:** the column is vertical (upright print), with no overhang. Its top opening is on a down-facing curved surface
+  that already needs support there (the RS02-cap clearance roof).
+
+### b. Re-clock the RS02: rejected
+
+- **Possible in principle:** the fork front's 5 screw holes and 3 reliefs (-176, -16, 24°) are one 9-position pattern on
+  a 40° pitch. So the RS02 can turn in 40° steps without touching the hub, the frozen arm interface or the yaw stops.
+  Its output zero is a software offset.
+- **But the sockets lose headroom wherever they go.** The drum's r 59 envelope sits lowest over the back and front centre.
+
+| Turn | Sockets at | Headroom to the drum envelope |
+|---|---|---|
+| 0 (now) | 173° / -7° (sides) | **15.4 mm** |
+| +40° | -147° / 33° | 10.8 mm (the -147° one lands in the tap arc, out from under the wrap) |
+| ±80° | ±107° / ±73° | 5.8 mm |
+| -40° | 133° / -47° | 8.3 mm |
+
+- The one useful by-product: at +40° the four screws at -176, -96, -56 and -16 are all reachable from above. That would
+  drop the two dome access bores and plugs. But 10.8 mm is not enough for the plug.
+
+### c. Notch with a flush printed cover: fallback
+
+- **What it is:** open the column through the cuff top on the side, and close it with a press-in cover that continues the
+  cuff surface, like the RS02 access plugs. It leaves a shut line only.
+- **When:** only if (a) runs out of headroom with the real plug, because the notch gives room to bend the lead sideways.
+
+## Next
+
+- Mock-up of (a), `LOOK=pp_a`: front, side and three-quarter pictures, plus a section through the pocket. It is queued
+  for the next SolidWorks gap.
+- The real parts stay untouched until Joey has seen it.
