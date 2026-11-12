@@ -28,7 +28,9 @@ I = lambda v=0: VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, v)
 EX, NU, YIELD, LAYER, RHO = 1.9e9, 0.38, 45.0, 0.5, 1270.0
 PARTS = {'hub': F / os.environ.get('HUB_FEA_FILE', 'hub_fea.SLDPRT')}   # a second solve stream uses its own copy
 PARTS['fork'] = F / os.environ.get('FORK_FEA_FILE', 'fork_fea.SLDPRT')
-PARTS['fork1'] = F / 'fork1_fea.SLDPRT'      # fork front alone (debug of the two-body model)   # fork front + fork rear, two bodies (fork_fea_part.py)
+PARTS['fork1'] = F / 'fork1_fea.SLDPRT'
+PARTS['stop_fr'] = F / 'stop_fork_rear.SLDPRT'   # stop rev 2 checks
+PARTS['stop_cap'] = F / 'stop_cap.SLDPRT'      # fork front alone (debug of the two-body model)   # fork front + fork rear, two bodies (fork_fea_part.py)
 
 
 def cyl(r, box):
@@ -531,6 +533,28 @@ for tag, f_, mom in (('MX', (0.0, -310.0, 0.0), (23.0, YAW_T, 0.0)), ('MZ', (0.0
         CASES[f'FORK_{tag}_{sup}'] = dict(part='fork', fix=[('fixed', FK_BOSS)] + ([('radial', FK_SEAT6808)] if sup == 'brg' else []),
                                           remote=(FK_RS02, AT, f_, mom), coupling=0, el=2.5, disp=FK_DISP,
                                           react=dict(boss=[FK_BOSS], **({'seat6808': [FK_SEAT6808]} if sup == 'brg' else {})))
+
+# STOP REV 2 (A2) at the RS03 peak (60 N.m, manual 261013 s1.3): 1714 N on the contact flank at r 35 (60 / 0.035), as a
+# normal force on the flank face. Tooth: fork rear held at its joint face to the fork front and its two joint screws (the
+# torque goes fork rear -> joint -> fork front -> RS03). Cap: held at its three M3 screws and its front face on the drum.
+_ss = STOP_SLOT
+_ta, _th = _ss['tooth_angle'], _ss['tooth_half']
+def _rp(r, a, z):
+    return (RX + r * math.cos(math.radians(a)), RY + r * math.sin(math.radians(a)), z)
+STOP_F = 60000.0 / 35.0
+CASES['STOP_A2_TOOTH'] = dict(part='stop_fr', el=1.5,
+                              fix=[('fixed', ('plane', (RX, 356.9, JZ0), None, 'on')), ('fixed', cyl(2.25, [RX - 25, 350, -70, RX + 25, 364, JZ0 + 1]))],
+                              forces=[(('plane', _rp(35.0, _ta - _th, -37.0), None, 'on'), STOP_F, None)],
+                              ctrl=[(('touch', [RX - 14, RY - 44, -46.5, RX + 14, RY - 27, -32.5], 400.0), 0.5)],
+                              regions=dict(tooth=[RX - 14, RY - 44, -46.5, RX + 14, RY - 27, -32.5]))
+# the realistic hold: the two joint screws (the torque goes down the leg to the fork front) and the 6808 seat held radially
+CASES['STOP_A2_TOOTH_J'] = dict(CASES['STOP_A2_TOOTH'], fix=[('fixed', cyl(2.25, [RX - 25, 350, -70, RX + 25, 364, JZ0 + 1])),
+                                                            ('radial', cyl(BRG_SEAT_R, [RX - 27, RY - 27, BRG_LIP_Z - 0.1, RX + 27, RY + 27, HOUSE_Z0 + 1.1]))])
+CASES['STOP_A2_CAP'] = dict(part='stop_cap', el=1.5,
+                            fix=[('fixed', cyl(1.7, [RX - 60, RY - 60, CAP_Z1 - 2, RX + 60, RY + 60, DRUM_Z0 + 1])), ('fixed', ('plane', _rp(54.0, 225.0, DRUM_Z0), None, 'on'))],
+                            forces=[(('plane', _rp(35.0, _ta - _th + ROLL_STOP_IN, -36.0), None, 'on'), STOP_F, None)],
+                            ctrl=[(('touch', [RX - 30, RY - 46, -40.5, RX + 2, RY - 20, -28.0], 400.0), 0.5)],
+                            regions=dict(slot_end=[RX - 30, RY - 46, -40.5, RX + 2, RY - 20, -28.0]))
 
 CASES['FORK1_G_free'] = dict(CASES['FORK_G_free'], part='fork1')
 

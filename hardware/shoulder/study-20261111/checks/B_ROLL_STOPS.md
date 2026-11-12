@@ -142,3 +142,67 @@ The crate's §4.1.13 limit table (limit_torque 0-60) agrees with the peak.
 - FEA of the A2 tooth root and cap wall once it is modelled; the hand calculation is conservative for bending at this
   L/h.
 
+## A2 built and checked by FEA at the 60 N·m stall (2026-11-12)
+
+**Built into the real parts** (`dims.STOP_SLOT`, approved):
+- tooth r 30-40, ±14° at fork angle 270°
+- pad on the housing: r 33-42, ±24°, between the housing face and the joint plane
+- cap slot r 28-42, centred at 319.5°, 149° of arc
+- ring r 26-44, 20° past each slot end
+- Masses: cap 85.2 g (+0.7), fork rear 72.5 g (+2.1, which includes the 6808 changes)
+- **Outside the outline:**
+  - Nothing new is proud of the skin.
+  - The pad sits in the 4 mm gap between the cap's rear face and the fork rear, below the axis and within the arm's
+    width (X ±17). Seen from the side through that gap, it reads as the arm reaching 4 mm closer to the cap.
+  - The cap's slot opening on its rear face now reaches r 42 (was 35). That face is behind the fork rear. Its outer
+    part (r 35-42) shows through the same gap only where the fork rear's r 35 cheek doesn't cover it.
+- **The software limits stay** as a second layer: roll soft limits 2-3° inside the stops; torque about 10 N·m and speed
+  about 2 rad/s within 5° of either stop.
+
+**FEA:** linear static, PETG as before, 1714 N (60 N·m at r 35) as a normal force on the contact flank. Mesh 1.5 mm,
+0.5 mm on the tooth, slot and pad.
+
+| Case | Hold | Where | Bulk vm peak / 1 mm avg | SF peak / avg | Layer stress peak / 1 mm avg | Layer SF peak / avg |
+|---|---|---|---|---|---|---|
+| `STOP_A2_CAP` | 3 × M3 holes and the front face on the drum | slot end wall and floor edge | 43.6 / 21.0 | **1.03 / 2.14** | σz (cap layers) 18.2 peak | **1.24** |
+| `STOP_A2_TOOTH_J` | the 2 joint screws to the fork front, and the 6808 seat radially | tooth root (outer flank corner) | 104.8 / 51.9 | 0.43 / **0.87** | σy 83 / 15 | 0.27 / 1.5 |
+| | | pad edge at r 42 (where it meets the leg) | 125.3 / 64.6 | 0.36 / **0.70** | | |
+| | | rear leg at Y 390 (narrowest, round the cable channel) | 85.8 / 76.2 | **0.59** | σy 46 / 37 | 0.61 |
+| | | joint-screw zone (X ±17, Y 357) | 72.3 / 58.9 | 0.76 | σy 80.5 / **58.1** | **0.39** |
+
+(`STOP_A2_TOOTH`, held over the fork rear's whole front face, is not used: that face runs under the pad, so it put an
+artificial fixed edge at the pad.)
+
+### What the FEA shows that the hand calculation did not
+
+- **The cap is fine.** At a 60 N·m stall it meets SF ≥ 1.0, bulk and layer.
+- **The tooth is close.** Its own root is 0.87 at the 1 mm average. A 1.5 mm root fillet, and blending the pad into the
+  leg instead of ending it at r 42 with a corner, should bring the tooth and pad to ≥ 1.0. (The hand calculation took
+  the tooth alone, with no root notch.)
+- **The real limit is the torque path.** At the stop, the full motor torque runs RS03 → fork front → the 2 × M4 joint →
+  the fork rear's leg → tooth → cap.
+  - The fork rear is the only roll-side part next to the cap, so any stop on the cap puts the fork rear and its joint in
+    this path.
+  - The leg at Y 390 (narrowest, round the cable channel) reaches 76 MPa at the 1 mm average: SF 0.59.
+  - At the two joint screws the stress runs across the layers: σy 58 MPa at the 1 mm average, layer SF 0.39.
+  - Two screws 34 mm apart carry a 60 N·m couple as about 1.8 kN each, along Y, which is across the layers.
+- **At the rated 20 N·m** (a third of these stresses):
+  - tooth 2.6, pad 2.1, leg 1.8, cap ≥ 3
+  - joint-screw zone layer SF **1.16**: short of the 1.5 target
+
+### Options for the torque path (for the coordinator; not applied)
+
+1. **Strengthen the joint.**
+   - Four M4 instead of two, on a wider span: add two at Y about 345 under the sleeve's ring top, if the r 47 sleeve is
+     taken. Spread the bosses so the couple arm grows from 34 to about 60 mm. That roughly halves the per-screw load.
+   - Add two printed shear keys (bosses on the fork front's pad engaging pockets in the fork rear) that carry the couple
+     in bearing in the layer plane.
+   - Expected joint layer SF: about 1.0 at a stall, about 3 at rated.
+2. **Thicken the leg at Y 380-395** round the cable channel (a 2.4 mm wall now). A +2 mm wall each side raises its
+   section modulus about 1.8 times: SF about 1.05 at a stall. It changes the back profile slightly.
+3. **Accept stall protection from the controller** (a torque limit of 25 N·m or less near the stops). The stop then has
+   SF ≥ 1.5 everywhere at rated torque once option 1 is in, and the stall case is a firmware duty, written in the
+   software project's requirements.
+- **My recommendation:** 1 + the root fillet and pad blend, plus the controller limit as the second layer. Option 2 only
+  if Joey wants the stop to survive a stall on its own.
+
