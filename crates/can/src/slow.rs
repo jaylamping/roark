@@ -87,8 +87,8 @@ pub enum SlowOutcome {
     /// A probe's or set-ID's window closed on reads that can't be trusted to hold every answer: an error frame was read
     /// in it (assumed, until the bench shows it, to be how two drives answering one ID collide on a real bus), a frame
     /// read in it carried a new kernel overflow count, the drain that closed it read a backlog or left frames unread, or
-    /// the bus failed. What
-    /// answered can't be told; probe again.
+    /// the bus failed. What answered can't be told. A probe may be sent again; after a set-ID the requester probes
+    /// both IDs and never sends the type 7 again.
     Unsure,
     /// The drive sent a status after the write. That says nothing about the value: read it back.
     WriteAnswered,
@@ -163,8 +163,8 @@ pub(crate) struct SlowEntry {
     submitted_tick: u64,
     request: SlowRequest,
     state: SlowState,
-    /// A probe or set-ID in flight whose window can no longer be trusted to hold every answer (an error frame or a
-    /// kernel drop): it ends [`SlowOutcome::Unsure`].
+    /// A probe or set-ID in flight whose window can no longer be trusted to hold every answer (an error frame, or a
+    /// frame carrying a new kernel overflow count, read in it): it ends [`SlowOutcome::Unsure`].
     disturbed: bool,
 }
 

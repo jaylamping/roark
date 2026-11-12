@@ -163,12 +163,12 @@ fn rows() -> Vec<Row> {
         ),
     ]
     .into_iter()
-    .chain(untrusted_rows())
+    .chain(overflow_rows())
     .collect()
 }
 
-/// The rows whose window can't be trusted, and the one that can despite a frame carrying an overflow count.
-fn untrusted_rows() -> Vec<Row> {
+/// The rows whose window can't be trusted, and the one with an overflow count that hasn't changed, which can.
+fn overflow_rows() -> Vec<Row> {
     let found = |uid| SlowOutcome::Found { uid, other: None };
     let one = Uid([1; 8]);
     vec![
@@ -229,7 +229,7 @@ fn untrusted_rows() -> Vec<Row> {
             SlowOutcome::Unsure,
         ),
         (
-            "a kernel drop in the window",
+            "a new overflow count read in the window",
             probe(50),
             vec![identity(50, one)],
             Close::KernelDrop,
