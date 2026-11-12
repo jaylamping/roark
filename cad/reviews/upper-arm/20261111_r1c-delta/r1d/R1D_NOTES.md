@@ -173,3 +173,13 @@ instance with RunMacro2:
 - It is solved as saved by `r1d_ring_ds_solve.sh saved` (FEA_EXISTING_STUDY), with the memory stop.
 - The earlier option c) 0.8 mm runs may have had pads at E 0.05: r1d_ring_c.sh didn't export HS_PAD_E. Both stalled, so no
   reported number depends on them.
+
+## Ring STOP_0, Intel direct sparse: error 24 (2026-11-12 08:28)
+
+- Solver confirmed in the BMC file: Intel Direct Sparse, 2,369,988 equations, 796,472 nodes, 14 contacts. SolidWorks deleted the
+  .OUT on failure.
+- It failed with error 24 after 143 s. The benchmark log stops at "GLOBAL-STIFFNESS-MATRIX-DECOMPOSITION-Start", which points to a
+  singular (unstable) model.
+- Likely cause: the two steel bolts, held only by no-penetration contact in clearance and with no preload. The pads stabilise
+  the arm only. This is not proven.
+- Memory: our processes peaked at 10.9 GB as factorisation began.
