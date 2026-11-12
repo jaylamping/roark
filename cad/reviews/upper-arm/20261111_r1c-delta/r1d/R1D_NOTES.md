@@ -524,3 +524,66 @@ end chamfer and as-built bolt joint stay; the hub interface is frozen.
    - Catch: on the push side the joint is only as stiff as the TPU. Ring about 280 mm² × 1 mm at E 30 MPa gives a rocking
      stiffness of about 5.7e6 N·mm/rad, so G90 would rock about 4 mrad, 1.6 mm at the wrist: worse than the 0.66 mm of play.
      Not recommended.
+
+## R1e = selective printed shim at the end face: proposal with numbers (2026-11-12, before any build or solve)
+
+Correction: the end face is **2.6 mm wide** (r 36.4 to the skin at r 39.0; the outer skin is r 38.9-39.0 at Y 299.5-302 at
+θ 20 / 90 / 160). Earlier notes said 1.2 mm because that profile was cut off at r 37.6. The end-face bearing figures above
+covered the band r 36.45-37.55 only.
+
+1. **Geometry**
+   - Lower the end face by the nominal shim thickness, **0.60**: end face at Y 301.4. The bore-to-end-face chamfer keeps its
+     logic, 0.5 × 45° moved down with it ((35.9, 300.9) to (36.4, 301.4)), and the ridge top flat follows it as today.
+   - Shim ring **r 36.2-38.8** (ID 0.16 clear of the rev D spigot-foot fillet, whose disc flat starts at r 36.04; OD 0.2 inside
+     the skin). 2.6 mm wide, Ø77.6.
+   - Outside: the shim's outer edge sits 0.2 inside the skin, so the junction shows as a 0.2-deep shadow line 0.3-0.9 mm tall,
+     under the hub disc's overhang (disc r 39.3+). Nothing else outside changes.
+   - Tolerance stack (axial):
+     - flank ±0.1 and groove ±0.1 along the normal, ±0.115 axial each;
+     - end-face and disc flatness ±0.05 each.
+     - Worst case ±0.33, RSS ±0.18. At nominal 0.60 the set must span 0.27-0.93, so 0.30-0.90.
+   - The thinnest ring, 0.30, is two layers. A 2.6 mm wide PETG ring survives handling at 0.30 (floppy, not fragile), so no
+     carrier is needed; the 0.30 / 0.35 rings get three small break-off tabs to a skirt so peeling them doesn't stretch them.
+   - Flank line-to-line, ribs removed.
+2. **Shim set (P2S, PETG, Super Tack)**
+   - Plate A: first layer 0.20 + 0.10 layers gives 0.30 / 0.40 / 0.50 / 0.60 / 0.70 / 0.80 / 0.90.
+   - Plate B: first layer 0.15 + 0.10 layers gives 0.35 / 0.45 / 0.55 / 0.65 / 0.75 / 0.85.
+   - One of each, plus a spare of 0.45-0.75: 20 rings, about 0.47 g each at 0.60, about 10 g in all. Roughly 25 min per plate
+     (to be confirmed by slicing).
+   - Accuracy: layers ±0.01; first-layer squish on Super Tack ±0.03-0.05. The labels are therefore good to about ±0.05, which
+     the pick-by-trial absorbs. Callipers are optional.
+   - Marking: notches in the ID edge (hidden inside the joint), count N = (t - 0.25) / 0.05, i.e. 1 (0.30) to 13 (0.90),
+     0.5 wide × 0.3 deep. No embossing.
+   - 0.03 steps would need a third first-layer offset, and are below the ±0.03-0.05 print accuracy. Not worth it.
+3. **Pick procedure, no feelers**
+   - Hub with a ring on its spigot (against the disc). Lay it into the back half and close the front half **by hand, no
+     screws**.
+   - The right ring is the thickest with which the seam closes fully under hand pressure. Then the screws go in at 0.5 N·m and
+     you rock it by hand to check.
+   - Residual play is at most one step: 0.05 axial (0.043 along the flank normal), rocking ≤ 0.7 mrad, at the wrist ≤ 0.28 mm
+     sideways and ≤ 0.05 along the arm.
+4. **Closing at zero gap near the seam**
+   - With a correctly picked ring the crown flanks are at 0-0.04 normal clearance. Near the seam the halves slide tangentially,
+     and a local print deviation can make an interference of up to about 0.06 there, which would scuff or bind. The ridge ends
+     at the seam face are also first layers, so elephant-foot flare lands exactly there.
+   - Add a lead-in at each ridge end: the load flank relieved 0.1 along its normal over the last 2 mm of arc at the seam face
+     (θ 0-3.3° and 176.7-180° per half), plus a 0.3 × 45° chamfer on the ridge's seam-face edges.
+   - That costs about 4 % of the flank arc, where the flank is lightly loaded: the stop's flank load peaks well away from the
+     seam (θ 18-30 at the end face in the gap cases, the crown ribs in nominal).
+5. **Detection**
+   - Too thick: the crown flanks interfere and each half stops short by about 1.7 × the axial excess. The seam then shows about
+     3.5 × the excess (0.05 too thick gives about 0.17), visible, so pick by hand without screws.
+   - If forced with the screws (about 0.8 kN each available), the crown flank is crushed by the excess: a flank overload that
+     makes play later. Hence no screws until the seam has closed by hand.
+   - Too thin: play of a step or more. Hard to feel on the coupon at 0.05, but the procedure starts from the thick end, so a too
+     thin ring is never chosen when a thicker one closes.
+6. **FEA plan**
+   - The 0 gap cases now running are the shimmed state with the shim lumped into the end face.
+   - Add one model with the shim as its own PETG body (r 36.2-38.8 × 0.60, no-penetration contact to the end face and the disc,
+     end face lowered 0.60), for G90 and STOP_0.
+   - Report the shim's bearing pressure (mean, peak, 0.5 mm averages) against PETG compressive strength (about 55 MPa; 45 used),
+     and creep: the mean was 0.4-1.0 MPa on the end face, so creep is negligible; edge peaks bed in locally.
+   - All axial compression now goes through the ring, printed flat and loaded across its layers in compression, which is fine
+     for PETG.
+7. **Coupon (1)** rebuilt from the R1e halves (cut at Y 284) plus the shim set. The procedure adds the ring pick, and the coupon
+   proves the pick works.
