@@ -97,6 +97,7 @@ the post-processing files (`../20261111_r1c-delta/r1d/r1d11_*.post.txt`).
 | 8. 0 gap (flank in contact, no ribs) G90 | *queued* | | | | |
 | 9. 0 gap STOP_0 | *queued* | | | | |
 | 10. 0.2 gap G90 | *queued* | | | | |
+| 11. 0.1 gap STOP_124 (highest lug load, flank bearing) | *queued* | | | | |
 
 Also per case: lug forces (-X lug about 190 N in Z at the stop: the ring carries no torque about the hub axis, so the lugs take
 the stop moment's twist), inserts about 60-70 MPa (SF ≥ 3.5 against brass), bolts about 56-60 MPa, pads ≤ 3.4 N.
