@@ -3,11 +3,11 @@
 
 use can::{LimbState, LimbView, Snapshot, StopReason};
 use robstride::{MitCommand, NewtonMeters, NmPerRad, NmSecPerRad, RadPerSec, Radians, encode};
-use safety::{HoldVerdict, Mate, RuleId, limb_mates};
+use safety::{Cause, HoldVerdict, Mate, RuleId, limb_mates};
 use skeleton::LimbName;
 
 use super::{Buses, Counts, Enabler, Phase, place};
-use crate::dispatch::StopLatch;
+use crate::latch::StopLatch;
 use crate::request::Scope;
 use crate::roster::{Roster, RosterJoint};
 
@@ -56,10 +56,10 @@ impl Enabler {
             }
             match verdict {
                 LimbVerdict::Hold => {}
-                LimbVerdict::Halted => stops.ask(Scope::Limb(limb)),
-                LimbVerdict::Mate(_) => {
+                LimbVerdict::Halted => ask_halt(roster, buses.snapshots, limb, stops),
+                LimbVerdict::Mate(rule) => {
                     counts.mode_stops += 1;
-                    stops.ask(Scope::Limb(limb));
+                    stops.ask(Scope::Limb(limb), Cause::Rule(rule));
                 }
             }
         }
@@ -83,8 +83,8 @@ impl Enabler {
         };
         match encode::mit(*drive, &slack()) {
             Ok(frame) => place(buses, stops, entry, frame),
-            // A model without MIT scales never passes preflight; stop rather than hold blind.
-            Err(_) => stops.ask(Scope::Limb(entry.limb)),
+            // A model without MIT scales never passes preflight, so this is a runtime bug; stop rather than hold blind.
+            Err(_) => stops.ask(Scope::Limb(entry.limb), Cause::Rule(RuleId::HostHang)),
         }
     }
 
@@ -161,6 +161,22 @@ pub(super) fn limb_on<'a>(
     snapshot.limb(snapshot.drive(slot)?.limb)
 }
 
+/// A held `limb` stopped on some bus, stopped on every bus: under each rule its stopped parts' own stops name (a bus's
+/// `host.fault` or `host.silence`, say), or, when none names one, as following a stop asked of the bus, whose cause was
+/// recorded when it was asked (the operator's, or control's own).
+fn ask_halt(roster: &Roster, snapshots: &[Option<Snapshot>], limb: LimbName, stops: &StopLatch) {
+    let mut any_rule = false;
+    let rules =
+        stopped_parts(roster, snapshots, limb).filter_map(|l| l.stop.and_then(RuleId::of_stop));
+    for rule in rules {
+        stops.ask(Scope::Limb(limb), Cause::Rule(rule));
+        any_rule = true;
+    }
+    if !any_rule {
+        stops.ask(Scope::Limb(limb), Cause::Follows);
+    }
+}
+
 /// Why `limb` is stopping or stopped on some bus, if it is on any: the newest snapshot of every bus it is on.
 #[expect(
     clippy::option_option,
@@ -171,12 +187,22 @@ pub(super) fn halted(
     snapshots: &[Option<Snapshot>],
     limb: LimbName,
 ) -> Option<Option<StopReason>> {
+    stopped_parts(roster, snapshots, limb)
+        .next()
+        .map(|l| l.stop)
+}
+
+/// Each part of `limb` stopping or stopped, as the newest snapshot of the bus it is on shows it, once per joint.
+fn stopped_parts<'a>(
+    roster: &'a Roster,
+    snapshots: &'a [Option<Snapshot>],
+    limb: LimbName,
+) -> impl Iterator<Item = &'a LimbView> + 'a {
     (0..roster.len())
         .filter_map(|j| roster.joint(j))
-        .filter(|e| e.limb == limb)
+        .filter(move |e| e.limb == limb)
         .filter_map(|e| limb_on(snapshots, e))
-        .find(|l| !l.state.takes_commands())
-        .map(|l| l.stop)
+        .filter(|l| !l.state.takes_commands())
 }
 
 /// The hold every enabled drive gets until real control modes and their gains exist: zero gains and zero torque, so the

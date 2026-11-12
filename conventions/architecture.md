@@ -62,12 +62,13 @@ And between the control thread and the rest of `runtime` (`runtime::Runtime`), u
 
 | Ring or latch | From → to | When full |
 |---|---|---|
-| Stop latch (robot, or a limb) | operator → control | Never full: a bit per scope, so a stop asked again before control takes it is the same stop. Control takes it each tick before any clear (PLAN item 3a) |
+| Stop latch (robot, or a limb) | operator and control's own checks → control | Never full: one word of cause bits per scope (the operator, shutdown, a stop carried from another bus, each rule), so a stop asked again before control takes it is the same stop, with every cause kept. Control takes it each tick before any clear (PLAN item 3a) |
 | Clears | operator → control | The operator's push fails; nothing was asked. Control takes them after the stops, in push order |
 | Clear replies, one per bus the limb is on, or one refusal | control → operator | Dropped and counted (`replies_dropped`); the limb's state and generation still show in the views |
 | Enables, each of a set of joints | operator → control | The operator's push fails; nothing was asked. Control takes them after its reads, one running at a time: the rest are refused `Busy` |
 | Enable replies, one per enable | control → operator | Dropped and counted (`replies_dropped`); the limbs' states still show in the views |
 | Views, each bus's newest snapshot once a tick (only when asked for) | control → operator | Dropped and counted (`views_dropped`) |
+| Control's events (stops with their causes, enables, refusals, clears) | control → telemetry | Dropped and counted in the session file's end marker |
 
 ## 2. Process boundaries are failure domains
 
