@@ -318,7 +318,8 @@ def run(name, c):
         print(' mesh', rc, 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, round(time.time() - tm), 's', flush=True)
     if rc:
         raise SystemExit('mesh failed')
-    if os.environ.get('FEA_SAVE_STUDY') == '1':      # keep the study (and its mesh) in the model file, for a hand edit and FEA_EXISTING_STUDY
+    # the macro needs the study saved in the model first; on a normal run that saves the run folder's own copy of the model
+    if (os.environ.get('FEA_SAVE_STUDY') == '1' or os.environ.get('FEA_SOLVER_MACRO')) and not ex_name:
         e2, w2 = L(), L()
         ok = d.Save3(1, e2, w2)
         print(' saved study', tag, 'in', d.GetPathName, 'ok', ok, 'errors', e2.value, 'warnings', w2.value, flush=True)
