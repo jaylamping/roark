@@ -11,19 +11,21 @@ export HS_GROOVE=1 HS_BOLTED=1 HS_ROUNDS=1 HS_LUG_FILLET=1.0 HS_GROOVE_R45=1.0 H
 export R1C_RING=1 HUB_STL_NAME=HUB_GROOVE_RING.STL
 echo "start $(date)" >> $L
 # (the earlier wait for another rebuild matched its own PowerShell command line and never ended; removed)
-bash cad/scripts/fea/r1c/rebuild_ua.sh "master:upper parts:fea_upper"; cp -p cad/_wip/organic-arm/rebuild_ua.log cad/_wip/r1d_build_ring_g01.log
+waitfree() { until ! python "C:/joe/code/roark-wt/sw-hang-fix/tools/solidworks/sw_instance.py" --status 2>/dev/null | grep -q "busy"; do sleep 30; done; }
+waitfree; echo "launch window $(date +%H:%M)" >> $L
+bash cad/scripts/fea/r1c/rebuild_ua.sh "${RING_JOBS:-master:upper parts:fea_upper}"; cp -p cad/_wip/organic-arm/rebuild_ua.log cad/_wip/r1d_build_ring_g01.log
 grep -q "STOP at" cad/_wip/organic-arm/rebuild_ua.log && { echo "BUILD_FAILED" >> $L; exit 1; }
 echo "BUILT arm $(grep -E 'SEAT_RIDGE_RING' cad/_wip/r1d_build_ring_g01.log | tail -1)" >> $L
-cp -p cad/_sim/upper-arm/UA_ORGANIC_BONDED_v32_ring_g01.SLDPRT cad/_sim/ua2/; sleep 60
+cp -p cad/_sim/upper-arm/UA_ORGANIC_BONDED_v32_ring_g01.SLDPRT cad/_sim/ua2/; sleep 60; waitfree
 rm -f cad/_sim/ua2/UA_HUBSEAT_r1d_ringg01p.SLDPRT cad/_sim/ua2/HUB_GROOVE_RING.SLDPRT
 HS_MODEL=UA_HUBSEAT_r1d_ringg01p.SLDPRT ARM_SW_DIR="$R/_wip/arm-sw-hub" ARM_FEA_DIR="$R/_sim/ua2" python cad/scripts/fea/hub_seat.py build > cad/_wip/r1d_hub_ringg01p.log 2>&1; fin "$R/_wip/arm-sw-hub"
 grep -q "  pads True" cad/_wip/r1d_hub_ringg01p.log && echo "BUILT hub-seat ring (pads in) $(grep -E 'SPIGOT_GROOVE_RING|SPIGOT_FILL' cad/_wip/r1d_hub_ringg01p.log | tr '\n' ' ')" >> $L || { echo "HUB_BUILD_FAILED" >> $L; exit 1; }
-sleep 60
+sleep 60; waitfree
 D=cad/_sim/r1d_mt_ring; rm -rf $D; mkdir -p $D; cp cad/_sim/ua2/UA_HUBSEAT_r1d_ringg01p.SLDPRT $D/; S="$R/_wip/arm-sw-fea"
 FEA_MESH_ONLY=1 HS_SEAT_MESH=0.5 HS_MODEL=UA_HUBSEAT_r1d_ringg01p.SLDPRT ARM_SW_DIR="$S" ARM_FEA_DIR="$R/_sim/r1d_mt_ring" python cad/scripts/fea/organic_fea.py HS_STOP_0_fine >> $D/run.log 2>&1 &
 P=$!; t=0; while kill -0 $P 2>/dev/null && [ $t -lt 900 ]; do sleep 10; t=$((t+10)); done
 if kill -0 $P 2>/dev/null; then kill $P; sleep 5; fin "$S"; echo "MESH_CAP ring not meshed in 15 min" >> $L; exit 1; fi
 fin "$S"; echo "MESH_OK $(grep -E ' mesh ' $D/run.log | tail -1)" >> $L
-sleep 180
+sleep 180; waitfree
 R1D_IGNORE_HOLD=1 bash cad/scripts/fea/r1c/r1d_chain4.sh "ringg01p:HS_STOP_0_fine:r1d8_ringg01p_stop:arm-sw-fea:0:0.5"
 echo "RING_DONE $(date)" >> $L
