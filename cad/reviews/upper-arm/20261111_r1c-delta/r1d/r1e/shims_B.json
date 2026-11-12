@@ -1,0 +1,99 @@
+{
+ "plate": "B",
+ "first_layer": 0.15,
+ "layer": 0.1,
+ "rings": [
+  {
+   "t": 0.35,
+   "notches": 2,
+   "centre": [
+    -80.0,
+    -80.0
+   ]
+  },
+  {
+   "t": 0.45,
+   "notches": 4,
+   "centre": [
+    0.0,
+    -80.0
+   ]
+  },
+  {
+   "t": 0.55,
+   "notches": 6,
+   "centre": [
+    80.0,
+    -80.0
+   ]
+  },
+  {
+   "t": 0.65,
+   "notches": 8,
+   "centre": [
+    -80.0,
+    0.0
+   ]
+  },
+  {
+   "t": 0.75,
+   "notches": 10,
+   "centre": [
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "t": 0.85,
+   "notches": 12,
+   "centre": [
+    80.0,
+    0.0
+   ]
+  },
+  {
+   "t": 0.95,
+   "notches": 14,
+   "centre": [
+    -80.0,
+    80.0
+   ]
+  },
+  {
+   "t": 1.05,
+   "notches": 16,
+   "centre": [
+    0.0,
+    80.0
+   ]
+  },
+  {
+   "t": 0.65,
+   "notches": 8,
+   "centre": [
+    80.0,
+    80.0
+   ]
+  }
+ ],
+ "exit": 0,
+ "size_mm": [
+  238.0,
+  238.0,
+  1.1
+ ],
+ "info": {
+  "prediction": "1276",
+  "weight": "3.80"
+ },
+ "warnings": [],
+ "layer_settings": {
+  "layer_height": "0.1",
+  "initial_layer_print_height": "0.15",
+  "sparse_infill_density": "100%",
+  "enable_support": "0",
+  "brim_type": "no_brim",
+  "curr_bed_type": "Supertack Plate",
+  "elephant_foot_compensation": null
+ }
+}

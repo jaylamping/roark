@@ -1,5 +1,5 @@
 """End-face bearing on the hub disc (2026-11-12): sigma y (normal to the Y 302 face) at the nodes on the end face, both sides of
-the contact, from the solver .npz. Interior band r 36.45-37.55 (the face runs r 36.4-37.6 after the 0.5 chamfer) for the mean and
+the contact, from the solver .npz. Interior band r 36.45-38.45 (the end face runs r 36.4-39.0 after the 0.5 chamfer; the rev D disc flat is r 36.05-38.73, 38.5 at theta 180) for the mean and
 peak; the inner-edge corner (r 36.35-36.45) separately. Compression is negative. Against PETG 45 MPa (the model's yield).
     python endface_pressure.py NPZ [NPZ...]      (run under capped.py)"""
 import json
@@ -15,7 +15,7 @@ for f in sys.argv[1:]:
     p, s = d['pos'], d['s']
     r = np.hypot(p[:, 0] - HX, p[:, 2] - CZ)
     on = np.abs(p[:, 1] - 302.0) < 0.03
-    band = on & (r > 36.45) & (r < 37.55)
+    band = on & (r > 36.45) & (r < float(__import__("os").environ.get("EF_ROUT", "38.45")))      # 2026-11-12: the real common annulus with the rev D disc is r 36.4-38.7 (38.5 at theta 180); was 37.55
     edge = on & (r >= 36.35) & (r <= 36.45)
     sy = s[:, 2]
     th = np.degrees(np.arctan2(p[:, 2] - CZ, p[:, 0] - HX)) % 360

@@ -587,3 +587,36 @@ covered the band r 36.45-37.55 only.
      for PETG.
 7. **Coupon (1)** rebuilt from the R1e halves (cut at Y 284) plus the shim set. The procedure adds the ring pick, and the coupon
    proves the pick works.
+
+## R1e build decisions (2026-11-12, after the coordinator's go and the shoulder thread's disc data)
+
+- Hub disc (bc16e97, sections at 7 angles): flat at Y 302.00 from r 36.05 to 38.73 (38.5 at θ 180), then rolling off; the
+  shoulder thread gives 36.0-38.6.
+  - Our end face (r 36.4-39.0) overhangs the roll-off beyond about 38.6. With R1e it is lowered and never touches the disc; the
+    shim sets the contact annulus.
+  - The true common bearing annulus before R1e was r 36.4-38.7, 2.3 mm (2.1 at θ 180). The earlier end-face table (band r
+    36.45-37.55) is recomputed over r 36.45-38.45: peaks and 0.5 / 1 mm averages are unchanged (they sit near the inner edge);
+    the stop's mean compression is 0.34 MPa, not 0.41. G90 mean 1.0 MPa. (`endface_pressure_r1d11.json` replaced.)
+- **Shim ring r 36.2-38.4** (2.2 mm wide, Ø76.8): 0.16 clear of the foot fillet, 0.2 inside the disc flat, 0.6 inside our skin.
+  Bearing area about 470 mm² against our end face (r 36.4-38.4): about 2.1 MPa per kN.
+- **Tolerance stack with the hub's numbers:** arm flank-to-end-face ±0.115, hub groove-flank-to-disc ±0.15 (layer rounding of
+  the disc's top surface), arm end-face flatness ±0.05, disc flatness ±0.1 at the hub's seam. Worst case ±0.415, RSS ±0.22.
+  The nominal drop moves to **0.70**, set **0.30-1.10** (17 thicknesses). That covers the worst case at the thick end, and the
+  thinnest ring stays two layers.
+- **Shim plates** (`cad/scripts/arm/shim_print.py`; seed project, only layer heights / 100 % / no support / no brim changed;
+  SuperTack, PETG):
+  - A: first layer 0.20 + 0.10 layers, rings 0.30-1.10 by 0.10 (9). 21 min, 3.76 g.
+  - B: first layer 0.15 + 0.10 layers, rings 0.35-1.05 by 0.10 plus a spare 0.65 (9). 21 min, 3.80 g.
+  - C: first layer 0.20, spares 0.50 / 0.60 / 0.70 / 0.80. 13 min, 1.51 g.
+  - Total 22 rings, 55 min, 9.1 g, no warnings. Notches in the inner edge: N = (t - 0.25) / 0.05 (1 to 17).
+  - The 0.30 and 0.35 rings have three tabs to a skirt (r 39.0-39.6).
+- **If every ring is too thick or too thin** (the set offset as a whole, e.g. by first-layer squish on the textured SuperTack):
+  reprint the set shifted by the offset (change the first-layer height or add a 0.10 layer). The arm is never reprinted for this.
+  The optional calliper check of three rings shows such an offset before the pick.
+- **Lead-in** (`ARM_SEAM_LEADIN 0.1,2.0`): the load flank relieved 0.1 along its normal for 2 mm each side of the seam plane, both
+  halves. The 0.3 seam-face chamfer is left to the slicer's elephant-foot compensation (none is set in the seed project; to
+  check on the coupon). To be confirmed against the 0 gap STOP_0 / STOP_124 flank peaks; if the stop loads the seam region more,
+  the relief gets shorter.
+- **Code** (all off by default): `ARM_END_DROP` (master: the end face, chamfer and ridge-top flat move down; the flat starts where
+  the 45° flank meets it), `ARM_SEAM_LEADIN`, and ARM_FLANK_GAP 0 with ARM_RIB_PROUD 0. The R1e halves are building in
+  `cad/_wip/r1e_print` (r1e_print.sh): slice, gate, closing path against bc16e97 with a 0.70 ring, then the coupon cut at Y 284.

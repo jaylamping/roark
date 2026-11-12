@@ -1,8 +1,8 @@
 {
  "r1d11_g01_stop": {
-  "band_nodes": 2172,
-  "mean_sigma_y_MPa": -0.18,
-  "mean_compressive_only_MPa": -0.41,
+  "band_nodes": 3011,
+  "mean_sigma_y_MPa": -0.14,
+  "mean_compressive_only_MPa": -0.34,
   "peak_compression_MPa": -32.67,
   "peak_at": [
    205.53,
@@ -24,9 +24,9 @@
   ]
  },
  "r1d11_g01_g90": {
-  "band_nodes": 2172,
-  "mean_sigma_y_MPa": -0.64,
-  "mean_compressive_only_MPa": -0.99,
+  "band_nodes": 3011,
+  "mean_sigma_y_MPa": -0.62,
+  "mean_compressive_only_MPa": -1.0,
   "peak_compression_MPa": -18.6,
   "peak_at": [
    194.14,

@@ -402,12 +402,35 @@ def upper_details(d):
             yr = HUB_JOINT - er
             arc = [(SEAT_R + er - er * math.cos(a), yr + er * math.sin(a)) for a in np.linspace(0.0, math.pi / 2, 13)]
             y_revolve(d, 'SEAT_END_ROUND', [(yr - 265.8, yr)] + arc + [(SEAT_R + er, HUB_JOINT + 0.3), (yr - 265.8, HUB_JOINT + 0.3)], cut=True)
+        # R1e (2026-11-12): ARM_END_DROP lowers the end face so a printed PETG shim ring (r 36.2-38.4, picked by trial at assembly)
+        # sits between it and the hub disc: the play-free joint. Everything from the bore (r 35.9) out past the skin above the new end
+        # face comes off; the 0.5 chamfer and the ridge-top flat follow the end face down.
+        drop = float(os.environ.get('ARM_END_DROP', '0'))
+        ye = HUB_JOINT - drop
+        if drop > 0:
+            y_revolve(d, 'END_DROP', [(SEAT_R, ye), (41.0, ye), (41.0, HUB_JOINT + 0.5), (SEAT_R, HUB_JOINT + 0.5)], cut=True)
         if ec > 0:      # bore-to-end-face edge (r 35.9, Y 302): 0.5 x 45 chamfer, inside only, for the hub's R0.3 spigot-to-disc corner (rev C+)
-            y_revolve(d, 'SEAT_END_CHAMFER', [(SEAT_R, HUB_JOINT - ec), (SEAT_R + ec, HUB_JOINT), (SEAT_R + ec, HUB_JOINT + 0.3), (SEAT_R, HUB_JOINT + 0.3)], cut=True)
+            y_revolve(d, 'SEAT_END_CHAMFER', [(SEAT_R, ye - ec), (SEAT_R + ec, ye), (SEAT_R + ec, ye + 0.3), (SEAT_R, ye + 0.3)], cut=True)
             if os.environ.get('ARM_RIDGE_REVCP', '1') == '1':      # the ridge's 45 flank (Y = r + 265.8) runs parallel to the chamfer 0.2 above it,
                 # leaving a 0.2-tall wedge on the ridge top at the bore (mesh gate, 2026-11-11): flatten the ridge top at the chamfer's start
                 # its outer boundary follows the chamfer exactly (r 35.91 left a 0.01 lip: a knife edge at the ridge ends)
-                y_revolve(d, 'RIDGE_TOP_FLAT', [(35.6, HUB_JOINT - ec), (SEAT_R, HUB_JOINT - ec), (SEAT_R + ec, HUB_JOINT), (SEAT_R + ec, HUB_JOINT + 0.3), (35.6, HUB_JOINT + 0.3)], cut=True)
+                # (R1e: with the end face lowered, the flat starts where the 45 flank meets it, so no step is left)
+                rf0 = 35.6 if drop <= 0 else min(35.6, (ye - ec) - 265.8)
+                y_revolve(d, 'RIDGE_TOP_FLAT', [(rf0, ye - ec), (SEAT_R, ye - ec), (SEAT_R + ec, ye), (SEAT_R + ec, ye + 0.3), (rf0, ye + 0.3)], cut=True)
+        li = os.environ.get('ARM_SEAM_LEADIN')      # "relief,length" (R1e: "0.1,2.0")
+        if li and R1D:      # R1e lead-in: the load flank relieved 'relief' along its normal over the last 'length' mm of arc at each ridge end
+            # (the seam faces, theta 0 and 180, both halves), so a zero-gap flank does not bind or scuff where the halves slide tangentially
+            # on closing; prisms along Z through the seam plane, CZ +- length
+            rl, ll = (float(t) for t in li.split(','))
+            gap_ = float(os.environ.get('ARM_FLANK_GAP', '0.1'))
+            lyr = lambda r_: y0 + (35.8 - r_) * t30 + gap_ / math.cos(math.radians(30.0))
+            dn = rl / math.cos(math.radians(30.0))
+            rs = list(np.linspace(34.4, SEAT_R, 9))      # to the bore radius exactly: not into the collar wall
+            for k_, sgn in enumerate((1.0, -1.0)):
+                pts = [(HX + sgn * r_, lyr(r_) - 0.05, CZ) for r_ in rs] + [(HX + sgn * r_, lyr(r_) + dn, CZ) for r_ in reversed(rs)]
+                with Sk(d, plane(d, 'Z', CZ, f'SEAM_LEADIN{k_}_P'), f'SEAM_LEADIN{k_}') as sk_:
+                    sk_.poly(pts)
+                feat(d, sk_.feat, f'SEAM_LEADIN{k_}', 2.0 * ll, True, mode=MID, lo=0.01)
         rf = float(os.environ.get('ARM_FLOOR_FILLET', '0' if R1D else '0.25'))      # R1d: none (the floor has 0.3 clearance)
         if rf > 0:      # (b) bore-to-floor corner (r 35.9, Y 296), where the spigot's bottom edge bore (STOP_0 vm SF 0.94 at 0.5 mm).
             # 0.25 clears the hub spigot's 0.4 bottom round by ~0.06; it would touch a sharp-cornered spigot by ~0.1 (needs the rounded hub)

@@ -1,0 +1,59 @@
+{
+ "plate": "C",
+ "first_layer": 0.2,
+ "layer": 0.1,
+ "rings": [
+  {
+   "t": 0.5,
+   "notches": 5,
+   "centre": [
+    -80.0,
+    -80.0
+   ]
+  },
+  {
+   "t": 0.6,
+   "notches": 7,
+   "centre": [
+    0.0,
+    -80.0
+   ]
+  },
+  {
+   "t": 0.7,
+   "notches": 9,
+   "centre": [
+    80.0,
+    -80.0
+   ]
+  },
+  {
+   "t": 0.8,
+   "notches": 11,
+   "centre": [
+    -80.0,
+    0.0
+   ]
+  }
+ ],
+ "exit": 0,
+ "size_mm": [
+  236.8,
+  156.8,
+  0.8
+ ],
+ "info": {
+  "prediction": "766",
+  "weight": "1.51"
+ },
+ "warnings": [],
+ "layer_settings": {
+  "layer_height": "0.1",
+  "initial_layer_print_height": "0.2",
+  "sparse_infill_density": "100%",
+  "enable_support": "0",
+  "brim_type": "no_brim",
+  "curr_bed_type": "Supertack Plate",
+  "elephant_foot_compensation": null
+ }
+}
