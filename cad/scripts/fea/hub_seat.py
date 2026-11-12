@@ -414,5 +414,39 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 CASES['HS_' + k + sfx] = c
 
 
+def zfillet(src, dst):
+    """Rev D lug-root fillet on our FEA hub (2026-11-12, the shoulder thread's bc16e97 change, same selection as their
+    build_parts.hub_lug_roots): R1.2 where the lugs' Z faces (|Z - CZ| = 5) meet the spigot underside at Y 296, r 18-31.5 from the
+    hub axis, both lugs. Copies src to dst in F, fillets, saves, and writes dst's STL for the post-processing."""
+    sys.path.insert(0, str(ARM))
+    os.chdir(ARM)
+    import math as m_
+    from organic_master import L, sw, edges_where, fillet_edges, fine_stl
+    shutil.copy(F / src, F / dst)
+    e, w = L(), L()
+    d = sw.OpenDoc6(str(F / dst), 1, 1, '', e, w)
+    if d is None:
+        raise SystemExit(f'open failed: {dst} {e.value} {w.value}')
+    r_ = lambda q: m_.hypot(q[0] - HX, q[2] - CZ)
+    roots = edges_where(d, lambda q: abs(q[1] - 296.0) < 0.05 and abs(abs(q[2] - CZ) - 5.0) < 0.1 and 18.0 < r_(q) < 31.5)
+    print('  LUG_ZROOTS edges', len(roots), flush=True)
+    if len(roots) < 4:
+        raise SystemExit('expected at least 4 Z-root edges')
+    n0 = d.FeatureManager.GetFeatureCount(True) if hasattr(d.FeatureManager, 'GetFeatureCount') else None
+    fillet_edges(d, roots, [1.2], 'LUG_ZROOTS')
+    ok = d.FeatureByName('LUG_ZROOTS') is not None
+    print('  LUG_ZROOTS feature', ok, flush=True)
+    if not ok:
+        raise SystemExit('fillet failed')
+    d.ForceRebuild3(False)
+    e, w = L(), L()
+    d.Save3(1, e, w)
+    fine_stl(d, F / (Path(dst).stem + '.STL'))
+    print('  saved', dst, 'and its STL', flush=True)
+    sw.CloseDoc(d.GetTitle)
+
+
 if __name__ == '__main__' and sys.argv[1:] == ['build']:
     build()
+elif __name__ == '__main__' and sys.argv[1:2] == ['zfillet']:
+    zfillet(sys.argv[2], sys.argv[3])

@@ -301,3 +301,19 @@ The post-macro readback is now removed. The macro's own log and the benchmark lo
   mouth face stays in the lug no-penetration set. pre() now prints every contact set's type.
   - CreateContactSet takes swsContactSetTypeStaticNonLinear_e: 0 = no penetration, 1 = bonded. So all earlier "type 0" sets
     were no-penetration, as intended. "Error 24" is swsRunAnalysisErrorAnalysisFailed, a generic failure.
+
+## Shoulder hub bc16e97 (rev D candidate with R1.2 Z-face lug-root fillets): checks (2026-11-12 10:55)
+
+- Fetched from claude/project-thread-90ef87 at bc16e97 (Git LFS). STL SHA-256 18db5676…f261e matches the coordinator's note.
+  Volume 61,624.9 mm³ against 61,615.6 for 556cc44 (+9.3 mm³, about four R1.2 fillets 8 mm long).
+- Sections (fixed axes, fillet_check.py): the only differences from 556cc44 are at X 140.5-148.5 and 192.5-200.5,
+  Y 295.0-296.0. That is 0.619 mm² per X section = two R1.2 fillet sections (2 × 0.309). Only the lug roots changed.
+- Our slot against the fillet:
+  - The fillet spans X 140.25-148.5 and 192.5-200.75. The break spans planned earlier (142.5-152.25 / 188.75-198.5, taken from
+    the lug-post contact) missed 2 mm at one end of each fillet and would have left corners 0.16 mm inside it. They are corrected
+    to 139.75-149.0 and 192.0-201.25 (fillet ± 0.5), all on the posts.
+  - With the 1.2 × 1.6 chamfer on those spans, the minimum clearance to the fillet is: -X front 0.292, +X front 0.285,
+    -X back 0.451, +X back 0.451. Run-out ends 0.55-0.58. All above 0.2. (`slot_break_vs_bc16e97.json`)
+  - Outside the fillet the front lug face sits 0.014 proud of |Z| 5.0, so the slot gap there is 0.086 instead of 0.1. Same on
+    556cc44 (`slot_unbroken_vs_556cc44.json`): not new.
+- M re-run (r1d10b) with explicit bonded sets: both bonds formed (2 + 2 faces, type 1); the four other sets read back as type 0.

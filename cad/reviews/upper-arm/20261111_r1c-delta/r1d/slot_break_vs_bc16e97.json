@@ -1,0 +1,313 @@
+{
+ "x_sections_with_difference (x, mm2)": [
+  [
+   140.5,
+   0.222
+  ],
+  [
+   141.0,
+   0.618
+  ],
+  [
+   141.5,
+   0.619
+  ],
+  [
+   142.0,
+   0.619
+  ],
+  [
+   142.5,
+   0.619
+  ],
+  [
+   143.0,
+   0.619
+  ],
+  [
+   143.5,
+   0.619
+  ],
+  [
+   144.0,
+   0.619
+  ],
+  [
+   144.5,
+   0.619
+  ],
+  [
+   145.0,
+   0.619
+  ],
+  [
+   145.5,
+   0.619
+  ],
+  [
+   146.0,
+   0.619
+  ],
+  [
+   146.5,
+   0.619
+  ],
+  [
+   147.0,
+   0.619
+  ],
+  [
+   147.5,
+   0.619
+  ],
+  [
+   148.0,
+   0.619
+  ],
+  [
+   148.5,
+   0.046
+  ],
+  [
+   192.5,
+   0.056
+  ],
+  [
+   193.0,
+   0.619
+  ],
+  [
+   193.5,
+   0.619
+  ],
+  [
+   194.0,
+   0.619
+  ],
+  [
+   194.5,
+   0.619
+  ],
+  [
+   195.0,
+   0.619
+  ],
+  [
+   195.5,
+   0.619
+  ],
+  [
+   196.0,
+   0.619
+  ],
+  [
+   196.5,
+   0.619
+  ],
+  [
+   197.0,
+   0.619
+  ],
+  [
+   197.5,
+   0.619
+  ],
+  [
+   198.0,
+   0.619
+  ],
+  [
+   198.5,
+   0.619
+  ],
+  [
+   199.0,
+   0.619
+  ],
+  [
+   199.5,
+   0.619
+  ],
+  [
+   200.0,
+   0.616
+  ],
+  [
+   200.5,
+   0.222
+  ]
+ ],
+ "y_sections_with_difference (y, mm2)": [
+  [
+   295.0,
+   0.477
+  ],
+  [
+   295.25,
+   2.491
+  ],
+  [
+   295.5,
+   6.5
+  ],
+  [
+   295.75,
+   13.916
+  ]
+ ],
+ "clearance_rows": 159,
+ "worst": [
+  {
+   "x": 149.25,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 149.5,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 149.75,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 150.0,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 150.25,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 150.5,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 150.75,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 151.0,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 151.25,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 151.5,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 189.25,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 189.5,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  }
+ ],
+ "x_where_break_needed": [
+  140.5,
+  200.5
+ ],
+ "break_needed_-X": [
+  140.5,
+  151.5
+ ],
+ "break_needed_+X": [
+  189.25,
+  200.5
+ ],
+ "per_lug_side": {
+  "-X +Z (front)": {
+   "x_span": [
+    140.25,
+    151.5
+   ],
+   "min_clearance": 0.086,
+   "at_x": 149.25,
+   "ends": [
+    0.564,
+    0.086
+   ]
+  },
+  "-X -Z (back)": {
+   "x_span": [
+    140.25,
+    148.25
+   ],
+   "min_clearance": 0.451,
+   "at_x": 141.25,
+   "ends": [
+    0.581,
+    0.549
+   ]
+  },
+  "+X +Z (front)": {
+   "x_span": [
+    189.25,
+    200.75
+   ],
+   "min_clearance": 0.086,
+   "at_x": 189.25,
+   "ends": [
+    0.086,
+    0.564
+   ]
+  },
+  "+X -Z (back)": {
+   "x_span": [
+    192.75,
+    200.75
+   ],
+   "min_clearance": 0.451,
+   "at_x": 193.25,
+   "ends": [
+    0.549,
+    0.581
+   ]
+  }
+ },
+ "fillet_span_min": {
+  "-X +Z (front)": 0.292,
+  "-X -Z (back)": 0.451,
+  "+X +Z (front)": 0.285,
+  "+X -Z (back)": 0.451
+ }
+}

@@ -221,7 +221,7 @@ def r1d_post_trim(d):
         M.y_revolve(d, 'R1D_POST_TRIM', [(0.0, M.FLOOR_Y), (M.SEAT_R, M.FLOOR_Y), (M.SEAT_R, 296.3), (0.0, 296.3)], cut=True)
 
 
-SLOT_BREAK_X = [(142.5, 152.25), (188.75, 198.5)]      # the hub lugs' X spans (143.0-151.75, 189.25-198.0) + 0.5
+SLOT_BREAK_X = [(139.75, 149.0), (192.0, 201.25)]      # the lug-root fillets X spans (bc16e97: 140.25-148.5, 192.5-200.75, by section) + 0.5
 
 
 def r1d_slot_break(d, sg, zl):

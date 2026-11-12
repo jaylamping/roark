@@ -1,0 +1,135 @@
+{
+ "x_sections_with_difference (x, mm2)": [],
+ "y_sections_with_difference (y, mm2)": [],
+ "clearance_rows": 93,
+ "worst": [
+  {
+   "x": 140.75,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 141.0,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 141.25,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 141.5,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 141.75,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 142.0,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 142.25,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 142.5,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 142.75,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 143.0,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 143.25,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  },
+  {
+   "x": 143.5,
+   "side": "+Z (front)",
+   "broken": false,
+   "clearance": 0.086,
+   "clearance_unbroken": 0.086
+  }
+ ],
+ "x_where_break_needed": [
+  140.5,
+  200.5
+ ],
+ "break_needed_-X": [
+  140.5,
+  151.5
+ ],
+ "break_needed_+X": [
+  189.25,
+  200.5
+ ],
+ "per_lug_side": {
+  "-X +Z (front)": {
+   "x_span": [
+    140.25,
+    151.5
+   ],
+   "min_clearance": 0.086,
+   "at_x": 140.75,
+   "ends": [
+    0.281,
+    0.086
+   ]
+  },
+  "+X +Z (front)": {
+   "x_span": [
+    189.25,
+    200.75
+   ],
+   "min_clearance": 0.086,
+   "at_x": 189.25,
+   "ends": [
+    0.086,
+    0.281
+   ]
+  }
+ },
+ "fillet_span_min": {
+  "-X +Z (front)": 0.086,
+  "-X -Z (back)": null,
+  "+X +Z (front)": 0.086,
+  "+X -Z (back)": null
+ }
+}

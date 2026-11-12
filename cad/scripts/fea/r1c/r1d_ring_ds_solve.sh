@@ -11,7 +11,7 @@ cd /j/code/roark-wt/left-arm-organic
 R=J:/code/roark-wt/left-arm-organic/cad
 L=cad/_wip/r1d_ring_ds.log
 RV=cad/reviews/upper-arm/20261111_r1c-delta/r1d
-export ARM_R1C=1 ARM_R1D=1 HS_GROOVE=1 HS_BOLTED=1 HS_REUSE_HUB=1 HS_HUB_FILE=HUB_GROOVE_RING.SLDPRT HS_PAD_E=${PADE:-0.5} HS_SEAT_MESH=0.8 HS_SEAT_MESH_AMAX=600 R1C_RING=1 CAD_WRITER='upper-arm-r1:2bcc415b'
+export ARM_R1C=1 ARM_R1D=1 HS_GROOVE=1 HS_BOLTED=1 HS_REUSE_HUB=1 HS_HUB_FILE=${HUBFILE:-HUB_GROOVE_RING.SLDPRT} HS_PAD_E=${PADE:-0.5} HS_SEAT_MESH=0.8 HS_SEAT_MESH_AMAX=600 R1C_RING=1 CAD_WRITER='upper-arm-r1:2bcc415b'
 S="$R/_wip/arm-sw-fea"
 until ! python "C:/joe/code/roark-wt/sw-hang-fix/tools/solidworks/sw_instance.py" --status 2>/dev/null | grep -q "busy"; do sleep 30; done
 ls cad/_wip/arm-sw*/HUNG_PID >/dev/null 2>&1 && { echo "STOPPED: HUNG_PID present" >> $L; exit 1; }
@@ -22,7 +22,7 @@ if [ "$mode" = saved ]; then
   ENVX="FEA_EXISTING_STUDY=RING_G01_STOP0_DS HS_MODEL=UA_HUBSEAT_r1d_ringg01p_ds.SLDPRT"
 else
   folder=${FOLDER:-r1d8_ringg01p_stop_ds_new}; D=cad/_sim/$folder; rm -rf $D; mkdir -p $D
-  cp cad/_sim/ua2/UA_HUBSEAT_r1d_$MTAG.SLDPRT $D/; cp cad/_sim/ua2/HUB_GROOVE_RING.STL $D/HUB_GROOVE_r1d.STL
+  cp cad/_sim/ua2/UA_HUBSEAT_r1d_$MTAG.SLDPRT $D/; cp cad/_sim/ua2/${HUBSTL:-HUB_GROOVE_RING.STL} $D/HUB_GROOVE_r1d.STL
   ENVX="HS_MODEL=UA_HUBSEAT_r1d_$MTAG.SLDPRT FEA_SOLVER_MACRO=${DS_SOLVER:-1} FEA_STUDY_NAME=${FOLDER:-RING_DS_NEW}"
 fi
 echo "START $folder ($mode) $(date +%H:%M) free $(free) MB" >> $L
