@@ -18,11 +18,12 @@ mod tests;
 use can::{CommandBatch, Snapshot};
 use robstride::Drive;
 use safety::{
-    ANSWER_WITHIN_NS, EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal, Seen,
+    ANSWER_WITHIN_NS, EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal, RuleId,
+    Seen,
 };
 use skeleton::LimbName;
 
-use crate::dispatch::StopLatch;
+use crate::dispatch::{StopLatch, Why};
 use crate::request::Scope;
 use crate::roster::{JointSet, Roster, RosterJoint};
 
@@ -454,18 +455,6 @@ impl Enabler {
             Some(Phase::Enabled(_)) => true,
             Some(Phase::Off | Phase::Preflight { .. } | Phase::Passed(_)) | None => false,
         });
-        for joint in joints.iter() {
-            if let Some(phase) = self.phases.get_mut(joint) {
-                if let Phase::Enabled(_) = phase {
-                    counts.holds_ended += 1;
-                }
-                *phase = Phase::Off;
-            }
-            if stopped && let Some(entry) = roster.joint(joint) {
-                stops.ask(Scope::Limb(entry.limb));
-            }
-        }
-        self.run = None;
         let why = match failure {
             Failed::Preflight { joint, refusal } if !stopped => {
                 EnableRefused::Preflight { joint, refusal }
@@ -493,6 +482,20 @@ impl Enabler {
             Failed::Foreign { bus } => EnableRefused::ForeignHost { bus, stopped },
             Failed::Unseen { joint } => EnableRefused::Unseen { joint, stopped },
         };
+        // The stop goes under the failure's rule; every failure that stops has one.
+        let cause = why.rule().map_or(Why::Operator, Why::Rule);
+        for joint in joints.iter() {
+            if let Some(phase) = self.phases.get_mut(joint) {
+                if let Phase::Enabled(_) = phase {
+                    counts.holds_ended += 1;
+                }
+                *phase = Phase::Off;
+            }
+            if stopped && let Some(entry) = roster.joint(joint) {
+                stops.ask(Scope::Limb(entry.limb), cause);
+            }
+        }
+        self.run = None;
         EnableReply {
             tag,
             outcome: Err(why),
@@ -554,7 +557,8 @@ fn place(buses: &mut Buses<'_>, stops: &StopLatch, entry: &RosterJoint, frame: r
             .is_some_and(|b| b.set(slot, frame))
     });
     if !placed {
-        stops.ask(Scope::Limb(entry.limb));
+        // The plan keeps every slot in range, so this is a runtime bug: a broken control side (`host.hang`).
+        stops.ask(Scope::Limb(entry.limb), Why::Rule(RuleId::HostHang));
     }
 }
 

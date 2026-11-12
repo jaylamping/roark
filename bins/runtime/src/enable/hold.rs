@@ -7,7 +7,7 @@ use safety::{HoldVerdict, Mate, RuleId, limb_mates};
 use skeleton::LimbName;
 
 use super::{Buses, Counts, Enabler, Phase, place};
-use crate::dispatch::StopLatch;
+use crate::dispatch::{StopLatch, Why};
 use crate::request::Scope;
 use crate::roster::{Roster, RosterJoint};
 
@@ -56,10 +56,10 @@ impl Enabler {
             }
             match verdict {
                 LimbVerdict::Hold => {}
-                LimbVerdict::Halted => stops.ask(Scope::Limb(limb)),
-                LimbVerdict::Mate(_) => {
+                LimbVerdict::Halted => stops.ask(Scope::Limb(limb), Why::Elsewhere),
+                LimbVerdict::Mate(rule) => {
                     counts.mode_stops += 1;
-                    stops.ask(Scope::Limb(limb));
+                    stops.ask(Scope::Limb(limb), Why::Rule(rule));
                 }
             }
         }
@@ -83,8 +83,8 @@ impl Enabler {
         };
         match encode::mit(*drive, &slack()) {
             Ok(frame) => place(buses, stops, entry, frame),
-            // A model without MIT scales never passes preflight; stop rather than hold blind.
-            Err(_) => stops.ask(Scope::Limb(entry.limb)),
+            // A model without MIT scales never passes preflight, so this is a runtime bug; stop rather than hold blind.
+            Err(_) => stops.ask(Scope::Limb(entry.limb), Why::Rule(RuleId::HostHang)),
         }
     }
 

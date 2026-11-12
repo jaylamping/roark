@@ -1,5 +1,6 @@
 //! Helpers shared by the sim suite's test files: drives, commands, a session, and playing control's side of the rings.
 
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
@@ -102,4 +103,44 @@ impl Drop for Shutdown<'_> {
         self.0.store(true, Ordering::Release);
         self.1.store(true, Ordering::Release);
     }
+}
+
+/// Control's events in the session's file, in order (`/events`).
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: a session file that doesn't read back is the test failing"
+)]
+pub(crate) fn events(session: &Path) -> Vec<telemetry::wire::Event> {
+    let bytes = std::fs::read(session.join("0000.mcap")).unwrap();
+    mcap::MessageStream::new(&bytes)
+        .unwrap()
+        .map(Result::unwrap)
+        .filter(|m| m.channel.topic == "/events")
+        .map(|m| serde_json::from_slice(&m.data).unwrap())
+        .collect()
+}
+
+/// The events of `kind`, each as its limb, joint, rule, reason and tag.
+pub(crate) type Brief<'a> = (
+    Option<&'a str>,
+    Option<&'a str>,
+    Option<&'a str>,
+    Option<&'a str>,
+    Option<u64>,
+);
+
+pub(crate) fn of_kind<'a>(events: &'a [telemetry::wire::Event], kind: &str) -> Vec<Brief<'a>> {
+    events
+        .iter()
+        .filter(|e| e.kind == kind)
+        .map(|e| {
+            (
+                e.limb.as_deref(),
+                e.joint.as_deref(),
+                e.rule.as_deref(),
+                e.reason.as_deref(),
+                e.tag,
+            )
+        })
+        .collect()
 }

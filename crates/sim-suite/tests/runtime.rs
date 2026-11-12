@@ -275,6 +275,23 @@ fn the_runtime_runs_stops_and_clears_every_bus_and_never_enables_on_vcan() {
         }
         assert_eq!(exit.recording.buses.len(), plans.len());
         assert!(session.join("session.json").is_file());
+        // Every stop and clear is an event: the operator's two stops, the refused clear and the clear on each bus.
+        let events = common::events(&session);
+        assert_eq!(
+            common::of_kind(&events, "stop"),
+            [
+                (None, None, None, Some("operator"), None),
+                (Some("right_arm"), None, None, Some("operator"), None)
+            ]
+        );
+        assert_eq!(
+            common::of_kind(&events, "clear_refused"),
+            [(Some("left_leg"), None, None, Some("offline"), Some(1))]
+        );
+        assert_eq!(common::of_kind(&events, "cleared").len(), 2);
+        assert_eq!(common::of_kind(&events, "enable"), []);
+        assert_eq!(exit.recording.events.written, events.len() as u64);
+        assert_eq!(exit.recording.events.lost, 0);
 
         stop_sim.store(true, Ordering::Release);
         for sim in sims {
@@ -601,6 +618,7 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
             })
         );
 
+        let session = runtime.session().to_path_buf();
         let exit = runtime.end().unwrap();
         assert!(exit.control.error.is_none(), "{:?}", exit.control);
         assert_eq!(exit.control.bus_ended, None, "{:?}", exit.control);
@@ -608,6 +626,50 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
         assert_eq!(exit.control.batches_dropped, 0);
         assert_eq!(exit.control.stray_results, 0);
         assert_eq!(exit.control.mode_stops, 1, "{:?}", exit.control);
+
+        // The event log names each refusal's joint and rule, each enable that held, and the rule behind each stop
+        // control made itself: the late Run (tag 7) and the mate put in Run (after tag 9), both host.mode. Stops that
+        // follow a stop the bus made (the hold ending) carry no rule of their own and may repeat, so aren't counted.
+        let events = common::events(&session);
+        let brief = |kind, of: fn(&common::Brief<'_>) -> String| {
+            common::of_kind(&events, kind)
+                .iter()
+                .map(of)
+                .collect::<Vec<_>>()
+        };
+        let refused = brief("enable_refused", |e| {
+            format!("{:?} {:?} {:?} {:?}", e.4, e.1, e.2, e.3)
+        });
+        let expected = [
+            r#"Some(1) Some("leg_a_one") Some("host.preflight") Some("preflight")"#,
+            r#"Some(3) Some("arm_a_one") None Some("already_enabled")"#,
+            r#"Some(7) Some("arm_a_two") Some("host.mode") Some("sequence")"#,
+        ];
+        assert_eq!(refused, expected, "{events:?}");
+        let tags = |e: &common::Brief<'_>| format!("{:?}", e.4.unwrap_or_default());
+        assert_eq!(
+            brief("enabled", tags),
+            ["2", "5", "9", "11", "12"],
+            "{events:?}"
+        );
+        assert_eq!(brief("cleared", tags), ["4", "6", "8", "10"], "{events:?}");
+        // Every stop is the left arm's; two under host.mode, two the operator's, the rest following the bus's stops.
+        let stops = brief("stop", |e| format!("{:?} {:?} {:?}", e.0, e.2, e.3));
+        let count = |s: &str| stops.iter().filter(|&x| x == s).count();
+        assert_eq!(
+            count(r#"Some("left_arm") Some("host.mode") None"#),
+            2,
+            "{events:?}"
+        );
+        assert_eq!(
+            count(r#"Some("left_arm") None Some("operator")"#),
+            2,
+            "{events:?}"
+        );
+        let follows = count(r#"Some("left_arm") None Some("follows_bus_stop")"#);
+        assert_eq!(follows + 4, stops.len(), "{events:?}");
+        assert_eq!(exit.recording.events.written, events.len() as u64);
+        assert_eq!(exit.recording.events.lost, 0);
         // Two joints after the first stop, two after the second, one after host.mode, one after host.fault.
         assert_eq!(exit.control.holds_ended, 6, "{:?}", exit.control);
         for bus in &exit.buses {

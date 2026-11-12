@@ -12,14 +12,15 @@ use can::{BusConfig, BusExit, BusLinks, BusRunError, Counters, Snapshot, Timing,
 use rtrb::{Consumer, Producer, RingBuffer};
 use skeleton::JointName;
 use telemetry::{
-    BusInfo, RING_BATCHES, RecordError, Recorder, Recording, Session, SessionInfo, SkeletonRef,
-    Stage,
+    BusInfo, RING_BATCHES, RING_EVENTS, RecordError, Recorder, Recording, Session, SessionInfo,
+    SkeletonRef, Stage,
 };
 
 use crate::clock::{Schedule, mono_now, wall_ns};
 use crate::control::{self, BusEnds, ControlExit, ControlLinks, View};
-use crate::dispatch::{BusOrders, StopLatch};
+use crate::dispatch::{BusOrders, StopLatch, Why};
 use crate::enable::{Enable, EnableReply, SLOW_RING, SlowEnds};
+use crate::events::Events;
 use crate::plan::{BusPlan, PlanError, offline, plan};
 use crate::request::{Clear, Reply, Scope};
 use crate::roster::{JointSet, Roster, TooManyJoints, UnknownJoint};
@@ -208,7 +209,8 @@ impl Runtime {
             .collect();
         let session = start_session(config, &skeleton_ref, &sockets)?;
         let session_dir = session.dir().to_path_buf();
-        let (recording, recorders) = Recording::new(session, RING_BATCHES);
+        let (mut recording, recorders) = Recording::new(session, RING_BATCHES);
+        let events = recording.events(roster.names(), RING_EVENTS);
         let epoch = recording.epoch();
         let health = recording.health();
         let mut threads = Threads {
@@ -260,6 +262,7 @@ impl Runtime {
             enables: enables_rx,
             enable_replies: enable_replies_tx,
             health,
+            events: Events::new(Some(events)),
             views: views_tx,
             end: Arc::clone(&threads.end),
             finished: Arc::clone(&finished),
@@ -319,7 +322,7 @@ impl Runtime {
     /// The operator's stop of `scope`: always accepted, never waits, and taken by control ahead of any clear on its
     /// next pass (PLAN item 3a).
     pub fn stop(&self, scope: Scope) {
-        self.stops.ask(scope);
+        self.stops.ask(scope, Why::Operator);
     }
 
     /// Set once the control thread has ended: after [`Runtime::end`], or on its own when its clock failed or a bus
@@ -399,7 +402,10 @@ impl Threads {
         }
         let recording = match self.recorder.take() {
             Some(r) => r.close(recorders)?,
-            None => telemetry::wire::End { buses: Vec::new() },
+            None => telemetry::wire::End {
+                buses: Vec::new(),
+                events: telemetry::wire::EventTotals::default(),
+            },
         };
         if panicked {
             return Err(EndError::Panicked);

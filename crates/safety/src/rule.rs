@@ -47,6 +47,27 @@ pub enum RuleId {
 }
 
 impl RuleId {
+    /// Every rule, in PLAN item 6's order.
+    pub const ALL: [Self; 17] = [
+        Self::DriveCanTimeout,
+        Self::DriveCaps,
+        Self::DriveDamper,
+        Self::HostPreflight,
+        Self::HostIdentity,
+        Self::HostVbus,
+        Self::HostSilence,
+        Self::HostFault,
+        Self::HostMode,
+        Self::HostSoftLimit,
+        Self::HostTotalTorque,
+        Self::HostSign,
+        Self::HostTemperature,
+        Self::HostHang,
+        Self::HostBus,
+        Self::HostPiHealth,
+        Self::HostLogging,
+    ];
+
     /// The ID as written in PLAN item 6, the logs and the UI.
     #[must_use]
     pub const fn as_str(self) -> &'static str {

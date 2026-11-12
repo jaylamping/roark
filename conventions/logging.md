@@ -200,6 +200,9 @@ ratio.
 - **Error frames are recorded as frames,** decoded into the bus error enum ([can.md](can.md)), not only as log lines.
 - **Interface counters** (controller state, bus errors, error-warning and error-passive counts, bus-off count, RX dropped and
   overrun, the same numbers `ip -details -statistics` shows) are sampled once a second per bus onto `/can/<bus>/stats`.
+- **Control's events** (stops with their rule ID, enables, refused enables, clears; [safety.md](safety.md) section 8) go
+  on `/events`, through their own lock-free ring from the control thread, with their monotonic time and the wall time
+  mapped through the latest `/clock` pair. Lost events are counted in the end marker.
 - **Decoded joint state** goes on `/joint_state` once per tick, from the same replies. Text logs never carry per-frame or
   per-tick data.
 - **Channels are per bus,** so a reader can open one bus without decoding the others, and a missing bus shows as a missing

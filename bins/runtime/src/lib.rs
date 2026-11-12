@@ -11,6 +11,9 @@ mod dispatch;
 // The control thread is its only user; its tests run everywhere.
 #[cfg(any(target_os = "linux", test))]
 mod enable;
+// The control thread is its only user; its tests run everywhere.
+#[cfg(any(target_os = "linux", test))]
+mod events;
 mod plan;
 mod request;
 mod roster;

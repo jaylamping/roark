@@ -5,6 +5,7 @@
 //! (`can::CommandBatch::new`). It enables only what an operator's enable names (PLAN item 3: the runtime never enables
 //! on its own).
 
+use std::cell::RefCell;
 use std::io;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -15,6 +16,7 @@ use rtrb::{Consumer, Producer};
 use crate::clock::{Schedule, mono_now, passed, sleep_period};
 use crate::dispatch::{BusOrders, StopLatch, orders, reply};
 use crate::enable::{Buses, Counts, Enable, EnableRefused, EnableReply, Enabler, SlowEnds};
+use crate::events::Events;
 use crate::plan::BusPlan;
 use crate::request::{Clear, ClearAt, ClearRefused, Reply, route_clear};
 use crate::roster::Roster;
@@ -52,6 +54,8 @@ pub(crate) struct ControlLinks {
     pub(crate) enable_replies: Producer<EnableReply>,
     /// The recording's health: a failed recording refuses every new enable (PLAN item 6 `host.logging`).
     pub(crate) health: telemetry::Health,
+    /// Control's events, into the session's recording.
+    pub(crate) events: Events,
     /// `None` when nobody reads the views.
     pub(crate) views: Option<Producer<View>>,
     /// The run's end, and every bus thread's exit flag: one flag for both, so the buses and control learn of an end
@@ -139,6 +143,9 @@ pub(crate) fn run(
         } else {
             sleep_period(timing.period_ns);
         }
+        // On the session's epoch, as the snapshots' times are: the preflights' and sequences' windows, and the events.
+        let now_ns = origin_ns.saturating_add(since(schedule.at(0, 0)));
+        links.events.at(now_ns);
         // Once set, each bus stops every limb and ends once a snapshot with every limb at rest is taken, which the
         // reads below do.
         read(plans, n, &mut links, &mut newest, &mut exit);
@@ -171,8 +178,6 @@ pub(crate) fn run(
                 *batch = CommandBatch::new(next, expires);
             }
             // Enables and holds first, so a stop they ask goes out in this pass's orders.
-            // On the session's epoch, as the snapshots' times are, for the preflights' and sequences' windows.
-            let now_ns = origin_ns.saturating_add(since(schedule.at(0, 0)));
             let mut buses = Buses {
                 snapshots: &newest,
                 slow: &mut links.slow,
@@ -183,6 +188,7 @@ pub(crate) fn run(
                 enabler: &mut enabler,
                 counts: &mut counts,
                 replies_dropped: &mut exit.replies_dropped,
+                events: &mut links.events,
             };
             step.run(
                 &links.roster,
@@ -197,6 +203,9 @@ pub(crate) fn run(
             let replies = &mut links.replies;
             let clears = &mut links.clears;
             let mut budget = clears.buffer().capacity();
+            // Both the refusals and the stops are events; one borrow, taken in turn.
+            let events = RefCell::new(&mut links.events);
+            let replies_dropped = &mut exit.replies_dropped;
             exit.stops_deferred += orders(
                 plans,
                 &mut links.orders,
@@ -205,7 +214,8 @@ pub(crate) fn run(
                     budget = budget.checked_sub(1)?;
                     clears.pop().ok()
                 },
-                |r| push_reply(replies, r, &mut exit.replies_dropped),
+                |r| push_reply(replies, r, replies_dropped, &mut events.borrow_mut()),
+                |scope, why| events.borrow_mut().stop(scope, why),
             );
             for (ends, batch) in links.buses.iter_mut().zip(&batches) {
                 if ends.commands.push(*batch).is_err() {
@@ -225,6 +235,7 @@ struct EnableStep<'a> {
     enabler: &'a mut Enabler,
     counts: &'a mut Counts,
     replies_dropped: &'a mut u64,
+    events: &'a mut Events,
 }
 
 impl EnableStep<'_> {
@@ -249,18 +260,19 @@ impl EnableStep<'_> {
             let Ok(enable) = enables.pop() else {
                 break;
             };
+            self.events.enable(&enable);
             if let Some(r) = self
                 .enabler
                 .take(roster, enable, buses, health.failed(), now_ns)
             {
-                push_enable_reply(enable_replies, r, self.replies_dropped);
+                push_enable_reply(enable_replies, r, self.replies_dropped, self.events);
             }
         }
         if let Some(r) = self
             .enabler
             .tick(roster, buses, stops, next, now_ns, self.counts)
         {
-            push_enable_reply(enable_replies, r, self.replies_dropped);
+            push_enable_reply(enable_replies, r, self.replies_dropped, self.events);
         }
     }
 }
@@ -281,7 +293,12 @@ fn refuse_clears(plans: &[BusPlan], links: &mut ControlLinks, exit: &mut Control
                 bus: Some(bus),
                 outcome: Err(ClearRefused::Ending),
             };
-            push_reply(&mut links.replies, r, &mut exit.replies_dropped);
+            push_reply(
+                &mut links.replies,
+                r,
+                &mut exit.replies_dropped,
+                &mut links.events,
+            );
         }
         if !routed_any {
             let r = Reply {
@@ -290,7 +307,12 @@ fn refuse_clears(plans: &[BusPlan], links: &mut ControlLinks, exit: &mut Control
                 bus: None,
                 outcome: Err(ClearRefused::Offline),
             };
-            push_reply(&mut links.replies, r, &mut exit.replies_dropped);
+            push_reply(
+                &mut links.replies,
+                r,
+                &mut exit.replies_dropped,
+                &mut links.events,
+            );
         }
     }
 }
@@ -299,7 +321,12 @@ fn refuse_clears(plans: &[BusPlan], links: &mut ControlLinks, exit: &mut Control
 fn refuse_enables(enabler: &mut Enabler, links: &mut ControlLinks, exit: &mut ControlExit) {
     if let Some(r) = enabler.end() {
         exit.enables_ending += 1;
-        push_enable_reply(&mut links.enable_replies, r, &mut exit.replies_dropped);
+        push_enable_reply(
+            &mut links.enable_replies,
+            r,
+            &mut exit.replies_dropped,
+            &mut links.events,
+        );
     }
     for _ in 0..links.enables.buffer().capacity() {
         let Ok(enable) = links.enables.pop() else {
@@ -310,7 +337,12 @@ fn refuse_enables(enabler: &mut Enabler, links: &mut ControlLinks, exit: &mut Co
             tag: enable.tag,
             outcome: Err(EnableRefused::Ending),
         };
-        push_enable_reply(&mut links.enable_replies, r, &mut exit.replies_dropped);
+        push_enable_reply(
+            &mut links.enable_replies,
+            r,
+            &mut exit.replies_dropped,
+            &mut links.events,
+        );
     }
 }
 
@@ -360,7 +392,12 @@ fn read(
                 break;
             };
             if let Some(r) = reply(plans, bus, answer) {
-                push_reply(&mut links.replies, r, &mut exit.replies_dropped);
+                push_reply(
+                    &mut links.replies,
+                    r,
+                    &mut exit.replies_dropped,
+                    &mut links.events,
+                );
             }
         }
         if ended && !ending {
@@ -370,13 +407,22 @@ fn read(
     }
 }
 
-fn push_reply(replies: &mut Producer<Reply>, r: Reply, dropped: &mut u64) {
+/// A clear's answer, to its requester and the event log.
+fn push_reply(replies: &mut Producer<Reply>, r: Reply, dropped: &mut u64, events: &mut Events) {
+    events.clear_reply(&r);
     if replies.push(r).is_err() {
         *dropped += 1;
     }
 }
 
-fn push_enable_reply(replies: &mut Producer<EnableReply>, r: EnableReply, dropped: &mut u64) {
+/// An enable's answer, to its requester and the event log.
+fn push_enable_reply(
+    replies: &mut Producer<EnableReply>,
+    r: EnableReply,
+    dropped: &mut u64,
+    events: &mut Events,
+) {
+    events.enable_reply(&r);
     if replies.push(r).is_err() {
         *dropped += 1;
     }
@@ -432,6 +478,7 @@ mod tests {
             enables: RingBuffer::new(1).1,
             enable_replies: RingBuffer::new(1).0,
             health: telemetry::Health::default(),
+            events: Events::new(None),
             views: None,
             end: Arc::clone(&end),
             finished: Arc::clone(&finished),

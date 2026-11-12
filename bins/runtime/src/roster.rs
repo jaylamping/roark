@@ -111,6 +111,15 @@ impl Roster {
         self.joints.len()
     }
 
+    /// Every joint's name, by index: the table control's events name joints by.
+    #[must_use]
+    pub fn names(&self) -> Vec<String> {
+        self.joints
+            .iter()
+            .map(|j| j.name.as_str().to_owned())
+            .collect()
+    }
+
     /// Whether there are none.
     #[must_use]
     pub fn is_empty(&self) -> bool {

@@ -12,8 +12,12 @@ drains every ring into the session's file:
 - `/can/<bus>/frames`: one message per bus per tick, with every frame, its kernel timestamp and its direction.
 - `/recorder/gap`: batches a full ring dropped, written where the hole is, including any dropped just before a stop.
 - `/clock`: the monotonic and wall clocks read together, once a second.
+- `/events`: control's events (stops with their rule, enables, refused enables, clears), from its own lock-free ring
+  (`Recording::events` hands out its `EventRecorder`). Each carries its monotonic time and the wall time mapped through
+  the latest `/clock` pair; joints and buses are written by name. A full ring drops the event and counts it.
 - `/session`: a header first (session, file number, git revision, skeleton hash, buses with their filters and
-  timestamp source) and an end marker last (per-bus totals of what was written, lost and omitted).
+  timestamp source) and an end marker last (per-bus totals of what was written, lost and omitted, and the events written
+  and lost).
 
 Messages are JSON, and each channel's JSON Schema is generated from the types in `telemetry::wire` and stored in the
 file, so Foxglove and Python read it without this code. Times inside messages are `{sec, nsec}`, so they stay exact.
@@ -27,7 +31,8 @@ cut off.
 
 ## Must never
 
-Block, lock, allocate or make a system call on a bus thread (`BusRecorder::record` is a ring push and a counter). Sit in
+Block, lock, allocate or make a system call on a bus thread or the control thread (`BusRecorder::record` and
+`EventRecorder::record` are a ring push and a counter). Sit in
 the stop path: a slow or failed disk never delays a stop. A write error marks `Health` failed, which refuses the next
 enable and leaves running motion alone (PLAN item 6, Logging row). Drop data without saying so in the file.
 

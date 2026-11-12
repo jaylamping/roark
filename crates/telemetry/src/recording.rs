@@ -9,6 +9,7 @@ use std::time::{Duration, Instant, SystemTime};
 
 use crate::RecordError;
 use crate::bus::{self, BusDrain, BusRecorder};
+use crate::event::{self, EventDrain, EventRecorder};
 use crate::file::CHUNK_NS;
 use crate::session::{Session, Sink};
 use crate::wire::End;
@@ -51,6 +52,9 @@ impl Health {
 pub struct Recording<W: Sink = BufWriter<File>> {
     session: Session<W>,
     drains: Vec<BusDrain>,
+    events: Option<EventDrain>,
+    /// The two clocks as last read together: maps an event's monotonic time to the wall clock.
+    clocks: Option<(u64, u64)>,
     health: Health,
     epoch: Epoch,
     failure: Option<String>,
@@ -68,6 +72,8 @@ impl<W: Sink> Recording<W> {
         let recording = Self {
             session,
             drains,
+            events: None,
+            clocks: None,
             health: Health::default(),
             epoch: Epoch(Instant::now()),
             failure: None,
@@ -88,6 +94,14 @@ impl<W: Sink> Recording<W> {
         self.health.clone()
     }
 
+    /// Make the ring of `capacity` events (normally [`RING_EVENTS`](crate::RING_EVENTS)) for the control thread, its
+    /// events naming joints by their index in `joints`. One per session: a second call replaces the first ring.
+    pub fn events(&mut self, joints: Vec<String>, capacity: usize) -> EventRecorder {
+        let (recorder, drain) = event::ring(joints, capacity);
+        self.events = Some(drain);
+        recorder
+    }
+
     /// Drain every ring into the file, write `/clock` once a second, and close the chunk once a second. `mono_ns`
     /// (since the [`Epoch`]) and `wall_ns` are the two clocks read together.
     ///
@@ -100,8 +114,12 @@ impl<W: Sink> Recording<W> {
     }
 
     fn write_due(&mut self, mono_ns: u64, wall_ns: u64) -> Result<(), RecordError> {
+        self.clocks = Some((mono_ns, wall_ns));
         if let Some(reason) = &self.failure {
             for drain in &mut self.drains {
+                while drain.consumer.pop().is_ok() {}
+            }
+            if let Some(drain) = &mut self.events {
                 while drain.consumer.pop().is_ok() {}
             }
             return Err(RecordError::Failed(reason.clone()));
@@ -127,6 +145,21 @@ impl<W: Sink> Recording<W> {
                 self.session.file.batch(bus, &batch)?;
             }
         }
+        if let Some(drain) = &mut self.events {
+            for _ in 0..drain.consumer.buffer().capacity() {
+                let Ok(event) = drain.consumer.pop() else {
+                    break;
+                };
+                // Before the first clock reading there is no mapping; the wall time is then left at 0.
+                let wall_ns = self.clocks.map_or(0, |(mono, wall)| {
+                    wall.saturating_sub(mono.saturating_sub(event.mono_ns))
+                });
+                self.session.file.event(&event, &drain.joints, wall_ns)?;
+            }
+            self.session
+                .file
+                .events_lost(drain.lost.load(Ordering::Relaxed));
+        }
         Ok(())
     }
 
@@ -140,9 +173,10 @@ impl<W: Sink> Recording<W> {
         result
     }
 
-    /// Stop recording: drain every ring, write a gap for each bus's batches dropped since its last accepted one, write
-    /// the end marker, finish and `fsync` the file, and only then remove its lock. Taking the [`BusRecorder`]s back
-    /// means no bus can record after this starts; call it once the drives are disabled (logging.md section 8.4).
+    /// Stop recording: drain every ring (control's events with them), write a gap for each bus's batches dropped since
+    /// its last accepted one, write the end marker, finish and `fsync` the file, and only then remove its lock. Taking
+    /// the [`BusRecorder`]s back means no bus can record after this starts; call it once the drives are disabled and
+    /// control has ended (logging.md section 8.4), so no event comes after it.
     ///
     /// # Errors
     /// The recording failed earlier, or any of these steps did. The lock then stays, marking the file as not closed
