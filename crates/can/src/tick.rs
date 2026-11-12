@@ -409,6 +409,9 @@ impl BusTick {
     /// The socket's overflow counter, the last value the shell saw (`SO_RXQ_OVFL` comes only on frames queued after a
     /// drop, so a frame without it is no news).
     pub fn note_kernel_drops(&mut self, count: u32) {
+        if count != self.counters.kernel_drops {
+            self.slow_disturbed();
+        }
         self.counters.kernel_drops = count;
     }
 

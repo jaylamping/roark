@@ -36,15 +36,16 @@ pub enum SlowKind {
     /// The drive's MCU UID (type 0).
     GetId,
     /// A type 0 to `id`, which needn't be in the bus's drive table: one step of a scan (PLAN item 3, Scan and identity).
-    /// Every type-0 reply from `id` read before the next tick's start answers it ([`SlowOutcome::Found`]); none is
-    /// [`SlowOutcome::TimedOut`]: no drive answers at that ID.
+    /// Every type-0 reply from `id` read before the next tick's start answers it ([`SlowOutcome::Found`]); none, in a
+    /// window that can be trusted, is [`SlowOutcome::TimedOut`]: no drive answers at that ID. A window that can't be
+    /// trusted ends [`SlowOutcome::Unsure`] whatever it heard.
     Probe(DeviceId),
     /// Type 7: give the drive at `old` the ID `new`. PLAN item 2 allows it only from the set-ID command with exactly
     /// one drive answering on the bus; the requester proves that with a scan, the bus only that every limb is idle.
     /// Answered like a probe of `new`: the drive answers with its type-0 frame (manual §4.1.5, "Answer motor broadcast
     /// frame"), assumed from its new ID since the change is "effective immediately"; the manual doesn't say, and the
-    /// bench checks it. A reply only from the old ID ends [`SlowOutcome::TimedOut`]. The requester probes both IDs after
-    /// to see what took.
+    /// bench checks it. A reply only from the old ID ends [`SlowOutcome::TimedOut`] (or `Unsure`, like a probe). Either
+    /// way the requester probes both IDs after to see what took.
     SetId {
         /// The drive's ID now.
         old: DeviceId,
@@ -73,7 +74,8 @@ pub enum SlowOutcome {
     Identity(Uid),
     /// A probe's or set-ID's answers, every type-0 reply from its ID read before the next tick's start: the first UID,
     /// and another if a second drive with a different UID answered on the same ID. On a real bus two drives answering
-    /// together collide; that shows as an error frame, which makes the window [`Self::Unsure`] instead.
+    /// together collide, which is assumed to show as an error frame and so end the window [`Self::Unsure`]; the bench
+    /// checks that. Until it does, `other: None` is no proof that one drive holds the ID.
     Found {
         /// The first answer's UID.
         uid: Uid,
@@ -81,7 +83,8 @@ pub enum SlowOutcome {
         other: Option<Uid>,
     },
     /// A probe's or set-ID's window closed on reads that can't be trusted to hold every answer: an error frame was read
-    /// in it (two drives answering one ID collide on a real bus), or the drain that closed it left frames unread. What
+    /// in it (two drives answering one ID collide on a real bus), the kernel dropped frames in it, the drain that closed
+    /// it left frames unread, or the bus failed. What
     /// answered can't be told; probe again.
     Unsure,
     /// The drive sent a status after the write. That says nothing about the value: read it back.
@@ -155,20 +158,22 @@ pub(crate) struct SlowEntry {
     seq: u64,
     /// The tick it was submitted in, for [`Timing::slow_queue_ticks`](crate::Timing::slow_queue_ticks).
     submitted_tick: u64,
-    request: SlowRequest,
-    state: SlowState,
-    /// A probe or set-ID in flight that an error frame was read during: its window ends [`SlowOutcome::Unsure`].
-    disturbed: bool,
+    pub(crate) request: SlowRequest,
+    pub(crate) state: SlowState,
+    /// A probe or set-ID in flight whose window can no longer be trusted to hold every answer (an error frame or a
+    /// kernel drop): it ends [`SlowOutcome::Unsure`].
+    pub(crate) disturbed: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
-enum SlowState {
+pub(crate) enum SlowState {
     Queued,
     /// Handed to the shell; [`BusTick::slow_sent`] says whether the socket took it.
     Sending,
     /// The socket took it; the reply is due by the next tick's start.
     Waiting,
-    /// A probe or set-ID with an answer, still taking more until the next tick's start, when it ends `Found`.
+    /// A probe or set-ID with an answer, still taking more until the next tick's start, when it ends `Found` (or
+    /// `Unsure`, [`BusTick::window_closed`]).
     Heard {
         uid: Uid,
         other: Option<Uid>,
@@ -178,7 +183,7 @@ enum SlowState {
 
 impl SlowState {
     /// Handed to the shell or taken by the socket, with no result yet: the one exchange a bus has in flight.
-    const fn in_flight(self) -> bool {
+    pub(crate) const fn in_flight(self) -> bool {
         match self {
             Self::Sending | Self::Waiting | Self::Heard { .. } => true,
             Self::Queued | Self::Done(_) => false,
@@ -370,8 +375,8 @@ impl BusTick {
         Some(result)
     }
 
-    /// The thread is ending: every request held ends now. One in flight ends as its window closing would end it (timed
-    /// out, or a probe's or set-ID's answers); queued ones are refused with
+    /// The thread is ending: every request held ends now. One in flight ends as its window closing would end it
+    /// (timed out, or a probe's or set-ID's `Found`, `Unsure` or `TimedOut`); queued ones are refused with
     /// the returned reason ([`SlowRefusal::BusFailed`] on a failed bus, else [`SlowRefusal::Ended`]), which the shell
     /// gives the requests still in its ring too. Take the results with [`Self::take_slow_result`].
     pub fn end_slow(&mut self) -> SlowRefusal {
@@ -402,7 +407,8 @@ impl BusTick {
         self.counters.slow_results_dropped += 1;
     }
 
-    /// At a tick's start: a slow request still unanswered has timed out, and a probe's or set-ID's answers are in.
+    /// At a tick's start: a slow request still unanswered has timed out, and a probe's or set-ID's window closes
+    /// ([`Self::window_closed`]).
     pub(crate) fn time_out_slow(&mut self) {
         if let Some(i) = self.slow_index(|e| e.state.in_flight())
             && let Some(entry) = self.slow.get(i).copied().flatten()
@@ -410,65 +416,6 @@ impl BusTick {
             let outcome = self.window_closed(&entry);
             self.finish_slow(i, outcome);
         }
-    }
-
-    /// What `entry`, in flight, ends as once its reply window is over. A probe or set-ID ends [`SlowOutcome::Unsure`]
-    /// if an error frame was read in its window or the last drain left frames unread (an answer may be among them),
-    /// else `Found` with what it heard, else timed out. Any other request is timed out.
-    fn window_closed(&self, entry: &SlowEntry) -> SlowOutcome {
-        let by_id = matches!(
-            entry.request.kind,
-            SlowKind::Probe(_) | SlowKind::SetId { .. }
-        );
-        if by_id && (entry.disturbed || self.unordered) {
-            return SlowOutcome::Unsure;
-        }
-        match entry.state {
-            SlowState::Heard { uid, other } => SlowOutcome::Found { uid, other },
-            SlowState::Queued | SlowState::Sending | SlowState::Waiting | SlowState::Done(_) => {
-                SlowOutcome::TimedOut
-            }
-        }
-    }
-
-    /// An error frame was read: a probe or set-ID in flight can no longer say it heard every answer.
-    pub(crate) fn slow_error_frame(&mut self) {
-        for e in self.slow.iter_mut().flatten() {
-            if e.state.in_flight()
-                && matches!(e.request.kind, SlowKind::Probe(_) | SlowKind::SetId { .. })
-            {
-                e.disturbed = true;
-            }
-        }
-    }
-
-    /// A type-0 reply from `device`: whether it answers the probe or set-ID in flight, a probe of `device` or a set-ID
-    /// to `device`. It is held, with any other UID heard on that ID, until the next tick's start.
-    pub(crate) fn slow_found_reply(&mut self, device: DeviceId, uid: Uid) -> bool {
-        let Some(entry) = self.slow.iter_mut().flatten().find(|e| {
-            matches!(e.state, SlowState::Waiting | SlowState::Heard { .. })
-                && matches!(
-                    e.request.kind,
-                    SlowKind::Probe(id) | SlowKind::SetId { new: id, .. } if id == device
-                )
-        }) else {
-            return false;
-        };
-        entry.state = match entry.state {
-            SlowState::Waiting => SlowState::Heard { uid, other: None },
-            SlowState::Heard {
-                uid: first,
-                other: None,
-            } if first != uid => SlowState::Heard {
-                uid: first,
-                other: Some(uid),
-            },
-            state @ (SlowState::Heard { .. }
-            | SlowState::Queued
-            | SlowState::Sending
-            | SlowState::Done(_)) => state,
-        };
-        true
     }
 
     /// A read reply from slot `slot`: whether it answers the read in flight.
@@ -521,7 +468,7 @@ impl BusTick {
     }
 
     fn slow_refusal(&self, request: &SlowRequest) -> Result<(), SlowRefusal> {
-        if let SlowKind::Probe(_) | SlowKind::SetId { .. } = request.kind {
+        if request.kind.answer_id().is_some() {
             return self.bus_request_refusal();
         }
         let drive = self
@@ -570,29 +517,10 @@ impl BusTick {
         Ok(())
     }
 
-    /// Why a probe or set-ID may not go now: the bus has failed, a limb on it isn't idle (or a stop of it is asked or
-    /// due), or control is silent. Its frame may reach any drive on the bus, so every limb must be idle, not only one.
-    fn bus_request_refusal(&self) -> Result<(), SlowRefusal> {
-        if self.bus_error.is_some() {
-            return Err(SlowRefusal::BusFailed);
-        }
-        for (i, limb) in self.limbs.iter().enumerate() {
-            if let Some(limb) = limb
-                && (limb.state != LimbState::Idle || self.limb_halting(i, limb.state))
-            {
-                return Err(SlowRefusal::BusNotIdle);
-            }
-        }
-        if self.silent >= self.timing.silent_ticks {
-            return Err(SlowRefusal::ControlSilent);
-        }
-        Ok(())
-    }
-
     /// Whether limb `limb`, in `state`, is stopping, stopped or due to stop: a stop asked for and not yet taken (it is
     /// taken at the next tick's start, before any send) or what the veto stops on, on any drive of it. Every slow
     /// request's refusal asks this, so a new stop condition reaches them all.
-    fn limb_halting(&self, limb: usize, state: LimbState) -> bool {
+    pub(crate) fn limb_halting(&self, limb: usize, state: LimbState) -> bool {
         self.stop_pending(limb) || !state.takes_commands() || self.limb_stop_due(limb).is_some()
     }
 

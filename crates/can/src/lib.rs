@@ -6,6 +6,7 @@ mod batch;
 mod bus;
 #[cfg(target_os = "linux")]
 mod bus_orders;
+mod by_id;
 #[cfg(target_os = "linux")]
 mod clock;
 mod error_frame;

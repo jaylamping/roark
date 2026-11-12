@@ -31,8 +31,9 @@ struct Control<'a> {
 }
 
 impl Control<'_> {
-    /// Ask `kind` and keep the bus fed until its result. A stall of this thread can leave control silent for a tick;
-    /// such a refusal is asked again, a few times at most in the whole run.
+    /// Ask `kind` and keep the bus fed until its result. A stall of this thread can leave control silent for a tick, or
+    /// a loaded machine can leave a drain unemptied; such a refusal or unsure window is asked again, a few times at
+    /// most in the whole run.
     #[expect(
         clippy::unwrap_used,
         reason = "test helper: a bus that stops publishing fails the test"
@@ -64,8 +65,10 @@ impl Control<'_> {
             }
             if let Ok(result) = self.results.pop() {
                 assert_eq!(result.tag, self.tag);
-                if result.outcome == SlowOutcome::Refused(SlowRefusal::ControlSilent)
-                    && self.stalls < 5
+                if matches!(
+                    result.outcome,
+                    SlowOutcome::Refused(SlowRefusal::ControlSilent) | SlowOutcome::Unsure
+                ) && self.stalls < 5
                 {
                     self.stalls += 1;
                     self.tag += 1;

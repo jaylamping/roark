@@ -14,7 +14,7 @@ impl BusTick {
     pub fn on_frame(&mut self, read_ns: u64, frame: &FrameRecord) {
         if frame.error {
             self.counters.error_frames += 1;
-            self.slow_error_frame();
+            self.slow_disturbed();
             // Of what an error frame can say, only bus-off stops the bus for good: the adapter may restart the bus by
             // itself (PLAN.md item 3, item 6 Bus-off row). The interface errors come from the socket, through
             // `lost_bus`; the controller's state is read below.

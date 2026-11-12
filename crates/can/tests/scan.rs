@@ -5,8 +5,8 @@
 mod common;
 
 use can::{
-    BusTick, Drain, RearmRefused, SendOutcome, SlowKind, SlowOutcome, SlowRefusal, SlowRequest,
-    SlowResult,
+    BusError, BusTick, Drain, RearmRefused, SendOutcome, SlowKind, SlowOutcome, SlowRefusal,
+    SlowRequest, SlowResult,
 };
 use common::{
     MS, PERIOD, batch, bus, deadline, error_frame, id, record, run_tick, status, two_limbs,
@@ -32,13 +32,40 @@ fn identity(n: u8, uid: Uid) -> telemetry::FrameRecord {
     record(f.id(), f.data(), Direction::TxOther)
 }
 
-/// Send `kind`, expecting `frame`, read `replies` in the next drain (left with frames unread if `unemptied`), and start
-/// the next tick: the request's result.
+/// A probe of `n` and the frame it sends.
+fn probe(n: u8) -> (SlowKind, robstride::Frame) {
+    (SlowKind::Probe(id(n)), encode::get_id(id(n)))
+}
+
+/// A set-ID from `old` to `new` and the frame it sends.
+fn set_id(old: u8, new: u8) -> (SlowKind, robstride::Frame) {
+    (
+        SlowKind::SetId {
+            old: id(old),
+            new: id(new),
+        },
+        encode::set_id(id(old), id(new)),
+    )
+}
+
+/// How a probe's window closes, besides the frames read in it.
+#[derive(Clone, Copy, Debug)]
+enum Close {
+    /// The drain before the next tick went this way.
+    Drain(Drain),
+    /// The socket failed in the window.
+    Failed,
+    /// The kernel reported a dropped frame in the window.
+    KernelDrop,
+}
+
+/// Send `kind`, expecting `frame`, read `replies` in the window, close it as `close` says, and start the next tick: the
+/// request's result.
 fn window(
     kind: SlowKind,
     frame: robstride::Frame,
     replies: &[telemetry::FrameRecord],
-    unemptied: bool,
+    close: Close,
     what: &str,
 ) -> Option<SlowResult> {
     let mut bus = bus();
@@ -59,8 +86,10 @@ fn window(
         "{what}: held to the window's end"
     );
     assert_eq!(bus.slow_send(deadline(0)), None, "{what}: still in flight");
-    if unemptied {
-        bus.drained(Drain::Unemptied);
+    match close {
+        Close::Drain(drain) => bus.drained(drain),
+        Close::Failed => bus.lost_bus(BusError::InterfaceGone),
+        Close::KernelDrop => bus.note_kernel_drops(1),
     }
     run_tick(&mut bus, 1, Some(&batch(1, &[])), &[]);
     let _ = bus.end(deadline(1));
@@ -68,46 +97,41 @@ fn window(
     bus.take_slow_result()
 }
 
-/// Guards: protocol - a probe is a type 0 to any ID, in the bus's table or not, and a set-ID a type 7 from the old ID
-/// to the new; each is answered by the type-0 replies from its ID (the probe's, or the set-ID's new one) read before the
-/// next tick's start, a second drive with another UID on that ID included, and nothing answering is a timeout; a window
-/// with an error frame in it (two drives on one ID collide on a real bus) or closed by a drain that left frames unread
-/// is unsure, never a count of drives (RS03 manual §4.1.1 type 0, §4.1.5 type 7 "effective immediately", answered by the
-/// type-0 broadcast frame; PLAN.md item 2: type 7 only with exactly one drive answering).
-#[test]
-fn probes_and_set_id_are_answered_by_type_0_from_their_id() {
+/// One row of the window table: what, the request and the frame it sends, the frames read in its window, how the
+/// window closes, its result.
+type Row = (
+    &'static str,
+    (SlowKind, robstride::Frame),
+    Vec<telemetry::FrameRecord>,
+    Close,
+    SlowOutcome,
+);
+
+/// The rows of `probes_and_set_id_are_answered_by_type_0_from_their_id`.
+fn rows() -> Vec<Row> {
+    let found = |uid| SlowOutcome::Found { uid, other: None };
     let one = Uid([1; 8]);
     let two = Uid([2; 8]);
-    // (what, the frame it sends, the frames read in the next drain, whether that drain left frames unread, its result)
-    let rows = [
+    vec![
         (
             "one drive at an ID outside the table",
-            SlowKind::Probe(id(127)),
-            encode::get_id(id(127)),
+            probe(127),
             vec![identity(126, two), identity(127, one), identity(127, one)],
-            false,
-            SlowOutcome::Found {
-                uid: one,
-                other: None,
-            },
+            Close::Drain(Drain::Emptied),
+            found(one),
         ),
         (
             "a drive in the table",
-            SlowKind::Probe(id(102)),
-            encode::get_id(id(102)),
+            probe(102),
             vec![identity(102, one)],
-            false,
-            SlowOutcome::Found {
-                uid: one,
-                other: None,
-            },
+            Close::Drain(Drain::Emptied),
+            found(one),
         ),
         (
             "two drives sharing an ID",
-            SlowKind::Probe(id(50)),
-            encode::get_id(id(50)),
+            probe(50),
             vec![identity(50, one), identity(50, two)],
-            false,
+            Close::Drain(Drain::Emptied),
             SlowOutcome::Found {
                 uid: one,
                 other: Some(two),
@@ -115,60 +139,88 @@ fn probes_and_set_id_are_answered_by_type_0_from_their_id() {
         ),
         (
             "nothing at that ID",
-            SlowKind::Probe(id(51)),
-            encode::get_id(id(51)),
+            probe(51),
             vec![identity(52, one)],
-            false,
+            Close::Drain(Drain::Emptied),
             SlowOutcome::TimedOut,
         ),
         (
             "a set-ID, answered from the new ID",
-            SlowKind::SetId {
-                old: id(127),
-                new: id(11),
-            },
-            encode::set_id(id(127), id(11)),
+            set_id(127, 11),
             vec![identity(11, one)],
-            false,
-            SlowOutcome::Found {
-                uid: one,
-                other: None,
-            },
+            Close::Drain(Drain::Emptied),
+            found(one),
         ),
         (
             "a set-ID answered only from the old ID",
-            SlowKind::SetId {
-                old: id(127),
-                new: id(11),
-            },
-            encode::set_id(id(127), id(11)),
+            set_id(127, 11),
             vec![identity(127, one)],
-            false,
+            Close::Drain(Drain::Emptied),
             SlowOutcome::TimedOut,
         ),
         (
             "an error frame in the window",
-            SlowKind::Probe(id(50)),
-            encode::get_id(id(50)),
+            probe(50),
             vec![identity(50, one), error_frame(0x04, 0x04)],
-            false,
+            Close::Drain(Drain::Emptied),
             SlowOutcome::Unsure,
         ),
         (
             "a set-ID whose window closes on a drain that left frames unread",
-            SlowKind::SetId {
-                old: id(127),
-                new: id(11),
-            },
-            encode::set_id(id(127), id(11)),
+            set_id(127, 11),
             vec![identity(11, one)],
-            true,
+            Close::Drain(Drain::Unemptied),
             SlowOutcome::Unsure,
         ),
-    ];
-    for (what, kind, frame, replies, unemptied, outcome) in rows {
+        (
+            "an error frame alone in the window",
+            probe(50),
+            vec![error_frame(0x04, 0x04)],
+            Close::Drain(Drain::Emptied),
+            SlowOutcome::Unsure,
+        ),
+        (
+            "nothing read, and frames left unread",
+            probe(50),
+            vec![],
+            Close::Drain(Drain::Unemptied),
+            SlowOutcome::Unsure,
+        ),
+        (
+            "a backlog emptied: every answer was read",
+            probe(50),
+            vec![identity(50, one)],
+            Close::Drain(Drain::Backlog),
+            found(one),
+        ),
+        (
+            "the socket failed in the window",
+            probe(50),
+            vec![identity(50, one)],
+            Close::Failed,
+            SlowOutcome::Unsure,
+        ),
+        (
+            "a kernel drop in the window",
+            probe(50),
+            vec![identity(50, one)],
+            Close::KernelDrop,
+            SlowOutcome::Unsure,
+        ),
+    ]
+}
+
+/// Guards: protocol - a probe is a type 0 to any ID, in the bus's table or not, and a set-ID a type 7 from the old ID
+/// to the new; each is answered by the type-0 replies from its ID (the probe's, or the set-ID's new one) read before the
+/// next tick's start, a second drive with another UID on that ID included, and nothing answering is a timeout; a window
+/// with an error frame or a kernel drop in it (two drives on one ID collide on a real bus), closed by a drain that left
+/// frames unread, or on a failed bus is unsure, never a count of drives; a backlog the drain emptied is still trusted (RS03 manual §4.1.1 type 0, §4.1.5 type 7 "effective immediately", answered by the
+/// type-0 broadcast frame; PLAN.md item 2: type 7 only with exactly one drive answering).
+#[test]
+fn probes_and_set_id_are_answered_by_type_0_from_their_id() {
+    for (what, (kind, frame), replies, close, outcome) in rows() {
         assert_eq!(
-            window(kind, frame, &replies, unemptied, what),
+            window(kind, frame, &replies, close, what),
             Some(SlowResult {
                 tag: 5,
                 slot: 0,
