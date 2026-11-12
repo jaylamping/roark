@@ -28,7 +28,8 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   answers control's ring can't take and every stop order left naming a limb it doesn't have.
 - `disable.rs`: the `runtime` and `robot-cli` binaries, built by `scripts/sim.sh` first. `robot-cli disable` refuses
   while the runtime holds its lock; after `kill -9` it leaves every answering drive in Reset with reporting off and
-  sends nothing else; and with one skeleton bus missing, only that bus's drives fail.
+  sends nothing else; with one skeleton bus missing, only that bus's drives fail; a lock it can't check refuses; and a
+  bus-off error frame mid-stop fails every drive on its bus while the other bus stops.
 - `runtime.rs`: the `runtime` crate on its test robot (two buses, one limb on both, one offline), against `sim-drive`
   on `can0` and `can1`: nothing enabled, a robot stop and a limb's stop reaching it on both buses, a clear re-arming a
   limb on both buses and one of the offline limb refused, and an end with every bus at rest and the session closed.

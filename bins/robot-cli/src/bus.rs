@@ -35,6 +35,8 @@ pub struct BusReport {
     pub bus_off: bool,
     /// Why the socket couldn't be asked for error frames, if it couldn't.
     pub errors_unseen: Option<OsError>,
+    /// The read failure, if reads failed, also when `fault` is a later write failure.
+    pub read_fault: Option<OsError>,
     /// Each drive's joint name, record and outcome, in skeleton order.
     pub drives: Vec<DriveReport>,
 }
@@ -106,6 +108,7 @@ fn report(t: &BusTargets, stop: &BusStop, end: Duration) -> BusReport {
         error_frames: stop.error_frames(),
         bus_off: stop.bus_off(),
         errors_unseen: stop.errors_unseen(),
+        read_fault: stop.read_fault(),
         drives: t
             .drives
             .iter()
@@ -132,7 +135,7 @@ fn run(t: &BusTargets) -> BusReport {
     };
     let mut stop = BusStop::new(ids(t));
     // Bus-off tells a bus that is down from drives that are off. A socket that can't be asked for error frames can't
-    // tell the two apart, so its silent drives are counted as on a faulty bus; the stop itself goes on.
+    // tell the two apart, so its silent drives are reported silent_errors_unseen; the stop itself goes on.
     if let Err(e) = socket.set_error_filter_accept_all() {
         stop.cant_see_errors(OsError::from(&e));
     }
@@ -180,23 +183,23 @@ fn run(t: &BusTargets) -> BusReport {
     }
 }
 
-/// Read the frames queued, at most `MAX_DRAIN` and one more to tell a full queue from an emptied one, handing each to
-/// the stop.
+/// Read the frames queued, at most `MAX_DRAIN`, handing each to the stop. After that many, a poll that doesn't wait
+/// tells a queue still holding frames from an emptied one, without taking a frame.
 fn drain(socket: &CanSocket, stop: &mut BusStop, start: Instant) -> Result<Drain, OsError> {
-    for n in 0..=MAX_DRAIN {
+    for _ in 0..MAX_DRAIN {
         match socket.read_frame() {
-            Ok(frame) => {
-                heard(stop, start, &frame);
-                if n == MAX_DRAIN {
-                    return Ok(Drain::Capped);
-                }
-            }
+            Ok(frame) => heard(stop, start, &frame),
             Err(e) if e.kind() == io::ErrorKind::WouldBlock => return Ok(Drain::Emptied),
             Err(e) if e.kind() == io::ErrorKind::Interrupted => {}
             Err(e) => return Err(OsError::from(&e)),
         }
     }
-    Ok(Drain::Capped)
+    let mut fds = [PollFd::new(socket.as_fd(), PollFlags::POLLIN)];
+    match poll(&mut fds, PollTimeout::ZERO) {
+        Ok(0) => Ok(Drain::Emptied),
+        Ok(_) | Err(Errno::EINTR) => Ok(Drain::Capped),
+        Err(e) => Err(OsError(e as i32)),
+    }
 }
 
 /// Hand one frame read to the stop.
@@ -209,7 +212,10 @@ fn heard(stop: &mut BusStop, start: Instant, frame: &CanFrame) {
                 stop.heard(start.elapsed(), &inbound);
             }
         }
-        CanFrame::Error(frame) => stop.heard_error_frame(frame.error_bits()),
+        CanFrame::Error(frame) => {
+            let controller = frame.data().get(1).copied().unwrap_or(0);
+            stop.heard_error_frame(frame.error_bits(), controller);
+        }
         // A remote frame carries no drive's word.
         CanFrame::Remote(_) => {}
     }

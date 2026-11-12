@@ -16,7 +16,9 @@ use robstride::drive::{self, Command as HostCommand};
 use robstride::{DeviceId, Inbound, Mode, Reporting, Uid, decode, encode};
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use skeleton::Skeleton;
-use socketcan::{CanDataFrame, CanFrame, CanSocket, EmbeddedFrame, ExtendedId, Id, Socket};
+use socketcan::{
+    CanDataFrame, CanErrorFrame, CanFrame, CanSocket, EmbeddedFrame, ExtendedId, Id, Socket,
+};
 
 /// The runtime's test robot, never the live skeleton (testing.md rule 3).
 fn skeleton_path() -> PathBuf {
@@ -493,5 +495,76 @@ fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
             Some("stopped"),
             "{done:?}"
         );
+    }
+}
+
+/// On `socket`'s bus, once the first reporting off goes by (only `disable` sends one), send a bus-off error frame, as
+/// a controller reports one (`CAN_ERR_BUSOFF`). True once it is sent; false if `stop` came first.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: the socket must work for the test to mean anything"
+)]
+fn bus_off_after_reporting_off(socket: &CanSocket, stop: &AtomicBool) -> bool {
+    socket.set_read_timeout(Duration::from_millis(5)).unwrap();
+    while !stop.load(Ordering::Acquire) {
+        if let Ok(CanFrame::Data(frame)) = socket.read_frame()
+            && let Id::Extended(id) = frame.id()
+            && let Ok(Some(host)) = drive::command(id.as_raw(), frame.data())
+            && host.command == HostCommand::Reporting(Reporting::Off)
+        {
+            socket
+                .write_frame(&CanErrorFrame::new_error(0x40, &[]).unwrap())
+                .unwrap();
+            return true;
+        }
+    }
+    false
+}
+
+/// Guards: safety - a bus-off during the stop fails every drive on that bus, confirmed ones too (can.md, Errors and
+/// bus-off; PLAN item 6, `host.bus`), while the other bus still stops: the error frame is read off the real socket,
+/// through its error filter, on `vcan`.
+#[test]
+fn a_bus_off_during_the_stop_fails_every_drive_on_its_bus() {
+    let path = skeleton_path();
+    let skeleton = skeleton::load(&path).unwrap();
+    let names = ["can0", "can1"];
+    for name in names {
+        ensure_vcan(name).unwrap();
+    }
+    let dir = scratch("disable-bus-off");
+    let stop = AtomicBool::new(false);
+    let (run, injected, done) = std::thread::scope(|scope| {
+        let _end = End(&stop);
+        for name in names {
+            let mut sim = drives(&skeleton, name, &[]);
+            let stop = &stop;
+            scope.spawn(move || serve(name, &mut sim, stop, &mut |_| {}));
+        }
+        let run = names
+            .iter()
+            .all(|name| run_and_report(name, &ids(&skeleton, name)));
+        // Open before `disable` starts, so its first reporting off can't be missed.
+        let socket = CanSocket::open("can1").unwrap();
+        let stop = &stop;
+        let injector = scope.spawn(move || bus_off_after_reporting_off(&socket, stop));
+        let done = disable(&path, &dir.join("runtime.lock"));
+        stop.store(true, Ordering::Release);
+        (run, injector.join().unwrap(), done)
+    });
+    let _ = std::fs::remove_dir_all(&dir);
+
+    assert!(run, "the drives never reached Run with reporting on");
+    assert!(injected, "no reporting off was seen on can1");
+    assert_eq!(done.status.code(), Some(1), "{done:?}");
+    assert_eq!(done.faults.get("can1"), Some(&None), "{done:?}");
+    for (name, want) in [("can0", "stopped"), ("can1", "bus_failed")] {
+        for n in ids(&skeleton, name) {
+            assert_eq!(
+                done.outcomes.get(&(name.to_owned(), n)).map(String::as_str),
+                Some(want),
+                "{name} {n}: {done:?}"
+            );
+        }
     }
 }

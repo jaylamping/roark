@@ -60,10 +60,14 @@ impl From<&std::io::Error> for OsError {
 
 /// The bus-off class bit of an error frame's ID (`CAN_ERR_BUSOFF`, linux/can/error.h).
 const CAN_ERR_BUSOFF: u32 = 0x40;
+/// The controller class bit (`CAN_ERR_CRTL`): its byte is `data[1]`.
+const CAN_ERR_CRTL: u32 = 0x04;
+/// The controller's receive buffer overflowed (`CAN_ERR_CRTL_RX_OVERFLOW`, in `data[1]`): frames were lost.
+const CAN_ERR_CRTL_RX_OVERFLOW: u8 = 0x01;
 
 /// Whether the drain that just ran emptied the socket's queue.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Drain {
+pub(crate) enum Drain {
     /// Nothing more was queued.
     Emptied,
     /// It stopped at its bound with frames still queued.
@@ -72,7 +76,7 @@ pub enum Drain {
 
 /// What the bus thread does next.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Wait {
+pub(crate) enum Wait {
     /// The stop is over: report.
     Done,
     /// Frames are still queued: read them before anything else.
@@ -132,13 +136,15 @@ pub enum Outcome {
     /// Nothing read from it, and the socket couldn't be asked for error frames, so a bus-off wouldn't have been seen:
     /// the silence may be the bus's, not the drive's.
     SilentErrorsUnseen,
-    /// It answered, but wasn't in Reset when last read.
+    /// It answered, but was never read in Reset, or was read out of it since (an answer with no mode, such as a fault
+    /// or parameter reply, counts as an answer only).
     NotReset,
     /// Still reporting after every reporting off try.
     StillReporting,
     /// The stop ended before its reporting off was due, or before the watch after it did.
     WatchCut,
-    /// The stop ended with frames from the bus still unread: one of them may withdraw its Reset.
+    /// Frames from the bus went unread, still queued when the stop ended or dropped by the controller (RX overflow):
+    /// one of them may have withdrawn its Reset, or been its answer.
     Unread,
     /// A Disable or reporting off for it was due and never left: the socket's queue stayed full.
     QueueFull,
@@ -273,6 +279,8 @@ pub struct BusStop {
     errors_unseen: Option<OsError>,
     /// The last drain stopped at its bound with frames still queued.
     backlog: bool,
+    /// The controller reported an RX overflow: frames from the bus were dropped before they could be read.
+    frames_lost: bool,
 }
 
 impl BusStop {
@@ -287,6 +295,7 @@ impl BusStop {
             bus_off: false,
             errors_unseen: None,
             backlog: false,
+            frames_lost: false,
         }
     }
 
@@ -294,7 +303,8 @@ impl BusStop {
     /// drive. Any frame from it means it answered; a status, report or version reply also gives its mode: Reset
     /// confirms it, and anything else withdraws a confirmation already made. A withdrawn drive's reporting off schedule
     /// starts over: inside the 100 ms window it gets Disables again and its reporting off waits out their silence; after
-    /// it, no Disable goes, and its reporting off is due at once (as for a drive never read in Reset).
+    /// it, no Disable goes, and its reporting off is due as for a drive never read in Reset (150 ms, so at once if that
+    /// has passed).
     pub fn heard(&mut self, now: Duration, inbound: &Inbound) {
         let (device, mode, report) = match inbound {
             Inbound::Status(s) => (s.header.device, Some(s.header.mode), false),
@@ -328,27 +338,29 @@ impl BusStop {
         }
     }
 
-    /// An error frame was read; `class` is its ID's error class bits (linux/can/error.h). Only bus-off counts: warning,
-    /// passive and ACK errors are what a bus with no powered drive on it sends.
-    pub const fn heard_error_frame(&mut self, class: u32) {
+    /// An error frame was read; `class` is its ID's error class bits and `controller` its `data[1]` (linux/can/error.h).
+    /// Bus-off fails the bus, and an RX overflow means frames were lost, so no drive on the bus is ok. Warning, passive
+    /// and ACK errors count for nothing: they are what a bus with no powered drive on it sends.
+    pub(crate) const fn heard_error_frame(&mut self, class: u32, controller: u8) {
         self.error_frames = self.error_frames.saturating_add(1);
         self.bus_off |= class & CAN_ERR_BUSOFF != 0;
+        self.frames_lost |= class & CAN_ERR_CRTL != 0 && controller & CAN_ERR_CRTL_RX_OVERFLOW != 0;
     }
 
     /// The socket couldn't be asked for error frames: a bus-off wouldn't be seen, so a silent drive can't be told from
     /// one behind a dead bus.
-    pub const fn cant_see_errors(&mut self, e: OsError) {
+    pub(crate) const fn cant_see_errors(&mut self, e: OsError) {
         self.errors_unseen = Some(e);
     }
 
     /// The drain that just ran emptied the queue, or stopped at its bound with frames still in it.
-    pub fn drained(&mut self, drain: Drain) {
+    pub(crate) fn drained(&mut self, drain: Drain) {
         self.backlog = drain == Drain::Capped;
     }
 
     /// The bus failed. A read fault ends the reads and lets frames go on; any other ends the sending. The first of each
     /// is kept.
-    pub fn fail(&mut self, fault: BusFault) {
+    pub(crate) fn fail(&mut self, fault: BusFault) {
         if let BusFault::Read(e) = fault {
             self.read_fault.get_or_insert(e);
         } else {
@@ -363,14 +375,14 @@ impl BusStop {
 
     /// Whether the socket is still read: until a read fault.
     #[must_use]
-    pub const fn reading(&self) -> bool {
+    pub(crate) const fn reading(&self) -> bool {
         self.read_fault.is_none()
     }
 
     /// What the bus thread does after the step at `now`: read queued frames first, while there are any and the stop
     /// isn't over, since one may withdraw a Reset; otherwise wait for the next due time, or report.
     #[must_use]
-    pub fn wait(&self, now: Duration) -> Wait {
+    pub(crate) fn wait(&self, now: Duration) -> Wait {
         match self.next(now) {
             _ if self.backlog && self.reading() && self.sending() && now < END => Wait::DrainAgain,
             Some(at) => Wait::Until(at),
@@ -471,25 +483,31 @@ impl BusStop {
 
     /// How the bus failed, if it did: the fault that ended the sending, else the one that ended the reads.
     #[must_use]
-    pub fn fault(&self) -> Option<BusFault> {
+    pub(crate) fn fault(&self) -> Option<BusFault> {
         self.send_fault.or(self.read_fault.map(BusFault::Read))
+    }
+
+    /// The fault that ended the reads, if any, also when a later one ended the sending.
+    #[must_use]
+    pub(crate) const fn read_fault(&self) -> Option<OsError> {
+        self.read_fault
     }
 
     /// Error frames read, of any class.
     #[must_use]
-    pub const fn error_frames(&self) -> u32 {
+    pub(crate) const fn error_frames(&self) -> u32 {
         self.error_frames
     }
 
     /// Whether a bus-off error frame was read.
     #[must_use]
-    pub const fn bus_off(&self) -> bool {
+    pub(crate) const fn bus_off(&self) -> bool {
         self.bus_off
     }
 
     /// Why the socket couldn't be asked for error frames, if it couldn't.
     #[must_use]
-    pub const fn errors_unseen(&self) -> Option<OsError> {
+    pub(crate) const fn errors_unseen(&self) -> Option<OsError> {
         self.errors_unseen
     }
 
@@ -508,10 +526,10 @@ impl BusStop {
             (Some(_), _) => Outcome::Stopped,
             (None, true) => Outcome::NotReset,
             (None, false) if self.errors_unseen.is_some() => Outcome::SilentErrorsUnseen,
-            (None, false) if d.reporting_offs == 0 => Outcome::WatchCut,
+            (None, false) if !d.settled(now) => Outcome::WatchCut,
             (None, false) => Outcome::Silent,
         };
-        if self.backlog && outcome.ok() {
+        if (self.backlog || self.frames_lost) && outcome.ok() {
             Outcome::Unread
         } else {
             outcome

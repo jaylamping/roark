@@ -12,8 +12,9 @@ runtime exits (`ExecStopPost`, PLAN item 3). Scan, set-ID, parameter reads and c
   or slow never delays another (PLAN item 2, Stop). Each wake reads at most 64 frames before it steps the stop, so a
   flooded bus still gets its Disables on time. Frames still queued are read before anything else until the stop ends
   at 310 ms; a drive confirmed with frames still unread then is reported `unread`. Error frames are
-  read too; bus-off is the class that counts, as in the runtime (can.md, Errors and bus-off): it fails every drive on
-  that bus, confirmed or not, since a late report or Run may have been lost.
+  read too. Bus-off fails every drive on that bus, confirmed or not, as the runtime latches on it (can.md, Errors and
+  bus-off), since a late report or Run may have been lost; an RX overflow, frames known lost, makes every drive that
+  would be ok `unread`. Warning, passive and ACK errors count for nothing.
 - **`stop::BusStop`** is one bus's stop as plain values, timed from when it began:
   - A Disable to every drive at once, sent again every 4 ms to each drive not yet read in Reset, for 100 ms.
   - Each drive's active reporting off once its post-Disable silence is over. That is 54 ms after its Reset is read, or
@@ -52,7 +53,7 @@ runtime exits (`ExecStopPost`, PLAN item 3). Scan, set-ID, parameter reads and c
 - Run while the runtime is alive
   ([architecture.md](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md) section 1: one process
   owns motion).
-- Depend on anything but the skeleton's (bus, ID) pairs and the bus. No session, no `api`, no runtime state.
+- Depend on anything but the skeleton's (bus, ID) pairs (and joint names, for the report) and the bus. No session, no `api`, no runtime state.
 - Wait without a deadline.
 
 ## Talks to
@@ -73,7 +74,7 @@ robot-cli disable --skeleton /etc/robot/skeleton.yaml
 robot-cli disable --skeleton /etc/robot/skeleton.yaml --json   # the same, as one JSON document
 ```
 
-`--json` prints `{build, buses: [{bus, fault: {kind, detail} | null, error_frames, bus_off, errors_unseen, drives:
+`--json` prints `{build, buses: [{bus, fault: {kind, detail} | null, error_frames, bus_off, errors_unseen, read_fault, drives:
 [{id, joint, outcome, ok, disables, reset_ms, reporting_offs, reporting_off_ms}]}], need_a_person, drive_count}`.
 `outcome` is one of `stopped`, `silent`, `silent_errors_unseen`, `not_reset`, `still_reporting`, `watch_cut`, `unread`,
 `queue_full` and `bus_failed`; `fault.kind` one of `open`, `spawn`, `write` and `read`. A refusal prints no document.

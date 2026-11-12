@@ -24,6 +24,7 @@ mod linux {
     use std::process::ExitCode;
     use std::time::Duration;
 
+    use robot_cli::stop::BusFault;
     use robot_cli::{BusReport, LOCK_PATH, LockError, claim, disable, targets};
     use serde_json::{Value, json};
 
@@ -95,6 +96,11 @@ mod linux {
                 report.bus, report.error_frames
             ));
         }
+        if let (Some(e), Some(fault)) = (report.read_fault, report.fault)
+            && !matches!(fault, BusFault::Read(_))
+        {
+            out(&format!("{}: reads had failed first: {e}", report.bus));
+        }
         if let Some(e) = report.errors_unseen {
             out(&format!(
                 "{}: error frames can't be read ({e}), so a bus-off wouldn't be seen",
@@ -124,6 +130,7 @@ mod linux {
             "error_frames": report.error_frames,
             "bus_off": report.bus_off,
             "errors_unseen": report.errors_unseen.map(|e| e.to_string()),
+            "read_fault": report.read_fault.map(|e| e.to_string()),
             "drives": report.drives.iter().map(|d| json!({
                 "id": d.record.id.get(),
                 "joint": d.joint,

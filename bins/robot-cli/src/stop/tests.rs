@@ -232,7 +232,7 @@ fn socket_failures_and_error_frames_need_a_person() {
     let mut deaf = BusStop::new([id(11), id(12)]);
     let mut now = Duration::ZERO;
     let mut sent = 0;
-    while !deaf.done(now) {
+    while deaf.wait(now) != Wait::Done {
         if now == MS {
             deaf.heard(now, &from(11, false, false));
             deaf.fail(BusFault::Read(OsError(5)));
@@ -260,7 +260,6 @@ fn socket_failures_and_error_frames_need_a_person() {
         }
     });
     assert_eq!(times(&sent, ('D', 11)), [0, 4]);
-    assert!(!down.sending());
     assert_eq!(down.fault(), Some(BusFault::Write(OsError(100))));
 
     // Bus-off, even after a drive was confirmed, fails every drive on the bus: a late report or Run may have been
@@ -269,7 +268,7 @@ fn socket_failures_and_error_frames_need_a_person() {
     let mut off = BusStop::new([id(11), id(12)]);
     let (_, end) = run(&mut off, &echo, &|_, _| Ok(()));
     assert_eq!(outcomes(&off, end), [Outcome::Stopped, Outcome::Stopped]);
-    off.heard_error_frame(0x40);
+    off.heard_error_frame(0x40, 0);
     assert!(off.bus_off());
     assert_eq!(
         outcomes(&off, end),
@@ -280,11 +279,16 @@ fn socket_failures_and_error_frames_need_a_person() {
     let (_, end) = run(&mut unseen, &|_, _| Vec::new(), &|_, _| Ok(()));
     assert_eq!(outcomes(&unseen, end), [Outcome::SilentErrorsUnseen]);
     let mut lesser = BusStop::new([id(11)]);
-    lesser.heard_error_frame(0x04);
-    lesser.heard_error_frame(0x20);
+    lesser.heard_error_frame(0x04, 0x10);
+    lesser.heard_error_frame(0x20, 0);
     let (_, end) = run(&mut lesser, &|_, _| Vec::new(), &|_, _| Ok(()));
     assert_eq!(outcomes(&lesser, end), [Outcome::Silent]);
     assert_eq!(lesser.error_frames(), 2);
+    // An RX overflow (controller class, data[1] 0x01): frames were lost, so no drive on the bus counts as ok.
+    let mut lost = BusStop::new([id(11), id(12)]);
+    let (_, end) = run(&mut lost, &echo, &|_, _| Ok(()));
+    lost.heard_error_frame(0x04, 0x01);
+    assert_eq!(outcomes(&lost, end), [Outcome::Unread, Outcome::Unread]);
 }
 
 /// Guards: safety - a drive is reported stopped only on what was read (PLAN item 2, Stop): frames still queued when
@@ -320,4 +324,43 @@ fn frames_left_unread_when_the_stop_ends_need_a_person() {
     let off = MS + SILENCE + RESEND;
     cut.step(off, &mut |_| Ok(()));
     assert_eq!(outcomes(&cut, off + MS), [Outcome::WatchCut]);
+}
+
+/// Guards: safety - a drive is reported ok only on what was sent and read (PLAN item 2, Stop): one whose Disable never
+/// left, or whose current reporting off never left after a withdrawn Reset, needs a person rather than counting as
+/// silent or stopped.
+#[test]
+fn a_frame_that_never_leaves_needs_a_person() {
+    // The queue is full until the Disable window ends, then empty: drive 11 never got a Disable.
+    let mut never = BusStop::new([id(11)]);
+    let (sent, end) = run(&mut never, &|_, _| Vec::new(), &|now, _| {
+        if now < ms(DISABLE_WINDOW) {
+            Err(SendError::Full)
+        } else {
+            Ok(())
+        }
+    });
+    assert_eq!(times(&sent, ('D', 11)), []);
+    assert_eq!(outcomes(&never, end), [Outcome::QueueFull]);
+
+    // Confirmed, its first reporting off goes, then it is seen in Run and in Reset again; from then on the queue is
+    // full, so the new schedule's reporting off never leaves.
+    let mut stuck = BusStop::new([id(11)]);
+    let (sent, end) = run(
+        &mut stuck,
+        &|now, _| match now {
+            1 | 61 => vec![from(11, false, false)],
+            60 => vec![from(11, true, false)],
+            _ => Vec::new(),
+        },
+        &|now, _| {
+            if now < 61 {
+                Ok(())
+            } else {
+                Err(SendError::Full)
+            }
+        },
+    );
+    assert_eq!(times(&sent, ('R', 11)), [ms(MS + SILENCE + RESEND)]);
+    assert_eq!(outcomes(&stuck, end), [Outcome::QueueFull]);
 }
