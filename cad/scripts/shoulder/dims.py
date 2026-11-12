@@ -106,7 +106,7 @@ CAP_Z1 = -39.3                   # rear face of the cap plate
 CAPZ = (DRUM_Z0 + CAP_Z1) / 2    # cap channel centre
 CAP_T, BOSS_R, RIM_T = 3.0, 24.0, 3.0
 CAP_WINDOWS = [(-112, -72), (-32, 14), (154, 194)]
-LAND_Z, LAND_R = -40.3, 22.5
+LAND_Z, LAND_R = -40.3, 21.5      # check (d): Ø43 inner-race land (was Ø45: reached the seal)
 BRG_Z = (-40.3, -47.3)           # 6808-2RS 40 x 52 x 7, floating
 STUB_R, STUB_BORE = 20.0, 12.5   # stub OD 40.0, bore 25
 STOP_R = (44.0, 55.0)
@@ -126,7 +126,9 @@ ARM_HW = 17.0
 Y_EX = 319.55                    # yaw exit channel centre
 Y_BOT = Y_EX - 3 - WALL
 CHEEK_R, HOUSE_R = 35.0, 33.0
-BRG_SEAT_R, BRG_LIP_R = 26.0, 24.0
+BRG_SEAT_R, BRG_LIP_R = 26.1, 24.0   # check (d): housing Ø52.2 (printed on its side) with a flat-topped teardrop
+BRG_LIP_Z = -47.7                # check (d): the outer-race lip 0.4 behind the bearing's rear face (the outer race floats)
+STUB_LEAD = 0.5                  # check (d): 0.5 x 45 lead-in on the stub's free end (stub stays Ø40.0, as the arm's coupon)
 # ---- hub (frozen interface; dished top) ----
 
 HUB_WIN_A = 7.9

@@ -32,13 +32,15 @@
    - Horizontal printed holes come out about 0.1-0.2 mm under, and oval.
    - **Change:** model the housing at Ø52.2, and add a teardrop or flat (0.4 mm) at the top so the overhang prints
      without support.
-   - Print a test ring (the housing's 10 mm around the bore, same orientation) before the fork rear, and adjust the
-     diameter to a hand-push fit.
+   - **For the print package:** a thin seat-ring coupon (the housing's bore with about 3 mm of wall, 7 mm deep, printed
+     upright like the fork rear). The orientation is new, so this one is worth a coupon. Adjust Ø52.2 to a hand-push fit
+     from it.
 4. **Inner-race fit.**
    - Vertical printed shafts come out about +0.05…+0.15 mm. That is a press fit on the 6808's Ø40 (0/-0.012) bore.
    - The hollow stub (7.5 mm wall) takes that as hoop compression, which is fine for PETG at this size.
-   - **Change:** model the stub at Ø39.95 and add a 0.5 × 45° lead-in at its free end (Z -47.3). Target 0.05-0.10
-     interference after a test print.
+   - **Decision (2026-11-12):** keep the stub at **Ø40.0**. The arm thread test-printed a Ø40.0 PETG stub coupon for the
+     6808 on this printer and it fits perfectly; the arm keeps Ø40.0 on that evidence. Add only a 0.5 × 45° lead-in at
+     the free end (Z -47.3).
    - Retention is the press fit plus the land. That is enough: the 6808 sees radial load only, and the outer race floats.
 5. **Load:**
    - Radial load on the 6808 is a fraction of the joint's radial load (check (c)): tens of newtons in normal use.
@@ -50,9 +52,12 @@
 | Part | Feature | Now | Change |
 |---|---|---|---|
 | Rear cap | Inner-race land | Ø45.0 | **Ø43.0** |
-| Rear cap | Stub | Ø40.0, square end | **Ø39.95**, 0.5 × 45° lead-in; test-print to 0.05-0.10 interference |
-| Fork rear | Housing | Ø52.0 | **Ø52.2**, teardrop top; test-print to a hand-push fit |
+| Rear cap | Stub | Ø40.0, square end | Ø40.0 kept (the arm's coupon fits), **0.5 × 45° lead-in** |
+| Fork rear | Housing | Ø52.0 | **Ø52.2**, flat-topped teardrop (0.4 above the bore); seat-ring coupon in the print package |
 | Fork rear | Lip | face at Z -47.3 (0 gap) | **Z -47.7** (0.4 axial float) |
 
-These are small edits in `dims.py` (`LAND_R`, `STUB_R`, `BRG_SEAT_R`, `BRG_Z`) plus the teardrop. They are not applied
-yet, because the fork rear may change with the side-centre choice.
+**Status (2026-11-12):**
+- Approved and in the build scripts: `dims.LAND_R` 21.5, `BRG_SEAT_R` 26.1, `BRG_LIP_Z` -47.7 and `STUB_LEAD` 0.5, plus
+  `SEAT_TEARDROP` in `build_fork_rear`.
+- The cap and fork rear SLDPRTs are **not rebuilt yet**. SolidWorks launches on holly-pc are on hold until the stuck
+  instance is cleared.

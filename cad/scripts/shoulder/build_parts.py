@@ -352,8 +352,8 @@ def build_cap():
     loft(d, secs, 'CAP_BODY')
     roll_rev(d, 'CAVITY', [(BOSS_R, DRUM_Z0 - 1), (CAP_RIM_R - RIM_T, DRUM_Z0 - 1), (CAP_RIM_R - RIM_T, CAP_Z1 + CAP_T), (BOSS_R, CAP_Z1 + CAP_T)],
              [0, 0, 1.5, 1.5], cut=True)
-    roll_rev(d, 'STUB', [(0, CAP_Z1 + 0.5), (LAND_R, CAP_Z1 + 0.5), (LAND_R, LAND_Z), (STUB_R, LAND_Z), (STUB_R, BRG_Z[1]), (0, BRG_Z[1])],
-             [0, 0, 0.3, 0.3, 0.6, 0])
+    roll_rev(d, 'STUB', [(0, CAP_Z1 + 0.5), (LAND_R, CAP_Z1 + 0.5), (LAND_R, LAND_Z), (STUB_R, LAND_Z), (STUB_R, BRG_Z[1] + STUB_LEAD), (STUB_R - STUB_LEAD, BRG_Z[1]), (0, BRG_Z[1])],
+             [0, 0, 0.3, 0.3, 0, 0, 0])
     # spoke from the trunk end to the axis, carrying the radial channel (inside the outline)
     dvec = np.array([RX - TRUNK_X, RY - TRUNK_Y, 0.0])
     dvec /= np.linalg.norm(dvec)
@@ -776,8 +776,14 @@ def build_fork_rear():
     d.ForceRebuild3(False)
     log('  SLEEVE_R_HOLLOW', fh is not None, round(v0 - vol(d), 1))
     # ---- cuts
-    roll_rev(d, 'SEAT', [(0, HOUSE_Z0 + 1), (BRG_SEAT_R, HOUSE_Z0 + 1), (BRG_SEAT_R, BRG_Z[1]), (BRG_LIP_R, BRG_Z[1]), (BRG_LIP_R, RZ), (0, RZ)],
+    roll_rev(d, 'SEAT', [(0, HOUSE_Z0 + 1), (BRG_SEAT_R, HOUSE_Z0 + 1), (BRG_SEAT_R, BRG_LIP_Z), (BRG_LIP_R, BRG_LIP_Z), (BRG_LIP_R, RZ), (0, RZ)],
              [0, 0, 0, 0, 0, 0], cut=True)
+    # flat-topped teardrop over the housing bore (the fork rear prints upright, so the bore's top is an overhang): 45 deg
+    # flanks tangent to the bore, cut flat 0.4 above it
+    _t, _f = BRG_SEAT_R / math.sqrt(2), BRG_SEAT_R * math.sqrt(2) - (BRG_SEAT_R + 0.4)
+    extrude(d, zsk(d, HOUSE_Z0 + 1, 'SEAT_TEARDROP', lambda s_: s_.poly([(RX - _t, RY + _t, HOUSE_Z0 + 1), (RX - _f, RY + BRG_SEAT_R + 0.4, HOUSE_Z0 + 1),
+                                                                          (RX + _f, RY + BRG_SEAT_R + 0.4, HOUSE_Z0 + 1), (RX + _t, RY + _t, HOUSE_Z0 + 1), (RX, RY, HOUSE_Z0 + 1)])),
+            'SEAT_TEARDROP', (HOUSE_Z0 + 1) - BRG_LIP_Z, NZ, cut=True, lo=-1.0)
     zc = RZ + PH / 2
     ch_lo = (Y_EX + SC_BEND_R) if SC else (Y_EX - 3.0)       # SIDE CENTRE: the straight run stops where the bend starts
     extrude(d, zsk(d, zc, 'CH_P', lambda s: s.rpoly(rect_pts((RX + P_OFF, (RY + 9.0 + ch_lo) / 2, zc), X, Y, PW, RY + 9.0 - ch_lo), [1] * 4)),

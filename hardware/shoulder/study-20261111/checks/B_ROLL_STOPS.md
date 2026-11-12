@@ -66,3 +66,79 @@ rear arm and 6808 add compliance. The hit forces scale with the square root of t
 - **Not analysed:** fatigue from repeated stop contacts; contact stress concentration at the 0.8 mm corners (the flank
   meets flat-to-flat, so it is small); FEA of the tooth root (the hand calculation over-predicts bending for a tooth this
   short, so it is conservative).
+
+## Rev 2 proposal: a hard stop that carries a peak-torque stall (2026-11-12, not applied)
+
+Joey chose a **hard** stop at -11° inward, and the frame clears only because of it. So the stop has to carry the motor,
+not just back up the software.
+
+**Motor figures (vendor manual):** RS03 User Manual rev 261013, §1.3 "Electrical characteristics" (printed page 10; in
+jaylamping/marengo `hardware/docs/robstride/RS03_User_Manual_261013.pdf`):
+- rated load 20 N·m (tested at 100 rpm)
+- peak load 60 N·m
+- no-load speed 200 rpm (21 rad/s)
+
+The crate's §4.1.13 limit table (limit_torque 0-60) agrees with the peak.
+
+**Targets:**
+- SF ≥ 1.5 (bulk and layer) at 20 N·m and at a 2 rad/s uncontrolled hit
+- SF ≥ 1.0 at a 60 N·m stall
+
+### The lever that matters: load the tooth in its layer plane
+
+- The fork rear prints upright (layers normal to Y).
+- **Today:** the tooth sits at 193°. Its load is 97% along Y, so the root's transverse shear runs across the layers
+  (layer SF 0.47 at a stall).
+- **At 270°** (straight below the roll axis) the tooth's radial direction is -Y. Its bending stress (along Z) and its shear
+  (Z-X) then both lie in the layer plane, so bulk strength applies to both.
+- **A second tooth is not possible.** A second slot at 90°, or anywhere else 144° long, would cross the cap's cable spoke
+  at 106-164° (`TRUNK_ANG` 135°, 32.8 wide, carrying the 16 × 6 and 10 × 5 channels). There is no room for two
+  non-overlapping slots.
+
+### Options (hand calculation, as above; lever 5.65 mm from the root to the contact centroid, contact height 6.3 mm)
+
+| | Tooth | Mean r | Section b × h | Peak 60 N·m: force | Bending σ / SF | Shear τ / SF (von Mises) | Cap wall bearing / SF | Rated 20 N·m: lowest SF |
+|---|---|---|---|---|---|---|---|---|
+| Now | r 27-33, ±10°, at 193° | 30 | 6 × 10.5 | 2000 N | 103 / 0.44 | 48 / **0.47 (across layers)** | 53 / 0.85 | 1.31 |
+| A | r 30-40, ±11.5°, at 270° | 35 | 10 × 14.0 | 1714 N | 29 / 1.53 | 18 / 1.42 | 27 / 1.65 | 3.7 |
+| **A2 (best printed-only)** | **r 30-40, ±14°, at 270°** | 35 | 10 × 17.1 | 1714 N | **20 / 2.27** | **15 / 1.73** (1.50 even read as across layers) | **27 / 1.65** | **≥ 4.5** |
+
+**2 rad/s hit:**
+- The arm is about 0.06 kg·m² about the roll axis, so the hit carries 0.12 J. That is 600-980 N at r 35 for a stop
+  stiffness of 1.5-4 kN/mm, i.e. 21-34 N·m equivalent.
+- A2 at 34 N·m: lowest SF about 2.9.
+
+### A2 in detail
+
+- **Tooth** (fork rear): a sector r 30-40, ±14° about fork angle 270°, 0.8 mm corners, from the housing face (Z -41.8)
+  to Z -33.
+  - It needs a pad on the housing outside its r 33: a sector r 33-42 over ±24°, Z -41.8…-45.9.
+  - Printed upright, the tooth's outer face (r 40) faces down: a small removable support under it. That face carries no
+    load. The two contact flanks are vertical.
+- **Slot and ring** (rear cap):
+  - Slot r 28-42 (2 mm all round), floor at Z -31 as now.
+  - Ring r 26-44 on the plate, 20° past each slot end, so the end walls have 20° of ring behind them. Shear-out over that
+    footprint across the cap's layers: 14 MPa, SF 1.6.
+  - Clear of the cap screw bosses (r 45-55 at 0°, 180°, 270°) by 3 mm, and of the spoke (106-164°): the slot runs
+    245°…34°.
+  - The old slot and ring at 193° go.
+- **Travel:** -11…+110 unchanged (still driven by `ROLL_STOP_IN` / `ROLL_STOP_OUT`). The slot is 149° of arc instead of 141.
+- **Mass:** about +5 g in total (tooth +1.2, housing pad +1.5, cap ring +2.5 net).
+- **Not checked yet:** the swept tooth against everything inside the drum over the full travel. The slot depth and floor
+  are as now, so only the larger radius is new.
+
+### With a pin
+
+- **Variant:** A2 plus a Ø5 × 20 hardened dowel (h6, about 0.15 each) through the tooth along Z, pressed 11 deep into
+  the housing pad.
+- The steel takes the root bending and shear, at SF over 5.
+- But the PETG then bears on the pin inside the tooth: 1714 / (5 × 8.8) = 39 MPa at a stall, SF 1.15. That becomes the
+  weak point, lower than A2's printed root (1.73).
+- **Verdict:** the pin is not worth it. A2 printed-only is the recommendation.
+
+**Recommendation:**
+- Adopt A2 in the next cap and fork-rear revision.
+- Keep the controller limits from above as a second layer: they cost nothing.
+- FEA of the A2 tooth root and cap wall once it is modelled; the hand calculation is conservative for bending at this
+  L/h.
+
