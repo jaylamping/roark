@@ -162,3 +162,14 @@ Built from the ring variant (full-semicircle ridge per half, 0.1 flank gap, crus
   - Path contacts while closing: 30 per half, again at the rib angles, ≤0.18 mm.
   - The halves' own sweep has no path collisions. The RS02 ring contacts are its designed seat.
 - Not a release: the ring STOP_0 FEA is still open (solver), and the print files are not in `prints/`.
+
+## Solver set in-process (2026-11-12 08:23)
+
+What did work is a plain-text SolidWorks Basic macro (.swb), written by p3_fea (FEA_SOLVER_MACRO=1) and run inside our own
+instance with RunMacro2:
+- Solver 0 before, set with no error, 7 after. SolidWorks maps direct sparse (1) to its Intel direct sparse (7) here.
+- The study was saved with that setting: `RING_G01_STOP0_DS` in `cad/_sim/r1d8_ring_saved/UA_HUBSEAT_r1d_ringg01p_ds.SLDPRT`
+  (ring 0.1 gap STOP_0, 0.8 mm, 796,472 nodes, pads E 0.5).
+- It is solved as saved by `r1d_ring_ds_solve.sh saved` (FEA_EXISTING_STUDY), with the memory stop.
+- The earlier option c) 0.8 mm runs may have had pads at E 0.05: r1d_ring_c.sh didn't export HS_PAD_E. Both stalled, so no
+  reported number depends on them.
