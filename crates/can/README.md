@@ -115,7 +115,7 @@ Disable counts from when it went). Each drive needs a fresh preflight before it 
 layer's.
 
 **Slow requests** (`submit`) are parameter reads, the codec's allowlisted writes and get-ID, for preflight and the
-once-a-second reads; they never ride in a batch. A bus holds `SLOW_SLOTS` of them and has at most one in flight, sent
+once-a-second reads, and a scan's probes and the set-ID (below); they never ride in a batch. A bus holds `SLOW_SLOTS` of them and has at most one in flight, sent
 after the collect deadline and only while its reply fits before the next tick starts (`Timing::slow_reply_ns`, a quarter
 period by default, provisional until the real adapter is measured), so a reply on time is read in the next tick's drain,
 before that tick's sends (a late one is below). A held tick (a late wake, a stall or a backlog, above) sends none: its
@@ -147,9 +147,12 @@ next slack opens, so slow traffic never keeps a drive alive past a stop (`canTim
 
 **A scan's probe and the set-ID** are slow requests too, named by ID rather than slot, since the drive they look for
 may be in no slot: `Probe(id)` sends type 0 to `id` and `SetId { old, new }` sends type 7. Each is answered by every
-type-0 reply from its ID (the probe's, or the set-ID's new one, as the manual has a drive answer type 7 with its type-0
-frame) read before the next tick's start, so a second drive with another UID on the same ID shows (`Found { uid, other }`);
-nothing from that ID is `TimedOut`, which for a probe means no drive answers there. Either goes only while every limb on
+type-0 reply from its ID read before the next tick's start: the probe's, or the set-ID's new one. The manual has a drive
+answer type 7 with its type-0 frame but doesn't say from which ID; the new one is assumed until the bench shows it, and a
+reply only from the old ID ends `TimedOut`. A second drive with another UID on the same ID shows (`Found { uid, other }`)
+when both replies are read, as on `vcan`; nothing from that ID is `TimedOut`, which for a probe means no drive answers
+there. On a real bus two drives answering one ID send the same CAN ID with different data and collide, so an error frame
+read in the window, or a window closed by a drain that left frames unread, ends it `Unsure` rather than as a count. Either goes only while every limb on
 the bus is idle, none due to stop or with a stop asked (`BusNotIdle`), since its frame reaches whichever drive holds the
 ID; one queued is cancelled as the next slack opens once that stops being so. The bus checks nothing more: the
 "exactly one drive answering" that PLAN item 2 asks before a set-ID is the requester's scan to prove, and whether the ID

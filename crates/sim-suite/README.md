@@ -37,7 +37,7 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   its last reporting off through that drain; and a bus that ends counts the slow results control's ring can't take.
 
 Every frame on a bus reaches every socket on it, so two tests that run at the same time never share a bus. The tests in
-`exit.rs`, `slow.rs`, `faults.rs`, `enable.rs` and `orders.rs` use `can0`, `runtime.rs` uses `can0` and `can1` (its test
+`exit.rs`, `slow.rs`, `scan.rs`, `faults.rs`, `enable.rs` and `orders.rs` use `can0`, `runtime.rs` uses `can0` and `can1` (its test
 robot's two buses) and `bus.rs` uses `can1` to `can3`, so all of them run one at a time (nextest's `can0` test group,
 `.config/nextest.toml`); `vcan.rs` has `can4` to itself. A new test either takes a bus no other test uses or joins that
 group.

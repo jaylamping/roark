@@ -4,8 +4,13 @@
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
 
-use can::{BusTick, SendOutcome, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, SlowResult};
-use common::{MS, PERIOD, batch, bus, deadline, id, record, run_tick, status, two_limbs};
+use can::{
+    BusTick, Drain, RearmRefused, SendOutcome, SlowKind, SlowOutcome, SlowRefusal, SlowRequest,
+    SlowResult,
+};
+use common::{
+    MS, PERIOD, batch, bus, deadline, error_frame, id, record, run_tick, status, two_limbs,
+};
 use robstride::drive as wire;
 use robstride::{Mode, Param, Uid, encode};
 use telemetry::Direction;
@@ -27,21 +32,60 @@ fn identity(n: u8, uid: Uid) -> telemetry::FrameRecord {
     record(f.id(), f.data(), Direction::TxOther)
 }
 
+/// Send `kind`, expecting `frame`, read `replies` in the next drain (left with frames unread if `unemptied`), and start
+/// the next tick: the request's result.
+fn window(
+    kind: SlowKind,
+    frame: robstride::Frame,
+    replies: &[telemetry::FrameRecord],
+    unemptied: bool,
+    what: &str,
+) -> Option<SlowResult> {
+    let mut bus = bus();
+    quiet_tick(&mut bus, 0);
+    assert_eq!(bus.submit(request(5, kind)), Ok(()), "{what}");
+    assert_eq!(bus.slow_send(deadline(0)), Some(frame), "{what}");
+    bus.slow_sent(SendOutcome::Sent, deadline(0));
+    bus.on_frame(
+        deadline(0) + MS / 8,
+        &record(frame.id(), frame.data(), Direction::TxEcho),
+    );
+    for reply in replies {
+        bus.on_frame(PERIOD - MS / 2, reply);
+    }
+    assert_eq!(
+        bus.take_slow_result(),
+        None,
+        "{what}: held to the window's end"
+    );
+    assert_eq!(bus.slow_send(deadline(0)), None, "{what}: still in flight");
+    if unemptied {
+        bus.drained(Drain::Unemptied);
+    }
+    run_tick(&mut bus, 1, Some(&batch(1, &[])), &[]);
+    let _ = bus.end(deadline(1));
+    bus.open_slack();
+    bus.take_slow_result()
+}
+
 /// Guards: protocol - a probe is a type 0 to any ID, in the bus's table or not, and a set-ID a type 7 from the old ID
 /// to the new; each is answered by the type-0 replies from its ID (the probe's, or the set-ID's new one) read before the
-/// next tick's start, a second drive with another UID on that ID included, and nothing answering is a timeout (RS03
-/// manual §4.1.1 type 0, §4.1.5 type 7 "effective immediately", answered by the type-0 broadcast frame).
+/// next tick's start, a second drive with another UID on that ID included, and nothing answering is a timeout; a window
+/// with an error frame in it (two drives on one ID collide on a real bus) or closed by a drain that left frames unread
+/// is unsure, never a count of drives (RS03 manual §4.1.1 type 0, §4.1.5 type 7 "effective immediately", answered by the
+/// type-0 broadcast frame; PLAN.md item 2: type 7 only with exactly one drive answering).
 #[test]
 fn probes_and_set_id_are_answered_by_type_0_from_their_id() {
     let one = Uid([1; 8]);
     let two = Uid([2; 8]);
-    // (what, the frame it sends, the replies read in the next drain, its result)
+    // (what, the frame it sends, the frames read in the next drain, whether that drain left frames unread, its result)
     let rows = [
         (
             "one drive at an ID outside the table",
             SlowKind::Probe(id(127)),
             encode::get_id(id(127)),
             vec![identity(126, two), identity(127, one), identity(127, one)],
+            false,
             SlowOutcome::Found {
                 uid: one,
                 other: None,
@@ -52,6 +96,7 @@ fn probes_and_set_id_are_answered_by_type_0_from_their_id() {
             SlowKind::Probe(id(102)),
             encode::get_id(id(102)),
             vec![identity(102, one)],
+            false,
             SlowOutcome::Found {
                 uid: one,
                 other: None,
@@ -62,6 +107,7 @@ fn probes_and_set_id_are_answered_by_type_0_from_their_id() {
             SlowKind::Probe(id(50)),
             encode::get_id(id(50)),
             vec![identity(50, one), identity(50, two)],
+            false,
             SlowOutcome::Found {
                 uid: one,
                 other: Some(two),
@@ -72,6 +118,7 @@ fn probes_and_set_id_are_answered_by_type_0_from_their_id() {
             SlowKind::Probe(id(51)),
             encode::get_id(id(51)),
             vec![identity(52, one)],
+            false,
             SlowOutcome::TimedOut,
         ),
         (
@@ -82,6 +129,7 @@ fn probes_and_set_id_are_answered_by_type_0_from_their_id() {
             },
             encode::set_id(id(127), id(11)),
             vec![identity(11, one)],
+            false,
             SlowOutcome::Found {
                 uid: one,
                 other: None,
@@ -95,33 +143,32 @@ fn probes_and_set_id_are_answered_by_type_0_from_their_id() {
             },
             encode::set_id(id(127), id(11)),
             vec![identity(127, one)],
+            false,
             SlowOutcome::TimedOut,
         ),
+        (
+            "an error frame in the window",
+            SlowKind::Probe(id(50)),
+            encode::get_id(id(50)),
+            vec![identity(50, one), error_frame(0x04, 0x04)],
+            false,
+            SlowOutcome::Unsure,
+        ),
+        (
+            "a set-ID whose window closes on a drain that left frames unread",
+            SlowKind::SetId {
+                old: id(127),
+                new: id(11),
+            },
+            encode::set_id(id(127), id(11)),
+            vec![identity(11, one)],
+            true,
+            SlowOutcome::Unsure,
+        ),
     ];
-    for (what, kind, frame, replies, outcome) in rows {
-        let mut bus = bus();
-        quiet_tick(&mut bus, 0);
-        assert_eq!(bus.submit(request(5, kind)), Ok(()), "{what}");
-        assert_eq!(bus.slow_send(deadline(0)), Some(frame), "{what}");
-        bus.slow_sent(SendOutcome::Sent, deadline(0));
-        bus.on_frame(
-            deadline(0) + MS / 8,
-            &record(frame.id(), frame.data(), Direction::TxEcho),
-        );
-        for reply in &replies {
-            bus.on_frame(PERIOD - MS / 2, reply);
-        }
+    for (what, kind, frame, replies, unemptied, outcome) in rows {
         assert_eq!(
-            bus.take_slow_result(),
-            None,
-            "{what}: held to the window's end"
-        );
-        assert_eq!(bus.slow_send(deadline(0)), None, "{what}: still in flight");
-        run_tick(&mut bus, 1, Some(&batch(1, &[])), &[]);
-        let _ = bus.end(deadline(1));
-        bus.open_slack();
-        assert_eq!(
-            bus.take_slow_result(),
+            window(kind, frame, &replies, unemptied, what),
             Some(SlowResult {
                 tag: 5,
                 slot: 0,
@@ -133,8 +180,9 @@ fn probes_and_set_id_are_answered_by_type_0_from_their_id() {
 }
 
 /// Guards: safety - a probe or set-ID reaches whichever drive holds its ID, so it goes only while every limb on the bus
-/// is idle: one is refused, and one queued is cancelled before it goes, while any limb is running, stopping, stopped or
-/// has a stop asked, and a drive's read for an idle limb on the same bus is still served (PLAN.md item 3: set-ID only
+/// is idle: one is refused while any limb is running, stopping, stopped or has a stop asked, until the re-arm makes every
+/// limb idle again; one queued is cancelled before it goes once a limb runs or a stop is asked; and a drive's read for an
+/// idle limb on the same bus is still served (PLAN.md item 3: set-ID only
 /// while every limb on that bus is disabled; `canTimeout` counts from any frame, so nothing may feed a stopped drive).
 #[test]
 fn probes_and_set_id_go_only_while_every_limb_on_the_bus_is_idle() {
@@ -177,18 +225,33 @@ fn probes_and_set_id_go_only_while_every_limb_on_the_bus_is_idle() {
         Some(encode::param_read(id(101), Param::CanTimeout))
     );
 
-    // A stop asked of one idle limb: refused from then on, through the stop and after it, until the re-arm.
+    // A stop asked of one idle limb with a set-ID queued: that one is cancelled, and every other refused from then on,
+    // through the stop and after it, until the re-arm.
     let mut bus = two_limbs();
     quiet_tick(&mut bus, 0);
+    assert_eq!(bus.submit(request(1, set_id)), Ok(()));
     assert_eq!(bus.stop_limb(0), Ok(()));
-    assert_eq!(bus.submit(request(1, set_id)), Err(SlowRefusal::BusNotIdle));
+    assert_eq!(bus.submit(request(2, set_id)), Err(SlowRefusal::BusNotIdle));
     let last = bus.timing().stop_max_ns().div_ceil(PERIOD) + 1;
     for tick in 1..=last {
         quiet_tick(&mut bus, tick);
+        if tick == 1 {
+            assert_eq!(
+                bus.take_slow_result().map(|r| r.outcome),
+                Some(SlowOutcome::Refused(SlowRefusal::BusNotIdle))
+            );
+        }
         assert_eq!(
-            bus.submit(request(2, probe)),
+            bus.submit(request(3, probe)),
             Err(SlowRefusal::BusNotIdle),
             "tick {tick}"
         );
     }
+    let quiet = (last + 1) * PERIOD + can::DRIVE_TIMEOUT_NS;
+    assert_eq!(bus.rearm(0, quiet), Ok::<(), RearmRefused>(()));
+    assert_eq!(
+        bus.submit(request(4, probe)),
+        Ok(()),
+        "every limb idle again"
+    );
 }

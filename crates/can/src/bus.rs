@@ -153,7 +153,7 @@ pub struct Spawned {
 pub struct BusLinks {
     /// Command batches from control; the newest one each tick is used.
     pub commands: Consumer<CommandBatch>,
-    /// Slow requests from control (parameter reads, allowlisted writes, get-ID), queued as room frees up.
+    /// Slow requests from control (parameter reads, allowlisted writes, get-ID, a scan's probes, set-ID), queued as room frees up.
     pub requests: Consumer<SlowRequest>,
     /// Each slow request's one result. When the ring is full the result is dropped and counted
     /// (`Counters::slow_results_dropped`, and in all at the end [`BusExit::slow_results_dropped`]), and the requester

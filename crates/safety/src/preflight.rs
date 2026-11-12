@@ -585,7 +585,8 @@ impl Preflight {
                 SlowOutcome::Identity(_)
                 | SlowOutcome::WriteAnswered
                 | SlowOutcome::Read(_)
-                | SlowOutcome::Found { .. },
+                | SlowOutcome::Found { .. }
+                | SlowOutcome::Unsure,
             ) => Err(no_answer(Unanswered::WrongAnswer)),
         }
     }
