@@ -195,7 +195,8 @@ mod linux {
             if now >= next_tick {
                 let closed = rotator.tick(now).map_err(failed)?;
                 report_closed(args, closed, rotator.current());
-                next_tick = now + FLUSH_EVERY;
+                // From after the sync, so a slow disk spaces the syncs out instead of syncing on every line.
+                next_tick = Instant::now() + FLUSH_EVERY;
             }
         }
         let closed = rotator.close().map_err(failed)?;
@@ -255,7 +256,7 @@ mod linux {
         let written = started.and_then(|rx| write_lines(&args, &rx));
         if let Err(e) = &written {
             say(e);
-            // Fails only if the command has already ended, which is what this is for.
+            // A failed kill leaves nothing to do: the wait below still reaps the command.
             let _ = child.kill();
         }
         let status = child.wait();

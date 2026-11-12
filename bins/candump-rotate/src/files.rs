@@ -62,7 +62,7 @@ fn is_bus_file(name: &str, bus: &str) -> bool {
 }
 
 /// Make `<bus>-<UTC start>.log.zst` in `dir`, never over an existing file: a restart within the same second gets
-/// `_01`, `_02` and so on, which sort after the first (`_` comes after `.`).
+/// `_01`, `_02` and so on, which sort after the first in byte order (`LC_ALL=C`; `_` comes after `.`).
 fn create(dir: &Path, bus: &str, start: SystemTime) -> io::Result<(PathBuf, File)> {
     let secs = start.duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs());
     let stamp = utc_stamp(secs);
@@ -288,41 +288,75 @@ mod tests {
         fs::remove_dir_all(&dir).unwrap();
     }
 
-    /// Guards: safety - the black box never writes over a file: a restart in the same second gets the next name, and it
-    /// sorts after the first, so `zstdcat <bus>-*` reads a bus's files in order (logging.md section 8.6).
+    /// Guards: safety - the black box never writes over a file: a restart in the same second gets the next name
+    /// (logging.md section 8.6), and every line written before a close reads back from the file that held it.
     #[test]
     fn a_restart_in_the_same_second_gets_a_later_name() {
         let dir =
             std::env::temp_dir().join(format!("candump-rotate-create-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
-        let start = UNIX_EPOCH + Duration::from_secs(1_793_746_002);
-        let names: Vec<String> = (0..3)
-            .map(|_| {
-                let (path, mut file) = create(&dir, "can1", start).unwrap();
-                file.write_all(b"x").unwrap();
-                path.file_name().unwrap().to_str().unwrap().to_owned()
-            })
-            .collect();
-        assert_eq!(
-            names,
-            [
-                "can1-20261103T224642Z.log.zst",
-                "can1-20261103T224642Z_01.log.zst",
-                "can1-20261103T224642Z_02.log.zst"
-            ]
-        );
-        let mut sorted = names.clone();
-        sorted.sort();
-        assert_eq!(sorted, names);
-        assert!(names.iter().all(|n| is_bus_file(n, "can1")));
-        for name in &names {
-            assert_eq!(
-                fs::read(dir.join(name)).unwrap(),
-                b"x",
-                "{name} was overwritten"
-            );
+        let wall = UNIX_EPOCH + Duration::from_secs(1_793_746_002);
+        let now = Instant::now();
+        let mut names = Vec::new();
+        for n in 0..3_u8 {
+            // A fresh rotator each time, as after a restart, all in the same wall-clock second.
+            let mut rotator =
+                Rotator::new(dir.clone(), "can1".to_owned(), Duration::from_secs(3600));
+            rotator.line(&[b'0' + n, b'\n'], wall, now).unwrap();
+            names.push(rotator.close().unwrap().unwrap().path);
         }
+        let expected = [
+            "can1-20261103T224642Z.log.zst",
+            "can1-20261103T224642Z_01.log.zst",
+            "can1-20261103T224642Z_02.log.zst",
+        ];
+        for ((path, name), n) in names.iter().zip(expected).zip(0_u8..) {
+            assert_eq!(path.file_name().unwrap().to_str().unwrap(), name);
+            let text = zstd::decode_all(File::open(path).unwrap()).unwrap();
+            assert_eq!(text, [b'0' + n, b'\n'], "{name} was overwritten");
+        }
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// Guards: number - a file is cut once `--cut-secs` have passed, on the next line or on the once-a-second check
+    /// when the bus has gone quiet, never before (logging.md section 8.6).
+    #[test]
+    fn a_file_is_cut_after_its_time_on_a_line_or_a_quiet_tick() {
+        let dir = std::env::temp_dir().join(format!("candump-rotate-cut-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let cut = Duration::from_secs(10);
+        let t0 = Instant::now();
+        let wall = UNIX_EPOCH + Duration::from_secs(1_793_746_002);
+        let mut rotator = Rotator::new(dir.clone(), "can1".to_owned(), cut);
+
+        assert!(rotator.line(b"a\n", wall, t0).unwrap().is_none());
+        assert!(
+            rotator
+                .tick(t0 + Duration::from_millis(9_999))
+                .unwrap()
+                .is_none()
+        );
+        let by_line = rotator.line(b"b\n", wall + cut, t0 + cut).unwrap().unwrap();
+        assert_eq!(by_line.lines, 1);
+        assert!(
+            rotator.current().is_some(),
+            "the line after the cut opens the next file"
+        );
+
+        // The bus goes quiet: the second file is closed by the tick, with nothing after it.
+        let by_tick = rotator.tick(t0 + 2 * cut).unwrap().unwrap();
+        assert_eq!(by_tick.lines, 1);
+        assert!(rotator.current().is_none());
+        assert_eq!(
+            zstd::decode_all(File::open(&by_line.path).unwrap()).unwrap(),
+            b"a\n"
+        );
+        assert_eq!(
+            zstd::decode_all(File::open(&by_tick.path).unwrap()).unwrap(),
+            b"b\n"
+        );
         fs::remove_dir_all(&dir).unwrap();
     }
 }

@@ -63,8 +63,8 @@ impl Drop for BlackBox {
     }
 }
 
-/// Start the black box on `BUS` into `dir`, cutting every `cut_secs`, with the unit's `candump` flags but `-r`, which
-/// needs `CAP_NET_ADMIN` past `rmem_max` and changes nothing on `vcan`.
+/// Start the black box on `BUS` into `dir`, cutting every `cut_secs`, with the unit's `candump` flags but `-r`: the unit
+/// grants `CAP_NET_ADMIN` for it, and the test runs without that capability.
 #[expect(clippy::unwrap_used, reason = "test helper: the black box must start")]
 fn start(dir: &Path, cut_secs: u32) -> BlackBox {
     ensure_vcan(BUS).unwrap();

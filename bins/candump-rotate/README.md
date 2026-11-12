@@ -8,12 +8,15 @@ still here.
 
 ## What it does
 
-- **Runs the command after `--`** (in the unit, `candump -L -x -d -D -r 8388608` on the bus with every error frame)
-  with its output on a pipe, and reads it a line at a time. `candump` can't cut its own files, and restarting it to cut one would leave
-  a gap; one long-running `candump` and a cut on a line boundary leave none.
+- **Runs the command after `--`** (in
+  [the unit](https://github.com/jaylamping/roark/blob/main/deploy/systemd/candump@.service), `candump -L -x -d -D -r`
+  on the bus with every error frame) with its output on a pipe, and reads it a line at a time. `candump` can't cut its
+  own files, and restarting it to cut one would leave a gap; one long-running `candump` and a cut on a line boundary
+  leave none.
 - **Writes `<dir>/<bus>-<UTC start>.log.zst`**, zstd at the default level, with the start in ISO 8601 basic form
-  (`can0-20261112T032642Z.log.zst`). A restart in the same second gets `_01`, `_02`, which sort after the first, never
-  overwriting a file. A file is opened at the first line after a cut, so a quiet bus makes no empty files.
+  (`can0-20261112T032642Z.log.zst`). A restart in the same second gets `_01`, `_02`, which sort after the first in byte
+  order (`LC_ALL=C ls`), never overwriting a file. A file is opened at the first line after a cut, so a quiet bus makes
+  no empty files.
 - **Ends a zstd block every second and syncs it to disk** (`fdatasync`). A file cut off by a crash or a power loss
   still reads back (`zstdcat` prints everything up to the last block, then complains about the end), losing at most the
   last second.
