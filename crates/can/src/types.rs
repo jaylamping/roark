@@ -46,12 +46,6 @@ impl CommandBatch {
             .is_some()
     }
 
-    /// Whether it carries no frame: it only tells the bus control is alive.
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.frames.iter().all(Option::is_none)
-    }
-
     pub(crate) fn frames(&self) -> &[Option<Frame>; MAX_DRIVES] {
         &self.frames
     }

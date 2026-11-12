@@ -9,7 +9,7 @@ use std::io;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use can::{CommandBatch, LimbState, Rearmed, Snapshot, Timing};
+use can::{CommandBatch, Rearmed, Snapshot, Timing};
 use rtrb::{Consumer, Producer};
 
 use crate::clock::{Schedule, mono_now, passed, sleep_period};
@@ -123,9 +123,6 @@ pub(crate) fn run(
     let mut newest: Vec<Option<Snapshot>> = vec![None; links.buses.len()];
     let mut ended = vec![false; links.buses.len()];
     let mut batches = vec![CommandBatch::new(0, 0); links.buses.len()];
-    // Each bus's latest tick for which control handed it a batch with a frame in it: until a snapshot of that tick
-    // shows otherwise, the bus may have a limb in a run that its last snapshot doesn't show yet (`progressing`).
-    let mut commanded: Vec<Option<u64>> = vec![None; links.buses.len()];
     let phase = phase(timing);
     let mut n = schedule.next(phase);
     loop {
@@ -212,12 +209,12 @@ pub(crate) fn run(
                 },
                 |r| push_reply(replies, r, &mut exit.replies_dropped),
             );
-            publish(&mut links.buses, &batches, &mut commanded, &mut exit);
+            publish(&mut links.buses, &batches, &mut exit);
             if exit.error.is_none() && passed(schedule.at(next, 0)) {
                 exit.late_batches += 1;
             }
             // Last, so a pass that hangs anywhere above counts nothing.
-            if exit.error.is_none() && progressing(n, &newest, &commanded) {
+            if exit.error.is_none() && progressing(n, &newest) {
                 links.progress.fetch_add(1, Ordering::Release);
             }
         }
@@ -226,41 +223,19 @@ pub(crate) fn run(
 }
 
 /// Whether a pass at tick `n` counts as progress for systemd's watchdog (PLAN item 3: fed only when the control loop
-/// and every bus in an active run are making progress): every bus in a run has published tick `n`'s snapshot. A bus
-/// is in a run when its newest snapshot shows a limb enabled or stopping, or when control handed it a batch with a
-/// frame for a tick its newest snapshot hasn't reached (`commanded`): the bus marks a limb active only as it sends the
-/// limb's first Enable or command, so a bus that hangs in that tick never publishes the snapshot that would show it.
-/// A bus otherwise idle or stopped commands nothing and doesn't hold the count back. The pass itself is the control
-/// loop's part: a control thread that hangs counts nothing.
-fn progressing(n: u64, newest: &[Option<Snapshot>], commanded: &[Option<u64>]) -> bool {
-    newest.iter().zip(commanded).all(|(snapshot, commanded)| {
-        let seen = snapshot.map(|s| s.tick);
-        let shows_run = snapshot.is_some_and(|s| s.limbs().any(|(_, l)| in_run(l.state)));
-        let sent_since = commanded.is_some_and(|c| seen.is_none_or(|t| t < c));
-        !(shows_run || sent_since) || seen.is_some_and(|t| t >= n)
-    })
+/// and every bus in an active run are making progress): every bus has published tick `n`'s snapshot. Every bus, not
+/// only those whose last snapshot shows a limb enabled: a bus takes up a limb's first Enable or a stop's Disables
+/// before any snapshot shows it, so a hang in that tick would look idle. The pass itself is the control loop's part: a
+/// control thread that hangs counts nothing. This is the one statement of the rule; the docs point here.
+fn progressing(n: u64, newest: &[Option<Snapshot>]) -> bool {
+    newest.iter().all(|s| s.is_some_and(|s| s.tick >= n))
 }
 
-/// Whether a limb in `state` needs its bus every tick: enabled, or being stopped.
-const fn in_run(state: LimbState) -> bool {
-    match state {
-        LimbState::Active | LimbState::Stopping { .. } => true,
-        LimbState::Idle | LimbState::Stopped => false,
-    }
-}
-
-/// Push each bus its batch, noting in `commanded` the tick of each one that carries a frame.
-fn publish(
-    buses: &mut [BusEnds],
-    batches: &[CommandBatch],
-    commanded: &mut [Option<u64>],
-    exit: &mut ControlExit,
-) {
-    for ((ends, batch), commanded) in buses.iter_mut().zip(batches).zip(commanded) {
+/// Push each bus its batch.
+fn publish(buses: &mut [BusEnds], batches: &[CommandBatch], exit: &mut ControlExit) {
+    for (ends, batch) in buses.iter_mut().zip(batches) {
         if ends.commands.push(*batch).is_err() {
             exit.batches_dropped += 1;
-        } else if !batch.is_empty() {
-            *commanded = Some(batch.tick);
         }
     }
 }
@@ -428,280 +403,4 @@ fn push_enable_reply(replies: &mut Producer<EnableReply>, r: EnableReply, droppe
 }
 
 #[cfg(test)]
-mod tests {
-    use rtrb::RingBuffer;
-    use skeleton::LimbName;
-
-    use super::*;
-    use crate::clock::mono_now;
-
-    /// A snapshot of `tick` with one limb in each of `states`.
-    fn snapshot(tick: u64, states: &[LimbState]) -> Snapshot {
-        let mut limbs = [None; can::MAX_DRIVES];
-        for (limb, state) in limbs.iter_mut().zip(states) {
-            *limb = Some(can::LimbView {
-                state: *state,
-                stop: None,
-                generation: 0,
-            });
-        }
-        Snapshot::from_parts(
-            tick,
-            None,
-            can::Counters::default(),
-            limbs,
-            [None; can::MAX_DRIVES],
-        )
-    }
-
-    /// Guards: safety - systemd's watchdog is fed only while the control loop and every bus in an active run make
-    /// progress (PLAN item 3, "A hung control thread"; deploy/systemd/runtime.service): a bus behind the pass's tick
-    /// holds the count back while a limb of it is enabled or stopping, or while control has handed it a frame its
-    /// snapshots don't cover yet (a bus that hangs in the tick of its first Enable), and not otherwise.
-    #[test]
-    fn a_bus_behind_holds_the_watchdog_back_only_while_it_has_a_run() {
-        use LimbState::{Active, Idle, Stopped, Stopping};
-        type Case<'a> = (u64, Option<(u64, &'a [LimbState])>, Option<u64>, bool);
-        let stopping = Stopping { since_ns: 1 };
-        // (the pass's tick, the bus's newest snapshot: its tick and limbs, the last tick control sent it a frame for,
-        // counts as progress)
-        let cases: [Case<'_>; 13] = [
-            (5, Some((5, &[Active])), None, true),
-            (5, Some((5, &[stopping])), Some(5), true),
-            (5, Some((4, &[Active])), None, false),
-            (5, Some((4, &[stopping])), None, false),
-            (5, Some((4, &[Idle, Active])), None, false),
-            (5, Some((4, &[Idle, Stopped])), None, true),
-            (5, Some((4, &[Idle])), Some(4), true),
-            // Its first Enable went for tick 5, and the bus never showed tick 5.
-            (5, Some((4, &[Idle])), Some(5), false),
-            (5, Some((5, &[Idle])), Some(5), true),
-            (5, None, None, true),
-            (5, None, Some(5), false),
-            // Control woke late: a bus ahead of it is not behind.
-            (5, Some((6, &[Active])), Some(6), true),
-            (5, Some((6, &[Idle])), Some(7), true),
-        ];
-        for (n, seen, commanded, want) in cases {
-            let newest = [seen.map(|(tick, states)| snapshot(tick, states))];
-            assert_eq!(
-                progressing(n, &newest, &[commanded]),
-                want,
-                "{n} {seen:?} {commanded:?}"
-            );
-        }
-        // Every bus counts: one behind holds back one on time.
-        let newest = [Some(snapshot(5, &[Active])), Some(snapshot(4, &[Active]))];
-        assert!(!progressing(5, &newest, &[None, None]));
-    }
-
-    /// A bus thread's ends of its rings.
-    type BusThread = (
-        Consumer<CommandBatch>,
-        Producer<Snapshot>,
-        Consumer<can::Order>,
-        Producer<Rearmed>,
-    );
-
-    /// Control's links to the test robot's buses, as the runtime makes them, with the far ends kept by the test.
-    struct Harness {
-        plans: Vec<BusPlan>,
-        timing: Timing,
-        schedule: Schedule,
-        links: ControlLinks,
-        /// The bus threads' ends: dropping one is that thread ending.
-        threads: Vec<BusThread>,
-        end: Arc<AtomicBool>,
-        finished: Arc<AtomicBool>,
-        progress: Arc<AtomicU64>,
-        clears: Producer<Clear>,
-        replies: Consumer<Reply>,
-    }
-
-    fn harness() -> Harness {
-        let skeleton = skeleton::parse(include_str!("../tests/skeleton.yaml")).unwrap();
-        let plans = crate::plan(&skeleton).unwrap();
-        let timing = Timing::at_hz(250);
-        let schedule = Schedule::new(mono_now(), timing.period_ns).unwrap();
-        let mut buses = Vec::new();
-        let mut orders = Vec::new();
-        let mut threads = Vec::new();
-        for _ in &plans {
-            let (commands, commands_rx) = RingBuffer::new(4);
-            let (snapshots_tx, snapshots) = RingBuffer::<Snapshot>::new(8);
-            let (orders_tx, orders_rx) = RingBuffer::new(16);
-            let (rearmed_tx, rearmed) = RingBuffer::<Rearmed>::new(16);
-            buses.push(BusEnds {
-                commands,
-                snapshots,
-                rearmed,
-            });
-            orders.push(BusOrders::new(orders_tx));
-            threads.push((commands_rx, snapshots_tx, orders_rx, rearmed_tx));
-        }
-        let end = Arc::new(AtomicBool::new(false));
-        let finished = Arc::new(AtomicBool::new(false));
-        let progress = Arc::new(AtomicU64::new(0));
-        let (clears, clears_rx) = RingBuffer::new(4);
-        let (replies_tx, replies) = RingBuffer::new(4);
-        let links = ControlLinks {
-            buses,
-            orders,
-            stops: Arc::new(StopLatch::default()),
-            clears: clears_rx,
-            replies: replies_tx,
-            roster: Roster::new(&skeleton, &plans).unwrap(),
-            slow: Vec::new(),
-            enables: RingBuffer::new(1).1,
-            enable_replies: RingBuffer::new(1).0,
-            health: telemetry::Health::default(),
-            views: None,
-            end: Arc::clone(&end),
-            finished: Arc::clone(&finished),
-            progress: Arc::clone(&progress),
-        };
-        Harness {
-            plans,
-            timing,
-            schedule,
-            links,
-            threads,
-            end,
-            finished,
-            progress,
-            clears,
-            replies,
-        }
-    }
-
-    /// Guards: safety - systemd's watchdog through the control thread (PLAN item 3): the progress count rises while
-    /// every bus with a limb enabled publishes each tick, stops for as long as one of them publishes nothing, and
-    /// rises again once it does.
-    #[test]
-    fn the_progress_count_stops_while_a_bus_with_a_run_is_behind() {
-        let Harness {
-            plans,
-            timing,
-            schedule,
-            links,
-            mut threads,
-            end,
-            progress,
-            ..
-        } = harness();
-        // The test's own copy of the schedule, to stamp each bus's snapshot with the tick in progress.
-        let ticks = Schedule::new(schedule.at(0, 0), timing.period_ns).unwrap();
-        let control = std::thread::spawn({
-            let plans = plans.clone();
-            move || run(&plans, &schedule, 0, timing, links)
-        });
-        // A limit on every wait (rust.md section 4).
-        let deadline = mono_now() + std::time::Duration::from_secs(10);
-        // Play the buses for `periods` ticks: each in `publishing` pushes one snapshot a tick, its limb active, at
-        // the tick's start, well before control's pass.
-        let mut play = |periods: u64, publishing: &[bool]| {
-            let until = ticks.current(0) + periods;
-            let mut last = None;
-            loop {
-                assert!(
-                    mono_now() < deadline,
-                    "the buses never got through their ticks"
-                );
-                let tick = ticks.current(0);
-                if tick >= until {
-                    break;
-                }
-                if last != Some(tick) {
-                    last = Some(tick);
-                    for ((_, snapshots, _, _), on) in threads.iter_mut().zip(publishing) {
-                        if *on {
-                            let _ = snapshots.push(snapshot(tick, &[LimbState::Active]));
-                        }
-                    }
-                }
-                std::thread::yield_now();
-            }
-            progress.load(Ordering::Acquire)
-        };
-        let started = play(20, &[true, true]);
-        assert!(started >= 10, "every bus on time: {started} passes counted");
-        // can1 falls behind with its limb active; one pass may already be past its read.
-        let behind = play(2, &[true, false]);
-        assert_eq!(play(20, &[true, false]), behind, "can1 behind");
-        let caught_up = play(20, &[true, true]);
-        assert!(
-            caught_up >= behind + 10,
-            "can1 caught up: {behind} then {caught_up}"
-        );
-        end.store(true, Ordering::Release);
-        drop(threads);
-        control.join().unwrap();
-    }
-
-    /// Guards: safety - a bus thread that ends before the run does (a socket or clock error) ends the whole run: control
-    /// sets the end, so every other bus stops its limbs, names the bus that ended, refuses the clears that come in while
-    /// the run ends, and says it has finished, which is what wakes the binary to end the runtime and exit with failure
-    /// (PLAN item 3: the runtime never runs blind).
-    #[test]
-    fn a_bus_that_ends_on_its_own_ends_the_run() {
-        let Harness {
-            plans,
-            timing,
-            schedule,
-            links,
-            mut threads,
-            end,
-            finished,
-            mut clears,
-            mut replies,
-            ..
-        } = harness();
-        let control = std::thread::spawn({
-            let plans = plans.clone();
-            move || run(&plans, &schedule, 0, timing, links)
-        });
-        // can1 ends on its own; control ends the run for it.
-        drop(threads.pop());
-        // A limit on every wait (rust.md section 4): far past the few ticks control needs.
-        let deadline = mono_now() + std::time::Duration::from_secs(10);
-        while !end.load(Ordering::Acquire) {
-            assert!(mono_now() < deadline, "control never ended the run");
-            std::thread::yield_now();
-        }
-        // A clear while the run ends is refused, not lost.
-        assert!(
-            clears
-                .push(Clear {
-                    tag: 5,
-                    limb: LimbName::RightArm
-                })
-                .is_ok()
-        );
-        // One refusal per bus the right arm is on.
-        let mut got = Vec::new();
-        while got.len() < 2 {
-            assert!(mono_now() < deadline, "the clear wasn't refused: {got:?}");
-            if let Ok(r) = replies.pop() {
-                got.push(r);
-            }
-            std::thread::yield_now();
-        }
-        assert_eq!(
-            got,
-            [0, 1].map(|bus| Reply {
-                tag: 5,
-                limb: LimbName::RightArm,
-                bus: Some(bus),
-                outcome: Err(ClearRefused::Ending)
-            })
-        );
-        assert!(!finished.load(Ordering::Acquire));
-        // can0 ends as asked; control finishes.
-        drop(threads);
-        let exit = control.join().unwrap();
-        assert_eq!(exit.bus_ended, Some(1));
-        assert_eq!(exit.clears_ending, 1);
-        assert!(exit.error.is_none());
-        assert!(finished.load(Ordering::Acquire));
-    }
-}
+mod tests;

@@ -333,9 +333,9 @@ impl Runtime {
         Arc::clone(&self.finished)
     }
 
-    /// The count of control passes that made progress: passes in which every bus with a limb enabled or stopping had
-    /// published that tick's snapshot. It stops rising when the control thread hangs, when such a bus falls behind, and
-    /// once the run ends. The binary feeds systemd's watchdog only while it rises (PLAN item 3).
+    /// The count of control passes that made progress: passes in which every bus had published that tick's
+    /// snapshot (the rule is `control::progressing`). It stops rising when the control thread hangs, when any bus falls
+    /// behind, and once the run ends. The binary feeds systemd's watchdog only while it rises (PLAN item 3).
     #[must_use]
     pub fn progress(&self) -> Arc<AtomicU64> {
         Arc::clone(&self.progress)

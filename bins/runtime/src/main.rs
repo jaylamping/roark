@@ -160,7 +160,7 @@ mod linux {
     /// How often the watcher looks: well under half of the unit's `WatchdogSec`, as `sd_watchdog_enabled(3)` asks.
     const WATCH: Duration = Duration::from_millis(50);
 
-    /// The watcher: feed systemd's watchdog each time it looks and the run has made progress since the last look
+    /// The watcher: tell systemd `READY=1`, then feed its watchdog each time it looks and the run has made progress since the last look
     /// (`Runtime::progress`), so a hung control thread, or a bus in an active run that falls behind, starves it and
     /// systemd kills the process, after which `ExecStopPost` runs the independent disable. Once the run has ended on
     /// its own, stop feeding it and raise SIGUSR1, so the signal wait wakes for that too.
@@ -174,10 +174,27 @@ mod linux {
             .spawn(move || {
                 let mut seen = progress.load(Ordering::Acquire);
                 let mut failed = false;
+                // Every thread runs: systemd may now count the service started, and its watchdog starts. Sent here,
+                // first, and again each look until it goes: the socket never waits, so a full one drops it, and a
+                // lost READY=1 would leave systemd to kill a healthy start.
+                let mut ready = notify.is_none();
                 while !finished.load(Ordering::Acquire) {
+                    if !ready && let Some(notify) = &notify {
+                        match notify.send("READY=1") {
+                            Ok(()) => {
+                                ready = true;
+                                failed = false;
+                            }
+                            Err(e) if !failed => {
+                                failed = true;
+                                say(&format!("can't tell systemd READY=1 yet: {e}"));
+                            }
+                            Err(_) => {}
+                        }
+                    }
                     pause();
                     let now = progress.load(Ordering::Acquire);
-                    if now == seen {
+                    if !ready || now == seen {
                         continue;
                     }
                     seen = now;
@@ -332,9 +349,6 @@ mod linux {
         let mut clean = true;
         let finished = runtime.finished();
         let notify = notify.map(Arc::new);
-        // Every thread runs: systemd may now count the service started, and its watchdog starts. Before the watcher,
-        // so the first word systemd gets is this one.
-        tell(notify.as_deref(), "READY=1");
         if let Err(e) = watch(Arc::clone(&finished), runtime.progress(), notify.clone()) {
             say(&format!("can't start the watcher ({e}): ending"));
             clean = false;
