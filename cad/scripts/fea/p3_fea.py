@@ -271,6 +271,16 @@ def run(name, c):
             print(' solver set to', os.environ['FEA_SOLVER'], 'reads back', st.StaticStudyOptions.SolverType, flush=True)
         except Exception as ex:
             print(' solver not set:', str(ex)[:100], flush=True)
+            try:   # late-bound dispatch can't reach the put; use the typed wrapper from cosworks.tlb (memid 1)
+                import pythoncom
+                from win32com.client import gencache
+                la = pythoncom.LoadTypeLib(r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\Simulation\cosworks.tlb").GetLibAttr()
+                mod = gencache.EnsureModule(str(la[0]), la[1], la[3], la[4])
+                tso = mod.ICWStaticStudyOptions(st.StaticStudyOptions)
+                tso.SolverType = int(os.environ['FEA_SOLVER'])
+                print(' solver set (typed) to', os.environ['FEA_SOLVER'], 'reads back', tso.SolverType, flush=True)
+            except Exception as ex2:
+                print(' solver not set (typed):', str(ex2)[:140], flush=True)
     for sel, size in c.get('ctrl', []):
         fs = pick(d, sel)
         q = mesh.ApplyMeshControl(fs, I())

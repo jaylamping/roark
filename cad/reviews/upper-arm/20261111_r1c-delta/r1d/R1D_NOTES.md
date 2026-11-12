@@ -135,3 +135,17 @@ The tapered R1d baseline (5-segment ramps, about 1.2 mm faces) meshes in 39 s, 0
    - Staged proof to 515 N, with split-and-inspect after.
    - What it does not cover: how the gap closes under the G90 tilt. Points far from the tilt axis move more than the
      0.115 mm average, so a lug could touch its bolt before the whole flank seats. The 0.1 gap solve was meant to settle that.
+
+## Solver choice through the API (2026-11-12 08:05)
+
+The ring 0.1 gap STOP_0 runs (0.5 and 0.8 mm) stall at contact iteration 7 with the iterative solver: the .OUT shows ISOL 2
+for both. Switching to direct sparse through the API failed:
+- The Simulation enum (cosworks.tlb) is swsSolverType_e: Automatic 0, DirectSparse 1, FFEPlus 2, Intel (large-problem
+  direct sparse) 7. Studies read back 0 (Automatic), and Automatic picked the iterative solver.
+- Writing ICWStaticStudyOptions.SolverType fails for every value, 0 included (that is, rewriting the current value). It fails
+  through late binding ("can not be set" / "server threw an exception") and through the typed cosworks wrapper. The soft-spring
+  setting on the same object failed the same way earlier. So puts on StaticStudyOptions don't work in this out-of-process
+  flow.
+- No Simulation solver default is stored under HKCU\Software\SolidWorks\SOLIDWORKS 2026\Simulation (only SolverOffload).
+- Probe: cad/scripts/fea/r1c/r1d_solver_probe.sh, mesh-only at 0.8 mm (796,472 nodes, 35 s per mesh), every instance ended
+  cleanly.
