@@ -1,6 +1,6 @@
 """Pre-print gate: one command per printed part, one pass/fail report. conventions/part-lifecycle.md section 3.
 
-    python tools/cad/gate.py <part>        # e.g. upper_arm_shell_front_left
+    python tools/cad/gate.py <part>        # e.g. upper_arm_organic_front_left
     python tools/cad/gate.py --all         # every part listed in a requirements spec
     python tools/cad/gate.py --verify      # every 3MF in cad/prints/ has a current passing report (stdlib only; CI)
 

@@ -80,7 +80,7 @@ Create each crate when an item first needs it. The crate table below is the nami
 | Left shoulder and upper-arm drives (RS03 ×2, RS02), loose on the bench, 24 V supply | **Ready now** (drives owned, bench harness planned) | Items 1 to 6 |
 | CAN interface | The Pi's USB ports face out the back for external use (Joey, 2026-11-11), so the buses connect over SPI. Buy one Waveshare 2-CH isolated CAN FD HAT (MCP2518FD, ~$55) and measure it against the MCP2515 HAT in the [interface comparison](docs/can-interface-comparison.md), with no drive on the bus. If it passes, the robot's buses need a CAN board on the header with one MCP2518FD and isolated transceiver per bus (hardware side). A USB adapter on an internal hub (MKS CANable V1.0 Pro, gs_usb) is the fallback | Item 5 |
 | Actuator test stand, RS03 waist unit first | Designed for all four sizes, waiting for Joey's review and print; luggage scale to buy | Item 7 |
-| Upper arm (printed) | Being redone as clamshells | Item 8 before it moves under power |
+| Upper arm (printed) | Redesigned as concept A (drum and caps) | Item 8 before it moves under power |
 | Elbow dummy-output rig | 6808 bearings arrive Mon 2026-11-09; rig is hand-loaded | **None.** No drive is used |
 | Forearm and RS00 | Designed, not printed | Item 8, after the elbow rig passes; the RS00 scale question (item 2) settled first |
 | Camera rig (Logitech BRIO, AprilTag plates) | Plan approved; camera owned; plates not printed | Item 9 |

@@ -4,7 +4,6 @@ region = "upper-arm"
 sides = ["left", "right"]
 status = "draft"
 agreed = ""
-evidence = "reviews/upper-arm/20261108_clamshell-draft3/evidence.json"
 interfaces = ["RS02 upper-arm yaw output", "RS02 elbow housing", "spring carrier", "6808-2RS", "Ruthex M3 inserts", "elbow back loop"]
 
 # Governing case, Joey 2026-11-07 19:59Z: arm straight, 5 kg at the hand (about 0.5 m from the shoulder pitch axis),
@@ -65,45 +64,7 @@ plate = "Cool Plate Super Tack"
 visible_support_mm2 = 0
 settings = { layer_height = "0.2", support_type = "tree(auto)" }
 
-[[part]]
-name = "upper_arm_shell_front_left"
-export = "exports/upper-arm/upper_arm_shell_front_left.stl"
-up = [0, 0, 1]
-hidden_by = ["exports/upper-arm/upper_arm_shell_back_left.stl", "exports/upper-arm/upper_arm_elbow_ring_left.stl", "exports/upper-arm/upper_arm_hub_left.stl", "exports/upper-arm/upper_arm_spring_carrier_left.stl"]
-settings = { sparse_infill_density = "50%", wall_loops = "4" }
-visible_support_mm2 = 84.5
-visible_support_reason = "84.0 mm2 of insert-hole ceilings and fuse-pocket faces inside the closed shell, reachable by a ray only through the seam (support check on the rebuilt halves, 2026-11-09)"
-
-[[part]]
-name = "upper_arm_shell_back_left"
-export = "exports/upper-arm/upper_arm_shell_back_left.stl"
-up = [0, 0, -1]
-hidden_by = ["exports/upper-arm/upper_arm_shell_front_left.stl", "exports/upper-arm/upper_arm_elbow_ring_left.stl", "exports/upper-arm/upper_arm_hub_left.stl", "exports/upper-arm/upper_arm_spring_carrier_left.stl"]
-settings = { sparse_infill_density = "50%", wall_loops = "4" }
-visible_support_mm2 = 0.5
-visible_support_reason = "0.4 mm2 at the seam edge, Y 254.8 (support check on the rebuilt halves, 2026-11-09)"
-
-[[part]]
-name = "upper_arm_elbow_ring_left"
-export = "exports/upper-arm/upper_arm_elbow_ring_left.stl"
-up = [1, 0, 0]
-hidden_by = ["exports/upper-arm/upper_arm_shell_front_left.stl", "exports/upper-arm/upper_arm_shell_back_left.stl", "exports/upper-arm/upper_arm_hub_left.stl", "exports/upper-arm/upper_arm_spring_carrier_left.stl"]
-settings = { sparse_infill_density = "100%", wall_loops = "6" }
-
-[[part]]
-name = "upper_arm_hub_left"
-export = "exports/upper-arm/upper_arm_hub_left.stl"
-up = [0, -1, 0]
-hidden_by = ["exports/upper-arm/upper_arm_shell_front_left.stl", "exports/upper-arm/upper_arm_shell_back_left.stl", "exports/upper-arm/upper_arm_elbow_ring_left.stl", "exports/upper-arm/upper_arm_spring_carrier_left.stl"]
-settings = { sparse_infill_density = "50%" }
-visible_support_mm2 = 183
-visible_support_reason = "182.5 mm2 of lug faces under the spigot, inside the closed arm (support check, 2026-11-09)"
-
-[[part]]
-name = "upper_arm_loop_clip_left"
-export = "exports/upper-arm/upper_arm_loop_clip_left.stl"
-up = [0, -0.70710678, -0.70710678]
-settings = { sparse_infill_density = "100%", enable_support = "0" }
+# [[part]] tables are added with concept A's parts.
 +++
 
 # Upper arm: requirements
@@ -111,8 +72,11 @@ settings = { sparse_infill_density = "100%", enable_support = "0" }
 **Status: draft, for Joey to agree.** Seeded 2026-11-09 from decisions already made on the left upper arm; every line says
 where it came from. Nothing here is new design. How this file is used: [conventions/part-lifecycle.md](../../conventions/part-lifecycle.md).
 
-The link from the upper-arm yaw RS02 output down to the elbow RS02, both arms. The design of record is in
-[README.md](README.md) (draft 3 clamshell).
+The left arm moved to concept A (drum and caps) on 2026-11-11. Lines marked draft 3 or draft 4 come from the designs it
+replaced (the clamshell and forearm draft 4, [roark PR #28](https://github.com/jaylamping/roark/pull/28), closed unmerged).
+The requirements stand; the `[[part]]` tables, the evidence file and the design facts are filled in by the concept A arm PR.
+
+The link from the upper-arm yaw RS02 output down to the elbow RS02, both arms.
 
 ## Load cases
 
@@ -120,7 +84,7 @@ The `[[load_case]]` table above is the list the gate checks. In words:
 
 - **Governing case** (Joey 2026-11-07 19:59Z): arm straight, 5 kg at the hand, from rest, slow sweep through the full
   shoulder pitch range. It is the absolute worst-case **sustained** load and must not fail (19:56Z). At the elbow point
-  this is 62 N along gravity plus 17.2 N·m, about 24 N·m at the hub face (draft 3 README).
+  this is 62 N along gravity plus 17.2 N·m, about 24 N·m at the hub face ([draft 3 README](https://github.com/jaylamping/roark/blob/a6a7e0608530af601408f637b90e267d5649cf61/cad/upper-arm/README.md)).
 - **Pass marks:** 1.5 bulk, 1.25 layer; 2.0 bulk at 90° for creep while the shoulder holds (design decision, 11-07).
 - **Lateral:** the same load with gravity along ±X (design decision, 11-08).
 - **Twist (LC2):** 17 N·m about Y, the link's long axis (left-arm FEA, p3_fea.py).
@@ -182,9 +146,7 @@ These apply to every printed structural part of the robot; links repeat only wha
 ## Open
 
 - Upper-arm yaw range and the mass budget (above).
-- Lateral case does not pass in the draft 3 one-body model (1.17 bulk at the ring/skirt corner); contact model and corner fix
-  next (draft 3 README).
-- RS02 meshes in arm coordinates for `mates`; the evidence file for draft 3.
+- RS02 meshes in arm coordinates for `mates`; the `[[part]]` tables and the evidence file (concept A arm PR).
 - Which `[print]` settings are the system preset's values (`preset`), so the gate doesn't require Bambu Studio to flag
   them; `layer_height = "0.2"` probably is.
-- Which load cases apply to the 7.7 g loop clip: no `[[load_case]]` sets `parts`, so as written all eight do.
+- Which load cases apply to small parts such as a cable clip: a `[[load_case]]` without `parts` applies to every part.

@@ -39,6 +39,11 @@ job runner can take them over without changing the files they use.
   session, `<session>-fea` (section 2), so both PIDs are on record. Never attach to another thread's instance and never close
   one you didn't start. Each launch takes about 1.5 GB, so start the second one only for a long study and
   close it when the study ends.
+- **holly-pc limits:** run large solves one at a time. Two upper-arm halves solves of about 390k nodes each, run together,
+  crashed while reading back their results (2026-11-11); two small studies at once are fine (RULES.md rule 6). Exit each
+  instance when its work is done (rule 7). Memory budget per instance and holly-pc's total: **TBD**, Joey to set.
+- **Joey-PC** is the fallback CAD machine and Joey's own PC: SolidWorks runs there hidden only, never visible, because Joey
+  may be using it.
 - **CAD writer lock:** [cad.md section 6](cad.md#6-writer-lock-hooks-and-lfs-budget) still applies inside a worktree that more
   than one session uses. With one worktree per thread it is uncontested, but take it anyway. The CAD hooks check it once
   they are installed from the main checkout (setup step 5, section 4).

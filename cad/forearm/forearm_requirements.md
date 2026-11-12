@@ -69,14 +69,17 @@ plate = "Cool Plate Super Tack"
 visible_support_mm2 = 0
 settings = { layer_height = "0.2", support_type = "tree(auto)" }
 
-# [[part]] tables are added when the clamshell split of the fork is set (draft 4 recommends it); the turned parts
-# (sleeve, RS00 ring, tube, coupling, wrist cap, wrist flange) are added with their print directions at the same time.
+# [[part]] tables are added with concept A's forearm parts.
 +++
 
 # Forearm: requirements
 
 **Status: draft, for Joey to agree.** Seeded 2026-11-09 from decisions already made on the left forearm; every line says
 where it came from. How this file is used: [conventions/part-lifecycle.md](../../conventions/part-lifecycle.md).
+
+The left arm moved to concept A (drum and caps) on 2026-11-11. Lines marked draft 3 or draft 4 come from the designs it
+replaced (the clamshell and forearm draft 4, [roark PR #28](https://github.com/jaylamping/roark/pull/28), closed unmerged).
+The requirements stand; the `[[part]]` tables, the evidence file and the design facts are filled in by the concept A arm PR.
 
 The link from the elbow RS02 output down to the wrist flange, including the RS00 forearm-yaw stage, both arms.
 
@@ -146,6 +149,5 @@ As in [upper_arm_requirements.md](../upper-arm/upper_arm_requirements.md#print-r
 
 ## Open
 
-- Clamshell split and its seam FEA (yaw torque 14 N·m crosses a new bolted seam).
 - Forearm yaw limit; mass budget; RS02 length measurement; clock spring parts.
-- `[[part]]` tables and the evidence file, once the split is set.
+- `[[part]]` tables and the evidence file (concept A arm PR).

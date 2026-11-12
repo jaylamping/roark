@@ -78,10 +78,10 @@ settings = { layer_height = "0.2", support_type = "tree(auto)" }   # Bambu Studi
 preset = ["layer_height"]            # settings whose value is the system preset's, so Bambu Studio doesn't flag them
 
 [[part]]
-name = "upper_arm_shell_front_left"  # file stem; the 3MF is prints/<region>/<name>.3mf
-export = "exports/upper-arm/upper_arm_shell_front_left.stl"
+name = "upper_arm_organic_front_left"  # file stem; the 3MF is prints/<region>/<name>.3mf
+export = "exports/upper-arm/upper_arm_organic_front_left.stl"
 up = [0, 0, 1]                       # print direction, in export coordinates
-hidden_by = ["exports/upper-arm/upper_arm_shell_back_left.stl"]    # assembled parts that can hide a face
+hidden_by = ["exports/upper-arm/upper_arm_organic_back_left.stl"]    # assembled parts that can hide a face
 mates = ["exports/upper-arm/vendor_robstride_rs02_elbow_left.stl"] # mating meshes, same coordinates, for interference
 settings = { sparse_infill_density = "50%", wall_loops = "4" }     # adds to or overrides [print].settings
 # visible_support_mm2 = 5, visible_support_reason = "..."           # only with a reason
@@ -96,14 +96,14 @@ the study:
 
 ```json
 {
-  "sources": {"exports/upper-arm/upper_arm_shell_front_left.stl": "<sha256 of the export the study used>"},
+  "sources": {"exports/upper-arm/upper_arm_organic_front_left.stl": "<sha256 of the export the study used>"},
   "load_cases": {"G90": "<gate.load_case_sha256 of the spec's G90 table>"},
   "fea": [
-    {"case": "G90", "part": "upper_arm_shell_front_left", "bulk_sf": 3.10, "layer_sf": 7.0, "converged": true,
+    {"case": "G90", "part": "upper_arm_organic_front_left", "bulk_sf": 3.10, "layer_sf": 7.0, "converged": true,
      "note": "el 2.0 vs 1.6 within 2 %"}
   ],
   "access": [
-    {"part": "upper_arm_shell_front_left", "insertion_clear": true, "screws_reachable": true,
+    {"part": "upper_arm_organic_front_left", "insertion_clear": true, "screws_reachable": true,
      "method": "ray check, 2.5 mm hex straight then 25 deg ball-end", "notes": ""}
   ]
 }
@@ -128,7 +128,7 @@ the study:
 ## 3. Pre-print gate
 
 ```bash
-python tools/cad/gate.py upper_arm_shell_front_left   # one part
+python tools/cad/gate.py upper_arm_organic_front_left   # one part
 python tools/cad/gate.py --all                         # every part in every spec
 ```
 
@@ -177,8 +177,8 @@ cut or forced) and writes the entry; Joey never fills in the form. Photos go bes
 
 ```toml
 [[print]]
-part = "upper_arm_shell_front_left"
-revision = "draft 3"
+part = "upper_arm_organic_front_left"
+revision = "R1"
 cad = "roark <commit>"               # the commit the 3MF was made from
 date = "2026-11-10"
 printer = "P2S, 0.4 mm high flow"

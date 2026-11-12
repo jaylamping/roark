@@ -3,7 +3,7 @@ link = "upper_arm"
 region = "upper-arm"
 
 [[print]]
-part = "upper arm, one piece (now the clamshell master, upper_arm_clam_master_left)"
+part = "upper arm, one piece (later the clamshell master, upper_arm_clam_master_left)"
 revision = "one-piece db71b23b"
 cad = "marengo db71b23b"
 date = "2026-11-08"
@@ -17,7 +17,7 @@ fit = ["RS02 seats well, except its housing tab: the tab lip interferes by about
 surface = ["Rough outer skin on every supported face", "Support trapped in the enclosed cavity, nearly impossible to clear through the small door"]
 post_work = "none recorded"
 action = "Clamshell redesign with no trap door, lighter; each part oriented so outer faces print clean (halves seam-face down, ring X-up, hub RS02-face down, clip on its end); RS02 seat pocket run through to the face"
-action_commit = "marengo a6315f0c; roark PR #28 (draft 3)"
+action_commit = "marengo a6315f0c; roark PR #28 (draft 3, closed unmerged; replaced by concept A)"
 source = "Joey in the left-arm thread, 2026-11-08 around 02:13Z, with photos in that thread; mass_sliced_g is the draft 3 README's re-slice on the same process"
 
 [[lesson]]
@@ -45,4 +45,4 @@ Backfilled 2026-11-09 from the left-arm thread; the photos are in that thread, n
 - **Surface:** printed lying flat, every supported outer face came out rough, and support got trapped in the enclosed
   cavity behind the small door.
 - **What it changed:** the rules to print outer faces clean and to make enclosed links fastened clamshells (Joey
-  2026-11-08 02:13Z), and the draft 3 clamshell in [cad/upper-arm/README.md](../../upper-arm/README.md).
+  2026-11-08 02:13Z), and the draft 3 clamshell in [cad/upper-arm/README.md](https://github.com/jaylamping/roark/blob/a6a7e0608530af601408f637b90e267d5649cf61/cad/upper-arm/README.md) (PR #28, closed; concept A replaced it).
