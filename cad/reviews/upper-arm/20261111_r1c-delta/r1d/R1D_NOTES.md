@@ -183,3 +183,15 @@ instance with RunMacro2:
 - Likely cause: the two steel bolts, held only by no-penetration contact in clearance and with no preload. The pads stabilise
   the arm only. This is not proven.
 - Memory: our processes peaked at 10.9 GB as factorisation began.
+
+## Ring STOP_0 error 24: diagnosis (2026-11-12 08:45)
+
+- Diff against the converged tapered STOP_0: the bodies, materials (pads E 0.5), fixture, load and lug contact set are the same.
+  The seat contact set has fewer, larger faces (full-ring revolve).
+- All four pads touch the hub (Y 296.0) in both models.
+- The bolts fill their arm bores line-to-line and are bonded there by the global bond. Only the bolt-to-hub-lug faces are in
+  contact. They are not free.
+- Re-run with the .OUT captured: factorisation started at 69 s, and by 80 s free RAM had dropped from 26.5 to 12.0 GB (31.9 GB
+  machine). The memory stop ended it cleanly. No singularity message.
+- Conclusion: error 24 was the Intel direct sparse factorisation of 2.37 M equations running out of memory. Next: a coarser
+  global mesh (HS_GLOBAL_EL) with the 0.8 mm seat control kept.

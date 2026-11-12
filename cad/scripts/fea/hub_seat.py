@@ -304,6 +304,8 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 if ms > 0:      # R1d (review 2026-11-12): mesh control on the ridge, groove, collar foot and bore faces (any face meeting the seat
                     # box, up to 400 mm2 so the large skin and spigot faces are left at the global size)
                     c['ctrl'] = list(c.get('ctrl', [])) + [(('touch', [128.0, 297.5, -40.0, 213.0, 302.05, 50.0], float(os.environ.get('HS_SEAT_MESH_AMAX', '150'))), ms)]      # 2026-11-12: ridge and groove faces only (the wider box gave 2.4 M nodes)
+                if os.environ.get('HS_GLOBAL_EL'):      # 2026-11-12: coarser away from the joint (direct sparse memory); the seat control stays
+                    c['el'] = float(os.environ['HS_GLOBAL_EL'])
                 CASES['HS_' + k + sfx] = c
 
 
