@@ -223,3 +223,21 @@ artificial fixed edge at the pad.)
   - Inside r 43 is the RS03's own face, which can't be cut.
 - So the stop stays on the cap, and the fork joint stays in the torque path. Option 1 follows.
 
+## FOR SOFTWARE: roll-joint limits near the hard stops (required, all options)
+
+The printed stops at -11° and +110° are hard stops: the frame clears only because of the inward one. The controller
+keeps them inside their rated duty. These numbers go to the software project (roll joint, RS03, left shoulder; mirror
+them for the right).
+
+| Item | Value | Why |
+|---|---|---|
+| Soft position limits | **-9° … +108°** (2-3° inside the stops) | The stops are only touched in a fault or on purpose |
+| Torque limit within 5° of either stop (-11…-6° and +105…+110°) | **≤ 17 N·m** | Gives layer SF ≥ 1.5 in the fork rear's leg, the pad junction and the joint on the current parts (SF 1.32-1.37 at 20 N·m in the FEA, scaling linearly) |
+| Speed limit within 5° of either stop | **≤ 1 rad/s** | A 1 rad/s arrival is about 10-17 N·m equivalent at the stop (arm about 0.06 kg·m² about the roll axis); 2 rad/s would be 21-34 N·m |
+| Outside those zones | the RS03's own limits (60 N·m peak, 20 rad/s; manual 261013 §1.3 and §4.1.13) | |
+
+- These hold whatever is decided for the printed stop. They are the second layer even if the leg2 version or a stronger
+  joint is adopted.
+- **Whether the printed stop must survive a full 60 N·m stall** (needing more mass and outline than leg2), or whether a
+  stall is the controller's job with the printed stop good for rated torque, is Joey's call.
+

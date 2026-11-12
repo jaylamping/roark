@@ -184,4 +184,7 @@ def roll_pt(r, a, z):
 # where the leg is narrowest, Y 380-395; were 1.0 / 3.0), and two more joint screws at X +-27 (span 54, was 34)
 CH_DX = 0.6      # 1.0 put the power channel's wall tangent to the X -17 counterbore; 0.6: walls 1.6 / 2.4 at Y 390 (were 1.0 / 3.0)
 JOINT_DX = (-JX + 4.5, JX - 4.5, -27.0, 27.0)
+if os.environ.get('JOINT2'):          # the earlier two-screw joint, for the look-options/rear_screws comparison only
+    JOINT_DX = JOINT_DX[:2]
+HUB_RIM_CHAMFER = 0.5 if os.environ.get('HUB_CHAMFER') else 0.0   # hub-top fix (A_HUB_LUGS): 0.5 x 45 on the six screw-hole rims at the RS02 face
 CH_DZ = -1.0 if os.environ.get('LEG2') else 0.0   # LEG2 mock-up: the fork rear's channels 1 mm further back (front wall 3.4)

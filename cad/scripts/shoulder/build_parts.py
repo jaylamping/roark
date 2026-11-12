@@ -1072,6 +1072,20 @@ def build_hub():
         em.Add2(-1, f'"{feat_}" = IIF("{var}" = 1, "unsuppressed", "suppressed")', True)
     d.ForceRebuild3(False)
     log('  hub prepared features:', [(n, d.FeatureByName(n).IsSuppressed2(1, NUL)[0] if d.FeatureByName(n) else None) for n in ('SPIGOT_EXT', 'LUG2')])
+    if HUB_RIM_CHAMFER:
+        # hub-top fix: a small chamfer on the six screw-hole rims at the RS02 output face (case A's layer peak sat on a rim)
+        hc = []
+        for a_ in (-142.0, -82.0, -22.0, 38.0, 98.0, 158.0):
+            t_ = math.radians(a_)
+            cx_, cz_ = RX + 12.0 * math.cos(t_), YZ + 12.0 * math.sin(t_)
+            hc += edges_where(d, lambda p, cx_=cx_, cz_=cz_: abs(p[1] - RS02_OUT) < 0.05 and math.hypot(p[0] - cx_, p[2] - cz_) < 2.6,
+                              pair=lambda p0, p1, cx_=cx_, cz_=cz_: all(abs(math.hypot(q[0] - cx_, q[2] - cz_) - 2.15) < 0.15 for q in (p0, p1)))
+        d.ClearSelection2(True)
+        for e_ in hc:
+            e_.Select4(True, NUL)
+        f_ = d.FeatureManager.InsertFeatureChamfer(4, 1, HUB_RIM_CHAMFER * 1e-3, math.radians(45.0), 0, 0, 0, 0)
+        d.ForceRebuild3(False)
+        log('  HOLE_RIM_CHAMFER', len(hc), 'edges', f_ is not None)
     return finish_part(d, 'hub', dict(Note='Interface frozen: spigot, lugs, seam bolts, hub screws from upper_arm_hub_left'))
 
 
