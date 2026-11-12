@@ -85,6 +85,7 @@ dependencies = [
  "nix",
  "robstride",
  "rtrb",
+ "serde_json",
  "socketcan",
  "telemetry",
  "thiserror",

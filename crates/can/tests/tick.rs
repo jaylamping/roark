@@ -541,7 +541,8 @@ fn the_feedback_limit_is_three_periods_inclusive() {
 }
 
 /// Guards: protocol - error frames are read by severity from the kernel's bits, and error-passive marks the bus
-/// unhealthy (the recording's `valid`) until the controller reports error-warning or error-active again
+/// unhealthy (the recording's `valid`), from the first tick when it started passive, until the controller reports
+/// error-warning or error-active again
 /// (linux/can/error.h; logging.md section 8.2).
 #[test]
 fn error_frames_are_classified_and_passive_marks_the_bus_unhealthy() {
@@ -589,4 +590,11 @@ fn error_frames_are_classified_and_passive_marks_the_bus_unhealthy() {
         );
         assert_eq!(bus.end(deadline(0)).healthy, healthy, "crtl {crtl:#x}");
     }
+    // A controller already error-passive when the bus started is unhealthy from the first tick, until it recovers.
+    let mut bus = common::bus();
+    bus.start_error_passive();
+    run_tick(&mut bus, 0, None, &[]);
+    assert!(!bus.end(deadline(0)).healthy, "started passive");
+    run_tick(&mut bus, 1, None, &[(MS, error_frame(0x04, 0x40))]);
+    assert!(bus.end(deadline(1)).healthy, "recovered");
 }

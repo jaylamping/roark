@@ -4,7 +4,7 @@
 # confirms a Disable, so every stop in the sim ends confirmed. The left arm is commissioned (its UIDs are sim-drive's for
 # its IDs); every other joint has nulls, so is uncommissioned and enables only at its model's commissioning caps, except
 # the left leg's offline joint, which has no bus and is refused.
-schema: 1
+schema: 2
 name: runtime_test
 power:
   source: bench_24v
@@ -14,10 +14,12 @@ buses:
   can0:
     bitrate_bps: 1000000
     sample_point: 0.75
+    driver: sim_only            # no real interface has it, so only vcan opens
     adapter_serial: null
   can1:
     bitrate_bps: 1000000
     sample_point: 0.75
+    driver: sim_only            # no real interface has it, so only vcan opens
     adapter_serial: null
 limbs:
   left_arm:

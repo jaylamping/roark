@@ -13,6 +13,7 @@ test-support = []
 
 [dependencies]
 robstride.workspace = true
+serde_json.workspace = true
 telemetry.workspace = true
 thiserror.workspace = true
 
