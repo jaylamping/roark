@@ -5,7 +5,6 @@
 #   bus in an active run make progress (PLAN item 3), which needs control's health signal.
 # - After=/BindsTo= on each bus's device unit: comes with the .link and .network files when the adapter is named by its
 #   serial (PLAN step 8).
-# - The candump@<bus> black box: comes with its rotator (conventions/logging.md section 8.6).
 
 [Unit]
 Description=Robot runtime: the only CAN writer
