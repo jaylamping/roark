@@ -26,8 +26,8 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
  |   | telemetry thread: MCAP, metrics, logs       |---> disk, Prometheus/Grafana
  |   +---------------------------------------------+            |
  +--------------------------------------------------------------+
-   systemd: watchdog on runtime; ExecStopPost = robot-cli disable (independent of runtime)
-   candump -L per bus: independent black box
+   systemd: watchdog on runtime (fed while control's progress count rises); ExecStopPost = robot-cli disable (independent of runtime)
+   candump@<bus>: candump -L per bus, cut and pruned by candump-rotate: independent black box
 
  Dev box or CI: sim-drive on vcan can0..can4 (the skeleton's names) stands in for the drives; runtime runs unchanged.
  Later: Jetson (perception) is another api client, never a CAN writer.
@@ -43,6 +43,7 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
 | `ui/`, `mcp/`, `robot-cli` | Nothing about the hardware | `api` only | Open a CAN socket (the one exception below) |
 | `robot-cli disable` | Nothing | The bus directly, after `runtime` has exited; the runtime's lock (`/run/robot/runtime.lock`), which the runtime holds while it runs and `disable` refuses while held | Run while `runtime` is alive |
 | `sim-drive` | Simulated drive state | `vcan` through the same `robstride` codec (its drive side, `robstride::drive`) | Be linked into `runtime`, or open an interface that isn't `vcan` |
+| `candump-rotate` | One bus's black-box files in `/var/lib/robot/candump` | `candump`'s output on a pipe; disk | Open a CAN socket, depend on `runtime`, or touch another bus's files |
 | `can-bench` | Nothing about the robot | One CAN interface, with its own frames that no drive acts on ([comparison](../docs/can-interface-comparison.md)) | Run with a drive or another host on the bus, or alongside `runtime` |
 
 The queues between the control thread and each bus thread, all bounded `rtrb` rings made before the first tick
@@ -68,6 +69,7 @@ And between the control thread and the rest of `runtime` (`runtime::Runtime`), u
 | Enables, each of a set of joints | operator → control | The operator's push fails; nothing was asked. Control takes them after its reads, one running at a time: the rest are refused `Busy` |
 | Enable replies, one per enable | control → operator | Dropped and counted (`replies_dropped`); the limbs' states still show in the views |
 | Views, each bus's newest snapshot once a tick (only when asked for) | control → operator | Dropped and counted (`views_dropped`) |
+| Progress, a count of passes in which every bus was on time (`Runtime::progress`; the rule is `control::progressing`) | control → the binary's watcher, which feeds systemd's watchdog while it rises | Never full: a counter |
 | Control's events (stops with their causes, enables, refusals, clears) | control → telemetry | Dropped and counted in the session file's end marker |
 
 ## 2. Process boundaries are failure domains
@@ -99,7 +101,7 @@ telemetry (leaf for producers: takes events, depends on nothing above; can hands
 can --> robstride, telemetry        safety --> can, robstride, skeleton
 runtime --> can, robstride, safety, skeleton, telemetry
 
-can-bench (bin) --> nothing in the workspace
+can-bench (bin) --> nothing in the workspace      candump-rotate (bin) --> nothing in the workspace
 robot-cli (bin) --> robstride, skeleton        sim-drive (bin) --> robstride, skeleton
 sim-suite (tests only) --> can, runtime, safety, sim-drive, skeleton, robstride, telemetry
 ```
