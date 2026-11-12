@@ -4,7 +4,7 @@
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
@@ -138,6 +138,7 @@ pub struct Runtime {
     pub views: Option<Consumer<View>>,
     stops: Arc<StopLatch>,
     finished: Arc<AtomicBool>,
+    progress: Arc<AtomicU64>,
     info: StartInfo,
     threads: Threads,
 }
@@ -246,6 +247,7 @@ impl Runtime {
         };
         let stops = Arc::new(StopLatch::default());
         let finished = Arc::new(AtomicBool::new(false));
+        let progress = Arc::new(AtomicU64::new(0));
         let (clears, clears_rx) = RingBuffer::new(REQUESTS);
         let (replies_tx, replies) = RingBuffer::new(REQUESTS);
         let (enables, enables_rx) = RingBuffer::new(REQUESTS);
@@ -266,12 +268,9 @@ impl Runtime {
             views: views_tx,
             end: Arc::clone(&threads.end),
             finished: Arc::clone(&finished),
+            progress: Arc::clone(&progress),
         };
-        let control_plans = plans.clone();
-        let control = std::thread::Builder::new()
-            .name("control".to_owned())
-            .spawn(move || control::run(&control_plans, &schedule, origin_ns, timing, links));
-        match control {
+        match spawn_control(plans.clone(), schedule, origin_ns, timing, links) {
             Ok(handle) => threads.control = Some(handle),
             Err(e) => return Err(threads.unwind(StartError::Thread(e))),
         }
@@ -283,6 +282,7 @@ impl Runtime {
             views,
             stops,
             finished,
+            progress,
             info: StartInfo {
                 plans,
                 sockets,
@@ -331,6 +331,14 @@ impl Runtime {
     #[must_use]
     pub fn finished(&self) -> Arc<AtomicBool> {
         Arc::clone(&self.finished)
+    }
+
+    /// The count of control passes that made progress: passes in which every bus had published that tick's
+    /// snapshot (the rule is `control::progressing`). It stops rising when the control thread hangs, when any bus falls
+    /// behind, and once the run ends. The binary feeds systemd's watchdog only while it rises (PLAN item 3).
+    #[must_use]
+    pub fn progress(&self) -> Arc<AtomicU64> {
+        Arc::clone(&self.progress)
     }
 
     /// End the run: every bus stops its limbs and ends once control has taken a snapshot showing every limb at rest (or,
@@ -459,6 +467,19 @@ fn start_session(
         },
         wall_ns(),
     )
+}
+
+/// The control thread, on the buses' schedule.
+fn spawn_control(
+    plans: Vec<BusPlan>,
+    schedule: Schedule,
+    origin_ns: u64,
+    timing: Timing,
+    links: ControlLinks,
+) -> io::Result<JoinHandle<ControlExit>> {
+    std::thread::Builder::new()
+        .name("control".to_owned())
+        .spawn(move || control::run(&plans, &schedule, origin_ns, timing, links))
 }
 
 /// Each bus's socket, as the session records it.

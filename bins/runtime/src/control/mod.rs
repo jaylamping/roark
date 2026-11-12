@@ -7,7 +7,7 @@
 
 use std::io;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use can::{CommandBatch, Rearmed, Snapshot, Timing};
 use rtrb::{Consumer, Producer};
@@ -65,6 +65,8 @@ pub(crate) struct ControlLinks {
     pub(crate) end: Arc<AtomicBool>,
     /// Set by control as it returns, so the runtime's owner learns of a run that ended on its own.
     pub(crate) finished: Arc<AtomicBool>,
+    /// Counted up by each pass that made progress ([`progressing`]); what the binary feeds systemd's watchdog from.
+    pub(crate) progress: Arc<AtomicU64>,
 }
 
 /// What the control thread hands back when it ends.
@@ -212,16 +214,34 @@ pub(crate) fn run(
                 now_ns,
             );
             exit.stops_deferred += send_orders(plans, &mut links, &mut exit.replies_dropped);
-            for (ends, batch) in links.buses.iter_mut().zip(&batches) {
-                if ends.commands.push(*batch).is_err() {
-                    exit.batches_dropped += 1;
-                }
-            }
+            publish(&mut links.buses, &batches, &mut exit);
             if exit.error.is_none() && passed(schedule.at(next, 0)) {
                 exit.late_batches += 1;
             }
+            // Last, so a pass that hangs anywhere above counts nothing.
+            if exit.error.is_none() && progressing(n, &newest) {
+                links.progress.fetch_add(1, Ordering::Release);
+            }
         }
         n = n.saturating_add(1);
+    }
+}
+
+/// Whether a pass at tick `n` counts as progress for systemd's watchdog (PLAN item 3: fed only when the control loop
+/// and every bus in an active run are making progress): every bus has published tick `n`'s snapshot. Every bus, not
+/// only those whose last snapshot shows a limb enabled: a bus takes up a limb's first Enable or a stop's Disables
+/// before any snapshot shows it, so a hang in that tick would look idle. The pass itself is the control loop's part: a
+/// control thread that hangs counts nothing. This is the one statement of the rule; the docs point here.
+fn progressing(n: u64, newest: &[Option<Snapshot>]) -> bool {
+    newest.iter().all(|s| s.is_some_and(|s| s.tick >= n))
+}
+
+/// Push each bus its batch.
+fn publish(buses: &mut [BusEnds], batches: &[CommandBatch], exit: &mut ControlExit) {
+    for (ends, batch) in buses.iter_mut().zip(batches) {
+        if ends.commands.push(*batch).is_err() {
+            exit.batches_dropped += 1;
+        }
     }
 }
 

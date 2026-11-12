@@ -46,9 +46,18 @@ thread per wired bus and the control thread on one schedule origin, and takes th
 - **The run ends** with `Runtime::end` (or SIGINT and SIGTERM in the binary): every bus stops its limbs and ends once
   control has taken a snapshot with every limb at rest, then the session closes. It also ends on its own if control loses
   its clock or a bus thread ends: `Runtime::finished` is set, and the binary then ends the runtime and exits with failure.
+- **The watchdog** (PLAN item 3: fed only when the control loop and every bus in an active run make progress): each
+  control pass that completes counts up `Runtime::progress`, unless some bus hasn't published that tick's snapshot
+  (the rule, and why every bus counts, is on `control::progressing`). Under systemd (`Type=notify`,
+  `deploy/systemd/runtime.service`) the binary says `READY=1` once every thread runs, before it waits for a signal; if
+  that send fails, the watcher retries it each look until it goes or the run is ending. The watcher then sends `WATCHDOG=1` each time it looks (every 50 ms) and the count has risen; `STOPPING=1` goes as the
+  run ends. No send waits: a full socket fails it, logged. So a hung control thread, or a bus hanging or falling
+  behind for the unit's `WatchdogSec`, gets the process killed, and `ExecStopPost` runs the independent disable. The
+  count stops once the run ends on its own. Without `NOTIFY_SOCKET` (run by hand, or by a test) it tells nobody. The
+  power board's heartbeat is to come from the same count (PLAN item 10).
 
-The `api` socket (and so any way for the binary's operator to enable), `mlockall`, `SCHED_FIFO` and the systemd units
-come in the PRs that follow (PLAN step 7).
+The `api` socket (and so any way for the binary's operator to enable), `mlockall` and `SCHED_FIFO` come in the PRs
+that follow (PLAN step 7).
 
 - **Events** (safety.md section 8): every stop control takes, enable it starts, enable answer and clear answer is an
   event on the session's `/event` channel, handed to the recorder through its lock-free event ring (`Recording::events`),
