@@ -1,4 +1,4 @@
-# Upper arm R1d "ring": delta review packet (2026-11-12)
+# Upper arm R1e (ring + printed shim): delta review packet (2026-11-12)
 
 Branch `left-arm-organic-r1`. The pinned commit is set when the print rebuild is done. Until then this packet is a working
 draft, and rows marked *running* are not in yet. Nothing here is released.
@@ -15,6 +15,43 @@ every intermediate step, are in `../20261111_r1c-delta/r1d/R1D_NOTES.md`.
 
 Frame: the hub axis is Y; r is measured from that axis (X 170.49, Z 5.986); θ runs from +X toward +Z. The front half is
 Z > 5.986.
+
+## R1e: the design for review (2026-11-12)
+
+The ring geometry below (R1d ring) stays, but its crush-rib fit is retired. Joey chose a play-free joint, and **R1e** gets it
+from a printed shim:
+- **Flank line-to-line** as printed (gap 0), no ribs. Lead-ins at the ridge ends: the load flank relieved 0.1 along its normal
+  over the last 2 mm of arc each side of the seam, both halves (so closing doesn't bind or scuff).
+- **End face lowered 0.70.** A printed PETG shim ring, r 36.2-38.4 (2.2 mm wide, on the rev D disc's flat face, r 36.05-38.73),
+  sits between our end face and the hub disc. The thickness is picked by trial at assembly from a set of 0.30-1.10 in 0.05 steps
+  (17 sizes, 22 rings, 3 plates, 55 min, 9.1 g). Notches in the ring's inner edge mark it: t = 0.25 + 0.05 × N.
+  - Tolerance stack (axial): arm flank to end face ±0.115, hub groove flank to disc ±0.15, flatness ±0.05 (arm) and ±0.1 (disc
+    at its seam). Worst case ±0.415, RSS ±0.22. The set covers the worst case.
+  - Pick: "start with the thickest ring and work down until the front half closes by hand with the seam shut; use that one".
+    Residual play is at most one step (0.05 axial, ≤ 0.28 mm at the wrist).
+  - Why not a wedge: closing is along Z, so seating the 30° flank across ±0.2 would need each half's hub end to move 0.4.
+    Bending it that far needs about 9 kN against about 0.8 kN per screw. Notes: R1D_NOTES.md, "R1e".
+- Unchanged from the ring design: slot edge break 1.2 × 1.6 for the rev D lug-root fillets, the 0.5 bore chamfer (moved down
+  with the end face), the as-built bolt joint (brass inserts), fins, hub rev D (bc16e97).
+- Outside: the shim shows as a thin band at the arm-hub junction, 0.6 inside our skin. The shoulder cuff ends about Y 313.6, so
+  it doesn't cover it. The step visible in the band near θ 70-110 and 250-290 is the hub's own outer wall stepping out (r 38.76
+  to 39.3). Pictures: `r1e_hub_end_front.png`, `r1e_hub_end_back.png`, `r1e_shadow_line_closeup.png`,
+  `r1e_side_with_shoulder.png`, `r1e_junction_under_cuff.png` (the last two use the shoulder thread's WIP fork meshes).
+
+R1e checks (`../20261111_r1c-delta/r1d/r1e/`):
+
+| Check | Result |
+| --- | --- |
+| Slice + mesh gate, halves | Back PASS 5 h 25 / 123.8 g; front PASS 4 h 44 / 107.3 g |
+| Accepted thin walls (back half) | Three counterbore exits, the same features as R1's accepted entries. A point-to-surface diff against the R1d ring half shows ≤ 0.05 mm there; the R1e tessellation merged two regions and stretched two 1-2 mm up the counterbore wall, out of the old boxes. Three entries added with that reason (`r1e/print_whitelist.json`). |
+| Closing path against bc16e97 with a 0.70 ring | 0 path collisions (hub + ring, RS02, RS02 ring). Final overlap ≤ 0.041 mm (front) / 0.039 (back), only along the load flank: line-to-line through faceted meshes. None within about 9° of the seam (lead-ins). |
+| Hub-end fit coupon (cut at Y 284) | Back PASS 69 min / 16.9 g; front PASS 64 min / 16.1 g; cut-plane slivers accepted in a coupon-only list. Procedure: BENCH_TESTS.md section 2b, pass rule included. |
+| 0 gap G90 (flank line-to-line, shim lumped into the end face) | All ≥ 1.5. Lowest: end-face corner θ 296, shear 1.68 / 3.48 / 11.14 at 0.5 / 1 / 2 mm (0.81 at the 0.1 gap). Hub groove bottom / spigot core layer 2.20; posts layer 2.38. |
+| 0 gap STOP_0, STOP_124 | *running* (0.4 mm on the lug-root fillets, global 5.0: the 0.3 refinement exceeded the solver's memory limit) |
+| Shim as its own PETG body, G90 + STOP_0 | *running* |
+
+The R1d ring sections below are the history of how the ring and these numbers were reached. Cases 3-5 there are the rib design
+that R1e replaces.
 
 ## What changed (R1c to R1d ring)
 
