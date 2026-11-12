@@ -286,6 +286,7 @@ unchanged.
 - hub-top bolted cases A (with the rim chamfer), B and Ah
 - the hub-lug cases HUBL_I and HUBCF
 - the clearance sweep: the hub's outer surfaces don't change, so expect no change there.
+- **Done 2026-11-12 on the candidate** (all but the clearance sweep): see "Rev D: re-run on the rev D geometry" below.
 
 ## Hub-top bolted contact, cases B and Ah (2026-11-12, rev C+)
 
@@ -456,3 +457,98 @@ Case A re-run with a 0.5 × 45° chamfer on the six screw-hole rims at the RS02 
 - The rev D candidate export is refreshed with the holes: `shoulder_hub_left_revD_candidate`.
 - The released rev C+ hub part and its exports are unchanged until the rev D decision.
 
+
+## Rev D: re-run on the rev D geometry (2026-11-12)
+
+**Geometry run:** the rev D candidate with the two Ø3.8 locating holes and the R1.2 Z-facing lug roots
+(`LOOK=hubD HUB_GROOVE_RING=1 build_parts.py port_cap hub`; export `shoulder_hub_left_revD_candidate`, STL SHA-256
+`18db5676…f61e`, 78.3 g). Ah ran before the fillet was added; every other case ran on the filleted part.
+- **Solver:** FFEPlus, set explicitly and read back as 2 on B, HUBCF_A, HUBCF_B and HUBL_STOP.
+  - On HUBL_I the readback failed, though the set raised no error. The set and readback are now one options object,
+    retried.
+- **Mesh:** 1.5 mm, 0.5 mm at the seam-bolt holes, 536,000-609,000 nodes. All solves returned 0.
+- **Post-processing:** `hub_post.py`, tensile-only layer averages. Data in `cad/_sim/shoulder/hub_post_revD.json`. The
+  rev C+ figures were regenerated from the saved rev C+ results into `hub_post_revCplus.json`.
+- **Memory:** none of these solves overlapped the 15:47-15:51Z low-memory window. Ah finished before it and the rest
+  ran after 16:40Z.
+
+### The R1.2 Z-facing lug roots, as built (read from the STEP faces)
+
+Z is measured from the yaw axis (Z 5.99). All four corners are the same.
+
+| | Extent |
+|---|---|
+| Y | 294.80-296.00. Tangent to the lug's Z face at Y 294.80 |
+| Z | 5.00-6.20 on each side of each lug. Tangent to the spigot underside at 6.20 |
+| Radius from the yaw axis | 23.00-31.1 (-X lug: X 140.00-148.34; +X lug: X 192.64-201.00) |
+| Inner end (r 23.0) | runs out onto the bore wall. That side of the lug has no root corner |
+| Outer end (X 140.0 / 201.0) | meets the R1.0 outer root. The R1.0 is still R1.0 over Y 295-296, now spanning Z ±6.2; it is not cut |
+| Bolt hole (Ø3.4 along Z, Y 292, top at Y 293.7) | 1.1 mm of flat lug face below the fillet |
+| Land (spigot underside beyond Z ±6.2) | untouched |
+| Print | unchanged. The spigot underside faces up in print (RS02 side on the bed), so the fillet is a concave corner on a floor: no overhang, no support |
+
+- **Arm clearance:** the arm's 1.2 × 1.6 chamfer on its posts (along each lug's X span + 0.5) keeps its 0.28 to this
+  R1.2.
+- **Mass:** +13 mm³ for the lug-root fillets.
+
+### Results against rev C+
+
+Layer SF, peak / 0.5 mm average / 1 mm average. **Pass** means rev D is at least rev C+ at the 1 mm average, or at
+least the 1.5 hub target. For the lug cases, pass means at least the arm side's 1.2 over 0.5 mm and 1.5 over 1 mm.
+
+| Case | Region | Rev C+ | Rev D | |
+|---|---|---|---|---|
+| Ah (345 N, MX), no fillet | Hub top | 0.48 / 0.87 / 1.64 | 0.50 / 0.87 / **1.79** | pass |
+| | Lug A | 0.62 / 1.09 / 1.68 | 0.65 / 1.17 / 1.80 | pass |
+| | Lug B | 0.42 / 0.79 / 1.19 | 0.41 / 0.72 / 1.10 | -8%, bolt-hole edge (below) |
+| | Window band | 0.85 / 0.85 / 1.68 | 0.95 / 0.95 / 2.09 | pass |
+| B (690 N, MZ) | Hub top | 0.66 / 1.18 / 2.24 | 0.66 / 1.30 / **2.75** | pass |
+| | Lug A | 1.12 / 1.96 / 3.01 | 1.10 / 2.10 / 3.28 | pass |
+| | Lug B | 0.87 / 1.62 / 2.42 | 0.81 / 1.52 / 2.35 | pass (≥ 1.5) |
+| | Window band | 1.53 / 1.53 / 2.63 | 1.56 / 1.56 / 2.87 | pass |
+| HUBCF_A (spigot side, arm case A) | Hub top | 0.47 / 0.47 / 0.91 | 0.49 / 0.49 / 0.81 | load-application artefact, 1 node (below) |
+| | Lug A | 0.65 / 1.14 / 1.75 | 0.66 / 1.23 / 1.89 | pass |
+| | Lug B | 0.40 / 0.71 / 1.12 | 0.38 / 0.73 / 1.12 | equal, bolt-hole edge |
+| | Land below the groove | 0.52 / 4.08 / 6.03 | 0.61 / 5.23 / 9.02 | pass |
+| | Disc corner | 0.28 / 2.24 / 4.44 | 0.67 / 3.65 / 5.09 | pass |
+| | Window band | 0.92 / 0.92 / 1.59 | 0.92 / 1.17 / 1.92 | pass |
+| HUBCF_B (spigot side, arm case B) | Hub top | 0.58 / 0.58 / 1.06 | 0.56 / 0.56 / 1.11 | pass |
+| | Lug A | 1.18 / 1.97 / 3.06 | 1.13 / 2.14 / 3.36 | pass |
+| | Lug B | 0.82 / 1.37 / 2.11 | 0.80 / 1.53 / 2.27 | pass |
+| | Disc corner | 0.90 / 10.1 / 16.2 | 1.47 / 9.55 / 12.5 | pass |
+| HUBL_STOP (the arm's stop case) | Lug A (-X), Z- root | not run on rev C+ | **1.22 / 1.85 / 3.22** | pass (1.2 / 1.5) |
+| | Lug B (+X), Z+ root | | 2.27 / 3.58 / 6.20 | pass |
+| | Spigot edge / land | | 1.64 / 1.59 / 2.92 | pass |
+| | Hub top | | 2.15 / 3.35 / 5.31 | pass |
+| HUBL_I (interim upper bound) | Lug A, Z+ root | not finished on rev C+ | 0.66 / 0.97 / 1.68 | upper bound only (below) |
+| | Lug B, Z- root | | 0.61 / 0.83 / 1.41 | upper bound only |
+
+**HUBL_STOP, the stop case on the full-ring joint:**
+- **Loads:** -X lug Fz +169 N, Fx +40 N and a 55 N pull along -Y; +X lug Fz -112 N. Each goes in as a distributed
+  remote load on its seam-bolt hole.
+- **Governing spot:** the -X lug's Z- root, at r 23.0, Y 295.3. That is the fillet's inner end, where it runs out onto
+  the bore wall, on the tension side of the Fz bending. Layer stress there is 18.4 MPa peak, 12.2 over 0.5 mm, 7.0 over
+  1 mm.
+- **The other roots:** the -X lug's Z+ root and the +X lug's Z- root are in compression (under 0.2 MPa tension). The
+  +X lug's Z+ root peaks at 9.9 MPa.
+- **Bulk:** 1.35 / 1.61 / 2.55 at the same spot.
+- **Pass** against both the arm's 1.2 over 0.5 mm and the hub's 1.5 over 1 mm. The peak alone is also above 1.2.
+
+**Notes:**
+- **Ah needs no re-run for the fillet.** The fillet sits at Y 294.8-296, about 20 mm from the hub-top region that
+  governs Ah (Y 311.5-320). Ah's lug figures above are from before the fillet, which can only raise them.
+- **Lug B in Ah and HUBCF_A** (1.10 and 1.12 at 1 mm, both about rev C+'s) peaks at Y 293.4, Z 1.0. That is the edge of
+  the rigidly fixed seam-bolt hole, a fixture artefact as described under rev C+. It is not on the fillet, and the fillet
+  doesn't change it.
+- **The hub top in HUBCF_A** (0.81 at 1 mm against 0.91) is the known spot at Y 315.9, 3 mm from where the load goes in,
+  with one node within 0.5 mm. The bolted-contact cases (Ah, B) are the hub-top numbers that count, and both improve on
+  rev D.
+- **HUBL_I** is the old interim bound: 230 N pull and 170 N shear per lug, from the arm's earlier run with no ridge. It
+  loads the roots far beyond the arm side's bolted-contact model, which gives about 3 N axial and 15 N shear per lug.
+  - Its layer tension runs along the whole fillet: 29-37 MPa from r 23 to 26.5, falling to 2 MPa by r 30.
+  - That is real section bending, not a point peak.
+  - It is kept as a bound only. HUBL_STOP is the lug case that matters.
+
+**Verdict:** rev D with the R1.2 Z-facing roots is at least as strong as rev C+ wherever the comparison is clean (hub top
+in Ah and B, lugs, land, disc corner and window band). It also passes the arm's stop case at the lug roots. Adoption
+stays the arm thread's call: `cad/scripts/shoulder/adopt_hub_revD.sh` is prepared and not run.

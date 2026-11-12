@@ -231,10 +231,17 @@ def run(name, c):
         except Exception as e_:
             print(' study options failed', e_, flush=True)
     if os.environ.get('FEA_SOLVER') and not c.get('stabilise'):
-        try:
-            st.StaticStudyOptions.SolverType = int(os.environ['FEA_SOLVER'])   # 2 FFEPlus (iterative)
-        except Exception as e_:
-            print(' solver override failed', e_, flush=True)
+        for try_ in range(3):      # set and read back on one options object; a fresh COM handle sometimes fails to read
+            try:
+                so_ = st.StaticStudyOptions
+                so_.SolverType = int(os.environ['FEA_SOLVER'])   # 2 FFEPlus (iterative)
+                got_ = so_.SolverType
+                print(' solver set', got_, flush=True)
+                if got_ == int(os.environ['FEA_SOLVER']):
+                    break
+            except Exception as e_:
+                print(' solver override failed', try_, e_, flush=True)
+                time.sleep(2)
     opts = {}      # defaults this script does not set: logged so runs on different machines can be compared
     for k, o, a in (('solver', st, 'StaticStudyOptions.SolverType'), ('mesher', mesh, 'MesherType'), ('jacobian', mesh, 'JacobianPoints'),
                     ('auto_transition', mesh, 'AutomaticTransition'), ('jacobian_check', mesh, 'UseJacobianCheck')):

@@ -1,7 +1,9 @@
 """Post-process saved hub FEA nodal results (cad/_sim/shoulder/<case>.npz): per region, bulk (von Mises) and layer
 (sigma_y, the hub printed with the yaw axis vertical) safety factors at the peak node and averaged over the nodes within
 0.5 and 1.0 mm of that peak. Layer averages use the tensile part only (max(sigma_y, 0)), so nearby compression does not
-cancel the peak. python hub_post.py CASE [CASE...]"""
+cancel the peak. python hub_post.py CASE[:NPZ] [...]  (NPZ: a saved copy, e.g. HUBB_B:HUBB_B_revC). Results merge into
+cad/_sim/shoulder/hub_post_<HUB_POST_TAG>.json (default revCplus)."""
+import os
 import json
 import sys
 
@@ -12,8 +14,8 @@ import fea_shoulder as FS
 YIELD, LAYER = FS.YIELD, FS.LAYER
 
 
-def post(case):
-    z = np.load(str(FS.F / f'{case}.npz'))
+def post(case, npz=None):
+    z = np.load(str(FS.F / f'{npz or case}.npz'))
     pos, s = z['pos'], z['s']
     vm, sy = s[:, 10], s[:, 2]
     syp = np.maximum(sy, 0.0)
@@ -36,9 +38,12 @@ def post(case):
 
 
 if __name__ == '__main__':
-    res = {c: post(c) for c in sys.argv[1:]}
+    res = {a_: post(*a_.split(':', 1)) for a_ in sys.argv[1:]}
     for c, rows in res.items():
         print('==', c)
         for k, r in rows.items():
             print(f"  {k:16s} bulk {r['bulk']:5.2f} (0.5 {r['bulk_0.5']:5.2f}, 1.0 {r['bulk_1.0']:5.2f})   layer {r['layer']:5.2f} (0.5 {r['layer_0.5']:5.2f}, 1.0 {r['layer_1.0']:5.2f})   layer at {r['layer_at']}  n0.5 {r['n_0.5']}")
-    (FS.F / 'hub_post_revCplus.json').write_text(json.dumps(res, indent=1))
+    out_ = FS.F / f"hub_post_{os.environ.get('HUB_POST_TAG', 'revCplus')}.json"
+    old_ = json.loads(out_.read_text()) if out_.exists() else {}
+    old_.update(res)
+    out_.write_text(json.dumps(old_, indent=1))
