@@ -16,6 +16,10 @@ if hub.bounds[1][1] < 1.0:          # exported in metres
     hub.apply_scale(1000.0)
 out = {}
 rb_all = np.min([np.hypot(p[:, 0] - x0, p[:, 1] - BOLT_Y) for x0 in BOLT_X], axis=0)
+PAD_PTS = [(147.5, 15.0), (193.5, 15.0), (147.5, -15.0), (193.5, -15.0)]      # hub_seat.py HS_PADS (R1d gap cases)
+pad_all = np.zeros(len(p), bool)
+for x0, dz in PAD_PTS:
+    pad_all |= (np.hypot(p[:, 0] - x0, p[:, 2] - (CZ + dz)) < 0.95) & (p[:, 1] > 295.65) & (p[:, 1] < 296.05)
 # Classify by BODY (2026-11-11, review): the solver writes nodes body by body (arm, hub, bolts). A distance-to-hub-mesh test put
 # every arm node on a line-to-line contact face (the load flank, the end face) into the hub. Boundaries are found from nodes
 # clearly inside one body (|signed distance| > 0.2 mm, or on a bolt axis), sampled along the index, then refined node by node.
@@ -23,7 +27,7 @@ def sdist(ix):
     return np.concatenate([trimesh.proximity.signed_distance(hub, p[ix[i:i + 20000]]) for i in range(0, len(ix), 20000)]) if len(ix) else np.zeros(0)
 def label(ix):
     sd_ = sdist(ix)
-    return np.where(rb_all[ix] < 1.55, 2, np.where(sd_ > 0.2, 1, np.where(sd_ < -0.2, 0, -1)))     # 0 arm, 1 hub, 2 bolt, -1 unsure
+    return np.where((rb_all[ix] < 1.55) | pad_all[ix], 2, np.where(sd_ > 0.2, 1, np.where(sd_ < -0.2, 0, -1)))     # 0 arm, 1 hub, 2 bolt, -1 unsure
 N = len(p); smp = np.arange(0, N, 97); ls = label(smp)
 h_first = smp[np.argmax(ls == 1)]                                  # first sampled hub node
 b_first = smp[len(ls) - np.argmax((ls[::-1] != 2) & (ls[::-1] != -1))]   # start of the trailing bolt run
@@ -128,6 +132,13 @@ for name, (x0, x1) in (('lug -X', (141.0, 151.75)), ('lug +X', (189.25, 200.0)))
     fy, fx, fz = s[idx, 2].mean() * A, s[idx, 4].mean() * A, s[idx, 6].mean() * A
     out[name] = dict(nodes=int(len(idx)), Fy_axial=round(float(fy)), Fx_shear=round(float(fx)), Fz_shear=round(float(fz)))
     print(f'{name}: nodes {len(idx)}, axial Fy ~ {fy:7.0f} N, shear Fx ~ {fx:6.0f} N, shear Fz ~ {fz:6.0f} N (section {A:.0f} mm2)')
+if pad_all.any():      # soft pads: axial force each carries (mean sigma y over its nodes x area), against the applied load
+    pf_ = []
+    for x0, dz in PAD_PTS:
+        k_ = pad_all & (np.hypot(p[:, 0] - x0, p[:, 2] - (CZ + dz)) < 0.95)
+        pf_.append(round(float(s[k_, 2].mean() * np.pi * 0.9 ** 2), 3) if k_.any() else None)
+    out['pad_forces_N'] = pf_
+    print(f'soft pads: axial force each (N) {pf_}, sum {sum(abs(v) for v in pf_ if v is not None):.3f} N')
 flags = []
 for k_ in ('lug -X', 'lug +X'):
     if k_ in out and abs(out[k_]['Fy_axial']) > 50: flags.append(f"{k_} axial {out[k_]['Fy_axial']} N > 50 N: ridge not carrying the tie?")

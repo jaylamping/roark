@@ -15,6 +15,7 @@ for job in "$@"; do
   IFS=: read tag case folder inst soft mesh <<< "$job"
   D=cad/_sim/$folder
   if ls $D/org16_$case.npz >/dev/null 2>&1; then echo "SKIP $folder" >> $L; continue; fi
+  if [ -f cad/_wip/R1D_HOLD ] && [ "$R1D_IGNORE_HOLD" != 1 ]; then echo "HELD: cad/_wip/R1D_HOLD present, not starting $folder" >> $L; break; fi
   if hung; then echo "STOPPED: HUNG_PID present ($(cat cad/_wip/arm-sw*/HUNG_PID 2>/dev/null | tr '\n' ' '))" >> $L; break; fi
   until [ "$(powershell -NoProfile -c '[int]((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory/1MB)')" -ge 10 ]; do sleep 60; done
   rm -rf $D; mkdir -p $D; cp cad/_sim/ua2/UA_HUBSEAT_r1d_$tag.SLDPRT $D/; cp cad/_sim/ua2/HUB_GROOVE_r1d.STL $D/

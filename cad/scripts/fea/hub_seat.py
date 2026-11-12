@@ -31,6 +31,10 @@ GROOVE = os.environ.get('HS_GROOVE') == '1'      # option (d): groove in the hub
 BOLTED = os.environ.get('HS_BOLTED') == '1'     # lugs in frictionless contact, steel M3 bodies bonded in the post bores, no preload
 MODEL = F / os.environ.get('HS_MODEL', ('UA_HUBSEAT_v31' if R1C else 'UA_HUBSEAT_v28') + ('_bolted' if BOLTED else '') + '.SLDPRT')
 BOLTS = F / 'HS_BOLTS.SLDPRT'
+PADS_ON = os.environ.get('HS_PADS') == '1'      # R1d gap cases: four soft bonded pads stabilise the arm (soft springs crash SolidWorks here)
+PADS = F / 'HS_PADS.SLDPRT'
+PAD_PTS = [(147.5, 15.0), (193.5, 15.0), (147.5, -15.0), (193.5, -15.0)]      # X, Z - CZ: post-top strips under the hub fill (theta 147 / 33 / 213 / 327)
+PAD_E = float(os.environ.get('HS_PAD_E', '0.05'))      # MPa: 4 pads Dia 1.8 x 0.3 give ~1.7 N/mm axially
 HX, CY, CZ = 170.49, 209.860668, 5.985875
 HUB_TOP = 319.86
 
@@ -162,6 +166,22 @@ def build():
         fb = d.InsertPart3(str(BOLTS), 1, '')
         d.ForceRebuild3(False)
         print('  bolts', fb is not None, bodies(d), flush=True)
+    if PADS_ON:      # pads from the trimmed post tops (Y 295.7) to the hub fill's underside (Y 296.0)
+        d.Save3(1, e, w)
+        import organic_master as M
+        pdoc = M.new_part(PADS)
+        for i, (x_, dz) in enumerate(PAD_PTS):
+            with M.Sk(pdoc, M.plane(pdoc, 'Y', 295.85, f'PAD{i}_P'), f'PAD{i}') as s_:
+                s_.circle((x_, 295.85, CZ + dz), 0.9)
+            M.feat(pdoc, s_.feat, f'PAD{i}', 0.3, False, mode=M.MID, lo=0.01)
+        e2, w2 = L(), L()
+        pdoc.Save3(1, e2, w2)
+        sw.CloseDoc(pdoc.GetTitle)
+        e, w = L(), L()
+        d = sw.OpenDoc6(str(MODEL), 1, 1, '', e, w)
+        fp = d.InsertPart3(str(PADS), 1, '')
+        d.ForceRebuild3(False)
+        print('  pads', fp is not None, bodies(d), flush=True)
     d.Save3(1, e, w)
     sw.CloseDoc(d.GetTitle)
 
@@ -180,9 +200,12 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
 
     def pre(st, d, lbc):
         bs = sorted(d.GetBodies2(0, True), key=lambda b: b.GetMassProperties(1190)[3])
-        if len(bs) != (4 if BOLTED else 2):
-            raise SystemExit(f'expected {4 if BOLTED else 2} bodies, got {len(bs)}')
-        bolts, hub, arm = bs[:-2], bs[-2], bs[-1]
+        want = (4 if BOLTED else 2) + (4 if PADS_ON else 0)
+        if len(bs) != want:
+            raise SystemExit(f'expected {want} bodies, got {len(bs)}')
+        hub, arm = bs[-2], bs[-1]
+        bolts = [b for b in bs[:-2] if 'HS_BOLTS' in b.Name.upper()] if PADS_ON else bs[:-2]
+        print(' bodies', [b.Name for b in bs], 'bolts', len(bolts), flush=True)
         if BOLTED:      # the two smallest bodies are the bolts: steel
             comp = st.SolidManager.GetComponentAt(0, I())
             for k in range(comp.SolidBodyCount):
@@ -191,6 +214,13 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                     nm = cb.SolidBodyName
                 except Exception:
                     nm = '?'
+                if 'HS_PADS' in str(nm).upper():      # soft stabilising pads
+                    m = cb.GetDefaultMaterial
+                    m.MaterialUnits = 0
+                    m.MaterialName = 'soft pad'
+                    for kk, v in (('EX', PAD_E * 1e6), ('NUXY', 0.3), ('GXY', PAD_E * 1e6 / 2.6), ('DENS', 100.0), ('SIGYLD', 1.0e6)):
+                        m.SetPropertyByName2(kk, v, False)
+                    print(' pad material', nm, cb.SetSolidBodyMaterial(m), flush=True)
                 if 'HS_BOLTS' in str(nm).upper():      # the inserted bolt bodies only (the arm body can carry its HS_BOLT_BORES feature's name)
                     m = cb.GetDefaultMaterial
                     m.MaterialUnits = 0
