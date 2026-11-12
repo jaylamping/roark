@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use can::{
     BusConfig, BusLinks, CommandBatch, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, Snapshot,
 };
-use common::{HZ, Shutdown, drive, id, info, next_snapshot, soon, timing};
+use common::{HZ, Shutdown, drive, id, info, interface, next_snapshot, soon, timing};
 use robstride::{DeviceId, Drive, Model, Uid};
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use telemetry::{Recorder, Recording, Session};
@@ -118,6 +118,7 @@ fn a_scan_finds_every_drive_and_a_set_id_moves_one() {
                 // Only drive 101 is the bus's; the others are what a scan is for.
                 drives: vec![drive(101, 0)],
                 timing: timing(),
+                interface: interface(),
             },
             BusLinks {
                 commands,
