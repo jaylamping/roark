@@ -654,3 +654,8 @@ covered the band r 36.45-37.55 only.
 - Added `r1e_side_with_shoulder.png` (straight view from the front, +Z, the whole upper arm) and `r1e_junction_under_cuff.png`,
   with the shoulder thread's WIP fork meshes (shoulder-study `cad/_wip/shoulder-pass1/stl/fork_front.STL` / `fork_rear.STL`,
   saved 2026-11-12 05:41; not a released export). The fork starts at Y 314.5, so the cuff ends about 12.5 mm above the junction.
+- The shim-body arm model's build failed once: with the end face lowered, the ridge-top flat cut stopped at Y 301.6 and left a
+  free 0.1 sliver of the old ridge top (Y 301.6-301.7, r about 35.8) as a second body. The print halves had it too, but their
+  build keeps only the main body, so they are unaffected. Fixed: with ARM_END_DROP the cut runs to Y 302.5.
+- The shim queue then waited about an hour (15:14-16:15) for the shoulder thread's busy instance (fea_shoulder HUBL_STOP2), per
+  the launch rules.

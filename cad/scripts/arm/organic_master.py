@@ -416,7 +416,8 @@ def upper_details(d):
                 # its outer boundary follows the chamfer exactly (r 35.91 left a 0.01 lip: a knife edge at the ridge ends)
                 # (R1e: with the end face lowered, the flat starts where the 45 flank meets it, so no step is left)
                 rf0 = 35.6 if drop <= 0 else min(35.6, (ye - ec) - 265.8)
-                y_revolve(d, 'RIDGE_TOP_FLAT', [(rf0, ye - ec), (SEAT_R, ye - ec), (SEAT_R + ec, ye), (SEAT_R + ec, ye + 0.3), (rf0, ye + 0.3)], cut=True)
+                yt_ = ye + 0.3 if drop <= 0 else HUB_JOINT + 0.5      # R1e: clear the old ridge top completely (ye + 0.3 left a free 0.1 sliver at Y 301.6-301.7)
+                y_revolve(d, 'RIDGE_TOP_FLAT', [(rf0, ye - ec), (SEAT_R, ye - ec), (SEAT_R + ec, ye), (SEAT_R + ec, yt_), (rf0, yt_)], cut=True)
         li = os.environ.get('ARM_SEAM_LEADIN')      # "relief,length" (R1e: "0.1,2.0")
         if li and R1D:      # R1e lead-in: the load flank relieved 'relief' along its normal over the last 'length' mm of arc at each ridge end
             # (the seam faces, theta 0 and 180, both halves), so a zero-gap flank does not bind or scuff where the halves slide tangentially
