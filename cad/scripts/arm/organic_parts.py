@@ -20,6 +20,7 @@ Caps press into their recesses (a lip with 0.05-0.15 mm interference) and lift o
     python organic_parts.py [front back inboard outboard disc_in disc_out caps ring pin]
 """
 import math
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -213,10 +214,17 @@ def post_z(d, name, q, sign, z0=None, inset=1.0, axis='Z', master='upper', r=Non
 FIN_END = 276.0      # R1c fins end inside the seam post (r 7 at Y 272), clear of its bolt counterbore / insert (to Y 275.25)
 
 
+def r1d_post_trim(d):
+    """R1d: the hub-post tops (and anything else inside the bore radius) cut back to the floor at Y 295.7, 0.3 under the hub spigot
+    and its fill, so the end face on the disc at Y 302 is the only axial contact besides the ridge."""
+    if M.R1D:
+        M.y_revolve(d, 'R1D_POST_TRIM', [(0.0, M.FLOOR_Y), (M.SEAT_R, M.FLOOR_Y), (M.SEAT_R, 296.3), (0.0, 296.3)], cut=True)
+
+
 def r1c_fins(d, sg, zl):
     # R1c fins: each hub post carries the hub joint's lift-off tie as Y-shear at its lug face (about 155 N per post at G90,
-    # 43 MPa across the layers at a bare Dia 9 post root). A 9 mm fin from the post toward -Y (Y 280 to the post's centre),
-    # from the lug-face level out to 1 mm into the skin, makes the root about 9 x 16: about 8 MPa. Cut by the bolt holes below.
+    # 43 MPa across the layers at a bare Dia 9 post root). A 9 mm fin from the post toward -Y (Y 276 to the post's centre),
+    # from the lug-face level out to 0.4 into the skin, makes the root about 9 x 16: about 8 MPa. Cut by the bolt holes below.
     for i, q in enumerate(HUB_COLS):
         x = q[0]
         ys = list(np.round(np.arange(HUB_POST_Y, FIN_END - 0.01, -0.7), 2)) + [FIN_END]   # grown (2026-11-11): into the seam post; dense samples follow the skin
@@ -242,6 +250,7 @@ def upper_half(front):
         post_z(d, f'HUB_POST{i}', (q[0], HUB_POST_Y), sg, z0=zl)              # sits between them, its bolt locating it
     if M.R1C:
         r1c_fins(d, sg, zl)
+        r1d_post_trim(d)
     if front:
         z_cyl(d, 'SEAM_INSERTS', UA_POSTS, 2.0, CZ - 0.01, CZ + 6.5, True)
         z_cyl(d, 'SEAM_PILOTS', UA_POSTS, 1.6, CZ + 6.4, CZ + 10.0, True)
@@ -401,7 +410,7 @@ def fea_upper():
     the lug end faces carry the stop load where the slot end bears (X 135.7-139.4)."""
     sim = CAD / '_sim' / 'upper-arm'
     sim.mkdir(parents=True, exist_ok=True)
-    p = sim / ('UA_ORGANIC_BONDED_v29.SLDPRT' if M.R2 else 'UA_ORGANIC_BONDED_v30.SLDPRT' if M.R1B else 'UA_ORGANIC_BONDED_v31.SLDPRT' if M.R1C else 'UA_ORGANIC_BONDED_v28.SLDPRT')     # v29: R2 trial, v30: R1b, v31: R1c
+    p = sim / ('UA_ORGANIC_BONDED_v29.SLDPRT' if M.R2 else 'UA_ORGANIC_BONDED_v30.SLDPRT' if M.R1B else (os.environ.get('ARM_FEA_NAME', 'UA_ORGANIC_BONDED_v32.SLDPRT') if M.R1D else 'UA_ORGANIC_BONDED_v31.SLDPRT') if M.R1C else 'UA_ORGANIC_BONDED_v28.SLDPRT')     # v29: R2 trial, v30: R1b, v31: R1c
     shutil.copy(M.OUT['upper'], p)
     e, w = L(), L()
     d = sw.OpenDoc6(str(p), 1, 1, '', e, w)

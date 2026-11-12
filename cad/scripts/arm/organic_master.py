@@ -45,9 +45,17 @@ R1C = os.environ.get('ARM_R1C') == '1'      # R1c (2026-11-11): hub band: fins o
 SEAT_R = 35.9      # R1c keeps R1's 0.1 radial on the r 35.8 spigot (no interference risk; the fins carry the joint)
 RIDGE_LAND = float(os.environ.get('ARM_RIDGE_LAND', '2.0'))      # option (d): spigot land below the groove, Y 296 to the groove opening (2026-11-11: 2 mm)
 RIDGE_ARC = (35.0, 145.0)      # ridge arcs theta 35-145 and 215-325 (groove full depth 30-150 / 210-330, run-outs to 20 / 160)
+# R1d (2026-11-12, after the R1c delta review): one axial datum (the end face on the hub disc at Y 302), the seat floor and post
+# tops 0.3 below the spigot (Y 295.7), the load flank 0.1 off the groove's (ARM_FLANK_GAP) with crush ribs proud of it
+# (ARM_RIB_PROUD: 0.25 to print, 0.1 = touching for the FEA, 0 = none), tip relieved to r 34.8, no floor corner ring, the collar
+# foot chamfered into the arm's inside. Implies R1C. ARM_WIP_TAG keeps FEA variants apart.
+R1D = os.environ.get('ARM_R1D') == '1'
+if R1D:
+    R1C = True
+FLOOR_Y = 295.7 if R1D else 296.0
 if R1C:
-    WIP = CAD / '_wip' / 'r1c'
-    OUT['upper'] = WIP / 'upper_arm_organic_master_left_r1c.SLDPRT'
+    WIP = CAD / '_wip' / ('r1d' + os.environ.get('ARM_WIP_TAG', '') if R1D else 'r1c')
+    OUT['upper'] = WIP / ('upper_arm_organic_master_left_r1d.SLDPRT' if R1D else 'upper_arm_organic_master_left_r1c.SLDPRT')
     WIP.mkdir(parents=True, exist_ok=True)
 R2_NECK = dict(x0=145.0, x1=156.0, hi=(15.0, 48.0), lo=(-32.0, -15.0), runout=(3.0, 2.0, 1.5))
 if R2:
@@ -279,7 +287,9 @@ def arc_band(d, name, r0, r1, phi0, phi1, x0, x1, cut, n=60):
 def upper_details(d):
     # hub seat: today's hub spigot (r 35.8, Y 296-302) sits in a bore; it is held by the two seam bolts through its lugs
     # (organic_parts.py), as in today's upper arm
-    y_revolve(d, 'HUB_SEAT', [(0.0, 296.0), (SEAT_R, 296.0), (SEAT_R, HUB_JOINT + 1), (0.0, HUB_JOINT + 1)], cut=True)
+    y_revolve(d, 'HUB_SEAT', [(0.0, FLOOR_Y), (SEAT_R, FLOOR_Y), (SEAT_R, HUB_JOINT + 1), (0.0, HUB_JOINT + 1)], cut=True)
+    if R1D:
+        os.environ['ARM_RIDGE'] = '1'
     if R1C and os.environ.get('ARM_RIDGE') == '1':      # option (d), 2026-11-11: Y tie, a ridge in the bore into a groove in the hub spigot
         # profile (r, Y): load flank (low-Y side) 30 deg from the radial plane, line-to-line with the groove's; tip r 34.5 (0.2 off the
         # groove bottom r 34.3); other flank 45 deg with 0.3 axial clearance. Arcs RIDGE_ARC and mirror (groove 5 deg longer each end).
@@ -292,7 +302,13 @@ def upper_details(d):
         # makes the seat wall solid all round (outer skin there is r >= 38.21; the ring was already >= 83 % solid in every 10 deg bin,
         # the rest is the 0.3 mm gap behind the bore). Full ring: no end faces, so no new overhang with the halves seam-face down.
         if os.environ.get('ARM_SEAT_COLLAR', '1') == '1':
-            y_revolve(d, 'SEAT_COLLAR', [(SEAT_R, 296.0), (37.4, 296.0), (37.4, HUB_JOINT), (SEAT_R, HUB_JOINT)])
+            y_revolve(d, 'SEAT_COLLAR', [(SEAT_R, FLOOR_Y), (37.4, FLOOR_Y), (37.4, HUB_JOINT), (SEAT_R, HUB_JOINT)])
+            if R1D:      # collar foot: a 45 deg chamfer from the bore edge down into the arm's inside wall (r ~36.2) instead of the
+                # 0.3 ledge and its re-entrant corner (R1c STOP_0 layer 1.29 at 0.5 mm); the triangle's outer part lies in the skin
+                y_revolve(d, 'SEAT_COLLAR_FOOT', [(SEAT_R, FLOOR_Y), (37.0, FLOOR_Y), (37.0, FLOOR_Y - 1.1)])
+        if R1D:      # load flank 0.1 (ARM_FLANK_GAP) off the groove's, measured normal to the flank
+            gap = float(os.environ.get('ARM_FLANK_GAP', '0.1'))
+            ly = lambda r_: y0 + (35.8 - r_) * t30 + gap / math.cos(math.radians(30.0))
         tc = float(os.environ.get('ARM_RIDGE_TIP_CHAMFER', '0.2'))      # load-flank tip corner, clear of the groove's 0.4 bottom round (its tangent point is at r 34.5)
         tip = [(34.5 + tc * math.cos(math.radians(30.0)), ly(34.5 + tc * math.cos(math.radians(30.0)))), (34.5, ly(34.5) + tc)] if tc > 0 else [(34.5, ly(34.5))]
         top = [(34.5, ny(34.5))]
@@ -301,6 +317,11 @@ def upper_details(d):
             # R1.0 round by >= 0.26 (min over its arc); the load flank is unchanged
             ny = lambda r_: y0 + 2.1 + (r_ - 34.3)
             top = [(34.5, 299.85), (34.9, ny(34.9))]
+        if R1D:      # tip relieved to r 34.8 (0.5 off the groove bottom; it prints on support at the crown); 0.15 chamfer on the
+            # load side; top chamfer (34.8, 300.4) -> (35.0, 300.8) clears the hub's R1.0 round by >= 0.33
+            c30 = math.cos(math.radians(30.0))
+            tip = [(34.8 + 0.15 * c30, ly(34.8 + 0.15 * c30)), (34.8, ly(34.8) + 0.15)]
+            top = [(34.8, 300.4), (35.0, ny(35.0))]
         prof = [(36.3, ly(36.3))] + tip + top + [(35.9, ny(35.9)), (36.3, ny(35.9))]      # stays inside Y 302 (the arm's end face)
         # two partial revolves, one per arc, centred on theta 90 / 270 (2026-11-11: a full revolve trimmed back to r 35.88 left a
         # 0.02 mm band proud of the bore all round, which broke the FEA mesh)
@@ -309,6 +330,47 @@ def upper_details(d):
                 sk_.poly([(HX, y_, CZ + sgn * r_) for r_, y_ in prof])
                 centerline(sk_, (HX, 150, CZ), (HX, 340, CZ))
             revolve(d, sk_.feat, f'SEAT_RIDGE{tag}', None, False, angle=RIDGE_ARC[1] - RIDGE_ARC[0], mid=True, lo=0.01)
+        rp = float(os.environ.get('ARM_RIB_PROUD', '0.25')) if R1D else 0.0
+        if rp > 0:      # R1d crush ribs on the load flank: 6 per arc, 1 wide (tangential), over r 34.95-35.75, rp proud of the flank
+            # (0.25 to print: 0.15 interference on the 0.1 gap; 0.1 in the FEA = touching). Each lies in a plane through the hub axis,
+            # which carries the front rib at theta and the back one at theta + 180.
+            c30, s30 = math.cos(math.radians(30.0)), math.sin(math.radians(30.0))
+            px_, pz_ = plane(d, 'X', HX, 'RIB_AX_PX'), plane(d, 'Z', CZ, 'RIB_AX_PZ')
+            d.ClearSelection2(True); px_.Select2(False, 0); pz_.Select2(True, 0)
+            d.InsertAxis2(True)
+            ax_ = d.FeatureByPositionReverse(0); ax_.Name = 'HUB_AXIS_REF'
+            def rib_pts(th):
+                rA, rB = 34.95, 35.75
+                A, B = (rA, ly(rA)), (rB, ly(rB))
+                q = [(A[0] + 0.25 * s30, A[1] + 0.25 * c30), (B[0] + 0.25 * s30, B[1] + 0.25 * c30), (B[0] - rp * s30, B[1] - rp * c30), (A[0] - rp * s30, A[1] - rp * c30)]
+                c_, s_ = math.cos(math.radians(th)), math.sin(math.radians(th))
+                return [(HX + r_ * c_, y_, CZ + r_ * s_) for r_, y_ in q]
+            for k_, th in enumerate((45.0, 63.0, 81.0, 99.0, 117.0, 135.0)):
+                a_ = th - 90.0
+                pts_ = rib_pts(th) + rib_pts(th + 180.0)
+                done = False
+                for flip in (False, True):
+                    d.ClearSelection2(True); px_.Select2(False, 0); ax_.Select2(True, 1)
+                    neg = (a_ < 0) != flip
+                    pl_ = d.FeatureManager.InsertRefPlane(16 + (256 if neg else 0), math.radians(abs(a_)), 4, 0, 0, 0) if abs(a_) > 1e-6 else px_
+                    if pl_ is None:
+                        continue
+                    if pl_ is not px_:
+                        pl_.Name = f'RIB{k_}_P{"f" if flip else ""}'
+                    d.ClearSelection2(True); pl_.Select2(False, 0)
+                    d.SketchManager.InsertSketch(True)
+                    T = d.GetActiveSketch2.ModelToSketchTransform.ArrayData
+                    zoff = max(abs(x * m * T[2] + y * m * T[5] + z * m * T[8] + T[11]) for x, y, z in pts_) / m      # mm off the sketch plane
+                    d.InsertSketch2(True)
+                    if zoff < 1e-3:
+                        with Sk(d, pl_, f'SEAT_FLANK_RIB{k_}') as sk_:
+                            sk_.poly(pts_[:4]); sk_.poly(pts_[4:])
+                        feat(d, sk_.feat, f'SEAT_FLANK_RIB{k_}', 1.0, False, mode=MID, lo=0.01)
+                        done = True
+                        break
+                    print(f'  rib plane {k_} at {a_:+.0f} deg off by {zoff:.3f} mm, flip', flush=True)
+                if not done:
+                    raise SystemExit(f'rib {k_} plane failed')
         ec = float(os.environ.get('ARM_END_CHAMFER', '0.5'))
         if ec > 0:      # bore-to-end-face edge (r 35.9, Y 302): 0.5 x 45 chamfer, inside only, for the hub's R0.3 spigot-to-disc corner (rev C+)
             y_revolve(d, 'SEAT_END_CHAMFER', [(SEAT_R, HUB_JOINT - ec), (SEAT_R + ec, HUB_JOINT), (SEAT_R + ec, HUB_JOINT + 0.3), (SEAT_R, HUB_JOINT + 0.3)], cut=True)
@@ -316,7 +378,7 @@ def upper_details(d):
                 # leaving a 0.2-tall wedge on the ridge top at the bore (mesh gate, 2026-11-11): flatten the ridge top at the chamfer's start
                 # its outer boundary follows the chamfer exactly (r 35.91 left a 0.01 lip: a knife edge at the ridge ends)
                 y_revolve(d, 'RIDGE_TOP_FLAT', [(35.6, HUB_JOINT - ec), (SEAT_R, HUB_JOINT - ec), (SEAT_R + ec, HUB_JOINT), (SEAT_R + ec, HUB_JOINT + 0.3), (35.6, HUB_JOINT + 0.3)], cut=True)
-        rf = float(os.environ.get('ARM_FLOOR_FILLET', '0.25'))
+        rf = float(os.environ.get('ARM_FLOOR_FILLET', '0' if R1D else '0.25'))      # R1d: none (the floor has 0.3 clearance)
         if rf > 0:      # (b) bore-to-floor corner (r 35.9, Y 296), where the spigot's bottom edge bore (STOP_0 vm SF 0.94 at 0.5 mm).
             # 0.25 clears the hub spigot's 0.4 bottom round by ~0.06; it would touch a sharp-cornered spigot by ~0.1 (needs the rounded hub)
             # built as a revolved 45 deg corner ring (edge fillets here go stale after the first edge and fail); where there is no
@@ -327,7 +389,7 @@ def upper_details(d):
                 sk_.poly([(HX, y_, CZ + r_) for r_, y_ in [(SEAT_R - rf, 296.0), (SEAT_R + 0.3, 296.0), (SEAT_R + 0.3, 296.0 + rf + 0.3), (SEAT_R, 296.0 + rf)]])
                 centerline(sk_, (HX, 150, CZ), (HX, 340, CZ))
             revolve(d, sk_.feat, 'SEAT_FLOOR_CORNER', None, False, angle=36.0, mid=True, lo=0.01)
-    if R1C and os.environ.get('ARM_SEAT_RIBS', '1') == '1':      # seat crush ribs (2026-11-11): the seat must be gap-free, or the hub's lugs and bolts carry the moment.
+    if R1C and os.environ.get('ARM_SEAT_RIBS', '0') == '1':      # default off (2026-11-12): R1c/R1d do not use the bore crush ribs      # seat crush ribs (2026-11-11): the seat must be gap-free, or the hub's lugs and bolts carry the moment.
         # Six axial ribs on the r 35.9 bore over Y 296-302 at theta 45/90/135 in each half (from +X toward +Z about the hub
         # axis), 1 wide at the tip, tip 0.15 proud of the r 35.8 spigot; the halves still close on the seam and the ribs crush.
         r_tip = float(os.environ.get('ARM_SEAT_RIB_TIP', '35.65'))      # 35.8 for the FEA model (crushed, line-to-line)

@@ -24,7 +24,8 @@ F = Path(os.environ.get('ARM_FEA_DIR', CAD / '_sim' / 'ua2'))
 HUB_SRC = Path(r'J:/code/roark-wt/left-arm/cad/upper-arm/upper_arm_hub_left.SLDPRT')   # the native part its STEP/STL exports were recorded from
 HUB = F / ('HUB_GROOVE.SLDPRT' if os.environ.get('HS_GROOVE') == '1' else 'HUB_TODAY.SLDPRT')
 R1C = os.environ.get('ARM_R1C') == '1'
-ARM_MODEL = 'UA_ORGANIC_BONDED_v31.SLDPRT' if R1C else 'UA_ORGANIC_BONDED_v28.SLDPRT'
+R1D = os.environ.get('ARM_R1D') == '1'
+ARM_MODEL = os.environ.get('ARM_FEA_NAME', 'UA_ORGANIC_BONDED_v32.SLDPRT') if R1D else 'UA_ORGANIC_BONDED_v31.SLDPRT' if R1C else 'UA_ORGANIC_BONDED_v28.SLDPRT'
 GROOVE = os.environ.get('HS_GROOVE') == '1'      # option (d): groove in the hub spigot
 BOLTED = os.environ.get('HS_BOLTED') == '1'     # lugs in frictionless contact, steel M3 bodies bonded in the post bores, no preload
 MODEL = F / os.environ.get('HS_MODEL', ('UA_HUBSEAT_v31' if R1C else 'UA_HUBSEAT_v28') + ('_bolted' if BOLTED else '') + '.SLDPRT')
@@ -38,8 +39,10 @@ def build():
     os.chdir(ARM)
     import organic_parts as OP
     from organic_master import L, NUL, sw, bodies
-    shutil.copy(HUB_SRC, HUB)          # (the STEP import hung behind a dialog in a hidden instance)
-    if GROOVE:      # option (d): the groove in the hub spigot (profile with organic_master's ridge), on arcs theta 50-130 and 230-310
+    REUSE = os.environ.get('HS_REUSE_HUB') == '1' and HUB.exists()      # keep the grooved hub other runs' models reference
+    if not REUSE:
+        shutil.copy(HUB_SRC, HUB)          # (the STEP import hung behind a dialog in a hidden instance)
+    if GROOVE and not REUSE:      # option (d): the groove in the hub spigot (profile with organic_master's ridge): full depth theta 30-150 / 210-330, run-outs beyond
         import math as m_
         import numpy as np
         import organic_master as M
@@ -123,10 +126,11 @@ def build():
         raise SystemExit('open ' + str(MODEL))
     for i, q in enumerate(OP.HUB_COLS):
         for sg in (1, -1):
-            OP.post_z(d, f'HUB_POST{i}{"F" if sg > 0 else "B"}', (q[0], OP.HUB_POST_Y), sg, z0=CZ + sg * OP.HUB_LUG_HZ)
+            OP.post_z(d, f'HUB_POST{i}{"F" if sg > 0 else "B"}', (q[0], OP.HUB_POST_Y), sg, z0=CZ + sg * (OP.HUB_LUG_HZ + (OP.CL if R1D else 0.0)))      # R1d: the printed 0.1 clearance to the lug
     if R1C:
         for sg in (1, -1):
-            OP.r1c_fins(d, sg, CZ + sg * OP.HUB_LUG_HZ)
+            OP.r1c_fins(d, sg, CZ + sg * (OP.HUB_LUG_HZ + (OP.CL if R1D else 0.0)))
+        OP.r1d_post_trim(d)
     if BOLTED:      # M3 bores through both posts at each lug (the real holes are 3.4 / inserts; here the bolt fills its bore)
         OP.z_cyl(d, 'HS_BOLT_BORES', OP.HUB_COLS, 1.5, CZ - 45.0, CZ + 50.0, True)
         d.ForceRebuild3(False)
@@ -216,7 +220,7 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
         # no soft springs: the bonded lugs already hold the arm (setting them crashed SolidWorks intermittently)
 
         def post(st_, res):
-            return dict(model='hub as its own body, seat by contact, lugs bonded to posts')
+            return dict(model='hub as its own body, seat by contact, ' + ('lugs in frictionless contact with the posts and steel bolts (no preload)' if BOLTED else 'lugs bonded to posts'))
         return post
 
     for k in ('STOP_0', 'STOP_124', 'G90'):
@@ -224,6 +228,10 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
             if k + sfx in CASES:
                 c = dict(CASES[k + sfx])
                 c.update(part='hubseat', fix=[('fixed', ('plane', (HX, HUB_TOP, CZ), None))], pre_mesh=pre)   # hub top face
+                ms = float(os.environ.get('HS_SEAT_MESH', '0.35' if R1D else '0'))
+                if ms > 0:      # R1d (review 2026-11-12): mesh control on the ridge, groove, collar foot and bore faces (any face meeting the seat
+                    # box, up to 400 mm2 so the large skin and spigot faces are left at the global size)
+                    c['ctrl'] = list(c.get('ctrl', [])) + [(('touch', [128.0, 294.0, -40.0, 213.0, 302.2, 50.0], 400.0), ms)]
                 CASES['HS_' + k + sfx] = c
 
 

@@ -50,14 +50,32 @@ def rep(body, name, mask, layer_col, allow_layer=22.5):
     row = {'nodes': int(len(a))}
     if len(a) == 0:
         print(f'{body:3s} {name}: no nodes'); out[f'{body}: {name}'] = row; return
-    for lab, v, al in (('vm', vm, 45.0), ('layer', s[:, layer_col], allow_layer)):
+    # interlayer shear: arm layers lie in Z planes (tau xz, tau yz = s cols 5, 6), the hub's in Y planes (tau xy, tau yz = cols 4, 6)
+    shear = np.hypot(s[:, 5], s[:, 6]) if layer_col == 3 else np.hypot(s[:, 4], s[:, 6])
+    for lab, v, al in (('vm', vm, 45.0), ('layer', s[:, layer_col], allow_layer), ('shear', shear, 13.0)):
         i = a[np.argmax(v[a])]
-        av = [float(v[ids[tree.query_ball_point(p[i], rr)]].mean()) for rr in (0.5, 1.0, 2.0)]
-        row[lab] = dict(peak=round(float(v[i]), 1), sf=round(al / v[i], 2) if v[i] > 0 else None, avg=[round(x, 1) for x in av],
-                        sf_avg=[round(al / x, 2) if x > 0 else None for x in av], at=p[i].round(1).tolist(),
-                        r=round(float(r[i]), 2), theta=round(float(th[i]), 1))
-        print(f'{body:3s} {name:44s} {lab:5s} peak {v[i]:6.1f} SF {al / v[i] if v[i] > 0 else 0:5.2f} | avg .5/1/2 {av[0]:5.1f}/{av[1]:5.1f}/{av[2]:5.1f} '
-              f'SF {al / av[0] if av[0] > 0 else 0:4.2f}/{al / av[1] if av[1] > 0 else 0:4.2f}/{al / av[2] if av[2] > 0 else 0:4.2f} at {p[i].round(1).tolist()} r {r[i]:.2f} th {th[i]:.0f}')
+        # worst average ANYWHERE in the region (review 2026-11-12), not just around the peak node: sphere averages for every
+        # candidate node (value >= 40 % of the peak, top 5000), the maximum of each, and how many nodes the 0.5 mm one rests on
+        cand = a[v[a] >= 0.4 * v[i]] if v[i] > 0 else a[:1]
+        cand = cand[np.argsort(-v[cand])][:5000]
+        worst = []
+        for rr in (0.5, 1.0, 2.0):
+            best = (-np.inf, None, 0)
+            for j in cand:
+                nb = ids[tree.query_ball_point(p[j], rr)]
+                mv = float(v[nb].mean())
+                if mv > best[0]:
+                    best = (mv, j, len(nb))
+            worst.append(best)
+        av = [w[0] for w in worst]
+        j5 = worst[0][1]
+        row[lab] = dict(peak=round(float(v[i]), 1), sf=round(al / v[i], 2) if v[i] > 0 else None, at=p[i].round(1).tolist(),
+                        r=round(float(r[i]), 2), theta=round(float(th[i]), 1),
+                        worst_avg=[round(x, 1) for x in av], sf_avg=[round(al / x, 2) if x > 0 else None for x in av],
+                        worst_avg_at=[p[w[1]].round(1).tolist() for w in worst], nodes_in_05=worst[0][2], allowable=al)
+        print(f'{body:3s} {name:44s} {lab:5s} peak {v[i]:6.1f} SF {al / v[i] if v[i] > 0 else 0:5.2f} at {p[i].round(1).tolist()} th {th[i]:.0f} | worst avg .5/1/2 '
+              f'SF {al / av[0] if av[0] > 0 else 0:4.2f}/{al / av[1] if av[1] > 0 else 0:4.2f}/{al / av[2] if av[2] > 0 else 0:4.2f} '
+              f'(0.5 mm: {worst[0][2]} nodes at {p[j5].round(1).tolist()} th {th[j5]:.0f})')
     out[f'{body}: {name}'] = row
 
 
@@ -65,13 +83,28 @@ ALL = np.ones(len(p), bool)
 print(f'nodes: arm {len(arm)}, hub {len(hb)}, bolts {len(bl)}')
 # arm side (layer = sigma z, column 3)
 rep('arm', 'WHOLE ARM (nothing excluded)', ALL, 3)
-rep('arm', 'ridge load flank (within 0.15 of the 30 deg flank, r 34.6-35.9)', ridge_arc & (r > 34.6) & (r < 35.9) & (np.abs((y - (298.0 + (35.8 - r) * np.tan(np.radians(30)))) * np.cos(np.radians(30))) < 0.15), 3)
+rep('arm', 'ridge load flank (within 0.25 of the 30 deg flank, r 34.6-35.9)', ridge_arc & (r > 34.6) & (r < 35.9) & (np.abs((y - (298.0 + (35.8 - r) * np.tan(np.radians(30)))) * np.cos(np.radians(30))) < 0.25), 3)
 rep('arm', 'ridge body (r < 35.9, Y 297.5-302)', ridge_arc & (r < 35.9) & (y > 297.5) & (y < 302.05), 3)
 rep('arm', 'ridge root / bore wall (r 35.9-37.5, Y 297.5-302)', ridge_arc & (r >= 35.9) & (r < 37.5) & (y > 297.5) & (y < 302.05), 3)
 rep('arm', 'seat bore + end face elsewhere (Y 295-302.6, r<38)', ~(ridge_arc & (y > 297.5) & (y < 302.05) & (r < 37.5)) & (y > 295) & (y < 302.6) & (r < 38) & (r > 33), 3)
 rep('arm', 'hub posts (Y 285-296)', posts & (y > 285) & (y < 296), 3)
 rep('arm', 'fins (Y 270-285, posts)', posts & (y > 270) & (y <= 285), 3)
 rep('arm', 'skin elsewhere (Y 270-296)', ~posts & (y > 270) & (y < 296), 3)
+# contact on the groove's load flank (arm nodes within 0.03 mm of its plane): with the R1d flank gap these are the crush ribs only.
+# Bearing = stress normal to the flank (compression negative), from the full tensor.
+t30_ = np.tan(np.radians(30)); dn = (y - (298.0 + (35.8 - r) * t30_)) * np.cos(np.radians(30))
+on = arm[(np.abs(dn[arm]) < 0.03) & ridge_arc[arm] & (r[arm] > 34.6) & (r[arm] < 35.9)]
+if len(on):
+    c_, s_ = np.cos(np.radians(th[on])), np.sin(np.radians(th[on]))
+    nr, ny_ = np.sin(np.radians(30)), np.cos(np.radians(30))           # flank normal in (r, Y), pointing +Y into the ridge
+    n = np.c_[nr * c_, np.full(len(on), ny_), nr * s_]
+    S = s[on]; sx, sy, sz, txy, txz, tyz = S[:, 1], S[:, 2], S[:, 3], S[:, 4], S[:, 5], S[:, 6]
+    sn = (n[:, 0] ** 2 * sx + n[:, 1] ** 2 * sy + n[:, 2] ** 2 * sz + 2 * (n[:, 0] * n[:, 1] * txy + n[:, 0] * n[:, 2] * txz + n[:, 1] * n[:, 2] * tyz))
+    out['flank_contact'] = dict(nodes=int(len(on)), theta_span=[round(float(th[on].min()), 1), round(float(th[on].max()), 1)],
+                                sigma_n_min=round(float(sn.min()), 1), sigma_n_mean=round(float(sn.mean()), 1))
+    print(f"load-flank contact nodes {len(on)} (theta {th[on].min():.0f}-{th[on].max():.0f}); bearing sigma_n min {sn.min():.1f} MPa, mean {sn.mean():.1f} MPa (negative = compression)")
+else:
+    out['flank_contact'] = dict(nodes=0); print('load-flank contact nodes: none within 0.03 mm')
 # hub side (layer = sigma y, column 2)
 rep('hub', 'WHOLE HUB (nothing excluded)', ALL, 2)
 rep('hub', 'load flank (Y 297.8-299.1, r 34.2-35.85, arcs)', groove_arc & (y > 297.8) & (y < 299.1) & (r > 34.2) & (r < 35.85), 2)
