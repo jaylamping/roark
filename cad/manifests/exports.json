@@ -1,5 +1,24 @@
 {
   "version": 1,
   "description": "Where each STEP/STL in cad/exports/ came from. Written by tools/cad/record_export.py; checked by tools/cad/check_cad_layout.py (a changed source makes its export stale). Paths are relative to cad/.",
-  "exports": []
+  "exports": [
+    {
+      "export": "exports/shoulder/shoulder_hub_left.STEP",
+      "source": "shoulder/left/shoulder_hub_left.SLDPRT",
+      "config": "Default",
+      "settings": "STEP (SolidWorks default AP214), mm",
+      "sourceSha256": "625c70d823630b4958f0a7fc9dec6373f982ffeb452d0842ecad83bf25d53047",
+      "exportSha256": "39f002b915ce916eb8ff256c39f99f4f1015a02a0972ccfe14087cd88802f690",
+      "recorded": "2026-11-12T00:06:21Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_hub_left.STL",
+      "source": "shoulder/left/shoulder_hub_left.SLDPRT",
+      "config": "Default",
+      "settings": "STL binary, mm, custom: deviation 0.01 mm, angle 5 deg, model coordinates kept",
+      "sourceSha256": "625c70d823630b4958f0a7fc9dec6373f982ffeb452d0842ecad83bf25d53047",
+      "exportSha256": "523eb9946660f90e92bf84c16c820bc1c9c4296ebbe1852d6a1f80397356d176",
+      "recorded": "2026-11-12T00:06:21Z"
+    }
+  ]
 }

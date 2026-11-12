@@ -480,3 +480,17 @@ Two suppressed features are driven by global variables in `shoulder_hub_left`:
 | [D6_shoulder_vs_arm_render.png](D6_shoulder_vs_arm_render.png) | Beside the arm's own render |
 | [C1_spine_pad_contact.png](C1_spine_pad_contact.png), [C2_shell_skin_contact.png](C2_shell_skin_contact.png) | The two shell contacts |
 | [P1_look_front_outboard.png](P1_look_front_outboard.png) - [P5_today_vs_pass1.png](P5_today_vs_pass1.png) | Look, back, exploded, roll-axis section with bearing and cable path, today against the first pass |
+
+## Hub rev C+ exports for the arm side (from fd0cef8)
+
+The hub as committed at fd0cef8 (rev C+, wall fill to r 23). The working copy is byte-identical to that revision
+(SHA256 below matches the LFS object). Both exports are recorded in `cad/manifests/exports.json`.
+
+| File | Settings | SHA256 |
+|---|---|---|
+| `cad/shoulder/left/shoulder_hub_left.SLDPRT` (source) | | `625c70d823630b4958f0a7fc9dec6373f982ffeb452d0842ecad83bf25d53047` |
+| `cad/exports/shoulder/shoulder_hub_left.STL` | binary, mm, model coordinates kept; deviation 0.01 mm, angle 5°; 41,700 facets, watertight | `523eb9946660f90e92bf84c16c820bc1c9c4296ebbe1852d6a1f80397356d176` |
+| `cad/exports/shoulder/shoulder_hub_left.STEP` | SolidWorks default (AP214), mm | `39f002b915ce916eb8ff256c39f99f4f1015a02a0972ccfe14087cd88802f690` |
+
+- The seam-bolt (lug) holes in the hub are Ø3.4 (r 1.7), for M3 bolts (r 1.5).
+- Bounds (mm, model frame): X 131.19-209.79, Y 288.00-319.86, Z -33.31-45.29.
