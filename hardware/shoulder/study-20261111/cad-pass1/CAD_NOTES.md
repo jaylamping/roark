@@ -594,3 +594,20 @@ Pictures of the real parts: [look-options/side_centre/real/](look-options/side_c
   - this needs the real plug's dimensions: measure an XT30(2+2)-F with its leads
 - The opening shows as a notch in the cuff top at each side. It is not done yet.
 
+**r 47 checks, completed:**
+- **Shell and frame** (`check_reva.py`): the fork front clears the r 80 shell opening at the -11 stop by 2.21 / 3.75 / 2.96
+  (pitch -30 / 0 / +24; was 2.27 / 3.79 / 3.03). At pitch -30 first contact is now at roll -12, 1° past the stop (was
+  -13). Frame, gussets and wing are unchanged: 25.5 to the drum at -11, and first contacts are the arm on hardpoint H5
+  at -20/-21 as before.
+- **Stop torque path:** rated layer SF ≥ 1.64 everywhere (see checks/B_ROLL_STOPS.md).
+
+**RS02 plug: decided (coordinator, 2026-11-12)**
+- One socket per motor, robot-wide (Joey's rule). The 173° socket takes the plug. The -7° socket stays capped.
+- The plug pocket is option (a), a hidden column ([look-options/plug_pocket/README.md](look-options/plug_pocket/README.md)).
+  It goes on the real fork front once its mock-up passes clearances.
+- It is sized for the worst credible plug: about 15 mm above the socket's top. Joey's measurement of a real XT30(2+2)-F
+  confirms it or reopens it.
+- **Assembly step:** with the fork front on the bench and the RS02 in, feed the lead down the column into the tap. Then
+  push the plug straight down onto the socket with long-nose pliers or a push-stick; the opening is 16.5 × 10 mm.
+  Unplug with the same pliers, pulling straight up.
+

@@ -241,3 +241,23 @@ them for the right).
 - **Whether the printed stop must survive a full 60 N·m stall** (needing more mass and outline than leg2), or whether a
   stall is the controller's job with the printed stop good for rated torque, is Joey's call.
 
+## Stall and rated FEA on the real r 47 fork rear, six-screw joint (2026-11-12)
+
+`STOP_A2_TOOTH_J`, 1714 N on the tooth flank (60 N·m at r 35), held by the six joint screws and the 6808 seat radially.
+SF at the 1 mm average. Layer is tensile σy (the fork rear prints upright). Rated is 20 N·m, the stall result scaled by 1/3.
+
+| Zone | r 47, six screws: stall bulk / layer | rated bulk / layer | Old sleeve, four screws: rated layer | leg2 mock-up: rated layer |
+|---|---|---|---|---|
+| Tooth root | 1.02 / 1.59 | 3.07 / 4.77 | 4.74 | 3.25 |
+| Pad junction | 0.58 / 0.66 | 1.74 / **1.98** | 2.12 | 2.59 |
+| Leg Y 380-395 | 0.60 / 0.64 | 1.79 / **1.93** | 2.20 | 2.43 |
+| Joint zone (Y 340-364) | 0.98 / 0.55 | 2.93 / **1.64** | 1.32 | 1.65 |
+
+- **At rated 20 N·m the real parts now meet layer SF ≥ 1.5 everywhere** (lowest 1.64, at the joint). The lower screw pair
+  that r 47 makes possible closed the joint gap, so **leg2 is not needed for the rated target**.
+- **At a 60 N·m stall:**
+  - Bulk 0.58-1.02, layer 0.55-1.59.
+  - The pad junction, the leg and the joint stay under 1.0.
+  - Surviving a full stall in print would need more than leg2 (leg2 reaches 0.55-1.08 layer).
+  - **This is Joey's call:** a stall-proof printed stop, or the controller limits above as the stall protection.
+
