@@ -68,7 +68,7 @@ And between the control thread and the rest of `runtime` (`runtime::Runtime`), u
 | Enables, each of a set of joints | operator → control | The operator's push fails; nothing was asked. Control takes them after its reads, one running at a time: the rest are refused `Busy` |
 | Enable replies, one per enable | control → operator | Dropped and counted (`replies_dropped`); the limbs' states still show in the views |
 | Views, each bus's newest snapshot once a tick (only when asked for) | control → operator | Dropped and counted (`views_dropped`) |
-| Progress, a count of passes in which every bus with a limb enabled or stopping was on time (`Runtime::progress`) | control → the binary's watcher, which feeds systemd's watchdog while it rises | Never full: a counter |
+| Progress, a count of passes in which every bus in a run (a limb enabled or stopping, or a frame sent it that its snapshots don't cover yet) was on time (`Runtime::progress`) | control → the binary's watcher, which feeds systemd's watchdog while it rises | Never full: a counter |
 
 ## 2. Process boundaries are failure domains
 

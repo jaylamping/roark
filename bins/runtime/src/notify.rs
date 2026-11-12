@@ -5,6 +5,7 @@
 use std::io;
 use std::os::linux::net::SocketAddrExt as _;
 use std::os::unix::net::{SocketAddr, UnixDatagram};
+use std::time::Duration;
 
 /// The socket systemd listens on for this service.
 pub(crate) struct Notify {
@@ -38,13 +39,18 @@ impl Notify {
         .map_err(|e| format!("NOTIFY_SOCKET {}: {e}", name.display()))?;
         let socket =
             UnixDatagram::unbound().map_err(|e| format!("can't make the notify socket: {e}"))?;
+        // A send to a full socket fails at once rather than wait: the stop path and the watcher never block on
+        // systemd (architecture.md section 2).
+        socket
+            .set_nonblocking(true)
+            .map_err(|e| format!("can't make the notify socket non-blocking: {e}"))?;
         Ok(Some(Self { socket, to }))
     }
 
     /// Send one message, such as `READY=1`.
     ///
     /// # Errors
-    /// The datagram didn't go: systemd is gone, or its socket is full.
+    /// The datagram didn't go: systemd is gone, or its socket is full (`WouldBlock`); never waits.
     pub(crate) fn send(&self, state: &str) -> io::Result<()> {
         self.socket
             .send_to_addr(state.as_bytes(), &self.to)
@@ -52,12 +58,19 @@ impl Notify {
     }
 }
 
-/// The watchdog interval systemd asks for this process, in microseconds: `WATCHDOG_USEC`, unless `WATCHDOG_PID` names
-/// another process. `None` when there is no watchdog.
-pub(crate) fn watchdog_usec() -> Option<u64> {
-    let usec = std::env::var("WATCHDOG_USEC").ok()?.parse().ok()?;
-    match std::env::var("WATCHDOG_PID") {
-        Ok(pid) if pid != std::process::id().to_string() => None,
-        _ => Some(usec),
+/// The watchdog interval systemd asks of this process: `WATCHDOG_USEC`, unless `WATCHDOG_PID` names another process.
+/// `Ok(None)` when there is no watchdog.
+///
+/// # Errors
+/// `WATCHDOG_USEC` isn't a whole number of microseconds.
+pub(crate) fn watchdog() -> Result<Option<Duration>, String> {
+    let Ok(usec) = std::env::var("WATCHDOG_USEC") else {
+        return Ok(None);
+    };
+    if std::env::var("WATCHDOG_PID").is_ok_and(|pid| pid != std::process::id().to_string()) {
+        return Ok(None);
     }
+    usec.parse()
+        .map(|us| Some(Duration::from_micros(us)))
+        .map_err(|e| format!("WATCHDOG_USEC {usec:?}: {e}"))
 }

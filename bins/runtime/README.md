@@ -47,14 +47,16 @@ thread per wired bus and the control thread on one schedule origin, and takes th
   control has taken a snapshot with every limb at rest, then the session closes. It also ends on its own if control loses
   its clock or a bus thread ends: `Runtime::finished` is set, and the binary then ends the runtime and exits with failure.
 - **The watchdog** (PLAN item 3: fed only when the control loop and every bus in an active run make progress): each
-  control pass that completes counts up `Runtime::progress`, unless a bus with a limb enabled or stopping hasn't
-  published that tick's snapshot. A bus whose limbs are all idle or stopped commands nothing and doesn't hold it back.
-  Under systemd (`Type=notify`, `deploy/systemd/runtime.service`) the binary says `READY=1` once every thread runs,
-  sends `WATCHDOG=1` each time it looks (every 50 ms) and the count has risen, and says `STOPPING=1` as it ends. So a
-  hung control thread, or such a bus hanging or falling behind for the unit's `WatchdogSec`, gets the process killed,
-  and `ExecStopPost` runs the independent disable. The count stops once the run ends on its own. Without
-  `NOTIFY_SOCKET` (run by hand, or by a test) it tells nobody. The power board's heartbeat is to come from the same
-  count (PLAN item 10).
+  control pass that completes counts up `Runtime::progress`, unless a bus in a run hasn't published that tick's
+  snapshot. A bus is in a run when its snapshot shows a limb enabled or stopping, or when control has handed it a frame
+  for a tick its snapshots haven't reached (a bus that hangs while sending a limb's first Enable never shows it
+  active). A bus otherwise idle or stopped commands nothing and doesn't hold the count back. Under systemd
+  (`Type=notify`, `deploy/systemd/runtime.service`) the binary says `READY=1` once every thread runs, sends
+  `WATCHDOG=1` each time it looks (every 50 ms) and the count has risen, and says `STOPPING=1` as it ends; the sends
+  never wait (a full socket fails them, logged). So a hung control thread, or a bus in a run hanging or falling behind
+  for the unit's `WatchdogSec`, gets the process killed, and `ExecStopPost` runs the independent disable. The count
+  stops once the run ends on its own. Without `NOTIFY_SOCKET` (run by hand, or by a test) it tells nobody. The power
+  board's heartbeat is to come from the same count (PLAN item 10).
 
 The `api` socket (and so any way for the binary's operator to enable), `mlockall` and `SCHED_FIFO` come in the PRs
 that follow (PLAN step 7). Stops that control asks (an enable's failure, `host.mode`) reach the bus as

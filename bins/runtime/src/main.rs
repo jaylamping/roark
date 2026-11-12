@@ -35,7 +35,7 @@ mod linux {
     use nix::unistd::getpid;
     use runtime::{Runtime, RuntimeConfig, RuntimeExit};
 
-    use crate::notify::{Notify, watchdog_usec};
+    use crate::notify::{Notify, watchdog};
 
     /// Write one line to stderr, which journald keeps; the logger thread comes with `api` (logging.md).
     fn say(line: &str) {
@@ -158,7 +158,7 @@ mod linux {
     }
 
     /// How often the watcher looks: well under half of the unit's `WatchdogSec`, as `sd_watchdog_enabled(3)` asks.
-    const WATCH_MS: u64 = 50;
+    const WATCH: Duration = Duration::from_millis(50);
 
     /// The watcher: feed systemd's watchdog each time it looks and the run has made progress since the last look
     /// (`Runtime::progress`), so a hung control thread, or a bus in an active run that falls behind, starves it and
@@ -201,10 +201,10 @@ mod linux {
 
     #[expect(
         clippy::disallowed_methods,
-        reason = "the watcher is off the realtime path; a run that ends on its own is noticed within WATCH_MS"
+        reason = "the watcher is off the realtime path; a run that ends on its own is noticed within WATCH"
     )]
     fn pause() {
-        std::thread::sleep(Duration::from_millis(WATCH_MS));
+        std::thread::sleep(WATCH);
     }
 
     /// Log how the run ended; true when it ended cleanly, every bus at rest.
@@ -316,12 +316,16 @@ mod linux {
             }
         };
         startup(&runtime, &config);
-        match watchdog_usec() {
-            Some(usec) if usec < 4 * WATCH_MS * 1000 => say(&format!(
-                "watchdog {usec} µs is under four of the watcher's {WATCH_MS} ms looks: a slow look may trip it"
+        match watchdog() {
+            Ok(Some(interval)) if interval < WATCH * 4 => say(&format!(
+                "watchdog {interval:?} is under four of the watcher's {WATCH:?} looks: a slow look may trip it"
             )),
-            Some(usec) => say(&format!("watchdog {usec} µs")),
-            None => say("no watchdog"),
+            Ok(Some(interval)) => say(&format!("watchdog {interval:?}")),
+            Ok(None) => say("no watchdog"),
+            // Fed all the same: systemd knows its own interval.
+            Err(e) => say(&format!(
+                "watchdog interval unreadable ({e}); feeding it anyway"
+            )),
         }
         // Without the watcher a run that ends on its own goes unnoticed until a signal, and the watchdog is never fed:
         // end now rather than run blind.

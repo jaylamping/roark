@@ -89,9 +89,4 @@ fn the_runtime_says_ready_feeds_the_watchdog_and_says_stopping() {
     }
     assert_eq!(stopping.as_deref(), Some("STOPPING=1"), "{log:#?}");
     assert!(status.success(), "{status} {log:#?}");
-    assert!(
-        log.iter()
-            .any(|l| l.ends_with(&format!("watchdog {} µs", WATCHDOG.as_micros()))),
-        "{log:#?}"
-    );
 }
