@@ -15,7 +15,7 @@ connect through the GPIO header over SPI.
 
 | Interface | Driver | What it tests |
 |---|---|---|
-| The Waveshare 2-CH isolated CAN HAT already on the Pi (MCP2515 + SN65HVD230) | `mcp251x` | The HAT Joey owned before the FD HAT. The MCP2515 holds two received frames, so a host stall drops replies |
+| The Waveshare 2-CH isolated CAN HAT (MCP2515 + SN65HVD230) | `mcp251x` | The HAT Joey owned before the FD HAT. The MCP2515 holds two received frames, so a host stall drops replies |
 | Waveshare 2-CH isolated CAN **FD** HAT (MCP2518FD + MCP2562FD, about $55) | `mcp251xfd` | The same SPI path with the MCP2518FD's 2 KB on-chip RAM: a stall makes replies late instead of lost, with no USB in the path |
 
 Each HAT tests itself: one channel runs the host, the other the responder, wired together on one short bus. A run where

@@ -457,12 +457,13 @@ fn loader_refuses_each_broken_rule_and_accepts_unknowns_as_null() {
     );
 
     // An old file is told which schema this loader reads.
-    let old = skeleton::parse(&edit("schema: 2", "schema: 1"))
-        .err()
-        .map(|e| e.to_string())
-        .unwrap_or_default();
-    assert!(
-        old.contains("schema 1 is not one this loader knows (expected 2)"),
-        "{old}"
+    assert_eq!(
+        skeleton::parse(&edit("schema: 2", "schema: 1"))
+            .err()
+            .map(|e| e.to_string()),
+        Some(
+            "the skeleton has 1 problem(s):\n  line 1: schema: schema 1 is not one this loader knows (expected 2)"
+                .to_owned()
+        )
     );
 }

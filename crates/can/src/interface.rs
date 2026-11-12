@@ -51,6 +51,15 @@ pub struct RealInterface {
     pub txqueuelen: Option<u64>,
 }
 
+impl RealInterface {
+    /// Whether the controller was error-passive when checked: the bus then starts unhealthy
+    /// (`BusTick::start_error_passive`) until an error frame says it recovered.
+    #[must_use]
+    pub fn starts_error_passive(&self) -> bool {
+        self.state == ERROR_PASSIVE
+    }
+}
+
 impl fmt::Display for Interface {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -156,7 +165,7 @@ fn join(mismatches: &[Mismatch]) -> String {
 const RUNNABLE_STATES: [&str; 3] = ["ERROR-ACTIVE", "ERROR-WARNING", ERROR_PASSIVE];
 
 /// The state `ip` names error-passive: the bus starts unhealthy in it (`BusTick::start_error_passive`).
-pub(crate) const ERROR_PASSIVE: &str = "ERROR-PASSIVE";
+const ERROR_PASSIVE: &str = "ERROR-PASSIVE";
 
 /// Controller modes that make frames look sent when nothing reached the wire or was acknowledged: loopback (frames
 /// never leave the controller), listen-only (it never sends or acknowledges) and presume-ack (a missing receiver
@@ -561,6 +570,13 @@ mod tests {
                 Err(Refusal::Mismatch(found)) => Some(Err(found)),
                 Ok(Interface::Sim) | Err(Refusal::Unreadable(_)) => None,
             };
+            if let Some(Ok(real)) = &got {
+                assert_eq!(
+                    real.starts_error_passive(),
+                    real.state == "ERROR-PASSIVE",
+                    "{name}: starts unhealthy only error-passive"
+                );
+            }
             assert_eq!(got, Some(want), "{name}");
         }
         // Modes in a shape that can't be read can't be checked, so the interface isn't opened.

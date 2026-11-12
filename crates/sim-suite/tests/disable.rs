@@ -371,7 +371,15 @@ fn a_missing_bus_fails_its_drives_and_the_other_bus_still_stops() {
         ensure_vcan("can9").is_err(),
         "can9 must not exist for this test"
     );
-    ensure_vcan("can1").unwrap();
+    // Every other bus the edited skeleton names is checked before anything opens it.
+    for bus in skeleton
+        .buses
+        .iter()
+        .map(|b| b.name.as_str())
+        .filter(|&b| b != "can9")
+    {
+        ensure_vcan(bus).unwrap();
+    }
     let dir = scratch("disable-missing");
     let path = dir.join("skeleton.yaml");
     std::fs::write(&path, &skeleton_text).unwrap();

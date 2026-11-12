@@ -214,7 +214,7 @@ pub fn spawn(config: BusConfig, links: BusLinks) -> Result<Spawned, BusRunError>
         })?;
     let interface = check_interface(&config.name, &config.interface)?;
     if let Interface::Real(real) = &interface
-        && real.state == interface::ERROR_PASSIVE
+        && real.starts_error_passive()
     {
         tick.start_error_passive();
     }
