@@ -365,6 +365,17 @@ def run(name, c):
     s = np.array(s[0] if isinstance(s, tuple) and len(s) == 2 else s, float).reshape(-1, 12)
     pos = np.array([xyz[int(i)] for i in s[:, 0]])
     np.savez(str(F / (name + '.npz')), pos=pos, s=s)      # saved first: the fixture readback below has failed on contact models
+    if os.environ.get('FEA_SAVE_DISP') == '1':      # nodal displacements (node id, UX, UY, UZ, URES in mm) for contact-gap checks (2026-11-12)
+        for args in ((1, NUL, 0), (0, 1, NUL, 0)):
+            try:
+                err = I()
+                u = res.GetTranslationalDisplacement(*args, err)
+                u = np.array(u[0] if isinstance(u, tuple) and len(u) == 2 else u, float).reshape(-1, 5)
+                np.savez(str(F / (name + '_disp.npz')), pos=np.array([xyz[int(i)] for i in u[:, 0]]), u=u)
+                print(' displacements saved', u.shape, 'args', args, 'err', err.value, flush=True)
+                break
+            except Exception as ex:
+                print(' displacements not read', args, str(ex)[:100], flush=True)
     try:
         err = I()
         q = res.GetStressForEntities2(True, 9, 1, NUL, fixed, 3, err)
