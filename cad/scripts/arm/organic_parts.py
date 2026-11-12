@@ -260,7 +260,7 @@ def upper_half(front):
         z_cyl(d, 'SEAM_HOLES', UA_POSTS, 1.7, CZ + 0.5, CZ - 60.0, True)
         z_cyl(d, 'SEAM_CBORES', UA_POSTS, 3.25, CZ - 12.0, CZ - 60.0, True)   # heads 12 below the seam: M3 x 18 into 5.7
         z_cyl(d, 'HUB_HOLES', HUB_COLS, 1.7, zl + 0.5, CZ - 60.0, True)
-        z_cyl(d, 'HUB_CBORES', HUB_COLS, 3.25, zl - 7.0, CZ - 60.0, True)    # M3 x 25 through the lug into 5.7
+        z_cyl(d, 'HUB_CBORES', HUB_COLS, 3.0 if M.R1D else 3.25, zl - 7.0, CZ - 60.0, True)    # M3 x 25 through the lug into 5.7; R1d: Dia 6.0 (DIN 912 socket head Dia 5.5) so the post top at Y 295.7 keeps 0.7 over it
     finish(d, p, job)
 
 

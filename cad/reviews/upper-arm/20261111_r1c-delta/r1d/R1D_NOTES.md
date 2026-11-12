@@ -96,3 +96,24 @@ Against the real rev C+ hub STL (fd0cef8 / 6ee2b21):
 - Only the 12 ribs overlap the hub at the final position, by at most 0.154 (θ 45-135 and 225-315, Y 297.9-298.5).
 - The closing path is clean apart from that rib crush in the last 0.06-0.11 mm.
 - The RS02 fit is identical to R1 in all 72 values.
+
+## Provisional R1d slice (WIP, not a release)
+
+**Support blocker.** The halves were sliced with a support blocker over the whole ridge section (Y 297.6-301.9, r 34.0-36.05,
+over each ridge arc ±2°), as part 4 of the 3MF, subtype support_blocker. Support points mapped back from the G-code to the
+arm frame:
+
+| Blocker | Points within 0.5 mm of the load flank (front / back) | Tip, top chamfer, 45° flank |
+| --- | --- | --- |
+| None (R1c, from the review) | 367 / 374, closest 0.10 / 0.16 | supported |
+| Flank-only band | 246 / 380, closest 0.06 / 0.12 | supported |
+| Whole ridge | 92 / 137, closest 0.41 / 0.39 | no support; nearest point 0.70 mm away |
+
+With the whole-ridge blocker, the remaining points near the flank are the bore-ceiling support just below the ridge. Both
+flanks are self-supporting. The 0.9-1.2 mm tip bridges between them, and it has 0.5 radial clearance to absorb droop.
+
+**Slices.** Back 5 h 20 min, 122.5 g. Front 4 h 42 min, 107.6 g. No warnings; settings identical to the seed.
+
+**Mesh gate.** Front PASS. Back FAIL: with the post tops at Y 295.7, only 0.45-0.48 mm of skin was left over the back posts'
+Ø6.5 bolt-head counterbores (their tops are at Y 295.25). Fix: the R1d counterbore is Ø6.0, which leaves 0.7 mm. Use a
+DIN 912 socket head (Ø5.5); a Ø5.7 button head is tight. This needs a rebuild of the print halves, so SolidWorks.

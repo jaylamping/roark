@@ -15,6 +15,7 @@ height, time, grams, settings against the seed, and where the support lands.
 Writes cad/_wip/organic-arm/print/<job>/ (input project, sliced 3MF, result.json, log).
 """
 import json
+import math
 import os
 import re
 import shutil
@@ -108,6 +109,39 @@ def key_coupon():
     return trimesh.Trimesh(back_down(c.vertices), c.faces), [], SOLID
 
 
+def flank_blocker(front):
+    """R1d (2026-11-12, review): support blocker hugging the ridge's low-Y (load) flank over this half's ridge arc, so tree support
+    does not land on the flank and its crush ribs. Band from 0.05 inside the flank to 0.9 outside it, r 34.7-36.0, revolved over
+    theta 33-147 (front) / 213-327 (back) about the hub axis (X 170.49, Z 5.986, along Y). CAD coordinates."""
+    HX_ = 170.49
+    t30, s30, c30 = math.tan(math.radians(30)), math.sin(math.radians(30)), math.cos(math.radians(30))
+    gap = float(os.environ.get('ARM_FLANK_GAP', '0.1'))
+    yf = lambda r: 298.0 + (35.8 - r) * t30 + gap / c30
+    A, B = (34.7, yf(34.7)), (36.0, yf(36.0))
+    if os.environ.get('ARM_PRINT_BLOCK_WHOLE_RIDGE', '1') == '1':      # the whole ridge section (both flanks self-support; the 0.9-1.2
+        # wide tip bridges, with 0.5 radial clearance to absorb droop): a flank-only band still let tip support brush the flank
+        poly = [(34.0, 297.6), (36.05, 297.6), (36.05, 301.9), (34.0, 301.9)]
+    else:
+        poly = [(A[0] + 0.05 * s30, A[1] + 0.05 * c30), (B[0] + 0.05 * s30, B[1] + 0.05 * c30), (B[0] - 0.9 * s30, B[1] - 0.9 * c30), (A[0] - 0.9 * s30, A[1] - 0.9 * c30)]
+    th = np.radians(np.linspace(33.0, 147.0, 115) + (0.0 if front else 180.0))
+    V = np.array([(HX_ + r * math.cos(t), y, CZ + r * math.sin(t)) for t in th for r, y in poly])
+    F = []
+    n = len(poly)
+    for i in range(len(th) - 1):
+        for k in range(n):
+            a, b = i * n + k, i * n + (k + 1) % n
+            c, d = a + n, b + n
+            F += [(a, c, b), (b, c, d)]
+    last = (len(th) - 1) * n
+    F += [(0, 1, 2), (0, 2, 3), (last, last + 2, last + 1), (last, last + 3, last + 2)]
+    m = trimesh.Trimesh(V, F, process=True)
+    m.fix_normals()
+    return m
+
+
+BLOCK = os.environ.get('ARM_PRINT_FLANK_BLOCKER') == '1'
+
+
 JOBS = {
     'ring': lambda: (trimesh.Trimesh(ring_down(load('rs02_ring').vertices), load('rs02_ring').faces), [], RING),
     'back': lambda: (trimesh.Trimesh(back_down(load('back').vertices), load('back').faces),
@@ -162,7 +196,7 @@ def obj_xml(i, uid, kind, vs, ts):
             + '    </vertices>' + nl + '    <triangles>' + nl + ts + nl + '    </triangles>' + nl + '   </mesh>' + nl + '  </object>' + nl + '  ')
 
 
-def project(name, part, mods, extra, out):
+def project(name, part, mods, extra, out, blockers=()):
     lo, hi = part.bounds
     size = hi - lo
     if size[0] > BED - 12 or size[1] > BED - 12 or size[2] > BED:
@@ -189,6 +223,19 @@ def project(name, part, mods, extra, out):
     else:
         mdl = re.sub(r'\s*<component [^>]*objectid="2"[^>]*/>', '', mdl)
         cfg = re.sub(r'\s*<part id="2"[\s\S]*?</part>', '', cfg)
+    if blockers:      # a support-blocker volume as part 4, cloned from the modifier's entries
+        bm = trimesh.util.concatenate(list(blockers))
+        bvs, bts = xml(bm, center)
+        body += obj_xml(4, '00010004', 'other', bvs, bts)
+        comp4 = '\n    <component p:path="/3D/Objects/object_1.model" objectid="4" p:UUID="00010004-b206-40ff-9872-83e8017abed1" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>'
+        mdl = re.sub(r'(<component [^>]*objectid="2"[^>]*/>)', lambda mt: mt.group(1) + comp4, mdl, count=1)
+        part4 = (f'<part id="4" subtype="support_blocker" uuid="51d17843-7a32-47a7-bb0b-71b78baf2504">\n'
+                 f'      <metadata key="name" value="flank_support_blocker"/>\n'
+                 f'      <metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 {h:.5f} 0 0 0 1"/>\n'
+                 f'      <mesh_stat face_count="{len(bm.faces)}" edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/>\n'
+                 f'    </part>')
+        i2 = cfg.index('<part id="2"'); j2 = cfg.index('</part>', i2) + len('</part>')
+        cfg = cfg[:j2] + '\n    ' + part4 + cfg[j2:]
     obj = head + body + tail
     mdl = re.sub(r'(<item objectid="3"[^>]*transform=")[^"]*"', rf'\g<1>1 0 0 0 1 0 0 0 1 128 128 {h:.5f}"', mdl)
     cfg = cfg.replace('value="upper_arm"', f'value="upper_arm_organic_{name}"')
@@ -228,8 +275,14 @@ def run(name):
     part.apply_translation((0, 0, -z0))
     for m in mods:
         m.apply_translation((0, 0, -z0))
+    blockers = []
+    if BLOCK and name in ('front', 'back'):
+        bm = flank_blocker(name == 'front')
+        bm = trimesh.Trimesh((front_down if name == 'front' else back_down)(bm.vertices), bm.faces)
+        bm.apply_translation((0, 0, -z0))
+        blockers = [bm]
     part.export(out / f'{name}_plate.stl')
-    src, size = project(name, part, mods, extra, out)
+    src, size = project(name, part, mods, extra, out, blockers)
     final = f'upper_arm_organic_{name}{SUFFIX}.3mf'
     args = [EXE, '--datadir', str(out / 'profile'), '--debug', '1', '--slice', '0', '--export-3mf', final, '--outputdir', str(out), str(src)]
     r = subprocess.run(args, capture_output=True, text=True, timeout=1800, creationflags=subprocess.BELOW_NORMAL_PRIORITY_CLASS | subprocess.CREATE_NO_WINDOW)
