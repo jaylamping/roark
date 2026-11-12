@@ -10,7 +10,7 @@ export ARM_WIP_TAG=_ring_g01 ARM_FLANK_GAP=0.1 ARM_RIB_PROUD=0 ARM_FEA_NAME=UA_O
 export HS_GROOVE=1 HS_BOLTED=1 HS_ROUNDS=1 HS_LUG_FILLET=1.0 HS_GROOVE_R45=1.0 HS_REVCP=1 HS_FILL=1 HS_FILL_R0=23.0 HS_GROOVE_FULL=1 HS_HUB_FILE=HUB_GROOVE_RING.SLDPRT HS_PADS=1 HS_PAD_E=0.5
 export R1C_RING=1 HUB_STL_NAME=HUB_GROOVE_RING.STL
 echo "start $(date)" >> $L
-until [ -z "$(powershell -NoProfile -c "Get-CimInstance Win32_Process | ? { \$_.CommandLine -match 'rebuild_ua.sh' } | Select -First 1 -Expand ProcessId")" ]; do sleep 20; done
+# (the earlier wait for another rebuild matched its own PowerShell command line and never ended; removed)
 bash cad/scripts/fea/r1c/rebuild_ua.sh "master:upper parts:fea_upper"; cp -p cad/_wip/organic-arm/rebuild_ua.log cad/_wip/r1d_build_ring_g01.log
 grep -q "STOP at" cad/_wip/organic-arm/rebuild_ua.log && { echo "BUILD_FAILED" >> $L; exit 1; }
 echo "BUILT arm $(grep -E 'SEAT_RIDGE_RING' cad/_wip/r1d_build_ring_g01.log | tail -1)" >> $L
