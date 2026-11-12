@@ -836,7 +836,13 @@ def build_fork_rear():
         nm_ = f'JOINT_CB_{dx:+.0f}_{jy:.0f}'.replace('+', 'p').replace('-', 'm')
         zf_ = JZ0 - (5.5 if abs(dx) < 20 else 3.0)
         try:
-            extrude(d, zsk(d, BACK_Z - 4, nm_, lambda s, dx=dx, jy=jy: s.circle((RX + dx, jy, BACK_Z - 4), 4.0)), nm_, zf_ - (BACK_Z - 4), Z, cut=True)
+            if os.environ.get('JOINT_CAPS'):
+                # rear_screws mock-up (b): a flush printed cap fills each counterbore; only a fine shut circle shows
+                # (modelled for the look as a 0.3 mm groove at r 3.7-4.0, 1 mm deep)
+                extrude(d, zsk(d, BACK_Z - 4, nm_, lambda s, dx=dx, jy=jy: [s.circle((RX + dx, jy, BACK_Z - 4), 4.0), s.circle((RX + dx, jy, BACK_Z - 4), 3.7)]),
+                        nm_, 1.0 + (max(q[2] for q in EV.sleeve_section(jy, 0.0, 0.0, 720) if abs(q[0] - (RX + dx)) <= 4.0 and q[2] < JZ0) - (BACK_Z - 4)), Z, cut=True)
+            else:
+                extrude(d, zsk(d, BACK_Z - 4, nm_, lambda s, dx=dx, jy=jy: s.circle((RX + dx, jy, BACK_Z - 4), 4.0)), nm_, zf_ - (BACK_Z - 4), Z, cut=True)
         except SystemExit as e_:
             log(f'  {nm_} failed: {e_}')
     tz = YZ - 41.0

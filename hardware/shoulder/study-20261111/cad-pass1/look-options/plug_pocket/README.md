@@ -134,3 +134,39 @@ Sideways, the cuff wall (r 41-45) closes the pocket.
   2. **(c) Notch with a flush printed cover,** so the lead turns sideways through the wall under a cover. Look-affecting.
 - **The real fork front is unchanged** (`PLUG_POCKET` is a mock-up switch again).
 
+## Variant (a2): leads soldered across the cups at 90°, leaving sideways (on paper and by render)
+
+![visible from behind](visibility/vis_back.png)
+
+**Stack:**
+- Plug + cups + the wires laid across the cups, with heat-shrink: about Y 372.1 at worst credible.
+- The drum's 2 mm envelope over the plug is at Y 374.8.
+- **2.7 mm to spare. The stack fits.**
+
+**AWG22 for the power pair is justified:**
+- RS02 at 17 N·m and about 10 rad/s is about 170 W of mechanical power.
+- At 48 V with losses, that is about 4-5 A at the supply.
+- Silicone AWG22 carries about 8 A in short runs; this lead is under 0.3 m.
+- That brings the power pair's bend to R 4.5 (OD 1.5). The CAN pair is AWG26 (R 3).
+
+**Where the leads go after the plug: this is what fails.**
+- **The leads leave sideways at about Y 369.6. To be hidden, they have to get below the cuff top (Y 361.9)** and into
+  the socket tap (r 40.5-47.5, Y 353.4-359.4) or round to the back cavity.
+- **A trough round the seat-ring top inside the wall (r 37-41) runs into the RS02 screw counterbores** at -136° and -96°
+  (r up to 39.8). A trough outside them (r 40.5-46) is the existing socket tap, which is already below the cuff top.
+- **So the leads must drop about 10 mm right beside the plug,** in a vertical bend of R 4.5-5.7. That needs a pocket about
+  6 mm past the plug's end (173° → about 200°).
+  - On the inboard-back side that pocket would rise above the cuff top (Y 361.9), between the cuff and the drum. There is
+    no fork-front material there to hide it.
+  - The render with a worst-credible plug and a sideways lead (orange) shows it **visible from straight behind**,
+    through the gap between the cuff top and the drum.
+  - It is hidden from the inboard side, the front, both three-quarters and from below. The plug body itself is hidden
+    in all six views.
+- **Plan bend radius is not the problem.** Round the cuff it is r 40+. The problem is the drop.
+
+**Verdict:** (a2) fits the stack but not a hidden lead route.
+- It would need a raised lip on the inboard-back of the cuff top to hide the drop: a small new visible feature.
+- **Better:** the right-angle adapter board (fallback 1). Its leads leave sideways at the board, about 7-8 mm above the
+  socket, which is low enough to run straight into the socket tap below the cuff top with no drop above it.
+- As before, Joey's plug measurement decides between (a) and the fallbacks.
+

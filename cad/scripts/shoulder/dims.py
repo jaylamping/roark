@@ -192,6 +192,8 @@ JY = (SEAT_Y[0] + SEAT_Y[1]) / 2   # joint screw row (Y 356.9)
 # the r 47 sleeve a lower pair at +-22, Y 345.5 (the fork rear now reaches down to Y 340): the stop couple per screw drops
 # by about a third against four
 JOINT_PTS = [(-JX + 4.5, JY), (JX - 4.5, JY), (-27.0, JY), (27.0, JY)] + ([(-22.0, 345.5), (22.0, 345.5)] if SIDE_CENTRE == '47' else [])
+if os.environ.get('JOINT_LAYOUT') == 'G':   # rear_screws mock-up (a): symmetric two rows, every counterbore >= 1.5 mm from the edge
+    JOINT_PTS = [(-12.0, JY), (12.0, JY), (-24.0, JY), (24.0, JY), (-20.0, 345.5), (20.0, 345.5)]
 if os.environ.get('JOINT2'):          # the earlier two-screw joint, for the look-options/rear_screws comparison only
     JOINT_PTS = JOINT_PTS[:2]
 HUB_RIM_CHAMFER = 0.5 if os.environ.get('HUB_CHAMFER') else 0.0   # hub-top fix (A_HUB_LUGS): 0.5 x 45 on the six screw-hole rims at the RS02 face
