@@ -41,7 +41,7 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
 | `api` server | The one external interface | Clients over the network; the realtime side over queues | Block the realtime side, or write hardware facts |
 | `telemetry` | MCAP files, metrics, structured logs | Event queues in, disk and Prometheus out | Be in the stop path (a slow disk never delays a stop) |
 | `ui/`, `mcp/`, `robot-cli` | Nothing about the hardware | `api` only | Open a CAN socket (the one exception below) |
-| `robot-cli disable` | Nothing | The bus directly, after `runtime` has exited; the runtime's lock (`/run/robot/runtime.lock`), which the runtime holds while it runs and `disable` refuses while held | Run while `runtime` is alive |
+| `robot-cli disable` | Nothing | The bus directly, after `runtime` has exited; the runtime's lock (`/run/robot/runtime.lock`), which the runtime holds while it runs and `disable` refuses while held | Run while `runtime` is alive. One accepted gap: with no lock file (no runtime running), `disable` goes on without a lock, so a runtime started by hand in its 310 ms could run alongside it; systemd keeps the file through `ExecStopPost` and automatic restarts |
 | `sim-drive` | Simulated drive state | `vcan` through the same `robstride` codec (its drive side, `robstride::drive`) | Be linked into `runtime`, or open an interface that isn't `vcan` |
 | `can-bench` | Nothing about the robot | One CAN interface, with its own frames that no drive acts on ([comparison](../docs/can-interface-comparison.md)) | Run with a drive or another host on the bus, or alongside `runtime` |
 
