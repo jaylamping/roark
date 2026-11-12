@@ -50,6 +50,40 @@ R1e checks (`../20261111_r1c-delta/r1d/r1e/`):
 | 0 gap STOP_0, STOP_124 | *running* (0.4 mm on the lug-root fillets, global 5.0: the 0.3 refinement exceeded the solver's memory limit) |
 | Shim as its own PETG body, G90 + STOP_0 | *running* |
 
+Rejected variants, and why:
+1. **R1c / R1d partial ridge with tapered ends:** failed at the ridge ends in STOP_0 (arm vm 0.64 / shear 0.71 at θ 143, confirmed
+   with the corrected post-processing). Replaced by the full ring.
+2. **0.1 flank gap + crush ribs (R1d nominal):** the ribs carry the flank load as point contacts and bed in under routine G90
+   (crown rib about 95-130 N against about 41-51 N to flatten). That leaves play equal to the print gap: 0.115 / 0.231 axial,
+   0.66 / 1.31 mm at the wrist for gaps 0.1 / 0.2. Joey asked for a play-free joint.
+3. **Load-carrying ribs (R2 sizing on paper):** ribs strong enough for G90 at 1.5 need about 53 mm² of face, about 2 kN to crush
+   on closing; the screws give about 0.8 kN each. Load-carrying and take-up conflict.
+4. **Wedge seat by seam relief:** seating the 30° flank across ±0.2 needs each half's hub end to move 0.4 along Z. Bending it that
+   far takes about 9 kN, and relieving the whole seam would open the elbow end.
+5. **Split clamp band** inside the skin: in PETG the band can't both flex 0.4 under about 1 kN and carry the loads.
+6. **TPU spring bias** in the end-face gap: no rattle, but only TPU-stiff when pushed: about 4 mrad of G90 rocking, 1.6 mm at the
+   wrist.
+7. **R0.8 round on the end-face inner edge** (instead of the 0.5 chamfer): would cost bearing, and is not needed. The G90 corner
+   value it targeted was a contact-edge value of the gap design; at 0 gap it is 1.68.
+
+Open caveats:
+- **Upper hub approximated above Y 300.5.** The FEA hub is our ring hub plus the rev D lug-root fillet (the same edge selection as
+  the shoulder thread). Through the joint (Y 295.5-300) its sections match bc16e97 within 0.1 %. Above that, rev D's outer wall
+  and top boss differ, so the hub's upper-region figures are indicative only; the shoulder thread's FEA governs there. Our FEA
+  hub also has a sharp spigot foot where rev D has about R0.23 (it doesn't touch the arm).
+- **Mesh:** 4.0 mm global (5.0 in the refined stop runs), 0.8 on the seat, posts, lugs and fins. The lug-root fillets are refined
+  to 0.4, not 0.3: 0.3 exceeded the solver's memory limit (458 k nodes). The groove band can't be refined, because its faces are
+  full rings (2.3-3.0 M nodes).
+- **Model:** frictionless contact, no bolt preload, linear PETG, isotropic stiffness with layer allowables. The shim ring is held
+  on the disc by the touching-face bond, with no-penetration against our end face.
+- **Shim thickness:** printed accuracy about ±0.03-0.05 (first-layer squish on SuperTack). The pick by trial absorbs it; a set
+  offset as a whole is reprinted shifted, never the arm.
+- **Before the halves print:** the hub-end coupon must pass (closes by hand with a ring, seam shut, no rock after ten cycles,
+  nothing scored).
+- The seed slicer project sets no elephant-foot compensation; the seam lead-ins (0.1 × 2 mm) are what keep the ridge ends from
+  binding. To be seen on the coupon.
+- The accepted thin-wall entries for R1e (three counterbore exits) rest on the ≤ 0.05 mm surface diff described in the table above.
+
 The R1d ring sections below are the history of how the ring and these numbers were reached. Cases 3-5 there are the rib design
 that R1e replaces.
 
