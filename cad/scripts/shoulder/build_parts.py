@@ -459,6 +459,8 @@ def hull_pts(circles, n=36, out=48):
 
 
 SC = bool(os.environ.get('SIDE_CENTRE'))
+SC47 = os.environ.get('SIDE_CENTRE') == '47'
+Y_SPLIT = 340.0       # SC47: below this the sleeve is a closed ring on the fork front; the fork rear sits on its top
 SC_BEND_R = 24.0      # side-centre: the power channel bends into the yaw exit on this radius (centreline), no sharp corner
 
 
@@ -533,8 +535,16 @@ def build_fork_front():
             s_.spline(pts, closed=False)
             s_.line(pts[-1], pts[0])
         return ysk(d, y_, nm, drw)
-    csecs = [clip_sk(y_, k_, t_, f'CUFF_S{i}') for i, (y_, k_, t_) in enumerate(((SL['y_bot'], 0.8, 0.0), (SL['y_bot'] + 1.2, 0.25, 0.0), (cf['y0'], 0.0, 0.0), (325.0, 0.0, 0.0), (330.0, 0.0, 0.0), (335.0, 0.0, 0.0), (340.0, 0.0, 0.0), (344.0, 0.0, 0.0), (348.0, 0.0, 0.0),
-                                                                             (SEAT_Y[0], 0.0, 0.0), (356.0, 0.0, 0.0), (358.5, 0.0, 0.8), (360.5, 0.0, 2.0), (SEAT_Y[1], 0.0, SL['top_round'])))]
+    cst = ((SL['y_bot'], 0.8, 0.0), (SL['y_bot'] + 1.2, 0.25, 0.0), (cf['y0'], 0.0, 0.0), (325.0, 0.0, 0.0), (330.0, 0.0, 0.0), (335.0, 0.0, 0.0), (340.0, 0.0, 0.0), (344.0, 0.0, 0.0), (348.0, 0.0, 0.0),
+           (SEAT_Y[0], 0.0, 0.0), (356.0, 0.0, 0.0), (358.5, 0.0, 0.8), (360.5, 0.0, 2.0), (SEAT_Y[1], 0.0, SL['top_round']))
+    if SC47:
+        # the lower sleeve is a closed ring (the RS02 slides up through it: vendor body r 39.30 max against the r 39.75 bore);
+        # above Y_SPLIT the cuff is the front half as before and the fork rear sits on the ring's flat top
+        rsecs = [ysk(d, y_, f'RING_S{i}', lambda s_, y_=y_, k_=k_, t_=t_: s_.spline(EV.sleeve_section(y_, k_, t_)))
+                 for i, (y_, k_, t_) in enumerate([q for q in cst if q[0] < Y_SPLIT - 1.0] + [(Y_SPLIT, 0.0, 0.0)])]
+        loft(d, rsecs, 'RING')
+        cst = [(Y_SPLIT - 0.5, 0.0, 0.0)] + [q for q in cst if q[0] > Y_SPLIT + 1.0]
+    csecs = [clip_sk(y_, k_, t_, f'CUFF_S{i}') for i, (y_, k_, t_) in enumerate(cst)]
     loft(d, csecs, 'CUFF')
     yaw_rev(d, 'CUFF_BORE', [(0, SL['y_bot'] - 1), (SL['bore_skirt'], SL['y_bot'] - 1), (SL['bore_skirt'], cf['y0']), (cf['ri'], cf['y0']),
                              (cf['ri'], SEAT_Y[0]), (0, SEAT_Y[0])], cut=True)
@@ -678,6 +688,8 @@ def build_fork_front():
     extrude(d, zsk(d, z0 - 1, 'DOME_POCKETS', lambda s: [sector(s, lambda r, a: rpt(r, a, z0 - 1), dm['pocket_r'][0], dm['pocket_r'][1], a0, a1, 3.0)
                                                          for a0, a1 in dm['pockets']]), 'DOME_POCKETS', z1 - z0 - dm['back_t'] + 1, Z, cut=True)
     try:     # the sleeve's back is open toward the fork rear, so the notch may find nothing left to cut
+        if SC47:
+            raise SystemExit('closed ring: the exit runs inside it, no notch')
         extrude(d, ysk(d, SL['y_bot'] - 1, 'CUFF_NOTCH', lambda s: sector(s, lambda r, a: ypt(r, a, SL['y_bot'] - 1), cf['ri'] - 1, YZ - JZ0 + 3.0, cf['notch'][0], cf['notch'][1], 2.0)),
                 'CUFF_NOTCH', Y_EX + 3 + WALL + 1.5 - (SL['y_bot'] - 1), Y, cut=True)
     except SystemExit:
@@ -733,8 +745,11 @@ def build_fork_rear():
             s_.spline(pts, closed=False)
             s_.line(pts[-1], pts[0])
         return ysk(d, y_, nm, drw)
-    for i, (y_, k_, top_) in enumerate(((SL['y_bot'], 0.8, 0.0), (SL['y_bot'] + 1.2, 0.25, 0.0), (320.0, 0.0, 0.0), (325.0, 0.0, 0.0), (330.0, 0.0, 0.0), (335.0, 0.0, 0.0), (340.0, 0.0, 0.0), (344.0, 0.0, 0.0), (348.0, 0.0, 0.0), (352.0, 0.0, 0.0),
-                                    (356.0, 0.0, 0.0), (358.5, 0.0, 0.8), (360.5, 0.0, 2.0), (SEAT_Y[1], 0.0, SL['top_round']))):
+    rst = ((SL['y_bot'], 0.8, 0.0), (SL['y_bot'] + 1.2, 0.25, 0.0), (320.0, 0.0, 0.0), (325.0, 0.0, 0.0), (330.0, 0.0, 0.0), (335.0, 0.0, 0.0), (340.0, 0.0, 0.0), (344.0, 0.0, 0.0), (348.0, 0.0, 0.0), (352.0, 0.0, 0.0),
+           (356.0, 0.0, 0.0), (358.5, 0.0, 0.8), (360.5, 0.0, 2.0), (SEAT_Y[1], 0.0, SL['top_round']))
+    if SC47:      # the fork rear starts on the ring's flat top
+        rst = [(Y_SPLIT, 0.0, 0.0)] + [q for q in rst if q[0] > Y_SPLIT + 1.0]
+    for i, (y_, k_, top_) in enumerate(rst):
         asecs.append(clip_sk(y_, 'rear', k_, top_, f'SLEEVE_R{i}'))
     for i, (y_, cx_, w_, dp_) in enumerate(EV.ARM_STATIONS[:2][::-1]):
         def drw(s_, y_=y_, cx_=cx_, w_=w_, dp_=dp_):
@@ -751,7 +766,7 @@ def build_fork_rear():
             'STOP_TOOTH', (ss['z_floor'] - 2.0) - HOUSE_Z0, Z)
     # the hollow stops 1.6 short of the joint plane: a front plate, so the skin does not run out to a knife edge where the
     # outline meets the plane at a shallow angle (the cable channel cuts through the plate where the cables pass)
-    hy = [y_ for y_ in (SL['y_bot'] + 2.0, 322.0, 330.0, 338.0, 344.0, 349.0) if min(q[2] for q in EV.sleeve_section(y_, 2.0)) < JZ0 - 1.6 - 1.0]
+    hy = [y_ for y_ in ((Y_SPLIT - 0.5, 344.0, 349.0) if SC47 else (SL['y_bot'] + 2.0, 322.0, 330.0, 338.0, 344.0, 349.0)) if min(q[2] for q in EV.sleeve_section(y_, 2.0)) < JZ0 - 1.6 - 1.0]
     hs = [clip_sk(y_, 'rear', 2.0, 0.0, f'SLEEVE_R_IN{i}', zc=JZ0 - 1.6) for i, y_ in enumerate(hy)]   # SIDE CENTRE: the thin bottom stays solid
     d.ClearSelection2(True)
     for k in hs:
@@ -1031,8 +1046,16 @@ BUILD = dict(drum=build_drum, ring=build_ring, cap=lambda: finish_part(build_cap
 if __name__ == '__main__':
     which = sys.argv[1:] or list(BUILD)
     res = {}
-    for k in which:
-        log('#### build', k)
-        res[k] = BUILD[k]()
+    try:
+        for k in which:
+            log('#### build', k)
+            res[k] = BUILD[k]()
+    finally:
+        if not os.environ.get('SW_KEEP'):      # one instance per run: exit it (a long-lived instance grew to 24 GB)
+            try:
+                app().CloseAllDocuments(True)
+            except Exception:
+                pass
+            finish()
     for k, v in res.items():
         log(f'{k:12s} {v:10.0f} mm3 {v * PETG:7.1f} g')

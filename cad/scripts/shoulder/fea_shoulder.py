@@ -532,5 +532,14 @@ for tag, f_, mom in (('MX', (0.0, -310.0, 0.0), (23.0, YAW_T, 0.0)), ('MZ', (0.0
                                           react=dict(boss=[FK_BOSS], **({'seat6808': [FK_SEAT6808]} if sup == 'brg' else {})))
 
 if __name__ == '__main__':
-    for n in sys.argv[1:]:
-        run(n, CASES[n])
+    try:
+        for n in sys.argv[1:]:
+            run(n, CASES[n])
+    finally:
+        if not os.environ.get('SW_KEEP'):      # one instance per run: exit it when the run ends
+            from sw_instance import end_session
+            try:
+                app().CloseAllDocuments(True)
+            except Exception:
+                pass
+            end_session(STATE)

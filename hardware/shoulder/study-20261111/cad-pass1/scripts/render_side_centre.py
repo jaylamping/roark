@@ -13,7 +13,10 @@ from dims import *
 
 OUT = Path(sys.argv[1]); OUT.mkdir(parents=True, exist_ok=True)
 W = R.REPO / 'cad' / '_wip' / 'shoulder-pass1'
-VAR = {'now': ('Current (front blend 3)', W / 'stl'), 'sc': ('Mock-up: sleeve rear curving in, channel bend R 24', W / 'stl_look_sc')}
+VAR = {'now': ('Current (front blend 3)', W / 'stl'), 'sc': ('r 54.5: rear curving in, channel bend R 24', W / 'stl_look_sc'),
+       'sc47': ('r 47: lower sleeve a closed ring, split at Y 340', W / 'stl_look_sc47')}
+VAR = {k: v for k, v in VAR.items() if (v[1] / 'fork_front.stl').exists()}
+NV = len(VAR)
 F = np.array([RX, 345.0, -5.0])
 Fb = np.array([RX, 340.0, -20.0])
 VIEWS = [('side_out', F + np.array([620.0, 0.0, 0.0]), F, (1100, 1100), 30),
@@ -32,12 +35,12 @@ for v, (title, d) in VAR.items():
 CW, CH = 900, 900
 rows = []
 for vn, *_ in VIEWS:
-    row = Image.new('RGB', (2 * CW, CH), 'white')
+    row = Image.new('RGB', (NV * CW, CH), 'white')
     for i, v in enumerate(VAR):
         im = Image.open(OUT / f'{v}_{vn}.png').convert('RGB'); k = min(CW / im.width, CH / im.height)
         im = im.resize((int(im.width * k), int(im.height * k))); row.paste(im, (i * CW + (CW - im.width) // 2, (CH - im.height) // 2))
     rows.append(row)
-sheet = Image.new('RGB', (2 * CW, CH * len(rows)), 'white')
+sheet = Image.new('RGB', (NV * CW, CH * len(rows)), 'white')
 for j, r in enumerate(rows):
     sheet.paste(r, (0, j * CH))
 sheet.save(OUT / 'SHEET_side_centre.png')
@@ -46,7 +49,7 @@ sheet.save(OUT / 'SHEET_side_centre.png')
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-fig, axs = plt.subplots(1, 2, figsize=(13, 7.5), sharey=True)
+fig, axs = plt.subplots(1, NV, figsize=(6.5 * NV, 7.5), sharey=True)
 x0 = RX + P_OFF
 for ax, (v, (title, d)) in zip(axs, VAR.items()):
     for k, c in (('fork_front', '#4a7ab0'), ('fork_rear', '#c0612b'), ('hub', '#777777')):
