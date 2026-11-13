@@ -1,0 +1,46 @@
+result: cad/_sim/r1g4_stop0/org16_HS_STOP_0_fine.npz | single
+-- post -X front (inserts): 14082 nodes
+   vm                                          peak   12.2 | SF .5/1/2 4.87/6.32/7.53 (n 9/31/27) at [145.7, 291.3, 11.5] th 168
+   layer (sz)                                  peak    3.4 | SF .5/1/2 9.55/11.12/11.80 (n 2/4/7) at [140.3, 294.9, 25.9] th 147
+   shear                                       peak    4.6 | SF .5/1/2 3.63/4.63/5.69 (n 7/39/7) at [145.5, 292.2, 12.3] th 166
+-- post -X back (clearance): 9070 nodes
+   vm                                          peak    5.6 | SF .5/1/2 8.25/9.08/10.13 (n 2/6/18) at [138.2, 294.7, -10.6] th 207
+   layer (sz)                                  peak    2.8 | SF .5/1/2 8.80/10.39/12.88 (n 4/10/18) at [138.5, 295.2, -11.3] th 208
+   shear                                       peak    1.6 | SF .5/1/2 9.02/11.28/12.90 (n 3/13/29) at [139.8, 295.1, -13.9] th 213
+-- post +X front (inserts): 13897 nodes
+   vm                                          peak    8.5 | SF .5/1/2 10.68/18.34/19.25 (n 4/6/24) at [189.4, 288.2, 11.2] th 15
+   layer (sz)                                  peak    2.6 | SF .5/1/2 9.71/10.02/10.41 (n 3/15/24) at [202.6, 295.0, 22.5] th 27
+   shear                                       peak    1.2 | SF .5/1/2 10.76/11.72/12.13 (n 1/13/33) at [200.9, 295.9, 26.0] th 33
+-- post +X back (clearance): 8983 nodes
+   vm                                          peak    5.3 | SF .5/1/2 10.68/13.89/19.08 (n 3/24/103) at [202.9, 294.1, 0.7] th 351
+   layer (sz)                                  peak    2.2 | SF .5/1/2 10.09/24.34/25.28 (n 1/9/25) at [195.1, 291.5, -6.5] th 333
+   shear                                       peak    2.5 | SF .5/1/2 8.91/12.69/19.20 (n 4/30/309) at [202.7, 294.9, -0.2] th 349
+-- fins -X: 7441 nodes
+   vm                                          peak   15.6 | SF .5/1/2 3.88/5.55/6.40 (n 6/20/57) at [143.0, 276.0, 14.3] th 163
+   layer (sz)                                  peak    6.5 | SF .5/1/2 3.82/3.82/4.82 (n 1/1/5) at [145.3, 268.1, 12.3] th 166
+   shear                                       peak    4.4 | SF .5/1/2 3.29/3.70/4.14 (n 3/1/5) at [143.3, 275.5, 14.4] th 163
+-- fins +X: 7162 nodes
+   vm                                          peak    4.5 | SF .5/1/2 12.37/14.34/18.74 (n 2/1/9) at [192.9, 275.5, 20.1] th 32
+   layer (sz)                                  peak    6.0 | SF .5/1/2 5.50/8.87/19.80 (n 5/20/85) at [193.3, 276.0, 20.1] th 32
+   shear                                       peak    2.2 | SF .5/1/2 8.09/10.86/15.00 (n 5/1/5) at [193.3, 276.0, 20.1] th 32
+-- hub lug -X incl. roots: 22255 nodes
+   vm                                          peak   21.9 | SF .5/1/2 3.19/4.01/5.51 (n 13/27/132) at [140.9, 295.4, 11.2] th 170
+   layer (sy)                                  peak   14.0 | SF .5/1/2 2.04/2.96/4.95 (n 15/68/281) at [141.3, 295.3, 11.2] th 170
+   shear                                       peak   11.6 | SF .5/1/2 2.01/2.60/3.70 (n 13/41/261) at [140.9, 295.4, 11.2] th 170
+   bolt-hole bearing (-p3)                     peak   29.4 | SF .5/1/2 2.34/3.78/7.40 (n 10/34/114) at [145.9, 291.5, 10.6] th 169
+-- hub lug +X incl. roots: 22634 nodes
+   vm                                          peak   19.6 | SF .5/1/2 6.57/7.22/9.32 (n 5/28/139) at [204.9, 294.4, 1.5] th 353
+   layer (sy)                                  peak    7.5 | SF .5/1/2 4.15/6.81/12.08 (n 8/40/228) at [204.0, 295.6, 1.0] th 352
+   shear                                       peak    5.3 | SF .5/1/2 3.45/4.56/6.92 (n 4/36/244) at [204.9, 294.9, 2.0] th 353
+   bolt-hole bearing (-p3)                     peak    1.6 | SF .5/1/2 31.92/42.32/53.33 (n 7/43/99) at [194.8, 293.1, 10.2] th 10
+-- arm end-face corner band (r 35.8-37.6, Y 300.8-302.1): 7290 nodes
+   vm                                          peak   12.5 | SF .5/1/2 4.19/4.50/4.75 (n 5/36/111) at [200.7, 302.0, 26.3] th 34
+   layer (sz)                                  peak    5.5 | SF .5/1/2 4.33/4.47/4.97 (n 3/12/88) at [133.1, 302.0, 3.0] th 185
+   shear                                       peak    3.5 | SF .5/1/2 4.72/6.04/6.34 (n 7/12/109) at [192.1, 301.5, 34.6] th 53
+-- arm elsewhere in the hub end (|Z - CZ| > 20, Y > 270): 47118 nodes
+   vm                                          peak   20.2 | SF .5/1/2 2.98/3.86/4.60 (n 7/31/323) at [146.3, 296.1, 32.5] th 132
+   shear                                       peak    7.1 | SF .5/1/2 2.84/3.86/5.16 (n 9/25/84) at [147.0, 298.3, 33.4] th 131
+insert at X 147.5: vm peak 55 MPa (SF vs 240 4.34); 0.5 mm avg:                                                peak   55.4 | SF .5/1/2 6.10/11.13/18.67 (n 3/26/87) at [149.5, 292.0, 11.5] th 165
+insert at X 193.5: vm peak 10 MPa (SF vs 240 22.91); 0.5 mm avg:                                                peak   10.5 | SF .5/1/2 33.75/57.90/80.52 (n 5/29/100) at [195.0, 292.0, 11.5] th 13
+bolt at X 147.5: vm peak 34 MPa (SF 18.88); axial/bending |sz| peak 35 MPa; transverse shear peak 11 MPa (SF vs 0.58*640 34.03)
+bolt at X 193.5: vm peak 19 MPa (SF 34.22); axial/bending |sz| peak 17 MPa; transverse shear peak 5 MPa (SF vs 0.58*640 70.61)

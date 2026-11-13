@@ -43,6 +43,7 @@ export ARM_R1C=1 ARM_R1D=1 ARM_SLOT_BREAK=1.2,1.6 ARM_LUG_POCKET=1 ARM_SLOT_CL=0
 # 1 hub-seat model (as r1g2 / r1g3, only the plate hole and top differ)
 export HS_GROOVE=1 HS_BOLTED=1 HS_ROUNDS=1 HS_LUG_FILLET=1.0 HS_GROOVE_R45=1.0 HS_REVCP=1 HS_FILL=1 HS_FILL_R0=23.0 HS_GROOVE_FULL=1 HS_PADS=1 HS_REUSE_HUB=1 HS_INSERT_MODEL=1
 export ARM_WIP_TAG=_ring_g00 ARM_FLANK_GAP=0 ARM_RIB_PROUD=0 ARM_FEA_NAME=UA_ORGANIC_BONDED_v32_ring_g00.SLDPRT HS_HUB_FILE=HUB_D3S.SLDPRT HS_MODEL=UA_HUBSEAT_r1d_r1g4.SLDPRT
+if [ "$R1G4_SKIP_BUILD" != 1 ]; then      # continue an interrupted / paused queue on the existing r1g4 model
 S=$R/_wip/arm-sw-r1g4build
 lock r1g4build
 rm -f cad/_sim/ua2/UA_HUBSEAT_r1d_r1g4.SLDPRT
@@ -52,6 +53,7 @@ grep -q "  inserts True" cad/_wip/r1g4_hs.log || { echo "R1G4Q2 STOP: hub-seat b
 ' ' ' | cut -c1-200)" >> $L; exit 1; }
 echo "R1G4Q2 BUILT model $(date +%H:%M) $(grep -E 'R1F_PLATE' cad/_wip/r1g4_hs.log | tr '
 ' ' ' | cut -c1-200)" >> $L
+fi
 # 2 STOP_0, YAW -17, G90, G90 + YAW -17; post / lug / fin control 1.0, bearing faces 0.8 (as r1g2: about 390 k nodes)
 unset HS_MODEL
 export HS_SEAT_MESH=0.8 HS_SEAT_MESH_AMAX=600 HS_POST_MESH=1.0 HS_LUGFACE_MESH=0.8 R1C_RING=1 R1C_INSERTS=1 R1C_D3=1 HS_GLOBAL_EL=4.0
@@ -64,7 +66,7 @@ job() {
 ' ' ' | cut -c1-200) $(grep -E "^(SOLVED|SOLVE_FAILED) $1" cad/_wip/r1d_ring_ds.log | tail -1 | cut -c1-160)" >> $L
   grep -q "^SOLVED $1" cad/_wip/r1d_ring_ds.log && bash cad/scripts/fea/r1c/post_r1g.sh $1 1.9 294.7 >> $L 2>&1
 }
-job r1g4_stop0 HS_STOP_0_fine 0.5
+[ "$R1G4_SKIP_STOP0" = 1 ] || job r1g4_stop0 HS_STOP_0_fine 0.5
 [ "$R1G4_STOP_AFTER_STOP0" = 1 ] && { echo "R1G4Q2 paused after STOP_0 (coordinator: report memory first) $(date +%H:%M)" >> $L; exit 0; }
 job r1g4_yawm HS_LC2M_fine 0.5
 job r1g4_g90 HS_G90_fine 0.05

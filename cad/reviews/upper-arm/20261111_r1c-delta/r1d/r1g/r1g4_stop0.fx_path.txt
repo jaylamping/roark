@@ -1,0 +1,11 @@
+-X lug mean displacement (mm): ux -0.0041 uy -0.0537 uz -0.0717
+hole wall on +X side of the bolt: initial radial gap 0.798, closure (gap change) +0.1836 mm -> gap now 0.982; hub-side normal stress sx +0.0 MPa
+hole wall on -X side: initial radial gap 0.782, closure (gap change) -0.1817 mm -> gap now 0.600; hub-side normal stress sx -2.2 MPa
+bolt shank at the lug mid-plane: mean txz -0.0, tyz +0.0 MPa -> transverse force about Fx -0 N, Fy +0 N
+   shank at dz -5.25: txz -0.0 MPa -> Fx about -0 N
+   shank at dz +5.25: txz -5.4 MPa -> Fx about -39 N
+lug outer face vs pocket wall: gap 0.20, lug ux -0.0047, wall ux -0.1783 -> closure -0.1736 (negative = the lug moved toward the wall); hub sx there +0.06 MPa
+plate face front: whole face mean txz -0.01, tyz -0.05, sz -1.78 MPa; at the hole edge (r 2.1-2.6): txz -0.00, tyz -0.03, sz -0.61 MPa (n 32)
+   relative X slip lug face vs plate face: +0.1948 mm (a frictionless face slides freely; ~0 means sticking)
+plate face back: whole face mean txz -0.00, tyz +0.00, sz +0.00 MPa; at the hole edge (r 2.1-2.6): txz +0.00, tyz -0.00, sz +0.00 MPa (n 36)
+   relative X slip lug face vs plate face: +0.1813 mm (a frictionless face slides freely; ~0 means sticking)
