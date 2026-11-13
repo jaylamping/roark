@@ -750,8 +750,10 @@ _HX = RX - 22.99                                   # the -X lug's bolt-hole axis
 _STOP6 = dict(CASES['HUBL_YAW3P38F'],
               split=CASES['HUBL_YAW3P38F']['split'] + [(('X', _OX), [(289.6, 294.6, 6.4, 10.9), (292.38, 294.02, 8.88, 10.52)], [('plane', (_OX, 291.0, 4.0), None, 'on')])])
 # the bolt-wall load needs the hole wall split, which changes the mesh: its cases are solved complete, not combined node by node
-_STOP6H = dict(_STOP6, split=_STOP6['split'] + [(('Y', 292.0), [(_HX - 3.0, _HX, 0.5, 11.5)], [('plane', (_HX - LUG_R, 292.0, 6.0), None, 'on')])])
-_HOLE_OUT = ('cyl', LUG_R, [_HX - LUG_R - 0.05, 292.0 - LUG_R - 0.05, 0.9, _HX + 0.05, 292.0 + LUG_R + 0.05, 11.1])
+# (a Y-plane sketch through the hole did not split its wall; a band Y 291-293 projected along X does: it cuts the wall into
+# an outboard strip, an inboard strip, a top and a bottom. The outboard strip is 63 deg of the wall, about the bolt's bearing arc)
+_STOP6H = dict(_STOP6, split=_STOP6['split'] + [(('X', _OX - 1.0), [(291.0, 293.0, 0.5, 11.5)], [('plane', (_HX - LUG_R, 292.0, 6.0), None, 'on')])])
+_HOLE_OUT = ('cyl', LUG_R, [_HX - LUG_R - 0.05, 290.9, 0.9, _HX - 1.5, 293.1, 11.1])
 _P_SMALL, _P_RING = ('plane', (_OX, 293.2, 9.7), None, 'on'), ('plane', (_OX, 290.5, 7.0), None, 'on')
 CASES['HUBL_STOP6_Z'] = dict(_STOP6,
     remotes=[(_PFACE(-1, 11.0), _COP(-1, 11.0, 30.0, 291.6), (0.0, 0.0, -184.0), (0.0, 0.0, 0.0), 1),

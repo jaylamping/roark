@@ -1073,6 +1073,9 @@ dish, on the +X side, and can lie as a spiral or an arc.
   governing lug, the design figures for r1g6 are **shear 1.58 and layer 1.75 (yaw -17), shear 1.59 and layer 1.74
   (yaw +17).** Sideways loads are under 6 N, the outer faces carry about 2 N and do not land, and the bolts are free. The
   272 N bound does not depend on the arm's split and is unchanged.
+- **Plain yaw on r1g6:** lug sections 247 / 242 N (yaw -17) and 243 / 247 N (yaw +17), was 245 / 241; bolts free, no wall
+  landing. The design yaw load is therefore **247 N**, and the yaw-alone design row restated by that ratio is **shear
+  1.89, layer 2.16** (1.91 and 2.18 at 245 N).
 - **Where:** the outer R1.2 root, hub X offset 32.6, Y 295.65, at the lug's Z face. The same place on either lug in every
   yaw case.
 - **The Ø3.8 holes cost 2-3%** in shear and up to 4% in layer against D3c6 (uniform case, same mesh).
