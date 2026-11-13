@@ -170,7 +170,13 @@ sudo mkdir -p /var/lib/robot /etc/robot /opt/robot/releases
 sudo chown robot:robot /var/lib/robot
 ```
 
-- `agent` gets **no** `sudo` and isn't in any group that can open real CAN interfaces.
+- `agent` gets passwordless `sudo`, so agents can do setup and bench runs unattended
+  ([remote-access.md section 4](../conventions/remote-access.md#4-accounts-on-the-pi) says what that costs). The file is
+  checked before it goes in place, because a broken sudoers file locks everyone out of `sudo`:
+  ```
+  echo 'agent ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/020_agent
+  sudo chmod 440 /etc/sudoers.d/020_agent && sudo visudo -cf /etc/sudoers.d/020_agent
+  ```
 - `/etc/ssh/sshd_config.d/robot.conf`: `PasswordAuthentication no` and `PermitRootLogin no`, then
   `sudo systemctl restart ssh`.
 

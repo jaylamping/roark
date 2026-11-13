@@ -56,11 +56,16 @@ do** there. Neither is trusted alone.
 | Account | Who | Can |
 |---|---|---|
 | Joey's user | Joey | Everything an operator can: `enable`, `clear`, start plans, stop, deploy, `sudo` |
-| `agent` | Cloud agents | Read logs and recordings, deploy, run anything on `vcan`, start approved plans, stop. No `sudo`, no `enable` or `clear` |
+| `agent` | Cloud agents | Read logs and recordings, deploy, run anything on `vcan`, start approved plans, stop, and passwordless `sudo` for setup and maintenance. No `enable` or `clear` |
 | Service user for the runtime | systemd | Run the runtime with the realtime and network capabilities it needs; no login |
 
 - **Motion authority is enforced by the `api` socket,** not by trust: the socket's permissions and the runtime's per-client
-  rules let only Joey's user `enable` and `clear` (PLAN item 3a). An agent that somehow gets a shell still can't enable a drive.
+  rules let only Joey's user `enable` and `clear` (PLAN item 3a).
+- **`agent` has passwordless `sudo`** (Joey's decision, 2026-11-13), so setup, updates and bench runs don't wait for a
+  password. The cost, stated plainly: root can open a real CAN interface and can act as any user, so for the `agent` account
+  nothing on the Pi enforces the line above. What keeps an agent off a real drive is the
+  [Real hardware rule](../PLAN.md#real-hardware-rule) and the physical E-stop, not the Pi. Revisit this before the robot runs
+  outside the bench: the narrower form is a few fixed root scripts in `/etc/sudoers.d/` instead of `ALL`.
 - **Agents never get Joey's SSH key** and never log in as Joey.
 
 ## 5. Keys for cloud agents
@@ -115,7 +120,7 @@ do** there. Neither is trusted alone.
 
 - Is it a policy PR with updated `tests` and `sshTests`?
 - Does any new rule use `*`, a hostname, `root`, or a port beyond what that tag needs?
-- Can an agent reach anything that lets it `enable` or `clear`?
+- Can an agent reach anything that lets it `enable` or `clear`? (Today: yes, through `sudo`; section 4.)
 - Does anything make the robot depend on Tailscale to run or stop?
 
 ## Sources

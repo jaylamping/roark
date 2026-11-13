@@ -67,6 +67,11 @@ id robot >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/
 id agent >/dev/null 2>&1 || useradd --create-home --shell /bin/bash agent
 mkdir -p /var/lib/robot /etc/robot /opt/robot/releases
 chown robot:robot /var/lib/robot
+# Passwordless sudo for `agent` (remote-access.md section 4), checked before it is put in place.
+T=$(mktemp)
+echo 'agent ALL=(ALL) NOPASSWD:ALL' > "$T"
+visudo -cf "$T" && install -m 440 -o root -g root "$T" /etc/sudoers.d/020_agent
+rm -f "$T"
 # The agent account's key (remote-access.md section 4: agents never log in as Joey). If the key file was put next
 # to this script, install it for `agent` and take the same key out of joey's list.
 if [ -s "$HERE/agent-key.pub" ]; then
