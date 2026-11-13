@@ -280,8 +280,7 @@ def r1f_lug_web(d, sg, zl):
 def r1f_lug_pocket(d, sg, zl):
     """R1f: (1) the seam pocket for the extended lug, |Z - CZ| < SLOT_CL + 5.0, out to R1F_POCKET, Y 287.5-297.8;
     (2) the root relief for the hub's R1.2 Z roots, which now run out to r 35.8 at Y 296 (tangent Y 294.8 / Z +-6.2): Y 294.3-296.4,
-    from the face out to 1.3 past it with a 45 deg lower edge, offsets 18.3-36.3; (3) 0.5 x 45 deg breaks on our pocket's convex
-    edges at the bore (offset 35.9): the top edge (Y 297.8, along Z) and the face edge (Z = zl, along Y)."""
+    from the face out to 1.3 past it with a 45 deg lower edge, offsets 18.3-36.3."""
     if not r1f_on():
         return
     zc, dz = CZ + sg * (abs(zl - CZ) - 0.5) / 2, abs(zl - CZ) + 0.5      # Z from -0.5 (into the cut-away half) to the face
@@ -301,13 +300,8 @@ def r1f_lug_pocket(d, sg, zl):
         with Sk(d, plane(d, 'X', xm, f'R1F_ROOTREL{tag}_P'), f'R1F_ROOTREL{tag}') as s:
             s.poly([(xm, y, z) for y, z in rel])
         feat(d, s.feat, f'R1F_ROOTREL{tag}', o1 - o0, True, mode=MID, lo=0.01)
-        # 0.5 breaks at the bore edge (offset 35.9): top edge along Z, face edge along Y
-        with Sk(d, plane(d, 'Z', zc, f'R1F_TOPBRK{tag}_P'), f'R1F_TOPBRK{tag}') as s:
-            s.poly([(HX + side * o, y, zc) for o, y in [(35.9, 297.5), (35.9, 298.3), (36.7, 297.5)]])
-        feat(d, s.feat, f'R1F_TOPBRK{tag}', dz, True, mode=MID, lo=0.01)
-        with Sk(d, plane(d, 'Y', 296.7, f'R1F_FACEBRK{tag}_P'), f'R1F_FACEBRK{tag}') as s:
-            s.poly([(HX + side * o, 296.7, z) for o, z in [(35.9, zl - sg * 0.3), (35.9, zl + sg * 0.5), (36.7, zl - sg * 0.3)]])
-        feat(d, s.feat, f'R1F_FACEBRK{tag}', 2.4, True, mode=MID, lo=0.01)
+        # (no 0.5 breaks at the bore edge: as planar cuts at offset 35.9 they left knife-thin slivers against the curved bore
+        # (gate, 2026-11-12), and the D3 hub needs none: its column top is chamfered 45 deg and the strip's vertical edges are sharp)
 
 
 def r1c_fins(d, sg, zl):

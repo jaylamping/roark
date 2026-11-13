@@ -391,7 +391,12 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                     raise SystemExit(f'bonded set failed: {nm_}')
         if shims:      # the shim's underside against the arm's lowered end face: no penetration (compression only)
             sb_ = [f for bb in shims for f in faces(bb) if abs(box(f)[1] - box(f)[4]) < 0.01 and min(box(f)[1], box(f)[4]) < HUB_JOINT_Y - 0.05]
-            ae_ = [f for f in faces(arm) if abs(box(f)[1] - box(f)[4]) < 0.01 and abs(max(box(f)[1], box(f)[4]) - min(box(g)[1] for g in sb_)) < 0.02] if sb_ else []
+            # every flat arm face at the shim's underside level (2026-11-12: the end face is split at the seam into one face per
+            # half; matching only one left the other half globally bonded to the shim, which then carried the stop's twist)
+            yb_ = min(min(box(g)[1], box(g)[4]) for g in sb_) if sb_ else None
+            ae_ = [f for f in faces(arm) if abs(box(f)[1] - box(f)[4]) < 0.02 and abs((box(f)[1] + box(f)[4]) / 2 - yb_) < 0.05] if sb_ else []
+            for f in ae_:
+                print('  arm end face for the shim set: box', [round(v, 2) for v in box(f)], flush=True)
             err = I()
             cs4 = cm.CreateContactSet(0, VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, sb_), VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, ae_), err)
             print(' shim contact set', cs4 is not None, 'faces shim', len(sb_), 'arm end face', len(ae_), 'err', err.value, flush=True)
