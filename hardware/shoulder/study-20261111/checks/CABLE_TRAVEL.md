@@ -9,7 +9,7 @@ The pictures are schematic.
 |---|---|---|---|---|
 | **Yaw** | ±90° (not fixed) | No: 97 mm of slack with nowhere to go | **±90° as a spiral in the present dish, if this segment is 18 AWG.** With 16 AWG: about ±37° as a plain arc | Nothing more needed with 18 AWG. For 16 AWG: the dish 1.5 mm deeper (hub top) |
 | **Roll** | -11° to +110° (the stops) | No: good for about ±11° | None | A spiral deck in the rear cap where the stop slot is; the stop moves out. Cap, fork rear, stop |
-| **Pitch** | 230-270° (not fixed) | No | **About 115°** as a spiral in the present channel | A bight in the void under the frame's step (no outline change, needs a pull-down), or the channel 9.5 mm deeper (outline grows) |
+| **Pitch** | 230-270° (not fixed) | No | **About 115°** as a spiral in the present channel | A bight in the void under the frame's step: no outline change, needs a pull-down, **marginal at 230° and not enough for 270°** ([PITCH_BIGHT.md](PITCH_BIGHT.md)). Or the channel 9.5 mm deeper (outline grows) |
 
 - **Outer outline:** every option marked alive below keeps it, except the deeper pitch channel.
 - **The cheapest fix everywhere is less travel.** What each joint really needs is a question for Joey (facts at the end).
@@ -134,8 +134,13 @@ band is one wire thick: 3.0 mm.
 - It is clear of the pitch RS03 (it hangs below it), the frame rails (it passes inboard of the step rail through the
   feed's opening), and the shell opening.
 
+**Checked against the frame and shell models afterwards** ([PITCH_BIGHT.md](PITCH_BIGHT.md)): the loop cannot hang
+straight down (the shell's wall closes in after 55 mm, and the cable feed stands in the void), so it jogs 38 mm inboard
+first and has 117 mm of depth, down to hardpoint H6. **230° is marginal and 270° does not fit.** An elastic pull-down
+does not work in that height; a weight or a small spring retractor does.
+
 **Recommendation:** decide the pitch travel first. For a first build, the spiral alone at about 115° needs only two
-clamps. For overhead reach, wrap and bight, on a rig first.
+clamps. For more, the spiral with a short loop (fits), or the full wrap and bight (marginal at 230°), on a rig first.
 
 **Rig:** two printed rings 21 mm apart (inner wall r 57.4, outer r 73.5) with a slot at the bottom, the real wires, a
 weight. About 40 g.
