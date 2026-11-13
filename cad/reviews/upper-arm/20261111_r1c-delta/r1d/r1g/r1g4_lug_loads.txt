@@ -1,0 +1,102 @@
+r1g4 hub lug loads by face, for the shoulder thread's FE (2026-11-13). Upper arm r1g4: lug plates Dia 3.8, lumped as a 0.5 boss of
+our post inside the plate outline; our FEA hub is the D3b-shaped hub (straight lugs to X offset 34.4, R1.2 Z roots).
+
+FRAME AND UNITS
+- Arm frame, mm, N, N.m, MPa. Yaw axis (the hub axis) = the line X 170.49, Z 5.986, parallel to Y. Y increases toward the shoulder
+  (hub top at Y 320, fixed in the model); the arm hangs toward -Y.
+- X offset = |X - 170.49| (the -X lug lies at X 136-152, the +X lug at X 189-205). Z: front half +Z. Lug Z faces: front Z 11.0,
+  back Z 1.0 (Z - CZ +-5). Lug outer face at X offset 34.4. Bolt holes Dia 3.4 at X 147.5 / 193.5, Y 292.0, along Z.
+- Moments are about the point (X 170.49, Y 302.0, Z 5.986): on the yaw axis, at the hub disc face.
+
+LOAD CASES (applied to the arm as a remote load at the RS02 centre X 170.49, Y 209.861, Z 5.986; hub top fixed)
+- YAW -17 (LC2M): moment -17 N.m about +Y (the RS02's yaw peak, the sign that presses the -X lug into its front plate); no force.
+- G90: force -62 N in Z, moment +17.2 N.m about +X (arm horizontal; the forearm and hand load). Carried to the disc face:
+  Mx = 17.2 + 62 N x 92.1 mm = 22.91 N.m.
+- G90 + YAW -17 (G90YM): both together.
+
+HOW THE FORCES WERE INTEGRATED
+- Face rows: hub-side nodal stresses, traction t = sigma . n (n = the hub's outward normal), interpolated linearly over each face and
+  integrated on a 0.1 mm grid. Z faces over the flat lug face (X offset 18.76-34.4, Y 288-294.8, less the Dia 3.4 hole); outer face
+  over Z 1-11, Y 288-294.8; bolt-hole wall over the cylinder. The force is what OUR ARM APPLIES TO THE HUB.
+  Centre of pressure = the compressive-pressure-weighted centre on each Z face. "p mean / p max" = the normal pressure over the
+  loaded part and its nodal peak (MPa).
+- Section rows: the stress integrated over a Y 294.5 cut through each lug (interior nodes, not extrapolated surface values). They
+  must cancel the face forces below the cut; the sign is opposite. The difference measures the nodal over-read of the face rows.
+- NO over-count correction is applied to the face rows. The -X lug faces close to their section within 5 %; the +X lug faces read
+  16-17 % high (the back-face edge peak, 115-133 MPa nodal). USE THE SECTION TOTALS PER LUG; use the face rows for the split between
+  faces and the centres of pressure.
+- Whole-hub section at Y 310 (above the disc): everything the arm puts into the hub. Balance: applied vs that section. Moments close
+  within 2-3 %, Fz within 10 %. Its Fy reads -9 to -41 N where 0 is applied: integration error on the hub's coarse 4 mm mesh at
+  Y 310 (bending stresses that should cancel). The "ring, ridge, groove and spigot" share = applied minus the lugs (sections).
+
+
+==================== YAW -17 (LC2M), r1g4_yawm
+lug  face                                                                 Fx       Fy       Fz  CoP X off   CoP Y  p mean  p max cover
+-X   front Z face                                                        1.3      0.1   -270.4      31.17  292.44    3.63  30.49  1.00
+-X   back Z face                                                        -0.5      0.3     10.6      19.52  289.70    0.58   7.15  1.00
+-X   outer face                                                         -3.0      0.2     17.8        nan     nan    0.00   4.62  1.00
+-X   bolt-hole wall                                                      0.6     -0.2      0.1        nan     nan    0.00   0.00  0.94
+-X   section at Y 294.5 (lug cross-section; should cancel the faces below it)     -0.8     -0.9    244.7        nan     nan    0.00   0.00  0.99
+-X   sum of the four faces                                              -1.6      0.5   -241.8        nan     nan    0.00   0.00  1.00
++X   front Z face                                                        0.7     -0.5    -13.2      19.94  289.28    0.61   5.56  1.00
++X   back Z face                                                         0.1     -0.6    309.1      31.48  292.37    5.15 115.16  1.00
++X   outer face                                                          1.4      0.1    -15.3        nan     nan    0.00   5.37  1.00
++X   bolt-hole wall                                                     -0.1      0.1     -0.1        nan     nan    0.00   0.00  0.94
++X   section at Y 294.5 (lug cross-section; should cancel the faces below it)     -0.6      0.7   -240.6        nan     nan    0.00   0.00  0.99
++X   sum of the four faces                                               2.1     -1.0    280.4        nan     nan    0.00   0.00  1.00
+applied (on the arm, at the RS02 centre X 170.49 Y 209.861 Z 5.986): F [0.0, 0.0, 0.0] N, M [0.0, -17.0, 0.0] N.m; carried to (X 170.49, Y 302.0, Z 5.986): M [0.0, -17.0, 0.0] N.m
+whole-hub section at Y 310.0 (everything the arm puts into the hub): F [-0.9, -9.1, -0.2] N, M about the same point [0.05, -17.58, 0.08] N.m (cover 1.00)
+both lugs, from the faces:    F [0.5, -0.6, 38.6] N, M [-0.38, -16.68, -0.03] N.m
+both lugs, from the sections: F [1.4, 0.2, -4.1] N, M [0.02, -14.98, -0.03] N.m (lever at each lug Z-face centre of pressure)
+ring, ridge, groove and spigot (applied minus lugs from the sections): F [-1.4, -0.2, 4.1] N, M [-0.02, -2.02, 0.03] N.m
+balance: applied F [0.0, 0.0, 0.0] N, M [0.0, -17.0, 0.0] N.m against the whole-hub section F [-0.9, -9.1, -0.2] N, M [0.05, -17.58, 0.08] N.m
+
+==================== G90, r1g4_g90
+lug  face                                                                 Fx       Fy       Fz  CoP X off   CoP Y  p mean  p max cover
+-X   front Z face                                                       -0.0      0.2     -6.1      32.02  288.56    0.23   2.84  1.00
+-X   back Z face                                                        -0.1     -0.3     55.8      30.54  293.36    1.11  32.20  1.00
+-X   outer face                                                         -0.6     -0.2     -1.1        nan     nan    0.00   0.74  1.00
+-X   bolt-hole wall                                                      0.0      0.1     -0.0        nan     nan    0.00   0.00  0.94
+-X   section at Y 294.5 (lug cross-section; should cancel the faces below it)     -0.0     -0.3    -30.8        nan     nan    0.00   0.00  0.99
+-X   sum of the four faces                                              -0.7     -0.3     48.5        nan     nan    0.00   0.00  1.00
++X   front Z face                                                        0.2      0.2    -12.6      22.17  289.56    0.34   1.44  1.00
++X   back Z face                                                         0.1     -0.4     48.8      31.79  293.00    0.93  22.62  1.00
++X   outer face                                                          0.7     -0.2     -2.8        nan     nan    0.00   1.12  1.00
++X   bolt-hole wall                                                      0.0      0.2      0.1        nan     nan    0.00   0.00  0.94
++X   section at Y 294.5 (lug cross-section; should cancel the faces below it)     -0.3     -0.5    -25.9        nan     nan    0.00   0.00  0.99
++X   sum of the four faces                                               1.0     -0.2     33.6        nan     nan    0.00   0.00  1.00
+applied (on the arm, at the RS02 centre X 170.49 Y 209.861 Z 5.986): F [0.0, 0.0, -62.0] N, M [17.2, 0.0, 0.0] N.m; carried to (X 170.49, Y 302.0, Z 5.986): M [22.91, 0.0, 0.0] N.m
+whole-hub section at Y 310.0 (everything the arm puts into the hub): F [-0.9, -37.2, -67.0] N, M about the same point [23.43, 0.02, 0.04] N.m (cover 1.00)
+both lugs, from the faces:    F [0.3, -0.5, 82.0] N, M [-0.65, 0.28, 0.0] N.m
+both lugs, from the sections: F [0.3, 0.9, 56.7] N, M [-0.53, 0.17, 0.01] N.m (lever at each lug Z-face centre of pressure)
+ring, ridge, groove and spigot (applied minus lugs from the sections): F [-0.3, -0.9, -118.7] N, M [23.44, -0.17, -0.01] N.m
+balance: applied F [0.0, 0.0, -62.0] N, M [22.91, 0.0, 0.0] N.m against the whole-hub section F [-0.9, -37.2, -67.0] N, M [23.43, 0.02, 0.04] N.m
+
+==================== G90 + YAW -17 (G90YM), r1g4_g90ym
+lug  face                                                                 Fx       Fy       Fz  CoP X off   CoP Y  p mean  p max cover
+-X   front Z face                                                       -0.9     -1.4   -228.2      31.72  291.88    2.90  24.79  1.00
+-X   back Z face                                                        -0.5      0.4      9.4      19.41  291.67    0.48   3.35  1.00
+-X   outer face                                                         -3.4     -0.6     16.8        nan     nan    0.00   3.86  1.00
+-X   bolt-hole wall                                                     -4.0     -2.4     -1.2        nan     nan    0.00   0.00  0.94
+-X   section at Y 294.5 (lug cross-section; should cancel the faces below it)      8.1      4.5    212.6        nan     nan    0.00   0.00  0.99
+-X   sum of the four faces                                              -8.8     -4.0   -203.2        nan     nan    0.00   0.00  1.00
++X   front Z face                                                        0.7     -0.2    -18.5      20.12  289.26    0.78   6.40  1.00
++X   back Z face                                                         0.6      1.8    348.6      31.47  292.57    5.70 133.26  1.00
++X   outer face                                                          1.9      0.1    -17.5        nan     nan    0.00   5.84  1.00
++X   bolt-hole wall                                                     -0.1      0.1     -0.1        nan     nan    0.00   0.00  0.94
++X   section at Y 294.5 (lug cross-section; should cancel the faces below it)     -0.6     -0.1   -266.6        nan     nan    0.00   0.00  0.99
++X   sum of the four faces                                               3.1      1.7    312.5        nan     nan    0.00   0.00  1.00
+applied (on the arm, at the RS02 centre X 170.49 Y 209.861 Z 5.986): F [0.0, 0.0, -62.0] N, M [17.2, -17.0, 0.0] N.m; carried to (X 170.49, Y 302.0, Z 5.986): M [22.91, -17.0, 0.0] N.m
+whole-hub section at Y 310.0 (everything the arm puts into the hub): F [-2.0, -40.6, -68.1] N, M about the same point [23.32, -17.54, 0.3] N.m (cover 1.00)
+both lugs, from the faces:    F [-5.7, -2.4, 109.3] N, M [-0.8, -16.66, 0.12] N.m
+both lugs, from the sections: F [-7.4, -4.4, 54.0] N, M [-0.4, -14.88, 0.07] N.m (lever at each lug Z-face centre of pressure)
+ring, ridge, groove and spigot (applied minus lugs from the sections): F [7.4, 4.4, -116.0] N, M [23.32, -2.12, -0.07] N.m
+balance: applied F [0.0, 0.0, -62.0] N, M [22.91, -17.0, 0.0] N.m against the whole-hub section F [-2.0, -40.6, -68.1] N, M [23.32, -17.54, 0.3] N.m
+
+SUMMARY (from the sections, per lug, Fz on the hub; yaw moment My; G90 moment Mx)
+- YAW -17: -X lug Fz -245 N, +X lug Fz +241 N (a couple). The lugs carry My -14.98 of -17.0 N.m (88 %); the ring, ridge and
+  groove carry the other -2.0 (12 %).
+- G90: the lugs carry Fz +57 N together (-X +31, +X +26) and almost no moment (Mx -0.5 N.m). The G90 moment (22.9 N.m about X at
+  the disc face) and the -62 N go through the ring, ridge, groove and spigot (Mx 23.4, Fz -119 N, offsetting the lugs' +57).
+- G90 + YAW -17: -X lug Fz -213 N, +X lug Fz +267 N. The lugs carry My -14.9 of -17.0 (88 %) and Mx -0.4 of 22.9 N.m.
+- Bolt holes and lug outer faces carry under 20 N in any case (outer face about 15-18 N Fz-shear on the yaw cases; bolt wall under 5 N).
