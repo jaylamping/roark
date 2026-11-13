@@ -1,0 +1,9 @@
+D3 vs bc16e97: differing Y levels 108 Y 288.0 .. 298.7
+  x offsets of the differences: (-35.8, 35.81) z (-35.8, 35.81)
+D3 in R1f halves: levels with overlap 12 [(298.0, '-X lug', 0.8966), (298.0, '+X lug', 0.8966), (298.1, '-X lug', 0.9225), (298.1, '+X lug', 0.9204), (298.2, '-X lug', 0.9489), (298.2, '+X lug', 0.9455), (298.3, '-X lug', 0.9758), (298.3, '+X lug', 0.9722), (298.4, '-X lug', 1.0032), (298.4, '+X lug', 1.0002), (298.5, '-X lug', 1.0309), (298.5, '+X lug', 1.0291)]
+  -X lug: smallest gap 0.024 at Y 297.9
+    Z-face gap front: min 0.175 max 1.946 over Y 288.0-298.5
+    Z-face gap back: min 0.203 max 1.975 over Y 288.0-298.5
+  +X lug: smallest gap 0.022 at Y 296.8
+    Z-face gap front: min 0.175 max 1.946 over Y 288.0-298.5
+    Z-face gap back: min 0.203 max 1.975 over Y 288.0-298.5
