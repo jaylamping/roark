@@ -196,8 +196,11 @@ if len(bl):
     i = bl[np.argmax(vm[bl])]
     print(f'bolts: vm peak {vm[i]:.0f} MPa at {p[i].round(1).tolist()} (SF vs 640 MPa yield {640.0 / vm[i]:.2f})')
 # lug forces: slab across each lug just below the root, hub nodes only
-for name, (x0, x1) in (('lug -X', (141.0, 151.75)), ('lug +X', (189.25, 200.0))):
-    m = in_hub & ~bolt & (y > 294.5) & (y < 295.5) & (p[:, 0] > x0 + 0.2) & (p[:, 0] < x1 - 0.2) & (p[:, 2] > 1.2) & (p[:, 2] < 10.8)
+D3 = os.environ.get('R1C_D3') == '1'      # 2026-11-12: hub rev D3 extended lugs (X offset 18.7-36.35): the slab spans the whole lug at the root band
+LUG_SLABS = (('lug -X', (170.49 - 36.4, 170.49 - 18.7)), ('lug +X', (170.49 + 18.7, 170.49 + 36.4))) if D3 else (('lug -X', (141.0, 151.75)), ('lug +X', (189.25, 200.0)))
+SLAB_Y = (295.5, 295.9) if D3 else (294.5, 295.5)
+for name, (x0, x1) in LUG_SLABS:
+    m = in_hub & ~bolt & (y > SLAB_Y[0]) & (y < SLAB_Y[1]) & (p[:, 0] > x0 + 0.2) & (p[:, 0] < x1 - 0.2) & (p[:, 2] > 1.2) & (p[:, 2] < 10.8)
     idx = np.flatnonzero(m)
     if len(idx) == 0:
         print(name, 'no nodes'); continue

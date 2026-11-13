@@ -46,8 +46,9 @@ INSERTS = F / 'HS_INSERTS.SLDPRT'
 SHIM_T = float(os.environ.get('HS_SHIM', '0'))
 SHIM = F / 'HS_SHIM.SLDPRT'
 HUB_JOINT_Y = 302.0
-LUG_FACE_F = 5.985875 + 5.0 + 0.1      # front / back post faces at the lug (HUB_LUG_HZ 5.0 + the printed 0.1)
-LUG_FACE_B = 5.985875 - 5.0 - 0.1
+_SLOT_CL = float(os.environ.get('ARM_SLOT_CL', '0.1'))      # R1f (D3): 0.5 per side for the lug plates
+LUG_FACE_F = 5.985875 + 5.0 + _SLOT_CL      # front / back post faces at the lug (HUB_LUG_HZ 5.0 + the printed clearance)
+LUG_FACE_B = 5.985875 - 5.0 - _SLOT_CL
 BOLT_SEAT = LUG_FACE_B - 7.0
 PADS_ON = os.environ.get('HS_PADS') == '1'      # R1d gap cases: four soft bonded pads stabilise the arm (soft springs crash SolidWorks here)
 PADS = F / 'HS_PADS.SLDPRT'
@@ -156,13 +157,18 @@ def build():
         raise SystemExit('open ' + str(MODEL))
     for i, q in enumerate(OP.HUB_COLS):
         for sg in (1, -1):
-            OP.post_z(d, f'HUB_POST{i}{"F" if sg > 0 else "B"}', (q[0], OP.HUB_POST_Y), sg, z0=CZ + sg * (OP.HUB_LUG_HZ + (OP.CL if R1D else 0.0)))      # R1d: the printed 0.1 clearance to the lug
+            OP.post_z(d, f'HUB_POST{i}{"F" if sg > 0 else "B"}', (q[0], OP.HUB_POST_Y), sg, z0=CZ + sg * (OP.HUB_LUG_HZ + (OP.SLOT_CL if R1D else 0.0)))      # R1d: the printed 0.1 clearance to the lug
     if R1C:
         for sg in (1, -1):
-            OP.r1c_fins(d, sg, CZ + sg * (OP.HUB_LUG_HZ + (OP.CL if R1D else 0.0)))
+            OP.r1c_fins(d, sg, CZ + sg * (OP.HUB_LUG_HZ + (OP.SLOT_CL if R1D else 0.0)))
         OP.r1d_post_trim(d)
         for sg in (1, -1):
-            OP.r1d_slot_break(d, sg, CZ + sg * (OP.HUB_LUG_HZ + (OP.CL if R1D else 0.0)))      # ARM_SLOT_BREAK only
+            OP.r1d_slot_break(d, sg, CZ + sg * (OP.HUB_LUG_HZ + (OP.SLOT_CL if R1D else 0.0)))      # ARM_SLOT_BREAK only
+        if OP.r1f_on():      # R1f (D3 extended lugs): post-to-wall webs, the seam pocket and the root relief, as in the printed halves
+            for sg in (1, -1):
+                zl_ = CZ + sg * (OP.HUB_LUG_HZ + OP.SLOT_CL)
+                OP.r1f_lug_web(d, sg, zl_)
+                OP.r1f_lug_pocket(d, sg, zl_)
     if BOLTED and INSERTS_ON:      # the holes as in the printed halves (organic_parts.upper_half)
         OP.z_cyl(d, 'HS_BACK_HOLES', OP.HUB_COLS, 1.7, CZ - 60.0, LUG_FACE_B + 0.5, True)
         OP.z_cyl(d, 'HS_BACK_CBORES', OP.HUB_COLS, 3.0, CZ - 60.0, BOLT_SEAT, True)
@@ -534,7 +540,57 @@ def zfillet(src, dst):
     sw.CloseDoc(d.GetTitle)
 
 
-if __name__ == '__main__' and sys.argv[1:] == ['build']:
+def d3hub(src, dst):
+    """Hub rev D3 lugs on our FEA hub (2026-11-12; shoulder thread 22ead5b, A_HUB_LUGS.md "Rev D3 as built"): each lug grown out
+    from its outer face (X offset 29.5) to a straight face at X offset 34.4 over Y 288-294.5, stepped out to 36.35 over Y 294.5-297.6
+    with a 45 deg chamfer from (36.35, Y 296.7) to the land (35.45, Y 297.6), at the lug's own thickness (|Z - CZ| <= 5); then the
+    R1.2 Z roots along Y 296 from the bore out to the land (r up to 35.9) and R0.5 where the step underside (Y 294.5) meets the
+    outer face (X offset 34.4). Built on the hub before its Z-root fillet (src), saved as dst with its STL."""
+    sys.path.insert(0, str(ARM))
+    os.chdir(ARM)
+    import math as m_
+    import organic_master as M
+    from organic_master import L, sw, edges_where, fillet_edges, fine_stl
+    shutil.copy(F / src, F / dst)
+    e, w = L(), L()
+    d = sw.OpenDoc6(str(F / dst), 1, 1, '', e, w)
+    if d is None:
+        raise SystemExit(f'open failed: {dst} {e.value} {w.value}')
+    prof = [(29.0, 288.0), (34.4, 288.0), (34.4, 294.5), (36.35, 294.5), (36.35, 296.7), (35.45, 297.6), (29.0, 297.6)]
+    for k, side in enumerate((-1, 1)):
+        name = f'D3_LUGEXT{k}'
+        with M.Sk(d, M.plane(d, 'Z', CZ, name + '_P'), name) as s_:
+            s_.poly([(HX + side * o, y, CZ) for o, y in prof])
+        M.feat(d, s_.feat, name, 10.0, False, mode=M.MID, lo=0.01)
+    d.ForceRebuild3(False)
+    from swg import bodies as bodies_
+    print('  D3 hub bodies', len(bodies_(d)), flush=True)
+    if len(bodies_(d)) != 1:
+        raise SystemExit('lug extensions did not merge into the hub')
+    r_ = lambda q: m_.hypot(q[0] - HX, q[2] - CZ)
+    roots = edges_where(d, lambda q: abs(q[1] - 296.0) < 0.05 and abs(abs(q[2] - CZ) - 5.0) < 0.1 and 18.0 < r_(q) < 35.95)
+    print('  D3 Z-root edges', len(roots), flush=True)
+    if len(roots) < 4:
+        raise SystemExit('expected at least 4 Z-root edges')
+    fillet_edges(d, roots, [1.2], 'D3_ZROOTS')
+    if d.FeatureByName('D3_ZROOTS') is None:
+        raise SystemExit('Z-root fillet failed')
+    steps = edges_where(d, lambda q: abs(q[1] - 294.5) < 0.05 and abs(abs(q[0] - HX) - 34.4) < 0.05 and abs(q[2] - CZ) < 4.9)
+    print('  D3 step-corner edges', len(steps), flush=True)
+    if steps:
+        fillet_edges(d, steps, [0.5], 'D3_STEPR05')
+        print('  D3_STEPR05', d.FeatureByName('D3_STEPR05') is not None, flush=True)
+    d.ForceRebuild3(False)
+    e, w = L(), L()
+    d.Save3(1, e, w)
+    fine_stl(d, F / (Path(dst).stem + '.STL'))
+    print('  saved', dst, 'and its STL', flush=True)
+    sw.CloseDoc(d.GetTitle)
+
+
+if __name__ == '__main__' and sys.argv[1:2] == ['d3hub']:
+    d3hub(sys.argv[2], sys.argv[3])
+elif __name__ == '__main__' and sys.argv[1:] == ['build']:
     build()
 elif __name__ == '__main__' and sys.argv[1:2] == ['zfillet']:
     zfillet(sys.argv[2], sys.argv[3])
