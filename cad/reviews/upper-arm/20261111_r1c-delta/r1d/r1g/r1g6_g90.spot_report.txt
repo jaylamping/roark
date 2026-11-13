@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "J:\code\roark-wt\left-arm-organic\cad\scripts\fea\r1c\spot_report.py", line 14, in <module>
+    d = np.load(sys.argv[1])
+        ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\holly\AppData\Local\Programs\Python\Python312\Lib\site-packages\numpy\lib\_npyio_impl.py", line 454, in load
+    fid = stack.enter_context(open(os.fspath(file), "rb"))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'cad/_sim/r1g6_g90/post.txt'

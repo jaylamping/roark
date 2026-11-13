@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "J:\code\roark-wt\left-arm-organic\cad\scripts\fea\r1c\hub_r1c.py", line 13, in <module>
+    d = np.load(npz); p, s = d['pos'], d['s']; vm = s[:, 10]
+        ^^^^^^^^^^^^
+  File "C:\Users\holly\AppData\Local\Programs\Python\Python312\Lib\site-packages\numpy\lib\_npyio_impl.py", line 489, in load
+    raise ValueError(
+ValueError: This file contains pickled (object) data. If you trust the file you can load it unsafely using the `allow_pickle=` keyword argument or `pickle.load()`.

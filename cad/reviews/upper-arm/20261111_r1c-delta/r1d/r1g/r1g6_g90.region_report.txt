@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "J:\code\roark-wt\left-arm-organic\cad\scripts\fea\r1c\yaw_report.py", line 27, in <module>
+    p, s, body = load(sys.argv[1], sys.argv[2])
+                                   ~~~~~~~~^^^
+IndexError: list index out of range
