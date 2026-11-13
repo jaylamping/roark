@@ -199,6 +199,47 @@ def _drop_owner(pid):
         os.remove(owner_file(pid))
     except OSError:
         pass
+    try:
+        _claims().drop_instance(_claims().claims_dir(), pid)
+    except Exception:
+        pass
+
+
+def _claims():
+    """tools/pc/claims.py, which is stdlib only. Imported late so this module still loads if it is missing."""
+    here = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pc")
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import claims
+
+    return claims
+
+
+def _note_instance(pid, started):
+    """Leave a note saying which worktree and command drive this instance, so `--status` and `claims.py who <pid>` name
+    an owner even when the session made no claim. Never raises: a note must not stop a launch."""
+    try:
+        c = _claims()
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        c.note_instance(c.claims_dir(), pid, started, repo, os.getpid(), " ".join(sys.argv) or sys.executable, time.time())
+    except Exception:
+        pass
+
+
+def who(pid):
+    """One line on who drives this instance: its claim if it has one, else the note its launcher left, else ''."""
+    try:
+        c = _claims()
+        d = c.claims_dir()
+        for claim in c.load_all(d):
+            if claim.get("sw_pid") == pid and not claim.get("broken"):
+                return f"claimed by {claim['session']}: {claim.get('status', '')}"
+        n = c.instance_note(d, pid, _started(pid))
+        if n:
+            return f"no claim; {n['worktree']} (client PID {n['client_pid']}): {n['command']}"
+    except Exception:
+        pass
+    return ""
 
 
 def _owner_alive(pid):
@@ -649,6 +690,7 @@ def launch(timeout=300, visible=False, busy_wait=7200):
             proc.kill()
             raise
     _write_owner(inst.pid, inst.started)
+    _note_instance(inst.pid, inst.started)
     return inst
 
 
@@ -774,6 +816,7 @@ def attach(pid, busy_wait=30):
         raise RuntimeError(f"attached to PID {got}, expected {pid}")
     inst = Instance(pid, sw)
     _write_owner(pid, inst.started)  # this process drives it now: other sessions' launches read it as busy, not orphaned
+    _note_instance(pid, inst.started)
     return inst
 
 
@@ -917,3 +960,5 @@ elif __name__ == "__main__" and sys.argv[1:] == ["--status"]:
     print("    pid   age_s threads windows private_MB answers")
     for row in status():
         print("{:7d} {:7d} {:7d} {:7d} {:10d} {!s:>7}".format(*row) + NOTES[state(row)])
+        if who(row[0]):
+            print("        " + who(row[0]))
