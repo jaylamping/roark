@@ -563,6 +563,15 @@ CASES['HUBL_YAW3P6'] = dict(_d3((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 28.0, 28.0),
     remotes=[(_PFACE(-1, 1.0), _PAT(-1, 1.0), (0.0, 0.0, YAW3_F), (0.0, 0.0, 0.0), 1),
              (_PFACE(1, 11.0), _PAT(1, 11.0), (0.0, 0.0, -YAW3_F), (0.0, 0.0, 0.0), 1)])
 
+# the arm's fixed shim plate (coordinator 11:59Z): hole dia 3.8, plate top edge Y 294.7, otherwise as HUBL_YAW3P. The case of record
+_PL38 = lambda sg: (min(RX + sg * 18.96, RX + sg * 34.2), max(RX + sg * 18.96, RX + sg * 34.2), 288.2, 294.7)
+CASES['HUBL_YAW3P38'] = dict(_d3((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 28.0, 28.0),
+    split=[(1.0, [_PL38(-1), _PL38(1)], [_PFACE(-1, 1.0), _PFACE(1, 1.0)], [(RX - 23.0, 292.0, 1.9), (RX + 23.0, 292.0, 1.9)]),
+           (11.0, [_PL38(-1), _PL38(1)], [_PFACE(-1, 11.0), _PFACE(1, 11.0)], [(RX - 23.0, 292.0, 1.9), (RX + 23.0, 292.0, 1.9)])],
+    ctrl=D3_CTRL + [(cyl(0.8, [132, 294.5, -0.5, 209, 296.2, 12.5]), 0.35)],
+    remotes=[(_PFACE(-1, 1.0), _PAT(-1, 1.0), (0.0, 0.0, YAW3_F), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _PAT(1, 11.0), (0.0, 0.0, -YAW3_F), (0.0, 0.0, 0.0), 1)])
+
 # REV D, the arm thread's stop case on the full-ring joint (its fine-mesh repeat, roark 3c7114b): the full-ring ridge and groove
 # are axisymmetric and frictionless, so they carry no torque about the hub axis; that part of the stop moment goes into the
 # lugs as a Z-force pair. -X lug: Fz +169 N, Fx +40 N, 55 N axial (taken as a pull along -Y, like HUBL_I); +X lug: Fz -112 N.

@@ -880,7 +880,56 @@ margin, so D2d stays out of the candidate.
   - The flat face beside the bolt is unchanged (about 2.9).
   - The Ø6.0 edge on the flat face is not a low spot. The band r 2.6-3.4 that reaches above Y 294.8 is the inner R1.2
     root above.
-- **Both pass** 1.2 at 0.5 mm and 1.5 at 1 mm at 370 N.
-- **Thin margin:** the inner root's shear at 370 N, 6-13% over 1.2 on the assumed allowable.
+- **Correction (2026-11-13, whole-lug readout):** the Ø6.0 numbers above are the +X lug only. The **-X lug's inner root
+  governs: shear 1.48 at 0.5 mm, 1.22 at 370 N**. So Ø6.0 is slightly worse than Ø4.4 (1.54), not better.
+- **Under the centred reading, both pass** 1.2 at 0.5 mm and 1.5 at 1 mm at 370 N, with 2-6% margin in shear. Under the
+  stricter reading below, neither does.
 - **If more margin is wanted:** D2c's local r 20 bore behind the lug (+0.7 g, tested under the stop loads) moves exactly
   this inner end, where the fillet runs out on the r 23 bore.
+
+
+### HUBL_YAW3P38, the case of record: the arm's fixed shim plate (2026-11-13)
+
+**The case:**
+- **Plate:** the arm's fixed shim plate, Ø3.8 hole, top edge Y 294.7. The outline is otherwise X offset 18.96-34.2 from
+  Y 288.2.
+- **Load:** the couple is applied only inside the plate outline, less the Ø3.8 circle, on each lug's pushing Z face. 304 N
+  per lug at the same point as HUBL_YAW3P. The 370 N values are × 304/370.
+- **Hub:** the exported D3b.
+- **Mesh and solver:** 731k nodes, FFEPlus. Solved in 235 s.
+- **Post-processing:** `hub_d3b_post38.py` (full table in `_wip/shoulder-pass1/post_YAW3P38_revD3b.txt`). It covers the
+  whole lug, both lugs and both load directions, plus the global minimum over every hub node.
+
+**Two readings of each average:**
+- **Centred, as in every earlier case:** the nodes within 0.5 / 1 / 2 mm of the peak node.
+- **Worst-ball, the reading of record from now on (coordinator, 12:02Z):** of the 300 highest nodes, the one whose 0.5 mm
+  ball averages highest, then the 0.5 / 1 / 2 mm averages about it.
+- **Targets:** 1.2 at 0.5 mm and 1.5 at 1 mm, read here as worst-ball 0.5 mm ≥ 1.5 at 304 N and ≥ 1.2 at 370 N.
+
+SF at 304 N: peak, then centred 0.5 / 1 / 2 mm, then worst-ball 0.5 / 1 / 2 mm. The worse lug is shown; the two lugs agree
+within 0.05.
+
+| Spot | Layer (σy, 22.5 MPa) | Shear across layers (13.0 MPa, assumed) | von Mises (45 MPa) |
+|---|---|---|---|
+| **Inner R1.2 root** (X 21.5-24.5; r 23 bore run-out) | 0.97 · 1.95 / 3.09 / 5.15 · **1.64** / 2.80 / 5.08 | 0.76 · 1.57 / 2.19 / 3.64 · **1.11** / 1.91 / 3.39 | 1.26 · 2.57 / 3.46 / 4.81 · 1.61 / 2.48 / 4.31 |
+| Outer R1.2 root (X 32.5-34.7) | 1.70 · 2.42 / 3.41 / 5.43 · 2.42 / 3.40 / 5.43 | 1.68 · 2.48 / 3.93 / 6.37 · 2.48 / 3.93 / 6.37 | 3.12 · 4.27 / 5.63 / 7.86 |
+| Plate edge (outer face, Y 294.7) | 2.11 · 3.11 / 4.54 / 7.25 | 3.40 · 4.13 / 5.68 / 8.03 | 4.24 · 5.68 |
+| R0.8 outward root | 3.24 · 4.28 / 5.92 · worst-ball 3.88 | 4.01 · 5.50 · worst-ball 4.93 | 5.63 · 7.01 |
+| Bolt-hole rim (Z faces, r 1.7-2.6) | 4.74 · 5.74 · worst-ball 4.96 | 3.26 · 3.25 / 3.42 / 3.75 | 4.90 · 5.11 |
+| **Whole lug / whole hub (global)** | same as the inner root | **0.76 peak; worst-ball 1.11 at X off ±22.4, Y 295.4, Z-6 ±5.0** | same as the inner root |
+
+- **The global minimum is on the inner R1.2 root of both lugs:** the fillet's run-out onto rev D's r 23 bore wall, just
+  above the lug's Z face. Nothing else on the hub comes close.
+- **MPa at 304 N, inner root:**
+  - Shear: 17.0 peak, 8.2 centred over 0.5 mm, 11.7 worst-ball.
+  - Layer: 23.2 peak, 13.7 worst-ball.
+- **At 370 N:**
+  - Centred: shear 1.29, layer 1.60. Passes.
+  - **Worst-ball: shear 0.91, layer 1.35. Fails** the 1.2 target in shear on both lugs.
+- **Re-read of the earlier cases with the same script:**
+  - HUBL_YAW3P (Ø4.4): worst-ball shear 1.12 (0.92 at 370 N).
+  - HUBL_YAW3P6 (Ø6.0): 1.12 (0.92).
+  - The plate hole size hardly matters. The inner root's run-out does.
+- **Lug-bolt preload is not modelled in any hub case.** The bolt is taken as clamping only. The 0.28-0.3 N·m above is for
+  the six M4 hub-top screws, not the lug bolts. The arm caps the lug M3 at 0.3 N·m.
+- **Next: D3c,** bolstering the inner end from the bore side only (below).
