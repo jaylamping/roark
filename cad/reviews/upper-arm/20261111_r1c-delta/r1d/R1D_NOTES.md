@@ -659,3 +659,31 @@ covered the band r 36.45-37.55 only.
   build keeps only the main body, so they are unaffected. Fixed: with ARM_END_DROP the cut runs to Y 302.5.
 - The shim queue then waited about an hour (15:14-16:15) for the shoulder thread's busy instance (fea_shoulder HUBL_STOP2), per
   the launch rules.
+
+## FEA job control: one job at a time (2026-11-12, evening)
+
+What went wrong:
+- Two of our jobs launched together twice from the same session folder (cad/_wip/arm-sw-fea), sharing one pid file:
+  1. A displacement re-solve and a mesh probe at 17:34. One instance was left idle, PID 125736: probably ours, not proven, left
+     as it is.
+  2. The queued STOP_124 and YAW +17 at 18:07. The cause: the hand-off killed the old queue script and then raced its child.
+- With a shared pid file, a memory stop or finish() ends whichever instance was written last, not the job's own.
+- Another thread's uncapped python job, up to 28 GB, took the free RAM at 18:02. Our 0 gap STOP_0 was stopped by the memory
+  watch at 18:04. The watch judges "used" by the drop in free RAM, so it counts other threads' memory as ours.
+
+What I did:
+- I ended YAW +17 cleanly through its own session file (coordinator's call), and let STOP_124 finish alone.
+- I restored STOP_124's state file (PID 29836 plus its start time; its parent was our HS_STOP_124_fine client) so its own
+  finish() ends it.
+
+Rules from now on (`r1e_solve1.sh`, `r1e_queue.sh`):
+- Every job has its own session folder and pid file, `cad/_wip/arm-sw-job-<folder>`.
+- A launch lock, `cad/_wip/.fea_job_lock` (mkdir, holding the job name and its bash pid), is taken before the launch and
+  released only after end_session.
+- Before launching, a job waits until:
+  - no live instance is named in any of our state files;
+  - no instance is busy;
+  - 180 s have passed since the last job ended;
+  - at least 16 GB is free.
+- One queue process runs the jobs in order. It waits for the previous queue's process to exit before it starts; it does not
+  kill and race it.
