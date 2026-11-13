@@ -186,6 +186,10 @@ gap between the hub's rim and the skirt; even, light feel over the whole ±90; w
 
 ## Pitch rig
 
+**Start here: [HOWTO_pitch.png](cable_rigs/HOWTO_pitch.png)**, one page of pictures: where the rig comes from on the robot
+(and where the spare wire would hang inside the body), the two parts, how they go together, the wires in both tests, and
+the tests.
+
 **What it reproduces:** the loop channel round the pitch motor (inner wall r 57.4, outer wall r 73.5, 21.1 high) as a
 fixed tray with a 30 mm slot at the bottom, a round guide finger (R 10) at the slot, and a tongue below the slot with
 two tie holes for the fixed clamp. The lid is the drum's flange: it turns on an M4 at the centre and carries the trunk
@@ -211,7 +215,7 @@ Every part from all sides: [SHEET_pitch.png](cable_rigs/SHEET_pitch.png)
 **Wires:** two 16 AWG and two pairs, about 1.2 m.
 
 1. Lay the tray flat. Tie the wires to the tongue's tie holes, lead them over the finger into the channel and lay 2 turns
-   against the outer wall, the three wires side by side across the channel's height.
+   against the outer wall, the wires side by side across the channel's height (power wires, then the two pairs).
 2. Bring the end up through the lid's mouth and tie it to the lid's two holes. Fit the lid and the M4.
 3. Mark the lid's start on the tray's rim. Turn the lid in the winding direction until the wires are snug on the inner
    wall; mark that. Measure the angle between the marks.
