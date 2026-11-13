@@ -323,6 +323,12 @@ def run(name, c):
         print(' mesh kept', 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, flush=True)
     else:
         rc = st.CreateMesh(0, el, el * 0.05)
+        mn = int(os.environ.get('MESH_MIN_NODES', '0') or 0)
+        if mn and not rc and mesh.NodeCount < mn:      # 2026-11-13: an intermittent mesh with one body left out (the hub, about 188 k
+            # nodes short on r1g6): record it and mesh once more in the same session before the guard judges the result
+            print(' mesh short (retrying once): nodes', mesh.NodeCount, 'elements', mesh.ElementCount, 'under', mn, '- about',
+                  mn + 1 - mesh.NodeCount, 'or more missing (the hub body is about 188 k nodes)', flush=True)
+            rc = st.CreateMesh(0, el, el * 0.05)
         print(' mesh', rc, 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, round(time.time() - tm), 's', flush=True)
     if rc:
         raise SystemExit('mesh failed')

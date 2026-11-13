@@ -99,6 +99,15 @@ else
   echo "R1H SLICED+GATED $(grep -E '"job"' $X/print_check.log | sed -E 's/.*"job": "([a-z]+)", "mesh_gate": "([A-Z]+)".*"time_s": ([0-9]+), "grams": ([0-9.]+).*/  s g/' | tr '
 ' ' ')" >> $L
 fi
-# convergence run (last), on r1g6
+# (coordinator 22:51Z) after the R1h build: the STOP_124 and G90 reruns first, then the convergence run last; a 3 minute gap after
+# each of our jobs so the shoulder thread's solves can take the shared lock in between; the mesh retried once if a body is left out
+export MESH_MIN_NODES=300000
+jobg() {
+  job "$@"
+  echo "GAP after $1 $(date +%H:%M): 180 s for other threads' solves" >> $L
+  sleep 180
+}
+jobg r1g6_stop124 HS_STOP_124_fine 0.5
+jobg r1g6_g90 HS_G90_fine 0.05
 MEMSTOP_USED=15360 MINFREE=20000 HS_LOCAL_REFINE=0.5 job r1g6_g90y_ref HS_G90Y_fine 0.05
 echo "R1G6Q_DONE $(date)" >> $L
