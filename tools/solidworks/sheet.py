@@ -13,6 +13,10 @@ The shape numbers (also `shape_stats(tris)`):
     sharp_mm        length of edges where the surface turns by more than 30 degrees
     sharp_per_area  sharp_mm divided by the square root of the area (does not grow with the part's size)
 They say how much of a part is plates and corners. They do not say whether it looks good: that takes the picture.
+A smoothed flat strap and a round bone can score alike, and faces the task requires to be flat count too.
+
+`inside(tris, points)` says which points lie in the solid: the way to check that a clearance is clear and a boss is
+solid. `--crop x0,y0,z0,x1,y1,z1` draws only the triangles inside a box, to look closely at one junction.
 
 Run it under the cap for big meshes: python tools/pc/capped.py --mb 2048 -- python tools/solidworks/sheet.py part.stl
 """
@@ -80,6 +84,35 @@ def shape_stats(tris, sharp_deg=30.0, flat_min=0.01):
     return dict(triangles=int(len(tris)), area_mm2=round(total, 1), flat_share=round(float(big.sum()) / total, 3),
                 largest_flat=round(float(plane_area.max()) / total, 3), sharp_mm=round(sharp_mm, 1),
                 sharp_per_area=round(sharp_mm / total ** 0.5, 2))
+
+
+def inside(tris, points, chunk=200):
+    """True for each point that lies in the solid the triangles enclose (a watertight STL). Needs numpy only.
+
+    The check every clearance needs: is this cylinder, slot or passage really empty, is this boss really solid. Sample
+    the region with points and ask. A ray goes up +Z from each point and counts the triangles it crosses; odd is inside.
+    Points are nudged by a few nanometres so that a ray down an edge or through a vertex cannot be counted twice.
+    Memory is chunk x triangles x 40 bytes: the default stays under 1 GB for 100,000 triangles. Do not use
+    trimesh.contains on this machine: without an accelerator it breaks a 4 GB cap on 5,000 points (2026-11-13).
+    """
+    pts = np.asarray(points, float).reshape(-1, 3) + np.array([3.1e-6, 7.3e-6, 0.0])
+    a, b, c = tris[:, 0], tris[:, 1], tris[:, 2]
+    det = (b[:, 1] - c[:, 1]) * (a[:, 0] - c[:, 0]) + (c[:, 0] - b[:, 0]) * (a[:, 1] - c[:, 1])
+    ok = np.abs(det) > 1e-12                                   # triangles seen edge-on from above cannot be crossed
+    a, b, c, det = a[ok], b[ok], c[ok], det[ok]
+    lo, hi = np.minimum(np.minimum(a, b), c)[:, :2], np.maximum(np.maximum(a, b), c)[:, :2]
+    out = np.zeros(len(pts), bool)
+    for i in range(0, len(pts), chunk):
+        q = pts[i:i + chunk]
+        x, y = q[:, 0][:, None], q[:, 1][:, None]
+        box = (x >= lo[:, 0]) & (x <= hi[:, 0]) & (y >= lo[:, 1]) & (y <= hi[:, 1])
+        w0 = ((b[:, 1] - c[:, 1]) * (x - c[:, 0]) + (c[:, 0] - b[:, 0]) * (y - c[:, 1])) / det
+        w1 = ((c[:, 1] - a[:, 1]) * (x - c[:, 0]) + (a[:, 0] - c[:, 0]) * (y - c[:, 1])) / det
+        w2 = 1 - w0 - w1
+        z = w0 * a[:, 2] + w1 * b[:, 2] + w2 * c[:, 2]
+        hit = box & (w0 >= 0) & (w1 >= 0) & (w2 >= 0) & (z > q[:, 2][:, None])
+        out[i:i + chunk] = hit.sum(axis=1) % 2 == 1
+    return out
 
 
 def _render(tris, look, up, px, scale, centre):
@@ -165,9 +198,12 @@ def write_png(path, img):
                            + chunk(b'IDAT', zlib.compress(raw, 6)) + chunk(b'IEND', b''))
 
 
-def sheet(paths, out, px=420):
+def sheet(paths, out, px=420, crop=None):
     """One row of eight views per STL, every tile at the same scale. Returns the shape numbers per file."""
     parts = [read_stl(p) for p in paths]
+    if crop is not None:
+        lo, hi = np.array(crop[:3]), np.array(crop[3:])
+        parts = [t[((t >= lo) & (t <= hi)).all(axis=(1, 2))] for t in parts]
     size = max(np.linalg.norm(t.reshape(-1, 3).max(0) - t.reshape(-1, 3).min(0)) for t in parts)
     scale = (px - 24) / size
     rows, stats = [], {}
@@ -191,8 +227,9 @@ if __name__ == '__main__':
     ap.add_argument('stl', nargs='+')
     ap.add_argument('-o', '--out')
     ap.add_argument('--px', type=int, default=420, help='tile size in pixels')
+    ap.add_argument('--crop', help='x0,y0,z0,x1,y1,z1 in mm: draw only what lies inside this box')
     a = ap.parse_args()
     out = a.out or str(Path(a.stl[0]).with_suffix('.sheet.png'))
-    res = sheet(a.stl, out, a.px)
+    res = sheet(a.stl, out, a.px, [float(v) for v in a.crop.split(',')] if a.crop else None)
     print(json.dumps(res, indent=1))
     print('wrote', out, file=sys.stderr)

@@ -56,7 +56,12 @@ with job() as j:            # launches your own instance; closes it on the way o
 - **Other python work** (post-processing, mesh checks, slicing) runs under the cap:
   `python tools/pc/capped.py --mb 6144 -- python script.py`. Not SolidWorks clients: SolidWorks would land in the same cap.
   **Why:** an uncapped point-in-mesh test reached 61 GB and took holly-pc offline (2026-11-12). Work on meshes in plane
-  sections or chunks of 20,000 points, never whole-mesh tests.
+  sections or in chunks, never whole-mesh tests. For "is this point in the solid" use `sheet.inside()`: numpy only,
+  20,000 points against 8,000 triangles in five seconds. `trimesh.contains` has no accelerator on this machine and broke
+  a 4 GB cap on 5,000 points (2026-11-13).
+- **When the clock matters, launch once.** A launch waits up to 300 s behind another session's solve and may have to
+  be retried; five of those cost one run 27 minutes of a 100-minute budget. Put build, checks and studies in one job
+  (at most four studies), and do the thinking, the hand calculations and the pictures while it waits.
 
 ## When a script hangs or dies
 
