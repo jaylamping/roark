@@ -137,6 +137,9 @@ by trial, once, at assembly.
 6. **Open and look:** take the bolts out and the front coupon off. Check the ring (flat, not cut or crushed at its inner edge),
    the ridge flank and the hub's groove flank (marks, scuffing), especially near the seam. Photograph them.
 7. Close again with the same ring at 0.5 N·m and repeat the rock check once.
+8. **R1f / R1g (lug plates), after the stop-load test:** take the lug plates out. Inspect the post faces and the hub lug faces
+   around each lug bolt for an imprint of the plate's hole edge. Record its depth by feel (fingernail: none / felt / catches)
+   and photograph it. The FEA puts the stop's highest local pressure on that edge.
 
 **Pass, before the halves are printed:** a ring was found that closes by hand with the seam shut, the rock check shows no
 movement after the ten cycles, and nothing is cut or scored. **Otherwise stop and tell me.**
