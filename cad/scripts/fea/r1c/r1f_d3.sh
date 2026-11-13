@@ -50,7 +50,7 @@ export CAD_WRITER='upper-arm-r1:2bcc415b' SW_PART_TEMPLATE='C:\ProgramData\SOLID
 export ARM_R1C=1 ARM_R1D=1 ARM_SLOT_BREAK=1.2,1.6 ARM_LUG_POCKET=1 ARM_SLOT_CL=0.5
 S=$R/_wip/arm-sw-d3hub
 lock d3hub
-ARM_SW_DIR="$S" ARM_FEA_DIR="$R/_sim/ua2" python cad/scripts/fea/hub_seat.py d3hub HUB_GROOVE_RING.SLDPRT HUB_D3.SLDPRT > cad/_wip/r1f_d3hub.log 2>&1
+ARM_SW_DIR="$S" ARM_FEA_DIR="$R/_sim/ua2" python cad/scripts/fea/hub_seat.py d3hub HUB_RING_ZF.SLDPRT HUB_D3.SLDPRT > cad/_wip/r1f_d3hub.log 2>&1
 unlock "$S"
 grep -q "saved HUB_D3.SLDPRT" cad/_wip/r1f_d3hub.log || { echo "R1F_D3 STOP: d3hub failed $(tail -3 cad/_wip/r1f_d3hub.log | tr '\n' ' ' | cut -c1-200)" >> $L; exit 1; }
 echo "R1F_D3 FEA hub built: $(grep -E 'D3 ' cad/_wip/r1f_d3hub.log | tr '\n' ' ' | cut -c1-200)" >> $L

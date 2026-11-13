@@ -50,7 +50,7 @@ def sweep(src_pts, target, direction, label):
     dist = np.einsum('ij,ij->i', loc - src_pts[ri], d[ri])
     # a ray that starts inside the target is a final-position overlap; one that starts outside and hits is a path collision
     # chunks of 200 points: the 6 GB cap (2026-11-12; 2000 still made 21 M ray-triangle candidates against the hub)
-    inside = np.concatenate([target.contains(src_pts[ri[i:i + 200]]) for i in range(0, len(ri), 200)]) if target.is_watertight and len(ri) else np.zeros(len(ri), bool)
+    inside = np.concatenate([target.contains(src_pts[ri[i:i + 200]]) for i in range(0, len(ri), 200)]) if (target.is_watertight or __import__('os').environ.get('CLOSE_FORCE_CONTAINS') == '1') and len(ri) else np.zeros(len(ri), bool)      # CLOSE_FORCE_CONTAINS (2026-11-12): D3's STL has one non-manifold edge (not watertight); ray-parity containment still works
     far = (dist > 0.05) & ~inside
     yk = src_pts[ri, 1]
     cop = np.zeros(len(ri), bool)

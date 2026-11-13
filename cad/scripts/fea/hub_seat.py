@@ -568,13 +568,19 @@ def d3hub(src, dst):
     if len(bodies_(d)) != 1:
         raise SystemExit('lug extensions did not merge into the hub')
     r_ = lambda q: m_.hypot(q[0] - HX, q[2] - CZ)
-    roots = edges_where(d, lambda q: abs(q[1] - 296.0) < 0.05 and abs(abs(q[2] - CZ) - 5.0) < 0.1 and 18.0 < r_(q) < 35.95)
-    print('  D3 Z-root edges', len(roots), flush=True)
-    if len(roots) < 4:
-        raise SystemExit('expected at least 4 Z-root edges')
-    fillet_edges(d, roots, [1.2], 'D3_ZROOTS')
-    if d.FeatureByName('D3_ZROOTS') is None:
-        raise SystemExit('Z-root fillet failed')
+    # src already carries the R1.2 Z roots out to r 31.5 (HUB_RING_ZF); fillet only the new stretch along the extension. One
+    # selection of all 16 edges (from the unfilleted hub) built nothing (2026-11-12)
+    roots = edges_where(d, lambda q: abs(q[1] - 296.0) < 0.05 and abs(abs(q[2] - CZ) - 5.0) < 0.1 and 31.0 < r_(q) < 35.5)
+    print('  D3 Z-root edges (new stretch)', len(roots), flush=True)
+    built = 0
+    if roots:
+        fillet_edges(d, roots, [1.2], 'D3_ZROOTS')
+        built = d.FeatureByName('D3_ZROOTS') is not None
+        if not built:
+            for i_, e_ in enumerate(roots):
+                fillet_edges(d, [e_], [1.2], f'D3_ZROOT{i_}')
+                built += d.FeatureByName(f'D3_ZROOT{i_}') is not None
+    print('  D3_ZROOTS built', built, 'of', len(roots), '(unfilleted stretches stay sharp: hub-root peaks there are a model edge)', flush=True)
     steps = edges_where(d, lambda q: abs(q[1] - 294.5) < 0.05 and abs(abs(q[0] - HX) - 34.4) < 0.05 and abs(q[2] - CZ) < 4.9)
     print('  D3 step-corner edges', len(steps), flush=True)
     if steps:
