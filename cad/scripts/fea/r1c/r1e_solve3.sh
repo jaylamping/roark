@@ -1,6 +1,7 @@
 #!/bin/bash
-# r1e_solve3 (2026-11-13, coordinator 19:35Z): as r1e_solve2, but "used" counts only our own process tree: the job's Python process and
-# our SolidWorks (its PID from this job's session state file) with all their child processes, by private bytes. The free-memory
+# r1e_solve3 (2026-11-13, coordinator 19:35Z): as r1e_solve2, but "used" counts only our own process tree (resident: working set; the
+# first version summed private commit, which reads about 1.4x the resident figure and stopped a job with 11 GB free): the job's Python process and
+# our SolidWorks (its PID from this job's session state file) with all their child processes. The free-memory
 # stop (MEMSTOP_FREE) still guards the machine. Before: "used" was the machine's free-memory drop, so another session's solve counted.
 # One hub-seat FEA job, one at a time, with the machine-wide solve lock (r1e_solve2: 2026-11-13) (2026-11-12, after two solves launched together from one session folder and a memory stop
 # ended the wrong instance). Same as r1d_ring_ds_solve.sh "new" mode, plus:
@@ -66,7 +67,7 @@ free0=$(free); peak=0
 ownmb() {      # private MB of our Python job process and our SolidWorks, with all their descendants
   local roots="$(cat /proc/$cpid/winpid 2>/dev/null)"
   [ -f "$S/.sw_instance_pid" ] && roots="$roots $(awk '{print $1}' "$S/.sw_instance_pid")"
-  powershell -NoProfile -c "\$all = Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,PrivatePageCount; \$ids = @($(echo $roots | sed 's/ /,/g')); \$q = \$ids; while (\$q.Count) { \$n = @(\$all | Where-Object { \$q -contains \$_.ParentProcessId } | ForEach-Object { \$_.ProcessId }); \$n = @(\$n | Where-Object { \$ids -notcontains \$_ }); \$ids += \$n; \$q = \$n }; [int]((\$all | Where-Object { \$ids -contains \$_.ProcessId } | Measure-Object PrivatePageCount -Sum).Sum / 1MB)"
+  powershell -NoProfile -c "\$all = Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,WorkingSetSize; \$ids = @($(echo $roots | sed 's/ /,/g')); \$q = \$ids; while (\$q.Count) { \$n = @(\$all | Where-Object { \$q -contains \$_.ParentProcessId } | ForEach-Object { \$_.ProcessId }); \$n = @(\$n | Where-Object { \$ids -notcontains \$_ }); \$ids += \$n; \$q = \$n }; [int]((\$all | Where-Object { \$ids -contains \$_.ProcessId } | Measure-Object WorkingSetSize -Sum).Sum / 1MB)"
 }
 while kill -0 $cpid 2>/dev/null; do
   sleep ${MEM_SAMPLE:-60}

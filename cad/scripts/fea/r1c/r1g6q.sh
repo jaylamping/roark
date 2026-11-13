@@ -54,6 +54,7 @@ job() {
 }
 if [ "${R1G6_PHASE:-first}" = first ]; then
   S=$R/_wip/arm-sw-r1g6build
+  if [ "$R1G6_SKIP_BUILD" != 1 ]; then
   lock r1g6build
   rm -f cad/_sim/ua2/UA_HUBSEAT_r1d_r1g6.SLDPRT
   (export HS_GROOVE=1 HS_BOLTED=1 HS_ROUNDS=1 HS_LUG_FILLET=1.0 HS_GROOVE_R45=1.0 HS_REVCP=1 HS_FILL=1 HS_FILL_R0=23.0 HS_GROOVE_FULL=1 HS_PADS=1 HS_REUSE_HUB=1 HS_INSERT_MODEL=1
@@ -64,6 +65,7 @@ if [ "${R1G6_PHASE:-first}" = first ]; then
 ' ' ' | cut -c1-200)" >> $L; exit 1; }
   echo "R1G6Q BUILT model $(date +%H:%M) $(grep -E 'R1F_PLATEHOLE0F' cad/_wip/r1g6_hs.log | tr '
 ' ' ' | cut -c1-160)" >> $L
+  fi
   job r1g6_g90ym HS_G90YM_fine 0.05
   echo "R1G6Q_FIRST_DONE $(date +%H:%M) (review before the rest)" >> $L
   exit 0
