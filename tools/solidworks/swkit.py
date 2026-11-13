@@ -224,18 +224,19 @@ def expect(what, got, want, tol):
 
 
 def feature_errors(d):
-    """[(feature name, error code)] for features that failed to rebuild. Empty means the tree is clean."""
+    """[(feature name, error code)] for features that failed to rebuild or carry a warning. Empty means a clean tree.
+
+    GetErrorCode2 needs its by-reference "is a warning" flag: without it the call raises "Parameter not optional" for
+    every feature, which an earlier version of this helper swallowed and so always reported a clean tree (2026-11-12).
+    A cut whose sketch no longer meets the body reports 71.
+    """
     out = []
     f = d.FirstFeature
     while f is not None:
-        try:
-            r = f.GetErrorCode2
-            r = r() if callable(r) else r
-            code = r[0] if isinstance(r, tuple) else r
-            if code:
-                out.append((f.Name, int(code)))
-        except Exception:      # noqa: BLE001 - some tree nodes (folders, history) have no error code
-            pass
+        code = f.GetErrorCode2(VARIANT(pythoncom.VT_BYREF | pythoncom.VT_BOOL, False))
+        code = code[0] if isinstance(code, tuple) else code
+        if code:
+            out.append((f.Name, int(code)))
         f = f.GetNextFeature
     return out
 
@@ -423,11 +424,19 @@ def loft(d, sketches, name):
 
 
 def shell(d, open_face_points, t, name):
-    """Shell to wall thickness t mm, removing the faces at the given 3D points (each must lie on its face)."""
+    """Shell to wall thickness t mm, removing the faces at the given 3D points (each must lie on exactly one face).
+
+    The faces are found by geometry and selected as objects: SelectByID2 by coordinates found nothing on a hidden
+    instance (2026-11-12). With no points the part is hollowed with no opening.
+    """
+    hit = [pick(d, at=p) for p in open_face_points]
+    if any(len(h) != 1 for h in hit):
+        raise Failed(f'{name}: each point must lie on exactly one face; faces found {[len(h) for h in hit]} at '
+                     f'{list(open_face_points)} (a point on an edge lies on two)')
     d.ClearSelection2(True)
-    ok = [d.Extension.SelectByID2('', 'FACE', p[0] * m, p[1] * m, p[2] * m, True, 0, NUL, 0) for p in open_face_points]
-    if not all(ok):
-        raise Failed(f'{name}: face not found at {[p for p, o in zip(open_face_points, ok) if not o]}')
+    for h in hit:
+        if not h[0].Select4(True, NUL):
+            raise Failed(f'{name}: face not selected')
     v0 = volume(d)
     d.InsertFeatureShell(t * m, False)
     d.ForceRebuild3(False)
@@ -500,12 +509,16 @@ def cut_half_space(d, axis, at, keep_sign, name, span=400.0):
 
 
 def insert_body(d, part_path):
-    """Bring another part's solid in as an extra body, at the same coordinates (multi-body models for contact FEA)."""
+    """Bring another part's solid in as an extra body, at the same coordinates (multi-body models for contact FEA).
+
+    The body stays separate even where it overlaps one already there (measured 2026-11-12), so nothing here tells you
+    about an overlap: check for it yourself. The part must hold exactly one solid body.
+    """
     n0 = len(solid_bodies(d))
     f = d.InsertPart3(str(part_path), 1, '')       # 1 = swInsertPartImportSolids
     d.ForceRebuild3(False)
     if f is None or len(solid_bodies(d)) != n0 + 1:
-        raise Failed(f'{part_path} did not come in as its own body (bodies {bodies(d)}); a body that overlaps is merged')
+        raise Failed(f'{part_path} did not come in as its own body (bodies {bodies(d)})')
     return f
 
 

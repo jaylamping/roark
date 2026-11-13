@@ -1,13 +1,19 @@
 """Prove swkit and swfea against hand answers on this machine's SolidWorks. Also the worked example for the playbook.
 
-    python tools/solidworks/selftest.py [model] [beam] [rod]        # all three when none is named
+    python tools/solidworks/selftest.py [model] [beam] [rod] [extras] [loads] [contact]      # all of them when none is named
 
 Writes to cad/_wip/sw-selftest/ (gitignored) and prints PASS or the first check that failed. Run it on a machine or a
-SolidWorks version the helpers have not been used on, and after changing swkit.py or swfea.py. About two minutes.
+SolidWorks version the helpers have not been used on, and after changing swkit.py or swfea.py. About two minutes, once
+SolidWorks has started (a launch waits while another session's instance is solving).
 
-  model: a 60 x 30 x 10 plate with a through hole and four rounded corners; volume, box and both exports are checked.
-  beam:  a 100 x 10 x 10 cantilever with 10 N at the tip through a remote load, against F L^3 / 3 E I.
-  rod:   a 20 mm round bar, 50 long, with 100 N pressed on its end through a normal force, against F L / A E.
+  model:   a 60 x 30 x 10 plate with a through hole and four rounded corners; volume, box and both exports are checked.
+  beam:    a 100 x 10 x 10 cantilever with 10 N at the tip through a remote load, against F L^3 / 3 E I.
+  rod:     a 20 mm round bar, 50 long, with 100 N pressed on its end through a normal force, against F L / A E.
+  extras:  chamfer, half-space cut, shell, revolve, two lofts, one-sided extrudes, an arc, a body brought in and deleted,
+           a broken feature that feature_errors must name, and a STEP import, each against a hand volume or count.
+  loads:   what the load and result calls mean: a normal load over two faces is the total, a remote moment is in N.m,
+           a remote force acts where it is placed, which stress column is which shear, and the solver macro.
+  contact: two stacked blocks with no-penetration contact between them and a soft pad to hold the upper one.
 """
 import math
 import sys
@@ -16,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import numpy as np  # noqa: E402
 from swfea import PETG, SOLVER_DIRECT, static  # noqa: E402
-from swkit import (BLIND, MID, Sk, bbox, bodies, chamfer, close, cut_half_space, delete_body, edges_where,  # noqa: E402
+from swkit import (BLIND, MID, NUL, Sk, bbox, bodies, call, chamfer, close, cut_half_space, delete_body, edges_where,  # noqa: E402
                    expect, export, extrude, feature_errors, fillet, import_step, insert_body, job, list_faces, loft, log,
                    new_part, open_doc, pick, plane, revolve, save, shell, single_body, volume)
 
@@ -271,6 +277,31 @@ def extras(j):
     save(d)
     close(j.sw, d)
 
+    # feature_errors must see a broken feature: move a cut's circle off the body and rebuild
+    d = new_part(j.sw, OUT / 'broken.SLDPRT')
+    with Sk(d, plane(d, 'Z', 5.0, 'BLOCK_P'), 'BLOCK') as s:
+        s.rect((0, 0, 5.0), (20, 20, 5.0))
+    extrude(d, s.feat, 'BLOCK', 10.0, mode=MID, expect_dv=4000)
+    with Sk(d, plane(d, 'Z', 5.0, 'BORE_P'), 'BORE') as s:
+        s.circle((10, 10, 5.0), 3.0)
+    extrude(d, s.feat, 'BORE', 10.0, cut=True, mode=MID, expect_dv=math.pi * 9 * 10)
+    expect('rebuild errors before the break', len(feature_errors(d)), 0, 0)
+    d.ClearSelection2(True)
+    d.FeatureByName('BORE_SK').Select2(False, 0)
+    d.EditSketch()
+    for seg in call(d.GetActiveSketch2, 'GetSketchSegments'):
+        seg.Select4(True, NUL)
+    d.EditDelete()
+    d.SketchManager.CreateCircleByRadius(0.2, 0.2, 0, 0.003)      # 200 mm away, in sketch metres
+    d.InsertSketch2(True)
+    d.ForceRebuild3(False)
+    errs = feature_errors(d)
+    log('broken tree reports', errs)
+    if [e[0] for e in errs] != ['BORE']:
+        raise SystemExit(f'FAIL: feature_errors should name the broken cut BORE, got {errs}')
+    expect('volume with the cut broken', volume(d), 4000, 0.001)
+    close(j.sw, d)
+
     # STEP in: the plate that model() exported
     if not (OUT / 'plate.step').exists():
         model(j)
@@ -280,7 +311,8 @@ def extras(j):
     b = bbox(d)
     for k, want in enumerate((0, 0, 0, 60, 30, 10)):
         expect(f'imported box[{k}]', b[k], want, 0.01)
-    expect('imported hole faces', len(pick(d, kind='cyl', r=4.0)), 1, 0)
+    # a full cylinder comes back from STEP as two half faces: picks on imported parts find two where a native part has one
+    expect('imported hole faces (two halves)', len(pick(d, kind='cyl', r=4.0)), 2, 0)
     close(j.sw, d)
 
 
