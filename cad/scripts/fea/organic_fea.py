@@ -27,6 +27,7 @@ for th in (0, 45, 90, 135, 180):
 for tag, sx in (('Lp', 1.0), ('Lm', -1.0)):
     LOADS['G' + tag] = ((FG * sx, 0.0, 0.0), (0.0, 0.0, MG * sx))
 LOADS['LC2'] = ((0, 0, 0), (0, 17, 0))
+LOADS['LC2M'] = ((0, 0, 0), (0, -17, 0))      # 2026-11-12: the RS02 yaw peak the other way (the hub joint isn't symmetric in Z: inserts front, clearance holes back)
 LOADS['E34'] = ((0.0, 0.0, -FG), (34.0, 0.0, 0.0))
 LOADS['E17'] = ((0.0, 0.0, -FG), (17.0, 0.0, 0.0))          # the RS02's own peak on its housing
 RING_ZONE = [152.8, 140.0, -50.0, 165.8, 280.0, 60.0]   # merged ring and its corners into rib and wall: bond artefact, keys by hand
