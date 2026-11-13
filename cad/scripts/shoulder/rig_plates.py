@@ -45,7 +45,16 @@ def pla_settings(ps):
         raise SystemExit(f'filament preset {PLA} not found under {P.SYS}')
     meta = {'name', 'from', 'inherits', 'type', 'instantiation', 'setting_id', 'include', 'compatible_printers', 'compatible_printers_condition', 'version',
             'filament_settings_id', 'compatible_prints', 'compatible_prints_condition'}
-    out = {k: v for k, v in pre.items() if k not in meta and k in ps}
+    out = {}
+    for k, v in pre.items():
+        if k in meta or k not in ps or k == 'filament_extruder_variant':
+            continue
+        # Every list must keep the length the seed project has for that key (one entry per nozzle variant, or per filament):
+        # the preset file carries 1 or 3 where the project carries 2, and the GUI then refuses the file ("Invalid
+        # configuration file") although the command-line slicer accepts it.
+        if isinstance(v, list) and isinstance(ps[k], list) and len(v) != len(ps[k]):
+            v = (v + [v[-1]] * len(ps[k]))[:len(ps[k])]
+        out[k] = v
     out['filament_settings_id'] = [PLA]
     return out
 GAP = 6.0

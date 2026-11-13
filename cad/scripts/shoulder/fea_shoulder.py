@@ -612,6 +612,14 @@ CASES['HUBL_G90'] = dict(CASES['HUBL_YAW3P38F'],
              (SPIGOT, (RX, 302.0, YZ), (-0.3, -0.9, -118.7), (23.44, -0.17, -0.01), 1)])
 CASES['HUBL_G90YAW'] = dict(CASES['HUBL_YAW3P38F'],
     remotes=_G90YAW_LUGS + [(SPIGOT, (RX, 302.0, YZ), (7.4, 4.4, -116.0), (23.32, -2.12, -0.07), 1)])
+#   HUBL_G90YAWP   G90 + YAW +17 from the arm's own solve (r1g4_lug_loads.txt at 924c423): section totals per lug (-X +265.7 N,
+#                  +X -222.3 N), split between the faces as the face rows give it, and the spigot share
+CASES['HUBL_G90YAWP'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=[(_PFACE(-1, 1.0), _COP(-1, 1.0, 31.39, 292.40), (0.0, 0.0, 277.8), (0.0, 0.0, 0.0), 1),
+             (_PFACE(-1, 11.0), _COP(-1, 11.0, 19.94, 289.26), (0.0, 0.0, -12.1), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _COP(1, 11.0, 31.42, 291.85), (0.0, 0.0, -225.7), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 1.0), _COP(1, 1.0, 19.57, 291.77), (0.0, 0.0, 3.4), (0.0, 0.0, 0.0), 1),
+             (SPIGOT, (RX, 302.0, YZ), (-4.8, 3.8, -105.3), (23.24, 1.82, -0.03), 1)])
 
 # REV D, the arm thread's stop case on the full-ring joint (its fine-mesh repeat, roark 3c7114b): the full-ring ridge and groove
 # are axisymmetric and frictionless, so they carry no torque about the hub axis; that part of the stop moment goes into the
