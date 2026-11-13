@@ -859,3 +859,100 @@ sliding fit.
 - **Hub key root**, mid-half key on the spigot (layers are Y-planes, the load is in-plane):
   - 8 × 5 mm on r 35.85 is 40 mm², about 9 MPa shear.
   - Bending at a 0.9 mm lever is about 216 N·mm; Z = 5 × 8² / 6 = 53 mm³ gives about 4 MPa. Fine.
+
+## Extended-lug torque path: our limits at the seam (2026-11-12, 20:00)
+
+From sections of the R1e print halves and hub bc16e97 at the seam. Sketch:
+`../../../20261112_ring-delta/seam_pocket_envelope.png`; script `cad/scripts/fea/r1c/seam_pocket_sketch.py`. θ 180 (the −X lug)
+is drawn; θ 0 mirrors it. r is measured from the hub axis.
+
+**Today at the seam.**
+- Hub lug: r 18.7-29.5, up to the spigot underside at Y 296. The bolt hole is at Y 292, r 23.
+- Our posts: |Z − CZ| ≥ 5.1, r 18.5-27.5, up to Y 295.7.
+- Between the post and our wall is open space. The wall's inner surface runs r 33.1 at Y 288, 35.0 at Y 294, 35.5-35.9 at
+  Y 296-298.
+- The ridge starts at Y 298.3 (tip r 34.4-34.8).
+- Skin at the seam: r 38.0 (Y 293.5), 38.2 (Y 294.3), 38.4-38.5 (Y 295-296), 38.6-38.7 (Y 297-298).
+- The harness runs between the post pairs (neck at the hub posts, X 151.75-189.25), not beside them.
+
+### 1. Pocket envelope we can give (each seam)
+
+- **Outer radius** r ≤ 37.0. That keeps a wall of at least 1.2 to the skin (3 perimeters): 1.2 at Y 294.3, 1.4 at Y 295.5, 1.6-1.7 at
+  Y 297-298.
+  - The skin there is smooth and is the seam line itself.
+  - At 1.2 and above, nothing prints through. The pocket edge falls right on the outer seam line, which shows anyway.
+  - Don't go past r 37.0: below Y 294 the skin is at r 38.0 and the wall would drop to 1.0.
+- **Y**, from 294.3 up to 297.8.
+  - The bottom is set by the skin wall.
+  - The top stays 0.5 below the ridge start (Y 298.3). The ridge stays whole; the lug stops below it.
+  - The pocket passes our floor (Y 295.7) and the spigot underside (Y 296).
+- **Z width** 11.0 (CZ ± 5.5) = lug 10.0 + a shim of 0.4 nominal per side + 0.1 per side.
+- **Hub extension** to match, with 0.2 clearance radial and axial: r 29.5-36.8, Y 294.5-297.6, |Z − CZ| ≤ 5.0.
+  - Above Y 296 it merges with the spigot land (r 35.7).
+  - The inside corner where the extension's Z face meets the land at Y 297.6 is the hub's to fillet; our pocket's top edge gets a
+    matching break.
+- **Optional, recommended:** a web on our side from the post to the wall (r 27.5 → 33-35, Y 288-297.8, outside |Z| 5.5,
+  X 137.5-143 at θ 180 and mirrored at θ 0). It turns each post plus the pocket face into one face, r 18.5-37.0. The harness
+  isn't there.
+
+### 2. What the pocket does to our parts
+
+- **Ridge.** Untouched with the top at Y 297.8. If the lug went above Y 298.3 it would cut 11 mm of ridge at each seam: about 18° at
+  r 35, so 36° in all, about 10 % of the ring's arc and flank area, and right at the seam where the stop moment's tie sits.
+  Keep below.
+- **Collar** (r 35.9-37.4, Y 295.7-301.3).
+  - Cut over Y 295.7-297.8 within |Z| 5.5 at each seam. Above Y 297.8 (the ridge and end-face band) it stays whole.
+  - The seam wall goes from 2.7-2.9 down to 1.2-1.7 locally. That part is in Z-compression (the hoop direction at the seam)
+    under the lug load, so the thinning costs strength there only.
+- **Posts.** They stay: they hold the bolt (clearance hole in the back post, brass insert in the front post) and clamp the stack.
+  - With the web they stop being cantilevers and become part of a continuous face out to r 37, so most of the torque bears at
+    r 33-37 and the post bending seen in YAW_17 largely goes.
+  - Without the web they share load with the pocket face by stiffness. The pocket face sits in the stiff wall, so it takes most.
+- **Slot break.** The existing 1.2 × 1.6 chamfers on the post top edges (for the hub's R1.2 lug-root fillets, r 21.5-30.7)
+  stay. The new hub corner at Y 297.6 needs a matching 0.5 break on our pocket top edge.
+- **Inserts.** Unchanged (front post, Z CZ+5.1 to +10.8 around the bolt).
+- **Lug bolt.** Unchanged, Y 292, r 23, along Z. It now clamps post, shim, lug, shim, post.
+- **Closing path.** The pocket faces are normal to Z, so the front half closes straight along Z onto the lug and its shims. No
+  undercut. Radial and axial clearance is 0.2. The close-path check is re-run once the hub CAD exists.
+- **Shim ring seat** (Y 301.3-302, r 36.2-38.4). 3.5 above the pocket top: unaffected.
+
+### 3. Shims for zero yaw play
+
+- **Plates.** Flat printed PETG plates, one on each Z face of each lug. Each covers the lug face r 18.7-36.8, Y 288-297.6, with a
+  Ø3.6 hole for the lug bolt and a small lip hooked over the lug's free end (Y 288), so it stays put while the half closes.
+  - Printed flat like the ring set, so the thickness is set by layers. Stay away from 3D U-shapes: their legs would print upright,
+    and the thickness would be set by the extrusion width.
+- **Set.** 0.20-0.60 in 0.05 steps, marked by notches like the ring.
+  - Width stack per lug: hub lug thickness ±0.1, each half's pocket face from the seam ±0.1, seam flatness ±0.05.
+  - Worst ±0.35, RSS ±0.18 on the total. A pair of 0.2-0.6 covers a total of 0.4-1.2 around the nominal 0.8.
+- **Pick**, one per lug, both lugs in the same trial, after the ring: "With the ring chosen, start each lug with the thickest pair,
+  and take one plate down a step at a time, alternating sides, until the front half closes by hand with the seam shut; use
+  those."
+- **Residual play.**
+  - At most one step (0.05 on the total width) before the bolt is tightened. The lug bolt's clamp then pinches it shut: 0.05
+    takes about 0.2 kN of the 0.55-0.83 kN preload.
+  - So it is zero in practice. Worst case unclamped: ±0.025 at r 33 is ±0.76 mrad, ±0.2 mm at the wrist.
+  - It is held by bearing, not friction.
+
+### 4. Our side at 17 N·m
+
+- **Lever.** Bearing centroid at about r 35 without the web, about r 31 with it (face r 18.5-37). Two lugs.
+- **Force.** 17 / (2 × 0.035) = 243 N per lug without the web; 274 N with it (shorter lever, but much more area).
+- **Target.** 1.5 with at least 30 % margin, so SF 1.95: bearing ≤ 23 MPa, in-plane shear ≤ 13.3, interlayer shear ≤ 6.7.
+- **Bearing on our pocket face** (normal to Z, so compression across our layers, which is fine).
+  - **Without the web:** r 35.0-37.0 × Y 294.3-297.8 = 7 mm², 35 MPa, SF 1.29. **Fails the margin.** The walls are too thin to
+    give more without the web.
+  - **With the web:** r 18.5-37.0, less the bolt hole, × Y 288-297.8 (in two zones) is about 120 mm². The stiff outer zone,
+    r 29.5-37, carries most of it: about 26 mm² there, 10.5 MPa, SF 4.3.
+- **Behind the face.** The load runs along Z into our wall, which is compression in the hoop direction at the seam.
+  - Without the web: wall section (38.4 − 35.0) × 3.5 = 12 mm², 20 MPa, SF 2.2 (just meets 1.95).
+  - With the web: the web plus the post section adds about 9 × 10 mm, under 5 MPa.
+  - Shear planes contain Z, so this is not interlayer shear.
+- **Print.**
+  - The halves print seam-down, so the pocket is a notch open at the seam face, 5.5 deep along Z. Its roof (the bearing face) is a
+    horizontal bridge, 2 mm (no web) or about 7.5 mm (web) by 3.5 mm. That bridges fine with no support. A 45° chamfer at the
+    pocket's outer roof edge helps.
+  - The web prints solid as part of the half. Nothing new faces down.
+  - Orientation unchanged.
+- **Recommendation:** extended lug, our pocket r ≤ 37.0, Y 294.3-297.8, Z ± 5.5, the post-to-wall web, and picked flat shim
+  plates. The ridge stays whole.
