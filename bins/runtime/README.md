@@ -115,6 +115,8 @@ frames), `skeleton` (the file it runs), `telemetry` (the session). The sim suite
 runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>] [--lock <file>]
 # on the dev box, with vcan up and sim-drive serving the skeleton's buses:
 scripts/devbox.sh run cargo run -p runtime -- --sessions /tmp/sessions --lock /tmp/runtime.lock
+# then, once it has exited, the independent stop with the same lock:
+scripts/devbox.sh run cargo run -p robot-cli -- disable --lock /tmp/runtime.lock
 ```
 
 Defaults: `config/skeleton.yaml`, `/var/lib/robot/sessions`, 250 Hz, `/run/robot/runtime.lock`. Before anything else it

@@ -1,5 +1,5 @@
 //! Embeds the git revision the binary is built from, with `-dirty` when the tree had changes, as `ROARK_GIT_REVISION`
-//! (rust.md section 1: every binary knows its build). A revision passed in the environment wins: a copy without `.git`
+//! (rust.md section 1: every binary knows its build). `robot-cli` builds with this script too. A revision passed in the environment wins: a copy without `.git`
 //! (the dev box's, `scripts/devbox.sh`) is given its revision by whoever made the copy. With neither, `unknown`, and a
 //! build warning says so.
 

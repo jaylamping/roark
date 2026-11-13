@@ -28,6 +28,10 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   order naming a limb the bus doesn't have, pushed with the clear, stops both limbs in the same tick; a clear sent as
   the bus exits never undoes its stop; and a bus that ends answers every clear left in its ring `Ended`, counting the
   answers control's ring can't take and every stop order left naming a limb it doesn't have.
+- `disable.rs`: the `runtime` and `robot-cli` binaries, built by `scripts/sim.sh` first. `robot-cli disable` refuses
+  while the runtime holds its lock; after `kill -9` it leaves every answering drive in Reset with reporting off and
+  sends nothing else; with one skeleton bus missing, only that bus's drives fail; a lock it can't check refuses; and a
+  bus-off error frame mid-stop fails every drive on its bus while the other bus stops.
 - `runtime.rs`: the `runtime` crate on its test robot (two buses, one limb on both, one offline), against `sim-drive`
   on `can0` and `can1`: nothing enabled, a robot stop and a limb's stop reaching it on both buses, a clear re-arming a
   limb on both buses and one of the offline limb refused, and an end with every bus at rest and the session closed.
@@ -40,8 +44,8 @@ Holds every test that needs Linux and a real `vcan` socket, in `tests/`; the lib
   its last reporting off through that drain; and a bus that ends counts the slow results control's ring can't take.
 
 Every frame on a bus reaches every socket on it, so two tests that run at the same time never share a bus. The tests in
-`exit.rs`, `slow.rs`, `scan.rs`, `faults.rs`, `enable.rs` and `orders.rs` use `can0`, `runtime.rs` uses `can0` and `can1` (its
-test robot's two buses), `bus.rs` uses `can1` to `can3` and `blackbox.rs` uses `can3`, so all of them run one at a time
+`exit.rs`, `slow.rs`, `scan.rs`, `faults.rs`, `enable.rs` and `orders.rs` use `can0`, `runtime.rs` and `disable.rs` use `can0` and `can1`
+(the runtime's test robot's two buses), `bus.rs` uses `can1` to `can3` and `blackbox.rs` uses `can3`, so all of them run one at a time
 (nextest's `can0` test group, `.config/nextest.toml`); `vcan.rs` has `can4` to itself. A new test either takes a bus no other test uses or joins that
 group.
 
