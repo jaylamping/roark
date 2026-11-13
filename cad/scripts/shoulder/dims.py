@@ -57,6 +57,7 @@ BELL = dict(x=(106.3, 113.0, 120.0, 127.0, 134.0, 141.0), top=60.0, bot=41.0, fr
 # fork and RS02 swing, Z +34 / -27 inside the drum's span), hollow (2.5 wall), replacing the neck tube and flare
 CAP_SCREW_ANGLES = [0.0, 180.0, 270.0]   # SMOOTH: 3 x M3 thread-forming, axial, inside the outline, into 2.6 mm pilots in the drum wall
 CAP_SCREW_R = 50.0
+CAP_BOSS_R = 50.0                 # the cap's screw bosses (r 5) stay centred here whatever the screw circle: further out they stand proud of the cap's skin
 # CAP FIX candidate (2026-11-13, LOOK=capfix or CAPFIX=1; default off): the M3 pilots at r 50 have only 0.7 mm of wall toward
 # the drum's bore (r 48), and moving an M3 out breaks the cap's skin at the head pocket. So: 3 x M2.5 thread-forming at r 50.6
 # (pilot dia 2.1: 1.55 mm of wall to the bore, 4.3 to the skin; head pocket dia 5.2: 1.8 mm of cap outside it), and a

@@ -519,7 +519,7 @@ def build_cap():
     p0, p1 = (TRUNK_X, TRUNK_Y, DRUM_Z0), (RX, RY, DRUM_Z0)
     extrude(d, zsk(d, DRUM_Z0, 'SPOKE', lambda s: s.rpoly(seg_rect(p0, p1, cu, SHW, 2.0, 5.5), [3, 0, 0, 3])), 'SPOKE', DRUM_Z0 - CAP_Z1, NZ, lo=-1.0)
     # screw bosses inside the cavity
-    extrude(d, zsk(d, DRUM_Z0, 'SCREW_BOSSES', lambda s: [s.circle(rpt(CAP_SCREW_R, a, DRUM_Z0), 5.0) for a in CAP_SCREW_ANGLES]), 'SCREW_BOSSES',
+    extrude(d, zsk(d, DRUM_Z0, 'SCREW_BOSSES', lambda s: [s.circle(rpt(CAP_BOSS_R, a, DRUM_Z0), 5.0) for a in CAP_SCREW_ANGLES]), 'SCREW_BOSSES',
             DRUM_Z0 - CAP_Z1, NZ, lo=-1.0)
     if CAPFIX:
         # sockets for the drum's locating collars, in the front face of each screw boss
