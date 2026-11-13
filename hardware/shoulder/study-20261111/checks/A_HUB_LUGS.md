@@ -819,3 +819,38 @@ Layer SF (σy), worst over both lugs and both directions, as peak / 0.5 mm / 1 m
 outer end), against D3 alone at 1.26 / 1.78 / 2.40. That is about +10% at 0.5 mm and +14% at 1 mm for 2.1 g. The inner end
 improves more (1.43 / 2.45 / 4.11, against 1.21 / 2.31 / 3.64), but it does not govern. D3 alone already has at least 30%
 margin, so D2d stays out of the candidate.
+
+### Rev D3b, the exported candidate (2026-11-13)
+
+- **Export:** `shoulder_hub_left_revD3b_candidate.STEP/.STL`, commit 6b2fd93. STL SHA-256 `b221df3d…3ec80e`, 79.3 g.
+- **Mesh:** watertight, no non-manifold edge, no zero-area face (`mesh_check.integrity`, now run on every STL a build
+  exports and by `record_export.py`).
+- **Lugs:** one straight outer face at X offset 34.4, Y 288-296, on the Z faces Z 1.0 / 11.0.
+- **Fillets:**
+  - R0.8 outward roots: X offset 34.40-35.20, Y 295.20-296.00, r up to 35.74.
+  - R1.2 Z roots: X offset 22.15-35.20, Y 294.80-296.00, Z - YZ ±(5.0-6.2). They run out into the R0.8.
+  - The spigot edge is left square over ±10.9° at each lug, so the R0.8 clears the R0.4 round.
+- **The D3 sliver (+X front root end) and the zero-area triangles (θ 135 / -45 on the R0.4) are fixed in the model:**
+  - The imported spigot skin carried patch seams and a 0.01 mm step. It is remade: cut past the surface to r 36.0 for
+    Y 296-301.6, refilled to r 35.8, the groove re-cut, all before the R0.3 disc corner.
+  - Remaking only the land band left non-manifold edges where the groove's old seams met it.
+- **Difference from D3 (e0eae404):** at the lugs the intended changes (up to 1.73 mm, inside the arm's pocket). Elsewhere at
+  most 0.023 mm, on the land band only (tessellation plus the removed 0.01 mm step).
+
+**HUBL_YAW3P on D3b** (17 N.m couple, 304 N per lug):
+- **Load:** distributed on each lug's pushing Z face, inside the arm's shim-plate outline only (X offset 18.96-34.2,
+  Y 288.2-294.6, less a Ø4.4 circle at the bolt), by split lines on the FEA copy.
+- **Mesh:** 739k nodes. FFEPlus.
+- SF worst over both lugs and both directions, as peak / 0.5 / 1 / 2 mm. 370 N is × 0.822.
+
+| Spot | Layer (σy) | Across-layer shear (vs 13.0 MPa, assumed) | von Mises |
+|---|---|---|---|
+| Plate edge (outer face X 34.4, Y 294.9) | 2.12 / 3.05 / 4.56 / 7.30 | 3.45 / 4.17 / 5.62 / 7.89 | 4.24 / 5.85 / 7.48 / 9.79 |
+| R0.8 outward root | 3.20 / 4.23 / 5.91 / 8.28 | 3.90 / 4.84 / 6.40 / 8.29 | 5.46 / 6.84 / 8.64 / 10.48 |
+| R1.2 run-out (Z root outer end) | **1.70 / 2.39 / 3.44 / 5.59** | **1.68 / 2.46 / 3.95 / 6.26** | 3.15 / 4.21 / 5.73 / 7.82 |
+| Bolt-hole rim (Z faces, r 1.7-2.6) | 3.87 / 5.03 / 8.00 / 14.47 | 3.20 / 3.36 / 3.61 / 3.88 | 4.98 / 5.26 / 5.43 / 5.43 |
+
+- **At 370 N** the governing R1.2 run-out is 1.96 layer and 2.02 shear at 0.5 mm.
+- **Shear stress for comparison with the arm's model:** 7.7 MPa peak and 5.2 over 0.5 mm at the run-out; 3.1 MPa peak at
+  the plate edge.
+- **Verdict:** passes the routine target (1.2 at 0.5 mm, 1.5 at 1 mm) with at least 60% margin at 370 N.
