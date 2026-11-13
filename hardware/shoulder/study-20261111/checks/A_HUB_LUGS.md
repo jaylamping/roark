@@ -1057,7 +1057,22 @@ dish, on the +X side, and can lie as a spiral or an arc.
 | Yaw alone in the +17 sign, 245 N (the other Z face of each lug), solved | D3c7 | 1,002 k | 1.93 / 1.91 | 2.20 / 2.18 |
 | **Bound: G90 + yaw at 272 N, sign +17** (the solved +17 cases, scaled in their own sign) | **D3c7** | | **1.49** / 1.85 | 1.64 / 2.18 |
 
-- **D3c7 passes:** 1.61 (yaw -17, +X lug) and 1.63 (yaw +17, -X lug) at the design load; 1.49 at the bound in either sign (1.73 for yaw alone).
+- **D3c7 passes:** 1.61 (yaw -17, +X lug) and 1.63 (yaw +17, -X lug) at the design load from the arm's r1g4 loads, **1.58
+  and 1.59 restated for its r1g6 loads** (below); 1.49 at the bound in either sign (1.73 for yaw alone).
+- **The arm's r1g6 loads** (hub holes Ø3.8, plate holes Ø3.4; `r1g6_lug_loads.txt`, roark 2f0b241) against r1g4, on which
+  the solves above were run:
+
+  | Case | Lug | Section force r1g4 → r1g6 | Centre of pressure r1g4 → r1g6 (X offset / Y) | Moved |
+  |---|---|---|---|---|
+  | G90 + yaw -17 | -X, front face | -212.6 → -213.9 N | 31.72 / 291.88 → 31.66 / 291.87 | 0.06 mm |
+  | G90 + yaw -17 | +X, back face (governs) | +266.6 → +270.9 N (+1.6%) | 31.47 / 292.57 → 31.67 / 292.48 | 0.22 mm |
+  | G90 + yaw +17 | -X, back face (governs) | +265.7 → +272.2 N (+2.4%) | 31.39 / 292.40 → 31.66 / 292.40 | 0.27 mm |
+  | G90 + yaw +17 | +X, front face | -222.3 → -219.6 N | 31.42 / 291.85 → 31.53 / 291.78 | 0.13 mm |
+
+  Forces within 2.4% and centres of pressure within 0.3 mm, so the cases are not re-run. Scaled by the force ratio on the
+  governing lug, the design figures for r1g6 are **shear 1.58 and layer 1.75 (yaw -17), shear 1.59 and layer 1.74
+  (yaw +17).** Sideways loads are under 6 N, the outer faces carry about 2 N and do not land, and the bolts are free. The
+  272 N bound does not depend on the arm's split and is unchanged.
 - **Where:** the outer R1.2 root, hub X offset 32.6, Y 295.65, at the lug's Z face. The same place on either lug in every
   yaw case.
 - **The Ø3.8 holes cost 2-3%** in shear and up to 4% in layer against D3c6 (uniform case, same mesh).

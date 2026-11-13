@@ -250,7 +250,13 @@ def run(name, c):
             zp_, rects_, sels_ = sp_[:3]
             circs_ = sp_[3] if len(sp_) > 3 else []      # (X, Y, r): circles kept out of the loaded area (e.g. round a bolt hole)
             n0_ = len(faces_of(d))
-            if isinstance(zp_, tuple):           # ('X', x): an X plane, rectangles as (Y0, Y1, Z0, Z1); e.g. a patch on a lug's outer face
+            if isinstance(zp_, tuple) and zp_[0] == 'Y':     # ('Y', y): a Y plane, rectangles as (X0, X1, Z0, Z1); e.g. a hole wall cut in halves
+                yp_ = zp_[1]
+                tag_ = f'Y{yp_:g}'.replace('.', 'p').replace('-', 'm')
+                with Sk(d, plane(d, 'Y', yp_, 'P_SPLIT_' + tag_), 'SPLIT_' + tag_) as s_:
+                    for x0_, x1_, z0_, z1_ in rects_:
+                        s_.poly([(x0_, yp_, z0_), (x1_, yp_, z0_), (x1_, yp_, z1_), (x0_, yp_, z1_)])
+            elif isinstance(zp_, tuple):         # ('X', x): an X plane, rectangles as (Y0, Y1, Z0, Z1); e.g. a patch on a lug's outer face
                 xp_ = zp_[1]
                 tag_ = f'X{xp_:g}'.replace('.', 'p').replace('-', 'm')
                 with Sk(d, plane(d, 'X', xp_, 'P_SPLIT_' + tag_), 'SPLIT_' + tag_) as s_:
@@ -734,16 +740,32 @@ CASES['HUBL_YAW_COPP'] = dict(CASES['HUBL_YAW3P38F'],
 #   HUBL_STOP6_P   the outer-face load alone, 26 N toward -X (the lug section's sideways force, 25.6 N), on a 1.64 x 1.64 patch
 #                  (2.7 mm2, about the 9.75 MPa nodal peak) centred Y 293.2, Z 9.7
 #   HUBL_STOP6_S   the same 26 N spread over Y 289.6-294.6, Z 6.4-10.9 (22.5 mm2), for the sensitivity to the patch size
+#   Corrected by the arm (roark 7f824d3): the wall pushes the outer face INWARD with at most about 9 N (the patch cases scale
+#   to that); the lug's net sideways load is about 26 N OUTWARD, which in the real joint goes through plate friction under the
+#   bolt clamp or, failing that, the bolt in the hole. Two more unit cases:
+#   HUBL_STOP6_F   26 N toward -X as shear on the -X lug's two Z faces (13 N on each plate outline)
+#   HUBL_STOP6_B   26 N toward -X on the outboard half of the -X lug's bolt-hole wall (the hole wall is split at X = its axis)
 _OX = RX - 34.4
+_HX = RX - 22.99                                   # the -X lug's bolt-hole axis (X 147.5), Y 292.0
 _STOP6 = dict(CASES['HUBL_YAW3P38F'],
               split=CASES['HUBL_YAW3P38F']['split'] + [(('X', _OX), [(289.6, 294.6, 6.4, 10.9), (292.38, 294.02, 8.88, 10.52)], [('plane', (_OX, 291.0, 4.0), None, 'on')])])
+# the bolt-wall load needs the hole wall split, which changes the mesh: its cases are solved complete, not combined node by node
+_STOP6H = dict(_STOP6, split=_STOP6['split'] + [(('Y', 292.0), [(_HX - 3.0, _HX, 0.5, 11.5)], [('plane', (_HX - LUG_R, 292.0, 6.0), None, 'on')])])
+_HOLE_OUT = ('cyl', LUG_R, [_HX - LUG_R - 0.05, 292.0 - LUG_R - 0.05, 0.9, _HX + 0.05, 292.0 + LUG_R + 0.05, 11.1])
 _P_SMALL, _P_RING = ('plane', (_OX, 293.2, 9.7), None, 'on'), ('plane', (_OX, 290.5, 7.0), None, 'on')
 CASES['HUBL_STOP6_Z'] = dict(_STOP6,
     remotes=[(_PFACE(-1, 11.0), _COP(-1, 11.0, 30.0, 291.6), (0.0, 0.0, -184.0), (0.0, 0.0, 0.0), 1),
              (_PFACE(1, 1.0), _COP(1, 1.0, 31.31, 292.19), (0.0, 0.0, 92.2), (0.0, 0.0, 0.0), 1),
              (_PFACE(1, 11.0), _COP(1, 11.0, 19.79, 289.78), (0.0, 0.0, -11.5), (0.0, 0.0, 0.0), 1)])
 CASES['HUBL_STOP6_P'] = dict(_STOP6, remotes=[(_P_SMALL, (_OX, 293.2, 9.7), (-26.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)])
+CASES['HUBL_STOP6_F'] = dict(_STOP6, remotes=[(_PFACE(-1, 1.0), _PAT(-1, 1.0), (-13.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1),
+                                              (_PFACE(-1, 11.0), _PAT(-1, 11.0), (-13.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)])
+CASES['HUBL_STOP6_B'] = dict(_STOP6H, remotes=[(_HOLE_OUT, (_HX, 292.0, YZ), (-26.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)])
+#   HUBL_STOP6_ZB  variant (b) complete: the Z-face loads, 9 N inward on the small outer-face patch, 26 N outward on the bolt wall
 CASES['HUBL_STOP6_S'] = dict(_STOP6, remotes=[([_P_SMALL, _P_RING], (_OX, 292.1, 8.65), (-26.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)])
+CASES['HUBL_STOP6_ZB'] = dict(_STOP6H, remotes=CASES['HUBL_STOP6_Z']['remotes'] + [
+    (_P_SMALL, (_OX, 293.2, 9.7), (9.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1),
+    (_HOLE_OUT, (_HX, 292.0, YZ), (-26.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)])
 CASES['HUBL_G90YAW_L'] = dict(CASES['HUBL_YAW3P38F'], remotes=_G90YAW_LUGS)
 #   HUBL_G90       G90 alone, for superposing with HUBL_YAW_COP at another yaw load: -X lug 30.8 N net (back +36.9, front -6.1),
 #                  +X lug 25.9 N net (back +38.5, front -12.6), and the spigot share (F -0.3, -0.9, -118.7 N; M 23.44, -0.17, -0.01)
