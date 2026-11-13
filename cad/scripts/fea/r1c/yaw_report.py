@@ -94,7 +94,7 @@ for nm, (x0, x1) in (('fins -X', (136.0, 156.0)), ('fins +X', (185.0, 205.0))):
     worst(m, vm, 45.0, '   vm')
     worst(m, a_layer, 22.5, '   layer (sz)')
     worst(m, a_shear, 13.0, '   shear')
-for nm, (x0, x1) in (('hub lug -X', (139.0, 153.0)), ('hub lug +X', (187.0, 202.0))):
+for nm, (x0, x1) in (('hub lug -X', (HX - 37.0, 153.0)), ('hub lug +X', (187.0, HX + 37.0))):      # review M1 (2026-11-13): out to the extended lug's outer face (X offset 34.4) and its roots
     m = hub & (p[:, 0] > x0) & (p[:, 0] < x1) & (p[:, 1] > 287.0) & (p[:, 1] < 297.5)
     print(f'-- {nm} incl. roots: {int(m.sum())} nodes')
     worst(m, vm, 45.0, '   vm')

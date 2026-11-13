@@ -1,0 +1,92 @@
+== r1g2_stop0
+  arm WHOLE ARM (nothing excluded)                   vm    old 0.35/0.85/2.52     all-centres 0.35/0.85/1.85
+  arm WHOLE ARM (nothing excluded)                   layer old 0.62/1.59/7.50     all-centres 0.62/1.33/1.56
+  arm WHOLE ARM (nothing excluded)                   shear old 0.33/0.82/1.29     all-centres 0.33/0.82/1.18
+  arm ridge body (r < 35.9, Y 297.5-302)             shear old 2.98/4.34/6.15     all-centres 2.98/4.32/6.14
+  arm ridge root / bore wall (r 35.9-37.5, Y 297.5-3 shear old 2.95/4.42/6.39     all-centres 2.95/4.22/5.54
+  arm seat bore + end face elsewhere (Y 295-302.6, r vm    old 1.98/2.81/4.42     all-centres 1.98/2.81/4.05
+  arm seat bore + end face elsewhere (Y 295-302.6, r layer old 1.57/2.78/4.60     all-centres 1.57/2.36/3.72
+  arm hub posts (Y 285-296)                          layer old 0.62/1.59/7.50     all-centres 0.62/1.59/5.64
+  arm skin elsewhere (Y 270-296)                     vm    old 1.30/2.98/4.58     all-centres 1.30/2.94/4.43
+  arm skin elsewhere (Y 270-296)                     layer old 1.57/2.78/4.60     all-centres 1.57/2.36/4.00
+  arm skin elsewhere (Y 270-296)                     shear old 1.22/2.71/6.57     all-centres 1.22/2.71/5.04
+  hub WHOLE HUB (nothing excluded)                   vm    old 0.72/1.17/2.71     all-centres 0.72/1.13/2.70
+  hub WHOLE HUB (nothing excluded)                   shear old 0.72/1.24/2.23     all-centres 0.72/1.09/2.16
+  hub groove bottom + 45 flank (Y 299.1-302, arcs)   vm    old 2.45/2.86/3.57     all-centres 2.45/2.86/3.54
+  hub groove bottom + 45 flank (Y 299.1-302, arcs)   shear old 1.35/1.56/2.26     all-centres 1.35/1.56/2.20
+  hub 2 mm land (Y 295.5-298, r 33-35.85)            layer old 2.21/3.53/6.36     all-centres 2.21/3.53/5.46
+  hub 2 mm land (Y 295.5-298, r 33-35.85)            shear old 2.25/2.96/3.96     all-centres 2.25/2.96/3.95
+  hub spigot ring above groove (Y 300.5-302.2, r 31- shear old 1.71/1.87/2.39     all-centres 1.71/1.87/2.24
+  hub lugs incl. roots (Y < 297.5)                   vm    old 0.72/1.17/2.71     all-centres 0.72/1.13/2.70
+  hub lugs incl. roots (Y < 297.5)                   layer old 1.97/2.85/4.88     all-centres 1.97/2.85/4.69
+  hub lugs incl. roots (Y < 297.5)                   shear old 0.72/1.24/2.23     all-centres 0.72/1.09/2.18
+  hub lug roots (Y 294-297.5)                        shear old 1.94/2.62/3.70     all-centres 1.94/2.62/3.69
+== r1g2_stop124
+  arm WHOLE ARM (nothing excluded)                   vm    old 1.56/1.62/1.92     all-centres 1.27/1.49/1.89
+  arm WHOLE ARM (nothing excluded)                   shear old 0.99/1.09/1.19     all-centres 0.83/0.96/1.16
+  arm ridge load flank (within 0.25 of the 30 deg fl shear old 2.86/4.57/6.52     all-centres 2.86/4.57/6.46
+  arm ridge body (r < 35.9, Y 297.5-302)             shear old 2.86/4.07/6.12     all-centres 2.86/4.07/6.07
+  arm seat bore + end face elsewhere (Y 295-302.6, r vm    old 2.16/3.30/4.79     all-centres 2.16/3.30/4.63
+  arm seat bore + end face elsewhere (Y 295-302.6, r layer old 1.71/2.78/5.34     all-centres 1.71/2.51/3.94
+  arm seat bore + end face elsewhere (Y 295-302.6, r shear old 1.93/3.23/4.77     all-centres 1.93/3.08/4.51
+  arm hub posts (Y 285-296)                          layer old 1.73/2.24/4.75     all-centres 1.73/2.24/4.35
+  arm fins (Y 270-285, posts)                        layer old 2.89/5.17/11.39    all-centres 2.89/3.58/7.80
+  arm skin elsewhere (Y 270-296)                     vm    old 1.56/2.85/4.92     all-centres 1.56/2.85/4.84
+  arm skin elsewhere (Y 270-296)                     layer old 1.71/3.05/5.78     all-centres 1.71/2.51/3.94
+  arm skin elsewhere (Y 270-296)                     shear old 1.93/3.23/5.13     all-centres 1.93/3.08/4.51
+  hub WHOLE HUB (nothing excluded)                   shear old 1.64/2.05/3.15     all-centres 1.64/2.05/2.83
+  hub load flank (Y 297.8-299.1, r 34.2-35.85, arcs) shear old 2.85/3.84/4.61     all-centres 2.85/3.61/4.61
+  hub 2 mm land (Y 295.5-298, r 33-35.85)            layer old 2.66/4.50/9.35     all-centres 2.66/4.50/5.50
+  hub 2 mm land (Y 295.5-298, r 33-35.85)            shear old 2.76/3.94/5.00     all-centres 2.76/3.94/4.99
+  hub spigot ring above groove (Y 300.5-302.2, r 31- layer old 1.87/2.15/2.51     all-centres 1.87/2.15/2.48
+  hub spigot ring above groove (Y 300.5-302.2, r 31- shear old 2.08/2.22/3.15     all-centres 2.08/2.22/3.02
+  hub lugs incl. roots (Y < 297.5)                   layer old 2.66/4.50/8.41     all-centres 2.66/4.50/8.26
+  hub lugs incl. roots (Y < 297.5)                   shear old 2.40/3.24/5.54     all-centres 2.40/3.24/5.30
+  hub lug roots (Y 294-297.5)                        layer old 2.66/4.50/8.41     all-centres 2.66/4.50/8.26
+  hub lug roots (Y 294-297.5)                        shear old 2.40/3.24/5.54     all-centres 2.40/3.24/5.30
+== r1g2_g90
+  arm WHOLE ARM (nothing excluded)                   vm    old 1.20/3.31/11.28    all-centres 1.20/3.31/5.12
+  arm WHOLE ARM (nothing excluded)                   layer old 2.31/4.19/8.48     all-centres 2.31/3.23/5.05
+  arm WHOLE ARM (nothing excluded)                   shear old 1.12/3.08/10.55    all-centres 1.12/3.08/3.99
+  arm seat bore + end face elsewhere (Y 295-302.6, r layer old 2.31/4.19/8.12     all-centres 2.31/4.01/6.86
+  arm hub posts (Y 285-296)                          vm    old 1.20/3.31/11.28    all-centres 1.20/3.31/8.53
+  arm hub posts (Y 285-296)                          layer old 2.31/4.19/8.84     all-centres 2.31/4.19/7.29
+  arm hub posts (Y 285-296)                          shear old 1.12/3.08/10.55    all-centres 1.12/3.08/7.96
+  arm skin elsewhere (Y 270-296)                     layer old 2.51/4.35/8.12     all-centres 2.51/4.01/6.86
+  hub WHOLE HUB (nothing excluded)                   vm    old 2.22/4.18/11.93    all-centres 2.22/4.18/7.28
+  hub WHOLE HUB (nothing excluded)                   shear old 2.55/3.16/5.03     all-centres 2.55/3.16/4.44
+  hub spigot ring above groove (Y 300.5-302.2, r 31- layer old 2.96/3.26/3.98     all-centres 2.96/3.26/3.96
+  hub lugs incl. roots (Y < 297.5)                   shear old 2.55/4.08/9.32     all-centres 2.55/3.82/8.92
+== r1g2_yawp
+  arm WHOLE ARM (nothing excluded)                   vm    old 1.38/1.91/3.32     all-centres 1.38/1.91/3.18
+  arm WHOLE ARM (nothing excluded)                   layer old -/-/-              all-centres 2.63/3.62/4.66
+  arm WHOLE ARM (nothing excluded)                   shear old 0.96/1.58/3.53     all-centres 0.96/1.58/3.11
+  arm ridge root / bore wall (r 35.9-37.5, Y 297.5-3 vm    old 1.44/2.79/7.33     all-centres 1.44/2.74/6.72
+  arm ridge root / bore wall (r 35.9-37.5, Y 297.5-3 shear old 0.96/2.06/6.12     all-centres 0.96/1.91/5.35
+  arm hub posts (Y 285-296)                          layer old 2.63/3.89/5.38     all-centres 2.63/3.89/5.13
+  arm skin elsewhere (Y 270-296)                     vm    old 1.38/1.91/3.32     all-centres 1.38/1.91/3.18
+  arm skin elsewhere (Y 270-296)                     shear old 1.15/1.58/3.53     all-centres 1.15/1.58/3.11
+  hub WHOLE HUB (nothing excluded)                   vm    old 2.00/2.51/3.17     all-centres 2.00/2.39/3.07
+  hub WHOLE HUB (nothing excluded)                   layer old 1.42/2.64/4.39     all-centres 1.42/2.42/4.17
+  hub WHOLE HUB (nothing excluded)                   shear old 1.23/1.56/2.49     all-centres 1.23/1.56/2.38
+  hub 2 mm land (Y 295.5-298, r 33-35.85)            layer old 1.61/2.72/6.01     all-centres 1.61/2.72/5.52
+  hub spigot ring above groove (Y 300.5-302.2, r 31- layer old 2.90/3.24/4.58     all-centres 2.90/3.24/4.52
+  hub lugs incl. roots (Y < 297.5)                   vm    old 2.00/2.51/3.17     all-centres 2.00/2.39/3.07
+  hub lugs incl. roots (Y < 297.5)                   layer old 1.42/2.64/4.39     all-centres 1.42/2.42/4.17
+  hub lugs incl. roots (Y < 297.5)                   shear old 1.23/1.56/2.49     all-centres 1.23/1.56/2.38
+  hub lug roots (Y 294-297.5)                        layer old 1.42/2.64/4.39     all-centres 1.42/2.42/4.17
+  hub lug roots (Y 294-297.5)                        shear old 1.23/1.56/2.49     all-centres 1.23/1.56/2.38
+== r1g_yawm
+  arm WHOLE ARM (nothing excluded)                   layer old -/-/-              all-centres 2.75/3.46/4.56
+  arm WHOLE ARM (nothing excluded)                   shear old 1.17/1.75/4.03     all-centres 1.08/1.73/3.51
+  arm ridge root / bore wall (r 35.9-37.5, Y 297.5-3 shear old 2.84/5.94/7.03     all-centres 2.84/5.94/7.00
+  arm seat bore + end face elsewhere (Y 295-302.6, r layer old 2.90/4.27/4.83     all-centres 2.90/4.18/4.83
+  arm seat bore + end face elsewhere (Y 295-302.6, r shear old 2.47/3.04/3.65     all-centres 2.47/3.04/3.61
+  arm skin elsewhere (Y 270-296)                     layer old -/-/-              all-centres 2.75/3.46/4.70
+  arm skin elsewhere (Y 270-296)                     shear old 1.17/1.75/4.03     all-centres 1.08/1.73/3.51
+  hub WHOLE HUB (nothing excluded)                   vm    old 2.19/2.43/3.22     all-centres 2.15/2.39/3.12
+  hub WHOLE HUB (nothing excluded)                   layer old 1.46/2.51/4.28     all-centres 1.46/2.35/4.21
+  hub 2 mm land (Y 295.5-298, r 33-35.85)            layer old 1.46/2.55/5.68     all-centres 1.46/2.55/5.26
+  hub lugs incl. roots (Y < 297.5)                   vm    old 2.19/2.43/3.22     all-centres 2.15/2.39/3.12
+  hub lugs incl. roots (Y < 297.5)                   layer old 1.46/2.51/4.40     all-centres 1.46/2.35/4.21
+  hub lug roots (Y 294-297.5)                        layer old 1.46/2.51/4.40     all-centres 1.46/2.35/4.21

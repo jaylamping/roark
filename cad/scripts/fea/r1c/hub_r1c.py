@@ -117,6 +117,30 @@ posts = (np.abs(p[:, 0] - 147.5) < 7) | (np.abs(p[:, 0] - 193.5) < 7)
 trees = {'arm': (arm, cKDTree(p[arm])), 'hub': (hb, cKDTree(p[hb]))}
 
 
+ALL_CENTRES = _os.environ.get('R1C_ALL_CENTRES') == '1'      # review M3 (2026-11-13): every node a candidate centre, not just >= 40 % of the peak
+_SPH = {}
+
+
+def sphere_means(body, rr, v):
+    """Mean of v over the body's nodes within rr of every body node (row-normalized sparse neighbour matrix, cached per body and
+    radius); returns (means over the body's node list, neighbour counts)."""
+    import scipy.sparse as sp
+    ids, tree = trees[body]
+    key = (body, rr)
+    if key not in _SPH:
+        n = len(ids)
+        rows, cols = [], []
+        for k0 in range(0, n, 20000):      # chunked: memory
+            nbs = tree.query_ball_point(p[ids[k0:k0 + 20000]], rr)
+            for k, nb in enumerate(nbs):
+                rows.extend([k0 + k] * len(nb)); cols.extend(nb)
+        M = sp.csr_matrix((np.ones(len(rows), np.float32), (np.array(rows, np.int32), np.array(cols, np.int32))), shape=(n, n))
+        cnt = np.asarray(M.sum(axis=1)).ravel()
+        _SPH[key] = (M, cnt)
+    M, cnt = _SPH[key]
+    return (M @ v[ids]) / cnt, cnt
+
+
 def rep(body, name, mask, layer_col, allow_layer=22.5):
     ids, tree = trees[body]
     a = ids[mask[ids]]
@@ -129,17 +153,27 @@ def rep(body, name, mask, layer_col, allow_layer=22.5):
         i = a[np.argmax(v[a])]
         # worst average ANYWHERE in the region (review 2026-11-12), not just around the peak node: sphere averages for every
         # candidate node (value >= 40 % of the peak, top 5000), the maximum of each, and how many nodes the 0.5 mm one rests on
-        cand = a[v[a] >= 0.4 * v[i]] if v[i] > 0 else a[:1]
-        cand = cand[np.argsort(-v[cand])][:5000]
         worst = []
-        for rr in (0.5, 1.0, 2.0):
-            best = (-np.inf, None, 0)
-            for j in cand:
-                nb = ids[tree.query_ball_point(p[j], rr)]
-                mv = float(v[nb].mean())
-                if mv > best[0]:
-                    best = (mv, j, len(nb))
-            worst.append(best)
+        if ALL_CENTRES:
+            pos_in = np.searchsorted(ids, a) if np.all(np.diff(ids) > 0) else None
+            if pos_in is None:
+                lut = {g: k for k, g in enumerate(ids)}
+                pos_in = np.array([lut[g] for g in a])
+            for rr in (0.5, 1.0, 2.0):
+                means, cnt = sphere_means(body, rr, v)
+                k = int(np.argmax(means[pos_in]))
+                worst.append((float(means[pos_in][k]), int(a[k]), int(cnt[pos_in][k])))
+        else:
+            cand = a[v[a] >= 0.4 * v[i]] if v[i] > 0 else a[:1]
+            cand = cand[np.argsort(-v[cand])][:5000]
+            for rr in (0.5, 1.0, 2.0):
+                best = (-np.inf, None, 0)
+                for j in cand:
+                    nb = ids[tree.query_ball_point(p[j], rr)]
+                    mv = float(v[nb].mean())
+                    if mv > best[0]:
+                        best = (mv, j, len(nb))
+                worst.append(best)
         av = [w[0] for w in worst]
         j5 = worst[0][1]
         row[lab] = dict(peak=round(float(v[i]), 1), sf=round(al / v[i], 2) if v[i] > 0 else None, at=p[i].round(1).tolist(),

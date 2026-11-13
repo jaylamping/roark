@@ -40,7 +40,7 @@ def outline(t):
     main = box(18.96, 288.2, 34.2, 294.6)
     # (2026-11-13, coordinator: no strip; the plate covers the main flat face only, so the lug's step and column above Y 294.6
     # sit in the 0.5 gap and carry nothing, and no plate edge lands on our corner at the root relief)
-    lip_strip = box(18.96, 287.2, 34.2, 288.2)
+    lip_strip = box(18.96, 287.2, 32.5, 288.2)      # to X offset 32.5, clear of our wall below the pocket floor (review 2026-11-13)
     p = unary_union([main, lip_strip]).difference(Point(23.0, 292.0).buffer(2.2, 64))      # Dia 4.4 (2026-11-13): the plate edge 0.5 off the hub lug's Dia 3.4 hole rim, 0.2 off our insert's Dia 4.0
     k = int(round((t - 0.25) / 0.05))
     wide, narrow = divmod(k, 5)
@@ -48,7 +48,7 @@ def outline(t):
     for w in [1.4] * wide + [0.5] * narrow:      # notches in the inner edge (offset 18.9), top down
         p = p.difference(box(18.86, y - w, 19.26, y))
         y -= w + 0.6
-    lip = box(19.5, 287.2, 33.7, 288.0)      # rib on the printed top face
+    lip = box(19.5, 287.2, 32.5, 288.0)      # to X offset 32.5: at 33.7 it reached our wall below the pocket (Y 287.2-287.5), review 2026-11-13      # rib on the printed top face
     return p, lip, (wide, narrow)
 
 

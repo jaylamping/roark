@@ -42,13 +42,14 @@ for label, b, geo in SPOTS:
     print(f'-- {label}: {len(q)} nodes')
     if len(q) == 0:
         continue
-    t = cKDTree(p[q])
+    bq = np.flatnonzero(body == b)      # review M1 (2026-11-13): average over every node of the body in the sphere, as hub_r1c does
+    t = cKDTree(p[bq])
     for nm, v, A in (('vm', vm, 45.0), ('layer', LAYER[b], 22.5), ('shear', SHEAR[b], 13.0)):
         out = []
         for R in (0.5, 1.0, 2.0):
             best, bn, bat = 0.0, 0, None
-            for i in q[np.argsort(-v[q])[:250]]:
-                nb = q[t.query_ball_point(p[i], R)]
+            for i in q:      # every node of the spot a candidate centre (review M3)
+                nb = bq[t.query_ball_point(p[i], R)]
                 mv = v[nb].mean()
                 if mv > best:
                     best, bn, bat = mv, len(nb), p[i]

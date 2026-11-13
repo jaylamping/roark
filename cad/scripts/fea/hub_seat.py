@@ -457,7 +457,7 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
 
         return post
 
-    for k in ('STOP_0', 'STOP_124', 'G90', 'LC2', 'LC2M'):      # LC2 / LC2M (2026-11-12): YAW_17, the RS02's 17 N.m peak about the hub axis, + / -
+    for k in ('STOP_0', 'STOP_124', 'G90', 'LC2', 'LC2M', 'G90Y'):      # LC2 / LC2M (2026-11-12): YAW_17, the RS02's 17 N.m peak about the hub axis, + / -
         for sfx in ('', '_fine'):
             if k + sfx in CASES:
                 c = dict(CASES[k + sfx])

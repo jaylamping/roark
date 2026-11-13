@@ -1,0 +1,4 @@
+ligament above the hole: 0.40 mm = 0.95 line widths (0 whole perimeters)
+ligament below the hole: 1.60 mm = 3.81 line widths (3 whole perimeters)
+plate top to the R1.2 root tangent: 0.20 mm
+proposal (not applied): plate top Y 294.7 -> ligament 0.50 (1.19 line widths), 0.10 below the root tangent
