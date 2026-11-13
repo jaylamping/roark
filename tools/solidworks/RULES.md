@@ -95,6 +95,9 @@ solidworks-mcp servers start their instance through their own code, so they don'
 | orphan | Not answering, still has its windows, no solver and no live client: its client was killed mid-call | Maybe | Waits 300 s for it, then refuses and names the PID |
 | HALF-CLOSED | Not answering and no windows left | No | Refuses at once and names the PID |
 
+Under each row `--status` names who drives the instance: its claim ([cad-workstation.md section 2](../../conventions/cad-workstation.md#2-claims-and-heartbeats)),
+or, when the session made none, the worktree and command line that `launch()` or `attach()` noted for it.
+
 The live client is the process named in `sw_owner_<pid>.txt` in the temp folder, which `launch()` and `attach()` write, or failing that the process that started the instance.
 
 ## Launching beside a busy instance
