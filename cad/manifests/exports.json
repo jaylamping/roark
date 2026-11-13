@@ -3,6 +3,78 @@
   "description": "Where each STEP/STL in cad/exports/ came from. Written by tools/cad/record_export.py; checked by tools/cad/check_cad_layout.py (a changed source makes its export stale). Paths are relative to cad/.",
   "exports": [
     {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_axis_base.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "roll crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "7257ad05b321948e66072492d3ea0ac9bcef6ae5b478b30d7e32e8b149e33391",
+      "exportSha256": "cc833d3eea581d43af527d3a6ba4cc8e68a901582c847383ddf63778389a08e7",
+      "recorded": "2026-11-13T17:35:02Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_axis_base.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "roll crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "7257ad05b321948e66072492d3ea0ac9bcef6ae5b478b30d7e32e8b149e33391",
+      "exportSha256": "d4bc0d6e416d634515e803ff659f18d529f8d2783e331f802af52c8cea087bd0",
+      "recorded": "2026-11-13T17:35:02Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_axis_top.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "roll crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "7257ad05b321948e66072492d3ea0ac9bcef6ae5b478b30d7e32e8b149e33391",
+      "exportSha256": "60c414386c6973a477e9e16945e09b9d673a94fa890ac521f3b77a908cc5a78a",
+      "recorded": "2026-11-13T17:35:03Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_axis_top.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "roll crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "7257ad05b321948e66072492d3ea0ac9bcef6ae5b478b30d7e32e8b149e33391",
+      "exportSha256": "4c58bda7951f82149a2cb6d2692b8dedbf5bb4572ce1b67595d9379f9f1cfb7a",
+      "recorded": "2026-11-13T17:35:03Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_deck_lid.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "roll crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "7257ad05b321948e66072492d3ea0ac9bcef6ae5b478b30d7e32e8b149e33391",
+      "exportSha256": "e80e883c920e74ef7f77b466ebc38bf235d9d8eff579df1c3b0cea06e5dc21d4",
+      "recorded": "2026-11-13T17:35:01Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_deck_lid.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "roll crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "7257ad05b321948e66072492d3ea0ac9bcef6ae5b478b30d7e32e8b149e33391",
+      "exportSha256": "efef513f245ef70cfee25d5df505fac64ab1babe1d5de0dba27b3117ef4c9c50",
+      "recorded": "2026-11-13T17:35:01Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_deck_tray.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "roll crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "7257ad05b321948e66072492d3ea0ac9bcef6ae5b478b30d7e32e8b149e33391",
+      "exportSha256": "c51a7f9c43ccc6ceb9c93b9ac162864cd62fcb7f140a79cf99d824bfae903f41",
+      "recorded": "2026-11-13T17:35:00Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_deck_tray.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "roll crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "7257ad05b321948e66072492d3ea0ac9bcef6ae5b478b30d7e32e8b149e33391",
+      "exportSha256": "bc36cfd71eba0fb87cd69f9c99213b25a9148da6a848d0aae62e2122749aa01f",
+      "recorded": "2026-11-13T17:35:00Z"
+    },
+    {
       "export": "exports/fixtures/fixtures_yaw_loop_rig_boss.STEP",
       "source": "scripts/shoulder/cable_loop_rig.py",
       "config": "",

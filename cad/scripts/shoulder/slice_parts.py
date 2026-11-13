@@ -38,6 +38,9 @@ FILES = {k: WIP / 'stl' / f'{k}.STL' for k in ORIENT}
 FILES['fork_front'] = WIP / 'stl' / 'fork_front.stl'
 for k in ('fork', 'hub', 'boss', 'cap'):
     FILES[f'rig_{k}'] = RIG / f'fixtures_yaw_loop_rig_{k}.stl'
+RIGS2 = WIP.parent / 'cable-rigs'
+for k in ('yaw2_hub', 'yaw2_fork', 'roll_deck_tray', 'roll_deck_lid', 'roll_axis_base', 'roll_axis_top', 'pitch_tray', 'pitch_lid'):
+    FILES[f'rig_{k}'] = RIGS2 / f'fixtures_cable_rig_{k}.stl'
 
 
 def run(name):
