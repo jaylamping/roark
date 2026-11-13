@@ -5,8 +5,9 @@ partition, and the bench tools. Follows
 [conventions/deploy.md](../conventions/deploy.md) and [conventions/remote-access.md](../conventions/remote-access.md); if a
 step here and a convention disagree, the convention wins and this page gets fixed.
 
-Until the repo has a `deploy/` folder and an image built with `rpi-image-gen`, these steps are done by hand. Each step that
-should later move into `deploy/` or the image config is marked **(→ deploy/)**. When that happens, this page shrinks to "flash
+Until the image is built with `rpi-image-gen`, most of these steps are run by [deploy/pi-setup.sh](../deploy/pi-setup.sh)
+(section 3) and the rest by hand. Each step that should later move into `deploy/` or the image config is marked
+**(→ deploy/)**. When that happens, this page shrinks to "flash
 the image, run the deploy script".
 
 ## 0. Before you wipe: back up the old Pi
@@ -68,8 +69,10 @@ With **Raspberry Pi Imager** on the Mac:
 
 ## 3. First boot: update once, then freeze
 
-**Sections 3 to 12 as one script:** [deploy/pi-setup.sh](../deploy/pi-setup.sh) does everything below except
-`tailscale up`, the NVMe steps and the reboot. Copy it to the Pi (with `can-bench` and the agent's public key as
+**Sections 3 to 12 as one script:** [deploy/pi-setup.sh](../deploy/pi-setup.sh) does the steps below except these, which stay by hand: `BOOT_ORDER` and the NVMe steps (sections 4 and 5),
+`tailscale up` and `tailscale set --auto-update=false` (section 8), enabling `systemd-networkd` and naming the buses
+(section 11), the CPU governor and the `cyclictest` run (section 12), and the reboot. It upgrades packages on its first
+run only; a later run rewrites the small config files and the firewall rules and leaves the packages alone. Copy it to the Pi (with `can-bench` and the agent's public key as
 `agent-key.pub` next to it, if you have them) and run it detached, so a dropped SSH session can't stop it half-way:
 
 ```bash
@@ -89,7 +92,7 @@ Then stop anything from changing by itself (deploy.md section 6) **(→ image)**
 
 ```bash
 sudo apt purge -y unattended-upgrades || true
-sudo apt-mark hold raspi-firmware linux-image-rpi-2712 linux-image-rpi-v8
+sudo apt-mark hold raspi-firmware rpi-eeprom linux-image-rpi-2712 linux-image-rpi-v8   # every linux-image-rpi-* installed
 sudo systemctl mask rpi-eeprom-update
 ```
 
@@ -177,8 +180,9 @@ sudo chown robot:robot /var/lib/robot
   echo 'agent ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/020_agent
   sudo chmod 440 /etc/sudoers.d/020_agent && sudo visudo -cf /etc/sudoers.d/020_agent
   ```
-- `/etc/ssh/sshd_config.d/robot.conf`: `PasswordAuthentication no` and `PermitRootLogin no`, then
-  `sudo systemctl restart ssh`.
+- `/etc/ssh/sshd_config.d/00-robot.conf`: `PasswordAuthentication no` and `PermitRootLogin no`, then
+  `sudo sshd -t && sudo systemctl reload ssh`. The `00-` matters: sshd keeps the first value it reads, and the image's
+  `50-cloud-init.conf` can set `PasswordAuthentication` too. Check with `sudo sshd -T | grep -i passwordauth`.
 
 ## 8. Tailscale
 
@@ -205,10 +209,13 @@ Follows [remote-access.md](../conventions/remote-access.md).
 sudo apt install -y ufw
 sudo ufw default deny incoming
 sudo ufw allow in on tailscale0
-sudo ufw allow from 192.168.0.0/16 to any port 22 proto tcp   # home LAN SSH fallback; narrow to your actual subnet
-sudo ufw allow from 192.168.0.0/16 to any port 5353 proto udp # mDNS, or <hostname>.local stops resolving
+sudo ufw allow from <lan-subnet> to any port 22 proto tcp     # home LAN SSH fallback
+sudo ufw allow from <lan-subnet> to any port 5353 proto udp   # mDNS, or <hostname>.local stops resolving
 sudo ufw enable
 ```
+
+The script fills in `<lan-subnet>` from the networks the Pi is on when it runs: each IPv4 subnet, IPv6 link-local, and each
+IPv6 /64. Run it again if the Pi moves to another network.
 
 ## 10. Time
 

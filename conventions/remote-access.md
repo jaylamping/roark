@@ -87,7 +87,8 @@ do** there. Neither is trusted alone.
   other system change ([deploy.md](deploy.md)).
 - **The runtime doesn't depend on Tailscale.** No systemd ordering on `tailscaled`; the robot runs, stops and records the same
   with Tailscale down.
-- **Firewall:** `ufw` denies incoming by default and allows the `tailscale0` interface and SSH from the home LAN. Tailnet
+- **Firewall:** `ufw` denies incoming by default and allows the `tailscale0` interface, and SSH and mDNS (UDP 5353) from the home LAN. mDNS is there because the LAN fallback
+  in section 8 finds the Pi by its `.local` name, which stops resolving when the query is dropped. Tailnet
   traffic is filtered by the Tailscale policy, not `ufw` (Tailscale's own firewall rules accept `tailscale0` traffic first).
 
 ## 7. The UI over the tailnet
@@ -105,7 +106,8 @@ do** there. Neither is trusted alone.
   peers on the same LAN talk directly. New devices can't join, and check-mode SSH may fail because it needs the identity
   provider.
 - **Fallbacks, in order:** plain OpenSSH to the Pi's LAN address with Joey's key; a keyboard and screen on the Pi; and always the
-  physical E-stop. Agents have no LAN path.
+  physical E-stop. Cloud agents have no LAN path. An agent working through Remote Control on one of Joey's machines is on
+  the LAN, and logs in with the `agent` account's own key, never Joey's.
 - Robot software never needs the internet to run. ROS-style multicast discovery wouldn't cross Tailscale anyway; our `api` is a
   local socket, so nothing depends on it.
 
