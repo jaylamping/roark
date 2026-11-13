@@ -26,10 +26,11 @@ with the helper code that makes the lessons hard to forget:
 | Export STEP or STL, promote a part, commit CAD | [04-export.md](04-export.md) |
 | Run a static study, or a study with contact | [05-fea.md](05-fea.md) |
 | Decide whether a result can be trusted, and when to hand the problem up | [06-judgment.md](06-judgment.md) |
+| Know when a model, a study or a report is finished: **read before every task** | [07-done.md](07-done.md) |
 
 How well this works for a smaller model, measured: [EVAL.md](EVAL.md).
 
-## The method, in six lines
+## The method, in seven lines
 
 1. **Do the hand calculation first.** The volume of the part, the deflection of the beam, the stress in the section. A script
    result is only as good as the number you compare it with.
@@ -38,7 +39,9 @@ How well this works for a smaller model, measured: [EVAL.md](EVAL.md).
    instead; in your own calls, check the return value and the change in volume.
 4. **Pick faces and edges by where they are,** never by name or index: names and order change with every rebuild.
 5. **Save after every step that worked,** in `cad/_wip/<topic>/` until the part is chosen.
-6. **Report what you checked, not what you hope.** Give the numbers, the hand value beside them, what was excluded, and what
+6. **Right numbers are the start, not the end.** [07-done.md](07-done.md) lists what a finished model, study and report
+   contain; "it passes" is not on the list.
+7. **Report what you checked, not what you hope.** Give the numbers, the hand value beside them, what was excluded, and what
    you could not verify.
 
 ## Stop and hand it up
