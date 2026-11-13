@@ -7,7 +7,7 @@ import sys
 
 LINE_W = 0.42        # Bambu P2S 0.4 nozzle default outer wall line width
 BOLT_Y = 292.0
-HOLE_R = float(os.environ.get('LUG_PLATE_HOLE_R', '1.9'))      # r1g4 Dia 3.8 (was 4.4)
+HOLE_R = float(os.environ.get('LUG_PLATE_HOLE_R', '1.7'))      # r1g6 Dia 3.4 (r1g4 3.8, R1g 4.4)
 PLATE_Y0, PLATE_Y1 = 288.2, float(os.environ.get('LUG_PLATE_TOP', '294.6'))
 ROOT_TANGENT_Y = 294.8   # hub R1.2 Z-root tangent
 

@@ -22,6 +22,7 @@ m = trimesh.load(stl)
 sec = m.section(plane_origin=[0, 0, 0.1], plane_normal=[0, 0, 1])
 holes = [Polygon(e[:, :2]) for e in sec.discrete if 8.0 < Polygon(e[:, :2]).area < 14.0]
 hc = np.array([[h.centroid.x, h.centroid.y] for h in holes])
+HR = float(np.sqrt(np.mean([h.area for h in holes]) / np.pi))      # the hole radius as modelled
 # gcode: extrusion segments per layer
 segs, z, x, y, e_prev, cur = [], 0.0, 0.0, 0.0, 0.0, []
 rel_e = False
@@ -76,12 +77,12 @@ for ax, k in zip(np.atleast_1d(axs), order):
         if win[0] - 2 < x0_ < win[1] + 2 and win[2] - 2 < y0_ < win[3] + 2:
             ax.plot([x0_, x1_], [y0_, y1_], color='#c0392b', lw=2.2, alpha=0.8, solid_capstyle='round')
             # does this segment cross the vertical line through the hole centre above the hole (the strip)?
-            if (x0_ - c[0]) * (x1_ - c[0]) <= 0 and max(y0_, y1_) > c[1] + 1.6:
+            if (x0_ - c[0]) * (x1_ - c[0]) <= 0 and max(y0_, y1_) > c[1] + HR - 0.3:
                 n_cross += 1
-    ax.add_patch(plt.Circle(c, 1.9, fill=False, ls='--', color='k', lw=0.8))
-    ax.axhline(c[1] + 1.9 + 0.7, color='k', ls=':', lw=0.8)
+    ax.add_patch(plt.Circle(c, HR, fill=False, ls='--', color='k', lw=0.8))
+    top_ = float(m.bounds[1, 1]) - 0.0      # plate top in STL coordinates is per plate; draw the strip from the gcode outer perimeter instead
     ax.set_xlim(win[0], win[1]); ax.set_ylim(win[2], win[3]); ax.set_aspect('equal'); ax.grid(alpha=0.3)
     ax.set_title(f'hole at ({c[0]:.1f}, {c[1]:.1f}): {n_cross} lines cross the strip', fontsize=9)
-fig.suptitle(f'{gc.name}, layer Z {zpick:.2f}: extrusion paths (red, 0.42 wide) round the Dia 3.8 hole (dashed) and the 0.7 strip to the plate top (dotted)', fontsize=10)
+fig.suptitle(f'{gc.name}, layer Z {zpick:.2f}: extrusion paths (red, 0.42 wide) round the Dia {2 * HR:.1f} hole (dashed) and the strip above it to the plate top', fontsize=10)
 fig.tight_layout(); fig.savefig(outp, dpi=120)
 print(f'layer Z {zpick:.2f}; picture {outp}')

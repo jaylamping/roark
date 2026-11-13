@@ -17,14 +17,14 @@
  },
  "front vs rs02_ring": {
   "half_points": {
-   "hits": 168,
-   "touching_or_inside": 168,
+   "hits": 154,
+   "touching_or_inside": 154,
    "grazing_on_Y296_Y302": 0,
    "path_collisions": 0
   },
   "part_points": {
-   "hits": 129,
-   "touching_or_inside": 129,
+   "hits": 126,
+   "touching_or_inside": 126,
    "grazing_on_Y296_Y302": 0,
    "path_collisions": 0
   }
@@ -56,14 +56,14 @@
  },
  "back vs rs02_ring": {
   "half_points": {
-   "hits": 177,
-   "touching_or_inside": 177,
+   "hits": 161,
+   "touching_or_inside": 161,
    "grazing_on_Y296_Y302": 0,
    "path_collisions": 0
   },
   "part_points": {
-   "hits": 119,
-   "touching_or_inside": 119,
+   "hits": 124,
+   "touching_or_inside": 124,
    "grazing_on_Y296_Y302": 0,
    "path_collisions": 0
   }
@@ -78,12 +78,12 @@
   ]
  },
  "front final overlap with the hub": {
-  "points": 65342,
+  "points": 65435,
   "into_hub_over_0p02": 0,
   "max_into_hub": -0.036
  },
  "back final overlap with the hub": {
-  "points": 67113,
+  "points": 67052,
   "into_hub_over_0p02": 0,
   "max_into_hub": -0.064
  }

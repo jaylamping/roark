@@ -1,7 +1,7 @@
 """Four lug plates with their lips, placed on the D3b lug faces, as one STL for close_path_r1c.py (HUB_STL) (review A5 / r1g4,
 2026-11-13). Outline as lug_shim_print.outline: main face X offset 18.96-34.2 x Y 288.2-TOP, lower strip X offset 18.96-32.5 x
 Y 287.2-288.2, bolt hole radius HOLE_R at (offset 23.0, Y 292.0); lip X offset 19.5-32.5 x Y 287.2-288.0, 1.2 tall toward the lug.
-    python plates_close_stl.py OUT_STL [T=0.45] [HOLE_R=1.9] [TOP=294.6]      (under capped.py)"""
+    python plates_close_stl.py OUT_STL [T=0.45] [HOLE_R=1.7] [TOP=294.6]      (under capped.py)"""
 import sys
 
 import trimesh
@@ -11,7 +11,7 @@ from shapely.ops import unary_union
 HX = 170.49
 out = sys.argv[1]
 t = float(sys.argv[2]) if len(sys.argv) > 2 else 0.45
-hr = float(sys.argv[3]) if len(sys.argv) > 3 else 1.9
+hr = float(sys.argv[3]) if len(sys.argv) > 3 else 1.7
 top = float(sys.argv[4]) if len(sys.argv) > 4 else 294.6
 LUG_Z = (1.0, 11.0)      # the lug's Z faces (CZ -+ 5.0)
 
