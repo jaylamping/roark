@@ -56,3 +56,33 @@ for label, b, geo in SPOTS:
                     best, bn, bat = mv, len(nb), p[i]
             out.append((A / best if best > 0 else 99.0, bn, bat))
         print(f'   {nm:6s} SF .5/1/2 {out[0][0]:.2f}/{out[1][0]:.2f}/{out[2][0]:.2f}  n {out[0][1]}/{out[1][1]}/{out[2][1]}  at {np.round(out[0][2], 1).tolist()}')
+
+# r1g4 review (2026-11-13): with the Dia 3.8 plate hole the lumped boss step (r HOLE_R, |Z - CZ| 5.0) can sit over the brass insert
+# (its hole r 2.0). Say which bodies the step-corner nodes belong to, and report the PETG ring just outside the insert (r 2.0-3.0)
+# apart from the brass, both as "spot" (sphere averages over every node of that body, every ring node a candidate centre) and as
+# "region" (averages over the ring's own nodes only). Front (insert) posts only: |Z - CZ| 4.4-6.6 on the +Z side.
+front = (p[:, 2] - CZ > 4.4) & (p[:, 2] - CZ < 6.6)
+corner = (np.abs(rb - hr) < 0.15) & (np.abs(p[:, 2] - CZ - 5.0) < 0.15)
+u, c = np.unique(body[corner], return_counts=True)
+print(f'-- step corner nodes (r {hr - 0.15:.2f}-{hr + 0.15:.2f} from the bolt axis, Z - CZ 5.0 +- 0.15): ' + ', '.join(f'{a} {b}' for a, b in zip(u, c)))
+RINGS = [('PETG ring just outside the insert (arm, r 2.0-3.0, front posts)', 'arm', front & (rb > 2.0) & (rb < 3.0),
+          {'vm': (vm, 45.0), 'layer': (LAYER['arm'], 22.5), 'shear': (SHEAR['arm'], 13.0)}),
+         ('brass insert near the plate face (r < 2.05, front posts)', 'brass', front & (rb < 2.05), {'vm': (vm, 240.0)})]
+for label, b, geo, meas in RINGS:
+    q = np.flatnonzero((body == b) & geo)
+    print(f'-- {label}: {len(q)} nodes')
+    if len(q) == 0:
+        continue
+    for mode, pool in (('spot', np.flatnonzero(body == b)), ('region', q)):
+        t = cKDTree(p[pool])
+        for nm, (v, A) in meas.items():
+            out = []
+            for R in (0.5, 1.0, 2.0):
+                best, bn, bat = 0.0, 0, None
+                for i in q:
+                    nb = pool[t.query_ball_point(p[i], R)]
+                    mv = v[nb].mean()
+                    if mv > best:
+                        best, bn, bat = mv, len(nb), p[i]
+                out.append((A / best if best > 0 else 99.0, bn, bat))
+            print(f'   {mode:6s} {nm:6s} SF .5/1/2 {out[0][0]:.2f}/{out[1][0]:.2f}/{out[2][0]:.2f}  n {out[0][1]}/{out[1][1]}/{out[2][1]}  at {np.round(out[0][2], 1).tolist()}')

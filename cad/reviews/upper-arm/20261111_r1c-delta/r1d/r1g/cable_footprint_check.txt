@@ -1,0 +1,11 @@
+Footprint: theta (ours: 0 = +X lug, + toward +Z front; back half is 180-360), +-8.0 tangentially, r 15.5-19.0; straight drop Y 298 -> 240, sections every 1 mm.
+theta 248: PASS; smallest clearance 0.46 mm at Y 272, back half, our point X 155.5 Z -8.6 (theta 224, r 20.9)
+   Y 298-285: min 3.96 at Y 287 (back)
+   Y 284-271: min 0.46 at Y 272 (back)
+   Y 270-255: min 0.94 at Y 270 (back)
+   Y 254-240: min 2.16 at Y 246 (back)
+theta 68: FAIL; smallest clearance -5.94 mm at Y 267, front half, our point X 184.5 Z 19.2 (theta 43, r 19.3)
+   Y 298-285: min 3.98 at Y 286 (front)
+   Y 284-271: min -5.05 at Y 271 (front)
+   Y 270-255: min -5.94 at Y 267 (front)
+   Y 254-240: min -5.93 at Y 252 (front)
