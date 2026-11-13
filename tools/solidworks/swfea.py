@@ -17,11 +17,17 @@ in SI (Pa, kg/m3) because that is what the Simulation material takes.
 The calls are those of cad/scripts/fea/p3_fea.py and hub_seat.py on branch left-arm-organic-r1, proven on SolidWorks
 2026. Needs numpy and scipy.
 """
+import ctypes
 import os
+import threading
 import time
 from pathlib import Path
 
 import numpy as np
+import psutil
+import win32con
+import win32gui
+import win32process
 from scipy.spatial import cKDTree
 
 from swkit import NUL, Failed, L, call, dispatch_array, free_gb, log, solid_bodies
@@ -93,6 +99,56 @@ def _save_as_is(d):
         raise Failed(f'save failed: {d.GetPathName} errors {e.value} warnings {w.value}')
 
 
+def _solver_dialogs(pid, stop, seen):
+    """While a solve runs, answer the solver's "Excessive displacements detected" box with No, and record any other.
+
+    The solver (star.exe, a child of the instance) asks Yes / No / Cancel when a body moves a long way. On a hidden
+    instance nobody sees it: the solve waits for ever, --status shows busy, and every other session's launch waits
+    behind it (10 minutes on 2026-11-12 before it was found). No finishes the solve with the small-displacement
+    result. Only dialogs titled "Simulation" in this instance's own process tree are read, and only that one is
+    answered; any other is logged with its text, which is the first thing to read if a solve never returns.
+    """
+    done = set()
+
+    def text_of(c):
+        buf, res = ctypes.create_unicode_buffer(4000), ctypes.c_size_t()
+        ctypes.windll.user32.SendMessageTimeoutW(c, win32con.WM_GETTEXT, 4000, buf, 2, 1000, ctypes.byref(res))
+        return buf.value
+
+    def each(h, pids):
+        try:
+            if (h in done or win32process.GetWindowThreadProcessId(h)[1] not in pids
+                    or win32gui.GetClassName(h) != '#32770' or win32gui.GetWindowText(h) != 'Simulation'):
+                return True
+            kids = []
+            win32gui.EnumChildWindows(h, lambda c, k: k.append(c) or True, kids)
+            text = ' '.join(t for t in (text_of(c) for c in kids if win32gui.GetClassName(c) in ('Edit', 'Static')) if t)
+            text = ' '.join(text.split())
+            done.add(h)
+            if 'Excessive displacements' in text:
+                for c in kids:
+                    if win32gui.GetClassName(c) == 'Button' and win32gui.GetWindowText(c).replace('&', '').strip() == 'No':
+                        win32gui.PostMessage(c, win32con.BM_CLICK, 0, 0)
+                        seen.append(('excessive', text))
+                        log('solver asked about excessive displacements: answered No (finish with the small-displacement result)')
+            else:
+                seen.append(('unanswered', text))
+                log('solver dialog NOT answered, the solve may be waiting on it:', text[:300])
+        except Exception:      # noqa: BLE001 - a window that closed while it was being read
+            pass
+        return True
+
+    while not stop.wait(2.0):
+        try:
+            pids = {pid} | {c.pid for c in psutil.Process(pid).children(recursive=True)}
+        except psutil.Error:
+            return
+        try:
+            win32gui.EnumWindows(each, pids)
+        except Exception:      # noqa: BLE001
+            pass
+
+
 class Result:
     """Nodal results of one solved study, in the model frame.
 
@@ -100,6 +156,7 @@ class Result:
     disp (n, 5) mm: node, UX UY UZ, resultant. reaction [Fx, Fy, Fz, resultant] N: what the fixtures push back with,
     summed over every restrained node, so it is equal and opposite to the applied load. applied: the size of the
     applied load in N (the sum of the sizes when there are several loads: compare by hand when they are not parallel).
+    excessive: True when the solver reported excessive displacements (only reachable with loose_ok=True).
     Columns and units measured on SolidWorks 2026 SP0, 2026-11-12 (selftest.py beam, rod, steps).
     """
 
@@ -163,14 +220,19 @@ class Result:
                    peak_vm_all=round(float(self.vm.max()), 2), peak_vm_away=round(vm, 2), at=at,
                    sf_yield=round(yield_mpa / vm, 2) if vm > 0 else None, max_disp_mm=self.max_disp(),
                    reaction_N=self.reaction, applied_N=self.applied)
+        if getattr(self, 'excessive', False):
+            out['excessive_displacements'] = True
         return out
 
 
 def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), materials=None, solver=None, keep_study=False,
-           post=None):
+           post=None, loose_ok=False):
     """Build, mesh and solve one linear static study on the open part d, and read the nodal results back.
 
-    material: the dict for every body, unless materials = {body name: dict} names some bodies individually.
+    material: the dict for every body, unless materials = {part of a body's name: dict} picks some bodies out. A key
+    matches a body when the body's Simulation name contains it, whatever the case; that name is "SolidBody 3(PAD)" for
+    a body made in the part and "SolidBody 2(<pad>-<PAD>)" for one brought in from pad.SLDPRT. A key that matches no
+    body, or a body matched by two keys, raises, and each body's material is logged.
     fixtures: [('fixed' | 'hinge', faces)]. loads: [('normal', faces, newtons)] presses on the faces along their own
     normals with that many newtons IN TOTAL, shared between the faces by area (one even pressure; positive pushes into
     the material). [('remote', faces, (x, y, z) mm, (Fx, Fy, Fz) N, (Mx, My, Mz) N.m)] applies a force and moment at a
@@ -178,6 +240,8 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
     el: global element size mm. ctrl: [(faces, size mm)] local mesh controls.
     contacts: [(NO_PENETRATION | BONDED, faces_a, faces_b)] for multi-body parts; everything else touching is bonded.
     solver: None leaves Automatic; SOLVER_DIRECT sets direct sparse through a macro (needed for no-penetration contact).
+    loose_ok: when the solver reports excessive displacements (a body free to move, or held only by something very
+    soft) static() raises, unless loose_ok=True, which returns the result with Result.excessive set.
     post: post(study, results) is called after the solve and before the study is deleted, for anything static() does
     not read itself; what it returns is kept as Result.extra.
     Every face list must be non-empty: an empty pick is the commonest way to solve the wrong problem.
@@ -194,9 +258,20 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
     if st is None or err.value:
         raise Failed(f'study not created ({err.value}); a study of the same name already in the model?')
     comp = st.SolidManager.GetComponentAt(0, L())
+    used = set()
     for k in range(comp.SolidBodyCount):
         b = comp.GetSolidBodyAt(k, L())
-        _material(b, (materials or {}).get(str(call(b, 'SolidBodyName')).split('/')[-1], material) if materials else material)
+        bname = str(call(b, 'SolidBodyName'))
+        hit = [key for key in (materials or {}) if key.lower() in bname.lower()]
+        if len(hit) > 1:
+            raise Failed(f'{name}: body "{bname}" matches more than one materials key: {hit}')
+        used.update(hit)
+        mat = materials[hit[0]] if hit else material
+        _material(b, mat)
+        if materials:
+            log(f'{name}: body "{bname}" is {mat["name"]}')
+    if materials and used != set(materials):
+        raise Failed(f'{name}: materials keys {sorted(set(materials) - used)} match no body')
     lbc = st.LoadsAndRestraintsManager
     fixed, loaded, applied = [], [], 0.0
     for kind, fs in fixtures:
@@ -270,7 +345,22 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
         raise Failed(f'{name}: {nodes} nodes is over {MAX_NODES}: coarsen the global size and keep the local controls')
     if solver is not None:
         log(f'{name}: solver macro:', solver_macro(j, d, tag, solver, Path(d.GetPathName).parent).replace('\n', ' | '))
-    rc = call(st, 'RunAnalysis')
+    stop, seen = threading.Event(), []
+    watch = threading.Thread(target=_solver_dialogs, args=(j.inst.pid, stop, seen), daemon=True)
+    watch.start()
+    try:
+        rc = call(st, 'RunAnalysis')
+    finally:
+        stop.set()
+        watch.join(5)
+    excessive = any(k == 'excessive' for k, _ in seen)
+    if excessive and not loose_ok:
+        try:
+            sm.DeleteStudy(tag)                    # or the next run cannot make a study of this name
+        except Exception as ex:      # noqa: BLE001
+            log(f'{name}: study not deleted ({str(ex)[:80]})')
+        raise Failed(f'{name}: the solver reported excessive displacements: a body is free to move, or held only by '
+                     'something very soft. playbook/05-fea.md, "Contact between bodies"')
     res = st.Results
     if rc or res is None:
         raise Failed(f'{name}: solve failed ({rc}). 24 is a singular model (a body free to move) or out of memory: '
@@ -308,8 +398,11 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
             sm.DeleteStudy(tag)
         except Exception:      # noqa: BLE001 - the study staying in the model only costs file size
             pass
+    # A document closed unsaved after a study and opened again in the same instance fails its next solve at once with
+    # error 24, the solver stopping while it loads its input (selftest beam then loads, 2026-11-12). Saved, it does not.
+    _save_as_is(d)
     r = Result(name, el, pos, s, fixed_pts, loaded_pts, disp, reaction, nodes, elements, time.time() - t0, applied)
-    r.extra = extra
+    r.extra, r.excessive = extra, excessive
     return r
 
 
@@ -331,7 +424,7 @@ def converge(run, sizes, tol=0.05):
 
 
 def body_named(d, part):
-    """The solid body whose name contains part (bodies brought in by insert_body are named after their file)."""
+    """The solid body whose name contains part (insert_body names a body "<file>-<its name in that file>")."""
     hit = [b for b in solid_bodies(d) if part.lower() in b.Name.lower()]
     if len(hit) != 1:
         raise Failed(f'{len(hit)} bodies match "{part}": {[b.Name for b in solid_bodies(d)]}')

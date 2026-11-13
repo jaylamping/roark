@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import numpy as np  # noqa: E402
-from swfea import PETG, SOLVER_DIRECT, static  # noqa: E402
+from swfea import NO_PENETRATION, PETG, SOLVER_DIRECT, static  # noqa: E402
 from swkit import (BLIND, MID, NUL, Sk, bbox, bodies, call, chamfer, close, cut_half_space, delete_body, edges_where,  # noqa: E402
                    expect, export, extrude, feature_errors, fillet, import_step, insert_body, job, list_faces, loft, log,
                    new_part, open_doc, pick, plane, revolve, save, shell, single_body, volume)
@@ -316,7 +316,56 @@ def extras(j):
     close(j.sw, d)
 
 
-TESTS = {'model': model, 'beam': beam, 'rod': rod, 'extras': extras, 'loads': loads}
+def contact(j):
+    """Two 20 x 20 x 10 PETG blocks stacked, the lower fixed underneath, no-penetration contact between them, and a
+    small soft pad bonded to the side of both so the upper block is held when the contact is open."""
+    pad = dict(name='Soft pad', EX=0.5e6, NUXY=0.45, DENS=1000.0, SIGYLD=1e6, SIGXT=1e6)
+    for name, lo, hi in (('stack_upper', (0, 0, 10), (20, 20, 20)), ('stack_pad', (20, 8, 6), (22, 12, 14)),
+                         ('stack', (0, 0, 0), (20, 20, 10))):
+        d = new_part(j.sw, OUT / f'{name}.SLDPRT')
+        zc = (lo[2] + hi[2]) / 2
+        with Sk(d, plane(d, 'Z', zc, name.upper() + '_P'), name.upper()) as s:
+            s.rect((lo[0], lo[1], zc), (hi[0], hi[1], zc))
+        extrude(d, s.feat, name.upper(), hi[2] - lo[2], mode=MID, expect_dv=(hi[0] - lo[0]) * (hi[1] - lo[1]) * (hi[2] - lo[2]))
+        if name == 'stack':
+            insert_body(d, OUT / 'stack_upper.SLDPRT')
+            insert_body(d, OUT / 'stack_pad.SLDPRT')
+            expect('bodies in the stack', len(bodies(d)), 3, 0)
+        save(d)
+        close(j.sw, d)
+    d = open_doc(j.sw, OUT / 'stack.SLDPRT')
+    bottom, top = pick(d, kind='plane', at=(10, 10, 0)), pick(d, kind='plane', at=(10, 10, 20))
+    lower_top = pick(d, kind='plane', normal=(0, 0, 1), at=(10, 10, 10))
+    upper_bottom = pick(d, kind='plane', normal=(0, 0, -1), at=(10, 10, 10))
+    for what, fs in (('bottom', bottom), ('top', top), ('lower top', lower_top), ('upper bottom', upper_bottom)):
+        expect(what + ' faces', len(fs), 1, 0)
+    common = dict(fixtures=[('fixed', bottom)], el=2.5, contacts=[(NO_PENETRATION, lower_top, upper_bottom)],
+                  materials={'stack_pad': pad}, solver=SOLVER_DIRECT)
+
+    def top_uz(r):
+        return float(r.disp[np.abs(r.pos[:, 2] - 20) < 0.01, 3].mean())
+
+    # pressed together, the contact carries everything: both blocks shorten as one 20 mm column, the pad carries nothing
+    r = static(j, d, 'STACK_PRESS', PETG, loads=[('normal', top, 100.0)], **common)
+    log(r.summary())
+    expect('pressed: reaction Fz N', r.reaction[2], 100.0, 0.01)
+    expect('pressed: top face moves down, F L / A E mm', top_uz(r), -100 * 0.02 / (4e-4 * PETG['EX']) * 1e3, 0.08)
+    low = (np.abs(r.pos[:, 2] - 5) < 2.5) & (r.pos[:, 0] < 20)
+    expect('pressed: sz in the lower block MPa', float(r.s[low, 3].mean()), -100 / 400, 0.04)
+    in_pad = r.pos[:, 0] > 20.01
+    expect('pressed: pad stress MPa (it is the soft material, and unloaded)', float(r.vm[in_pad].max()), 0.0, 0.001)
+    # pulled apart, the contact carries nothing and only the soft pad holds the block. Bonded faces would move
+    # 2.6e-8 mm under this 0.001 N; on the pad alone the block moved about 0.1 mm (125 mm under 1 N, 2026-11-12).
+    r = static(j, d, 'STACK_LIFT', PETG, loads=[('normal', top, -0.001)], loose_ok=True, **common)
+    log(r.summary())
+    expect('lifted: reaction Fz N', r.reaction[2], -0.001, 0.02)
+    if not top_uz(r) > 0.01:
+        raise SystemExit(f'FAIL: lifted block moved {top_uz(r)} mm: the faces are still bonded, the contact set did nothing')
+    log(f'ok lifted: the block comes away {top_uz(r):.4f} mm on the pad alone (bonded would be 2.6e-8)')
+    close(j.sw, d)
+
+
+TESTS = {'model': model, 'beam': beam, 'rod': rod, 'extras': extras, 'loads': loads, 'contact': contact}
 
 if __name__ == '__main__':
     OUT.mkdir(parents=True, exist_ok=True)
