@@ -7,7 +7,7 @@ The pictures are schematic.
 
 | Joint | Travel wanted | Works today, as drawn | Best with no part redesign | What buys the full travel |
 |---|---|---|---|---|
-| **Yaw** | ±90° (not fixed) | No: 97 mm of slack with nowhere to go | **±90° as a spiral in the present dish, if this segment is 18 AWG.** With 16 AWG: about ±37° as a plain arc | Nothing more needed with 18 AWG. For 16 AWG: the dish 1.5 mm deeper (hub top) |
+| **Yaw** | ±90° (agreed) | No: 97 mm of slack with nowhere to go | **A spiral in the present dish with 18 AWG: ±90° if the two signal pairs lie untwisted in the dish, about ±72° if they stay twisted.** With 16 AWG: about ±37° as a plain arc | For 16 AWG: the dish 1.5 mm deeper (hub top), about ±85° with the pairs untwisted, ±56° twisted |
 | **Roll** | -11° to +110° (the stops) | Not if the wires are held at the bore (about ±11°). **Possibly yes if they are held only at the channels' far ends** (twist over about 143 mm, 0.85° per mm): the rig decides | The same: clamps moved, two lips rounded | A spiral deck in the rear cap. It displaces the roll stop and takes away the 6808 stub's support ([ROLL_OPTIONS.md](ROLL_OPTIONS.md)) |
 | **Pitch** | 230-270° (not fixed) | No | **About 115°** as a spiral in the present channel | A bight in the void under the frame's step: no outline change, needs a pull-down, **marginal at 230° and not enough for 270°** ([PITCH_BIGHT.md](PITCH_BIGHT.md)). Or the channel 9.5 mm deeper (outline grows) |
 
@@ -21,7 +21,7 @@ The pictures are schematic.
 | Wire | Size |
 |---|---|
 | 48 V and GND | 2 × 16 AWG high-strand silicone (252 × 0.08 mm), OD 3.0 mm |
-| CAN | 1 twisted pair, 26 AWG, about 2.0 mm across; up to 2 more pairs past the yaw joint |
+| CAN | 1 twisted pair, 26 AWG, about 2.0 mm across; up to 2 more pairs past the yaw joint. **Superseded by the agreed scheme (Joey, 2026-11-11): two twisted pairs of 28 AWG, each wire 1.2 mm, and a third pair reserved** |
 
 **Rule of record** (marengo `left-arm-trunk-plan.md`, section 5, and the bench harness doc):
 
@@ -51,6 +51,27 @@ any slack** (arm thread, CABLE_SLACK.md), so the bundle is clamped at the window
 | E | Plain arc, both ends clamped, less travel | The slack is taken by the arc moving between the walls. Bundle flat, 8 mm wide: **±37°**. 12 mm wide: ±21°. 18 AWG on edge: ±51°. Radii 29-37.5 | kept | **Alive as the fallback** |
 | F | High-flex flat ribbon as a rolling loop in the dish | On edge in 5.5 mm a ribbon is 4 conductors wide; three ribbons fold at about R 7. 3M 3319 (28 AWG) is rated for a 22 mm bend radius over 100 M cycles, so R 7 is outside its rating | kept | **No**, on the datasheet found |
 
+### The yaw spiral with the agreed wires (added 2026-11-13)
+
+The table above counted one 26 AWG pair. The agreed scheme is two pairs of 28 AWG (each wire 1.2 mm; a twisted pair
+takes 2.4 mm), with a third pair reserved. The spiral's band is then the power wires' column plus the signal wires'
+column. Travel follows from the band: the full ±90° needs 4.0 mm or less.
+
+| Wires | Dish | Signal wires laid as | Band | Travel on paper |
+|---|---|---|---|---|
+| 2 × 18 AWG + 2 pairs | 5.5 | Four singles stacked, untwisted in the dish (4.8 high) | 2.3 + 1.2 = **3.5 mm** | **±90°** |
+| 2 × 18 AWG + 2 pairs | 5.5 | Two twisted pairs stacked (4.8 high) | 2.3 + 2.4 = 4.7 mm | about ±72° |
+| 2 × 18 AWG + 3 pairs | 5.5 | Six singles do not stack in 5.5 (7.2); two columns | 4.7 mm | about ±72° |
+| 2 × 16 AWG + 2 pairs | 7.0 | Four singles stacked, untwisted | 3.0 + 1.2 = 4.2 mm | about ±85° |
+| 2 × 16 AWG + 2 pairs | 7.0 | Two twisted pairs stacked | 5.4 mm | about ±56° |
+| 2 × 16 AWG + 3 pairs | 7.0 | Six singles do not stack in 7.0 (7.2) | 5.4 mm | about ±56° |
+
+- **So the full ±90° needs the pairs untwisted inside the dish** (about 0.5 m of each pair lying as stacked singles),
+  with either gauge, and it has no room for the third pair. Whether an untwisted half metre beside the power wires is
+  acceptable for the CAN bus is the wiring owner's call.
+- A small wire can sit in the groove between two stacked power wires, which saves about 0.3 mm. Not counted.
+- The rig decides. These are the figures to compare it with.
+
 **For every dish option:**
 - **Both ends turn 90° in the dish plane within 8-10 mm:** the exit enters radially and the window leaves radially,
   while the loop runs round. That is under the static rule (15 mm for 16 AWG, 11.5 for 18). It needs a clamp at each
@@ -66,7 +87,7 @@ any slack** (arm thread, CABLE_SLACK.md), so the bundle is clamped at the window
 - **Fork side:** none exists. The exit channel needs a tie slot or a clip at its mouth.
 
 **Recommendation:** C with 18 AWG between the RS02 splice and the elbow splice, proven on the rig first; E with a ±37°
-limit if the spiral bunches.
+limit if the spiral bunches. The gauge is Joey's to decide after the yaw rig.
 
 **Rig:** the yaw loop rig as designed assumed the bundle slides through the window. To test C it needs a tie post beside
 the chute (standing in for the boss tube) and a tie slot on the exit stub. Then: lay 2.25 turns at yaw 0, clamp both
@@ -122,7 +143,8 @@ About 20 g.
 
 **The space:** the loop channel round the pitch housing, r 57.4-73.5 (16.1 radial) × 21.1 axial. The feed enters from the
 fixed cover; the trunk leaves through the mouth on the moving flange. The wires lie side by side across the 21 mm, so the
-band is one wire thick: 3.0 mm.
+band is one wire thick: 3.0 mm. With the agreed two pairs (2 × 3.0 + 2 × 2.4 = 10.8 mm across; 13.2 with the third) that
+still holds.
 
 | Option | What | Numbers | Outline | Verdict |
 |---|---|---|---|---|

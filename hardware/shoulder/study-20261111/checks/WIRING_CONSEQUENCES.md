@@ -8,15 +8,19 @@ proven on a rig ([CABLE_RIGS.md](CABLE_RIGS.md)).
 
 | Crossing | Form | Wire in it | Length inside the crossing | Clamp, fixed side | Clamp, moving side |
 |---|---|---|---|---|---|
-| Pitch | Wrap on the loop channel's inner wall, with a bight hanging in the void under the frame's step | 2 × 16 AWG + CAN pair, side by side | About 450 mm (up to 285 mm wrapped, the rest in the bight) for -50° to +180° | On the frame, at the top of the void | On the drum's flange, at the trunk mouth |
-| Roll | Not settled: today's route on the roll axis if the rig passes it, otherwise a spiral in the rear cap | 2 × 16 AWG + CAN pair | On-axis: about 60 mm. Spiral: about 300 mm | On the cap (drum side) | On the fork rear |
-| Yaw | Spiral in the dish under the RS02, 2 to 2.5 turns | **2 × 18 AWG** + up to 3 CAN pairs | **About 470 mm** | At the fork's exit | At the hub's cable window (a tie round a boss tube) |
+| Pitch | Wrap on the loop channel's inner wall, with a bight hanging in the void under the frame's step | 2 × 16 AWG + 2 pairs of 28 AWG, side by side | About 450 mm (up to 285 mm wrapped, the rest in the bight) for -50° to +180° | On the frame, at the top of the void | On the drum's flange, at the trunk mouth |
+| Roll | Not settled: today's route on the roll axis if the rig passes it, otherwise a spiral in the rear cap | 2 × 16 AWG + 2 pairs of 28 AWG | On-axis: about 60 mm. Spiral: about 300 mm | On the cap (drum side) | On the fork rear |
+| Yaw | Spiral in the dish under the RS02, 2 to 2.5 turns | **2 × 18 AWG** (agreed, with a 10 A fuse at the step; Joey decides the gauge after the yaw rig) + 2 pairs of 28 AWG | **About 470 mm** | At the fork's exit | At the hub's cable window (a tie round a boss tube) |
 
 ## Changes this asks of the trunk plan
 
-1. **18 AWG from the yaw joint down** (segment S3, RS02 splice to elbow splice). The dish only takes a spiral whose band
-   is 4 mm wide or less; two 16 AWG wires don't fit, two 18 AWG do. The plan already uses 18 AWG from the elbow splice on.
-2. **A 10 A fuse at the RS02 splice,** in the positive wire of that segment. The board's port trips at 15-20 A, above
+1. **18 AWG from the yaw joint down** (segment S3, RS02 splice to elbow splice): **already in the agreed scheme** (Joey,
+   2026-11-11). The dish only takes a spiral whose band is 4 mm wide or less; two 16 AWG wires don't fit, two 18 AWG do.
+   **New with two signal pairs:** the band is 3.5 mm only if the pairs lie untwisted in the dish (about 0.5 m, four
+   singles stacked). Left twisted, the band is 4.7 mm and the spiral gives about ±72°, not ±90°. The third, reserved
+   pair does not fit in the dish in either case. Is half a metre of untwisted pair beside the power wires acceptable
+   for the bus? (Table in CABLE_TRAVEL.md.)
+2. **A 10 A fuse at the RS02 splice** (already in the agreed scheme), in the positive wire of that segment. The board's port trips at 15-20 A, above
    what 18 AWG should carry for long. Loads past the yaw joint by the plan's own fuses: elbow RS02 5 A, forearm RS00 3 A,
    hand 3 A.
 3. **Longer cuts.** S3 grows by about 470 mm (to about 900 mm). S1 (pitch) is about 450 mm in the crossing alone, against

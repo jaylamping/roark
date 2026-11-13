@@ -149,13 +149,15 @@ windows are (tie points); the exit stub's roof has two tie slots.
 
 | Test | Wires | Dish | Laid as | Expected on paper |
 |---|---|---|---|---|
-| **C1** | 2 × 18 AWG + 2 pairs | 5.5 | Spiral, about 2.25 turns at yaw 0, power wires stacked one on the other, pairs beside them | **Fits:** band about 3.3 mm of the 4.0 available |
+| **C1** | 2 × 18 AWG + 2 pairs | 5.5 | Spiral, about 2.25 turns at yaw 0, power wires stacked one on the other, pairs beside them | **Fits only with the pairs untwisted in the dish** (four singles stacked: band 3.5 mm of the 4.0 available). Twisted: band 4.7 mm, about ±72° |
 | **C2** | 2 × 16 AWG + 2 pairs | 5.5 | The same | **Does not fit:** two stacked are 6.0 mm in a 5.5 mm dish, so they lie side by side and the band is too wide |
-| **C3** | 2 × 16 AWG + 2 pairs | 7.0 | The same | **Fits:** band about 3.6 mm |
+| **C3** | 2 × 16 AWG + 2 pairs | 7.0 | The same | **Close:** pairs untwisted, band 4.2 mm, about ±85°. Twisted: 5.4 mm, about ±56° |
 | **D** | 2 × 16 AWG + 2 pairs | 5.5 | One plain arc from the exit round to the window, flat; turn only between -37 and +37, then try ±45 and ±50 once | Free to ±37 |
 
 - If the spiral runs the wrong way (slack, then tight), re-lay it the other way round.
-- Repeat the best one with the third pair added.
+- **Run C1 and C3 twice:** once with the pairs twisted as they come, once with the last half metre untwisted and the four
+  wires stacked. Note the angle where the spiral runs out.
+- Repeat the best one with the third pair added. On paper it does not fit in one column in either dish.
 
 **Pass, for C1 to C3:** the wires stay in one band, stacked; nothing bunches, crosses or lifts the roof; nothing enters the
 gap between the hub's rim and the skirt; even, light feel over the whole ±90; wires unmarked after 200 cycles.
