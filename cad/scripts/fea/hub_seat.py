@@ -402,6 +402,18 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
             print(' shim contact set', cs4 is not None, 'faces shim', len(sb_), 'arm end face', len(ae_), 'err', err.value, flush=True)
             if cs4 is None or not sb_ or not ae_ or err.value:
                 raise SystemExit('shim contact failed')
+            # 2026-11-12: the shim-body STOP_0 showed the shim / end-face contact sticking tangentially (about 10 N.m of the stop's
+            # twist through the shim, lugs unloaded). Log every contact set's friction settings
+            for k_ in range(cm.ContactSetCount):
+                c_ = cm.GetContactSetAt(k_)
+                fr_ = {}
+                for nm_ in ('IncludeFriction', 'FrictionCoefficient', 'Friction', 'UseFriction'):
+                    try:
+                        fr_[nm_] = getattr(c_, nm_)
+                    except Exception:
+                        pass
+                print(' contact set', k_, 'friction', fr_, flush=True)
+            # (read only: property puts from our out-of-process scripts have faulted SolidWorks before)
         for k_ in range(cm.ContactSetCount):
             try:
                 cs_ = cm.GetContactSetAt(k_)

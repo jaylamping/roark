@@ -1,0 +1,15 @@
+face nodes shim 2930 arm 1976
+pair distance max 0.598 mm
+th   0- 30  opening mean +0.0001 max +0.0006 min -0.0004 mm  slip mean 0.0007 mm
+th  30- 60  opening mean +0.0004 max +0.0033 min -0.0002 mm  slip mean 0.0008 mm
+th  60- 90  opening mean +0.0048 max +0.0152 min +0.0001 mm  slip mean 0.0007 mm
+th  90-120  opening mean +0.0129 max +0.0312 min +0.0007 mm  slip mean 0.0042 mm
+th 120-150  opening mean +0.0227 max +0.0445 min +0.0021 mm  slip mean 0.0076 mm
+th 150-180  opening mean +0.0251 max +0.0454 min +0.0028 mm  slip mean 0.0087 mm
+th 180-210  opening mean +0.0171 max +0.0412 min +0.0019 mm  slip mean 0.0077 mm
+th 210-240  opening mean +0.0049 max +0.0158 min +0.0006 mm  slip mean 0.0049 mm
+th 240-270  opening mean +0.0004 max +0.0018 min -0.0003 mm  slip mean 0.0018 mm
+th 270-300  opening mean +0.0002 max +0.0007 min -0.0001 mm  slip mean 0.0003 mm
+th 300-330  opening mean +0.0002 max +0.0007 min -0.0000 mm  slip mean 0.0005 mm
+th 330-360  opening mean +0.0001 max +0.0005 min -0.0003 mm  slip mean 0.0006 mm
+overall opening max +0.0454 min -0.0004 mm; nodes open > 0.001 mm: 1442 of 2930
