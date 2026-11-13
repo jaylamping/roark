@@ -84,7 +84,11 @@ def answers(pid, wait=3.0):
     A solving instance does not answer until the solve ends. A half-closed one has no windows left and never will.
     """
     tops = _top_windows(pid)
-    main = [h for h in tops if win32gui.GetClassName(h).startswith("Afx:")] or tops
+    try:
+        # A window can be destroyed between the listing and the look, while its instance is closing.
+        main = [h for h in tops if win32gui.GetClassName(h).startswith("Afx:")] or tops
+    except win32gui.error:
+        return False
     if not main:
         return False
     try:
@@ -254,6 +258,21 @@ def state(row):
 def _others(own_pid=None):
     """Other instances that are not answering, as (pid, state). The first 30 s of a process are its own startup."""
     return [(row[0], state(row)) for row in status() if row[0] != own_pid and not row[5] and row[1] > 30]
+
+
+def _zombies(others, settle=20):
+    """The pids among `others` that are half-closed, and stay so for `settle` seconds.
+
+    An instance in an ordinary exit also has no windows and does not answer, for a few seconds. Only one that
+    stays that way stalls launches, so a launch must not be refused, or stopped half way, for the first kind.
+    """
+    dead = [pid for pid, what in others if what == "zombie"]
+    end = time.time() + settle
+    while dead and time.time() < end:
+        time.sleep(5)
+        still = {pid for pid, what in _others() if what == "zombie"}
+        dead = [pid for pid in dead if pid in still]
+    return dead
 
 
 def _zombie_error(pids):
@@ -551,7 +570,6 @@ class Instance:
         """
         if not self.owned:
             raise RuntimeError("this session does not own that instance")
-        _drop_owner(self.pid)
         # Unmute this instance's sessions before it exits, so Windows saves SLDWORKS.exe as unmuted (see the hider).
         try:
             with open(unmute_flag(self.pid), "w"):
@@ -598,6 +616,8 @@ class Instance:
                     p.kill()
             except psutil.Error:
                 pass
+        # Last, so that while a slow CloseAllDocuments holds the instance it still reads as driven, not orphaned.
+        _drop_owner(self.pid)
 
 
 def launch(timeout=300, visible=False, busy_wait=7200):
@@ -643,7 +663,7 @@ def _wait_for_blockers(timeout):
     start = time.time()
     while True:
         others = _others()
-        dead = [pid for pid, what in others if what == "zombie"]
+        dead = _zombies(others)
         if dead:
             raise _zombie_error(dead)
         orphans = [pid for pid, what in others if what == "orphan"]
@@ -674,7 +694,7 @@ class _StartClock:
         now = time.time()
         if now - self.looked > 10:  # looking costs up to 3 s for each instance that is not answering
             others = _others(self.own_pid)
-            dead = [pid for pid, what in others if what == "zombie"]
+            dead = _zombies(others)
             if dead:
                 raise _zombie_error(dead)
             self.held_by = [pid for pid, what in others if what in ("solving", "busy")]
@@ -859,9 +879,11 @@ class big_solve:  # noqa: N801 - reads as a verb at the call site: `with big_sol
                 if holder is None:
                     try:
                         os.remove(self.path)
+                        continue
+                    except FileNotFoundError:
+                        continue
                     except OSError:
-                        pass
-                    continue
+                        holder = "a lock left behind that cannot be removed"
                 if time.time() > end:
                     raise TimeoutError(f"large-solve lock {self.path} still held after {self.timeout} s by: {holder}") from None
                 time.sleep(self.poll)

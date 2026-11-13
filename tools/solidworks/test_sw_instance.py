@@ -29,6 +29,7 @@ def test_startup_limit_stops_while_a_healthy_instance_is_busy_and_a_zombie_ends_
     now = [1000.0]
     others = [[(7, "solving")]]
     monkeypatch.setattr(sw_instance.time, "time", lambda: now[0])
+    monkeypatch.setattr(sw_instance.time, "sleep", lambda s: now.__setitem__(0, now[0] + s))
     monkeypatch.setattr(sw_instance, "_others", lambda own_pid=None: others[0])
     clock = sw_instance._StartClock(1, timeout=300, busy_wait=7200)
     now[0] += 3000  # a 50 minute solve in the instance the splash screen waits for
@@ -49,6 +50,13 @@ def test_startup_limit_stops_while_a_healthy_instance_is_busy_and_a_zombie_ends_
     now[0] += 20
     with pytest.raises(RuntimeError, match="half-closed"):
         clock.running()
+
+    # An instance in an ordinary exit looks half-closed for a few seconds. It must not end the launch.
+    clock = sw_instance._StartClock(1, timeout=300, busy_wait=7200)
+    looks = iter([[(9, "zombie")], [(9, "zombie")], []])
+    monkeypatch.setattr(sw_instance, "_others", lambda own_pid=None: next(looks, []))
+    now[0] += 20
+    assert clock.running()
 
 
 def test_big_solve_takes_only_a_lock_whose_holder_has_gone(tmp_path):
