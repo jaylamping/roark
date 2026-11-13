@@ -2,8 +2,9 @@
 clearance of D3c4 to our closed halves and to the r1g4 lug plates (with lips) in the lug-root zone; our material inside r 22 at
 Y 296-298 (the r 20 bore fill); the as-built cable window slot at theta 248 against our halves, and whether the old window at
 theta about 8 is closed. Theta (ours = the hub's): atan2(Z - CZ, X - HX), 0 = +X, + toward +Z (front).
-    python d3c4_check.py D3C4_STL D3B_STL HALVES_DIR PLATES_STL OUT_JSON      (under capped.py)"""
+    python d3c4_check.py NEW_STL OLD_STL HALVES_DIR PLATES_STL OUT_JSON      (under capped.py; labels from HUB_NEW / HUB_OLD)"""
 import json
+import os
 import sys
 
 import numpy as np
@@ -13,6 +14,7 @@ from shapely.ops import unary_union
 
 HX, CZ = 170.49, 5.985875
 c4p, d3bp, X, platesp, OUT = sys.argv[1:6]
+NEW, OLD = os.environ.get('HUB_NEW', 'D3c4'), os.environ.get('HUB_OLD', 'D3b')      # labels (D3c7 check: HUB_NEW=D3c7 HUB_OLD=D3c4)
 c4, d3b = trimesh.load(c4p), trimesh.load(d3bp)
 halves = {n: trimesh.load(f'{X}/upper_arm_organic_{n}_left.STL') for n in ('front', 'back')}
 plates = trimesh.load(platesp)
@@ -47,7 +49,7 @@ for y in np.round(np.arange(286.0, 321.0, 0.1), 2):
         r = np.hypot(c[:, 0] - HX, c[:, 1] - CZ)
         xo = np.abs(c[:, 0] - HX)
         added = b.intersection(p).area > a.intersection(p).area
-        diff.append(dict(y=float(y), area=round(p.area, 2), kind='added in D3c4' if added else 'removed in D3c4',
+        diff.append(dict(y=float(y), area=round(p.area, 2), kind=f'added in {NEW}' if added else f'removed in {NEW}',
                          r=[round(float(r.min()), 2), round(float(r.max()), 2)], xoff=[round(float(xo.min()), 2), round(float(xo.max()), 2)],
                          theta=round(th(p.centroid.x, p.centroid.y), 1), z=[round(float(c[:, 1].min()), 2), round(float(c[:, 1].max()), 2)]))
 res['2_diff_pieces'] = diff

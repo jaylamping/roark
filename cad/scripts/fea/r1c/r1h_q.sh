@@ -57,6 +57,8 @@ job() {
   grep -q "^SOLVED $1" cad/_wip/r1d_ring_ds.log && bash cad/scripts/fea/r1c/post_r1g.sh $1 1.9 294.7 >> $L 2>&1
 }
 # 1. r1g5 G90 + YAW +17
+# r1g5 STOP_0 again: its first launch (12:50) was refused by sw_instance's busy-instance guard (another session's SolidWorks, PID 12852, not answering)
+HUBFILE=HUB_D3S38.SLDPRT HUBSTL=HUB_D3S38.STL job r1g5_stop0 HS_STOP_0_fine 0.5 r1g5
 HUBFILE=HUB_D3S38.SLDPRT HUBSTL=HUB_D3S38.STL job r1g5_g90y HS_G90Y_fine 0.05 r1g5
 # 2. R1h back half
 S=$R/_wip/arm-sw
