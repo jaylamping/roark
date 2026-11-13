@@ -146,7 +146,8 @@ by trial, once, at assembly.
    the ridge flank and the hub's groove flank (marks, scuffing), especially near the seam. Photograph them.
 7. Close again with the same ring and plates, lug bolts at 0.3 N·m, and repeat the rock check once.
 8. **R1g (lug plates), after the stop-load test:** take the lug plates out. Inspect the post faces and the hub lug faces
-   around each lug bolt for an imprint of the plate's hole edge. Record its depth by feel (fingernail: none / felt / catches)
+   around each lug bolt for an imprint of the plate's hole edge, and at the plate's outer top corner (by the lug's root,
+   X offset 34, on the back post of the +X lug especially). Record its depth by feel (fingernail: none / felt / catches)
    and photograph it. The FEA puts the stop's highest local pressure on that edge.
 
 9. **Coupon load fixture (printed parts only):**

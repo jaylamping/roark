@@ -11,12 +11,12 @@ packet = Path(sys.argv[1]).read_text(encoding='utf-8')
 texts = []
 for d in sys.argv[2:]:
     for f in sorted(Path(d).glob('*')):
-        if f.suffix in ('.txt', '.json', '.md') and f.name != Path(sys.argv[1]).name:
+        if f.suffix in ('.txt', '.json') and f.name != Path(sys.argv[1]).name:
             texts.append((f.name, f.read_text(encoding='utf-8', errors='replace')))
 corpus = '\n'.join(t for _, t in texts)
 flat = re.sub(r'\s*/\s*', '/', corpus)      # "a / b / c" and "a/b/c" both match
 
-sec = packet.split('**Results**', 1)[1]
+sec = packet.split('**Results', 1)[1]      # '**Results**' or '**Results (r1g4)**'
 tab = []
 for ln in sec.splitlines():      # the first table after the marker
     if ln.startswith('|'):
