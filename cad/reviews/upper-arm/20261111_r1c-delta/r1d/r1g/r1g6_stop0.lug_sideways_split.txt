@@ -1,0 +1,8 @@
+Frame: force ON THE HUB = integral of sigma.n over the hub face, n = the hub outward normal. +X = toward the yaw axis for the -X lug (inward).
+-X lug front Z face: within 1 mm of the plate outline (boss step edges): Fx  -19.9 N, Fy   +2.7, Fz   -93.0  (area 43 mm2)
+-X lug front Z face: round the hole (r < 3.0, rim and plate hole edge): Fx   +0.1 N, Fy   +0.5, Fz   -19.3  (area 17 mm2)
+-X lug front Z face: the rest of the flat face: Fx   -0.9 N, Fy   +0.1, Fz   -66.1  (area 35 mm2)
+-X lug back Z face: within 1 mm of the plate outline (boss step edges): Fx   -2.4 N, Fy  -11.8, Fz    -3.4  (area 43 mm2)
+-X lug back Z face: round the hole (r < 3.0, rim and plate hole edge): Fx   -0.1 N, Fy   -0.5, Fz    -0.2  (area 17 mm2)
+-X lug back Z face: the rest of the flat face: Fx   -0.2 N, Fy   -0.3, Fz    -0.2  (area 35 mm2)
+-X lug outer face (n = -X): Fx from compressive normal stress +9.2 N (toward +X, the wall pushing the lug in), from tensile nodal values -41.2 N (a contact face cannot pull: extrapolation), net -32.0

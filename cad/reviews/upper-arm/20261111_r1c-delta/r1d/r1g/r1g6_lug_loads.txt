@@ -31,13 +31,27 @@ HOW THE FORCES WERE INTEGRATED
   within 2-3 %, Fz within 10 %. Its Fy reads -9 to -41 N where 0 is applied: integration error on the hub's coarse 4 mm mesh at
   Y 310 (bending stresses that should cancel). The "ring, ridge, groove and spigot" share = applied minus the lugs (sections).
 
-THE LUG'S OUTER FACE ON OUR POCKET WALL (new in r1g6: with the bolt free, the lug drifts sideways until its outer face, X offset 34.4,
-lands on our pocket wall, X offset 34.6, 0.20 away)
-- Robust figure: the lug's sideways force from its Y 294.5 section. With the bolt free (bolt-hole wall about 0 N) and the Z faces
-  frictionless, it is what the outer face carries.
-- The face rows below integrate nodal (extrapolated) stress over the whole outer face, both signs. Their compressive part, the
-  cells carrying 90 % of it, gives the patch centre and the nodal peak; those cells are scattered over the face, so read the centre,
-  not an extent.
+THE LUG'S OUTER FACE AND THE SIDEWAYS LOAD (r1g6; corrected 2026-11-13 after the shoulder thread's question)
+Sign convention: every face row is the force ON THE HUB, the integral of sigma.n over the hub face with n the hub's outward normal.
+For the -X lug, +X is inward (toward the yaw axis). The section row is the force the hub ABOVE Y 294.5 exerts on the lug BELOW it, so
+the face forces below the section sum to minus the section row.
+- STOP_0, -X lug, sideways (from r1g6_stop0.lug_sideways_split.txt):
+  - The section's Fx is +25.6 N: the hub above holds the lug's lower part inward. So our side's net push on the lug's lower part
+    is about 26 N outward (-X).
+  - The outer face (n = -X) can only push the lug inward. Its real compressive contact is +9.2 N inward (centre Y 293.2, Z 9.7;
+    nodal peak 9.75 MPa). The face row's net -32 N comes from -41 N of tensile extrapolated nodal values, which a contact face
+    cannot give. That -32 N is withdrawn.
+  - The outward push sits at the edges of the LUMPED plate boss: the front Z face's 1 mm band along the boss outline carries
+    Fx -19.9 N, and the back face's -2.4 N. The flat interior and the hole rim carry about 0 N in X, as a frictionless face should.
+    The lumped boss's step edge acts as a shoulder on the lug. A real, separate plate has no step and cannot do this.
+  - In the real joint, that outward push of about 22-26 N goes through friction under the bolt clamp at the plates (0.3 N.m: about
+    0.33-0.5 kN preload, so about 200-300 N of friction capacity). Failing that, it goes onto the bolt: the -X shank's gap on that
+    side is already down to 0.102 here. It does NOT go onto the outer face, which can only push inward.
+  - For the shoulder thread's stop case:
+    - the lug's outer face takes at most about 9 N inward (+X) from our pocket wall, near Y 293.2, Z 9.7;
+    - the lug's net sideways load is about 26 N outward (-X), to be applied at the lug's Z faces (friction) or at its bolt hole
+      (bearing), not at the outer face.
+- The face rows below are the raw integrals. Read the outer-face and Z-face Fx through the lines above.
 
 ==================== STOP_0 (515 N on the elbow stop pad), r1g6_stop0
 -X lug outer face on our pocket wall (X offset 34.4 / 34.6): contact patch (the cells carrying 90 % of the compressive normal force; total compressive 9.2 N) Y 288.45-294.75, Z 1.05-10.95 (Z - CZ -4.94 to +4.96), centre Y 293.23 Z 9.74, area 3.5 mm2, normal force 8.3 N, peak 9.75 MPa, mean 2.40 MPa
@@ -58,7 +72,8 @@ lug  face                                                                 Fx    
 
 SUMMARY STOP_0 (r1g6)
 - -X lug: front Z face Fz -184 N (CoP X offset 30.0, Y 291.6); section Fz 179 N.
-- -X lug outer face on our pocket wall: about 26 N toward -X (the lug section's sideways force 25.6 N). Contact centre at about
-  Y 293.2, Z 9.7 (Z - CZ +3.7): the upper front corner of the outer face, below its R0.8 root. Nodal peak 9.75 MPa.
+- -X lug sideways: net about 26 N OUTWARD (-X) from our side (the lug section +25.6 N), carried in the model mostly by the lumped boss's
+  step edge (-22 N, a model artefact); in the real joint it goes through plate friction or to the bolt. The outer face carries
+  about 9 N INWARD (+X) from our pocket wall, centre about Y 293.2, Z 9.7 (Z - CZ +3.7), nodal peak 9.75 MPa.
 - +X lug: back Z face Fz +112 N; section 81 N. The outer face carries under 2 N.
 - Bolt-hole walls about 0 N: the bolt is free (smallest shank gap 0.102 on the -X lug).
