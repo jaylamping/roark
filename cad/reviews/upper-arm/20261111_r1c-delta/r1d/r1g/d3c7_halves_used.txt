@@ -1,0 +1,2 @@
+halves: J:/code/roark-wt/left-arm-organic/cad/_wip/r1d_r1g_print/exports
+a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b *J:/code/roark-wt/left-arm-organic/cad/_wip/shoulder_hub_d3c7_local/hub_D3c7.STL

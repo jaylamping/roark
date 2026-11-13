@@ -1,0 +1,18 @@
+### plates 045
+halves +X lug, back  face: min gap 0.300 mm at X offset 21.7
+halves +X lug, front face: min gap 0.300 mm at X offset 21.7
+halves -X lug, back  face: min gap 0.300 mm at X offset 22.6
+halves -X lug, front face: min gap 0.300 mm at X offset 21.7
+plates +X lug, back  face: min gap 0.267 mm at X offset 21.9
+plates +X lug, front face: min gap 0.267 mm at X offset 33.4
+plates -X lug, back  face: min gap 0.267 mm at X offset 34.1
+plates -X lug, front face: min gap 0.267 mm at X offset 32.6
+### plates 075
+halves +X lug, back  face: min gap 0.300 mm at X offset 21.7
+halves +X lug, front face: min gap 0.300 mm at X offset 21.7
+halves -X lug, back  face: min gap 0.300 mm at X offset 22.6
+halves -X lug, front face: min gap 0.300 mm at X offset 21.7
+plates +X lug, back  face: min gap 0.267 mm at X offset 21.2
+plates +X lug, front face: min gap 0.267 mm at X offset 33.6
+plates -X lug, back  face: min gap 0.267 mm at X offset 34.1
+plates -X lug, front face: min gap 0.267 mm at X offset 32.6

@@ -1,0 +1,154 @@
+C:\Users\holly\AppData\Local\Programs\Python\Python312\Lib\site-packages\trimesh\triangles.py:302: RuntimeWarning: invalid value encountered in divide
+  center_mass = integrated[1:4] / volume
+{
+ "measured": {
+  "front": {
+   "stop_face": [
+    194.1,
+    1805.5
+   ],
+   "rib_face": [
+    153.8,
+    529.7
+   ]
+  },
+  "back": {
+   "stop_face": [
+    194.1,
+    1824.7
+   ],
+   "rib_face": [
+    153.8,
+    554.9
+   ]
+  }
+ },
+ "typed": {
+  "stop_face": 194.1,
+  "front": 193.7
+ },
+ "ring_x": [
+  153.9,
+  165.7
+ ],
+ "stack": {
+  "flange_x": 165.7,
+  "ring_face_x": 165.6999969482422,
+  "gap_mm": 0.0,
+  "front_to_stop_mm": 0.4
+ },
+ "sockets_phi": [
+  1.5,
+  181.5
+ ],
+ "interference_mm3": {
+  "front": 0.0,
+  "back": 0.0,
+  "rs02_ring": 0.0
+ },
+ "plug_axis": [
+  0.0,
+  1.0,
+  -0.026
+ ],
+ "plug_interference_mm3": {
+  "front": 0.0,
+  "back": 0.0
+ },
+ "plug_vs_ring_mm3": 0.0,
+ "slide": {
+  "60": {
+   "assembly_vs_back": 0.0,
+   "front_closing_vs_assembly": 0.0
+  },
+  "40": {
+   "assembly_vs_back": 0.0,
+   "front_closing_vs_assembly": 0.0
+  },
+  "30": {
+   "assembly_vs_back": 0.0,
+   "front_closing_vs_assembly": 0.0
+  },
+  "20": {
+   "assembly_vs_back": 0.0,
+   "front_closing_vs_assembly": 0.0
+  },
+  "10": {
+   "assembly_vs_back": 0.0,
+   "front_closing_vs_assembly": 0.0
+  },
+  "5": {
+   "assembly_vs_back": 0.39,
+   "front_closing_vs_assembly": 0.39
+  },
+  "2": {
+   "assembly_vs_back": 1.83,
+   "front_closing_vs_assembly": 1.83
+  },
+  "0": {
+   "assembly_vs_back": 2.79,
+   "front_closing_vs_assembly": 2.79
+  }
+ },
+ "plug_pull_vs_back": {
+  "0": 0.0,
+  "5": 0.0,
+  "10": 0.0,
+  "15": 0.0,
+  "20": 0.0
+ },
+ "screws": {
+  "n": 6,
+  "size": "M3 x 16 button head",
+  "ring_thickness": 11.8,
+  "cbore": 2.0,
+  "grip": 9.8,
+  "thread_in_rs02": 6.2,
+  "vendor_depth": 8.0
+ },
+ "flange_first_hit_x_by_phi": {
+  "20": 164.98,
+  "60": null,
+  "100": null,
+  "140": null,
+  "180": 164.98,
+  "220": null,
+  "260": null,
+  "300": null,
+  "340": 164.98
+ },
+ "ring_rib_side_gap_mm": 0.1,
+ "axial_freedom_mm": {
+  "nominal": 0.5,
+  "worst": 0.1,
+  "best": 0.9
+ },
+ "shifted_0p2_overlap_mm3": {
+  "-0.2": {
+   "front": 38.51,
+   "back": 38.24
+  },
+  "0.2": {
+   "front": 2.78,
+   "back": 2.78
+  }
+ }
+}
+front: Z centre 28.2 -> opens along +1 Z; watertight True
+  front -> hub_grooved (half points, opening dir) {"hits": 2280, "touching_or_inside": 2120, "grazing_on_Y296_Y302": 140, "path_collisions": 20, "worst": [{"at": [145.89, 298.0, 31.94], "r": 35.76, "theta": 133.5, "dist": 0.05}, {"at": [149.44, 298.03, 34.82], "r": 35.7, "theta": 126.1, "dist": 0.05}, {"at": [156.26, 298.4, 38.03], "r": 35.06, "theta": 113.9, "dist": 0.05}, {"at": [151.92, 298.16, 36.21], "r": 35.47, "theta": 121.6, "dist": 0.06}, {"at": [149.84, 298.38, 34.37], "r": 35.1, "theta": 126.0, "dist": 0.06}, {"at": [149.9, 298.29, 34.58], "r": 35.24, "theta": 125.8, "dist": 0.06}, {"at": [154.2, 298.14, 37.52], "r": 35.49, "theta": 117.3, "dist": 0.07}, {"at": [159.96, 298.34, 39.52], "r": 35.15, "theta": 107.4, "dist": 0.08}], "box": [[143.5, 298.0, 9.4], [205.5, 298.5, 39.5]]}
+  hub_grooved -> front (part points, toward the half) {"hits": 2434, "touching_or_inside": 834, "grazing_on_Y296_Y302": 1600, "path_collisions": 0}
+  front -> rs02_vendor (half points, opening dir) {"hits": 0}
+  rs02_vendor -> front (part points, toward the half) {"hits": 0}
+  front -> rs02_ring (half points, opening dir) {"hits": 156, "touching_or_inside": 156, "grazing_on_Y296_Y302": 0, "path_collisions": 0}
+  rs02_ring -> front (part points, toward the half) {"hits": 127, "touching_or_inside": 127, "grazing_on_Y296_Y302": 0, "path_collisions": 0}
+  front: ridge/bore vertices 161, max into hub 0.004 mm at [179.53, 298.5, 39.73]
+back: Z centre -16.3 -> opens along -1 Z; watertight True
+  back -> hub_grooved (half points, opening dir) {"hits": 2246, "touching_or_inside": 2097, "grazing_on_Y296_Y302": 131, "path_collisions": 18, "worst": [{"at": [205.36, 298.5, 3.99], "r": 34.93, "theta": 356.7, "dist": 0.06}, {"at": [201.99, 298.02, -10.82], "r": 35.7, "theta": 331.9, "dist": 0.11}, {"at": [204.39, 298.46, -2.64], "r": 34.98, "theta": 345.7, "dist": 0.11}, {"at": [203.22, 298.39, -6.63], "r": 35.07, "theta": 338.9, "dist": 0.11}, {"at": [205.82, 298.05, 0.96], "r": 35.68, "theta": 351.9, "dist": 0.12}, {"at": [202.25, 298.09, -10.05], "r": 35.58, "theta": 333.2, "dist": 0.15}, {"at": [205.52, 298.38, 3.47], "r": 35.12, "theta": 355.9, "dist": 0.15}, {"at": [202.4, 298.14, -9.53], "r": 35.49, "theta": 334.1, "dist": 0.15}], "box": [[202.0, 298.0, -10.8], [205.8, 298.5, 4.0]]}
+  hub_grooved -> back (part points, toward the half) {"hits": 1019, "touching_or_inside": 776, "grazing_on_Y296_Y302": 243, "path_collisions": 0}
+  back -> rs02_vendor (half points, opening dir) {"hits": 0}
+  rs02_vendor -> back (part points, toward the half) {"hits": 0}
+  back -> rs02_ring (half points, opening dir) {"hits": 156, "touching_or_inside": 156, "grazing_on_Y296_Y302": 0, "path_collisions": 0}
+  rs02_ring -> back (part points, toward the half) {"hits": 123, "touching_or_inside": 123, "grazing_on_Y296_Y302": 0, "path_collisions": 0}
+  back: ridge/bore vertices 160, max into hub 0.002 mm at [135.62, 298.5, 3.99]
+  front: final overlap with the hub {"points": 65295, "into_hub_over_0p02": 780, "max_into_hub": 0.041, "where": {"r": [34.84, 35.78], "Y": [297.97, 298.53], "theta": [9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 87, 90, 93, 96, 99, 102, 105, 108, 111, 114, 117, 120, 123, 126, 129, 132, 135, 138, 141, 144, 147, 150, 153, 156, 159, 162, 165, 168, 171]}}
+  back: final overlap with the hub {"points": 67255, "into_hub_over_0p02": 664, "max_into_hub": 0.039, "where": {"r": [34.85, 35.77], "Y": [297.98, 298.52], "theta": [189, 192, 195, 198, 201, 204, 207, 210, 213, 216, 219, 222, 225, 228, 231, 234, 237, 240, 243, 246, 249, 252, 255, 258, 261, 264, 267, 273, 276, 279, 282, 285, 288, 291, 294, 297, 303, 306, 309, 312, 315, 318, 321, 324, 327, 330, 333, 336, 339, 342, 345, 348, 351]}}

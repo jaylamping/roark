@@ -1,0 +1,9 @@
+Theta: atan2(Z - CZ, X - HX). Hub material pieces near theta 98 deg, Y 300-304; the tie wraps the boss tube.
+Y 300.0: piece r 34.3-34.3, theta span 1-360; bore at r 0.0 theta 90 Dia about 44.0; tie envelope (tube region near theta 98 + 3 mm) to our nearest part: 5.76 mm
+Y 300.0: piece r 7.6-16.4, theta span 77-120; bore at r 12.0 theta 98 Dia about 4.3; tie envelope (tube region near theta 98 + 3 mm) to our nearest part: 15.31 mm
+Y 301.0: piece r 34.8-34.8, theta span 1-360; bore at r 0.0 theta 90 Dia about 44.9; tie envelope (tube region near theta 98 + 3 mm) to our nearest part: 7.03 mm
+Y 301.0: piece r 7.6-16.4, theta span 77-120; bore at r 12.0 theta 98 Dia about 4.3; tie envelope (tube region near theta 98 + 3 mm) to our nearest part: 16.60 mm
+Y 302.0: bore at r 0.0 theta 90 Dia about 45.7; nothing of ours in this plane
+Y 302.0: bore at r 12.0 theta 98 Dia about 4.3; nothing of ours in this plane
+Y 303.0: bore at r 12.0 theta 98 Dia about 4.3; nothing of ours in this plane
+Y 304.0: bore at r 12.0 theta 98 Dia about 4.3; nothing of ours in this plane
