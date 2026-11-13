@@ -39,6 +39,24 @@
       "recorded": "2026-11-13T03:09:41Z"
     },
     {
+      "export": "exports/shoulder/shoulder_hub_left_revD3b_candidate.STEP",
+      "source": "scripts/shoulder/build_parts.py",
+      "config": "",
+      "settings": "rev D3b candidate: rev D + lugs grown to one straight outer face at X offset 34.4 (Y 288-296), R0.8 outward roots, R1.2 Z roots, square spigot edge over the lug bands, spigot skin remade (topology): LOOK=hubD3b HUB_GROOVE_RING=1 HUB_D3=1 build_parts.py port_cap hub",
+      "sourceSha256": "a740bd93c3c0a1b1acf5719bb5c681e5d062ed4ee435d743eb0d5ca5d19ff5ca",
+      "exportSha256": "4b65c86806d92c93c9e0ce69b30aa94bae92f6f5b66b7f8341de47c3bafa5799",
+      "recorded": "2026-11-13T08:15:14Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_hub_left_revD3b_candidate.STL",
+      "source": "scripts/shoulder/build_parts.py",
+      "config": "",
+      "settings": "rev D3b candidate: rev D + lugs grown to one straight outer face at X offset 34.4 (Y 288-296), R0.8 outward roots, R1.2 Z roots, square spigot edge over the lug bands, spigot skin remade (topology): LOOK=hubD3b HUB_GROOVE_RING=1 HUB_D3=1 build_parts.py port_cap hub",
+      "sourceSha256": "a740bd93c3c0a1b1acf5719bb5c681e5d062ed4ee435d743eb0d5ca5d19ff5ca",
+      "exportSha256": "b221df3d4bfcee6289281e568aef33c5625bdb8d5bf88b760e75e2013b3ec80e",
+      "recorded": "2026-11-13T08:15:18Z"
+    },
+    {
       "export": "exports/shoulder/shoulder_hub_left_revD_candidate.STEP",
       "source": "scripts/shoulder/build_parts.py",
       "config": "",

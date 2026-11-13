@@ -216,8 +216,9 @@ HUB_GROOVE_RING = bool(os.environ.get('HUB_GROOVE_RING'))   # hub-top fix (A_HUB
 # 'c' trimmed: the r 20 bore only behind the -X lug (140-220 deg, Y 296-302.3, 45 deg top) plus the cable-sector r 21; 'd' = 'c'
 # plus the backing; 'e' D2's full profile (bore + 45 deg cone into the floor) over 140-220 deg only, plus the cable-sector r 21
 HUB_D2 = os.environ.get('HUB_D2', '') if HUB_GROOVE_RING else ''
-# REV D3 (yaw torque path, default off): both lugs extended radially from their flat outer faces (29.5 off the axis) to 36.8
-# over Y 294.5-297.6 (45 deg top chamfer; the groove starts at Y 298 and is untouched), at the lugs' own Z faces (Z 1.0 / 11.0). The arm's collar pockets pinch the extensions along Z through picked shims,
-# so the yaw torque bears near the root plane at r about 34, not through the lugs' bolts 4 mm below it
+# REV D3 (D3b as agreed 2026-11-13 05:43Z; yaw torque path, default off): both lugs grown outward to one straight outer face at
+# X offset 34.4 (from 29.5) over their whole height, Y 288 to the spigot underside (Y 296), on their own Z faces (Z 1.0 / 11.0).
+# The arm's seam-split collar pockets pinch the lugs along Z through picked flat shim plates, so the yaw torque bears on the
+# whole lug face at a larger radius instead of through the lug bolts. Also remakes the spigot skin (topology; see build_parts)
 HUB_D3 = bool(os.environ.get('HUB_D3')) and HUB_GROOVE_RING      # on rev D, with or without D2
 CH_DZ = -1.0 if os.environ.get('LEG2') else 0.0   # LEG2 mock-up: the fork rear's channels 1 mm further back (front wall 3.4)

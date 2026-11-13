@@ -143,6 +143,33 @@ def run(name, c):
                     s_.circle((cx_, dm_['y0'], cz_), 1.65)
             extrude(d, s_.feat, 'DUMMY_TAPS', 8.0, (0, 1, 0), cut=True)
         d.ForceRebuild3(False)
+    if c.get('split'):
+        # split lines on the FEA copy, so a load can go on part of a face (e.g. only inside the arm's shim plates): for each
+        # Z plane, the rectangles (X0, X1, Y0, Y1, model mm) projected onto the faces picked by the point selectors
+        from swk import Sk, plane
+        for sp_ in c['split']:
+            zp_, rects_, sels_ = sp_[:3]
+            circs_ = sp_[3] if len(sp_) > 3 else []      # (X, Y, r): circles kept out of the loaded area (e.g. round a bolt hole)
+            n0_ = len(faces_of(d))
+            with Sk(d, plane(d, 'Z', zp_, f'P_SPLIT_{zp_:g}'.replace('.', 'p')), f'SPLIT_{zp_:g}'.replace('.', 'p')) as s_:
+                for x0_, x1_, y0_, y1_ in rects_:
+                    s_.poly([(x0_, y0_, zp_), (x1_, y0_, zp_), (x1_, y1_, zp_), (x0_, y1_, zp_)])
+                for cx_, cy_, cr_ in circs_:
+                    s_.circle((cx_, cy_, zp_), cr_)
+            fs_ = [f_ for sel_ in sels_ for f_ in pick(d, sel_)]
+            # split line by projection wants the sketch selected with mark 4 and the faces with mark 1 (with mark 0 it does nothing)
+            d.ClearSelection2(True)
+            s_.feat.Select2(False, 4)
+            sd_ = d.SelectionManager.CreateSelectData()
+            sd_.Mark = 1
+            for f_ in fs_:
+                f_.Select4(True, sd_)
+            ok_ = d.InsertSplitLineProject(False, False)
+            d.ForceRebuild3(False)
+            n1_ = len(faces_of(d))
+            print(' split', zp_, 'faces picked', len(fs_), 'ok', ok_, 'faces', n0_, '->', n1_, flush=True)
+            if n1_ <= n0_:
+                raise SystemExit(f'split line on Z {zp_} did not split any face: stopping (the load would cover the whole face)')
     cw = session(STATE).load_simulation()
     doc = cw.ActiveDoc
     sm = doc.StudyManager
@@ -514,6 +541,18 @@ _d3 = lambda fa, fb, ra, rb: dict(part='hub', fix=HUB_FIX, el=1.5, ctrl_optional
 YAW3_F = 17000.0 / (2 * 28.0)
 CASES['HUBL_YAW3'] = _d3((0.0, 0.0, YAW3_F), (0.0, 0.0, -YAW3_F), 28.0, 28.0)
 CASES['HUBL_STOP4'] = _d3((40.0, -56.0, 228.0), (0.0, 0.0, -134.0), 28.0, 28.0)
+# D3b with the arm's shim plates (coordinator 06:37Z): the couple only inside the plate outline on each lug's pushing Z face,
+# X offset 18.96-34.2, Y 288.2-294.6 (split lines on the FEA copy); 304 N at the plates' centroid (370 N is the same x 370/304)
+_PL = lambda sg: (min(RX + sg * 18.96, RX + sg * 34.2), max(RX + sg * 18.96, RX + sg * 34.2), 288.2, 294.6)
+_PFACE = lambda sg, zp: ('plane', (RX + sg * 28.0, 290.0, zp), None, 'on')
+_PAT = lambda sg, zp: (RX + sg * 26.6, 291.4, zp)
+CASES['HUBL_YAW3P'] = dict(_d3((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 28.0, 28.0),
+    # the arm's plates have a dia 4.4 hole at the lug bolt (X offset 23.0, Y 292): that circle is kept out of the load (07:31Z)
+    split=[(1.0, [_PL(-1), _PL(1)], [_PFACE(-1, 1.0), _PFACE(1, 1.0)], [(RX - 23.0, 292.0, 2.2), (RX + 23.0, 292.0, 2.2)]),
+           (11.0, [_PL(-1), _PL(1)], [_PFACE(-1, 11.0), _PFACE(1, 11.0)], [(RX - 23.0, 292.0, 2.2), (RX + 23.0, 292.0, 2.2)])],
+    ctrl=D3_CTRL + [(cyl(0.8, [132, 294.5, -0.5, 209, 296.2, 12.5]), 0.35)],
+    remotes=[(_PFACE(-1, 1.0), _PAT(-1, 1.0), (0.0, 0.0, YAW3_F), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _PAT(1, 11.0), (0.0, 0.0, -YAW3_F), (0.0, 0.0, 0.0), 1)])
 
 # REV D, the arm thread's stop case on the full-ring joint (its fine-mesh repeat, roark 3c7114b): the full-ring ridge and groove
 # are axisymmetric and frictionless, so they carry no torque about the hub axis; that part of the stop moment goes into the

@@ -96,6 +96,14 @@ def finish_part(d, key, props=None):
     save(d)
     export(d, STL / f'{key}.stl')
     export(d, STEPD / f'{key}.step', stl_fine=False)
+    try:      # every exported STL: watertight, no non-manifold edge, no zero-area face (tools/cad/mesh_check.integrity)
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools', 'cad'))
+        import mesh_check as MC
+        _ok, _lines, _ = MC.integrity_file(STL / f'{key}.stl')
+        for _l in _lines:
+            log('  ' + _l.strip())
+    except Exception as e_:
+        log(f'  integrity check not run: {e_}')
     v = vol(d)
     bb = [b for b in bodies(d)]
     log(f'== {NAMES.get(key, key)}: {len(bb)} bodies, {v:.0f} mm3, {v * PETG:.1f} g PETG', bb)
@@ -339,7 +347,7 @@ def hub_d2(d, gplane):
                 'D2_DRIVER', 297.9 - 286.0, Y, cut=True, lo=-1.0)   # the boss tubes (screw-head seats) start at Y 298.0: stop 0.1 short
 
 
-def hub_d3(d):
+def hub_d3(d, gplane=None):
     """REV D3 (see dims.HUB_D3): the lug extensions, one sketch on the plane Z = YZ extruded +-5 (the lugs' own thickness)."""
     # the arm thread's limits (left-arm-organic 45b2e71 and its seam clash check, R1D_NOTES "Extended-lug torque path"), with
     # a 45 deg chamfer on the top outer corner (no ledge over the groove mouth); the lugs' own Z faces are
@@ -347,16 +355,45 @@ def hub_d3(d):
     # and its faces merge with the lugs' into one flat shim face
     def prof(sg):
         X_ = lambda o: RX + sg * o
-        # refined (coordinator 01:33Z, the arm's seam clash check): the lug grown outward over its full height (Y 288-294.5) to a
-        # straight outer face at X offset 34.4 (r 34.9 at Z +-5.5), stepping out to X 36.35 (r 36.8 at Z 5.5) for Y 294.5-297.6;
-        # above Y 296 only the strip outside the land band remains (the rest is inside the spigot), its top a 45 deg chamfer
-        return [(X_(29.3), 288.0), (X_(34.4), 288.0), (X_(34.4), 294.5), (X_(36.35), 294.5), (X_(36.35), 296.7), (X_(35.45), 297.6),
-                (X_(35.0), 297.6), (X_(35.0), 296.3), (X_(29.3), 296.3)]
+        # rev D3b (coordinator 05:43Z, agreed with the arm thread): one straight outer face at X offset 34.4 from Y 288 up to the
+        # spigot underside (Y 296); no step, no strip, no chamfer (the arm's shim plates cover only the main face)
+        return [(X_(29.3), 288.0), (X_(34.4), 288.0), (X_(34.4), 296.3), (X_(29.3), 296.3)]
     pl0 = plane(d, 'Z', 6.0, 'P_Z_6')
     with Sk(d, pl0, 'D3_LUG_EXT') as s_:
         for sg in (-1, 1):
             s_.poly([(x_, y_, 6.0) for x_, y_ in prof(sg)])
     extrude(d, s_.feat, 'D3_LUG_EXT', 10.0, Z, mode=MID)
+    if gplane is not None and os.environ.get('HUB_D3_EDGE', '1') != '0':   # D3b: keeps the R0.8 outward roots clear of the R0.4
+        # the spigot's bottom outer edge (r 35.8, Y 296) left square over each lug's band (+-10.9 deg, Z - YZ within +-6.77 at
+        # r 35.8: inside the arm's pocket (|Z| <= 5.5) and root relief (Z 5.5-6.8, r <= 36.3)): the R1.2 Z roots then run out on plain faces instead of into
+        # the R0.4 round, where they left a non-manifold sliver (2026-11-13, arm thread's STL check). The R0.4 stays elsewhere
+        for nm_, a0_ in (('D3_EDGE_A', 169.1), ('D3_EDGE_B', -10.9)):
+            plg, ua = gplane(a0_, nm_)
+            with Sk(d, plg, nm_) as s2_:
+                s2_.poly([(RX + r_ * ua[0], y_, YZ + r_ * ua[2]) for r_, y_ in ((35.3, 296.0), (35.8, 296.0), (35.8, 296.5), (35.3, 296.5))])
+                s2_.cline((RX, 280.0, YZ), (RX, 330.0, YZ))
+            want_ = math.radians(a0_ + 10.9)
+            done_ = False
+            for rev in (False, True):
+                v0, m0 = vol_com(d)
+                d.ClearSelection2(True)
+                s2_.feat.Select2(False, 0)
+                f = d.FeatureManager.FeatureRevolve2(True, True, False, False, rev, False, 0, 0, math.radians(21.8), 0, False, False, 0, 0, 0, 0, 0, True, False, True)
+                d.ForceRebuild3(False)
+                v1, m1 = vol_com(d)
+                if f is not None and v1 - v0 > 1e-4:
+                    cen_ = (m1 - m0) / (v1 - v0)
+                    ang = math.atan2(cen_[2] - YZ, cen_[0] - RX)
+                    if abs(((ang - want_ + math.pi) % (2 * math.pi)) - math.pi) < 0.15:
+                        f.Name = nm_
+                        log(f'  {nm_}: added {v1 - v0:.2f} mm3, centroid {math.degrees(ang):.1f} deg')
+                        done_ = True
+                        break
+                if f is not None:
+                    d.EditUndo2(1)
+                    d.ForceRebuild3(False)
+            if not done_:
+                log(f'  {nm_} FAILED')
 
 
 def hub_lug_roots():
@@ -365,10 +402,13 @@ def hub_lug_roots():
     e_, w_ = L(), L()
     d = app().OpenDoc6(str(OUT / f"{NAMES['hub']}.SLDPRT"), 1, 1, '', e_, w_)
     _r = lambda q: math.hypot(q[0] - RX, q[2] - YZ)
+    # rev D3b: the lugs' outer face is at X offset 34.4 (r 34.4-34.8 along the edge), and the arm allows R0.8 there (0.2 to its
+    # wall); the square spigot edge over the lug bands (D3_EDGE) keeps it clear of the R0.4 round
+    r_lo, r_hi, r_f = (34.3, 34.9, 0.8) if HUB_D3 else (29.2, 31.0, 1.0)
     roots = edges_where(d, lambda p: abs(p[1] - 296.0) < 0.05 and abs(p[2] - YZ) < 9.0,
-                        pair=lambda p0, p1: all(29.2 < _r(q) < 31.0 for q in (p0, p1)))
+                        pair=lambda p0, p1: all(r_lo < _r(q) < r_hi for q in (p0, p1)))
     log('  LUG_ROOTS (post) edges', len(roots))
-    fillet(d, roots, [1.0], 'LUG_ROOTS')
+    fillet(d, roots, [r_f], 'LUG_ROOTS')
     if HUB_GROOVE_RING:
         # REV D (agreed with the arm thread, 2026-11-12): R1.2 on the Z-facing lug roots, the lug faces at Z +-5 meeting the
         # spigot underside at Y 296, both lugs. The stop case loads the lugs mainly in Z, so these roots govern; the arm
@@ -378,12 +418,6 @@ def hub_lug_roots():
                              pair=lambda p0, p1: all(abs(abs(q[2] - YZ) - 5.0) < 0.1 for q in (p0, p1)))
         log('  LUG_ZROOTS (post) edges', len(zroots))
         fillet(d, zroots, [1.2], 'LUG_ZROOTS')
-    if HUB_D3:
-        # the concave edge where each step's underside (Y 294.5) meets the lug's new outer face (X offset 34.4)
-        ext = edges_where(d, lambda p: abs(p[1] - 294.5) < 0.05 and abs(abs(p[0] - RX) - 34.4) < 0.1 and abs(p[2] - 6.0) < 5.05,
-                          pair=lambda p0, p1: abs(p0[2] - p1[2]) > 5.0)
-        log('  LUG_EXT_ROOT (post) edges', len(ext))
-        fillet(d, ext, [0.5], 'LUG_EXT_ROOT')
     return finish_part(d, 'hub')
 
 
@@ -1138,6 +1172,19 @@ def build_hub():
                                                                  for a0_, a1_ in wf['sectors']]), 'WALL_FILL', wf['y'][1] - wf['y'][0], Y, lo=-1.0)
     if HUB_D2:
         hub_d2(d, gplane)
+    if HUB_D3:
+        # topology (the surface is rev D's, see the geometric check in A_HUB_LUGS): the imported hub's spigot skin (r 35.8,
+        # Y 296-302: the land band and the groove) is split into patches (seams at theta -90, 90, 135 and -45, and a 0.01 mm step
+        # to r 35.81 at Y 296.4 over theta -45..135). The R0.4 spigot-edge cut below inherits that, and the STL exporter makes
+        # zero-area triangles where the seams meet the round's tangent line. So the skin is remade: cut out to r 36.0 (past the
+        # surface, so the old faces really go; a cut that only meets the surface leaves them) from Y 296 to 301.6 (under the R0.3
+        # disc corner), revolved back to r 35.8 (filling the groove), and the full-ring groove cut again with the same profile
+        # and rounds. Remaking only the land band (Y 296-298) is not enough: the groove's old faces carry the same seams and
+        # leave non-manifold edges where they meet it at Y 298
+        yaw_rev(d, 'SKIN_RESURF_CUT', [(35.0, 295.9), (36.0, 295.9), (36.0, 301.6), (35.0, 301.6)], cut=True)
+        yaw_rev(d, 'SKIN_RESURF', [(34.9, 296.0), (35.8, 296.0), (35.8, 301.6), (34.9, 301.6)])
+        yaw_rev(d, 'GROOVE_RING_2', groove_profile(1.0), GR, cut=True)
+        # (before the R0.3 disc corner below: the groove re-cut covers that corner, so the R0.3 is made after it)
     # REV C+: R0.3 in the concave corner between the spigot (r 35.8) and the disc face (Y 302.0); the arm breaks its bore-to-end-face
     # edge by 0.5 (20:33Z). A revolve boss of the fillet region, overlapping the solid by 0.05
     rc_ = hb['disc_corner_r']
@@ -1174,7 +1221,7 @@ def build_hub():
     except SystemExit:
         log('  SPIGOT_EDGE revolve cut FAILED')
     if HUB_D3:       # after the SPIGOT_EDGE revolve cut, which would otherwise notch the extensions
-        hub_d3(d)
+        hub_d3(d, gplane)
     # REV C: root fillets where the seam lugs meet the spigot's underside
     # REV C+ (arm side): 1.0 only on the lugs' X-facing sides (the arcs at r 19 and r 30); nothing on the Z-facing sides,
     # where the arm's hub posts sit 0.1 under the spigot; no lug thickening

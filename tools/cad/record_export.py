@@ -60,6 +60,16 @@ def record(
     for rel in (exp, src):
         if not (cad_root / rel).is_file():
             raise SystemExit(f"not found: cad/{rel}")
+    if Path(exp).suffix.lower() == ".stl" and not os.environ.get("RECORD_ALLOW_MESH_DEFECTS"):
+        # every recorded STL: watertight, no non-manifold edge, no zero-area face (a sliver once reached a mating thread)
+        try:
+            import mesh_check
+        except ImportError as e_:      # trimesh missing: say so rather than record unchecked
+            raise SystemExit(f"{exp}: mesh integrity check needs trimesh ({e_}); set RECORD_ALLOW_MESH_DEFECTS=1 to skip") from None
+        ok_, lines_, _ = mesh_check.integrity_file(cad_root / exp)
+        if not ok_:
+            raise SystemExit(f"{exp}: mesh integrity check failed:\n" + "\n".join(lines_)
+                             + "\nfix the model and re-export (or set RECORD_ALLOW_MESH_DEFECTS=1 to record anyway)")
     data = json.loads(manifest.read_text(encoding="utf-8"))
     entry = {
         "export": exp,
