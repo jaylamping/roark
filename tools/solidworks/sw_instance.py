@@ -687,13 +687,55 @@ def launch(timeout=300, visible=False, busy_wait=7200):
     return inst
 
 
-def _start(timeout, visible, busy_wait):
+class _WmiProc:
+    """The two things _finish_launch asks of a Popen, for a process this one did not start as its child."""
+
+    def __init__(self, pid):
+        self.pid = pid
+        self.returncode = None
+        self._started = _started(pid)
+
+    def poll(self):
+        if _started(self.pid) == self._started and self._started is not None:
+            return None
+        self.returncode = -1
+        return self.returncode
+
+    def kill(self):
+        kill_tree(self.pid, self._started)
+
+
+def _start_outside_job():
+    """Start SolidWorks hidden through WMI, so it is not a child of this process, or None if that fails.
+
+    A child started the usual way joins this process's job object. Under tools/pc/capped.py, or a tool that ends its
+    whole process tree, that would end the keeper with the client that happened to start it.
+    """
+    try:
+        wmi = wc.GetObject("winmgmts:")
+        startup = wmi.Get("Win32_ProcessStartup").SpawnInstance_()
+        startup.ShowWindow = win32con.SW_HIDE
+        method = wmi.Get("Win32_Process")
+        params = method.Methods_("Create").InParameters.SpawnInstance_()
+        params.CommandLine = f'"{EXE}"'
+        params.ProcessStartupInformation = startup
+        out = method.ExecMethod_("Create", params)
+        if int(out.ReturnValue) == 0 and out.ProcessId:
+            return _WmiProc(int(out.ProcessId))
+    except Exception:
+        pass
+    return None
+
+
+def _start(timeout, visible, busy_wait, outside_job=False):
     """Start one SolidWorks process and wait for it. The caller holds the launch lock."""
-    si = subprocess.STARTUPINFO()
-    if not visible:
-        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        si.wShowWindow = win32con.SW_HIDE
-    proc = subprocess.Popen([EXE], startupinfo=si)
+    proc = _start_outside_job() if outside_job else None
+    if proc is None:
+        si = subprocess.STARTUPINFO()
+        if not visible:
+            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            si.wShowWindow = win32con.SW_HIDE
+        proc = subprocess.Popen([EXE], startupinfo=si)
     started = _started(proc.pid)
     try:
         return _finish_launch(proc, timeout, visible, busy_wait)
@@ -740,14 +782,22 @@ def _retire_keeper():
     try:
         switch, _state = _keeper_paths()
         pid = keeper_pid()
-        if pid is None:
+        if pid is None or not os.path.exists(switch):
             return
         mb = round(psutil.Process(pid).memory_info().private / 2**20)
-        if keeper_due(os.path.exists(switch), pid, _wait_answers(pid, 30), mb) == "restart":
+        if keeper_due(True, pid, _wait_answers(pid, 30), mb) == "restart":
+            print(f"sw_instance: replacing the keeper, PID {pid} ({mb} MB)", file=sys.stderr)
             kill_tree(pid, _started(pid))
             _drop_owner(pid)
     except Exception as e:
         print(f"sw_instance: keeper not checked ({e})", file=sys.stderr)
+
+
+def _note_keeper(pid):
+    c = _claims()
+    if c.instance_note(c.claims_dir(), pid, _started(pid)) is None:
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        c.note_instance(c.claims_dir(), pid, _started(pid), repo, 0, KEEPER_NOTE, time.time())
 
 
 def _ensure_keeper(timeout=300, busy_wait=7200):
@@ -759,15 +809,20 @@ def _ensure_keeper(timeout=300, busy_wait=7200):
     """
     try:
         switch, state = _keeper_paths()
-        if keeper_due(os.path.exists(switch), keeper_pid(), True, 0) != "start":
+        pid = keeper_pid()
+        if pid is not None:
+            _note_keeper(pid)  # one adopted from a state file has no note yet
+        if keeper_due(os.path.exists(switch), pid, True, 0) != "start":
             return
-        inst = _start(timeout, False, busy_wait)
+        older = [row[0] for row in status()]
+        inst = _start(timeout, False, busy_wait, outside_job=True)
         with open(state, "w") as f:
             f.write(f"{inst.pid} {inst.started!r}")
-        c = _claims()
-        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        c.note_instance(c.claims_dir(), inst.pid, inst.started, repo, 0, KEEPER_NOTE, time.time())
+        _note_keeper(inst.pid)
         inst.sw = None  # let go of it without closing: it outlives this process
+        if older:
+            print(f"sw_instance: keeper started as PID {inst.pid}; it only helps once the older instances "
+                  f"{older} have exited", file=sys.stderr)
     except Exception as e:
         print(f"sw_instance: keeper not started ({e})", file=sys.stderr)
 
@@ -783,14 +838,15 @@ def keeper(switch_on):
             _retire_keeper()
             _ensure_keeper()
         return keeper_pid()
-    if os.path.exists(switch):
-        os.remove(switch)
-    pid = keeper_pid()
-    if pid is not None:
-        kill_tree(pid, _started(pid))
-        _drop_owner(pid)
-    if os.path.exists(state):
-        os.remove(state)
+    with _LaunchLock(7200):  # not while another process is in its startup call into the keeper
+        if os.path.exists(switch):
+            os.remove(switch)
+        pid = keeper_pid()
+        if pid is not None:
+            kill_tree(pid, _started(pid))
+            _drop_owner(pid)
+        if os.path.exists(state):
+            os.remove(state)
     return None
 
 
