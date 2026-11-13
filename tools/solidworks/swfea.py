@@ -17,6 +17,7 @@ in SI (Pa, kg/m3) because that is what the Simulation material takes.
 The calls are those of cad/scripts/fea/p3_fea.py and hub_seat.py on branch left-arm-organic-r1, proven on SolidWorks
 2026. Needs numpy and scipy.
 """
+import contextlib
 import ctypes
 import os
 import re
@@ -42,6 +43,8 @@ LAYER_FACTOR = 0.5            # allowable across print layers, as a share of yie
 NO_PENETRATION, BONDED = 0, 1         # CreateContactSet types
 SOLVER_DIRECT = 1             # swsSolverType_e: 0 automatic, 1 direct sparse, 2 FFEPlus (iterative), 7 Intel direct sparse
 MAX_NODES = 450_000           # above this a direct-sparse solve does not fit holly-pc's memory (05-fea.md, memory)
+HEAVY_NODES = 200_000         # above this a solve needs over about 6 GB: one at a time machine-wide (heavy_solve_lock)
+HEAVY_LOCK = Path(os.environ.get('FEA_SOLVE_LOCK', r'C:\joe\.fea_solve.lock'))
 
 
 def _arr(q, cols):
@@ -245,6 +248,47 @@ class Result:
         return out
 
 
+@contextlib.contextmanager
+def heavy_solve_lock(owner, wait_s=3600):
+    """Hold the machine-wide lock for one heavy solve (over HEAVY_NODES). One such solve at a time on holly-pc.
+
+    The lock is a file created exclusively, holding owner, PID and start time. A lock whose PID is dead is stale and
+    is replaced; a live one is waited for (the other solve takes 7 to 11 minutes), up to wait_s, then Failed.
+    static() takes it by itself; meshing, builds and post-processing need none.
+    """
+    t0 = time.time()
+    while True:
+        try:
+            fd = os.open(HEAVY_LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            try:
+                text = HEAVY_LOCK.read_text()
+                pid = int(text.split('pid=')[1].split()[0])
+            except Exception:      # noqa: BLE001  being written, or not ours to parse: treat as held
+                text, pid = '?', None
+            if pid is not None and not psutil.pid_exists(pid):
+                log(f'heavy solve lock is stale ({text.strip()}): replacing it')
+                try:
+                    HEAVY_LOCK.unlink()
+                except OSError:
+                    pass
+                continue
+            if time.time() - t0 > wait_s:
+                raise Failed(f'heavy solve lock held for over {wait_s} s by {text.strip()}') from None
+            log(f'waiting for the heavy solve lock: {text.strip()}')
+            time.sleep(20)
+    try:
+        os.write(fd, f'owner={owner} pid={os.getpid()} start={time.strftime("%Y-%m-%dT%H:%M:%S")}\n'.encode())
+        os.close(fd)
+        yield
+    finally:
+        try:
+            HEAVY_LOCK.unlink()
+        except OSError:
+            pass
+
+
 def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), materials=None, solver=None, keep_study=False,
            post=None, loose_ok=False, max_nodes=MAX_NODES):
     """Build, mesh and solve one linear static study on the open part d, and read the nodal results back.
@@ -368,8 +412,10 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
     stop, seen = threading.Event(), []
     watch = threading.Thread(target=_solver_dialogs, args=(j.inst.pid, stop, seen), daemon=True)
     watch.start()
+    lock = heavy_solve_lock(f'{Path(d.GetPathName).stem}/{name}') if nodes > HEAVY_NODES else contextlib.nullcontext()
     try:
-        rc = call(st, 'RunAnalysis')
+        with lock:
+            rc = call(st, 'RunAnalysis')
     finally:
         stop.set()
         watch.join(5)

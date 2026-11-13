@@ -102,6 +102,13 @@ benchmark bracket, turning it on its side took the layer factor from 2.2 to 4.6 
 
 ## Sizing the job
 
+**One heavy solve at a time on the machine.** A solve over about 200,000 nodes needs more than 6 GB. On 2026-11-13 a
+13 GB solve forced another thread's solve to stop. `static()` now takes the lock file `C:\joe\.fea_solve.lock` for any
+solve over `HEAVY_NODES` and waits while another session holds it; a script that calls `RunAnalysis` itself must do the
+same with `swfea.heavy_solve_lock(owner)`. Smaller solves keep the old rule: up to two at once, free memory checked
+first. Most questions do not need a heavy solve: coarsen the global size and keep the local controls.
+
+
 | Nodes | Solver | Peak memory | Time on holly-pc |
 | --- | --- | --- | --- |
 | under 20,000 | automatic | under 2 GB | 2 to 7 s for mesh, solve and readback together |

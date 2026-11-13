@@ -106,6 +106,7 @@ Threads still cannot stop another session's process. For a half-closed instance 
 4. One file belongs to one session. Other sessions open a copy, read-only. Agree ownership before writing.
 5. Save after each step. A third instance has no Auto Recover, and an instance can crash.
 6. Concurrent Simulation solves are allowed, up to the two tested so far, and the limit is per machine (What was tested, below). Joey-PC ran a pair of 476k nodes each. On holly-pc a pair of about 390k nodes each crashed, so there solves that size run one at a time; smaller pairs ran together. Keep large solves to one at a time on any machine until a pair that size is tested there.
+   **Heavy solves take a lock (2026-11-13).** Before any solve expected to need more than about 6 GB (over about 200,000 nodes), create `C:\joe\.fea_solve.lock` exclusively, holding the owner thread, PID and start time; remove it after the solve; a lock whose PID is dead is stale. While another session holds it, wait. `swfea.static()` does this by itself (`heavy_solve_lock`). Meshing, builds and post-processing need no lock.
 7. Exit the instance when the work is done. Each one holds about 1 GB idle and about 1.6 GB after a solve.
 8. solidworks-mcp follows these rules from branch `feat/owned-instance`: each MCP server launches and owns one instance, attached by PID. **A server started before that build still attaches to the running SolidWorks until it restarts**, so do not use its tools alongside other sessions. Running servers are not restarted for you.
 
