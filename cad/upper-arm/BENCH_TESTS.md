@@ -87,31 +87,50 @@ become:
      socket head, Ø5.5, no washer) into the front-half inserts. Use socket heads: R1d's head counterbores are Ø6.0, too tight
      for a Ø5.7 button head.
    - Torque the two seam screws to **0.5 N·m**, and the two hub lug bolts to **0.3 N·m** (the cap, until the coupon's insert
-     check in 2b step 4b passes at a higher torque). These are my figures for M3 into these inserts in PETG, not datasheet
+     check in 2b step 6 passes at a higher torque). These are my figures for M3 into these inserts in PETG, not datasheet
      values: the insert's outer diameter and pull-out rating are not recorded anywhere in the repo. Retorque after 24 h.
    - Check the arm turns freely on the RS02, and that the witness lines line up.
 
-## 2b. R1e shim ring and hub-end fit coupon (before printing the R1e halves)
+## 2b. R1g hub-end fit coupon: shim ring, lug plates and loads (before printing the R1g halves)
+
+**Run this on the final hub only:** the shoulder thread's frozen release. The candidate today is D3c4, and D3c5 with the cable
+window comes next. The ring and plate picks depend on the hub as printed, so a hub printed before the shoulder thread freezes it
+forces a re-pick.
 
 **Picking the ring: start with the thickest ring, and work down until the front half closes by hand with the seam shut. Use that
 one.**
 
-R1e has no play by design. A thin printed PETG ring sits between the arm's end face and the hub disc, and you pick its thickness
+R1g has no play by design. A thin printed PETG ring sits between the arm's end face and the hub disc, and you pick its thickness
 by trial, once, at assembly.
 - **Rings:** 22 rings on three plates, 55 min and 9 g in all. Each ring's thickness is marked by notches in its inner edge:
   thickness = 0.25 + 0.05 × (number of notches). 1 notch = 0.30 mm ... 17 notches = 1.10 mm.
   - The two thinnest (0.30, 0.35) are held to a thin outer skirt by three small tabs; snap the skirt off.
   - Keep the rings flat. Don't sand them.
-- **Coupon:** the hub end of each R1g half, cut flat at Y 284. Back 72 min, front 67 min, 35 g. It has the seat,
-  ridge, end face, floor, slot breaks and the four hub posts with their insert and clearance holes. It closes on a printed D3b
-  hub (shoulder thread, 6b2fd93 or its release) with the two lug bolts, as the arm does.
+- **Lug plates:** 0.25-0.75 in 0.05 steps, four of each on each print (two full sets). Plate A is 19 min / 1.7 g; plate B is
+  18 min / 1.5 g.
+  - **Marks:** on the inner edge. A wide notch = 0.25, a narrow notch = 0.05, counted from 0.25.
+  - **Hole:** Dia 3.8.
+  - **Lip:** along the bottom edge, on the side that faces the lug.
+- **Coupon:** the hub end of each R1g half, cut flat at Y 284. Back 72 min, front 67 min, 35 g.
+  - It has the seat, ridge, end face, floor, slot breaks and the four hub posts with their insert and clearance holes.
+  - It closes on the hub with the two lug bolts, as the arm does.
+- **Yaw lever:** `prints/upper-arm/upper_arm_organic_coupon_yaw_lever.3mf`, 106 min / 72 g, printed flat.
+  - Its pocket is the coupon's own cut-end outline, 5 deep, so it keys onto the coupon. The coupon needs no extra feature.
+  - The hook hole is 200 mm from the yaw axis.
+  - The arm tapers 50 → 20 mm in the pulling plane, so its own bending is 1.4 mm at the hook but only 0.03 mm at 60 mm from the
+    axis, where the play is read.
 
 0. **Bare fit first, no ring and no plates:** lay the hub into the back coupon and close the front coupon by hand. Note whether
    it closes, and the play along the axis and in twist. This shows the coupon and hub fit before anything is added.
-1. **Calliper check, every piece:** measure every ring (four places) and every lug plate (two places) and write the readings
-   on the set sheet. If a whole set reads thicker or thinner than marked by the same amount, it is offset (first-layer squish);
-   note it. Print two full plate sets. If the pick lands between two steps, print the half steps around it if it is cheap.
-2. Press the two inserts into the front coupon (clear the holes with a Ø4.0 drill by hand first).
+1. **Calliper check, every piece:** measure every ring (four places) and every lug plate (two places) and write the readings on
+   the set sheet. If a whole set reads thicker or thinner than marked by the same amount, it is offset (first-layer squish); note
+   it. If the pick lands between two steps, print the half steps around it if it is cheap.
+2. **Inserts (three):**
+   - Measure each insert's outer diameter at the knurl crests, and its length, with the calliper before pressing. Record them:
+     the repo has no figure for either.
+   - Clear the two front-coupon holes with a Dia 4.0 drill by hand, and press the two inserts in. Press a third into a scrap
+     PETG block (8 mm or more thick, a Dia 4.0 hole drilled).
+   - Each must sit flush with the face or up to 0.05 below it. Check with a straightedge and a 0.05 feeler.
 3. **Pick the ring:**
    - Slide the thickest ring (17 notches) over the hub's spigot, flat against the disc.
    - Lay the hub into the back coupon (lugs between the posts), then close the front coupon over it **by hand, no screws**.
@@ -119,58 +138,77 @@ by trial, once, at assembly.
      with the seam shut. That ring is the one.
    - **Never force it closed with the screws.** A ring that's too thick only closes by crushing the ridge flank, which makes play
      later.
-   - **R1g (the D3b hub's extended lugs): then pick the lug plates.**
-     - **The plates:** flat printed plates, 0.25-0.75 in 0.05 steps, two of each, on plates A and B (about 15 min each). They
-       are marked on the inner edge: wide notch = 0.25, narrow = 0.05, counted from 0.25.
-     - **Fitting:** one plate goes on each Z face of each lug, with its lip hooked under the lug's free end. The bolt hole lines
-       up with the lug's.
-     - **Before the plates:** the two brass inserts in the front posts must sit flush with the post face or up to 0.1 below it.
-       Check with a straightedge across each insert. A proud insert would lift the plate. The plate's Dia 3.8 hole is smaller than the
-       insert's Dia 4.0 hole, so the plate sits on the insert's rim and holds it in against the bolt's pull.
-     - **Pick, with the ring chosen:** "Start each lug with the thickest pair, and take one plate down a step at a time,
-       alternating sides, until the front half closes by hand with the seam shut; use those." Both lugs are picked in the same
-       trials.
-     - **Never force it closed with the screws.**
-4. With the chosen ring and lug plates in, fit the two lug bolts (M3 × 25 DIN 912) and torque to **0.3 N·m** (the cap). The
-   seam must stay shut: no gap a 0.1 mm feeler enters, if you have one; otherwise none you can see against a light.
-4b. **Insert check (one lug bolt, plates in):** mark the insert's rim and the post face with a fine pen line across both.
-   Tighten that bolt in steps of 0.3, 0.5 and 0.7 N·m. After each step, back the bolt out and look: has the insert moved
-   (pen line broken, rim proud of the face, insert turning)? Record the torque at which it moved, or that it did not move
-   at 0.7. The lug-bolt torque for the arm is then the highest step with no movement, less one step, and never above 0.5.
-   Re-press or replace that insert before going on if it moved.
-5. **Rock check:** clamp the hub. Push and pull the coupon along the hub axis, then rock it firmly by hand in every direction.
-   R1g: also twist the coupon about the hub axis, both ways: there must be no click or free turn (the lug plates take the
-   yaw torque).
-   There should be no movement and no click. Then do ten firm rocking cycles and check again.
-6. **Open and look:** take the bolts out and the front coupon off. Check the ring (flat, not cut or crushed at its inner edge),
-   the ridge flank and the hub's groove flank (marks, scuffing), especially near the seam. Photograph them.
-7. Close again with the same ring and plates, lug bolts at 0.3 N·m, and repeat the rock check once.
-8. **R1g (lug plates), after the stop-load test:** take the lug plates out. Inspect the post faces and the hub lug faces
-   around each lug bolt for an imprint of the plate's hole edge, and at the plate's outer top corner (by the lug's root,
-   X offset 34, on the back post of the +X lug especially). Record its depth by feel (fingernail: none / felt / catches)
-   and photograph it. The FEA puts the stop's highest local pressure on that edge.
-
-9. **Coupon load fixture (printed parts only):**
-   - **Yaw:** clamp the hub. Bolt a printed lever to the coupon (any stiff PETG bar, 200 mm from the hub axis to the hook
-     hole). Pull 8.7 kg on a luggage scale at 200 mm (17 N·m), each way, 10 s.
-   - **Side load on the lug:** push the coupon sideways (along X) at the lug line with the scale, 5 kg, each way.
-   - **Play:** read the movement at the lever tip with a dial indicator if you have one, otherwise with feelers against a
-     fixed block, loaded and unloaded.
-10. **24 h re-check:** leave it bolted 24 h, re-torque the lug bolts, and repeat the rock, twist and play checks once.
+4. **Pick the lug plates:**
+   - **Fitting:** one plate goes on each Z face of each lug, with its lip hooked under the lug's free end. The bolt hole lines up
+     with the lug's.
+   - **Why the inserts must be flush:** the plate's Dia 3.8 hole is smaller than the insert's Dia 4.0 hole, so the plate sits on
+     the insert's rim and holds it in against the bolt's pull. A proud insert would lift the plate.
+   - **Blue check (once, with the first pick):** run a blue marker along the top edge of each plate (the edge nearest the hub),
+     on its lug side. Close the coupon by hand, bolt it at 0.3 N·m, then open it. There must be no blue on the hub lug's root
+     fillet. Blue there means the plate top rides on the fillet: stop and tell me.
+   - **Pick, with the ring chosen:** "Start each lug with the thickest pair, and take one plate down a step at a time,
+     alternating sides, until the front half closes by hand with the seam shut; use those." Both lugs are picked in the same
+     trials.
+   - **Never force it closed with the screws.**
+5. **Bolts:** fit the two lug bolts (M3 × 25 DIN 912) and torque them to **0.3 N·m** (the cap). The seam must stay shut: no gap
+   that a 0.1 mm feeler enters, or none you can see against a light.
+6. **Insert check (each of the three inserts, plates in for the two coupon ones):**
+   - Mark the insert's rim and the face with a fine pen line across both.
+   - Tighten in steps of 0.3, 0.5 and 0.7 N·m. After each step, back the bolt out and look for movement: the pen line broken,
+     the rim proud, or the insert turning.
+   - Record the torque at which each one moved, or that none moved at 0.7.
+   - **If an insert moves at 0.5:** the arm's lug-bolt torque stays at 0.3, and the plates holding the insert rim are relied on.
+     Re-press or replace that insert.
+   - **If one moves at 0.3:** stop and tell me.
+7. **Rock check:** clamp the hub with its axis vertical, coupon on top.
+   - Push and pull the coupon along the hub axis, then rock it firmly by hand in every direction.
+   - Twist it about the hub axis both ways: no click and no free turn.
+   - Do ten firm rocking cycles and check again.
+8. **Yaw load and play (the lever):**
+   - **Set-up:** drop the lever over the coupon's cut end. Set a dial indicator (or feelers against a fixed block) on the lever's
+     side face 60 mm from the hub axis, square to the lever.
+   - **Load:** pull the luggage scale horizontally at the hook, square to the lever, to 8.7 kg (17 N·m), 10 s. Do it each way.
+     "Toward the front coupon's side" is the sense that presses the -X lug's front plate, the YAW -17 case.
+   - **Read:** the dial loaded, and again unloaded.
+   - **Expected from the FEA:** the coupon turns 0.32° elastically under 17 N·m. That is 0.34 mm at 60 mm, plus 0.03 of lever
+     bending: **0.37 mm**.
+   - **Pass:** loaded, at most **0.47 mm** each way (0.37 + 0.1); unloaded, back to within 0.05 of the start.
+   - **Repeat with the lug bolts loosened** (back them off a quarter turn, finger tight). The readings must stay within the same
+     limits. That shows the plates take the play, not the bolt clamp.
+9. **Stop-equivalent load:**
+   - **What it reproduces:** the STOP_0 FEA puts 176 N on the -X lug's front plate (centre at X offset 30.6, Y 291.7), 43 N
+     sideways on that lug toward -X (through its bolt), and 75 N on the +X lug's back plate.
+   - **How:**
+     - Pull the yaw lever toward the front side at 8.7 kg. That gives 245 N on the -X lug's front plate, which covers the 176 N
+       with a factor of 1.4.
+     - At the same time, hang 4.5 kg (44 N) from a cord looped round the coupon at the lug line (Y about 291: 7 mm below the
+       coupon's cut end in this set-up), on the -X side, pulling toward -X.
+     - Hold both for 10 s.
+   - Then do it again in the mirror sense (the lever toward the back side, the cord toward +X).
+10. **Open and look, after all the loads:** take the bolts out and the front coupon off.
+    - Check the ring: flat, not cut or crushed at its inner edge.
+    - Check the ridge flank and the hub's groove flank for marks or scuffing, especially near the seam.
+    - Take the lug plates out. Inspect the post faces and the hub lug faces round each lug bolt for an imprint of the plate's hole
+      edge, and at the plate's outer top corner (by the lug's root, X offset 34, especially on the back post of the +X lug).
+    - Record each imprint's depth by feel (fingernail: none / felt / catches) and photograph it.
+11. **24 h re-check:** close again with the same ring and plates, lug bolts at 0.3 N·m, and leave it 24 h. Re-torque, then repeat
+    the rock check and the yaw play reading (step 8) once.
 
 **Pass, before the halves are printed (all of these):**
 - **Ring:** one ring closes by hand with the seam shut; the ring is flat, not cut or crushed.
-- **Plates:** one pick closes by hand with the seam shut; the plates are flat and whole (the strip above the hole intact).
-- **Twist check:** no click or free turn by hand; under the 17 N·m lever, play at 200 mm under 0.5 mm and back to zero when
-  unloaded.
-- **Imprint:** none, or felt only, on the post and lug faces around each bolt; nothing that catches a fingernail.
-- **24 h:** the same after the re-torque.
+- **Plates:** one pick closes by hand with the seam shut; the plates are flat and whole (the strip above the hole intact); no blue
+  on the hub fillet.
+- **Inserts:** all flush to 0.05 below; none moved at 0.3 N·m.
+- **Yaw:** no click or free turn; loaded at most 0.47 mm at 60 mm each way, back within 0.05 unloaded, with the bolts tight and
+  with them loosened.
+- **Imprint:** none, or felt only; nothing that catches a fingernail.
+- **24 h:** the same results after the re-torque.
 
 **Otherwise stop and tell me.**
-- Every ring too thick (even the thinnest won't close), or every ring too loose (even the thickest rocks): the set is offset.
-  Reprint the set shifted (I'll send the file); the coupon and the arm stay as they are.
+- If every ring is too thick (even the thinnest won't close), or every ring too loose (even the thickest rocks), the set is
+  offset. Reprint the set shifted (I'll send the file); the coupon and the arm stay as they are.
 
-The same ring then goes into the arm, together with the same printed hub.
+The same ring and plates then go into the arm, together with the same printed hub.
 
 ## 3. Key coupon test (before the whole-arm test)
 

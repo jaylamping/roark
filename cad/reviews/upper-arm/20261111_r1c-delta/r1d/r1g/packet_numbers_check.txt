@@ -1,1 +1,1 @@
-6 rows checked against 182 files: 0 not found
+6 rows checked, each against its own case reports (r1g4_<case>.*.txt): 0 failures

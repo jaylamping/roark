@@ -67,3 +67,26 @@ No edge is within 5 mm of the bundle on this route, so no radius is needed in th
 
   Angles over about 127 deg run the 13-wide bundle at r 19 into the front -X post (147-165 deg) at the hub end; this is not
   checked in full yet.
+
+## Second review (2026-11-13): the route is static, and a tie point is proposed
+
+**Status.** The hub window is fixed at 68 deg (entry r 17.2-19). The shoulder thread clamps the bundle at the window, so the yaw
+slack stays above the hub and nothing slides into the arm.
+
+**The S-bend to the rib gap (R about 15).** The bundle is loose wires: 16 or 18 AWG silicone (OD about 3.0) plus 26 AWG pairs.
+- R 15 at the bundle centre line is 5 x the largest wire's OD.
+- The innermost wire of a 3.5-thick bundle bends at about R 13, which is 4.4 x OD.
+- That is acceptable for a static, clamped run, the usual guide being 4-6 x OD for fixed silicone wire. It would not be acceptable
+  for a run that flexes. With the clamp at the window, the bend never moves.
+
+**Tie point.** Proposed, not applied (`cable_tie_point_proposal.png`).
+- **Shape:** a bridge on the back half's -X inner wall (X 146.3) at the neck, Y 255-261, Z CZ-4 to CZ:
+  - a bar 2.0 thick (X 147.9-149.9), standing 1.6 off the wall;
+  - posts 1.5 long at each end;
+  - a 3.0 x 1.6 slot that a 2.5 x 1.0 cable tie passes through along Z, round the bar and the bundle.
+- **Printing:** the back half prints on its seam face, so the bridge stands on the bed and needs no support. The outside is
+  unchanged.
+- **Clearances:** it is 7 mm clear of the seam post (Dia 7.5 at Y 272), above the drum top (about Y 251), and at the entry to
+  the neck opening and rib gap, where the route has to arrive anyway.
+- **Cost:** about 74 mm³, so about 0.1 g and under a minute of print time.
+- **To apply:** add it to `organic_parts.upper_half` (back) and re-run the halves' mesh gate, slice and closing path.
