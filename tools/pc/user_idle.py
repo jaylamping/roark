@@ -1,12 +1,17 @@
 """Is anyone using this PC right now? conventions/cad-workstation.md section 5.
 
-    python tools/pc/user_idle.py [--min MINUTES]     # default 15
+    python tools/pc/user_idle.py [--watch SECONDS]     # default 180
 
-Prints one line and exits 0 if the PC is free for a job (nobody has touched the keyboard or mouse for MINUTES and no
-fullscreen window, such as a game or a film, is in front), 1 if someone is using it, 2 if it could not tell. A thread asks
+Prints one line and exits 0 if the PC is free for a job, 1 if someone is using it, 2 if it could not tell. A thread asks
 this of Joey-PC before it moves a waiting job there. Windows only; stdlib only.
 
-It must run in the logged-in desktop session, which a Remote Control session does. From a service the idle time is
+It watches the keyboard and mouse for SECONDS and counts the seconds in which any input arrived. A person at the PC
+makes input in many of them. Joey-PC also runs a script that nudges the mouse about every ten minutes to keep remote
+sessions alive, and Windows counts that as input, so "time since the last input" never passes ten minutes there: one
+nudge is at most a few seconds of input in the window, which still reads as free. A fullscreen window in front (a game,
+a film) counts as in use whatever the input.
+
+It must run in the logged-in desktop session, which a Remote Control session does. From a service the input time is
 meaningless, and it exits 2.
 """
 
@@ -15,19 +20,22 @@ from __future__ import annotations
 import sys
 
 
-def free_to_use(idle_s: float | None, fullscreen: bool, min_idle_s: float) -> tuple[int, str]:
-    """(exit code, reason). A fullscreen window counts as in use however long the input has been quiet: a film or a game
-    played on a controller sends no keyboard or mouse input."""
-    if idle_s is None:
-        return 2, "could not read the idle time (not in the desktop session?)"
+NUDGE_S = 3  # seconds of input a keep-alive mouse nudge may make in one watch
+
+
+def free_to_use(input_s: int | None, fullscreen: bool, watch_s: float) -> tuple[int, str]:
+    """(exit code, reason) from the seconds with input seen during the watch. A fullscreen window counts as in use
+    however quiet the input: a film or a game played on a controller sends no keyboard or mouse input."""
+    if input_s is None:
+        return 2, "could not read the input time (not in the desktop session?)"
     if fullscreen:
-        return 1, f"in use: a fullscreen window is in front (input idle {idle_s / 60:.0f} min)"
-    if idle_s < min_idle_s:
-        return 1, f"in use: last input {idle_s / 60:.1f} min ago, under {min_idle_s / 60:.0f} min"
-    return 0, f"free: no input for {idle_s / 60:.0f} min and nothing fullscreen"
+        return 1, "in use: a fullscreen window is in front"
+    if input_s > NUDGE_S:
+        return 1, f"in use: input in {input_s} of {watch_s:.0f} s"
+    return 0, f"free: input in {input_s} of {watch_s:.0f} s (a keep-alive nudge at most) and nothing fullscreen"
 
 
-def idle_seconds() -> float | None:
+def last_input_tick() -> int | None:
     import ctypes
     import ctypes.wintypes as wt
 
@@ -38,7 +46,26 @@ def idle_seconds() -> float | None:
     info.cbSize = ctypes.sizeof(info)
     if not ctypes.windll.user32.GetLastInputInfo(ctypes.byref(info)) or info.dwTime == 0:
         return None
-    return ((ctypes.windll.kernel32.GetTickCount() - info.dwTime) & 0xFFFFFFFF) / 1000.0
+    return info.dwTime
+
+
+def input_seconds(watch_s: float) -> int | None:
+    """How many one-second samples over `watch_s` saw new input. Stops early once it is clearly a person."""
+    import time
+
+    last = last_input_tick()
+    if last is None:
+        return None
+    seen = 0
+    end = time.monotonic() + watch_s
+    while time.monotonic() < end and seen <= NUDGE_S:
+        time.sleep(1.0)
+        now = last_input_tick()
+        if now is None:
+            return None
+        if now != last:
+            seen, last = seen + 1, now
+    return seen
 
 
 def fullscreen_in_front() -> bool:
@@ -72,8 +99,11 @@ def main(argv: list[str]) -> int:
     if sys.platform != "win32":
         print("user_idle.py is Windows only")
         return 2
-    minutes = float(argv[argv.index("--min") + 1]) if "--min" in argv else 15.0
-    code, why = free_to_use(idle_seconds(), fullscreen_in_front(), minutes * 60)
+    watch_s = float(argv[argv.index("--watch") + 1]) if "--watch" in argv else 180.0
+    if fullscreen_in_front():
+        code, why = free_to_use(0, True, watch_s)
+    else:
+        code, why = free_to_use(input_seconds(watch_s), fullscreen_in_front(), watch_s)
     print(why)
     return code
 

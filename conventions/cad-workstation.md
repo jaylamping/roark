@@ -176,6 +176,6 @@ So the waits are not a shortage of machine. What follows:
   worktree that has not merged `main` keeps old launch rules. Merge `main` before a run of jobs.
 - **Don't queue behind a guard.** If a launch or a job has waited 15 minutes, move the job to the other machine.
 - **Joey-PC first when Joey is away from it** (Joey, 2026-11-13). Before a job that would wait on holly-pc, run
-  `python tools/pc/user_idle.py` on Joey-PC: exit 0 means no keyboard or mouse input for 15 minutes and nothing
-  fullscreen in front, and the job may run there, hidden, under Joey-PC's rules ([cad.md section 9](cad.md#9-cad-workstation)).
+  `python tools/pc/user_idle.py` on Joey-PC: exit 0 means it watched for three minutes, saw no more input than one
+  nudge of his keep-alive mouse script, and nothing fullscreen is in front, and the job may run there, hidden, under Joey-PC's rules ([cad.md section 9](cad.md#9-cad-workstation)).
   Exit 1 means he is using it: stay on holly-pc. Check again before each new job, not once per session.
