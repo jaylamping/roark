@@ -430,7 +430,8 @@ def run(name, c):
 # layers normal to Y, so the layer stress is sigma_y.
 HUB_FIX = [('fixed', cyl(2.15, [150, 297, -20, 192, 321, 30])), ('fixed', pl((RX + 21.5, RS02_OUT, YZ))),
            ('fixed?', cyl(1.9, [150, 297, -20, 192, 321, 30]))]   # ?: the two Ø3.8 locating holes, where the hub has them
-LUG_HOLES = [cyl(1.7, [144, 289, 0, 151, 295, 12]), cyl(1.7, [190, 289, 0, 197, 295, 12])]
+LUG_R = float(os.environ.get('HUB_LUG_D', '3.4')) / 2      # the hub's lug bolt hole (D3c7: HUB_LUG_D=3.8)
+LUG_HOLES = [cyl(LUG_R, [144, 289, 0, 151, 295, 12]), cyl(LUG_R, [190, 289, 0, 197, 295, 12])]
 AT = (RX, 292.0, YZ)
 YAW_T = 17.0          # RS02 peak torque (the arm thread's rating, 17 N.m)
 CASES = {}
@@ -565,9 +566,11 @@ CASES['HUBL_YAW3P6'] = dict(_d3((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 28.0, 28.0),
 
 # the arm's fixed shim plate (coordinator 11:59Z): hole dia 3.8, plate top edge Y 294.7, otherwise as HUBL_YAW3P. The case of record
 _PL38 = lambda sg: (min(RX + sg * 18.96, RX + sg * 34.2), max(RX + sg * 18.96, RX + sg * 34.2), 288.2, 294.7)
+# with the lug hole itself at dia 3.8 (D3c7) the plate hole is the lug hole: no circle is split out of the load
+_C38 = [] if LUG_R >= 1.89 else [(RX - 23.0, 292.0, 1.9), (RX + 23.0, 292.0, 1.9)]
 CASES['HUBL_YAW3P38'] = dict(_d3((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 28.0, 28.0),
-    split=[(1.0, [_PL38(-1), _PL38(1)], [_PFACE(-1, 1.0), _PFACE(1, 1.0)], [(RX - 23.0, 292.0, 1.9), (RX + 23.0, 292.0, 1.9)]),
-           (11.0, [_PL38(-1), _PL38(1)], [_PFACE(-1, 11.0), _PFACE(1, 11.0)], [(RX - 23.0, 292.0, 1.9), (RX + 23.0, 292.0, 1.9)])],
+    split=[(1.0, [_PL38(-1), _PL38(1)], [_PFACE(-1, 1.0), _PFACE(1, 1.0)], _C38),
+           (11.0, [_PL38(-1), _PL38(1)], [_PFACE(-1, 11.0), _PFACE(1, 11.0)], _C38)],
     ctrl=D3_CTRL + [(cyl(0.8, [132, 294.5, -0.5, 209, 296.2, 12.5]), 0.35)],
     remotes=[(_PFACE(-1, 1.0), _PAT(-1, 1.0), (0.0, 0.0, YAW3_F), (0.0, 0.0, 0.0), 1),
              (_PFACE(1, 11.0), _PAT(1, 11.0), (0.0, 0.0, -YAW3_F), (0.0, 0.0, 0.0), 1)])

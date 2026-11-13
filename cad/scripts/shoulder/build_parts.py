@@ -1308,6 +1308,12 @@ def build_hub():
         em.Add2(-1, f'"{feat_}" = IIF("{var}" = 1, "unsuppressed", "suppressed")', True)
     d.ForceRebuild3(False)
     log('  hub prepared features:', [(n, d.FeatureByName(n).IsSuppressed2(1, NUL)[0] if d.FeatureByName(n) else None) for n in ('SPIGOT_EXT', 'LUG2')])
+    if HUB_LUG_D:
+        # D3c7: the lug bolt holes (imported as dia 3.4, along Z at X offset 23, Y 292) opened to HUB_LUG_D, the arm's plate
+        # hole size: under the stop load the lug moves about 0.18 mm against the M3 shank, and 0.2 mm of radial room is too
+        # little for a printed hole
+        extrude(d, zsk(d, -3.0, 'LUG_HOLES_OPEN', lambda s_: [s_.circle((RX + sg_ * 23.0, 292.0, -3.0), HUB_LUG_D / 2) for sg_ in (-1, 1)]),
+                'LUG_HOLES_OPEN', 20.0, Z, cut=True)
     # locating holes (A_HUB_LUGS.md, "Cheapest fix"): two of the six hub-top screw holes, at -142 and 38 deg (180 deg apart),
     # printed 3.8 and hand-reamed 4.00 so the plain shank of an M4 x 30 partially threaded screw locates the hub in yaw;
     # the other four stay 4.3 clearance (the RS02 pattern's own tolerance)

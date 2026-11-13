@@ -777,3 +777,45 @@ less, and warn that a screw must not go deeper than the thread.
 - **Open:** whether to move the window's bore end out past the tubes (entry at r 17.2 or more; the bore is r 23 at 68°, so
   a 3.5 mm bundle still fits), or to accept two partial seats. See OPEN_ASSUMPTIONS.md.
 
+## Rear cap screws: fix candidate (2026-11-13, look build only, not adopted)
+
+**Build:** `LOOK=capfix` (`dims.CAPFIX`, default off). Drum and cap built as looks; the real parts are unchanged.
+
+![before and after](../checks/cap_screw_fix.png)
+
+**Why not simply move the M3 out:** the head pocket (r 3.25) would break through the cap's skin, and a boss moved out
+with the screw stands up to 1.6 mm proud of it. The drum is solid from r 48 to r 56 at its rear rim, so the wall is only
+thin on the bore side.
+
+**What changes:**
+
+| | Today | Candidate |
+|---|---|---|
+| Screws | 3 × M3 thread-forming at r 50 | 3 × **M2.5 thread-forming at r 50.6**; M2.5 × 14 or 16 |
+| Pilot in the drum | Ø2.6, **0.71-0.73 mm** of wall to the bore | Ø2.1, **1.55 mm** to the bore, 4.3 mm to the skin |
+| Head pocket in the cap | Ø6.5, 1.75 mm of cap outside it | Ø5.2, 1.8 mm outside it |
+| Locating | The screws alone | **A collar round each pilot** on the drum's rear face (r 48.2-53.0, 8 mm wide, 2.5 high, 1.35 mm of wall round the pilot) in a socket in the cap's boss |
+| Cap's screw bosses | r 5 at r 50 | Unchanged |
+
+- **Collars on the drum, not pegs on the cap:** the cap prints front face down and must stay flat there. The drum prints
+  rear face up, so the collars are on its top.
+
+**Checks:**
+- **Integrity:** both parts PASS.
+- **Outside untouched:** against a baseline built from the same script with the fix off, the drum differs only at roll
+  radius 48.2-53.0, Z -31 to -20, at the three screw angles; the cap only at radius 46.8-53.2, Z -39.3 to -28.5, at the
+  same angles. The cap's skin is at radius 54 or more. So nothing outside changes, and the clearance sweep stands.
+- **The baseline equals the real parts:** cap within 0.003 mm, drum within 0.09 mm (the real drum's STL is a coarser
+  tessellation).
+- **Mass:** drum 226.9 g (226.5), cap 85.0 g (85.2).
+- **Loads on paper,** with the collars carrying the stop's reaction and the screws only clamping:
+
+  | Case | Worst collar | Bearing (8 × 2.5 or 4.8 × 2.5 mm face) | Shear across layers at the collar's foot (34.9 mm²) |
+  |---|---|---|---|
+  | 17 N·m (software limit) | 275 N | 23 MPa, SF 2.0 | 7.9 MPa, SF 1.65 on the assumed 13 |
+  | 20 N·m (rated) | 323 N | 27 MPa, SF 1.7 | 9.3 MPa, SF 1.4 |
+  | 60 N·m (stall) | 970 N | 81 MPa: fails | 28 MPa: fails |
+
+  The stall fails here as it does at the tooth; it is covered by the software limit (B_ROLL_STOPS.md).
+- **Not done:** a solve. The numbers above are hand figures.
+
