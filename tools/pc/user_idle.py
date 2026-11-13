@@ -5,11 +5,12 @@
 Prints one line and exits 0 if the PC is free for a job, 1 if someone is using it, 2 if it could not tell. A thread asks
 this of Joey-PC before it moves a waiting job there. Windows only; stdlib only.
 
-It watches the keyboard and mouse for SECONDS and counts the seconds in which any input arrived. A person at the PC
-makes input in many of them. Joey-PC also runs a script that nudges the mouse about every ten minutes to keep remote
-sessions alive, and Windows counts that as input, so "time since the last input" never passes ten minutes there: one
-nudge is at most a few seconds of input in the window, which still reads as free. A fullscreen window in front (a game,
-a film) counts as in use whatever the input.
+It watches the keyboard and mouse for SECONDS, one look a second. A person at the PC makes input for many seconds on
+end (bursts of 19 to 36 s were logged on Joey-PC, 2026-11-13). Joey-PC also runs a keep-alive script for remote sessions:
+once nobody has touched the PC for five minutes, it sweeps the mouse across the monitors every two minutes, about 1.2 s
+each time, and Windows counts that as input, so "time since the last input" never grows there. The check therefore reads
+the PC as in use when any burst of input lasts longer than a sweep can, or when there is more input in total than a few
+sweeps make. A fullscreen window in front (a game, a film) counts as in use whatever the input.
 
 It must run in the logged-in desktop session, which a Remote Control session does. From a service the input time is
 meaningless, and it exits 2.
@@ -19,19 +20,20 @@ from __future__ import annotations
 
 import sys
 
-NUDGE_S = 3  # seconds of input a keep-alive mouse nudge may make in one watch
+SWEEP_S = 3  # the longest run of seconds one keep-alive sweep can fill (1.2 s of input, sampled each second)
+SWEEPS_S = 8  # the most seconds of input the sweeps can make in one watch (two a watch, plus its window clicks)
 
 
-def free_to_use(input_s: int | None, fullscreen: bool, watch_s: float) -> tuple[int, str]:
-    """(exit code, reason) from the seconds with input seen during the watch. A fullscreen window counts as in use
-    however quiet the input: a film or a game played on a controller sends no keyboard or mouse input."""
-    if input_s is None:
+def free_to_use(total_s: int | None, longest_s: int, fullscreen: bool, watch_s: float) -> tuple[int, str]:
+    """(exit code, reason) from the seconds with input seen during the watch and the longest unbroken run of them. A
+    fullscreen window counts as in use however quiet the input: a film or a game on a controller sends no input."""
+    if total_s is None:
         return 2, "could not read the input time (not in the desktop session?)"
     if fullscreen:
         return 1, "in use: a fullscreen window is in front"
-    if input_s > NUDGE_S:
-        return 1, f"in use: input in {input_s} of {watch_s:.0f} s"
-    return 0, f"free: input in {input_s} of {watch_s:.0f} s (a keep-alive nudge at most) and nothing fullscreen"
+    if longest_s > SWEEP_S or total_s > SWEEPS_S:
+        return 1, f"in use: input in {total_s} of {watch_s:.0f} s, {longest_s} s on end"
+    return 0, f"free: input in {total_s} of {watch_s:.0f} s (keep-alive sweeps at most) and nothing fullscreen"
 
 
 def last_input_tick() -> int | None:
@@ -48,23 +50,36 @@ def last_input_tick() -> int | None:
     return info.dwTime
 
 
-def input_seconds(watch_s: float) -> int | None:
-    """How many one-second samples over `watch_s` saw new input. Stops early once it is clearly a person."""
+def bursts(seen: list[bool]) -> tuple[int, int]:
+    """(seconds with input, longest unbroken run of them) from one flag per one-second look."""
+    total = longest = run = 0
+    for hit in seen:
+        run = run + 1 if hit else 0
+        total += hit
+        longest = max(longest, run)
+    return total, longest
+
+
+def watch_input(watch_s: float) -> tuple[int | None, int]:
+    """bursts() over `watch_s` seconds of looking. Stops early once it is clearly a person."""
     import time
 
     last = last_input_tick()
     if last is None:
-        return None
-    seen = 0
+        return None, 0
+    seen: list[bool] = []
     end = time.monotonic() + watch_s
-    while time.monotonic() < end and seen <= NUDGE_S:
+    while time.monotonic() < end:
         time.sleep(1.0)
         now = last_input_tick()
         if now is None:
-            return None
-        if now != last:
-            seen, last = seen + 1, now
-    return seen
+            return None, 0
+        seen.append(now != last)
+        last = now
+        total, longest = bursts(seen)
+        if longest > SWEEP_S or total > SWEEPS_S:
+            break
+    return bursts(seen)
 
 
 def fullscreen_in_front() -> bool:
@@ -100,9 +115,10 @@ def main(argv: list[str]) -> int:
         return 2
     watch_s = float(argv[argv.index("--watch") + 1]) if "--watch" in argv else 180.0
     if fullscreen_in_front():
-        code, why = free_to_use(0, True, watch_s)
+        code, why = free_to_use(0, 0, True, watch_s)
     else:
-        code, why = free_to_use(input_seconds(watch_s), fullscreen_in_front(), watch_s)
+        total, longest = watch_input(watch_s)
+        code, why = free_to_use(total, longest, fullscreen_in_front(), watch_s)
     print(why)
     return code
 
