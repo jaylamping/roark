@@ -87,6 +87,29 @@ failure the requirement did not name.
 
 The grading keys for sets B to D are kept outside the repository so that later runs cannot read them.
 
+## Set C: design sense ([TASKS_C.md](eval/TASKS_C.md))
+
+A boxy forearm link and the request "make this more organic, like it grew that way", with the mounting faces, the
+loads and the mass fixed. The engineering is a gate; the form is judged by Joey from picture sheets.
+
+| | Sonnet + playbook ([sonnet-c](eval/sonnet-c/)) | Fable + playbook ([fable-c](eval/fable-c/)) |
+| --- | --- | --- |
+| Wall time, limit 100 min | 92 min | 71 min, 27 of them waiting behind other sessions' solves |
+| Mass, from 261 g | 160 g | 137 g |
+| Lowest factor (need 2.0) | 3.46, shear between layers, reported as "not shown" because it still moved | 2.58, shear between layers, two meshes within 5 to 7 % |
+| Fixed items intact | yes, checked on the export | yes, checked on the export |
+| First picture inside 20 minutes | yes, at 6 | yes, at 18, drawn from the section table because SolidWorks would not launch |
+| Ideas that differ in kind | a waisted strap, a flat leaf | a bone, a wishbone |
+| Section through the shaft | rounded rectangle; the round loft pinched and was dropped after six tries | oval; the same loft pinched, cured by drawing each section as two open curves |
+| Sharp edge per root of area (boxy 12.3) | 7.9 | 3.4 |
+| Its own verdict on the form | "a smooth flat strap, less boxy more than grown" | "a bone"; names the neck crease under the lower screws as the weak spot |
+| Joey's pick ([sheet](eval/fable-c/pictures/c2_before_after.png)) | | **this one** |
+
+Both hit the same wall, a loft that pinches when its sections change shape. One stopped at a form it knew was short of
+the request and said so; the other found why and got through. The cure is now in [03-modelling.md](03-modelling.md),
+and the same task run again by Sonnet with it is the measure of whether a lesson written down is a lesson learned.
+The pick was not fully blind: the card that asked for it carried a recommendation.
+
 ## What each run changed in the playbook
 
 | Run | Changes |
@@ -97,6 +120,7 @@ The grading keys for sets B to D are kept outside the repository so that later r
 | t3-load-check | Load placement, second load model, the mask warning, the harmless excessive-displacement prompt |
 | sonnet-b | Study names, three sizes in `converge()`, four studies per instance, section forces, twin-model check, exclusion distance at a fixed hole |
 | fable-b | The heavy-solve lock, one refinement at a time, the unanswered contact-convergence prompt, which contact proof fits which joint, buckling of lightened parts |
+| sonnet-c, fable-c | Lofts whose sections change shape, a point-in-solid check (`sheet.inside`), a crop for close-ups, one launch per job when the clock matters |
 
 ## What still needs the strongest model, or Joey
 
