@@ -613,3 +613,11 @@ Pictures of the real parts: [look-options/side_centre/real/](look-options/side_c
   push the plug straight down onto the socket with long-nose pliers or a push-stick; the opening is 16.5 × 10 mm.
   Unplug with the same pliers, pulling straight up.
 
+
+
+## RS02 power/CAN plug: radial (2026-11-13)
+
+The RS02's two XT30PB(2+2) sockets face sideways: r 36.17, Y 354.9-360.1, at 173° and −7°. The plug mates radially. The
+vendor model and our reference are right; the plug-pocket study's earlier "plug mates down onto the rear face" was a misreading.
+Rework in [look-options/plug_pocket](look-options/plug_pocket/README.md): at today's clocking the plug breaks through the cuff
+skin; with the RS02 re-clocked +40° it fits inside the outline along the existing socket tap. Mock-up next; real parts unchanged.

@@ -170,3 +170,45 @@ Sideways, the cuff wall (r 41-45) closes the pocket.
   socket, which is low enough to run straight into the socket tap below the cuff top with no drop above it.
 - As before, Joey's plug measurement decides between (a) and the fallbacks.
 
+
+## Correction, 2026-11-13: the plug mates radially (side-facing socket)
+
+**Correction:** Joey's photos of the real RS02 (plug pushed on, then pulled off) show the XT30(2+2)-F plug mating
+**radially** into a slot in the side of the rear cover's rim, with its leads leaving straight out. It does not stand up
+off the rear face. Everything above that assumes a plug pushed down onto the rear face (the 15 mm "headroom", the column,
+variant a2) is superseded.
+
+**The vendor STEP agrees, and so does our RS02 model.** I re-read the faces of `cad/vendor/robstride/vendor_robstride_rs02.step`:
+- **Two sockets, 180° apart:** at 173° and −7° in our frame (±90° in the vendor's).
+- **Mating face:** r 36.17, facing radially outward, about 15.5 mm around the rim by 5.2 mm along the axis. The pins run
+  radially.
+- **Height:** Y 354.9-360.1, that is 5.2-10.4 mm below the RS02 rear face (Y 365.26), in the side of the rear cover.
+- **So the model was right.** The earlier text here ("lying tangential on the rear face, so the plug mates straight
+  down") misread it.
+
+**Plug envelope used here** (no caliper data; Joey confirmed it is an unpluggable plug):
+- Radial, from the socket face (r 36.17) to 10 mm past the flange (r 49.25), 15.5 wide.
+- The folded taped lead measured 6-7 mm past the flange from the photos; 10 is the design margin.
+- **Assumed:** the plug's size along the motor axis, from the XT30(2+2) data.
+
+**Where it fits:** see the section at the socket's mid-height (Y 357.5), today and re-clocked:
+![section](section_radial_plug_Y357.png)
+- **Today's clocking (sockets 173 / −7°):** the cuff skin there is only r 42-44.9, so the envelope breaks through the outer
+  skin at 173°. Either option, the plug pulled out in place or fitted before the motor goes in, needs a hole in the
+  visible cuff.
+- **RS02 re-clocked +40° (sockets −147 / 33°): recommended.**
+  - At −147° the skin is at r 55-61, and the in-use socket lands on the existing socket-tap channel (r 40.5-47.5, from
+    about −168° to the back cavity).
+  - The plug and its folded lead stay inside the outline. That needs the seat-ring socket pocket (as today) and about
+    2-3 mm into the wall behind the tap, out to about r 50: all internal.
+  - **Assembly:** with the fork front on the bench and the fork rear not yet fitted, the back cavity is open. The plug goes
+    on radially in place, and its lead folds into the tap and runs to the back. The spare socket (33°) only needs its
+    seat-ring pocket.
+  - **Cost:**
+    - The fork front's five RS02 screw holes move to the matching five of the nine-position 40° pattern.
+    - The RS02's zero becomes a software offset.
+    - The hub, the arm interface and the yaw stops do not change.
+    - At +40° the screws are reachable from above, so the two dome access bores and their plugs may be dropped.
+
+**Next:** sections at Y 355 / 360 and along the lead route, a CAD mock-up on a copy (`LOOK=pp_r`), and visibility
+pictures. The real parts stay unchanged.
