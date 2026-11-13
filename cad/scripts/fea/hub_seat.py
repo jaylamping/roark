@@ -468,6 +468,16 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 gm = os.environ.get('HS_GROOVE_MESH') or (gflag.read_text().strip() if gflag.exists() else '')
                 if gm:
                     c['ctrl'] = [(('touch', [128.0, 298.7, -40.0, 213.0, 302.05, 50.0], 2000.0), float(gm))] + list(c.get('ctrl', []))      # first: see the root control
+                # 2026-11-12: the arm bore (r 35.9) and the hub spigot (r 35.85) are 0.05 apart radially. Their cylinder faces are too
+                # large for the seat control, so they meshed at the global size; at 5.0 the facets sag about 0.09 (L^2 / 8r) and the
+                # bodies overlapped (STOP_124 at 5.0: 8.8 GPa at the bore, θ 182). HS_BORE_MESH (default 1.5 whenever the global size
+                # is over 3.0): that size on every cylinder face of r 34.5-37.0 in the joint band not already controlled
+                bm = float(os.environ.get('HS_BORE_MESH', '0') or 0)
+                gsz = gel if (rm and gel) else float(os.environ.get('HS_GLOBAL_EL', '0') or 0)
+                if bm <= 0 and gsz > 3.0:
+                    bm = 1.5
+                if bm > 0:
+                    c['ctrl'] = list(c.get('ctrl', [])) + [(('cylr', 34.5, 37.0, [128.0, 288.0, -40.0, 213.0, 303.0, 50.0]), bm)]      # LAST: faces under the seat / root controls keep theirs
                 if rm and gel:
                     c['el'] = gel
                 elif os.environ.get('HS_GLOBAL_EL'):      # 2026-11-12: coarser away from the joint (direct sparse memory); the seat control stays

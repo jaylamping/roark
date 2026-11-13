@@ -171,6 +171,10 @@ def pick(d, sel):
             q = sel[2]
             if all(lo[i] >= q[i] - .01 and hi[i] <= q[i + 3] + .01 for i in range(3)):
                 out.append(f)
+        if sel[0] == 'cylr' and t == 'cyl' and sel[1] <= r <= sel[2]:      # 2026-11-12: cylinders by radius range inside a box (bore / spigot fit faces)
+            q = sel[3]
+            if all(lo[i] >= q[i] - .01 and hi[i] <= q[i + 3] + .01 for i in range(3)):
+                out.append(f)
         if sel[0] == 'touch':      # any face whose box meets the given box and whose area is under the limit (local mesh control)
             q, amax = sel[1], sel[2]
             if all(lo[i] <= q[i + 3] and hi[i] >= q[i] for i in range(3)) and a <= amax:
