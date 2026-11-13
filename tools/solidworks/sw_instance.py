@@ -14,6 +14,7 @@ import ctypes
 import ctypes.wintypes as wt
 import msvcrt
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -809,24 +810,27 @@ def end_session(state_file, busy_wait=30):
 
 
 def _solve_lock_holder(path):
-    """The lock file's text if its holder is still running, else None. Lines: owner, pid, process start time, taken at."""
+    """The lock file's text if its holder may still be running, else None. Lines: owner, pid, process start time, taken at.
+
+    A lock is only ever taken over on proof that its holder has gone, because a session may have written the file
+    by hand in another layout: big_solve's own layout with a dead or reused pid, or any text whose every number is
+    not a running pid. An empty file is a holder between creating and writing it, unless it is a minute old.
+    """
     try:
         with open(path) as f:
             text = f.read()
-        lines = text.splitlines()
-        pid = int(lines[1])
-        if _started(pid) is not None and (len(lines) < 3 or repr(_started(pid)) == lines[2].strip()):
-            return text
-        return None
-    except (IndexError, ValueError):
-        # Not in this format: a holder is between creating the file and writing it, or wrote it by hand. Give a
-        # fresh file the benefit of the doubt and treat an old one as left behind.
-        try:
-            return "unreadable lock" if time.time() - os.path.getmtime(path) < 60 else None
-        except OSError:
-            return None
+        age = time.time() - os.path.getmtime(path)
     except OSError:
         return None
+    lines = text.splitlines()
+    try:
+        pid, born = int(lines[1]), float(lines[2])
+    except (IndexError, ValueError):
+        if not text.strip():
+            return None if age > 60 else "(being written)"
+        pids = [int(n) for n in re.findall(r"\d+", text) if len(n) < 10]
+        return text if not pids or any(_started(p) is not None for p in pids) else None
+    return text if _started(pid) == born else None
 
 
 class big_solve:  # noqa: N801 - reads as a verb at the call site: `with big_solve("shoulder"):`
@@ -837,6 +841,8 @@ class big_solve:  # noqa: N801 - reads as a verb at the call site: `with big_sol
 
     For a Simulation solve expected to need more than about 6 GB. Waits while another session holds it. The lock
     is a file created exclusively and removed on the way out; one whose holder process has gone is taken over.
+    Two sessions that find the same dead lock at the same instant can both take it; the window is a few
+    milliseconds and the cost is two large solves at once, which is what happened without the lock.
     """
 
     def __init__(self, owner, path=SOLVE_LOCK, timeout=6 * 3600, poll=15):

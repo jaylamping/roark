@@ -12,7 +12,8 @@ import sw_instance
 
 
 def test_only_a_half_closed_or_undriven_instance_is_unhealthy():
-    """A launch must go ahead beside a solve or a long call, and must still refuse for the instance that stalls it for ever."""
+    """Guards: bug - launch() refused for 300 s behind any instance that was solving or meshing, so sessions took turns
+    (holly-pc, 2026-11-12, PR #70); and one half-closed instance stalled every launch at the splash screen (PR #66)."""
     c = sw_instance.classify
     assert c(True, 93, False, False) == "idle"
     assert c(False, 93, True, False) == "solving"  # star.exe under it, client blocked or gone
@@ -23,7 +24,8 @@ def test_only_a_half_closed_or_undriven_instance_is_unhealthy():
 
 
 def test_startup_limit_stops_while_a_healthy_instance_is_busy_and_a_zombie_ends_it(monkeypatch):
-    """The 300 s refusal behind a long solve must not come back as a 300 s startup timeout at the splash screen."""
+    """Guards: bug - a start waits at the splash screen until the oldest instance answers (150 s and more, holly-pc,
+    2026-11-13, PR #70), so a fixed 300 s startup limit would refuse behind a long solve just as the old guard did."""
     now = [1000.0]
     others = [[(7, "solving")]]
     monkeypatch.setattr(sw_instance.time, "time", lambda: now[0])
@@ -49,14 +51,25 @@ def test_startup_limit_stops_while_a_healthy_instance_is_busy_and_a_zombie_ends_
         clock.running()
 
 
-def test_big_solve_takes_over_a_dead_holders_lock_and_waits_for_a_live_one(tmp_path):
-    lock = str(tmp_path / "solve.lock")
-    Path(lock).write_text("gone thread\n999999999\n1.0\n")  # no such process
-    with sw_instance.big_solve("a", path=lock, timeout=5, poll=0.1):
-        text = Path(lock).read_text()
+def test_big_solve_takes_only_a_lock_whose_holder_has_gone(tmp_path):
+    """Guards: bug - a 13 GB solve started beside another session's run and stopped it (holly-pc, 2026-11-13, PR #70).
+    The lock only helps if a live holder is never displaced, including one that wrote the file by hand."""
+    lock = tmp_path / "solve.lock"
+    lock.write_text("gone thread\n999999999\n1.0\n")  # no such process
+    with sw_instance.big_solve("a", path=str(lock), timeout=5, poll=0.1):
+        text = lock.read_text()
         assert text.splitlines()[:2] == ["a", str(os.getpid())]
         # This process holds it and is alive, so a second taker waits and then gives up; the lock is left alone.
-        with pytest.raises(TimeoutError), sw_instance.big_solve("b", path=lock, timeout=0.3, poll=0.1):
+        with pytest.raises(TimeoutError), sw_instance.big_solve("b", path=str(lock), timeout=0.3, poll=0.1):
             pass
-        assert Path(lock).read_text() == text
-    assert not os.path.exists(lock)
+        assert lock.read_text() == text
+    assert not lock.exists()
+
+    for by_hand in (f"left arm thread, pid {os.getpid()}, started 2026-11-13T09:30", "left arm thread, back soon"):
+        lock.write_text(by_hand)  # another layout: held unless every pid in it is gone
+        with pytest.raises(TimeoutError), sw_instance.big_solve("b", path=str(lock), timeout=0.3, poll=0.1):
+            pass
+        assert lock.read_text() == by_hand
+    lock.write_text("left arm thread, pid 999999999")
+    with sw_instance.big_solve("b", path=str(lock), timeout=5, poll=0.1):
+        pass

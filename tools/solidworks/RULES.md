@@ -98,7 +98,7 @@ The live client is the process named in `sw_owner_<pid>.txt` in the temp folder,
 
 Sessions do not take turns to launch. `launch()` starts a new instance beside any number of solving or busy ones.
 
-What SolidWorks does, traced on holly-pc on 2026-11-13 with Wait Chain Traversal on a process held at the splash screen: **at startup a new SolidWorks makes one COM call into an instance that is already running, and stays at the splash screen until that instance answers.** In all five traces the call went to the oldest running instance. With three instances up and the newest one solving, a new one was ready in its usual time.
+What SolidWorks does, traced on holly-pc on 2026-11-13 with Wait Chain Traversal on a process held at the splash screen: **at startup a new SolidWorks makes one COM call into an instance that is already running, and stays at the splash screen until that instance answers.** Five traces caught the call. In four, one other instance was running and the call went to it. In the fifth, two were running and the call went to the older. Three more starts were made while a newer instance was solving and not answering, with an older one idle: all three were ready in their usual 3 to 8 s. So the call appears to go to the oldest running instance, and a newer busy one does not hold a launch up.
 
 - While the oldest instance meshes, rebuilds or reads a result back, it does not answer at all, and the new process waits for the whole of it. One wait was still going at 150 s.
 - While the oldest instance solves, it answers now and then. A new process got through 14 s into an 18 s solve of 476k nodes.
@@ -111,7 +111,7 @@ Before 2026-11-13 `launch()` waited for every instance that was not answering an
 Two things follow for a thread that wants its launches never to wait:
 
 - Keep one instance through a run of jobs with `session()`, and recycle it on committed memory, not per job.
-- An instance that stays idle and is the oldest one running would take the startup call for everyone. That is not set up, and "oldest" is from five traces, not from documentation.
+- An instance that stays idle and is the oldest one running would take the startup call for everyone. That is not set up, and "oldest" rests on the few starts above, not on documentation.
 
 What went wrong on holly-pc on 2026-11-11, and what the module now does about each step:
 
@@ -132,7 +132,7 @@ Threads still cannot stop another session's process. For a half-closed instance 
 3. Never call `ExitApp`, close documents in, or kill a PID the session did not start.
 4. One file belongs to one session. Other sessions open a copy, read-only. Agree ownership before writing.
 5. Save after each step. A third instance has no Auto Recover, and an instance can crash.
-6. Concurrent Simulation solves are allowed, up to the two tested so far, and the limit is per machine (What was tested, below). Joey-PC ran a pair of 476k nodes each. On holly-pc a pair of about 390k nodes each crashed, so there solves that size run one at a time; smaller pairs ran together. Keep large solves to one at a time on any machine until a pair that size is tested there. A solve expected to need more than about 6 GB takes the workstation's large-solve lock first: `with big_solve("thread name"): study.RunAnalysis`. The lock is the file `C:\joe\.fea_solve.lock` (owner, PID, process start time, time taken), created exclusively and removed afterwards. `big_solve` waits while another session holds it and takes over a lock whose process has gone. Smaller solves do not take it.
+6. Concurrent Simulation solves are allowed, up to the two tested so far, and the limit is per machine (What was tested, below). Joey-PC ran a pair of 476k nodes each. On holly-pc a pair of about 390k nodes each crashed, so there solves that size run one at a time; smaller pairs ran together. Keep large solves to one at a time on any machine until a pair that size is tested there. A solve expected to need more than about 6 GB takes the workstation's large-solve lock first: `with big_solve("thread name"): study.RunAnalysis`. The lock is the file `C:\joe\.fea_solve.lock` (owner, PID, process start time, time taken), created exclusively and removed afterwards. `big_solve` waits while another session holds it and takes over a lock only when its process has gone. A lock written by hand in another layout is respected as long as any number in it is a running PID. Smaller solves do not take it.
 7. Exit the instance when the work is done. Each one holds about 1 GB idle and about 1.6 GB after a solve.
 8. solidworks-mcp follows these rules from branch `feat/owned-instance`: each MCP server launches and owns one instance, attached by PID. **A server started before that build still attaches to the running SolidWorks until it restarts**, so do not use its tools alongside other sessions. Running servers are not restarted for you.
 
