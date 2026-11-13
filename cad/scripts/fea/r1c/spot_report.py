@@ -31,6 +31,10 @@ SPOTS = [
     ('our post at the boss hole edge', 'arm', (dz > 4.4) & (dz < 6.6) & (rb > hr - 0.3) & (rb < hr + 0.6)),
     ('hub groove bottom (Y 299.1-302, r 31-35.85)', 'hub', (p[:, 1] > 299.1) & (p[:, 1] < 302.0) & (r_axis > 31.0) & (r_axis < 35.85)),
     ('plate outline corner (our face, X offset 34.2, Y 294.6)', 'arm', (np.hypot(xo - 34.2, p[:, 1] - 294.6) < 1.5) & (dz > 4.4) & (dz < 6.0)),
+    # 2026-11-13 (shoulder thread's governing hub spot under yaw): the INNER end of the R1.2 Z roots, where the fillet runs out onto the
+    # r 23 bore wall, X offset 21.5-24.5, Y 294.8-296, per lug
+    ('hub R1.2 root inner end, -X lug (X off 21.5-24.5, Y 294.8-296)', 'hub', (p[:, 0] < HX) & (xo > 21.5) & (xo < 24.5) & (p[:, 1] > 294.8) & (p[:, 1] < 296.0) & (dz > 3.5) & (dz < 7.0)),
+    ('hub R1.2 root inner end, +X lug (X off 21.5-24.5, Y 294.8-296)', 'hub', (p[:, 0] > HX) & (xo > 21.5) & (xo < 24.5) & (p[:, 1] > 294.8) & (p[:, 1] < 296.0) & (dz > 3.5) & (dz < 7.0)),
 ]
 for label, b, geo in SPOTS:
     m = (body == b) & geo
