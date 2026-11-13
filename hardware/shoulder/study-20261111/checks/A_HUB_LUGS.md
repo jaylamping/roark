@@ -814,3 +814,8 @@ Layer SF (σy), worst over both lugs and both directions, as peak / 0.5 mm / 1 m
   D2d's local bore and backing are not carried. The D3 + D2d run (`hubD3d`) is recorded below when it lands.
 - **Export:** `cad/exports/shoulder/shoulder_hub_left_revD3_candidate.STEP/.STL`, recorded. The rev D candidate files are
   unchanged. `adopt_hub_revD.sh` now adopts rev D3, still not run.
+
+**D3 with D2d's extras (`hubD3d`, 81.5 g, +2.1 g on D3), HUBL_YAW3 at 304 N:** worst root 1.35 / 1.95 / 2.73 (+X lug Z+
+outer end), against D3 alone at 1.26 / 1.78 / 2.40. That is about +10% at 0.5 mm and +14% at 1 mm for 2.1 g. The inner end
+improves more (1.43 / 2.45 / 4.11, against 1.21 / 2.31 / 3.64), but it does not govern. D3 alone already has at least 30%
+margin, so D2d stays out of the candidate.
