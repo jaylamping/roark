@@ -43,6 +43,9 @@ if M.R1C:      # R1c trial parts and exports go to cad/_wip/r1c, so R1's files s
     DIRS['upper'] = M.WIP
     EXP['upper'] = M.WIP / 'exports'
 CL = 0.1
+# R1f (2026-11-12, hub rev D3 extended lugs; WIP, off by default): the lug slot faces sit SLOT_CL off the lug's Z faces
+# (0.5 per side for the picked flat shim plates, nominal 0.5). ARM_SLOT_CL; default the printed 0.1.
+SLOT_CL = float(os.environ.get('ARM_SLOT_CL', str(CL)))
 SECTOR = (131.0, 190.0)
 R_FULL, R_LAP = 30.0, 38.5
 R_LAP_OUT = R_LAP                     # (45 put the disc edge on the saddle fillet: a feather edge, and no gain)
@@ -243,6 +246,64 @@ def r1d_slot_break(d, sg, zl):
         feat(d, s.feat, name, x1 - x0, True, mode=MID, lo=0.01)
 
 
+# R1f lug pocket (hub rev D3: the lugs grown out to r 36.8 into seam-split pockets in our collar; coordinator / shoulder thread,
+# 2026-11-12). Offsets are X from the yaw axis on each lug's side. Our pocket edge: the hub's outer edge + 0.2, the hub's edge
+# capped so our wall to the skin keeps >= 1.2 (skin at Z 5.5: 36.3 at Y 288 ... 38.1 at Y 294 ... 38.5 at Y 298).
+R1F_POCKET = [(287.5, 35.1), (289.0, 35.5), (290.0, 35.8), (291.0, 36.1), (292.0, 36.4), (293.0, 36.7), (294.0, 36.9), (295.0, 37.0), (297.8, 37.0)]
+R1F_LUG_SIDES = (-1, 1)      # the -X lug (theta 180) and the +X lug (theta 0)
+
+
+def r1f_on():
+    return M.R1D and os.environ.get('ARM_LUG_POCKET') == '1'
+
+
+def r1f_lug_web(d, sg, zl):
+    """R1f: a web from each hub post out to our wall, Y 288-295.7 (our floor), from the lug face (zl) to 12 off the seam, so the
+    lug's Z face bears on one flat face r 18.5-35 instead of the cantilevered post. Outside the slot, clear of the bolt (r 20-26)
+    and of the harness (it runs between the post pairs, X 151.75-189.25). Kept inside the skin: hypot(off, 12) < skin r."""
+    if not r1f_on():
+        return
+    z1 = CZ + sg * 12.0
+    zc, dz = (zl + z1) / 2, abs(z1 - zl)
+    for k, side in enumerate(R1F_LUG_SIDES):
+        name = f'R1F_WEB{k}{"F" if sg > 0 else "B"}'
+        prof = [(27.0, 288.0), (34.0, 288.0), (35.6, 295.7), (27.0, 295.7)]
+        with Sk(d, plane(d, 'Z', zc, name + '_P'), name) as s:
+            s.poly([(HX + side * o, y, zc) for o, y in prof])
+        feat(d, s.feat, name, dz, False, mode=MID, lo=0.01)
+
+
+def r1f_lug_pocket(d, sg, zl):
+    """R1f: (1) the seam pocket for the extended lug, |Z - CZ| < SLOT_CL + 5.0, out to R1F_POCKET, Y 287.5-297.8;
+    (2) the root relief for the hub's R1.2 Z roots, which now run out to r 35.8 at Y 296 (tangent Y 294.8 / Z +-6.2): Y 294.3-296.4,
+    from the face out to 1.3 past it with a 45 deg lower edge, offsets 18.3-36.3; (3) 0.5 x 45 deg breaks on our pocket's convex
+    edges at the bore (offset 35.9): the top edge (Y 297.8, along Z) and the face edge (Z = zl, along Y)."""
+    if not r1f_on():
+        return
+    zc, dz = CZ + sg * (abs(zl - CZ) - 0.5) / 2, abs(zl - CZ) + 0.5      # Z from -0.5 (into the cut-away half) to the face
+    for k, side in enumerate(R1F_LUG_SIDES):
+        tag = f'{k}{"F" if sg > 0 else "B"}'
+        prof = [(18.3, 287.5)] + [(o, y) for y, o in R1F_POCKET] + [(18.3, 297.8)]
+        with Sk(d, plane(d, 'Z', zc, f'R1F_POCKET{tag}_P'), f'R1F_POCKET{tag}') as s:
+            s.poly([(HX + side * o, y, zc) for o, y in prof])
+        feat(d, s.feat, f'R1F_POCKET{tag}', dz, True, mode=MID, lo=0.01)
+        # root relief, extruded along X over offsets 18.3-36.3
+        o0, o1 = 18.3, 36.3
+        xm = HX + side * (o0 + o1) / 2
+        zf = zl
+        rel = [(294.3, zf - sg * 0.3), (294.3, zf), (295.6, zf + sg * 1.3), (296.4, zf + sg * 1.3), (296.4, zf - sg * 0.3)]
+        with Sk(d, plane(d, 'X', xm, f'R1F_ROOTREL{tag}_P'), f'R1F_ROOTREL{tag}') as s:
+            s.poly([(xm, y, z) for y, z in rel])
+        feat(d, s.feat, f'R1F_ROOTREL{tag}', o1 - o0, True, mode=MID, lo=0.01)
+        # 0.5 breaks at the bore edge (offset 35.9): top edge along Z, face edge along Y
+        with Sk(d, plane(d, 'Z', zc, f'R1F_TOPBRK{tag}_P'), f'R1F_TOPBRK{tag}') as s:
+            s.poly([(HX + side * o, y, zc) for o, y in [(35.9, 297.5), (35.9, 298.3), (36.7, 297.5)]])
+        feat(d, s.feat, f'R1F_TOPBRK{tag}', dz, True, mode=MID, lo=0.01)
+        with Sk(d, plane(d, 'Y', 296.7, f'R1F_FACEBRK{tag}_P'), f'R1F_FACEBRK{tag}') as s:
+            s.poly([(HX + side * o, 296.7, z) for o, z in [(35.9, zl - sg * 0.3), (35.9, zl + sg * 0.5), (36.7, zl - sg * 0.3)]])
+        feat(d, s.feat, f'R1F_FACEBRK{tag}', 2.4, True, mode=MID, lo=0.01)
+
+
 def r1c_fins(d, sg, zl):
     # R1c fins: each hub post carries the hub joint's lift-off tie as Y-shear at its lug face (about 155 N per post at G90,
     # 43 MPa across the layers at a bare Dia 9 post root). A 9 mm fin from the post toward -Y (Y 276 to the post's centre),
@@ -267,13 +328,15 @@ def upper_half(front):
     sg = 1 if front else -1
     for i, q in enumerate(UA_POSTS):
         post_z(d, f'SEAM_POST{i}', q, sg)
-    zl = CZ + sg * (HUB_LUG_HZ + CL)                                          # lug face in this half
+    zl = CZ + sg * (HUB_LUG_HZ + SLOT_CL)                                     # lug face in this half (R1f: ARM_SLOT_CL)
     for i, q in enumerate(HUB_COLS):                                          # posts from the lug face out to the skin; the lug
         post_z(d, f'HUB_POST{i}', (q[0], HUB_POST_Y), sg, z0=zl)              # sits between them, its bolt locating it
     if M.R1C:
         r1c_fins(d, sg, zl)
         r1d_post_trim(d)
+        r1f_lug_web(d, sg, zl)
         r1d_slot_break(d, sg, zl)
+        r1f_lug_pocket(d, sg, zl)
     if front:
         z_cyl(d, 'SEAM_INSERTS', UA_POSTS, 2.0, CZ - 0.01, CZ + 6.5, True)
         z_cyl(d, 'SEAM_PILOTS', UA_POSTS, 1.6, CZ + 6.4, CZ + 10.0, True)
