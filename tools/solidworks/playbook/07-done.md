@@ -72,7 +72,8 @@ somebody looks, so make that time short.
    what "good" means for this part (the look, the mass, the factor), and what is yours to choose. If you cannot write
    the "good" line, ask before you start.
 2. **First checkpoint within 20 minutes:** the crudest version that shows the whole shape (every body, every interface,
-   right size, no detail), with pictures from all sides and the volume. Commit it and report it. Go on without waiting,
+   right size, no detail), with pictures from all sides (`python tools/solidworks/sheet.py part.stl`; open the PNG and
+   look at it) and the volume. Commit it and report it. Go on without waiting,
    but a reply that changes the direction wins over everything done since.
 3. **A time budget per stage,** written at the start (shape, detail, study, report). At the end of each stage report in
    three lines: done, measured against the ask, next. A stage that runs past twice its budget stops and reports why.
