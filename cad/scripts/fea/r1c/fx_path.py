@@ -30,7 +30,8 @@ print('-X lug mean displacement (mm): ux %+.4f uy %+.4f uz %+.4f' % tuple(np.nan
 # old version averaged |x| over ALL shank nodes (interior included), which read a 0.8 "gap". Now: surface nodes only, per direction
 # (every 30 deg in X-Y, +-15 deg) and per Z band (2 mm) inside the lug; deformed radial position along the direction for each side,
 # gap now = hole wall - shank surface, and the closure from the initial (undeformed) gap.
-SHR, HOLR = 1.5, 1.7
+import os
+SHR, HOLR = 1.5, float(os.environ.get('FX_HOLE_R', '1.7'))      # lug hole radius: 1.7 (Dia 3.4), r1g5 1.9 (Dia 3.8)
 for side, bxs in (('-X lug', 147.5), ('+X lug', 193.5)):
     rbs = np.hypot(p[:, 0] - bxs, p[:, 1] - BY)
     ang = np.degrees(np.arctan2(p[:, 1] - BY, p[:, 0] - bxs)) % 360
