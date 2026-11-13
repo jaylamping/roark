@@ -2,6 +2,9 @@
 
 Windows only; needs `pywin32` and `psutil` (`pip install pywin32 psutil`). Used by `tools/cad/check_sw_refs.py`.
 
+This page is the rules for sharing SolidWorks. How to model, export and run studies from a script, with the helpers that
+check each step, is the [playbook](playbook/README.md).
+
 Every session runs its own SolidWorks instance, so sessions do not take turns. Joey made this the standard on 2026-11-06.
 
 ```python
