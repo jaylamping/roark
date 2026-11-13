@@ -65,8 +65,34 @@ closes the last pick step for zero play.
 edges pressed together. Dia 4.4 moves the plate edge 0.5 out onto flat lug face. It sits 0.2 outside our insert's Dia 4.0,
 so the inserts must be flush (bench step).
 
+**Known item, not a pass: the STOP_0 plate-hole edge (r1g2, plate hole Dia 4.4, final).** The reviewer judges it.
+- **Where.** STOP_0 is the backup stop load. The -X lug's plate faces carry Fz 173 N and Fx 86 N, and the twist of the lug puts the
+  peak around its bolt, at the edge of the plate's Dia 4.4 hole.
+- **Our post, front face (X 149.7, Y 292.0):**
+  - SF at 0.5 / 1 / 2 mm: shear 0.33 / 0.76 / 1.66, vm 0.35 / 0.79 / 1.71.
+  - The node sits on the lumped plate boss's 0.5 step corner (r 2.20 from the bolt axis, \|Z - CZ\| 5.000), 0.2 outside the
+    brass insert's Dia 4.0.
+  - Principal stresses averaged at 0.5 / 1 / 2 mm (MPa): p1 +31 / +28 / +12, p3 -113 / -28 / -8. Face-normal σz +13 / +12 / +3
+    (across our layers: SF about 1.9 at 1 mm).
+  - Reading: the 0.5 mm peak is compressive bearing at a contact edge. At 1 mm a tension of about 28 MPa remains in the corner of
+    the lumped step. A real separate plate on a flat face has no step, so the 1 mm value is partly a lumping effect, but not
+    entirely.
+- **Hub lug face at its own Dia 3.4 bolt-hole rim (X 149.2, Y 291.6):**
+  - SF: shear 0.72 / 1.21 / 1.88, vm 0.72 / 1.17 / 2.71.
+  - Contact pressure 10.8 / 5.6 / 1.5 MPa; p3 -42 / -21 / -9 MPa; p1 +9 / +14 / +8 MPa.
+  - Reading: compressive bearing at a contact edge.
+- **Elsewhere:**
+  - The 1 mm values are below 1.2; the 2 mm values are 1.66 (ours) and 1.88 (hub).
+  - STOP_124 is clean at Dia 4.4 (hole edge 2.1 or more ours, 7.5 or more hub).
+  - The yaw cases don't load this edge (3.3 or more).
+- **Bench.** BENCH_TESTS 2b step 8: after the stop-load test, take the plates out and inspect the post faces and lug faces around
+  each bolt for an imprint of the plate hole edge. Record its depth by feel, and photograph it.
+- **Tried and dropped:** a Dia 6.0 plate hole (r1g3). It cuts through the plate's top edge (the bolt is 2.6 below it) and leaves
+  horns, and our side got worse (shear 0.41 at 1 mm). A U-slot was not adopted either: the peak is at the side of the hole
+  (Y 292.0), which a U-slot would not move.
+
 **Open:**
-- the r1g2 re-runs of STOP_0 and STOP_124 with the Dia 4.4 hole, and G90;
+- G90 and YAW +17 on the final geometry (r1g2), running;
 - the D3b STL hash, section check and closing path;
 - the coupon, picture sheets and pinned commit.
 

@@ -956,3 +956,13 @@ is drawn; θ 0 mirrors it. r is measured from the hub axis.
   - Orientation unchanged.
 - **Recommendation:** extended lug, our pocket r ≤ 37.0, Y 294.3-297.8, Z ± 5.5, the post-to-wall web, and picked flat shim
   plates. The ridge stays whole.
+
+
+## Plate hole: Dia 4.4 is final; Dia 6.0 (r1g3) dropped (2026-11-13)
+
+- The lug bolt sits at Y 292.0, 2.6 below the plate's top edge (Y 294.6).
+- A Dia 6.0 hole (r 3.0) reaches Y 295.0, so it cuts through the plate's top edge and leaves two thin horns.
+- r1g3 STOP_0 put its peaks on those horns (X 149.4-149.6, Y 294.1-294.6). Our post at 1 mm went from shear 0.76 (Dia 4.4) to
+  0.41, though the hub face improved (0.72 to 1.04 at 0.5 mm).
+- Decision: Dia 4.4, r1g2 final. The r1g3 files stay as a record: `r1g/r1g3_stop0b.*`.
+- The STOP_0 hole edge at Dia 4.4 is listed in the packet as a known item, with its principal-stress read-out.
