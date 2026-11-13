@@ -747,8 +747,13 @@ less, and warn that a screw must not go deeper than the thread.
   face. Use 4 mm inserts, or deepen the bores to 9 (the X -27 bore ends 1.5 mm from the plug channel, so not that one).
 - **RS02 body screws:** the drawing dimensions the M3 thread from the output side. The vendor model shows the holes
   through the flange, with a Ø3.2 × 1.5 lead at the rear face. Check on the motor that they take a screw from the rear.
-- **Rear cap's three screws: not settled.** The ear positions in `dims.py` (125 / 148 / 212° at r 61) don't show clean
-  screw holes in the built cap and drum STLs. They need reading in SolidWorks.
+- **Rear cap's three screws:** M3 thread-forming at r 50, 0 / 180 / 270° (`CAP_SCREW_R`, `CAP_SCREW_ANGLES`). Cap under
+  the head 8.3 mm; pilots Ø2.6 × 8.5 deep in the drum. M3 × 14 (5.7 mm in) or M3 × 16 (7.7); M3 × 18 bottoms.
+  - **The pilots have 0.71-0.73 mm of wall toward the drum's bore** (r 48 against the pilot's edge at r 48.7). Too thin
+    for a thread-forming screw.
+  - **They carry the roll stop's reaction:** about 970 N on the worst screw at a 60 N·m stall (42-57 MPa bearing in the
+    pilot), 275 N at the 17 N·m software limit (12-16 MPa).
+  - The "ears" in `dims.py` (EAR_ANGLES, EAR_PCD) are left over from an earlier cap and are in no part.
 
 ## Hub cable window against the boss tubes (2026-11-13)
 

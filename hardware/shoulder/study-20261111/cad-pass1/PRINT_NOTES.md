@@ -122,7 +122,7 @@ clamps nothing.**
 | Fork front → RS02 body | 5 × **M3 × 12** on PCD 73 at -96 / -56 / -16 / 104 / 144° | 9 × M3, depth 8 (given from the output side) | Seat 6.5 mm. 5.5 mm into the motor. M3 × 16 bottoms. **Check on the motor** that the holes are threaded from the rear, as the old bracket used them |
 | Fork rear → fork front (joint) | 6 × ISO 7380 M4 button heads: **2 × M4 × 10** (X ±17) and **4 × M4 × 8** | M4 heat-set inserts, bore Ø5.6 × 7.3-7.8 deep | The recesses are about 3.1 mm deep, so a DIN 912 head would stand proud. **Use short inserts (4 mm):** a standard 8.1 mm insert stands proud of the joint face |
 | Flange ring → drum spokes | 5 × **M3 × 5** | M3 × 4 inserts, bore 3.8 deep | Ring 1.8 mm. M3 × 6 bottoms in the bore |
-| Rear cap → drum | 3 × M4 | not settled | The ear positions in the script (125 / 148 / 212° at r 61) don't show clean screw holes in the built cap and drum. To be read in SolidWorks ([OPEN_ASSUMPTIONS.md](../checks/OPEN_ASSUMPTIONS.md), item 23) |
+| Rear cap → drum | 3 × **M3 × 14 or M3 × 16, thread-forming** (for plastic), at r 50, 0 / 180 / 270° | Ø2.6 pilots, 8.5 deep, in the drum | 8.3 mm of cap under the head. M3 × 14 gives 5.7 mm in the pilot, M3 × 16 gives 7.7; **M3 × 18 bottoms.** **Open:** the pilots have only 0.7 mm of wall toward the drum's bore, and these screws carry the roll stop's reaction ([OPEN_ASSUMPTIONS.md](../checks/OPEN_ASSUMPTIONS.md), item 38) |
 
 ## Low preload and re-torque (every printed-to-RobStride joint)
 
