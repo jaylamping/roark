@@ -240,12 +240,20 @@ class Result:
         idx = cKDTree(self.pos).query_ball_point(at, radius)
         return float(self.vm[idx].mean()), len(idx)
 
+    def near(self, pts, dist):
+        """Mask of nodes within dist mm of any of the given points (n, 3). Use it with a face's nodes to read a surface
+        only: on a part in bending average() takes in nodes below the surface and reads low (22 % on a 4 mm wall)."""
+        return cKDTree(np.atleast_2d(pts)).query(self.pos)[0] <= dist
+
     def max_disp(self):
         """Largest resultant displacement in mm, or None if displacements could not be read."""
         return None if self.disp is None else float(np.abs(self.disp[:, 4]).max())
 
-    def summary(self, yield_mpa=45.0):
-        vm, at = self.peak()
+    def summary(self, yield_mpa=45.0, mask=None):
+        """The numbers of one study. On a model of several bodies pass mask: without it the peak is taken over every
+        body, so a steel screw or pin is judged against the plastic's yield. Split the nodes by geometry (in_box, a
+        radius) and call summary once per printed body."""
+        vm, at = self.peak(mask)
         out = dict(study=self.name, el_mm=self.el, nodes=self.nodes, elements=self.elements, solve_s=round(self.seconds),
                    peak_vm_all=round(float(self.vm.max()), 2), peak_vm_away=round(vm, 2), at=at,
                    sf_yield=round(yield_mpa / vm, 2) if vm > 0 else None, max_disp_mm=self.max_disp(),
@@ -490,11 +498,12 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
     return r
 
 
-def converge(run, sizes, tol=0.05, layers=None):
+def converge(run, sizes, tol=0.05, layers=None, mask=None):
     """Solve at each element size in turn (coarse to fine) until the peak away from fixtures moves by under tol.
 
     run(el) -> Result. Returns the list of (el, nodes, peak) rows and whether it converged. With layers = the print
-    layer normal, each row also carries the tension across layers, and that must settle too. The peak is taken outside the
+    layer normal, each row also carries the tension across layers and the shear between them, and both must settle
+    too. mask(r) -> a node mask, to follow one body of several; it is combined with the exclusion distance. The peak is taken outside the
     same distance from fixtures and loads at every size (two of the coarsest elements), which can cover a real peak
     beside a fixture: read such a feature yourself with in_box() at each size. At least three sizes are always solved:
     two rows that agree can stop before a slow climb shows. A peak that keeps climbing as
@@ -506,8 +515,11 @@ def converge(run, sizes, tol=0.05, layers=None):
     for el in sizes:
         r = run(el)
         keep = r.away(dist=dist)
+        if mask is not None:
+            keep &= mask(r)
         row = (el, r.nodes, round(r.peak(keep)[0], 2))
-        rows.append(row if layers is None else row + (round(r.layer_stress(layers, keep)[0], 2),))
+        rows.append(row if layers is None else row + (round(r.layer_stress(layers, keep)[0], 2),
+                                                      round(r.layer_shear(layers, keep)[0], 2)))
         log('converge', rows[-1])
         if len(rows) > 2 and all(abs(a - b) <= tol * abs(b) for a, b in zip(rows[-1][2:], rows[-2][2:])):
             return rows, True

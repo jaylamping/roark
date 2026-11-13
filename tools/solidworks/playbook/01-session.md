@@ -59,8 +59,8 @@ with job() as j:            # launches your own instance; closes it on the way o
   sections or in chunks, never whole-mesh tests. For "is this point in the solid" use `sheet.inside()`: numpy only,
   20,000 points against 8,000 triangles in five seconds. `trimesh.contains` has no accelerator on this machine and broke
   a 4 GB cap on 5,000 points (2026-11-13).
-- **When the clock matters, launch once.** A launch waits up to 300 s behind another session's solve and may have to
-  be retried; five of those cost one run 27 minutes of a 100-minute budget. Put build, checks and studies in one job
+- **When the clock matters, launch once.** A launch waits up to 300 s behind another session's solve and then
+  raises `did not answer`; `job(wait_s=1800)` keeps asking for that long instead of failing, so no retry loop is needed; five of those cost one run 27 minutes of a 100-minute budget. Put build, checks and studies in one job
   (at most four studies), and do the thinking, the hand calculations and the pictures while it waits.
 
 ## When a script hangs or dies

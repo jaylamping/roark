@@ -10,7 +10,7 @@ with the helper code that makes the lessons hard to forget:
 | [swkit.py](../swkit.py) | Modelling helpers: one instance per job, sketches in model coordinates, features that check their own result, face and edge picking by geometry, pinned exports |
 | [swfea.py](../swfea.py) | Static studies: materials, fixtures, loads, contact sets, mesh, solve, nodal results, the checks on them |
 | [selftest.py](../selftest.py) | Proves both against hand answers on this machine. Also the worked example: read it before writing a script |
-| [sheet.py](../sheet.py) | Picture sheet of an STL from eight sides, and numbers for how boxy it is. How a session sees its own part |
+| [sheet.py](../sheet.py) | Picture sheet of an STL from eight sides (`--together` draws several parts as one assembly), and numbers for how boxy it is. How a session sees its own part |
 | [capped.py](../../pc/capped.py) | Runs a python job under a hard memory cap |
 
 ## Read in this order

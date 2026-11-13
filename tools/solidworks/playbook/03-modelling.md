@@ -60,6 +60,9 @@ save(d)                                                       # 5. save
 | Many short segments on a curved cut | polyline arcs with too many points | 5 to 10 segments on a short ramp; strip faces about 0.15 mm wide stalled the mesher |
 | Loft twists or fails | sections with different point counts or start points | same count, start points in line, even arc-length spacing |
 | Shell fails | wall thicker than a concave radius | smaller wall, larger radius, or shell before adding small features |
+| `extrude(cut=True)` raises on a plain round pocket where other cuts worked | not found (benchmark run sonnet-d, a Ø6 counterbore) | `revolve(cut=True)` of the same cylinder; a revolve about any axis in the sketch plane also makes pins and bosses that are not along X, Y or Z |
+| `cut_half_space` raises on a thin trim | it removes less than 1 mm³ | `cut_half_space(..., min_dv=0.01)` |
+| `pick(kind='plane', normal=...)` returns far more faces than you meant | every face with that normal matches, tilted ones too | add `at=` or `inside=` and check the count |
 | Feature added to the wrong body or merged | multi-body state | check `bodies(d)` before and after |
 
 ## Before you call a part done

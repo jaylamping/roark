@@ -24,7 +24,7 @@ import numpy as np  # noqa: E402
 from swfea import NO_PENETRATION, PETG, SOLVER_DIRECT, static  # noqa: E402
 from swkit import (BLIND, MID, NUL, Sk, bbox, bodies, call, chamfer, close, cut_half_space, delete_body, edges_where,  # noqa: E402
                    expect, export, extrude, feature_errors, fillet, import_step, insert_body, job, list_faces, loft, log,
-                   new_part, open_doc, pick, plane, revolve, save, shell, single_body, volume)
+                   new_part, open_doc, pick, plane, redraw_circles, revolve, save, set_dim, shell, single_body, volume)
 
 OUT = Path(__file__).resolve().parents[2] / 'cad' / '_wip' / 'sw-selftest'
 
@@ -300,6 +300,26 @@ def extras(j):
     if [e[0] for e in errs] != ['BORE']:
         raise SystemExit(f'FAIL: feature_errors should name the broken cut BORE, got {errs}')
     expect('volume with the cut broken', volume(d), 4000, 0.001)
+    close(j.sw, d)
+
+    # changing a saved part: open it again, change a dimension and a sketch in place, no rebuild from the script
+    d = new_part(j.sw, OUT / 'edit.SLDPRT')
+    with Sk(d, plane(d, 'Z', 5.0, 'BLOCK_P'), 'BLOCK') as s:
+        s.rect((0, 0, 5.0), (20, 20, 5.0))
+    extrude(d, s.feat, 'BLOCK', 10.0, mode=MID, expect_dv=4000)
+    with Sk(d, plane(d, 'Z', 5.0, 'BORE_P'), 'BORE') as s:
+        s.circle((10, 10, 5.0), 3.0)
+    extrude(d, s.feat, 'BORE', 10.0, cut=True, mode=MID, expect_dv=math.pi * 9 * 10)
+    save(d)
+    close(j.sw, d)
+    d = open_doc(j.sw, OUT / 'edit.SLDPRT')
+    set_dim(d, 'BLOCK', 10.0, 12.0)
+    d.ForceRebuild3(False)
+    expect('volume after set_dim', volume(d), 4800 - math.pi * 9 * 10, 0.001)
+    redraw_circles(d, 'BORE_SK', [(6, 6, 5.0), (14, 14, 5.0)], 2.0)
+    d.ForceRebuild3(False)
+    expect('rebuild errors after the edit', len(feature_errors(d)), 0, 0)
+    expect('volume after redraw_circles', volume(d), 4800 - 2 * math.pi * 4 * 10, 0.001)
     close(j.sw, d)
 
     # STEP in: the plate that model() exported

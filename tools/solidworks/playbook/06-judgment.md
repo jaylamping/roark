@@ -43,6 +43,13 @@ Hand the work to a stronger model, or to Joey, when it is one of these. What the
   margin. These need the whole robot in view (tenet 0) and Joey's standing preferences.
 - **Organic surfaces that have to look right:** lofts, blends and shells judged by eye. Build the option, render it, and
   ask.
+- **Two requirements that cannot both be met.** Do not stop: build the nearest thing that works, and give up the
+  requirement nothing else depends on. A bolt circle, a mounting face, a bearing size or an interface to another part
+  stays; an outside diameter, a depth or an envelope with room beside it moves. Say which one you gave up, by how
+  much, and what the other choice would have cost, so the person can overrule it in one line.
+- **A number you cannot explain.** Mark it "not shown" and never pass on it; then spend ten minutes on the cause
+  before handing it up: where does the body really bear, and does the hand value assume the same? On the benchmark
+  housing that question turned a screw load "not explained" into one that matched within 12 %.
 - **Contact studies that decide a design,** and any study whose first result failed its checks twice.
 - **Diagnosis of something not in these pages:** a new SolidWorks failure, a crash, a result nobody can explain.
 - **Anything irreversible on the shared machine:** deleting files outside your worktree, stopping a process you did not

@@ -198,9 +198,13 @@ def write_png(path, img):
                            + chunk(b'IDAT', zlib.compress(raw, 6)) + chunk(b'IEND', b''))
 
 
-def sheet(paths, out, px=420, crop=None):
-    """One row of eight views per STL, every tile at the same scale. Returns the shape numbers per file."""
+def sheet(paths, out, px=420, crop=None, together=False):
+    """One row of eight views per STL, every tile at the same scale. Returns the shape numbers per file.
+
+    together=True draws all the files as one scene (an assembly: each part exported in the model frame)."""
     parts = [read_stl(p) for p in paths]
+    if together:
+        parts, paths = [np.concatenate(parts)], ['+'.join(Path(p).stem for p in paths)]
     if crop is not None:
         lo, hi = np.array(crop[:3]), np.array(crop[3:])
         parts = [t[((t >= lo) & (t <= hi)).all(axis=(1, 2))] for t in parts]
@@ -228,8 +232,9 @@ if __name__ == '__main__':
     ap.add_argument('-o', '--out')
     ap.add_argument('--px', type=int, default=420, help='tile size in pixels')
     ap.add_argument('--crop', help='x0,y0,z0,x1,y1,z1 in mm: draw only what lies inside this box')
+    ap.add_argument('--together', action='store_true', help='draw all the files as one scene (an assembly)')
     a = ap.parse_args()
     out = a.out or str(Path(a.stl[0]).with_suffix('.sheet.png'))
-    res = sheet(a.stl, out, a.px, [float(v) for v in a.crop.split(',')] if a.crop else None)
+    res = sheet(a.stl, out, a.px, [float(v) for v in a.crop.split(',')] if a.crop else None, a.together)
     print(json.dumps(res, indent=1))
     print('wrote', out, file=sys.stderr)

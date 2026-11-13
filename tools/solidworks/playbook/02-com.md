@@ -68,6 +68,27 @@ These are enum values written as numbers, because late binding has no constants.
   (`<model>-<study>-BenchMark-Solver.txt`) survives and names the solver and the last stage reached. On a model of a few
   thousand nodes Automatic also picks the Intel direct solver, so there the log looks the same either way.
 
+## Changing a part that already exists
+
+Rebuilding from the script is the first choice ([03-modelling.md](03-modelling.md)). When the part has no script, or the
+task says to edit it, open it and change it in place:
+
+| To change | Call | Then |
+| --- | --- | --- |
+| A depth, a diameter, an offset | `set_dim(d, 'BLOCK', 10.0, 12.0)`: the feature's name, what the dimension reads now, the new value. The driving dimension is `D1@<feature>`; a plane a feature sits on has its own (`D1@<plane>`) | `d.ForceRebuild3(False)`, `feature_errors(d)`, volume against the hand value |
+| The contents of a sketch | `redraw_circles(d, 'RING_A_SK', points, r)`: deletes what the sketch holds and draws again, in model mm | the same |
+| Add a feature | as on a new part; pick faces and edges after the edit, never before | the same |
+
+- **Thicker is three edits, not one:** the body, every plane that was placed at the old top, and every depth measured
+  from the top that must keep its floor. List them before the first edit and tick them off against the hand volume.
+- **Prove it was an edit:** the feature tree after the change holds the same features, with the same IDs, plus the new
+  ones. Log the tree before and after.
+- **A change request can break a part that was fine.** Run the same wall and clearance checks on the changed part as
+  on the first one: on the benchmark a moved hole circle left 0.3 mm to its neighbours and a 1 mm chamfer met a
+  counterbore.
+- **`open()` a script or a report with `encoding='utf-8'`,** reading and writing. This machine's python defaults to
+  cp1252 and breaks on "Ø".
+
 ## Finding an API call you have not used
 
 1. Search the proven scripts first: `cad/scripts/` on branch `left-arm-organic-r1` (`git show origin/left-arm-organic-r1:cad/scripts/arm/organic_master.py`).

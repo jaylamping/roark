@@ -110,6 +110,44 @@ the request and said so; the other found why and got through. The cure is now in
 and the same task run again by Sonnet with it is the measure of whether a lesson written down is a lesson learned.
 The pick was not fully blind: the card that asked for it carried a recommendation.
 
+## Set D: stress ([TASKS_D.md](eval/TASKS_D.md))
+
+A mount from a need with no drawing; a split bearing housing whose specification has three planted errors, with
+contact and screws; six plates from a table with bad rows, then a change of mind to be made by editing.
+
+| | Sonnet + playbook ([sonnet-d](eval/sonnet-d/)) | Fable + playbook ([fable-d](eval/fable-d/)) |
+| --- | --- | --- |
+| Time on the tasks, limit 210 min | 90 min (39, 31, 20) | 61 min (13, 34, 14) |
+| D1: the 60 mm board in a 50 mm envelope (a real contradiction in the task) | caught; tilted the board 41 degrees to fit, which rests on the tall parts sitting in the middle of the board | caught; built flat, 5 mm over each side, and reported the envelope as not met |
+| D1 mass, parts | 23 g, one piece | 11 g, one piece |
+| D1 board out with the mount on the rail | yes, four M3 screws | yes, four M3 screws into inserts |
+| D1 ideas that differ | two, the second a sketch only | three, the second a crude model, the third on paper |
+| D1 study | one mesh, not converged, said so | three meshes; one measure still moving, reported as "not shown" |
+| D2 planted errors found (3) | 3, plus 4 more | 3, plus 3 more |
+| D2 what was built for the overlapping counterbores | left overlapping, as a figure of eight | screws moved apart, 1.0 mm between |
+| D2 fit for a ±0.15 printer | seat 52.0, split gap 0.6 | seat 52.15, each face set back 0.4, gap 0.2 to 1.1 after clamping |
+| D2 screw load along the load, hand 75 N | 75.2 | 74.2 to 74.9 on three meshes |
+| D2 screw load across the load | 45 to 51 N against a hand 37.5, "not explained", case marked not shown | 67 N in total; found the ring wedges under one half and redid the hand value: 75.7 |
+| D2 contact proof | bonded twin, 24 times stiffer | 1 N across the clearance: 0.077 mm against 0.0005 bonded |
+| D2 lowest factor | 8.8, shear between layers | 5.85, shear between layers |
+| D2 what the study leaves out | head-edge peak named as not shown safe | screw preload: larger than the service load, factor 2.0 at about 285 N per screw |
+| D3 bad rows caught before building (P1, P2, P4) | all | all |
+| D3 the plate that cannot be built (P4) | moved the hole circle inward, from 58 to 49 | kept the hole circle, which mates with something, and grew the disc to 70 |
+| D3 problems the change itself made (P3 holes 0.3 mm apart, chamfer into counterbores) | both caught | both caught |
+| D3 volumes against hand, twelve parts | all equal | all equal |
+| D3 edited, not rebuilt | yes | yes, shown by feature IDs before and after |
+
+**What set D shows.** The checks hold up under stress: neither model built a broken part, both caught every planted
+error and the two that the change request created, and care did not drift between the first plate and the twelfth.
+The gap is again in what happens at an unexplained number and at a choice. Sonnet met a screw load it could not
+explain and marked the case "not shown", which is the honest answer the playbook asks for; Fable chased it to the
+cause. Sonnet resolved two impossible requirements by changing the thing a neighbouring part depends on (a bolt
+circle, a board attitude that leans on an assumption); Fable changed the thing nothing else depends on and said which
+requirement it gave up. And Fable named the load nobody asked about, the tightening of the screws.
+
+The two answers to D1 are a real difference of opinion, not a right and a wrong: one keeps the envelope, the other
+keeps the design simple. That choice is Joey's.
+
 ## What each run changed in the playbook
 
 | Run | Changes |
@@ -121,6 +159,7 @@ The pick was not fully blind: the card that asked for it carried a recommendatio
 | sonnet-b | Study names, three sizes in `converge()`, four studies per instance, section forces, twin-model check, exclusion distance at a fixed hole |
 | fable-b | The heavy-solve lock, one refinement at a time, the unanswered contact-convergence prompt, which contact proof fits which joint, buckling of lightened parts |
 | sonnet-c, fable-c | Lofts whose sections change shape, a point-in-solid check (`sheet.inside`), a crop for close-ups, one launch per job when the clock matters |
+| sonnet-d, fable-d | Changing a saved part (`set_dim`, `redraw_circles`), screws and clamped joints, results per body (`summary(mask=)`, `converge(mask=)`, shear in `converge()`), the proof for a body seated both sides, a launch that waits (`job(wait_s=)`), assembly pictures (`sheet.py --together`), `call()` on members that return objects, the node-count rule |
 
 ## What still needs the strongest model, or Joey
 
@@ -129,7 +168,9 @@ The pick was not fully blind: the card that asked for it carried a recommendatio
 - **Writing the playbook itself.** Every correction above came from comparing runs and asking why they differed.
 - **Long open-ended modelling** (an organic shell, a whole link) is untested. The early check-in and time budgets in
   07-done.md are the guard; they have not been exercised on a multi-hour job.
-- **Contact models at the machine's limit** (400,000 nodes, many bodies) were not in either set.
+- **Contact models at the machine's limit** (400,000 nodes, many bodies) were not in any set.
+- **Which requirement to give up** when two cannot both be met. Set D shows the smaller model picks the one a
+  neighbouring part depends on more often; [06-judgment.md](06-judgment.md) hands the choice up.
 
 ## Limits of this measurement
 

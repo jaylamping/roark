@@ -54,7 +54,9 @@ print(r.summary())
   at a point and carries them rigidly to the faces: use it for a load that acts away from the part (a hand load at the end
   of the forearm, a motor torque).
 - **A rigid load lends the part stiffness it does not have.** `'remote'` makes its faces move as one rigid body, so
-  small holes and thin ligaments beside them stop flexing and read low. On the benchmark bracket (2026-11-13,
+  small holes and thin ligaments beside them stop flexing and read low. It also holds separate faces level with each
+  other: four post tops joined by one rigid load deflected four times less than the hand value, with no hole anywhere
+  (benchmark run fable-d). On the benchmark bracket (2026-11-13,
   [eval/t3-load-check](eval/t3-load-check/CHECK.md)) a rigid load on the bore gave 10.4 MPa across the layers at the
   motor-screw holes 2.8 mm away; the same 150 N as an even force on the bore, or on the screw holes where a motor
   really puts it, gave 15.4 to 16.0, as the hand value says (5.5 MPa nominal times 3 for a small hole). The verdict went
@@ -97,7 +99,7 @@ print(r.summary())
 | --- | --- | --- |
 | 1 | **Reaction equals load.** `r.reaction` is `[Fx, Fy, Fz, resultant]` in N, what the fixtures push back with: equal and opposite to the load. Compare each component with the load you meant, and the resultant with `r.applied` | within 1 %. If not, the load is not the one you meant |
 | 2 | **Displacement is sane.** `r.max_disp()` against the hand estimate | same order of magnitude. Metres of displacement means a loose body |
-| 3 | **Stress in the plain section matches the hand estimate.** `r.average(point, 2.0)` at a point away from corners, and at least one section depth from a fixed face: a fixed face stops the part widening, which raised a Ø20 rod's stress 5.5 % over F / A 11 mm from the face (2026-11-12) | within about 15 % |
+| 3 | **Stress in the plain section matches the hand estimate.** `r.average(point, 2.0)` at a point away from corners (on a wall in bending the ball takes in nodes below the surface and reads low, 22 % on a 4 mm wall: read the surface nodes alone with `r.near(face_points, 0.1)`), and at least one section depth from a fixed face: a fixed face stops the part widening, which raised a Ø20 rod's stress 5.5 % over F / A 11 mm from the face (2026-11-12) | within about 15 % |
 | 4 | **The peak is not at a fixture or load face.** `r.peak()` already excludes nodes within two elements of them; say so, and look at `r.vm.max()` to see what was excluded | you can name the feature the peak sits on |
 | 5 | **The peak has converged.** `converge(run, (3.0, 2.0, 1.5))`, three sizes, the same exclusion distance at each (it does this) | the last step moves it under 5 % |
 
@@ -193,6 +195,10 @@ A contact study with more than two bodies, a gap, or a result that decides a des
 
 ## Which contact proof fits
 
+- **A body seated on both sides** (a ring between two half seats): neither direction parts it. Solve the same case
+  with the contact sets bonded: the bonded twin must be many times stiffer (24 times on the benchmark housing) and
+  its screws nearly unloaded, and in the contact case the seat on the unloaded side must open.
+
 - **Faces drawn line to line** (a pin in a hole, a part on a seat): reverse a thousandth of the load. With contact
   the bodies part on the pads; with a bond they stay together.
 - **A body with clearance on both sides** (a tongue in a slot): do not reverse. Nothing decides which wall it goes to,
@@ -201,7 +207,38 @@ A contact study with more than two bodies, a gap, or a result that decides a des
   as a rigid body by exactly the clearance, and the response is not proportional to the load. A bond would move it a
   thousandth of the full-load value.
 
+## Screws and clamped joints
+
+- **A screw in a study is a steel pin,** bonded where the head sits and where the thread holds, free along the shank.
+  Its tension is the normal stress integrated over a section of the shank (see below); check the sum against the
+  applied load by hand before anything else (300 N on four screws: 75 N each, study 74.2 to 74.9).
+- **Judge each body against its own material.** `r.peak()` and `r.summary()` take every node: on a model with screws
+  they report the steel and call a sound part failed (factor 0.4 on the benchmark). Split the nodes by geometry, one
+  mask per body, and pass it: `r.summary(mask=upper)`, `converge(run, sizes, layers=n, mask=lambda r: ...)`.
+- **The rim of a bonded head or insert is a singular edge,** like a fixed hole wall. Leave it out by a fixed
+  distance (find the plateau as for a fixed hole) and say what the section beside it carries.
+- **Tightening is a load case, and often the larger one.** A split housing with a gap is bent by the screws before
+  any service load arrives. A study with no preload is valid for a snug joint only: say so, give the screw force at
+  which the factor falls to 2.0 (285 N per screw on the benchmark housing against 75 N of service load), and give a
+  tightening torque that stays under it, or model the preload.
+- **Do not trust a hand value for screw loads off the load axis** until the study shows where the body seats. On
+  the housing a sideways load was first shared by hand as 24 N tension and 37.5 N shear per screw; the ring wedged
+  under one half and the statics with the real contact angles gave 75.7 N tension. Find the contact patch, then redo
+  the hand value with it.
+
+## When the node cap and convergence meet
+
+Three sizes under 200,000 nodes may not fit a contact model that starts at 150,000. In order: coarsen the steel and
+everything far from the measure, refine only the feature that governs, use symmetry, or cut the governing body out
+and load it with the forces read from the full model. If none fits, report the series as it is and the verdict as
+"not shown". Do not take the heavy-solve lock for a benchmark or a routine check.
+
 ## Forces from a result
+
+`static()` returns the reaction summed over every restrained node. For the share one pad or one screw hole carries,
+read the per-node reaction table and split it by position (worked in
+[eval/fable-d/d2_post.py](eval/fable-d/d2_post.py)).
+
 
 Nodal stress summed over a contact face is not a force: on the tongue-in-slot benchmark it was 11 % out of balance
 (2026-11-13). Get a force from a cut through the body instead: integrate the shear stress (or the normal stress) over a

@@ -52,6 +52,8 @@ def L(v=0):
 def call(o, name, *a):
     """Read o.name whether late binding exposes it as a property or as a method (it differs between calls and builds)."""
     v = getattr(o, name)
+    if hasattr(v, '_oleobj_'):       # a COM object is callable too: it is the value, not a method (measured on
+        return v                     # GetFirstDisplayDimension, 2026-11-13)
     return v(*a) if callable(v) else v
 
 
@@ -75,14 +77,25 @@ class job:
     sw_instance.Instance (j.inst.pid for claims.py), j.simulation() loads the Simulation add-in.
     """
 
-    def __init__(self, min_free_gb=MIN_FREE_GB, visible=False):
-        self.min_free_gb, self.visible = min_free_gb, visible
+    def __init__(self, min_free_gb=MIN_FREE_GB, visible=False, wait_s=0):
+        self.min_free_gb, self.visible, self.wait_s = min_free_gb, visible, wait_s
         self.inst = self.sw = None
 
     def __enter__(self):
         if free_gb() < self.min_free_gb:
             raise Failed(f'only {free_gb():.1f} GB free, under the {self.min_free_gb} GB floor: wait, do not launch')
-        self.inst = launch(visible=self.visible)
+        end = time.time() + self.wait_s
+        while True:
+            try:
+                self.inst = launch(visible=self.visible)
+                break
+            except RuntimeError as ex:
+                # another instance is solving and cannot answer: that is a queue, not a fault. With wait_s the job
+                # keeps asking until the time is up; without it the first refusal is raised as before.
+                if 'did not answer' not in str(ex) or time.time() >= end:
+                    raise
+                log('launch is waiting behind a busy instance:', str(ex)[:120])
+                time.sleep(20)
         self.sw = self.inst.sw
         pin_export_prefs(self.sw)
         log('SolidWorks pid', self.inst.pid, 'free GB', round(free_gb(), 1))
@@ -223,6 +236,71 @@ def expect(what, got, want, tol):
     log(f'ok {what}: {got:.4f} (expected {want:.4f})')
 
 
+def set_dim(d, feat_name, old_mm, new_mm):
+    """Change the one driving dimension of an existing feature that now reads old_mm to new_mm; rebuild afterwards.
+
+    Tried by name first (D1@<feature>), then over the feature's display dimensions. The value it reads now must be
+    old_mm, so a wrong dimension cannot be changed by mistake. Returns the dimension's full name.
+    Measured on six plates, benchmark run fable-d, 2026-11-13."""
+    f = d.FeatureByName(feat_name)
+    if f is None:
+        raise Failed(f'no feature {feat_name}')
+    found, seen = [], []
+    dim = d.Parameter(f'D1@{feat_name}')
+    if dim is not None:
+        found.append(dim)
+    else:
+        dd = call(f, 'GetFirstDisplayDimension')
+        while dd is not None:
+            found.append(dd.GetDimension2(0))
+            dd = f.GetNextDisplayDimension(dd)
+    for dim in found:
+        val = dim.SystemValue * 1e3
+        seen.append((dim.FullName, round(val, 4)))
+        if abs(val - old_mm) < 1e-6:
+            try:
+                dim.SystemValue = new_mm / 1e3
+            except Exception as ex:      # noqa: BLE001 - logged, and the other documented call is tried
+                log(f'{feat_name}: SystemValue could not be set ({str(ex)[:80]}); trying SetSystemValue3')
+                dim.SetSystemValue3(new_mm / 1e3, 2, NUL)        # 2 = all configurations
+            if abs(dim.SystemValue * 1e3 - new_mm) > 1e-6:
+                raise Failed(f'{feat_name}: dimension {dim.FullName} did not take {new_mm}')
+            log(f'{feat_name}: {dim.FullName} {old_mm} -> {new_mm}')
+            return dim.FullName
+    raise Failed(f'{feat_name}: no dimension reads {old_mm}; it has {seen}')
+
+
+def redraw_circles(d, sketch_name, pts, r):
+    """Edit an existing sketch in place: delete what it holds and draw circles of radius r at pts (model mm, on the
+    sketch plane). Rebuild afterwards, then check feature_errors() and the volume. Returns how many segments went."""
+    d.ClearSelection2(True)
+    sk = d.FeatureByName(sketch_name)
+    if sk is None or not sk.Select2(False, 0):
+        raise Failed(f'no sketch {sketch_name}')
+    d.EditSketch()
+    act = d.GetActiveSketch2
+    T = act.ModelToSketchTransform.ArrayData
+    segs = call(act, 'GetSketchSegments') or []
+    d.ClearSelection2(True)
+    for seg in segs:
+        seg.Select4(True, NUL)
+    d.EditDelete()
+    d.SketchManager.AddToDB = True
+    try:
+        for x, y, z in pts:
+            x, y, z = x / 1e3, y / 1e3, z / 1e3
+            u, v = x * T[0] + y * T[3] + z * T[6] + T[9], x * T[1] + y * T[4] + z * T[7] + T[10]
+            if abs(x * T[2] + y * T[5] + z * T[8] + T[11]) > 1e-9:
+                raise Failed(f'{sketch_name}: point off the sketch plane')
+            if d.SketchManager.CreateCircleByRadius(u, v, 0, r / 1e3) is None:
+                raise Failed(f'{sketch_name}: circle not drawn')
+    finally:
+        d.SketchManager.AddToDB = False
+        d.InsertSketch2(True)
+    log(f'{sketch_name}: {len(segs)} segments deleted, {len(pts)} circles drawn')
+    return len(segs)
+
+
 def feature_errors(d):
     """[(feature name, error code)] for features that failed to rebuild or carry a warning. Empty means a clean tree.
 
@@ -343,7 +421,7 @@ def extrude(d, sk, name, depth, cut=False, mode=BLIND, want=None, min_dv=1.0, ex
     """Extrude a sketch (cut=True removes material) and check what it did.
 
     mode MID extrudes depth in total, half each side of the sketch plane: nothing to get backwards, so put the sketch
-    plane at the middle of the feature whenever you can. BLIND goes depth one way; THRU_ALL cuts through both sides.
+    plane at the middle of the feature whenever you can. BLIND goes depth one way; THRU_ALL cuts one way, and both ways are tried until the volume moves the right way.
     For BLIND and UP_TO_NEXT both directions are tried, and want = (axis index 0/1/2, sign, plane coordinate mm) keeps
     the one whose new faces lie on that side of the sketch plane.
     Raises unless the volume changed by more than min_dv mm3 the right way, and, when expect_dv is given, by that
@@ -498,15 +576,17 @@ def chamfer(d, edges, width, name, angle=45.0):
     return f
 
 
-def cut_half_space(d, axis, at, keep_sign, name, span=400.0):
-    """Remove everything on the far side of the plane axis = at; keep_sign +1 keeps the side with larger coordinates."""
+def cut_half_space(d, axis, at, keep_sign, name, span=400.0, min_dv=1.0):
+    """Remove everything on the far side of the plane axis = at; keep_sign +1 keeps the side with larger coordinates.
+
+    min_dv: the smallest volume in mm3 the cut must remove (lower it to trim a sliver)."""
     c = at - keep_sign * span / 2
     i = 'XYZ'.index(axis)
     a, b = [-span] * 3, [span] * 3
     a[i] = b[i] = c
     with Sk(d, plane(d, axis, c, name + '_P'), name) as s:
         s.rect(a, b)
-    return extrude(d, s.feat, name, span, cut=True, mode=MID)
+    return extrude(d, s.feat, name, span, cut=True, mode=MID, min_dv=min_dv)
 
 
 def insert_body(d, part_path):

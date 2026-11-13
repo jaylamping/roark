@@ -7,7 +7,8 @@ required, not optional extras: a report that skips one says so and says why.
 
 ## Predict, then run
 
-Before every solve, write three numbers in the script's log: the node count you expect (from the element sizes), the
+Before every solve, write three numbers in the script's log: the node count you expect (about 12 times the volume
+over the element size cubed, both in mm, on a plain part; half as many again with local refinement), the
 displacement, and where the peak should be (both from the hand estimate). After the solve compare.
 
 | Off by | Do |
@@ -79,7 +80,8 @@ somebody looks, so make that time short.
    the "good" line, ask before you start.
 2. **First checkpoint within 20 minutes:** the crudest version that shows the whole shape (every body, every interface,
    right size, no detail), with pictures from all sides (`python tools/solidworks/sheet.py part.stl`; open the PNG and
-   look at it) and the volume. Commit it and report it. Go on without waiting,
+   look at it) and the volume. Commit it and report it (when you are working alone and were told to commit once at
+   the end, the picture and one line in the report with the time are the checkpoint). Go on without waiting,
    but a reply that changes the direction wins over everything done since.
 3. **A time budget per stage,** written at the start (shape, detail, study, report). At the end of each stage report in
    three lines: done, measured against the ask, next. A stage that runs past twice its budget stops and reports why.
