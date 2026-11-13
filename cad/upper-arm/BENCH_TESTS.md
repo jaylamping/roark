@@ -114,8 +114,8 @@ by trial, once, at assembly.
 - **Coupon:** the hub end of each R1g half, cut flat at Y 284. Back 72 min, front 67 min, 35 g.
   - It has the seat, ridge, end face, floor, slot breaks and the four hub posts with their insert and clearance holes.
   - It closes on the hub with the two lug bolts, as the arm does.
-- **Yaw lever:** `prints/upper-arm/upper_arm_organic_coupon_yaw_lever.3mf` (106 min / 72 g, printed flat). It is not in git yet
-  because of the LFS budget; `cad/scripts/arm/yaw_lever_print.py` makes it.
+- **Yaw lever:** `prints/upper-arm/upper_arm_organic_coupon_yaw_lever.3mf` (106 min / 72 g, printed flat). The script that makes it is
+  `cad/scripts/arm/yaw_lever_print.py`.
   - Its pocket is the coupon's own cut-end outline, 5 deep, so it keys onto the coupon. The coupon needs no extra feature.
   - The hook hole is 200 mm from the yaw axis.
   - The arm tapers 50 → 20 mm in the pulling plane, so its own bending is 1.4 mm at the hook but only 0.03 mm at 60 mm from the

@@ -173,8 +173,7 @@ shoulder thread clamps the bundle at the window, so nothing slides into the arm 
 - Lug plates: `upper_arm_organic_lug_plates_{A,B}_r1g`, re-sliced at the final outline (Dia 3.8, top Y 294.6, short lip), with
   two full sets on each plate. The 0.7 strip above the hole prints as the hole's perimeter overlapping the outer perimeter
   (`r1g_lug_plate_strip_slice.png`).
-- Coupon yaw lever (106 min / 72 g): held back from git for now (the November LFS budget is at 998 of 1000 MB). It is in
-  `cad/_wip/yaw_lever/`, and `cad/scripts/arm/yaw_lever_print.py` makes it.
+- Coupon yaw lever: `upper_arm_organic_coupon_yaw_lever` (106 min / 72 g; `cad/scripts/arm/yaw_lever_print.py`).
 
 Sheets: `r1g_back_half_sheet.png`, `r1g_front_half_sheet.png`, `r1g_shim_ring_set_sheet.png`, `r1g_lug_plate_set_sheet.png`,
 `r1g_seam_section.png`.
