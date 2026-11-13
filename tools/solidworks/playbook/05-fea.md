@@ -37,7 +37,9 @@ print(r.summary())
   pushes into the material. `'remote'` applies a force and a moment
   at a point and carries them rigidly to the faces: use it for a load that acts away from the part (a hand load at the end
   of the forearm, a motor torque).
-- **Material:** `PETG`, `STEEL`, `BRASS` in swfea.py; `materials={body name: dict}` when bodies differ. A linear study
+- **Material:** `PETG`, `STEEL`, `BRASS` in swfea.py; `materials={part of a body's name: dict}` when bodies differ. A key
+  matches every body whose name contains it, a key that matches nothing raises, and the log names each body's material:
+  read it. Until 2026-11-12 the lookup matched nothing and every body silently got the default. A linear study
   scales: twice the load is twice the stress, so one solve per load direction is enough.
 - **Mesh:** `el` is the global element size, `ctrl` puts smaller elements on named faces. Start at 2 to 3 mm globally with
   0.6 to 0.8 mm on the loaded and restrained faces and on the fillets that carry the load. Thin walls need two elements
@@ -90,8 +92,9 @@ r = static(j, d, 'JOINT', PETG, fixtures=..., loads=..., el=4.0, ctrl=[(seat_fac
 
 What was learned on the upper-arm hub joint, 2026-11-11 and 12:
 
-1. **Use the direct sparse solver.** Automatic picks the iterative one, which stalled at contact iteration 7.
-   `solver=SOLVER_DIRECT` sets it with a macro; the benchmark log beside the model confirms which solver ran.
+1. **Use the direct sparse solver.** Automatic picks the iterative one on a large model, which stalled at contact
+   iteration 7. `solver=SOLVER_DIRECT` sets it with a macro, whose log line (`before 0 | set err 0 | after 7`) shows the
+   option change; the benchmark log beside the model names the solver that ran.
 2. **Every body must be held without the contact.** A body kept in place only by no-penetration contact, with clearance, is
    free until it touches: the solve fails with error 24. Model the real gap and hold the loose body with small soft pads
    (four Ø1.8 pads, modulus 0.5 MPa, bonded both sides), then check that the pads carry under 1 % of the load.
@@ -107,6 +110,17 @@ What was learned on the upper-arm hub joint, 2026-11-11 and 12:
    the contact is not engaged.
 7. **Soft springs and the solver options cannot be set from python** ([02-com.md](02-com.md)). Use the macro for the solver,
    pads instead of soft springs.
+8. **A body that moves a long way makes the solver ask a question nobody sees.** The solver process (`star.exe`) puts up
+   "Excessive displacements detected" with Yes, No and Cancel. On a hidden instance the solve then waits for ever,
+   `--status` shows `busy`, and every other session's launch waits behind it (10 minutes on 2026-11-12). `static()` now
+   answers No, which finishes the solve, and raises: the model has a body that is free or held only by something very
+   soft. Pass `loose_ok=True` only when that is what you are testing. Any other solver dialog is logged with its text
+   and left alone.
+9. **Prove the contact set did something.** Pressed together, bonded faces and touching faces in contact give the same
+   answer. Run the load the other way at a thousandth of the size: with the contact the bodies come apart on the pads
+   (0.085 mm on the selftest blocks), bonded they move a millionth of that. `contact()` in
+   [selftest.py](../selftest.py) is the worked example, with both blocks drawn line-to-line: flat faces pressed
+   together were seen as in contact every time.
 
 A contact study with more than two bodies, a gap, or a result that decides a design is work to hand up
 ([06-judgment.md](06-judgment.md)), or at least to have reviewed before anyone acts on it.
@@ -117,9 +131,11 @@ A contact study with more than two bodies, a gap, or a result that decides a des
 | --- | --- | --- |
 | Mesh fails, or stalls for minutes | sliver faces, a 0.02 mm band, an element size larger than a thin wall | list small faces (`list_faces`, area under 0.5 mm²) and fix the geometry; smaller local size on the thin wall |
 | Error 24 at once | a body free to move | every body restrained or bonded? any body held only by contact? fixture faces empty? |
+| Error 24 at once on a model that solved a minute ago, benchmark log ending at `Loading-and-preparing-input-data-Start` | the document was closed unsaved after an earlier study and opened again in the same instance | save before closing; `static()` saves when it finishes (2026-11-12) |
 | Error 24 after a minute or more, memory falling | out of memory in the factorisation | node count; free memory when it failed; coarsen |
 | Solver iterates and never finishes | iterative solver on contact | direct sparse |
 | Displacement of metres | a loose body, or a bond lost to a contact set | explicit `BONDED` sets |
+| A small solve never returns, files beside the model stop changing | a hidden solver dialog | `%TEMP%\sw_hidden_<pid>.log` shows `#32770 \| Simulation`; `static()` answers the excessive-displacement one itself, and logs the text of any other |
 | `GetStress` raises or the instance dies on readback | result too large | smaller model |
 | Launch sits at the splash screen | another instance is solving, or one is half-closed | [01-session.md](01-session.md) |
 
