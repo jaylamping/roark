@@ -274,6 +274,14 @@ def run(name, c):
             d.ClearSelection2(True)
             ok_sel = [d.Extension.SelectByID2(s_.feat.Name, 'SKETCH', 0, 0, 0, False, 4, NUL, 0)]
             for sel_ in sels_:
+                if sel_[0] != 'plane':
+                    # a curved face (e.g. a hole wall) is selected as the face object: by a point, SolidWorks picked another
+                    # face or no face at all once the sketch was selected (split_try.py, 2026-11-13)
+                    for f_ in pick(d, sel_):
+                        sd_ = d.SelectionManager.CreateSelectData
+                        sd_.Mark = 1
+                        ok_sel.append(f_.Select4(True, sd_))
+                    continue
                 px_, py_, pz_ = sel_[1]
                 ok_sel.append(d.Extension.SelectByID2('', 'FACE', px_ / 1000, py_ / 1000, pz_ / 1000, True, 1, NUL, 0))
             print(' split selection', ok_sel, flush=True)
@@ -752,7 +760,7 @@ _STOP6 = dict(CASES['HUBL_YAW3P38F'],
 # the bolt-wall load needs the hole wall split, which changes the mesh: its cases are solved complete, not combined node by node
 # (a Y-plane sketch through the hole did not split its wall; a band Y 291-293 projected along X does: it cuts the wall into
 # an outboard strip, an inboard strip, a top and a bottom. The outboard strip is 63 deg of the wall, about the bolt's bearing arc)
-_STOP6H = dict(_STOP6, split=_STOP6['split'] + [(('X', _OX - 1.0), [(291.0, 293.0, 0.5, 11.5)], [('plane', (_HX - LUG_R, 292.0, 6.0), None, 'on')])])
+_STOP6H = dict(_STOP6, split=_STOP6['split'] + [(('X', _OX - 1.0), [(291.0, 293.0, 0.5, 11.5)], [LUG_HOLES[0]])])
 _HOLE_OUT = ('cyl', LUG_R, [_HX - LUG_R - 0.05, 290.9, 0.9, _HX - 1.5, 293.1, 11.1])
 _P_SMALL, _P_RING = ('plane', (_OX, 293.2, 9.7), None, 'on'), ('plane', (_OX, 290.5, 7.0), None, 'on')
 CASES['HUBL_STOP6_Z'] = dict(_STOP6,

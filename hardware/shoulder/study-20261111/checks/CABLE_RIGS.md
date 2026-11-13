@@ -19,6 +19,10 @@ Test with two pairs, and once with three.
 
 ## Roll rig
 
+**Start here: [HOWTO_roll.png](cable_rigs/HOWTO_roll.png)**, one page of pictures: where the rig comes from on the robot,
+the parts, how they go together, where the wires go, and the test. The shoulder on the torso, for orientation:
+[shoulder_on_torso.png](cable_rigs/shoulder_on_torso.png).
+
 **Why first:** if today's route through the stub bore survives with real silicone wire, the roll joint needs no rework.
 If it fails, the same print shows whether a spiral deck works.
 
@@ -58,11 +62,14 @@ Not reproduced: the bends above and below each rig, PETG, the weight of the arm 
 
 1. **Thread** the three wires along the base's channel, up the bore, and out along the top's channel. Fit the top on the
    tube.
-2. **Tape the wires down** in each channel 25 mm from the bore, with the top at 85° from the base's channel (mid travel)
+2. **Tape the wires down** in each channel about 25 mm from the middle of the tube (12 mm out from the tube's wall), with
+   the top at 85° from the base's channel (mid travel)
    and the wires neither tight nor slack in the bore.
 3. **Mark** each wire with a line where it enters the bore at the bottom and where it leaves at the top.
 4. **Turn the top from 25° to 146° and back** (that is roll +110° to -11°: the two channels are 135° apart at roll 0).
-   Use the scale on the base. Do it slowly five times and watch the wires in the bore from above.
+   Use the marks on the base (one every 10°, a longer one every 30°). Do it slowly five times. The top's roof covers the
+   tube, so the wires in the bore cannot be seen from above while it is on: look in along the open channel, and lift the
+   top off between sets to look.
 5. **Then 200 cycles by hand.**
 6. **Look:** kinks, a wire climbing over another, a mark that has moved (the wire is being pulled through the tape),
    white stress marks or a flattened spot in the insulation, a wire that has taken a set.
