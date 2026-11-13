@@ -1,6 +1,6 @@
 -X lug mean displacement (mm): ux -0.0041 uy -0.0537 uz -0.0717
-hole wall on +X side of the bolt: initial radial gap 0.798, closure (gap change) +0.1836 mm -> gap now 0.982; hub-side normal stress sx +0.0 MPa
-hole wall on -X side: initial radial gap 0.782, closure (gap change) -0.1817 mm -> gap now 0.600; hub-side normal stress sx -2.2 MPa
+-X lug bolt shank vs lug hole: smallest gap now -0.006 mm (initial 0.180; closure +0.186) toward 180 deg (0 = +X, 90 = +Y) at Z - CZ +2 +- 1 (8 hole / 4 shank surface nodes)
++X lug bolt shank vs lug hole: smallest gap now 0.109 mm (initial 0.180; closure +0.071) toward 180 deg (0 = +X, 90 = +Y) at Z - CZ +2 +- 1 (8 hole / 4 shank surface nodes)
 bolt shank at the lug mid-plane: mean txz -0.0, tyz +0.0 MPa -> transverse force about Fx -0 N, Fy +0 N
    shank at dz -5.25: txz -0.0 MPa -> Fx about -0 N
    shank at dz +5.25: txz -5.4 MPa -> Fx about -39 N

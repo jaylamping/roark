@@ -26,17 +26,36 @@ rb = np.hypot(p[:, 0] - BX, p[:, 1] - BY)
 xo = HX - p[:, 0]      # -X lug: offset from the axis
 lug = (body == 'hub') & (np.abs(dz) < 4.95) & (xo > 18.0) & (xo < 34.5) & (p[:, 1] > 288.0) & (p[:, 1] < 295.5)
 print('-X lug mean displacement (mm): ux %+.4f uy %+.4f uz %+.4f' % tuple(np.nanmean(uu[lug], axis=0)))
-# 1. lug hole wall (hub, r 1.6-1.8 from the bolt axis) against the bolt shank (steel, r < 1.55), inside the lug (|dz| < 4.9)
-hole = (body == 'hub') & (rb > 1.6) & (rb < 1.85) & (np.abs(dz) < 4.9)
-shank = (body == 'steel') & (rb < 1.55) & (np.abs(dz) < 4.9)
-for side, sx in (('hole wall on +X side of the bolt', 1), ('hole wall on -X side', -1)):
-    m = hole & (np.sign(p[:, 0] - BX) == sx) & (np.abs(p[:, 1] - BY) < 0.6)
-    ms = shank & (np.sign(p[:, 0] - BX) == sx) & (np.abs(p[:, 1] - BY) < 0.6)
-    if m.any() and ms.any():
-        gap0 = np.mean(np.abs(p[m, 0] - BX)) - np.mean(np.abs(p[ms, 0] - BX))
-        rel = sx * (np.nanmean(uu[m, 0]) - np.nanmean(uu[ms, 0]))
-        print(f'{side}: initial radial gap {gap0:.3f}, closure (gap change) {rel:+.4f} mm -> gap now {gap0 + rel:.3f}; '
-              f'hub-side normal stress sx {s[m, 1].mean():+.1f} MPa')
+# 1. bolt shank (surface, r 1.5) against the lug's Dia 3.4 hole wall (surface, r 1.7): nominal radial gap 0.20. Review 2026-11-13: the
+# old version averaged |x| over ALL shank nodes (interior included), which read a 0.8 "gap". Now: surface nodes only, per direction
+# (every 30 deg in X-Y, +-15 deg) and per Z band (2 mm) inside the lug; deformed radial position along the direction for each side,
+# gap now = hole wall - shank surface, and the closure from the initial (undeformed) gap.
+SHR, HOLR = 1.5, 1.7
+for side, bxs in (('-X lug', 147.5), ('+X lug', 193.5)):
+    rbs = np.hypot(p[:, 0] - bxs, p[:, 1] - BY)
+    ang = np.degrees(np.arctan2(p[:, 1] - BY, p[:, 0] - bxs)) % 360
+    hole_s = (body == 'hub') & (np.abs(rbs - HOLR) < 0.04) & (np.abs(dz) < 4.95)
+    shank_s = (body == 'steel') & (np.abs(rbs - SHR) < 0.04) & (np.abs(dz) < 4.95)
+    worst = (9.0, None)
+    for a0 in range(0, 360, 30):
+        e = np.array([np.cos(np.radians(a0)), np.sin(np.radians(a0))])
+        da = (ang - a0 + 180) % 360 - 180
+        for z0 in np.arange(-4.0, 4.01, 2.0):
+            mh = hole_s & (np.abs(da) < 15) & (np.abs(dz - z0) < 1.0)
+            ms = shank_s & (np.abs(da) < 15) & (np.abs(dz - z0) < 1.0)
+            if mh.sum() < 2 or ms.sum() < 2:
+                continue
+            ph = (p[mh, :2] - [bxs, BY] + uu[mh, :2]) @ e
+            ps = (p[ms, :2] - [bxs, BY] + uu[ms, :2]) @ e
+            g0 = (p[mh, :2] - [bxs, BY]) @ e
+            g0s = (p[ms, :2] - [bxs, BY]) @ e
+            gap0, gapn = np.nanmean(g0) - np.nanmean(g0s), np.nanmean(ph) - np.nanmean(ps)
+            if gapn < worst[0]:
+                worst = (gapn, (a0, float(z0), gap0, int(mh.sum()), int(ms.sum())))
+    if worst[1] is not None:
+        a0, z0, gap0, nh, ns = worst[1]
+        print(f'{side} bolt shank vs lug hole: smallest gap now {worst[0]:.3f} mm (initial {gap0:.3f}; closure {gap0 - worst[0]:+.3f}) '
+              f'toward {a0} deg (0 = +X, 90 = +Y) at Z - CZ {z0:+.0f} +- 1 ({nh} hole / {ns} shank surface nodes)')
 # 2. bolt shank transverse shear force at the lug mid-plane (Z = CZ), section of the shank
 sec = (body == 'steel') & (rb < 1.55) & (np.abs(dz) < 0.25)
 if sec.any():

@@ -3,7 +3,8 @@ over our body's nodes, with node counts, the averaged principal stresses, vm, ac
 (hypot txz, tyz), and SF against 45 / 22.5 / 13. Then the same with the centre moved DEPTH into the post along sign(Z - CZ)*Z
 (away from the lug: off the model edge; the lumped boss step corner is not in the real part, a separate plate on a flat post face).
 Without a point given: the worst 0.5 mm shear centre of the plate-outline-corner spot (X offset 34.2, Y PLATE_TOP, our face).
-    python corner_probe.py NPZ POST_TXT [X Y Z] [PLATE_TOP=294.7] [DEPTHS=0.5,1.0]      (under capped.py)"""
+    python corner_probe.py NPZ POST_TXT [X Y Z] [PLATE_TOP=294.7] [DEPTHS=0.5,1.0]      (under capped.py)
+    PROBE_DIR=dx,dy,dz sets the step-in direction (default: away from the lug along Z)."""
 import re
 import sys
 
@@ -34,6 +35,9 @@ else:
     best = max(q, key=lambda i: sh[arm[t.query_ball_point(p[i], 0.5)]].mean())
     c0 = p[best]
 sgn = np.sign(c0[2] - CZ)
+import os
+DIRV = np.array([float(v) for v in os.environ['PROBE_DIR'].split(',')]) if os.environ.get('PROBE_DIR') else np.array([0, 0, sgn])      # step-in direction (unit)
+DIRV = DIRV / np.linalg.norm(DIRV)
 depths = [float(v) for v in (sys.argv[7] if len(sys.argv) > 7 else '0.5,1.0').split(',')]
 
 
@@ -55,4 +59,4 @@ def report(c, label):
 print(f'result: {sys.argv[1]}')
 report(c0, 'spot (the model edge)')
 for dp in depths:
-    report(c0 + np.array([0, 0, sgn * dp]), f'{dp} mm into the post, away from the lug (off the boss step)')
+    report(c0 + DIRV * dp, f'{dp} mm in along {np.round(DIRV, 2).tolist()} (off the model edge)')
