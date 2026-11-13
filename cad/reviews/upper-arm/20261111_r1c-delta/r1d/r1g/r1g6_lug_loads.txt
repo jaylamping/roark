@@ -116,6 +116,29 @@ both lugs, from the sections: F [-4.5, -3.2, 56.9] N, M [-0.46, -15.1, 0.05] N.m
 ring, ridge, groove and spigot (applied minus lugs from the sections): F [4.5, 3.2, -118.9] N, M [23.37, -1.9, -0.05] N.m
 balance: applied F [0.0, 0.0, -62.0] N, M [22.91, -17.0, 0.0] N.m against the whole-hub section F [-2.4, -37.0, -68.2] N, M [23.32, -17.54, 0.14] N.m
 
+==================== YAW -17 (LC2M), r1g6_yawm
+-X lug outer face on our pocket wall (X offset 34.4 / 34.6): contact patch (the cells carrying 90 % of the compressive normal force; total compressive 2.6 N) Y 288.05-294.75, Z 1.05-10.95 (Z - CZ -4.94 to +4.96), centre Y 292.48 Z 9.70, area 6.2 mm2, normal force 2.4 N, peak 3.43 MPa, mean 0.38 MPa
++X lug outer face on our pocket wall (X offset 34.4 / 34.6): contact patch (the cells carrying 90 % of the compressive normal force; total compressive 2.2 N) Y 288.05-294.75, Z 1.05-10.85 (Z - CZ -4.94 to +4.86), centre Y 292.66 Z 3.09, area 9.1 mm2, normal force 2.0 N, peak 3.35 MPa, mean 0.22 MPa
+lug  face                                                                 Fx       Fy       Fz  CoP X off   CoP Y  p mean  p max cover
+-X   front Z face                                                        2.1      0.2   -283.5      31.16  292.46    3.88  52.49  1.00
+-X   back Z face                                                        -0.5      0.5      9.9      19.51  289.67    0.53   5.20  1.00
+-X   outer face                                                         -1.4      0.1     11.3        nan     nan    0.00   3.43  1.00
+-X   bolt-hole wall                                                      0.2     -0.1     -0.8        nan     nan    0.00   0.00  0.95
+-X   section at Y 294.5 (lug cross-section; should cancel the faces below it)     -0.7      0.2    246.8        nan     nan    0.00   0.00  0.99
+-X   sum of the four faces                                               0.3      0.8   -263.0        nan     nan    0.00   0.00  1.00
++X   front Z face                                                        0.8     -0.1    -12.8      19.83  289.20    0.62   6.05  1.00
++X   back Z face                                                         0.7     -0.8    290.8      31.70  292.27    4.64  51.82  1.00
++X   outer face                                                          0.8     -0.2    -10.7        nan     nan    0.00   3.35  1.00
++X   bolt-hole wall                                                     -0.4     -0.0     -0.2        nan     nan    0.00   0.00  0.95
++X   section at Y 294.5 (lug cross-section; should cancel the faces below it)     -0.8      0.8   -241.8        nan     nan    0.00   0.00  0.99
++X   sum of the four faces                                               1.9     -1.1    267.1        nan     nan    0.00   0.00  1.00
+applied (on the arm, at the RS02 centre X 170.49 Y 209.861 Z 5.986): F [0.0, 0.0, 0.0] N, M [0.0, -17.0, 0.0] N.m; carried to (X 170.49, Y 302.0, Z 5.986): M [0.0, -17.0, 0.0] N.m
+whole-hub section at Y 310.0 (everything the arm puts into the hub): F [-0.7, -7.0, -0.4] N, M about the same point [0.06, -17.57, -0.01] N.m (cover 1.00)
+both lugs, from the faces:    F [2.2, -0.3, 4.0] N, M [-0.08, -16.95, -0.03] N.m
+both lugs, from the sections: F [1.4, -0.9, -5.0] N, M [-0.01, -15.14, -0.01] N.m (lever at each lug Z-face centre of pressure)
+ring, ridge, groove and spigot (applied minus lugs from the sections): F [-1.4, 0.9, 5.0] N, M [0.01, -1.86, 0.01] N.m
+balance: applied F [0.0, 0.0, 0.0] N, M [0.0, -17.0, 0.0] N.m against the whole-hub section F [-0.7, -7.0, -0.4] N, M [0.06, -17.57, -0.01] N.m
+
 SUMMARY STOP_0 (r1g6)
 - -X lug: front Z face Fz -184 N (CoP X offset 30.0, Y 291.6); section Fz 179 N.
 - -X lug sideways: net about 26 N OUTWARD (-X) from our side (the lug section +25.6 N), carried in the model mostly by the lumped boss's
