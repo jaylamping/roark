@@ -24,6 +24,8 @@ If it fails, the same print shows whether a spiral deck works.
 
 ![roll rig](cable_rigs/roll_rig.png)
 
+Every part from all sides: [SHEET_roll.png](cable_rigs/SHEET_roll.png)
+
 | Part | File | Mass (sliced) | Print time |
 |---|---|---|---|
 | On-axis rig, base | `fixtures_cable_rig_roll_axis_base.STL` | 8.5 g | 27 min |
@@ -121,6 +123,8 @@ windows are (tie points); the exit stub's roof has two tie slots.
 
 ![yaw rig](cable_rigs/yaw_rig2.png)
 
+Every part from all sides: [SHEET_yaw.png](cable_rigs/SHEET_yaw.png)
+
 | Part | File | Mass (PLA) |
 |---|---|---|
 | Hub | `fixtures_cable_rig_yaw2_hub.STL` | 15.4 g |
@@ -178,6 +182,8 @@ two tie holes for the fixed clamp. The lid is the drum's flange: it turns on an 
 mouth (13 × 4) with two tie holes at r 65.
 
 ![pitch rig](cable_rigs/pitch_rig.png)
+
+Every part from all sides: [SHEET_pitch.png](cable_rigs/SHEET_pitch.png)
 
 | Part | File | Mass (sliced) | Print time |
 |---|---|---|---|
