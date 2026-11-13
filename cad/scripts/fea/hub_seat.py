@@ -616,8 +616,35 @@ def d3hub(src, dst):
     sw.CloseDoc(d.GetTitle)
 
 
+def hubhole(src, dst, r):
+    """r1g5 (2026-11-13, second review): open our FEA hub (src), cut the two lug bolt holes out to radius r (the shoulder thread's
+    Dia 3.4 to Dia 3.8 proposal), through the lug thickness (Z CZ +- 6), nothing else changed; saved as dst with its STL."""
+    sys.path.insert(0, str(ARM))
+    os.chdir(ARM)
+    import organic_master as M
+    from organic_master import L, sw, fine_stl
+    shutil.copy(F / src, F / dst)
+    e, w = L(), L()
+    d = sw.OpenDoc6(str(F / dst), 1, 1, '', e, w)
+    if d is None:
+        raise SystemExit(f'open failed: {dst} {e.value} {w.value}')
+    with M.Sk(d, M.plane(d, 'Z', CZ, 'HUB_HOLE38_P'), 'HUB_HOLE38') as s_:
+        for bx in (147.5, 193.5):
+            s_.circle((bx, 292.0, CZ), r)
+    M.feat(d, s_.feat, 'HUB_HOLE38', 12.0, True, mode=M.MID, lo=0.01)
+    d.ForceRebuild3(False)
+    print('  HUB_HOLE38 built', d.FeatureByName('HUB_HOLE38') is not None, 'radius', r, flush=True)
+    e, w = L(), L()
+    d.Save3(1, e, w)
+    fine_stl(d, F / (Path(dst).stem + '.STL'))
+    print('  saved', dst, 'and its STL', flush=True)
+    sw.CloseDoc(d.GetTitle)
+
+
 if __name__ == '__main__' and sys.argv[1:2] == ['d3hub']:
     d3hub(sys.argv[2], sys.argv[3])
+elif __name__ == '__main__' and sys.argv[1:2] == ['hubhole']:
+    hubhole(sys.argv[2], sys.argv[3], float(sys.argv[4]))
 elif __name__ == '__main__' and sys.argv[1:] == ['build']:
     build()
 elif __name__ == '__main__' and sys.argv[1:2] == ['zfillet']:
