@@ -179,7 +179,9 @@ off the rear face. Everything above that assumes a plug pushed down onto the rea
 variant a2) is superseded.
 
 **The vendor STEP agrees, and so does our RS02 model.** I re-read the faces of `cad/vendor/robstride/vendor_robstride_rs02.step`:
-- **Two sockets, 180° apart:** at 173° and −7° in our frame (±90° in the vendor's).
+- **Two sockets, 180° apart:** at **188° (the one in use, where the socket tap starts) and 8°** in our frame. That is the
+  vendor's ±90° through the assembly's 98° clock (`build_asm.T_RS02`). The 173° / −7° used earlier in this file were
+  mirrored.
 - **Mating face:** r 36.17, facing radially outward, about 15.5 mm around the rim by 5.2 mm along the axis. The pins run
   radially.
 - **Height:** Y 354.9-360.1, that is 5.2-10.4 mm below the RS02 rear face (Y 365.26), in the side of the rear cover.
@@ -193,16 +195,18 @@ variant a2) is superseded.
 
 **Where it fits:** see the section at the socket's mid-height (Y 357.5), today and re-clocked:
 ![section](section_radial_plug_Y357.png)
-- **Today's clocking (sockets 173 / −7°):** the cuff skin there is only r 42-44.9, so the envelope breaks through the outer
-  skin at 173°. Either option, the plug pulled out in place or fitted before the motor goes in, needs a hole in the
-  visible cuff.
-- **RS02 re-clocked +40° (sockets −147 / 33°): recommended.**
-  - At −147° the skin is at r 55-61, and the in-use socket lands on the existing socket-tap channel (r 40.5-47.5, from
-    about −168° to the back cavity).
+- **Today's clocking (sockets 188 / 8°):** the in-use socket sits where the socket tap (r 40.5-47.5) starts, and the cuff
+  skin there is at r 47.6-48.5.
+  - The photo's folded lead (7 mm past the flange, r 46.25) just fits inside, leaving a 1-2 mm wall.
+  - The 10 mm design envelope (r 49.25) breaks through the skin.
+  - So today's clocking works only if the real lead folds to 7 mm or less, and the wall there would be thin.
+- **RS02 re-clocked +40° (sockets 228 / 48°): recommended.**
+  - At 228° the socket sits over the middle of the socket tap, and the skin is at r 55-60. Both envelopes stay inside the
+    outline with several mm of wall.
   - The plug and its folded lead stay inside the outline. That needs the seat-ring socket pocket (as today) and about
     2-3 mm into the wall behind the tap, out to about r 50: all internal.
   - **Assembly:** with the fork front on the bench and the fork rear not yet fitted, the back cavity is open. The plug goes
-    on radially in place, and its lead folds into the tap and runs to the back. The spare socket (33°) only needs its
+    on radially in place, and its lead folds into the tap and runs to the back. The spare socket (48°) only needs its
     seat-ring pocket.
   - **Cost:**
     - The fork front's five RS02 screw holes move to the matching five of the nine-position 40° pattern.
