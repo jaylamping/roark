@@ -1,0 +1,87 @@
+{
+  "rows": [
+    {
+      "local_mm": 0.8,
+      "nodes": 53556,
+      "hole_peak_vm_mpa": 27.45,
+      "hole_peak_at_mm": [
+        19.25,
+        37.61,
+        6.0
+      ],
+      "hole_peak_sx_mpa": -30.24,
+      "hole_peak_sz_mpa": -4.04,
+      "hole_layer_sz_mpa": 8.8,
+      "hole_layer_at_mm": [
+        22.3,
+        10.52,
+        4.62
+      ],
+      "low_peak_vm_mpa": 12.47,
+      "low_peak_at_mm": [
+        23.79,
+        37.53,
+        0.0
+      ],
+      "low_peak_sx_mpa": 10.77,
+      "low_peak_sz_mpa": -0.01,
+      "under_washer_vm_mpa": 72.79,
+      "under_washer_at_mm": [
+        20.0,
+        10.0,
+        6.0
+      ],
+      "fillet_peak_vm_mpa": 15.62,
+      "back_face_sz_mpa": 10.12,
+      "max_disp_mm": 2.3503,
+      "reaction_n": [
+        -150.0,
+        -0.0,
+        0.0,
+        150.0
+      ]
+    },
+    {
+      "local_mm": 0.5,
+      "nodes": 82001,
+      "hole_peak_vm_mpa": 23.99,
+      "hole_peak_at_mm": [
+        19.33,
+        7.72,
+        6.0
+      ],
+      "hole_peak_sx_mpa": -26.74,
+      "hole_peak_sz_mpa": -1.85,
+      "hole_layer_sz_mpa": 9.23,
+      "hole_layer_at_mm": [
+        22.26,
+        39.81,
+        4.91
+      ],
+      "low_peak_vm_mpa": 12.9,
+      "low_peak_at_mm": [
+        24.04,
+        37.42,
+        0.44
+      ],
+      "low_peak_sx_mpa": 10.39,
+      "low_peak_sz_mpa": 0.24,
+      "under_washer_vm_mpa": 63.9,
+      "under_washer_at_mm": [
+        20.0,
+        10.0,
+        6.0
+      ],
+      "fillet_peak_vm_mpa": 15.56,
+      "back_face_sz_mpa": 10.18,
+      "max_disp_mm": 2.364,
+      "reaction_n": [
+        -150.0,
+        0.0,
+        0.0,
+        150.0
+      ]
+    }
+  ],
+  "seconds": 70
+}
