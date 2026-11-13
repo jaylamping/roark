@@ -121,6 +121,9 @@ by trial, once, at assembly.
        are marked on the inner edge: wide notch = 0.25, narrow = 0.05, counted from 0.25.
      - **Fitting:** one plate goes on each Z face of each lug, with its lip hooked under the lug's free end. The bolt hole lines
        up with the lug's.
+     - **Before the plates:** the two brass inserts in the front posts must sit flush with the post face or up to 0.1 below it.
+       Check with a straightedge across each insert. A proud insert would be a hard spot under the plate (the plate's Dia 4.4 hole
+       clears the insert's Dia 4.0 only by 0.2).
      - **Pick, with the ring chosen:** "Start each lug with the thickest pair, and take one plate down a step at a time,
        alternating sides, until the front half closes by hand with the seam shut; use those." Both lugs are picked in the same
        trials.
