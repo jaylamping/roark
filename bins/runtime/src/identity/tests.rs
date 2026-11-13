@@ -154,7 +154,7 @@ fn a_scan_probes_every_id_and_lists_what_answered() {
 /// Guards: safety - a set-ID's type 7 goes only once probes have just shown exactly one drive at the old ID and nothing
 /// at the new; otherwise it is refused with what answered and no type 7 is asked: none, two drives or unsure at the old
 /// ID, anything or unsure at the new, or a probe the bus refused (PLAN item 2, transmit allowlist: type 7 only with
-/// exactly one drive answering; a type 7 to a shared ID would move every drive on it).
+/// exactly one drive answering at the old ID and none at the new; a type 7 to a shared ID would move every drive on it).
 #[test]
 fn a_set_id_is_refused_unless_one_drive_is_at_the_old_id_and_none_at_the_new() {
     let two = SlowOutcome::Found {

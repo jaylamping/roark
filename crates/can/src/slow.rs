@@ -43,7 +43,8 @@ pub enum SlowKind {
     /// trusted ends [`SlowOutcome::Unsure`] whatever it heard.
     Probe(DeviceId),
     /// Type 7: give the drive at `old` the ID `new`. PLAN item 2 allows it only from the set-ID command with exactly
-    /// one drive answering on the bus; the requester proves that with a scan, the bus only that every limb is idle.
+    /// one drive answering at `old` and none at `new`; the requester proves that with probes, the bus only that every
+    /// limb is idle.
     /// Answered like a probe of `new`: the drive answers with its type-0 frame (manual §4.1.5, "Answer motor broadcast
     /// frame"), assumed from its new ID since the change is "effective immediately"; the manual doesn't say, and the
     /// bench checks it. A reply only from the old ID ends [`SlowOutcome::TimedOut`] (or `Unsure`, like a probe). Either
