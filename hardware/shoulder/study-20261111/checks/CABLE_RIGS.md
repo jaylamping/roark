@@ -116,6 +116,9 @@ If test A passes cleanly, say so plainly: it decides whether the cap and fork re
 
 ## Yaw rig (second version)
 
+**Start here: [HOWTO_yaw.png](cable_rigs/HOWTO_yaw.png)**, one page of pictures: where the rig comes from on the robot, the
+six parts, the stack, where the wires go, and the test.
+
 **What it is:** the dish under the RS02 with both ends of the bundle clamped. It comes with **two dish depths**, so
 18 AWG and 16 AWG can be tried in one sitting:
 
@@ -151,8 +154,8 @@ Every part from all sides: [SHEET_yaw.png](cable_rigs/SHEET_yaw.png)
 
 1. **Clamp at the exit:** thread the wires in through the exit stub and tie them down through the two slots in its roof.
 2. **Lay the bundle** on the hub's floor with the fork part off.
-3. **Clamp at the window:** lead the end down the 68° chute and tie it to the post beside the chute, below the floor. Tape
-   over the 248° window.
+3. **Clamp at the window:** lead the end down the 68° chute (the hole in the floor next to the hub's pointer tab; the hub
+   is not marked) and tie it to the post beside the chute, below the floor. Tape over the other, 248° window.
 4. **Assemble:** boss on the hub, fork part over the boss (it rests on the boss's shoulder), cap, M4. Pointer at 0.
 5. **Five slow cycles** between the stops (-90 and +90), watching through the roof slots. **Then 200 by hand.**
 
@@ -160,7 +163,7 @@ Every part from all sides: [SHEET_yaw.png](cable_rigs/SHEET_yaw.png)
 
 | Test | Wires | Dish | Laid as | Expected on paper |
 |---|---|---|---|---|
-| **C1** | 2 × 18 AWG + 2 pairs | 5.5 | Spiral, about 2.25 turns at yaw 0, power wires stacked one on the other, pairs beside them | **Fits only with the pairs untwisted in the dish** (four singles stacked: band 3.5 mm of the 4.0 available). Twisted: band 4.7 mm, about ±72° |
+| **C1** | 2 × 18 AWG + 2 pairs | 5.5 | Spiral, about 2.5 turns at yaw 0 (the exit and the window are half a turn apart there: 2.25 turns at one end of travel, 2.75 at the other), power wires stacked one on the other, pairs beside them | **Fits only with the pairs untwisted in the dish** (four singles stacked: band 3.5 mm of the 4.0 available). Twisted: band 4.7 mm, about ±72° |
 | **C2** | 2 × 16 AWG + 2 pairs | 5.5 | The same | **Does not fit:** two stacked are 6.0 mm in a 5.5 mm dish, so they lie side by side and the band is too wide |
 | **C3** | 2 × 16 AWG + 2 pairs | 7.0 | The same | **Close:** pairs untwisted, band 4.2 mm, about ±85°. Twisted: 5.4 mm, about ±56° |
 | **D** | 2 × 16 AWG + 2 pairs | 5.5 | One plain arc from the exit round to the window, flat; turn only between -37 and +37, then try ±45 and ±50 once | Free to ±37 |
