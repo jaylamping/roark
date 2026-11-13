@@ -1,0 +1,5 @@
+cad/_sim/r1g2_g90/org16_HS_G90_fine.npz
+  annulus r 36.2-38.4 at Y 302.0: 2131 arm face nodes; area 516 mm2
+  mean sigma y -0.74 MPa (net axial force about -380 N); compressed part 69 % of nodes, mean there -1.08 MPa
+  most-loaded 30 deg sector: th 240-270, mean -3.19 MPa
+  peak -7.32 MPa at r 36.40 th 259; worst 0.5 mm average -5.16 (n 4), 1 mm -3.94 (n 9); SF vs 45 MPa: peak 6.1, 0.5 mm 8.7, 1 mm 11.4, sector mean 14.1
