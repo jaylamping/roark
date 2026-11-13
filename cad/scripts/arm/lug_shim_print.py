@@ -1,17 +1,20 @@
-"""R1f lug shim plates (2026-11-12, WIP for hub rev D3): flat printed PETG plates on the extended lugs' Z faces, picked by trial
-at assembly after the ring (zero yaw play). One shape fits all four places: flipped over it serves the other face of a lug and
-the other lug (both mirror images). Outline in the lug's own face (offset from the yaw axis, Y):
-  - the flat face below the hub's R1.2 Z root (Y 288.2-294.6), offset 18.9 out to the lug's outer edge less 0.2
-    (34.2), the main flat face only (no strip above Y 294.6), per the D3 hub as built;
-  - a Dia 4.4 hole for the lug bolt (offset 23.0, Y 292.0); the 0.2 chamfer is left out (one or two layers on these plates);
-  - a lip: a 0.8 wide x 1.2 high rib along the bottom edge (Y 287.2-288.0, on the printed top face) that hooks under the lug's
-    free end (Y 288), so the plate stays put while the half closes.
+"""Lug shim plates (R1f 2026-11-12; final outline r1g4, 2026-11-13): flat printed PETG plates on the extended lugs' Z faces, picked
+by trial at assembly after the ring (zero yaw play). One shape fits all four places: flipped over it serves the other face of a lug
+and the other lug (both mirror images). Outline in the lug's own face (offset from the yaw axis, Y), for hub D3b / D3c4:
+  - the main flat face X offset 18.96-34.2 x Y 288.2-294.6: 0.2 below the line where the hub's R1.2 Z-root fillet leaves the lug
+    face (Y 294.8); no strip above it;
+  - a Dia 3.8 hole for the lug bolt (offset 23.0, Y 292.0): smaller than the insert's Dia 4.0 hole, so the plate holds the brass
+    insert captive against the bolt's pull; the strip above the hole is 0.7 (plate_ligament_check.py);
+  - a lower strip X offset 18.96-32.5 x Y 287.2-288.2 and a lip on it, a 0.8 wide x 1.2 high rib (X offset 19.5-32.5,
+    Y 287.2-288.0, on the printed top face = the lug side) that hooks under the lug's free end (Y 288), so the plate stays put while
+    the half closes; both stop at X offset 32.5, clear of our wall below the pocket floor (review 2026-11-13).
 Thickness t marked on the inner edge: narrow notch = 0.05, wide notch = 0.25, counted from t = 0.25 (0.25 has none).
 Plates (thickness = first layer + whole 0.10 layers), two of each size:
   A: first layer 0.25 -> 0.25 0.35 0.45 0.55 0.65 0.75
   B: first layer 0.20 -> 0.30 0.40 0.50 0.60 0.70
 Sliced with the arm halves' seed project; only the layer heights, 100 % infill, no support and no brim changed.
-    python lug_shim_print.py [A B]        (from cad/scripts/arm; under capped.py). Re-run when the D3 hub geometry is final."""
+    python lug_shim_print.py [A B]        (from cad/scripts/arm; under capped.py)
+    LUG_SHIM_NOSLICE=1: write the plate STLs and result.json only, no slicing (geometry preview)."""
 import json
 import os
 import re
@@ -31,11 +34,11 @@ import organic_print as P
 
 PLATES = {'A': (0.25, [0.25, 0.35, 0.45, 0.55, 0.65, 0.75] * 2), 'B': (0.20, [0.30, 0.40, 0.50, 0.60, 0.70] * 2)}
 OUT = Path(os.environ.get('LUG_SHIM_OUT', P.REPO / 'cad' / '_wip' / 'r1f_lug_shims'))
-Y0 = 288.0
+Y0 = 288.0      # local origin: offset 0 at the yaw axis, Y at the lug's free end
 # r1g4 (2026-11-13, after the review): Dia 3.8 hole, smaller than the insert's Dia 4.0 hole, so the plate holds the insert captive
 # between it and the post; top Y 294.6 (0.2 below the hub's R1.2 root tangent line Y 294.8), so the strip above the hole is 0.7
 HOLE_R = float(os.environ.get('LUG_PLATE_HOLE_R', '1.9'))
-PLATE_TOP = float(os.environ.get('LUG_PLATE_TOP', '294.6'))      # back to 294.6 (coordinator 14:56Z): 0.2 below the R1.2 tangent line, 0.7 strip      # local origin: offset 0 at the yaw axis, Y at the lug's free end
+PLATE_TOP = float(os.environ.get('LUG_PLATE_TOP', '294.6'))      # back to 294.6 (coordinator 14:56Z): 0.2 below the R1.2 tangent line, 0.7 strip
 
 
 def outline(t):
@@ -84,6 +87,11 @@ def run(name):
     part, spots = plate_mesh(ts)
     part.apply_translation((0, 0, -part.bounds[0, 2]))
     part.export(out / f'lug_shims_{name}.stl')
+    if os.environ.get('LUG_SHIM_NOSLICE') == '1':
+        (out / 'result.json').write_text(json.dumps(dict(plate=name, first_layer=first, layer=0.10, plates=plate_mesh(ts)[1], sliced=False,
+                                                     hole_r=HOLE_R, plate_top=PLATE_TOP), indent=1))
+        print('STL only (not sliced):', out / f'lug_shims_{name}.stl', flush=True)
+        return
     extra = {'layer_height': '0.1', 'initial_layer_print_height': f'{first:.2f}', 'sparse_infill_density': '100%',
              'enable_support': '0', 'brim_type': 'no_brim'}
     src, size = P.project(f'lug_shims_{name}', part, [], extra, out)

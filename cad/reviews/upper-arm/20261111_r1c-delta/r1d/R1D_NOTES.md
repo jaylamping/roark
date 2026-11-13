@@ -966,3 +966,20 @@ is drawn; θ 0 mirrors it. r is measured from the hub axis.
   0.41, though the hub face improved (0.72 to 1.04 at 0.5 mm).
 - Decision: Dia 4.4, r1g2 final. The r1g3 files stay as a record: `r1g/r1g3_stop0b.*`.
 - The STOP_0 hole edge at Dia 4.4 is listed in the packet as a known item, with its principal-stress read-out.
+
+## Solve memory footprint and the machine's free memory (2026-11-13)
+
+- **What "peak used" means.** r1e_solve2.sh samples the machine's free memory during a job and logs the drop since the job
+  started as "used". That drop is our SolidWorks plus the solver plus anything else on the machine that changed meanwhile. Until
+  2026-11-13 it sampled once a minute, which can miss a short solver peak. The Intel solver's BenchMark file records no memory
+  figure.
+- **Measured, r1g2 (about 391 k nodes, 1.17 M equations, 13 contact sets):** sampled peaks 10.3 / 10.7 / 10.9 / 11.1 / 11.3 /
+  11.8 GB over six solves. r1g3_stop0 read 13.2 GB, with another thread's solve overlapping. **The footprint used for planning
+  is 11.8 GB.** The peak lasts about a minute, inside the solve (the contact iterations); the rest of a job sits at 1-2 GB.
+- **Launch rule (this machine, 31.9 GB):** launch at footprint + memory-stop margin. With the stop at 2 GB free that is about
+  14 GB free (MINFREE=14000, MEMSTOP_FREE=2048). Sampling is now every 15 s (MEM_SAMPLE=15), to catch the real peak.
+- **Explorer leak.** explorer.exe (PID 80728, running since 2026-11-12 06:41) held 12.1 GB private at 08:16 and 14.4 GB at 09:49
+  on 2026-11-13, and was still growing. With it, the machine's free memory sat at 11.5-12.6 GB with no solve running, below the
+  14 GB launch level, so the r1g4 queue waited. Restarting Explorer is the owner's decision. No thread touches it.
+- **Shared solve lock.** C:\joe\.fea_solve.lock is taken only at the moment of launch: memory, then lock, then re-check memory.
+  If the re-check fails, the lock is released and the job goes back to waiting. A job waiting at the memory gate must not hold it.
