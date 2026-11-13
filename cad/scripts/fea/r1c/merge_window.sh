@@ -48,5 +48,8 @@ S.end_session(st)
 print('SMOKE ended; pid alive after end:', S._started(inst.pid) is not None)
 PY
 echo "SMOKE $(grep -E '^SMOKE' $OUT | tr '\n' ' ')" >> $L
+# the D3c7 hub check while no solve runs (its memory then counts against no solve)
+bash cad/scripts/fea/r1c/d3c7_check.sh >> $OUT 2>&1
+echo "D3C7 checks done $(date +%H:%M)" >> $L
 date +%s > cad/_wip/.fea_job_last_end
 echo "MERGE_WINDOW_DONE $(date +%H:%M)" >> $L

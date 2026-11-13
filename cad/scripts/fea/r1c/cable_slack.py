@@ -46,68 +46,73 @@ def secY(m, y, fill=60.0):
 
 
 res = {}
-# ---- 1. U-loop below the waist (Y 256 down to 165)
-YL = np.arange(256.0, 164.5, -1.0)
-obst = {y: unary_union([secY(m, y) for m in parts.values()]).buffer(MARGIN) for y in YL}
-# the open cavity region of each plane: inside our halves' outer outline (anything outside the skin is not usable)
-skin = {y: unary_union([Polygon(p.exterior) for n in ('front', 'back') for g in [secY(parts[n], y)]
-                        for p in (g.geoms if hasattr(g, 'geoms') else [g]) if not p.is_empty]) for y in YL}
-Lw = 2 * RB + T
-best = (0.0, None)
-xs, zs = np.arange(140.0, 201.0, 2.0), np.arange(-40.0, 52.0, 2.0)
-for dd in range(0, 180, 15):
-    base = affinity.rotate(box(-Lw / 2, -W / 2, Lw / 2, W / 2), dd, origin=(0, 0))
-    cand = [(x, z) for x in xs for z in zs]
-    rects = np.array([affinity.translate(base, x, z) for x, z in cand])
-    ok = np.zeros((len(YL), len(cand)), bool)
-    for k, y in enumerate(YL):
-        ok[k] = shapely.contains(skin[y], rects) & ~shapely.intersects(rects, obst[y])
-    for j in range(len(cand)):
-        run, r0 = 0, None
-        for k in range(len(YL)):
-            if ok[k, j]:
-                run += 1
-                if run > best[0]:
-                    best = (run, dict(d_deg=dd, x=cand[j][0], z=cand[j][1], y_top=float(YL[k - run + 1]), y_bot=float(YL[k])))
-            else:
-                run = 0
-run = best[0]
-travel = max(0.0, run - (RB + T / 2))
-res['1_u_loop'] = dict(bend_radius=RB, loop_width_needed=Lw, best_clear_run_mm=float(run), best=best[1], travel_mm=travel,
-                       length_taken_up_mm=2 * travel, needed_mm=100.0)
-# free radial gap around the RS02 inside the drum, by X sections (phi 0 = +Y)
-
-
-def secX(m, x):
-    s = m.section(plane_origin=[x, 0, 0], plane_normal=[1, 0, 0])
-    g = Polygon()
-    for e in ([] if s is None else s.discrete):
-        if len(e) >= 4:
-            g = g.symmetric_difference(Polygon(e[:, [1, 2]]).buffer(0))
-    return g.buffer(0)
-
-
+import os as _os
+SKIP_LOOP = _os.environ.get('SLACK_SKIP_LOOP') == '1'      # route-only run (the U-loop and drum gaps are unchanged)
+run, travel, best, Lw = 0.0, 0.0, (0.0, None), 2 * RB + T
 gaps = {}
-for x in (145.0, 150.0, 155.0, 160.0, 165.0, 170.0, 180.0, 190.0):
-    mats = unary_union([secX(m, x) for m in parts.values()])
-    row = {}
-    for ph in range(0, 360, 15):
-        a = np.radians(ph)
-        rr = np.arange(20.0, 46.0, 0.25)
-        pts = shapely.points(CY + rr * np.cos(a), CZ + rr * np.sin(a))
-        inside = shapely.intersects(pts, mats)
-        # the largest free radial run that has material on both ends (the annulus between the motor / ring and the drum wall)
-        best_r, cur, seen = 0.0, 0.0, False
-        for k in range(len(rr)):
-            if inside[k]:
-                if seen and cur > best_r:
-                    best_r = cur
-                seen, cur = True, 0.0
-            else:
-                cur += 0.25
-        row[ph] = round(best_r, 2)
-    gaps[x] = row
-res['1_drum_annulus_free_radial_mm'] = gaps
+if not SKIP_LOOP:
+    # ---- 1. U-loop below the waist (Y 256 down to 165)
+    YL = np.arange(256.0, 164.5, -1.0)
+    obst = {y: unary_union([secY(m, y) for m in parts.values()]).buffer(MARGIN) for y in YL}
+    # the open cavity region of each plane: inside our halves' outer outline (anything outside the skin is not usable)
+    skin = {y: unary_union([Polygon(p.exterior) for n in ('front', 'back') for g in [secY(parts[n], y)]
+                            for p in (g.geoms if hasattr(g, 'geoms') else [g]) if not p.is_empty]) for y in YL}
+    Lw = 2 * RB + T
+    best = (0.0, None)
+    xs, zs = np.arange(140.0, 201.0, 2.0), np.arange(-40.0, 52.0, 2.0)
+    for dd in range(0, 180, 15):
+        base = affinity.rotate(box(-Lw / 2, -W / 2, Lw / 2, W / 2), dd, origin=(0, 0))
+        cand = [(x, z) for x in xs for z in zs]
+        rects = np.array([affinity.translate(base, x, z) for x, z in cand])
+        ok = np.zeros((len(YL), len(cand)), bool)
+        for k, y in enumerate(YL):
+            ok[k] = shapely.contains(skin[y], rects) & ~shapely.intersects(rects, obst[y])
+        for j in range(len(cand)):
+            run, r0 = 0, None
+            for k in range(len(YL)):
+                if ok[k, j]:
+                    run += 1
+                    if run > best[0]:
+                        best = (run, dict(d_deg=dd, x=cand[j][0], z=cand[j][1], y_top=float(YL[k - run + 1]), y_bot=float(YL[k])))
+                else:
+                    run = 0
+    run = best[0]
+    travel = max(0.0, run - (RB + T / 2))
+    res['1_u_loop'] = dict(bend_radius=RB, loop_width_needed=Lw, best_clear_run_mm=float(run), best=best[1], travel_mm=travel,
+                           length_taken_up_mm=2 * travel, needed_mm=100.0)
+    # free radial gap around the RS02 inside the drum, by X sections (phi 0 = +Y)
+
+
+    def secX(m, x):
+        s = m.section(plane_origin=[x, 0, 0], plane_normal=[1, 0, 0])
+        g = Polygon()
+        for e in ([] if s is None else s.discrete):
+            if len(e) >= 4:
+                g = g.symmetric_difference(Polygon(e[:, [1, 2]]).buffer(0))
+        return g.buffer(0)
+
+
+    gaps = {}
+    for x in (145.0, 150.0, 155.0, 160.0, 165.0, 170.0, 180.0, 190.0):
+        mats = unary_union([secX(m, x) for m in parts.values()])
+        row = {}
+        for ph in range(0, 360, 15):
+            a = np.radians(ph)
+            rr = np.arange(20.0, 46.0, 0.25)
+            pts = shapely.points(CY + rr * np.cos(a), CZ + rr * np.sin(a))
+            inside = shapely.intersects(pts, mats)
+            # the largest free radial run that has material on both ends (the annulus between the motor / ring and the drum wall)
+            best_r, cur, seen = 0.0, 0.0, False
+            for k in range(len(rr)):
+                if inside[k]:
+                    if seen and cur > best_r:
+                        best_r = cur
+                    seen, cur = True, 0.0
+                else:
+                    cur += 0.25
+            row[ph] = round(best_r, 2)
+        gaps[x] = row
+    res['1_drum_annulus_free_radial_mm'] = gaps
 # ---- 2. sliding stretch on the THETA route (bends across the thin direction only; R >= RB)
 YS = np.arange(298.0, 244.5, -1.0)
 halves = {y: unary_union([secY(parts[n], y) for n in ('front', 'back')]) for y in YS}
@@ -218,36 +223,37 @@ res['2_rows'] = rows
 json.dump(res, open(OUT / 'cable_slack.json', 'w'), indent=1)
 print(json.dumps({k: v for k, v in res.items() if k not in ('2_rows', '1_drum_annulus_free_radial_mm')}, indent=1))
 print('drum annulus free radial gap (mm), phi 0 = +Y: ')
-for x, row in gaps.items():
+for x, row in (gaps or {}).items():
     print(f'  X {x:.0f}: ' + ' '.join(f'{k}:{v}' for k, v in row.items()))
-# picture: the U-loop envelope (if any) and the drum section with the motor
-fig, axs = plt.subplots(1, 3, figsize=(20, 7))
-for ax, y in zip(axs[:2], (250.0, 240.0)):
-    g = unary_union([secY(m, y) for m in parts.values()])
+if not SKIP_LOOP:
+    # picture: the U-loop envelope (if any) and the drum section with the motor
+    fig, axs = plt.subplots(1, 3, figsize=(20, 7))
+    for ax, y in zip(axs[:2], (250.0, 240.0)):
+        g = unary_union([secY(m, y) for m in parts.values()])
+        for pg in (g.geoms if hasattr(g, 'geoms') else [g]):
+            if not pg.is_empty:
+                ax.fill(*pg.exterior.xy, color='#9db4cf', ec='#33557a', lw=0.5)
+                for h in pg.interiors:
+                    ax.fill(*h.xy, color='white', ec='#33557a', lw=0.5)
+        if best[1] is not None:
+            b = best[1]
+            ax.plot(*affinity.translate(affinity.rotate(box(-Lw / 2, -W / 2, Lw / 2, W / 2), b['d_deg'], origin=(0, 0)), b['x'], b['z']).exterior.xy, 'r-', lw=1.2,
+                    label=f'best U-loop envelope (needs {Lw:.1f} x {W:.0f})')
+        ax.set_aspect('equal'); ax.set_title(f'Y {y:.0f}: halves, ring and RS02 (blue)', fontsize=10); ax.legend(fontsize=8)
+        ax.set_xlabel('X'); ax.set_ylabel('Z')
+    ax = axs[2]
+    g = unary_union([secX(m, 160.0) for m in parts.values()])
     for pg in (g.geoms if hasattr(g, 'geoms') else [g]):
         if not pg.is_empty:
             ax.fill(*pg.exterior.xy, color='#9db4cf', ec='#33557a', lw=0.5)
             for h in pg.interiors:
                 ax.fill(*h.xy, color='white', ec='#33557a', lw=0.5)
-    if best[1] is not None:
-        b = best[1]
-        ax.plot(*affinity.translate(affinity.rotate(box(-Lw / 2, -W / 2, Lw / 2, W / 2), b['d_deg'], origin=(0, 0)), b['x'], b['z']).exterior.xy, 'r-', lw=1.2,
-                label=f'best U-loop envelope (needs {Lw:.1f} x {W:.0f})')
-    ax.set_aspect('equal'); ax.set_title(f'Y {y:.0f}: halves, ring and RS02 (blue)', fontsize=10); ax.legend(fontsize=8)
-    ax.set_xlabel('X'); ax.set_ylabel('Z')
-ax = axs[2]
-g = unary_union([secX(m, 160.0) for m in parts.values()])
-for pg in (g.geoms if hasattr(g, 'geoms') else [g]):
-    if not pg.is_empty:
-        ax.fill(*pg.exterior.xy, color='#9db4cf', ec='#33557a', lw=0.5)
-        for h in pg.interiors:
-            ax.fill(*h.xy, color='white', ec='#33557a', lw=0.5)
-ax.add_patch(plt.Circle((CY, CZ), RB, fill=False, ls='--', color='r', label=f'R {RB:.0f} bend'))
-ax.set_aspect('equal'); ax.set_title('X 160 section through the drum: RS02, ring, drum wall (Y-Z)', fontsize=10); ax.legend(fontsize=8)
-ax.set_xlabel('Y'); ax.set_ylabel('Z')
-fig.suptitle(f'Hub harness slack below the waist: bundle {W:.0f} x {T}, R {RB:.0f} across the thin direction; '
-             f'best clear U-loop run {run:.0f} mm -> takes up {2 * travel:.0f} mm of the 100 mm needed', fontsize=11)
-fig.tight_layout(); fig.savefig(OUT / 'cable_slack.png', dpi=100)
+    ax.add_patch(plt.Circle((CY, CZ), RB, fill=False, ls='--', color='r', label=f'R {RB:.0f} bend'))
+    ax.set_aspect('equal'); ax.set_title('X 160 section through the drum: RS02, ring, drum wall (Y-Z)', fontsize=10); ax.legend(fontsize=8)
+    ax.set_xlabel('Y'); ax.set_ylabel('Z')
+    fig.suptitle(f'Hub harness slack below the waist: bundle {W:.0f} x {T}, R {RB:.0f} across the thin direction; '
+                 f'best clear U-loop run {run:.0f} mm -> takes up {2 * travel:.0f} mm of the 100 mm needed', fontsize=11)
+    fig.tight_layout(); fig.savefig(OUT / 'cable_slack.png', dpi=100)
 
 fig, axs = plt.subplots(1, 2, figsize=(15, 7))
 ax = axs[0]
