@@ -763,3 +763,99 @@ Against the remedies:
 
 So at 17 N·m the limit is the hub as well as our posts. Unless the shoulder thread revises the hub, a yaw torque cap of about
 10 N·m is needed whatever we do on our side.
+
+## Torque key at the spigot: our side (2026-11-12, 19:40)
+
+θ is measured about the hub axis from +X toward +Z. θ 0 / 180 are the lugs and the seam, θ 90 is mid front half, θ 270 is mid
+back half. Measured on the R1e print halves (sections at Y 294.5-297.7, rays from the hub axis; `cad/scripts/fea/r1c/bore_survey.py`).
+
+### 1. What our bore has around Y 296-298
+
+- **Bore.** r 35.8-35.9 all round from Y 295.7 up to about Y 297.8; the ridge starts above that.
+- **Collar.** r 35.9-37.4, Y 295.7-301.3, merged into the skin.
+- **Floor.** Y 295.7. Under it, the collar foot goes in to r 34.9-35.5 near θ 90 / 270.
+- **Under Y 295.** The four lug posts and the fins sit inside r 34.3 around θ 40 / 140 / 220 / 320, plus the lug slots at θ 0 / 180.
+- **Seam screws.** At Y 272: nowhere near this band.
+- **Skin (outer surface) in the band:**
+
+| θ | Where | Skin r | Wall from bore r 35.9 | Pocket depth leaving a 1.2 mm wall (3 perimeters) |
+| --- | --- | --- | --- | --- |
+| 0 / 180 | seam, lugs | 38.6-38.8 | 2.7-2.9 | 1.5 |
+| 90 | mid front half | 38.3 | 2.4 | 1.2 (thinnest: a 1.5-2 mm pocket leaves 0.4-0.9, not acceptable) |
+| 270 | mid back half | 39.0 | 3.1 | 1.9 |
+| 40 / 140 | front, toward the seam | 39.2-39.3 | 3.3-3.4 | 2.1-2.2 |
+| 220-240 / 300-320 | back, toward the seam | 39.5-39.7 | 3.6-3.8 | 2.4-2.6 |
+
+Keys whose torque faces are parallel to Z (no undercut when a half closes along Z) don't have to sit at θ 90 / 270. They can sit
+anywhere in a half's arc. The thickest wall is at θ 40 / 140 (front) and θ 230 / 310 (back).
+
+### 2. Slop
+
+**Present design.**
+- Each lug sits in its slot with 0.086 (front) / 0.1 (back) clearance per side, at r 24.1 (lug centres 48.2 apart).
+- Free yaw angle: (0.086 + 0.1) / 24.1 = 7.7 mrad total, about ±0.22°. At the wrist, with the elbow at 90° (283 mm from the yaw axis),
+  that is about ±1.1 mm (2.2 mm total), before any elastic wind-up.
+- Elastic wind-up at 17 N·m (YAW_17): the arm turns about 0.18 mm at r 24 relative to the lugs, gap included.
+- **Does the lug bolt clamp remove the gap?** Possibly, but not reliably.
+  - The bolt runs along Z through post, lug and post. The yaw run shows the posts at about 4.4 kN/mm (0.075 mm per 330 N).
+  - Closing 0.1 per side needs about 0.4-0.45 kN per post. The 0.5 N·m preload is about 0.55-0.83 kN (K 0.2-0.3), so it can just
+    pinch the lug, then hold it by friction: about 0.1 kN per face at μ 0.3, about 10 N·m total before slip.
+  - Against that: it pre-bends the posts (more stress at the post roots, not modelled), PETG under the clamp relaxes, and once it
+    slips the full ±0.22° play is back.
+  - So the present design is not slop-free in yaw.
+
+**Mid-half keys (θ 90 / 270, or anywhere in a half, faces parallel to Z).**
+- The torque faces slide past each other as the half closes, so the fit is whatever prints. Line-to-line ±0.1 means a play of up
+  to about 0.1-0.2 per key; at r 36.7 that is ±1.4-2.7 mrad, about ±0.4-0.8 mm at the wrist.
+- A tight fit scuffs or blocks closing.
+- The play can only be taken out with a selectable key width (picked like the shim). Even then it is a sliding fit: zero only to
+  about ±0.025-0.05.
+
+**Seam keys (θ 0 / 180).**
+- The torque direction is the closing direction, so the two halves pinch the key like a vise. Each half carries one pocket face.
+- Zero play needs the key to be at least as wide as the closed pocket.
+- A key printed proud would hold the seam open or crush. Instead, make the key a separate selectable insert: it drops into a slot
+  in the hub land, in widths of 0.05 steps.
+  - The pick follows the shim rule: the widest that still lets the front half close by hand with the seam shut.
+  - The lug bolts, right there, then clamp the stack. The result is genuinely preloaded, zero play, held by geometry (bearing),
+    not friction.
+- Costs:
+  - The seam wall is 2.7-2.9 (pocket 1.5 deep max).
+  - The pocket is split between the halves (no undercut, easy to print).
+  - A second pick at assembly, after the shim.
+  - The seam at the hub end is pinched closed rather than held open, so no seam effect if picked right.
+
+**Better options.**
+- **(a) Fold the keys into the lugs.** The lugs are already seam keys. The yaw failure is post bending and the hub lug roots, not
+  bearing.
+  - The hub lugs could be extended radially (today to r 29.5) out to about r 37 between Y 293 and 298, into pockets split across the
+    seam in our collar.
+  - That moves the torque out to about r 33-36, nearly 1.5× the lever, so about 0.66× the force. The lug body is bigger at the
+    root, and our pocket faces sit in the stiff collar instead of the cantilevered posts.
+  - Add a selectable seam-key insert, or printed lug-side shims, for zero play.
+- **(b) Tapered keys seated by the shim's axial position.** These don't work here. The halves close along Z after the hub's axial
+  position is set; a Y-taper doesn't engage on closing, and a radial taper acts like the rejected wedge seat (it fights the seam).
+
+My view: **seam keys as selectable inserts (or the lug-extension version)** are the only route that gives zero yaw play by
+construction. Mid-half keys give strength but leave print-tolerance play unless their width is picked too, and even then it is a
+sliding fit.
+
+### 3. Bearing and shear for 240 N per key at SF 1.5 (360 N design)
+
+17 N·m over two keys at r 36.7 is 232 N each.
+
+- **Bearing face, both parts.** 360 / 45 = **8 mm² minimum** per face. PETG compression is fine in any direction to layers: ours
+  are Z-planes, the hub's Y-planes.
+  - Only 2 mm axial is available in Y 296-298, so a 2 × 1.5 face is 3 mm²: about 80 MPa, SF 0.56. **Too small.**
+  - The key needs about 5 mm axial: Y 293-298, hanging below the spigot underside into a pocket through our floor and collar foot
+    at that θ, at 1.6 radial. Or a deeper engagement, where the wall allows.
+- **Shear behind our pocket.**
+  - Seam key: the load is along Z. The planes behind the face contain Z, so this is in-plane shear, allowable about 26 MPa:
+    360 / 26 = **14 mm² minimum** shear-out area. The ligament to the skin is 1.2-1.4 thick, so its loaded length along Z must be
+    at least 5-6 mm, or the pocket must sit in front of the collar body.
+  - Mid-half key: the load is along X at θ 90. The pocket bottom and the wall toward the skin are Z-planes, so this is interlayer
+    shear at 13 MPa: 360 / 13 = **28 mm² minimum** of Z-plane area behind the face, for example the 1.2-1.8 wall over 6 mm of arc
+    and 5 mm of axial length.
+- **Hub key root**, mid-half key on the spigot (layers are Y-planes, the load is in-plane):
+  - 8 × 5 mm on r 35.85 is 40 mm², about 9 MPa shear.
+  - Bending at a 0.9 mm lever is about 216 N·mm; Z = 5 × 8² / 6 = 53 mm³ gives about 4 MPa. Fine.
