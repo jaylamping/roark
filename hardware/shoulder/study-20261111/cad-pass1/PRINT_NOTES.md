@@ -1,12 +1,100 @@
-# Shoulder print package: notes for assembly (2026-11-12)
+# Left shoulder print package (updated 2026-11-13)
 
-Collected from the checks. Each item names the check it comes from.
+Collected from the checks. Each item names where it comes from. **No shoulder part has been sliced yet:** orientations
+and supports below are judged from the geometry, and each part still needs its pre-print gate
+([part-lifecycle.md](../../../../conventions/part-lifecycle.md)).
+
+## What can print now, and what waits
+
+| Part | File | Mass (PETG) | Geometry last changed | Status |
+|---|---|---|---|---|
+| Yaw loop test rig (PLA) | `cad/exports/fixtures/fixtures_yaw_loop_rig_*.STL` | 25 g | 2026-11-13 | **Print now.** It decides the hub window and the yaw exit ([CABLE_LOOP_RIG.md](../checks/CABLE_LOOP_RIG.md)) |
+| 6808 housing seat coupon | not modelled yet | about 5 g | | **Print before the fork rear** (D_6808_FITS.md) |
+| Drum | `shoulder_roll_drum_left` | 226.5 g | 2026-11-11 | Geometry settled. **No recorded export** |
+| Flange ring | `shoulder_pitch_flange_ring_left` | 29.3 g | 2026-11-11 | Geometry settled. **No recorded export** |
+| Rear cap | `shoulder_roll_cap_left` | 85.2 g | 2026-11-11 (stop rev 2, 6808 land) | Geometry settled. **No recorded export** |
+| Drum port cap | `shoulder_roll_drum_port_cap_left` | 1.4 g | 2026-11-11 | Geometry settled. **No recorded export** |
+| Fork front | `shoulder_fork_front_left` | 155.2 g | 2026-11-13 (plug pocket pp_r) | Export current. **Waits** for a real plug tried in the channel, and for the rig (the skirt bounds the dish loop) |
+| Access plugs (2) | `shoulder_fork_access_plugs_left` | 0.7 g | 2026-11-13 | Export current. Print with the fork front |
+| Fork rear | `shoulder_fork_rear_left` | 63.7 g | 2026-11-12 (six-screw joint) | **Waits** for the 6808 coupon and for the rig (it carries the yaw exit). **No recorded export** |
+| Hub | `shoulder_hub_left` | 80.2 g | in work | **Waits.** See below |
+| Pitch loop cover | `shoulder_pitch_loop_cover_left` | 102.3 g | 2026-11-11 | **Waits:** its M5 pads are placeholders and the feed position waits for the final shell (CAD_NOTES "Still open") |
+
+**Exports that don't match their part:**
+- **Hub:** the committed `cad/exports/shoulder/shoulder_hub_left.STEP/.STL` is rev C+ (2026-11-11). The hub has moved on
+  to rev D3c (lugs to X 34.4, r 20 fill behind both lugs, cable window moved). The window angle is being settled
+  (68°, hub D3c5, in checks), so the export is replaced when that hub is released. Do not print the committed hub.
+- **Drum, flange ring, rear cap, port cap, fork rear:** no export in `cad/exports/` at all. The STLs made with each build
+  are in the scratch folder only. They need exporting and recording before a print.
+- Fork front and access plugs: exported and recorded with the part, 2026-11-13.
+
+## Part by part
+
+Material PETG throughout. "Not sliced" applies to every orientation and support line.
+
+### Drum
+- **Orientation:** front lip face down, roll axis vertical. Ribs, slots and wall windows stand vertical.
+- **Supports:** under the neck tube's outside and inside its core (open to the bore, removable); under the trunk duct's
+  outer end. The trunk channels bridge 6 mm. The skin pockets open into the bore, so nothing is enclosed.
+- **Fasteners:** to the pitch RS03 output and the roll RS03 housing with the existing M4 patterns; five M3 inserts in the
+  spokes for the flange ring.
+- Source: CONCEPT.md section 10; CAD_NOTES "Still open".
+
+### Flange ring
+- **Orientation:** flat. No support. 5 × M3 into the drum's spoke inserts.
+
+### Rear cap
+- **Orientation:** front face down, so the stub's axis is vertical and the Ø40.0 stub prints round.
+- **Supports:** under the plate between rim and boss (open from the front).
+- **Fit:** the stub is Ø40.0 with a 0.5 × 45° lead-in. No coupon needed; the arm's coupon proved Ø40.0 (D_6808_FITS.md).
+- **Stops:** the stop slot ends are part of this cap and the drum; the tooth is on the fork rear (B_ROLL_STOPS.md).
+
+### Drum port cap
+- **Orientation:** outer face down. Press-in, no screws.
+
+### Fork front
+- **Orientation:** upright, Y up; the sleeve ring's bottom edge is the first layer.
+- **Supports,** all open from below and removable: the sleeve hollow's roof (Y 340-350), the RS02-cap clearance roof
+  (Y 361-367), the dome pocket ceilings. The RS02 seat face is a supported face: check its flatness after printing
+  (CAD_NOTES "Still open").
+- **Holes printed Ø3.8, reamed Ø4.00:** three on the RS03 boss, at 0° and ±120° on r 15.2. They take Ø4 × 16 pins into the
+  RS03's three plain locating holes.
+- **Inserts:** six M4 for the fork joint.
+- **Before the first print:** try a real XT30(2+2)-F with its lead in the plug channel's size (r 36-50, 16.5 wide,
+  Y 353.9-361.1). The plug's height along the motor axis is assumed.
+- Source: CAD_NOTES "Side centre r 47" and "RS02 re-clocked +40°".
+
+### Access plugs
+- **Orientation:** flat. They press into the 104° and 144° access bores after the RS02 screws are in.
+
+### Fork rear
+- **Orientation:** upright, Y up; it starts on its flat bottom at Y 340.
+- **Supports:** its hollow's roof (Y 340-349); a small one under the stop tooth's outer face (that face carries no load).
+- **6808 housing:** modelled Ø52.2 with a 0.4 mm flat at the top, because the bore prints on its side. **Print the seat
+  coupon first** and adjust Ø52.2 to a hand-push fit.
+- **Joint:** 6 × ISO 7380 M4 button heads into the fork front's inserts. The recesses are about 3.1 mm deep, so a DIN 912
+  head would stand proud.
+- Source: CAD_NOTES "Side centre r 47"; D_6808_FITS.md; B_ROLL_STOPS.md.
+
+### Hub (when released)
+- **Orientation:** RS02 face (Y 319.86) down; spigot and lugs grow up.
+- **Supports:** in the dish annulus only (the dish floor is 1.5 mm above the bed); it pulls out at the open rim. The
+  groove's load flank is a 60° overhang, 1.5 mm tall; expect about 0.2 mm of droop on it (A_HUB_LUGS.md, "Print
+  orientation").
+- **Iron the disc face (Y 302).** It is an up-facing surface in this orientation, and the arm's shim ring seats on it.
+- **Holes printed Ø3.8, reamed Ø4.00:** two on the top, at -142° and 38° on r 12. They take the plain shank of M4 × 30
+  partially threaded screws.
+- **Lug holes:** printed Ø3.8 for the arm's fixed shim plates; the arm thread owns that fit.
+
+### Pitch loop cover
+- **Orientation:** back wall (X 75) down. Support under the feed duct's forward run. Waits, as above.
 
 ## Coupons first
 
 - **6808 housing seat ring** (D_6808_FITS.md): a thin ring with the fork rear's Ø52.2 bore, about 3 mm wall, 7 mm deep,
   printed upright like the fork rear. Adjust Ø52.2 to a hand-push fit.
-- The cap's Ø40.0 stub needs no coupon; the arm thread's coupon already proved Ø40.0.
+- The cap's Ø40.0 stub needs no coupon.
+- **Yaw loop rig** (above).
 
 ## Ream steps (holes printed Ø3.8, hand-reamed Ø4.00 with a 4 mm H7 hand reamer or a sharp 4.0 drill turned by hand)
 
@@ -24,24 +112,40 @@ Pick screws and pins with a shank of 3.98 or more (calipers). That holds backlas
 | Hub → RS02 output | 6 × M4: 2 × ISO 4762 M4 × 30 partially threaded in the reamed holes, 4 × M4 × 30 in the Ø4.3 clearance holes | 0.3 N·m. Probe the RS02's tapped depth first (about 8 mm of thread engages) |
 | Fork front → RS03 output | 6 × M4 (existing counterbores) + 3 × Ø4 × 16 pins | 0.3 N·m. Pins can be cut from M4 × 30 screw shanks; probe the RS03's plain-hole depth (about 8 mm) |
 | Fork rear → fork front (joint) | **6 × ISO 7380 M4 button heads** | Layout N. The outer recesses are only about 3.1 mm deep, so a DIN 912 head would stand proud |
+| Fork front → RS02 | 5 × M3 on PCD 73 at -96 / -56 / -16 / 104 / 144° | The RS02's own seat holes after the re-clock |
 
-## Torque without a torque screwdriver
+## Low preload and re-torque (every printed-to-RobStride joint)
 
-- 0.3 N·m: pull the long arm of the hex key with a luggage or kitchen hook scale at a measured lever L from the screw axis:
-  F = 0.3 / L. At L = 60 mm that is 5.0 N, about a 0.51 kg reading.
-- **No threadlocker in testing.** Re-torque after 24 h and after the first bench session.
+- **0.3 N·m** on the M4 screws, so they don't crush the printed bosses.
+- **Without a torque screwdriver:** pull the long arm of the hex key with a luggage or kitchen hook scale at a measured
+  lever L from the screw axis: F = 0.3 / L. At L = 60 mm that is 5.0 N, about a 0.51 kg reading.
+- **No threadlocker in testing.**
+- **Re-torque after 24 h and again after the first bench session.**
+
+## Arm-side parts at the hub (owned by the arm thread; for reference)
+
+- **Shim ring:** a printed ring, r 36.2-38.4, picked by measurement, between the arm's end face and the hub's disc face.
+  It is why the disc face is ironed.
+- **Lug shim plates:** fixed plates with a Ø3.8 hole in the arm's collar pockets; they pinch the hub's lugs and carry the
+  yaw torque. The lug M3 is capped at 0.3 N·m.
+- Details: the arm thread's `R1D_NOTES.md` and its print-release packet (`cad/reviews/upper-arm/`).
 
 ## RS02 plug and clock (pp_r, 2026-11-13)
 
 - **The RS02 is mounted re-clocked +40°.** Its in-use socket faces the socket tap at **228°**. The spare socket at 48° stays capped.
-- **Software:** the yaw joint's zero carries a +40° offset.
-- **Fork front → RS02:** 5 × M3 on PCD 73 at -96 / -56 / -16 / 104 / 144°. These are the RS02's own seat holes after the re-clock.
-- **Order:**
-  1. Plug the XT30(2+2)-F onto the 228° socket radially, with the fork front on the bench and its back cavity open.
-  2. Fold the lead into the tap and run it to TAP_LINK.
-  3. Fit the RS02 screws: the three rear ones from above, and the 104° and 144° ones through their access bores.
-  4. Fit the fork front onto the drum.
-  5. Press in the two access plugs.
-- **The order is fixed:** once the fork front is on the drum, the drum blocks every screw except 104°.
-- **Plug envelope:** sized from the photos and the XT30(2+2) data; the plug's height along the motor axis is assumed. Check
-  a real plug in the channel (r 36-50, 16.5 wide, Y 353.9-361.1) before the first print.
+- **Software:** the yaw joint's zero carries a +40° offset ([SOFTWARE_HANDOFF.md](../../SOFTWARE_HANDOFF.md)).
+
+## Assembly order
+
+1. **RS02 onto the fork front first,** on the bench, with the fork front's back cavity open:
+   1. Plug the XT30(2+2)-F onto the 228° socket radially.
+   2. Fold the lead into the tap and run it to TAP_LINK.
+   3. Fit the five RS02 screws: the three rear ones from above, and the 104° and 144° ones through their access bores.
+2. **Fork front onto the drum.** After this the drum blocks every RS02 screw except 104°, so the order is fixed.
+3. Press in the two access plugs.
+4. Lay the bundles in the ring's back cavity and fit the fork rear (six button heads).
+   - **Not reconciled:** the side-centre round (CAD_NOTES "Side centre r 47") lays the bundles in the back cavity first
+     and slides the RS02 in past them. With the RS02 now fitted on the bench first, the bundles go in after it. Whether
+     they can be laid in with the RS02 in place has not been checked ([OPEN_ASSUMPTIONS.md](../checks/OPEN_ASSUMPTIONS.md)).
+5. Hub onto the RS02 output from below, six M4 at 0.3 N·m; lay the arm bundle in the dish and through the window. Then
+   the arm halves.
