@@ -1,0 +1,80 @@
+hand nominal sigma 13.75 hand tip disp 1.2161915204678362
+01:32:12 SolidWorks pid 127328 free GB 17.4
+01:32:19 ok PLATE volume change: 12000.0000 (expected 12000.0000)
+01:32:19 PLATE: added 12000.00 mm3
+01:32:20 ok ARM volume change: 7200.0000 (expected 7200.0000)
+01:32:20 ARM: added 7200.00 mm3
+01:32:21 ok fillet edges found: 2.0000 (expected 2.0000)
+01:32:21 ROOT_FILLETS: R3.0 on 2 edges, volume change +38.63 mm3
+01:32:21 ok fillet volume added: 38.6283 (expected 38.6283)
+01:32:22 ok SCREWS volume change: 159.0431 (expected 159.0431)
+01:32:22 SCREWS: cut 159.04 mm3
+01:32:23 ok bracket volume: 19079.5852 (expected 19079.5852)
+01:32:23 wall_bracket volume 19079.58520250048 hand 19079.58520250048 bbox [0.0, 0.0, 0.0, 65.0, 40.0, 60.0] errors [] bodies 1
+0 plane n [0.0, -1.0, -0.0] area 300.0 box [0.0, 0.0, 0.0, 5.0, 0.0, 60.0]
+1 plane n [-0.0, -0.0, -1.0] area 200.0 box [0.0, 0.0, 0.0, 5.0, 40.0, 0.0]
+2 plane n [-0.0, 1.0, -0.0] area 300.0 box [0.0, 40.0, 0.0, 5.0, 40.0, 60.0]
+3 plane n [-0.0, -0.0, 1.0] area 200.0 box [0.0, 0.0, 60.0, 5.0, 40.0, 60.0]
+4 plane n [1.0, -0.0, 0.0] area 2204.1 box [5.0, 0.0, 0.0, 5.0, 40.0, 60.0]
+5 plane n [-1.0, 0.0, -0.0] area 2368.19 box [0.0, 0.0, 0.0, 0.0, 40.0, 60.0]
+6 plane n [0.0, -1.0, -0.0] area 723.86 box [5.0, 15.0, 37.0, 65.0, 15.0, 55.0]
+7 plane n [-0.0, -0.0, -1.0] area 570.0 box [8.0, 15.0, 40.0, 65.0, 25.0, 40.0]
+8 plane n [-0.0, 1.0, -0.0] area 723.86 box [5.0, 25.0, 37.0, 65.0, 25.0, 55.0]
+9 plane n [-0.0, -0.0, 1.0] area 570.0 box [8.0, 15.0, 52.0, 65.0, 25.0, 52.0]
+10 plane n [1.0, -0.0, 0.0] area 120.0 box [65.0, 15.0, 40.0, 65.0, 25.0, 52.0]
+11 cyl r 3.0 area 47.12 box [5.0, 15.0, 37.0, 8.0, 25.0, 40.0]
+12 cyl r 3.0 area 47.12 box [5.0, 15.0, 52.0, 8.0, 25.0, 55.0]
+13 cyl r 2.25 area 70.69 box [0.0, 17.75, 45.75, 5.0, 22.25, 50.25]
+14 plane n [-1.0, -0.0, -0.0] area 15.9 box [5.0, 17.75, 45.75, 5.0, 22.25, 50.25]
+15 cyl r 2.25 area 70.69 box [0.0, 17.75, 9.75, 5.0, 22.25, 14.25]
+01:32:27 ok PAD volume change: 1200.0000 (expected 1200.0000)
+01:32:27 PAD: added 1200.00 mm3
+01:32:30 ok PLATE volume change: 12000.0000 (expected 12000.0000)
+01:32:30 PLATE: added 12000.00 mm3
+01:32:31 ok ARM volume change: 6000.0000 (expected 6000.0000)
+01:32:31 ARM: added 6000.00 mm3
+01:32:32 ok fillet edges found: 2.0000 (expected 2.0000)
+01:32:32 ROOT_FILLETS: R3.0 on 2 edges, volume change +38.63 mm3
+01:32:32 ok fillet volume added: 38.6283 (expected 38.6283)
+01:32:34 ok SCREWS volume change: 159.0431 (expected 159.0431)
+01:32:34 SCREWS: cut 159.04 mm3
+01:32:35 ok fea volume equals deliverable: 19079.5852 (expected 19079.5852)
+01:32:35 bodies [('<wall_bracket_pad>-<PAD>', 1200.0, [55.0, 15.0, 40.0, 65.0, 25.0, 52.0]), ('SCREWS', 17879.59, [0.0, 0.0, 0.0, 55.0, 40.0, 60.0])]
+01:32:49 picks wall 1 screws 2 top 1 fillets 2
+01:32:49 ok wall: 1.0000 (expected 1.0000)
+01:32:49 ok screws: 2.0000 (expected 2.0000)
+01:32:49 ok top: 1.0000 (expected 1.0000)
+01:32:49 ok fillets: 2.0000 (expected 2.0000)
+01:32:49 load face {'kind': 'plane', 'r': None, 'normal': [-0.0, -0.0, 1.0], 'box': [55.0, 15.0, 52.00000000000001, 65.0, 25.0, 52.00000000000001], 'area': 100.00000000000004}
+01:32:49 PREDICT: nodes 15k-45k at el 2, disp ~1.2-1.6 mm, peak vm at arm root top fillet near (5..8, 15..25, 52)
+01:32:52 B2_wall_3p0: mesh rc 0, 12638 nodes, 7518 elements, free 17.2 GB
+01:32:53 B2_wall_3p0: fixture nodes 1331, box [-0.0, 0.0, -0.0] to [0.0, 40.0, 60.0]
+01:32:53 B2_wall_3p0: load nodes 69, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:32:54 converge (3.0, 12638, 17.96, 5.29)
+01:32:57 B2_wall_2p0: mesh rc 0, 36689 nodes, 23383 elements, free 17.2 GB
+01:33:01 B2_wall_2p0: fixture nodes 2869, box [-0.0, 0.0, -0.0] to [0.0, 40.0, 60.0]
+01:33:01 B2_wall_2p0: load nodes 125, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:33:04 converge (2.0, 36689, 18.88, 5.75)
+01:33:07 B2_wall_1p5: mesh rc 0, 80572 nodes, 53218 elements, free 17.1 GB
+01:33:22 B2_wall_1p5: fixture nodes 5037, box [-0.0, 0.0, -0.0] to [0.0, 40.0, 60.0]
+01:33:22 B2_wall_1p5: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:33:30 converge (1.5, 80572, 19.46, 5.62)
+01:33:30 CONVERGE wall [(3.0, 12638, 17.96, 5.29), (2.0, 36689, 18.88, 5.75), (1.5, 80572, 19.46, 5.62)] True
+01:33:32 B2_screws_3p0: mesh rc 0, 12638 nodes, 7518 elements, free 17.1 GB
+01:33:34 B2_screws_3p0: fixture nodes 236, box [-0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+01:33:34 B2_screws_3p0: load nodes 69, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:33:34 converge (3.0, 12638, 16.12, 3.47)
+01:33:37 B2_screws_2p0: mesh rc 0, 36689 nodes, 23383 elements, free 17.2 GB
+01:33:42 B2_screws_2p0: fixture nodes 236, box [-0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+01:33:42 B2_screws_2p0: load nodes 125, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:33:44 converge (2.0, 36689, 16.72, 3.55)
+01:33:44 CONVERGE screws [(3.0, 12638, 16.12, 3.47), (2.0, 36689, 16.72, 3.55)] True
+01:33:47 B2_wall_1p5: mesh rc 0, 80572 nodes, 53218 elements, free 17.2 GB
+01:34:01 B2_wall_1p5: fixture nodes 5037, box [-0.0, 0.0, -0.0] to [0.0, 40.0, 60.0]
+01:34:01 B2_wall_1p5: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:34:09 FINAL wall {'nodes': 80572, 'reaction': [0.001, -0.001, 59.999, 59.999], 'applied': 60.0, 'max_disp': 1.5106087923049927, 'peak_all': 19.462827682495117, 'peak_all_at': [7.28, 24.47, 52.09], 'peak_away': (19.462827682495117, [7.28, 24.47, 52.09]), 'layer_X': ((20.08296775817871, [7.36, 21.15, 52.07]), (7.2832388374323624, [6.43, 20.55, 52.44])), 'layer_Y': ((5.632182598114014, [5.0, 15.0, 51.8]), (3.961248988226796, [5.0, 25.0, 40.81])), 'layer_Z': ((5.548304557800293, [5.88, 21.54, 52.88]), (7.279510304516594, [6.43, 20.55, 52.44])), 'avg_plain_arm': (6.803358349047209, 95), 'sx_plain_arm_top': 6.979928663000464}
+01:34:11 B2_screws_1p5: mesh rc 0, 80572 nodes, 53218 elements, free 17.0 GB
+01:34:25 B2_screws_1p5: fixture nodes 344, box [-0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+01:34:25 B2_screws_1p5: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:34:32 FINAL screws {'nodes': 80572, 'reaction': [-0.001, -0.004, 60.002, 60.002], 'applied': 60.0, 'max_disp': 1.8779377937316895, 'peak_all': 29.12876319885254, 'peak_all_at': [0.0, 19.24, 45.88], 'peak_away': (18.00243377685547, [7.36, 21.15, 52.07]), 'layer_X': ((19.73804473876953, [7.68, 19.04, 52.02]), (6.655145550683333, [6.42, 23.93, 39.55])), 'layer_Y': ((5.1393866539001465, [5.0, 15.0, 51.8]), (4.030944030137021, [5.0, 25.0, 39.09])), 'layer_Z': ((6.295144557952881, [-0.0, 20.3, 38.76]), (6.4616282902383135, [6.42, 23.93, 39.55])), 'avg_plain_arm': (6.803082827517861, 95), 'sx_plain_arm_top': 6.979735506698489}
+01:34:32 closing pid 127328 committed MB 1849

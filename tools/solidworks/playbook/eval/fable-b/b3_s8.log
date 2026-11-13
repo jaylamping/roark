@@ -1,0 +1,95 @@
+03:23:55 SolidWorks pid 125340 free GB 16.9
+03:24:01 ok PROFILE volume change: 14670.0000 (expected 14670.0000)
+03:24:01 PROFILE: added 14670.00 mm3
+03:24:02 ok WINDOW volume change: 8370.1902 (expected 8370.1902)
+03:24:02 WINDOW: cut 8370.19 mm3
+03:24:03 ok SCREW_HOLES volume change: 159.0431 (expected 159.0431)
+03:24:03 SCREW_HOLES: cut 159.04 mm3
+03:24:04 ok inside corner edges: 4.0000 (expected 4.0000)
+03:24:04 CORNERS: R2.0 on 4 edges, volume change +119.40 mm3
+03:24:05 ok WAIST volume change: 405.0000 (expected 405.0000)
+03:24:05 WAIST: cut 405.00 mm3
+03:24:05 ok hole faces: 2.0000 (expected 2.0000)
+03:24:05 ok hole y: 20.0000 (expected 20.0000)
+03:24:05 ok hole z: 12.0000 (expected 12.0000)
+03:24:05 ok hole along X: 1.0000 (expected 1.0000)
+03:24:05 ok hole y: 20.0000 (expected 20.0000)
+03:24:05 ok hole z: 48.0000 (expected 48.0000)
+03:24:05 ok hole along X: 1.0000 (expected 1.0000)
+03:24:05 ok wall face at X 0: 1.0000 (expected 1.0000)
+03:24:05 ok load patch: 1.0000 (expected 1.0000)
+03:24:05 ok patch area: 100.0000 (expected 100.0000)
+03:24:05 ok patch box[0]: 55.0000 (expected 55.0000)
+03:24:05 ok patch box[1]: 15.0000 (expected 15.0000)
+03:24:05 ok patch box[3]: 65.0000 (expected 65.0000)
+03:24:05 ok patch box[4]: 25.0000 (expected 25.0000)
+03:24:05 ok patch box[5]: 52.0000 (expected 52.0000)
+03:24:05 HAND {'chord_tension_n': 89.6, 'chord_stress_mpa': 4.48, 'strut_force_n': 102.8, 'strut_stress_mpa': 2.51, 'strut_len_mm': 58.6, 'euler_in_plane_n': 314, 'euler_out_of_plane_n': 1868, 'buckling_factor_pinned': 3.05, 'zc': 53.0} mass g 6.968
+03:24:05 ok s8_full_wall_2p0 hole faces: 2.0000 (expected 2.0000)
+03:24:05 ok s8_full_wall_2p0 wall faces: 1.0000 (expected 1.0000)
+03:24:05 ok s8_full_wall_2p0 load patch faces: 1.0000 (expected 1.0000)
+03:24:05 fillet faces for mesh control 4
+03:24:05 s8_full_wall_2p0: PREDICT nodes ~15926, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 4.48 / 2.51 MPa
+03:24:06 s8_full_wall_2p0: mesh rc 0, 24238 nodes, 14822 elements, free 16.3 GB
+03:24:09 s8_full_wall_2p0: fixture nodes 619, box [0.0, 15.0, 7.0] to [0.0, 25.0, 56.0]
+03:24:09 s8_full_wall_2p0: load nodes 125, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:24:10 s8_full_wall_2p0 checks {'reaction': [-0.0, 0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 4.419, 'sx_hand': 7.5, 'sx_nodes': 53, 'sx_err_pct': 41.08, 'max_disp': 0.4011, 'vm_all': 6.3, 'vm_all_at': [49.51, 17.94, 50.44], 'nodes': 24238, 'excessive_prompt': False}
+03:24:10 s8_full_wall_2p0 PAD ZONE (load mask off) vm (4.92, [53.75, 23.2, 52.1], 9.15) Y {"tension": [0.64, [54.1, 19.56, 52.07], 35.19], "shear": [0.32, [52.07, 23.48, 48.91], 40.99]}
+03:24:10 s8_full_wall_2p0 chord sx 4.48 hand 4.48 | Y factors (7.14, 15.28, 18.27, 7.14) | vm (6.3, [49.51, 17.94, 50.44], 7.14) | Y {"tension": [1.47, [49.77, 19.85, 50.4], 15.28], "shear": [0.71, [50.66, 24.47, 49.96], 18.27]} | excluded {'vm': 5.44, 'at': [1.8, 25.0, 56.0]}
+03:24:11 ok s8_full_wall_1p4 hole faces: 2.0000 (expected 2.0000)
+03:24:11 ok s8_full_wall_1p4 wall faces: 1.0000 (expected 1.0000)
+03:24:11 ok s8_full_wall_1p4 load patch faces: 1.0000 (expected 1.0000)
+03:24:11 fillet faces for mesh control 4
+03:24:11 s8_full_wall_1p4: PREDICT nodes ~46431, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 4.48 / 2.51 MPa
+03:24:13 s8_full_wall_1p4: mesh rc 0, 57037 nodes, 36476 elements, free 16.0 GB
+03:24:20 s8_full_wall_1p4: fixture nodes 1153, box [0.0, 15.0, 7.0] to [0.0, 25.0, 56.0]
+03:24:20 s8_full_wall_1p4: load nodes 245, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:24:24 s8_full_wall_1p4 checks {'reaction': [-0.001, 0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 4.446, 'sx_hand': 7.5, 'sx_nodes': 187, 'sx_err_pct': 40.71, 'max_disp': 0.4013, 'vm_all': 6.5, 'vm_all_at': [49.69, 19.69, 50.42], 'nodes': 57037, 'excessive_prompt': False}
+03:24:24 s8_full_wall_1p4 PAD ZONE (load mask off) vm (4.89, [54.05, 16.32, 52.08], 9.21) Y {"tension": [0.66, [54.4, 19.64, 52.05], 34.03], "shear": [0.32, [52.02, 16.49, 49.17], 40.17]}
+03:24:24 s8_full_wall_1p4 chord sx 4.48 hand 4.48 | Y factors (6.93, 15.37, 17.95, 6.93) | vm (6.5, [49.69, 19.69, 50.42], 6.93) | Y {"tension": [1.46, [49.69, 19.9, 50.42], 15.37], "shear": [0.72, [50.66, 15.73, 49.95], 17.95]} | excluded {'vm': 5.14, 'at': [53.11, 23.79, 52.15]}
+03:24:24 ok s8_full_wall_1p0 hole faces: 2.0000 (expected 2.0000)
+03:24:25 ok s8_full_wall_1p0 wall faces: 1.0000 (expected 1.0000)
+03:24:25 ok s8_full_wall_1p0 load patch faces: 1.0000 (expected 1.0000)
+03:24:25 fillet faces for mesh control 4
+03:24:25 s8_full_wall_1p0: PREDICT nodes ~127408, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 4.48 / 2.51 MPa
+03:24:28 s8_full_wall_1p0: mesh rc 0, 139015 nodes, 92397 elements, free 15.9 GB
+03:24:59 s8_full_wall_1p0: fixture nodes 2269, box [0.0, 15.0, 7.0] to [0.0, 25.0, 56.0]
+03:24:59 s8_full_wall_1p0: load nodes 473, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:25:19 s8_full_wall_1p0 checks {'reaction': [0.0, -0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 4.468, 'sx_hand': 7.5, 'sx_nodes': 558, 'sx_err_pct': 40.42, 'max_disp': 0.4014, 'vm_all': 6.62, 'vm_all_at': [49.77, 20.0, 50.4], 'nodes': 139015, 'excessive_prompt': False}
+03:25:19 s8_full_wall_1p0 PAD ZONE (load mask off) vm (4.97, [53.79, 23.88, 52.1], 9.06) Y {"tension": [0.67, [54.57, 20.25, 52.03], 33.55], "shear": [0.31, [52.01, 23.31, 48.77], 41.63]}
+03:25:19 s8_full_wall_1p0 chord sx 4.49 hand 4.48 | Y factors (6.79, 15.33, 17.96, 6.79) | vm (6.62, [49.77, 20.0, 50.4], 6.79) | Y {"tension": [1.47, [49.77, 20.45, 50.4], 15.33], "shear": [0.72, [50.48, 24.48, 50.09], 17.96]} | excluded {'vm': 5.93, 'at': [0.0, 25.0, 56.0]}
+03:25:19 ok s8_full_holes_2p0 hole faces: 2.0000 (expected 2.0000)
+03:25:19 ok s8_full_holes_2p0 wall faces: 1.0000 (expected 1.0000)
+03:25:19 ok s8_full_holes_2p0 load patch faces: 1.0000 (expected 1.0000)
+03:25:19 fillet faces for mesh control 4
+03:25:19 s8_full_holes_2p0: PREDICT nodes ~15926, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 4.48 / 2.51 MPa
+03:25:20 s8_full_holes_2p0: mesh rc 0, 24238 nodes, 14822 elements, free 15.8 GB
+03:25:23 s8_full_holes_2p0: fixture nodes 257, box [0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+03:25:23 s8_full_holes_2p0: load nodes 125, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:25:24 s8_full_holes_2p0 checks {'reaction': [-0.0, -0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 4.383, 'sx_hand': 7.5, 'sx_nodes': 53, 'sx_err_pct': 41.56, 'max_disp': 0.5013, 'vm_all': 20.44, 'vm_all_at': [5.0, 20.0, 50.25], 'nodes': 24238, 'excessive_prompt': False}
+03:25:24 s8_full_holes_2p0 PAD ZONE (load mask off) vm (5.05, [53.75, 23.2, 52.1], 8.91) Y {"tension": [0.66, [54.1, 20.56, 52.07], 34.14], "shear": [0.3, [52.07, 23.48, 48.91], 43.42]}
+03:25:24 s8_full_holes_2p0 chord sx 4.46 hand 4.48 | Y factors (4.68, 12.48, 7.68, 4.68) | vm (9.62, [5.02, 21.32, 52.09], 4.68) | Y {"tension": [1.8, [0.0, 19.66, 52.32], 12.48], "shear": [1.69, [1.94, 22.46, 51.37], 7.68]} | excluded {'vm': 20.44, 'at': [5.0, 20.0, 50.25]}
+03:25:24 ok s8_full_holes_1p4 hole faces: 2.0000 (expected 2.0000)
+03:25:24 ok s8_full_holes_1p4 wall faces: 1.0000 (expected 1.0000)
+03:25:24 ok s8_full_holes_1p4 load patch faces: 1.0000 (expected 1.0000)
+03:25:24 fillet faces for mesh control 4
+03:25:24 s8_full_holes_1p4: PREDICT nodes ~46431, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 4.48 / 2.51 MPa
+03:25:26 s8_full_holes_1p4: mesh rc 0, 57037 nodes, 36476 elements, free 15.9 GB
+03:25:33 s8_full_holes_1p4: fixture nodes 397, box [0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+03:25:33 s8_full_holes_1p4: load nodes 245, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:25:37 s8_full_holes_1p4 checks {'reaction': [-0.001, 0.001, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 4.414, 'sx_hand': 7.5, 'sx_nodes': 187, 'sx_err_pct': 41.15, 'max_disp': 0.5024, 'vm_all': 21.79, 'vm_all_at': [5.0, 19.85, 50.24], 'nodes': 57037, 'excessive_prompt': False}
+03:25:37 s8_full_holes_1p4 PAD ZONE (load mask off) vm (4.99, [54.05, 16.32, 52.08], 9.02) Y {"tension": [0.68, [54.4, 19.64, 52.05], 33.31], "shear": [0.3, [52.02, 16.49, 49.17], 42.71]}
+03:25:37 s8_full_holes_1p4 chord sx 4.46 hand 4.48 | Y factors (4.56, 12.05, 7.92, 4.56) | vm (9.88, [5.03, 19.38, 52.19], 4.56) | Y {"tension": [1.87, [0.0, 18.07, 51.84], 12.05], "shear": [1.64, [2.76, 23.04, 50.95], 7.92]} | excluded {'vm': 21.79, 'at': [5.0, 19.85, 50.24]}
+03:25:37 ok s8_full_holes_1p0 hole faces: 2.0000 (expected 2.0000)
+03:25:37 ok s8_full_holes_1p0 wall faces: 1.0000 (expected 1.0000)
+03:25:37 ok s8_full_holes_1p0 load patch faces: 1.0000 (expected 1.0000)
+03:25:37 fillet faces for mesh control 4
+03:25:37 s8_full_holes_1p0: PREDICT nodes ~127408, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 4.48 / 2.51 MPa
+03:25:39 s8_full_holes_1p0: mesh rc 0, 139015 nodes, 92397 elements, free 15.8 GB
+03:26:11 s8_full_holes_1p0: fixture nodes 729, box [0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+03:26:11 s8_full_holes_1p0: load nodes 473, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:26:30 s8_full_holes_1p0 checks {'reaction': [-0.001, 0.001, 60.001, 60.001], 'reaction_err_pct': 0.002, 'reaction_fz': 60.001, 'sx_top': 4.441, 'sx_hand': 7.5, 'sx_nodes': 558, 'sx_err_pct': 40.79, 'max_disp': 0.5028, 'vm_all': 22.65, 'vm_all_at': [5.0, 20.09, 50.25], 'nodes': 139015, 'excessive_prompt': False}
+03:26:30 s8_full_holes_1p0 PAD ZONE (load mask off) vm (5.07, [53.79, 23.88, 52.1], 8.87) Y {"tension": [0.68, [54.57, 20.25, 52.03], 32.98], "shear": [0.31, [61.71, 15.95, 48.0], 41.73]}
+03:26:31 s8_full_holes_1p0 chord sx 4.46 hand 4.48 | Y factors (4.47, 11.34, 8.02, 4.47) | vm (10.08, [5.04, 19.47, 52.22], 4.47) | Y {"tension": [1.98, [0.0, 21.19, 52.19], 11.34], "shear": [1.62, [2.49, 17.4, 51.4], 8.02]} | excluded {'vm': 22.65, 'at': [5.0, 20.09, 50.25]}
+03:26:31 closing pid 125340 committed MB 1913
+STEP s8_full mass 6.968 worst Y factors (yield, layer, shear, min) [4.47, 11.34, 7.68, 4.47] buckling 3.05

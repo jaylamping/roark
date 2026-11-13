@@ -1,0 +1,224 @@
+{
+ "mount": {
+  "volume_mm3": 9332.61,
+  "hand_volume_mm3": 9332.61,
+  "hand_terms": {
+   "spine": 4080.0,
+   "tabs": 2560.0,
+   "arms": 2296.0,
+   "posts": 923.63,
+   "inserts": -301.59,
+   "m5": -190.07,
+   "spot": -62.83,
+   "rounds": 27.47
+  },
+  "mass_g": 11.11,
+  "bbox": [
+   -58.5,
+   -30.0,
+   0.0,
+   58.5,
+   30.0,
+   8.0
+  ],
+  "measured": {
+   "insert_holes": [
+    [
+     -39.0,
+     -26.5,
+     4.0,
+     2.0,
+     8.0
+    ],
+    [
+     -39.0,
+     26.5,
+     4.0,
+     2.0,
+     8.0
+    ],
+    [
+     39.0,
+     -26.5,
+     4.0,
+     2.0,
+     8.0
+    ],
+    [
+     39.0,
+     26.5,
+     4.0,
+     2.0,
+     8.0
+    ]
+   ],
+   "m5_holes": [
+    [
+     -50.5,
+     0.0,
+     5.5,
+     0.0,
+     3.5
+    ],
+    [
+     50.5,
+     0.0,
+     5.5,
+     0.0,
+     3.5
+    ]
+   ],
+   "post_top_z": [
+    8.0,
+    8.0,
+    8.0,
+    8.0
+   ],
+   "post_od": [
+    7.0,
+    7.0,
+    7.0,
+    7.0
+   ]
+  },
+  "stl": {
+   "watertight": true,
+   "shells": 1,
+   "volume": 9331.24,
+   "volume_ok": true,
+   "box": [
+    -58.5,
+    -30.0,
+    0.0,
+    58.5,
+    30.0,
+    8.0
+   ],
+   "box_ok": true
+  },
+  "step_mm": true
+ },
+ "idea_b": {
+  "volume_mm3": 12448.51,
+  "mass_g": 14.81,
+  "bbox": [
+   -58.5,
+   -32.3,
+   0.0,
+   58.5,
+   32.3,
+   12.6
+  ]
+ },
+ "studies": {
+  "predicted": {
+   "nodes": 66565,
+   "arm_root_mpa": 2.47,
+   "disp_mm": 0.091
+  },
+  "Z_remote": {
+   "summary": {
+    "study": "D1_Z_remote",
+    "el_mm": 1.2,
+    "nodes": 78212,
+    "elements": 49818,
+    "solve_s": 19,
+    "peak_vm_all": 1.77,
+    "peak_vm_away": 1.77,
+    "at": [
+     -39.31,
+     23.01,
+     4.52
+    ],
+    "sf_yield": 25.48,
+    "max_disp_mm": 0.03852945566177368,
+    "reaction_N": [
+     -0.0,
+     0.0,
+     9.0,
+     9.0
+    ],
+    "applied_N": 9.0
+   },
+   "seconds": 19.6
+  },
+  "X_remote": {
+   "summary": {
+    "study": "D1_X_remote",
+    "el_mm": 1.2,
+    "nodes": 78212,
+    "elements": 49818,
+    "solve_s": 19,
+    "peak_vm_all": 1.24,
+    "peak_vm_away": 1.24,
+    "at": [
+     37.34,
+     -23.42,
+     4.43
+    ],
+    "sf_yield": 36.3,
+    "max_disp_mm": 0.019570715725421906,
+    "reaction_N": [
+     -9.0,
+     -0.0,
+     -0.0,
+     9.0
+    ],
+    "applied_N": 9.0
+   },
+   "seconds": 20.5
+  },
+  "Y_remote": {
+   "summary": {
+    "study": "D1_Y_remote",
+    "el_mm": 1.2,
+    "nodes": 78212,
+    "elements": 49818,
+    "solve_s": 20,
+    "peak_vm_all": 1.45,
+    "peak_vm_away": 1.45,
+    "at": [
+     42.57,
+     -11.48,
+     4.0
+    ],
+    "sf_yield": 31.14,
+    "max_disp_mm": 0.07247696071863174,
+    "reaction_N": [
+     -0.0,
+     -9.0,
+     -0.0,
+     9.0
+    ],
+    "applied_N": 9.0
+   },
+   "seconds": 20.9
+  },
+  "Z_even": {
+   "summary": {
+    "study": "D1_Z_even",
+    "el_mm": 1.2,
+    "nodes": 78212,
+    "elements": 49818,
+    "solve_s": 19,
+    "peak_vm_all": 2.92,
+    "peak_vm_away": 2.92,
+    "at": [
+     42.57,
+     -11.48,
+     4.0
+    ],
+    "sf_yield": 15.4,
+    "max_disp_mm": 0.15656234323978424,
+    "reaction_N": [
+     -0.0,
+     -0.0,
+     9.0,
+     9.0
+    ],
+    "applied_N": 9.0
+   },
+   "seconds": 20.0
+  }
+ }
+}

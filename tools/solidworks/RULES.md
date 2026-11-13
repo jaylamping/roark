@@ -2,6 +2,9 @@
 
 Windows only; needs `pywin32` and `psutil` (`pip install pywin32 psutil`). Used by `tools/cad/check_sw_refs.py`.
 
+This page is the rules for sharing SolidWorks. How to model, export and run studies from a script, with the helpers that
+check each step, is the [playbook](playbook/README.md).
+
 Every session runs its own SolidWorks instance, so sessions do not take turns. Joey made this the standard on 2026-11-06.
 
 ```python
@@ -132,7 +135,7 @@ Threads still cannot stop another session's process. For a half-closed instance 
 3. Never call `ExitApp`, close documents in, or kill a PID the session did not start.
 4. One file belongs to one session. Other sessions open a copy, read-only. Agree ownership before writing.
 5. Save after each step. A third instance has no Auto Recover, and an instance can crash.
-6. Concurrent Simulation solves are allowed, up to the two tested so far, and the limit is per machine (What was tested, below). Joey-PC ran a pair of 476k nodes each. On holly-pc a pair of about 390k nodes each crashed, so there solves that size run one at a time; smaller pairs ran together. Keep large solves to one at a time on any machine until a pair that size is tested there. A solve expected to need more than about 6 GB takes the workstation's large-solve lock first: `with big_solve("thread name"): study.RunAnalysis`. The lock is the file `C:\joe\.fea_solve.lock` (owner, PID, process start time, time taken), created exclusively and removed afterwards. `big_solve` waits while another session holds it and takes over a lock only when its process has gone. A lock written by hand in another layout is respected as long as any number in it is a running PID. Smaller solves do not take it.
+6. Concurrent Simulation solves are allowed, up to the two tested so far, and the limit is per machine (What was tested, below). Joey-PC ran a pair of 476k nodes each. On holly-pc a pair of about 390k nodes each crashed, so there solves that size run one at a time; smaller pairs ran together. Keep large solves to one at a time on any machine until a pair that size is tested there. A solve expected to need more than about 6 GB takes the workstation's large-solve lock first: `with big_solve("thread name"): study.RunAnalysis`. The lock is the file `C:\joe\.fea_solve.lock` (owner, PID, process start time, time taken), created exclusively and removed afterwards. `big_solve` waits while another session holds it and takes over a lock only when its process has gone. A lock written by hand in another layout is respected as long as any number in it is a running PID. Smaller solves do not take it. `swfea.static()` takes the same lock by itself for a solve over 200,000 nodes (`heavy_solve_lock`).
 7. Exit the instance when the work is done. Each one holds about 1 GB idle and about 1.6 GB after a solve.
 8. solidworks-mcp follows these rules from branch `feat/owned-instance`: each MCP server launches and owns one instance, attached by PID. **A server started before that build still attaches to the running SolidWorks until it restarts**, so do not use its tools alongside other sessions. Running servers are not restarted for you.
 

@@ -1,0 +1,254 @@
+{
+  "convergence_rows": [
+    {
+      "el_mm": 3.0,
+      "nodes": 36616,
+      "peak_vm_mpa": 19.83,
+      "peak_at_mm": [
+        6.49,
+        23.44,
+        6.0
+      ],
+      "layer_stress_mpa": 11.36,
+      "layer_at_mm": [
+        0.0,
+        23.53,
+        7.79
+      ],
+      "peak_vm_playbook_mask": 19.83,
+      "layer_playbook_mask": 11.36,
+      "vm_max_unmasked": 28.82,
+      "vm_max_unmasked_at": [
+        22.25,
+        40.09,
+        6.0
+      ],
+      "max_disp_mm": 2.6497,
+      "corner_edge_local_mm": 1.0,
+      "corner_peak_vm_mpa": 19.83,
+      "corner_peak_at_mm": [
+        6.49,
+        23.44,
+        6.0
+      ],
+      "corner_peak_sz_mpa": -1.03,
+      "corner_avg_vm": {
+        "0.5": [
+          14.1,
+          5
+        ],
+        "1.0": [
+          11.55,
+          34
+        ],
+        "2.0": [
+          9.02,
+          142
+        ]
+      }
+    },
+    {
+      "el_mm": 3.0,
+      "nodes": 44270,
+      "peak_vm_mpa": 26.45,
+      "peak_at_mm": [
+        6.24,
+        34.57,
+        6.0
+      ],
+      "layer_stress_mpa": 11.46,
+      "layer_at_mm": [
+        0.0,
+        26.47,
+        7.79
+      ],
+      "peak_vm_playbook_mask": 26.45,
+      "layer_playbook_mask": 11.46,
+      "vm_max_unmasked": 27.64,
+      "vm_max_unmasked_at": [
+        22.46,
+        38.96,
+        6.0
+      ],
+      "max_disp_mm": 2.6558,
+      "corner_edge_local_mm": 0.5,
+      "corner_peak_vm_mpa": 26.45,
+      "corner_peak_at_mm": [
+        6.24,
+        34.57,
+        6.0
+      ],
+      "corner_peak_sz_mpa": -5.97,
+      "corner_avg_vm": {
+        "0.5": [
+          17.3,
+          31
+        ],
+        "1.0": [
+          12.87,
+          140
+        ],
+        "2.0": [
+          10.25,
+          490
+        ]
+      }
+    },
+    {
+      "el_mm": 3.0,
+      "nodes": 59237,
+      "peak_vm_mpa": 40.36,
+      "peak_at_mm": [
+        6.0,
+        26.91,
+        6.0
+      ],
+      "layer_stress_mpa": 11.47,
+      "layer_at_mm": [
+        0.0,
+        23.53,
+        7.79
+      ],
+      "peak_vm_playbook_mask": 40.36,
+      "layer_playbook_mask": 11.47,
+      "vm_max_unmasked": 40.36,
+      "vm_max_unmasked_at": [
+        6.0,
+        26.91,
+        6.0
+      ],
+      "max_disp_mm": 2.6592,
+      "corner_edge_local_mm": 0.25,
+      "corner_peak_vm_mpa": 40.36,
+      "corner_peak_at_mm": [
+        6.0,
+        26.91,
+        6.0
+      ],
+      "corner_peak_sz_mpa": -48.89,
+      "corner_avg_vm": {
+        "0.5": [
+          18.05,
+          125
+        ],
+        "1.0": [
+          14.41,
+          476
+        ],
+        "2.0": [
+          12.01,
+          1392
+        ]
+      }
+    },
+    {
+      "el_mm": 3.0,
+      "nodes": 87972,
+      "peak_vm_mpa": 54.68,
+      "peak_at_mm": [
+        6.0,
+        38.23,
+        6.0
+      ],
+      "layer_stress_mpa": 13.16,
+      "layer_at_mm": [
+        6.12,
+        22.86,
+        6.0
+      ],
+      "peak_vm_playbook_mask": 54.68,
+      "layer_playbook_mask": 13.16,
+      "vm_max_unmasked": 54.68,
+      "vm_max_unmasked_at": [
+        6.0,
+        38.23,
+        6.0
+      ],
+      "max_disp_mm": 2.6611,
+      "corner_edge_local_mm": 0.125,
+      "corner_peak_vm_mpa": 54.68,
+      "corner_peak_at_mm": [
+        6.0,
+        38.23,
+        6.0
+      ],
+      "corner_peak_sz_mpa": -57.88,
+      "corner_avg_vm": {
+        "0.5": [
+          20.87,
+          437
+        ],
+        "1.0": [
+          17.31,
+          1399
+        ],
+        "2.0": [
+          15.56,
+          3462
+        ]
+      }
+    }
+  ],
+  "converged": false,
+  "r05_rows": [
+    {
+      "el_mm": 3.0,
+      "nodes": 68422,
+      "peak_vm_mpa": 37.16,
+      "peak_at_mm": [
+        6.16,
+        18.0,
+        6.13
+      ],
+      "layer_stress_mpa": 11.45,
+      "layer_at_mm": [
+        0.0,
+        29.48,
+        7.88
+      ],
+      "peak_vm_playbook_mask": 37.16,
+      "layer_playbook_mask": 11.45,
+      "vm_max_unmasked": 37.16,
+      "vm_max_unmasked_at": [
+        6.16,
+        18.0,
+        6.13
+      ],
+      "max_disp_mm": 2.6313,
+      "fillet_local_mm": 0.25,
+      "peak_sz_mpa": -19.38
+    },
+    {
+      "el_mm": 3.0,
+      "nodes": 103930,
+      "peak_vm_mpa": 36.46,
+      "peak_at_mm": [
+        6.15,
+        28.0,
+        6.14
+      ],
+      "layer_stress_mpa": 11.43,
+      "layer_at_mm": [
+        0.0,
+        29.48,
+        7.88
+      ],
+      "peak_vm_playbook_mask": 36.46,
+      "layer_playbook_mask": 11.43,
+      "vm_max_unmasked": 36.46,
+      "vm_max_unmasked_at": [
+        6.15,
+        28.0,
+        6.14
+      ],
+      "max_disp_mm": 2.6315,
+      "fillet_local_mm": 0.15,
+      "peak_sz_mpa": -20.84
+    }
+  ],
+  "r05_converged": true,
+  "hand_root_stress_mpa": 11.0,
+  "status": "partial",
+  "notes": "numbers only; verdict in merge.py",
+  "seconds": 149
+}

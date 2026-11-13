@@ -1,0 +1,1239 @@
+{
+ "Y300": {
+  "nodes": 145831,
+  "el": 2.5,
+  "seat_ctrl": 1.0,
+  "bodies": {
+   "upper": 51839,
+   "lower": 35204,
+   "ring": 15197,
+   "plug": 4911,
+   "screw": 38680
+  },
+  "reaction_face_N": [
+   -0.0,
+   -299.874,
+   -0.0
+  ],
+  "reaction_hub_N": [
+   0.0002,
+   -0.124,
+   0.0
+  ],
+  "ring_moves_mm": [
+   -0.0002,
+   0.1594,
+   -0.0021
+  ],
+  "max_disp_mm": {
+   "upper": 0.0854,
+   "lower": 0.018
+  },
+  "screws": [
+   {
+    "x": 31.0,
+    "z": 0.0,
+    "nodes": 5746,
+    "tension_N": 74.8,
+    "shear_x_N": -0.3,
+    "shear_z_N": 0.07,
+    "tension_in_three_slices_N": [
+     74.82,
+     74.84,
+     74.81
+    ]
+   },
+   {
+    "x": 31.0,
+    "z": 7.0,
+    "nodes": 5720,
+    "tension_N": 74.37,
+    "shear_x_N": -0.33,
+    "shear_z_N": -0.12,
+    "tension_in_three_slices_N": [
+     74.36,
+     74.37,
+     74.33
+    ]
+   },
+   {
+    "x": -31.0,
+    "z": 0.0,
+    "nodes": 5770,
+    "tension_N": 74.92,
+    "shear_x_N": 0.33,
+    "shear_z_N": 0.06,
+    "tension_in_three_slices_N": [
+     74.95,
+     74.93,
+     74.98
+    ]
+   },
+   {
+    "x": -31.0,
+    "z": 7.0,
+    "nodes": 5722,
+    "tension_N": 74.23,
+    "shear_x_N": 0.31,
+    "shear_z_N": -0.09,
+    "tension_in_three_slices_N": [
+     74.23,
+     74.22,
+     74.23
+    ]
+   }
+  ],
+  "screw_sum_N": {
+   "tension": 298.32,
+   "shear_x": 0.01
+  },
+  "upper": {
+   "excluded": {
+    "within_1mm_of_bonded_steel": 591,
+    "within_3mm_of_fixed_face": 0,
+    "vm_max_at_bonded_steel": 4.43,
+    "vm_max_at_fixed_face": null
+   },
+   "layers_Z": {
+    "vm": {
+     "mpa": 4.07,
+     "at": [
+      28.49,
+      27.49,
+      6.83
+     ],
+     "sf": 11.07
+    },
+    "layer": {
+     "mpa": 0.57,
+     "at": [
+      -28.23,
+      29.18,
+      4.35
+     ],
+     "sf": 39.79
+    },
+    "shear": {
+     "mpa": 1.31,
+     "at": [
+      -20.05,
+      17.36,
+      0.02
+     ],
+     "sf": 9.95
+    }
+   },
+   "layers_Y": {
+    "vm": {
+     "mpa": 4.07,
+     "at": [
+      28.49,
+      27.49,
+      6.83
+     ],
+     "sf": 11.07
+    },
+    "layer": {
+     "mpa": 1.12,
+     "at": [
+      -30.06,
+      30.25,
+      9.85
+     ],
+     "sf": 20.06
+    },
+    "shear": {
+     "mpa": 1.3,
+     "at": [
+      -28.5,
+      27.5,
+      8.54
+     ],
+     "sf": 9.99
+    }
+   },
+   "layers_X": {
+    "vm": {
+     "mpa": 4.07,
+     "at": [
+      28.49,
+      27.49,
+      6.83
+     ],
+     "sf": 11.07
+    },
+    "layer": {
+     "mpa": 2.51,
+     "at": [
+      -0.0,
+      32.0,
+      3.41
+     ],
+     "sf": 8.96
+    },
+    "shear": {
+     "mpa": 1.28,
+     "at": [
+      27.88,
+      27.44,
+      0.69
+     ],
+     "sf": 10.12
+    }
+   }
+  },
+  "lower": {
+   "excluded": {
+    "within_1mm_of_bonded_steel": 883,
+    "within_3mm_of_fixed_face": 3644,
+    "vm_max_at_bonded_steel": 3.99,
+    "vm_max_at_fixed_face": 1.47
+   },
+   "layers_Z": {
+    "vm": {
+     "mpa": 3.55,
+     "at": [
+      29.84,
+      -7.74,
+      8.63
+     ],
+     "sf": 12.67
+    },
+    "layer": {
+     "mpa": 1.06,
+     "at": [
+      -32.96,
+      -7.6,
+      6.61
+     ],
+     "sf": 21.2
+    },
+    "shear": {
+     "mpa": 0.75,
+     "at": [
+      29.84,
+      -7.74,
+      1.63
+     ],
+     "sf": 17.35
+    }
+   },
+   "layers_Y": {
+    "vm": {
+     "mpa": 3.55,
+     "at": [
+      29.84,
+      -7.74,
+      8.63
+     ],
+     "sf": 12.67
+    },
+    "layer": {
+     "mpa": 4.09,
+     "at": [
+      29.84,
+      -7.74,
+      8.63
+     ],
+     "sf": 5.51
+    },
+    "shear": {
+     "mpa": 0.75,
+     "at": [
+      -28.11,
+      -5.26,
+      7.94
+     ],
+     "sf": 17.27
+    }
+   },
+   "layers_X": {
+    "vm": {
+     "mpa": 3.55,
+     "at": [
+      29.84,
+      -7.74,
+      8.63
+     ],
+     "sf": 12.67
+    },
+    "layer": {
+     "mpa": 1.22,
+     "at": [
+      -28.01,
+      -0.4,
+      7.44
+     ],
+     "sf": 18.48
+    },
+    "shear": {
+     "mpa": 0.74,
+     "at": [
+      -28.11,
+      -5.26,
+      7.94
+     ],
+     "sf": 17.47
+    }
+   }
+  },
+  "crown_outer_sx": [
+   2.51,
+   5
+  ],
+  "crown_seat_sx": [
+   0.84,
+   31
+  ],
+  "crown_shoulder_edge_sx": [
+   0.41,
+   7
+  ],
+  "seat_contact": [
+   {
+    "half": "upper",
+    "seat_nodes": 2431,
+    "bearing_nodes": 835,
+    "bearing_angle_deg": [
+     23.4,
+     156.6
+    ],
+    "peak_pressure_mpa": 4.63
+   },
+   {
+    "half": "lower",
+    "seat_nodes": 2431,
+    "bearing_nodes": 0,
+    "bearing_angle_deg": null,
+    "peak_pressure_mpa": 0.08
+   }
+  ]
+ },
+ "X300": {
+  "nodes": 145831,
+  "el": 2.5,
+  "seat_ctrl": 1.0,
+  "bodies": {
+   "upper": 51839,
+   "lower": 35204,
+   "ring": 15197,
+   "plug": 4911,
+   "screw": 38680
+  },
+  "reaction_face_N": [
+   -299.848,
+   0.086,
+   -0.0
+  ],
+  "reaction_hub_N": [
+   -0.1498,
+   -0.0859,
+   0.0001
+  ],
+  "ring_moves_mm": [
+   0.1917,
+   0.1119,
+   -0.0049
+  ],
+  "max_disp_mm": {
+   "upper": 0.2155,
+   "lower": 0.1181
+  },
+  "screws": [
+   {
+    "x": 31.0,
+    "z": 0.0,
+    "nodes": 5746,
+    "tension_N": 18.95,
+    "shear_x_N": -2.21,
+    "shear_z_N": 0.15,
+    "tension_in_three_slices_N": [
+     19.06,
+     19.17,
+     18.96
+    ]
+   },
+   {
+    "x": 31.0,
+    "z": 7.0,
+    "nodes": 5720,
+    "tension_N": 18.9,
+    "shear_x_N": -2.22,
+    "shear_z_N": -0.18,
+    "tension_in_three_slices_N": [
+     18.92,
+     18.94,
+     18.69
+    ]
+   },
+   {
+    "x": -31.0,
+    "z": 0.0,
+    "nodes": 5770,
+    "tension_N": 14.18,
+    "shear_x_N": 15.49,
+    "shear_z_N": 0.16,
+    "tension_in_three_slices_N": [
+     15.08,
+     14.45,
+     16.23
+    ]
+   },
+   {
+    "x": -31.0,
+    "z": 7.0,
+    "nodes": 5722,
+    "tension_N": 15.35,
+    "shear_x_N": 15.38,
+    "shear_z_N": 0.02,
+    "tension_in_three_slices_N": [
+     15.8,
+     15.39,
+     15.67
+    ]
+   }
+  ],
+  "screw_sum_N": {
+   "tension": 67.38,
+   "shear_x": 26.44
+  },
+  "upper": {
+   "excluded": {
+    "within_1mm_of_bonded_steel": 591,
+    "within_3mm_of_fixed_face": 0,
+    "vm_max_at_bonded_steel": 6.35,
+    "vm_max_at_fixed_face": null
+   },
+   "layers_Z": {
+    "vm": {
+     "mpa": 5.62,
+     "at": [
+      -28.68,
+      27.45,
+      7.19
+     ],
+     "sf": 8.01
+    },
+    "layer": {
+     "mpa": 1.2,
+     "at": [
+      -33.34,
+      27.5,
+      6.81
+     ],
+     "sf": 18.73
+    },
+    "shear": {
+     "mpa": 1.28,
+     "at": [
+      -28.5,
+      27.5,
+      8.54
+     ],
+     "sf": 10.16
+    }
+   },
+   "layers_Y": {
+    "vm": {
+     "mpa": 5.62,
+     "at": [
+      -28.68,
+      27.45,
+      7.19
+     ],
+     "sf": 8.01
+    },
+    "layer": {
+     "mpa": 4.91,
+     "at": [
+      -33.34,
+      27.5,
+      6.81
+     ],
+     "sf": 4.58
+    },
+    "shear": {
+     "mpa": 2.93,
+     "at": [
+      -32.2,
+      27.48,
+      -1.21
+     ],
+     "sf": 4.44
+    }
+   },
+   "layers_X": {
+    "vm": {
+     "mpa": 5.62,
+     "at": [
+      -28.68,
+      27.45,
+      7.19
+     ],
+     "sf": 8.01
+    },
+    "layer": {
+     "mpa": 1.3,
+     "at": [
+      4.34,
+      32.0,
+      7.77
+     ],
+     "sf": 17.37
+    },
+    "shear": {
+     "mpa": 2.93,
+     "at": [
+      -32.2,
+      27.48,
+      -1.21
+     ],
+     "sf": 4.43
+    }
+   }
+  },
+  "lower": {
+   "excluded": {
+    "within_1mm_of_bonded_steel": 883,
+    "within_3mm_of_fixed_face": 3644,
+    "vm_max_at_bonded_steel": 4.25,
+    "vm_max_at_fixed_face": 5.52
+   },
+   "layers_Z": {
+    "vm": {
+     "mpa": 5.93,
+     "at": [
+      19.22,
+      -15.2,
+      7.1
+     ],
+     "sf": 7.59
+    },
+    "layer": {
+     "mpa": 1.17,
+     "at": [
+      31.5,
+      -2.0,
+      3.03
+     ],
+     "sf": 19.27
+    },
+    "shear": {
+     "mpa": 2.15,
+     "at": [
+      24.88,
+      -8.8,
+      0.06
+     ],
+     "sf": 6.05
+    }
+   },
+   "layers_Y": {
+    "vm": {
+     "mpa": 5.93,
+     "at": [
+      19.22,
+      -15.2,
+      7.1
+     ],
+     "sf": 7.59
+    },
+    "layer": {
+     "mpa": 4.0,
+     "at": [
+      -32.96,
+      -7.6,
+      -0.39
+     ],
+     "sf": 5.62
+    },
+    "shear": {
+     "mpa": 2.88,
+     "at": [
+      19.22,
+      -15.2,
+      7.1
+     ],
+     "sf": 4.51
+    }
+   },
+   "layers_X": {
+    "vm": {
+     "mpa": 5.93,
+     "at": [
+      19.22,
+      -15.2,
+      7.1
+     ],
+     "sf": 7.59
+    },
+    "layer": {
+     "mpa": 2.82,
+     "at": [
+      16.06,
+      -18.5,
+      7.1
+     ],
+     "sf": 7.97
+    },
+    "shear": {
+     "mpa": 2.88,
+     "at": [
+      19.22,
+      -15.2,
+      7.1
+     ],
+     "sf": 4.51
+    }
+   }
+  },
+  "crown_outer_sx": [
+   1.23,
+   5
+  ],
+  "crown_seat_sx": [
+   -0.15,
+   31
+  ],
+  "crown_shoulder_edge_sx": [
+   -0.57,
+   7
+  ],
+  "seat_contact": [
+   {
+    "half": "upper",
+    "seat_nodes": 2431,
+    "bearing_nodes": 57,
+    "bearing_angle_deg": [
+     36.6,
+     117.0
+    ],
+    "peak_pressure_mpa": 1.59
+   },
+   {
+    "half": "lower",
+    "seat_nodes": 2431,
+    "bearing_nodes": 380,
+    "bearing_angle_deg": [
+     -30.0,
+     -0.9
+    ],
+    "peak_pressure_mpa": 7.76
+   }
+  ]
+ },
+ "Y1": {
+  "nodes": 145831,
+  "el": 2.5,
+  "seat_ctrl": 1.0,
+  "bodies": {
+   "upper": 51839,
+   "lower": 35204,
+   "ring": 15197,
+   "plug": 4911,
+   "screw": 38680
+  },
+  "reaction_face_N": [
+   0.0,
+   -0.94,
+   -0.0
+  ],
+  "reaction_hub_N": [
+   -0.0,
+   -0.0602,
+   0.0
+  ],
+  "ring_moves_mm": [
+   0.0,
+   0.0773,
+   0.0
+  ],
+  "max_disp_mm": {
+   "upper": 0.0023,
+   "lower": 0.0002
+  },
+  "screws": [
+   {
+    "x": 31.0,
+    "z": 0.0,
+    "nodes": 5746,
+    "tension_N": 0.23,
+    "shear_x_N": -0.08,
+    "shear_z_N": 0.0,
+    "tension_in_three_slices_N": [
+     0.23,
+     0.24,
+     0.23
+    ]
+   },
+   {
+    "x": 31.0,
+    "z": 7.0,
+    "nodes": 5720,
+    "tension_N": 0.24,
+    "shear_x_N": -0.08,
+    "shear_z_N": -0.0,
+    "tension_in_three_slices_N": [
+     0.24,
+     0.24,
+     0.23
+    ]
+   },
+   {
+    "x": -31.0,
+    "z": 0.0,
+    "nodes": 5770,
+    "tension_N": 0.23,
+    "shear_x_N": 0.08,
+    "shear_z_N": 0.0,
+    "tension_in_three_slices_N": [
+     0.23,
+     0.23,
+     0.24
+    ]
+   },
+   {
+    "x": -31.0,
+    "z": 7.0,
+    "nodes": 5722,
+    "tension_N": 0.23,
+    "shear_x_N": 0.08,
+    "shear_z_N": -0.0,
+    "tension_in_three_slices_N": [
+     0.23,
+     0.23,
+     0.23
+    ]
+   }
+  ],
+  "screw_sum_N": {
+   "tension": 0.93,
+   "shear_x": 0.0
+  },
+  "upper": {
+   "excluded": {
+    "within_1mm_of_bonded_steel": 591,
+    "within_3mm_of_fixed_face": 0,
+    "vm_max_at_bonded_steel": 0.07,
+    "vm_max_at_fixed_face": null
+   },
+   "layers_Z": {
+    "vm": {
+     "mpa": 0.09,
+     "at": [
+      -0.0,
+      24.5,
+      -0.1
+     ],
+     "sf": 501.82
+    },
+    "layer": {
+     "mpa": 0.02,
+     "at": [
+      -0.0,
+      32.0,
+      3.41
+     ],
+     "sf": 984.55
+    },
+    "shear": {
+     "mpa": 0.04,
+     "at": [
+      0.2,
+      26.6,
+      6.83
+     ],
+     "sf": 365.19
+    }
+   },
+   "layers_Y": {
+    "vm": {
+     "mpa": 0.09,
+     "at": [
+      -0.0,
+      24.5,
+      -0.1
+     ],
+     "sf": 501.82
+    },
+    "layer": {
+     "mpa": 0.05,
+     "at": [
+      -33.34,
+      27.5,
+      6.81
+     ],
+     "sf": 465.44
+    },
+    "shear": {
+     "mpa": 0.04,
+     "at": [
+      0.2,
+      26.6,
+      6.83
+     ],
+     "sf": 365.26
+    }
+   },
+   "layers_X": {
+    "vm": {
+     "mpa": 0.09,
+     "at": [
+      -0.0,
+      24.5,
+      -0.1
+     ],
+     "sf": 501.82
+    },
+    "layer": {
+     "mpa": 0.08,
+     "at": [
+      -0.0,
+      32.0,
+      3.41
+     ],
+     "sf": 277.88
+    },
+    "shear": {
+     "mpa": 0.03,
+     "at": [
+      29.8,
+      27.48,
+      -1.21
+     ],
+     "sf": 411.54
+    }
+   }
+  },
+  "lower": {
+   "excluded": {
+    "within_1mm_of_bonded_steel": 883,
+    "within_3mm_of_fixed_face": 3644,
+    "vm_max_at_bonded_steel": 0.02,
+    "vm_max_at_fixed_face": 0.01
+   },
+   "layers_Z": {
+    "vm": {
+     "mpa": 0.02,
+     "at": [
+      -32.16,
+      -7.74,
+      1.63
+     ],
+     "sf": 2895.09
+    },
+    "layer": {
+     "mpa": 0.01,
+     "at": [
+      -32.96,
+      -7.6,
+      6.61
+     ],
+     "sf": 4080.35
+    },
+    "shear": {
+     "mpa": 0.0,
+     "at": [
+      -32.16,
+      -7.74,
+      1.63
+     ],
+     "sf": 4782.52
+    }
+   },
+   "layers_Y": {
+    "vm": {
+     "mpa": 0.02,
+     "at": [
+      -32.16,
+      -7.74,
+      1.63
+     ],
+     "sf": 2895.09
+    },
+    "layer": {
+     "mpa": 0.02,
+     "at": [
+      -32.96,
+      -7.6,
+      -0.39
+     ],
+     "sf": 1251.64
+    },
+    "shear": {
+     "mpa": 0.0,
+     "at": [
+      -19.22,
+      -15.2,
+      -0.1
+     ],
+     "sf": 3865.25
+    }
+   },
+   "layers_X": {
+    "vm": {
+     "mpa": 0.02,
+     "at": [
+      -32.16,
+      -7.74,
+      1.63
+     ],
+     "sf": 2895.09
+    },
+    "layer": {
+     "mpa": 0.0,
+     "at": [
+      32.1,
+      -7.62,
+      -1.67
+     ],
+     "sf": 5957.46
+    },
+    "shear": {
+     "mpa": 0.0,
+     "at": [
+      -19.22,
+      -15.2,
+      -0.1
+     ],
+     "sf": 3865.32
+    }
+   }
+  },
+  "crown_outer_sx": [
+   0.08,
+   5
+  ],
+  "crown_seat_sx": [
+   -0.1,
+   31
+  ],
+  "crown_shoulder_edge_sx": [
+   -0.08,
+   7
+  ],
+  "seat_contact": [
+   {
+    "half": "upper",
+    "seat_nodes": 2431,
+    "bearing_nodes": 0,
+    "bearing_angle_deg": null,
+    "peak_pressure_mpa": 0.15
+   },
+   {
+    "half": "lower",
+    "seat_nodes": 2431,
+    "bearing_nodes": 0,
+    "bearing_angle_deg": null,
+    "peak_pressure_mpa": 0.0
+   }
+  ]
+ },
+ "X1": {
+  "nodes": 145831,
+  "el": 2.5,
+  "seat_ctrl": 1.0,
+  "bodies": {
+   "upper": 51839,
+   "lower": 35204,
+   "ring": 15197,
+   "plug": 4911,
+   "screw": 38680
+  },
+  "reaction_face_N": [
+   -0.941,
+   0.005,
+   -0.0
+  ],
+  "reaction_hub_N": [
+   -0.059,
+   -0.0055,
+   0.0
+  ],
+  "ring_moves_mm": [
+   0.0759,
+   0.007,
+   -0.0
+  ],
+  "max_disp_mm": {
+   "upper": 0.0013,
+   "lower": 0.0008
+  },
+  "screws": [
+   {
+    "x": 31.0,
+    "z": 0.0,
+    "nodes": 5746,
+    "tension_N": 0.0,
+    "shear_x_N": 0.0,
+    "shear_z_N": 0.0,
+    "tension_in_three_slices_N": [
+     0.01,
+     0.01,
+     0.01
+    ]
+   },
+   {
+    "x": 31.0,
+    "z": 7.0,
+    "nodes": 5720,
+    "tension_N": 0.01,
+    "shear_x_N": 0.0,
+    "shear_z_N": -0.0,
+    "tension_in_three_slices_N": [
+     0.0,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "x": -31.0,
+    "z": 0.0,
+    "nodes": 5770,
+    "tension_N": -0.0,
+    "shear_x_N": 0.05,
+    "shear_z_N": 0.0,
+    "tension_in_three_slices_N": [
+     -0.0,
+     -0.0,
+     0.0
+    ]
+   },
+   {
+    "x": -31.0,
+    "z": 7.0,
+    "nodes": 5722,
+    "tension_N": -0.0,
+    "shear_x_N": 0.05,
+    "shear_z_N": 0.0,
+    "tension_in_three_slices_N": [
+     0.0,
+     -0.0,
+     0.0
+    ]
+   }
+  ],
+  "screw_sum_N": {
+   "tension": 0.01,
+   "shear_x": 0.1
+  },
+  "upper": {
+   "excluded": {
+    "within_1mm_of_bonded_steel": 591,
+    "within_3mm_of_fixed_face": 0,
+    "vm_max_at_bonded_steel": 0.02,
+    "vm_max_at_fixed_face": null
+   },
+   "layers_Z": {
+    "vm": {
+     "mpa": 0.02,
+     "at": [
+      25.94,
+      2.62,
+      0.36
+     ],
+     "sf": 2530.69
+    },
+    "layer": {
+     "mpa": 0.0,
+     "at": [
+      29.23,
+      27.48,
+      -1.55
+     ],
+     "sf": 6591.63
+    },
+    "shear": {
+     "mpa": 0.01,
+     "at": [
+      26.52,
+      2.57,
+      7.19
+     ],
+     "sf": 2409.58
+    }
+   },
+   "layers_Y": {
+    "vm": {
+     "mpa": 0.02,
+     "at": [
+      25.94,
+      2.62,
+      0.36
+     ],
+     "sf": 2530.69
+    },
+    "layer": {
+     "mpa": 0.01,
+     "at": [
+      28.49,
+      27.49,
+      6.83
+     ],
+     "sf": 1531.41
+    },
+    "shear": {
+     "mpa": 0.01,
+     "at": [
+      29.8,
+      27.48,
+      -1.21
+     ],
+     "sf": 1634.21
+    }
+   },
+   "layers_X": {
+    "vm": {
+     "mpa": 0.02,
+     "at": [
+      25.94,
+      2.62,
+      0.36
+     ],
+     "sf": 2530.69
+    },
+    "layer": {
+     "mpa": 0.01,
+     "at": [
+      0.76,
+      24.49,
+      7.1
+     ],
+     "sf": 1759.7
+    },
+    "shear": {
+     "mpa": 0.01,
+     "at": [
+      29.8,
+      27.48,
+      -1.21
+     ],
+     "sf": 1609.09
+    }
+   }
+  },
+  "lower": {
+   "excluded": {
+    "within_1mm_of_bonded_steel": 883,
+    "within_3mm_of_fixed_face": 3644,
+    "vm_max_at_bonded_steel": 0.09,
+    "vm_max_at_fixed_face": 0.02
+   },
+   "layers_Z": {
+    "vm": {
+     "mpa": 0.48,
+     "at": [
+      26.07,
+      -0.4,
+      3.5
+     ],
+     "sf": 93.51
+    },
+    "layer": {
+     "mpa": 0.06,
+     "at": [
+      26.04,
+      -1.31,
+      4.56
+     ],
+     "sf": 377.4
+    },
+    "shear": {
+     "mpa": 0.15,
+     "at": [
+      26.07,
+      -0.4,
+      7.1
+     ],
+     "sf": 86.9
+    }
+   },
+   "layers_Y": {
+    "vm": {
+     "mpa": 0.48,
+     "at": [
+      26.07,
+      -0.4,
+      3.5
+     ],
+     "sf": 93.51
+    },
+    "layer": {
+     "mpa": 0.14,
+     "at": [
+      26.05,
+      -1.09,
+      0.86
+     ],
+     "sf": 161.08
+    },
+    "shear": {
+     "mpa": 0.11,
+     "at": [
+      26.07,
+      -0.4,
+      3.5
+     ],
+     "sf": 113.71
+    }
+   },
+   "layers_X": {
+    "vm": {
+     "mpa": 0.48,
+     "at": [
+      26.07,
+      -0.4,
+      3.5
+     ],
+     "sf": 93.51
+    },
+    "layer": {
+     "mpa": 0.13,
+     "at": [
+      25.28,
+      -0.4,
+      7.1
+     ],
+     "sf": 170.55
+    },
+    "shear": {
+     "mpa": 0.17,
+     "at": [
+      26.07,
+      -0.4,
+      7.1
+     ],
+     "sf": 75.11
+    }
+   }
+  },
+  "crown_outer_sx": [
+   -0.01,
+   5
+  ],
+  "crown_seat_sx": [
+   0.01,
+   31
+  ],
+  "crown_shoulder_edge_sx": [
+   0.01,
+   7
+  ],
+  "seat_contact": [
+   {
+    "half": "upper",
+    "seat_nodes": 2431,
+    "bearing_nodes": 0,
+    "bearing_angle_deg": null,
+    "peak_pressure_mpa": 0.04
+   },
+   {
+    "half": "lower",
+    "seat_nodes": 2431,
+    "bearing_nodes": 0,
+    "bearing_angle_deg": null,
+    "peak_pressure_mpa": 0.48
+   }
+  ]
+ }
+}

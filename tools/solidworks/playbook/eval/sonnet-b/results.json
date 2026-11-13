@@ -1,0 +1,178 @@
+{
+ "run": "sonnet-b",
+ "B1": {
+  "volume_mm3": 21865.54,
+  "hand_volume_mm3": 21865.51,
+  "mass_g": 26.02,
+  "bbox_mm": [
+   -30.0,
+   -30.0,
+   0.0,
+   30.0,
+   30.0,
+   25.0
+  ],
+  "bodies": 1,
+  "stl_watertight": true,
+  "stl_volume_mm3": 21811.01,
+  "spec_questions": [
+   "The two dia 5.5 dowel holes on the dia 30 circle reach r = 12.25, 0.75 mm inside the dia 26 boss. Cut through the flange only (Z 0..5), each leaves a 1.79 mm2 crescent roof under the boss, so they are not full through holes. Move them out to a circle of dia 32 or more, or accept a blind sliver.",
+   "The dia 4 set-screw hole at Z 22.6 reaches Z 24.6, leaving 0.4 mm to the boss top at Z 25: under the 0.6 mm minimum wall and under one hole diameter. Lower it to Z 20 or less, or lengthen the boss.",
+   "The set-screw hole is a plain dia 4 on one side (+Y) with no thread or tap-drill size (an M4 tap drill is 3.3).",
+   "No fillet or chamfer is given at the flange/boss junction, a stress raiser in a printed part, and no print direction is given (with the axis along Z the layers run across the boss)."
+  ],
+  "status": "done",
+  "notes": "Every cylinder centre and radius, the keyway planes and the set-screw axis were read back from the finished solid (REPORT.md). STL 0.25 % below the solid volume (faceting), inside the 0.5 % limit."
+ },
+ "B2": {
+  "hand_root_stress_mpa": 13.75,
+  "hand_root_stress_with_kt_mpa": 19.4,
+  "print_orientation": "layers stacked along Y (arm and plate lying flat on the bed, printed on their side)",
+  "nodes": 80572,
+  "peak_vm_mpa": 19.5,
+  "layer_stress_mpa": 8.92,
+  "layer_shear_mpa": 5.32,
+  "sf_yield": 2.31,
+  "sf_layer": 2.52,
+  "sf_shear": 2.44,
+  "max_disp_mm": 1.51,
+  "reaction_n": 60.0,
+  "converged": "von Mises yes (19.43, 19.33, 19.48 over three local sizes); tension across layers and interlayer shear no: they rise at the sharp side edges where the arm meets the plate (singular), so they are reported at the finest mesh",
+  "verdict": "PASS only in the Y-stacked orientation: factors 2.31 on yield, 2.5 on tension across layers and 2.4 on interlayer shear, all at the finest mesh. FAILS printed with layers along X (tension across layers 20.1 MPa, factor 1.12) or along Z (interlayer shear 7.3 MPa, factor 1.79). Thinnest margin 2.31; a 20 % higher load gives 1.93.",
+  "status": "done",
+  "notes": "Support tried two ways: whole X0 face fixed (governing, 19.5) and the two screw-hole walls fixed (18.4 outside 3 mm of the holes; 26 at the hole mouth is the fixture singularity). Load as 60 N even pressure on a bonded 10 mm end block so the patch is its own face; the twin model has the same volume as the one-body part."
+ },
+ "B3": {
+  "mass_before_g": 22.705,
+  "mass_after_g": 7.819,
+  "saving_pct": 65.6,
+  "steps": [
+   {
+    "step": "S0_baseline",
+    "what": "B2 bracket as specified (plate 40x60x5, arm 10x12 constant)",
+    "mass_g": 22.7,
+    "sf_yield": 2.31,
+    "sf_layer": 4.0,
+    "sf_shear": 3.2,
+    "note": "el 1.5 values; the finest local mesh gives layer 2.5 and shear 2.4"
+   },
+   {
+    "step": "S1_plate_trim",
+    "what": "plate trimmed to Y8..32, Z5..56",
+    "mass_g": 15.71,
+    "sf_yield": 2.32,
+    "sf_layer": 2.78,
+    "sf_shear": 2.81,
+    "note": "el 1.5, worst of wall-face and screw-hole supports, layers stacked along Y"
+   },
+   {
+    "step": "S2_taper_arm",
+    "what": "arm depth tapered 13 at the root to 4 at the tip (top flat at Z52)",
+    "mass_g": 13.2,
+    "sf_yield": 2.44,
+    "sf_layer": 2.86,
+    "sf_shear": 3.0,
+    "note": "el 1.5, worst of wall-face and screw-hole supports, layers stacked along Y"
+   },
+   {
+    "step": "S3_thin_plate",
+    "what": "plate 4 mm thick",
+    "mass_g": 11.94,
+    "sf_yield": 2.39,
+    "sf_layer": 2.84,
+    "sf_shear": 2.89,
+    "note": "el 1.5, worst of wall-face and screw-hole supports, layers stacked along Y"
+   },
+   {
+    "step": "S4_plate_strip",
+    "what": "plate narrowed to a 14 mm strip (Y13..27)",
+    "mass_g": 9.51,
+    "sf_yield": 2.2,
+    "sf_layer": 4.64,
+    "sf_shear": 3.6,
+    "note": "el 1.5, worst of wall-face and screw-hole supports, layers stacked along Y"
+   },
+   {
+    "step": "S5_big_fillet",
+    "what": "R5 root fillets, root depth 11 (rejected: yield factor 1.96)",
+    "mass_g": 8.84,
+    "sf_yield": 1.96,
+    "sf_layer": 5.43,
+    "sf_shear": 4.56,
+    "note": "el 1.5, worst of wall-face and screw-hole supports, layers stacked along Y"
+   },
+   {
+    "step": "S7_web_slot",
+    "what": "rectangular web slot through the arm (rejected: sharp slot ends 38 MPa)",
+    "mass_g": 7.91,
+    "sf_yield": 1.19,
+    "sf_layer": 1.33,
+    "sf_shear": 2.88,
+    "note": "el 1.5, worst of wall-face and screw-hole supports, layers stacked along Y"
+   },
+   {
+    "step": "S9_pointed_slot",
+    "what": "pointed-end web slot X13..39 through the arm",
+    "mass_g": 8.43,
+    "sf_yield": 2.23,
+    "sf_layer": 4.53,
+    "sf_shear": 3.75,
+    "note": "el 1.5, worst of wall-face and screw-hole supports, layers stacked along Y"
+   },
+   {
+    "step": "S10_plate_window",
+    "what": "window 8 x 16 cut in the plate between the screws (FINAL)",
+    "mass_g": 7.82,
+    "sf_yield": 2.08,
+    "sf_layer": 3.56,
+    "sf_shear": 2.47,
+    "note": "finest mesh of the final convergence run (48,842 nodes), both supports"
+   },
+   {
+    "step": "S11_narrow_tip3",
+    "what": "strip 12 wide, tip depth 3, plate to Z55, bigger window (lighter, but factors 2.01 and 1.98: not accepted)",
+    "mass_g": 6.95,
+    "sf_yield": 2.01,
+    "sf_layer": 4.71,
+    "sf_shear": 1.98,
+    "note": "finest mesh of the final convergence run: yield 2.01, shear 1.98 at a singular edge"
+   }
+  ],
+  "governing": "von Mises against yield with the screw-hole walls fixed, at the top of the arm just outside the root fillet (6.5, 20, 52): factor 2.08. Interlayer shear is next at 2.47. The next step (S11, 6.95 g) read 2.01 on yield and 1.98 on shear at the finest mesh and was not accepted.",
+  "sf_yield": 2.08,
+  "sf_layer": 3.56,
+  "sf_shear": 2.47,
+  "print_orientation": "layers stacked along Y (lying on its side); every cut is through Y so no supports",
+  "status": "done",
+  "notes": "Model saved as wall_bracket_light.SLDPRT (the S10 file). sf_yield from the screw-fixed case at the finest mesh; sf_layer and sf_shear are the worst over both supports and all four meshes."
+ },
+ "B4": {
+  "hand_wall_forces_n": [
+   180.8,
+   100.8
+  ],
+  "wall_forces_n": [
+   183.3,
+   103.3
+  ],
+  "nodes": 149727,
+  "how_tongue_was_stabilised": "Four dia 1.8 x 3 mm soft pads (E 0.5 MPa) bonded to the tongue +-Y faces at x +-2, z 24, outer faces fixed; they carry 0.5 % of the load (sum of nodal reaction magnitudes 0.38 N of 80 N). The tongue is two bonded bodies split at Z 30 so the load patch is its own face. Two no-penetration contact sets (+X wall with +X face, -X wall with -X face). The floor was left out and shown not touched (15 to 20 micrometres of clearance left).",
+  "block_peak_vm_mpa": 41.0,
+  "block_peak_at_mm": [
+   4.1,
+   -2.73,
+   20.0
+  ],
+  "tongue_tip_disp_mm": 0.826,
+  "reaction_n": 80.0,
+  "valid": "yes for forces, displacement and equilibrium; no for the block peak stress as a design number",
+  "why": "Reaction 80.0 N in X on three meshes (35.7k, 78.4k, 149.7k nodes). The shear force through the tongue is 80.0 N above the contacts (z 26 to 28) and 103.3 N between them, flat over z 10 to 18 and within 1.2 % across the meshes, which gives wall forces 183.3 and 103.3 N against the rigid-tongue hand 180.8 and 100.8 (1.4 % and 2.5 %). Contact is real: tongue and wall faces close to within 2 micrometres at the two contact lines and stay 0.1 to 0.28 mm apart elsewhere, and a reversed 0.001 N load moves the tongue 0.11 mm to the other wall. The block peak sits on the top edge of the +X wall, a sharp edge pressed by a flat face, and rises 35.0, 37.5, 41.0 MPa with refinement (singular); 3 mm below the edge the stress converges to 3.9 MPa and mid-wall to 2.5 MPa. A Hertz estimate with a 0.2 to 1 mm edge radius gives 57 to 127 MPa, so that edge will indent whatever the mesh says: chamfer or round it.",
+  "status": "done",
+  "notes": "Integrating nodal stress over the wall faces gave 170 and 80 N (sum 90, 11 % off equilibrium) and was not used. About 11 minutes of the 40."
+ },
+ "B5": {
+  "problems_found": 14,
+  "status": "done",
+  "notes": "Listed in REPORT.md under B5, most serious first."
+ }
+}

@@ -1,0 +1,94 @@
+03:03:55 SolidWorks pid 99312 free GB 14.3
+03:14:56 ok PROFILE volume change: 14670.0000 (expected 14670.0000)
+03:14:56 PROFILE: added 14670.00 mm3
+03:14:57 ok WINDOW volume change: 7494.9129 (expected 7494.9129)
+03:14:57 WINDOW: cut 7494.91 mm3
+03:14:58 ok SCREW_HOLES volume change: 159.0431 (expected 159.0431)
+03:14:58 SCREW_HOLES: cut 159.04 mm3
+03:14:59 ok inside corner edges: 4.0000 (expected 4.0000)
+03:14:59 CORNERS: R2.0 on 4 edges, volume change +119.40 mm3
+03:15:00 NARROW: cut 2297.24 mm3
+03:15:00 NARROW removed 2297.2 mm3
+03:15:00 member-side to strip edges 4
+03:15:00 FOOT_SIDES: R1.0 on 4 edges, volume change -3.91 mm3
+03:15:00 FOOT_SIDES radius 1.0
+03:15:00 ok WAIST volume change: 405.0000 (expected 405.0000)
+03:15:00 WAIST: cut 405.00 mm3
+03:15:01 ok hole faces: 2.0000 (expected 2.0000)
+03:15:01 ok hole y: 20.0000 (expected 20.0000)
+03:15:01 ok hole z: 12.0000 (expected 12.0000)
+03:15:01 ok hole along X: 1.0000 (expected 1.0000)
+03:15:01 ok hole y: 20.0000 (expected 20.0000)
+03:15:01 ok hole z: 48.0000 (expected 48.0000)
+03:15:01 ok hole along X: 1.0000 (expected 1.0000)
+03:15:01 ok wall face at X 0: 1.0000 (expected 1.0000)
+03:15:01 ok load patch: 1.0000 (expected 1.0000)
+03:15:01 ok patch area: 100.0000 (expected 100.0000)
+03:15:01 ok patch box[0]: 55.0000 (expected 55.0000)
+03:15:01 ok patch box[1]: 15.0000 (expected 15.0000)
+03:15:01 ok patch box[3]: 65.0000 (expected 65.0000)
+03:15:01 ok patch box[4]: 25.0000 (expected 25.0000)
+03:15:01 ok patch box[5]: 52.0000 (expected 52.0000)
+03:15:01 HAND {'chord_tension_n': 93.7, 'chord_stress_mpa': 7.5, 'strut_force_n': 107.5, 'strut_stress_mpa': 4.14, 'strut_len_mm': 55.4, 'euler_in_plane_n': 358, 'euler_out_of_plane_n': 331, 'buckling_factor_pinned': 3.08, 'zc': 52.75} mass g 5.271
+03:15:01 ok s5_trim_wall_2p0 hole faces: 2.0000 (expected 2.0000)
+03:15:01 ok s5_trim_wall_2p0 wall faces: 1.0000 (expected 1.0000)
+03:15:01 ok s5_trim_wall_2p0 load patch faces: 1.0000 (expected 1.0000)
+03:15:01 fillet faces for mesh control 6
+03:15:01 s5_trim_wall_2p0: PREDICT nodes ~12047, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.5 / 4.14 MPa
+03:15:02 s5_trim_wall_2p0: mesh rc 0, 20486 nodes, 12422 elements, free 15.6 GB
+03:15:04 s5_trim_wall_2p0: fixture nodes 625, box [0.0, 15.0, 7.0] to [0.0, 25.0, 56.0]
+03:15:04 s5_trim_wall_2p0: load nodes 130, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:15:05 s5_trim_wall_2p0 checks {'reaction': [-0.0, -0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 7.959, 'sx_hand': 7.5, 'sx_nodes': 44, 'sx_err_pct': 6.11, 'max_disp': 1.3206, 'vm_all': 18.17, 'vm_all_at': [46.97, 19.77, 50.13], 'nodes': 20486, 'excessive_prompt': False}
+03:15:05 s5_trim_wall_2p0 chord sx 7.42 hand 7.5 | Y factors (2.48, 10.28, 3.15, 2.48) | vm (18.17, [46.97, 19.77, 50.13], 2.48) | Y {"tension": [2.19, [5.29, 20.29, 55.98], 10.28], "shear": [4.12, [56.0, 20.0, 49.5], 3.15]} | excluded {'vm': 15.61, 'at': [54.01, 20.0, 52.08]}
+03:15:06 ok s5_trim_wall_1p4 hole faces: 2.0000 (expected 2.0000)
+03:15:06 ok s5_trim_wall_1p4 wall faces: 1.0000 (expected 1.0000)
+03:15:06 ok s5_trim_wall_1p4 load patch faces: 1.0000 (expected 1.0000)
+03:15:06 fillet faces for mesh control 6
+03:15:06 s5_trim_wall_1p4: PREDICT nodes ~35124, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.5 / 4.14 MPa
+03:15:07 s5_trim_wall_1p4: mesh rc 0, 42454 nodes, 26757 elements, free 16.7 GB
+03:15:12 s5_trim_wall_1p4: fixture nodes 1175, box [0.0, 15.0, 7.0] to [0.0, 25.0, 56.0]
+03:15:12 s5_trim_wall_1p4: load nodes 260, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:15:14 s5_trim_wall_1p4 checks {'reaction': [-0.001, 0.0, 59.999, 59.999], 'reaction_err_pct': 0.002, 'reaction_fz': 59.999, 'sx_top': 8.052, 'sx_hand': 7.5, 'sx_nodes': 90, 'sx_err_pct': 7.36, 'max_disp': 1.3255, 'vm_all': 18.92, 'vm_all_at': [47.18, 20.0, 50.08], 'nodes': 42454, 'excessive_prompt': False}
+03:15:14 s5_trim_wall_1p4 chord sx 7.44 hand 7.5 | Y factors (2.38, 9.63, 2.94, 2.38) | vm (18.92, [47.18, 20.0, 50.08], 2.38) | Y {"tension": [2.34, [5.37, 20.22, 55.78], 9.63], "shear": [4.42, [55.71, 20.0, 49.5], 2.94]} | excluded {'vm': 18.34, 'at': [55.0, 20.0, 52.0]}
+03:15:14 ok s5_trim_wall_1p0 hole faces: 2.0000 (expected 2.0000)
+03:15:15 ok s5_trim_wall_1p0 wall faces: 1.0000 (expected 1.0000)
+03:15:15 ok s5_trim_wall_1p0 load patch faces: 1.0000 (expected 1.0000)
+03:15:15 fillet faces for mesh control 6
+03:15:15 s5_trim_wall_1p0: PREDICT nodes ~96381, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.5 / 4.14 MPa
+03:15:16 s5_trim_wall_1p0: mesh rc 0, 101267 nodes, 66590 elements, free 16.6 GB
+03:15:35 s5_trim_wall_1p0: fixture nodes 2273, box [0.0, 15.0, 7.0] to [0.0, 25.0, 56.0]
+03:15:35 s5_trim_wall_1p0: load nodes 473, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:15:46 s5_trim_wall_1p0 checks {'reaction': [-0.0, -0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 8.037, 'sx_hand': 7.5, 'sx_nodes': 263, 'sx_err_pct': 7.16, 'max_disp': 1.3281, 'vm_all': 20.46, 'vm_all_at': [55.0, 20.0, 52.0], 'nodes': 101267, 'excessive_prompt': False}
+03:15:46 s5_trim_wall_1p0 chord sx 7.43 hand 7.5 | Y factors (2.32, 11.5, 2.5, 2.32) | vm (19.37, [47.04, 19.79, 50.12], 2.32) | Y {"tension": [1.96, [47.15, 18.6, 50.09], 11.5], "shear": [5.2, [57.0, 20.0, 49.5], 2.5]} | excluded {'vm': 20.46, 'at': [55.0, 20.0, 52.0]}
+03:15:46 ok s5_trim_holes_2p0 hole faces: 2.0000 (expected 2.0000)
+03:15:46 ok s5_trim_holes_2p0 wall faces: 1.0000 (expected 1.0000)
+03:15:46 ok s5_trim_holes_2p0 load patch faces: 1.0000 (expected 1.0000)
+03:15:46 fillet faces for mesh control 6
+03:15:46 s5_trim_holes_2p0: PREDICT nodes ~12047, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.5 / 4.14 MPa
+03:15:47 s5_trim_holes_2p0: mesh rc 0, 20486 nodes, 12422 elements, free 16.7 GB
+03:15:49 s5_trim_holes_2p0: fixture nodes 364, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+03:15:49 s5_trim_holes_2p0: load nodes 130, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:15:50 s5_trim_holes_2p0 checks {'reaction': [0.0, 0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 8.155, 'sx_hand': 7.5, 'sx_nodes': 44, 'sx_err_pct': 8.73, 'max_disp': 1.5127, 'vm_all': 27.3, 'vm_all_at': [4.0, 20.37, 50.22], 'nodes': 20486, 'excessive_prompt': False}
+03:15:50 s5_trim_holes_2p0 chord sx 7.34 hand 7.5 | Y factors (2.68, 4.97, 2.11, 2.11) | vm (16.78, [6.88, 15.31, 53.33], 2.68) | Y {"tension": [4.53, [5.29, 20.29, 55.98], 4.97], "shear": [6.15, [5.24, 20.35, 52.28], 2.11]} | excluded {'vm': 27.3, 'at': [4.0, 20.37, 50.22]}
+03:15:50 ok s5_trim_holes_1p4 hole faces: 2.0000 (expected 2.0000)
+03:15:50 ok s5_trim_holes_1p4 wall faces: 1.0000 (expected 1.0000)
+03:15:50 ok s5_trim_holes_1p4 load patch faces: 1.0000 (expected 1.0000)
+03:15:50 fillet faces for mesh control 6
+03:15:50 s5_trim_holes_1p4: PREDICT nodes ~35124, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.5 / 4.14 MPa
+03:15:51 s5_trim_holes_1p4: mesh rc 0, 42454 nodes, 26757 elements, free 16.7 GB
+03:15:56 s5_trim_holes_1p4: fixture nodes 448, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+03:15:56 s5_trim_holes_1p4: load nodes 260, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:15:58 s5_trim_holes_1p4 checks {'reaction': [0.001, -0.001, 59.999, 59.999], 'reaction_err_pct': 0.002, 'reaction_fz': 59.999, 'sx_top': 8.299, 'sx_hand': 7.5, 'sx_nodes': 90, 'sx_err_pct': 10.66, 'max_disp': 1.5192, 'vm_all': 29.39, 'vm_all_at': [0.0, 19.3, 50.14], 'nodes': 42454, 'excessive_prompt': False}
+03:15:59 s5_trim_holes_1p4 chord sx 7.37 hand 7.5 | Y factors (2.65, 5.0, 2.06, 2.06) | vm (16.98, [47.18, 20.0, 50.08], 2.65) | Y {"tension": [4.5, [5.17, 20.44, 55.99], 5.0], "shear": [6.31, [5.16, 20.45, 52.13], 2.06]} | excluded {'vm': 29.39, 'at': [0.0, 19.3, 50.14]}
+03:15:59 ok s5_trim_holes_1p0 hole faces: 2.0000 (expected 2.0000)
+03:15:59 ok s5_trim_holes_1p0 wall faces: 1.0000 (expected 1.0000)
+03:15:59 ok s5_trim_holes_1p0 load patch faces: 1.0000 (expected 1.0000)
+03:15:59 fillet faces for mesh control 6
+03:15:59 s5_trim_holes_1p0: PREDICT nodes ~96381, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.5 / 4.14 MPa
+03:16:01 s5_trim_holes_1p0: mesh rc 0, 101267 nodes, 66590 elements, free 16.7 GB
+03:16:19 s5_trim_holes_1p0: fixture nodes 568, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+03:16:19 s5_trim_holes_1p0: load nodes 473, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:16:30 s5_trim_holes_1p0 checks {'reaction': [0.001, 0.0, 59.999, 59.999], 'reaction_err_pct': 0.002, 'reaction_fz': 59.999, 'sx_top': 8.276, 'sx_hand': 7.5, 'sx_nodes': 263, 'sx_err_pct': 10.34, 'max_disp': 1.5234, 'vm_all': 31.65, 'vm_all_at': [0.0, 18.6, 49.76], 'nodes': 101267, 'excessive_prompt': False}
+03:16:30 s5_trim_holes_1p0 chord sx 7.35 hand 7.5 | Y factors (2.6, 6.0, 2.07, 2.07) | vm (17.28, [47.04, 19.79, 50.12], 2.6) | Y {"tension": [3.75, [5.24, 20.35, 55.82], 6.0], "shear": [6.29, [5.13, 20.5, 52.05], 2.07]} | excluded {'vm': 31.65, 'at': [0.0, 18.6, 49.76]}
+03:16:30 closing pid 99312 committed MB 1928
+STEP s5_trim mass 5.271 worst Y factors (yield, layer, shear, min) [2.32, 4.97, 2.06, 2.06] buckling 3.08

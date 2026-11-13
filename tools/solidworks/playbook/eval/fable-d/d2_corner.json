@@ -1,0 +1,662 @@
+{
+ "Y300 upper vm": {
+  "at": [
+   28.66,
+   27.5,
+   6.81
+  ],
+  "rows": [
+   {
+    "mesh": "c",
+    "nodes": 73496,
+    "peak_within_1p5mm": 3.55,
+    "mean_within_1mm": [
+     3.09,
+     10
+    ],
+    "mean_within_2mm": [
+     2.53,
+     59
+    ],
+    "peak_anywhere": 3.74
+   },
+   {
+    "mesh": "m",
+    "nodes": 145831,
+    "peak_within_1p5mm": 4.07,
+    "mean_within_1mm": [
+     3.23,
+     10
+    ],
+    "mean_within_2mm": [
+     2.53,
+     58
+    ],
+    "peak_anywhere": 4.07
+   },
+   {
+    "mesh": "f",
+    "nodes": 164616,
+    "peak_within_1p5mm": 3.87,
+    "mean_within_1mm": [
+     3.04,
+     8
+    ],
+    "mean_within_2mm": [
+     2.45,
+     58
+    ],
+    "peak_anywhere": 3.87
+   }
+  ],
+  "last_step": 0.049,
+  "converged": true,
+  "sf_at_finest_peak": 11.63,
+  "sf_on_2mm_mean": 18.4
+ },
+ "Y300 upper layer": {
+  "at": [
+   -20.67,
+   15.35,
+   7.1
+  ],
+  "rows": [
+   {
+    "mesh": "c",
+    "nodes": 73496,
+    "peak_within_1p5mm": 0.27,
+    "mean_within_1mm": [
+     -0.37,
+     11
+    ],
+    "mean_within_2mm": [
+     -0.5,
+     66
+    ],
+    "peak_anywhere": 0.6
+   },
+   {
+    "mesh": "m",
+    "nodes": 145831,
+    "peak_within_1p5mm": 0.25,
+    "mean_within_1mm": [
+     -0.6,
+     25
+    ],
+    "mean_within_2mm": [
+     -0.58,
+     146
+    ],
+    "peak_anywhere": 0.57
+   },
+   {
+    "mesh": "f",
+    "nodes": 164616,
+    "peak_within_1p5mm": 0.65,
+    "mean_within_1mm": [
+     -0.66,
+     39
+    ],
+    "mean_within_2mm": [
+     -0.59,
+     227
+    ],
+    "peak_anywhere": 0.65
+   }
+  ],
+  "last_step": 1.6,
+  "converged": false,
+  "sf_at_finest_peak": 34.62,
+  "sf_on_2mm_mean": 22500000000.0
+ },
+ "Y300 upper shear": {
+  "at": [
+   -20.5,
+   16.64,
+   0.02
+  ],
+  "rows": [
+   {
+    "mesh": "c",
+    "nodes": 73496,
+    "peak_within_1p5mm": 0.89,
+    "mean_within_1mm": [
+     0.6,
+     13
+    ],
+    "mean_within_2mm": [
+     0.33,
+     84
+    ],
+    "peak_anywhere": 1.11
+   },
+   {
+    "mesh": "m",
+    "nodes": 145831,
+    "peak_within_1p5mm": 1.31,
+    "mean_within_1mm": [
+     0.56,
+     32
+    ],
+    "mean_within_2mm": [
+     0.34,
+     190
+    ],
+    "peak_anywhere": 1.31
+   },
+   {
+    "mesh": "f",
+    "nodes": 164616,
+    "peak_within_1p5mm": 1.36,
+    "mean_within_1mm": [
+     0.54,
+     53
+    ],
+    "mean_within_2mm": [
+     0.32,
+     304
+    ],
+    "peak_anywhere": 1.36
+   }
+  ],
+  "last_step": 0.038,
+  "converged": true,
+  "sf_at_finest_peak": 9.56,
+  "sf_on_2mm_mean": 40.6
+ },
+ "Y300 lower vm": {
+  "at": [
+   29.34,
+   -7.6,
+   5.89
+  ],
+  "rows": [
+   {
+    "mesh": "c",
+    "nodes": 73496,
+    "peak_within_1p5mm": 3.41,
+    "mean_within_1mm": [
+     2.29,
+     7
+    ],
+    "mean_within_2mm": [
+     1.46,
+     41
+    ],
+    "peak_anywhere": 3.62
+   },
+   {
+    "mesh": "m",
+    "nodes": 145831,
+    "peak_within_1p5mm": 3.29,
+    "mean_within_1mm": [
+     2.22,
+     8
+    ],
+    "mean_within_2mm": [
+     1.42,
+     52
+    ],
+    "peak_anywhere": 3.55
+   },
+   {
+    "mesh": "f",
+    "nodes": 164616,
+    "peak_within_1p5mm": 3.48,
+    "mean_within_1mm": [
+     2.41,
+     7
+    ],
+    "mean_within_2mm": [
+     1.36,
+     64
+    ],
+    "peak_anywhere": 3.48
+   }
+  ],
+  "last_step": 0.058,
+  "converged": false,
+  "sf_at_finest_peak": 12.93,
+  "sf_on_2mm_mean": 33.1
+ },
+ "Y300 lower layer": {
+  "at": [
+   -32.95,
+   -7.57,
+   7.42
+  ],
+  "rows": [
+   {
+    "mesh": "c",
+    "nodes": 73496,
+    "peak_within_1p5mm": 1.03,
+    "mean_within_1mm": [
+     0.49,
+     7
+    ],
+    "mean_within_2mm": [
+     0.1,
+     25
+    ],
+    "peak_anywhere": 1.28
+   },
+   {
+    "mesh": "m",
+    "nodes": 145831,
+    "peak_within_1p5mm": 1.06,
+    "mean_within_1mm": [
+     0.43,
+     7
+    ],
+    "mean_within_2mm": [
+     0.03,
+     33
+    ],
+    "peak_anywhere": 1.06
+   },
+   {
+    "mesh": "f",
+    "nodes": 164616,
+    "peak_within_1p5mm": 1.08,
+    "mean_within_1mm": [
+     0.47,
+     7
+    ],
+    "mean_within_2mm": [
+     0.04,
+     34
+    ],
+    "peak_anywhere": 1.08
+   }
+  ],
+  "last_step": 0.019,
+  "converged": true,
+  "sf_at_finest_peak": 20.83,
+  "sf_on_2mm_mean": 562.5
+ },
+ "Y300 lower shear": {
+  "at": [
+   29.84,
+   -7.74,
+   1.63
+  ],
+  "rows": [
+   {
+    "mesh": "c",
+    "nodes": 73496,
+    "peak_within_1p5mm": 0.79,
+    "mean_within_1mm": [
+     0.28,
+     8
+    ],
+    "mean_within_2mm": [
+     0.16,
+     48
+    ],
+    "peak_anywhere": 0.79
+   },
+   {
+    "mesh": "m",
+    "nodes": 145831,
+    "peak_within_1p5mm": 0.75,
+    "mean_within_1mm": [
+     0.32,
+     7
+    ],
+    "mean_within_2mm": [
+     0.15,
+     53
+    ],
+    "peak_anywhere": 0.75
+   },
+   {
+    "mesh": "f",
+    "nodes": 164616,
+    "peak_within_1p5mm": 0.65,
+    "mean_within_1mm": [
+     0.32,
+     8
+    ],
+    "mean_within_2mm": [
+     0.16,
+     61
+    ],
+    "peak_anywhere": 0.65
+   }
+  ],
+  "last_step": 0.133,
+  "converged": false,
+  "sf_at_finest_peak": 20.0,
+  "sf_on_2mm_mean": 81.2
+ },
+ "X300 upper vm": {
+  "at": [
+   -28.58,
+   27.3,
+   -0.2
+  ],
+  "rows": [
+   {
+    "mesh": "c",
+    "nodes": 73496,
+    "peak_within_1p5mm": 4.97,
+    "mean_within_1mm": [
+     3.46,
+     7
+    ],
+    "mean_within_2mm": [
+     2.93,
+     57
+    ],
+    "peak_anywhere": 4.97
+   },
+   {
+    "mesh": "m",
+    "nodes": 145831,
+    "peak_within_1p5mm": 5.3,
+    "mean_within_1mm": [
+     3.74,
+     11
+    ],
+    "mean_within_2mm": [
+     2.9,
+     70
+    ],
+    "peak_anywhere": 5.62
+   },
+   {
+    "mesh": "f",
+    "nodes": 164616,
+    "peak_within_1p5mm": 5.44,
+    "mean_within_1mm": [
+     3.67,
+     12
+    ],
+    "mean_within_2mm": [
+     2.95,
+     57
+    ],
+    "peak_anywhere": 5.44
+   }
+  ],
+  "last_step": 0.026,
+  "converged": true,
+  "sf_at_finest_peak": 8.27,
+  "sf_on_2mm_mean": 15.3
+ },
+ "X300 upper layer": {
+  "at": [
+   -33.34,
+   27.5,
+   6.81
+  ],
+  "rows": [
+   {
+    "mesh": "c",
+    "nodes": 73496,
+    "peak_within_1p5mm": 1.22,
+    "mean_within_1mm": [
+     0.43,
+     7
+    ],
+    "mean_within_2mm": [
+     0.21,
+     40
+    ],
+    "peak_anywhere": 1.22
+   },
+   {
+    "mesh": "m",
+    "nodes": 145831,
+    "peak_within_1p5mm": 1.2,
+    "mean_within_1mm": [
+     0.35,
+     10
+    ],
+    "mean_within_2mm": [
+     0.23,
+     55
+    ],
+    "peak_anywhere": 1.2
+   },
+   {
+    "mesh": "f",
+    "nodes": 164616,
+    "peak_within_1p5mm": 1.25,
+    "mean_within_1mm": [
+     0.34,
+     6
+    ],
+    "mean_within_2mm": [
+     0.18,
+     48
+    ],
+    "peak_anywhere": 1.25
+   }
+  ],
+  "last_step": 0.042,
+  "converged": true,
+  "sf_at_finest_peak": 18.0,
+  "sf_on_2mm_mean": 125.0
+ },
+ "X300 upper shear": {
+  "at": [
+   -28.78,
+   27.38,
+   5.37
+  ],
+  "rows": [
+   {
+    "mesh": "c",
+    "nodes": 73496,
+    "peak_within_1p5mm": 1.06,
+    "mean_within_1mm": [
+     0.83,
+     8
+    ],
+    "mean_within_2mm": [
+     0.49,
+     69
+    ],
+    "peak_anywhere": 1.41
+   },
+   {
+    "mesh": "m",
+    "nodes": 145831,
+    "peak_within_1p5mm": 1.18,
+    "mean_within_1mm": [
+     0.85,
+     13
+    ],
+    "mean_within_2mm": [
+     0.49,
+     80
+    ],
+    "peak_anywhere": 1.28
+   },
+   {
+    "mesh": "f",
+    "nodes": 164616,
+    "peak_within_1p5mm": 1.29,
+    "mean_within_1mm": [
+     0.86,
+     11
+    ],
+    "mean_within_2mm": [
+     0.51,
+     70
+    ],
+    "peak_anywhere": 1.29
+   }
+  ],
+  "last_step": 0.093,
+  "converged": false,
+  "sf_at_finest_peak": 10.08,
+  "sf_on_2mm_mean": 25.5
+ },
+ "X300 lower vm": {
+  "at": [
+   19.6,
+   -14.7,
+   7.1
+  ],
+  "rows": [
+   {
+    "mesh": "c",
+    "nodes": 73496,
+    "peak_within_1p5mm": 5.87,
+    "mean_within_1mm": [
+     5.51,
+     5
+    ],
+    "mean_within_2mm": [
+     5.07,
+     24
+    ],
+    "peak_anywhere": 5.87
+   },
+   {
+    "mesh": "m",
+    "nodes": 145831,
+    "peak_within_1p5mm": 5.93,
+    "mean_within_1mm": [
+     5.54,
+     7
+    ],
+    "mean_within_2mm": [
+     4.94,
+     50
+    ],
+    "peak_anywhere": 5.93
+   },
+   {
+    "mesh": "f",
+    "nodes": 164616,
+    "peak_within_1p5mm": 5.93,
+    "mean_within_1mm": [
+     5.59,
+     7
+    ],
+    "mean_within_2mm": [
+     4.82,
+     84
+    ],
+    "peak_anywhere": 5.93
+   }
+  ],
+  "last_step": 0.0,
+  "converged": true,
+  "sf_at_finest_peak": 7.59,
+  "sf_on_2mm_mean": 9.3
+ },
+ "X300 lower layer": {
+  "at": [
+   29.04,
+   -7.6,
+   -0.39
+  ],
+  "rows": [
+   {
+    "mesh": "c",
+    "nodes": 73496,
+    "peak_within_1p5mm": 1.34,
+    "mean_within_1mm": [
+     0.04,
+     7
+    ],
+    "mean_within_2mm": [
+     -0.18,
+     34
+    ],
+    "peak_anywhere": 1.54
+   },
+   {
+    "mesh": "m",
+    "nodes": 145831,
+    "peak_within_1p5mm": 1.06,
+    "mean_within_1mm": [
+     0.05,
+     7
+    ],
+    "mean_within_2mm": [
+     -0.17,
+     43
+    ],
+    "peak_anywhere": 1.17
+   },
+   {
+    "mesh": "f",
+    "nodes": 164616,
+    "peak_within_1p5mm": 1.26,
+    "mean_within_1mm": [
+     0.07,
+     8
+    ],
+    "mean_within_2mm": [
+     -0.13,
+     51
+    ],
+    "peak_anywhere": 1.26
+   }
+  ],
+  "last_step": 0.189,
+  "converged": false,
+  "sf_at_finest_peak": 17.86,
+  "sf_on_2mm_mean": 22500000000.0
+ },
+ "X300 lower shear": {
+  "at": [
+   24.59,
+   -9.75,
+   -0.07
+  ],
+  "rows": [
+   {
+    "mesh": "c",
+    "nodes": 73496,
+    "peak_within_1p5mm": 1.75,
+    "mean_within_1mm": [
+     0.84,
+     16
+    ],
+    "mean_within_2mm": [
+     0.57,
+     91
+    ],
+    "peak_anywhere": 1.75
+   },
+   {
+    "mesh": "m",
+    "nodes": 145831,
+    "peak_within_1p5mm": 2.15,
+    "mean_within_1mm": [
+     0.92,
+     26
+    ],
+    "mean_within_2mm": [
+     0.56,
+     171
+    ],
+    "peak_anywhere": 2.15
+   },
+   {
+    "mesh": "f",
+    "nodes": 164616,
+    "peak_within_1p5mm": 2.22,
+    "mean_within_1mm": [
+     1.02,
+     43
+    ],
+    "mean_within_2mm": [
+     0.56,
+     239
+    ],
+    "peak_anywhere": 2.22
+   }
+  ],
+  "last_step": 0.033,
+  "converged": true,
+  "sf_at_finest_peak": 5.86,
+  "sf_on_2mm_mean": 23.2
+ }
+}

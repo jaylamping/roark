@@ -1,0 +1,56 @@
+{
+ "Y300": {
+  "summary": {
+   "study": "D2_Y300_f",
+   "el_mm": 2.1,
+   "nodes": 164616,
+   "elements": 105227,
+   "solve_s": 187,
+   "peak_vm_all": 42.0,
+   "peak_vm_away": 42.0,
+   "at": [
+    -29.53,
+    28.0,
+    0.32
+   ],
+   "sf_yield": 1.07,
+   "max_disp_mm": 0.16396212577819824,
+   "reaction_N": [
+    -0.0,
+    -300.001,
+    0.0,
+    300.001
+   ],
+   "applied_N": 300.0
+  },
+  "seconds": 189.0,
+  "excessive": false
+ },
+ "X300": {
+  "summary": {
+   "study": "D2_X300_f",
+   "el_mm": 2.1,
+   "nodes": 164616,
+   "elements": 105227,
+   "solve_s": 232,
+   "peak_vm_all": 101.79,
+   "peak_vm_away": 101.79,
+   "at": [
+    -29.53,
+    28.0,
+    0.32
+   ],
+   "sf_yield": 0.44,
+   "max_disp_mm": 0.34941479563713074,
+   "reaction_N": [
+    -299.999,
+    -0.0,
+    -0.0,
+    299.999
+   ],
+   "applied_N": 300.0
+  },
+  "seconds": 234.1,
+  "excessive": false
+ }
+}
