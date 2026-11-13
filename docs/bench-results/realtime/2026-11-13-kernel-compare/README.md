@@ -51,9 +51,16 @@ Both CAN interfaces stayed down throughout.
 The heavier load alone more than doubles the stock kernel's worst case: 676 µs here against 294 µs in the baseline, and
 the average rises from 6 µs to between 13 and 19 µs. No sample went over 2000 µs.
 
+Isolation on the stock kernel brings it back under the baseline: 253 µs on the two reserved cores, average 1 to 2 µs,
+with the same load running on cores 0 and 1. The reserved cores carry nothing else, so this is what the realtime threads
+would see, at the price of two cores for everything else.
+
+The RT kernel boots on this Pi with the CAN FD HAT's two channels and the fan driver working (page size 4096;
+`/sys/kernel/realtime` is absent on it, `uname` reports `PREEMPT_RT`).
+
 | Run | Worst µs | Per core max µs | Peak °C | Throttled |
 |---|---|---|---|---|
 | `stock` | 676 | 541, 513, 494, 676 | 65.3 | no |
-| `stock-isolated` | | | | |
+| `stock-isolated` | 253 | cores 2, 3: 182, 253 | 59.8 | no |
 | `rt` | | | | |
 | `rt-isolated` | | | | |
