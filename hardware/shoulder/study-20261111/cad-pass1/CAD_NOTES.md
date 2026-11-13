@@ -679,6 +679,16 @@ with the RS02 re-clocked +40° the 10 mm envelope fits inside the outline, over 
   | Arm | 12.77 |
   | Torso | 15.73 |
 
+- **Same-code before/after** (the full sweep re-run on the pre-pp_r fork front and plugs with `RS02_RECLOCK=0`;
+  `_wip/.../clearance_pre_pp_r_same.json`): every pair is within 0.05 mm, except:
+
+  | Pair | Before | After |
+  |---|---|---|
+  | Cap ↔ RS02 | 5.52 | 5.58 |
+  | Ring ↔ RS02 | 7.73 | 7.68 |
+  | RS02 ↔ torso | 25.97 | 26.28 |
+
+  The fork front's pairs are identical.
 - **The drum ↔ fork front 1.98-1.99 is the designed 2 mm drum-envelope cut,** read through the ±0.4 mm sampling.
   - It is identical on the pre-pp_r fork front at every roll angle and at the same spots (Y 367-372, Z +27), so pp_r did not change it.
 
