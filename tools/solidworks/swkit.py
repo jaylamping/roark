@@ -311,7 +311,8 @@ class Sk:
             raise Failed(f'{self.name}: circle not drawn')
 
     def arc(self, c, p0, p1, direction):
-        """Arc about centre c from p0 to p1; direction +1 or -1 in the sketch's own sense: check the result's volume."""
+        """Arc about centre c from p0 to p1. direction +1 is counter-clockwise seen in the sketch's own axes, which may be
+        mirrored against the model's: give the feature its expect_dv, and flip the sign if the volume is wrong."""
         a, b, e = self.p(c), self.p(p0), self.p(p1)
         self.d.SketchManager.CreateArc(a[0], a[1], 0, b[0], b[1], 0, e[0], e[1], 0, direction)
 

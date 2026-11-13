@@ -167,16 +167,17 @@ class Result:
         self.nodes, self.elements, self.seconds, self.applied = nodes, elements, seconds, applied
         self.vm = s[:, 10]
 
-    def away(self, k=2.0):
-        """Mask of nodes at least k element sizes from every fixture and load face.
+    def away(self, k=2.0, dist=None):
+        """Mask of nodes at least dist mm (default k element sizes) from every fixture and load face.
 
         Stress on a restrained or loaded face is an artefact of the idealisation, and at a sharp restrained edge it grows
-        without limit as the mesh shrinks. Report the peak away from them, and say that you did.
+        without limit as the mesh shrinks. Report the peak away from them, and say that you did. Across a convergence
+        series pass the same dist every time: a mask of k elements shrinks with the mesh and lets the edge back in.
         """
         keep = np.ones(len(self.pos), bool)
         for pts in (self.fixed_pts, self.loaded_pts):
             if pts is not None and len(pts):
-                keep &= cKDTree(pts).query(self.pos)[0] >= k * self.el
+                keep &= cKDTree(pts).query(self.pos)[0] >= (k * self.el if dist is None else dist)
         return keep
 
     def peak(self, mask=None):
@@ -226,7 +227,7 @@ class Result:
 
 
 def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), materials=None, solver=None, keep_study=False,
-           post=None, loose_ok=False):
+           post=None, loose_ok=False, max_nodes=MAX_NODES):
     """Build, mesh and solve one linear static study on the open part d, and read the nodal results back.
 
     material: the dict for every body, unless materials = {part of a body's name: dict} picks some bodies out. A key
@@ -341,8 +342,8 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
     log(f'{name}: mesh rc {rc}, {nodes} nodes, {elements} elements, free {free_gb():.1f} GB')
     if rc or not nodes:
         raise Failed(f'{name}: mesh failed ({rc}): sliver faces, or an element size larger than a thin wall?')
-    if nodes > MAX_NODES:
-        raise Failed(f'{name}: {nodes} nodes is over {MAX_NODES}: coarsen the global size and keep the local controls')
+    if nodes > max_nodes:      # checked before the solve: pass a smaller max_nodes to hold a job to a budget
+        raise Failed(f'{name}: {nodes} nodes is over {max_nodes}: coarsen the global size and keep the local controls')
     if solver is not None:
         log(f'{name}: solver macro:', solver_macro(j, d, tag, solver, Path(d.GetPathName).parent).replace('\n', ' | '))
     stop, seen = threading.Event(), []
@@ -409,14 +410,17 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
 def converge(run, sizes, tol=0.05):
     """Solve at each element size in turn (coarse to fine) until the peak away from fixtures moves by under tol.
 
-    run(el) -> Result. Returns the list of (el, nodes, peak) rows and whether it converged. A peak that keeps climbing as
+    run(el) -> Result. Returns the list of (el, nodes, peak) rows and whether it converged. The peak is taken outside the
+    same distance from fixtures and loads at every size (two of the coarsest elements). Give at least three sizes: two
+    rows that agree can stop before a slow climb shows. A peak that keeps climbing as
     the mesh shrinks is a singularity (a sharp re-entrant corner or a fixture edge), not a stress: change the geometry
     (add the real fillet) or the mask, do not report the last number.
     """
     rows = []
+    dist = 2.0 * max(sizes)       # one exclusion distance for the whole series, set by the coarsest mesh
     for el in sizes:
         r = run(el)
-        rows.append((el, r.nodes, round(r.peak()[0], 2)))
+        rows.append((el, r.nodes, round(r.peak(r.away(dist=dist))[0], 2)))
         log('converge', rows[-1])
         if len(rows) > 1 and abs(rows[-1][2] - rows[-2][2]) <= tol * rows[-2][2]:
             return rows, True

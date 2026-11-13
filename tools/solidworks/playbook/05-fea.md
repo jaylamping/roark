@@ -32,6 +32,12 @@ print(r.summary())
 - **Fixtures:** `'fixed'` holds a face in all directions. `'hinge'` on a cylindrical face lets it turn about its axis.
   Restrain what the real part restrains, on the faces that really bear. A model with too little restraint fails with error
   24; one with too much hides the stress you were looking for.
+- **A screwed-down part:** fixing the whole wall of a screw hole puts a singular edge at the hole mouth, and its stress
+  climbs with every refinement (22.8 to 33.4 MPa over four sizes on the benchmark bracket, 2026-11-13). Either fix the
+  hole walls and judge the part outside a fixed distance from them, saying how large the excluded value was, or fix the
+  ring under the screw head instead. The stress right at a screw is not what this kind of study can tell you.
+- **A load on part of a face:** a load or contact takes whole faces. To load the ends of a pin, or one patch of a wall,
+  make that region its own face first: build the part as separate touching bodies (they bond), or cut a shallow step.
 - **Loads:** `'normal'` presses on faces along their normals with the total in newtons, shared between the faces by
   area as one even pressure (SolidWorks' own normal force puts the value on each face: [02-com.md](02-com.md)). Positive
   pushes into the material. `'remote'` applies a force and a moment
@@ -53,7 +59,7 @@ print(r.summary())
 | 2 | **Displacement is sane.** `r.max_disp()` against the hand estimate | same order of magnitude. Metres of displacement means a loose body |
 | 3 | **Stress in the plain section matches the hand estimate.** `r.average(point, 2.0)` at a point away from corners, and at least one section depth from a fixed face: a fixed face stops the part widening, which raised a Ø20 rod's stress 5.5 % over F / A 11 mm from the face (2026-11-12) | within about 15 % |
 | 4 | **The peak is not at a fixture or load face.** `r.peak()` already excludes nodes within two elements of them; say so, and look at `r.vm.max()` to see what was excluded | you can name the feature the peak sits on |
-| 5 | **The peak has converged.** `converge(run, (3.0, 2.0, 1.5))` | the last step moves it under 5 % |
+| 5 | **The peak has converged.** `converge(run, (3.0, 2.0, 1.5))`, three sizes, the same exclusion distance at each (it does this) | the last step moves it under 5 % |
 
 A peak that keeps rising as the mesh shrinks is a **singularity**: a sharp inside corner, or the edge of a fixture. It is
 not a stress. Either the real part has a radius there (model it, then it converges), or it is an artefact of the fixture
@@ -72,7 +78,9 @@ against 22.5 MPa. Printed parts fail there first.
 | 300,000 to 450,000 | automatic, or direct sparse for contact | about 11 GB with direct sparse | 7 to 11 minutes with contact |
 | about 800,000 with contact, direct sparse | | **ran out of memory** on the 32 GB machine, reported as error 24 | |
 
-`static()` refuses meshes over 450,000 nodes. To get under it, coarsen the global size and keep the local controls: a 4 mm
+`static()` refuses meshes over 450,000 nodes, or over `max_nodes=` when a job has a smaller budget; halving the element
+size multiplies the nodes by about six, so work out the finest size before starting a series. A mesh control takes whole
+faces: a corner on a large face cannot be refined alone, so judge it by averages instead of a finer global mesh. To get under it, coarsen the global size and keep the local controls: a 4 mm
 global mesh with 0.8 mm controls on the joint gave about 400,000 nodes where 0.8 mm everywhere-near-the-joint gave 800,000.
 Make the control catch only the faces that matter (by area and position), not every face that crosses a box.
 
@@ -98,6 +106,9 @@ What was learned on the upper-arm hub joint, 2026-11-11 and 12:
 2. **Every body must be held without the contact.** A body kept in place only by no-penetration contact, with clearance, is
    free until it touches: the solve fails with error 24. Model the real gap and hold the loose body with small soft pads
    (four Ø1.8 pads, modulus 0.5 MPa, bonded both sides), then check that the pads carry under 1 % of the load.
+   Keep pads away from the faces you are judging: a pad bonded at a hole mouth drew a false 85 to 90 MPa ring round it
+   (2026-11-13); pads on the loose body, clear of the other one, with their outer faces fixed, did not. The reaction
+   readback sums every restrained node, so bound the pads' share from their own stress times their area.
 3. **Do not model a fit as line-to-line.** Faces that exactly touch are bistable: the solver may or may not see contact.
    Give the faces their real clearance, or a real interference.
 4. **A face in a contact set is no longer bonded by the global bond.** Anything that must stay stuck to it (a brass insert

@@ -20,7 +20,7 @@ Then check the file, not the return value:
 | STL is watertight, one body | `trimesh.load(path).is_watertight`, `len(mesh.split())` | an export of a part with a crumb body has two shells |
 | STL volume equals the part's | `mesh.volume` against `volume(d)`, within 0.5 % | catches metres-for-millimetres and a wrong configuration |
 | STL sits in the model frame | `mesh.bounds` against `bbox(d)` | with toggle 71 off, SolidWorks shifts the STL to positive space and everything that reads it by coordinate is wrong |
-| STEP is in mm | open the file: `SI_UNIT(.MILLI.,.METRE.)` | a part from an inch template exports in inches |
+| STEP is in mm | open the file and find the length unit: SolidWorks writes `SI_UNIT ( .MILLI., .METRE. )` with spaces, so search for `.MILLI.` on an `SI_UNIT` line, not the exact string | a part from an inch template exports in inches |
 
 Record the export right after making it, from the worktree root:
 `python tools/cad/record_export.py exports/<region>/<file> <region>/<part>.SLDPRT --config Default --settings "STEP AP203"`.

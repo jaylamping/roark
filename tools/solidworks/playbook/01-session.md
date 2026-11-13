@@ -29,6 +29,7 @@ The rules themselves live in [RULES.md](../RULES.md), [cad-workstation.md](../..
 
 4. **Memory.** `job()` refuses to start under 8 GB free. Do not lower it. Joey's rule for holly-pc (2026-11-11): each job
    stays near 6 GB, three or four ordinary jobs and one or two heavy ones machine-wide.
+   A `STALE` claim of another session is not yours to clear: leave it, and mention it in your report.
 5. **Claim** your worktree, and add the PID once you have one:
    `python tools/pc/claims.py claim <session> --worktree J:/code/roark-wt/<session> --status "<what>"`.
 
