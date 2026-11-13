@@ -14,15 +14,15 @@ place, every fit that rests on a bought part's dimension, heat, loads not run.
 | # | Item | Where it is stated | What could go wrong | How bad | How to settle | Cost | Result so far |
 |---|---|---|---|---|---|---|---|
 | 1 | **Yaw dish loop has no slack storage** | CONCEPT.md "Wire passages" ("loop length for ±90 yaw is not checked") | The bundle fills the dish (13.5 mm radial, 5.5 mm axial). The exit-to-window distance changes by up to 97 mm over yaw ±90. The slack has nowhere to go but through the window or back up the exit | Stops the arm, or chafes the trunk through at 48 V | **Joey:** print and run the rig ([CABLE_LOOP_RIG.md](CABLE_LOOP_RIG.md)) | 25 g PLA, 1 h, 20 min test | Found 2026-11-13. Window at 248° passes under the exit at yaw -14°; moved to 68° (one-way loop). Slack still open |
-| 2 | **Yaw has no stop and no limit** | MEASUREMENTS.md "Yaw: unlimited by geometry"; SOFTWARE_HANDOFF.md has no yaw position limit; ±90 appears only as a sweep range and in the trunk plan | A runaway or a wrong zero at first power-up winds the bundle round the dish until it tears | Trunk damage, short at 48 V | **Joey / coordinator:** fix the yaw travel. Then a soft limit in SOFTWARE_HANDOFF.md, and decide whether a printed hard stop is wanted | Decision; a stop is a hub and fork change | Open |
-| 3 | **Motor heat into PETG** | Not stated anywhere | The RobStride ratings assume an aluminium heat sink (RS02: 6 N·m on 260 × 280 mm; RS03: 20 N·m on 215 × 220 mm; manuals section 1.2). Our mounts are PETG. The drives only fault at a thermistor reading of 135 °C (RS02) and 145 °C (RS03). PETG seats creep from about 60 °C | Seats and bosses relax; the 0.3 N·m joints loosen; continuous torque is well under the rating | **Other (software):** a temperature limit from the drive's reported temperature, well under 60 °C at the housing. **Joey:** a bench run logging temperature at a held torque | A config value; a 30 min bench run | Manual figures read 2026-11-13. Limit value open |
+| 2 | **Yaw has no stop and no limit** | MEASUREMENTS.md "Yaw: unlimited by geometry"; SOFTWARE_HANDOFF.md has no yaw position limit; ±90 appears only as a sweep range and in the trunk plan | A runaway or a wrong zero at first power-up winds the bundle round the dish until it tears | Trunk damage, short at 48 V | **Joey / coordinator:** fix the yaw travel. Then a soft limit in SOFTWARE_HANDOFF.md, and decide whether a printed hard stop is wanted | Decision; a stop is a hub and fork change | Soft limits -85…+85 (assumed) are in SOFTWARE_HANDOFF.md. Stop options below: no hidden stop for both ends fits |
+| 3 | **Motor heat into PETG** | Not stated anywhere | The RobStride ratings assume an aluminium heat sink (RS02: 6 N·m on 260 × 280 mm; RS03: 20 N·m on 215 × 220 mm; manuals section 1.2). Our mounts are PETG. The drives only fault at a thermistor reading of 135 °C (RS02) and 145 °C (RS03). PETG seats creep from about 60 °C | Seats and bosses relax; the 0.3 N·m joints loosen; continuous torque is well under the rating | **Other (software):** a temperature limit from the drive's reported temperature, well under 60 °C at the housing. **Joey:** a bench run logging temperature at a held torque | A config value; a 30 min bench run | Provisional limits (reduce from 50 °C, stop at 60 °C reported) and the bench procedure are in SOFTWARE_HANDOFF.md |
 | 4 | **Hub screws too long for the RS02's thread** | A_HUB_LUGS.md "close-fit screw holes": M4 × 30, "about 8 mm of thread engages" | The RS02 drawing gives **6 × M4, depth 7 min** (manual section 1.1), and warns not to exceed the thread depth. The head seats at Y 298.1 (boss 21.76), so M4 × 30 goes in 8.24 mm. It can bottom before it clamps | Hub loose at "tight", or a damaged output | **Here**, done. **Joey:** probe one hole | 5 min | **Settled on paper:** use M4 × 30 with 1.6-2 mm under the head (two washers) for 6.2-6.6 mm, or M4 × 28. Not M4 × 30 bare unless the probe shows 9 mm or more |
 | 5 | **Fork front to RS03 output: screw and pin lengths** | PRINT_NOTES.md: "6 × M4 (existing counterbores)", pins "about 8 mm" | The RS03 drawing gives **6 × M4, depth 6, blind** and **3 × Ø4, depth 7, blind**. The boss is 12.36 thick (seat Z 43.0, face Z 30.64). M4 × 20 would bottom | Fork loose on the roll output, the joint that carries the whole arm | **Here**, done | - | **Settled on paper:** M4 × 18 (5.6 mm engaged). Pins: at most 7 mm in the motor. The three Ø3.8 pin holes are in the real fork front (0 / 120 / 240°) |
 | 6 | **Roll limits must exist before the first enable** | SOFTWARE_HANDOFF.md; B_ROLL_STOPS.md (layer SF 0.55-0.66 at a 60 N·m stall) | The printed stops break at a stall if the controller's 17 N·m / 1 rad/s / -9…+108° limits are missing | Broken fork rear on day one | **Other (software):** confirm the limits are in the controller, and test them on `vcan` | Software thread | Open |
 | 7 | **XT30(2+2) plug's real size** | PRINT_NOTES.md; plug_pocket README ("height assumed", fold read from photos) | The plug or its folded lead does not fit the channel (r 36-50, 16.5 wide, Y 353.9-361.1) | Fork front reprint, 155 g | **Joey:** measure a real plug with its lead; try it in a printed slot | 10 min | Open |
 | 8 | **Across-layer shear allowable, 13 MPa** | A_HUB_LUGS.md ("assumed"); B_ROLL_STOPS.md uses 22.5 MPa for layers | The hub's 1.60 / 1.31 rests on it. If the real figure is lower, the lugs' inner roots fail in yaw | Hub lug cracks at peak yaw torque | **Joey / arm thread:** a printed shear coupon, or the arm thread's data | A coupon and a pull test | Open |
 | 9 | **The committed hub export is two revisions old** | cad/exports/shoulder (rev C+, 2026-11-11) | Someone prints it: no locating holes, short lugs | Wasted print; wrong joint | **Here:** replaced when D3c5 is released | - | Flagged in PRINT_NOTES.md |
-| 10 | **Nothing has been sliced** | CONCEPT.md section 10; CAD_NOTES.md "Still open" | Supports that can't be removed; the RS02 seat is a supported face; drum skin 0.97 mm at one spot, cuff 1.48 | Reprints | **Run:** slice each part with the Bambu CLI and read supports, thin walls, time | About 1 h | Open; next on my list |
+| 10 | **Nothing has been sliced** | CONCEPT.md section 10; CAD_NOTES.md "Still open" | Supports that can't be removed; the RS02 seat is a supported face; drum skin 0.97 mm at one spot, cuff 1.48 | Reprints | **Run:** slice each part with the Bambu CLI and read supports, thin walls, time | About 1 h | **Done, first look** (below): every part slices without warnings; times and support mass listed. Supports not yet inspected for removal |
 | 11 | **Re-torque after 24 h against access** | PRINT_NOTES.md; CAD_NOTES.md "Driver reach" | Assembled, only the 104° RS02 screw can be reached; the hub screws are behind the arm halves. The re-torque needs a strip-down | The low-preload joints never get their re-torque | **Here:** list which screws are reachable assembled. Then a procedure | 1 h | Open |
 | 12 | **Bundles against the RS02 in the fork** | CAD_NOTES.md "Side centre r 47" lays the bundles first; "RS02 re-clocked" fits the RS02 first | The two orders conflict. With the RS02 in, the 16 × 6 bundle may not go into the back cavity | Assembly stalls; forced cable | **Here:** section the back cavity with the RS02 in place | 1 h | Open |
 | 13 | **Plugs through the channels** | CONCEPT.md assembly steps | An XT30(2+2)-F body is 16 × 6.5 × 15. It does not pass a 16 × 6 channel or the 7 × 6 tap | Wires must be threaded before they are terminated | **Here / electrical plan:** write the order (thread, then solder) into the assembly notes | - | Open |
@@ -31,11 +31,11 @@ place, every fit that rests on a bought part's dimension, heat, loads not run.
 | 16 | **RS03 connector bays** | CONCEPT.md, MEASUREMENTS.md ("vendor bays are empty") | The top-bay window and branch are sized from the bay, not a plug | Drum reprint, 227 g | **Joey:** photo and size of the plugs seated in an RS03 | 10 min | Open |
 | 17 | **RS03 output bearing rating** | C_LOAD_SHARE.md ("not published"; up to 28.6 N·m of tilt) | The roll output bearing is overloaded | Motor damage over time | **Other / vendor:** ask RobStride; the 6808 already shares the load | An email | Open |
 | 18 | **Preload, creep and friction values** | A_HUB_LUGS.md (0.35 kN per screw, half after creep, μ 0.25, hook scale ±15%) | The hub-top SF falls from 1.64 to 1.41 if over-tightened; slip if under | Loose or cracked hub top | **Joey:** bench: torque, wait 24 h, re-check | Part of the first bench session | Open |
-| 19 | **Fork front to RS02 body, 5 × M3** | PRINT_NOTES.md (no torque, no slip check, no length) | Carries the 17 N·m yaw reaction. The RS02 drawing gives 9 × M3, depth 8 | Yaw backlash at the motor seat | **Here:** slip check and screw length | 1 h | Open |
+| 19 | **Fork front to RS02 body, 5 × M3** | PRINT_NOTES.md (no torque, no slip check, no length) | Carries the 17 N·m yaw reaction. The RS02 drawing gives 9 × M3, depth 8 | Yaw backlash at the motor seat | **Here:** slip check and screw length | 1 h | Length settled: M3 × 12 (5.5 mm into the motor; depth 8). Thread from the rear side to confirm on the motor. Slip check open |
 | 20 | **Stop impact estimates** | B_ROLL_STOPS.md (inertia about 0.06 kg·m², stiffness "a rough estimate") | The 1 rad/s cap rests on them | Stop damage on a fast arrival | **Joey:** first stop contacts at low speed, inspect | Bench | Open |
 | 21 | **Clearances are nominal CAD** | CAD_NOTES.md (2.0 mm gaps, ±0.4 sampling; deflection about 0.45) | Print tolerance and deflection eat a 2.0 mm running gap | Rub marks; not a failure | **Joey:** measure the first prints | - | Open |
 | 22 | **Press fits** | CAD_NOTES.md (plugs Ø6.9 in Ø7; port cap hooks 0.8; RS02 in its bore with 0.45-0.50) | Too tight or loose as printed | Small reprints | **Joey:** try on the first prints | - | Open |
-| 23 | **Insert and joint screw lengths** | PRINT_NOTES.md (six ISO 7380 M4, recess "about 3.1", no lengths) | Wrong screws on the bench; a screw into the plug channel (1.5 mm from an insert bore) | Delay; a pierced channel | **Here:** a length for each screw from the CAD | 1 h | Open |
+| 23 | **Insert and joint screw lengths** | PRINT_NOTES.md (six ISO 7380 M4, recess "about 3.1", no lengths) | Wrong screws on the bench; a screw into the plug channel (1.5 mm from an insert bore) | Delay; a pierced channel | **Here:** a length for each screw from the CAD | 1 h | **Done** except the cap's ear screws (CAD_NOTES.md "Screw and pin lengths"). Two more that bottom: drum on the pitch output with M4 × 18 bare, and a standard 8.1 mm insert in the fork joint |
 | 24 | **Loads never run** | CAD_NOTES.md "Not analysed"; C_LOAD_SHARE.md (the fork as two bodies fails to solve) | Pitch stall (60 N·m) into the drum's pitch pad; the flange ring carrying the trunk mouth | Unknown margins on the drum | **Run:** drum pitch-pad case; fork as bonded bodies | 2-3 h of solves | Open |
 | 25 | **Wire gauge and crossing in the trunk plan** | Trunk plan (16 AWG to the elbow, yaw as a twist); upper-arm README (18 AWG) | The bundle tested is not the bundle built | Rig result doesn't transfer | **Other (electrical):** one definition | - | Flagged to the coordinator |
 | 26 | **6808 seat changes built?** | D_6808_FITS.md says "not rebuilt yet"; CAD_NOTES.md mass table implies built | If not built, the lip preloads the RS03 bearing | Bearing drag | **Here:** read the Ø52.2 bore and lip off the built parts | 15 min | Git says built (f93957c, 2026-11-11). To confirm on the STL |
@@ -46,6 +46,7 @@ place, every fit that rests on a bought part's dimension, heat, loads not run.
 | 31 | **FEA simplifications** | A_HUB_LUGS.md (lug bolt preload not modelled; peaks under 1.0 read as fixture artefacts) | A real peak is dismissed | Local cracking | **Run:** one case with bolt preload, if item 8 comes back low | 1 solve | Open |
 | 32 | **Mass against the target** | CONCEPT.md (520 g target); CAD_NOTES.md (638.5 g, before hub D3c) | Heavier than planned. Static arm moments are 1-2.3 N·m, far under the RS03's 20 | Low | **Here:** note only | - | Shoulder is about 642 g with hub D3c |
 | 33 | **Right shoulder** | CAD_NOTES.md ("a mirror, later") | Handed parts mirrored wrongly (motors, screws, socket, offset sign, window) | Low for now | **Here:** plan first | - | Plan in work |
+| 34 | **The cable window cuts the two hub-screw tubes beside it** | Not stated (A_HUB_LUGS.md calls it a "small side shave") | Wall round the screw hole is 0.0-0.3 mm over the tube's lowest 4 mm; the head's seat is cut away on that side. Two of six hub screws, one of them a locating screw | A head that seats on half a ring at 0.3 N·m; a sliver that won't print | **Coordinator:** move the window's bore end out past the tubes (entry at r 17.2), or accept. Either needs the arm thread | A rebuild and two solves | Found 2026-11-13; in CAD_NOTES.md. Rank it about 6 |
 
 ## Settled so far
 
@@ -74,3 +75,53 @@ place, every fit that rests on a bought part's dimension, heat, loads not run.
 - Ambient range -20 to 50 °C. Winding limit 145 °C. Over-temperature fault at a thermistor reading of 135 °C (RS02) and
   145 °C (RS03).
 - So the drive protects itself, not the plastic round it. The limit has to come from the controller.
+
+### 2. Yaw stop: what fits inside the outline (2026-11-13, sketch only)
+
+![options](yaw_stop/yaw_stop_options.png)
+
+**Load:** 17 N·m at r 38-40 is about 430-450 N on the stop.
+
+| Option | Where | Contact | At 17 N·m | Verdict |
+|---|---|---|---|---|
+| A | A fin on the hub rim against a pad inside the fork skirt, in the 2.2 mm gap (r 39.3-41.5), above the rim | 1.6 mm radial × 4 mm: 6.4 mm² | 66 MPa bearing | **No.** Good for about 4 N·m at 15 MPa |
+| B | A tooth standing on the dish floor's outer margin (r 33.3-39.3, Y 318.4-322.4, 12 mm long) against the side of the yaw exit housing, which is already there and fixed | 6 × 4 = 24 mm² | 19 MPa bearing; root shear 6.2 MPa (SF 2.1 on the assumed 13); root bending 6.3 MPa (SF 3.5) | **One end only** (below). 0.4 g |
+| C | A stop at the arm's collar against the skirt's lower edge | - | - | Outside the smooth outline: breaks the look rule. Arm thread's part |
+
+**Why B gives one end only:**
+- The tooth takes 6 mm of the dish's 13.5 mm width, so it must stand in the hub sector the bundle never crosses.
+- With the window at 68° and the loop laid round the +X side, that sector is hub 83-172°.
+- A tooth at hub 150° meets the exit housing at yaw **-93°**. Nothing in that sector can meet it on the positive side:
+  the next contact is at +229°.
+- The positive side is the one that matters more: there the loop gets shorter and is pulled tight from about +130°.
+- Laying the loop the other way swaps the sides, not the result.
+
+**So:** no hidden hard stop for both ends fits the present dish. What is left:
+1. Soft limits, with a torque cap near them as on roll (in SOFTWARE_HANDOFF.md now, as assumed values).
+2. Tooth B as a stop for the negative end only, for 0.4 g, if the hub is being rebuilt anyway.
+3. A real two-ended stop needs room made for it: a wider dish (the fork skirt and the hub rim move out about 6 mm,
+   which changes the outline), or a stop on the arm side.
+
+### 10. Slicing, first look (2026-11-13)
+
+Bambu Studio CLI with the arm's accepted PETG project as the seed (0.20 mm, 6 walls, tree supports on, brim 5), parts in
+the orientations of PRINT_NOTES.md. `cad/scripts/shoulder/slice_parts.py`.
+
+| Part | Box on the bed (mm) | Solid mass | Sliced, with support | Time | Warnings |
+|---|---|---|---|---|---|
+| Drum | 130.5 × 118.2 × 96.8 | 226.8 g | 236.9 g | 9 h 53 min | none |
+| Fork front | 109.9 × 108.2 × 165.3 | 155.2 g | 194.7 g | 7 h 29 min | none |
+| Fork rear | 73.4 × 27.8 × 119.9 | 63.7 g | 66.1 g | 2 h 58 min | none |
+| Rear cap | 113.1 × 113.2 × 18.8 | 85.2 g | 78.1 g | 2 h 27 min | none |
+| Flange ring | 155 × 155 × 1.8 | 29.3 g | 28.2 g | 53 min | none |
+| Pitch loop cover | 151.7 × 200.7 × 38.9 | 102.2 g | 127.5 g | 3 h 47 min | none |
+| Rig: fork, hub, boss, cap | up to 86 × 100 × 22 | 25.8 g | 25.9 g | 25 + 34 + 9 + 5 min of printing, about 1 h 15 on one plate | none |
+
+- **The fork front carries about 40 g of support,** the cover about 25 g. Where it lands and whether it comes out has
+  still to be looked at, part by part, in the sliced files. The fork rear is 120 mm tall on a 73 × 28 footprint.
+- The hub is left out until its window is settled.
+- These are a first look with the arm's settings, not print files.
+
+### 34. Hub cable window against the boss tubes (2026-11-13)
+Numbers and the table are in CAD_NOTES.md, "Hub cable window against the boss tubes".
+

@@ -42,6 +42,60 @@ Sources:
 - [PRINT_NOTES.md, "RS02 plug and clock"](study-20261111/cad-pass1/PRINT_NOTES.md)
 - [A_HUB_LUGS.md, yaw torque through the lugs and rev D3c4](study-20261111/checks/A_HUB_LUGS.md)
 
+## Yaw joint: position limits (provisional)
+
+| Item | Value |
+|---|---|
+| Soft position limits | **-85° to +85°, assumed.** Joey has not fixed the yaw travel yet |
+| Rule | **Never enable yaw without a position limit** |
+
+**Why:**
+- **Nothing stops yaw mechanically.** The shoulder has no yaw hard stop.
+- **A runaway winds the cable.** The arm's wires cross the joint in a flat loop under the RS02. Past about +130° (with
+  the hub's cable window at 68°) the loop is pulled tight; past +166° the window passes the fork's exit and the bundle is
+  wrapped. On the other side it wraps at about -194°.
+- **The zero must be right first.** A yaw zero that is off by the +40° offset, or by a 60° step of the hub's screw
+  pattern, eats most of the margin. Set and check the zero before the first enable.
+- The design was checked for yaw -90° to +90° only.
+
+Sources: [OPEN_ASSUMPTIONS.md, items 1 and 2](study-20261111/checks/OPEN_ASSUMPTIONS.md);
+[CABLE_LOOP_RIG.md](study-20261111/checks/CABLE_LOOP_RIG.md).
+
+## All three motors: temperature limits (provisional until a bench run)
+
+| Motor | Start reducing torque at | Stop (hold position at low torque, or disable) at |
+|---|---|---|
+| RS03, pitch and roll | **50 °C** reported motor temperature | **60 °C** |
+| RS02, yaw | **50 °C** | **60 °C** |
+
+**Why:**
+- **The motors sit in printed PETG.** PETG creeps from about 60 °C, and the joints are clamped at only 0.3 N·m, so a
+  warm seat lets them go loose.
+- **The drive does not protect the plastic.** Its own over-temperature fault is at a thermistor reading of 135 °C (RS02)
+  and 145 °C (RS03).
+- **The rated torque assumes a metal heat sink.** RobStride rates the RS02 at 6 N·m on a 260 × 280 mm aluminium plate and
+  the RS03 at 20 N·m on a 215 × 220 mm plate. In PETG the continuous torque is lower, by an amount nobody has measured.
+- **Where the numbers come from:** the seat cannot be hotter than the winding that heats it. Holding the reported
+  temperature to 60 °C therefore holds the seat under 60 °C. That is safe but probably too strict; the bench run below
+  measures the real difference so the limits can be raised.
+- Ambient range of the drives: -20 to 50 °C.
+
+**Bench run to replace these numbers (Joey):**
+1. Tape a thermocouple to the printed seat, on the plastic, right beside the motor's mounting face: for an RS03, on the
+   boss next to a mounting screw; for the RS02, on the fork front's seat ring between two of the M3 screws. Tape a second
+   one in free air.
+2. Hold a steady torque with the joint still: start at a quarter of the rated torque (RS03 5 N·m, RS02 1.5 N·m), using a
+   weight on a measured lever.
+3. Log every 10 s for 30 min, or until it settles: the drive's reported temperature, both thermocouples, the current.
+4. Stop at once if the seat reaches 55 °C.
+5. Repeat at half the rated torque if the first run settled under 45 °C at the seat.
+6. Report: the settled seat and reported temperatures at each torque, and the time to settle. The limits are then set so
+   the seat stays at or under 50 °C.
+
+Sources: RS02 user manual 260713 and RS03 user manual 261013, sections 1.2, 1.3 and 3.3
+([marengo docs/robstride](https://github.com/jaylamping/marengo/tree/main/hardware/docs/robstride));
+[OPEN_ASSUMPTIONS.md, item 3](study-20261111/checks/OPEN_ASSUMPTIONS.md).
+
 ## All printed-to-RobStride joints: low preload
 
 - **Torque:** the screws joining printed parts to the RobStride motors are tightened to only **0.3 N·m** (M4), so they

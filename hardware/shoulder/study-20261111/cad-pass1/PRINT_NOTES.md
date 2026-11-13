@@ -82,8 +82,8 @@ Material PETG throughout. "Not sliced" applies to every orientation and support 
   groove's load flank is a 60° overhang, 1.5 mm tall; expect about 0.2 mm of droop on it (A_HUB_LUGS.md, "Print
   orientation").
 - **Iron the disc face (Y 302).** It is an up-facing surface in this orientation, and the arm's shim ring seats on it.
-- **Holes printed Ø3.8, reamed Ø4.00:** two on the top, at -142° and 38° on r 12. They take the plain shank of M4 × 30
-  partially threaded screws.
+- **Holes printed Ø3.8, reamed Ø4.00:** two on the top, at -142° and 38° on r 12. They take the plain shank of the
+  partially threaded M4 screws (lengths under "Screws").
 - **Lug holes:** printed Ø3.8 for the arm's fixed shim plates; the arm thread owns that fit.
 
 ### Pitch loop cover
@@ -100,19 +100,27 @@ Material PETG throughout. "Not sliced" applies to every orientation and support 
 
 | Part | Holes | Takes |
 |---|---|---|
-| Hub (top, RS02 side) | 2, at -142° and 38° on r 12 | the plain shank of M4 × 30 partially threaded screws (locating) |
+| Hub (top, RS02 side) | 2, at -142° and 38° on r 12 | the plain shank of the partially threaded M4 screws (locating); reamed length 7.3 mm |
 | Fork front (RS03 boss) | 3, at 0° and ±120° on r 15.2 | Ø4 × 16 pins into the RS03's three plain locating holes |
 
 Pick screws and pins with a shank of 3.98 or more (calipers). That holds backlash to about 0.1° or less.
 
 ## Screws
 
-| Joint | Screws | Notes |
-|---|---|---|
-| Hub → RS02 output | 6 × M4: 2 × ISO 4762 M4 × 30 partially threaded in the reamed holes, 4 × M4 × 30 in the Ø4.3 clearance holes | 0.3 N·m. Probe the RS02's tapped depth first (about 8 mm of thread engages) |
-| Fork front → RS03 output | 6 × M4 (existing counterbores) + 3 × Ø4 × 16 pins | 0.3 N·m. Pins can be cut from M4 × 30 screw shanks; probe the RS03's plain-hole depth (about 8 mm) |
-| Fork rear → fork front (joint) | **6 × ISO 7380 M4 button heads** | Layout N. The outer recesses are only about 3.1 mm deep, so a DIN 912 head would stand proud |
-| Fork front → RS02 | 5 × M3 on PCD 73 at -96 / -56 / -16 / 104 / 144° | The RS02's own seat holes after the re-clock |
+Lengths are checked against the motors' thread depths (RobStride outline drawings) and the seats measured on the built
+parts ([CAD_NOTES.md, "Screw and pin lengths"](CAD_NOTES.md)). **A screw that bottoms in a blind hole feels tight and
+clamps nothing.**
+
+| Joint | Screws | Thread in the motor or insert | Notes |
+|---|---|---|---|
+| Hub → RS02 output | 6 × M4: **M4 × 28**, or M4 × 30 with 1.6-2 mm of washer under the head. 2 of them partially threaded, in the reamed holes | 6 × M4, depth 7 min | 0.3 N·m. M4 × 30 bare goes in 8.2 mm and can bottom. Probe one hole: 9 mm or more clears M4 × 30 bare |
+| Fork front → RS03 roll output | 6 × **M4 × 18** + 3 × Ø4 pins | 6 × M4, depth 6, blind; 3 × Ø4, depth 7, blind | 0.3 N·m. 5.6 mm engaged. M4 × 20 bottoms. Pins: at most 7 mm into the motor |
+| Drum → pitch RS03 output | 6 × **M4 × 18 with one washer**, or M4 × 16 | 6 × M4, depth 6, blind | Pad 11.7 mm. M4 × 18 bare goes in 6.3 mm and bottoms; with a 0.8 mm washer 5.5 mm; M4 × 16 gives 4.3 mm |
+| Drum → roll RS03 housing | 8 × **M4 × 10** | 8 × M4, depth 8 | Flange 3.5 mm under the head. M4 × 10 gives 6.5 mm; M4 × 12 goes in 8.5 mm and bottoms |
+| Fork front → RS02 body | 5 × **M3 × 12** on PCD 73 at -96 / -56 / -16 / 104 / 144° | 9 × M3, depth 8 (given from the output side) | Seat 6.5 mm. 5.5 mm into the motor. M3 × 16 bottoms. **Check on the motor** that the holes are threaded from the rear, as the old bracket used them |
+| Fork rear → fork front (joint) | 6 × ISO 7380 M4 button heads: **2 × M4 × 10** (X ±17) and **4 × M4 × 8** | M4 heat-set inserts, bore Ø5.6 × 7.3-7.8 deep | The recesses are about 3.1 mm deep, so a DIN 912 head would stand proud. **Use short inserts (4 mm):** a standard 8.1 mm insert stands proud of the joint face |
+| Flange ring → drum spokes | 5 × **M3 × 5** | M3 × 4 inserts, bore 3.8 deep | Ring 1.8 mm. M3 × 6 bottoms in the bore |
+| Rear cap → drum | 3 × M4 at the ears | not read off yet | Open ([OPEN_ASSUMPTIONS.md](../checks/OPEN_ASSUMPTIONS.md), item 23) |
 
 ## Low preload and re-torque (every printed-to-RobStride joint)
 

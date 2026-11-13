@@ -715,3 +715,58 @@ with the RS02 re-clocked +40° the 10 mm envelope fits inside the outline, over 
 **Pictures:**
 - [real_set_pp_r/SHEET_real_pp_r.png](real_set_pp_r/SHEET_real_pp_r.png): the outside is unchanged.
 - Mock-up comparison and sections: [look-options/plug_pocket/radial](look-options/plug_pocket/radial/).
+
+## Screw and pin lengths against the hole depths (2026-11-13)
+
+**Why:** the notes assumed about 8 mm of thread in the RobStride outputs. The outline drawings in the user manuals give
+less, and warn that a screw must not go deeper than the thread.
+
+**Thread depths, from the manuals' outline drawings** (RS02 260713 and RS03 261013, section 1.1):
+
+| Motor | Output | Body |
+|---|---|---|
+| RS02 | 6 × M4, depth 7 min, on Ø24; 3 × Ø4 (+0.1 / 0) plain holes | 9 × M3, depth 8, on Ø73 |
+| RS03 | 6 × M4, depth 6, blind, on Ø30.36; 3 × Ø4 (+0.1 / 0), depth 7, blind | 8 × M4, depth 8, on Ø98 |
+
+**Seats, measured on the built parts** (flat faces round each screw axis, from the STLs):
+
+| Joint | Under the head | Screw | Goes in | Verdict |
+|---|---|---|---|---|
+| Hub → RS02 output | 21.76 (head on the tube end, Y 298.1; face Y 319.86) | M4 × 30 | 8.24 | **Can bottom** (7 min). Use M4 × 28 (6.2) or 1.6-2 mm of washer |
+| Fork front → RS03 roll output | 12.36 (seat Z 43.0; face Z 30.64) | M4 × 18 | 5.64 | Good. M4 × 20 bottoms |
+| Drum → pitch RS03 output | 11.7 (seat X 108.7; face X 97.0) | M4 × 18 | 6.3 | **Bottoms** by 0.3. Add a 0.8 mm washer (5.5), or M4 × 16 (4.3) |
+| Drum → roll RS03 housing | 3.5 (seat Z 31.8; face Z 28.3) | M4 × 10 | 6.5 | Good. M4 × 12 bottoms (8.5) |
+| Fork front → RS02 body | 6.54 (seat Y 358.4; face Y 351.86) | M3 × 12 | 5.46 | Good if the holes are threaded from the rear. M3 × 16 bottoms |
+| Fork joint, X ±17 | 5.5 | M4 × 10 | 4.5 into the insert bore (7.3-7.8 deep) | Good |
+| Fork joint, X ±27 and the lower pair | 3.0 | M4 × 8 | 5.0 | Good. M4 × 10 goes in 7.0 of 7.3 |
+| Flange ring → spokes | 1.8 | M3 × 5 | 3.2 of 3.8 | Good. M3 × 6 bottoms |
+
+- **Hub locating shank:** the reamed length in the hub is 7.3 mm (Y 305.3-312.6), not 10. Shank bearing at 17 N·m is
+  708 N / (4 × 7.3) = 24 MPa, bulk SF 1.9 (the note in A_HUB_LUGS.md has 17.7 MPa on 10 mm).
+- **Fork joint inserts:** the Ø5.6 bores are 7.3-7.8 deep. A standard 8.1 mm M4 insert would stand proud of the joint
+  face. Use 4 mm inserts, or deepen the bores to 9 (the X -27 bore ends 1.5 mm from the plug channel, so not that one).
+- **RS02 body screws:** the drawing dimensions the M3 thread from the output side. The vendor model shows the holes
+  through the flange, with a Ø3.2 × 1.5 lead at the rear face. Check on the motor that they take a screw from the rear.
+- **Not read off yet:** the rear cap's three ear screws.
+
+## Hub cable window against the boss tubes (2026-11-13)
+
+- **The window cuts the two boss tubes beside it.** The six hub-screw tubes stand 60° apart on r 12; the 16 mm window
+  passes between two of them and its bore end reaches in to r 11.8.
+- **Wall left round the screw hole, lowest 4 mm of the tube (Y 298-302):**
+
+  | Hub | Tube | Wall at Y 298 / 300 / 302 / 304 |
+  |---|---|---|
+  | D3c5, window 68° | 38° (locating, Ø3.8) | 0.31 / 0.30 / 0.52 / 1.91 |
+  | D3c5, window 68° | 98° (clearance, Ø4.3) | 0.09 / 0.00 / 0.26 / 1.67 |
+  | D3c4, window 248° | -142° (locating) | 0.32 / 0.30 / 0.52 / 1.94 |
+  | D3c4, window 248° | -82° (clearance) | 0.13 / 0.02 / 0.27 / 1.66 |
+  | either | tubes away from the window | 2.4-3.1 |
+
+- **What it means:** at those two tubes the hole breaks out, or nearly, on the window side below Y 302, and the head's
+  seat ring (r 2.15-4.4 at Y 298.1) is cut away on that side. From Y 306 up the tubes are whole, so the reamed locating
+  length (Y 305.3-312.6) is untouched.
+- **It is not new:** the window at 7.9° did the same to the -22° and 38° tubes.
+- **Open:** whether to move the window's bore end out past the tubes (entry at r 17.2 or more; the bore is r 23 at 68°, so
+  a 3.5 mm bundle still fits), or to accept two partial seats. See OPEN_ASSUMPTIONS.md.
+
