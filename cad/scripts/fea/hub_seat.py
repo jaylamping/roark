@@ -477,6 +477,23 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                     for zf in (CZ + 5.0, CZ - 5.0):
                         for x0, x1 in ((HX - 37.0, HX - 17.0), (HX + 17.0, HX + 37.0)):
                             c['ctrl'] = list(c.get('ctrl', [])) + [(('zflat', zf, 0.15, [x0, 286.0, x1, 298.0]), lfm)]
+                lr = float(os.environ.get('HS_LOCAL_REFINE', '0') or 0)
+                if lr > 0:      # 2026-11-13 (second review, convergence run): local refinement at the three model-edge / small spots:
+                    # the lumped-plate outline corners (X offset 34.2, Y 294.7; both lugs, both faces), the end face's inner corner band
+                    # (the face set at theta 296, r about 36.4, Y 302) and the PETG ring by the front-post inserts (r < 3.5 of the bolt
+                    # axis, the lug face to 1.6 into the post). 'touch' on small faces only (HS_LOCAL_REFINE_AMAX, default 150 mm2)
+                    am = float(os.environ.get('HS_LOCAL_REFINE_AMAX', '150'))
+                    boxes = []
+                    for sx in (-1, 1):
+                        xa, xb = (HX + sx * 32.7, HX + sx * 35.7)
+                        boxes.append([min(xa, xb), 293.2, CZ - 6.6, max(xa, xb), 296.2, CZ + 6.6])
+                    for bx in (147.5, 193.5):
+                        boxes.append([bx - 3.5, 288.5, CZ + 4.4, bx + 3.5, 295.5, CZ + 6.6])
+                    for b_ in boxes:
+                        c['ctrl'] = list(c.get('ctrl', [])) + [(('touch', b_, am), lr)]
+                    # end-face corner: a small box at the YAW +17 / G90 + YAW +17 spot (theta 296: X 186.7, Z -26.6); 'touch' takes the
+                    # whole end-face annulus (about 583 mm2) and its chamfer, not the hub disc face (about 2300 mm2, over the limit)
+                    c['ctrl'] = list(c.get('ctrl', [])) + [(('touch', [184.7, 300.9, -28.6, 188.7, 302.05, -24.6], 900.0), lr)]
                 # 2026-11-12: lug-root refinement (coordinator: the settled repeat case). HS_ROOT_MESH, or a flag file
                 # cad/_wip/hs_root_mesh/<run folder>.txt holding the size, puts that size on every face meeting each lug-root box:
                 # the R1.2 Z-root fillets, the lug faces next to them, and any small adjoining face (under HS_ROOT_MESH_AMAX mm2;

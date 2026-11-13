@@ -349,6 +349,37 @@ def r1c_fins(d, sg, zl):
         M.feat(d, s_.feat, f'R1C_FIN{i}', 9.0, False, mode=M.MID, lo=0.01)
 
 
+# R1h (2026-11-13, coordinator): harness tie point in the back half. A bridge on the -X inner wall at the neck (Y 255-261), standing
+# on the seam face (the back half prints on it, so no support): a bar 2.0 thick (X 147.9-149.9) 1.6 off the wall (inner face X 146.3),
+# two posts 1.5 long at its ends embedded 0.7 into the wall, and a 3.0 x 1.6 slot between them for a 2.5 x 1.0 cable tie passing along
+# Z round the bar and the bundle. 4.0 deep (Z CZ-4 to CZ). Every corner the wires can touch is rounded: the outline's vertical edges
+# R 0.5 (convex and concave, in the sketch) and the bar's lower edges R 0.5. The seam face stays flat.
+TIE_BRIDGE = os.environ.get('ARM_TIE_BRIDGE') == '1'
+TIE = dict(x_wall=145.6, x_bar0=147.9, x_bar1=149.9, y0=255.0, y1=261.0, post=1.5, depth=4.0, r=0.5)
+
+
+def r1h_tie_bridge(d):
+    from shapely.geometry import Polygon as _Poly
+    t_ = TIE
+    ya, yb = t_['y0'] + t_['post'], t_['y1'] - t_['post']
+    outline = _Poly([(t_['x_wall'], t_['y0']), (t_['x_bar1'], t_['y0']), (t_['x_bar1'], t_['y1']), (t_['x_wall'], t_['y1']),
+                     (t_['x_wall'], yb), (t_['x_bar0'], yb), (t_['x_bar0'], ya), (t_['x_wall'], ya)])
+    rr = t_['r']
+    outline = outline.buffer(-rr, join_style=1).buffer(rr, join_style=1)      # convex corners rounded
+    outline = outline.buffer(rr, join_style=1).buffer(-rr, join_style=1)      # concave (slot) corners rounded
+    pts = list(outline.exterior.coords)[:-1]
+    zc = CZ - t_['depth'] / 2
+    with Sk(d, plane(d, 'Z', zc, 'R1H_TIE_P'), 'R1H_TIE') as s:
+        s.poly([(x, y, zc) for x, y in pts])
+    feat(d, s.feat, 'R1H_TIE', t_['depth'], False, mode=MID, lo=0.01)
+    zb = CZ - t_['depth']
+    low = M.edges_where(d, lambda q: abs(q[2] - zb) < 0.02 and t_['x_bar0'] - 0.6 < q[0] < t_['x_bar1'] + 0.05 and t_['y0'] - 0.05 < q[1] < t_['y1'] + 0.05)
+    print('  R1H_TIE lower bar edges', len(low), flush=True)
+    if low:
+        M.fillet_edges(d, low, [rr, 0.3], 'R1H_TIE_LOWR')
+    print('  R1H_TIE built', d.FeatureByName('R1H_TIE') is not None, 'lower round', d.FeatureByName('R1H_TIE_LOWR') is not None, flush=True)
+
+
 def upper_half(front):
     job = 'front' if front else 'back'
     d, p = open_copy(job)
@@ -375,6 +406,8 @@ def upper_half(front):
         z_cyl(d, 'SEAM_CBORES', UA_POSTS, 3.25, CZ - 12.0, CZ - 60.0, True)   # heads 12 below the seam: M3 x 18 into 5.7
         z_cyl(d, 'HUB_HOLES', HUB_COLS, 1.7, zl + 0.5, CZ - 60.0, True)
         z_cyl(d, 'HUB_CBORES', HUB_COLS, 3.0 if M.R1D else 3.25, zl - 7.0, CZ - 60.0, True)    # M3 x 25 through the lug into 5.7; R1d: Dia 6.0 (DIN 912 socket head Dia 5.5) so the post top at Y 295.7 keeps 0.7 over it
+        if TIE_BRIDGE:
+            r1h_tie_bridge(d)
     finish(d, p, job)
 
 
