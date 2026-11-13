@@ -1,10 +1,13 @@
-//! The control thread's tests: the run's end, its record, and the watchdog's progress count.
+//! The control thread's tests: the run's end, its record, the watchdog's progress count, and scans and set-IDs kept
+//! apart from enables.
 
 use rtrb::RingBuffer;
 use skeleton::LimbName;
 
 use super::*;
 use crate::clock::mono_now;
+use crate::enable::{SLOW_RING, SlowEnds};
+use crate::identity::IdentityAsk;
 
 /// Guards: safety - a bus thread that ends before the run does (a socket or clock error) ends the whole run: control
 /// sets the end, so every other bus stops its limbs, names the bus that ended, refuses the clears that come in while
@@ -376,4 +379,126 @@ fn the_progress_count_stops_while_any_bus_is_behind() {
     end.store(true, Ordering::Release);
     drop(threads);
     control.join().unwrap();
+}
+
+/// Guards: safety - a scan or set-ID and an enable never run together, whichever is asked first: one asked while an
+/// enable runs is refused `Busy` with nothing sent, an enable asked while one runs is refused `Busy`, and as the run
+/// ends the one running and every one queued are answered `Ending` (PLAN item 3: set-ID only while every limb on that
+/// bus is disabled; `safety`'s duty to the runtime: no slow request while enabling).
+#[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one run of control's steps, in order"
+)]
+fn a_scan_or_set_id_and_an_enable_never_run_together() {
+    let mut h = harness();
+    let buses = h.plans.len();
+    let mut far = Vec::new();
+    for _ in 0..buses {
+        let (requests, bus_requests) = RingBuffer::new(SLOW_RING);
+        let (bus_results, results) = RingBuffer::<can::SlowResult>::new(SLOW_RING);
+        h.links.slow.push(SlowEnds::new(requests, results));
+        far.push((bus_requests, bus_results));
+    }
+    let (mut asks, asks_rx) = RingBuffer::new(4);
+    let (replies_tx, mut replies) = RingBuffer::new(4);
+    let (mut enable_asks, enables_rx) = RingBuffer::new(4);
+    let (enable_replies_tx, mut enable_replies) = RingBuffer::new(4);
+    h.links.identity = asks_rx;
+    h.links.identity_replies = replies_tx;
+    h.links.enables = enables_rx;
+    h.links.enable_replies = enable_replies_tx;
+    let ended = vec![false; buses];
+    let mut identity = Identity::default();
+    let mut counts = Counts::default();
+    let mut exit = ControlExit::default();
+    let scan = |tag| IdentityRequest {
+        tag,
+        bus: 0,
+        ask: IdentityAsk::Scan,
+    };
+
+    // While an enable runs: refused, nothing asked of the bus.
+    asks.push(scan(1)).unwrap();
+    step_identity(
+        &mut identity,
+        true,
+        &mut h.links,
+        &ended,
+        0,
+        &mut counts,
+        &mut exit,
+    );
+    let refused = replies.pop().unwrap();
+    assert_eq!(
+        (refused.tag, refused.outcome),
+        (1, Err(IdentityRefused::Busy))
+    );
+    assert!(!identity.running());
+    assert!(far[0].0.pop().is_err());
+
+    // With none running it starts, and an enable asked now is refused.
+    asks.push(scan(2)).unwrap();
+    step_identity(
+        &mut identity,
+        false,
+        &mut h.links,
+        &ended,
+        0,
+        &mut counts,
+        &mut exit,
+    );
+    assert!(identity.running());
+    assert!(far[0].0.pop().is_ok(), "the first probe");
+    let mut enabler = Enabler::new(&h.links.roster, buses);
+    let joints = h.links.roster.set(["arm_a_one"]).unwrap();
+    enable_asks.push(Enable { tag: 3, joints }).unwrap();
+    let newest = vec![None; buses];
+    let mut batches = vec![CommandBatch::new(1, u64::MAX); buses];
+    let mut step = EnableStep {
+        identity: identity.running(),
+        enabler: &mut enabler,
+        counts: &mut counts,
+        replies_dropped: &mut exit.replies_dropped,
+        events: &mut h.links.events,
+    };
+    step.run(
+        &h.links.roster,
+        &mut h.links.enables,
+        &mut h.links.enable_replies,
+        &h.links.health,
+        &h.links.stops,
+        &mut Buses {
+            snapshots: &newest,
+            slow: &mut h.links.slow,
+            batches: &mut batches,
+            ended: &ended,
+            lent: identity.bus(),
+        },
+        1,
+        0,
+    );
+    let refused = enable_replies.pop().unwrap();
+    assert_eq!(
+        (refused.tag, refused.outcome),
+        (3, Err(EnableRefused::Busy))
+    );
+    assert!(!enabler.running());
+    assert!(far[0].0.pop().is_err(), "no preflight read asked");
+
+    // The run ends: the scan running and the one queued behind it are both answered.
+    asks.push(scan(4)).unwrap();
+    refuse_identity(&mut identity, &mut h.links, &mut exit);
+    let ending: Vec<_> = std::iter::from_fn(|| replies.pop().ok())
+        .map(|r| (r.tag, r.outcome))
+        .collect();
+    assert_eq!(
+        ending,
+        [
+            (2, Err(IdentityRefused::Ending)),
+            (4, Err(IdentityRefused::Ending))
+        ]
+    );
+    assert!(!identity.running());
+    assert_eq!(exit.replies_dropped, 0);
 }

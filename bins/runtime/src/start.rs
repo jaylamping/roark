@@ -124,7 +124,7 @@ pub struct StartInfo {
     pub session: PathBuf,
 }
 
-/// A running runtime: stops, clears and enables in, their replies and each bus's newest snapshot out.
+/// A running runtime: stops, clears, enables, scans and set-IDs in, their replies and each bus's newest snapshot out.
 pub struct Runtime {
     /// The operator's clears. Each is answered once per bus its limb is on (by the bus, or refused `Busy`, `BusEnded`
     /// or `Ending`), or once with no bus when the limb is on none (`Offline`). A clear pushed after the run has

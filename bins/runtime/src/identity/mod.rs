@@ -15,6 +15,7 @@ mod tests;
 
 use can::{MAX_DRIVES, SlowKind, SlowOutcome, SlowRefusal, SlowRequest, SlowResult};
 use robstride::{DeviceId, Uid};
+use safety::ANSWER_WITHIN_NS;
 
 use crate::enable::SlowEnds;
 
@@ -26,8 +27,8 @@ pub use reply::{
 /// drive has it, so no preflight ever takes the result for its own, and the job takes no preflight's.
 const SLOT: usize = MAX_DRIVES;
 
-/// How many times one probe is asked when its window can't be trusted (`Unsure`), control was silent, or it wasn't
-/// sent, before that ID's answer is `Unsure`.
+/// How many times in all one probe is asked when its window can't be trusted (`Unsure`), control was silent, it wasn't
+/// sent or its result never came, before that ID's answer is `Unsure`.
 const TRIES: u8 = 3;
 
 /// Where a set-ID is.
@@ -46,7 +47,8 @@ enum Stage {
 }
 
 impl Stage {
-    /// Whether the type 7 may have gone.
+    /// Whether the type 7's own result is in and it wasn't refused or unsent. While the type 7 is still asked and
+    /// unanswered ([`Stage::Send`]) this is false though it may have gone: [`Job::unconfirmed`] covers both.
     const fn sent(self) -> bool {
         matches!(self, Self::AfterNew { .. } | Self::AfterOld { .. })
     }
@@ -78,9 +80,9 @@ struct Job {
     tag: u64,
     bus: usize,
     work: Work,
-    /// The request in flight, by its slow tag.
-    asked: Option<u32>,
-    /// Times the current probe has been asked.
+    /// The request in flight, by its slow tag, and when it was asked.
+    asked: Option<(u32, u64)>,
+    /// Times the current probe has been asked again.
     tries: u8,
 }
 
@@ -147,12 +149,16 @@ impl Identity {
         Ok(())
     }
 
-    /// One tick on: the results on the job's bus taken (any other there counted in `stray`), the next request asked,
-    /// and the job's reply once it ends.
+    /// One tick on, at `now_ns`: the results on the job's bus taken (any other there counted in `stray`), the next
+    /// request asked, and the job's reply once it ends. A request with no result [`ANSWER_WITHIN_NS`] after it was
+    /// asked (the bus's result ring was full, or the bus is far behind) is given up: a probe counts as one whose window
+    /// couldn't be trusted and is asked again, and the type 7 as one that may have gone, never asked again. Its result,
+    /// if it comes after all, is stray.
     pub(crate) fn tick(
         &mut self,
         slow: &mut [SlowEnds],
         ended: &[bool],
+        now_ns: u64,
         stray: &mut u64,
     ) -> Option<IdentityReply> {
         let job = self.job.as_mut()?;
@@ -163,20 +169,10 @@ impl Identity {
             let Ok(result) = ends.results.pop() else {
                 break;
             };
-            if job.asked.is_some_and(|tag| is_answer(result, tag)) {
+            if job.asked.is_some_and(|(tag, _)| is_answer(result, tag)) {
                 job.asked = None;
                 if let Some(end) = job.answered(result.outcome, &mut self.table) {
-                    let (tag, bus) = (job.tag, job.bus);
-                    self.job = None;
-                    return Some(IdentityReply {
-                        tag,
-                        bus,
-                        outcome: match end {
-                            End::Scanned => Ok(IdentityDone::Scanned(self.table)),
-                            End::Moved { uid } => Ok(IdentityDone::Moved { uid }),
-                            End::Refused(why) => Err(why),
-                        },
-                    });
+                    return self.finish(end);
                 }
             } else {
                 *stray += 1;
@@ -184,6 +180,15 @@ impl Identity {
         }
         if ended.get(job.bus).is_none_or(|e| *e) {
             return self.abandon(IdentityRefused::BusEnded);
+        }
+        if job
+            .asked
+            .is_some_and(|(_, at_ns)| now_ns.saturating_sub(at_ns) > ANSWER_WITHIN_NS)
+        {
+            job.asked = None;
+            if let Some(end) = job.answered(SlowOutcome::Unsure, &mut self.table) {
+                return self.finish(end);
+            }
         }
         if job.asked.is_none() {
             let tag = self.next_tag;
@@ -196,20 +201,32 @@ impl Identity {
             // preflight's left in it; until then the job asks again next tick.
             if ends.requests.push(request).is_ok() {
                 self.next_tag = tag.wrapping_add(1);
-                job.asked = Some(tag);
+                job.asked = Some((tag, now_ns));
             }
         }
         None
     }
 
-    /// End the job running, if any, because of `why`: its reply. Past the type 7 the reply says it may have gone.
-    pub(crate) fn abandon(&mut self, why: IdentityRefused) -> Option<IdentityReply> {
+    /// The job running ended as `end`: its reply.
+    fn finish(&mut self, end: End) -> Option<IdentityReply> {
         let job = self.job.take()?;
         Some(IdentityReply {
             tag: job.tag,
             bus: job.bus,
-            outcome: Err(job.unconfirmed().unwrap_or(why)),
+            ask: job.ask(),
+            outcome: match end {
+                End::Scanned => Ok(IdentityDone::Scanned(self.table)),
+                End::Moved { uid } => Ok(IdentityDone::Moved { uid }),
+                End::Refused(why) => Err(why),
+            },
         })
+    }
+
+    /// End the job running, if any, because of `why`: its reply. Once the type 7 is asked the reply says it may have
+    /// gone.
+    pub(crate) fn abandon(&mut self, why: IdentityRefused) -> Option<IdentityReply> {
+        let why = self.job?.unconfirmed().unwrap_or(why);
+        self.finish(End::Refused(why))
     }
 }
 
@@ -240,6 +257,14 @@ fn probe_answer(outcome: SlowOutcome) -> Result<Option<Answer>, SlowRefusal> {
 }
 
 impl Job {
+    /// What the job was asked.
+    const fn ask(&self) -> IdentityAsk {
+        match self.work {
+            Work::Scan { .. } => IdentityAsk::Scan,
+            Work::SetId { old, new, .. } => IdentityAsk::SetId { old, new },
+        }
+    }
+
     /// What to ask next.
     const fn kind(&self) -> SlowKind {
         match self.work {

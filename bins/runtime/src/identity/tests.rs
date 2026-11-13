@@ -71,7 +71,7 @@ fn run(
     let mut asked = Vec::new();
     for _ in 0..1_000 {
         let mut stray = 0;
-        let reply = identity.tick(&mut slow, &[false], &mut stray);
+        let reply = identity.tick(&mut slow, &[false], 0, &mut stray);
         assert_eq!(stray, 0);
         if let Some(reply) = reply {
             assert!(
@@ -107,11 +107,11 @@ fn the_set_id(old: u8, new: u8) -> SlowKind {
 
 /// Guards: protocol - a scan probes every ID from 1 to 127 once, in order, one at a time, and lists what answered at
 /// each: one drive, two sharing an ID, nothing, or unsure once a probe's window couldn't be trusted three times; a
-/// probe whose window couldn't be trusted, or that wasn't sent, is asked again (PLAN item 3, Scan and identity: a scan
+/// probe whose window couldn't be trusted, that wasn't sent, or that the bus refused for control's silence is asked again (PLAN item 3, Scan and identity: a scan
 /// lists every ID answering on a bus and each drive's UID; RS03 manual §4.1.1 type 0).
 #[test]
 fn a_scan_probes_every_id_and_lists_what_answered() {
-    let mut retried = false;
+    let (mut retried, mut unsent) = (false, false);
     let (asked, reply) = run(IdentityAsk::Scan, |kind| match kind {
         SlowKind::Probe(n) if n == id(11) => found(A),
         SlowKind::Probe(n) if n == id(50) => SlowOutcome::Found {
@@ -123,13 +123,18 @@ fn a_scan_probes_every_id_and_lists_what_answered() {
             retried = true;
             SlowOutcome::Refused(SlowRefusal::ControlSilent)
         }
+        SlowKind::Probe(n) if n == id(126) && !unsent => {
+            unsent = true;
+            SlowOutcome::NotSent(can::Unsent::Expired)
+        }
         SlowKind::Probe(n) if n == id(127) => found(B),
         _ => SlowOutcome::TimedOut,
     });
     let mut expected: Vec<SlowKind> = (1..=127).map(probe).collect();
-    // ID 60 asked three times, 127 twice.
+    // ID 60 asked three times, 126 and 127 twice.
     expected.splice(60..60, [probe(60), probe(60)]);
     expected.push(probe(127));
+    expected.splice(127..127, [probe(126)]);
     assert_eq!(asked, expected);
     let Ok(IdentityDone::Scanned(table)) = reply.outcome else {
         panic!("{reply:?}");
@@ -339,7 +344,7 @@ fn a_scan_or_set_id_runs_alone_and_takes_only_its_own_results() {
     );
     assert_eq!(identity.bus(), Some(1));
     let mut stray = 0;
-    assert_eq!(identity.tick(&mut slow, &ended, &mut stray), None);
+    assert_eq!(identity.tick(&mut slow, &ended, 0, &mut stray), None);
     let Ok(asked) = buses[1].requests.pop() else {
         panic!("the probe of the old ID");
     };
@@ -353,7 +358,7 @@ fn a_scan_or_set_id_runs_alone_and_takes_only_its_own_results() {
                 .is_ok()
         );
     }
-    assert_eq!(identity.tick(&mut slow, &ended, &mut stray), None);
+    assert_eq!(identity.tick(&mut slow, &ended, 0, &mut stray), None);
     assert_eq!(stray, 2);
     assert!(
         buses[1].requests.pop().is_err(),
@@ -371,7 +376,7 @@ fn a_scan_or_set_id_runs_alone_and_takes_only_its_own_results() {
         Ok(())
     );
     for outcome in [found(A), SlowOutcome::TimedOut] {
-        assert_eq!(identity.tick(&mut slow, &ended, &mut stray), None);
+        assert_eq!(identity.tick(&mut slow, &ended, 0, &mut stray), None);
         let Ok(r) = buses[1].requests.pop() else {
             panic!("a probe");
         };
@@ -386,19 +391,111 @@ fn a_scan_or_set_id_runs_alone_and_takes_only_its_own_results() {
                 .is_ok()
         );
     }
-    assert_eq!(identity.tick(&mut slow, &ended, &mut stray), None);
+    assert_eq!(identity.tick(&mut slow, &ended, 0, &mut stray), None);
     assert_eq!(
         buses[1].requests.pop().map(|r| r.kind),
         Ok(the_set_id(127, 11))
     );
     assert_eq!(
         identity
-            .tick(&mut slow, &[false, true], &mut stray)
+            .tick(&mut slow, &[false, true], 0, &mut stray)
             .map(|r| r.outcome),
         Some(Err(IdentityRefused::Unconfirmed {
             at_old: Answer::Unsure,
             at_new: Answer::Unsure
         }))
     );
+    assert!(!identity.running());
+}
+
+/// One second, as `safety::ANSWER_WITHIN_NS` counts it.
+const SECOND: u64 = 1_000_000_000;
+
+/// Guards: bug - a request whose result never comes (the bus's result ring was full) can't hold a scan or set-ID, and
+/// every enable behind it, for ever: a second after it was asked a probe is asked again, three times at most before
+/// its ID is unsure, and a type 7 counts as one that may have gone and is never asked again; a late result is stray
+/// (architecture.md: every wait has a deadline; PR #68 review, J2).
+#[test]
+fn a_lost_result_is_given_up_after_a_second_and_a_type_7_is_never_asked_again() {
+    let (mut slow, mut buses) = rig(1);
+    let BusSide {
+        mut requests,
+        mut results,
+    } = buses.remove(0);
+    let mut identity = Identity::default();
+    let request = IdentityRequest {
+        tag: 9,
+        bus: 0,
+        ask: set_id(127, 11),
+    };
+    assert_eq!(identity.take(request, &[false], false), Ok(()));
+    let mut stray = 0;
+    let mut now = 0;
+    // Tick once and take the request asked, if any.
+    let mut pass = |identity: &mut Identity, now: u64, stray: &mut u64| {
+        let reply = identity.tick(&mut slow, &[false], now, stray);
+        (reply, requests.pop().ok())
+    };
+    // The old ID's probe is lost twice, and asked again only once a second has passed; the third is answered.
+    let mut probes = Vec::new();
+    for _ in 0..2 {
+        let (reply, asked) = pass(&mut identity, now, &mut stray);
+        assert_eq!((reply, asked.map(|r| r.kind)), (None, Some(probe(127))));
+        probes.extend(asked);
+        let (reply, asked) = pass(&mut identity, now + SECOND, &mut stray);
+        assert_eq!((reply, asked), (None, None), "not overdue yet");
+        now += SECOND + 1;
+    }
+    let (_, asked) = pass(&mut identity, now, &mut stray);
+    let Some(third) = asked else {
+        panic!("the third probe");
+    };
+    // The first probe's result, late: stray, and it answers nothing.
+    let answer = |r: SlowRequest, outcome| SlowResult {
+        tag: r.tag,
+        slot: r.slot,
+        outcome,
+    };
+    results
+        .push(answer(probes[0], SlowOutcome::TimedOut))
+        .unwrap();
+    results.push(answer(third, found(A))).unwrap();
+    let (reply, asked) = pass(&mut identity, now, &mut stray);
+    assert_eq!((reply, asked.map(|r| r.kind)), (None, Some(probe(11))));
+    assert_eq!(stray, 1);
+    let Some(r) = asked else { panic!() };
+    results.push(answer(r, SlowOutcome::TimedOut)).unwrap();
+    // The type 7, asked once; its result never comes, so a second on the probes after it start.
+    let (reply, asked) = pass(&mut identity, now, &mut stray);
+    assert_eq!(
+        (reply, asked.map(|r| r.kind)),
+        (None, Some(the_set_id(127, 11)))
+    );
+    now += SECOND + 1;
+    let (reply, asked) = pass(&mut identity, now, &mut stray);
+    assert_eq!((reply, asked.map(|r| r.kind)), (None, Some(probe(11))));
+    // Those are lost too, three times each: unconfirmed, both IDs unsure, and no second type 7.
+    let mut kinds = Vec::new();
+    let reply = loop {
+        now += SECOND + 1;
+        let (reply, asked) = pass(&mut identity, now, &mut stray);
+        kinds.extend(asked.map(|r| r.kind));
+        if let Some(reply) = reply {
+            break reply;
+        }
+        assert!(kinds.len() < 10, "{kinds:?}");
+    };
+    assert_eq!(
+        kinds,
+        [probe(11), probe(11), probe(127), probe(127), probe(127)]
+    );
+    assert_eq!(
+        reply.outcome,
+        Err(IdentityRefused::Unconfirmed {
+            at_old: Answer::Unsure,
+            at_new: Answer::Unsure
+        })
+    );
+    assert_eq!(reply.ask, set_id(127, 11));
     assert!(!identity.running());
 }

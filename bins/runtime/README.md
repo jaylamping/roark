@@ -38,7 +38,9 @@ thread per wired bus and the control thread on one schedule origin, and takes th
   once, then probes the new ID and the old: `Moved` when the same UID answers at the new ID alone, `Unconfirmed` with
   what answered at each otherwise (the only refusal that says a type 7 may have gone). The bus refuses every probe and
   set-ID unless every limb on it is idle (`BusNotIdle`), so neither feeds a running or stopped drive (PLAN item 3, Scan
-  and identity; item 2). Neither is an event yet: their frames are in the session's recording.
+  and identity; item 2). A request with no result a second after it was asked (`safety::ANSWER_WITHIN_NS`: the bus
+  dropped it, or is far behind) is given up: a probe is asked again, at most three times, and a type 7 counts as one
+  that may have gone, so no job waits for ever.
 - **The hold**: every enabled joint gets a slack MIT command each tick from the tick its own drive is in Run (zero gains,
   zero torque: watched by the bus's rules, holding nothing, so the motion rules have nothing to check yet) until real
   control modes and gains exist. A joint stops being held when its limb stops on any bus, and a stop on one bus is then
@@ -89,6 +91,9 @@ that follow (PLAN step 7).
     tag; `enable.refused` carries the tag, the rule (none for a request that was wrong or came at the wrong time, which
     no rule refused), a reason word, and whichever of joint (with its limb), limb or bus the refusal names.
   - `limb.cleared` and `clear.refused`: per bus, with the limb, the bus, the tag and, refused, a reason word.
+  - `scan.started`, `scan.finished` and `scan.refused`, and `set_id.started`, `set_id.succeeded` and `set_id.refused`:
+    with the bus, the tag and, refused, a reason word; `unconfirmed` is the one that says a type 7 may have gone. The
+    IDs and UIDs are in the reply and the recording's frames.
 
   Events carry no measured values yet: the operator's message (`Refusal::message`) has them, and the client gets the
   reply itself. Stops a bus thread makes on its own are in its snapshots, not yet on `/event`, except as the cause of the

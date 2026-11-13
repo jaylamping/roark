@@ -22,7 +22,7 @@ use runtime::{
 };
 use sim_drive::{SimDrive, ensure_vcan, serve};
 use skeleton::LimbName;
-use telemetry::{Recorder, Recording, Session};
+use telemetry::{EventKind, Recorder, Recording, Session};
 
 const BUS: &str = "can0";
 
@@ -259,7 +259,7 @@ fn identity_reply(runtime: &mut Runtime, tag: u64, end: Instant) -> Option<Ident
 /// Guards: safety - through the runtime on `vcan`: a scan of a bus lists every drive answering on it, the skeleton's and
 /// ones it doesn't name, two sharing an ID among them, and no enable runs beside it; a set-ID moves a stray drive to a
 /// free ID and is confirmed there; one from an ID nothing answers at, or onto an ID a drive holds, sends no type 7; and
-/// one on a bus with a limb stopped is refused by the bus (PLAN item 3, Scan and identity: set-ID one drive at a time,
+/// one on a bus with a limb stopped is refused by the bus; each is an event in the session's log (PLAN item 3, Scan and identity: set-ID one drive at a time,
 /// only while every limb on that bus is disabled; item 2: type 7 only with exactly one drive answering; item 3a
 /// `scan(bus)`, `set_id(bus, old, new)`).
 #[test]
@@ -325,7 +325,9 @@ fn the_runtime_scans_a_bus_and_sets_an_id_on_vcan() {
         assert!(runtime.identity.push(scan).is_ok());
         let joints = runtime.joints(["arm_a_one"]).unwrap();
         let mut passes = 0;
+        let end = Instant::now() + Duration::from_secs(5);
         while passes < 3 {
+            assert!(Instant::now() < end, "the runtime stopped publishing");
             if let Some(Ok(v)) = runtime.views.as_mut().map(rtrb::Consumer::pop) {
                 passes += usize::from(v.bus == bus);
             }
@@ -398,10 +400,12 @@ fn the_runtime_scans_a_bus_and_sets_an_id_on_vcan() {
             outcome(&mut runtime, 5, set(30, 21)),
             Err(IdentityRefused::Taken(Answer::One(sim_uid(21))))
         );
-        assert!(matches!(
-            outcome(&mut runtime, 6, set(50, 40)),
-            Err(IdentityRefused::NotOne(Answer::Several { .. }))
-        ));
+        let shared = outcome(&mut runtime, 6, set(50, 40));
+        let several = |uid, other| Err(IdentityRefused::NotOne(Answer::Several { uid, other }));
+        assert!(
+            shared == several(first, second) || shared == several(second, first),
+            "{shared:?}"
+        );
 
         // A limb on the bus stopped: the bus refuses the first probe.
         runtime.stop(Scope::Limb(LimbName::Waist));
@@ -419,9 +423,35 @@ fn the_runtime_scans_a_bus_and_sets_an_id_on_vcan() {
             Err(IdentityRefused::Bus(SlowRefusal::BusNotIdle))
         );
 
+        let session = runtime.session().to_path_buf();
         let exit = runtime.end().unwrap();
         assert!(exit.control.error.is_none(), "{:?}", exit.control);
         assert_eq!(exit.control.replies_dropped, 0);
+        // Every scan and set-ID is in the event log, with its bus, its tag and, refused, why.
+        let events = common::events(&session);
+        let of = |kind| {
+            common::of_kind(&events, kind)
+                .into_iter()
+                .map(|e| (e.bus, e.tag, e.reason))
+                .collect::<Vec<_>>()
+        };
+        let on_bus = |tag, reason| (Some(BUS), Some(tag), reason);
+        assert_eq!(of(EventKind::ScanStarted), [on_bus(1, None)]);
+        assert_eq!(of(EventKind::ScanFinished), [on_bus(1, None)]);
+        assert_eq!(
+            of(EventKind::SetIdStarted),
+            [3, 4, 5, 6, 7].map(|tag| on_bus(tag, None))
+        );
+        assert_eq!(of(EventKind::SetIdSucceeded), [on_bus(3, None)]);
+        assert_eq!(
+            of(EventKind::SetIdRefused),
+            [
+                on_bus(4, Some("not_one_at_old_id")),
+                on_bus(5, Some("new_id_taken")),
+                on_bus(6, Some("not_one_at_old_id")),
+                on_bus(7, Some("bus_refused")),
+            ]
+        );
         stop_sim.store(true, Ordering::Release);
         for sim in sims {
             sim.join().unwrap().unwrap();

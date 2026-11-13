@@ -48,7 +48,8 @@ pub enum Answer {
         /// Another.
         other: Uid,
     },
-    /// What answered can't be told: the probe's window couldn't be trusted each time it was asked.
+    /// What answered can't be told: each time the probe was asked its window couldn't be trusted, it wasn't sent, or
+    /// its result never came.
     Unsure,
 }
 
@@ -97,6 +98,8 @@ pub struct IdentityReply {
     pub tag: u64,
     /// The request's bus.
     pub bus: usize,
+    /// What the request asked.
+    pub ask: IdentityAsk,
     /// What it found or did, or why not.
     pub outcome: Result<IdentityDone, IdentityRefused>,
 }
@@ -130,7 +133,8 @@ pub enum IdentityRefused {
     /// A set-ID from an ID to itself.
     #[error("the old and new IDs are the same")]
     SameId,
-    /// The bus refused a request: `BusNotIdle` while a limb on it isn't idle.
+    /// The bus refused a probe or the type 7, with its reason: `BusNotIdle` while a limb on it isn't idle, `BusFailed`
+    /// once it has failed, or any other [`SlowRefusal`] but `ControlSilent`, after which a probe is asked again.
     #[error("the bus refused it: {0}")]
     Bus(SlowRefusal),
     /// The type 7 wasn't sent: it expired queued or the socket didn't take it.
@@ -158,4 +162,22 @@ pub enum IdentityRefused {
     /// The run is ending.
     #[error("the run is ending")]
     Ending,
+}
+
+impl IdentityRefused {
+    /// The refusal's word in its event.
+    pub(crate) const fn reason(self) -> &'static str {
+        match self {
+            Self::NoBus => "no_bus",
+            Self::Busy => "busy",
+            Self::SameId => "same_id",
+            Self::Bus(_) => "bus_refused",
+            Self::NotSent(_) => "not_sent",
+            Self::NotOne(_) => "not_one_at_old_id",
+            Self::Taken(_) => "new_id_taken",
+            Self::Unconfirmed { .. } => "unconfirmed",
+            Self::BusEnded => "bus_ended",
+            Self::Ending => "ending",
+        }
+    }
 }

@@ -188,9 +188,10 @@ pub(crate) fn run(
             fresh_batches(&mut batches, next, timing, origin_ns);
             step_identity(
                 &mut identity,
-                &enabler,
+                enabler.running(),
                 &mut links,
                 &ended,
+                now_ns,
                 &mut counts,
                 &mut exit,
             );
@@ -449,9 +450,10 @@ fn since(at: std::time::Instant) -> u64 {
 /// Before the enables in a pass, so an enable taken in the same pass as one starts is refused.
 fn step_identity(
     identity: &mut Identity,
-    enabler: &Enabler,
+    enabling: bool,
     links: &mut ControlLinks,
     ended: &[bool],
+    now_ns: u64,
     counts: &mut Counts,
     exit: &mut ControlExit,
 ) {
@@ -463,17 +465,21 @@ fn step_identity(
         let Ok(request) = links.identity.pop() else {
             break;
         };
-        if let Err(why) = identity.take(request, ended, enabler.running()) {
+        if let Err(why) = identity.take(request, ended, enabling) {
             let r = IdentityReply {
                 tag: request.tag,
                 bus: request.bus,
+                ask: request.ask,
                 outcome: Err(why),
             };
-            push_identity_reply(&mut links.identity_replies, &r, dropped);
+            push_identity_reply(&mut links.identity_replies, &r, dropped, &mut links.events);
+        } else {
+            links.events.identity_started(&request);
         }
     }
-    if let Some(r) = identity.tick(&mut links.slow, ended, &mut counts.stray_results) {
-        push_identity_reply(&mut links.identity_replies, &r, dropped);
+    let stray = &mut counts.stray_results;
+    if let Some(r) = identity.tick(&mut links.slow, ended, now_ns, stray) {
+        push_identity_reply(&mut links.identity_replies, &r, dropped, &mut links.events);
     }
 }
 
@@ -494,7 +500,7 @@ fn refuse_all(
 fn refuse_identity(identity: &mut Identity, links: &mut ControlLinks, exit: &mut ControlExit) {
     let dropped = &mut exit.replies_dropped;
     if let Some(r) = identity.abandon(IdentityRefused::Ending) {
-        push_identity_reply(&mut links.identity_replies, &r, dropped);
+        push_identity_reply(&mut links.identity_replies, &r, dropped, &mut links.events);
     }
     for _ in 0..links.identity.buffer().capacity() {
         let Ok(request) = links.identity.pop() else {
@@ -503,18 +509,21 @@ fn refuse_identity(identity: &mut Identity, links: &mut ControlLinks, exit: &mut
         let r = IdentityReply {
             tag: request.tag,
             bus: request.bus,
+            ask: request.ask,
             outcome: Err(IdentityRefused::Ending),
         };
-        push_identity_reply(&mut links.identity_replies, &r, dropped);
+        push_identity_reply(&mut links.identity_replies, &r, dropped, &mut links.events);
     }
 }
 
-/// A scan's or set-ID's answer, to its requester.
+/// A scan's or set-ID's answer, to its requester and the event log.
 fn push_identity_reply(
     replies: &mut Producer<IdentityReply>,
     r: &IdentityReply,
     dropped: &mut u64,
+    events: &mut Events,
 ) {
+    events.identity_reply(r);
     if replies.push(*r).is_err() {
         *dropped += 1;
     }
