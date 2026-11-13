@@ -80,6 +80,17 @@ print(r.summary())
 - **At most four studies in one instance.** The fifth failed with error 24 at 17 GB free and solved in a fresh instance
   (2026-11-13). A series longer than four runs one script per step, or a new `job()` every four.
 
+- **Refine one thing at a time.** A step that shrinks the contact faces and adds an edge control together took a
+  contact study from 88,000 to 244,000 nodes and 13 GB, and moved the answer by 0.4 N in 180 (2026-11-13). Write the
+  node count you expect as one number, not a range, and do not solve a mesh more than twice the last one without
+  saying what question needs it.
+- **A lightened part fails by buckling before it yields.** Once members are thin, check each strut in compression by
+  hand (Euler, pinned ends, the weak axis of the section, E from `PETG`) and hold a factor of 2 unless the task names
+  another. A linear static study cannot see it. Look under the load pad too: the default mask covers the place a
+  narrowed member fails in shear between layers.
+- **The claim and the instance.** `job()` launches per script, so the claim holds no PID: after a crash, tie an
+  instance to yourself by the state file or the log in your worktree, never by guessing.
+
 ## Is the result right? Five checks, every time
 
 | # | Check | Pass |
@@ -113,6 +124,8 @@ first. Most questions do not need a heavy solve: coarsen the global size and kee
 | --- | --- | --- | --- |
 | under 20,000 | automatic | under 2 GB | 2 to 7 s for mesh, solve and readback together |
 | under 100,000 | automatic | under 2 GB | seconds to a minute |
+| 100,000 to 200,000 | automatic, or direct sparse for contact | 3 to 6 GB with direct sparse and contact | 2 to 6 minutes with contact |
+| over 200,000 | **heavy: takes the machine-wide lock** | 13 GB at 244,000 nodes with contact, direct sparse (2026-11-13) | 13 minutes |
 | 300,000 to 450,000 | automatic, or direct sparse for contact | about 11 GB with direct sparse | 7 to 11 minutes with contact |
 | about 800,000 with contact, direct sparse | | **ran out of memory** on the 32 GB machine, reported as error 24 | |
 
@@ -177,6 +190,16 @@ What was learned on the upper-arm hub joint, 2026-11-11 and 12:
 
 A contact study with more than two bodies, a gap, or a result that decides a design is work to hand up
 ([06-judgment.md](06-judgment.md)), or at least to have reviewed before anyone acts on it.
+
+## Which contact proof fits
+
+- **Faces drawn line to line** (a pin in a hole, a part on a seat): reverse a thousandth of the load. With contact
+  the bodies part on the pads; with a bond they stay together.
+- **A body with clearance on both sides** (a tongue in a slot): do not reverse. Nothing decides which wall it goes to,
+  the contact iteration runs out ("Failure to achieve equilibrium", which `static()` now answers and raises on), and
+  it costs twelve minutes. Apply a thousandth of the load in the working direction instead: the body crosses the gap
+  as a rigid body by exactly the clearance, and the response is not proportional to the load. A bond would move it a
+  thousandth of the full-load value.
 
 ## Forces from a result
 

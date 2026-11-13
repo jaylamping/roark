@@ -42,6 +42,12 @@ catches it is a number written down beforehand. Same for modelling: `expect_dv` 
 5. **Every print direction the part could be made in is read from the same result,** as a table of the three measures.
    Whether or not a direction was given: if another one is better, say so and by how much.
 6. Convergence followed the governing measure, not only von Mises (`converge(..., layers=normal)`), over three sizes.
+   **A verdict of pass needs every one of the three measures converged.** If one still moves by more than 5 % at the
+   last refinement, the verdict is "not shown", never pass on the finest value. The measure is climbing at a sharp
+   edge: give that edge the radius the printed part will have (0.4 mm if nothing says otherwise, or the fillet the
+   neighbouring edges have), solve again, and judge that. On the second benchmark set this was the one place the
+   two models parted: same numbers, one passed the bracket on a climbing value, the other rounded the edge and found
+   1.88 against 2.0.
 7. The load path was followed in a sentence: which faces bear, which section carries it, where it leaves.
 8. For contact: the proof that the set is contact and not a bond (reverse a tiny load: the bodies must part), the share
    the pads carry, and the contact force summed from the results against the applied load.

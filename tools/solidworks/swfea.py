@@ -106,6 +106,7 @@ def _save_as_is(d):
 def _solver_dialogs(pid, stop, seen):
     """While a solve runs, answer the solver's "Excessive displacements detected" box with No, and record any other.
 
+    It also answers OK to "Failure to achieve equilibrium" (a contact iteration that ran out; static() then raises).
     The solver (star.exe, a child of the instance) asks Yes / No / Cancel when a body moves a long way. On a hidden
     instance nobody sees it: the solve waits for ever, --status shows busy, and every other session's launch waits
     behind it (10 minutes on 2026-11-12 before it was found). No finishes the solve with the small-displacement
@@ -135,6 +136,12 @@ def _solver_dialogs(pid, stop, seen):
                         win32gui.PostMessage(c, win32con.BM_CLICK, 0, 0)
                         seen.append(('excessive', text))
                         log('solver asked about excessive displacements: answered No (finish with the small-displacement result)')
+            elif 'Failure to achieve equilibrium' in text:
+                for c in kids:
+                    if win32gui.GetClassName(c) == 'Button' and win32gui.GetWindowText(c).replace('&', '').strip() == 'OK':
+                        win32gui.PostMessage(c, win32con.BM_CLICK, 0, 0)
+                        seen.append(('noconverge', text))
+                        log('solver could not reach equilibrium: answered OK; the result is not valid')
             else:
                 seen.append(('unanswered', text))
                 log('solver dialog NOT answered, the solve may be waiting on it:', text[:300])
@@ -252,8 +259,8 @@ class Result:
 def heavy_solve_lock(owner, wait_s=3600):
     """Hold the machine-wide lock for one heavy solve (over HEAVY_NODES). One such solve at a time on holly-pc.
 
-    The lock is a file created exclusively, holding owner, PID and start time. A lock whose PID is dead is stale and
-    is replaced; a live one is waited for (the other solve takes 7 to 11 minutes), up to wait_s, then Failed.
+    The lock is a file created exclusively, holding `owner=<thread> pid=<pid> start=<time>` (write it in this form in
+    your own scripts too). A lock whose PID is dead, or that names no PID and is three hours old, is stale and is replaced; a live one is waited for (the other solve takes 7 to 11 minutes), up to wait_s, then Failed.
     static() takes it by itself; meshing, builds and post-processing need none.
     """
     t0 = time.time()
@@ -264,10 +271,14 @@ def heavy_solve_lock(owner, wait_s=3600):
         except FileExistsError:
             try:
                 text = HEAVY_LOCK.read_text()
-                pid = int(text.split('pid=')[1].split()[0])
-            except Exception:      # noqa: BLE001  being written, or not ours to parse: treat as held
-                text, pid = '?', None
-            if pid is not None and not psutil.pid_exists(pid):
+                m = re.search(r'pid\W{0,3}(\d+)', text, re.I)
+                pid = int(m.group(1)) if m else None
+                old = time.time() - HEAVY_LOCK.stat().st_mtime > 3 * 3600
+            except Exception:      # noqa: BLE001  being written, or gone again: treat as held
+                text, pid, old = '?', None, False
+            if pid is None and old:            # no PID to test and three hours old: no solve takes that long
+                pid = -1
+            if pid is not None and (pid < 0 or not psutil.pid_exists(pid)):
                 log(f'heavy solve lock is stale ({text.strip()}): replacing it')
                 try:
                     HEAVY_LOCK.unlink()
@@ -427,6 +438,10 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
             log(f'{name}: study not deleted ({str(ex)[:80]})')
         raise Failed(f'{name}: the solver reported excessive displacements: a body is free to move, or held only by '
                      'something very soft. playbook/05-fea.md, "Contact between bodies"')
+    if any(k == 'noconverge' for k, _ in seen):    # the solver still writes a result, with a clean reaction: never read it
+        raise Failed(f'{name}: the contact iteration did not converge ("Failure to achieve equilibrium"): a body with '
+                     'nothing to decide which way it goes. Move the pads, or load it the way that seats it. '
+                     'playbook/05-fea.md, "Contact between bodies"')
     res = st.Results
     if rc or res is None:
         raise Failed(f'{name}: solve failed ({rc}). 24 is a singular model (a body free to move) or out of memory: '

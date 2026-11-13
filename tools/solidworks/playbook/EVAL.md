@@ -11,11 +11,11 @@ not allowed to read any other run's folder. Every number below is in the run's `
   within about 2 %, in a similar time.
 - **The playbook is worth about a third of the time and nearly all of the failed runs.** Sonnet without it finished the
   same tasks in 91 minutes with about 17 crashed or wrong runs; with it, 55 minutes.
-- **Depth can be written down.** After the first set, what separated Fable from Sonnet was how far each went once the
-  numbers were right. Those habits became required steps ([07-done.md](07-done.md)). On a fresh set built to test
-  them, Sonnet did every one: it found both problems hidden in a drawing, all eight flaws planted in a report (and six
-  more), chose a print direction and showed the others fail, tried a second support, and took 66 % off a part's mass
-  while holding the requirement.
+- **Depth can mostly be written down.** After the first set, what separated Fable from Sonnet was how far each went
+  once the numbers were right. Those habits became required steps ([07-done.md](07-done.md)). On a fresh set built to
+  test them, Sonnet did nearly every one, level with Fable on four tasks of five and faster.
+- **What is left is judgment under temptation.** On the fifth task both saw a stress that kept climbing with the mesh.
+  Sonnet reported the last value and passed the part; Fable would not, and failed it. The rule was on the page.
 - **A playbook can make every model wrong together.** Both playbook runs of the first set, Fable's included, passed a
   bracket that fails. The playbook steered them to a rigid load; the run without the playbook got it right. That is the
   strongest argument for keeping the benchmark and a no-playbook control beside the playbook.
@@ -57,26 +57,35 @@ wrong problem. None of it needed knowledge Sonnet lacked. All of it is now a req
 A hub from a specification with two hidden problems; a wall bracket with the print direction left open; make it
 lighter; a tongue in a slot held only by contact; review a colleague's report with eight planted flaws.
 
-| | Sonnet + playbook ([sonnet-b](eval/sonnet-b/)) | What the task was looking for |
+| | Sonnet + playbook ([sonnet-b](eval/sonnet-b/)) | Fable + playbook ([fable-b](eval/fable-b/)) |
 | --- | --- | --- |
-| Wall time | 62 min | about two hours allowed |
-| B1 volume against hand | 21,865.54 against 21,865.51 | every dimension measured on the solid: done |
-| B1 hidden problems found | 2 of 2 (dowel holes run 0.75 mm under the boss; 0.4 mm wall over the set screw), plus two more questions | 2 |
-| B2 hand root stress | 13.75 MPa, 19.4 with the fillet factor | 13.75 |
-| B2 result | von Mises 19.5 MPa, factor 2.31; passes only printed on its side | a chosen direction with the other two shown |
-| B2 other directions | along X: layer factor 1.12, fail; along Z: shear factor 1.79, fail | table of three measures by direction |
-| B2 second support | yes: face fixed 19.5, hole walls fixed 18.4 | yes |
-| B2 thinnest margin | a 20 % higher load gives 1.93 | named, with a number |
-| B3 mass | 22.7 g to 7.8 g, 66 % less, 12 steps, four rejected | keep going until a requirement stops it |
-| B3 governing at the end | von Mises 2.08 with the worse support | one requirement at its limit |
-| B4 wall forces against hand 180.8 / 100.8 N | 183.3 / 103.3 (1.4 % and 2.5 %) | within 5 % |
-| B4 proof it is contact, not a bond | reversed load parts the bodies; pads carry 0.5 % | yes |
-| B4 honesty about the peak | block peak 41 MPa called singular and not a design number; a radius asked for | yes |
-| B5 planted flaws found | 8 of 8, plus 6 more, ranked | 8 |
+| Wall time | 62 min, every limit kept | about 160 min over two sessions (the first died), two task limits overrun |
+| B1 volume against hand 21,865.51 | 21,865.54 | 21,865.54 |
+| B1 hidden problems found (2 planted) | 2, plus two more questions | 2, plus two more questions |
+| B2 hand root stress (13.75 MPa) | 13.75 | 13.75 |
+| B2 von Mises, printed on its side | 19.5 MPa, factor 2.31 | 19.6 MPa, factor 2.30 |
+| B2 other print directions | both shown to fail (1.12 and 1.79) | both shown to fail (1.12 and 1.75 to 1.95) |
+| B2 second support | yes | yes |
+| B2 layer measures at the square side edges | noticed they rise with the mesh, reported the finest value | showed they double with every halving, rounded the edges to get a real number: 1.88 to 2.08 |
+| **B2 verdict** | **pass** | **fail** |
+| B3 mass, from 22.7 g | 7.8 g, 66 % less | 5.7 g, 75 % less |
+| B3 what stopped it | von Mises 2.08 | strut buckling by hand (2.02), a check the task did not ask for; caught two lighter candidates failing under the load pad, inside the mask |
+| B4 wall forces against hand 180.8 / 100.8 N | 183.3 / 103.3 | 183.6 / 102.5 |
+| B4 proof it is contact | reversed tiny load | forward tiny load; its reversed run did not converge and was marked invalid |
+| B4 block peak called singular, not a design number | yes | yes |
+| B4 largest solve | 149,700 nodes | 244,072 nodes, 13 GB, which pushed another thread's solve off the machine |
+| B5 planted flaws found (8) | 8, plus 6 more | 8, plus 7 more |
 
-The Fable run of set B stopped with a service error after about 90 minutes and left no result, so set B has no
-comparison yet. It also ran one 13 GB solve that pushed another thread's solve out of memory; the heavy-solve lock in
-[05-fea.md](05-fea.md) comes from that.
+**What set B shows.** On four of five tasks the two are level, and Sonnet was faster and better behaved: it kept every
+time limit and every solve small. The difference is B2. Both saw the same numbers. Sonnet reported the finest value of
+a stress that was still climbing and passed the part; Fable refused to read a number off a sharp edge, changed the
+geometry until the number meant something, and failed it. The playbook already said that a peak which keeps rising is not a
+stress ([05-fea.md](05-fea.md)); Sonnet read it and still passed the part. 07-done.md now makes it a gate: no verdict
+of pass on a measure that is still moving. That is the remaining gap: not knowledge, and not effort, but
+holding a rule against a convenient answer. B3 shows the same thing from the other side: Fable went looking for the
+failure the requirement did not name.
+
+The grading keys for sets B to D are kept outside the repository so that later runs cannot read them.
 
 ## What each run changed in the playbook
 
@@ -87,6 +96,7 @@ comparison yet. It also ran one 13 GB solve that pushed another thread's solve o
 | sonnet-bare | Confirmed what the playbook saves; exposed the rigid-load error |
 | t3-load-check | Load placement, second load model, the mask warning, the harmless excessive-displacement prompt |
 | sonnet-b | Study names, three sizes in `converge()`, four studies per instance, section forces, twin-model check, exclusion distance at a fixed hole |
+| fable-b | The heavy-solve lock, one refinement at a time, the unanswered contact-convergence prompt, which contact proof fits which joint, buckling of lightened parts |
 
 ## What still needs the strongest model, or Joey
 
@@ -101,8 +111,8 @@ comparison yet. It also ran one 13 GB solve that pushed another thread's solve o
 
 One run per model per set, on small parts, graded by the author of the playbook. The model that served the first
 Sonnet run could not be confirmed afterwards; later runs reported their own model id. Set B had the corrected
-playbook, so set A and set B are not a before-and-after of the same tasks. Opus has not been run: Sonnet did not fall
-short enough to need it.
+playbook, so set A and set B are not a before-and-after of the same tasks. The Fable run of set B was done by two
+sessions, the second picking up the first one's files. Opus has not been run.
 
 ## Running it on another model
 

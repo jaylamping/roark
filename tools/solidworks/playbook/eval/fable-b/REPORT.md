@@ -47,19 +47,19 @@ Built by `b1_hub.py`, one feature per item of the specification, each with its h
 
 | | Result | Hand |
 | --- | --- | --- |
-| Volume | 21,865.54 mmÃ‚Â³ | 21,865.51 mmÃ‚Â³ (flange 14,137.17 + boss 10,618.58 Ã¢Ë†â€™ bore 1,963.50 Ã¢Ë†â€™ six holes 477.13 Ã¢Ë†â€™ two dowel holes 237.58 Ã¢Ë†â€™ keyway 110.70 Ã¢Ë†â€™ set screw 101.33) |
-| Mass (1.19 g/cmÃ‚Â³) | 26.02 g | |
-| Box | Ã¢Ë†â€™30, Ã¢Ë†â€™30, 0 to 30, 30, 25 | same |
+| Volume | 21,865.54 mm³ | 21,865.51 mm³ (flange 14,137.17 + boss 10,618.58 − bore 1,963.50 − six holes 477.13 − two dowel holes 237.58 − keyway 110.70 − set screw 101.33) |
+| Mass (1.19 g/cm³) | 26.02 g | |
+| Box | −30, −30, 0 to 30, 30, 25 | same |
 | Bodies, rebuild errors | 1, 0 | |
-| STL | watertight, 1 shell, 21,811.0 mmÃ‚Â³ (0.25 % under: facets), in the model frame | |
+| STL | watertight, 1 shell, 21,811.0 mm³ (0.25 % under: facets), in the model frame | |
 | STEP | millimetres | |
 
-Every dimension was measured on the finished solid (`b1.log`, `b1.json` Ã¢â€ â€™ `measured`): flange and boss radii, axes and
-Z ranges; the bore; each of the six holes by angle (0, 60 Ã¢â‚¬Â¦ 300Ã‚Â°), pitch radius 22.0 and radius 2.25; both dowel holes
-(0, Ã‚Â±15), radius 2.75, Z 0 to 5; the keyway floor at X 6.4, Y Ã‚Â±1.5, full length; the set-screw hole radius 2.0, axis
+Every dimension was measured on the finished solid (`b1.log`, `b1.json` → `measured`): flange and boss radii, axes and
+Z ranges; the bore; each of the six holes by angle (0, 60 … 300°), pitch radius 22.0 and radius 2.25; both dowel holes
+(0, ±15), radius 2.75, Z 0 to 5; the keyway floor at X 6.4, Y ±1.5, full length; the set-screw hole radius 2.0, axis
 along Y through Z 22.6, from the bore to the outside.
 
-The 0.03 mmÃ‚Â³ between model and hand is the set-screw hole's inner end, which follows the curved bore; the hand value
+The 0.03 mm³ between model and hand is the set-screw hole's inner end, which follows the curved bore; the hand value
 treats it as flat.
 
 Questions on the specification (built as written; these are what I would ask before printing):
@@ -67,15 +67,15 @@ Questions on the specification (built as written; these are what I would ask bef
 1. **The set-screw hole leaves 0.4 mm of boss above it.** Axis at Z 22.6, radius 2.0, so the hole reaches Z 24.6 and
    the boss ends at Z 25. That is under the 0.6 mm minimum wall and would print as one or two broken layers. An edge
    distance of one diameter puts the axis at Z 19 or lower. Is 22.6 a typing error for 12.6 or 20.6?
-2. **The dowel holes run under the boss.** On a ÃƒËœ30 circle a ÃƒËœ5.5 hole spans radius 12.25 to 17.75, and the boss
-   radius is 13. "Through the flange" was built as Z 0 to 5, so each hole is blind over a 0.75 mm lune (1.79 mmÃ‚Â² each)
-   where the boss covers it: a ÃƒËœ5.5 dowel cannot pass through, and a pin pressed in from below stops against the boss.
-   The circle needs to be ÃƒËœ31.5 or more, or the holes need to go on up through the boss edge.
-3. **The set screw does not sit on the key.** The keyway is on +X and the set screw on +Y, 90Ã‚Â° apart. A set screw
+2. **The dowel holes run under the boss.** On a Ø30 circle a Ø5.5 hole spans radius 12.25 to 17.75, and the boss
+   radius is 13. "Through the flange" was built as Z 0 to 5, so each hole is blind over a 0.75 mm lune (1.79 mm² each)
+   where the boss covers it: a Ø5.5 dowel cannot pass through, and a pin pressed in from below stops against the boss.
+   The circle needs to be Ø31.5 or more, or the holes need to go on up through the boss edge.
+3. **The set screw does not sit on the key.** The keyway is on +X and the set screw on +Y, 90° apart. A set screw
    that holds a key is normally over it. Intended (a second, clamping screw on the shaft) or an error?
-4. **ÃƒËœ4 for a set screw is neither a tap size nor a thread.** M4 taps in ÃƒËœ3.3; printed threads or a heat-set insert
+4. **Ø4 for a set screw is neither a tap size nor a thread.** M4 taps in Ø3.3; printed threads or a heat-set insert
    need their own size. Which is it?
-5. Smaller: the keyway (3 wide, 1.4 deep from the ÃƒËœ10 bore) matches a 3 Ãƒâ€” 3 key; its two floor corners are sharp, and
+5. Smaller: the keyway (3 wide, 1.4 deep from the Ø10 bore) matches a 3 × 3 key; its two floor corners are sharp, and
    printed with the axis vertical that is fine. Bolt-hole edge distances are fine (5.75 mm to the flange edge, 6.75 mm
    to the boss, 6.7 mm to the nearest dowel hole).
 
@@ -85,7 +85,7 @@ Questions on the specification (built as written; these are what I would ask bef
 two of the three ways to print it fail outright.
 
 The case, written down before SolidWorks (`b2_study.py`): 60 N at X 60, so 55 mm from the plate face. Arm section 10
-wide, 12 deep: I = 1,440 mmÃ¢ÂÂ´, c = 6. Root stress 60 Ãƒâ€” 55 Ãƒâ€” 6 / 1,440 = **13.75 MPa**; 13.0 MPa where the fillet ends;
+wide, 12 deep: I = 1,440 mm⁴, c = 6. Root stress 60 × 55 × 6 / 1,440 = **13.75 MPa**; 13.0 MPa where the fillet ends;
 with a stress concentration of about 1.35 for the R3 fillet, 17.6 MPa. Tip deflection of the arm alone 1.38 mm.
 Transverse shear 0.75 MPa.
 
@@ -97,7 +97,7 @@ between. Peaks are read outside a fixed 2.0 mm from fixture and load nodes at ev
 | --- | --- | --- |
 | Reaction against 60 N | 59.996 N, Fz | 59.999 N, Fz |
 | Largest displacement | 1.88 mm | 1.51 mm (hand, arm alone: 1.38) |
-| ÃÆ’x on the arm's top face at X 35 against M c / I = 6.25 MPa | 6.265 | 6.265 |
+| σx on the arm's top face at X 35 against M c / I = 6.25 MPa | 6.265 | 6.265 |
 | Peak von Mises, upper root fillet | 18.65 MPa at (7.7, 20.2, 52.0) | 19.60 MPa at (7.4, 23.9, 52.1) |
 | Over 2.5, 1.75, 1.25 mm (23,518, 55,505 and 138,694 nodes) | 18.06, 18.51, 18.65 | 19.35, 19.40, 19.60 |
 | Left out by the mask | 30.6 MPa on the upper hole's rim, a fixture edge | 4.4 MPa |
@@ -142,7 +142,7 @@ of a rectangular section in bending are where the fillet's concentration and the
 there the factor on von Mises is 1.88 to 2.08, converged to 1 %; with the drawn square edge it is lower. 2.0 lies
 inside that band for the kindest geometry and the softer support, and outside it otherwise.
 
-Load path: the pressure on the top patch bends the arm about Y; the root section carries 3.3 NÃ‚Â·m and 60 N into the
+Load path: the pressure on the top patch bends the arm about Y; the root section carries 3.3 N·m and 60 N into the
 plate just below the upper screw (the arm covers that hole: its head cannot be reached with a driver along X, which
 I would also raise); the upper screw pulls on the plate, the plate's foot presses on the wall.
 
@@ -152,7 +152,7 @@ a sharper corner as printed takes it under.
 Cheapest improvement found: do not thicken this shape, change the load path. The B3 bracket holds the same load on
 the same screws at about a quarter of the mass with every factor above 2. If the cantilever must stay, the hand value
 says the arm needs to be 13 mm deep at the root for 2.0 with the corner concentration (stress falls with depth
-squared: 12 Ãƒâ€” Ã¢Ë†Å¡(2.0 / 1.88) = 12.4 mm, rounded up), and its side edges need the same radius as top and bottom.
+squared: 12 × √(2.0 / 1.88) = 12.4 mm, rounded up), and its side edges need the same radius as top and bottom.
 
 Not checked: creep (PETG under a standing 60 N), the screws and the wall, fatigue, a load that is not exactly
 vertical, and the stress under the screw heads, which neither support models.
@@ -171,7 +171,7 @@ along X, which the B2 arm prevented for the upper one. Hand, by a cut at X 30: c
 (2.7 MPa); the mesh gives 7.41 to 7.48 MPa in the chord.
 
 Fixed things, measured on the final solid: holes at (Y 20, Z 12) and (Y 20, Z 48), radius 2.25, along X; one wall face
-at X 0; load patch 10 Ã— 10 at X 55 to 65, Y 15 to 25, Z 52.
+at X 0; load patch 10 × 10 at X 55 to 65, Y 15 to 25, Z 52.
 
 | Step | What changed | Mass, g | Yield | Layer tension | Layer shear | Under the pad (yield, tension, shear) | Strut buckling | Kept |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -202,7 +202,7 @@ Governing at the end: **none of the three required factors is at 2.0.** What sto
    strip and the tip block).
 2. The chord at 1.2 mm: three 0.4 mm perimeters. Its stress is 7.4 MPa.
 3. The strip between the upper screw and the chord: 17.2 MPa, 2.62, with the hole walls fixed (10.2 MPa, 4.42, with
-   the wall face fixed). Stress there goes with 1 / tÂ², so 3.0 mm gives 1.94 by hand; 3.2 mm would pass and save 2 %.
+   the wall face fixed). Stress there goes with 1 / t², so 3.0 mm gives 1.94 by hand; 3.2 mm would pass and save 2 %.
 
 So the next step on each of the three is worth under 3 % or breaks a limit, which is the stopping rule in
 [07-done.md](../../07-done.md), reached by hand sizing for the last one and not by two more solves.
@@ -234,12 +234,12 @@ limit and said so here instead of presenting s8 as the answer.
 
 ## B4. Tongue in a slot
 
-**Result: the +X slot wall pushes the tongue with 184 N at the slot mouth, the Ã¢Ë†â€™X wall with 102 N at the tongue's
+**Result: the +X slot wall pushes the tongue with 184 N at the slot mouth, the −X wall with 102 N at the tongue's
 foot. Valid for the forces, the load path and the displacement; not valid for the peak stress at the bearing edge,
 which is a line contact on a sharp edge.**
 
 Hand, before SolidWorks (`b4_contact.py` header): the tongue tilts until it bears on the +X wall at the slot mouth
-(Z 20) and on the Ã¢Ë†â€™X wall at its own foot (Z 8.1). Moments about the foot: R_top Ãƒâ€” 11.9 = 80 Ãƒâ€” 26.9, so
+(Z 20) and on the −X wall at its own foot (Z 8.1). Moments about the foot: R_top × 11.9 = 80 × 26.9, so
 **R_top = 180.8 N, R_foot = 100.8 N**, and they differ by the 80 N applied. Real bearing patches have depth, which
 shortens the lever, so the result should be a little above both. Tilt to close both gaps 0.2 / 11.9 = 0.0168 rad; tip
 0.44 mm from the tilt plus 0.08 mm bending: 0.5 to 0.6 mm.
@@ -248,26 +248,26 @@ Model: four bodies in `tongue_slot.SLDPRT` (block, tongue, two pads), real 0.1 m
 (each slot wall against its tongue face, floor against tongue bottom), direct sparse solver (the macro log shows
 `before 0 | set err 0 | after 7`).
 
-How the tongue was held: nothing holds it until it touches, so it carries two 2 Ãƒâ€” 2 Ãƒâ€” 2 mm soft pads (E 0.5 MPa), one
+How the tongue was held: nothing holds it until it touches, so it carries two 2 × 2 × 2 mm soft pads (E 0.5 MPa), one
 on each Y face at Z 13 to 15, on the tilt axis where it hardly moves, clear of the block and of every contact face,
 outer faces fixed. Their share, bounded from their own stress times their area: 0.05 N of 80 (0.06 %).
 
 | Contact-face element | 1.2 mm | 0.8 mm | 0.5 mm + 0.2 mm on the bearing edges |
 | --- | --- | --- | --- |
 | Nodes | 43,133 | 88,263 | 244,072 (first session; see "The 13 GB solve") |
-| Reaction, N | Ã¢Ë†â€™80.0, 0, 0 | Ã¢Ë†â€™80.0, 0, 0 | Ã¢Ë†â€™80.0, 0, 0 |
+| Reaction, N | −80.0, 0, 0 | −80.0, 0, 0 | −80.0, 0, 0 |
 | Force on the +X wall (cut through the block's +X pillar at Z 12) | 185.0 | 184.0 | 183.6 |
-| Force on the Ã¢Ë†â€™X wall (cut through the tongue at Z 14) | 102.9 | 102.1 | 102.5 |
+| Force on the −X wall (cut through the tongue at Z 14) | 102.9 | 102.1 | 102.5 |
 | Their difference (80 applied) | 82.2 | 81.8 | 81.0 |
-| Check on the cutting method: tongue at Z 25 must carry 80 N and 800 NÃ‚Â·mm | 79.94, 800.0 | 80.0, 800.0 | 80.01, 800.0 |
-| Shear in the Ã¢Ë†â€™X pillar (must be none) | Ã¢Ë†â€™0.05 | Ã¢Ë†â€™0.08 | Ã¢Ë†â€™0.03 |
-| Centre of pressure, +X wall / Ã¢Ë†â€™X wall, Z | 19.71 / 8.68 | 19.71 / 8.45 | 19.69 / 8.20 |
+| Check on the cutting method: tongue at Z 25 must carry 80 N and 800 N·mm | 79.94, 800.0 | 80.0, 800.0 | 80.01, 800.0 |
+| Shear in the −X pillar (must be none) | −0.05 | −0.08 | −0.03 |
+| Centre of pressure, +X wall / −X wall, Z | 19.71 / 8.68 | 19.71 / 8.45 | 19.69 / 8.20 |
 | Tip of the tongue, UX | 0.830 mm | 0.826 | 0.827 |
 | Penetration left at the walls | 0.005 / 0.015 mm | 0.005 / 0.010 | 0.002 / 0.002 |
 | Block peak von Mises, on the slot-mouth edge (4.1, y, 20.0) | 35.2 MPa | 37.8 | 53.5 |
 | its average over 1 mm / 2 mm | 21.0 / 12.6 | 17.0 / 11.2 | 20.8 / 16.0 |
 | Block peak 2 mm clear of the bearing edge and the slot's root corners | 9.4 at (6.3, 1.4, 20.0) | 8.6 | 8.7 at (6.2, 0.6, 20.0) |
-| Within 1 mm of the slot's root corners (4.1, 8) / (Ã¢Ë†â€™4.1, 8) | 5.8 / 5.2 | 6.8 / 9.5 | 12.4 / 17.5 |
+| Within 1 mm of the slot's root corners (4.1, 8) / (−4.1, 8) | 5.8 / 5.2 | 6.8 / 9.5 | 12.4 / 17.5 |
 | Solve | 32 s | 85 s | 785 s |
 
 The forces come from cutting free bodies through smooth interior stress, not from summing contact pressure on the wall
@@ -281,8 +281,8 @@ Why it is valid:
    0.0176; elastic part under 0.0001 mm) and comes to rest on the two predicted lines with 0.18 and 0.10 N. Bonded
    faces would have moved it a thousandth of the 80 N value, under 0.001 mm. The response is also not proportional:
    1,000 times the load gives 1.9 times the displacement.
-2. **Equilibrium:** reaction Ã¢Ë†â€™80.0 N in X; wall forces differ by 81 to 82 against 80 (1 to 2.7 %, closing as the mesh
-   shrinks); the Ã¢Ë†â€™X pillar carries nothing; the +X pillar's moment at Z 12 is 1,437 NÃ‚Â·mm against 183.6 Ãƒâ€” (19.69 Ã¢Ë†â€™ 12)
+2. **Equilibrium:** reaction −80.0 N in X; wall forces differ by 81 to 82 against 80 (1 to 2.7 %, closing as the mesh
+   shrinks); the −X pillar carries nothing; the +X pillar's moment at Z 12 is 1,437 N·mm against 183.6 × (19.69 − 12)
    = 1,412.
 3. **Against the hand values:** 183.6 and 102.5 N against 180.8 and 100.8, both 1.6 % above, as predicted (the foot
    patch is 0.1 to 0.4 mm deep and the top one sits at 19.7, so the lever is 11.5 mm, not 11.9).
@@ -293,15 +293,15 @@ Why it is valid:
 
 What is not valid, and why:
 
-- **The peak stress at the bearing edge** (`block_peak_vm_mpa` 53.5 MPa at (4.1, Ã¢Ë†â€™0.5, 20.0)) rose 35 Ã¢â€ â€™ 38 Ã¢â€ â€™ 53 MPa
-  over the three meshes and is above yield. A flat face on a sharp 90Ã‚Â° edge is a line contact: the elastic stress has
+- **The peak stress at the bearing edge** (`block_peak_vm_mpa` 53.5 MPa at (4.1, −0.5, 20.0)) rose 35 → 38 → 53 MPa
+  over the three meshes and is above yield. A flat face on a sharp 90° edge is a line contact: the elastic stress has
   no limit. What the part does is yield there until the strip is wide enough: 184 N over 20 mm at 45 MPa needs about
   0.2 mm. The numbers that hold are the 1 mm average (17 to 21 MPa) and the 8.7 MPa peak 2 mm away, on the top face
   beside the edge. The same applies to the tongue's foot edge (53.6 MPa at the finest mesh).
-- **The slot's two root corners** are sharp too and climb the same way (5 Ã¢â€ â€™ 7 to 9 Ã¢â€ â€™ 12 to 17 MPa within 1 mm). The
-  nominal bending stress there is 2.5 MPa (183.6 N Ãƒâ€” 11.7 mm on a 20 Ãƒâ€” 15.9 section), so with any real radius they are
+- **The slot's two root corners** are sharp too and climb the same way (5 → 7 to 9 → 12 to 17 MPa within 1 mm). The
+  nominal bending stress there is 2.5 MPa (183.6 N × 11.7 mm on a 20 × 15.9 section), so with any real radius they are
   not the problem; without one the model cannot say.
-- **The reverse-load run failed** (`b4_r4.log`, second session): Ã¢Ë†â€™0.08 N, to see the tongue swing the other way.
+- **The reverse-load run failed** (`b4_r4.log`, second session): −0.08 N, to see the tongue swing the other way.
   The solver ran 100 contact iterations in 11 minutes and put up "Failure to achieve equilibrium during task 'Solving
   contact constraints'", which `static()` logged and did not answer; I read it in my own instance and pressed OK. The
   saved result is **INVALID** (wall forces of hundreds of newtons for 0.08 N applied) and is not used. Point 1 above
@@ -330,13 +330,13 @@ or the export is wrong. Most serious first:
    a different load from the one described (a force that is not along +X, a face missed, a normal force on a face that
    is not normal to X, part of the plate left out). Every stress and displacement after that line belongs to another
    problem. This alone voids the result.
-2. **The exported STL is the wrong size.** "Volume 1.02 against 16,700 mmÃ‚Â³" is not rounding: 16,700 mmÃ‚Â³ is 1.02 cubic
+2. **The exported STL is the wrong size.** "Volume 1.02 against 16,700 mm³" is not rounding: 16,700 mm³ is 1.02 cubic
    inches. The file is in inches (or was read as such), so a slicer taking it as millimetres prints the plate 25.4
    times too small. Watertightness, shell count and position in the model frame are not reported either. "Ready to
    print" is false on the file alone.
 3. **The across-layer check uses the wrong stress and the wrong allowable.** Layers are stacked along Z, so tension
-   across layers is ÃÆ’z, not ÃÆ’x; ÃÆ’x lies in the layers. And the allowable across layers is 22.5 MPa, not 45. If 19.5 MPa
-   really were across the layers the factor would be 1.15, not 2.3. The real ÃÆ’z was never read.
+   across layers is σz, not σx; σx lies in the layers. And the allowable across layers is 22.5 MPa, not 45. If 19.5 MPa
+   really were across the layers the factor would be 1.15, not 2.3. The real σz was never read.
 4. **Shear between layers (13 MPa) was not checked at all.** A plate printed flat and loaded in its own plane through
    screws is exactly where that can govern.
 5. **A factor of 1.1 on von Mises was ignored without evidence.** "It is at a hole edge" is a guess. The holes are the
@@ -351,10 +351,10 @@ or the export is wrong. Most serious first:
 8. **The hand estimate does not match the study and nobody asked why.** 3.4 MPa by hand against 37.6 to 41 from the
    mesh is a factor of eleven; the rule is 20 %. The estimate itself is also doubtful: b = 4, h = 40 is the plate
    bending in its own plane; if the 120 N bends the plate across its 4 mm thickness the right numbers are b = 40,
-   h = 4, I = 213 mmÃ¢ÂÂ´ and 120 Ãƒâ€” 30 Ãƒâ€” 2 / 213 = 33.8 MPa, a factor of 1.3 on yield in the plain section. The report does
+   h = 4, I = 213 mm⁴ and 120 × 30 × 2 / 213 = 33.8 MPa, a factor of 1.3 on yield in the plain section. The report does
    not say which way the plate bends, and no stress was read in a plain section to compare.
 9. **The displacement was not compared with anything.** 0.9 mm fits neither reading (0.03 mm in plane, 2.7 mm across
-   the thickness, by F LÃ‚Â³ / 3 E I). With item 1 that points at a load or support that is not what is described.
+   the thickness, by F L³ / 3 E I). With item 1 that points at a load or support that is not what is described.
 10. **No requirement is stated.** "Pass" against what factor? 2.3 is quoted as if it were enough, 1.1 is waved away.
 11. **Machine rules broken.** 520,000 nodes is over the 450,000 limit; it was run beside another large solve, and on
     holly-pc solves that size run one at a time (a pair of 390,000 crashed); even the 212,000-node mesh needs the
@@ -371,7 +371,7 @@ or the export is wrong. Most serious first:
 
 What has to be redone: (a) the study, from the load definition up: state the load case and the pass mark, get the
 reaction to 120 N within 1 %, match a plain-section stress to the hand value within 15 %, both supports, three mesh
-sizes under 200,000 nodes with local controls, all three measures with the right components (ÃÆ’z and the shear on Z
+sizes under 200,000 nodes with local controls, all three measures with the right components (σz and the shear on Z
 planes for this print direction) for each print direction; (b) the export, in millimetres with pinned options, checked
 for volume, watertightness and frame; (c) the verdict. If the plate does bend across its thickness the hand value
 already says it fails at 1.3 and needs to be thicker before any of this is rerun.
