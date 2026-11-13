@@ -30,7 +30,8 @@ for x0, dz in PAD_PTS:
 # 0.05 mm; if one does, the run stops (SystemExit) instead of scoring it.
 import os as _os
 INSERTS = _os.environ.get('R1C_INSERTS') == '1'
-LUG_F, LUG_B = CZ + 5.1, CZ - 5.1
+_SC = float(_os.environ.get("ARM_SLOT_CL", "0.1"))      # 2026-11-12: R1f/D3 FEA has the lug faces line-to-line (ARM_SLOT_CL=0)
+LUG_F, LUG_B = CZ + 5.0 + _SC, CZ - 5.0 - _SC
 SEAT = LUG_B - 7.0
 N = len(p); zz = p[:, 2]; yy = p[:, 1]
 if INSERTS:      # M3 x 25 DIN 912 from the back counterbore seat, Dia 4.0 x 5.7 insert from the front lug face
@@ -196,7 +197,7 @@ if len(bl):
     i = bl[np.argmax(vm[bl])]
     print(f'bolts: vm peak {vm[i]:.0f} MPa at {p[i].round(1).tolist()} (SF vs 640 MPa yield {640.0 / vm[i]:.2f})')
 # lug forces: slab across each lug just below the root, hub nodes only
-D3 = os.environ.get('R1C_D3') == '1'      # 2026-11-12: hub rev D3 extended lugs (X offset 18.7-36.35): the slab spans the whole lug at the root band
+D3 = _os.environ.get('R1C_D3') == '1'      # 2026-11-12: hub rev D3 extended lugs (X offset 18.7-36.35): the slab spans the whole lug at the root band
 LUG_SLABS = (('lug -X', (170.49 - 36.4, 170.49 - 18.7)), ('lug +X', (170.49 + 18.7, 170.49 + 36.4))) if D3 else (('lug -X', (141.0, 151.75)), ('lug +X', (189.25, 200.0)))
 SLAB_Y = (295.5, 295.9) if D3 else (294.5, 295.5)
 for name, (x0, x1) in LUG_SLABS:
