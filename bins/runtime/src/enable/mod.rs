@@ -81,6 +81,8 @@ pub(crate) struct Buses<'a> {
     pub(crate) batches: &'a mut [CommandBatch],
     /// Whether each bus thread has ended, by plan index.
     pub(crate) ended: &'a [bool],
+    /// The bus whose slow results a scan or set-ID takes, if one runs: the enabler leaves them.
+    pub(crate) lent: Option<usize>,
 }
 
 /// Where one joint of the enable running is, after its step.
@@ -128,6 +130,11 @@ impl Enabler {
             foreign: vec![0; buses],
             started_ns: 0,
         }
+    }
+
+    /// Whether an enable is running.
+    pub(crate) const fn running(&self) -> bool {
+        self.run.is_some()
     }
 
     /// Take a new enable at `now_ns`: refused at once if another runs, the recording has failed, it names nothing or a
@@ -275,7 +282,7 @@ impl Enabler {
         counts: &mut Counts,
     ) -> Option<EnableReply> {
         let Some((tag, joints)) = self.run else {
-            drain_stray(buses.slow, counts);
+            drain_stray(buses.slow, buses.lent, counts);
             return None;
         };
         self.route_results(roster, joints, buses.slow, now_ns, counts);

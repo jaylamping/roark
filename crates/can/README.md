@@ -164,8 +164,8 @@ three ways:
 
 Either goes only while every limb on the bus is idle, none due to stop or with a stop asked (`BusNotIdle`), since its
 frame reaches whichever drive holds the ID; one queued is cancelled as the next slack opens once that stops being so.
-The bus checks nothing more: the "exactly one drive answering" that PLAN item 2 asks before a set-ID is the requester's
-scan to prove, and whether the ID took is the requester's probes of both IDs to see. Each drive in the table the frame
+The bus checks nothing more: the "exactly one drive answering at the old ID and none at the new" that PLAN item 2 asks before a set-ID is
+the requester's probes to prove, and whether the ID took is the requester's probes of both IDs to see. Each drive in the table the frame
 may have reached (the probed ID, or a set-ID's old and new) has its last send stamped, so a re-arm counts the drives'
 timeout from it.
 

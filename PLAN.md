@@ -249,8 +249,8 @@ The legacy code holds real bench lessons. Copy them into the codec's docs and te
   change that. For a drive that was enabling or enabled, with no Reset read after its Disable, counting resumes after
   the 100 ms, so a lost Disable can't leave a running drive uncounted.
 
-**Transmit allowlist:** types 0, 1, 3, 4, 6, 17, 18, 24. Type 7 (set ID) only from the set-ID command with exactly one drive
-answering on that bus. Never 22, 23 or 25; never write 0x7029, 0x702B or 0x702A; never type 4 with the fault-clear byte set.
+**Transmit allowlist:** types 0, 1, 3, 4, 6, 17, 18, 24. Type 7 (set ID) only from the set-ID command, with exactly one drive
+answering at the old ID on that bus and none at the new; a bus carries a limb, so other drives may answer at other IDs. Never 22, 23 or 25; never write 0x7029, 0x702B or 0x702A; never type 4 with the fault-clear byte set.
 
 **Don't copy** `scripts/can-up.sh` link settings: `restart-ms 100` and `txqueuelen 1000` were MCP2515 workarounds and contradict
 item 3.

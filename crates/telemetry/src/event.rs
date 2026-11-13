@@ -48,6 +48,24 @@ pub enum EventKind {
     /// A clear was refused, on one bus or for a limb on none.
     #[serde(rename = "clear.refused")]
     ClearRefused,
+    /// A scan of one bus passed its checks and started.
+    #[serde(rename = "scan.started")]
+    ScanStarted,
+    /// A scan ended with every ID probed.
+    #[serde(rename = "scan.finished")]
+    ScanFinished,
+    /// A scan was refused, before anything was sent or part way.
+    #[serde(rename = "scan.refused")]
+    ScanRefused,
+    /// A set-ID on one bus passed its checks and started; its type 7 goes only once its probes allow it.
+    #[serde(rename = "set_id.started")]
+    SetIdStarted,
+    /// A set-ID ended with the drive answering at its new ID alone.
+    #[serde(rename = "set_id.succeeded")]
+    SetIdSucceeded,
+    /// A set-ID was refused; the reason `unconfirmed` is the one that says its type 7 may have gone.
+    #[serde(rename = "set_id.refused")]
+    SetIdRefused,
 }
 
 /// One event, as plain `Copy` data, so handing it over never allocates. Every name is a `'static` string from the

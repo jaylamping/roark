@@ -38,8 +38,8 @@ pub enum EnableRefused {
         /// The index.
         joint: usize,
     },
-    /// Another enable is still running.
-    #[error("another enable is running")]
+    /// Another enable, or a scan or set-ID, is still running.
+    #[error("another enable, or a scan or set-ID, is running")]
     Busy,
     /// The session's recording has failed: no new enable while the log can't be written (PLAN item 6 `host.logging`).
     #[error("the recording has failed")]

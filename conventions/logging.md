@@ -40,7 +40,8 @@ level.
 - **Every event has a `kind` from one closed list**, written as `area.past_tense_verb`. In Rust it's an enum
   (`telemetry::EventKind`), so adding a kind is a deliberate change, made here in the same PR, and the UI's types are
   generated from it. The list: `limb.stopped`, `robot.stopped`, `enable.started`, `enable.succeeded`, `enable.refused`,
-  `limb.cleared`, `clear.refused`. Planned as their sources arrive, in the same form: `drive.went_silent`,
+  `limb.cleared`, `clear.refused`, `scan.started`, `scan.finished`, `scan.refused`, `set_id.started`,
+  `set_id.succeeded`, `set_id.refused`. Planned as their sources arrive, in the same form: `drive.went_silent`,
   `limit.hit`, `fault.latched`, `operator.requested`, `skeleton.loaded`, `bus.off`, `recorder.dropped`.
 - **Every event carries** a stamp (`stamp_ns`, [units-and-frames.md section 5](units-and-frames.md#5-time-and-timestamps)),
   its kind, and whichever shared fields apply (section 2a). Safety events add the measured value and the threshold.
