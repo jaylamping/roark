@@ -87,7 +87,9 @@ Material PETG throughout. "Not sliced" applies to every orientation and support 
 - **Lug holes:** printed Ø3.8 for the arm's fixed shim plates; the arm thread owns that fit.
 
 ### Pitch loop cover
-- **Orientation:** back wall (X 75) down. Support under the feed duct's forward run. Waits, as above.
+- **Orientation:** not settled. Back wall (X 75) down puts the whole wall on support, because the feed riser stands
+  about 6 mm proud of it (sliced: 23.5 g of support, 84% of it under the wall). Turn it over, or split the riser off.
+  Waits, as above.
 
 ## Coupons first
 
@@ -129,6 +131,12 @@ clamps nothing.**
   lever L from the screw axis: F = 0.3 / L. At L = 60 mm that is 5.0 N, about a 0.51 kg reading.
 - **No threadlocker in testing.**
 - **Re-torque after 24 h and again after the first bench session.**
+- **Do the 24 h re-torque before a joint is closed in:**
+  - RS02 on the fork front: on the bench, before the fork front goes onto the drum. Assembled, only the 104° screw
+    can be reached.
+  - Hub on the RS02: before the arm halves go on. Their heads are inside the bore.
+- **The second re-torque of those two joints needs a strip-down** (arm halves off; for the RS02, the fork front off the
+  drum). Decide before the first bench session whether to plan one.
 
 ## Arm-side parts at the hub (owned by the arm thread; for reference)
 
@@ -149,11 +157,13 @@ clamps nothing.**
    1. Plug the XT30(2+2)-F onto the 228° socket radially.
    2. Fold the lead into the tap and run it to TAP_LINK.
    3. Fit the five RS02 screws: the three rear ones from above, and the 104° and 144° ones through their access bores.
-2. **Fork front onto the drum.** After this the drum blocks every RS02 screw except 104°, so the order is fixed.
+2. **Fork front onto the drum,** after the 24 h re-torque of the RS02 screws. After this the drum blocks every RS02
+   screw except 104°, so the order is fixed.
 3. Press in the two access plugs.
-4. Lay the bundles in the ring's back cavity and fit the fork rear (six button heads).
-   - **Not reconciled:** the side-centre round (CAD_NOTES "Side centre r 47") lays the bundles in the back cavity first
-     and slides the RS02 in past them. With the RS02 now fitted on the bench first, the bundles go in after it. Whether
-     they can be laid in with the RS02 in place has not been checked ([OPEN_ASSUMPTIONS.md](../checks/OPEN_ASSUMPTIONS.md)).
+4. Feed the bundle down from the ring's open top (Y 340), round the bend and out of the exit, as bare wire with no
+   plug on it. Then fit the fork rear (six button heads).
+   - The side-centre round laid the bundles first and slid the RS02 in past them. With the RS02 fitted first, the
+     bundle goes in from the top instead. Not tried by hand ([OPEN_ASSUMPTIONS.md](../checks/OPEN_ASSUMPTIONS.md), item 12).
+   - **No plug or joint break fits inside any channel** (item 13): thread the wires, then terminate.
 5. Hub onto the RS02 output from below, six M4 at 0.3 N·m; lay the arm bundle in the dish and through the window. Then
    the arm halves.

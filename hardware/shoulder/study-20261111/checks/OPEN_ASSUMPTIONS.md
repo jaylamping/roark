@@ -23,9 +23,9 @@ place, every fit that rests on a bought part's dimension, heat, loads not run.
 | 8 | **Across-layer shear allowable, 13 MPa** | A_HUB_LUGS.md ("assumed"); B_ROLL_STOPS.md uses 22.5 MPa for layers | The hub's 1.60 / 1.31 rests on it. If the real figure is lower, the lugs' inner roots fail in yaw | Hub lug cracks at peak yaw torque | **Joey / arm thread:** a printed shear coupon, or the arm thread's data | A coupon and a pull test | Open |
 | 9 | **The committed hub export is two revisions old** | cad/exports/shoulder (rev C+, 2026-11-11) | Someone prints it: no locating holes, short lugs | Wasted print; wrong joint | **Here:** replaced when D3c5 is released | - | Flagged in PRINT_NOTES.md |
 | 10 | **Nothing has been sliced** | CONCEPT.md section 10; CAD_NOTES.md "Still open" | Supports that can't be removed; the RS02 seat is a supported face; drum skin 0.97 mm at one spot, cuff 1.48 | Reprints | **Run:** slice each part with the Bambu CLI and read supports, thin walls, time | About 1 h | **Done, first look** (below): every part slices without warnings; times and support mass listed. Supports not yet inspected for removal |
-| 11 | **Re-torque after 24 h against access** | PRINT_NOTES.md; CAD_NOTES.md "Driver reach" | Assembled, only the 104° RS02 screw can be reached; the hub screws are behind the arm halves. The re-torque needs a strip-down | The low-preload joints never get their re-torque | **Here:** list which screws are reachable assembled. Then a procedure | 1 h | Open |
-| 12 | **Bundles against the RS02 in the fork** | CAD_NOTES.md "Side centre r 47" lays the bundles first; "RS02 re-clocked" fits the RS02 first | The two orders conflict. With the RS02 in, the 16 × 6 bundle may not go into the back cavity | Assembly stalls; forced cable | **Here:** section the back cavity with the RS02 in place | 1 h | Open |
-| 13 | **Plugs through the channels** | CONCEPT.md assembly steps | An XT30(2+2)-F body is 16 × 6.5 × 15. It does not pass a 16 × 6 channel or the 7 × 6 tap | Wires must be threaded before they are terminated | **Here / electrical plan:** write the order (thread, then solder) into the assembly notes | - | Open |
+| 11 | **Re-torque after 24 h against access** | PRINT_NOTES.md; CAD_NOTES.md "Driver reach" | Assembled, only the 104° RS02 screw can be reached; the hub screws are behind the arm halves. The re-torque needs a strip-down | The low-preload joints never get their re-torque | **Here:** list which screws are reachable assembled. Then a procedure | 1 h | **Settled as a procedure** (below, and in PRINT_NOTES.md): the 24 h re-torque is done on the bench before each joint is closed in. The second re-torque is not possible on two joints without a strip-down |
+| 12 | **Bundles against the RS02 in the fork** | CAD_NOTES.md "Side centre r 47" lays the bundles first; "RS02 re-clocked" fits the RS02 first | The two orders conflict. With the RS02 in, the 16 × 6 bundle may not go into the back cavity | Assembly stalls; forced cable | **Here:** section the back cavity with the RS02 in place | 1 h | **Settled on paper** (below): the bundle is fed down from the ring's open top at Y 340 after the RS02 is in and before the fork rear goes on. Hand access not tried |
+| 13 | **Plugs through the channels** | CONCEPT.md assembly steps | An XT30(2+2)-F body is 16 × 6.5 × 15. It does not pass a 16 × 6 channel or the 7 × 6 tap | Wires must be threaded before they are terminated | **Here / electrical plan:** write the order (thread, then solder) into the assembly notes | - | **Settled:** in PRINT_NOTES.md. No plug or joint break can sit inside a channel, the stub or the dish |
 | 14 | **Pitch loop over 270°** | CONCEPT.md, TORSO_INTERFACE.md ("flex life not checked") | Length change of about 300 mm at r 65; bend radius of a 4 mm band in a 16 mm channel | Trunk fatigue at the first joint | **Here:** length and bend radius on paper. **Joey:** a loop rig if the paper says tight | 1 h; a second rig | **Paper says it does not work as drawn** (below): 306 mm of length change, no spiral fits, and a folded loop bends 16 AWG at 6.5-9 mm. **Rank it with item 1.** Needs a rig or a redesign |
 | 15 | **Roll crossing as twist in the Ø25 stub bore** | CONCEPT.md ("125° as twist", bend radii not checked) | Power above the axis, signal below: off-axis, so twist plus a swing | Chafe in the stub bore | **Here:** free length and twist per mm | 1 h | **Paper says tight** (below): 121° of roll over 18 mm of axial run between two right-angle bends, inside Ø25. **Rank it with item 1.** Needs a rig |
 | 16 | **RS03 connector bays** | CONCEPT.md, MEASUREMENTS.md ("vendor bays are empty") | The top-bay window and branch are sized from the bay, not a plug | Drum reprint, 227 g | **Joey:** photo and size of the plugs seated in an RS03 | 10 min | Open |
@@ -168,3 +168,39 @@ Read from the sliced G-code (support extrusion mapped back into the robot's coor
 ### 34. Hub cable window against the boss tubes (2026-11-13)
 Numbers and the table are in CAD_NOTES.md, "Hub cable window against the boss tubes".
 
+### 11. Re-torque against access (2026-11-13)
+
+| Joint | Reachable when assembled | So |
+|---|---|---|
+| Fork front → RS02 body (5 × M3) | Only the 104° screw; the drum or the cap blocks the other four | Fit the RS02 to the fork front on the bench, wait 24 h, re-torque, then fit the fork front to the drum |
+| Hub → RS02 output (6 × M4) | None: the heads are inside the bore at Y 298, behind the arm halves | Fit the hub, wait 24 h, re-torque, then fit the arm halves |
+| Fork front → RS03 roll output (6 × M4) | Yes, from the front through the counterbores | Both re-torques as written |
+| Fork joint (6 button heads) | Yes, from the back | Both re-torques as written |
+| Drum → pitch output (6 × M4) | Through the drum's outboard window; four of six at a 4° tilt with a ball-end key (CONCEPT.md) | Both re-torques, slowly |
+
+- **The second re-torque (after the first bench session) cannot be done on the RS02 body screws or the hub screws
+  without taking the arm halves off, and for the RS02 the fork front off the drum.**
+- So for those two joints: either accept one re-torque and watch for backlash (SOFTWARE_HANDOFF.md already says to treat
+  drift as a loose joint), or plan one strip-down after the first bench session.
+- This is from the notes' own access statements. A driver-reach check for every screw in the assembled model has only
+  been run for the RS02 screws.
+
+### 12. Bundles against the RS02 in the fork (2026-11-13)
+
+- The sleeve ring below Y 340 is a closed skin round the RS02. With the RS02 in its bore (r 39.3 in r 39.75), the cavity
+  behind it (8-27 mm deep, Y 322-340) is closed on the inside.
+- It stays open at the ring's flat top (Y 340) until the fork rear is fitted, and at the bottom, where the exit is.
+- **So the order that works with the RS02 fitted first:** RS02 into the fork front on the bench → fork front onto the
+  drum → feed the bundle down from the top of the ring, round the R 24 bend, out of the exit → fork rear on.
+- The bundle is fed 18 mm down a curved pocket by hand. Nobody has tried it. If the yaw crossing becomes a spiral, the
+  bundle is longer there (about 470 mm in the dish) and has to be pulled through this pocket first.
+
+### 13. Plugs through the channels (2026-11-13)
+
+- An XT30(2+2)-F body is 16 × 6.5 × 15 mm. The trunk channels are 16 × 6, the RS02 tap is 7 × 6, the stub bore passage
+  and the dish are smaller still.
+- **No plug, and no plug-in joint break, can be inside a channel, the stub or the dish.** The trunk is threaded as bare
+  wire and terminated afterwards. The optional joint breaks of the trunk plan (an XT30 pair at each joint) have no place
+  in this shoulder.
+- The RS02's own lead is plugged at the motor end first (radially, with the fork front open) and its wires run through
+  the tap.
