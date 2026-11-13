@@ -785,7 +785,8 @@ def _retire_keeper():
         if pid is None or not os.path.exists(switch):
             return
         mb = round(psutil.Process(pid).memory_info().private / 2**20)
-        if keeper_due(True, pid, _wait_answers(pid, 30), mb) == "restart":
+        # 90 s, not the 30 s an attach allows: under heavy paging an idle instance can be slow, and nothing drives it
+        if keeper_due(True, pid, _wait_answers(pid, 90), mb) == "restart":
             print(f"sw_instance: replacing the keeper, PID {pid} ({mb} MB)", file=sys.stderr)
             kill_tree(pid, _started(pid))
             _drop_owner(pid)
