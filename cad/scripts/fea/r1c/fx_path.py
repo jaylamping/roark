@@ -57,6 +57,22 @@ for side, bxs in (('-X lug', 147.5), ('+X lug', 193.5)):
         a0, z0, gap0, nh, ns = worst[1]
         print(f'{side} bolt shank vs lug hole: smallest gap now {worst[0]:.3f} mm (initial {gap0:.3f}; closure {gap0 - worst[0]:+.3f}) '
               f'toward {a0} deg (0 = +X, 90 = +Y) at Z - CZ {z0:+.0f} +- 1 ({nh} hole / {ns} shank surface nodes)')
+# 1b. where the lug's hole rim sits in the deformed state (r1g6 review): the hub's rim nodes at each lug face (r HOLR, Z - CZ +-5.0),
+# their deformed radial distance from the deformed axis of what is under them: the brass insert (front, insert side) or the bolt
+# shank (back). Compared with the plate's hole edge (FX_PLATE_R, default 1.7) and the insert rim (2.0).
+PLR = float(os.environ.get('FX_PLATE_R', '1.7'))
+for side, bxs in (('-X lug', 147.5), ('+X lug', 193.5)):
+    rbs = np.hypot(p[:, 0] - bxs, p[:, 1] - BY)
+    for zz, face, axbody in ((5.0, 'front', 'brass'), (-5.0, 'back', 'steel')):
+        rim = (body == 'hub') & (np.abs(rbs - HOLR) < 0.05) & (np.abs((p[:, 2] - CZ) - zz) < 0.06)
+        ax = (body == axbody) & (rbs < 2.05) & (np.abs((p[:, 2] - CZ) - zz) < 0.6)
+        if rim.sum() < 3 or ax.sum() < 3:
+            continue
+        cax = np.nanmean(p[ax, :2] + uu[ax, :2], axis=0)
+        rr = np.hypot(*(p[rim, :2] + uu[rim, :2] - cax).T)
+        print(f'{side} {face} face: lug hole rim (nominal r {HOLR}) deformed at r {np.nanmin(rr):.3f}-{np.nanmax(rr):.3f} from the deformed {axbody} axis '
+              f'(plate edge r {PLR}, insert rim r 2.0): {"over the plate (outside its edge)" if np.nanmin(rr) > PLR else "inside the plate edge somewhere"}; '
+              f'{"inside the insert rim everywhere" if np.nanmax(rr) < 2.0 else "beyond the insert rim somewhere"}')
 # 2. bolt shank transverse shear force at the lug mid-plane (Z = CZ), section of the shank
 sec = (body == 'steel') & (rb < 1.55) & (np.abs(dz) < 0.25)
 if sec.any():

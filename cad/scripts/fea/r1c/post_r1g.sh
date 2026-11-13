@@ -14,6 +14,6 @@ DISP=${NPZ%.npz}_disp.npz
 R1C_ALL_CENTRES=1 $PYC cad/scripts/fea/r1c/hub_r1c.py $NPZ $D/HUB_GROOVE_r1d.STL > $D/post_allc.txt 2>&1
 $PYC cad/scripts/fea/r1c/spot_report.py $NPZ $D/post.txt $HR $PT > $D/spot_report.txt 2>&1
 $PYC cad/scripts/fea/r1c/yaw_report.py $NPZ $D/post.txt > $D/region_report.txt 2>&1
-[ -f "$DISP" ] && [[ "$NPZ" == *STOP* ]] && $PYC cad/scripts/fea/r1c/fx_path.py $NPZ $DISP $D/post.txt > $D/fx_path.txt 2>&1
+[ -f "$DISP" ] && FX_HOLE_R=${FX_HOLE_R:-1.7} FX_PLATE_R=$HR $PYC cad/scripts/fea/r1c/fx_path.py $NPZ $DISP $D/post.txt > $D/fx_path.txt 2>&1      # every case (r1g6)
 for f in post_allc spot_report region_report fx_path; do [ -f $D/$f.txt ] && cp $D/$f.txt $RV/$F.$f.txt; done
 echo "POST_DONE $F"
