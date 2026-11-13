@@ -1,0 +1,35 @@
+03:29:49 SolidWorks pid 135388 free GB 16.1
+03:29:54 ok block bottom: 1.0000 (expected 1.0000)
+03:29:55 ok slot wall +X: 1.0000 (expected 1.0000)
+03:29:55 ok slot wall -X: 1.0000 (expected 1.0000)
+03:29:55 ok slot floor: 1.0000 (expected 1.0000)
+03:29:55 ok tongue +X face: 1.0000 (expected 1.0000)
+03:29:55 ok tongue -X face below the patch: 1.0000 (expected 1.0000)
+03:29:55 ok tongue bottom: 1.0000 (expected 1.0000)
+03:29:55 ok load patch: 1.0000 (expected 1.0000)
+03:29:55 ok load patch area: 200.0000 (expected 200.0000)
+03:29:55 ok patch z0: 30.0000 (expected 30.0000)
+03:29:55 ok pad outer faces: 2.0000 (expected 2.0000)
+03:29:55 B4_80N_c0p8: PREDICT nodes 60,000 to 200,000; tip displacement 0.5 to 0.6 mm at 80.0 N (0.44 rigid tilt + 0.08 bending); wall forces a little above 181 and 101 N; block peak on the slot-mouth edge X 4.1, Z 20
+03:29:55 B4_80N_c0p8: body "SolidBody 1(<b4_pad_a>-<B4_PAD_A>)" is Soft pad
+03:29:55 B4_80N_c0p8: body "SolidBody 2(<b4_pad_b>-<B4_PAD_B>)" is Soft pad
+03:29:55 B4_80N_c0p8: body "SolidBody 3(<b4_tongue>-<B4_TONGUE>)" is PETG printed
+03:29:55 B4_80N_c0p8: body "SolidBody 4(SLOT)" is PETG printed
+03:29:57 B4_80N_c0p8: mesh rc 0, 88263 nodes, 59618 elements, free 15.8 GB
+03:29:57 B4_80N_c0p8: solver macro: before  0  | set err  0   | after  7  | 
+03:31:22 B4_80N_c0p8: fixture nodes 639, box [-20.0, -12.0, 0.0] to [20.0, 12.0, 15.0]
+03:31:22 B4_80N_c0p8: load nodes 354, box [-4.0, -10.0, 30.0] to [-4.0, 10.0, 40.0]
+03:31:30 closing pid 135388 committed MB 1700
+Traceback (most recent call last):
+  File "J:\code\roark-wt\sw-eval-fable-b\tools\solidworks\playbook\eval\fable-b\b4_contact.py", line 193, in <module>
+    runs.append(run(j, tag, load, cs, el))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "J:\code\roark-wt\sw-eval-fable-b\tools\solidworks\playbook\eval\fable-b\b4_contact.py", line 118, in run
+    fp, ap = face_force(p, S, wp)
+             ^^^^^^^^^^^^^^^^^^^^
+  File "J:\code\roark-wt\sw-eval-fable-b\tools\solidworks\playbook\eval\fable-b\b4_contact.py", line 77, in face_force
+    area = 0.5 * np.abs(np.cross(a[:, 1] - a[:, 0], a[:, 2] - a[:, 0]))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\holly\AppData\Local\Programs\Python\Python312\Lib\site-packages\numpy\_core\numeric.py", line 1680, in cross
+    raise ValueError(
+ValueError: Both input arrays must be (arrays of) 3-dimensional vectors, but they are 2 and 2 dimensional instead.

@@ -1,0 +1,20 @@
+03:28:51 SolidWorks pid 133112 free GB 16.1
+03:28:56 ok B4_TONGUE volume change: 5104.0000 (expected 5104.0000)
+03:28:56 B4_TONGUE: added 5104.00 mm3
+03:28:58 ok B4_PAD_A volume change: 8.0000 (expected 8.0000)
+03:28:58 B4_PAD_A: added 8.00 mm3
+03:29:00 ok B4_PAD_B volume change: 8.0000 (expected 8.0000)
+03:29:00 B4_PAD_B: added 8.00 mm3
+03:29:01 ok TONGUE_SLOT volume change: 16000.0000 (expected 16000.0000)
+03:29:01 TONGUE_SLOT: added 16000.00 mm3
+03:29:02 ok SLOT volume change: 1968.0000 (expected 1968.0000)
+03:29:02 SLOT: cut 1968.00 mm3
+03:29:03 ok bodies: 4.0000 (expected 4.0000)
+03:29:03 ok body volume: 8.0000 (expected 8.0000)
+03:29:03 ok body volume: 8.0000 (expected 8.0000)
+03:29:03 ok body volume: 5104.0000 (expected 5104.0000)
+03:29:03 ok body volume: 14032.0000 (expected 14032.0000)
+03:29:04 ok LOAD_PATCH face to split: 1.0000 (expected 1.0000)
+03:29:04 ok bodies after the split: 4.0000 (expected 4.0000)
+B4 BUILD DONE 2b9bdc5f3e307ff89e0991d1c9e6cbd9dbf69c583ed002747552c95b12966f06
+03:29:04 closing pid 133112 committed MB 1920

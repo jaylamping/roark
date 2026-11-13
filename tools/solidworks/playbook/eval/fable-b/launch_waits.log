@@ -1,0 +1,6 @@
+launch 0 waited out a busy instance (PID 120068): 02:52:04
+launch failed 'PID 133492 never registered in the ROT' after ~4.5 min (another session was launching/solving): 03:01:54
+03:04:40-03:15 hidden dialog in own PID 99312 at load_simulation: 'Yes, continue to load SOLIDWORKS Simulation' / 'No, disable SOLIDWORKS Simulation.'; pressed Yes by hand at 03:14:20
+launch 1 waited out a busy instance: 03:52:46
+restart: launch for b4_r4.log attempt 1 waited out a busy instance: 04:11:50
+04:26:01 restart: own PID 128464, solver dialog 'Failure to achieve equilibrium during task Solving contact constraints ... results that have not converged will be saved' after 100 contact iterations on the reverse-load case; pressed OK by hand
