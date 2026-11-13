@@ -341,13 +341,21 @@ def hub_d2(d, gplane):
 
 def hub_d3(d):
     """REV D3 (see dims.HUB_D3): the lug extensions, one sketch on the plane Z = YZ extruded +-5 (the lugs' own thickness)."""
+    # the arm thread's limits (left-arm-organic 45b2e71 and its seam clash check, R1D_NOTES "Extended-lug torque path"), with
+    # a 45 deg chamfer on the top outer corner (no ledge over the groove mouth); the lugs' own Z faces are
+    # the planes Z 1.000 and 11.000 (centred on Z 6.00, not on the yaw axis at 5.99), so the extension uses exactly those
+    # and its faces merge with the lugs' into one flat shim face
     def prof(sg):
         X_ = lambda o: RX + sg * o
-        return [(X_(37.0), 293.0), (X_(29.3), 293.0), (X_(29.3), 296.3), (X_(35.0), 296.3), (X_(35.0), 297.8), (X_(37.0), 297.8)]
-    pl0 = plane(d, 'Z', YZ, 'P_Z_YZ')
+        # refined (coordinator 01:33Z, the arm's seam clash check): the lug grown outward over its full height (Y 288-294.5) to a
+        # straight outer face at X offset 34.4 (r 34.9 at Z +-5.5), stepping out to X 36.35 (r 36.8 at Z 5.5) for Y 294.5-297.6;
+        # above Y 296 only the strip outside the land band remains (the rest is inside the spigot), its top a 45 deg chamfer
+        return [(X_(29.3), 288.0), (X_(34.4), 288.0), (X_(34.4), 294.5), (X_(36.35), 294.5), (X_(36.35), 296.7), (X_(35.45), 297.6),
+                (X_(35.0), 297.6), (X_(35.0), 296.3), (X_(29.3), 296.3)]
+    pl0 = plane(d, 'Z', 6.0, 'P_Z_6')
     with Sk(d, pl0, 'D3_LUG_EXT') as s_:
         for sg in (-1, 1):
-            s_.poly([(x_, y_, YZ) for x_, y_ in prof(sg)])
+            s_.poly([(x_, y_, 6.0) for x_, y_ in prof(sg)])
     extrude(d, s_.feat, 'D3_LUG_EXT', 10.0, Z, mode=MID)
 
 
@@ -371,11 +379,11 @@ def hub_lug_roots():
         log('  LUG_ZROOTS (post) edges', len(zroots))
         fillet(d, zroots, [1.2], 'LUG_ZROOTS')
     if HUB_D3:
-        # the concave edge where each extension's underside (Y 293) meets the lug's flat outer face (29.5 off the axis): R1.0
-        ext = edges_where(d, lambda p: abs(p[1] - 293.0) < 0.05 and abs(abs(p[0] - RX) - 29.5) < 0.1 and abs(p[2] - YZ) < 5.05,
+        # the concave edge where each step's underside (Y 294.5) meets the lug's new outer face (X offset 34.4)
+        ext = edges_where(d, lambda p: abs(p[1] - 294.5) < 0.05 and abs(abs(p[0] - RX) - 34.4) < 0.1 and abs(p[2] - 6.0) < 5.05,
                           pair=lambda p0, p1: abs(p0[2] - p1[2]) > 5.0)
         log('  LUG_EXT_ROOT (post) edges', len(ext))
-        fillet(d, ext, [1.0], 'LUG_EXT_ROOT')
+        fillet(d, ext, [0.5], 'LUG_EXT_ROOT')
     return finish_part(d, 'hub')
 
 
@@ -1130,8 +1138,6 @@ def build_hub():
                                                                  for a0_, a1_ in wf['sectors']]), 'WALL_FILL', wf['y'][1] - wf['y'][0], Y, lo=-1.0)
     if HUB_D2:
         hub_d2(d, gplane)
-    if HUB_D3:
-        hub_d3(d)
     # REV C+: R0.3 in the concave corner between the spigot (r 35.8) and the disc face (Y 302.0); the arm breaks its bore-to-end-face
     # edge by 0.5 (20:33Z). A revolve boss of the fillet region, overlapping the solid by 0.05
     rc_ = hb['disc_corner_r']
@@ -1167,6 +1173,8 @@ def build_hub():
         revolve(d, s_.feat, 'SPIGOT_EDGE', cut=True)
     except SystemExit:
         log('  SPIGOT_EDGE revolve cut FAILED')
+    if HUB_D3:       # after the SPIGOT_EDGE revolve cut, which would otherwise notch the extensions
+        hub_d3(d)
     # REV C: root fillets where the seam lugs meet the spigot's underside
     # REV C+ (arm side): 1.0 only on the lugs' X-facing sides (the arcs at r 19 and r 30); nothing on the Z-facing sides,
     # where the arm's hub posts sit 0.1 under the spigot; no lug thickening

@@ -21,6 +21,24 @@
       "recorded": "2026-11-12T00:06:21Z"
     },
     {
+      "export": "exports/shoulder/shoulder_hub_left_revD3_candidate.STEP",
+      "source": "scripts/shoulder/build_parts.py",
+      "config": "",
+      "settings": "rev D3 candidate: rev D (full-ring groove and fill, 2 x \u00d83.8 locating holes, R1.2 Z lug roots) + lugs extended to X offset 34.4 (Y 288-294.5) and 36.35 (Y 294.5-297.6, 45 deg top): LOOK=hubD3 HUB_GROOVE_RING=1 HUB_D3=1 build_parts.py port_cap hub",
+      "sourceSha256": "10a076ee44c12ec01972e5d527094aefeddc9e8d7be571797189904614fe03cf",
+      "exportSha256": "f3cde3d9537451eac148e7f04a0d0d5cc5ec2537a5182b9f712d9ab97076b35d",
+      "recorded": "2026-11-13T03:09:41Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_hub_left_revD3_candidate.STL",
+      "source": "scripts/shoulder/build_parts.py",
+      "config": "",
+      "settings": "rev D3 candidate: rev D (full-ring groove and fill, 2 x \u00d83.8 locating holes, R1.2 Z lug roots) + lugs extended to X offset 34.4 (Y 288-294.5) and 36.35 (Y 294.5-297.6, 45 deg top): LOOK=hubD3 HUB_GROOVE_RING=1 HUB_D3=1 build_parts.py port_cap hub",
+      "sourceSha256": "10a076ee44c12ec01972e5d527094aefeddc9e8d7be571797189904614fe03cf",
+      "exportSha256": "e0eae4049416d30864452735c1c26379e816f9671c05088568a696dee943cb7d",
+      "recorded": "2026-11-13T03:09:41Z"
+    },
+    {
       "export": "exports/shoulder/shoulder_hub_left_revD_candidate.STEP",
       "source": "scripts/shoulder/build_parts.py",
       "config": "",

@@ -35,7 +35,7 @@ def post(tag):
     pos, s = z_['pos'], z_['s']
     vm, sy = s[:, 10], s[:, 2]
     syp = np.maximum(sy, 0.0)
-    tau = np.hypot(s[:, 3], s[:, 5])
+    tau = np.hypot(s[:, 4], s[:, 6])   # across the layers (normal Y): txy, tyz (columns: node, sx, sy, sz, txy, txz, tyz, p1, p2, p3, vm)
     out = {'nodes': int(len(pos))}
     for k, mk in regions(pos).items():
         if not mk.any():

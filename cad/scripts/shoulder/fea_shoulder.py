@@ -497,16 +497,23 @@ CASES['HUBL_YAW'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl_optional=1, regio
     remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (0.0, 0.0, YAW_F), (0.0, 0.0, 0.0), 1),
              (LUG_HOLES[1], (193.5, 292.0, YZ), (0.0, 0.0, -YAW_F), (0.0, 0.0, 0.0), 1)])
 
-# Rev D3: the yaw couple taken by the lug extensions pinched in the arm's collar. Load on each extension's outer end face
-# (X offset 37), along Z, about its centre (Y 295.4): F = 17 N.m / (2 x 33.9 mm) = 251 N (the shim contact's centroid,
-# r about 33.9); the root moment is then F x about 0.6 mm instead of F x 4 mm at the bolt. Same light mesh as HUBL_YAW,
-# boxes widened to the extensions
-YAW3_F = 17000.0 / (2 * 33.9)
-CASES['HUBL_YAW3'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl_optional=1, regions=dict(GREG_C, lug_A=[130, 286, -2, 158, 298, 14], lug_B=[183, 286, -2, 211, 298, 14]),
-    ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [132, 294.5, -1.5, 209, 296.2, 13.5]), 0.35), (cyl(1.0, [132, 292.0, -0.5, 209, 294.1, 12.5]), 0.35),
-          (('touch', [132.0, 292.5, -2.0, 154.0, 298.2, 14.0], 160.0), 0.4), (('touch', [187.0, 292.5, -2.0, 209.0, 298.2, 14.0], 160.0), 0.4)],
-    remotes=[(('plane', (RX - 37.0, 295.4, YZ), None), (RX - 37.0, 295.4, YZ), (0.0, 0.0, YAW3_F), (0.0, 0.0, 0.0), 1),
-             (('plane', (RX + 37.0, 295.4, YZ), None), (RX + 37.0, 295.4, YZ), (0.0, 0.0, -YAW3_F), (0.0, 0.0, 0.0), 1)])
+# Rev D3 (the arm thread's extended-lug torque path, 45b2e71): the lugs and their extensions bear on the arm through flat
+# printed shim plates on their Z faces (the planes Z 1.0 / 11.0, r 18.7-36.8 x Y 288-297.6 short of the fillets). The couple
+# goes in as a distributed load on the pushing Z face of each lug (-X lug: Z 1.0 face, pushed +Z; +X lug: Z 11.0 face, pushed
+# -Z; linear, so the other direction is -sigma).
+#   HUBL_YAW3   17 N.m on the arm's mating face (r 18.5-35.3 x Y 288-294.3, centroid about r 28): 304 N per lug, at r 28,
+#               Y 291.2. 370 N (the conservative bolt-lever figure) is the same result x 370/304 (linear, same distribution)
+#   HUBL_STOP4  the stop-case lug loads (-X: Fz 228, Fx 40, 56 N along -Y; +X: Fz -134) on the same faces, at r 28
+D3_FACE = lambda sg: ('plane', (RX + sg * 28.0, 290.0, 1.0 if sg < 0 else 11.0), None, 'on')   # a point on the flat face, 5.4 clear of the bolt hole (X offset 23, Y 292)
+D3_AT = lambda sg, r_: (RX + sg * r_, 291.2, 1.0 if sg < 0 else 11.0)
+D3_CTRL = [(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [132, 294.5, -1.5, 209, 297.8, 13.5]), 0.35), (cyl(0.5, [132, 293.5, 0.5, 209, 295.1, 11.5]), 0.35),
+           (('touch', [132.0, 292.5, -2.0, 154.0, 298.2, 14.0], 160.0), 0.4), (('touch', [187.0, 292.5, -2.0, 209.0, 298.2, 14.0], 160.0), 0.4)]
+D3_REG = dict(GREG_C, lug_A=[130, 286, -2, 158, 298, 14], lug_B=[183, 286, -2, 211, 298, 14])
+_d3 = lambda fa, fb, ra, rb: dict(part='hub', fix=HUB_FIX, el=1.5, ctrl_optional=1, ctrl=D3_CTRL, regions=D3_REG,
+                                  remotes=[(D3_FACE(-1), D3_AT(-1, ra), fa, (0.0, 0.0, 0.0), 1), (D3_FACE(1), D3_AT(1, rb), fb, (0.0, 0.0, 0.0), 1)])
+YAW3_F = 17000.0 / (2 * 28.0)
+CASES['HUBL_YAW3'] = _d3((0.0, 0.0, YAW3_F), (0.0, 0.0, -YAW3_F), 28.0, 28.0)
+CASES['HUBL_STOP4'] = _d3((40.0, -56.0, 228.0), (0.0, 0.0, -134.0), 28.0, 28.0)
 
 # REV D, the arm thread's stop case on the full-ring joint (its fine-mesh repeat, roark 3c7114b): the full-ring ridge and groove
 # are axisymmetric and frictionless, so they carry no torque about the hub axis; that part of the stop moment goes into the

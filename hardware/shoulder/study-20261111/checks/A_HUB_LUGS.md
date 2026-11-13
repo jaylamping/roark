@@ -600,11 +600,15 @@ variants sit behind the switch `dims.HUB_D2` (default off, needs `HUB_GROOVE_RIN
 Layer SF (σy, tensile part) as peak / 0.5 mm / 1 mm average at the -X lug's Z root (the tension side). The root's inner end
 is r 20-23, its outer end r 29.9:
 
-| | Mass | Inner end | Outer end | Governing | Across-layer shear, peak / 0.5 mm | Spigot core |
+| | Mass | Inner end | Outer end | Governing | Across-layer shear (τxy, τyz), peak / 0.5 mm | Spigot core |
 |---|---|---|---|---|---|---|
-| Rev D | 78.3 | 0.79 / 1.57 / 2.54 | 0.99 / 1.59 / 2.32 | **0.79 / 1.57 / 2.54** | 40 / 19 MPa | 0.98 / 2.68 / 3.70 |
-| D2 | +17.6 | 1.37 / 2.66 / 3.79 | 1.50 / 2.43 / 3.64 | **1.37 / 2.43 / 3.64** | 15 / 12 | 2.60 / 4.79 / 5.50 |
-| D2c | +0.7 | 1.23 / 2.62 / 3.96 | 1.11 / 1.77 / 2.61 | **1.11 / 1.77 / 2.61** | 25 / 19 | 1.74 / 5.06 / 6.33 |
+| Rev D | 78.3 | 0.79 / 1.57 / 2.54 | 0.99 / 1.59 / 2.32 | **0.79 / 1.57 / 2.54** | 21.7 / 10.6 MPa | 0.98 / 2.68 / 3.70 |
+| D2 | +17.6 | 1.37 / 2.66 / 3.79 | 1.50 / 2.43 / 3.64 | **1.37 / 2.43 / 3.64** | 9.9 / 7.2 | 2.60 / 4.79 / 5.50 |
+| D2c | +0.7 | 1.23 / 2.62 / 3.96 | 1.11 / 1.77 / 2.61 | **1.11 / 1.77 / 2.61** | 12.7 / 8.7 | 1.74 / 5.06 / 6.33 |
+| D2d | +2.0 | 1.43 / 3.35 / 4.39 | 1.36 / 2.15 / 3.31 | **1.36 / 2.15 / 3.31** | 10.6 / 5.8 | 2.16 / 4.74 / 5.79 |
+
+(Corrected 2026-11-13: the shear column first carried σz and τxz by a column slip; these are τxy and τyz. The layer SFs were
+right.)
 
 **Where the gain comes from:**
 - **The root's inner end** (rev D's peak, where the R1.2 runs out on the r 23 bore) is fixed by the local r 20 bore
@@ -742,3 +746,71 @@ outer face (29.5 off the axis):
 
 **Next:** HUBL_YAW3 on D3 (queued). If it confirms the paper numbers, D3 becomes the export candidate in place of D2d. Its
 local bore and backing then matter less, and whether to keep them is a mass question.
+
+### Rev D3 as built (2026-11-13, to the arm thread's limits, left-arm-organic 45b2e71 and its seam clash check)
+
+The paper sketch above (block Y 293-296.3 plus a column) is superseded by this.
+
+**Geometry** (`HUB_D3=1`, default off; built `_wip/look/hubD3` on rev D, and `hubD3d` on D2d for comparison):
+- **The lug Z faces are the planes Z 1.000 and 11.000.** The lug is centred on Z 6.00, not on the yaw axis at 5.99 (the
+  0.01 the arm thread measured). The extension uses exactly these planes, so each Z face stays one flat face.
+- **Lug grown outward over its full height,** Y 288-294.5, to a straight outer face at X offset 34.4 from the yaw axis
+  (r 34.9 measured at Z ±5.5).
+- **Step:** out to X 36.35 (r 36.8 at Z 5.5) over Y 294.5-297.6. Above Y 296 only the strip outside the land band
+  (r 35.8) is new.
+- **Top:** a 45° chamfer from X 36.35 at Y 296.7 to the land at Y 297.6. No ledge over the groove mouth (Y 298); the groove
+  section is untouched.
+- **Built after the spigot-edge R0.4 revolve cut,** so that cut does not notch it.
+- **Mass:** 79.4 g, against rev D's 78.3 g. Added about 430 mm³ per lug (plane-section difference against rev D):
+  - below Y 296: r 23.0-36.7, Y 288-296, Z - YZ ±5.9 (the lug plus the longer R1.2 fillets)
+  - above Y 296: the strip, r 35.6-36.7, Y 296-297.5. Up to Z - YZ ±6.9 only where the fillets blend into the
+    spigot-edge R0.4 round.
+
+**Fillets as built** (read from the STEP):
+
+| Fillet | X offset | Y | Z - YZ | r |
+|---|---|---|---|---|
+| R1.2 Z roots (4) | 22.15-34.85 | 294.80-296.00 | ±(4.99-6.21) | 23.0-35.4 |
+| R0.5 under each step (2) | 34.40-34.90 | 294.0-294.5 | -4.99..+5.01 (full width) | 34.8-35.3 |
+
+- **R1.2 Z roots:** they run out into the spigot-edge R0.4 round at r 35.4, inside the arm's relief (Y 294.3-296.4,
+  Z 5.5-6.8, r ≤ 36.3).
+- **No fillet up the strip's short vertical edges:** an R1.2 there would need a tangent outside the strip and would reach
+  r 37.0.
+- **The old R1.0 outward roots are gone,** with the old outer face.
+
+**Flat shim area per Z face** (STL, below Y 294.8, net of the Ø3.4 bolt hole): -X lug 95.0 / 107.6 mm², +X lug
+100.9 / 101.3 mm². The step and strip add 5-25 mm² above that. The faces are flat and parallel, exactly 10.000 apart.
+
+**Print** (spigot up): the lug underside (Y 288) and the step's underside (Y 294.5) are upward-facing top surfaces. The
+chamfer replaces the ledge. Nothing needs support.
+
+**FEA** (capped):
+- **Load:** the couple as a distributed load on each lug's pushing Z face (-X lug: the Z 1.0 face, pushed +Z; +X lug: the
+  Z 11.0 face, pushed -Z), located at r 28, Y 291.2 (the arm's mating-face centroid).
+- **Mesh:** 0.35 mm on the R1.2 roots and the R0.5, 0.4 mm on the small faces round both lugs; 770k nodes. FFEPlus.
+- **HUBL_YAW3:** 17 N.m / (2 × 28 mm) = 304 N per lug. The conservative 370 N is the same result × 304/370.
+- **HUBL_STOP4:** the stop-case loads (-X Fz 228, Fx 40, 56 N along -Y; +X Fz -134) on the same faces.
+
+Layer SF (σy), worst over both lugs and both directions, as peak / 0.5 mm / 1 mm average:
+
+| Spot | HUBL_YAW3 (304 N) | Same at 370 N | HUBL_STOP4 | Rev D, bolt-loaded yaw (370 N), for reference |
+|---|---|---|---|---|
+| Lug Z root, inner end (r 23) | 1.21 / 2.31 / 3.64 | 0.99 / 1.90 / 2.99 | 1.17 / 2.30 / 3.69 | 0.59 / 1.08 / 1.73 |
+| Lug Z root, outer end (r 27-30) | 1.26 / **1.78** / **2.40** | 1.04 / 1.46 / 1.97 | 1.29 / **1.77** / **2.33** | 0.77 / 1.21 / 1.80 |
+| R0.5 step corner | 1.98 / 3.06 / 4.42 | 1.63 / 2.52 / 3.63 | 1.75 / 2.56 / 3.59 | - |
+| Lug section at the bolt hole | 3.35 / 3.25 / 3.24 | 2.75 / 2.67 / 2.66 | 2.86 / 2.89 / 3.00 | 1.95 / 1.97 / 2.02 |
+| Strip | 6.3 or more | | | - |
+| Spigot core | 1.71 / 3.87 / 4.86 | 1.41 / 3.18 / 4.0 | 1.59 / 3.82 / 4.89 | 0.74 / 1.85 / 2.41 |
+
+- **Margins:**
+  - At 304 N: +48% at 0.5 mm (1.78 against 1.2) and +60% at 1 mm (2.40 against 1.5).
+  - Stop loads: +48% / +55%.
+  - At the conservative 370 N: +22% / +31%.
+  - Rated 6 N.m: 5.0 or more everywhere.
+- **Across-layer shear:** 13.8 MPa peak / 6.8 over 0.5 mm at the inner root (304 N).
+- **Shim-face bearing:** 5.0 MPa peak (bulk SF 9) at 304 N; 4.5 MPa in the stop case.
+- **D2d is dropped:** D3 alone meets the target with at least 30% margin in both cases at the arm's figure, so the 2 g of
+  D2d's local bore and backing are not carried. The D3 + D2d run (`hubD3d`) is recorded below when it lands.
+- **Export:** `cad/exports/shoulder/shoulder_hub_left_revD3_candidate.STEP/.STL`, recorded. The rev D candidate files are
+  unchanged. `adopt_hub_revD.sh` now adopts rev D3, still not run.
