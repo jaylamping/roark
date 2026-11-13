@@ -469,6 +469,13 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 if pm > 0:      # 2026-11-12: the hub lugs and roots, the arm posts they bear on and the fins where they meet the posts (Y 268-297.5, |Z - CZ| < 12), both sides
                     for x0, x1 in ((128.0, 153.5), (187.5, 213.0)):
                         c['ctrl'] = list(c.get('ctrl', [])) + [(('touch', [x0, 268.0, CZ - 12.0, x1, 297.5, CZ + 12.0], float(os.environ.get('HS_POST_MESH_AMAX', '150'))), pm)]
+                lfm = float(os.environ.get('HS_LUGFACE_MESH', '0') or 0)
+                if lfm > 0:      # 2026-11-12 (D3): the lug bearing faces themselves, both bodies, whatever their area: flat faces in the planes
+                    # Z = CZ +- 5.0 (lug faces; ours line-to-line with the plates lumped) over the lug zones. The merged post / web faces are
+                    # too big for the post control's area limit, and letting big faces into that control blew the mesh up (640-720 k nodes)
+                    for zf in (CZ + 5.0, CZ - 5.0):
+                        for x0, x1 in ((HX - 37.0, HX - 17.0), (HX + 17.0, HX + 37.0)):
+                            c['ctrl'] = list(c.get('ctrl', [])) + [(('zflat', zf, 0.15, [x0, 286.0, x1, 298.0]), lfm)]
                 # 2026-11-12: lug-root refinement (coordinator: the settled repeat case). HS_ROOT_MESH, or a flag file
                 # cad/_wip/hs_root_mesh/<run folder>.txt holding the size, puts that size on every face meeting each lug-root box:
                 # the R1.2 Z-root fillets, the lug faces next to them, and any small adjoining face (under HS_ROOT_MESH_AMAX mm2;

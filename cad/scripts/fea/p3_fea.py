@@ -175,6 +175,10 @@ def pick(d, sel):
             q = sel[3]
             if all(lo[i] >= q[i] - .01 and hi[i] <= q[i + 3] + .01 for i in range(3)):
                 out.append(f)
+        if sel[0] == 'zflat' and t == 'plane':      # 2026-11-12: flat faces lying in a Z plane (|z - sel[1]| < sel[2]) inside an X-Y box, any area
+            q = sel[3]
+            if hi[2] - lo[2] < 0.02 and abs((lo[2] + hi[2]) / 2 - sel[1]) < sel[2] and lo[0] >= q[0] - .01 and hi[0] <= q[2] + .01 and lo[1] >= q[1] - .01 and hi[1] <= q[3] + .01:
+                out.append(f)
         if sel[0] == 'touch':      # any face whose box meets the given box and whose area is under the limit (local mesh control)
             q, amax = sel[1], sel[2]
             if all(lo[i] <= q[i + 3] and hi[i] >= q[i] for i in range(3)) and a <= amax:
