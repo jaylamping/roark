@@ -1008,3 +1008,74 @@ within 0.05.
 **Export:** `cad/exports/shoulder/shoulder_hub_left_revD3c4_candidate.STEP/.STL`, recorded.
 - `adopt_hub_revD.sh` now adopts D3c4. It is not run.
 - The released hub and the earlier candidates are unchanged.
+
+### D3c5 to D3c7: window at 68°, tubes kept whole, Ø3.8 lug holes (2026-11-13)
+
+**Why D3c4 was withdrawn:** with the cable window at 248° the fork's exit (261.7°) is almost over it, so the bundle has
+no length in the dish to give or take as the yaw turns (CABLE_TRAVEL.md). At 68° the bundle runs half way round the
+dish, on the +X side, and can lie as a spiral or an arc.
+
+| Rev | Change against the one before | Mass | STL SHA-256 |
+|---|---|---|---|
+| D3c5 | Cable window moved 248° → 68° (`HUB_WIN_A=68`). Lugs, roots and fills as D3c4 | 80.2 g | not exported |
+| D3c6 | The window's slot clipped at 15.7 mm along its own line (`HUB_WIN_CLIP=15.7`), because the slot cut into the two boss tubes beside it (38° and 98°): CAD_NOTES.md, "Hub cable window against the boss tubes" | 80.3 g | 4a3e4fa7…6b24cbe3 (look build) |
+| **D3c7** | **Lug bolt holes opened from Ø3.4 to Ø3.8** (`HUB_LUG_D=3.8`), asked by the arm's reviewer so the bolt is free in the hub and the plates carry the load. Nothing else: the surface differs from D3c6 only at the two holes | **80.3 g** (63,202 mm³) | a73103ad…0c10259b (look build) |
+
+- **Boss tubes, D3c6 and D3c7** (`hub_tube_check.py`): all six whole. Walls 2.19-2.47 mm; head seats 100%.
+- **Build:** `LOOK=hubD3c7 HUB_GROOVE_RING=1 HUB_D3=1 HUB_D2=f HUB_WIN_A=68 HUB_WIN_CLIP=15.7 HUB_LUG_D=3.8`. Integrity PASS.
+
+**The lug case of record from here on** (agreed 2026-11-13):
+
+| | Load | Target |
+|---|---|---|
+| **Design** | The arm's own contact solution at the RS02's 17 N·m peak: about 245 N on each lug's Z face, at its centre of pressure (X offset 31.2-31.5, Y 292.4). Alone and together with the arm-horizontal case (G90), both yaw signs. Loads from the arm thread's `r1g4_lug_loads.txt` (roark 924c423) | 1.5 |
+| **Bound** | All 17 N·m through the two lugs with no help from the ring: 272 N at the same centres of pressure. Alone and with G90 | 1.2 |
+
+- **Why 272 N, and not 304 or 370:** the lever is the distance between the two centres of pressure, 62.6 mm
+  (17 N·m / 0.0626 m = 272 N). 304 N put the same torque on the plate's centroid (lever 56 mm) and 370 N on the bolt
+  axes (46 mm); the arm's contact run shows the plates bear further out than either. In that run the lugs carry 88-89%
+  of the torque and the ring the rest, which is the 245 N.
+- **The uniform 304 N and 370 N cases stay below as history,** and as the like-for-like figure across hub revisions.
+- **The 13 MPa allowable for shear across the layers is still an assumption.** It waits for the coupon test.
+
+**Results** (worst 0.5 mm ball over the whole lug; -X lug / +X lug; FFEPlus):
+
+| Case | Hub | Nodes | Shear across layers | Layer (tension) |
+|---|---|---|---|---|
+| Uniform plate load, 304 N (370 N) | D3c5 | 921 k | 1.62 / 1.60 (1.33 / 1.32) | |
+| Uniform plate load, 304 N (370 N) | D3c6 | 741 k | 1.65 / 1.63 (1.36 / 1.34) | 2.02 / 2.04 (1.66 / 1.67) |
+| The same, finer mesh | D3c6 | 1,009 k | 1.59 / 1.58 (1.31 / 1.30) | 2.04 / 2.04 (1.67 / 1.67) |
+| Stop case (HUBL_STOP4) | D3c6 | 745 k | 1.81 (-X, outer R1.2 root) | 1.77 |
+| Uniform plate load, 304 N (370 N) | **D3c7** | 746 k | 1.62 / 1.58 (1.33 / 1.30) | 2.01 / 1.95 (1.65 / 1.60) |
+| **Design: yaw alone, 245 N at the centres of pressure, either sign** | **D3c7** | 1,002 k | **1.93 / 1.92** | 2.22 / 2.18 |
+| **Bound: yaw alone, 272 N** | **D3c7** | (scaled) | **1.74 / 1.73** | 2.00 / 1.97 |
+| G90 alone | D3c7 | 1,002 k | 7.20 / 6.68 | 7.68 / 7.13 |
+| **Design: G90 + yaw -17,** solved from the arm's combined loads | **D3c7** | 1,002 k | **2.03 / 1.61** | 2.43 / 1.78 |
+| The same by superposition (G90 + yaw case) | D3c7 | | 2.13 / 1.62 | 2.56 / 1.77 |
+| **Design: G90 + yaw +17,** solved from the arm's combined loads | **D3c7** | 1,002 k | **1.63 / 2.07** | 1.78 / 2.44 |
+| **Bound: G90 + yaw at 272 N, sign -17** (the solved -17 cases, scaled in their own sign) | **D3c7** | | 1.90 / **1.49** | 2.27 / 1.63 |
+| Yaw alone in the +17 sign, 245 N (the other Z face of each lug), solved | D3c7 | 1,002 k | 1.93 / 1.91 | 2.20 / 2.18 |
+| **Bound: G90 + yaw at 272 N, sign +17** (the solved +17 cases, scaled in their own sign) | **D3c7** | | **1.49** / 1.85 | 1.64 / 2.18 |
+
+- **D3c7 passes:** 1.61 (yaw -17, +X lug) and 1.63 (yaw +17, -X lug) at the design load; 1.49 at the bound in either sign (1.73 for yaw alone).
+- **Where:** the outer R1.2 root, hub X offset 32.6, Y 295.65, at the lug's Z face. The same place on either lug in every
+  yaw case.
+- **The Ø3.8 holes cost 2-3%** in shear and up to 4% in layer against D3c6 (uniform case, same mesh).
+- **Mesh:** one refinement step (741 k → 1,009 k nodes) lowered the shear figure by 3.6% on D3c6 and left the layer
+  figure unchanged.
+- **Superposition holds only within one yaw sign.** Scaling a case in its own sign matches the solved case within 1% on
+  the governing lug. Making the +17 case as "G90 minus the -17 yaw case" does not: with +17 the arm presses the other Z
+  face of each lug, and the subtraction pulls on the faces the -17 case pushed on. It read 1.74 in shear where the solve
+  gives 1.63, so each sign has its own solved yaw case (`HUBL_YAW_COP`, `HUBL_YAW_COPP`).
+- **The hole rim is not the weak place.** On the lug's Z faces from the hole edge to 0.7 mm out (r 1.9-2.6), worst
+  0.5 mm ball: 304 N uniform, layer 4.69 and shear 5.51; yaw at the centres of pressure scaled to 304 N, 5.80 and 4.07;
+  G90 + yaw -17, 6.27 and 4.00. The load is on the whole plate outline, nothing left out: the arm's plate hole is Ø3.4,
+  so the plate bears flat across the rim of the hub's Ø3.8 hole.
+- **Stop case:** with the Ø3.8 holes the arm finds no contact between the lug's outer face and its pocket wall, so no
+  extra stop case is asked for. To be looked at again if the arm's next load file says otherwise.
+
+**The hub top is not judged by these cases.** They hold the six screw holes and the top face rigidly, and the combined
+cases carry the 23 N·m bending into that fixed edge: read over the whole hub, G90 + yaw -17 shows 0.57 in layer stress at
+Y 318.4-319.5, about 24 mm from the axis. A rigid edge over-reads. The hub top's check is the bolted-contact case
+("Hub-top bolted contact" above), which was last run before the window moved; **it is being re-run on D3c7 and is part
+of the release gate.**

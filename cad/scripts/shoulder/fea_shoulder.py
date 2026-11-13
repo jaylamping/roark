@@ -117,6 +117,63 @@ def layer(nodes, S, near, n, exclude):
     return s
 
 
+def read_test(d, res, s, name):
+    """READ_TEST=1: time other ways of reading the stresses of a solved study and compare each with the all-node GetStress
+    read `s` (node id, sx sy sz txy txz tyz, p1 p2 p3, von Mises, intensity). Prints only; changes nothing of record."""
+    ref = {int(r[0]): r for r in s}
+    COMP = ((0, 1, 'sx'), (1, 2, 'sy'), (2, 3, 'sz'), (3, 4, 'txy'), (4, 5, 'txz'), (5, 6, 'tyz'), (9, 10, 'vm'))
+
+    def arr(q, w):
+        return np.array(q[0] if isinstance(q, tuple) and len(q) == 2 else q, float).reshape(-1, w)
+
+    def cmp(tag, q, col):
+        ids = q[:, 0].astype(int)
+        hit = np.array([i in ref for i in ids])
+        dv = np.abs(q[hit, 1] - np.array([ref[i][col] for i in ids[hit]])) if hit.any() else np.zeros(1)
+        print(f' READ_TEST {tag}: {len(ids)} rows, {len(set(ids))} nodes of {len(ref)}, {int(hit.sum())} known; largest difference {dv.max():.5f} MPa', flush=True)
+
+    for tag, fn in (('min/max von Mises', lambda: res.GetMinMaxStress(9, 0, 1, NUL, 3, I())),
+                    ('average at mid-nodes flag', lambda: res.GetAverageStressesAtMidnodes())):
+        t = time.time()
+        try:
+            v = fn()
+            print(f' READ_TEST {tag}: {time.time() - t:.1f} s -> {str(v)[:160]}', flush=True)
+        except Exception as ex:
+            print(f' READ_TEST {tag} failed: {str(ex)[:120]}', flush=True)
+    bodies = list(d.GetBodies2(0, True))
+    faces = [f for b_ in bodies for f in b_.GetFaces()]
+    for tag, ents in (('bodies', bodies), ('all faces', faces)):
+        for ci, col, cn in COMP:
+            t = time.time()
+            try:
+                q = arr(res.GetStressForEntities3(True, ci, 1, NUL, ents, 3, 0, 0, False, I()), 2)
+                print(f' READ_TEST ForEntities3 {tag} {cn}: {time.time() - t:.1f} s', flush=True)
+                cmp(f'ForEntities3 {tag} {cn}', q, col)
+            except Exception as ex:
+                print(f' READ_TEST ForEntities3 {tag} {cn} failed after {time.time() - t:.1f} s: {str(ex)[:120]}', flush=True)
+                break
+    t = time.time()
+    try:
+        q = res.GetStressTensorValuesForAllNodesOfElement(list(range(1, 2001)), 3, 1, I())
+        q = np.array(q[0] if isinstance(q, tuple) and len(q) == 2 else q, float)
+        print(f' READ_TEST tensor at the nodes of 2000 elements: {time.time() - t:.1f} s, {q.size} values, first {q[:14].round(3).tolist()}', flush=True)
+    except Exception as ex:
+        print(f' READ_TEST tensor per element failed after {time.time() - t:.1f} s: {str(ex)[:120]}', flush=True)
+    if os.environ.get('READ_TEST') == '2':          # the all-node read again with the mid-node averaging switched the other way
+        try:
+            cur = bool(res.GetAverageStressesAtMidnodes())
+            res.SetAverageStressesAtMidnodes(not cur)
+            t = time.time()
+            s2 = arr(res.GetStress(0, 1, NUL, 3, I()), 12)
+            dt = time.time() - t
+            res.SetAverageStressesAtMidnodes(cur)
+            dv = np.abs(s2[:, 1:7] - s[:, 1:7]).max(axis=1)
+            print(f' READ_TEST GetStress with mid-node averaging {not cur} (was {cur}): {dt:.0f} s; rows {len(s2)}; nodes whose tensor differs by over 0.001 MPa: {int((dv > 1e-3).sum())}, largest {dv.max():.3f}', flush=True)
+            np.savez(str(F / (name + '_midnode_alt.npz')), s=s2)
+        except Exception as ex:
+            print(f' READ_TEST mid-node switch failed: {str(ex)[:160]}', flush=True)
+
+
 def run(name, c):
     sw = app()
     t0 = time.time()
@@ -324,15 +381,22 @@ def run(name, c):
     res = st.Results
     if rc or res is None:
         raise SystemExit('solve failed')
+    tr = time.time()
     raw = call(mesh, 'GetNodes')
+    t1 = time.time()
     raw = np.array(raw[0] if isinstance(raw, tuple) and len(raw) == 2 else raw, float).reshape(-1, 4)
     ids = raw[:, 0].astype(int)
     xyz = dict(zip(ids, raw[:, 1:] * 1000))
+    t2 = time.time()
     err = I()
     s = res.GetStress(0, 1, NUL, 3, err)
+    t3 = time.time()
     s = np.array(s[0] if isinstance(s, tuple) and len(s) == 2 else s, float).reshape(-1, 12)
     pos = np.array([xyz[int(i)] for i in s[:, 0]])
+    print(' read-back s: GetNodes call %.0f, to arrays %.0f, GetStress call %.0f, to arrays %.0f' % (t1 - tr, t2 - t1, t3 - t2, time.time() - t3), flush=True)
     np.savez(str(F / (name + '.npz')), pos=pos, s=s)      # saved first: the fixture readback below has failed on contact models
+    if os.environ.get('READ_TEST'):
+        read_test(d, res, s, name)
     extra = {}
     if c.get('react') or c.get('disp'):
         try:
@@ -359,7 +423,9 @@ def run(name, c):
         print(' extra', extra, flush=True)
     try:
         err = I()
+        tf = time.time()
         q = res.GetStressForEntities2(True, 9, 1, NUL, fixed, 3, err)
+        print(' read-back s: fixture faces %.0f' % (time.time() - tf), flush=True)
         q = q[0] if isinstance(q, tuple) and len(q) == 2 else q
         fid = np.array(q, float).reshape(-1, 2)[:, 0].astype(int)
         anchors = np.array([xyz[int(i)] for i in fid if int(i) in xyz])
@@ -601,6 +667,12 @@ _G90YAW_LUGS = [(_PFACE(-1, 11.0), _COP(-1, 11.0, 31.72, 291.88), (0.0, 0.0, -22
                 (_PFACE(-1, 1.0), _COP(-1, 1.0, 19.41, 291.67), (0.0, 0.0, 9.4), (0.0, 0.0, 0.0), 1),
                 (_PFACE(1, 1.0), _COP(1, 1.0, 31.47, 292.57), (0.0, 0.0, 285.1), (0.0, 0.0, 0.0), 1),
                 (_PFACE(1, 11.0), _COP(1, 11.0, 20.12, 289.26), (0.0, 0.0, -18.5), (0.0, 0.0, 0.0), 1)]
+#   HUBL_YAW_COPP  yaw alone in the +17 sign: the other Z face of each lug (the -X lug's back face, the +X lug's front face). The
+#                  mirror of HUBL_YAW_COP in the lug's mid-plane; solved, not assumed, because reversing the sign of a contact
+#                  case does not give the other sign's contact. For the 272 N bound with G90 in sign +17.
+CASES['HUBL_YAW_COPP'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=[(_PFACE(-1, 1.0), _COP(-1, 1.0, 31.17, 292.44), (0.0, 0.0, 244.7), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _COP(1, 11.0, 31.48, 292.37), (0.0, 0.0, -240.6), (0.0, 0.0, 0.0), 1)])
 CASES['HUBL_G90YAW_L'] = dict(CASES['HUBL_YAW3P38F'], remotes=_G90YAW_LUGS)
 #   HUBL_G90       G90 alone, for superposing with HUBL_YAW_COP at another yaw load: -X lug 30.8 N net (back +36.9, front -6.1),
 #                  +X lug 25.9 N net (back +38.5, front -12.6), and the spigot share (F -0.3, -0.9, -118.7 N; M 23.44, -0.17, -0.01)
@@ -723,6 +795,11 @@ for k_ in ('A', 'B'):
 for k_, pre_ in (('A', 690.0), ('B', 690.0), ('Ah', 345.0)):
     base_ = CASES['HUBD_' + k_[0]]
     CASES['HUBB_' + k_] = dict(base_, dummy=dict(base_['dummy'], bolts=True), pre_mesh=bolt_setup(pre_), stabilise=True)
+# the same with the yaw moment reversed (-17 N.m): the window moved to 68 deg, and which yaw sign is worse at its slot is
+# not known beforehand
+for k_ in ('A', 'Ah'):
+    r_ = CASES['HUBB_' + k_]['remote']
+    CASES['HUBB_' + k_ + 'n'] = dict(CASES['HUBB_' + k_], remote=(r_[0], r_[1], r_[2], (r_[3][0], -r_[3][1], r_[3][2])))
 
 # (c) roll joint load share and deflection. The fork front and fork rear as two bonded bodies (fork_fea_part.py). The
 # arm load of check (a) (310 N down, 23 N.m bending, 17 N.m yaw torque at the hub point) goes in through the RS02 seat
