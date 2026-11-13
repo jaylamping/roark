@@ -135,13 +135,25 @@ What went wrong on holly-pc on 2026-11-11, and what the module now does about ea
 - Committed memory grows with use: one instance reached 26 GB over about 30 rebuilds, with a working set of only 1.7 GB. Check `inst.private_mb()`, not `rss_mb()`, and start a fresh instance for each job or when it passes a few GB.
 - A hidden modal dialog holds the client, not other sessions: the instance still answers, so `--status` shows it idle while its script hangs. On 2026-11-13 `load_simulation()` sat for 35 minutes behind a hidden "Yes, continue to load SOLIDWORKS Simulation / No, disable SOLIDWORKS Simulation" prompt, which came up after test instances had been stopped during startup. `sw_hidden_<pid>.log` showed it.
 
-Threads still cannot stop another session's process. For a half-closed instance whose owner is gone, give Joey the line `--status` points at: `taskkill /PID <pid> /T /F`. `/T` matters, it takes the solver too.
+### Ending instances
+
+`python tools/solidworks/sw_kill.py` ends SolidWorks processes with the checks a bare `taskkill` lacks, and logs each one
+to `kills.log` in the claims folder (time, state, who launched it, the command that ended it).
+
+- `--list` shows every instance and what would be ended.
+- `--dead` ends only what can never finish: a half-closed instance, an instance that has not answered for 300 s with no
+  solver and no live client, and solver or helper processes whose SolidWorks has gone. Any session may run it, before a
+  launch that would otherwise refuse.
+- `<pid>` ends one instance and everything it started. Without `--force` it refuses an instance that is idle, solving or
+  busy, and the keeper.
+- `--force`, with a PID or with `--all`, ends a live session's instance. That is for the session that owns it, or on
+  Joey's say-so in the thread.
 
 ## Rules
 
 1. Each session starts its own instance with `launch()` and uses that handle. Keep it hidden.
 2. Never use `GetActiveObject`, `Dispatch("SldWorks.Application")` or anything else that reaches "the running SolidWorks". It can land in another session's instance.
-3. Never call `ExitApp`, close documents in, or kill a PID the session did not start.
+3. Never call `ExitApp`, close documents in, or kill a PID the session did not start. The one exception is `sw_kill.py --dead`, which ends only instances that can never finish ([Ending instances](#ending-instances)).
 4. One file belongs to one session. Other sessions open a copy, read-only. Agree ownership before writing.
 5. Save after each step. A third instance has no Auto Recover, and an instance can crash.
 6. Concurrent Simulation solves are allowed, up to the two tested so far, and the limit is per machine (What was tested, below). Joey-PC ran a pair of 476k nodes each. On holly-pc a pair of about 390k nodes each crashed, so there solves that size run one at a time; smaller pairs ran together. Keep large solves to one at a time on any machine until a pair that size is tested there. A solve expected to need more than about 6 GB takes the workstation's large-solve lock first: `with big_solve("thread name"): study.RunAnalysis`. The lock is the file `C:\joe\.fea_solve.lock` (owner, PID, process start time, time taken), created exclusively and removed afterwards. `big_solve` waits while another session holds it and takes over a lock only when its process has gone. A lock written by hand in another layout is respected as long as any number in it is a running PID. Smaller solves do not take it. `swfea.static()` takes the same lock by itself for a solve over 200,000 nodes (`heavy_solve_lock`).
