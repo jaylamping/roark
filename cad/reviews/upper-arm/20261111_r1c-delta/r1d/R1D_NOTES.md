@@ -737,3 +737,29 @@ Remedies, cheapest first (gains are first estimates, to be scaled from the YAW_1
 
 Suggested order, if YAW_17 fails: (1) as the stated duty in the meantime; (2) plus (3) on our side, since neither touches the hub;
 (5) or (6) only if the hub lug roots fail on their own.
+
+### YAW_17 results and what the remedies need (2026-11-12, 19:20)
+
+Both signs ran on the clean 4.0 mesh. They mirror each other:
+- **Loaded post**, at the top edge where the lug presses (Y 294.5): vm 0.95-0.99 at 0.5 mm, about 1.45 at 1 mm, about 2.0 at 2 mm.
+- **Hub lug roots** (at 0.8 mesh): layer and shear 0.92-0.99.
+- **Insert:** 1.27. **Lug bolt-hole bearing:** 1.19-1.26.
+
+To reach 1.5:
+- posts about 1.6×;
+- hub lug roots at least 1.6× (more once refined);
+- inserts about 1.2×;
+- lug bolt-hole bearing about 1.3×.
+
+Against the remedies:
+1. **Yaw torque cap.** 10 N·m gives 1.7× on everything, the hub included: it clears all of the above. 6 N·m (rated) gives 2.8×.
+   It is the only option that clears the hub lug roots without a hub change.
+2. **Line-to-line slot plus preload.** About 1.6-2× on the posts if both posts of a pair share. It does nothing for the hub roots or
+   the lug bolt-hole bearing. It needs the insert pull-out checked.
+3. **Thicker posts.** 1.6× on bending needs about +26 % thickness. Nothing for the hub.
+4. **Close-fit bolt.** No help: the bolt is along the load.
+5. **Third and fourth lugs, or 6. a torque key.** Both are hub changes, and the only hardware routes that clear the hub lug roots:
+   lugs about 2×, a key 3× or more.
+
+So at 17 N·m the limit is the hub as well as our posts. Unless the shoulder thread revises the hub, a yaw torque cap of about
+10 N·m is needed whatever we do on our side.
