@@ -151,11 +151,13 @@ def pitch_tray():
     t = ring(RI - 2.0, RO + 1.0, -0.8, 0)
     t = t.union(ring(RI - 0.9, RI, 0, AX))
     t = t.union(ring(RO, RO + 0.9, 0, AX))
-    t = t.cut(sector(RI + 0.5, RO + 3.0, 270 - 9, 270 + 9, -2, AX + 1))            # bottom slot, about 20 mm wide
-    # guide finger: a quarter-round on the inner wall's side of the slot, R 12, full height
-    cx, cy = pt(RI + 12.0, 270 + 9 + 0.0)
-    fing = cq.Workplane('XY').center(cx, cy).circle(12.0).extrude(AX).intersect(sector(RI - 0.5, RI + 13.0, 270 + 9, 270 + 30, 0, AX))
-    t = t.union(fing)
+    t = t.cut(sector(RO - 0.5, RO + 3.0, 270 - 12, 270 + 12, 0, AX + 1))           # bottom slot in the outer wall, about 30 mm wide
+    # tongue below the slot: the floor runs on 32 mm, with the guide finger and the fixed clamp's tie holes
+    t = t.union(box(-36.0, 36.0, RO - 2.0, RO + 32.0, -0.8, 0))
+    # guide finger: a round post R 10 the cable turns over as it leaves the inner wall and drops through the slot
+    t = t.union(cq.Workplane('XY').center(12.0, RI + 13.4).circle(10.0).circle(8.8).extrude(AX))
+    for x_ in (-31.0, -25.0):                                                       # fixed clamp: two tie holes
+        t = t.cut(cq.Workplane('XY').workplane(offset=-2).center(x_, RO + 26.0).circle(1.3).extrude(4))
     for a in (30, 150, 270):
         t = t.union(box(4.0, RI - 1.0, -3.0, 3.0, -0.8, 0.8).rotate((0, 0, 0), (0, 0, 1), -a))
     t = t.union(ring(0, 7.0, -0.8, 3.0)).cut(ring(0, 2.15, -3, 30))
