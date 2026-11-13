@@ -1,0 +1,3 @@
+{
+ "description": "Reviewed mesh-check exceptions per printed part, in the export's coordinates. Every entry has a reason and was looked at in a render and in the CAD. Read by tools/cad/gate.py; see conventions/part-lifecycle.md section 3."
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One CAD writer at a time in the shared checkout (the CAD workstation, J:\\code\\roark on Joey-PC).
+"""One CAD writer at a time in the shared checkout (the CAD workstation, J:\\code\\roark on holly-pc).
 
 Many sessions share one working tree. Before a session opens SolidWorks to change files in
 cad/, or stages cad/ files, it takes the writer lock; it releases it after its commit.

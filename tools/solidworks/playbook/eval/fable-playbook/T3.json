@@ -1,0 +1,97 @@
+{
+  "hand_root_stress_mpa": 11.0,
+  "el_mm": 3.0,
+  "nodes": 143635,
+  "peak_vm_mpa": 15.78,
+  "peak_at_mm": [
+    9.32,
+    32.94,
+    6.06
+  ],
+  "layer_stress_mpa": 10.2,
+  "sf_yield": 2.85,
+  "sf_layer": 2.21,
+  "max_disp_mm": 2.3613,
+  "reaction_n": [
+    -150.0,
+    0.0,
+    0.0,
+    150.0
+  ],
+  "converged": true,
+  "convergence_rows": [
+    {
+      "el_mm": 4.0,
+      "nodes": 57278,
+      "peak_vm_mpa": 15.65,
+      "peak_at_mm": [
+        8.98,
+        26.79,
+        6.13
+      ],
+      "layer_stress_mpa": 10.21,
+      "layer_at_mm": [
+        0.0,
+        25.5,
+        9.69
+      ],
+      "peak_vm_playbook_mask": 15.65,
+      "layer_playbook_mask": 10.04,
+      "vm_max_unmasked": 28.65,
+      "vm_max_unmasked_at": [
+        22.25,
+        10.09,
+        6.0
+      ],
+      "max_disp_mm": 2.3569,
+      "local_mm": 1.2
+    },
+    {
+      "el_mm": 3.0,
+      "nodes": 143635,
+      "peak_vm_mpa": 15.78,
+      "peak_at_mm": [
+        9.32,
+        32.94,
+        6.06
+      ],
+      "layer_stress_mpa": 10.2,
+      "layer_at_mm": [
+        0.0,
+        24.8,
+        10.01
+      ],
+      "peak_vm_playbook_mask": 15.78,
+      "layer_playbook_mask": 10.2,
+      "vm_max_unmasked": 33.18,
+      "vm_max_unmasked_at": [
+        22.26,
+        39.73,
+        6.0
+      ],
+      "max_disp_mm": 2.3613,
+      "local_mm": 0.8
+    }
+  ],
+  "verdict": "pass",
+  "status": "done",
+  "hand_disp_mm": 1.98,
+  "layer_at_mm": [
+    0.0,
+    24.8,
+    10.01
+  ],
+  "plain_section": {
+    "reaction_n": [
+      -150.0,
+      0.0,
+      0.0,
+      150.0
+    ],
+    "section_back_sz": 8.07,
+    "section_front_sz": -7.89,
+    "section_hand": 8.0
+  },
+  "notes": "",
+  "seconds": 96
+}

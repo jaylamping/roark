@@ -252,7 +252,10 @@ abstraction section 11 forbids.
 - **Each crate's `README.md` is its crate doc.** Its `lib.rs` (or `main.rs` for a binary with no library) opens with
   `#![doc = include_str!("../README.md")]`, so the one file is what GitHub shows, what `cargo doc` renders, and, for its
   Rust examples, a doc test. It has four sections:
-  - **What it does**: what the crate is for, in a paragraph or two.
+  - **What it does**: what the crate is for and the few rules that matter, short enough to read in a minute or two.
+    A crate with more to say (every exception, window and counter) puts it in a last section, **In detail**, and on the
+    items it describes, never here. **Why:** each review adds a clause, and a first section nobody can read in minutes
+    fails tenet 7.
   - **Must never**: the lines it can't cross. For `can`: allocate in the tick, take a lock shared with non-realtime code,
     let anyone but the runtime transmit.
   - **Talks to**: which crates it uses and which use it, and through what, linking the

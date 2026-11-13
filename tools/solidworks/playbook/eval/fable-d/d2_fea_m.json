@@ -1,0 +1,110 @@
+{
+ "Y300": {
+  "summary": {
+   "study": "D2_Y300_m",
+   "el_mm": 2.5,
+   "nodes": 145831,
+   "elements": 92175,
+   "solve_s": 146,
+   "peak_vm_all": 50.52,
+   "peak_vm_away": 50.52,
+   "at": [
+    -29.5,
+    28.19,
+    7.02
+   ],
+   "sf_yield": 0.89,
+   "max_disp_mm": 0.16125181317329407,
+   "reaction_N": [
+    -0.0,
+    -299.997,
+    0.0,
+    299.997
+   ],
+   "applied_N": 300.0
+  },
+  "seconds": 147.8,
+  "excessive": false
+ },
+ "X300": {
+  "summary": {
+   "study": "D2_X300_m",
+   "el_mm": 2.5,
+   "nodes": 145831,
+   "elements": 92175,
+   "solve_s": 169,
+   "peak_vm_all": 120.14,
+   "peak_vm_away": 120.14,
+   "at": [
+    -29.5,
+    28.19,
+    7.02
+   ],
+   "sf_yield": 0.37,
+   "max_disp_mm": 0.35339945554733276,
+   "reaction_N": [
+    -299.998,
+    0.0,
+    0.0,
+    299.998
+   ],
+   "applied_N": 300.0
+  },
+  "seconds": 170.5,
+  "excessive": false
+ },
+ "Y1": {
+  "summary": {
+   "study": "D2_Y1_m",
+   "el_mm": 2.5,
+   "nodes": 145831,
+   "elements": 92175,
+   "solve_s": 175,
+   "peak_vm_all": 1.26,
+   "peak_vm_away": 1.26,
+   "at": [
+    -29.5,
+    28.19,
+    7.02
+   ],
+   "sf_yield": 35.73,
+   "max_disp_mm": 0.07749180495738983,
+   "reaction_N": [
+    0.0,
+    -1.0,
+    -0.0,
+    1.0
+   ],
+   "applied_N": 1.0
+  },
+  "seconds": 176.8,
+  "excessive": false
+ },
+ "X1": {
+  "summary": {
+   "study": "D2_X1_m",
+   "el_mm": 2.5,
+   "nodes": 145831,
+   "elements": 92175,
+   "solve_s": 182,
+   "peak_vm_all": 0.48,
+   "peak_vm_away": 0.45,
+   "at": [
+    -32.48,
+    -0.1,
+    7.22
+   ],
+   "sf_yield": 100.23,
+   "max_disp_mm": 0.07654883712530136,
+   "reaction_N": [
+    -1.0,
+    -0.0,
+    0.0,
+    1.0
+   ],
+   "applied_N": 1.0
+  },
+  "seconds": 183.2,
+  "excessive": false
+ }
+}

@@ -42,8 +42,8 @@ makes a reviewer ask the right question when a number changes: "did the source c
 ## 3. Unknown is `null`
 
 - A value nobody has measured or verified is `null`. Never a guess, a typical value or a copy from another joint.
-- `null` in a required field loads fine and refuses enable (PLAN item 1, "Null is not permission"). That's the point: an
-  unfinished joint is visibly unfinished.
+- `null` in a required field loads fine and refuses the motion that needs it (PLAN item 1, "Null is not a number").
+  That's the point: an unfinished joint is visibly unfinished, and can still be commissioned.
 - Unbuilt limbs are present with their joints and `bus: null`. They show as offline (tenet 1).
 
 **Why:** a plausible placeholder looks exactly like a real value. The legacy humanoid templates carried bus and ID numbers that

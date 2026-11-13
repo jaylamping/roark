@@ -1,7 +1,14 @@
 #![doc = include_str!("../README.md")]
 
+mod fault;
+mod outbox;
+mod plant;
+mod rng;
 mod sim;
 
+pub use fault::{
+    FAULT_PLAN, Fault, FaultRefused, INJECTED_LOG, Injected, MAX_LATE, MAX_TEMPERATURE_C, Trigger,
+};
 pub use sim::SimDrive;
 
 #[cfg(target_os = "linux")]

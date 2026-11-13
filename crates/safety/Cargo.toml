@@ -1,0 +1,16 @@
+[package]
+name = "safety"
+description = "Preflight, the enable sequence, the drive and limb states and the host rules (PLAN item 6, tenet 3)"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+can.workspace = true
+robstride.workspace = true
+skeleton.workspace = true
+
+[lints]
+workspace = true

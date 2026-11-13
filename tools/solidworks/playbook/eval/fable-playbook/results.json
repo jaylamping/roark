@@ -1,0 +1,758 @@
+{
+  "run": "fable-playbook",
+  "T1": {
+    "volume_mm3": 32974.02,
+    "hand_volume_mm3": 32974.02,
+    "mass_g": 39.24,
+    "bbox_mm": [
+      0.0,
+      0.0,
+      0.0,
+      80.0,
+      50.0,
+      46.0
+    ],
+    "bodies": 1,
+    "stl_watertight": true,
+    "stl_volume_mm3": 32990.38,
+    "status": "done",
+    "notes": "STL one shell, bounds equal the part box (model frame); STEP is mm, AP203. Hole, bore and fillet positions measured on the model. STL volume is +0.050 % off the part (faceted cylinders).",
+    "seconds": 28
+  },
+  "T2": {
+    "volume_mm3": 31643.0,
+    "hand_volume_mm3": 31643.0,
+    "counterbore_floor_z_mm": 3.0,
+    "bodies": 1,
+    "status": "done",
+    "notes": "Opened bracket.SLDPRT, saved as bracket_b first, then added CBORE, SLOT, SLOT_ENDS on top; bracket.SLDPRT SHA-256 unchanged. Slot built as a rectangle cut plus two round-end cuts (three features, same geometry as one slot). Slot extent and counterbore floors measured on the model.",
+    "seconds": 21
+  },
+  "T3": {
+    "hand_root_stress_mpa": 11.0,
+    "el_mm": 3.0,
+    "nodes": 143635,
+    "peak_vm_mpa": 15.78,
+    "peak_at_mm": [
+      9.32,
+      32.94,
+      6.06
+    ],
+    "layer_stress_mpa": 10.2,
+    "sf_yield": 2.85,
+    "sf_layer": 2.21,
+    "max_disp_mm": 2.3613,
+    "reaction_n": [
+      -150.0,
+      0.0,
+      0.0,
+      150.0
+    ],
+    "converged": true,
+    "convergence_rows": [
+      {
+        "el_mm": 4.0,
+        "nodes": 57278,
+        "peak_vm_mpa": 15.65,
+        "peak_at_mm": [
+          8.98,
+          26.79,
+          6.13
+        ],
+        "layer_stress_mpa": 10.21,
+        "layer_at_mm": [
+          0.0,
+          25.5,
+          9.69
+        ],
+        "peak_vm_playbook_mask": 15.65,
+        "layer_playbook_mask": 10.04,
+        "vm_max_unmasked": 28.65,
+        "vm_max_unmasked_at": [
+          22.25,
+          10.09,
+          6.0
+        ],
+        "max_disp_mm": 2.3569,
+        "local_mm": 1.2
+      },
+      {
+        "el_mm": 3.0,
+        "nodes": 143635,
+        "peak_vm_mpa": 15.78,
+        "peak_at_mm": [
+          9.32,
+          32.94,
+          6.06
+        ],
+        "layer_stress_mpa": 10.2,
+        "layer_at_mm": [
+          0.0,
+          24.8,
+          10.01
+        ],
+        "peak_vm_playbook_mask": 15.78,
+        "layer_playbook_mask": 10.2,
+        "vm_max_unmasked": 33.18,
+        "vm_max_unmasked_at": [
+          22.26,
+          39.73,
+          6.0
+        ],
+        "max_disp_mm": 2.3613,
+        "local_mm": 0.8
+      }
+    ],
+    "verdict": "pass",
+    "status": "done",
+    "hand_disp_mm": 1.98,
+    "layer_at_mm": [
+      0.0,
+      24.8,
+      10.01
+    ],
+    "plain_section": {
+      "reaction_n": [
+        -150.0,
+        0.0,
+        0.0,
+        150.0
+      ],
+      "section_back_sz": 8.07,
+      "section_front_sz": -7.89,
+      "section_hand": 8.0
+    },
+    "notes": "Fixed: the four base hole walls. Load: 150 N +X as a rigid remote load on the bore at its centre. Peak von Mises is on the inside fillet (compression side); the layer stress is sz tension on the back face X 0 just above the base. Scored nodes: at least two global elements from the fixed hole walls and 1.5 mm from the bore wall; the playbook mask (two elements from both) gives 15.78 and 10.2 MPa. Excluded: 33.18 MPa at the edge of a fixed hole wall, rising with the mesh (a fixture singularity). Cross-check with the screws modelled as bonded steel washers fixed on top and the hole walls free (t3b.py): fillet 15.56, back-face layer stress 10.18, hole walls below the washers and underside 12.9 MPa; bearing stress under the screw heads is not resolved by either model. Hand: root bending 11.0 MPa (FEA plain section at Z 12: 8.07 against 8.00 by hand), displacement 1.98 mm by hand against 2.3613. The finest mesh has 143,635 nodes, closer to the 150,000 ceiling than intended. Margin on the layers is 10 %. Interlayer shear (not in the requirement) is 7.2 MPa at the fillet against the playbook's 13 MPa: 1.8.",
+    "seconds": 96,
+    "support_cross_check": [
+      {
+        "local_mm": 0.8,
+        "nodes": 53556,
+        "hole_peak_vm_mpa": 27.45,
+        "hole_peak_at_mm": [
+          19.25,
+          37.61,
+          6.0
+        ],
+        "hole_peak_sx_mpa": -30.24,
+        "hole_peak_sz_mpa": -4.04,
+        "hole_layer_sz_mpa": 8.8,
+        "hole_layer_at_mm": [
+          22.3,
+          10.52,
+          4.62
+        ],
+        "low_peak_vm_mpa": 12.47,
+        "low_peak_at_mm": [
+          23.79,
+          37.53,
+          0.0
+        ],
+        "low_peak_sx_mpa": 10.77,
+        "low_peak_sz_mpa": -0.01,
+        "under_washer_vm_mpa": 72.79,
+        "under_washer_at_mm": [
+          20.0,
+          10.0,
+          6.0
+        ],
+        "fillet_peak_vm_mpa": 15.62,
+        "back_face_sz_mpa": 10.12,
+        "max_disp_mm": 2.3503,
+        "reaction_n": [
+          -150.0,
+          -0.0,
+          0.0,
+          150.0
+        ]
+      },
+      {
+        "local_mm": 0.5,
+        "nodes": 82001,
+        "hole_peak_vm_mpa": 23.99,
+        "hole_peak_at_mm": [
+          19.33,
+          7.72,
+          6.0
+        ],
+        "hole_peak_sx_mpa": -26.74,
+        "hole_peak_sz_mpa": -1.85,
+        "hole_layer_sz_mpa": 9.23,
+        "hole_layer_at_mm": [
+          22.26,
+          39.81,
+          4.91
+        ],
+        "low_peak_vm_mpa": 12.9,
+        "low_peak_at_mm": [
+          24.04,
+          37.42,
+          0.44
+        ],
+        "low_peak_sx_mpa": 10.39,
+        "low_peak_sz_mpa": 0.24,
+        "under_washer_vm_mpa": 63.9,
+        "under_washer_at_mm": [
+          20.0,
+          10.0,
+          6.0
+        ],
+        "fillet_peak_vm_mpa": 15.56,
+        "back_face_sz_mpa": 10.18,
+        "max_disp_mm": 2.364,
+        "reaction_n": [
+          -150.0,
+          0.0,
+          0.0,
+          150.0
+        ]
+      }
+    ]
+  },
+  "T4": {
+    "convergence_rows": [
+      {
+        "el_mm": 3.0,
+        "corner_edge_local_mm": 1.0,
+        "nodes": 36616,
+        "corner_peak_vm_mpa": 19.83,
+        "corner_peak_at_mm": [
+          6.49,
+          23.44,
+          6.0
+        ],
+        "corner_peak_sz_mpa": -1.03,
+        "corner_avg_vm_r05_r1_r2": {
+          "0.5": [
+            14.1,
+            5
+          ],
+          "1.0": [
+            11.55,
+            34
+          ],
+          "2.0": [
+            9.02,
+            142
+          ]
+        },
+        "back_face_layer_stress_mpa": 11.36,
+        "max_disp_mm": 2.6497
+      },
+      {
+        "el_mm": 3.0,
+        "corner_edge_local_mm": 0.5,
+        "nodes": 44270,
+        "corner_peak_vm_mpa": 26.45,
+        "corner_peak_at_mm": [
+          6.24,
+          34.57,
+          6.0
+        ],
+        "corner_peak_sz_mpa": -5.97,
+        "corner_avg_vm_r05_r1_r2": {
+          "0.5": [
+            17.3,
+            31
+          ],
+          "1.0": [
+            12.87,
+            140
+          ],
+          "2.0": [
+            10.25,
+            490
+          ]
+        },
+        "back_face_layer_stress_mpa": 11.46,
+        "max_disp_mm": 2.6558
+      },
+      {
+        "el_mm": 3.0,
+        "corner_edge_local_mm": 0.25,
+        "nodes": 59237,
+        "corner_peak_vm_mpa": 40.36,
+        "corner_peak_at_mm": [
+          6.0,
+          26.91,
+          6.0
+        ],
+        "corner_peak_sz_mpa": -48.89,
+        "corner_avg_vm_r05_r1_r2": {
+          "0.5": [
+            18.05,
+            125
+          ],
+          "1.0": [
+            14.41,
+            476
+          ],
+          "2.0": [
+            12.01,
+            1392
+          ]
+        },
+        "back_face_layer_stress_mpa": 11.47,
+        "max_disp_mm": 2.6592
+      },
+      {
+        "el_mm": 3.0,
+        "corner_edge_local_mm": 0.125,
+        "nodes": 87972,
+        "corner_peak_vm_mpa": 54.68,
+        "corner_peak_at_mm": [
+          6.0,
+          38.23,
+          6.0
+        ],
+        "corner_peak_sz_mpa": -57.88,
+        "corner_avg_vm_r05_r1_r2": {
+          "0.5": [
+            20.87,
+            437
+          ],
+          "1.0": [
+            17.31,
+            1399
+          ],
+          "2.0": [
+            15.56,
+            3462
+          ]
+        },
+        "back_face_layer_stress_mpa": null,
+        "max_disp_mm": 2.6611
+      }
+    ],
+    "converged": false,
+    "reported_stress_mpa": 36.46,
+    "section_stress_mpa": 11.0,
+    "r05_stand_in_rows": [
+      {
+        "el_mm": 3.0,
+        "nodes": 68422,
+        "peak_vm_mpa": 37.16,
+        "peak_at_mm": [
+          6.16,
+          18.0,
+          6.13
+        ],
+        "layer_stress_mpa": 11.45,
+        "layer_at_mm": [
+          0.0,
+          29.48,
+          7.88
+        ],
+        "peak_vm_playbook_mask": 37.16,
+        "layer_playbook_mask": 11.45,
+        "vm_max_unmasked": 37.16,
+        "vm_max_unmasked_at": [
+          6.16,
+          18.0,
+          6.13
+        ],
+        "max_disp_mm": 2.6313,
+        "fillet_local_mm": 0.25,
+        "peak_sz_mpa": -19.38
+      },
+      {
+        "el_mm": 3.0,
+        "nodes": 103930,
+        "peak_vm_mpa": 36.46,
+        "peak_at_mm": [
+          6.15,
+          28.0,
+          6.14
+        ],
+        "layer_stress_mpa": 11.43,
+        "layer_at_mm": [
+          0.0,
+          29.48,
+          7.88
+        ],
+        "peak_vm_playbook_mask": 36.46,
+        "layer_playbook_mask": 11.43,
+        "vm_max_unmasked": 36.46,
+        "vm_max_unmasked_at": [
+          6.15,
+          28.0,
+          6.14
+        ],
+        "max_disp_mm": 2.6315,
+        "fillet_local_mm": 0.15,
+        "peak_sz_mpa": -20.84
+      }
+    ],
+    "r05_converged": true,
+    "back_face_layer_stress_mpa": 11.47,
+    "sf_layer": 1.96,
+    "sf_yield_at_corner": 1.23,
+    "how_judged": "The sharp corner has no stress to report: its peak rose 19.8, 26.5, 40.4, 54.7 MPa as the edge mesh halved (1.0 to 0.125 mm), a singularity, so it was judged three ways: the section carries 11.0 MPa by hand (node averages within 2 mm of the corner 9 to 16 MPa, compressive); the same part with a 0.5 mm radius, standing in for what a printer leaves in a sharp corner, converges at 36.46 MPa von Mises (compressive, -20.84 MPa across layers), a factor of 1.23 on yield; and away from the corner the tension across layers on the back face converges at 11.47 MPa, a factor of 1.96.",
+    "verdict": "fail",
+    "status": "done",
+    "notes": "reported_stress_mpa is the converged peak of the 0.5 mm-radius stand-in (bracket_r05.SLDPRT), not a number from the sharp model; the true as-printed radius is not known, and a smaller one gives more. The fail does not rest on that alone: without the fillet the back-face layer tension is 11.47 MPa (10.2 with it), 1.96 against the 2.0 required, a converged number away from any corner, fixture or load. In the finest sharp row the largest sz tension moved to a node 0.12 mm from the corner (13.2 MPa): part of the singular field, not used. Result.average() is a mean over nodes, so it rises as the mesh is refined toward the corner (9.0, 10.3, 12.0, 15.6 within 2 mm): it is not mesh-independent. Checks on every row: reaction -150 N in X exactly, plain section at Z 12 within 2 % of 8.00 MPa.",
+    "seconds": 149
+  },
+  "T5": {
+    "change": "None was required: the T3 bracket already meets the requirement as printed base-down (yield 2.85, layers 2.21). bracket_c is the T1 geometry unchanged, printed on its side (the Y 0 face on the bed, layers stacked along Y), which takes the bending out of the layer direction at no mass.",
+    "mass_g": 39.24,
+    "mass_growth_pct": 0.0,
+    "sf_yield": 2.85,
+    "sf_layer": 4.6,
+    "print_orientation": "on its side: the Y 0 face on the bed, layers stacked along Y",
+    "verdict": "pass",
+    "status": "done",
+    "orientation_options": {
+      "Z (base on the bed, as T3)": {
+        "layer_tension_mpa": 10.2,
+        "at": [
+          0.0,
+          24.8,
+          10.01
+        ],
+        "sf_layer": 2.2,
+        "interlayer_shear_mpa": 7.24,
+        "shear_at": [
+          7.46,
+          22.22,
+          6.91
+        ],
+        "sf_shear": 1.8
+      },
+      "Y (on its side)": {
+        "layer_tension_mpa": 4.89,
+        "at": [
+          15.84,
+          36.79,
+          0.0
+        ],
+        "sf_layer": 4.6,
+        "interlayer_shear_mpa": 4.67,
+        "shear_at": [
+          0.0,
+          15.34,
+          15.95
+        ],
+        "sf_shear": 2.78
+      },
+      "X (upright on the bed)": {
+        "layer_tension_mpa": 13.13,
+        "at": [
+          16.08,
+          39.56,
+          0.0
+        ],
+        "sf_layer": 1.71,
+        "interlayer_shear_mpa": 7.24,
+        "shear_at": [
+          7.46,
+          22.22,
+          6.91
+        ],
+        "sf_shear": 1.8
+      }
+    },
+    "notes": "Conditional task: T3 passed, so this is an optional margin improvement, not a fix. Shown with the T3 study itself (same geometry, same linear solve, T3_1.npz re-read for layers along Y): tension across layers 4.89 MPa (factor 4.6) instead of 10.2 (2.21), interlayer shear 4.67 MPa (2.78) instead of 7.24 (1.8, not part of the stated requirement), von Mises unchanged at 15.78 MPa (2.85). Base-down remains acceptable against the requirement as written. A print orientation is a design decision the playbook says to hand up: printability on the side (horizontal dia 5.5 and dia 3.4 holes, a 50 mm tall L section, the bore axis horizontal in both orientations) was not checked in a slicer.",
+    "seconds": 20
+  },
+  "T6": {
+    "hand_bearing_mpa": 1.667,
+    "hand_hertz_peak_pressure_mpa": 6.76,
+    "hand_hertz_half_width_mm": 1.57,
+    "nodes": 135714,
+    "solver": "direct sparse (set 1 by macro, reads back 7 = Intel direct sparse)",
+    "how_pin_was_stabilised": "Real 0.1 mm radial gap modelled. Two soft pads (modulus 0.5 MPa, 3 x 2 mm section), one outside each end of the hole and under the pin, each bonded to the block side face below the hole and to the underside of the pin, with explicit bonded sets because the pin face is in the contact set.",
+    "peak_contact_vm_mpa": 5.435,
+    "block_peak_at_mm": [
+      -1.86,
+      -15.0,
+      15.71
+    ],
+    "peak_contact_pressure_mpa": 6.263,
+    "peak_pressure_at_mm": [
+      -0.01,
+      -11.54,
+      15.1
+    ],
+    "pin_rise_mm": 0.12762,
+    "reaction_n": [
+      0.0,
+      -0.0,
+      -500.0,
+      500.0
+    ],
+    "valid": true,
+    "why": "Reaction -500.0 N in Z for 500 N applied; the contact pressure integrated over the hole wall gives 491.6 N and the tension in the two ligaments beside the hole 502.1 N; the pin rises 0.12762 mm (0.1 mm gap, then deformation); the pads carry 0.484 % of the load (stiffness 18.981 N/mm from the lift run); with 0.02 N the pin floats 0.001054 mm on the pads with the gap still open, so the set is contact, not a bond; the hole wall away from the contact is stress-free to 0.0896 MPa; peak pressure 6.263 MPa against 6.76 by Hertz line contact (peaks on the three meshes [6.451, 6.125, 6.263]), and it moved 2.3 % between the last two meshes.",
+    "runs": [
+      {
+        "study": "T6_MAIN0",
+        "nodes": 86289,
+        "hole_local_mm": 0.8,
+        "total_n": 500.0,
+        "reaction_n": [
+          0.0,
+          -0.0,
+          -500.0,
+          500.0
+        ],
+        "solve_s": 108,
+        "node_split": {
+          "pin": 39447,
+          "block": 45884,
+          "pad": 958,
+          "unassigned": 0
+        },
+        "pin_rise_mm": 0.12771,
+        "pin_rise_end_mm": 0.13884,
+        "pin_uz_range_mm": [
+          0.12541,
+          0.14101
+        ],
+        "pin_ux_uy_abs_max_mm": [
+          0.00224,
+          0.00667
+        ],
+        "block_max_disp_mm": 0.05061,
+        "max_disp_mm": 0.14904,
+        "max_disp_body": "pad",
+        "peak_contact_vm_mpa": 5.393,
+        "block_peak_at_mm": [
+          -2.25,
+          15.0,
+          15.52
+        ],
+        "block_peak_rho_mm": 5.957,
+        "pad_attachment_artefact": {
+          "vm_mpa": 3.86,
+          "at_mm": [
+            0.79,
+            15.0,
+            4.96
+          ],
+          "radial_stress_mpa": 3.49
+        },
+        "peak_contact_pressure_mpa": 6.451,
+        "peak_pressure_at_mm": [
+          -0.17,
+          12.13,
+          15.1
+        ],
+        "mid_length_peak_pressure_mpa": 5.965,
+        "mid_length_peak_at_mm": [
+          0.15,
+          -4.54,
+          15.1
+        ],
+        "mid_length_peak_vm_mpa": 4.334,
+        "contact_half_angle_deg": 22.5,
+        "contact_half_width_mm": 1.95,
+        "free_wall_radial_stress_abs_max_mpa": 0.1625,
+        "pressure_integral_fz_n": 506.1,
+        "pressure_grid_empty_bins": 0,
+        "top_pressure_by_y": {
+          "-15..-9": 5.62,
+          "-9..-3": 5.69,
+          "-3..+3": 5.62,
+          "+3..+9": 5.65,
+          "+9..+15": 5.65
+        },
+        "ligament_fz_n": 498.6,
+        "ligament_mean_sz_mpa": 0.558,
+        "pad_mean_sz_mpa": 0.01302,
+        "pad_force_n_from_stress": 0.1563,
+        "pad_peak_vm_mpa": 0.1362,
+        "pin_peak_vm_mpa": 43.8,
+        "pad_force_n_from_stiffness": 2.424,
+        "pad_share_pct": 0.485
+      },
+      {
+        "study": "T6_MAIN1",
+        "nodes": 111601,
+        "hole_local_mm": 0.6,
+        "total_n": 500.0,
+        "reaction_n": [
+          -0.0,
+          -0.0,
+          -500.0,
+          500.0
+        ],
+        "solve_s": 168,
+        "node_split": {
+          "pin": 39447,
+          "block": 71196,
+          "pad": 958,
+          "unassigned": 0
+        },
+        "pin_rise_mm": 0.12769,
+        "pin_rise_end_mm": 0.13886,
+        "pin_uz_range_mm": [
+          0.1259,
+          0.14052
+        ],
+        "pin_ux_uy_abs_max_mm": [
+          0.00171,
+          0.00574
+        ],
+        "block_max_disp_mm": 0.04741,
+        "max_disp_mm": 0.1495,
+        "max_disp_body": "pad",
+        "peak_contact_vm_mpa": 5.427,
+        "block_peak_at_mm": [
+          -2.29,
+          15.0,
+          15.76
+        ],
+        "block_peak_rho_mm": 6.196,
+        "pad_attachment_artefact": {
+          "vm_mpa": 5.33,
+          "at_mm": [
+            0.91,
+            15.0,
+            4.98
+          ],
+          "radial_stress_mpa": 5.64
+        },
+        "peak_contact_pressure_mpa": 6.125,
+        "peak_pressure_at_mm": [
+          -0.19,
+          -11.63,
+          15.1
+        ],
+        "mid_length_peak_pressure_mpa": 5.797,
+        "mid_length_peak_at_mm": [
+          -0.37,
+          3.0,
+          15.09
+        ],
+        "mid_length_peak_vm_mpa": 4.206,
+        "contact_half_angle_deg": 22.5,
+        "contact_half_width_mm": 1.95,
+        "free_wall_radial_stress_abs_max_mpa": 0.1138,
+        "pressure_integral_fz_n": 490.6,
+        "pressure_grid_empty_bins": 0,
+        "top_pressure_by_y": {
+          "-15..-9": 5.56,
+          "-9..-3": 5.6,
+          "-3..+3": 5.55,
+          "+3..+9": 5.59,
+          "+9..+15": 5.58
+        },
+        "ligament_fz_n": 505.1,
+        "ligament_mean_sz_mpa": 0.565,
+        "pad_mean_sz_mpa": 0.01303,
+        "pad_force_n_from_stress": 0.1564,
+        "pad_peak_vm_mpa": 0.1379,
+        "pin_peak_vm_mpa": 43.8,
+        "pad_force_n_from_stiffness": 2.424,
+        "pad_share_pct": 0.485
+      },
+      {
+        "study": "T6_MAIN2",
+        "nodes": 135714,
+        "hole_local_mm": 0.5,
+        "total_n": 500.0,
+        "reaction_n": [
+          0.0,
+          -0.0,
+          -500.0,
+          500.0
+        ],
+        "solve_s": 260,
+        "node_split": {
+          "pin": 39447,
+          "block": 95309,
+          "pad": 958,
+          "unassigned": 0
+        },
+        "pin_rise_mm": 0.12762,
+        "pin_rise_end_mm": 0.13865,
+        "pin_uz_range_mm": [
+          0.11626,
+          0.15042
+        ],
+        "pin_ux_uy_abs_max_mm": [
+          0.01148,
+          0.01217
+        ],
+        "block_max_disp_mm": 0.0466,
+        "max_disp_mm": 0.15068,
+        "max_disp_body": "pin",
+        "peak_contact_vm_mpa": 5.435,
+        "block_peak_at_mm": [
+          -1.86,
+          -15.0,
+          15.71
+        ],
+        "block_peak_rho_mm": 6.008,
+        "pad_attachment_artefact": {
+          "vm_mpa": 98.28,
+          "at_mm": [
+            -0.98,
+            15.0,
+            5.0
+          ],
+          "radial_stress_mpa": 92.63
+        },
+        "peak_contact_pressure_mpa": 6.263,
+        "peak_pressure_at_mm": [
+          -0.01,
+          -11.54,
+          15.1
+        ],
+        "mid_length_peak_pressure_mpa": 5.934,
+        "mid_length_peak_at_mm": [
+          0.02,
+          1.37,
+          15.1
+        ],
+        "mid_length_peak_vm_mpa": 4.289,
+        "contact_half_angle_deg": 22.3,
+        "contact_half_width_mm": 1.93,
+        "free_wall_radial_stress_abs_max_mpa": 0.0896,
+        "pressure_integral_fz_n": 491.6,
+        "pressure_grid_empty_bins": 0,
+        "top_pressure_by_y": {
+          "-15..-9": 5.52,
+          "-9..-3": 5.59,
+          "-3..+3": 5.5,
+          "+3..+9": 5.57,
+          "+9..+15": 5.5
+        },
+        "ligament_fz_n": 502.1,
+        "ligament_mean_sz_mpa": 0.562,
+        "pad_mean_sz_mpa": 0.01299,
+        "pad_force_n_from_stress": 0.1559,
+        "pad_peak_vm_mpa": 0.132,
+        "pin_peak_vm_mpa": 43.7,
+        "pad_force_n_from_stiffness": 2.422,
+        "pad_share_pct": 0.484
+      }
+    ],
+    "lift": {
+      "total_n": 0.02,
+      "pin_rise_mm": 0.001054,
+      "pad_stiffness_n_per_mm": 18.981,
+      "reaction_n": [
+        -0.0,
+        0.0,
+        -0.02,
+        0.02
+      ],
+      "block_max_disp_mm": 0.00038747850339859724
+    },
+    "hand": {
+      "mean_projected_mpa": 1.667,
+      "hertz_peak_pressure_mpa": 6.76,
+      "hertz_half_width_mm": 1.57,
+      "hertz_peak_vm_mpa_approx": 3.79,
+      "relative_radius_mm": 255.0000000000009,
+      "e_star_mpa": 2199.2
+    },
+    "status": "done",
+    "notes": "The bearing stress asked for is the contact pressure (radial stress on the hole wall): peak_contact_pressure_mpa. peak_contact_vm_mpa is the largest von Mises in the block (bottom 6 mm above the fixture and the pad footprints left out), which sits just under the contact. hand_bearing_mpa is F / (d L), the mean over the projected area; the peak is compared with Hertz. Bodies split by geometry from undeformed coordinates, no node in two bodies. Known artefact of the stabilising pads: each pad bridges the 0.1 mm gap at the bottom end of the hole, and where its bond meets the hole edge the block shows a local spike: [3.86, 5.33, 98.28] MPa von Mises on the three meshes, the last at one node at [-0.98, 15.0, 5.0] whose displacement is five times its neighbours, at one of the four pad corners only (the other three read 3 to 6 MPa). The pads carry 2.4 N in all, so this is a bond-constraint artefact, not load; I did not chase its cause further. It is at the unloaded side of the hole, 10 mm from the bearing zone, and is left out of both peaks; a pad bonded to the block clear of the hole edge would avoid it. The first try at a finer mesh (0.5 on the hole, 0.625 on the pin) meshed 227,182 nodes and was stopped before solving by the 150,000 ceiling of this run."
+  },
+  "T7": {
+    "status": "done",
+    "notes": "answers in REPORT.md"
+  }
+}

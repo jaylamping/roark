@@ -9,28 +9,32 @@ downstream sees raw YAML or re-checks it. Every problem in the file is reported 
 and field. The rules are PLAN item 1, "Loader refuses", and skeleton.md sections 4 and 5.
 
 `None` in a loaded value means it isn't known yet (a joint's UID before commissioning, a direction not yet verified). It
-loads fine and refuses enable downstream ("Null is not permission", PLAN item 1).
+loads fine and refuses only the motion that needs it, never the enable: a joint with a null cap, `direction`, `zero_rad`
+or `hard_rad` runs at its model's commissioning caps, or its own where lower (`Joint::caps`;
+the values are [PLAN, Open with Joey](https://github.com/jaylamping/roark/blob/main/PLAN.md#open-with-joey) 11). The
+current budget counts each joint at the current cap it is enabled at.
 
 ## Must never
 
 Write the skeleton, read any other file about the hardware (CAD, URDF, legacy config), or give a safety value a default.
-Unknown is `None`, and `None` refuses enable downstream.
+Unknown is `None`; downstream, a `None` cap, `direction`, `zero_rad` or `hard_rad` lowers a joint to its commissioning
+caps, a `None` UID skips the UID check, and any `None` refuses the motion that needs it.
 
 ## Talks to
 
 `robstride` for the actuator models, their ranges and the unit types (a cap above the model's range is refused). Read
-by every binary that needs the robot's shape: today `sim-drive`, later `runtime` and `robot-cli`. See the
+by every binary that needs the robot's shape: `runtime`, `sim-drive` and `robot-cli` (for `disable`, its (bus, ID) pairs). See the
 [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
 
 ## Using it
 
 `load` reads and checks a file; `parse` checks text. Either gives the whole `Skeleton` or every problem in it, never a
-partly checked one.
+partly checked one. `read` is `load`'s read alone, for a caller that hashes exactly the text it then parses.
 
 ```rust
 /// A small skeleton: two drives wired on one bus, one joint not wired yet, and the other limbs empty.
 const ROBOT: &str = "\
-schema: 1
+schema: 2
 name: example
 power:
   source: bench_24v
@@ -40,6 +44,7 @@ buses:
   bus0:
     bitrate_bps: 1000000
     sample_point: 0.75
+    driver: mcp251xfd
     adapter_serial: null
 limbs:
   left_arm:

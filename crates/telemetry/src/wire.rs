@@ -8,6 +8,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::batch::{Direction, FrameRecord, TickBatch};
+use crate::event::{EventKind, Level};
 use crate::session::SessionInfo;
 
 /// A time: seconds and nanoseconds since the Unix epoch for wall-clock times, since the session's
@@ -72,7 +73,7 @@ pub struct Frames {
     pub tick: u64,
     /// The tick's start, monotonic clock.
     pub monotonic: Stamp,
-    /// The tick's start, wall clock.
+    /// The wall clock when the tick woke.
     pub wall: Stamp,
     /// False while the bus was unhealthy.
     pub valid: bool,
@@ -126,6 +127,48 @@ pub struct Clock {
     pub wall: Stamp,
 }
 
+/// `/event`: one of control's events (safety.md section 8; logging.md sections 2 and 2a).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[schemars(rename = "roark.Event")]
+pub struct Event {
+    /// When, on the session's monotonic clock.
+    pub monotonic: Stamp,
+    /// When, on the wall clock: the monotonic time mapped through the recorder's newest reading of the two clocks
+    /// together (taken each drain; `/clock` records one a second).
+    pub wall: Stamp,
+    /// Its level.
+    pub level: Level,
+    /// What happened.
+    pub kind: EventKind,
+    /// The limb.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limb: Option<String>,
+    /// The joint.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub joint: Option<String>,
+    /// The bus.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bus: Option<String>,
+    /// The safety rule behind it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rule: Option<String>,
+    /// Why, in a word, when the rule alone doesn't say.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+    /// The request's tag.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tag: Option<u64>,
+}
+
+/// The events' totals in the end marker.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct EventTotals {
+    /// Events written.
+    pub written: u64,
+    /// Events dropped because the ring was full.
+    pub lost: u64,
+}
+
 /// A bus's totals in the end marker.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct BusTotals {
@@ -160,6 +203,9 @@ pub struct Header {
 pub struct End {
     /// Per bus, in the session's bus order.
     pub buses: Vec<BusTotals>,
+    /// Control's events.
+    #[serde(default)]
+    pub events: EventTotals,
 }
 
 /// `/session`: the header first and the end marker last.

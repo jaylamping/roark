@@ -26,8 +26,12 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest@0.9.151,cargo-deny@0.20.2   # pinned; bump in its own PR
-      - name: Install pytest for the CAD tool tests
-        run: sudo apt-get update && sudo apt-get install -y python3-pytest
+      # The gate's mesh libraries (tools/cad/gate.py MESH_LIBS), so the gate and mesh tests run here instead of skipping;
+      # trimesh has no Ubuntu package. Pinned; bump in its own PR.
+      - name: Install pytest and the gate's mesh libraries for the CAD tool tests
+        run: >-
+          python3 -m pip install --user --break-system-packages
+          pytest==9.2.0 numpy==2.5.4 scipy==1.18.1 trimesh==5.2.0 rtree==1.4.1 networkx==3.7
       - run: ./scripts/check.sh
 
   sim:
@@ -54,6 +58,8 @@ jobs:
             sudo ip link set "$bus" up
           done
           ip -brief link show type vcan
+      - name: Install can-utils (candump, the independent capture the bus recording is checked against)
+        run: sudo apt-get update && sudo apt-get install -y can-utils
       - run: ./scripts/sim.sh
 
   pi-build:
@@ -67,3 +73,16 @@ jobs:
       - name: Install the aarch64 linker
         run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
       - run: cargo build --release --workspace --locked --target aarch64-unknown-linux-gnu
+      # The binaries the Pi runs, built from this commit: what a deploy or a bench session installs
+      # (docs/pi-setup.md section 12), so nobody needs a cross-compiler of their own.
+      - name: Collect the Pi binaries
+        run: |
+          mkdir pi-binaries
+          cp target/aarch64-unknown-linux-gnu/release/{runtime,robot-cli,candump-rotate,can-bench,sim-drive} pi-binaries/
+          git rev-parse HEAD > pi-binaries/GIT_REV
+          (cd pi-binaries && sha256sum * > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pi-binaries
+          path: pi-binaries/
+          retention-days: 30

@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 mod check;
+mod commissioning;
 mod error;
 mod joint;
 mod read;
@@ -10,6 +11,7 @@ mod yaml;
 use std::io::Read;
 use std::path::Path;
 
+pub use commissioning::Caps;
 pub use error::{LoadError, Problem, ProblemKind};
 pub use types::{
     Bus, BusName, Direction, Joint, JointName, Limb, LimbName, Power, PowerSource, Skeleton, Uid,
@@ -22,7 +24,7 @@ use crate::read::{Reader, integer, number, positive, range, text};
 use crate::yaml::Node;
 
 /// The schema version this loader reads. Bumped when an older file no longer loads (skeleton.md section 1).
-const SCHEMA: u64 = 1;
+const SCHEMA: u64 = 2;
 
 /// Upper bound on the file's size. The real file is a few kB; this stops a wrong path (a log, a disk image) from being
 /// read whole.
@@ -33,6 +35,15 @@ const MAX_BYTES: u64 = 1 << 20;
 /// # Errors
 /// [`LoadError::Read`] if the file can't be read, [`LoadError::Invalid`] with every problem found otherwise.
 pub fn load(path: &Path) -> Result<Skeleton, LoadError> {
+    parse(&read(path)?)
+}
+
+/// Reads the skeleton file at `path` as text, unchecked, for a caller that must record exactly the bytes it then
+/// [`parse`]s (the session's skeleton hash).
+///
+/// # Errors
+/// [`LoadError::Read`] if the file can't be read, [`LoadError::Invalid`] if it is over 1 MiB.
+pub fn read(path: &Path) -> Result<String, LoadError> {
     let read_error = |source| LoadError::Read {
         path: path.to_owned(),
         source,
@@ -50,7 +61,7 @@ pub fn load(path: &Path) -> Result<Skeleton, LoadError> {
             ProblemKind::OutOfRange("at most 1 MiB"),
         )]));
     }
-    parse(&text)
+    Ok(text)
 }
 
 /// Checks skeleton YAML given as text.

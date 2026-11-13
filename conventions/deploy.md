@@ -50,7 +50,7 @@ a sudden power cut corrupts data.
 | `/etc/robot/` | `skeleton.yaml`, `dynamics.yaml` and other config from the repo | The deploy script (`ConfigurationDirectory=robot`) |
 | `/var/lib/robot/sessions/` | One directory per session (PLAN "Observability") | The runtime (`StateDirectory=robot`) |
 | `/var/lib/robot/candump/` | Rotated, compressed black-box logs | The `candump@` units |
-| `/run/robot/` | The `api` socket | systemd (`RuntimeDirectory=robot`) |
+| `/run/robot/` | The runtime's lock (`runtime.lock`, held while it runs; `robot-cli disable` refuses while it is held), later the `api` socket | systemd (`RuntimeDirectory=robot`) |
 
 - **No robot name in paths,** units or users (tenet 7). It's `robot`, not the robot's current name.
 - **Bulk data lives in `/var/lib/robot`, not `/var/log`.** `/var/log` and journald are for text logs.
@@ -85,8 +85,9 @@ PLAN lists the units and their main settings. The conventions for writing them:
   `RestrictRealtime=yes`**: it blocks the realtime threads.
 - **The runtime starts after its CAN interfaces exist** (`After=` and `BindsTo=` on each bus's device unit), but **doesn't depend
   on the network, Tailscale or the internet**.
-- **CAN links are configured by systemd-networkd files in `deploy/`:** a `.link` file per adapter matched on its USB serial
-  (stable name, short TX queue), and a `.network` file per bus (bitrate, sample point). `RequiredForOnline=no`, so boot doesn't
+- **CAN links are configured by systemd-networkd files in `deploy/`:** a `.link` file per CAN channel, matched on its
+  device path (the SPI device for a HAT or CAN board, the USB serial for an adapter), for a stable name and a short TX
+  queue, and a `.network` file per bus (bitrate, sample point). `RequiredForOnline=no`, so boot doesn't
   wait for CAN. No shell scripts calling `ip link` (PLAN item 2: don't copy the legacy `can-up.sh`).
 - **The `api` socket's group and mode** enforce motion authority together with the runtime's own rules
   ([remote-access.md section 4](remote-access.md#4-accounts-on-the-pi)).
@@ -101,8 +102,12 @@ PLAN item 3 says PREEMPT_RT only if the Pi's measurement misses its budget. How 
   including memory pressure, plus the runtime on `vcan`), with the result committed per kernel version. **Why:** worst case
   under load is what matters. Published Pi 5 numbers show a stock kernel can exceed 9 ms under stress, while PREEMPT_RT stays
   around 100 to 225 µs, so expect the measurement to point at RT.
-- **If RT is needed:** Raspberry Pi ships no RT kernel, so it's built from the Raspberry Pi kernel tree with `PREEMPT_RT`
-  (merged in mainline since 6.12), packaged, and held. Real-time Ubuntu for Pi is the alternative to evaluate.
+- **If RT is needed:** Raspberry Pi's apt repository has a `PREEMPT_RT` kernel, `linux-image-rpi-v8-rt`, at the same
+  version as the stock one (seen 2026-11-13 at 6.18.60). It installs beside the stock kernel, is selected with a `kernel=`
+  line in `config.txt`, and is held like the rest. It is the generic arm64 build with 4K pages (the Pi 5's default kernel
+  uses 16K); there is no Pi 5 specific RT package, and the stock kernel has no `NO_HZ_FULL`. Only if it falls short: build from the
+  Raspberry Pi kernel tree (`PREEMPT_RT` is in mainline since 6.12), packaged and held. Real-time Ubuntu for Pi would mean
+  a different OS and is the last resort.
 - **CPU isolation:** realtime bus threads get their own cores (`isolcpus`, `nohz_full`, `rcu_nocbs` on those cores,
   `irqaffinity` to the others); the recorder, UI bridge and everything else stay off them. Which cores depends on the bus count
   and is decided by the measurement.
@@ -128,8 +133,9 @@ PLAN item 3 says PREEMPT_RT only if the Pi's measurement misses its budget. How 
 ## 7. Security basics
 
 - SSH by key only, no passwords. Access over Tailscale or the home LAN only ([remote-access.md](remote-access.md)).
-- Firewall denies incoming by default.
-- No services listening on anything but localhost, a Unix socket, or what `tailscale serve` publishes.
+- Firewall denies incoming by default; what it lets in is listed in [remote-access.md](remote-access.md) section 6.
+- No robot service listens on anything but localhost, a Unix socket, or what `tailscale serve` publishes. (SSH and the
+  system's mDNS responder are the two system listeners the firewall lets the LAN reach.)
 
 ## Checklist for a change to `deploy/`
 

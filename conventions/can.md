@@ -59,25 +59,36 @@ Every socket is opened by one function that sets, and logs at startup, all of:
 
 - **Error frames on** (`CAN_RAW_ERR_FILTER` with the full mask). They're off by default, and without them bus-off and error
   counters are invisible.
-- **Kernel filters** for the IDs that bus expects, written once and logged in candump syntax so a person can read them.
+- **No kernel ID filter.** The socket takes every ID, so a frame from another host or from an ID the skeleton doesn't have
+  is seen, counted and recorded instead of dropped unseen by the kernel. The session records the empty filter list.
+  **Why:** a duplicate sender is exactly the frame a filter would hide (see Transmit).
 - **Loopback left on.** It's how the `candump` black box sees what the runtime sent. Turning it off blinds the black box.
-- **Hardware timestamps** requested; the startup check logs whether the adapter provides them.
+- **Kernel timestamps** on every frame (`SO_TIMESTAMPNS_NEW`, 64-bit time), recorded with it, and the overflow counter
+  (`SO_RXQ_OVFL`). Hardware timestamps are a later step-8 change (PLAN step 8): they need their own epoch in
+  the recording, and the startup log will say whether the adapter provides them. Reply ages and matching use the monotonic time the bus thread read the frame,
+  never the recorded wall-clock stamp, which can step.
 
 Interface settings (bitrate, sample point, TX queue length, restart) are applied by `deploy/` link setup, not by the runtime,
 and the runtime **checks** them at start (driver, bitrate, sample point, state) against the skeleton and refuses to run a bus
-that doesn't match. **Why:** bit timing left to defaults is the classic cause of an error-prone bus (kernel SocketCAN docs).
+that doesn't match, naming every mismatch. It also refuses the controller modes loopback, listen-only and presume-ack (not the
+socket's loopback option above), which make a frame look sent when nothing reached the wire or was acknowledged; `vcan` is the simulator and has none of these to check. **Why:** bit timing left to defaults is the classic cause of an error-prone bus (kernel SocketCAN docs).
 
 ### Transmit
 
 - **Every frame has a deadline** (its tick). A frame that can't go out by then is dropped and counted, never sent late.
   **Why:** a late motion command is a wrong motion command. ArduPilot's and libcanard's CAN drivers follow the same rule.
+  Disable and active reporting off are the exception, whether a stop or control planned them: they go out late rather
+  than not at all, because a late Disable is still the right one. The deadline bounds handing the frame to the kernel,
+  not its transmission: a frame the socket took can still wait in the adapter's queue. Measure that wait on the real
+  adapter before the first Enable (PLAN step 8).
 - **No busy retry.** On `ENOBUFS` or `EAGAIN` the frame is dropped and counted, and the tick goes on. Never loop on
   `write` in the bus thread. Never raise `txqueuelen` to make `ENOBUFS` go away: it hides a bus problem (a linux-can thread
   traced exactly this to a duplicate sender).
 - **Only frames on the allowlist** (PLAN item 2) can be built for transmit; the check lives in the codec so nothing else can
-  bypass it.
-- **A TX echo isn't proof the frame reached the wire** (PLAN item 3). Latency is measured from RX timestamps of replies, and
-  liveness from replies, never from echoes.
+  bypass it. `can-bench` is outside this rule: it never links the codec and sends only its own frames, which no drive
+  acts on, on a bus with no drive.
+- **A TX echo isn't proof the frame reached the wire** (PLAN item 3). Latency in the recording is measured from the
+  kernel RX timestamps of replies, and liveness from replies, never from echoes.
 
 ### Receive
 
@@ -88,16 +99,46 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   virtual bus is unbounded by default; ours isn't).
 - **Liveness comes from replies to commands,** not from any traffic on the bus. A drive is alive if it answered this tick's
   command.
+- **The tick matches replies and ages feedback on the monotonic time the bus thread read the frame;** the recording
+  carries the kernel RX stamp. **Why:** the kernel's stamp is wall-clock and can step.
 
 ### Errors and bus-off
 
 - **Bus errors are a typed enum** (`BusOff`, `ErrorPassive`, `ErrorWarning`, `RxOverflow`, `TxTimeout`, `InterfaceDown`,
   `InterfaceGone`, ...), matched exhaustively.
-- **Latch on the first bus-off error frame** and stop every run on that bus, as [PLAN item 3](../PLAN.md#3-the-new-can-layer-tenet-5)
-  and item 6 say. The latch lives in software because the adapter may bring the bus back by itself (PLAN item 3 has the
+- **Latch on the first bus-off error frame, or any socket read or write failure other than a full queue,** and stop every
+  run on that bus, as [PLAN item 3](../PLAN.md#3-the-new-can-layer-tenet-5) and item 6 say. The latch lives in software because the adapter may bring the bus back by itself (PLAN item 3 has the
   details and sources). Code never treats "the interface is up again" as permission to continue.
 - **Error counters and drops are metrics** (per bus: bus errors, error-passive, bus-off count, RX overflow, TX drops, late
   ticks), exported every second and shown in the UI.
+
+### Stops and the schedule
+
+- **A stop names its scope.** A fault, a drop out of Run, a silent drive or motion on expired feedback stops that
+  drive's limb; a bad batch, a stop order naming a limb the bus doesn't have, control going silent, an operator's bus
+  stop or a bus error stops every limb on the bus not already stopping or stopped; a late wake or a backlog stops every
+  active limb on the bus (an idle limb has nothing running to stop). **Why:** the affected limb stops
+  ([architecture.md](architecture.md)), and the other arm on the same bus has done nothing wrong; a batch or a bus that
+  can't be trusted is trusted for no limb.
+- **Check before every send.** What the drain read before the send is checked before the tick's commands go out, so a
+  fault read in the slack stops its limb on that tick, not the next ([safety.md section 3](safety.md#3-how-a-rule-is-written)).
+- **Only an operator clear re-arms,** and only a stopped limb whose drives are known disabled (confirmed in Reset, or sent
+  nothing for longer than the drive timeout). A latched bus error is never re-armed in place: the bus thread and socket
+  are rebuilt. Nothing in the bus layer re-arms itself.
+- **Slow requests ride in the slack,** one in flight per bus, sent after the collect deadline only when the reply fits
+  before the next tick starts, never on a tick whose reads can't be trusted, never to a limb the veto would stop or
+  while control is silent, and writes only to an idle limb's drive with no command of that tick unanswered. A scan's
+  probe (type 0 to any ID) or the set-ID (type 7) may reach any drive on the bus, so it goes only while every limb on
+  the bus is idle. A request
+  waits queued only a bounded number of ticks. The bus produces exactly one result for every request, including when the
+  thread ends, and retries none; a result control's full ring can't take is dropped and counted, and the requester times
+  out. **Why:** a parameter read must not crowd out a command. A write's answer is a plain status, like a command's, so
+  a write goes only where the two are least likely to be mixed up; a late status can still be taken for the other (both
+  ways are in the [`can` README](../crates/can/README.md), Slow requests), so a write's result proves nothing about the
+  value and preflight reads every write back. Since `canTimeout` counts from any frame, slow traffic must never keep a
+  stopped drive alive.
+- **One schedule for every bus.** Every bus thread and the control thread tick from the one origin the runtime picks, so
+  tick n is the same instant everywhere.
 
 ### Logging
 
@@ -126,7 +167,8 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
 - Can anything send a frame without a deadline, retry in a loop, or block the bus thread?
 - Is every queue bounded, and every drop counted?
 - Is any bus-off or interface error handled by anything other than stop and latch?
-- Are error frames on, loopback on, and filters logged?
+- Does every new stop name its scope (the limb or the whole bus), and can anything but an operator clear re-arm one?
+- Are error frames on, loopback on, and the (empty) filter list recorded?
 
 ## Sources
 

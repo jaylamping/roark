@@ -8,9 +8,19 @@ license.workspace = true
 publish.workspace = true
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
+can.workspace = true
+mcap.workspace = true
+nix.workspace = true
 robstride.workspace = true
+rtrb.workspace = true
+runtime.workspace = true
+safety.workspace = true
+serde_json.workspace = true
 sim-drive.workspace = true
+skeleton.workspace = true
 socketcan.workspace = true
+telemetry.workspace = true
+zstd.workspace = true
 
 [lints]
 workspace = true

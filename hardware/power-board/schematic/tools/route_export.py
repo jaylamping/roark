@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Stage 3 (own router), step 1: the board's copper as polygons for tools/grid_route.py.
 Every pad, track, via and zone fill is exported per copper layer as polygons with its net; holes go to a separate list
-(obstacles on every layer). The GND fills on L1, In2 and L4 are left out: they are refilled around the signals after
-routing. The In1 GND fill is exported but flagged, so it joins GND pads for connectivity without blocking other nets'
-vias (the fill will clear them). Coordinates in mm (KiCad page coordinates).
+(obstacles on every layer). The GND fills on F.Cu, In2, In3 and B.Cu are left out: they are refilled around the signals
+after routing. The In1 and In4 GND planes are exported but flagged, so they join GND pads for connectivity without
+blocking other nets' vias (the planes will clear them). The file records tools/stack.py's layer names. Coordinates in mm (KiCad page coordinates).
 Run with KiCad's Python: <kicad python> tools/route_export.py <board.kicad_pcb> <copper.json>"""
 import json,sys
 import pcbnew
 b=pcbnew.LoadBoard(sys.argv[1])
 pcbnew.ZONE_FILLER(b).Fill(b.Zones())
-LAYERS={pcbnew.F_Cu:0,pcbnew.In1_Cu:1,pcbnew.In2_Cu:2,pcbnew.B_Cu:3}
+sys.path.insert(0,__import__('os').path.dirname(__import__('os').path.abspath(__file__))); import stack
+LAYERS={L:i for i,L in enumerate(stack.kicad_layers(pcbnew))}
+PLANES={stack.kicad_layers(pcbnew)[i] for i in stack.GNDPLANE}
 mm=pcbnew.ToMM
 def polys(sps):
     out=[]
@@ -38,10 +40,10 @@ for z in b.Zones():
     if z.GetIsRuleArea() or not z.GetNetname(): continue
     for L in z.GetLayerSet().Seq():
         if L not in LAYERS: continue
-        if z.GetNetname()=='GND' and L!=pcbnew.In1_Cu: continue
+        if z.GetNetname()=='GND' and L not in PLANES: continue
         fp=z.GetFilledPolysList(L)
         if fp.OutlineCount():
-            items.append(dict(net=z.GetNetname(),layer=LAYERS[L],kind='plane' if (z.GetNetname()=='GND' and L==pcbnew.In1_Cu) else 'zone',poly=polys(fp)))
+            items.append(dict(net=z.GetNetname(),layer=LAYERS[L],kind='plane' if (z.GetNetname()=='GND' and L in PLANES) else 'zone',poly=polys(fp)))
 for z in b.Zones():   # board rule areas that forbid tracks (the hole keep-outs from tools/place.py)
     if z.GetIsRuleArea() and z.GetDoNotAllowTracks():
         for L,k in LAYERS.items():
@@ -52,5 +54,5 @@ for f in b.GetFootprints():   # footprint rule areas (keep-outs in the libraries
             for L,k in LAYERS.items():
                 if z.IsOnLayer(L): items.append(dict(net='',layer=k,kind='keepout',poly=polys(z.Outline())))
 bb=b.GetBoardEdgesBoundingBox()
-json.dump(dict(edge=[mm(bb.GetLeft()),mm(bb.GetTop()),mm(bb.GetRight()),mm(bb.GetBottom())],items=items,holes=holes),open(sys.argv[2],'w'))
+json.dump(dict(layers=stack.NAMES,edge=[mm(bb.GetLeft()),mm(bb.GetTop()),mm(bb.GetRight()),mm(bb.GetBottom())],items=items,holes=holes),open(sys.argv[2],'w'))
 print('items',len(items),'holes',len(holes))

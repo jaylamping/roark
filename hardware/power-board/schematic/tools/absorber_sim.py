@@ -40,13 +40,15 @@ C38 C1 CN {C} IC=54.4
 {pre}BSW BAT BUS I=V(BAT,BUS)*500*max(0,min(1,1-(time-{t_open})/{t_off}))
 RSH BUS 0 1m
 '''
-    if conv: net+=CONV
+    if conv: net+=CONV.replace('{cin_esr}',str(CIN_ESR))
     r=sim(net,'v(bat) i(ll)'+(' v(brk_in) v(vin)' if conv else ''),f'{t_open+t_off+60e-6:.3e}'); MOD=MODT.format(bv=64.4,rd=0.01)
     if conv: return max(x[1] for x in r),max(x[3] for x in r),max(x[5] for x in r),max(x[7] for x in r)
     return max(x[1] for x in r),max(x[3] for x in r)
 # rev B5: the 12 V buck's input, ahead of the E-stop: U7 path (RS9 + Q7), BRK_IN caps (2 x 2.2 uF derated to 2.2 uF), F2,
-# the J24 pigtail (150 nH, 15 mOhm both ways), the buck board's 1 uF, 2.2 uH filter, 47 uF aluminium (0.42 Ohm) and
+# the J24 pigtail (150 nH, 15 mOhm both ways), the buck board's 1 uF, 2.2 uH filter, 47 uF aluminium (0.33 Ohm, CIN_ESR) and
 # 5 x 2.2 uF ceramics (about 5 uF at 55 V), loaded by the buck as about 158 W of constant power (144 W at 91 %).
+# C2 is Chemi-Con EMVH101ARA470MKE0S since 2026-11-10 (0.33 Ohm; the EEE-TK it replaced was 0.42): BUCK_CIN_ESR overrides
+CIN_ESR=float(os.environ.get('BUCK_CIN_ESR','0.33'))
 CONV='''RU7 BAT BRK_IN 7m
 CBI BRK_IN 0 2.2u IC=54.4
 RF2 BRK_IN P1 18m
@@ -55,7 +57,7 @@ CVP VIN_P 0 1u IC=54.4
 LF VIN_P V2 2.2u IC=2.9
 RLF V2 VIN 6m
 CCER VIN 0 5u IC=54.4
-RAL VIN A1 0.42
+RAL VIN A1 {cin_esr}
 CAL A1 0 47u IC=54.4
 BLOAD VIN 0 I=158/max(V(VIN),20)
 '''

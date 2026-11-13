@@ -1,4 +1,6 @@
-"""Netlist checks for rev B: what the sheet is supposed to be, independent of how it was drawn."""
+"""Netlist checks for rev B: what the sheet is supposed to be, independent of how it was drawn.
+check.py <tools dir> <net.net> [<project.kicad_pro>]: with the project file, also that its ESTOP and HV54 net classes
+equal tools/domains.py's lists (tools/handfinish_prep.py writes them)."""
 import sys
 sys.path.insert(0,sys.argv[1]); from sx import *
 N=parse(open(sys.argv[2]).read())
@@ -42,6 +44,15 @@ ok(n('U12',8)=='D_L2' and n('U11',8)=='V_L1','U12 reads VBUS on the R arm port i
 ok(n('U1',3)=='UVLO' and len(two('RUN_B','UVLO'))==1 and len(two('UVLO','GND'))==1 and diode('RUN_B','RUN'),'UVLO only from RUN, through its own diode: no RUN, no bank')
 ok(not any(r[0]=='R' and 'RUN' in (n(r,1),n(r,2)) and {n(r,1),n(r,2)}&{'UVLO','EN_A'} for r in comp),'no resistor from RUN straight to UVLO or EN_A: a pin fault cannot back-drive RUN')
 ok(not any(n(r,q) in ('BAT','VBUS') for r,p in nets['UVLO'] if r[0] in 'RCD' for r2,q in pin if r2==r),'UVLO has no resistor, capacitor or diode to the bus')
+# the same for every E-stop net and every 54 V source (tools/domains.py): no resistor, capacitor, diode, fuse or inductor
+# joins an E-stop net to a 54 V net, a net riding on one, or the latch's own supply chain ahead of the regulator. The
+# port INP pins are logic inputs fed from RUN_P through their resistors (domains.py lists INP_L* with the VBUS domain for
+# spacing only). What this cannot see: leakage across a controller's own pins (U1, U8: the package sets it) and across
+# the board surface (tools/route_checks.py checks 1, 4, 5).
+import domains,re
+hot=lambda x:domains.is_hv('/'+x) or x in ('BAT_F','BAT_R','BAT_CTL') or (domains.rides('/'+x) and not re.match(r'INP_L\d$',x))
+leak=sorted({(e,r) for e in nets if domains.is_estop('/'+e) for r,p in nets[e] if r[0] in 'RCDFL' and r[1:].isdigit() for (r2,q),o in pin.items() if r2==r and q!=p and hot(o)})
+ok(not leak,'no passive part joins an E-stop net to 54 V, to a net riding on 54 V or to the latch supply ahead of the regulator: '+str(leak))
 pk=[r for r in comp if r[0]=='J' and n(r,1)=='BAT']
 ok(len(pk)==1 and n(pk[0],2)=='GND' and not any(r[0]=='J' and r!=pk[0] for r,p in nets['BAT']),'pack in on one keyed two-pole connector, BAT and GND side by side')
 # nothing bulky ahead of the bank
@@ -50,7 +61,7 @@ bat=[r for r,p in nets['BAT'] if r[0]=='C']
 # the XT90S anti-spark plug absorbs, and the BMS close is set by the absorber cans. No bulk or polarized capacitance here.
 def uf(v): import re; m=re.match(r'([\d.]+)uF',v); return float(m[1]) if m else 99
 ok(all('CP_' not in str(get(comp[c],'footprint')[1]) and uf(val(c))<=4.7 for c in bat) and sum(uf(val(c)) for c in bat)<=20,'only ceramics, 20 uF or less, directly on BAT: '+str(bat))
-jb=[r for r in comp if r[0]=='J' and val(r).startswith('12 V converter pigtail')]
+jb=[r for r in comp if r[0]=='J' and val(r).startswith('Buck board pigtail')]
 ok(len(jb)==1 and not any(r==jb[0] for r,p in nets['BAT']+nets['VBUS']),'converter connector on neither BAT nor VBUS')
 jb=jb[0] if jb else 'J0'
 ok(all(n(jb,p)!=n(jb,p+6) or n(jb,p)=='GND' for p in range(1,7)) and n(jb,1)==n(jb,2)=='BRK_F' and any(r[0]=='F' and {n(r,1),n(r,2)}=={'BRK_IN','BRK_F'} for r in comp),'converter input behind its soft start and a fuse')
@@ -61,7 +72,12 @@ ok(n('U7',2)==n('RS9',2) and n('U7',1)==n('RS9',3) and n('U7',3)==n('U7',2),'U7 
 ok(n('U7',4)=='GND' and n('U7',9)=='BRK_IN','U7 OVLO low, OUT on BRK_IN')
 ok(not any(r in ('U7','Q7') for r,p in nets['RUN']+nets['VCTL']),'E-stop latch does not touch the brick path')
 ok(all(val(c).startswith('2.2uF') for c in [r for r,p in nets['BRK_IN'] if r[0]=='C']),'brick input caps only 2.2 uF')
-ok(all(n(jb,p)=='GND' for p in (3,4,6,7,8,9)) and all(n(jb,p)=='+12V_RAW' for p in (10,11,12)) and not {n(jb,p) for p in (1,2)}&{n(jb,p+6) for p in (1,2)}-{'GND'},'converter returns on GND, +Vout on 10-12, nothing on the input row faces +Vout')
+ok([n(jb,p) for p in range(1,13)]==['BRK_F','BRK_F','GND','GND','BRK_ON','+3V3_PI','GND','GND','SP_EN','GND','I2C_SCL','I2C_SDA'],'buck pigtail (split S1): J24 pinout, pin for pin (buck12/check_buck.py checks the same list on J1)')
+# Micro-Fit 2x6: pin n faces pin n+6, and pins 1-6 and 7-12 are each a row. The 54 V input may face and sit next to GND
+# only; SP_EN may face and sit next to GND only, so a contact short trips U7 or turns SPARE_SW off
+NB=lambda p:[q for q in (p-6,p+6) if 1<=q<=12]+[q for q in (p-1,p+1) if (q-1)//6==(p-1)//6 and 1<=q<=12]
+ok(all(n(jb,q) in ('GND','BRK_F') for p in (1,2) for q in NB(p)) and all(n(jb,q)=='GND' for p in range(1,13) if n(jb,p)=='SP_EN' for q in NB(p)),
+   'buck pigtail: the 54 V input and SP_EN face and sit next to GND only')
 # latch
 f1=[r for r in comp if r[0]=='F' and n(r,1)=='BAT']; fo=n(f1[0],2) if f1 else None
 rs=[r for r in comp if r[0]=='R' and fo in (n(r,1),n(r,2))]; ro=({n(rs[0],1),n(rs[0],2)}-{fo}).pop() if len(rs)==1 else None
@@ -100,7 +116,7 @@ SYM={'GND':0,'+3V3_PI':1,'I2C_SDA':2,'I2C_SCL':3}
 for u in [c for c in comp if val(c).startswith('INA2')]:
     a=0x40|(SYM[n(u,1)]<<2)|SYM[n(u,2)]; ok(a not in addr,f'{u} address {a:#x}'); addr[a]=u
     ok(n(u,4)=='I2C_SDA' and n(u,5)=='I2C_SCL' and n(u,6)=='+3V3_PI' and n(u,7)=='GND',u+' bus and supply')
-ok(len(addr)==9,'nine meters')
+ok(len(addr)==7 and not {0x47,0x4D}&set(addr),'seven meters here; 0x47 and 0x4D are the buck board meters (split S1)')
 ports=[u for u in comp if val(u).startswith('TPS48111')]
 ok(len(ports)==6,'six limb port breakers')
 for k in range(2,8):
@@ -116,11 +132,11 @@ for k in range(2,8):
 ok(diode('RUN_P','RUN') and not any(x in ('U1','U8') for x,p in nets['RUN_P']),'ports take RUN through their own diode')
 OPT={r for r in comp if {n(r,1),n(r,2),n(r,4)}&{'PRE_G','ABS_N'}}|{'C29'}|set(csc)|{r for r in comp if r[0]=='R' and {n(r,1),n(r,2)}=={'VBUS','GND'}}
 legs=[r for r in comp if dnp(r) and r not in OPT]
-ok(n('U9',2)=='SP_EN' and len(two('RUN','SP_EN'))==1 and n('U9',3)==n('U9',4)=='+12V','SPARE_SW eFuse enabled by RUN, fed from +12V')
-ok(n('RS10',1)==n('U9',5) and n('U10',10)==n('RS10',2) and n('U10',9)==n('RS10',3) and n('U10',8)==n('RS10',4)=='SPARE_SW','RS10 Kelvin to U10')
-ok(n('J22',1)=='SPARE_SW' and n('J22',2)=='GND','SPARE_SW output')
-ok(n('J23',1)=='SPARE_ON' and n('J23',2)=='GND' and n('U18',5)=='SPARE_ON' and n('U18',3)==n('U18',4)=='+12V','SPARE_ON output behind its eFuse')
-ok(not any(r in ('U18','J23') for r,p in nets['RUN']),'SPARE_ON does not touch the latch')
+# SPARE_SW enable to the buck board (split S1): fail-off. RUN feeds SP_EN only through 100k and a series diode, so the
+# buck board or the pigtail can't drive RUN; nothing here pulls SP_EN up (the 68k pull-down is at the eFuse, check_buck.py)
+spr=two('RUN','SP_ENR',('R',))
+ok(len(spr)==1 and val(spr[0])=='100k' and diode('SP_EN','SP_ENR') and sorted(r for r,p in nets['SP_EN'])==sorted([diode('SP_EN','SP_ENR')[0],jb]) and n(jb,9)=='SP_EN','SPARE_SW enable: RUN through 100k and a series diode to J24 pin 9 only')
+ok(not [r for r in comp if r[0] in 'FU' and '+12V' in {n(r,p) for p in range(1,10)}] and '+12V' not in nets and '+12V_RAW' not in nets,'no 12 V on this board (split S1)')
 ok(len(legs)==3*(4+20),'aux and legs DNP (4 limb parts + 20 breaker parts each): '+str(len(legs)))
 ok(not [r for r,p in nets['GND'] if r[0]=='J' and val(r).startswith('GND stud')],'no GND studs: each limb return sits beside its +')
 ok(n('J21',1)=='+3V3_PI' and n('J21',2)=='I2C_SDA' and n('J21',3)=='GND' and n('J21',4)=='I2C_SCL' and n('J21',7)=='PORT_FLT_N','Pi header: GND between SDA and SCL, port fault line')
@@ -130,12 +146,6 @@ ok(n('D6',3)=='ESTOP_PI_N','clamp on the Pi pin')
 ok(not any(r=='J21' for r,p in nets['RUN']+nets['VCTL']+nets['VBUS']),'nothing above 3.3 V on the Pi header')
 ok(any(r[0]=='D' and n(r,1)=='MID_S' and n(r,2)=='GND' for r in comp),'U17 VBUS pin clamped')
 ok(not any(n(u,p)=='I2C_SDA' for u in addr.values() for p in (1,2)),'no meter address strap on SDA')
-ok(two('+12V','SPON_EN',('R',)) and val(two('SPON_EN','GND',('R',))[0])=='33k','U18 EN divider keeps EN under 6 V up to 20 V of back-feed')
-ok(sum(1 for p in range(1,5) if n('J22',p))==4 and n('J5',1)!='SPARE_SW','SPARE_SW on a 4-pin header, keyed apart from the 2-pin outputs')
-for j,nm in (('J5','Jetson'),('J6','Pi buck'),('J7','fans')):
-    ok(any(r[0]=='F' and {n(r,1),n(r,2)}=={'+12V',n(j,1)} for r in comp),nm+' output fused')
-ok(all(any(r[0]=='D' and n(r,1)==o and n(r,2)=='GND' for r in comp) for o in (n('U9',5),'SPARE_ON')),'eFuse outputs clamped to GND')
-ok(any(r[0]=='D' and n(r,1)=='+12V' and n(r,2)=='GND' and val(r).startswith('SMBJ15') for r in comp),'+12V back-feed TVS')
 # power-fail warning (rev B5): comparator on the converter input, own reference, hysteresis, open drain to the Pi
 pf=[u for u in comp if val(u).startswith('TLV1805') and n(u,1)=='PF_OUT']
 pr=[u for u in comp if val(u).startswith('LM4040') and n(u,1)=='PF_VR']
@@ -144,5 +154,23 @@ ok(two('BRK_IN','PF_SENSE',('R',)) and two('PF_SENSE','GND',('R',)) and two('PF_
 ok(two('PF_VR','PF_REF',('R',)) and two('PF_OUT','PF_REF',('R',)),'power-fail hysteresis: reference through a resistor, feedback from OUT')
 qf=[q for q in comp if q[0]=='Q' and n(q,1)=='PF_OUT' and n(q,2)=='GND']
 ok(len(qf)==1 and two(n(qf[0],3),'PWR_FAIL_N',('R',)) and n('J21',8)=='PWR_FAIL_N' and not two('PWR_FAIL_N','+3V3_PI',('R',)),'PWR_FAIL_N open drain on J21 pin 8, pull-up on the Pi side')
+# layout rule classes: the project file's ESTOP and HV54 net classes are exactly tools/domains.py's lists for this netlist
+# (the .kicad_dru's 1.5 mm rule works on the classes; a net missing from ESTOP is not protected by the DRC)
+if len(sys.argv)>3:
+    import json,domains
+    pat=json.load(open(sys.argv[3]))['net_settings']['netclass_patterns']
+    for cname,test in (('ESTOP',domains.is_estop),('HV54',domains.is_hv)):
+        have={p_['pattern'] for p_ in pat if p_['netclass']==cname}; want={'/'+x for x in nets if test('/'+x)}
+        ok(have==want,f'.kicad_pro net class {cname} equals tools/domains.py: missing {sorted(want-have)}, extra {sorted(have-want)}')
+    dru=open(sys.argv[3][:-len('kicad_pro')]+'kicad_dru',encoding='utf-8').read().replace('\r','')
+    # kicad-cli drops a malformed rules file without a word, and the fill then runs on the defaults: the file must parse
+    import re as _re
+    body=_re.sub(r'#[^\n]*','',dru); depth=0; okp=True
+    for ch in _re.sub(r'"[^"]*"','""',body):
+        depth+=ch=='('; depth-=ch==')'; okp=okp and depth>=0
+    rules=_re.findall(r'\(rule (\w+)',body)
+    ok(okp and depth==0 and body.count('(constraint ')==len(rules)==body.count('(condition ') and rules==['estop_to_54v','latch_supply_leak','estop_at_U1'],
+       f'.kicad_dru is well formed: balanced, one constraint and one condition per rule, rules {rules}')
+    ok(domains.leak_rule() in dru,'.kicad_dru rule latch_supply_leak equals tools/domains.py leak_rule() (LATCH_SUPPLY against LEAK_SENSITIVE, 1.5 mm)')
 print('audited',cnt[0]); print('FAILS',len(fail))
 sys.exit(1 if fail else 0)

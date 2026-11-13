@@ -1,0 +1,18 @@
+[package]
+name = "can-bench"
+description = "Measures a CAN interface's round trip, wake jitter and losses at the bus loop's rate, with no drive on the bus"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+# The runtime's revision stamp (`ROARK_GIT_REVISION`), so every summary names the commit it was measured with.
+build = "../runtime/build.rs"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix.workspace = true
+serde_json.workspace = true
+socketcan.workspace = true
+
+[lints]
+workspace = true

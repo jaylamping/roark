@@ -19,6 +19,11 @@ A safety rule is a row in PLAN item 6's table. To add one, it needs all of:
 - **Not already covered.** If another rule or layer already covers that failure for that hardware, the new rule goes
   (tenet 3: duplicated protection is complexity that hides bugs).
 
+- **What it blocks.** Every refusal and stop also stops a test. The rule says which attended bench tests it can block,
+  and it is built before the first test that needs it, not earlier (PLAN item 6, "Which rules a test waits for").
+  **Why:** the last build's safeguards grew until the robot couldn't be tested at all (Joey, 2026-11-11). A review
+  finding that asks for a new refusal has to name the motor or part it protects, like any other rule.
+
 A rule that can't fill in those lines is not added. "Seems safer" is not a reason.
 
 ## 2. Each rule has a stable ID
@@ -37,7 +42,7 @@ test with one search. It's the same idea as an error code in an API.
 - **The verdict is an enum,** for example `Allow`, `Clamp(value)`, `Stop(RuleId, reason)`. There is no "warn and continue" for
   anything that moves a motor. The `match` on it has no `_` arm.
 - **Fail closed.** Unknown, missing, stale or unparseable means refuse or stop, never allow. A `null` in the skeleton refuses
-  enable; a reply too old to trust stops the limb; an error inside a check is a `Stop`.
+  the motion that needs it (PLAN item 1); a reply too old to trust stops the limb; an error inside a check is a `Stop`.
 - **Every check runs every tick, before transmit,** for every enabled joint. No sampling, no "check every N ticks to save
   time". If the tick can't afford the checks, the tick budget is the problem.
 - **Enable needs proof.** The enable path takes a value only preflight can create (`PreflightPassed`, rust.md section 3), so
@@ -47,10 +52,14 @@ test with one search. It's the same idea as an error code in an API.
 ## 4. Faults latch; nothing bypasses
 
 - **A stop latches.** It clears only through the operator `clear` described in PLAN item 6, which is logged with who and
-  when. Software never clears a fault and retries.
+  when. Software never clears a fault and retries. A limb's stop is latched in its bus thread (`can`'s `BusTick`), the
+  only place that sees every frame; `clear` reaches it through `BusTick::rearm`, which refuses until every drive in the
+  limb is known disabled.
 - **No bypass switches.** No `--force`, `--skip-preflight`, `SAFETY_OFF` env var, debug build that skips checks, or "bench
   mode" that loosens a rule. **Why:** a bypass that exists will be used at the worst moment, often by an agent trying to get
   a run to pass. A test that needs a different limit uses a skeleton fixture; a test that needs faults uses `sim-drive`.
+  The commissioning caps (PLAN item 1) aren't a bypass: they follow from the skeleton's nulls, they can't be asked for,
+  and every rule that is built still runs under them.
 - **No catching and continuing.** A panic or error in the realtime path ends with drives timing out (50 ms) by design. Don't
   wrap safety code in recovery logic that keeps drives fed.
 
@@ -98,6 +107,7 @@ event too. The realtime thread doesn't log directly; it hands events to the logg
 ## Review checklist
 
 - Does the rule name its hardware and failure, and is it in the lowest layer that can enforce it?
+- Which attended bench tests can it block, and is that worth what it protects?
 - Is it a pure function with an enum verdict and no `_` arm?
 - Does every unknown or stale input lead to refuse or stop?
 - Is there any path, flag or mode that skips it?

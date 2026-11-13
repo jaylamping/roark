@@ -24,17 +24,29 @@ ROOT = Path(__file__).resolve().parent.parent
 # architecture.md section 3. Each workspace crate lists the workspace crates it may depend on. A crate missing from this
 # table fails the check: add it here and to the map in the same PR.
 ALLOWED_DEPS = {
+    "can": {"robstride", "telemetry"},
+    "can-bench": set(),
+    "candump-rotate": set(),
+    "robot-cli": {"robstride", "skeleton"},
     "robstride": set(),
+    "runtime": {"can", "robstride", "safety", "skeleton", "telemetry"},
+    "safety": {"can", "robstride", "skeleton"},
     "skeleton": {"robstride"},
     "sim-drive": {"robstride", "skeleton"},
-    "sim-suite": {"robstride", "sim-drive"},
+    "sim-suite": {"can", "robstride", "runtime", "safety", "sim-drive", "skeleton", "telemetry"},
     "telemetry": set(),
 }
 
 # rust.md section 11. Each workspace package's README.md is its crate doc, by kind: a library shows its API in a Rust
-# example that runs as a doc test; a binary or the sim suite shows its commands. A package missing here fails the check.
+# example that runs as a doc test; a binary with no library, or the sim suite, shows its commands. A package missing here fails the check.
 DOC_KIND = {
+    "can": "library",
+    "can-bench": "binary",  # no library; the README shows its commands
+    "candump-rotate": "binary",  # no library; the README shows its commands and the unit
+    "robot-cli": "library",  # its library is the stop as plain values; the README also covers the binary
     "robstride": "library",
+    "runtime": "library",  # its library is what the sim suite drives; the README also covers the binary
+    "safety": "library",
     "skeleton": "library",
     "sim-drive": "library",  # its library is what the sim suite drives; the README also covers the binary
     "sim-suite": "tests",
@@ -120,8 +132,8 @@ def check_docs():
     for pkg in meta["packages"]:
         name = pkg["name"]
         kind = DOC_KIND.get(name)
-        if kind not in ("library", "tests"):
-            errors.append(f"{name}: DOC_KIND must say library or tests; give it a README (rust.md section 11)")
+        if kind not in ("library", "binary", "tests"):
+            errors.append(f"{name}: DOC_KIND must say library, binary or tests; give it a README (rust.md section 11)")
             continue
         manifest = Path(pkg["manifest_path"])
         readme = manifest.parent / "README.md"
@@ -178,7 +190,11 @@ def check_lines():
 
 
 def is_test_code(path, lines, i):
-    return "tests" in path.parts or any("#[cfg(test)]" in line for line in lines[:i])
+    return (
+        "tests" in path.parts
+        or path.name == "tests.rs"
+        or any("#[cfg(test)]" in line for line in lines[:i])
+    )
 
 
 def check_guards():

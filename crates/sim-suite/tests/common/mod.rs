@@ -1,0 +1,185 @@
+//! Helpers shared by the sim suite's test files: drives, commands, a session, and playing control's side of the rings.
+
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
+
+use can::{BusDrive, LimbState, Snapshot, StopReason, Timing};
+use robstride::{
+    DeviceId, Drive, Frame, MitCommand, Model, NewtonMeters, NmPerRad, NmSecPerRad, RadPerSec,
+    Radians, encode,
+};
+use telemetry::{SessionInfo, SkeletonRef, Stage};
+
+/// Slow enough that the test thread, playing control, makes every tick on a loaded machine.
+pub(crate) const HZ: u64 = 100;
+
+/// The tick at `HZ`, with the send window stretched to the collect deadline: these tests check the loop, its recording
+/// and what it does on a drive's word, not the wake budget, so a test thread that wakes a few milliseconds late on a
+/// loaded runner is not a late wake (the tick tests cover that).
+pub(crate) fn timing() -> Timing {
+    let at_hz = Timing::at_hz(HZ);
+    Timing {
+        send_window_ns: at_hz.collect_ns,
+        ..at_hz
+    }
+}
+
+/// A bus interface as a skeleton describes one. The bus layer takes `vcan` as it is; the driver is one no real interface
+/// has, so a test that forgot `ensure_vcan` is still refused on a real bus.
+pub(crate) fn interface() -> can::InterfaceSpec {
+    can::InterfaceSpec {
+        bitrate_bps: 1_000_000,
+        sample_point: 0.75,
+        driver: "sim_only".to_owned(),
+    }
+}
+
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: IDs here are constants in range"
+)]
+pub(crate) fn id(n: u8) -> DeviceId {
+    DeviceId::new(u64::from(n)).unwrap()
+}
+
+/// Drive `n` in limb `limb`.
+pub(crate) fn drive(n: u8, limb: usize) -> BusDrive {
+    BusDrive {
+        device: id(n),
+        limb,
+    }
+}
+
+/// Every limb's state and stop.
+pub(crate) fn limbs(snap: &Snapshot) -> Vec<(LimbState, Option<StopReason>)> {
+    snap.limbs().map(|(_, l)| (l.state, l.stop)).collect()
+}
+
+/// A schedule that starts two periods from now, so the test thread is ready before tick 0.
+pub(crate) fn soon() -> Instant {
+    Instant::now() + Duration::from_nanos(2 * 1_000_000_000 / HZ)
+}
+
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: a hold command is in range"
+)]
+pub(crate) fn hold(n: u8) -> Frame {
+    let command = MitCommand {
+        position: Radians::new(0.0).unwrap(),
+        velocity: RadPerSec::new(0.0).unwrap(),
+        kp: NmPerRad::new(5.0).unwrap(),
+        kd: NmSecPerRad::new(0.5).unwrap(),
+        torque: NewtonMeters::new(0.0).unwrap(),
+    };
+    encode::mit(Drive::new(id(n), Model::Rs03), &command).unwrap()
+}
+
+/// A session on the one bus `bus`.
+pub(crate) fn info(bus: &str) -> SessionInfo {
+    SessionInfo {
+        git_revision: "test".to_owned(),
+        operator: "sim-suite".to_owned(),
+        stage: Stage::Vcan,
+        skeleton: SkeletonRef {
+            path: "inline".to_owned(),
+            sha256: "00".repeat(32),
+        },
+        buses: vec![can::bus_info(bus, 1_000_000)],
+    }
+}
+
+/// The snapshot for the next tick, waiting at most a second.
+pub(crate) fn next_snapshot(
+    snapshots: &mut rtrb::Consumer<Snapshot>,
+    end: Instant,
+) -> Option<Snapshot> {
+    while Instant::now() < end {
+        if let Ok(s) = snapshots.pop() {
+            return Some(s);
+        }
+        std::thread::yield_now();
+    }
+    None
+}
+
+/// Sets both stop flags when dropped, including while a failed assertion unwinds.
+pub(crate) struct Shutdown<'a>(pub(crate) &'a AtomicBool, pub(crate) Arc<AtomicBool>);
+
+impl Drop for Shutdown<'_> {
+    fn drop(&mut self) {
+        self.0.store(true, Ordering::Release);
+        self.1.store(true, Ordering::Release);
+    }
+}
+
+/// A workspace binary from the same build as this test: `target/<profile>/<name>`, next to this test's `deps/`.
+#[expect(clippy::unwrap_used, reason = "test helper: a test binary has a path")]
+pub(crate) fn binary(name: &str) -> PathBuf {
+    let exe = std::env::current_exe().unwrap();
+    let path = exe.parent().and_then(Path::parent).unwrap().join(name);
+    assert!(
+        path.is_file(),
+        "{} is missing: run the suite with scripts/sim.sh, which builds the binaries first",
+        path.display()
+    );
+    path
+}
+
+/// A scratch directory for this test.
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: the temp directory is writable"
+)]
+pub(crate) fn scratch(test: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("sim-suite-{test}-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+/// Control's events in the session's file, in order (`/event`).
+#[expect(
+    clippy::unwrap_used,
+    reason = "test helper: a session file that doesn't read back is the test failing"
+)]
+pub(crate) fn events(session: &Path) -> Vec<telemetry::wire::Event> {
+    let bytes = std::fs::read(session.join("0000.mcap")).unwrap();
+    mcap::MessageStream::new(&bytes)
+        .unwrap()
+        .map(Result::unwrap)
+        .filter(|m| m.channel.topic == "/event")
+        .map(|m| serde_json::from_slice(&m.data).unwrap())
+        .collect()
+}
+
+/// An event's fields, borrowed, for comparing.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Brief<'a> {
+    pub(crate) limb: Option<&'a str>,
+    pub(crate) joint: Option<&'a str>,
+    pub(crate) bus: Option<&'a str>,
+    pub(crate) rule: Option<&'a str>,
+    pub(crate) reason: Option<&'a str>,
+    pub(crate) tag: Option<u64>,
+}
+
+/// The events of `kind`, in order.
+pub(crate) fn of_kind(
+    events: &[telemetry::wire::Event],
+    kind: telemetry::EventKind,
+) -> Vec<Brief<'_>> {
+    events
+        .iter()
+        .filter(|e| e.kind == kind)
+        .map(|e| Brief {
+            limb: e.limb.as_deref(),
+            joint: e.joint.as_deref(),
+            bus: e.bus.as_deref(),
+            rule: e.rule.as_deref(),
+            reason: e.reason.as_deref(),
+            tag: e.tag,
+        })
+        .collect()
+}

@@ -1,0 +1,25 @@
+03:56:41 SolidWorks pid 130820 free GB 16.0
+03:56:47 ok block bottom: 1.0000 (expected 1.0000)
+03:56:47 ok slot wall +X: 1.0000 (expected 1.0000)
+03:56:47 ok slot wall -X: 1.0000 (expected 1.0000)
+03:56:47 ok slot floor: 1.0000 (expected 1.0000)
+03:56:47 ok tongue +X face: 1.0000 (expected 1.0000)
+03:56:47 ok tongue -X face below the patch: 1.0000 (expected 1.0000)
+03:56:48 ok tongue bottom: 1.0000 (expected 1.0000)
+03:56:48 ok load patch: 1.0000 (expected 1.0000)
+03:56:48 ok load patch area: 200.0000 (expected 200.0000)
+03:56:48 ok patch z0: 30.0000 (expected 30.0000)
+03:56:48 ok pad outer faces: 2.0000 (expected 2.0000)
+03:56:48 B4_0p08N_c0p8: PREDICT nodes 60,000 to 200,000; tip displacement 0.5 to 0.6 mm at 0.08 N (0.44 rigid tilt + 0.08 bending); wall forces a little above 181 and 101 N; block peak on the slot-mouth edge X 4.1, Z 20
+03:56:48 B4_0p08N_c0p8: body "SolidBody 1(<b4_tongue>-<B4_TONGUE>)" is PETG printed
+03:56:48 B4_0p08N_c0p8: body "SolidBody 2(SLOT)" is PETG printed
+03:56:48 B4_0p08N_c0p8: body "SolidBody 3(<b4_pad_a>-<B4_PAD_A>)" is Soft pad
+03:56:48 B4_0p08N_c0p8: body "SolidBody 4(<b4_pad_b>-<B4_PAD_B>)" is Soft pad
+03:56:50 B4_0p08N_c0p8: mesh rc 0, 88263 nodes, 59618 elements, free 16.9 GB
+03:56:50 B4_0p08N_c0p8: solver macro: before  0  | set err  0   | after  7  | 
+04:01:16 B4_0p08N_c0p8: fixture nodes 639, box [-20.0, -12.0, 0.0] to [20.0, 12.0, 15.0]
+04:01:16 B4_0p08N_c0p8: load nodes 354, box [-4.0, -10.0, 30.0] to [-4.0, 10.0, 40.0]
+04:01:24 ok B4_0p08N_c0p8 wall face area: 240.0000 (expected 240.0000)
+04:01:31 B4_0p08N_c0p8 {"tag": "B4_0p08N_c0p8", "load": 0.08, "el": 2.5, "ctrl": 0.8, "nodes": 88263, "reaction": [-0.08, 0.0, -0.0, 0.08], "excessive_prompt": false, "nodes_block": 31782, "nodes_tongue": 56429, "nodes_pad": 52, "seconds": 276, "wall_force_plus_x_wall_n": 0.18, "wall_force_minus_x_wall_n": 0.08, "tongue_face_plus_n": 0.18, "tongue_face_minus_n": 0.1, "difference_n": 0.1, "section_check_tongue_z25": {"shear_n": 0.08, "want": 0.08, "moment_nmm": -0.8, "want_moment": 0.8, "axial_n": -0.0}, "foot_force_from_tongue_cut_n": 0.1, "tongue_cut_z14": {"shear_n": -0.1, "moment_nmm": -0.6, "axial_n": 0.001}, "top_force_from_pillar_cut_n": 0.18, "pillar_cut_z12": {"plus_shear_n": 0.18, "plus_moment_nmm": -1.5, "minus_shear_n": -0.0}, "wall_forces_n": [0.18, 0.1], "wall_forces_difference_n": 0.08, "pressure_centre_z_plus": 19.81, "pressure_peak_plus_mpa": 0.08, "bearing_depth_plus_mm": [19.44, 20.0], "pressure_centre_z_minus": 8.44, "pressure_peak_minus_mpa": 0.16, "bearing_depth_minus_mm": [8.0, 9.06], "tongue_tip_disp_mm": 0.449, "tongue_tip_ux_mm": 0.4436, "tongue_ux_at_slot_mouth_mm": 0.0995, "tongue_ux_at_foot_mm": -0.1014, "tongue_uz_range_mm": [-0.0686, 0.0689], "tongue_uy_range_mm": [-0.0001, 0.0002], "max_penetration_plus_wall_mm": -0.002, "max_penetration_minus_wall_mm": 0.0043, "block_peak_vm_mpa": 0.1, "block_peak_at_mm": [4.1, -10.0, 20.0], "block_peak_averages": {"0.5": [0.07, 4], "1.0": [0.04, 12], "2.0": [0.02, 67]}, "block_vm_near_slot_mouth_edge_plus": 0.1, "block_vm_near_slot_root_corner_plus": 0.01, "block_vm_near_slot_root_corner_minus": 0.07, "block_vm_near_slot_mouth_edge_minus": 0.0, "block_peak_vm_2mm_clear_of_edges_mpa": 0.01, "block_peak_2mm_clear_at_mm": [6.1, -6.87, 20.0], "tongue_peak_vm_mpa": 0.12, "tongue_peak_at_mm": [-4.0, -8.4, 8.1], "pad_peak_vm_mpa": 0.00388, "pad_force_bound_n": 0.0311}
+B4 RUN DONE B4_0p08N_c0p8
+04:01:31 closing pid 130820 committed MB 1566

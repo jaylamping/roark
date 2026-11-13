@@ -1,0 +1,350 @@
+{
+ "Y": {
+  "upper": {
+   "vm": 3.06,
+   "at": [
+    -27.3,
+    28.5,
+    -0.3
+   ],
+   "sf_yield": 14.7,
+   "layers_along_X": {
+    "tension": 1.87,
+    "tension_at": [
+     0.6,
+     32.0,
+     5.1
+    ],
+    "sf_tension": 12.1,
+    "shear": 1.58,
+    "shear_at": [
+     -27.0,
+     28.5,
+     5.6
+    ],
+    "sf_shear": 8.3
+   },
+   "layers_along_Y": {
+    "tension": 2.38,
+    "tension_at": [
+     -27.1,
+     29.3,
+     0.2
+    ],
+    "sf_tension": 9.5,
+    "shear": 1.74,
+    "shear_at": [
+     -27.3,
+     28.5,
+     -0.3
+    ],
+    "sf_shear": 7.5
+   },
+   "layers_along_Z": {
+    "tension": 1.03,
+    "tension_at": [
+     27.1,
+     29.3,
+     0.2
+    ],
+    "sf_tension": 21.9,
+    "shear": 0.93,
+    "shear_at": [
+     -28.4,
+     28.5,
+     8.5
+    ],
+    "sf_shear": 14.0
+   }
+  },
+  "lower": {
+   "vm": 3.19,
+   "at": [
+    26.0,
+    -0.3,
+    1.5
+   ],
+   "sf_yield": 14.1,
+   "layers_along_X": {
+    "tension": 1.84,
+    "tension_at": [
+     25.3,
+     -0.3,
+     7.4
+    ],
+    "sf_tension": 12.2,
+    "shear": 1.2,
+    "shear_at": [
+     -26.0,
+     -0.3,
+     0.0
+    ],
+    "sf_shear": 10.8
+   },
+   "layers_along_Y": {
+    "tension": 1.8,
+    "tension_at": [
+     -27.8,
+     -8.1,
+     3.7
+    ],
+    "sf_tension": 12.5,
+    "shear": 0.78,
+    "shear_at": [
+     -25.9,
+     -2.5,
+     7.4
+    ],
+    "sf_shear": 16.7
+   },
+   "layers_along_Z": {
+    "tension": 0.62,
+    "tension_at": [
+     -32.3,
+     -0.3,
+     3.7
+    ],
+    "sf_tension": 36.0,
+    "shear": 1.21,
+    "shear_at": [
+     -26.0,
+     -0.3,
+     0.0
+    ],
+    "sf_shear": 10.7
+   }
+  }
+ },
+ "X": {
+  "upper": {
+   "vm": 2.6,
+   "at": [
+    -27.3,
+    28.5,
+    -0.3
+   ],
+   "sf_yield": 17.3,
+   "layers_along_X": {
+    "tension": 1.24,
+    "tension_at": [
+     -0.0,
+     32.0,
+     3.5
+    ],
+    "sf_tension": 18.1,
+    "shear": 1.26,
+    "shear_at": [
+     -27.0,
+     28.5,
+     5.6
+    ],
+    "sf_shear": 10.3
+   },
+   "layers_along_Y": {
+    "tension": 2.49,
+    "tension_at": [
+     -27.1,
+     29.3,
+     0.2
+    ],
+    "sf_tension": 9.0,
+    "shear": 1.42,
+    "shear_at": [
+     -27.3,
+     28.5,
+     -0.3
+    ],
+    "sf_shear": 9.2
+   },
+   "layers_along_Z": {
+    "tension": 0.89,
+    "tension_at": [
+     -27.6,
+     28.9,
+     3.5
+    ],
+    "sf_tension": 25.3,
+    "shear": 1.07,
+    "shear_at": [
+     -28.4,
+     28.5,
+     8.5
+    ],
+    "sf_shear": 12.2
+   }
+  },
+  "lower": {
+   "vm": 4.42,
+   "at": [
+    20.3,
+    -16.2,
+    0.8
+   ],
+   "sf_yield": 10.2,
+   "layers_along_X": {
+    "tension": 2.41,
+    "tension_at": [
+     15.9,
+     -19.7,
+     7.4
+    ],
+    "sf_tension": 9.3,
+    "shear": 2.14,
+    "shear_at": [
+     20.1,
+     -16.6,
+     0.7
+    ],
+    "sf_shear": 6.1
+   },
+   "layers_along_Y": {
+    "tension": 1.95,
+    "tension_at": [
+     20.4,
+     -15.0,
+     0.0
+    ],
+    "sf_tension": 11.6,
+    "shear": 2.09,
+    "shear_at": [
+     20.1,
+     -16.6,
+     0.7
+    ],
+    "sf_shear": 6.2
+   },
+   "layers_along_Z": {
+    "tension": 1.03,
+    "tension_at": [
+     22.7,
+     -24.0,
+     3.5
+    ],
+    "sf_tension": 21.8,
+    "shear": 1.48,
+    "shear_at": [
+     18.3,
+     -19.1,
+     0.1
+    ],
+    "sf_shear": 8.8
+   }
+  }
+ },
+ "YB": {
+  "upper": {
+   "vm": 1.1,
+   "at": [
+    26.0,
+    0.8,
+    0.2
+   ],
+   "sf_yield": 41.0,
+   "layers_along_X": {
+    "tension": 0.36,
+    "tension_at": [
+     26.0,
+     0.5,
+     6.6
+    ],
+    "sf_tension": 62.6,
+    "shear": 0.47,
+    "shear_at": [
+     26.0,
+     0.8,
+     0.2
+    ],
+    "sf_shear": 27.6
+   },
+   "layers_along_Y": {
+    "tension": 0.37,
+    "tension_at": [
+     26.0,
+     1.6,
+     0.2
+    ],
+    "sf_tension": 61.4,
+    "shear": 0.62,
+    "shear_at": [
+     26.0,
+     0.8,
+     0.2
+    ],
+    "sf_shear": 20.9
+   },
+   "layers_along_Z": {
+    "tension": 0.18,
+    "tension_at": [
+     26.0,
+     0.3,
+     0.7
+    ],
+    "sf_tension": 124.9,
+    "shear": 0.42,
+    "shear_at": [
+     26.0,
+     0.8,
+     0.2
+    ],
+    "sf_shear": 31.2
+   }
+  },
+  "lower": {
+   "vm": 6.44,
+   "at": [
+    7.8,
+    -24.8,
+    7.2
+   ],
+   "sf_yield": 7.0,
+   "layers_along_X": {
+    "tension": 0.89,
+    "tension_at": [
+     7.8,
+     -24.8,
+     7.2
+    ],
+    "sf_tension": 25.3,
+    "shear": 0.77,
+    "shear_at": [
+     -20.5,
+     -16.0,
+     7.2
+    ],
+    "sf_shear": 16.9
+   },
+   "layers_along_Y": {
+    "tension": 5.32,
+    "tension_at": [
+     7.8,
+     -24.8,
+     7.2
+    ],
+    "sf_tension": 4.2,
+    "shear": 1.64,
+    "shear_at": [
+     -7.7,
+     -24.8,
+     0.2
+    ],
+    "sf_shear": 8.0
+   },
+   "layers_along_Z": {
+    "tension": 0.53,
+    "tension_at": [
+     -7.8,
+     -24.8,
+     6.7
+    ],
+    "sf_tension": 42.4,
+    "shear": 1.64,
+    "shear_at": [
+     -7.7,
+     -24.8,
+     0.2
+    ],
+    "sf_shear": 7.9
+   }
+  }
+ }
+}

@@ -1,0 +1,9 @@
+{
+  "volume_mm3": 31643.0,
+  "hand_volume_mm3": 31643.0,
+  "counterbore_floor_z_mm": 3.0,
+  "bodies": 1,
+  "status": "done",
+  "notes": "Opened bracket.SLDPRT, saved as bracket_b first, then added CBORE, SLOT, SLOT_ENDS on top; bracket.SLDPRT SHA-256 unchanged. Slot built as a rectangle cut plus two round-end cuts (three features, same geometry as one slot). Slot extent and counterbore floors measured on the model.",
+  "seconds": 21
+}

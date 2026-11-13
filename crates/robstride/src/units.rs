@@ -86,6 +86,19 @@ impl DeviceId {
     /// Highest ID the drive accepts (RS03 manual §3.3.4, `CAN_ID` 0x200A).
     pub const MAX: u8 = 127;
 
+    /// The lowest ID, 1: where a scan starts.
+    pub const FIRST: Self = Self(1);
+
+    /// The ID after this one, or `None` after 127.
+    #[must_use]
+    pub const fn next(self) -> Option<Self> {
+        if self.0 < Self::MAX {
+            Some(Self(self.0 + 1))
+        } else {
+            None
+        }
+    }
+
     /// The ID, or an error if it is outside 1 to 127.
     ///
     /// # Errors

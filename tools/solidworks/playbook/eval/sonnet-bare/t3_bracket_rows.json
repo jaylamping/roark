@@ -1,0 +1,448 @@
+{
+ "material": {
+  "name": "PETG printed",
+  "source": 1,
+  "EX": 1900000000.0,
+  "NUXY": 0.38,
+  "DENS": 1190.0,
+  "SIGYLD": 45000000.0,
+  "SIGXT": 45000000.0
+ },
+ "rows": [
+  {
+   "el_mm": 4.0,
+   "nodes": 15120,
+   "elements": 8730,
+   "max_aspect": 4.974749327580688,
+   "mesh_s": 1.1,
+   "solve_s": 1.1,
+   "peak_vm_all": 26.499502182006836,
+   "peak_vm_all_at": [
+    22.41,
+    39.07,
+    6.0
+   ],
+   "peak_vm_away_from_bolts": 16.942493438720703,
+   "peak_vm_away_at": [
+    6.0,
+    15.64,
+    17.62
+   ],
+   "peak_vm_root": 13.72036075592041,
+   "peak_vm_root_at": [
+    10.0,
+    37.83,
+    6.0
+   ],
+   "peak_sz_tension_away": 16.671188354492188,
+   "peak_sz_at": [
+    0.0,
+    37.57,
+    16.93
+   ],
+   "peak_sz_tension_all": 21.372665405273438,
+   "peak_sz_all_at": [
+    22.25,
+    9.98,
+    -0.0
+   ],
+   "swminmax_vm": 26.499502182006836,
+   "swminmax_vm_node": 14718,
+   "max_disp_mm": 2.7274465560913086,
+   "reaction_sum_N": [
+    -150.0,
+    -0.0,
+    -0.0
+   ],
+   "reaction_n": 149.99999698493048,
+   "backface_sz_Z8_mean": 8.656523704528809
+  },
+  {
+   "el_mm": 3.0,
+   "nodes": 23143,
+   "elements": 13935,
+   "max_aspect": 6.45013799852711,
+   "mesh_s": 1.1,
+   "solve_s": 1.6,
+   "peak_vm_all": 28.106393814086914,
+   "peak_vm_all_at": [
+    22.41,
+    39.07,
+    6.0
+   ],
+   "peak_vm_away_from_bolts": 16.720672607421875,
+   "peak_vm_away_at": [
+    6.0,
+    34.33,
+    17.52
+   ],
+   "peak_vm_root": 14.179064750671387,
+   "peak_vm_root_at": [
+    10.0,
+    22.2,
+    6.0
+   ],
+   "peak_sz_tension_away": 15.954262733459473,
+   "peak_sz_at": [
+    0.0,
+    37.57,
+    16.93
+   ],
+   "peak_sz_tension_all": 21.823997497558594,
+   "peak_sz_all_at": [
+    22.25,
+    9.98,
+    -0.0
+   ],
+   "swminmax_vm": 28.106393814086914,
+   "swminmax_vm_node": 17577,
+   "max_disp_mm": 2.7396135330200195,
+   "reaction_sum_N": [
+    -150.0,
+    0.0,
+    0.0
+   ],
+   "reaction_n": 149.9999956734246,
+   "backface_sz_Z8_mean": 8.386728946979229
+  },
+  {
+   "el_mm": 2.5,
+   "nodes": 34034,
+   "elements": 21021,
+   "max_aspect": 4.760860198953511,
+   "mesh_s": 1.1,
+   "solve_s": 1.6,
+   "peak_vm_all": 27.384918212890625,
+   "peak_vm_all_at": [
+    22.27,
+    39.64,
+    6.0
+   ],
+   "peak_vm_away_from_bolts": 16.67842674255371,
+   "peak_vm_away_at": [
+    6.0,
+    15.64,
+    17.62
+   ],
+   "peak_vm_root": 14.705487251281738,
+   "peak_vm_root_at": [
+    8.93,
+    20.62,
+    6.15
+   ],
+   "peak_sz_tension_away": 17.343914031982422,
+   "peak_sz_at": [
+    0.0,
+    37.57,
+    16.93
+   ],
+   "peak_sz_tension_all": 21.935686111450195,
+   "peak_sz_all_at": [
+    22.25,
+    9.98,
+    -0.0
+   ],
+   "swminmax_vm": 27.384918212890625,
+   "swminmax_vm_node": 928,
+   "max_disp_mm": 2.7454380989074707,
+   "reaction_sum_N": [
+    -150.0031,
+    0.0041,
+    0.002
+   ],
+   "reaction_n": 150.00314552634936,
+   "backface_sz_Z8_mean": 8.238850384950638
+  },
+  {
+   "el_mm": 2.0,
+   "nodes": 59644,
+   "elements": 38235,
+   "max_aspect": 5.39013954305729,
+   "mesh_s": 1.7,
+   "solve_s": 3.0,
+   "peak_vm_all": 28.03461265563965,
+   "peak_vm_all_at": [
+    22.27,
+    40.3,
+    6.0
+   ],
+   "peak_vm_away_from_bolts": 16.154361724853516,
+   "peak_vm_away_at": [
+    6.0,
+    37.61,
+    17.46
+   ],
+   "peak_vm_root": 15.200413703918457,
+   "peak_vm_root_at": [
+    9.22,
+    26.5,
+    6.08
+   ],
+   "peak_sz_tension_away": 16.20850372314453,
+   "peak_sz_at": [
+    0.0,
+    37.57,
+    16.93
+   ],
+   "peak_sz_tension_all": 22.224258422851562,
+   "peak_sz_all_at": [
+    22.35,
+    10.49,
+    -0.0
+   ],
+   "swminmax_vm": 28.03461265563965,
+   "swminmax_vm_node": 56177,
+   "max_disp_mm": 2.748913288116455,
+   "reaction_sum_N": [
+    -150.001,
+    -0.0047,
+    -0.0037
+   ],
+   "reaction_n": 150.00097312176612,
+   "backface_sz_Z8_mean": 8.406807127453032
+  },
+  {
+   "el_mm": 1.75,
+   "nodes": 82172,
+   "elements": 53476,
+   "max_aspect": 4.674738165696015,
+   "mesh_s": 1.7,
+   "solve_s": 3.2,
+   "peak_vm_all": 29.10431671142578,
+   "peak_vm_all_at": [
+    22.27,
+    40.3,
+    6.0
+   ],
+   "peak_vm_away_from_bolts": 16.698091506958008,
+   "peak_vm_away_at": [
+    6.0,
+    15.74,
+    17.11
+   ],
+   "peak_vm_root": 15.10264778137207,
+   "peak_vm_root_at": [
+    9.24,
+    30.6,
+    6.07
+   ],
+   "peak_sz_tension_away": 16.345264434814453,
+   "peak_sz_at": [
+    0.0,
+    37.57,
+    16.93
+   ],
+   "peak_sz_tension_all": 22.438716888427734,
+   "peak_sz_all_at": [
+    22.35,
+    9.47,
+    -0.0
+   ],
+   "swminmax_vm": 29.10431671142578,
+   "swminmax_vm_node": 70361,
+   "max_disp_mm": 2.7499730587005615,
+   "reaction_sum_N": [
+    -149.9968,
+    0.0029,
+    -0.0019
+   ],
+   "reaction_n": 149.99679495571112,
+   "backface_sz_Z8_mean": 8.417313741601031
+  },
+  {
+   "el_mm": 1.5,
+   "nodes": 119012,
+   "elements": 78653,
+   "max_aspect": 5.559271398631024,
+   "mesh_s": 1.8,
+   "solve_s": 4.5,
+   "peak_vm_all": 29.349275588989258,
+   "peak_vm_all_at": [
+    22.27,
+    40.3,
+    6.0
+   ],
+   "peak_vm_away_from_bolts": 16.981386184692383,
+   "peak_vm_away_at": [
+    6.0,
+    37.62,
+    16.7
+   ],
+   "peak_vm_root": 15.404640197753906,
+   "peak_vm_root_at": [
+    9.35,
+    17.8,
+    6.05
+   ],
+   "peak_sz_tension_away": 15.997300148010254,
+   "peak_sz_at": [
+    0.0,
+    37.57,
+    16.93
+   ],
+   "peak_sz_tension_all": 22.040599822998047,
+   "peak_sz_all_at": [
+    22.25,
+    10.1,
+    -0.0
+   ],
+   "swminmax_vm": 29.349275588989258,
+   "swminmax_vm_node": 105863,
+   "max_disp_mm": 2.751732110977173,
+   "reaction_sum_N": [
+    -149.997,
+    -0.0005,
+    0.0013
+   ],
+   "reaction_n": 149.99700499598808,
+   "backface_sz_Z8_mean": 8.491853396097818
+  },
+  {
+   "el_mm": 3.0,
+   "nodes": 19145,
+   "elements": 11537,
+   "max_aspect": 9.807787888555891,
+   "mesh_s": 0.9,
+   "solve_s": 1.5,
+   "peak_vm_all": 22.518028259277344,
+   "peak_vm_all_at": [
+    22.46,
+    38.96,
+    6.0
+   ],
+   "peak_vm_away_from_bolts": 15.14275074005127,
+   "peak_vm_away_at": [
+    6.0,
+    37.62,
+    16.7
+   ],
+   "peak_vm_root": 14.05546760559082,
+   "peak_vm_root_at": [
+    8.53,
+    33.09,
+    6.28
+   ],
+   "peak_sz_tension_away": 15.57524585723877,
+   "peak_sz_at": [
+    0.0,
+    37.46,
+    16.73
+   ],
+   "peak_sz_tension_all": 15.57524585723877,
+   "peak_sz_all_at": [
+    0.0,
+    37.46,
+    16.73
+   ],
+   "swminmax_vm": 22.518028259277344,
+   "swminmax_vm_node": 15243,
+   "max_disp_mm": 2.7282497882843018,
+   "reaction_sum_N": [
+    -150.0,
+    0.0,
+    -0.0
+   ],
+   "reaction_n": 149.9999989408534,
+   "backface_sz_Z8_mean": 8.356400728225708,
+   "local_control_mm": 1.0
+  },
+  {
+   "el_mm": 3.0,
+   "nodes": 19145,
+   "elements": 11537,
+   "max_aspect": 9.807787888555891,
+   "mesh_s": 1.2,
+   "solve_s": 1.4,
+   "peak_vm_all": 22.518028259277344,
+   "peak_vm_all_at": [
+    22.46,
+    38.96,
+    6.0
+   ],
+   "peak_vm_away_from_bolts": 15.14275074005127,
+   "peak_vm_away_at": [
+    6.0,
+    37.62,
+    16.7
+   ],
+   "peak_vm_root": 14.05546760559082,
+   "peak_vm_root_at": [
+    8.53,
+    33.09,
+    6.28
+   ],
+   "peak_sz_tension_away": 15.57524585723877,
+   "peak_sz_at": [
+    0.0,
+    37.46,
+    16.73
+   ],
+   "peak_sz_tension_all": 15.57524585723877,
+   "peak_sz_all_at": [
+    0.0,
+    37.46,
+    16.73
+   ],
+   "swminmax_vm": 22.518028259277344,
+   "swminmax_vm_node": 15243,
+   "max_disp_mm": 2.7282497882843018,
+   "reaction_sum_N": [
+    -150.0,
+    0.0,
+    -0.0
+   ],
+   "reaction_n": 149.9999989408534,
+   "backface_sz_Z8_mean": 8.356400728225708,
+   "local_control_mm": 0.6
+  },
+  {
+   "el_mm": 3.0,
+   "nodes": 19145,
+   "elements": 11537,
+   "max_aspect": 9.807787888555891,
+   "mesh_s": 1.0,
+   "solve_s": 1.4,
+   "peak_vm_all": 22.518028259277344,
+   "peak_vm_all_at": [
+    22.46,
+    38.96,
+    6.0
+   ],
+   "peak_vm_away_from_bolts": 15.14275074005127,
+   "peak_vm_away_at": [
+    6.0,
+    37.62,
+    16.7
+   ],
+   "peak_vm_root": 14.05546760559082,
+   "peak_vm_root_at": [
+    8.53,
+    33.09,
+    6.28
+   ],
+   "peak_sz_tension_away": 15.57524585723877,
+   "peak_sz_at": [
+    0.0,
+    37.46,
+    16.73
+   ],
+   "peak_sz_tension_all": 15.57524585723877,
+   "peak_sz_all_at": [
+    0.0,
+    37.46,
+    16.73
+   ],
+   "swminmax_vm": 22.518028259277344,
+   "swminmax_vm_node": 15243,
+   "max_disp_mm": 2.7282497882843018,
+   "reaction_sum_N": [
+    -150.0,
+    0.0,
+    -0.0
+   ],
+   "reaction_n": 149.9999989408534,
+   "backface_sz_Z8_mean": 8.356400728225708,
+   "local_control_mm": 0.4
+  }
+ ]
+}

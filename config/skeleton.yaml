@@ -1,21 +1,23 @@
 # The robot: every limb, joint and drive (tenet 2). Schema and checks: crates/skeleton, PLAN item 1.
 # How this file is written and changed: conventions/skeleton.md. Values come from the hardware side, each with its source.
-# Unknown is null, and null refuses enable. Placeholders never become numbers.
-schema: 1
+# Unknown is null, and null refuses the motion that needs it (PLAN item 1). Placeholders never become numbers.
+schema: 2
 name: roark
 power:
   source: bench_24v
   vbus_v: [22.0, 26.0]          # bench window, PLAN item 6
   current_budget_a: 90.0        # summed Iq caps, STATUS.md drive current limits; PLAN item 1
 buses:
-  can0:                         # MCP2515 HAT until the right arm gets its own adapter (PLAN, Open with Joey 2)
+  can0:                         # right arm (PLAN, Open with Joey 3)
     bitrate_bps: 1000000        # ADR 0001
     sample_point: 0.75          # can-stack-for-marengo.md
-    adapter_serial: null        # HAT, no USB adapter
-  can1:
+    driver: mcp251xfd           # Waveshare 2-CH CAN FD HAT, MCP2518FD (Joey, 2026-11-11); mcp251x for the MCP2515 HAT
+    adapter_serial: null        # SPI HAT, no USB adapter
+  can1:                         # left arm (PLAN, Open with Joey 2)
     bitrate_bps: 1000000        # ADR 0001
     sample_point: 0.75          # can-stack-for-marengo.md
-    adapter_serial: null        # adapter not bought yet
+    driver: mcp251xfd           # as can0
+    adapter_serial: null        # SPI HAT, no USB adapter
 limbs:
   left_arm:
     joints:

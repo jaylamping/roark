@@ -78,6 +78,37 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
+name = "can"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "nix",
+ "robstride",
+ "rtrb",
+ "serde_json",
+ "socketcan",
+ "telemetry",
+ "thiserror",
+]
+
+[[package]]
+name = "can-bench"
+version = "0.1.0"
+dependencies = [
+ "nix",
+ "serde_json",
+ "socketcan",
+]
+
+[[package]]
+name = "candump-rotate"
+version = "0.1.0"
+dependencies = [
+ "nix",
+ "zstd",
+]
+
+[[package]]
 name = "cc"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -418,6 +449,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "robot-cli"
+version = "0.1.0"
+dependencies = [
+ "nix",
+ "robstride",
+ "serde_json",
+ "skeleton",
+ "socketcan",
+ "thiserror",
+]
+
+[[package]]
 name = "robstride"
 version = "0.1.0"
 dependencies = [
@@ -429,6 +472,31 @@ name = "rtrb"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5974e397833d890f2f74963408e0d4a6cd8eda2f6a445ae06750291b5d7a997e"
+
+[[package]]
+name = "runtime"
+version = "0.1.0"
+dependencies = [
+ "can",
+ "mcap",
+ "nix",
+ "robstride",
+ "rtrb",
+ "safety",
+ "serde_json",
+ "skeleton",
+ "telemetry",
+ "thiserror",
+]
+
+[[package]]
+name = "safety"
+version = "0.1.0"
+dependencies = [
+ "can",
+ "robstride",
+ "skeleton",
+]
 
 [[package]]
 name = "saphyr-parser"
@@ -550,9 +618,19 @@ dependencies = [
 name = "sim-suite"
 version = "0.1.0"
 dependencies = [
+ "can",
+ "mcap",
+ "nix",
  "robstride",
+ "rtrb",
+ "runtime",
+ "safety",
+ "serde_json",
  "sim-drive",
+ "skeleton",
  "socketcan",
+ "telemetry",
+ "zstd",
 ]
 
 [[package]]

@@ -1,0 +1,39 @@
+01:51:54 SolidWorks pid 133732 free GB 17.2
+01:51:57 ok PLATE volume change: 2856.0000 (expected 2856.0000)
+01:51:57 PLATE: added 2856.00 mm3
+01:51:57 ok ARM volume change: 5230.7500 (expected 5230.7500)
+01:51:57 ARM: added 5230.75 mm3
+01:51:57 ok fillet edges found: 2.0000 (expected 2.0000)
+01:51:58 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:51:58 ok WEBSLOT volume change: 910.1400 (expected 910.1400)
+01:51:58 WEBSLOT: cut 910.14 mm3
+01:51:59 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:51:59 SCREWS: cut 127.23 mm3
+01:52:00 S9_pointed_slot volume 7082.210743633206 mass 8.427830784923517 errors [] bbox [0.0, 13.0, 5.0, 65.0, 27.0, 56.0]
+01:52:01 ok PAD volume change: 475.0000 (expected 475.0000)
+01:52:01 PAD: added 475.00 mm3
+01:52:03 ok PLATE volume change: 2856.0000 (expected 2856.0000)
+01:52:03 PLATE: added 2856.00 mm3
+01:52:04 ok ARM volume change: 4755.7500 (expected 4755.7500)
+01:52:04 ARM: added 4755.75 mm3
+01:52:04 ok fillet edges found: 2.0000 (expected 2.0000)
+01:52:04 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:52:05 ok WEBSLOT volume change: 910.1400 (expected 910.1400)
+01:52:05 WEBSLOT: cut 910.14 mm3
+01:52:05 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:52:05 SCREWS: cut 127.23 mm3
+01:52:06 ok fea volume equals deliverable: 7082.2107 (expected 7082.2107)
+01:52:07 picks 1 2 1 2
+01:52:07 ok wall: 1.0000 (expected 1.0000)
+01:52:07 ok screws: 2.0000 (expected 2.0000)
+01:52:07 ok top: 1.0000 (expected 1.0000)
+01:52:07 ok fillets: 2.0000 (expected 2.0000)
+01:52:12 S9wall: mesh rc 0, 33780 nodes, 21315 elements, free 17.0 GB
+01:52:16 S9wall: fixture nodes 1525, box [0.0, 13.0, 5.0] to [0.0, 27.0, 56.0]
+01:52:16 S9wall: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:52:18 RESULT S9_pointed_slot wall {'nodes': 33780, 'reaction': [-0.0, 0.0, 59.999, 59.999], 'applied': 60.0, 'max_disp': 2.7577383518218994, 'peak': (19.729732513427734, [18.39, 15.0, 41.01]), 'peak_all': 19.729732513427734, 'peak_all_at': [18.39, 15.0, 41.01], 'layer_X': ((20.16131019592285, [34.0, 21.43, 49.58]), (6.477825118280016, [5.45, 20.19, 52.43])), 'layer_Y': ((4.962019443511963, [6.04, 20.58, 52.16]), (3.4703346046188215, [4.0, 15.0, 51.67])), 'layer_Z': ((4.473721027374268, [5.14, 21.48, 52.65]), (6.477388917663925, [5.45, 20.19, 52.43]))}
+01:52:19 S9screws: mesh rc 0, 33780 nodes, 21315 elements, free 16.9 GB
+01:52:22 S9screws: fixture nodes 268, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+01:52:22 S9screws: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:52:24 RESULT S9_pointed_slot screws {'nodes': 33780, 'reaction': [0.001, -0.002, 60.005, 60.005], 'applied': 60.0, 'max_disp': 3.4600555896759033, 'peak': (20.217418670654297, [6.68, 20.19, 52.02]), 'peak_all': 42.40314483642578, 'peak_all_at': [0.0, 19.24, 45.88], 'layer_X': ((21.459421157836914, [6.68, 20.58, 52.02]), (6.329407000185655, [5.73, 21.92, 52.28])), 'layer_Y': ((4.123334884643555, [34.0, 21.43, 49.58]), (2.8102915021770354, [4.0, 15.0, 45.66])), 'layer_Z': ((9.062165260314941, [0.0, 20.65, 37.23]), (6.328759911782794, [5.73, 21.92, 52.28]))}
+01:52:24 closing pid 133732 committed MB 1819
