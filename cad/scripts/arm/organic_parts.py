@@ -328,7 +328,7 @@ def r1f_plate_lump(d, sg, zl):
         feat(d, s.feat, f'R1F_PLATE{tag}', dz, False, mode=MID, lo=0.01)
         bx = HUB_COLS[0][0] if side < 0 else HUB_COLS[1][0]
         with Sk(d, plane(d, 'Z', zc, f'R1F_PLATEHOLE{tag}_P'), f'R1F_PLATEHOLE{tag}') as s:
-            s.circle((bx, HUB_COLS[0][1], zc), 1.8)
+            s.circle((bx, HUB_COLS[0][1], zc), float(os.environ.get('ARM_PLATE_HOLE_R', '2.2')))      # the plate's Dia 4.4 hole (was 3.6)
         feat(d, s.feat, f'R1F_PLATEHOLE{tag}', dz + 0.04, True, mode=MID, lo=0.01)
 
 
