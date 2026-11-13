@@ -95,3 +95,18 @@ def test_a_session_name_cannot_reach_outside_the_claims_folder(tmp_path: Path) -
             assert str(e.value) == f"session name {bad!r}: lower case letters, digits and '-' only"
     assert outside.read_text() == '{"beat": 0}'
     assert not d.exists()
+
+
+def test_who_names_the_launcher_of_an_instance_nobody_claimed(tmp_path: Path) -> None:
+    """Guards: bug - the shoulder FEA ran SolidWorks all day without a claim, so `who <pid>` said nobody while its
+    instances held up every other launch (holly-pc, 2026-11-13)."""
+    assert claims.who(tmp_path, "4242") == []
+    claims.note_instance(tmp_path, 4242, 111.5, str(tmp_path / "wt"), 77, "python fea_shoulder.py HUBL", t=5)
+    (got,) = claims.who(tmp_path, "4242")
+    assert got["unclaimed"] and got["client_pid"] == 77 and got["worktree"] == claims.norm(str(tmp_path / "wt"))
+    assert claims.table(tmp_path, 10, claims.STALE_MIN) == ["no claims"]  # a note is not a claim and blocks nothing
+    assert claims.instance_note(tmp_path, 4242, sw_started=999.0) is None  # the PID was reused by another process
+    claims.claim(tmp_path, "shoulder", str(tmp_path / "wt"), 4242, "", t=10)
+    assert [c["session"] for c in claims.who(tmp_path, "4242")] == ["shoulder"]  # a real claim wins
+    claims.drop_instance(tmp_path, 4242)
+    assert claims.instance_note(tmp_path, 4242) is None
