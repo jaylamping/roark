@@ -7,7 +7,7 @@
 
 use std::io;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use can::{CommandBatch, Rearmed, Snapshot, Timing};
 use rtrb::{Consumer, Producer};
@@ -17,6 +17,7 @@ use crate::clock::{Schedule, mono_now, passed, sleep_period};
 use crate::dispatch::{BusOrders, Told, orders, reply};
 use crate::enable::{Buses, Counts, Enable, EnableRefused, EnableReply, Enabler, SlowEnds};
 use crate::events::Events;
+use crate::identity::{Identity, IdentityRefused, IdentityReply, IdentityRequest};
 use crate::latch::StopLatch;
 use crate::plan::BusPlan;
 use crate::request::{Clear, ClearAt, ClearRefused, Reply, Scope, route_clear};
@@ -53,6 +54,9 @@ pub(crate) struct ControlLinks {
     pub(crate) slow: Vec<SlowEnds>,
     pub(crate) enables: Consumer<Enable>,
     pub(crate) enable_replies: Producer<EnableReply>,
+    /// The operator's scans and set-IDs, one at a time, and their replies.
+    pub(crate) identity: Consumer<IdentityRequest>,
+    pub(crate) identity_replies: Producer<IdentityReply>,
     /// The recording's health: a failed recording refuses every new enable (PLAN item 6 `host.logging`).
     pub(crate) health: telemetry::Health,
     /// Control's events, into the session's recording.
@@ -65,12 +69,14 @@ pub(crate) struct ControlLinks {
     pub(crate) end: Arc<AtomicBool>,
     /// Set by control as it returns, so the runtime's owner learns of a run that ended on its own.
     pub(crate) finished: Arc<AtomicBool>,
+    /// Counted up by each pass that made progress ([`progressing`]); what the binary feeds systemd's watchdog from.
+    pub(crate) progress: Arc<AtomicU64>,
 }
 
 /// What the control thread hands back when it ends.
 #[derive(Debug, Default)]
 pub struct ControlExit {
-    /// Replies (to clears and enables) the runtime's rings couldn't take.
+    /// Replies (to clears, enables, scans and set-IDs) the runtime's rings couldn't take.
     pub replies_dropped: u64,
     /// Views the runtime's ring couldn't take.
     pub views_dropped: u64,
@@ -120,6 +126,7 @@ pub(crate) fn run(
 ) -> ControlExit {
     let mut exit = ControlExit::default();
     let mut enabler = Enabler::new(&links.roster, links.buses.len());
+    let mut identity = Identity::default();
     let mut counts = Counts::default();
     // Each bus's newest snapshot so far, whether its thread has ended, and its next batch, for the enables and holds:
     // made once here, overwritten each pass (no allocation on the loop).
@@ -167,8 +174,7 @@ pub(crate) fn run(
             // A bus may have answered a clear between its last read and its end.
             read(plans, n, &mut links, &mut newest, &mut exit, end_seen);
             record_end(&links.stops, &mut links.events, &exit, &mut end_seen);
-            refuse_clears(plans, &mut links, &mut exit);
-            refuse_enables(&mut enabler, &mut links, &mut exit);
+            refuse_all(plans, &mut enabler, &mut identity, &mut links, &mut exit);
             add(&mut exit, counts);
             links.finished.store(true, Ordering::Release);
             return exit;
@@ -176,26 +182,29 @@ pub(crate) fn run(
         // Read again: an end asked during the reads stops the enables, orders and batches at once.
         if links.end.load(Ordering::Acquire) {
             record_end(&links.stops, &mut links.events, &exit, &mut end_seen);
-            refuse_clears(plans, &mut links, &mut exit);
-            refuse_enables(&mut enabler, &mut links, &mut exit);
+            refuse_all(plans, &mut enabler, &mut identity, &mut links, &mut exit);
         } else {
             let next = n.saturating_add(1);
-            // The schedule's origin on the session's epoch, plus the next tick's send window.
-            let expires = next
-                .saturating_mul(timing.period_ns)
-                .saturating_add(timing.send_window_ns)
-                .saturating_add(origin_ns);
-            for batch in &mut batches {
-                *batch = CommandBatch::new(next, expires);
-            }
+            fresh_batches(&mut batches, next, timing, origin_ns);
+            step_identity(
+                &mut identity,
+                enabler.running(),
+                &mut links,
+                &ended,
+                now_ns,
+                &mut counts,
+                &mut exit,
+            );
             // Enables and holds first, so a stop they ask goes out in this pass's orders.
             let mut buses = Buses {
                 snapshots: &newest,
                 slow: &mut links.slow,
                 batches: &mut batches,
                 ended: &ended,
+                lent: identity.bus(),
             };
             let mut step = EnableStep {
+                identity: identity.running(),
                 enabler: &mut enabler,
                 counts: &mut counts,
                 replies_dropped: &mut exit.replies_dropped,
@@ -212,21 +221,53 @@ pub(crate) fn run(
                 now_ns,
             );
             exit.stops_deferred += send_orders(plans, &mut links, &mut exit.replies_dropped);
-            for (ends, batch) in links.buses.iter_mut().zip(&batches) {
-                if ends.commands.push(*batch).is_err() {
-                    exit.batches_dropped += 1;
-                }
-            }
+            publish(&mut links.buses, &batches, &mut exit);
             if exit.error.is_none() && passed(schedule.at(next, 0)) {
                 exit.late_batches += 1;
+            }
+            // Last, so a pass that hangs anywhere above counts nothing.
+            if exit.error.is_none() && progressing(n, &newest) {
+                links.progress.fetch_add(1, Ordering::Release);
             }
         }
         n = n.saturating_add(1);
     }
 }
 
+/// Each bus's batch for tick `next`, empty, expiring at the end of that tick's send window: the schedule's origin on the
+/// session's epoch (`origin_ns`), plus the tick's offset and its send window.
+fn fresh_batches(batches: &mut [CommandBatch], next: u64, timing: Timing, origin_ns: u64) {
+    let expires = next
+        .saturating_mul(timing.period_ns)
+        .saturating_add(timing.send_window_ns)
+        .saturating_add(origin_ns);
+    for batch in batches {
+        *batch = CommandBatch::new(next, expires);
+    }
+}
+
+/// Whether a pass at tick `n` counts as progress for systemd's watchdog (PLAN item 3: fed only when the control loop
+/// and every bus in an active run are making progress): every bus has published tick `n`'s snapshot. Every bus, not
+/// only those whose last snapshot shows a limb enabled: a bus takes up a limb's first Enable or a stop's Disables
+/// before any snapshot shows it, so a hang in that tick would look idle. The pass itself is the control loop's part: a
+/// control thread that hangs counts nothing. This is the one statement of the rule; the docs point here.
+fn progressing(n: u64, newest: &[Option<Snapshot>]) -> bool {
+    newest.iter().all(|s| s.is_some_and(|s| s.tick >= n))
+}
+
+/// Push each bus its batch.
+fn publish(buses: &mut [BusEnds], batches: &[CommandBatch], exit: &mut ControlExit) {
+    for (ends, batch) in buses.iter_mut().zip(batches) {
+        if ends.commands.push(*batch).is_err() {
+            exit.batches_dropped += 1;
+        }
+    }
+}
+
 /// The enabler's part of a pass, with what it counts.
 struct EnableStep<'a> {
+    /// Whether a scan or set-ID is running: every enable is refused `Busy` until it ends.
+    identity: bool,
     enabler: &'a mut Enabler,
     counts: &'a mut Counts,
     replies_dropped: &'a mut u64,
@@ -234,7 +275,7 @@ struct EnableStep<'a> {
 }
 
 impl EnableStep<'_> {
-    /// Take every enable queued, then step the enable running and hold every enabled joint into the next tick's
+    /// Take every enable queued (refused while a scan or set-ID runs), then step the enable running and hold every enabled joint into the next tick's
     /// batches, answering each enable that ends.
     #[expect(
         clippy::too_many_arguments,
@@ -255,6 +296,14 @@ impl EnableStep<'_> {
             let Ok(enable) = enables.pop() else {
                 break;
             };
+            if self.identity {
+                let r = EnableReply {
+                    tag: enable.tag,
+                    outcome: Err(EnableRefused::Busy),
+                };
+                push_enable_reply(enable_replies, r, self.replies_dropped, self.events);
+                continue;
+            }
             match self
                 .enabler
                 .take(roster, enable, buses, health.failed(), now_ns)
@@ -395,6 +444,89 @@ fn refuse_enables(enabler: &mut Enabler, links: &mut ControlLinks, exit: &mut Co
 /// Nanoseconds from `at` to now (0 before it).
 fn since(at: std::time::Instant) -> u64 {
     u64::try_from(mono_now().saturating_duration_since(at).as_nanos()).unwrap_or(u64::MAX)
+}
+
+/// The scan or set-ID running, one tick on, or the next one queued taken up (refused at once while an enable runs).
+/// Before the enables in a pass, so an enable taken in the same pass as one starts is refused.
+fn step_identity(
+    identity: &mut Identity,
+    enabling: bool,
+    links: &mut ControlLinks,
+    ended: &[bool],
+    now_ns: u64,
+    counts: &mut Counts,
+    exit: &mut ControlExit,
+) {
+    let dropped = &mut exit.replies_dropped;
+    for _ in 0..links.identity.buffer().capacity() {
+        if identity.running() {
+            break;
+        }
+        let Ok(request) = links.identity.pop() else {
+            break;
+        };
+        if let Err(why) = identity.take(request, ended, enabling) {
+            let r = IdentityReply {
+                tag: request.tag,
+                bus: request.bus,
+                ask: request.ask,
+                outcome: Err(why),
+            };
+            push_identity_reply(&mut links.identity_replies, &r, dropped, &mut links.events);
+        } else {
+            links.events.identity_started(&request);
+        }
+    }
+    let stray = &mut counts.stray_results;
+    if let Some(r) = identity.tick(&mut links.slow, ended, now_ns, stray) {
+        push_identity_reply(&mut links.identity_replies, &r, dropped, &mut links.events);
+    }
+}
+
+/// The run is ending: every clear, enable, scan and set-ID queued or running refused.
+fn refuse_all(
+    plans: &[BusPlan],
+    enabler: &mut Enabler,
+    identity: &mut Identity,
+    links: &mut ControlLinks,
+    exit: &mut ControlExit,
+) {
+    refuse_clears(plans, links, exit);
+    refuse_enables(enabler, links, exit);
+    refuse_identity(identity, links, exit);
+}
+
+/// The run is ending: the scan or set-ID running and every one queued refused `Ending` (one past its type 7 says so).
+fn refuse_identity(identity: &mut Identity, links: &mut ControlLinks, exit: &mut ControlExit) {
+    let dropped = &mut exit.replies_dropped;
+    if let Some(r) = identity.abandon(IdentityRefused::Ending) {
+        push_identity_reply(&mut links.identity_replies, &r, dropped, &mut links.events);
+    }
+    for _ in 0..links.identity.buffer().capacity() {
+        let Ok(request) = links.identity.pop() else {
+            break;
+        };
+        let r = IdentityReply {
+            tag: request.tag,
+            bus: request.bus,
+            ask: request.ask,
+            outcome: Err(IdentityRefused::Ending),
+        };
+        push_identity_reply(&mut links.identity_replies, &r, dropped, &mut links.events);
+    }
+}
+
+/// A scan's or set-ID's answer, to its requester and the event log.
+fn push_identity_reply(
+    replies: &mut Producer<IdentityReply>,
+    r: &IdentityReply,
+    dropped: &mut u64,
+    events: &mut Events,
+) {
+    events.identity_reply(r);
+    if replies.push(*r).is_err() {
+        *dropped += 1;
+    }
 }
 
 /// The enabler's counts, into the exit.

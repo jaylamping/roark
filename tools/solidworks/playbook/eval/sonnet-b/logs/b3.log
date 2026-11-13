@@ -1,0 +1,104 @@
+01:43:57 SolidWorks pid 131484 free GB 17.4
+01:44:00 ok PLATE volume change: 6120.0000 (expected 6120.0000)
+01:44:00 PLATE: added 6120.00 mm3
+01:44:01 ok ARM volume change: 7200.0000 (expected 7200.0000)
+01:44:01 ARM: added 7200.00 mm3
+01:44:01 ok fillet edges found: 2.0000 (expected 2.0000)
+01:44:01 ROOT_FILLETS: R3.0 on 2 edges, volume change +38.63 mm3
+01:44:02 ok SCREWS volume change: 159.0431 (expected 159.0431)
+01:44:02 SCREWS: cut 159.04 mm3
+01:44:03 S1_plate_trim volume 13199.58520250048 mass 15.707506390975572 errors [] bbox [0.0, 8.0, 5.0, 65.0, 32.0, 56.0]
+01:44:04 ok PAD volume change: 1200.0000 (expected 1200.0000)
+01:44:04 PAD: added 1200.00 mm3
+01:44:06 ok PLATE volume change: 6120.0000 (expected 6120.0000)
+01:44:06 PLATE: added 6120.00 mm3
+01:44:07 ok ARM volume change: 6000.0000 (expected 6000.0000)
+01:44:07 ARM: added 6000.00 mm3
+01:44:07 ok fillet edges found: 2.0000 (expected 2.0000)
+01:44:07 ROOT_FILLETS: R3.0 on 2 edges, volume change +38.63 mm3
+01:44:08 ok SCREWS volume change: 159.0431 (expected 159.0431)
+01:44:08 SCREWS: cut 159.04 mm3
+01:44:09 ok fea volume equals deliverable: 13199.5852 (expected 13199.5852)
+01:44:10 picks 1 2 1 2
+01:44:10 ok wall: 1.0000 (expected 1.0000)
+01:44:10 ok screws: 2.0000 (expected 2.0000)
+01:44:10 ok top: 1.0000 (expected 1.0000)
+01:44:10 ok fillets: 2.0000 (expected 2.0000)
+01:44:16 S1wall: mesh rc 0, 57543 nodes, 37975 elements, free 17.1 GB
+01:44:24 S1wall: fixture nodes 2547, box [0.0, 8.0, 5.0] to [0.0, 32.0, 56.0]
+01:44:24 S1wall: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:44:27 RESULT S1_plate_trim wall {'nodes': 57543, 'reaction': [0.002, -0.002, 60.0, 60.0], 'applied': 60.0, 'max_disp': 1.5145972967147827, 'peak': (19.42361068725586, [7.28, 15.53, 52.09]), 'peak_all': 19.42361068725586, 'peak_all_at': [7.28, 15.53, 52.09], 'layer_X': ((20.019336700439453, [7.36, 18.08, 52.07]), (6.970847524044488, [6.41, 16.07, 52.45])), 'layer_Y': ((8.096195220947266, [5.0, 25.0, 51.8]), (4.632783968565514, [5.0, 25.0, 40.2])), 'layer_Z': ((5.250840663909912, [5.0, 25.0, 51.8]), (6.917879830668459, [6.43, 21.32, 52.44]))}
+01:44:29 S1screws: mesh rc 0, 57543 nodes, 37975 elements, free 17.1 GB
+01:44:36 S1screws: fixture nodes 344, box [0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+01:44:36 S1screws: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:44:40 RESULT S1_plate_trim screws {'nodes': 57543, 'reaction': [0.0, -0.001, 59.998, 59.998], 'applied': 60.0, 'max_disp': 1.9138046503067017, 'peak': (18.325302124023438, [7.68, 20.19, 52.02]), 'peak_all': 30.764986038208008, 'peak_all_at': [0.0, 19.24, 45.88], 'layer_X': ((19.79491424560547, [7.68, 19.04, 52.02]), (6.296318042022713, [6.43, 17.92, 39.56])), 'layer_Y': ((6.30805778503418, [5.0, 25.0, 51.8]), (4.004807245032681, [5.0, 25.0, 40.2])), 'layer_Z': ((6.360452175140381, [0.0, 19.45, 38.9]), (6.252232457753607, [6.43, 17.92, 39.56]))}
+01:44:42 ok PLATE volume change: 6120.0000 (expected 6120.0000)
+01:44:42 PLATE: added 6120.00 mm3
+01:44:42 ok ARM volume change: 5100.0000 (expected 5100.0000)
+01:44:43 ARM: added 5100.00 mm3
+01:44:43 ok fillet edges found: 2.0000 (expected 2.0000)
+01:44:43 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:44:44 ok SCREWS volume change: 159.0431 (expected 159.0431)
+01:44:44 SCREWS: cut 159.04 mm3
+01:44:44 S2_taper_arm volume 11093.79211801561 mass 13.201612620438576 errors [] bbox [0.0, 8.0, 5.0, 65.0, 32.0, 56.0]
+01:44:46 ok PAD volume change: 475.0000 (expected 475.0000)
+01:44:46 PAD: added 475.00 mm3
+01:44:48 ok PLATE volume change: 6120.0000 (expected 6120.0000)
+01:44:48 PLATE: added 6120.00 mm3
+01:44:48 ok ARM volume change: 4625.0000 (expected 4625.0000)
+01:44:48 ARM: added 4625.00 mm3
+01:44:49 ok fillet edges found: 2.0000 (expected 2.0000)
+01:44:49 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:44:50 ok SCREWS volume change: 159.0431 (expected 159.0431)
+01:44:50 SCREWS: cut 159.04 mm3
+01:44:50 ok fea volume equals deliverable: 11093.7921 (expected 11093.7921)
+01:44:52 picks 1 2 1 2
+01:44:52 ok wall: 1.0000 (expected 1.0000)
+01:44:52 ok screws: 2.0000 (expected 2.0000)
+01:44:52 ok top: 1.0000 (expected 1.0000)
+01:44:52 ok fillets: 2.0000 (expected 2.0000)
+01:44:53 S2wall: mesh rc 0, 49247 nodes, 32235 elements, free 17.1 GB
+01:44:59 S2wall: fixture nodes 2547, box [0.0, 8.0, 5.0] to [0.0, 32.0, 56.0]
+01:44:59 S2wall: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:45:02 RESULT S2_taper_arm wall {'nodes': 49247, 'reaction': [0.001, -0.0, 60.0, 60.0], 'applied': 60.0, 'max_disp': 2.4588189125061035, 'peak': (18.432640075683594, [7.35, 23.94, 52.07]), 'peak_all': 18.432640075683594, 'peak_all_at': [7.35, 23.94, 52.07], 'layer_X': ((18.937976837158203, [7.68, 17.88, 52.02]), (6.597475791830473, [6.45, 18.65, 52.43])), 'layer_Y': ((7.873973846435547, [5.0, 25.0, 51.7]), (4.328841092903181, [5.0, 25.0, 51.7])), 'layer_Z': ((5.333267688751221, [5.0, 25.0, 51.7]), (6.580462340474534, [6.45, 18.65, 52.43]))}
+01:45:04 S2screws: mesh rc 0, 49247 nodes, 32235 elements, free 17.1 GB
+01:45:10 S2screws: fixture nodes 344, box [0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+01:45:10 S2screws: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:45:13 RESULT S2_taper_arm screws {'nodes': 49247, 'reaction': [0.0, 0.004, 60.003, 60.003], 'applied': 60.0, 'max_disp': 2.8590235710144043, 'peak': (17.625438690185547, [7.68, 20.19, 52.02]), 'peak_all': 30.987045288085938, 'peak_all_at': [0.0, 19.24, 45.88], 'layer_X': ((19.022851943969727, [7.68, 19.04, 52.02]), (6.127977771201355, [6.16, 16.08, 38.78])), 'layer_Y': ((6.105834484100342, [5.0, 25.0, 51.7]), (3.2909605827940136, [5.0, 25.0, 51.7])), 'layer_Z': ((6.5984344482421875, [0.0, 20.75, 38.13]), (6.048738786198224, [6.29, 15.69, 38.88]))}
+01:45:14 ok PLATE volume change: 4896.0000 (expected 4896.0000)
+01:45:14 PLATE: added 4896.00 mm3
+01:45:15 ok ARM volume change: 5230.7500 (expected 5230.7500)
+01:45:15 ARM: added 5230.75 mm3
+01:45:15 ok fillet edges found: 2.0000 (expected 2.0000)
+01:45:16 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:45:16 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:45:16 SCREWS: cut 127.23 mm3
+01:45:17 S3_thin_plate volume 10032.35074363321 mass 11.93849738492352 errors [] bbox [0.0, 8.0, 5.0, 65.0, 32.0, 56.0]
+01:45:18 ok PAD volume change: 475.0000 (expected 475.0000)
+01:45:18 PAD: added 475.00 mm3
+01:45:20 ok PLATE volume change: 4896.0000 (expected 4896.0000)
+01:45:20 PLATE: added 4896.00 mm3
+01:45:21 ok ARM volume change: 4755.7500 (expected 4755.7500)
+01:45:21 ARM: added 4755.75 mm3
+01:45:21 ok fillet edges found: 2.0000 (expected 2.0000)
+01:45:21 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:45:22 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:45:22 SCREWS: cut 127.23 mm3
+01:45:23 ok fea volume equals deliverable: 10032.3507 (expected 10032.3507)
+01:45:24 picks 1 2 1 2
+01:45:24 ok wall: 1.0000 (expected 1.0000)
+01:45:24 ok screws: 2.0000 (expected 2.0000)
+01:45:24 ok top: 1.0000 (expected 1.0000)
+01:45:24 ok fillets: 2.0000 (expected 2.0000)
+01:45:26 S3wall: mesh rc 0, 44365 nodes, 28720 elements, free 17.1 GB
+01:45:26 closing pid 131484 committed MB 2380
+Traceback (most recent call last):
+  File "J:\code\roark-wt\sw-eval-sonnet-b\tools\solidworks\playbook\eval\sonnet-b\b3_light.py", line 114, in <module>
+    allres[n] = study_step(j, n, STEPS[n])
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "J:\code\roark-wt\sw-eval-sonnet-b\tools\solidworks\playbook\eval\sonnet-b\b3_light.py", line 91, in study_step
+    r = static(j, d, f'{name[:2]}{support}', PETG, fixtures=[('fixed', fx)], loads=[('normal', top, F)], el=1.5,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\joe\code\roark-wt\sw-eval-sonnet-b\tools\solidworks\swfea.py", line 385, in static
+    raise Failed(f'{name}: solve failed ({rc}). 24 is a singular model (a body free to move) or out of memory: '
+swkit.Failed: S3wall: solve failed (24). 24 is a singular model (a body free to move) or out of memory: playbook/05-fea.md, "When the solve fails"

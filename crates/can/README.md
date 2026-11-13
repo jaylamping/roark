@@ -6,6 +6,117 @@ a bus are grouped into **limbs**, each its own index on that bus, and a stop nam
 
 ## What it does
 
+Each tick, on the monotonic clock, a bus thread:
+
+1. **wakes** at the tick's start, on one schedule every bus and the control thread share;
+2. **takes control's orders** (stop a limb, stop the bus, re-arm a stopped limb);
+3. **drains** the socket and **checks** what it read: a fault bit, an enabled drive out of Run, or three commands in a
+   row unanswered stops that drive's limb before anything is sent;
+4. **sends** control's batch, only if it is for this tick and unexpired, each frame once;
+5. **collects** replies until the collect deadline (about 60 % of the period) and **publishes** a snapshot: what each
+   drive last said, how fresh it is, and each limb's state;
+6. in the **slack** that is left, sends at most one slow request (a parameter read or allowlisted write, get-ID, a
+   scan's probe, set-ID).
+
+The rules that matter:
+
+- **A reply is evidence, never an acknowledgement.** A status read after a command shows the drive was there and what
+  state it was in; nothing proves which command it answers.
+- **A stop belongs to a limb and latches here.** The bus sends Disable until each drive shows Reset or the stop window
+  closes, then reporting off, and records what each drive did. Only the operator's re-arm undoes it, and only once
+  every drive is known disabled.
+- **Late or doubtful ticks send nothing that moves.** A late wake, a stall or a backlog stops every active limb; a
+  missing, stale or malformed batch sends nothing, and two silent ticks while a limb runs stop the bus.
+- **A bus error latches.** Bus-off or any socket failure stops every limb at once; the drives' own 50 ms timeout takes
+  them down.
+- **Nothing is retried**, and slow traffic never goes to a stopping or stopped limb.
+
+`BusTick` holds all of this as plain values with time passed in, so it runs and is tested without a socket; `spawn`
+is the Linux shell that owns the socket and refuses an interface that doesn't match the skeleton. Every exception,
+window and counter is under [In detail](#in-detail), and on the item it belongs to.
+
+## Must never
+
+Send a command late, retry one, or re-send a stale batch. Treat a TX echo or any traffic as proof a drive is alive.
+Allocate, lock, log or wait without a deadline in the tick, or take a lock shared with non-realtime code. Let anyone
+but the runtime transmit. Retry a slow request, or send one to a stopped limb or while control is silent. Undo a stop
+on its own: a stopping or stopped limb gets none of control's frames until the operator's `rearm`, and a latched bus
+error stays latched. Open an interface that isn't `vcan` without checking it against the skeleton first, or set one up.
+
+## Talks to
+
+`robstride` for the frames (it builds them, this crate only sends `Frame`s) and `telemetry` for the recording: each
+tick's frames go to a `BusRecorder`. Control is on the other side of `rtrb` queues: batches, orders and slow requests in, snapshots,
+re-arm answers and slow results out; a full outgoing ring drops and counts (`snapshots_dropped`, `rearms_dropped`,
+`slow_results_dropped`).
+The runtime (`bins/runtime`) wires those up; the sim suite drives the shell, and the runtime, against `sim-drive` on
+`vcan`. See
+the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
+
+## Using it
+
+Build a `BusTick` with the bus's drives in slot order, each with its limb, then per tick: empty the socket, feeding each
+frame to `on_frame`, and report how the drain went with `drained`; `begin`, write each send and report it with `sent`;
+feed every frame read with `on_frame`; and `end` for the snapshot. In the slack after `end`: `open_slack`, take the
+results held with `take_slow_result`, `submit` new requests while `slow_room` allows, send what `slow_send` returns and
+report it with `slow_sent`, then take the new results; when the thread ends, `end_slow` and take what is left.
+`order` takes control's orders (at the tick's start, before the drain); `request_stop` and `stop_limb` ask for a stop at the next `begin`, `skipped` counts ticks a stall slept through, and
+`lost_bus` latches every limb stopped when the socket fails. On Linux, `spawn` runs exactly that on a socket.
+
+```rust
+use can::{BusDrive, BusTick, CommandBatch, LimbState, SendOutcome, Timing};
+use robstride::drive;
+use robstride::{
+    Celsius, DeviceId, Drive, Feedback, Mode, Model, NewtonMeters, RadPerSec, Radians, StatusFaults, encode,
+};
+use telemetry::{Direction, FrameRecord};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let device = DeviceId::new(101)?;
+    let timing = Timing::at_hz(250);
+    let mut bus = BusTick::new(&[BusDrive { device, limb: 0 }], timing)?;
+
+    // Tick 0 starts at 0 ns. Control's batch enables the drive and is good until the next tick.
+    let mut batch = CommandBatch::new(0, timing.period_ns);
+    assert!(batch.set(0, encode::enable(device)));
+    let sends = bus.begin(0, 0, 0, Some(&batch));
+    assert_eq!(sends.len(), 1);
+    bus.sent(0, SendOutcome::Sent, 0);
+
+    // 1 ms later the drive's status arrives: Run mode, no faults.
+    let at_rest = Feedback {
+        position: Radians::new(0.0).ok_or("position")?,
+        velocity: RadPerSec::new(0.0).ok_or("velocity")?,
+        torque: NewtonMeters::new(0.0).ok_or("torque")?,
+        temperature: Celsius::new(25.0).ok_or("temperature")?,
+    };
+    let status = drive::status(Drive::new(device, Model::Rs03), Mode::Run, StatusFaults::default(), &at_rest)?;
+    let read = FrameRecord {
+        id: status.id(),
+        extended: true,
+        error: false,
+        remote: false,
+        len: 8,
+        data: status.data(),
+        stamp_ns: 0,
+        direction: Direction::Rx,
+    };
+    bus.on_frame(1_000_000, &read);
+
+    let snap = bus.end(timing.collect_ns);
+    assert_eq!(snap.limb(0).ok_or("limb 0")?.state, LimbState::Active);
+    let view = snap.drive(0).ok_or("slot 0")?;
+    assert!(view.answered);
+    assert_eq!(view.fresh_ns, Some(1_000_000));
+    Ok(())
+}
+```
+
+The `vcan` run against `sim-drive`, with its recording checked frame by frame against `candump`, is in the sim suite
+(`crates/sim-suite/tests/bus.rs`).
+
+## In detail
+
 Each tick, on the monotonic clock:
 
 1. **Wake** at the tick's scheduled start (`clock_nanosleep`, absolute). Tick numbers count from one origin the runtime
@@ -115,7 +226,7 @@ Disable counts from when it went). Each drive needs a fresh preflight before it 
 layer's.
 
 **Slow requests** (`submit`) are parameter reads, the codec's allowlisted writes and get-ID, for preflight and the
-once-a-second reads; they never ride in a batch. A bus holds `SLOW_SLOTS` of them and has at most one in flight, sent
+once-a-second reads, and a scan's probes and the set-ID (below); they never ride in a batch. A bus holds `SLOW_SLOTS` of them and has at most one in flight, sent
 after the collect deadline and only while its reply fits before the next tick starts (`Timing::slow_reply_ns`, a quarter
 period by default, provisional until the real adapter is measured), so a reply on time is read in the next tick's drain,
 before that tick's sends (a late one is below). A held tick (a late wake, a stall or a backlog, above) sends none: its
@@ -138,12 +249,36 @@ answer, so its value can be about a tick stale, and the newer read's own reply i
 
 The `run_mode` = MIT write goes only in control's batch (`BatchOnly`), so a slow frame's echo is never of a kind kept as
 the drive's `last_echo`. Each request gets exactly one result: its answer, `TimedOut` (no reply by the next tick's
-start), `NotSent` (the socket didn't take it, or it expired queued), or `Refused`, including when the thread ends with
+start), `Unsure` (a probe or set-ID whose window can't be trusted, below), `NotSent` (the socket didn't take it, or it expired queued), or `Refused`, including when the thread ends with
 it pending (`end_slow`: `Ended`, or `BusFailed`). Nothing is retried. A request for a drive whose limb is stopping,
 stopped or due to stop (a stop asked for and not yet taken, or what the veto stops on, on any drive of the limb: a
 fault, a drop out of Run, too many misses), while control has been silent for the silent-tick limit (counted on every
 tick, with every limb idle or stopped too), or on a failed bus is refused, and one already queued is cancelled as the
 next slack opens, so slow traffic never keeps a drive alive past a stop (`canTimeout` counts from any frame).
+
+**A scan's probe and the set-ID** are slow requests too, named by ID rather than slot, since the drive they look for
+may be in no slot: `Probe(id)` sends type 0 to `id` and `SetId { old, new }` sends type 7. When they may go, what
+answers them and how their window closes is in `src/slow/by_id.rs`. Each is answered by every type-0 reply from its ID
+read before the next tick's start: the probe's, or the set-ID's new one. The manual has a drive answer type 7 with its
+type-0 frame but doesn't say from which ID; the new one is assumed until the bench shows it. Its window ends one of
+three ways:
+
+- `Unsure`, whatever it heard, when it can't be trusted to hold every answer: an error frame was read in it, a frame
+  read in it carried a new kernel overflow count, the drain that closed it read a backlog (an overflow comes with one,
+  and the frame reporting it may not be read yet) or left frames unread, or the bus failed (a failed drain never
+  reports how it went). Two drives answering one ID on a real bus send the same CAN ID with different data and
+  collide; that is assumed to show as an error frame, and the bench checks it (whether it needs `berr-reporting` on
+  the link included). Until then `Found` with one UID is no proof that one drive holds the ID.
+- `Found { uid, other }`: the first UID heard, and a second, different one when both replies were read, as on `vcan`.
+- `TimedOut`: nothing from that ID. For a probe, no drive answers there; for a set-ID, also a drive that answered only
+  from its old ID. Either way the requester probes both IDs after a set-ID to see what took.
+
+Either goes only while every limb on the bus is idle, none due to stop or with a stop asked (`BusNotIdle`), since its
+frame reaches whichever drive holds the ID; one queued is cancelled as the next slack opens once that stops being so.
+The bus checks nothing more: the "exactly one drive answering at the old ID and none at the new" that PLAN item 2 asks before a set-ID is
+the requester's probes to prove, and whether the ID took is the requester's probes of both IDs to see. Each drive in the table the frame
+may have reached (the probed ID, or a set-ID's old and new) has its last send stamped, so a re-arm counts the drives'
+timeout from it.
 
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
 a drive table past `MAX_DRIVES`, a drive listed twice, a limb index past the table, and timing that breaks its
@@ -184,83 +319,3 @@ a drive that stays in Run past its `canTimeout`.
 Not yet: the `/can/<bus>/tx_intent` record of every frame handed to the socket or not sent, with the reason
 (logging.md section 8.2), and the per-run tick duration and jitter (rust.md section 6). Both come with the runtime,
 which owns the recording's channels and the metrics, before step 8 measures latency and jitter on the real adapter.
-
-## Must never
-
-Send a command late, retry one, or re-send a stale batch. Treat a TX echo or any traffic as proof a drive is alive.
-Allocate, lock, log or wait without a deadline in the tick, or take a lock shared with non-realtime code. Let anyone
-but the runtime transmit. Retry a slow request, or send one to a stopped limb or while control is silent. Undo a stop
-on its own: a stopping or stopped limb gets none of control's frames until the operator's `rearm`, and a latched bus
-error stays latched. Open an interface that isn't `vcan` without checking it against the skeleton first, or set one up.
-
-## Talks to
-
-`robstride` for the frames (it builds them, this crate only sends `Frame`s) and `telemetry` for the recording: each
-tick's frames go to a `BusRecorder`. Control is on the other side of `rtrb` queues: batches, orders and slow requests in, snapshots,
-re-arm answers and slow results out; a full outgoing ring drops and counts (`snapshots_dropped`, `rearms_dropped`,
-`slow_results_dropped`).
-The runtime (`bins/runtime`) wires those up; the sim suite drives the shell, and the runtime, against `sim-drive` on
-`vcan`. See
-the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
-
-## Using it
-
-Build a `BusTick` with the bus's drives in slot order, each with its limb, then per tick: empty the socket, feeding each
-frame to `on_frame`, and report how the drain went with `drained`; `begin`, write each send and report it with `sent`;
-feed every frame read with `on_frame`; and `end` for the snapshot. In the slack after `end`: `open_slack`, take the
-results held with `take_slow_result`, `submit` new requests while `slow_room` allows, send what `slow_send` returns and
-report it with `slow_sent`, then take the new results; when the thread ends, `end_slow` and take what is left.
-`order` takes control's orders (at the tick's start, before the drain); `request_stop` and `stop_limb` ask for a stop at the next `begin`, `skipped` counts ticks a stall slept through, and
-`lost_bus` latches every limb stopped when the socket fails. On Linux, `spawn` runs exactly that on a socket.
-
-```rust
-use can::{BusDrive, BusTick, CommandBatch, LimbState, SendOutcome, Timing};
-use robstride::drive;
-use robstride::{
-    Celsius, DeviceId, Drive, Feedback, Mode, Model, NewtonMeters, RadPerSec, Radians, StatusFaults, encode,
-};
-use telemetry::{Direction, FrameRecord};
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let device = DeviceId::new(101)?;
-    let timing = Timing::at_hz(250);
-    let mut bus = BusTick::new(&[BusDrive { device, limb: 0 }], timing)?;
-
-    // Tick 0 starts at 0 ns. Control's batch enables the drive and is good until the next tick.
-    let mut batch = CommandBatch::new(0, timing.period_ns);
-    assert!(batch.set(0, encode::enable(device)));
-    let sends = bus.begin(0, 0, 0, Some(&batch));
-    assert_eq!(sends.len(), 1);
-    bus.sent(0, SendOutcome::Sent, 0);
-
-    // 1 ms later the drive's status arrives: Run mode, no faults.
-    let at_rest = Feedback {
-        position: Radians::new(0.0).ok_or("position")?,
-        velocity: RadPerSec::new(0.0).ok_or("velocity")?,
-        torque: NewtonMeters::new(0.0).ok_or("torque")?,
-        temperature: Celsius::new(25.0).ok_or("temperature")?,
-    };
-    let status = drive::status(Drive::new(device, Model::Rs03), Mode::Run, StatusFaults::default(), &at_rest)?;
-    let read = FrameRecord {
-        id: status.id(),
-        extended: true,
-        error: false,
-        remote: false,
-        len: 8,
-        data: status.data(),
-        stamp_ns: 0,
-        direction: Direction::Rx,
-    };
-    bus.on_frame(1_000_000, &read);
-
-    let snap = bus.end(timing.collect_ns);
-    assert_eq!(snap.limb(0).ok_or("limb 0")?.state, LimbState::Active);
-    let view = snap.drive(0).ok_or("slot 0")?;
-    assert!(view.answered);
-    assert_eq!(view.fresh_ns, Some(1_000_000));
-    Ok(())
-}
-```
-
-The `vcan` run against `sim-drive`, with its recording checked frame by frame against `candump`, is in the sim suite
-(`crates/sim-suite/tests/bus.rs`).

@@ -1,0 +1,80 @@
+{
+ "info": {
+  "materials": {
+   "SolidBody 1(Cut-Extrude1)": {
+    "name": "PETG printed",
+    "source": 1,
+    "EX": 1900000000.0,
+    "NUXY": 0.38,
+    "DENS": 1190.0,
+    "SIGYLD": 45000000.0,
+    "SIGXT": 45000000.0
+   },
+   "SolidBody 2(Boss-Extrude2)": {
+    "name": "Steel pin",
+    "source": 1,
+    "EX": 210000000000.0,
+    "NUXY": 0.28,
+    "DENS": 7800.0,
+    "SIGYLD": 250000000.0,
+    "SIGXT": 400000000.0
+   }
+  },
+  "solver_default": 0,
+  "contact_options": 1,
+  "friction": false
+ },
+ "rows": [
+  {
+   "mesh": "global 3.0 mm",
+   "nodes": 12752,
+   "elements": 8059,
+   "peak_contact_pressure": 11.558666229248047,
+   "peak_contact_pressure_node": 10299,
+   "peak_contact_pressure_at": [
+    0.61,
+    5.97,
+    15.06
+   ],
+   "block_peak_vm": 7.725235462188721,
+   "block_peak_at": [
+    1.61,
+    15.0,
+    14.84
+   ],
+   "pin_peak_vm": 44.378868103027344,
+   "pin_peak_at": [
+    -0.41,
+    -0.34,
+    5.02
+   ],
+   "hole_face_peak_vm": 7.725235462188721,
+   "hole_face_peak_at": [
+    1.61,
+    15.0,
+    14.84
+   ],
+   "swminmax_vm": 44.378868103027344,
+   "reaction_sum_N": [
+    0.0,
+    -0.0,
+    -500.0
+   ],
+   "reaction_n": 499.9999993261881,
+   "contact_normal_force_hole": [
+    0.026,
+    0.006,
+    495.269,
+    495.269
+   ],
+   "pin_rise_mid_mm": 0.13490829414998493,
+   "pin_uz_min_max_mm": [
+    -0.5335941910743713,
+    0.8044803142547607
+   ],
+   "hole_top_uz_mm": 0.027646193427867012,
+   "max_disp_mm": 70.66399383544922,
+   "solve_s": 5.6
+  }
+ ]
+}

@@ -1,0 +1,102 @@
+03:21:28 SolidWorks pid 128672 free GB 16.9
+03:21:34 ok PROFILE volume change: 14670.0000 (expected 14670.0000)
+03:21:34 PROFILE: added 14670.00 mm3
+03:21:35 ok WINDOW volume change: 7494.9129 (expected 7494.9129)
+03:21:35 WINDOW: cut 7494.91 mm3
+03:21:36 ok SCREW_HOLES volume change: 159.0431 (expected 159.0431)
+03:21:36 SCREW_HOLES: cut 159.04 mm3
+03:21:36 ok inside corner edges: 4.0000 (expected 4.0000)
+03:21:37 CORNERS: R2.0 on 4 edges, volume change +119.40 mm3
+03:21:37 NARROW: cut 1672.24 mm3
+03:21:37 NARROW removed 1672.2 mm3
+03:21:38 member-side to strip edges 4
+03:21:38 FOOT_SIDES: R1.0 on 4 edges, volume change -4.46 mm3
+03:21:38 FOOT_SIDES radius 1.0
+03:21:38 pad inside edge [55.0, 20.0, 49.5] [65.0, 20.0, 49.5]
+03:21:38 PAD_EDGES: R0.6 on 1 edges, volume change +0.63 mm3
+03:21:39 ok WAIST volume change: 405.0000 (expected 405.0000)
+03:21:39 WAIST: cut 405.00 mm3
+03:21:39 ok hole faces: 2.0000 (expected 2.0000)
+03:21:39 ok hole y: 20.0000 (expected 20.0000)
+03:21:39 ok hole z: 12.0000 (expected 12.0000)
+03:21:39 ok hole along X: 1.0000 (expected 1.0000)
+03:21:39 ok hole y: 20.0000 (expected 20.0000)
+03:21:39 ok hole z: 48.0000 (expected 48.0000)
+03:21:39 ok hole along X: 1.0000 (expected 1.0000)
+03:21:39 ok wall face at X 0: 1.0000 (expected 1.0000)
+03:21:39 ok load patch: 1.0000 (expected 1.0000)
+03:21:39 ok patch area: 100.0000 (expected 100.0000)
+03:21:39 ok patch box[0]: 55.0000 (expected 55.0000)
+03:21:39 ok patch box[1]: 15.0000 (expected 15.0000)
+03:21:39 ok patch box[3]: 65.0000 (expected 65.0000)
+03:21:39 ok patch box[4]: 25.0000 (expected 25.0000)
+03:21:39 ok patch box[5]: 52.0000 (expected 52.0000)
+03:21:39 HAND {'chord_tension_n': 93.7, 'chord_stress_mpa': 7.5, 'strut_force_n': 107.5, 'strut_stress_mpa': 4.14, 'strut_len_mm': 55.4, 'euler_in_plane_n': 358, 'euler_out_of_plane_n': 331, 'buckling_factor_pinned': 3.08, 'zc': 52.75} mass g 6.015
+03:21:39 ok s7_strap_wall_2p0 hole faces: 2.0000 (expected 2.0000)
+03:21:39 ok s7_strap_wall_2p0 wall faces: 1.0000 (expected 1.0000)
+03:21:39 ok s7_strap_wall_2p0 load patch faces: 1.0000 (expected 1.0000)
+03:21:39 fillet faces for mesh control 7
+03:21:39 s7_strap_wall_2p0: PREDICT nodes ~13747, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.5 / 4.14 MPa
+03:21:40 s7_strap_wall_2p0: mesh rc 0, 22972 nodes, 13982 elements, free 16.7 GB
+03:21:43 s7_strap_wall_2p0: fixture nodes 625, box [0.0, 15.0, 7.0] to [0.0, 25.0, 56.0]
+03:21:43 s7_strap_wall_2p0: load nodes 136, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:21:44 s7_strap_wall_2p0 checks {'reaction': [-0.0, 0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 3.775, 'sx_hand': 7.5, 'sx_nodes': 94, 'sx_err_pct': 49.66, 'max_disp': 1.4583, 'vm_all': 25.24, 'vm_all_at': [61.67, 20.0, 48.97], 'nodes': 22972, 'excessive_prompt': False}
+03:21:44 s7_strap_wall_2p0 PAD ZONE (load mask off) vm (25.24, [61.67, 20.0, 48.97], 1.78) Y {"tension": [3.59, [55.88, 19.53, 52.0], 6.26], "shear": [13.73, [61.67, 20.0, 48.97], 0.95]}
+03:21:44 s7_strap_wall_2p0 chord sx 3.8 hand 7.5 | Y factors (1.78, 7.84, 0.95, 0.95) | vm (25.24, [61.67, 20.0, 48.97], 1.78) | Y {"tension": [2.87, [52.86, 20.01, 52.17], 7.84], "shear": [13.73, [61.67, 20.0, 48.97], 0.95]} | excluded {'vm': 10.1, 'at': [1.73, 15.0, 56.0]}
+03:21:44 ok s7_strap_wall_1p4 hole faces: 2.0000 (expected 2.0000)
+03:21:44 ok s7_strap_wall_1p4 wall faces: 1.0000 (expected 1.0000)
+03:21:44 ok s7_strap_wall_1p4 load patch faces: 1.0000 (expected 1.0000)
+03:21:44 fillet faces for mesh control 7
+03:21:44 s7_strap_wall_1p4: PREDICT nodes ~40081, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.5 / 4.14 MPa
+03:21:45 s7_strap_wall_1p4: mesh rc 0, 47284 nodes, 29828 elements, free 16.7 GB
+03:21:51 s7_strap_wall_1p4: fixture nodes 1175, box [0.0, 15.0, 7.0] to [0.0, 25.0, 56.0]
+03:21:51 s7_strap_wall_1p4: load nodes 245, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:21:54 s7_strap_wall_1p4 checks {'reaction': [-0.002, -0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 3.79, 'sx_hand': 7.5, 'sx_nodes': 162, 'sx_err_pct': 49.47, 'max_disp': 1.4606, 'vm_all': 17.1, 'vm_all_at': [59.1, 20.03, 49.17], 'nodes': 47284, 'excessive_prompt': False}
+03:21:54 s7_strap_wall_1p4 PAD ZONE (load mask off) vm (17.1, [59.1, 20.03, 49.17], 2.63) Y {"tension": [3.9, [58.1, 19.65, 52.0], 5.76], "shear": [8.72, [59.1, 20.03, 49.17], 1.49]}
+03:21:54 s7_strap_wall_1p4 chord sx 3.71 hand 7.5 | Y factors (2.63, 8.25, 1.49, 1.49) | vm (17.1, [59.1, 20.03, 49.17], 2.63) | Y {"tension": [2.73, [52.57, 20.0, 52.19], 8.25], "shear": [8.72, [59.1, 20.03, 49.17], 1.49]} | excluded {'vm': 9.38, 'at': [0.0, 15.0, 56.0]}
+03:21:54 ok s7_strap_wall_1p0 hole faces: 2.0000 (expected 2.0000)
+03:21:54 ok s7_strap_wall_1p0 wall faces: 1.0000 (expected 1.0000)
+03:21:54 ok s7_strap_wall_1p0 load patch faces: 1.0000 (expected 1.0000)
+03:21:54 fillet faces for mesh control 7
+03:21:54 s7_strap_wall_1p0: PREDICT nodes ~109983, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.5 / 4.14 MPa
+03:21:56 s7_strap_wall_1p0: mesh rc 0, 112819 nodes, 74262 elements, free 16.6 GB
+03:22:17 s7_strap_wall_1p0: fixture nodes 2273, box [0.0, 15.0, 7.0] to [0.0, 25.0, 56.0]
+03:22:17 s7_strap_wall_1p0: load nodes 473, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:22:30 s7_strap_wall_1p0 checks {'reaction': [0.0, -0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 3.86, 'sx_hand': 7.5, 'sx_nodes': 428, 'sx_err_pct': 48.54, 'max_disp': 1.4618, 'vm_all': 17.11, 'vm_all_at': [59.14, 20.0, 49.17], 'nodes': 112819, 'excessive_prompt': False}
+03:22:31 s7_strap_wall_1p0 PAD ZONE (load mask off) vm (17.11, [59.14, 20.0, 49.17], 2.63) Y {"tension": [3.84, [58.16, 19.73, 52.0], 5.86], "shear": [8.13, [58.74, 20.04, 49.2], 1.6]}
+03:22:31 s7_strap_wall_1p0 chord sx 3.79 hand 7.5 | Y factors (2.63, 7.52, 1.6, 1.6) | vm (17.11, [59.14, 20.0, 49.17], 2.63) | Y {"tension": [2.99, [52.81, 19.73, 52.18], 7.52], "shear": [8.13, [58.74, 20.04, 49.2], 1.6]} | excluded {'vm': 9.74, 'at': [0.0, 15.0, 56.0]}
+03:22:31 ok s7_strap_holes_2p0 hole faces: 2.0000 (expected 2.0000)
+03:22:31 ok s7_strap_holes_2p0 wall faces: 1.0000 (expected 1.0000)
+03:22:31 ok s7_strap_holes_2p0 load patch faces: 1.0000 (expected 1.0000)
+03:22:31 fillet faces for mesh control 7
+03:22:31 s7_strap_holes_2p0: PREDICT nodes ~13747, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.5 / 4.14 MPa
+03:22:32 s7_strap_holes_2p0: mesh rc 0, 22972 nodes, 13982 elements, free 16.6 GB
+03:22:34 s7_strap_holes_2p0: fixture nodes 364, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+03:22:34 s7_strap_holes_2p0: load nodes 136, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:22:35 s7_strap_holes_2p0 checks {'reaction': [0.0, 0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 3.729, 'sx_hand': 7.5, 'sx_nodes': 94, 'sx_err_pct': 50.28, 'max_disp': 1.7187, 'vm_all': 25.17, 'vm_all_at': [61.67, 20.0, 48.97], 'nodes': 22972, 'excessive_prompt': False}
+03:22:35 s7_strap_holes_2p0 PAD ZONE (load mask off) vm (25.17, [61.67, 20.0, 48.97], 1.79) Y {"tension": [3.45, [55.88, 19.53, 52.0], 6.53], "shear": [13.69, [61.67, 20.0, 48.97], 0.95]}
+03:22:35 s7_strap_holes_2p0 chord sx 3.76 hand 7.5 | Y factors (1.79, 8.31, 0.95, 0.95) | vm (25.17, [61.67, 20.0, 48.97], 1.79) | Y {"tension": [2.71, [52.86, 20.01, 52.17], 8.31], "shear": [13.69, [61.67, 20.0, 48.97], 0.95]} | excluded {'vm': 25.09, 'at': [4.0, 18.28, 49.45]}
+03:22:35 ok s7_strap_holes_1p4 hole faces: 2.0000 (expected 2.0000)
+03:22:35 ok s7_strap_holes_1p4 wall faces: 1.0000 (expected 1.0000)
+03:22:35 ok s7_strap_holes_1p4 load patch faces: 1.0000 (expected 1.0000)
+03:22:36 fillet faces for mesh control 7
+03:22:36 s7_strap_holes_1p4: PREDICT nodes ~40081, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.5 / 4.14 MPa
+03:22:37 s7_strap_holes_1p4: mesh rc 0, 47284 nodes, 29828 elements, free 16.6 GB
+03:22:42 s7_strap_holes_1p4: fixture nodes 448, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+03:22:42 s7_strap_holes_1p4: load nodes 245, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:22:45 s7_strap_holes_1p4 checks {'reaction': [0.0, 0.0, 59.997, 59.997], 'reaction_err_pct': 0.005, 'reaction_fz': 59.997, 'sx_top': 3.742, 'sx_hand': 7.5, 'sx_nodes': 162, 'sx_err_pct': 50.11, 'max_disp': 1.7237, 'vm_all': 27.63, 'vm_all_at': [0.0, 19.3, 50.14], 'nodes': 47284, 'excessive_prompt': False}
+03:22:45 s7_strap_holes_1p4 PAD ZONE (load mask off) vm (17.01, [59.1, 20.03, 49.17], 2.65) Y {"tension": [3.81, [58.1, 19.65, 52.0], 5.91], "shear": [8.66, [59.1, 20.03, 49.17], 1.5]}
+03:22:45 s7_strap_holes_1p4 chord sx 3.68 hand 7.5 | Y factors (2.65, 8.48, 1.5, 1.5) | vm (17.01, [59.1, 20.03, 49.17], 2.65) | Y {"tension": [2.65, [0.0, 19.26, 52.15], 8.48], "shear": [8.66, [59.1, 20.03, 49.17], 1.5]} | excluded {'vm': 27.63, 'at': [0.0, 19.3, 50.14]}
+03:22:45 ok s7_strap_holes_1p0 hole faces: 2.0000 (expected 2.0000)
+03:22:45 ok s7_strap_holes_1p0 wall faces: 1.0000 (expected 1.0000)
+03:22:45 ok s7_strap_holes_1p0 load patch faces: 1.0000 (expected 1.0000)
+03:22:45 fillet faces for mesh control 7
+03:22:45 s7_strap_holes_1p0: PREDICT nodes ~109983, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.5 / 4.14 MPa
+03:22:47 s7_strap_holes_1p0: mesh rc 0, 112819 nodes, 74262 elements, free 16.6 GB
+03:23:09 s7_strap_holes_1p0: fixture nodes 568, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+03:23:09 s7_strap_holes_1p0: load nodes 473, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:23:22 s7_strap_holes_1p0 checks {'reaction': [0.001, -0.001, 60.001, 60.001], 'reaction_err_pct': 0.002, 'reaction_fz': 60.001, 'sx_top': 3.803, 'sx_hand': 7.5, 'sx_nodes': 428, 'sx_err_pct': 49.3, 'max_disp': 1.727, 'vm_all': 31.82, 'vm_all_at': [4.0, 21.08, 49.98], 'nodes': 112819, 'excessive_prompt': False}
+03:23:22 s7_strap_holes_1p0 PAD ZONE (load mask off) vm (17.03, [59.14, 20.0, 49.17], 2.64) Y {"tension": [3.75, [58.16, 19.73, 52.0], 6.01], "shear": [8.08, [58.74, 20.04, 49.2], 1.61]}
+03:23:22 s7_strap_holes_1p0 chord sx 3.75 hand 7.5 | Y factors (2.64, 7.98, 1.61, 1.61) | vm (17.03, [59.14, 20.0, 49.17], 2.64) | Y {"tension": [2.82, [52.81, 19.73, 52.18], 7.98], "shear": [8.08, [58.74, 20.04, 49.2], 1.61]} | excluded {'vm': 31.82, 'at': [4.0, 21.08, 49.98]}
+03:23:22 closing pid 128672 committed MB 1906
+STEP s7_strap mass 6.015 worst Y factors (yield, layer, shear, min) [1.78, 7.52, 0.95, 0.95] buckling 3.08

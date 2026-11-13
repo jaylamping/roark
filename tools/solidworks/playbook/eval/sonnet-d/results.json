@@ -1,0 +1,304 @@
+{
+ "run": "sonnet-d",
+ "model": "claude-sonnet-5-5",
+ "D1": {
+  "mass_g": 23.0,
+  "parts": 1,
+  "fasteners": [
+   "4 x M3x6 button head ISO 7380 thread-forming, no washer",
+   "2 x M5x14 socket head",
+   "2 x M5 drop-in T-nut",
+   "2 x zip tie 2.5 mm"
+  ],
+  "board_removal_steps": [
+   "unplug or cut ties and free the two wire pairs at the +X edge",
+   "undo 4 M3 screws with a 2 mm hex key along the board normal",
+   "lift the board out along its normal",
+   "refit in reverse; the M5 screws (4 mm hex, vertical at X +-52) are not touched"
+  ],
+  "open_area_share": 0.84,
+  "open_area_share_top": 0.971,
+  "envelope_ok": true,
+  "envelope_box_mm": [
+   [
+    -58.0,
+    -24.78,
+    -2.5
+   ],
+   [
+    58.0,
+    24.77,
+    44.51
+   ]
+  ],
+  "sf_min": {
+   "yield_": 27,
+   "across_layers_print_base_down": 26,
+   "interlayer_shear_print_base_down": 14
+  },
+  "governing": "interlayer shear 13 MPa at the zip-tie slot corner under a sideways 9 N (corner not converged)",
+  "print_orientation": "base flat on the bed, layers along Z, no supports",
+  "tilt_deg": 41,
+  "assumptions": [
+   "board tilted 41 deg about X because 60 mm does not fit in 50 mm of Y (spec contradiction)",
+   "14 mm parts only in the middle 24 mm of the 60 mm side",
+   "wires leave the +X edge along X",
+   "mounting-hole keep-out round each hole is free on both faces",
+   "M3 thread-forming screws, M5 T-nuts in the 6 mm slot",
+   "9 N through the board centre"
+  ],
+  "questions": [
+   "can the board be tilted or is the 50 mm Y envelope firm (assumed: tilt ok)",
+   "where are the 14 mm and 3 mm parts",
+   "which 60 mm edge do the wires leave",
+   "is the keep-out round the holes free",
+   "screw and T-nut types",
+   "is wire strain relief wanted"
+  ],
+  "ideas_tried": [
+   "A screw-down on two ribs (chosen)",
+   "B slide-in grooved cradle with latch (sketch only)"
+  ],
+  "minutes": 39
+ },
+ "D2": {
+  "spec_problems": [
+   {
+    "what": "shoulder opening 43.5 against inner ring 44.0",
+    "number": "0.25 mm overlap each side",
+    "built": "46.0"
+   },
+   {
+    "what": "screws at X 28.2 against seat r 26",
+    "number": "wall 0.5 (clearance hole) and 0.2 (insert hole) mm",
+    "built": "X 30.0, walls 2.3 and 2.0"
+   },
+   {
+    "what": "two 6 mm counterbores 5 mm apart",
+    "number": "overlap, lens 2.25 mm2",
+    "built": "kept as a figure-8"
+   },
+   {
+    "what": "seat 7.0 wide for a 7.0 ring, +-0.15 printer",
+    "number": "0 axial clearance",
+    "built": "seat 7.4"
+   },
+   {
+    "what": "seat 52 line to line for a ring that must clamp",
+    "number": "+-0.15 loose or tight",
+    "built": "split gap 0.6, seat 52.0"
+   },
+   {
+    "what": "insert hole 6 deep, M3x35 screw",
+    "number": "tip 6.2 below the face",
+    "built": "7.0 deep"
+   },
+   {
+    "what": "M4 insert holes 8 deep",
+    "number": "no room for the screw tip if the insert is 8 long",
+    "built": "kept at 8"
+   }
+  ],
+  "seat_diameter_mm": 52.0,
+  "split_gap_mm": 0.6,
+  "fit_reasoning": "seat 52.0, faces 0.6 apart: with +-0.15 on the diameter the gap left after clamping is 0.45 to 0.75, never closed, so the clamp is screw preload on the seat, not a stop; not verified on a print",
+  "clearances_mm": {
+   "ring_outside_to_seat_mm (line to line by design)": 0.005,
+   "ring_top_face_to_upper_shoulder_mm": 0.2,
+   "ring_bottom_face_to_lower_shoulder_mm": 0.2,
+   "inner_ring_outside_to_shoulders_mm (radial, turning)": 0.997,
+   "inner_ring_end_face_circle_to_shoulders_mm": 0.986,
+   "shaft_\u00d840_to_shoulders_mm (radial)": 2.964,
+   "screw_clearance_hole_radial_mm (\u00d83.4 for M3)": 0.2,
+   "screw_head_in_counterbore_radial_mm (\u00d86 for a \u00d85.5 head)": 0.25,
+   "screw_head_height_vs_counterbore_mm (3.0 head, 3.5 deep)": 0.5,
+   "upper: M3 hole wall to the seat (clear hole r1.7, hole centre X30), mm": 2.303,
+   "lower: M3 hole wall to the seat (clear hole r1.7, hole centre X30), mm": 2.303,
+   "spec as drawn: screw at X 28.2 with a \u00d84.0 insert hole, wall to the \u00d852 seat (r 26), mm": 0.2,
+   "spec as drawn: screw at X 28.2 with a \u00d83.4 clearance hole, wall to the seat, mm": 0.5,
+   "built: \u00d84.0 insert hole wall to the seat at X 30, mm": 2.0,
+   "M4 insert hole (\u00d85.6 at X 24, Z 3.5, 8 deep from Y -32) to the seat, mm": 5.141
+  },
+  "hand_screw_load_n": 75.0,
+  "screw_load_n": {
+   "Y": "69 to 81 N each, mean 75.2, sum 300.4",
+   "X": "tension 45 to 51 N each, shear 2 to 3 N (hand 37.5 shear): not explained"
+  },
+  "nodes": {
+   "Y_3p5mm": 66675,
+   "Y_2p6mm": 81769,
+   "X": 66675,
+   "Y_bonded": 66675
+  },
+  "how_bodies_were_held": "lower half fixed on face Y -32; upper half by the 4 stepped steel pins; ring by contact with both seats plus 4 soft pads (0.5 MPa, 0.2 mm) to the shoulder",
+  "contact_proof": "same +Y case with the three contact sets bonded: ring moves 0.0019 mm instead of 0.046, screws carry 0.6 to 2 N instead of 75 N; in the contact case the ring lifts 0.041 mm off the lower seat while seat nodes move under 0.00002 mm",
+  "sf_yield": 10.2,
+  "sf_layer": 21.8,
+  "sf_shear": 8.8,
+  "governing": "lower half under +X, shear between layers (8.8), outside 3 mm of the screw axes; the screw head edge (sf 1.2, bonded-edge singularity, no preload modelled) is not shown safe",
+  "print_orientation": {
+   "upper": "bearing axis Z vertical",
+   "lower": "bearing axis Z vertical"
+  },
+  "valid": "true for +Y; not shown for +X (screw load path disagrees with the hand value); convergence over two sizes only",
+  "why": "+Y: reaction 300 N, screw tension sum 300.4 N, contact open on the unloaded side, bonded twin 24x stiffer; +X: reaction ok but screws read 2 to 3 N shear against a hand 37.5",
+  "minutes": 31
+ },
+ "D3": {
+  "plates": {
+   "P1": {
+    "volume_mm3": 17728.67,
+    "hand_volume_mm3": 17728.67,
+    "mass_g": 21.1,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 1.0,
+    "changed": true,
+    "why": "ring B turned 15 degrees, smallest wall between features 3.02 mm"
+   },
+   "P2": {
+    "volume_mm3": 23947.18,
+    "hand_volume_mm3": 23947.18,
+    "mass_g": 28.5,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 7.0,
+    "changed": true,
+    "why": "ring B turned by half the pitch, 30 degrees; probably a copy error in the table"
+   },
+   "P3": {
+    "volume_mm3": 38698.26,
+    "hand_volume_mm3": 38698.26,
+    "mass_g": 46.05,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 1.0,
+    "changed": false,
+    "why": ""
+   },
+   "P4": {
+    "volume_mm3": 9616.26,
+    "hand_volume_mm3": 9616.26,
+    "mass_g": 11.44,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 1.5,
+    "changed": true,
+    "why": "ring B on \u00d849 instead of \u00d858; depth 3.8 (floor 1.2 mm); ring B turned 15 degrees, smallest wall between features 1.62 mm"
+   },
+   "P5": {
+    "volume_mm3": 62864.78,
+    "hand_volume_mm3": 62864.78,
+    "mass_g": 74.81,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 2.5,
+    "changed": false,
+    "why": ""
+   },
+   "P6": {
+    "volume_mm3": 20848.86,
+    "hand_volume_mm3": 20848.86,
+    "mass_g": 24.81,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 2.0,
+    "changed": false,
+    "why": ""
+   }
+  },
+  "plates_b": {
+   "P1": {
+    "volume_mm3": 22040.22,
+    "hand_volume_mm3": 22040.22,
+    "mass_g": 26.23,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 1.0,
+    "changed": true,
+    "why": "chamfer 0.4 mm instead of 1.0 (top wall 0.6 mm)",
+    "counterbore_floor_z_mm": 3.0,
+    "chamfer_mm": 0.4,
+    "thickness_mm": 7.5
+   },
+   "P2": {
+    "volume_mm3": 29648.45,
+    "hand_volume_mm3": 29648.45,
+    "mass_g": 35.28,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 7.0,
+    "changed": false,
+    "why": "",
+    "counterbore_floor_z_mm": 3.0,
+    "chamfer_mm": 1.0,
+    "thickness_mm": 7.5
+   },
+   "P3": {
+    "volume_mm3": 45765.78,
+    "hand_volume_mm3": 45765.78,
+    "mass_g": 54.46,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 1.0,
+    "changed": true,
+    "why": "chamfer 0.4 mm instead of 1.0 (top wall 0.6 mm); ring A turned 20 degrees, wall 7.30 mm",
+    "counterbore_floor_z_mm": 4.0,
+    "chamfer_mm": 0.4,
+    "thickness_mm": 9.5
+   },
+   "P4": {
+    "volume_mm3": 12351.34,
+    "hand_volume_mm3": 12351.34,
+    "mass_g": 14.7,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 1.5,
+    "changed": true,
+    "why": "chamfer 0.9 mm instead of 1.0 (top wall 0.6 mm)",
+    "counterbore_floor_z_mm": 1.2,
+    "chamfer_mm": 0.9,
+    "thickness_mm": 6.5
+   },
+   "P5": {
+    "volume_mm3": 74259.2,
+    "hand_volume_mm3": 74259.2,
+    "mass_g": 88.37,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 2.5,
+    "changed": false,
+    "why": "",
+    "counterbore_floor_z_mm": 3.0,
+    "chamfer_mm": 1.0,
+    "thickness_mm": 9.5
+   },
+   "P6": {
+    "volume_mm3": 25865.43,
+    "hand_volume_mm3": 25865.43,
+    "mass_g": 30.78,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 2.0,
+    "changed": false,
+    "why": "",
+    "counterbore_floor_z_mm": 3.0,
+    "chamfer_mm": 1.0,
+    "thickness_mm": 7.5
+   }
+  },
+  "table_problems": [
+   "P1 ring A hole overlaps ring B counterbore at 0 deg (wall -0.70): ring B turned 15",
+   "P2 ring B identical to ring A (coincident holes, probably a copy error): ring B turned 30",
+   "P4 ring B circle 58 breaks through the 60 mm rim by 3.0 mm: built on 49",
+   "P4 counterbore 4.6 deep in 5 mm (floor 0.4): built 3.8",
+   "P4 rings overlap at 0 deg (wall -1.2): ring B turned 15",
+   "part two: 1 mm chamfer leaves 0 top wall on P1 and P3 (0.5 on P4): chamfer 0.4, 0.4 and 0.9",
+   "part two: P3 ring A on 70 is 0.30 mm from ring B counterbores at 0 deg: turned 20 deg"
+  ],
+  "one_script": true,
+  "edited_not_rebuilt": true,
+  "edited_how": "part two opens each P*.SLDPRT, sets D1@BASE, edits the RINGA_SK sketch (P3), adds TOP_CHAMFER, saves as P*_b; the build function is never called; counterbore floors measured unchanged",
+  "minutes": 20
+ }
+}

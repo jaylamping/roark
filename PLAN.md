@@ -45,7 +45,7 @@ adds the power board interface (item 10).
 | # | Milestone | Done when |
 |---|---|---|
 | 1 | **Left arm online**: loose drives on the bench, then the actuator test stand, then the printed arm on the torso with the camera calibration loop | (a) every §6 rule has a passing `vcan` fault test, each before the test that needs it (§6, Which rules a test waits for); (b) three loose drives scanned, IDs 11 to 13 set, preflight passes, and a deliberately wrong `canTimeout` is refused; (c) a 1 h idle soak with no error frames or RX overflow, and latency and jitter recorded in the repo; (d) `kill -9` while enabled leaves the drives limp within 50 ms and the `ExecStopPost` disable shows in candump; (e) a drive power-cycled while enabled (pull its drop fuse) can't be enabled again until preflight passes again; (f) all five joints sign-checked and zeroed (calibration stage C1); (g) the elbow rig has passed before the forearm is powered; (h) test stand files exist for RS03 and RS02; (i) calibration stages C0 to C2 pass attended, plus one clean unattended C3 |
-| 2 | **Right arm moved to this stack**, then the legacy code deleted | Both arms enable from one runtime and one skeleton; silence on one drive stops only its limb; the right arm's taught limits and directions are moved and re-checked; legacy tree deleted from marengo |
+| 2 | **Right arm moved to this stack**, then the legacy code deleted | Both arms enable from one runtime and one skeleton; silence on one drive stops only its limb; the right arm's directions and limits are re-checked on this stack and entered as `robot-cli`'s edit; legacy tree deleted from marengo |
 | 3 | Waist | The waist enables on its own bus with no new code path. Waits on the waist hardware, which is parked |
 | 4 | Power board and battery | Stopping the heartbeat drops the motor latch within its window; port-fault decode names the port; self-test runs only under its conditions (item 10) |
 | 5 | Legs | Five buses at 250 Hz with measured bus load under 70 % per bus; legs run on the support gantry |
@@ -55,8 +55,9 @@ adds the power board interface (item 10).
 1. **Joey, now, in parallel with the code:** order one Waveshare 2-CH isolated CAN FD HAT (MCP2518FD) for the [interface comparison](docs/can-interface-comparison.md) (item 5), and the
    luggage scale for the test stand.
 2. **Read** the tenets, this plan and [conventions/](conventions/).
-3. **Skeleton** (item 1): the `skeleton` crate and `config/skeleton.yaml` with all five limbs, including the right arm's
-   existing values. Putting two limbs in from day one exercises "no per-limb code" in sim long before milestone 2.
+3. **Skeleton** (item 1): the `skeleton` crate and `config/skeleton.yaml` with all five limbs, including the right arm's bus
+   and IDs (its signs and limits stay null until milestone 2 re-checks them). Putting two limbs in from day one exercises "no
+   per-limb code" in sim long before milestone 2.
 4. **Lift the legacy knowledge** into notes and test vectors (item 2).
 5. **Codec** (`robstride`) against the manual test vectors.
 6. **Bus loop and sim drive together** (items 3 and 4) on `vcan` interfaces named after the skeleton buses, with MCAP and
@@ -68,7 +69,8 @@ adds the power board interface (item 10).
    persistence test (item 1) and the caps-in-mode test (item 6).
 9. **First attended Enable** of the loose drives with Joey, as soon as the first row of
    [Which rules a test waits for](#which-rules-a-test-waits-for) passes: preflight, enable at the commissioning caps,
-   sign check, zero, unloaded jog.
+   sign check, zero, unloaded jog. The UIDs and directions found, and the zeros of models whose persistence test passed, go into
+   the skeleton as `robot-cli`'s edit (item 1).
 10. Then the test stand (item 7), the elbow rig result into item 8's limits, and the camera loop (item 9).
 
 Create each crate when an item first needs it. The crate table below is the naming target, not a to-do list.
@@ -135,6 +137,18 @@ it lives once, as `name:` in the skeleton. The architecture map, with owners and
 One file, `config/skeleton.yaml`, describes the whole robot. The software owns the schema and the loader; the hardware side owns
 the values. When hardware changes, the hardware side opens one PR here that touches only the skeleton and adds a change-log
 line to STATUS.md the same day. The runtime never writes it; tools that teach limits produce a proposed diff for a PR.
+
+**Measured values reach the skeleton as a diff, not by hand.** The numbers commissioning finds on this stack (a drive's UID
+from the scan, a joint's `direction` from the sign check, a taught limit, and `zero_rad` only for a model whose persistence
+test below passed) come out of `robot-cli` as an edit to the skeleton: only the fields that changed, with comments and order
+kept, and a comment beside each value naming the session that measured it; a re-check that confirms a value still rewrites
+that comment. The edit carries the hash of the skeleton the session loaded (from `session.json`), and `robot-cli` refuses to
+produce it against a checkout whose skeleton differs. That catches an edit applied to a different skeleton than the session
+ran; it doesn't catch a checkout behind `main` or two edits open at once, which the skeleton review (skeleton.md section 6)
+still covers. The runtime never writes the file; the person applies the edit in a checkout and opens the PR, which is
+reviewed like any skeleton change. No value is copied in from legacy files ([skeleton.md](conventions/skeleton.md) section 6,
+check 3): the right arm's legacy values are only what its milestone-2 re-check compares against, and the re-checked values
+enter the skeleton only as that re-check's edit.
 
 Shape (the builder may adjust field names; the content is required):
 
@@ -235,8 +249,8 @@ The legacy code holds real bench lessons. Copy them into the codec's docs and te
   change that. For a drive that was enabling or enabled, with no Reset read after its Disable, counting resumes after
   the 100 ms, so a lost Disable can't leave a running drive uncounted.
 
-**Transmit allowlist:** types 0, 1, 3, 4, 6, 17, 18, 24. Type 7 (set ID) only from the set-ID command with exactly one drive
-answering on that bus. Never 22, 23 or 25; never write 0x7029, 0x702B or 0x702A; never type 4 with the fault-clear byte set.
+**Transmit allowlist:** types 0, 1, 3, 4, 6, 17, 18, 24. Type 7 (set ID) only from the set-ID command, with exactly one drive
+answering at the old ID on that bus and none at the new; a bus carries a limb, so other drives may answer at other IDs. Never 22, 23 or 25; never write 0x7029, 0x702B or 0x702A; never type 4 with the fault-clear byte set.
 
 **Don't copy** `scripts/can-up.sh` link settings: `restart-ms 100` and `txqueuelen 1000` were MCP2515 workarounds and contradict
 item 3.
@@ -267,7 +281,8 @@ Per [can-stack-for-marengo.md](https://github.com/jaylamping/marengo/blob/main/h
   values; never clamp.
 - **Linux:** bitrate and sample point set explicitly, error frames on, short TX queue. PREEMPT_RT only if the Pi 5 measurement
   misses its budget, but expect it to: published Pi 5 numbers show a stock kernel past 9 ms worst case under stress against
-  about 100 to 225 µs with PREEMPT_RT, and Raspberry Pi ships no RT kernel. Measure with 1 h of `cyclictest` or `rtla` under
+  about 100 to 225 µs with PREEMPT_RT. The first measurement on our Pi (2026-11-13, stock kernel, CPU and memory load only) was
+  294 µs worst case; Raspberry Pi's apt repository now has an RT kernel, `linux-image-rpi-v8-rt`. Measure with 1 h of `cyclictest` or `rtla` under
   `stress-ng` memory load ([deploy.md](conventions/deploy.md)). Pin a kernel that includes the fix for CVE-2023-53523 (gs_usb timestamp init).
 - **Bus-off is latched in software.** Current candleLight firmware restarts the bus by itself about 100 ms after bus-off unless
   the host claims recovery (`GS_CAN_FEATURE_BUS_OFF_RECOVERY`, `CAN_BUS_OFF_RESTART_DELAY_MS` in `src/can_common.c`), and
@@ -372,7 +387,7 @@ Each rule names what it protects and the failure it covers. A rule that protects
 | Host | `host.fault` | Faults: stop on any fault bit. A fault on any drive of a limb, idle or running, stops the whole limb, a drive of that limb not named in the enable included: a deliberate limit on tenet 1's "joints not named block nothing" for drives that share a limb (Joey, 2026-11-10), revisited when the runtime passes the enabled joint set to the bus. A latched stop clears only by an operator `clear` through `api`; a drive fault bit clears only by power-cycling that drive, then full preflight | Everything on that limb | Drive fault; never auto-clear and retry |
 | Host | `host.mode` | Mode: a drive seen in Run after its Enable that reports any other mode by itself, or that shows no fresh Run status within 50 ms of its Enable or of its `run_mode` = MIT write (item 2), stops its limb and drops its preflight. While a limb is enabled, a drive of it that this host never enabled, seen out of Reset (put in Run by something else) or not seen at all, stops the whole limb, as `host.fault` does (Joey, 2026-11-10, #25; unseen mates fail closed, Joey, 2026-11-11) | The limb's drives and parts | A drive dropping to Reset mid-run (`canTimeout` fired, a reboot or brown-out) or never reaching Run; a limb-mate put in Run by another controller |
 | Host | `host.identity` | Identity: once commissioned, a drive whose UID (type 0) isn't the skeleton's is refused enable on that limb (item 3, Scan and identity). An ID the skeleton puts on another bus joins this row with the scan (step 8) | Every drive on that limb | A swapped or re-IDed drive answering on the expected ID |
-| Host | `host.soft_limit`, `host.total_torque` | Limits: soft limits inside every hard stop (§1). Total commanded torque per joint, kp·(q_des − q) + kd·(dq_des − dq) + τ_ff, is predicted from the latest reply and refused above the joint's torque cap; backed by the drive's own limit once proven in MIT mode | Printed parts, hard stops | Bad target, gain or feed-forward |
+| Host | `host.soft_limit`, `host.total_torque` | Limits: soft limits inside every hard stop (§1). A target outside the soft limits is refused before it is sent, and control slows a joint as it nears one, so it never arrives there with speed ([Open with Joey](#open-with-joey) 13); a measured position past a soft limit stops the limb, which is a backstop that does not brake: a stopped drive is limp. Total commanded torque per joint, kp·(q_des − q) + kd·(dq_des − dq) + τ_ff, is predicted from the latest reply and refused above the joint's torque cap; backed by the drive's own limit once proven in MIT mode | Printed parts, hard stops | Bad target, gain or feed-forward |
 | Host | `host.sign` | Sign: no gravity feed-forward on a joint until its direction is verified by a small torque-only pulse with the link supported, checked against the skeleton. Feed-forward runs only on a chain whose every joint answers with a verified direction | Arm and parts | Feed-forward pushing the wrong way |
 | Host | `host.temperature` | Temperature: pause at 60 °C (rest pose, torque off if the pose allows) until 45 °C; stop at 75 °C | Drive windings | Overheating (drive's own protection is far higher) |
 | Host | `host.hang` | Hang: see item 3 (stale or malformed batches, a stop order naming a limb its bus doesn't have, a late wake, watchdog, no auto-enable) | All drives | Hung control thread keeping drives fed |
@@ -466,7 +481,8 @@ Not built before milestone 4; when it is, the sim drive gains a power-board mode
   `{bus, id, dlc, data, t_kernel, t_mono, dir}`, decoded joint state, commands, injected faults, events: state changes, stops,
   limit hits, operator actions with the client's identity) and `session.json` (skeleton file and hash, git revision, operator,
   stage).
-- **Black box:** `candump -L` per bus as its own systemd service, to `/var/lib/robot/candump/<bus>-<UTC>.log`, independent of the runtime.
+- **Black box:** `candump -L` per bus as its own systemd service (`candump@<bus>`), to `/var/lib/robot/candump/<bus>-<UTC>.log.zst`,
+  cut hourly and kept 7 days by `candump-rotate`, independent of the runtime.
 - **Logging runs inside the runtime on a non-realtime thread**, fed by a lock-free ring. When full it drops and counts. It can
   fail without affecting motion (tenet 5); see the logging row in §6.
 - **One clock:** the Pi disciplined by chrony; MCAP carries kernel CAN timestamps and monotonic time; the Jetson joins via chrony
@@ -486,9 +502,10 @@ evaluated only against a named need.
 
 ## Before the legacy code is deleted (milestone 2)
 
-1. Add the right arm to the skeleton: `can0`, IDs 1 to 5, directions from `marengo/config/motors.yaml` (sign-checked
-   2026-08-11), hard limits from its bench envelopes. The envelopes are relative to the legacy reference, so re-reference
-   before trusting them.
+1. The right arm is in the skeleton on `can0`, IDs 1 to 5, with its directions, hard limits and caps null. Step 3's sign
+   check compares against its legacy directions (`marengo/config/motors.yaml`, sign-checked 2026-08-11), and the result
+   enters as `robot-cli`'s edit (item 1). Where its hard limits and caps come from on this stack is open
+   ([Open with Joey](#open-with-joey) 12); the legacy bench envelopes are relative to the legacy reference.
 2. Don't carry the `control.yaml` gains: the RS03 gains were tuned while the drive saw 0.4 × the commanded velocity. Friction
    fits move to `config/dynamics.yaml` only after a re-check. `right_lower_arm_yaw`'s URDF axis is wrong (`kinematics.md`).
 3. Give `can0` its own adapter with its own link file and retire the HAT; rewrite `canTimeout` from 600 to 1000; run the sign check
@@ -520,3 +537,20 @@ Defaults apply until Joey answers.
 11. **Commissioning caps** (item 1). Default: 5 % of the model's `limit_torque` range (RS03 3 N·m, RS02 and RS00 0.7 N·m,
     RS04 6 N·m), the same share of its current range, and 0.5 rad/s. Accepted as a starting point (Joey, 2026-11-11);
     set them from logged runs once a full limb is connected and moving.
+12. **The right arm's hard limits and caps on this stack** (milestone 2). Its legacy bench envelopes are relative to the
+    legacy reference and aren't copied in (item 1). Options: STATUS.md's documented hardware stops, as for the left arm;
+    the envelopes re-referenced after the C1 re-check; or a measured procedure. Each needs the test that verifies it
+    (skeleton.md section 6, check 3). Default until decided: null, so the right arm runs at the commissioning caps.
+13. **What a soft limit does.** A stop makes a drive limp, so stopping at a soft limit lets the link coast or fall into
+    the hard stop it guards. Default: control keeps a joint off its soft limits by refusing targets beyond them and
+    capping its speed toward a limit by the distance left (the legacy stack's speed-scaled margin); the stop on a
+    measured position past the limit stays as the backstop. Decide before the per-tick limit rules are built (item 6).
+14. **If the drive's caps don't bound MIT mode** (item 6, `drive.caps` caveat; the caps-in-mode test, step 8). Then the
+    host's torque prediction is the only bound. Default: also cap kp and the position error control may command, per
+    model, so the largest torque a batch can ask for is bounded by construction.
+15. **Gain ceilings and a feed-forward slew limit.** The legacy stack had both; `host.total_torque` bounds the size of
+    a command, not a step change. Default: decide when `control` gets its first mode with gains or feed-forward; not
+    built before.
+16. **Stops across limbs, for the legs.** A stop is per limb, which is right for arms. Standing, one limp leg is a fall
+    whichever leg holds. Default: undecided until the legs are on the gantry (milestone 5); a stop order can already
+    name any set of limbs.

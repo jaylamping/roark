@@ -40,7 +40,8 @@ level.
 - **Every event has a `kind` from one closed list**, written as `area.past_tense_verb`. In Rust it's an enum
   (`telemetry::EventKind`), so adding a kind is a deliberate change, made here in the same PR, and the UI's types are
   generated from it. The list: `limb.stopped`, `robot.stopped`, `enable.started`, `enable.succeeded`, `enable.refused`,
-  `limb.cleared`, `clear.refused`. Planned as their sources arrive, in the same form: `drive.went_silent`,
+  `limb.cleared`, `clear.refused`, `scan.started`, `scan.finished`, `scan.refused`, `set_id.started`,
+  `set_id.succeeded`, `set_id.refused`. Planned as their sources arrive, in the same form: `drive.went_silent`,
   `limit.hit`, `fault.latched`, `operator.requested`, `skeleton.loaded`, `bus.off`, `recorder.dropped`.
 - **Every event carries** a stamp (`stamp_ns`, [units-and-frames.md section 5](units-and-frames.md#5-time-and-timestamps)),
   its kind, and whichever shared fields apply (section 2a). Safety events add the measured value and the threshold.
@@ -261,11 +262,14 @@ ratio.
 - **MCAP from the runtime** has everything: raw frames, intent, decoded state, events, injected faults.
 - **`candump` per bus** (PLAN) sees what the kernel saw, independent of our code. If the runtime crashes, hangs or has a bug in
   its recorder, the black box still has the frames.
-- **How `candump` runs:** `-L` (log format), `-x` (marks each frame R or T), `-d` (writes the kernel's drop count into the log as
-  `DROPCOUNT` lines, which parsers must accept), `-r` (a larger receive buffer), and on gs_usb buses `-H -N` (hardware
-  timestamps in nanoseconds).
-- **`candump` can't rotate its own files,** and restarting it leaves gaps. So its output is piped into a rotator that cuts and
-  compresses with zstd (for example hourly), set up in `deploy/`.
+- **How `candump` runs** (`deploy/systemd/candump@.service`): `-L` (log format), `-x` (marks each frame R or T), `-d` (writes
+  the kernel's drop count into the log as `DROPCOUNT` lines, which parsers must accept), `-D` (keeps running while the
+  interface is down, so a link reset doesn't end the capture), `-r` (a larger receive buffer), and the filter
+  `<bus>,0:0,#FFFFFFFF` (every data frame and every error frame). Hardware timestamps (`-H`, and `-N` for nanoseconds where
+  the candump build has it, as on gs_usb buses) are added once the adapter's are supported (PLAN step 8).
+- **`candump` can't rotate its own files,** and restarting it leaves gaps. So `candump-rotate` runs it, reads its output from
+  a pipe, and writes `<bus>-<UTC start>.log.zst`: zstd, a block ended and synced every second so a file cut off by a crash or a power cut reads back
+  to its last second, a new file every hour, and this bus's files deleted after 7 days (section 8.7).
 - **The two are checked against each other.** An analysis script compares frame counts and timestamps per bus per session; a
   mismatch means a drop or a recorder bug. The bench soak (PLAN item 5) runs it.
 

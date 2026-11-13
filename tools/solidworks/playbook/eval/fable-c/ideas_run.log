@@ -1,0 +1,16 @@
+06:39:44 SolidWorks pid 131528 free GB 14.8
+06:39:46 ok DISC volume change: 30787.6080 (expected 30787.6080)
+06:39:46 DISC: added 30787.61 mm3
+06:39:56 SHAFT: added 101860.11 mm3 (merge True)
+06:39:57 END: added 14035.86 mm3
+06:39:58 SLOT: cut 31124.78 mm3
+06:40:00 ELBOW_HOLES: cut 6090.67 mm3
+06:40:00 PIN_HOLE: cut 713.38 mm3
+06:40:00 holes removed 6804.0
+06:40:01 feature errors []
+06:40:02 exported C:\joe\code\roark-wt\sw-eval-fable-c\cad\_wip\sw-eval\fable-c\idea_a.stl 1334784 bytes
+06:40:02 idea_a {'volume_mm3': 108754.8, 'mass_g': 129.4, 'bodies': 1, 'bbox': [-35.0, -23.36, -214.06, 35.0, 23.36, 35.0], 'feature_errors': []}
+06:40:03 ok DISC volume change: 30787.6080 (expected 30787.6080)
+06:40:03 DISC: added 30787.61 mm3
+06:40:09 FAILED idea_b BLADE_P: loft failed (sections must be closed, and their start points roughly in line)
+06:40:09 closing pid 131528 committed MB 1742

@@ -47,6 +47,9 @@ pub(crate) fn passed_for(n: usize) -> PreflightPassed {
                         view = seen(status_of(device, Mode::Reset, StatusFaults::default(), now));
                         can::SlowOutcome::WriteAnswered
                     }
+                    SlowKind::Probe(_) | SlowKind::SetId { .. } => {
+                        panic!("preflight asks only its own drive")
+                    }
                     SlowKind::Read(p) => can::SlowOutcome::Read(ParamOutcome::Read(match p {
                         Param::CanTimeout => ParamValue::CanTimeout(CanTimeout::RUNTIME),
                         Param::Damper => ParamValue::Damper(Damper::ProtectionOn),

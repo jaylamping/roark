@@ -1,0 +1,74 @@
+02:40:35 SolidWorks pid 134348 free GB 15.3
+02:40:50 ok PLATE volume change: 12000.0000 (expected 12000.0000)
+02:40:51 PLATE: added 12000.00 mm3
+02:40:52 ok SCREW_HOLES volume change: 159.0431 (expected 159.0431)
+02:40:52 SCREW_HOLES: cut 159.04 mm3
+02:40:53 ok ARM volume change: 7200.0000 (expected 7200.0000)
+02:40:53 ARM: added 7200.00 mm3
+02:40:54 ok root edges, all round: 4.0000 (expected 4.0000)
+02:40:54 ROOT_R3_ALL: R3.0 on 4 edges, volume change +95.40 mm3
+02:40:54 all-round fillet added 95.40 mm3 (straight runs alone 84.98)
+02:40:55 ok LOAD_PATCH face to split: 1.0000 (expected 1.0000)
+02:40:56 ok rebuild errors: 0.0000 (expected 0.0000)
+02:40:57 ok B2R_wall_2p5 hole faces: 2.0000 (expected 2.0000)
+02:40:57 ok B2R_wall_2p5 wall faces: 1.0000 (expected 1.0000)
+02:40:57 ok B2R_wall_2p5 load patch faces: 1.0000 (expected 1.0000)
+02:40:57 fillet faces for control 4
+02:40:57 B2R_wall_2p5: PREDICT nodes ~as b2_study at the same size, max disp ~1.51 wall / 1.88 holes mm, peak vm ~19 in the upper fillet; layer measures (Y) no longer on an edge
+02:40:59 B2R_wall_2p5: mesh rc 0, 31049 nodes, 19825 elements, free 15.1 GB
+02:41:03 B2R_wall_2p5: fixture nodes 1849, box [0.0, 0.0, 0.0] to [0.0, 40.0, 60.0]
+02:41:03 B2R_wall_2p5: load nodes 81, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:41:05 B2R_wall_2p5 checks {'reaction': [0.002, -0.001, 59.999, 59.999], 'reaction_err_pct': 0.002, 'reaction_fz': 59.999, 'sx_top': 6.231, 'sx_hand': 6.25, 'sx_nodes': 10, 'sx_err_pct': 0.31, 'max_disp': 1.4794, 'vm_all': 22.98, 'vm_all_at': [7.64, 14.98, 52.02], 'nodes': 31049, 'excessive_prompt': False}
+02:41:05 B2R_wall_2p5 {"vm": [22.98, [7.64, 14.98, 52.02], 1.96], "X": {"tension": [22.58, [7.64, 14.98, 52.02], 1.0], "shear": [7.77, [6.97, 14.82, 52.18], 1.67]}, "Y": {"tension": [5.93, [7.04, 19.81, 52.16], 3.79], "shear": [5.88, [6.97, 25.18, 52.18], 2.21]}, "Z": {"tension": [5.31, [5.84, 20.0, 52.91], 4.24], "shear": [6.77, [6.43, 21.39, 52.45], 1.92]}} factors Y (1.96, 3.79, 2.21, 1.96)
+02:41:05 ok B2R_wall_1p75 hole faces: 2.0000 (expected 2.0000)
+02:41:05 ok B2R_wall_1p75 wall faces: 1.0000 (expected 1.0000)
+02:41:05 ok B2R_wall_1p75 load patch faces: 1.0000 (expected 1.0000)
+02:41:05 fillet faces for control 4
+02:41:05 B2R_wall_1p75: PREDICT nodes ~as b2_study at the same size, max disp ~1.51 wall / 1.88 holes mm, peak vm ~19 in the upper fillet; layer measures (Y) no longer on an edge
+02:41:08 B2R_wall_1p75: mesh rc 0, 73269 nodes, 48229 elements, free 15.3 GB
+02:41:20 B2R_wall_1p75: fixture nodes 3679, box [0.0, 0.0, 0.0] to [0.0, 40.0, 60.0]
+02:41:20 B2R_wall_1p75: load nodes 177, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:41:26 B2R_wall_1p75 checks {'reaction': [-0.0, -0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 6.236, 'sx_hand': 6.25, 'sx_nodes': 24, 'sx_err_pct': 0.22, 'max_disp': 1.4796, 'vm_all': 23.69, 'vm_all_at': [7.48, 25.04, 52.04], 'nodes': 73269, 'excessive_prompt': False}
+02:41:26 B2R_wall_1p75 {"vm": [23.69, [7.48, 25.04, 52.04], 1.9], "X": {"tension": [22.6, [7.74, 14.99, 52.01], 1.0], "shear": [7.81, [7.0, 14.83, 52.17], 1.67]}, "Y": {"tension": [5.85, [7.32, 20.13, 52.08], 3.85], "shear": [5.99, [6.77, 25.26, 52.26], 2.17]}, "Z": {"tension": [5.26, [6.08, 21.42, 52.69], 4.28], "shear": [6.93, [6.46, 20.12, 52.42], 1.87]}} factors Y (1.9, 3.85, 2.17, 1.9)
+02:41:27 ok B2R_wall_1p25 hole faces: 2.0000 (expected 2.0000)
+02:41:27 ok B2R_wall_1p25 wall faces: 1.0000 (expected 1.0000)
+02:41:27 ok B2R_wall_1p25 load patch faces: 1.0000 (expected 1.0000)
+02:41:27 fillet faces for control 4
+02:41:27 B2R_wall_1p25: PREDICT nodes ~as b2_study at the same size, max disp ~1.51 wall / 1.88 holes mm, peak vm ~19 in the upper fillet; layer measures (Y) no longer on an edge
+02:41:30 B2R_wall_1p25: mesh rc 0, 179895 nodes, 122211 elements, free 15.0 GB
+02:42:24 B2R_wall_1p25: fixture nodes 7119, box [0.0, 0.0, 0.0] to [0.0, 40.0, 60.0]
+02:42:24 B2R_wall_1p25: load nodes 317, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:42:55 B2R_wall_1p25 checks {'reaction': [0.0, 0.001, 59.999, 59.999], 'reaction_err_pct': 0.002, 'reaction_fz': 59.999, 'sx_top': 6.265, 'sx_hand': 6.25, 'sx_nodes': 51, 'sx_err_pct': 0.24, 'max_disp': 1.4798, 'vm_all': 23.89, 'vm_all_at': [7.62, 25.02, 52.02], 'nodes': 179895, 'excessive_prompt': False}
+02:42:55 B2R_wall_1p25 {"vm": [23.89, [7.62, 25.02, 52.02], 1.88], "X": {"tension": [23.19, [7.62, 25.02, 52.02], 0.97], "shear": [7.93, [6.9, 25.21, 52.21], 1.64]}, "Y": {"tension": [5.71, [7.2, 19.35, 52.11], 3.94], "shear": [6.06, [6.9, 25.21, 52.21], 2.14]}, "Z": {"tension": [5.35, [5.99, 19.91, 52.77], 4.21], "shear": [6.96, [6.6, 20.28, 52.35], 1.87]}} factors Y (1.88, 3.94, 2.14, 1.88)
+02:42:55 ok B2R_holes_2p5 hole faces: 2.0000 (expected 2.0000)
+02:42:55 ok B2R_holes_2p5 wall faces: 1.0000 (expected 1.0000)
+02:42:55 ok B2R_holes_2p5 load patch faces: 1.0000 (expected 1.0000)
+02:42:55 fillet faces for control 4
+02:42:55 B2R_holes_2p5: PREDICT nodes ~as b2_study at the same size, max disp ~1.51 wall / 1.88 holes mm, peak vm ~19 in the upper fillet; layer measures (Y) no longer on an edge
+02:42:56 B2R_holes_2p5: mesh rc 0, 31049 nodes, 19825 elements, free 15.2 GB
+02:42:59 B2R_holes_2p5: fixture nodes 236, box [0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+02:42:59 B2R_holes_2p5: load nodes 81, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:43:01 B2R_holes_2p5 checks {'reaction': [-0.0, -0.004, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 6.231, 'sx_hand': 6.25, 'sx_nodes': 10, 'sx_err_pct': 0.31, 'max_disp': 1.841, 'vm_all': 24.87, 'vm_all_at': [0.0, 19.14, 45.92], 'nodes': 31049, 'excessive_prompt': False}
+02:43:01 B2R_holes_2p5 {"vm": [20.74, [7.64, 14.98, 39.98], 2.17], "X": {"tension": [20.32, [7.64, 14.98, 52.02], 1.11], "shear": [7.27, [6.97, 14.82, 39.82], 1.79]}, "Y": {"tension": [5.01, [7.34, 22.71, 52.07], 4.49], "shear": [5.55, [6.66, 25.31, 39.69], 2.34]}, "Z": {"tension": [5.89, [0.0, 20.43, 38.03], 3.82], "shear": [6.45, [2.12, 19.24, 43.78], 2.02]}} factors Y (2.17, 4.49, 2.34, 2.17)
+02:43:01 ok B2R_holes_1p75 hole faces: 2.0000 (expected 2.0000)
+02:43:01 ok B2R_holes_1p75 wall faces: 1.0000 (expected 1.0000)
+02:43:01 ok B2R_holes_1p75 load patch faces: 1.0000 (expected 1.0000)
+02:43:01 fillet faces for control 4
+02:43:01 B2R_holes_1p75: PREDICT nodes ~as b2_study at the same size, max disp ~1.51 wall / 1.88 holes mm, peak vm ~19 in the upper fillet; layer measures (Y) no longer on an edge
+02:43:03 B2R_holes_1p75: mesh rc 0, 73269 nodes, 48229 elements, free 15.2 GB
+02:43:14 B2R_holes_1p75: fixture nodes 236, box [0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+02:43:14 B2R_holes_1p75: load nodes 177, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:43:20 B2R_holes_1p75 checks {'reaction': [0.002, -0.001, 59.999, 59.999], 'reaction_err_pct': 0.002, 'reaction_fz': 59.999, 'sx_top': 6.236, 'sx_hand': 6.25, 'sx_nodes': 24, 'sx_err_pct': 0.22, 'max_disp': 1.8469, 'vm_all': 26.24, 'vm_all_at': [0.0, 19.14, 45.92], 'nodes': 73269, 'excessive_prompt': False}
+02:43:20 B2R_holes_1p75 {"vm": [21.46, [7.48, 14.96, 39.96], 2.1], "X": {"tension": [20.49, [7.74, 14.99, 52.01], 1.1], "shear": [7.43, [6.77, 25.26, 39.74], 1.75]}, "Y": {"tension": [4.92, [7.32, 17.76, 52.08], 4.57], "shear": [5.72, [6.77, 25.26, 39.74], 2.27]}, "Z": {"tension": [6.07, [0.0, 20.81, 38.36], 3.71], "shear": [6.34, [2.77, 19.54, 43.73], 2.05]}} factors Y (2.1, 4.57, 2.27, 2.1)
+02:43:20 ok B2R_holes_1p25 hole faces: 2.0000 (expected 2.0000)
+02:43:20 ok B2R_holes_1p25 wall faces: 1.0000 (expected 1.0000)
+02:43:20 ok B2R_holes_1p25 load patch faces: 1.0000 (expected 1.0000)
+02:43:20 fillet faces for control 4
+02:43:20 B2R_holes_1p25: PREDICT nodes ~as b2_study at the same size, max disp ~1.51 wall / 1.88 holes mm, peak vm ~19 in the upper fillet; layer measures (Y) no longer on an edge
+02:43:22 B2R_holes_1p25: mesh rc 0, 179895 nodes, 122211 elements, free 15.1 GB
+02:44:12 B2R_holes_1p25: fixture nodes 432, box [0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+02:44:12 B2R_holes_1p25: load nodes 317, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:44:41 B2R_holes_1p25 checks {'reaction': [0.001, -0.002, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 6.265, 'sx_hand': 6.25, 'sx_nodes': 51, 'sx_err_pct': 0.24, 'max_disp': 1.8534, 'vm_all': 30.27, 'vm_all_at': [5.41, 20.13, 50.0], 'nodes': 179895, 'excessive_prompt': False}
+02:44:41 B2R_holes_1p25 {"vm": [21.59, [7.62, 25.02, 39.98], 2.08], "X": {"tension": [20.86, [7.62, 25.02, 52.02], 1.08], "shear": [7.54, [6.9, 25.21, 39.79], 1.72]}, "Y": {"tension": [4.76, [7.36, 22.22, 52.07], 4.73], "shear": [5.8, [6.74, 14.72, 39.72], 2.24]}, "Z": {"tension": [6.12, [0.0, 20.14, 38.64], 3.68], "shear": [6.13, [2.53, 20.32, 43.67], 2.12]}} factors Y (2.08, 4.73, 2.24, 2.08)
+02:44:41 closing pid 134348 committed MB 1896
+B2 VARIANT DONE

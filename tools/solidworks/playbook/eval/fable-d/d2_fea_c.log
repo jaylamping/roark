@@ -1,0 +1,47 @@
+09:04:58 SolidWorks pid 125384 free GB 12.5
+09:05:05 ok fixed face: 1.0000 (expected 1.0000)
+09:05:05 ok hub: 1.0000 (expected 1.0000)
+09:05:05 ok ring bore: 1.0000 (expected 1.0000)
+09:05:05 ok ring outside: 1.0000 (expected 1.0000)
+09:05:05 ok seats: 2.0000 (expected 2.0000)
+09:05:05 ok upper split faces: 2.0000 (expected 2.0000)
+09:05:05 ok lower split faces: 2.0000 (expected 2.0000)
+09:05:05 ok shanks: 4.0000 (expected 4.0000)
+09:05:05 PREDICT Y300 el 3.5 seat 1.4 shank 1.0 fix face: nodes 60000; ring moves 0.075 (the clearance) plus about 0.5 mm of cap bending; peak in the upper half at the crown (X 0): outer face Y 32 in tension 18 to 38 MPa, inner shoulder edge in compression; screws 75 N each
+09:05:05 D2_Y300_c: body "SolidBody 1(<screw_2>-<M3SCREW>)" is Steel
+09:05:05 D2_Y300_c: body "SolidBody 2(<screw_1>-<M3SCREW>)" is Steel
+09:05:05 D2_Y300_c: body "SolidBody 3(<ring>-<OUTER_RACE>)" is Steel
+09:05:05 D2_Y300_c: body "SolidBody 4(<plug>-<SOFTPLUG>)" is Soft plug
+09:05:05 D2_Y300_c: body "SolidBody 5(<screw_0>-<M3SCREW>)" is Steel
+09:05:05 D2_Y300_c: body "SolidBody 6(M4_HOLES)" is PETG printed
+09:05:05 D2_Y300_c: body "SolidBody 7(<housing_upper>-<CBORES>)" is PETG printed
+09:05:05 D2_Y300_c: body "SolidBody 8(<screw_3>-<M3SCREW>)" is Steel
+09:05:09 D2_Y300_c: mesh rc 0, 73496 nodes, 44766 elements, free 12.3 GB
+09:05:10 D2_Y300_c: solver macro: before  0  | set err  0   | after  7  | 
+09:05:50 D2_Y300_c: fixture nodes 559, box [-36.0, -32.0, -4.0] to [36.0, 3.0, 11.0]
+09:05:50 D2_Y300_c: load nodes 1000, box [-24.0, -24.0, 0.0] to [24.0, 24.0, 7.0]
+09:05:59 {'study': 'D2_Y300_c', 'el_mm': 3.5, 'nodes': 73496, 'elements': 44766, 'solve_s': 54, 'peak_vm_all': 43.12, 'peak_vm_away': 43.12, 'at': [29.5, 28.0, -0.03], 'sf_yield': 1.04, 'max_disp_mm': 0.16847455501556396, 'reaction_N': [0.0, -299.998, -0.0, 299.998], 'applied_N': 300.0}
+09:06:01 ok fixed face: 1.0000 (expected 1.0000)
+09:06:01 ok hub: 1.0000 (expected 1.0000)
+09:06:01 ok ring bore: 1.0000 (expected 1.0000)
+09:06:01 ok ring outside: 1.0000 (expected 1.0000)
+09:06:01 ok seats: 2.0000 (expected 2.0000)
+09:06:01 ok upper split faces: 2.0000 (expected 2.0000)
+09:06:01 ok lower split faces: 2.0000 (expected 2.0000)
+09:06:01 ok shanks: 4.0000 (expected 4.0000)
+09:06:01 PREDICT X300 el 3.5 seat 1.4 shank 1.0 fix face: nodes 60000; ring moves 0.075 plus about 0.1 mm; peak in the +X wall of either half beside the split or at a screw hole; screws about 24 N tension and 37.5 N shear each
+09:06:01 D2_X300_c: body "SolidBody 1(<screw_2>-<M3SCREW>)" is Steel
+09:06:01 D2_X300_c: body "SolidBody 2(<screw_1>-<M3SCREW>)" is Steel
+09:06:01 D2_X300_c: body "SolidBody 3(<ring>-<OUTER_RACE>)" is Steel
+09:06:01 D2_X300_c: body "SolidBody 4(<plug>-<SOFTPLUG>)" is Soft plug
+09:06:01 D2_X300_c: body "SolidBody 5(<screw_0>-<M3SCREW>)" is Steel
+09:06:01 D2_X300_c: body "SolidBody 6(M4_HOLES)" is PETG printed
+09:06:01 D2_X300_c: body "SolidBody 7(<housing_upper>-<CBORES>)" is PETG printed
+09:06:01 D2_X300_c: body "SolidBody 8(<screw_3>-<M3SCREW>)" is Steel
+09:06:05 D2_X300_c: mesh rc 0, 73496 nodes, 44766 elements, free 12.4 GB
+09:06:05 D2_X300_c: solver macro: before  0  | set err  0   | after  7  | 
+09:06:55 D2_X300_c: fixture nodes 559, box [-36.0, -32.0, -4.0] to [36.0, 3.0, 11.0]
+09:06:55 D2_X300_c: load nodes 1000, box [-24.0, -24.0, 0.0] to [24.0, 24.0, 7.0]
+09:07:04 {'study': 'D2_X300_c', 'el_mm': 3.5, 'nodes': 73496, 'elements': 44766, 'solve_s': 63, 'peak_vm_all': 101.35, 'peak_vm_away': 101.35, 'at': [-29.5, 28.06, 7.11], 'sf_yield': 0.44, 'max_disp_mm': 0.3761259913444519, 'reaction_N': [-300.002, 0.0, -0.0, 300.002], 'applied_N': 300.0}
+09:07:05 closing pid 125384 committed MB 1731
+DONE d2_fea c

@@ -1,0 +1,35 @@
+01:46:08 SolidWorks pid 80256 free GB 17.3
+01:46:11 ok PLATE volume change: 4896.0000 (expected 4896.0000)
+01:46:11 PLATE: added 4896.00 mm3
+01:46:11 ok ARM volume change: 5230.7500 (expected 5230.7500)
+01:46:11 ARM: added 5230.75 mm3
+01:46:12 ok fillet edges found: 2.0000 (expected 2.0000)
+01:46:12 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:46:12 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:46:12 SCREWS: cut 127.23 mm3
+01:46:13 S3_thin_plate volume 10032.35074363321 mass 11.93849738492352 errors [] bbox [0.0, 8.0, 5.0, 65.0, 32.0, 56.0]
+01:46:14 ok PAD volume change: 475.0000 (expected 475.0000)
+01:46:14 PAD: added 475.00 mm3
+01:46:16 ok PLATE volume change: 4896.0000 (expected 4896.0000)
+01:46:16 PLATE: added 4896.00 mm3
+01:46:17 ok ARM volume change: 4755.7500 (expected 4755.7500)
+01:46:17 ARM: added 4755.75 mm3
+01:46:17 ok fillet edges found: 2.0000 (expected 2.0000)
+01:46:17 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:46:18 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:46:18 SCREWS: cut 127.23 mm3
+01:46:18 ok fea volume equals deliverable: 10032.3507 (expected 10032.3507)
+01:46:19 picks 1 2 1 2
+01:46:19 ok wall: 1.0000 (expected 1.0000)
+01:46:19 ok screws: 2.0000 (expected 2.0000)
+01:46:19 ok top: 1.0000 (expected 1.0000)
+01:46:19 ok fillets: 2.0000 (expected 2.0000)
+01:46:24 S3wall: mesh rc 0, 44365 nodes, 28720 elements, free 17.1 GB
+01:46:30 S3wall: fixture nodes 2547, box [0.0, 8.0, 5.0] to [0.0, 32.0, 56.0]
+01:46:30 S3wall: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:46:32 RESULT S3_thin_plate wall {'nodes': 44365, 'reaction': [0.002, 0.001, 59.999, 59.999], 'applied': 60.0, 'max_disp': 2.5025641918182373, 'peak': (18.32793426513672, [6.35, 23.94, 52.07]), 'peak_all': 18.32793426513672, 'peak_all_at': [6.35, 23.94, 52.07], 'layer_X': ((18.576807022094727, [6.36, 19.62, 52.07]), (6.408325688738321, [5.74, 19.23, 52.28])), 'layer_Y': ((7.92405366897583, [4.0, 25.0, 51.67]), (4.49303350426787, [4.0, 15.0, 51.67])), 'layer_Z': ((5.499440670013428, [4.0, 15.0, 51.67]), (6.40057115264978, [5.74, 19.23, 52.28]))}
+01:46:33 S3screws: mesh rc 0, 44365 nodes, 28720 elements, free 17.0 GB
+01:46:38 S3screws: fixture nodes 268, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+01:46:38 S3screws: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:46:41 RESULT S3_thin_plate screws {'nodes': 44365, 'reaction': [-0.001, -0.001, 60.0, 60.0], 'applied': 60.0, 'max_disp': 3.1353418827056885, 'peak': (18.84689712524414, [6.68, 20.19, 52.02]), 'peak_all': 42.43693923950195, 'peak_all_at': [0.0, 19.24, 45.88], 'layer_X': ((20.473621368408203, [6.68, 20.58, 52.02]), (6.176320230897974, [4.51, 25.0, 37.94])), 'layer_Y': ((5.8273606300354, [4.0, 25.0, 51.67]), (3.3547883958596114, [4.0, 25.0, 38.45])), 'layer_Z': ((8.757923126220703, [0.0, 18.9, 37.54]), (6.275132497941266, [4.51, 25.0, 37.94]))}
+01:46:41 closing pid 80256 committed MB 1815

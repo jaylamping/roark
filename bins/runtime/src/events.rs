@@ -7,6 +7,7 @@ use skeleton::LimbName;
 use telemetry::{Event, EventKind, EventRecorder, Level};
 
 use crate::enable::{Enable, EnableRefused, EnableReply};
+use crate::identity::{IdentityAsk, IdentityReply, IdentityRequest};
 use crate::latch::Stops;
 use crate::request::{ClearRefused, Reply, Scope};
 use crate::roster::Roster;
@@ -127,6 +128,45 @@ impl Events {
         self.record(Event {
             limb: Some(reply.limb.as_str()),
             bus: reply.bus,
+            tag: Some(reply.tag),
+            ..event
+        });
+    }
+
+    /// A scan or set-ID that passed its checks and started.
+    pub(crate) fn identity_started(&mut self, request: &IdentityRequest) {
+        let kind = match request.ask {
+            IdentityAsk::Scan => EventKind::ScanStarted,
+            IdentityAsk::SetId { .. } => EventKind::SetIdStarted,
+        };
+        self.record(Event {
+            bus: Some(request.bus),
+            tag: Some(request.tag),
+            ..self.event(Level::Info, kind)
+        });
+    }
+
+    /// A scan's or set-ID's answer: done, or refused with its reason word. The IDs and UIDs are in the reply and in
+    /// the recording's frames, not in the event.
+    pub(crate) fn identity_reply(&mut self, reply: &IdentityReply) {
+        let scan = matches!(reply.ask, IdentityAsk::Scan);
+        let event = match reply.outcome {
+            Ok(_) if scan => self.event(Level::Info, EventKind::ScanFinished),
+            Ok(_) => self.event(Level::Info, EventKind::SetIdSucceeded),
+            Err(why) => Event {
+                reason: Some(why.reason()),
+                ..self.event(
+                    Level::Error,
+                    if scan {
+                        EventKind::ScanRefused
+                    } else {
+                        EventKind::SetIdRefused
+                    },
+                )
+            },
+        };
+        self.record(Event {
+            bus: Some(reply.bus),
             tag: Some(reply.tag),
             ..event
         });

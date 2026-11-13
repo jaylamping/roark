@@ -1,0 +1,123 @@
+{
+ "T1": {
+  "volume_mm3": 32974.024,
+  "hand_volume_mm3": 32974.024,
+  "mass_g": 39.239,
+  "bbox_mm": [
+   0,
+   0,
+   0,
+   80,
+   50,
+   46
+  ],
+  "bodies": 1,
+  "stl_watertight": true,
+  "stl_volume_mm3": 32990.377,
+  "status": "done",
+  "notes": "Built by script t1.py with expect_dv on every feature; STL volume 0.05 % above the SolidWorks volume (facet size); STL bounds [0,0,0]-[80,50,46] (model frame, one shell); STEP is in mm."
+ },
+ "T2": {
+  "volume_mm3": 31642.9999,
+  "hand_volume_mm3": 31642.9999,
+  "counterbore_floor_z_mm": 3.0,
+  "bodies": 1,
+  "status": "done",
+  "notes": "Opened bracket.SLDPRT, Save-As bracket_b first, then added features. Hand volume = T1 hand volume minus 4 counterbore rings (pi(5^2-2.75^2)*3 each) minus slot ((14*6+pi*9)*6)."
+ },
+ "T3": {
+  "hand_root_stress_mpa": 10.99,
+  "el_mm": 2.0,
+  "nodes": 65721,
+  "peak_vm_mpa": 15.52,
+  "peak_at_mm": [
+   9.14,
+   19.5,
+   6.09
+  ],
+  "layer_stress_mpa": 10.19,
+  "sf_yield": 2.9,
+  "sf_layer": 2.21,
+  "max_disp_mm": 2.355,
+  "reaction_n": 150.0,
+  "converged": true,
+  "convergence_rows": [
+   [
+    3.0,
+    25473,
+    15.05
+   ],
+   [
+    2.0,
+    65721,
+    15.52
+   ]
+  ],
+  "verdict": "pass",
+  "status": "done",
+  "notes": "Peak is on the compressive side of the R4 fillet (load +X bends the upright toward +X, so x=0 is the tension face). The 2-element exclusion hid fixed-hole-wall edge nodes at 24.4 MPa (el 2.0) that rise with the mesh (22.8, 24.4, 26.8, 33.4 at el 3, 2, 1.5, 1.0): a fixture singularity. A fixed 4 mm exclusion gives 15.05, 15.52, 15.58 for el 3, 2, 1.5. Layer stress (sigma_zz) 10.14, 10.19, 10.22. Pure-cantilever hand deflection of the upright is 0.31 mm; FEA 2.36 mm, the rest is flexure of the 6 mm base between the screws, estimated by hand at about 1.5 to 2 mm, not checked more closely."
+ },
+ "T4": {
+  "convergence_rows": [
+   [
+    3.0,
+    21906,
+    14.49
+   ],
+   [
+    2.0,
+    58161,
+    16.36
+   ],
+   [
+    1.5,
+    117813,
+    17.38
+   ],
+   [
+    1.0,
+    378649,
+    20.67
+   ]
+  ],
+  "converged": false,
+  "reported_stress_mpa": null,
+  "how_judged": "The inside-corner peak rises with every refinement (14.5, 16.4, 17.4, 20.7 MPa, steps of +13, +6, +19 %) so it is a singularity, not a stress, and no value is reported for it; judged instead by the converged tension across layers (11.46, 11.54, 11.55, 11.53 MPa, sigma_zz on the back face near the root), which gives SF_layer 1.95 below 2.0, and by the corner-line averages that hold steady (1 mm: 9.9 then 9.7 MPa; 2 mm: 6.9 then 7.0 MPa).",
+  "verdict": "fail",
+  "status": "done",
+  "notes": "The yield criterion cannot be certified for the sharp corner (the peak never converges); the layer criterion fails on a converged number. Node counts of the averages were not recorded. The el 1.0 run had 378,649 nodes, above the 150,000 asked for."
+ },
+ "T5": {
+  "change": null,
+  "mass_g": 39.239,
+  "mass_growth_pct": 0.0,
+  "sf_yield": 2.9,
+  "sf_layer": 2.21,
+  "print_orientation": "base on the bed, layers stacked along Z (unchanged)",
+  "verdict": "pass",
+  "status": "done",
+  "notes": "No design change was needed because the T3 bracket meets the requirement on the converged study, so T5's condition was not met. bracket_c.SLDPRT is an unchanged file copy of bracket.SLDPRT, saved so the file exists, not a new design. From the same T3 stress field, tension across layers would be 14.9 MPa (SF 1.51, fails) with layers stacked along X and 5.5 MPa (SF 4.1) along Y, i.e. printing on the y=0 side face would raise the margin; not adopted or checked for printability."
+ },
+ "T6": {
+  "hand_bearing_mpa": 1.667,
+  "nodes": 149353,
+  "solver": "Intel direct sparse (direct sparse requested through the macro; it reads back as 7)",
+  "how_pin_was_stabilised": "Two soft pad rings (E 0.5 MPa, nu 0.45, r 5.0 to 6.5, 2 mm thick, y 15.2 to 17.2, a 0.2 mm gap off the block face) bonded to the pin ends, their outer faces fixed; the pin is split into three bodies (middle plus two ends) so the end loads go on the protruding cylinder faces.",
+  "peak_contact_vm_mpa": 4.66,
+  "block_peak_at_mm": [
+   4.14,
+   -13.2,
+   12.98
+  ],
+  "pin_rise_mm": 0.1285,
+  "reaction_n": 500.0,
+  "valid": true,
+  "why": "Reaction 500.001 N against 500 N applied; the pin axis rises 0.1285 mm = the 0.1 mm radial gap plus 0.028 mm block rise, penetration 0.0001 mm; without the contact set the pin rises 8.77 mm and the solver reports excessive displacement; pads carry at most about 4.5 N (pad vm 0.062 MPa), under 1 %; peak 4.678 then 4.663 MPa (0.3 %) at 86,188 then 149,353 nodes; hole-top compressive sigma_zz 6.1 to 6.5 MPa against Hertz 6.8; pin bending stress 31.0 MPa against 31.8 by hand.",
+  "status": "done",
+  "notes": "Hand: projected bearing F/(d L) = 500/(10*30) = 1.667 MPa; Hertz line contact for the clearance fit (R* 255 mm, E* 2199 MPa, a 1.57 mm) gives p_max 6.8 MPa. First attempt with pad rings bonded to the block face gave an 85 to 90 MPa spike at the hole mouth all round, including the unloaded bottom: an artefact, discarded. Frictionless contact; about 5 elements across the contact width."
+ },
+ "T7": {
+  "status": "done",
+  "notes": "Answers are in REPORT.md under T7."
+ }
+}

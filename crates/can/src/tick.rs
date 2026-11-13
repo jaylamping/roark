@@ -241,7 +241,7 @@ pub struct BusTick {
     /// A stop of the whole bus, taken at the next tick's start.
     pub(crate) pending_stop: Option<StopReason>,
     /// The last drain read past its limit or left frames queued: what it said can't be known in time.
-    backlog: bool,
+    pub(crate) backlog: bool,
     /// Ticks that went by without running since the last `begin` ([`Self::skipped`]).
     skipped_since: u64,
     pub(crate) bus_error: Option<BusError>,
@@ -407,8 +407,12 @@ impl BusTick {
     }
 
     /// The socket's overflow counter, the last value the shell saw (`SO_RXQ_OVFL` comes only on frames queued after a
-    /// drop, so a frame without it is no news).
+    /// drop, so a frame without it is no news). A new count makes a probe or set-ID in flight end `Unsure`: a drop in
+    /// its window may have taken an answer.
     pub fn note_kernel_drops(&mut self, count: u32) {
+        if count != self.counters.kernel_drops {
+            self.slow_disturbed();
+        }
         self.counters.kernel_drops = count;
     }
 

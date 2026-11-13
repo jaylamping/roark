@@ -1,0 +1,1197 @@
+{
+ "run": "fable-d",
+ "D1": {
+  "mass_g": 11.11,
+  "parts": 1,
+  "fasteners": [
+   "2 x M5 x 8 button head screw (ISO 7380), 3 mm hex, into the rail",
+   "2 x M5 T-nut in the top slot of the rail",
+   "4 x M3 heat-set insert, dia 4.0 x 6 hole, in the posts",
+   "4 x M3 x 6 socket cap screw, 2.5 mm hex, through the board"
+  ],
+  "board_removal_steps": [
+   "power off; leave the wires on if there is slack, else undo the two pairs at the +X end",
+   "undo the four M3 screws from above (+Z) with a 2.5 mm hex key; each has a clear dia 6 path up to Z 45",
+   "lift the board straight up; nothing hooks it. The mount and its two M5 screws stay on the rail"
+  ],
+  "open_area_share": 0.682,
+  "open_area_detail": {
+   "bottom_face_open": 0.682,
+   "top_face_open": 0.981,
+   "bottom_open_counting_the_rail_8mm_below": 0.571,
+   "hand_bottom": 0.672
+  },
+  "envelope_ok": false,
+  "envelope_detail": "the 60 mm board cannot fit a 50 mm envelope in any attitude (restate.md); built flat and centred: Y -30 to 30, 5 mm over on each side; height 23.6 of 45. The printed part stays inside the board outline",
+  "sf_min": 9.44,
+  "sf_yield": 15.4,
+  "sf_layer": 9.44,
+  "sf_shear": 13.6,
+  "governing": "tension across the Z layers, 2.38 MPa at the sharp foot of a post (39, 23, 4), 9 N in the worst direction through a rigid board; a corner value (mean within 1 mm: 1.06 MPa). Highest von Mises 2.92 MPa at the round where an arm meets a tab",
+  "hand_weakest_section_mpa": 2.471,
+  "study_plain_section_mpa": 1.237,
+  "hand_plain_section_mpa": 1.235,
+  "convergence": {
+   "rows": [
+    {
+     "el": 2.0,
+     "nodes": 19093,
+     "vm": 2.864,
+     "vm_at": [
+      -42.65,
+      11.23,
+      0.0
+     ],
+     "layer": 0.298,
+     "layer_at": [
+      -42.63,
+      11.29,
+      4.0
+     ],
+     "shear": 0.919,
+     "shear_at": [
+      43.71,
+      10.16,
+      2.35
+     ],
+     "max_disp": 0.1552,
+     "reaction": [
+      -0.0,
+      -0.0,
+      9.0,
+      9.0
+     ],
+     "vm_all": 2.864
+    },
+    {
+     "el": 1.4,
+     "nodes": 45075,
+     "vm": 2.904,
+     "vm_at": [
+      -42.65,
+      11.23,
+      0.0
+     ],
+     "layer": 0.234,
+     "layer_at": [
+      -42.88,
+      10.83,
+      3.24
+     ],
+     "shear": 0.923,
+     "shear_at": [
+      43.71,
+      10.16,
+      2.33
+     ],
+     "max_disp": 0.156,
+     "reaction": [
+      -0.0,
+      0.0,
+      9.0,
+      9.0
+     ],
+     "vm_all": 2.904
+    },
+    {
+     "el": 1.0,
+     "nodes": 117242,
+     "vm": 2.881,
+     "vm_at": [
+      42.57,
+      11.48,
+      4.0
+     ],
+     "layer": 0.26,
+     "layer_at": [
+      -39.19,
+      -23.0,
+      4.0
+     ],
+     "shear": 0.938,
+     "shear_at": [
+      -43.69,
+      -10.17,
+      2.0
+     ],
+     "max_disp": 0.1567,
+     "reaction": [
+      -0.0,
+      -0.0,
+      9.0,
+      9.0
+     ],
+     "vm_all": 2.881
+    }
+   ],
+   "last_step_change": {
+    "vm": 0.0079,
+    "layer": 0.1111,
+    "shear": 0.0163
+   },
+   "converged": {
+    "vm": true,
+    "layer": false,
+    "shear": true
+   },
+   "excluded_within_mm": 4.0
+  },
+  "print_orientation": "flat, underside (Z 0) on the bed, layers stacked along Z, no supports",
+  "volume_mm3": 9332.61,
+  "hand_volume_mm3": 9332.61,
+  "assumptions": [
+   "frame: X along the rail, front is -Y, rail top at Z 0 and centred on Y 0, board centred at X 0",
+   "keep-outs (14 mm above, 3 mm below) cover the whole board except a dia 7 land round each hole",
+   "wires leave the +X end and can be dressed either side of a dia 9.5 screw head",
+   "open to air means not covered in plan by the mount; the rail 8 mm below is reported separately",
+   "M3 heat-set inserts are acceptable",
+   "10 g acts on the 90 g board, centre of mass 5 mm above it",
+   "the space below the rail top beside the rail is not available",
+   "factor of safety required: 2.0"
+  ],
+  "questions": [
+   {
+    "q": "The 60 mm board cannot fit Y +/-25 in any attitude. May it overhang 5 mm each side, or is one side hard?",
+    "assumed": "5 mm each side; BOARD_Y0 moves it"
+   },
+   {
+    "q": "Which 60 mm edge do the wires leave, and where along it?",
+    "assumed": "+X end, clear of the middle 10 mm"
+   },
+   {
+    "q": "How large is the bare land round each mounting hole?",
+    "assumed": "dia 7"
+   },
+   {
+    "q": "Is the top slot free for 60 mm either side of the board?",
+    "assumed": "yes; the mount is 117 mm long"
+   },
+   {
+    "q": "How hot does the board run?",
+    "assumed": "under 60 C at the holes; else ASA or PC"
+   },
+   {
+    "q": "How often does the board come out?",
+    "assumed": "often: brass inserts"
+   },
+   {
+    "q": "Is 10 g a static equivalent or a shock?",
+    "assumed": "static, 9 N on the board"
+   }
+  ],
+  "ideas_tried": [
+   "A (chosen): H-shaped base with four posts, board screwed down through its own holes into inserts",
+   "B (crude model): board dropped on four pins and held by two snap latches over its long edges, no tool",
+   "C (on paper): board on edge in a card slot: 17 mm over the height limit, slot on the wire edge"
+  ],
+  "minutes": 13.0
+ },
+ "D2": {
+  "spec_problems": [
+   {
+    "what": "shoulder opening dia 43.5",
+    "number": "inner ring is dia 44.0: 0.25 mm radial overlap on the turning ring, and over the seals",
+    "built": "opening dia 49.0, bearing on the outer ring face only"
+   },
+   {
+    "what": "seat Z 0 to 7 for a 7.0 wide bearing",
+    "number": "0.00 axial clearance; halves close across the bearing faces",
+    "built": "seat Z -0.1 to 7.1"
+   },
+   {
+    "what": "screws at X +/-28.2",
+    "number": "0.2 mm between a dia 4.0 insert hole and the dia 52 seat (0.5 mm for the dia 3.4 hole)",
+    "built": "screws at X +/-31.0: 2.9 mm to the seat, 3.0 mm to the outside"
+   },
+   {
+    "what": "screws at Z 1 and Z 6 with dia 6 counterbores",
+    "number": "counterbores overlap by 1.0 mm; dia 5.5 heads collide by 0.5 mm",
+    "built": "screws at Z 0 and Z 7: 1.0 mm between counterbores and to each face"
+   },
+   {
+    "what": "insert hole 6 deep with a 28.75 mm grip",
+    "number": "M3x30 enters 1.25 mm; M3x35 needs 6.25 mm and bottoms in 6",
+    "built": "insert hole 8 deep, M3x35"
+   },
+   {
+    "what": "split exactly on Y 0 with a dia 52.0 seat, must clamp on a +/-0.15 printer",
+    "number": "faces and seat meet together: loose at +0.15, open at -0.15",
+    "built": "seat dia 52.15, each split face set back 0.4 mm"
+   }
+  ],
+  "seat_diameter_mm": 52.15,
+  "split_gap_mm": {
+   "as_modelled": 0.8,
+   "clamped_nominal": 0.65,
+   "clamped_range": [
+    0.2,
+    1.1
+   ]
+  },
+  "fit_reasoning": "seat 52.15 +/-0.15 is never under the 52.00 ring, so the ring always meets each seat at its crown, along the screws; tightening closes 0.15 and leaves 0.8 - (0.15 +/-0.15) +/-0.30 = 0.2 to 1.1 mm at the split, so the screws always clamp the ring and never plastic on plastic; 0.1 mm axial clearance each side lets the halves close across the bearing",
+  "clearances_mm": {
+   "seat_to_ring_radial_nominal": 0.075,
+   "seat_to_ring_radial_range": [
+    0.0,
+    0.15
+   ],
+   "ring_to_each_shoulder_axial": 0.1,
+   "shoulder_opening_to_inner_ring_radial": 2.5,
+   "shoulder_opening_to_inner_ring_as_specified_dia_43.5": -0.25,
+   "shoulder_land_on_outer_ring_face_radial": 1.5,
+   "shoulder_opening_outside_the_seal_radial": 0.5,
+   "split_gap_as_modelled": 0.8,
+   "split_gap_clamped_nominal": 0.65,
+   "split_gap_clamped_range": [
+    0.2,
+    1.1
+   ],
+   "screw_shank_in_clearance_hole_radial": 0.2,
+   "screw_head_in_counterbore_radial": 0.25,
+   "insert_hole_wall_to_seat": 2.925,
+   "insert_hole_wall_to_seat_as_specified_x_28.2": 0.2,
+   "insert_hole_wall_to_outside_x": 3.0,
+   "counterbore_to_counterbore": 1.0,
+   "counterbore_to_counterbore_as_specified_z_1_and_6": -1.0,
+   "counterbore_to_faces_z": 1.0,
+   "counterbore_to_outside_x": 2.0,
+   "M3x35_tip_above_hole_bottom": 1.75,
+   "M3x35_thread_in_insert_hole": 6.25,
+   "M3x30_thread_in_insert_hole": 1.25,
+   "M4_hole_bottom_to_seat": 8.819
+  },
+  "hand_screw_load_n": {
+   "plus_y": 75.0,
+   "plus_x_tension": 24.0,
+   "plus_x_shear": 37.5,
+   "note": "+Y: 300 N / 4. +X: first hand value assumed a cosine pressure shared by both halves; the study shows the ring seated in the lower half at -30 to -1 degrees and wedged under the upper at about 77 degrees: statics with those angles gives 75.7 N tension and 17.5 N shear in total"
+  },
+  "screw_load_n": {
+   "plus_y": [
+    74.8,
+    74.37,
+    74.92,
+    74.23
+   ],
+   "plus_y_sum": 298.32,
+   "plus_x_tension": [
+    18.95,
+    18.9,
+    14.18,
+    15.35
+   ],
+   "plus_x_shear": [
+    -2.21,
+    -2.22,
+    15.49,
+    15.38
+   ],
+   "plus_x_sum": {
+    "tension": 67.38,
+    "shear_x": 26.44
+   },
+   "mesh": "m"
+  },
+  "nodes": {
+   "c": 73496,
+   "m": 145831,
+   "f": 164616,
+   "s": 145831
+  },
+  "how_bodies_were_held": "lower half: face Y -32 fixed. Upper half: bonded to the four steel screws (head on the counterbore floor), the screws bonded in the insert holes of the lower half. Ring: a soft plug (0.2 MPa, 2 mm thick) bonded in its bore with the plug's dia 6 hub hole fixed; the plug carried 0.124 N of 300 along Y and 0.150 N of 300 along X",
+  "contact_proof": {
+   "method": "1 N in the working direction (the ring has clearance all round, so no reversal): it must cross the 0.075 mm clearance as a rigid body, out of proportion to the load",
+   "ring_moves_mm_at_1N": {
+    "y": 0.0773,
+    "x": 0.0759
+   },
+   "ring_moves_mm_at_300N": {
+    "y": 0.1594,
+    "x": 0.1917
+   },
+   "bonded_would_move_at_1N_mm": {
+    "y": 0.00053,
+    "x": 0.00064
+   },
+   "force_through_the_contact_N": {
+    "plus_y_sum_of_screw_tension": 298.32,
+    "applied": 300.0
+   }
+  },
+  "sf_yield": 7.59,
+  "sf_layer": 17.8,
+  "sf_shear": 5.85,
+  "sf_where": {
+   "yield_": [
+    "X300",
+    "lower",
+    {
+     "mpa": 5.93,
+     "at": [
+      19.6,
+      -14.7,
+      7.1
+     ],
+     "sf": 7.59
+    }
+   ],
+   "layer": [
+    "X300",
+    "lower",
+    {
+     "mpa": 1.26,
+     "at": [
+      29.04,
+      -7.6,
+      -0.39
+     ],
+     "sf": 17.8
+    }
+   ],
+   "shear": [
+    "X300",
+    "lower",
+    {
+     "mpa": 2.22,
+     "at": [
+      24.59,
+      -9.75,
+      -0.07
+     ],
+     "sf": 5.85
+    }
+   ]
+  },
+  "governing": "shear in the lower half, case X300: 2.22 MPa at [24.59, -9.75, -0.07]",
+  "convergence_layersZ_mpa": {
+   "Y300 upper vm": [
+    [
+     "c",
+     73496,
+     3.74
+    ],
+    [
+     "m",
+     145831,
+     4.07
+    ],
+    [
+     "f",
+     164616,
+     3.87
+    ]
+   ],
+   "Y300 upper layer": [
+    [
+     "c",
+     73496,
+     0.6
+    ],
+    [
+     "m",
+     145831,
+     0.57
+    ],
+    [
+     "f",
+     164616,
+     0.65
+    ]
+   ],
+   "Y300 upper shear": [
+    [
+     "c",
+     73496,
+     1.11
+    ],
+    [
+     "m",
+     145831,
+     1.31
+    ],
+    [
+     "f",
+     164616,
+     1.36
+    ]
+   ],
+   "Y300 lower vm": [
+    [
+     "c",
+     73496,
+     3.62
+    ],
+    [
+     "m",
+     145831,
+     3.55
+    ],
+    [
+     "f",
+     164616,
+     3.48
+    ]
+   ],
+   "Y300 lower layer": [
+    [
+     "c",
+     73496,
+     1.28
+    ],
+    [
+     "m",
+     145831,
+     1.06
+    ],
+    [
+     "f",
+     164616,
+     1.08
+    ]
+   ],
+   "Y300 lower shear": [
+    [
+     "c",
+     73496,
+     0.79
+    ],
+    [
+     "m",
+     145831,
+     0.75
+    ],
+    [
+     "f",
+     164616,
+     0.65
+    ]
+   ],
+   "X300 upper vm": [
+    [
+     "c",
+     73496,
+     4.97
+    ],
+    [
+     "m",
+     145831,
+     5.62
+    ],
+    [
+     "f",
+     164616,
+     5.44
+    ]
+   ],
+   "X300 upper layer": [
+    [
+     "c",
+     73496,
+     1.22
+    ],
+    [
+     "m",
+     145831,
+     1.2
+    ],
+    [
+     "f",
+     164616,
+     1.25
+    ]
+   ],
+   "X300 upper shear": [
+    [
+     "c",
+     73496,
+     1.41
+    ],
+    [
+     "m",
+     145831,
+     1.28
+    ],
+    [
+     "f",
+     164616,
+     1.29
+    ]
+   ],
+   "X300 lower vm": [
+    [
+     "c",
+     73496,
+     5.87
+    ],
+    [
+     "m",
+     145831,
+     5.93
+    ],
+    [
+     "f",
+     164616,
+     5.93
+    ]
+   ],
+   "X300 lower layer": [
+    [
+     "c",
+     73496,
+     1.54
+    ],
+    [
+     "m",
+     145831,
+     1.17
+    ],
+    [
+     "f",
+     164616,
+     1.26
+    ]
+   ],
+   "X300 lower shear": [
+    [
+     "c",
+     73496,
+     1.75
+    ],
+    [
+     "m",
+     145831,
+     2.15
+    ],
+    [
+     "f",
+     164616,
+     2.22
+    ]
+   ]
+  },
+  "print_orientation": {
+   "upper": "flat, face Z -4 on the bed, layers stacked along Z (the bearing axis)",
+   "lower": "the same"
+  },
+  "minutes": 34.0,
+  "valid": true,
+  "why": "reaction equals load on every mesh (299.87 + 0.12 N, 299.85 + 0.15 N); every body is held without the contact; the plug carries 0.04 to 0.06 %; 1 N moves the ring 0.077 mm across its 0.075 mm clearance where a bond would move it 0.0005 mm; the four screw sections carry 298.3 of 300 N; bodies split by geometry; two supports agree outside 2 mm of the held faces. Valid for a snug pair with NO preload: tightening is a separate, larger load, treated by scaling only",
+  "verdict": {
+   "yield_": "met, 7.6, converged",
+   "shear_between_layers": "met, 5.8, converged on the last step (3 %)",
+   "tension_across_layers": "not shown by the playbook rule: 17.8 at the finest mesh but still moving 19 % (1.26 MPa at the edge of a bonded insert)"
+  },
+  "screw_torque_limit": {
+   "preload_per_screw_n": 285,
+   "torque_nm": 0.17,
+   "basis": "the +Y case scaled: upper half reaches a factor of 2.0 at 1,440 N through the ring; not solved"
+  },
+  "second_support": {
+   "Y300": {
+    "rows": [
+     {
+      "outside_mm": 1,
+      "vm": 3.8,
+      "vm_at": [
+       29.4,
+       -7.6,
+       1.1
+      ],
+      "layer": 1.17,
+      "shear": 0.98,
+      "shear_at": [
+       -26.7,
+       -25.1,
+       0.7
+      ]
+     },
+     {
+      "outside_mm": 2,
+      "vm": 3.8,
+      "vm_at": [
+       29.4,
+       -7.6,
+       1.1
+      ],
+      "layer": 1.1,
+      "shear": 0.84,
+      "shear_at": [
+       29.8,
+       -7.7,
+       1.6
+      ]
+     },
+     {
+      "outside_mm": 3,
+      "vm": 3.8,
+      "vm_at": [
+       29.4,
+       -7.6,
+       1.1
+      ],
+      "layer": 1.1,
+      "shear": 0.84,
+      "shear_at": [
+       29.8,
+       -7.7,
+       1.6
+      ]
+     },
+     {
+      "outside_mm": 5,
+      "vm": 3.8,
+      "vm_at": [
+       29.4,
+       -7.6,
+       1.1
+      ],
+      "layer": 1.1,
+      "shear": 0.84,
+      "shear_at": [
+       29.8,
+       -7.7,
+       1.6
+      ]
+     }
+    ],
+    "inside_1mm": {
+     "vm": 4.32,
+     "shear": 1.61,
+     "layer": 3.67
+    }
+   },
+   "X300": {
+    "rows": [
+     {
+      "outside_mm": 1,
+      "vm": 9.83,
+      "vm_at": [
+       28.0,
+       -24.2,
+       3.7
+      ],
+      "layer": 2.63,
+      "shear": 2.8,
+      "shear_at": [
+       23.3,
+       -23.9,
+       -0.5
+      ]
+     },
+     {
+      "outside_mm": 2,
+      "vm": 5.92,
+      "vm_at": [
+       24.9,
+       -22.0,
+       1.8
+      ],
+      "layer": 1.29,
+      "shear": 2.05,
+      "shear_at": [
+       23.6,
+       -11.9,
+       7.0
+      ]
+     },
+     {
+      "outside_mm": 3,
+      "vm": 5.1,
+      "vm_at": [
+       22.5,
+       -13.9,
+       0.3
+      ],
+      "layer": 1.29,
+      "shear": 2.05,
+      "shear_at": [
+       23.6,
+       -11.9,
+       7.0
+      ]
+     },
+     {
+      "outside_mm": 5,
+      "vm": 5.1,
+      "vm_at": [
+       22.5,
+       -13.9,
+       0.3
+      ],
+      "layer": 1.29,
+      "shear": 2.05,
+      "shear_at": [
+       23.6,
+       -11.9,
+       7.0
+      ]
+     }
+    ],
+    "inside_1mm": {
+     "vm": 13.3,
+     "shear": 4.75,
+     "layer": 6.38
+    }
+   }
+  }
+ },
+ "D3": {
+  "plates": {
+   "P1": {
+    "volume_mm3": 17728.67,
+    "hand_volume_mm3": 17728.67,
+    "diff_pct": 0.0,
+    "mass_g": 21.1,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 1.0,
+    "min_wall_where": "B counterbore to outside, at the top face",
+    "changed": true,
+    "why": [
+     "ring B turned 45 degrees: at 0 and 180 degrees an A hole (r 25) cut 0.70 mm into a B counterbore (r 30); turned, the wall is 3.02 mm"
+    ],
+    "as_built": {
+     "od": 70,
+     "t": 6.0,
+     "bore": 30,
+     "na": 6,
+     "da": 3.4,
+     "ca": 50,
+     "nb": 4,
+     "db": 4.5,
+     "cb": 60,
+     "cbd": 8.0,
+     "cbdepth": 3.0,
+     "turn_a": 0.0,
+     "turn_b": 45.0,
+     "chamfer": 0.0
+    }
+   },
+   "P2": {
+    "volume_mm3": 23947.18,
+    "hand_volume_mm3": 23947.18,
+    "diff_pct": -0.0,
+    "mass_g": 28.5,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 3.0,
+    "min_wall_where": "counterbore floor",
+    "changed": true,
+    "why": [
+     "ring B turned 30 degrees: rings A and B are both 6 x dia 4.5 on the same dia 62 circle from 0 degrees, so the twelve holes were six; turned, the wall is 9.80 mm"
+    ],
+    "as_built": {
+     "od": 84,
+     "t": 6.0,
+     "bore": 40,
+     "na": 6,
+     "da": 4.5,
+     "ca": 62,
+     "nb": 6,
+     "db": 4.5,
+     "cb": 62,
+     "cbd": 8.0,
+     "cbdepth": 3.0,
+     "turn_a": 0.0,
+     "turn_b": 30.0,
+     "chamfer": 0.0
+    }
+   },
+   "P3": {
+    "volume_mm3": 38698.26,
+    "hand_volume_mm3": 38698.26,
+    "diff_pct": 0.0,
+    "mass_g": 46.05,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 1.0,
+    "min_wall_where": "B counterbore to outside, at the top face",
+    "changed": false,
+    "why": [],
+    "as_built": {
+     "od": 96,
+     "t": 8.0,
+     "bore": 52,
+     "na": 8,
+     "da": 3.4,
+     "ca": 66,
+     "nb": 4,
+     "db": 5.5,
+     "cb": 84,
+     "cbd": 10.0,
+     "cbdepth": 4.0,
+     "turn_a": 0.0,
+     "turn_b": 0.0,
+     "chamfer": 0.0
+    }
+   },
+   "P4": {
+    "volume_mm3": 14886.28,
+    "hand_volume_mm3": 14886.28,
+    "diff_pct": -0.0,
+    "mass_g": 17.71,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 2.0,
+    "min_wall_where": "B counterbore to outside, at the top face",
+    "changed": true,
+    "why": [
+     "outside dia 60 -> 70: ring B on dia 58 puts its dia 4.5 holes 1.25 mm and its dia 8 counterbores 3.0 mm through the dia 60 edge; the bolt circle mates with something, so it is kept and the disc grows to leave 2.0 mm outside the counterbores (as P6 has)",
+     "counterbore depth 4.6 -> 3.0: 4.6 in a 5.0 plate leaves a 0.4 mm floor; 3.0 leaves 2.0 mm, and is the depth of the other three dia 8 counterbores"
+    ],
+    "as_built": {
+     "od": 70.0,
+     "t": 5.0,
+     "bore": 28,
+     "na": 4,
+     "da": 3.4,
+     "ca": 40,
+     "nb": 6,
+     "db": 4.5,
+     "cb": 58,
+     "cbd": 8.0,
+     "cbdepth": 3.0,
+     "turn_a": 0.0,
+     "turn_b": 0.0,
+     "chamfer": 0.0
+    }
+   },
+   "P5": {
+    "volume_mm3": 62864.78,
+    "hand_volume_mm3": 62864.78,
+    "diff_pct": 0.0,
+    "mass_g": 74.81,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 2.5,
+    "min_wall_where": "B counterbore to outside, at the top face",
+    "changed": false,
+    "why": [],
+    "as_built": {
+     "od": 120,
+     "t": 8.0,
+     "bore": 60,
+     "na": 12,
+     "da": 4.5,
+     "ca": 80,
+     "nb": 6,
+     "db": 6.6,
+     "cb": 104,
+     "cbd": 11.0,
+     "cbdepth": 5.0,
+     "turn_a": 0.0,
+     "turn_b": 0.0,
+     "chamfer": 0.0
+    }
+   },
+   "P6": {
+    "volume_mm3": 20848.86,
+    "hand_volume_mm3": 20848.86,
+    "diff_pct": -0.0,
+    "mass_g": 24.81,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 2.0,
+    "min_wall_where": "B counterbore to outside, at the top face",
+    "changed": false,
+    "why": [],
+    "as_built": {
+     "od": 76,
+     "t": 6.0,
+     "bore": 34,
+     "na": 6,
+     "da": 3.4,
+     "ca": 46,
+     "nb": 3,
+     "db": 4.5,
+     "cb": 64,
+     "cbd": 8.0,
+     "cbdepth": 3.0,
+     "turn_a": 0.0,
+     "turn_b": 0.0,
+     "chamfer": 0.0
+    }
+   }
+  },
+  "table_problems": [
+   {
+    "plate": "P1",
+    "part": "one",
+    "what": "A hole to B counterbore: -0.7 mm as the table says",
+    "built": "ring B turned 45 degrees: at 0 and 180 degrees an A hole (r 25) cut 0.70 mm into a B counterbore (r 30); turned, the wall is 3.02 mm"
+   },
+   {
+    "plate": "P2",
+    "part": "one",
+    "what": "A hole to B counterbore: -6.25 mm as the table says",
+    "built": "ring B turned 30 degrees: rings A and B are both 6 x dia 4.5 on the same dia 62 circle from 0 degrees, so the twelve holes were six; turned, the wall is 9.80 mm"
+   },
+   {
+    "plate": "P4",
+    "part": "one",
+    "what": "B counterbore to outside, at the top face: -3.0 mm as the table says",
+    "built": "outside dia 60 -> 70: ring B on dia 58 puts its dia 4.5 holes 1.25 mm and its dia 8 counterbores 3.0 mm through the dia 60 edge; the bolt circle mates with something, so it is kept and the disc grows to leave 2.0 mm outside the counterbores (as P6 has); counterbore depth 4.6 -> 3.0: 4.6 in a 5.0 plate leaves a 0.4 mm floor; 3.0 leaves 2.0 mm, and is the depth of the other three dia 8 counterbores"
+   },
+   {
+    "plate": "P1",
+    "part": "two",
+    "what": "1 mm chamfer: B counterbore to outside at the top face 0.0 mm (the counterbores stand 1.0 mm from the edge, so a 1 mm chamfer meets them in a knife edge)",
+    "built": "chamfer 0.4 mm on this plate: 0.6 mm is left at the top face"
+   },
+   {
+    "plate": "P3",
+    "part": "two",
+    "what": "ring A on dia 70 from 0 degrees: A hole to B counterbore 0.3 mm (an A hole at r 35 beside a dia 10 counterbore at r 42)",
+    "built": "ring A also turned 22.5 degrees, half its pitch"
+   },
+   {
+    "plate": "P3",
+    "part": "two",
+    "what": "1 mm chamfer: B counterbore to outside at the top face 0.0 mm (the counterbores stand 1.0 mm from the edge, so a 1 mm chamfer meets them in a knife edge)",
+    "built": "chamfer 0.4 mm on this plate: 0.6 mm is left at the top face"
+   }
+  ],
+  "one_script": true,
+  "minutes": 14.0,
+  "plates_b": {
+   "P1_b": {
+    "volume_mm3": 22040.22,
+    "hand_volume_mm3": 22040.22,
+    "diff_pct": 0.0,
+    "mass_g": 26.23,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 0.6,
+    "min_wall_where": "B counterbore to outside, at the top face",
+    "changed": true,
+    "why": [
+     "ring B turned 45 degrees: at 0 and 180 degrees an A hole (r 25) cut 0.70 mm into a B counterbore (r 30); turned, the wall is 3.02 mm",
+     "chamfer 0.4 mm, not 1.0: the counterbores are 1.0 mm from the outside, a 1 mm chamfer would leave 0.0 mm at the top face; 0.4 leaves 0.6 mm"
+    ],
+    "counterbore_floor_z_mm": 3.0,
+    "as_built": {
+     "od": 70,
+     "t": 7.5,
+     "bore": 30,
+     "na": 6,
+     "da": 3.4,
+     "ca": 50,
+     "nb": 4,
+     "db": 4.5,
+     "cb": 60,
+     "cbd": 8.0,
+     "cbdepth": 4.5,
+     "turn_a": 0.0,
+     "turn_b": 45.0,
+     "chamfer": 0.4
+    }
+   },
+   "P2_b": {
+    "volume_mm3": 29648.45,
+    "hand_volume_mm3": 29648.45,
+    "diff_pct": -0.0,
+    "mass_g": 35.28,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 3.0,
+    "min_wall_where": "counterbore floor",
+    "changed": true,
+    "why": [
+     "ring B turned 30 degrees: rings A and B are both 6 x dia 4.5 on the same dia 62 circle from 0 degrees, so the twelve holes were six; turned, the wall is 9.80 mm"
+    ],
+    "counterbore_floor_z_mm": 3.0,
+    "as_built": {
+     "od": 84,
+     "t": 7.5,
+     "bore": 40,
+     "na": 6,
+     "da": 4.5,
+     "ca": 62,
+     "nb": 6,
+     "db": 4.5,
+     "cb": 62,
+     "cbd": 8.0,
+     "cbdepth": 4.5,
+     "turn_a": 0.0,
+     "turn_b": 30.0,
+     "chamfer": 1.0
+    }
+   },
+   "P3_b": {
+    "volume_mm3": 45765.78,
+    "hand_volume_mm3": 45765.78,
+    "diff_pct": -0.0,
+    "mass_g": 54.46,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 0.6,
+    "min_wall_where": "B counterbore to outside, at the top face",
+    "changed": true,
+    "why": [
+     "ring A moved to dia 70 as asked AND turned 22.5 degrees: left at 0 degrees it stands 0.3 mm from the B counterbores; turned, 9.816 mm",
+     "chamfer 0.4 mm, not 1.0: the counterbores are 1.0 mm from the outside, a 1 mm chamfer would leave 0.0 mm at the top face; 0.4 leaves 0.6 mm"
+    ],
+    "counterbore_floor_z_mm": 4.0,
+    "as_built": {
+     "od": 96,
+     "t": 9.5,
+     "bore": 52,
+     "na": 8,
+     "da": 3.4,
+     "ca": 70.0,
+     "nb": 4,
+     "db": 5.5,
+     "cb": 84,
+     "cbd": 10.0,
+     "cbdepth": 5.5,
+     "turn_a": 22.5,
+     "turn_b": 0.0,
+     "chamfer": 0.4
+    }
+   },
+   "P4_b": {
+    "volume_mm3": 19119.55,
+    "hand_volume_mm3": 19119.55,
+    "diff_pct": 0.0,
+    "mass_g": 22.75,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 1.0,
+    "min_wall_where": "B counterbore to outside, at the top face",
+    "changed": true,
+    "why": [
+     "outside dia 60 -> 70: ring B on dia 58 puts its dia 4.5 holes 1.25 mm and its dia 8 counterbores 3.0 mm through the dia 60 edge; the bolt circle mates with something, so it is kept and the disc grows to leave 2.0 mm outside the counterbores (as P6 has)",
+     "counterbore depth 4.6 -> 3.0: 4.6 in a 5.0 plate leaves a 0.4 mm floor; 3.0 leaves 2.0 mm, and is the depth of the other three dia 8 counterbores"
+    ],
+    "counterbore_floor_z_mm": 2.0,
+    "as_built": {
+     "od": 70.0,
+     "t": 6.5,
+     "bore": 28,
+     "na": 4,
+     "da": 3.4,
+     "ca": 40,
+     "nb": 6,
+     "db": 4.5,
+     "cb": 58,
+     "cbd": 8.0,
+     "cbdepth": 4.5,
+     "turn_a": 0.0,
+     "turn_b": 0.0,
+     "chamfer": 1.0
+    }
+   },
+   "P5_b": {
+    "volume_mm3": 74259.2,
+    "hand_volume_mm3": 74259.2,
+    "diff_pct": 0.0,
+    "mass_g": 88.37,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 1.5,
+    "min_wall_where": "B counterbore to outside, at the top face",
+    "changed": false,
+    "why": [],
+    "counterbore_floor_z_mm": 3.0,
+    "as_built": {
+     "od": 120,
+     "t": 9.5,
+     "bore": 60,
+     "na": 12,
+     "da": 4.5,
+     "ca": 80,
+     "nb": 6,
+     "db": 6.6,
+     "cb": 104,
+     "cbd": 11.0,
+     "cbdepth": 6.5,
+     "turn_a": 0.0,
+     "turn_b": 0.0,
+     "chamfer": 1.0
+    }
+   },
+   "P6_b": {
+    "volume_mm3": 25865.43,
+    "hand_volume_mm3": 25865.43,
+    "diff_pct": 0.0,
+    "mass_g": 30.78,
+    "bodies": 1,
+    "stl_watertight": true,
+    "min_wall_mm": 1.0,
+    "min_wall_where": "B counterbore to outside, at the top face",
+    "changed": false,
+    "why": [],
+    "counterbore_floor_z_mm": 3.0,
+    "as_built": {
+     "od": 76,
+     "t": 7.5,
+     "bore": 34,
+     "na": 6,
+     "da": 3.4,
+     "ca": 46,
+     "nb": 3,
+     "db": 4.5,
+     "cb": 64,
+     "cbd": 8.0,
+     "cbdepth": 4.5,
+     "turn_a": 0.0,
+     "turn_b": 0.0,
+     "chamfer": 1.0
+    }
+   }
+  },
+  "edited_not_rebuilt": {
+   "value": true,
+   "how_i_know": "each P?_b was made by opening P?.SLDPRT, saving it under the new name and changing it in place: the feature tree of every P?_b holds the same features with the same internal IDs and creation times as P?, plus one new chamfer; the edit path of the script calls no new_part, extrude or cut",
+   "edits": {
+    "P1_b": [
+     "D1@DISC@P1_b.Part: 6.0 -> 7.5",
+     "D1@TOP_P@P1_b.Part: 6.0 -> 7.5",
+     "D1@CBORE@P1_b.Part: 3.0 -> 4.5"
+    ],
+    "P2_b": [
+     "D1@DISC@P2_b.Part: 6.0 -> 7.5",
+     "D1@TOP_P@P2_b.Part: 6.0 -> 7.5",
+     "D1@CBORE@P2_b.Part: 3.0 -> 4.5"
+    ],
+    "P3_b": [
+     "D1@DISC@P3_b.Part: 8.0 -> 9.5",
+     "D1@TOP_P@P3_b.Part: 8.0 -> 9.5",
+     "D1@CBORE@P3_b.Part: 4.0 -> 5.5",
+     "RING_A_SK: 8 circles redrawn on dia 70.0 turned 22.5"
+    ],
+    "P4_b": [
+     "D1@DISC@P4_b.Part: 5.0 -> 6.5",
+     "D1@TOP_P@P4_b.Part: 5.0 -> 6.5",
+     "D1@CBORE@P4_b.Part: 3.0 -> 4.5"
+    ],
+    "P5_b": [
+     "D1@DISC@P5_b.Part: 8.0 -> 9.5",
+     "D1@TOP_P@P5_b.Part: 8.0 -> 9.5",
+     "D1@CBORE@P5_b.Part: 5.0 -> 6.5"
+    ],
+    "P6_b": [
+     "D1@DISC@P6_b.Part: 6.0 -> 7.5",
+     "D1@TOP_P@P6_b.Part: 6.0 -> 7.5",
+     "D1@CBORE@P6_b.Part: 3.0 -> 4.5"
+    ]
+   }
+  },
+  "table_problems_extra": [
+   {
+    "plate": "P4",
+    "part": "one",
+    "what": "counterbore 4.6 deep in a 5.0 plate: floor 0.4 mm",
+    "built": "depth 3.0, floor 2.0 mm"
+   },
+   {
+    "plate": "P1, P3",
+    "part": "one",
+    "what": "B counterbores 1.0 mm from the outside edge",
+    "built": "as the table says, flagged"
+   }
+  ],
+  "failed_runs_part_two": 2,
+  "models_folder": "cad/_wip/sw-eval/fable-d/d3/"
+ }
+}

@@ -1,0 +1,62 @@
+{
+  "change": "None required: the T3 bracket already meets the requirement (yield 2.85, layers 2.21), so bracket_c is the T1 geometry unchanged.",
+  "mass_g": 39.24,
+  "mass_growth_pct": 0.0,
+  "sf_yield": 2.85,
+  "sf_layer": 2.21,
+  "print_orientation": "base on the bed, layers stacked along Z (as T3)",
+  "verdict": "pass",
+  "status": "done",
+  "orientation_options": {
+    "Z (base on the bed, as T3)": {
+      "layer_tension_mpa": 10.2,
+      "at": [
+        0.0,
+        24.8,
+        10.01
+      ],
+      "sf_layer": 2.2,
+      "interlayer_shear_mpa": 7.24,
+      "shear_at": [
+        7.46,
+        22.22,
+        6.91
+      ],
+      "sf_shear": 1.8
+    },
+    "Y (on its side)": {
+      "layer_tension_mpa": 4.89,
+      "at": [
+        15.84,
+        36.79,
+        0.0
+      ],
+      "sf_layer": 4.6,
+      "interlayer_shear_mpa": 4.67,
+      "shear_at": [
+        0.0,
+        15.34,
+        15.95
+      ],
+      "sf_shear": 2.78
+    },
+    "X (upright on the bed)": {
+      "layer_tension_mpa": 13.13,
+      "at": [
+        16.08,
+        39.56,
+        0.0
+      ],
+      "sf_layer": 1.71,
+      "interlayer_shear_mpa": 7.24,
+      "shear_at": [
+        7.46,
+        22.22,
+        6.91
+      ],
+      "sf_shear": 1.8
+    }
+  },
+  "notes": "",
+  "seconds": 20
+}
