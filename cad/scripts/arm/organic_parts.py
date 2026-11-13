@@ -253,7 +253,12 @@ def r1d_slot_break(d, sg, zl):
 # Y 288-294.5, stepping to 36.35 for Y 294.5-297.6 (45 deg top chamfer 36.35 @ Y 296.7 to the land 35.45 @ 297.6); R1.2 Z roots
 # along Y 296 out to X 35.45 (tangents Y 294.8, |Z| 6.2); R0.5 inside corner at (34.4, 294.5). Our pocket 0.2 outside:
 # wall to the skin (at Z 5.5) 1.7 at Y 288, 1.55 at Y 294.3, 1.95 at Y 297.8.
-R1F_POCKET = [(287.5, 34.6), (294.3, 34.6), (294.3, 36.55), (297.8, 36.55)]
+R1F_POCKET_DEEP = [(287.5, 34.6), (294.3, 34.6), (294.3, 36.55), (297.8, 36.55)]      # R1f (D3 with the step and column)
+# R1g (2026-11-13, coordinator + shoulder thread): the lug loses its step and column (straight outer face at X offset 34.4 up to the
+# spigot underside), so the pocket is X offset 34.6 for the whole lug height up to our floor; no cut into the collar
+R1F_POCKET = R1F_POCKET_DEEP if os.environ.get('ARM_LUG_POCKET_DEEP') == '1' else [(287.5, 34.6), (295.75, 34.6)]
+R1F_POCKET_TOP = 297.8 if os.environ.get('ARM_LUG_POCKET_DEEP') == '1' else 295.75
+R1F_RELIEF_OUT = 36.3 if os.environ.get('ARM_LUG_POCKET_DEEP') == '1' else 35.2      # R1g: the R1.2 roots end at the lug face (34.4)
 R1F_LUG_SIDES = (-1, 1)      # the -X lug (theta 180) and the +X lug (theta 0)
 
 
@@ -286,14 +291,14 @@ def r1f_lug_pocket(d, sg, zl):
     zc, dz = CZ + sg * (abs(zl - CZ) - 0.5) / 2, abs(zl - CZ) + 0.5      # Z from -0.5 (into the cut-away half) to the face
     for k, side in enumerate(R1F_LUG_SIDES):
         tag = f'{k}{"F" if sg > 0 else "B"}'
-        prof = [(18.3, 287.5)] + [(o, y) for y, o in R1F_POCKET] + [(18.3, 297.8)]
+        prof = [(18.3, 287.5)] + [(o, y) for y, o in R1F_POCKET] + [(18.3, R1F_POCKET_TOP)]
         with Sk(d, plane(d, 'Z', zc, f'R1F_POCKET{tag}_P'), f'R1F_POCKET{tag}') as s:
             s.poly([(HX + side * o, y, zc) for o, y in prof])
         feat(d, s.feat, f'R1F_POCKET{tag}', dz, True, mode=MID, lo=0.01)
         # (no relief needed for the hub's R0.5 inside corner at (34.4, 294.5): our wall's inner face there is at r 35.0-35.2,
         # 0.6+ outside it; a relief cut found nothing to remove, 2026-11-12)
         # root relief, extruded along X over offsets 18.3-36.3
-        o0, o1 = 18.3, 36.3
+        o0, o1 = 18.3, R1F_RELIEF_OUT
         xm = HX + side * (o0 + o1) / 2
         zf = zl
         rel = [(294.3, zf - sg * 0.3), (294.3, zf), (295.6, zf + sg * 1.3), (296.4, zf + sg * 1.3), (296.4, zf - sg * 0.3)]
@@ -302,6 +307,29 @@ def r1f_lug_pocket(d, sg, zl):
         feat(d, s.feat, f'R1F_ROOTREL{tag}', o1 - o0, True, mode=MID, lo=0.01)
         # (no 0.5 breaks at the bore edge: as planar cuts at offset 35.9 they left knife-thin slivers against the curved bore
         # (gate, 2026-11-12), and the D3 hub needs none: its column top is chamfered 45 deg and the strip's vertical edges are sharp)
+
+
+R1F_PLATE = (18.96, 34.2, 288.2, 294.6)      # the lug plate's flat area: X offset, Y (main face only, 2026-11-13)
+
+
+def r1f_plate_lump(d, sg, zl):
+    """R1f FEA only (ARM_PLATE_LUMP=1): the lug plates lumped into our part, inside the plate outline only. A boss on our lug face
+    (zl, the real 0.5 slot) out to the lug's Z face (CZ +- 5.0), over R1F_PLATE, with the plate's Dia 3.6 bolt hole; outside the
+    outline the real 0.5 gap stays, so the lug's step and column carry nothing."""
+    if not (r1f_on() and os.environ.get('ARM_PLATE_LUMP') == '1'):
+        return
+    z0, z1 = CZ + sg * 5.0, zl + sg * 0.05      # 0.05 into our face so the boss merges
+    zc, dz = (z0 + z1) / 2, abs(z1 - z0)
+    x0, x1, y0, y1 = R1F_PLATE
+    for k, side in enumerate(R1F_LUG_SIDES):
+        tag = f'{k}{"F" if sg > 0 else "B"}'
+        with Sk(d, plane(d, 'Z', zc, f'R1F_PLATE{tag}_P'), f'R1F_PLATE{tag}') as s:
+            s.poly([(HX + side * o, y, zc) for o, y in [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]])
+        feat(d, s.feat, f'R1F_PLATE{tag}', dz, False, mode=MID, lo=0.01)
+        bx = HUB_COLS[0][0] if side < 0 else HUB_COLS[1][0]
+        with Sk(d, plane(d, 'Z', zc, f'R1F_PLATEHOLE{tag}_P'), f'R1F_PLATEHOLE{tag}') as s:
+            s.circle((bx, HUB_COLS[0][1], zc), 1.8)
+        feat(d, s.feat, f'R1F_PLATEHOLE{tag}', dz + 0.04, True, mode=MID, lo=0.01)
 
 
 def r1c_fins(d, sg, zl):

@@ -2,7 +2,7 @@
 at assembly after the ring (zero yaw play). One shape fits all four places: flipped over it serves the other face of a lug and
 the other lug (both mirror images). Outline in the lug's own face (offset from the yaw axis, Y):
   - the flat face below the hub's R1.2 Z root (Y 288.2-294.6), offset 18.9 out to the lug's outer edge less 0.2
-    (34.2), and the strip outside the root (offset 35.65-36.15, Y 294.6-296.5), per the D3 hub as built;
+    (34.2), the main flat face only (no strip above Y 294.6), per the D3 hub as built;
   - a Dia 3.6 hole for the lug bolt (offset 23.0, Y 292.0);
   - a lip: a 0.8 wide x 1.2 high rib along the bottom edge (Y 287.2-288.0, on the printed top face) that hooks under the lug's
     free end (Y 288), so the plate stays put while the half closes.
@@ -38,9 +38,10 @@ def outline(t):
     # D3 (coordinator 01:35Z): flat face X 18.76-34.4 over Y 288-294.8 (R1.2 root above), the strip X 35.45-36.35 flat over
     # Y 294.5-296.7; 0.2 in from every edge
     main = box(18.96, 288.2, 34.2, 294.6)
-    col = Polygon([(34.2, 294.2), (36.15, 294.2), (36.15, 296.5), (35.65, 296.5), (35.65, 294.6), (34.2, 294.6)])
+    # (2026-11-13, coordinator: no strip; the plate covers the main flat face only, so the lug's step and column above Y 294.6
+    # sit in the 0.5 gap and carry nothing, and no plate edge lands on our corner at the root relief)
     lip_strip = box(18.96, 287.2, 34.2, 288.2)
-    p = unary_union([main, col, lip_strip]).difference(Point(23.0, 292.0).buffer(1.8, 64))
+    p = unary_union([main, lip_strip]).difference(Point(23.0, 292.0).buffer(1.8, 64))
     k = int(round((t - 0.25) / 0.05))
     wide, narrow = divmod(k, 5)
     y = 293.9

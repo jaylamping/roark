@@ -169,6 +169,7 @@ def build():
                 zl_ = CZ + sg * (OP.HUB_LUG_HZ + OP.SLOT_CL)
                 OP.r1f_lug_web(d, sg, zl_)
                 OP.r1f_lug_pocket(d, sg, zl_)
+                OP.r1f_plate_lump(d, sg, zl_)      # ARM_PLATE_LUMP: the plates inside their outline only (FEA)
     if BOLTED and INSERTS_ON:      # the holes as in the printed halves (organic_parts.upper_half)
         OP.z_cyl(d, 'HS_BACK_HOLES', OP.HUB_COLS, 1.7, CZ - 60.0, LUG_FACE_B + 0.5, True)
         OP.z_cyl(d, 'HS_BACK_CBORES', OP.HUB_COLS, 3.0, CZ - 60.0, BOLT_SEAT, True)
@@ -567,7 +568,10 @@ def d3hub(src, dst):
     d = sw.OpenDoc6(str(F / dst), 1, 1, '', e, w)
     if d is None:
         raise SystemExit(f'open failed: {dst} {e.value} {w.value}')
-    prof = [(29.0, 288.0), (34.4, 288.0), (34.4, 294.5), (36.35, 294.5), (36.35, 296.7), (35.45, 297.6), (29.0, 297.6)]
+    if os.environ.get('HS_D3_STEP') == '1':      # D3 candidate 22ead5b (step and column)
+        prof = [(29.0, 288.0), (34.4, 288.0), (34.4, 294.5), (36.35, 294.5), (36.35, 296.7), (35.45, 297.6), (29.0, 297.6)]
+    else:      # the adoption form (2026-11-13): one straight outer face at X offset 34.4 up to the spigot underside
+        prof = [(29.0, 288.0), (34.4, 288.0), (34.4, 296.3), (29.0, 296.3)]
     for k, side in enumerate((-1, 1)):
         name = f'D3_LUGEXT{k}'
         with M.Sk(d, M.plane(d, 'Z', CZ, name + '_P'), name) as s_:
@@ -581,7 +585,7 @@ def d3hub(src, dst):
     r_ = lambda q: m_.hypot(q[0] - HX, q[2] - CZ)
     # src already carries the R1.2 Z roots out to r 31.5 (HUB_RING_ZF); fillet only the new stretch along the extension. One
     # selection of all 16 edges (from the unfilleted hub) built nothing (2026-11-12)
-    roots = edges_where(d, lambda q: abs(q[1] - 296.0) < 0.05 and abs(abs(q[2] - CZ) - 5.0) < 0.1 and 31.0 < r_(q) < 35.5)
+    roots = edges_where(d, lambda q: abs(q[1] - 296.0) < 0.05 and abs(abs(q[2] - CZ) - 5.0) < 0.1 and 31.0 < r_(q) < 35.0)
     print('  D3 Z-root edges (new stretch)', len(roots), flush=True)
     built = 0
     if roots:
@@ -592,11 +596,18 @@ def d3hub(src, dst):
                 fillet_edges(d, [e_], [1.2], f'D3_ZROOT{i_}')
                 built += d.FeatureByName(f'D3_ZROOT{i_}') is not None
     print('  D3_ZROOTS built', built, 'of', len(roots), '(unfilleted stretches stay sharp: hub-root peaks there are a model edge)', flush=True)
-    steps = edges_where(d, lambda q: abs(q[1] - 294.5) < 0.05 and abs(abs(q[0] - HX) - 34.4) < 0.05 and abs(q[2] - CZ) < 4.9)
-    print('  D3 step-corner edges', len(steps), flush=True)
-    if steps:
-        fillet_edges(d, steps, [0.5], 'D3_STEPR05')
-        print('  D3_STEPR05', d.FeatureByName('D3_STEPR05') is not None, flush=True)
+    if os.environ.get('HS_D3_STEP') == '1':
+        steps = edges_where(d, lambda q: abs(q[1] - 294.5) < 0.05 and abs(abs(q[0] - HX) - 34.4) < 0.05 and abs(q[2] - CZ) < 4.9)
+        print('  D3 step-corner edges', len(steps), flush=True)
+        if steps:
+            fillet_edges(d, steps, [0.5], 'D3_STEPR05')
+            print('  D3_STEPR05', d.FeatureByName('D3_STEPR05') is not None, flush=True)
+    else:      # D3b (2026-11-13): R0.8 outward root where the lug's outer face (X offset 34.4) meets the spigot underside (Y 296)
+        outr = edges_where(d, lambda q: abs(q[1] - 296.0) < 0.05 and abs(abs(q[0] - HX) - 34.4) < 0.05 and abs(q[2] - CZ) < 4.9)
+        print('  D3b outward-root edges', len(outr), flush=True)
+        if outr:
+            fillet_edges(d, outr, [0.8], 'D3B_OUTR08')
+            print('  D3B_OUTR08', d.FeatureByName('D3B_OUTR08') is not None, flush=True)
     d.ForceRebuild3(False)
     e, w = L(), L()
     d.Save3(1, e, w)
