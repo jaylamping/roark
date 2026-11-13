@@ -201,6 +201,8 @@ ring, ridge, groove and spigot (applied minus lugs from the sections): F [-0.4, 
 balance: applied F [0.0, 0.0, -62.0] N, M [22.91, 0.0, 0.0] N.m against the whole-hub section F [-1.2, -32.4, -67.1] N, M [23.41, 0.02, -0.02] N.m
 
 SUMMARY STOP_0 (r1g6)
+- Signs in these summary lines: the STOP and G90 lines give section magnitudes; the two G90 + YAW lines give the opposite sign
+  to the section rows above (the force from the arm into the lug). The section rows are the reference.
 - -X lug: front Z face Fz -184 N (CoP X offset 30.0, Y 291.6); section Fz 179 N.
 - -X lug sideways: net about 26 N OUTWARD (-X) from our side (the lug section +25.6 N), carried in the model mostly by the lumped boss's
   step edge (-22 N, a model artefact); in the real joint it goes through plate friction or to the bolt. The outer face carries
@@ -210,4 +212,6 @@ SUMMARY STOP_0 (r1g6)
 - G90 + YAW +17 (r1g6): -X lug Fz +272 N, +X lug Fz -220 N (sections); the lugs carry My +15.4 of +17.0 N.m (90 %). Sideways: lug sections 0.7 / 3.4 N in X; the outer faces carry about 2 N each (no wall landing); the bolt is free (gaps 0.301 / 0.185).
 - G90 + YAW -17 (r1g6): -X lug Fz -214 N, +X lug Fz +271 N (sections); the lugs carry My -15.1 of -17.0 N.m (89 %). Sideways: lug sections 5.3 / 0.8 N in X; the outer faces carry about 2.5 N each (no wall landing); the bolt is free (gaps 0.179 / 0.304).
 - STOP_124 (r1g6): -X lug front Z face Fz -199 N (CoP X offset 28.9, Y 292.8), section 180 N; +X lug back Z face Fz +117 N, section 72 N. Sideways: lug sections 0.5 / 4.3 N in X; the outer faces carry about 1 N each (no wall landing; -X outer-face gap 0.20, opening by 0.05 mm); the bolt is free (gaps 0.335 / 0.176).
-- G90 (r1g6): lug sections Fz -31 N (-X) and -26 N (+X); the ring, ridge, groove and spigot carry Mx 23.4 of 22.9 N.m (the lugs -0.5). Sideways: lug sections under 0.5 N; outer faces no landing (-X gap 0.20 closing by 0.06 to about 0.14); the bolt is free (gaps 0.242 / 0.330).
+- G90 (r1g6): lug sections Fz 31 N (-X) and 26 N (+X), the same sign on both lugs (section rows -30.7 / -25.8); the ring, ridge, groove and spigot carry Mx 23.4 of 22.9 N.m (the lugs -0.5). Sideways: lug sections under 0.5 N; outer faces no landing (-X gap 0.20 closing by 0.06 to about 0.14); the bolt is free (gaps 0.242 / 0.330).
+- YAW -17 (r1g6): lug sections Fz +247 N (-X) and -242 N (+X) (section-row signs); the lugs carry My -15.1 of -17.0 N.m (89 %). Sideways: lug sections under 1 N in X; no wall landing (the -X outer face closes 0.06 of its 0.20 gap); the bolt is free (gaps 0.243 / 0.347).
+- YAW +17 (r1g6): lug sections Fz -243 N (-X) and +247 N (+X) (section-row signs); the lugs carry My +15.2 of +17.0 N.m (89 %). Sideways: lug sections under 1 N in X; no wall landing (the -X outer face closes 0.02 of its 0.20 gap); the bolt is free (gaps 0.344 / 0.252).
