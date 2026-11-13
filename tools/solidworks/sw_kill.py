@@ -6,7 +6,10 @@
     python tools/solidworks/sw_kill.py --all --force          # end every SolidWorks process, the keeper included
 
 `--dead` ends only what nobody is waiting for: a half-closed instance, an instance that has not answered with no solver
-and no live client driving it, and solver or helper processes whose SolidWorks has gone. Any session may run it.
+and no live client driving it, and solver or helper processes whose SolidWorks has gone. Any session may run it. It
+watches each one before ending it, as launch() does: 20 s for a half-closed instance, because a process starting or in an
+ordinary exit looks the same for a moment, and 300 s for an abandoned one, because a client this module has no record of
+may be driving it through a mesh. So `--dead` can take five minutes.
 
 A PID is ended without `--force` only if it is one of those. An instance that is idle, solving or busy belongs to a live
 session and may be minutes from a result, and the keeper serves every session, so those need `--force`, which is for
@@ -24,7 +27,6 @@ import time
 
 HELPERS = ("cwanalysisproc.exe", "star.exe", "sldprocmon.exe", "sldexitapp.exe")
 DEAD = ("zombie", "orphan")
-ORPHAN_AFTER_S = 300
 
 
 def may_end(state: str, is_keeper: bool, force: bool) -> tuple[bool, str]:
@@ -38,22 +40,58 @@ def may_end(state: str, is_keeper: bool, force: bool) -> tuple[bool, str]:
     return False, f"{state}: a live session's instance; --force to end it"
 
 
+WATCH_S = {"zombie": 20, "orphan": 300}
+YOUNG_S = 30
+
+
 def settled(state: str, age_s: float) -> str:
-    """An instance not answering with nothing driving it may be starting, or finishing a call its client just left:
-    launch() gives it 300 s before it calls it an orphan, and so does this."""
-    return "unsettled" if state == "orphan" and age_s < ORPHAN_AFTER_S else state
+    """A process in its first 30 s has no windows yet and answers nothing: that is starting, not dead."""
+    return "unsettled" if state in DEAD and age_s < YOUNG_S else state
+
+
+def stays_dead(look, watch_s: float, poll_s: float = 5.0, sleep=time.sleep) -> bool:
+    """True if `look()` returns the same dead state on every look for `watch_s` seconds. One look that shows the
+    instance answering, solving, driven or gone ends the watch: it was not dead."""
+    first = look()
+    if first not in DEAD:
+        return False
+    waited = 0.0
+    while waited < watch_s:
+        sleep(poll_s)
+        waited += poll_s
+        if look() != first:
+            return False
+    return True
 
 
 def _helpers_without_solidworks():
-    """Solver and helper processes with no SolidWorks among their ancestors: left behind when one was ended."""
+    """Solver and helper processes left behind when their SolidWorks was ended.
+
+    A solver's helper parent can exit while the SolidWorks above it is alive and solving, which breaks the parent chain
+    (RULES.md, 2026-11-09). So one counts as left behind only if no running SolidWorks started before it.
+    """
     import psutil
 
-    out = []
+    sw_starts = []
+    helpers = []
     for p in psutil.process_iter(["name"]):
-        if (p.info["name"] or "").lower() not in HELPERS:
-            continue
         try:
-            if not any(a.name().lower() == "sldworks.exe" for a in p.parents()) and time.time() - p.create_time() > 60:
+            name = (p.info["name"] or "").lower()
+            if name == "sldworks.exe":
+                sw_starts.append(p.create_time())
+            elif name in HELPERS:
+                helpers.append(p)
+        except psutil.Error:
+            pass
+    out = []
+    for p in helpers:
+        try:
+            born = p.create_time()
+            if (
+                time.time() - born > 60
+                and not any(a.name().lower() == "sldworks.exe" for a in p.parents())
+                and not any(t <= born for t in sw_starts)
+            ):
                 out.append(p)
         except psutil.Error:
             pass
@@ -90,6 +128,14 @@ def main(argv: list[str]) -> int:
         return 2
 
     keeper = sw.keeper_pid()
+
+    def look(pid):
+        """The instance's state now, or "gone"."""
+        for row in sw.status():
+            if row[0] == pid:
+                return settled(sw.state(row), row[1])
+        return "gone"
+
     rows = [(row[0], settled(sw.state(row), row[1]), row[0] == keeper, sw.who(row[0])) for row in sw.status()]
     strays = _helpers_without_solidworks()
     code = 0
@@ -109,13 +155,19 @@ def main(argv: list[str]) -> int:
     for pid, st, is_keeper, who in rows:
         if what.isdigit() and int(what) != pid:
             continue
+        started = sw._started(pid)
+        st = look(pid)  # again, now: an earlier end in this run may have taken half a minute
         ok, why = may_end(st, is_keeper, force)
+        if ok and not force:
+            print(f"PID {pid} looks {st}; watching it for {WATCH_S[st]} s before ending it")
+            if not stays_dead(lambda: look(pid), WATCH_S[st]):
+                ok, why = False, f"it was {st} but changed while watched: not dead"
         if not ok:
             if what.isdigit():
                 print(f"PID {pid} not ended: {why}")
                 code = 1
             continue
-        ended = sw.kill_tree(pid, sw._started(pid))
+        ended = sw.kill_tree(pid, started)
         sw._drop_owner(pid)
         print(f"ended PID {pid} ({why}) and {max(len(ended) - 1, 0)} processes under it")
         _log(sw, f"ended SLDWORKS {pid} state={st} reason={why} who={who!r}")

@@ -143,10 +143,12 @@ to `kills.log` in the claims folder (time, state, who launched it, the command t
 - `--list` shows every instance and what would be ended.
 - `--dead` ends only what can never finish: a half-closed instance, an instance that has not answered for 300 s with no
   solver and no live client, and solver or helper processes whose SolidWorks has gone. Any session may run it, before a
-  launch that would otherwise refuse.
+  launch that would otherwise refuse. It watches each one first, 20 s for a half-closed instance and 300 s for an
+  abandoned one, so it can take five minutes; a stray solver is ended only if no running SolidWorks started before it.
 - `<pid>` ends one instance and everything it started. Without `--force` it refuses an instance that is idle, solving or
   busy, and the keeper.
-- `--force`, with a PID or with `--all`, ends a live session's instance. That is for the session that owns it, or on
+- `--force`, with a PID or with `--all`, ends a live session's instance at once. `--all --force` leaves the keeper
+  switched on, so the next launch starts a new one. That is for the session that owns it, or on
   Joey's say-so in the thread.
 
 ## Rules
