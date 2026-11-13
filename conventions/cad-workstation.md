@@ -108,7 +108,9 @@ and `git lfs prune` (the shared LFS store). `cad_lock.py acquire` asks every tim
 - installing software or Python packages;
 - changing shared git config or hooks (`git config` without `--worktree`, `install_hooks.py`, `git lfs install`, anything
   in `.git/hooks`);
-- closing or killing another session's SolidWorks, or taking over a stale CAD lock (`--take-stale`);
+- closing or killing another session's live SolidWorks (`sw_kill.py --force`), or taking over a stale CAD lock
+  (`--take-stale`). Ending a dead one with `python tools/solidworks/sw_kill.py --dead` is routine
+  ([RULES.md](../tools/solidworks/RULES.md#ending-instances));
 - a push over the LFS budget (`CAD_BUDGET_OK=1`);
 - system settings, drivers, scheduled tasks.
 
