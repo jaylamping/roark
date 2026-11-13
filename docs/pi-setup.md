@@ -339,6 +339,8 @@ sudo cyclictest --mlockall --smp --priority=80 --interval=1000 --distance=0 --du
 
 The worst latency per core (`Max:` in the summary, `# Max Latencies` in the histogram file) is the number deploy.md compares against the budget. Commit both files
 under `docs/bench-results/realtime/<date>/` with the kernel version (`uname -a`), and re-run after every kernel change.
+Before trusting a run, check that `vcgencmd get_throttled` still reads `0x0` and that the fan was turning: a throttled
+CPU doubled the worst case on the first try (2026-11-13).
 
 ## 13. Record what you set up
 
