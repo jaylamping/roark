@@ -146,6 +146,7 @@ STUB_LEAD = 0.5                  # check (d): 0.5 x 45 lead-in on the stub's fre
 # ---- hub (frozen interface; dished top) ----
 
 HUB_WIN_A = float(os.environ.get('HUB_WIN_A', '7.9'))   # D3c4 candidate: 248 (back half, midway between the -82 / -142 boss tubes)
+HUB_WIN_CLIP = float(os.environ.get('HUB_WIN_CLIP', '0'))   # D3c6: the window's slot is not cut inside this distance along its centre line (15.7 keeps both boss tubes beside it whole); 0 = off
 # Hub lower half, prepared for the arm joint work (all OFF by default; the frozen interface is unchanged when off):
 HUB = dict(spigot_ext_on=0, spigot_ext_len=6.0, spigot_taper=0.0, spigot_ri=28.0, spigot_ro=35.8, spigot_y0=296.0,
            groove_on=1,

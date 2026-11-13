@@ -764,9 +764,10 @@ less, and warn that a screw must not go deeper than the thread.
   | D3c4, window 248° | -82° (clearance) | 0.13 / 0.02 / 0.27 / 1.66 |
   | either | tubes away from the window | 2.4-3.1 |
 
-- **What it means:** at those two tubes the hole breaks out, or nearly, on the window side below Y 302, and the head's
-  seat ring (r 2.15-4.4 at Y 298.1) is cut away on that side. From Y 306 up the tubes are whole, so the reamed locating
-  length (Y 305.3-312.6) is untouched.
+- **What it means:** at those two tubes the hole breaks out, or nearly, on the window side between Y 298.2 and 302. The
+  head's seat ring itself (r 2.15-4.4 at Y 298.1) is whole (`hub_tube_check.py`: 100 %), but the wall right above it is
+  gone on that side, so the seat there is a thin lip. From Y 306 up the tubes are whole, so the reamed locating length
+  (Y 305.3-312.6) is untouched.
 - **It is not new:** the window at 7.9° did the same to the -22° and 38° tubes.
 - **Open:** whether to move the window's bore end out past the tubes (entry at r 17.2 or more; the bore is r 23 at 68°, so
   a 3.5 mm bundle still fits), or to accept two partial seats. See OPEN_ASSUMPTIONS.md.

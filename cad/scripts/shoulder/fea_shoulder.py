@@ -580,6 +580,36 @@ CASES['HUBL_YAW3P38F'] = dict(CASES['HUBL_YAW3P38'],
           (('touch', [132.0, 292.5, -2.0, 154.0, 298.2, 14.0], 160.0), 0.3), (('touch', [187.0, 292.5, -2.0, 209.0, 298.2, 14.0], 160.0), 0.3),
           (cyl(0.8, [132, 294.5, -0.5, 209, 296.2, 12.5]), 0.35)])
 
+# The arm thread's contact solution on its r1g4 model (left-arm-organic r1g4_lug_loads.txt, 1c605d7): what the arm puts on each
+# lug face, with the centre of pressure. The Z-face loads sit at X offset 31.2-31.7, Y 291.9-292.6: well outboard of the
+# uniform plate load of HUBL_YAW3P38 (centroid X offset 26.6). Section totals per lug; the outer face (under 18 N) and the bolt
+# wall (under 5 N) are folded into the loaded Z face. Fine mesh on all four R1.2 roots, inner and outer ends, as HUBL_YAW3P38F.
+#   HUBL_YAW_COP   YAW -17 N.m: -X lug 244.7 N on its front face (Z 11.0), +X lug 240.6 N on its back face (Z 1.0). The lugs
+#                  carry 88 % of the torque; the ring and groove carry the rest (not applied: it does not load the lugs).
+#   HUBL_G90YAW    arm horizontal with 5 kg (G90) + YAW -17: -X lug 212.6 N net (front -222.0, back +9.4), +X lug 266.6 N net
+#                  (back +285.1, front -18.5); and the ring, ridge, groove and spigot share on the spigot surface
+#                  (F 7.4, 4.4, -116.0 N; M 23.32, -2.12, -0.07 N.m about the yaw axis at the disc face, Y 302).
+#   HUBL_G90YAW_L  the same without the spigot share (lugs only), in case the spigot faces cannot be picked.
+_COP = lambda sg, zp, xo, y_: (RX + sg * xo, y_, zp)
+CASES['HUBL_YAW_COP'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=[(_PFACE(-1, 11.0), _COP(-1, 11.0, 31.17, 292.44), (0.0, 0.0, -244.7), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 1.0), _COP(1, 1.0, 31.48, 292.37), (0.0, 0.0, 240.6), (0.0, 0.0, 0.0), 1)])
+_G90YAW_LUGS = [(_PFACE(-1, 11.0), _COP(-1, 11.0, 31.72, 291.88), (0.0, 0.0, -222.0), (0.0, 0.0, 0.0), 1),
+                (_PFACE(-1, 1.0), _COP(-1, 1.0, 19.41, 291.67), (0.0, 0.0, 9.4), (0.0, 0.0, 0.0), 1),
+                (_PFACE(1, 1.0), _COP(1, 1.0, 31.47, 292.57), (0.0, 0.0, 285.1), (0.0, 0.0, 0.0), 1),
+                (_PFACE(1, 11.0), _COP(1, 11.0, 20.12, 289.26), (0.0, 0.0, -18.5), (0.0, 0.0, 0.0), 1)]
+CASES['HUBL_G90YAW_L'] = dict(CASES['HUBL_YAW3P38F'], remotes=_G90YAW_LUGS)
+#   HUBL_G90       G90 alone, for superposing with HUBL_YAW_COP at another yaw load: -X lug 30.8 N net (back +36.9, front -6.1),
+#                  +X lug 25.9 N net (back +38.5, front -12.6), and the spigot share (F -0.3, -0.9, -118.7 N; M 23.44, -0.17, -0.01)
+CASES['HUBL_G90'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=[(_PFACE(-1, 1.0), _COP(-1, 1.0, 30.54, 293.36), (0.0, 0.0, 36.9), (0.0, 0.0, 0.0), 1),
+             (_PFACE(-1, 11.0), _COP(-1, 11.0, 32.02, 288.56), (0.0, 0.0, -6.1), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 1.0), _COP(1, 1.0, 31.79, 293.00), (0.0, 0.0, 38.5), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _COP(1, 11.0, 22.17, 289.56), (0.0, 0.0, -12.6), (0.0, 0.0, 0.0), 1),
+             (SPIGOT, (RX, 302.0, YZ), (-0.3, -0.9, -118.7), (23.44, -0.17, -0.01), 1)])
+CASES['HUBL_G90YAW'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=_G90YAW_LUGS + [(SPIGOT, (RX, 302.0, YZ), (7.4, 4.4, -116.0), (23.32, -2.12, -0.07), 1)])
+
 # REV D, the arm thread's stop case on the full-ring joint (its fine-mesh repeat, roark 3c7114b): the full-ring ridge and groove
 # are axisymmetric and frictionless, so they carry no torque about the hub axis; that part of the stop moment goes into the
 # lugs as a Z-force pair. -X lug: Fz +169 N, Fx +40 N, 55 N axial (taken as a pull along -Y, like HUBL_I); +X lug: Fz -112 N.

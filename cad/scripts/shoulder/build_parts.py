@@ -1081,8 +1081,26 @@ def build_hub():
     pl, _ = plane_axis_angle(d, ax, d.FeatureByName('Front Plane'), HUB_WIN_A, u, 'P_HUB_WIN')
     p0 = (RX + 31.0 * u[0], DISH_Y + 2, YZ + 31.0 * u[2])
     p1 = (RX + 15.5 * u[0], 298.0, YZ + 15.5 * u[2])
+    win = [np.array(q) for q in seg_rect(p0, p1, np.cross(np.subtract(p1, p0), (-u[2], 0, u[0])), 9.0)]
+    win_r = [1.5] * 4
+    if HUB_WIN_CLIP:
+        # D3c6: the two boss tubes beside the window reach 15.4 mm along its centre line (inside the +-8 mm width), and the
+        # slot's bore end reached in to 11.8, cutting their walls to 0-0.3 mm over the lowest 4 mm. Clip the slot at
+        # HUB_WIN_CLIP along the centre line: a flat inner wall there, the rest of the slot as it was.
+        along = lambda q: (q[0] - RX) * u[0] + (q[2] - YZ) * u[2]
+        out, rad = [], []
+        for i_ in range(4):
+            a_, b_ = win[i_], win[(i_ + 1) % 4]
+            ia, ib = along(a_) >= HUB_WIN_CLIP, along(b_) >= HUB_WIN_CLIP
+            if ia:
+                out.append(a_); rad.append(1.5)
+            if ia != ib:
+                t_ = (HUB_WIN_CLIP - along(a_)) / (along(b_) - along(a_))
+                out.append(a_ + (b_ - a_) * t_); rad.append(0.0)
+        win, win_r = out, rad
+        log('  HUB_WIN clipped at %.1f along its line: ' % HUB_WIN_CLIP + ' '.join('(%.2f, %.2f)' % (along(q), q[1]) for q in win))
     with Sk(d, pl, 'HUB_WIN') as s:
-        s.rpoly(seg_rect(p0, p1, np.cross(np.subtract(p1, p0), (-u[2], 0, u[0])), 9.0), [1.5] * 4)
+        s.rpoly([tuple(q) for q in win], win_r)
     extrude(d, s.feat, 'HUB_WIN', 16.0, (0, 0, 0), cut=True, mode=MID)
     # ---- prepared, suppressed by default: spigot extension below Y 296 (length, taper) and a second lug pair (angle)
     hb = HUB

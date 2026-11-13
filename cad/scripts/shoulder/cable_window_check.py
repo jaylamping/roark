@@ -30,9 +30,16 @@ U = (P0 - P1) / np.linalg.norm(P0 - P1)
 
 
 def centre_line(n=160):
-    """(r, Y) points: straight drop at r 17 from Y 250, a bend into the slot's line, the slot to 2 mm short of its dish end."""
-    pts = [np.array([17.0, y]) for y in np.linspace(250.0, 292.0, 60)]
-    a, b, c = np.array([17.0, 292.0]), np.array([17.0, 297.5]), P1 + U * 1.0
+    """(r, Y) points: straight drop from Y 250, a bend into the slot's line, the slot to 2 mm short of its dish end.
+    CABLE_ENTRY_R (hub D3c6, slot clipped at 15.7): the drop runs at that radius up to the slot's centre line instead."""
+    re_ = float(os.environ.get('CABLE_ENTRY_R', '0'))
+    if re_:
+        y_ = P1[1] + (re_ - P1[0]) / U[0] * U[1]           # where the slot's centre line is at r = re_
+        pts = [np.array([re_, y]) for y in np.linspace(250.0, y_ - 3.0, 70)]
+        a, b, c = np.array([re_, y_ - 3.0]), np.array([re_, y_]), np.array([re_, y_]) + U * 3.0
+    else:
+        pts = [np.array([17.0, y]) for y in np.linspace(250.0, 292.0, 60)]
+        a, b, c = np.array([17.0, 292.0]), np.array([17.0, 297.5]), P1 + U * 1.0
     pts += [a * (1 - t) ** 2 + 2 * (1 - t) * t * b + t ** 2 * c for t in np.linspace(0, 1, 30)[1:]]
     pts += [c + (P0 - U * 2.0 - c) * t for t in np.linspace(0, 1, n)[1:]]
     return np.array(pts)
