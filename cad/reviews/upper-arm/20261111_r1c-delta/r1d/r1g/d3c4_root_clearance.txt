@@ -1,0 +1,18 @@
+### plates 045
+== shoulder_hub_left_revD3b_candidate.STL
+   front : min +0.300 mm at X 147.58 Y 295.70 Z 14.52 (X offset 22.91, Z - CZ +8.53); points under 0.30: 206, under 0.10: 0 of 1174
+   back  : min +0.300 mm at X 143.57 Y 295.70 Z -1.98 (X offset 26.92, Z - CZ -7.97); points under 0.30: 199, under 0.10: 0 of 1113
+   plates: min +0.006 mm at X 146.49 Y 294.70 Z 11.01 (X offset 24.00, Z - CZ +5.02); points under 0.30: 5372, under 0.10: 1558 of 20609
+== shoulder_hub_left_revD3c4_candidate.STL
+   front : min +0.300 mm at X 147.58 Y 295.70 Z 14.52 (X offset 22.91, Z - CZ +8.53); points under 0.30: 211, under 0.10: 0 of 1174
+   back  : min +0.300 mm at X 143.57 Y 295.70 Z -1.98 (X offset 26.92, Z - CZ -7.97); points under 0.30: 202, under 0.10: 0 of 1113
+   plates: min +0.006 mm at X 146.49 Y 294.70 Z 11.01 (X offset 24.00, Z - CZ +5.02); points under 0.30: 5372, under 0.10: 1558 of 20609
+### plates 075
+== shoulder_hub_left_revD3b_candidate.STL
+   front : min +0.300 mm at X 146.42 Y 295.70 Z 13.59 (X offset 24.07, Z - CZ +7.60); points under 0.30: 209, under 0.10: 0 of 1181
+   back  : min +0.300 mm at X 194.22 Y 295.70 Z -2.15 (X offset 23.73, Z - CZ -8.14); points under 0.30: 206, under 0.10: 0 of 1108
+   plates: min +0.006 mm at X 195.44 Y 294.70 Z 11.01 (X offset 24.95, Z - CZ +5.02); points under 0.30: 5095, under 0.10: 1443 of 24944
+== shoulder_hub_left_revD3c4_candidate.STL
+   front : min +0.300 mm at X 148.81 Y 295.70 Z 13.54 (X offset 21.68, Z - CZ +7.55); points under 0.30: 214, under 0.10: 0 of 1181
+   back  : min +0.300 mm at X 194.22 Y 295.70 Z -2.15 (X offset 23.73, Z - CZ -8.14); points under 0.30: 209, under 0.10: 0 of 1108
+   plates: min +0.006 mm at X 195.44 Y 294.70 Z 11.01 (X offset 24.95, Z - CZ +5.02); points under 0.30: 5095, under 0.10: 1443 of 24944

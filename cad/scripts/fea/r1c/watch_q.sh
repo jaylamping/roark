@@ -4,7 +4,7 @@
 cd /j/code/roark-wt/left-arm-organic
 L1=cad/_wip/r1d_combined.log; L2=cad/_wip/r1d_ring_ds.log
 n1=$(wc -l < $L1); n2=$(wc -l < $L2); t0=$(date +%s)
-pat='BUILT|SOLVED|SOLVE_FAILED|MEM_STOP|STOP|_DONE|POST_DONE'
+pat='BUILT model|^SOLVED|SOLVE_FAILED|MEM_STOP|STOP:|STOPPED|_DONE |POST_DONE'
 while true; do
   sleep 30
   new=$( (tail -n +$((n1 + 1)) $L1; tail -n +$((n2 + 1)) $L2) 2>/dev/null)

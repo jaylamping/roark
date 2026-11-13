@@ -1,0 +1,1 @@
+bore fill (hub material inside r 23.5, Y 295.8-302) to our halves: min 11.23 mm at Y 299.1 (55 planes)

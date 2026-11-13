@@ -1,0 +1,20 @@
+### shoulder_hub_left_revD3b_candidate.STL plates 045
+plates +X lug, back  face: min gap 0.167 mm at X offset 23.5
+plates +X lug, front face: min gap 0.167 mm at X offset 33.8
+plates -X lug, back  face: min gap 0.167 mm at X offset 33.6
+plates -X lug, front face: min gap 0.167 mm at X offset 23.7
+### shoulder_hub_left_revD3b_candidate.STL plates 075
+plates +X lug, back  face: min gap 0.167 mm at X offset 23.8
+plates +X lug, front face: min gap 0.167 mm at X offset 33.7
+plates -X lug, back  face: min gap 0.167 mm at X offset 33.6
+plates -X lug, front face: min gap 0.167 mm at X offset 23.8
+### shoulder_hub_left_revD3c4_candidate.STL plates 045
+plates +X lug, back  face: min gap 0.167 mm at X offset 21.0
+plates +X lug, front face: min gap 0.167 mm at X offset 33.4
+plates -X lug, back  face: min gap 0.167 mm at X offset 34.0
+plates -X lug, front face: min gap 0.167 mm at X offset 32.6
+### shoulder_hub_left_revD3c4_candidate.STL plates 075
+plates +X lug, back  face: min gap 0.167 mm at X offset 21.2
+plates +X lug, front face: min gap 0.167 mm at X offset 33.6
+plates -X lug, back  face: min gap 0.167 mm at X offset 34.0
+plates -X lug, front face: min gap 0.167 mm at X offset 32.6

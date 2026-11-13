@@ -121,6 +121,11 @@ pulls it out the way it went in.
 
 **Hub D3b candidate (shoulder thread, 6b2fd93; STL SHA-256 b221df3d...ec80e) against R1g: all checks PASS**
 (`../20261111_r1c-delta/r1d/r1g/D3B_CHECK.md`).
+
+**Hub candidate now D3c4** (shoulder thread a1057a9, STL SHA-256 5b919048...a44cc, 80.2 g), replacing D3b. All six checks PASS
+against r1g4 (`../20261111_r1c-delta/r1d/r1g/D3C4_CHECK.md`). Our FEA runs (r1g2, r1g4) use the D3b-shaped FEA hub; D3c4 differs
+from it only in the r 20 bore fill and window above Y 296 and in R1.2 Z roots running further inboard (to X offset 19.2). The
+shoulder thread's FE governs the hub.
 - Only the lugs differ from rev D, plus a local square spigot corner.
 - The lug sits 0.200 inside our pocket, with 0.486 / 0.514 on the Z faces for the plates.
 - Its roots clear our relief by 0.69 or more, and the square corner clears our collar by 0.022, the existing bore clearance.
