@@ -95,7 +95,7 @@ How I judged it:
 2. A sharp corner cannot be printed. `bracket_r05.SLDPRT`, the same part with a 0.5 mm radius as a stand-in, converges:
    37.16 then 36.46 MPa (−1.9 %) with 0.25 and 0.15 mm elements on the radius. That is a factor of **1.23** on yield.
    This is the `reported_stress_mpa`. The real as-printed radius is unknown; a smaller one gives more.
-3. Away from the corner, the back-face tension across the layers converges at **11.46 MPa**, a factor of **1.96**.
+3. Away from the corner, the back-face tension across the layers converges at **11.47 MPa** (11.36, 11.46, 11.47), a factor of **1.96**.
    The fillet was holding this down too (10.20 with it).
 
 **Verdict: fail.** It fails on item 3 alone, a converged number clear of any corner, fixture or load; item 2 says the

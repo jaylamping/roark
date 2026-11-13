@@ -51,7 +51,7 @@ t4_out = dict(
     verdict='fail', status='done',
     notes=('reported_stress_mpa is the converged peak of the 0.5 mm-radius stand-in (bracket_r05.SLDPRT), not a number from the '
            'sharp model; the true as-printed radius is not known, and a smaller one gives more. The fail does not rest on that '
-           'alone: without the fillet the back-face layer tension is 11.46 MPa (10.2 with it), 1.96 against the 2.0 required, a '
+           'alone: without the fillet the back-face layer tension is 11.47 MPa (10.2 with it), 1.96 against the 2.0 required, a '
            'converged number away from any corner, fixture or load. In the finest sharp row the largest sz tension moved to a node '
            '0.12 mm from the corner (13.2 MPa): part of the singular field, not used. Result.average() is a mean over nodes, so it '
            'rises as the mesh is refined toward the corner (9.0, 10.3, 12.0, 15.6 within 2 mm): it is not mesh-independent. '
