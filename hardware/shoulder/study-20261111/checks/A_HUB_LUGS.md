@@ -1133,5 +1133,9 @@ Both with the 9 N inward on a 2.7 mm² patch. FFEPlus, 1.00 million nodes, stop 
   4%, and the two ways of carrying them differ by under 1% at the governing place.
 - **The patch size does not matter:** 9 N on 2.7 mm² or spread over 22.5 mm² gives the same whole-lug figure.
 - The arm's own reading at that root, on its coarse hub, was 1.16 in shear at the peak node and 1.76 at 0.5 mm.
+- **STOP_124** (the arm's other stop case, same file at roark 16c2189) **is covered by this case and is not run:** its -X
+  lug carries 180 N by its section (179 in STOP_0; the solve above uses 184), its centre of pressure is 1.3 mm further
+  inboard (X offset 28.9 against 30.2, Y 292.8), so its lever on the root is shorter, and its outer face and bolt-hole
+  wall carry under 5 N. Its +X lug carries 72 N (81 in STOP_0).
 - **Cases:** `HUBL_STOP6_Z`, `_P`, `_S`, `_F` (unit cases) and `HUBL_STOP6_ZB` in `fea_shoulder.py`; ligament read by a
   box round the hole (X offset 20-26, Y 293.85-295.0, and X offset 24.85-34.45, Y 290-294).
