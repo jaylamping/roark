@@ -199,6 +199,49 @@ def _drop_owner(pid):
         os.remove(owner_file(pid))
     except OSError:
         pass
+    try:
+        _claims().drop_instance(_claims().claims_dir(), pid)
+    except Exception:
+        pass
+
+
+def _claims():
+    """tools/pc/claims.py, which is stdlib only. Imported late so this module still loads if it is missing."""
+    here = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pc")
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import claims
+
+    return claims
+
+
+def _note_instance(pid, started):
+    """Leave a note saying which worktree and command drive this instance, so `--status` and `claims.py who <pid>` name
+    an owner even when the session made no claim. Never raises: a note must not stop a launch."""
+    try:
+        c = _claims()
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        c.note_instance(c.claims_dir(), pid, started, repo, os.getpid(), " ".join(sys.argv) or sys.executable, time.time())
+    except Exception:
+        pass
+
+
+def who(pid):
+    """One line on who drives this instance: its claim if it has one, else the note its launcher left, else ''."""
+    try:
+        c = _claims()
+        d = c.claims_dir()
+        for claim in c.load_all(d):
+            if claim.get("sw_pid") == pid and not claim.get("broken"):
+                return f"claimed by {claim['session']}: {claim.get('status', '')}"
+        n = c.instance_note(d, pid, _started(pid))
+        if n:
+            if pid == keeper_pid():
+                return n["command"]
+            return f"no claim; {n['worktree']} (client PID {n['client_pid']}): {n['command']}"
+    except Exception:
+        pass
+    return ""
 
 
 def _owner_alive(pid):
@@ -635,21 +678,177 @@ def launch(timeout=300, visible=False, busy_wait=7200):
         raise RuntimeError(f"SolidWorks not found at {EXE}")
     pythoncom.CoInitialize()
     with _LaunchLock(busy_wait + 2 * timeout):
+        _retire_keeper()  # before the blocker check: a hung keeper would read as an orphan and refuse the launch
         _wait_for_blockers(timeout)
+        _ensure_keeper(timeout, busy_wait)
+        inst = _start(timeout, visible, busy_wait)
+    _write_owner(inst.pid, inst.started)
+    _note_instance(inst.pid, inst.started)
+    return inst
+
+
+class _WmiProc:
+    """The two things _finish_launch asks of a Popen, for a process this one did not start as its child."""
+
+    def __init__(self, pid):
+        self.pid = pid
+        self.returncode = None
+        self._started = _started(pid)
+
+    def poll(self):
+        if _started(self.pid) == self._started and self._started is not None:
+            return None
+        self.returncode = -1
+        return self.returncode
+
+    def kill(self):
+        kill_tree(self.pid, self._started)
+
+
+def _start_outside_job():
+    """Start SolidWorks hidden through WMI, so it is not a child of this process, or None if that fails.
+
+    A child started the usual way joins this process's job object. Under tools/pc/capped.py, or a tool that ends its
+    whole process tree, that would end the keeper with the client that happened to start it.
+    """
+    try:
+        wmi = wc.GetObject("winmgmts:")
+        startup = wmi.Get("Win32_ProcessStartup").SpawnInstance_()
+        startup.ShowWindow = win32con.SW_HIDE
+        method = wmi.Get("Win32_Process")
+        params = method.Methods_("Create").InParameters.SpawnInstance_()
+        params.CommandLine = f'"{EXE}"'
+        params.ProcessStartupInformation = startup
+        out = method.ExecMethod_("Create", params)
+        if int(out.ReturnValue) == 0 and out.ProcessId:
+            return _WmiProc(int(out.ProcessId))
+    except Exception:
+        pass
+    return None
+
+
+def _start(timeout, visible, busy_wait, outside_job=False):
+    """Start one SolidWorks process and wait for it. The caller holds the launch lock."""
+    proc = _start_outside_job() if outside_job else None
+    if proc is None:
         si = subprocess.STARTUPINFO()
         if not visible:
             si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             si.wShowWindow = win32con.SW_HIDE
         proc = subprocess.Popen([EXE], startupinfo=si)
-        started = _started(proc.pid)
-        try:
-            inst = _finish_launch(proc, timeout, visible, busy_wait)
-        except BaseException:
-            kill_tree(proc.pid, started)  # never leave a hidden instance, or its sldProcMon, behind
-            proc.kill()
-            raise
-    _write_owner(inst.pid, inst.started)
-    return inst
+    started = _started(proc.pid)
+    try:
+        return _finish_launch(proc, timeout, visible, busy_wait)
+    except BaseException:
+        kill_tree(proc.pid, started)  # never leave a hidden instance, or its sldProcMon, behind
+        proc.kill()
+        raise
+
+
+KEEPER_MAX_MB = 1500
+KEEPER_NOTE = "keeper: idle instance that takes other launches' startup call; leave it running"
+
+
+def _keeper_paths():
+    """(switch file, state file) in the claims folder, so every worktree's copy of this module agrees on them."""
+    d = str(_claims().claims_dir())
+    return os.path.join(d, "keeper.on"), os.path.join(d, "keeper.state")
+
+
+def keeper_pid():
+    """PID of the running keeper instance, or None."""
+    try:
+        return _session_pid(_keeper_paths()[1])
+    except Exception:
+        return None
+
+
+def keeper_due(switched_on, pid, answers_now, private_mb):
+    """What launch() does about the keeper: "none" (leave things as they are), "start", or "restart" (end it, start another).
+
+    The keeper has no client, so nothing else would ever restart one that hangs or grows.
+    """
+    if not switched_on:
+        return "none"
+    if pid is None:
+        return "start"
+    if not answers_now or private_mb > KEEPER_MAX_MB:
+        return "restart"
+    return "none"
+
+
+def _retire_keeper():
+    """End a keeper that does not answer or has grown too large. Never raises."""
+    try:
+        switch, _state = _keeper_paths()
+        pid = keeper_pid()
+        if pid is None or not os.path.exists(switch):
+            return
+        mb = round(psutil.Process(pid).memory_info().private / 2**20)
+        # 90 s, not the 30 s an attach allows: under heavy paging an idle instance can be slow, and nothing drives it
+        if keeper_due(True, pid, _wait_answers(pid, 90), mb) == "restart":
+            print(f"sw_instance: replacing the keeper, PID {pid} ({mb} MB)", file=sys.stderr)
+            kill_tree(pid, _started(pid))
+            _drop_owner(pid)
+    except Exception as e:
+        print(f"sw_instance: keeper not checked ({e})", file=sys.stderr)
+
+
+def _note_keeper(pid):
+    c = _claims()
+    if c.instance_note(c.claims_dir(), pid, _started(pid)) is None:
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        c.note_instance(c.claims_dir(), pid, _started(pid), repo, 0, KEEPER_NOTE, time.time())
+
+
+def _ensure_keeper(timeout=300, busy_wait=7200):
+    """Keep one idle, hidden SolidWorks running where the workstation asks for it (RULES.md, The keeper).
+
+    A new SolidWorks waits at the splash screen until the oldest running instance answers. An instance that only ever
+    idles answers at once, so once the keeper is the oldest no launch waits behind another session's mesh or result
+    read-back. Called with the launch lock held. Never raises: a launch must not fail because the keeper did.
+    """
+    try:
+        switch, state = _keeper_paths()
+        pid = keeper_pid()
+        if pid is not None:
+            _note_keeper(pid)  # one adopted from a state file has no note yet
+        if keeper_due(os.path.exists(switch), pid, True, 0) != "start":
+            return
+        older = [row[0] for row in status()]
+        inst = _start(timeout, False, busy_wait, outside_job=True)
+        with open(state, "w") as f:
+            f.write(f"{inst.pid} {inst.started!r}")
+        _note_keeper(inst.pid)
+        inst.sw = None  # let go of it without closing: it outlives this process
+        if older:
+            print(f"sw_instance: keeper started as PID {inst.pid}; it only helps once the older instances "
+                  f"{older} have exited", file=sys.stderr)
+    except Exception as e:
+        print(f"sw_instance: keeper not started ({e})", file=sys.stderr)
+
+
+def keeper(switch_on):
+    """Turn the workstation's keeper on (and start it) or off (and end it). `python sw_instance.py --keeper on|off`."""
+    switch, state = _keeper_paths()
+    if switch_on:
+        os.makedirs(os.path.dirname(switch), exist_ok=True)
+        open(switch, "a").close()
+        pythoncom.CoInitialize()
+        with _LaunchLock(7200):
+            _retire_keeper()
+            _ensure_keeper()
+        return keeper_pid()
+    with _LaunchLock(7200):  # not while another process is in its startup call into the keeper
+        if os.path.exists(switch):
+            os.remove(switch)
+        pid = keeper_pid()
+        if pid is not None:
+            kill_tree(pid, _started(pid))
+            _drop_owner(pid)
+        if os.path.exists(state):
+            os.remove(state)
+    return None
 
 
 def _wait_for_blockers(timeout):
@@ -774,6 +973,7 @@ def attach(pid, busy_wait=30):
         raise RuntimeError(f"attached to PID {got}, expected {pid}")
     inst = Instance(pid, sw)
     _write_owner(pid, inst.started)  # this process drives it now: other sessions' launches read it as busy, not orphaned
+    _note_instance(pid, inst.started)
     return inst
 
 
@@ -917,3 +1117,9 @@ elif __name__ == "__main__" and sys.argv[1:] == ["--status"]:
     print("    pid   age_s threads windows private_MB answers")
     for row in status():
         print("{:7d} {:7d} {:7d} {:7d} {:10d} {!s:>7}".format(*row) + NOTES[state(row)])
+        if who(row[0]):
+            print("        " + who(row[0]))
+elif __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--keeper" and sys.argv[2] in ("on", "off", "status"):
+    if sys.argv[2] != "status":
+        keeper(sys.argv[2] == "on")
+    print(f"keeper switch {'on' if os.path.exists(_keeper_paths()[0]) else 'off'}, PID {keeper_pid()}")
