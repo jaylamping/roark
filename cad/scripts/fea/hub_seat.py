@@ -357,16 +357,20 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
             r = max(math.hypot(x - HX, z - CZ) for x in (lo[0], hi[0]) for z in (lo[2], hi[2]))
             return hi[1] > 295.5 and lo[1] < 302.5 and r > 30.0
 
-        hf = [f for f in faces(hub) if near_seat(box(f))]
-        af = [f for f in faces(arm) if near_seat(box(f))]
+        D3_ = os.environ.get('HS_D3') == '1'      # 2026-11-12: hub rev D3 lugs (to Y 297.6, X offset 36.35) in the lug set, not the seat set
+
+        def lugzone(b):
+            lo, hi = (min(b[0], b[3]), min(b[1], b[4]), min(b[2], b[5])), (max(b[0], b[3]), max(b[1], b[4]), max(b[2], b[5]))
+            return hi[1] > 287.5 and lo[1] < (297.9 if D3_ else 294.2) and abs((lo[2] + hi[2]) / 2 - CZ) < 12.0 and (hi[0] < 153.0 or lo[0] > 188.0)
+
+        hf = [f for f in faces(hub) if near_seat(box(f)) and not (D3_ and lugzone(box(f)))]
+        af = [f for f in faces(arm) if near_seat(box(f)) and not (D3_ and lugzone(box(f)))]
         cm = st.ContactManager
         err = I()
         cs = cm.CreateContactSet(0, VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, hf), VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_DISPATCH, af), err)
         print(' seat contact set', cs is not None, 'faces hub', len(hf), 'arm', len(af), 'err', err.value, flush=True)
         if BOLTED:      # lug faces and lug holes against the posts and the bolts: no penetration, no bond
-            def near_lugs(b):
-                lo, hi = (min(b[0], b[3]), min(b[1], b[4]), min(b[2], b[5])), (max(b[0], b[3]), max(b[1], b[4]), max(b[2], b[5]))
-                return hi[1] > 287.5 and lo[1] < 294.2 and abs((lo[2] + hi[2]) / 2 - CZ) < 12.0 and (hi[0] < 153.0 or lo[0] > 188.0)
+            near_lugs = lugzone
             lf = [f for f in faces(hub) if near_lugs(box(f))]
             def ins_mouth(b):      # the insert's end face at the lug face: the only insert face the hub lug can reach
                 return abs(b[2] - LUG_FACE_F) < 0.02 and abs(b[5] - LUG_FACE_F) < 0.02
