@@ -271,7 +271,7 @@ def r1f_lug_web(d, sg, zl):
     zc, dz = (zl + z1) / 2, abs(z1 - zl)
     for k, side in enumerate(R1F_LUG_SIDES):
         name = f'R1F_WEB{k}{"F" if sg > 0 else "B"}'
-        prof = [(27.0, 288.0), (34.0, 288.0), (35.6, 295.7), (27.0, 295.7)]
+        prof = [(26.0, 288.0), (34.0, 288.0), (35.6, 295.7), (26.0, 295.7)]      # from 26.0: merges with the round post top (27.0 left a 0.3 slot)
         with Sk(d, plane(d, 'Z', zc, name + '_P'), name) as s:
             s.poly([(HX + side * o, y, zc) for o, y in prof])
         feat(d, s.feat, name, dz, False, mode=MID, lo=0.01)
