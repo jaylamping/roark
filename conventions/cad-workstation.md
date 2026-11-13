@@ -174,8 +174,12 @@ So the waits are not a shortage of machine. What follows:
   the study. This is the largest saving and it shortens the time other threads wait.
 - **Keep every worktree on the current `tools/solidworks/`.** Each script imports the copy in its own worktree, so a
   worktree that has not merged `main` keeps old launch rules. Merge `main` before a run of jobs.
-- **Don't queue behind a guard.** If a launch or a job has waited 15 minutes, move the job to the other machine.
-- **Joey-PC first when Joey is away from it** (Joey, 2026-11-13). Before a job that would wait on holly-pc, run
-  `python tools/pc/user_idle.py` on Joey-PC: exit 0 means it watched for three minutes, saw no more input than one
-  nudge of his keep-alive mouse script, and nothing fullscreen is in front, and the job may run there, hidden, under Joey-PC's rules ([cad.md section 9](cad.md#9-cad-workstation)).
-  Exit 1 means he is using it: stay on holly-pc. Check again before each new job, not once per session.
+- **holly-pc first, Joey-PC for the overflow** (Joey, 2026-11-13). Fill holly-pc as far as its limits allow
+  ([RULES.md rule 6](../tools/solidworks/RULES.md#rules), memory free before each launch). Only a job that would still wait
+  there, 15 minutes behind a guard or a launch, moves to Joey-PC, hidden, under Joey-PC's rules
+  ([cad.md section 9](cad.md#9-cad-workstation)).
+- **Tell Joey first if he is at Joey-PC.** Before the job starts there, run `python tools/pc/user_idle.py` on Joey-PC.
+  Exit 0 means it watched for three minutes, saw no more input than one nudge of his keep-alive mouse script, and nothing
+  fullscreen is in front: start. Exit 1 means he is using it: write to him in the thread that a job is about to start
+  there and what it is, then start it. Check again before each new job, not once per session.
+- **Time-critical work starts on Joey-PC** only when Joey says so in the request that starts it.
