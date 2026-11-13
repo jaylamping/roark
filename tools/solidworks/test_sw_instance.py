@@ -81,3 +81,15 @@ def test_big_solve_takes_only_a_lock_whose_holder_has_gone(tmp_path):
     lock.write_text("left arm thread, pid 999999999")
     with sw_instance.big_solve("b", path=str(lock), timeout=5, poll=0.1):
         pass
+
+
+def test_the_keeper_is_started_only_where_switched_on_and_replaced_when_it_hangs_or_grows():
+    """Guards: bug - launches sat at the splash screen for up to 19 minutes behind the oldest instance's result
+    read-back; with an idle keeper as the oldest, 22 launches passed in about 2 s (holly-pc, 2026-11-13). The keeper has
+    no client, so a hung or bloated one would otherwise stall or refuse every launch for good."""
+    due = sw_instance.keeper_due
+    assert due(False, None, None, None) == "none"  # Joey-PC: no switch file, no keeper
+    assert due(True, None, None, None) == "start"  # after a reboot, the first launch brings it back
+    assert due(True, 4242, True, 270) == "none"
+    assert due(True, 4242, False, 270) == "restart"
+    assert due(True, 4242, True, sw_instance.KEEPER_MAX_MB + 1) == "restart"
