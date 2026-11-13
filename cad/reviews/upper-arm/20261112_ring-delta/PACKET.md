@@ -83,6 +83,16 @@ patch; R1 listed 0.82 / 0.78 there) and STOP_0 layer 1.56 at 2 mm at X 153.9, Y 
 edges pressed together. Dia 4.4 moves the plate edge 0.5 out onto flat lug face. It sits 0.2 outside our insert's Dia 4.0,
 so the inserts must be flush (bench step).
 
+**Lug bolts and inserts (review C, 2026-11-13).** The front-post insert goes in from the lug face, so the lug bolt's tension
+pulls it out the way it went in.
+- **r1g4 (decided):** plate hole Dia 3.8, top Y 294.7. The plate hole is smaller than the insert's Dia 4.0 hole, so the plate sits
+  on the insert's rim and holds it captive (insert, plate, lug, plate, back post, bolt head). The strip above the hole is 0.8.
+  Halves unchanged.
+- **The insert's outer diameter and pull-out rating have no source in the repo.** Only "Ruthex M3 × 5.7" in a Dia 4.0 hole
+  is recorded (`cad/prints/upper-arm/SETTINGS_CHECKLIST.md`). The "about 1-1.5 kN" in R1D_NOTES has no source either.
+- **Lug-bolt torque capped at 0.3 N·m** (about 0.33-0.5 kN preload at K 0.2-0.3) until the coupon's insert check (BENCH_TESTS 2b
+  step 4b: 0.3 / 0.5 / 0.7 N·m with plates in, insert movement recorded). The seam screws stay at 0.5 N·m.
+
 **Known item, not a pass: the STOP_0 plate-hole edge (r1g2, plate hole Dia 4.4, final).** The reviewer judges it.
 - **Where.** STOP_0 is the backup stop load. The -X lug's plate faces carry Fz 173 N (the "Fx 86 N" read earlier was a slab-average artefact: no contact carries X, review A2), and the twist of the lug puts the
   peak around its bolt, at the edge of the plate's Dia 4.4 hole.

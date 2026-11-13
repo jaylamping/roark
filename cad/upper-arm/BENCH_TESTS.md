@@ -86,8 +86,9 @@ become:
    - Then the two seam screws (M3 × 18 into the inserts) and the two hub lug bolts (M3 × 25 DIN 912
      socket head, Ø5.5, no washer) into the front-half inserts. Use socket heads: R1d's head counterbores are Ø6.0, too tight
      for a Ø5.7 button head.
-   - Torque all four to **0.5 N·m**. That is my figure for M3 into these inserts in PETG, not a datasheet value. Retorque
-     after 24 h.
+   - Torque the two seam screws to **0.5 N·m**, and the two hub lug bolts to **0.3 N·m** (the cap, until the coupon's insert
+     check in 2b step 4b passes at a higher torque). These are my figures for M3 into these inserts in PETG, not datasheet
+     values: the insert's outer diameter and pull-out rating are not recorded anywhere in the repo. Retorque after 24 h.
    - Check the arm turns freely on the RS02, and that the witness lines line up.
 
 ## 2b. R1e shim ring and hub-end fit coupon (before printing the R1e halves)
@@ -124,21 +125,26 @@ by trial, once, at assembly.
      - **Fitting:** one plate goes on each Z face of each lug, with its lip hooked under the lug's free end. The bolt hole lines
        up with the lug's.
      - **Before the plates:** the two brass inserts in the front posts must sit flush with the post face or up to 0.1 below it.
-       Check with a straightedge across each insert. A proud insert would be a hard spot under the plate (the plate's Dia 4.4 hole
-       clears the insert's Dia 4.0 only by 0.2).
+       Check with a straightedge across each insert. A proud insert would lift the plate. The plate's Dia 3.8 hole is smaller than the
+       insert's Dia 4.0 hole, so the plate sits on the insert's rim and holds it in against the bolt's pull.
      - **Pick, with the ring chosen:** "Start each lug with the thickest pair, and take one plate down a step at a time,
        alternating sides, until the front half closes by hand with the seam shut; use those." Both lugs are picked in the same
        trials.
      - **Never force it closed with the screws.**
-4. With the chosen ring (and, R1f, the lug plates) in, fit the two lug bolts (M3 × 25 DIN 912) and torque to 0.5 N·m. The seam must stay shut: no gap a
-   0.1 mm feeler enters, if you have one; otherwise none you can see against a light.
+4. With the chosen ring and lug plates in, fit the two lug bolts (M3 × 25 DIN 912) and torque to **0.3 N·m** (the cap). The
+   seam must stay shut: no gap a 0.1 mm feeler enters, if you have one; otherwise none you can see against a light.
+4b. **Insert check (one lug bolt, plates in):** mark the insert's rim and the post face with a fine pen line across both.
+   Tighten that bolt in steps of 0.3, 0.5 and 0.7 N·m. After each step, back the bolt out and look: has the insert moved
+   (pen line broken, rim proud of the face, insert turning)? Record the torque at which it moved, or that it did not move
+   at 0.7. The lug-bolt torque for the arm is then the highest step with no movement, less one step, and never above 0.5.
+   Re-press or replace that insert before going on if it moved.
 5. **Rock check:** clamp the hub. Push and pull the coupon along the hub axis, then rock it firmly by hand in every direction.
-   R1f: also twist the coupon about the hub axis, both ways: there must be no click or free turn (the lug plates take the
+   R1g: also twist the coupon about the hub axis, both ways: there must be no click or free turn (the lug plates take the
    yaw torque).
    There should be no movement and no click. Then do ten firm rocking cycles and check again.
 6. **Open and look:** take the bolts out and the front coupon off. Check the ring (flat, not cut or crushed at its inner edge),
    the ridge flank and the hub's groove flank (marks, scuffing), especially near the seam. Photograph them.
-7. Close again with the same ring at 0.5 N·m and repeat the rock check once.
+7. Close again with the same ring and plates, lug bolts at 0.3 N·m, and repeat the rock check once.
 8. **R1g (lug plates), after the stop-load test:** take the lug plates out. Inspect the post faces and the hub lug faces
    around each lug bolt for an imprint of the plate's hole edge. Record its depth by feel (fingernail: none / felt / catches)
    and photograph it. The FEA puts the stop's highest local pressure on that edge.

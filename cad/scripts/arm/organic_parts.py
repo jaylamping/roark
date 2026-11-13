@@ -309,7 +309,7 @@ def r1f_lug_pocket(d, sg, zl):
         # (gate, 2026-11-12), and the D3 hub needs none: its column top is chamfered 45 deg and the strip's vertical edges are sharp)
 
 
-R1F_PLATE = (18.96, 34.2, 288.2, 294.6)      # the lug plate's flat area: X offset, Y (main face only, 2026-11-13)
+R1F_PLATE = (18.96, 34.2, 288.2, float(os.environ.get('ARM_PLATE_TOP', '294.6')))      # r1g4: ARM_PLATE_TOP=294.7; the lug plate's flat area: X offset, Y (main face only, 2026-11-13)
 
 
 def r1f_plate_lump(d, sg, zl):
