@@ -61,12 +61,59 @@ def yaw_hub():
     return h
 
 
-def yaw_fork():
-    f = Y1.fork()
-    zt = Y1.GAP + Y1.ROOF_T
+def yaw_fork(gap=5.5):
+    """The fixed side for a dish `gap` deep (5.5 as built; 7.0 for the 1.5 mm deeper dish): roof, skirt, yaw exit stub with
+    tie slots, viewing slots, yaw scale, stops. The roof's hole (r 20.3) rides on the boss's spigot and rests on its
+    shoulder, so the dish height is set by the boss."""
+    rt, ro, rs = Y1.ROOF_T, Y1.R_OUT, Y1.R_SKIRT
+    zt = gap + rt
+    f = ring(20.3, ro, gap, zt)
+    f = f.union(ring(rs, ro, 0.4, gap))
+    for a0, a1 in ((-12.0, -4.6), (184.6, 192.0)):                         # stops at yaw +90 and -90 for the hub's tab
+        f = f.union(sector(rs, ro, a0, a1, -Y1.FLOOR_T, 0.4))
+    ex, ez = Y1.EXIT_X, Y1.EXIT_Z                                          # the exit keeps its height above the floor
+    f = f.union(box(ex - 9.2, ex + 9.2, 40.6, 57.0, ez[0] - 1.2, zt))
+    f = f.union(box(ex - 9.2, ex + 9.2, Y1.EXIT_Y0, 42.0, ez[1], gap))
+    f = f.cut(box(ex - 8.0, ex + 8.0, Y1.EXIT_Y0 - 1.0, 58.0, ez[0], ez[1]))
+    for a in range(15, 360, 30):
+        if abs(a - 255) < 20:
+            continue
+        f = f.cut(box(26.0, 37.0, -1.0, 1.0, gap - 1, zt + 1).rotate((0, 0, 0), (0, 0, 1), -a))
+    for yaw in range(-90, 91, 10):
+        r0 = 36.0 if yaw % 90 == 0 else 39.5
+        f = f.cut(box(r0, ro + 1, -0.35, 0.35, zt - 0.4, zt + 1).rotate((0, 0, 0), (0, 0, 1), -(Y1.TAB_A - yaw)))
+    for yaw, txt in ((-90, '-90'), (0, '0'), (90, '+90')):
+        x, y = pt(31.0, Y1.TAB_A - yaw + 9.0)
+        f = f.cut(cq.Workplane('XY').workplane(offset=zt - 0.4).center(x, y).text(txt, 4.5, 1.0, kind='bold'))
+    x, y = pt(31.0, Y1.TAB_A + 40.0)                                       # the dish depth, so the two fork parts can't be mixed up
+    f = f.cut(cq.Workplane('XY').workplane(offset=zt - 0.4).center(x, y).text(f'{gap:g}', 4.5, 1.0, kind='bold'))
     for dx in (-6.5, 6.5):                                 # tie slots through the exit stub's roof: a tie round the bundle
-        f = f.cut(box(Y1.EXIT_X + dx - 0.9, Y1.EXIT_X + dx + 0.9, 46.0, 50.0, Y1.EXIT_Z[1] - 0.5, zt + 1))
+        f = f.cut(box(ex + dx - 0.9, ex + dx + 0.9, 46.0, 50.0, ez[1] - 0.5, zt + 1))
     return f
+
+
+def yaw_boss(gap=5.5):
+    """The hub's step ring (r 23.5, 1.5 high), the RS02 rotor (r 21.8) up to the dish height, and above it a spigot
+    (r 20.0) through the roof. The roof rests on the rotor's top, so this part sets the dish depth."""
+    top = gap + Y1.ROOF_T + 0.2
+    b = ring(18.6, Y1.R_STEP, 0, 1.5)
+    b = b.union(ring(18.6, Y1.R_ROTOR, 0, gap))
+    b = b.union(ring(18.6, 20.0, 0, top))
+    b = b.union(ring(0, 5.0, 0, top))
+    for a in (0, 120, 240):
+        b = b.union(box(4.0, 19.0, -2.5, 2.5, 0, 1.2).rotate((0, 0, 0), (0, 0, 1), a))
+    if gap > 6:                                            # a raised bar on one spoke marks the 7.0 boss
+        b = b.union(box(6.0, 17.0, -0.5, 0.5, 1.2, 3.2))
+    return b.cut(ring(0, 2.15, -1, 20))
+
+
+def yaw_cap():
+    """A flat disc that holds the fork part down on the boss; one M4 clamps cap, boss and hub."""
+    c = ring(0, 26.0, 0, 1.0)
+    for a in (60, 180, 300):
+        x, y = pt(14.5, a)
+        c = c.cut(cq.Workplane('XY').workplane(offset=-1).center(x, y).circle(7.0).extrude(3))
+    return c.cut(ring(0, 2.15, -1, 2))
 
 
 # ----------------------------------------------------------------------------------------------------------------- roll
@@ -193,7 +240,11 @@ def main():
     zr = Y1.GAP + Y1.ROOF_T
     parts = {
         'yaw2_hub': (yaw_hub(), lambda p: flip(p, 0)),
-        'yaw2_fork': (yaw_fork(), lambda p: flip(p, zr)),
+        'yaw2_fork': (yaw_fork(5.5), lambda p: flip(p, 5.5 + Y1.ROOF_T)),
+        'yaw2_fork_7': (yaw_fork(7.0), lambda p: flip(p, 7.0 + Y1.ROOF_T)),
+        'yaw2_boss': (yaw_boss(5.5), lambda p: p),
+        'yaw2_boss_7': (yaw_boss(7.0), lambda p: p),
+        'yaw2_cap': (yaw_cap(), lambda p: p),
         'roll_deck_tray': (roll_deck_tray(), lambda p: p.translate((0, 0, 1.2))),
         'roll_deck_lid': (roll_deck_lid(), lambda p: flip(p, DECK['depth'] + 1.3)),
         'roll_axis_base': (roll_axis_base(), lambda p: p.translate((0, 0, 0.8))),

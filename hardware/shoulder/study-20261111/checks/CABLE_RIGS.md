@@ -4,10 +4,18 @@ Small printed rigs that settle, by hand and with the real wires, what [CABLE_TRA
 work out on paper. PLA, flat, no support. Script: `cad/scripts/shoulder/cable_rigs.py`. Files:
 `cad/exports/fixtures/fixtures_cable_rig_*.STL`, already turned to print flat.
 
-**Not released for printing yet.** All three rigs are exported: roll (do this one first), yaw (second version), pitch.
+**Order:** roll first, then yaw, then pitch. Sliced plates (Bambu Studio 3MF, P2S, PLA Basic, 0.20 mm, 3 walls, 15%
+infill, no support, no brim) are on holly-pc in `C:\joe\prints\cable-rigs\`. They are not in the repo: a 3MF under
+`cad/prints/` needs a pre-print gate report, and these fixtures have no spec. The STLs here print the same way.
 
-**Wires for every test:** the real ones. Two 16 AWG high-strand silicone wires (OD 3.0) and one twisted 26 AWG pair,
-loose, not sleeved, about 400 mm long.
+**Wires for every test:** the real ones, loose, not sleeved. By the robot's wiring scheme (Joey, 2026-11-11):
+
+| Crossing | Power | Signal |
+|---|---|---|
+| Pitch and roll | 2 × 16 AWG silicone (OD 3.0) | 2 twisted pairs of 28 AWG (each wire 1.2 mm); a third pair is reserved |
+| Yaw | 2 × 18 AWG (OD 2.3), 10 A fuse at the step. **The gauge is to be decided from the yaw rig:** test 18 AWG and 16 AWG | the same |
+
+Test with two pairs, and once with three.
 
 ## Roll rig
 
@@ -99,53 +107,66 @@ If test A passes cleanly, say so plainly: it decides whether the cap and fork re
 
 ## Yaw rig (second version)
 
-**What changed from the first yaw rig** ([CABLE_LOOP_RIG.md](CABLE_LOOP_RIG.md)): the bundle is clamped at both ends and
-no longer slides through the window. The hub's chutes are the slot of hub D3c6 (not cut inside 15.7 mm along its line),
-four hollow posts stand where the boss tubes beside the two windows are, and the exit stub's roof has two tie slots. The
-boss and cap of the first rig are used unchanged.
+**What it is:** the dish under the RS02 with both ends of the bundle clamped. It comes with **two dish depths**, so
+18 AWG and 16 AWG can be tried in one sitting:
+
+| Dish | Parts | What it stands for |
+|---|---|---|
+| **5.5 mm** | fork part marked 5.5, boss without a bar | The shoulder as built |
+| **7.0 mm** | fork part marked 7, boss with a raised bar on one spoke | The dish made 1.5 mm deeper (a change to the hub's top) |
+
+The hub and the cap are the same for both. The boss sets the depth: the fork part's roof rests on the boss's shoulder.
+The hub's chutes are the slot of hub D3c6, at 68° and 248°; four hollow posts stand where the boss tubes beside the
+windows are (tie points); the exit stub's roof has two tie slots.
 
 ![yaw rig](cable_rigs/yaw_rig2.png)
 
-| Part | File | Mass (sliced) | Print time |
-|---|---|---|---|
-| Hub | `fixtures_cable_rig_yaw2_hub.STL` | 15.4 g | 43 min |
-| Fork side | `fixtures_cable_rig_yaw2_fork.STL` | 9.6 g | 26 min |
-| Boss, cap (first rig) | `fixtures_yaw_loop_rig_boss.STL`, `_cap.STL` | 3.2 g, 2.2 g | 9 min, 5 min |
-| **All four** | | **30.4 g** | **about 1 h 30 min on one plate** |
+| Part | File | Mass (PLA) |
+|---|---|---|
+| Hub | `fixtures_cable_rig_yaw2_hub.STL` | 15.4 g |
+| Fork part, 5.5 | `fixtures_cable_rig_yaw2_fork.STL` | 9.5 g |
+| Fork part, 7.0 | `fixtures_cable_rig_yaw2_fork_7.STL` | 10.9 g |
+| Boss, 5.5 | `fixtures_cable_rig_yaw2_boss.STL` | 4.3 g |
+| Boss, 7.0 | `fixtures_cable_rig_yaw2_boss_7.STL` | 5.2 g |
+| Cap | `fixtures_cable_rig_yaw2_cap.STL` | 2.0 g |
+| **Plate, all six** | `fixtures_cable_rig_yaw.3mf` | **45.2 g sliced, 1 h 28 min** |
 
-- Turn supports off. All parts pass the integrity scan.
-- Also needed: one M4 × 16 screw and nut, two small cable ties, tape.
+- No support. All parts pass the integrity scan.
+- Also needed: one M4 × 16 screw and nut, four small cable ties, tape.
+- The first yaw rig ([CABLE_LOOP_RIG.md](CABLE_LOOP_RIG.md)) is superseded: its bundle slid through the window, and its
+  roof had nothing to rest on. Its files are removed.
 
-### Test C: spiral with 18 AWG
+### How to set up any yaw test
 
-**Wires:** two **18 AWG** silicone wires (OD 2.3) and one 26 AWG pair, about 700 mm.
-
-1. **Clamp at the exit:** thread the wires in through the exit stub and tie them down through the two slots in its roof,
-   power wires side by side.
-2. **Lay the spiral** on the hub's floor with the fork side off: from the exit, about 2.25 turns round the boss toward the
-   68° window, the two power wires stacked one on the other, the pair beside them.
+1. **Clamp at the exit:** thread the wires in through the exit stub and tie them down through the two slots in its roof.
+2. **Lay the bundle** on the hub's floor with the fork part off.
 3. **Clamp at the window:** lead the end down the 68° chute and tie it to the post beside the chute, below the floor. Tape
    over the 248° window.
-4. **Assemble** (boss, fork side, cap, M4) with the pointer at 0.
-5. **Turn -90 to +90, five slow cycles,** watching through the roof slots. One way the spiral winds onto the boss, the
-   other it opens against the skirt. If it runs the wrong way, re-lay it the other way round.
-6. **Then 200 cycles by hand.** Look at the wires and at both clamps.
+4. **Assemble:** boss on the hub, fork part over the boss (it rests on the boss's shoulder), cap, M4. Pointer at 0.
+5. **Five slow cycles** between the stops (-90 and +90), watching through the roof slots. **Then 200 by hand.**
 
-**Pass:** the wires stay in one band about 4 mm wide, stacked; nothing bunches, crosses or lifts the roof; nothing enters
-the gap between the hub's rim and the skirt; even, light feel; wires unmarked after 200 cycles.
-**Fail:** bunching, a wire trapped under another, a tight spot, the roof lifting, or the pair in the rim gap.
+### The four tests, side by side
 
-### Test D: plain arc with 16 AWG, ±37°
+| Test | Wires | Dish | Laid as | Expected on paper |
+|---|---|---|---|---|
+| **C1** | 2 × 18 AWG + 2 pairs | 5.5 | Spiral, about 2.25 turns at yaw 0, power wires stacked one on the other, pairs beside them | **Fits:** band about 3.3 mm of the 4.0 available |
+| **C2** | 2 × 16 AWG + 2 pairs | 5.5 | The same | **Does not fit:** two stacked are 6.0 mm in a 5.5 mm dish, so they lie side by side and the band is too wide |
+| **C3** | 2 × 16 AWG + 2 pairs | 7.0 | The same | **Fits:** band about 3.6 mm |
+| **D** | 2 × 16 AWG + 2 pairs | 5.5 | One plain arc from the exit round to the window, flat; turn only between -37 and +37, then try ±45 and ±50 once | Free to ±37 |
 
-**Wires:** two 16 AWG and one pair, about 400 mm.
+- If the spiral runs the wrong way (slack, then tight), re-lay it the other way round.
+- Repeat the best one with the third pair added.
 
-1. Clamp at the exit as in test C.
-2. Lay one arc from the exit round the +X side (the short way from the exit to the window with the pointer at +37) to
-   the 68° window, flat, power wires side by side. Clamp at the post.
-3. Turn between -37 and +37. The arc should move from the skirt (short) to the boss (long) and back.
-4. Five slow cycles, then 200. Try ±45 and ±50 once, gently, and note where it goes tight or bunches.
+**Pass, for C1 to C3:** the wires stay in one band, stacked; nothing bunches, crosses or lifts the roof; nothing enters the
+gap between the hub's rim and the skirt; even, light feel over the whole ±90; wires unmarked after 200 cycles.
+**Fail:** bunching, a wire trapped under another, a tight spot, the roof lifting, or a pair in the rim gap.
 
-**Pass:** free from -37 to +37 with nothing bunching. **Report** the largest travel that stayed free.
+**What to send back, for each of C1, C2, C3 and D:**
+- pass or fail, and the yaw angle where anything happened
+- does it wind evenly, or bunch
+- the feel: light and even, or a tight end
+- a photo of the bundle in the dish at -90, 0 and +90 with the fork part lifted off
+- which gauge you would choose
 
 ## Pitch rig
 
@@ -162,13 +183,14 @@ mouth (13 × 4) with two tie holes at r 65.
 | Lid | `fixtures_cable_rig_pitch_lid.STL` | 11.6 g | 40 min |
 | **Both** | | **42.9 g** | **about 1 h 40 min on one plate** |
 
-- 149 × 180 mm on the bed. No support. Both pass the integrity scan.
+- 149 × 180 mm on the bed, so the two parts are two plates: `fixtures_cable_rig_pitch_tray.3mf` (31.3 g, 48 min) and
+  `fixtures_cable_rig_pitch_lid.3mf` (10.2 g, 31 min). No support. Both pass the integrity scan.
 - Also needed: one M4 × 30 screw and nut, three small cable ties, about 30 g to hang (six M8 nuts on a paper clip) or a
   thin elastic, a pen to mark angles on the tray's rim (the lid has a pointer).
 
 ### Test E: spiral, about 115°
 
-**Wires:** two 16 AWG and one pair, about 1.2 m.
+**Wires:** two 16 AWG and two pairs, about 1.2 m.
 
 1. Lay the tray flat. Tie the wires to the tongue's tie holes, lead them over the finger into the channel and lay 2 turns
    against the outer wall, the three wires side by side across the channel's height.

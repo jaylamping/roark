@@ -1,5 +1,9 @@
 # Yaw dish loop: test rig (2026-11-13)
 
+> **Superseded the same day by the second yaw rig in [CABLE_RIGS.md](CABLE_RIGS.md).** This first rig let the bundle slide
+> through the window, which the arm cannot accept, and its roof had no support at the dish height. Its export files are
+> removed. Kept for the record of what was asked.
+
 **Question:** the arm bundle crosses the yaw joint in the dish under the RS02, between the fork rear's yaw exit and the
 hub's cable window. Over yaw -90…+90 the distance between the two changes by up to 97 mm, and the dish has no room to
 store slack (see [OPEN_ASSUMPTIONS.md](OPEN_ASSUMPTIONS.md) and A_HUB_LUGS.md, "Dish loop"). Does the bundle run, and where
