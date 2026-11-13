@@ -8,8 +8,9 @@ These checks hold for the pushed candidate only if its STL SHA-256 equals the on
 r 15.7-21.0, ±8 across).
 
 **Ours:**
-- **Halves:** the R1g halves (`cad/_wip/r1d_r1g_print/exports`). The R1h back half, with the tie bridge, is not built yet; it is
-  queued after the r1g5 solves, and this check is repeated on it then.
+- **Halves:** the R1h halves (`cad/_wip/r1d_r1h_print/exports`): the R1h back half with the tie bridge, and the R1g front half.
+  Rerun on 2026-11-13 17:30 (see `R1H_BACK.md`). Every check gives the same result as on the R1g halves: the maxima and minima
+  below are unchanged; only the hit and path-collision counts of the sampled closing path move by a few points.
 - **Plates:** the final plates (Dia 3.8, Y 288.2-294.6, short lips) at 0.45 and 0.75.
 - **Ring:** the 0.70 shim ring on the disc face.
 
@@ -21,7 +22,7 @@ r 15.7-21.0, ±8 across).
 | 1 | STL SHA-256 and watertightness | **PASS**. SHA-256 a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b, the same as the original. Watertight; 63,187 mm³, 80.2 g. | `d3c7_halves_used.txt`, `d3c7_check.json` |
 | 2 | Against D3c4: below Y 296, and the arm-facing surfaces | **PASS**. See the notes below the table. | `d3c7_check.json` |
 | 3 | Roots against our posts and the plates | **PASS**. See the notes below the table. | `d3c7_plate_fillet_gap.txt` |
-| 4 | Closing path of both halves on D3c7 plus the 0.70 ring | **PASS**. Final overlap max 0.041 front / 0.039 back, along the line-to-line ridge flank only (Y 297.97-298.53). That is the same as D3b and D3c4. The 20 / 18 path hits are all on that flank (Y 298.0-298.5, r 34.9-35.8): faceting of the two line-to-line surfaces (D3c4 had 10 / 15). None at the lugs, roots, pocket, webs or collar. | `close_path_d3c7.json` / `.txt` |
+| 4 | Closing path of both halves on D3c7 plus the 0.70 ring | **PASS**. Final overlap max 0.041 front / 0.039 back, along the line-to-line ridge flank only (Y 297.97-298.53). That is the same as D3b and D3c4. The 21 / 4 path hits (R1g run: 20 / 18) are all on that flank (Y 298.0-298.5, r 34.9-35.8): faceting of the two line-to-line surfaces (D3c4 had 10 / 15). None at the lugs, roots, pocket, webs or collar. | `close_path_d3c7.json` / `.txt` |
 | 5 | The 68 deg window as built, the bundle route, and the shoulder's tie at the 98 deg boss | **PASS**. See the notes below the table. | see the notes |
 | 6 | Bore fill at Y 296 and above | **PASS**. Nothing of ours lies inside r 22 at Y 296-298 (0.0 mm² in every section). Between Y 296 and Y 302 our nearest material is the bore at r 35.9 and above (the post tops end at Y 295.7). D3c7 is unchanged from D3c4 on every arm-facing surface. | `d3c7_check.json` |
 

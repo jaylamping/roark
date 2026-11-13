@@ -1,0 +1,19 @@
+back half R1g: volume 72357.5 mm3, watertight True; R1h: volume 72427.1 mm3, watertight True, bodies 1
+R1h adds 69.7 mm3 (0.09 g PETG)
+Y 255.5: front half over the bar (X 147.4-149.9) lowest at Z - CZ +5.82
+Y 255.5: bridge X 146.21-149.90, Z - CZ -4.78 to +0.00, 14.61 mm2; front half over that X span lowest at Z - CZ +0.71; nearest front material 0.01 mm; front overlap 0.000 mm2
+Y 256.0: front half over the bar (X 147.4-149.9) lowest at Z - CZ +5.67
+Y 256.0: bridge X 146.24-149.90, Z - CZ -4.80 to +0.00, 14.49 mm2; front half over that X span lowest at Z - CZ +0.00; nearest front material 0.01 mm; front overlap 0.000 mm2
+Y 257.0: front half over the bar (X 147.4-149.9) lowest at Z - CZ +5.40
+Y 257.0: bridge X 146.28-149.90, Z - CZ -4.00 to +0.00, 7.90 mm2; front half over that X span lowest at Z - CZ +0.00; nearest front material 0.01 mm; front overlap 0.000 mm2
+Y 258.0: front half over the bar (X 147.4-149.9) lowest at Z - CZ +5.39
+Y 258.0: bridge X 147.90-149.90, Z - CZ -4.00 to +0.00, 7.89 mm2; front half over that X span lowest at Z - CZ +6.44; nearest front material 1.64 mm; front overlap 0.000 mm2
+Y 259.0: front half over the bar (X 147.4-149.9) lowest at Z - CZ +5.47
+Y 259.0: bridge X 146.17-149.90, Z - CZ -4.69 to +0.00, 7.94 mm2; front half over that X span lowest at Z - CZ +0.00; nearest front material 0.01 mm; front overlap 0.000 mm2
+Y 260.0: front half over the bar (X 147.4-149.9) lowest at Z - CZ +5.68
+Y 260.0: bridge X 146.01-149.90, Z - CZ -4.42 to +0.00, 15.45 mm2; front half over that X span lowest at Z - CZ +0.00; nearest front material 0.01 mm; front overlap 0.000 mm2
+Y 260.5: front half over the bar (X 147.4-149.9) lowest at Z - CZ +5.79
+Y 260.5: bridge X 145.90-149.90, Z - CZ -4.42 to +0.00, 15.86 mm2; front half over that X span lowest at Z - CZ +0.00; nearest front material 0.01 mm; front overlap 0.000 mm2
+Y 256.0: free section R1g 1684.2 mm2 (largest inscribed circle Dia 41.33), R1h 1669.7 mm2 (Dia 41.33); X span R1g 146.2-194.5, R1h 146.2-194.5
+Y 258.0: free section R1g 1691.6 mm2 (largest inscribed circle Dia 41.55), R1h 1683.7 mm2 (Dia 41.55); X span R1g 146.2-194.6, R1h 146.2-194.6
+Y 260.0: free section R1g 1728.6 mm2 (largest inscribed circle Dia 42.05), R1h 1713.1 mm2 (Dia 42.05); X span R1g 146.0-195.0, R1h 146.0-195.0

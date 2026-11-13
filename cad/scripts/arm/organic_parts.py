@@ -353,31 +353,42 @@ def r1c_fins(d, sg, zl):
 # on the seam face (the back half prints on it, so no support): a bar 2.0 thick (X 147.9-149.9) 1.6 off the wall (inner face X 146.3),
 # two posts 1.5 long at its ends embedded 0.7 into the wall, and a 3.0 x 1.6 slot between them for a 2.5 x 1.0 cable tie passing along
 # Z round the bar and the bundle. 4.0 deep (Z CZ-4 to CZ). Every corner the wires can touch is rounded: the outline's vertical edges
-# R 0.5 (convex and concave, in the sketch) and the bar's lower edges R 0.5. The seam face stays flat.
+# R 0.5 and the lower edges R 0.5, both as fillets on the solid (2026-11-13; see r1h_tie_bridge). The seam face stays flat.
 TIE_BRIDGE = os.environ.get('ARM_TIE_BRIDGE') == '1'
 TIE = dict(x_wall=145.6, x_bar0=147.9, x_bar1=149.9, y0=255.0, y1=261.0, post=1.5, depth=4.0, r=0.5)
 
 
 def r1h_tie_bridge(d):
-    from shapely.geometry import Polygon as _Poly
+    # (2026-11-13) the sketch is the sharp outline; the rounds are SolidWorks fillets: the shapely-rounded outline came out as
+    # dozens of short straight segments, and a lower-edge fillet over them failed (100 edges, not tangent)
     t_ = TIE
     ya, yb = t_['y0'] + t_['post'], t_['y1'] - t_['post']
-    outline = _Poly([(t_['x_wall'], t_['y0']), (t_['x_bar1'], t_['y0']), (t_['x_bar1'], t_['y1']), (t_['x_wall'], t_['y1']),
-                     (t_['x_wall'], yb), (t_['x_bar0'], yb), (t_['x_bar0'], ya), (t_['x_wall'], ya)])
+    pts = [(t_['x_wall'], t_['y0']), (t_['x_bar1'], t_['y0']), (t_['x_bar1'], t_['y1']), (t_['x_wall'], t_['y1']),
+           (t_['x_wall'], yb), (t_['x_bar0'], yb), (t_['x_bar0'], ya), (t_['x_wall'], ya)]
     rr = t_['r']
-    outline = outline.buffer(-rr, join_style=1).buffer(rr, join_style=1)      # convex corners rounded
-    outline = outline.buffer(rr, join_style=1).buffer(-rr, join_style=1)      # concave (slot) corners rounded
-    pts = list(outline.exterior.coords)[:-1]
     zc = CZ - t_['depth'] / 2
     with Sk(d, plane(d, 'Z', zc, 'R1H_TIE_P'), 'R1H_TIE') as s:
         s.poly([(x, y, zc) for x, y in pts])
     feat(d, s.feat, 'R1H_TIE', t_['depth'], False, mode=MID, lo=0.01)
     zb = CZ - t_['depth']
-    low = M.edges_where(d, lambda q: abs(q[2] - zb) < 0.02 and t_['x_bar0'] - 0.6 < q[0] < t_['x_bar1'] + 0.05 and t_['y0'] - 0.05 < q[1] < t_['y1'] + 0.05)
+    inbox = lambda q: t_['x_wall'] - 0.05 < q[0] < t_['x_bar1'] + 0.05 and t_['y0'] - 0.05 < q[1] < t_['y1'] + 0.05
+    # vertical edges of the outline (convex bar corners, the slot's concave corners), the part between the seam and Z CZ-4
+    vert = [e for e in M.edges_where(d, lambda q: inbox(q) and zb - 0.02 < q[2] < CZ + 0.02)
+            if abs(np.subtract(e.GetCurveParams3.StartPoint[:2], e.GetCurveParams3.EndPoint[:2])).max() < 1e-6
+            and abs(e.GetCurveParams3.StartPoint[2] - e.GetCurveParams3.EndPoint[2]) * 1000 > t_['depth'] - 0.1]
+    print('  R1H_TIE vertical edges', len(vert), flush=True)
+    if vert and M.fillet_edges(d, vert, [rr, 0.3], 'R1H_TIE_VR') is None:
+        free = [e for e in vert if e.GetCurveParams3.StartPoint[0] * 1000 > t_['x_wall'] + 0.05]      # without the edges on the wall
+        print('  R1H_TIE vertical edges off the wall', len(free), flush=True)
+        if free:
+            M.fillet_edges(d, free, [rr, 0.3], 'R1H_TIE_VR')
+    # every lower edge of the bridge (bar and posts) except where it meets the wall
+    low = [e for e in M.edges_where(d, lambda q: abs(q[2] - zb) < 0.02 and inbox(q))
+           if max(e.GetCurveParams3.StartPoint[0], e.GetCurveParams3.EndPoint[0]) * 1000 > t_['x_wall'] + 0.05]
     print('  R1H_TIE lower bar edges', len(low), flush=True)
     if low:
         M.fillet_edges(d, low, [rr, 0.3], 'R1H_TIE_LOWR')
-    print('  R1H_TIE built', d.FeatureByName('R1H_TIE') is not None, 'lower round', d.FeatureByName('R1H_TIE_LOWR') is not None, flush=True)
+    print('  R1H_TIE built', d.FeatureByName('R1H_TIE') is not None, 'vertical round', d.FeatureByName('R1H_TIE_VR') is not None, 'lower round', d.FeatureByName('R1H_TIE_LOWR') is not None, flush=True)
 
 
 def upper_half(front):
