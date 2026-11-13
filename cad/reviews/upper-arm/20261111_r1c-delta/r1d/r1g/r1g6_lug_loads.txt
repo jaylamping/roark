@@ -162,6 +162,22 @@ both lugs, from the sections: F [-1.6, 1.3, -3.5] N, M [-0.02, 15.16, 0.01] N.m 
 ring, ridge, groove and spigot (applied minus lugs from the sections): F [1.6, -1.3, 3.5] N, M [0.02, 1.84, -0.01] N.m
 balance: applied F [0.0, 0.0, 0.0] N, M [0.0, 17.0, 0.0] N.m against the whole-hub section F [0.3, -4.4, -0.3] N, M [0.08, 17.57, -0.04] N.m
 
+==================== STOP_124 (515 N on the elbow stop pad, 124 deg), r1g6_stop124
+-X lug outer face on our pocket wall (X offset 34.4 / 34.6): contact patch (the cells carrying 90 % of the compressive normal force; total compressive 1.1 N) Y 288.05-294.75, Z 1.05-10.95 (Z - CZ -4.94 to +4.96), centre Y 292.65 Z 9.64, area 3.9 mm2, normal force 1.0 N, peak 1.64 MPa, mean 0.26 MPa
+lug  face                                                                 Fx       Fy       Fz  CoP X off   CoP Y  p mean  p max cover
+-X   front Z face                                                        0.7      1.0   -198.5      28.90  292.82    2.45  34.42  1.00
+-X   back Z face                                                        -0.1      0.2     -2.2      27.56  292.14    0.01   0.14  1.00
+-X   outer face                                                         -0.9     -0.2      4.9        nan     nan    0.00   1.64  1.00
+-X   bolt-hole wall                                                      0.2     -0.3     -2.6        nan     nan    0.00   0.00  0.95
+-X   section at Y 294.5 (lug cross-section; should cancel the faces below it)      0.5      0.4    180.1        nan     nan    0.00   0.00  0.99
+-X   sum of the four faces                                               0.0      0.7   -198.4        nan     nan    0.00   0.00  1.00
++X   front Z face                                                        2.9     -1.6    -27.9      22.72  289.01    0.86   3.65  1.00
++X   back Z face                                                         0.1     -1.3    116.6      31.84  293.13    2.24  33.43  1.00
++X   outer face                                                          0.7     -0.5     -4.1        nan     nan    0.00   1.77  1.00
++X   bolt-hole wall                                                     -0.5      0.5      1.0        nan     nan    0.00   0.00  0.95
++X   section at Y 294.5 (lug cross-section; should cancel the faces below it)     -4.3      1.5    -72.3        nan     nan    0.00   0.00  0.99
++X   sum of the four faces                                               3.3     -2.9     85.6        nan     nan    0.00   0.00  1.00
+
 SUMMARY STOP_0 (r1g6)
 - -X lug: front Z face Fz -184 N (CoP X offset 30.0, Y 291.6); section Fz 179 N.
 - -X lug sideways: net about 26 N OUTWARD (-X) from our side (the lug section +25.6 N), carried in the model mostly by the lumped boss's
@@ -171,3 +187,4 @@ SUMMARY STOP_0 (r1g6)
 - Bolt-hole walls about 0 N: the bolt is free (smallest shank gap 0.102 on the -X lug).
 - G90 + YAW +17 (r1g6): -X lug Fz +272 N, +X lug Fz -220 N (sections); the lugs carry My +15.4 of +17.0 N.m (90 %). Sideways: lug sections 0.7 / 3.4 N in X; the outer faces carry about 2 N each (no wall landing); the bolt is free (gaps 0.301 / 0.185).
 - G90 + YAW -17 (r1g6): -X lug Fz -214 N, +X lug Fz +271 N (sections); the lugs carry My -15.1 of -17.0 N.m (89 %). Sideways: lug sections 5.3 / 0.8 N in X; the outer faces carry about 2.5 N each (no wall landing); the bolt is free (gaps 0.179 / 0.304).
+- STOP_124 (r1g6): -X lug front Z face Fz -199 N (CoP X offset 28.9, Y 292.8), section 180 N; +X lug back Z face Fz +117 N, section 72 N. Sideways: lug sections 0.5 / 4.3 N in X; the outer faces carry about 1 N each (no wall landing; -X outer-face gap 0.20, closing 0.05 mm); the bolt is free (gaps 0.335 / 0.176).
