@@ -19,6 +19,7 @@ The calls are those of cad/scripts/fea/p3_fea.py and hub_seat.py on branch left-
 """
 import ctypes
 import os
+import re
 import threading
 import time
 from pathlib import Path
@@ -272,7 +273,7 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
         raise Failed('Simulation sees no active document: open_doc() the model before static()')
     sm = doc.StudyManager
     err = L()
-    tag = name[:24]
+    tag = re.sub(r'[^A-Za-z0-9_ -]', '_', name)[:24]     # a dot in a study name fails with error 2 (2026-11-13)
     st = sm.CreateNewStudy3(tag, 0, 0, err)            # 0 static, 0 solid mesh
     if st is None or err.value:
         raise Failed(f'study not created ({err.value}); a study of the same name already in the model?')
@@ -433,8 +434,9 @@ def converge(run, sizes, tol=0.05, layers=None):
 
     run(el) -> Result. Returns the list of (el, nodes, peak) rows and whether it converged. With layers = the print
     layer normal, each row also carries the tension across layers, and that must settle too. The peak is taken outside the
-    same distance from fixtures and loads at every size (two of the coarsest elements). Give at least three sizes: two
-    rows that agree can stop before a slow climb shows. A peak that keeps climbing as
+    same distance from fixtures and loads at every size (two of the coarsest elements), which can cover a real peak
+    beside a fixture: read such a feature yourself with in_box() at each size. At least three sizes are always solved:
+    two rows that agree can stop before a slow climb shows. A peak that keeps climbing as
     the mesh shrinks is a singularity (a sharp re-entrant corner or a fixture edge), not a stress: change the geometry
     (add the real fillet) or the mask, do not report the last number.
     """
@@ -446,7 +448,7 @@ def converge(run, sizes, tol=0.05, layers=None):
         row = (el, r.nodes, round(r.peak(keep)[0], 2))
         rows.append(row if layers is None else row + (round(r.layer_stress(layers, keep)[0], 2),))
         log('converge', rows[-1])
-        if len(rows) > 1 and all(abs(a - b) <= tol * abs(b) for a, b in zip(rows[-1][2:], rows[-2][2:])):
+        if len(rows) > 2 and all(abs(a - b) <= tol * abs(b) for a, b in zip(rows[-1][2:], rows[-2][2:])):
             return rows, True
     return rows, False
 

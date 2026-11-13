@@ -42,6 +42,10 @@ print(r.summary())
   climbs with every refinement (22.8 to 33.4 MPa over four sizes on the benchmark bracket, 2026-11-13). Either fix the
   hole walls and judge the part outside a fixed distance from them, saying how large the excluded value was, or fix the
   ring under the screw head instead. The stress right at a screw is not what this kind of study can tell you.
+- **How far to stand back from a fixed hole wall:** read the peak outside 1, 2, 3 and 5 mm and look for the plateau. On
+  a 14 mm wide strip it read 25.8 at 1 mm, 20.4 from 1.5 to 3 mm and 14.7 at 5 mm (2026-11-13): 1 mm is still the
+  singular edge, 5 mm has thrown away the real stress, the plateau is the answer. Report the distance you used and the
+  value inside it. `converge()` masks two of the coarsest elements, which can be on the wrong side of that plateau.
 - **A load on part of a face:** a load or contact takes whole faces. To load the ends of a pin, or one patch of a wall,
   make that region its own face first: build the part as separate touching bodies (they bond), or cut a shallow step.
 - **Loads:** `'normal'` presses on faces along their normals with the total in newtons, shared between the faces by
@@ -68,6 +72,13 @@ print(r.summary())
 - **Mesh:** `el` is the global element size, `ctrl` puts smaller elements on named faces. Start at 2 to 3 mm globally with
   0.6 to 0.8 mm on the loaded and restrained faces and on the fillets that carry the load. Thin walls need two elements
   through the thickness.
+
+- **A twin model for a partial-face load must be shown to be the same part:** same volume within 0.1 %, same box. A
+  body takes the name of its last feature, and `materials=` keys match on that name.
+- **Study names:** letters, digits, space, dash and underscore. `static()` replaces anything else (a dot fails with
+  "study not created (2)").
+- **At most four studies in one instance.** The fifth failed with error 24 at 17 GB free and solved in a fresh instance
+  (2026-11-13). A series longer than four runs one script per step, or a new `job()` every four.
 
 ## Is the result right? Five checks, every time
 
@@ -159,6 +170,15 @@ What was learned on the upper-arm hub joint, 2026-11-11 and 12:
 
 A contact study with more than two bodies, a gap, or a result that decides a design is work to hand up
 ([06-judgment.md](06-judgment.md)), or at least to have reviewed before anyone acts on it.
+
+## Forces from a result
+
+Nodal stress summed over a contact face is not a force: on the tongue-in-slot benchmark it was 11 % out of balance
+(2026-11-13). Get a force from a cut through the body instead: integrate the shear stress (or the normal stress) over a
+plane section, with each node's share of the area from a triangulation of the section, at several heights. The
+difference between the section force above and below a contact is the force that contact carries. Check the method
+where the answer is known: the section between the load and the first contact must return the applied load within
+1 %. A worked `section_force()` is in [eval/sonnet-b/b4_tongue.py](eval/sonnet-b/b4_tongue.py).
 
 ## When the solve fails
 
