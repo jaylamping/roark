@@ -173,6 +173,8 @@ class Result:
         Stress on a restrained or loaded face is an artefact of the idealisation, and at a sharp restrained edge it grows
         without limit as the mesh shrinks. Report the peak away from them, and say that you did. Across a convergence
         series pass the same dist every time: a mask of k elements shrinks with the mesh and lets the edge back in.
+        The mask also hides real features next to a load face (a screw hole beside a loaded bore): read those
+        separately with in_box() and report them.
         """
         keep = np.ones(len(self.pos), bool)
         for pts in (self.fixed_pts, self.loaded_pts):

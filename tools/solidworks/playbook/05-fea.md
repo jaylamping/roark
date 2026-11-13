@@ -49,6 +49,18 @@ print(r.summary())
   pushes into the material. `'remote'` applies a force and a moment
   at a point and carries them rigidly to the faces: use it for a load that acts away from the part (a hand load at the end
   of the forearm, a motor torque).
+- **A rigid load lends the part stiffness it does not have.** `'remote'` makes its faces move as one rigid body, so
+  small holes and thin ligaments beside them stop flexing and read low. On the benchmark bracket (2026-11-13,
+  [eval/t3-load-check](eval/t3-load-check/CHECK.md)) a rigid load on the bore gave 10.4 MPa across the layers at the
+  motor-screw holes 2.8 mm away; the same 150 N as an even force on the bore, or on the screw holes where a motor
+  really puts it, gave 15.4 to 16.0, as the hand value says (5.5 MPa nominal times 3 for a small hole). The verdict went
+  from pass at 2.2 to fail at 1.4, and two careful runs missed it. So: put the load on the faces that really bear (for
+  a screwed-on part, the screw holes or the rings under the heads, not the bore its boss sits in); when a hole, slot or
+  thin wall lies within a few wall thicknesses of a loaded face, run the load a second way and report the higher; and
+  do a hand value for every small hole in a stressed wall (nominal stress there times 3) before the solve.
+- **The default mask can hide exactly that.** `r.away()` drops nodes within two elements of every load face. With the
+  load on or beside small holes it removed the governing rim (9.8 reported, 15.4 real). When a real feature sits inside
+  the mask, read it separately with `r.in_box(...)` and report it; only a fixture singularity may be left out.
 - **Material:** `PETG`, `STEEL`, `BRASS` in swfea.py; `materials={part of a body's name: dict}` when bodies differ. A key
   matches every body whose name contains it, a key that matches nothing raises, and the log names each body's material:
   read it. Until 2026-11-12 the lookup matched nothing and every body silently got the default. A linear study
@@ -136,7 +148,9 @@ What was learned on the upper-arm hub joint, 2026-11-11 and 12:
    `--status` shows `busy`, and every other session's launch waits behind it (10 minutes on 2026-11-12). `static()` now
    answers No, which finishes the solve, and raises: the model has a body that is free or held only by something very
    soft. Pass `loose_ok=True` only when that is what you are testing. Any other solver dialog is logged with its text
-   and left alone.
+   and left alone. The same prompt also comes up on a single, properly fixed body that simply bends a lot (2.7 mm on a
+   46 mm bracket, on the finer meshes, 2026-11-13). There it is harmless: check that nothing is loose (one body, reaction
+   equal to load on a coarser mesh), then pass `loose_ok=True`; answered No, the result is the linear one.
 9. **Prove the contact set did something.** Pressed together, bonded faces and touching faces in contact give the same
    answer. Run the load the other way at a thousandth of the size: with the contact the bodies come apart on the pads
    (0.085 mm on the selftest blocks), bonded they move a millionth of that. `contact()` in

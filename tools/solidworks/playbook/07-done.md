@@ -34,13 +34,16 @@ catches it is a number written down beforehand. Same for modelling: `expect_dv` 
 2. **The support was tried a second way** whenever the first one hides a stress that rises with refinement (a fixed hole
    wall, a fixed edge): a ring under the screw head, a bonded washer, a longer fixed face. Report both; the numbers that
    agree between them are the result.
-3. **All three failure measures are reported,** each with its place and its factor: von Mises against yield, tension across
+3. **The load was tried a second way** whenever it is rigid (`'remote'`) or sits beside a hole, slot or thin wall: on
+   the faces that really bear, or as an even force. Report the higher. Two benchmark runs passed a bracket that fails
+   because a rigid load stiffened the wall round the screw holes ([05-fea.md](05-fea.md)).
+4. **All three failure measures are reported,** each with its place and its factor: von Mises against yield, tension across
    layers, shear between layers (`layer_stress`, `layer_shear`).
-4. **Every print direction the part could be made in is read from the same result,** as a table of the three measures.
+5. **Every print direction the part could be made in is read from the same result,** as a table of the three measures.
    Whether or not a direction was given: if another one is better, say so and by how much.
-5. Convergence followed the governing measure, not only von Mises (`converge(..., layers=normal)`), over three sizes.
-6. The load path was followed in a sentence: which faces bear, which section carries it, where it leaves.
-7. For contact: the proof that the set is contact and not a bond (reverse a tiny load: the bodies must part), the share
+6. Convergence followed the governing measure, not only von Mises (`converge(..., layers=normal)`), over three sizes.
+7. The load path was followed in a sentence: which faces bear, which section carries it, where it leaves.
+8. For contact: the proof that the set is contact and not a bond (reverse a tiny load: the bodies must part), the share
    the pads carry, and the contact force summed from the results against the applied load.
 
 ## "It passes" is not the end
@@ -98,3 +101,4 @@ Before writing the report, read your own results as a reviewer who wants to find
 - Which number here would I least like to be asked about? Go and check that one.
 - Did anything surprise me that I explained away without testing? Test it.
 - If the part were built from this report and broke, where would it break, and did I look there?
+- Is there a small hole, a slot or a thin wall in a stressed region that my masks or my mesh never looked at?
