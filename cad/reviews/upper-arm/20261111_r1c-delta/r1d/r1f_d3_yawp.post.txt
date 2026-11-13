@@ -1,0 +1,13 @@
+GUARD: node 187437 [147.5, 290.5, 10.986] assigned hub sd -0.199 r from bolt 1.5
+GUARD: node 187440 [146.073, 291.536, 16.686] assigned hub sd -4.464 r from bolt 1.5
+GUARD: node 187442 [146.073, 292.464, 16.686] assigned hub sd -3.536 r from bolt 1.5
+GUARD: node 187443 [146.073, 292.464, 10.986] assigned hub sd -0.196 r from bolt 1.5
+GUARD FAILED: 0 arm and 4 hub nodes lie inside another body
+ options {'solver': 0, 'mesher': 2, 'jacobian': 16, 'auto_transition': False, 'jacobian_check': '?'}
+ mesh 0 nodes 384682 elements 236183 27 s
+ solver macro ran True err 0
+ solver macro log: addin  0   | studies  1  err  0  | before  0  | set err  0   | after  7  | 
+ solve 0 383 s
+ displacements saved (384682, 5) args (1, win32com.client.VARIANT(9, None), 0) err 0
+ displacement min/max {'raw': [187581.0, 0.0, 142059.0, 0.53796], 'err': 0}
+{"case": "org16_HS_LC2_fine", "part": "hubseat", "el": 4.0, "nodes": 384682, "elements": 236183, "peak_vm": 717.55, "vm": 717.55, "at": [135.0, 297.6, 1.0], "sf": 0.06, "layer_x": {"mpa": 297.52, "at": [135.0, 297.6, 1.0], "sf": 0.08}, "layer_y": {"mpa": 114.37, "at": [135.0, 297.6, 1.0], "sf": 0.2}, "layer_z": {"mpa": 90.69, "at": [135.1, 297.3, 1.0], "sf": 0.25}, "region_ring_zone_excluded": {"vm": 4.37, "at": [147.6, 254.5, 19.0], "sf": 10.3, "p1": 4.72, "p3": -4.97, "layer_x": 2.59}, "region_neck_blend": {"vm": 4.96, "at": [194.3, 256.5, 15.9], "sf": 9.07, "p1": 5.35, "p3": -5.4, "layer_x": 2.59}, "region_drum_wall": {"vm": 4.55, "at": [194.8, 254.7, 16.0], "sf": 9.89, "p1": 4.8, "p3": -5.09, "layer_x": 2.59}, "region_rib": {"vm": 4.14, "at": [154.8, 248.3, 22.5], "sf": 10.86, "p1": 4.3, "p3": -4.97, "layer_x": 2.59}, "region_lug": {"vm": 4.06, "at": [144.9, 254.9, 14.3], "sf": 11.09, "p1": 4.4, "p3": -3.14, "layer_x": 0.52}, "region_neck": {"vm": 179.39, "at": [134.2, 295.0, 1.0], "sf": 0.25, "p1": 58.56, "p3": -176.91, "layer_x": 49.61}, "clear": {"vm": 717.55, "at": [135.0, 297.6, 1.0], "sf": 0.06, "layer_x": {"sf": 0.08, "at": [135.0, 297.6, 1.0]}, "layer_z": {"sf": 0.25, "at": [135.1, 297.3, 1.0]}}, "model": "hub as its own body, seat by contact, lugs in frictionless contact with the posts and steel bolts (no preload)", "soft_springs": false, "reaction": {"error": "<unknown>.GetReactionForces2"}, "displacement": {"raw": [187581.0, 0.0, 142059.0, 0.53796], "err": 0}, "model_sha256": "ec78178a58fe60c4cfcccd894b290c2f032dfce048b2135511796536d4dbf4fe"} 617 s
