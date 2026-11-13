@@ -68,6 +68,17 @@ With **Raspberry Pi Imager** on the Mac:
 
 ## 3. First boot: update once, then freeze
 
+**Sections 3 to 12 as one script:** [deploy/pi-setup.sh](../deploy/pi-setup.sh) does everything below except
+`tailscale up`, the NVMe steps and the reboot. Copy it to the Pi (with `can-bench` and the agent's public key as
+`agent-key.pub` next to it, if you have them) and run it detached, so a dropped SSH session can't stop it half-way:
+
+```bash
+sudo systemd-run --unit=pi-setup --collect bash /home/joey/setup/pi-setup.sh
+sudo journalctl -fu pi-setup
+```
+
+The sections stay as the description of what it does, and for doing a step by hand.
+
 ```bash
 ssh joey@robot-pi.local
 sudo apt update && sudo apt full-upgrade -y
@@ -90,7 +101,8 @@ Write down the kernel version (`uname -r`) and OS release (`cat /etc/os-release`
 sudo rpi-eeprom-config --edit
 ```
 
-Set (deploy.md section 6) **(→ deploy/)**:
+Set (deploy.md section 6) **(→ deploy/)**. Saving also moves the bootloader to the newest release on the Pi, so
+don't cut power during the reboot that follows:
 
 ```
 BOOT_ORDER=0xf416        # NVMe first, then SD, then USB; skip if running from SD for now
@@ -166,7 +178,10 @@ sudo chown robot:robot /var/lib/robot
 
 Follows [remote-access.md](../conventions/remote-access.md).
 
-1. In the Tailscale policy, `tag:robot` must exist with Joey as its owner (remote-access.md section 2).
+1. In the Tailscale policy, before `tailscale up`: `tag:robot` must be in `tagOwners` (without it the login fails with
+   "requested tags [tag:robot] are invalid or not permitted"), and an `ssh` rule must name `tag:robot` as `dst`
+   (remote-access.md sections 2 and 3). With `--ssh`, Tailscale answers port 22 on the tailnet address itself, so
+   without that rule every SSH over the tailnet is refused, plain OpenSSH included.
 2. On the Pi:
 
    ```bash
@@ -185,6 +200,7 @@ sudo apt install -y ufw
 sudo ufw default deny incoming
 sudo ufw allow in on tailscale0
 sudo ufw allow from 192.168.0.0/16 to any port 22 proto tcp   # home LAN SSH fallback; narrow to your actual subnet
+sudo ufw allow from 192.168.0.0/16 to any port 5353 proto udp # mDNS, or <hostname>.local stops resolving
 sudo ufw enable
 ```
 

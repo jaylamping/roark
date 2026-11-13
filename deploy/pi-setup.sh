@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # One-off setup of the robot's Pi 5 after the first boot: docs/pi-setup.md sections 3 to 12, for a Pi running
-# from the SD card (no NVMe yet). Run once as:   sudo bash pi-setup.sh
+# from the SD card (no NVMe yet). Run once as:   sudo bash pi-setup.sh   (better: the systemd-run line below)
 # Safe to run again: every step checks before it changes anything. It never reboots by itself.
 #
-# Left for Joey afterwards (they need a browser or a decision): `tailscale up`, and the reboot.
+# Run it detached, so a dropped SSH session can't stop it half-way:
+#   sudo systemd-run --unit=pi-setup --collect bash /home/joey/setup/pi-setup.sh && sudo journalctl -fu pi-setup
+#
+# Left for the operator afterwards (they need a browser or a decision): `tailscale up`, and the reboot.
 set -euo pipefail
 
 [ "$(id -u)" -eq 0 ] || { echo "run with sudo"; exit 1; }
@@ -37,7 +40,10 @@ else
   T=$(mktemp)
   rpi-eeprom-config | grep -v '^PSU_MAX_CURRENT=' > "$T"
   echo 'PSU_MAX_CURRENT=5000' >> "$T"
-  rpi-eeprom-config --apply "$T"      # staged; the bootloader takes it at the next reboot
+  # Staged; applied at the next reboot. With no image named, --apply also moves the bootloader to the newest
+  # release in the rpi-eeprom package: the setup session's one deliberate bootloader update (deploy.md
+  # section 6). Don't cut power during that reboot.
+  rpi-eeprom-config --apply "$T"
   rm -f "$T"
 fi
 
@@ -139,7 +145,8 @@ chown joey:joey "$HERE/setup-report.txt" 2>/dev/null || true
 cat <<'EOF'
 
 Done. Still to do by hand:
-  1. sudo tailscale up --ssh --advertise-tags=tag:robot   (opens a login link)
+  1. sudo tailscale up --ssh --advertise-tags=tag:robot   (opens a login link; the tailnet policy must
+     already own tag:robot and have an ssh rule for it: docs/pi-setup.md section 8)
      sudo tailscale set --auto-update=false
   2. sudo reboot      (swap off, the bootloader setting and the CAN overlays take effect)
 EOF
