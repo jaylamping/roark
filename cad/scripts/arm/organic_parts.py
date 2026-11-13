@@ -291,10 +291,8 @@ def r1f_lug_pocket(d, sg, zl):
         with Sk(d, plane(d, 'Z', zc, f'R1F_POCKET{tag}_P'), f'R1F_POCKET{tag}') as s:
             s.poly([(HX + side * o, y, zc) for o, y in prof])
         feat(d, s.feat, f'R1F_POCKET{tag}', dz, True, mode=MID, lo=0.01)
-        # relief for the hub's R0.5 inside corner at (34.4, 294.5): 0.5 x 45 deg off our pocket's corner at (34.6, 294.3)
-        with Sk(d, plane(d, 'Z', zc, f'R1F_R05{tag}_P'), f'R1F_R05{tag}') as s:
-            s.poly([(HX + side * o, y, zc) for o, y in [(34.5, 294.4), (35.2, 294.4), (34.5, 293.7)]])
-        feat(d, s.feat, f'R1F_R05{tag}', dz, True, mode=MID, lo=0.01)
+        # (no relief needed for the hub's R0.5 inside corner at (34.4, 294.5): our wall's inner face there is at r 35.0-35.2,
+        # 0.6+ outside it; a relief cut found nothing to remove, 2026-11-12)
         # root relief, extruded along X over offsets 18.3-36.3
         o0, o1 = 18.3, 36.3
         xm = HX + side * (o0 + o1) / 2
