@@ -1,0 +1,23 @@
+| File in `cad/_wip/sw-eval/fable-d/` | SHA-256 (first 16) |
+| --- | --- |
+| `buck_mount.SLDPRT` | `6fe854d298e5488d` |
+| `buck_mount.step` | `4340c35b6d9d24c2` |
+| `buck_mount.stl` | `1ed9ace6ac63e035` |
+| `housing_upper.SLDPRT` | `04acc46da8e22db8` |
+| `housing_lower.SLDPRT` | `12cfcdc7f37cb389` |
+| `ring.SLDPRT` | `928509b93409b529` |
+| `housing_upper.stl` | `d643095c254ba148` |
+| `housing_lower.stl` | `b9fc2ef1ba5ab1dd` |
+| `pair_fea.SLDPRT` | `88a10d865cde0d8f` |
+| `d3/P1.SLDPRT` | `87ba1f35c6f886ea` |
+| `d3/P1_b.SLDPRT` | `88e20093cd50ce0c` |
+| `d3/P2.SLDPRT` | `ad2eadf7c6b1ae6e` |
+| `d3/P2_b.SLDPRT` | `1cac693be7d103db` |
+| `d3/P3.SLDPRT` | `7b04fdb74fd7d982` |
+| `d3/P3_b.SLDPRT` | `98668d60dae7aabf` |
+| `d3/P4.SLDPRT` | `4a2c52714b73c918` |
+| `d3/P4_b.SLDPRT` | `c36c0af954c1cee4` |
+| `d3/P5.SLDPRT` | `3da304f53d9920dd` |
+| `d3/P5_b.SLDPRT` | `8d8bea8fe20f017e` |
+| `d3/P6.SLDPRT` | `2d37f2c776856799` |
+| `d3/P6_b.SLDPRT` | `77202e67f17beff0` |

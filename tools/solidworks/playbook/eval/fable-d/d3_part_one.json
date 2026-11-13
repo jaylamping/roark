@@ -1,0 +1,612 @@
+{
+ "plates": {
+  "P1": {
+   "volume_mm3": 17728.67,
+   "hand_volume_mm3": 17728.67,
+   "diff_pct": 0.0,
+   "mass_g": 21.1,
+   "bodies": 1,
+   "stl_watertight": true,
+   "stl_shells": 1,
+   "stl_volume_ok": true,
+   "stl_box_ok": false,
+   "min_wall_mm": 1.0,
+   "min_wall_where": "B counterbore to outside, at the top face",
+   "min_wall_measured_mm": 1.0,
+   "bbox": [
+    -35.0,
+    -35.0,
+    0.0,
+    35.0,
+    35.0,
+    6.0
+   ],
+   "measured": {
+    "od": 70.0,
+    "bore": 30.0,
+    "thick": 6.0,
+    "n_a": 6,
+    "n_b": 4,
+    "n_cb": 4,
+    "a_angles": [
+     0.0,
+     60.0,
+     120.0,
+     180.0,
+     240.0,
+     300.0
+    ],
+    "b_angles": [
+     45.0,
+     135.0,
+     225.0,
+     315.0
+    ],
+    "a_circle": [
+     50.0
+    ],
+    "b_circle": [
+     60.0
+    ],
+    "a_dia": [
+     3.4
+    ],
+    "b_dia": [
+     4.5
+    ],
+    "cb_dia": [
+     8.0
+    ],
+    "floor_z": [
+     3.0
+    ],
+    "cb_top_z": [
+     6.0
+    ],
+    "a_z": [
+     [
+      0.0,
+      6.0
+     ]
+    ],
+    "min_wall_measured": 1.0,
+    "as_specified": true
+   },
+   "changed": true,
+   "why": [
+    "ring B turned 45 degrees: at 0 and 180 degrees an A hole (r 25) cut 0.70 mm into a B counterbore (r 30); turned, the wall is 3.02 mm"
+   ],
+   "thinnest_as_the_table_says": [
+    -0.7,
+    "A hole to B counterbore"
+   ],
+   "built": {
+    "od": 70,
+    "t": 6.0,
+    "bore": 30,
+    "na": 6,
+    "da": 3.4,
+    "ca": 50,
+    "nb": 4,
+    "db": 4.5,
+    "cb": 60,
+    "cbd": 8.0,
+    "cbdepth": 3.0,
+    "turn_a": 0.0,
+    "turn_b": 45.0,
+    "chamfer": 0.0
+   }
+  },
+  "P2": {
+   "volume_mm3": 23947.18,
+   "hand_volume_mm3": 23947.18,
+   "diff_pct": -0.0,
+   "mass_g": 28.5,
+   "bodies": 1,
+   "stl_watertight": true,
+   "stl_shells": 1,
+   "stl_volume_ok": true,
+   "stl_box_ok": false,
+   "min_wall_mm": 3.0,
+   "min_wall_where": "counterbore floor",
+   "min_wall_measured_mm": 3.0,
+   "bbox": [
+    -42.0,
+    -42.0,
+    0.0,
+    42.0,
+    42.0,
+    6.0
+   ],
+   "measured": {
+    "od": 84.0,
+    "bore": 40.0,
+    "thick": 6.0,
+    "n_a": 6,
+    "n_b": 6,
+    "n_cb": 6,
+    "a_angles": [
+     0.0,
+     60.0,
+     120.0,
+     180.0,
+     240.0,
+     300.0
+    ],
+    "b_angles": [
+     30.0,
+     90.0,
+     150.0,
+     210.0,
+     270.0,
+     330.0
+    ],
+    "a_circle": [
+     62.0
+    ],
+    "b_circle": [
+     62.0
+    ],
+    "a_dia": [
+     4.5
+    ],
+    "b_dia": [
+     4.5
+    ],
+    "cb_dia": [
+     8.0
+    ],
+    "floor_z": [
+     3.0
+    ],
+    "cb_top_z": [
+     6.0
+    ],
+    "a_z": [
+     [
+      0.0,
+      6.0
+     ]
+    ],
+    "min_wall_measured": 3.0,
+    "as_specified": true
+   },
+   "changed": true,
+   "why": [
+    "ring B turned 30 degrees: rings A and B are both 6 x dia 4.5 on the same dia 62 circle from 0 degrees, so the twelve holes were six; turned, the wall is 9.80 mm"
+   ],
+   "thinnest_as_the_table_says": [
+    -6.25,
+    "A hole to B counterbore"
+   ],
+   "built": {
+    "od": 84,
+    "t": 6.0,
+    "bore": 40,
+    "na": 6,
+    "da": 4.5,
+    "ca": 62,
+    "nb": 6,
+    "db": 4.5,
+    "cb": 62,
+    "cbd": 8.0,
+    "cbdepth": 3.0,
+    "turn_a": 0.0,
+    "turn_b": 30.0,
+    "chamfer": 0.0
+   }
+  },
+  "P3": {
+   "volume_mm3": 38698.26,
+   "hand_volume_mm3": 38698.26,
+   "diff_pct": 0.0,
+   "mass_g": 46.05,
+   "bodies": 1,
+   "stl_watertight": true,
+   "stl_shells": 1,
+   "stl_volume_ok": true,
+   "stl_box_ok": false,
+   "min_wall_mm": 1.0,
+   "min_wall_where": "B counterbore to outside, at the top face",
+   "min_wall_measured_mm": 1.0,
+   "bbox": [
+    -48.0,
+    -48.0,
+    0.0,
+    48.0,
+    48.0,
+    8.0
+   ],
+   "measured": {
+    "od": 96.0,
+    "bore": 52.0,
+    "thick": 8.0,
+    "n_a": 8,
+    "n_b": 4,
+    "n_cb": 4,
+    "a_angles": [
+     0.0,
+     45.0,
+     90.0,
+     135.0,
+     180.0,
+     225.0,
+     270.0,
+     315.0
+    ],
+    "b_angles": [
+     0.0,
+     90.0,
+     180.0,
+     270.0
+    ],
+    "a_circle": [
+     66.0
+    ],
+    "b_circle": [
+     84.0
+    ],
+    "a_dia": [
+     3.4
+    ],
+    "b_dia": [
+     5.5
+    ],
+    "cb_dia": [
+     10.0
+    ],
+    "floor_z": [
+     4.0
+    ],
+    "cb_top_z": [
+     8.0
+    ],
+    "a_z": [
+     [
+      0.0,
+      8.0
+     ]
+    ],
+    "min_wall_measured": 1.0,
+    "as_specified": true
+   },
+   "changed": false,
+   "why": [],
+   "thinnest_as_the_table_says": [
+    1.0,
+    "B counterbore to outside, at the top face"
+   ],
+   "built": {
+    "od": 96,
+    "t": 8.0,
+    "bore": 52,
+    "na": 8,
+    "da": 3.4,
+    "ca": 66,
+    "nb": 4,
+    "db": 5.5,
+    "cb": 84,
+    "cbd": 10.0,
+    "cbdepth": 4.0,
+    "turn_a": 0.0,
+    "turn_b": 0.0,
+    "chamfer": 0.0
+   }
+  },
+  "P4": {
+   "volume_mm3": 14886.28,
+   "hand_volume_mm3": 14886.28,
+   "diff_pct": -0.0,
+   "mass_g": 17.71,
+   "bodies": 1,
+   "stl_watertight": true,
+   "stl_shells": 1,
+   "stl_volume_ok": true,
+   "stl_box_ok": false,
+   "min_wall_mm": 2.0,
+   "min_wall_where": "B counterbore to outside, at the top face",
+   "min_wall_measured_mm": 2.0,
+   "bbox": [
+    -35.0,
+    -35.0,
+    0.0,
+    35.0,
+    35.0,
+    5.0
+   ],
+   "measured": {
+    "od": 70.0,
+    "bore": 28.0,
+    "thick": 5.0,
+    "n_a": 4,
+    "n_b": 6,
+    "n_cb": 6,
+    "a_angles": [
+     0.0,
+     90.0,
+     180.0,
+     270.0
+    ],
+    "b_angles": [
+     0.0,
+     60.0,
+     120.0,
+     180.0,
+     240.0,
+     300.0
+    ],
+    "a_circle": [
+     40.0
+    ],
+    "b_circle": [
+     58.0
+    ],
+    "a_dia": [
+     3.4
+    ],
+    "b_dia": [
+     4.5
+    ],
+    "cb_dia": [
+     8.0
+    ],
+    "floor_z": [
+     2.0
+    ],
+    "cb_top_z": [
+     5.0
+    ],
+    "a_z": [
+     [
+      0.0,
+      5.0
+     ]
+    ],
+    "min_wall_measured": 2.0,
+    "as_specified": true
+   },
+   "changed": true,
+   "why": [
+    "outside dia 60 -> 70: ring B on dia 58 puts its dia 4.5 holes 1.25 mm and its dia 8 counterbores 3.0 mm through the dia 60 edge; the bolt circle mates with something, so it is kept and the disc grows to leave 2.0 mm outside the counterbores (as P6 has)",
+    "counterbore depth 4.6 -> 3.0: 4.6 in a 5.0 plate leaves a 0.4 mm floor; 3.0 leaves 2.0 mm, and is the depth of the other three dia 8 counterbores"
+   ],
+   "thinnest_as_the_table_says": [
+    -3.0,
+    "B counterbore to outside, at the top face"
+   ],
+   "built": {
+    "od": 70.0,
+    "t": 5.0,
+    "bore": 28,
+    "na": 4,
+    "da": 3.4,
+    "ca": 40,
+    "nb": 6,
+    "db": 4.5,
+    "cb": 58,
+    "cbd": 8.0,
+    "cbdepth": 3.0,
+    "turn_a": 0.0,
+    "turn_b": 0.0,
+    "chamfer": 0.0
+   }
+  },
+  "P5": {
+   "volume_mm3": 62864.78,
+   "hand_volume_mm3": 62864.78,
+   "diff_pct": 0.0,
+   "mass_g": 74.81,
+   "bodies": 1,
+   "stl_watertight": true,
+   "stl_shells": 1,
+   "stl_volume_ok": true,
+   "stl_box_ok": false,
+   "min_wall_mm": 2.5,
+   "min_wall_where": "B counterbore to outside, at the top face",
+   "min_wall_measured_mm": 2.5,
+   "bbox": [
+    -60.0,
+    -60.0,
+    0.0,
+    60.0,
+    60.0,
+    8.0
+   ],
+   "measured": {
+    "od": 120.0,
+    "bore": 60.0,
+    "thick": 8.0,
+    "n_a": 12,
+    "n_b": 6,
+    "n_cb": 6,
+    "a_angles": [
+     0.0,
+     30.0,
+     60.0,
+     90.0,
+     120.0,
+     150.0,
+     180.0,
+     210.0,
+     240.0,
+     270.0,
+     300.0,
+     330.0
+    ],
+    "b_angles": [
+     0.0,
+     60.0,
+     120.0,
+     180.0,
+     240.0,
+     300.0
+    ],
+    "a_circle": [
+     80.0
+    ],
+    "b_circle": [
+     104.0
+    ],
+    "a_dia": [
+     4.5
+    ],
+    "b_dia": [
+     6.6
+    ],
+    "cb_dia": [
+     11.0
+    ],
+    "floor_z": [
+     3.0
+    ],
+    "cb_top_z": [
+     8.0
+    ],
+    "a_z": [
+     [
+      0.0,
+      8.0
+     ]
+    ],
+    "min_wall_measured": 2.5,
+    "as_specified": true
+   },
+   "changed": false,
+   "why": [],
+   "thinnest_as_the_table_says": [
+    2.5,
+    "B counterbore to outside, at the top face"
+   ],
+   "built": {
+    "od": 120,
+    "t": 8.0,
+    "bore": 60,
+    "na": 12,
+    "da": 4.5,
+    "ca": 80,
+    "nb": 6,
+    "db": 6.6,
+    "cb": 104,
+    "cbd": 11.0,
+    "cbdepth": 5.0,
+    "turn_a": 0.0,
+    "turn_b": 0.0,
+    "chamfer": 0.0
+   }
+  },
+  "P6": {
+   "volume_mm3": 20848.86,
+   "hand_volume_mm3": 20848.86,
+   "diff_pct": -0.0,
+   "mass_g": 24.81,
+   "bodies": 1,
+   "stl_watertight": true,
+   "stl_shells": 1,
+   "stl_volume_ok": true,
+   "stl_box_ok": false,
+   "min_wall_mm": 2.0,
+   "min_wall_where": "B counterbore to outside, at the top face",
+   "min_wall_measured_mm": 2.0,
+   "bbox": [
+    -38.0,
+    -38.0,
+    0.0,
+    38.0,
+    38.0,
+    6.0
+   ],
+   "measured": {
+    "od": 76.0,
+    "bore": 34.0,
+    "thick": 6.0,
+    "n_a": 6,
+    "n_b": 3,
+    "n_cb": 3,
+    "a_angles": [
+     0.0,
+     60.0,
+     120.0,
+     180.0,
+     240.0,
+     300.0
+    ],
+    "b_angles": [
+     0.0,
+     120.0,
+     240.0
+    ],
+    "a_circle": [
+     46.0
+    ],
+    "b_circle": [
+     64.0
+    ],
+    "a_dia": [
+     3.4
+    ],
+    "b_dia": [
+     4.5
+    ],
+    "cb_dia": [
+     8.0
+    ],
+    "floor_z": [
+     3.0
+    ],
+    "cb_top_z": [
+     6.0
+    ],
+    "a_z": [
+     [
+      0.0,
+      6.0
+     ]
+    ],
+    "min_wall_measured": 2.0,
+    "as_specified": true
+   },
+   "changed": false,
+   "why": [],
+   "thinnest_as_the_table_says": [
+    2.0,
+    "B counterbore to outside, at the top face"
+   ],
+   "built": {
+    "od": 76,
+    "t": 6.0,
+    "bore": 34,
+    "na": 6,
+    "da": 3.4,
+    "ca": 46,
+    "nb": 3,
+    "db": 4.5,
+    "cb": 64,
+    "cbd": 8.0,
+    "cbdepth": 3.0,
+    "turn_a": 0.0,
+    "turn_b": 0.0,
+    "chamfer": 0.0
+   }
+  }
+ },
+ "problems": [
+  {
+   "plate": "P1",
+   "part": "one",
+   "what": "A hole to B counterbore: -0.7 mm as the table says",
+   "built": "ring B turned 45 degrees: at 0 and 180 degrees an A hole (r 25) cut 0.70 mm into a B counterbore (r 30); turned, the wall is 3.02 mm"
+  },
+  {
+   "plate": "P2",
+   "part": "one",
+   "what": "A hole to B counterbore: -6.25 mm as the table says",
+   "built": "ring B turned 30 degrees: rings A and B are both 6 x dia 4.5 on the same dia 62 circle from 0 degrees, so the twelve holes were six; turned, the wall is 9.80 mm"
+  },
+  {
+   "plate": "P4",
+   "part": "one",
+   "what": "B counterbore to outside, at the top face: -3.0 mm as the table says",
+   "built": "outside dia 60 -> 70: ring B on dia 58 puts its dia 4.5 holes 1.25 mm and its dia 8 counterbores 3.0 mm through the dia 60 edge; the bolt circle mates with something, so it is kept and the disc grows to leave 2.0 mm outside the counterbores (as P6 has); counterbore depth 4.6 -> 3.0: 4.6 in a 5.0 plate leaves a 0.4 mm floor; 3.0 leaves 2.0 mm, and is the depth of the other three dia 8 counterbores"
+  }
+ ]
+}

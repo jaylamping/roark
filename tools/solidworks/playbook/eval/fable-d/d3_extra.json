@@ -1,0 +1,18 @@
+{
+ "table_problems_extra": [
+  {
+   "plate": "P4",
+   "part": "one",
+   "what": "counterbore 4.6 deep in a 5.0 plate: floor 0.4 mm",
+   "built": "depth 3.0, floor 2.0 mm"
+  },
+  {
+   "plate": "P1, P3",
+   "part": "one",
+   "what": "B counterbores 1.0 mm from the outside edge",
+   "built": "as the table says, flagged"
+  }
+ ],
+ "failed_runs_part_two": 2,
+ "models_folder": "cad/_wip/sw-eval/fable-d/d3/"
+}

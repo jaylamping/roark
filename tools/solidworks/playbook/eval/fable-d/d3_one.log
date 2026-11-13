@@ -1,0 +1,87 @@
+09:20:39 SolidWorks pid 94508 free GB 12.4
+09:20:39 ---- P1: {'od': 70, 't': 6.0, 'bore': 30, 'na': 6, 'da': 3.4, 'ca': 50, 'nb': 4, 'db': 4.5, 'cb': 60, 'cbd': 8.0, 'cbdepth': 3.0, 'turn_a': 0.0, 'turn_b': 45.0, 'chamfer': 0.0}
+09:20:41 ok DISC volume change: 23090.7060 (expected 23090.7060)
+09:20:41 DISC: added 23090.71 mm3
+09:20:42 ok BORE volume change: 4241.1501 (expected 4241.1501)
+09:20:42 BORE: cut 4241.15 mm3
+09:20:42 ok RING_A volume change: 326.8513 (expected 326.8513)
+09:20:42 RING_A: cut 326.85 mm3
+09:20:42 ok RING_B volume change: 381.7035 (expected 381.7035)
+09:20:42 RING_B: cut 381.70 mm3
+09:20:43 ok CBORE volume change: 412.3340 (expected 412.3340)
+09:20:43 CBORE: cut 412.33 mm3
+09:20:43 ok P1 volume against the hand value: 17728.6671 (expected 17728.6671)
+09:20:44 ok P1 rebuild errors: 0.0000 (expected 0.0000)
+09:20:44 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\d3\P1.stl 130584 bytes
+09:20:45 ---- P2: {'od': 84, 't': 6.0, 'bore': 40, 'na': 6, 'da': 4.5, 'ca': 62, 'nb': 6, 'db': 4.5, 'cb': 62, 'cbd': 8.0, 'cbdepth': 3.0, 'turn_a': 0.0, 'turn_b': 30.0, 'chamfer': 0.0}
+09:20:46 ok DISC volume change: 33250.6166 (expected 33250.6166)
+09:20:46 DISC: added 33250.62 mm3
+09:20:46 ok BORE volume change: 7539.8224 (expected 7539.8224)
+09:20:46 BORE: cut 7539.82 mm3
+09:20:47 ok RING_A volume change: 572.5553 (expected 572.5553)
+09:20:47 RING_A: cut 572.56 mm3
+09:20:47 ok RING_B volume change: 572.5553 (expected 572.5553)
+09:20:47 RING_B: cut 572.56 mm3
+09:20:48 ok CBORE volume change: 618.5011 (expected 618.5011)
+09:20:48 CBORE: cut 618.50 mm3
+09:20:48 ok P2 volume against the hand value: 23947.1827 (expected 23947.1827)
+09:20:48 ok P2 rebuild errors: 0.0000 (expected 0.0000)
+09:20:48 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\d3\P2.stl 161484 bytes
+09:20:48 ---- P3: {'od': 96, 't': 8.0, 'bore': 52, 'na': 8, 'da': 3.4, 'ca': 66, 'nb': 4, 'db': 5.5, 'cb': 84, 'cbd': 10.0, 'cbdepth': 4.0, 'turn_a': 0.0, 'turn_b': 0.0, 'chamfer': 0.0}
+09:20:49 ok DISC volume change: 57905.8358 (expected 57905.8358)
+09:20:49 DISC: added 57905.84 mm3
+09:20:50 ok BORE volume change: 16989.7331 (expected 16989.7331)
+09:20:50 BORE: cut 16989.73 mm3
+09:20:50 ok RING_A volume change: 581.0690 (expected 581.0690)
+09:20:50 RING_A: cut 581.07 mm3
+09:20:50 ok RING_B volume change: 760.2654 (expected 760.2654)
+09:20:50 RING_B: cut 760.27 mm3
+09:20:51 ok CBORE volume change: 876.5044 (expected 876.5044)
+09:20:51 CBORE: cut 876.50 mm3
+09:20:52 ok P3 volume against the hand value: 38698.2640 (expected 38698.2640)
+09:20:52 ok P3 rebuild errors: 0.0000 (expected 0.0000)
+09:20:52 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\d3\P3.stl 149484 bytes
+09:20:52 ---- P4: {'od': 70.0, 't': 5.0, 'bore': 28, 'na': 4, 'da': 3.4, 'ca': 40, 'nb': 6, 'db': 4.5, 'cb': 58, 'cbd': 8.0, 'cbdepth': 3.0, 'turn_a': 0.0, 'turn_b': 0.0, 'chamfer': 0.0}
+09:20:53 ok DISC volume change: 19242.2550 (expected 19242.2550)
+09:20:53 DISC: added 19242.26 mm3
+09:20:54 ok BORE volume change: 3078.7608 (expected 3078.7608)
+09:20:54 BORE: cut 3078.76 mm3
+09:20:54 ok RING_A volume change: 181.5841 (expected 181.5841)
+09:20:54 RING_A: cut 181.58 mm3
+09:20:54 ok RING_B volume change: 477.1294 (expected 477.1294)
+09:20:54 RING_B: cut 477.13 mm3
+09:20:55 ok CBORE volume change: 618.5011 (expected 618.5011)
+09:20:55 CBORE: cut 618.50 mm3
+09:20:55 ok P4 volume against the hand value: 14886.2797 (expected 14886.2797)
+09:20:55 ok P4 rebuild errors: 0.0000 (expected 0.0000)
+09:20:56 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\d3\P4.stl 145384 bytes
+09:20:56 ---- P5: {'od': 120, 't': 8.0, 'bore': 60, 'na': 12, 'da': 4.5, 'ca': 80, 'nb': 6, 'db': 6.6, 'cb': 104, 'cbd': 11.0, 'cbdepth': 5.0, 'turn_a': 0.0, 'turn_b': 0.0, 'chamfer': 0.0}
+09:20:57 ok DISC volume change: 90477.8684 (expected 90477.8684)
+09:20:57 DISC: added 90477.87 mm3
+09:20:58 ok BORE volume change: 22619.4671 (expected 22619.4671)
+09:20:58 BORE: cut 22619.47 mm3
+09:20:58 ok RING_A volume change: 1526.8140 (expected 1526.8140)
+09:20:58 RING_A: cut 1526.81 mm3
+09:20:58 ok RING_B volume change: 1642.1733 (expected 1642.1733)
+09:20:58 RING_B: cut 1642.17 mm3
+09:20:59 ok CBORE volume change: 1824.6370 (expected 1824.6370)
+09:20:59 CBORE: cut 1824.64 mm3
+09:20:59 ok P5 volume against the hand value: 62864.7770 (expected 62864.7770)
+09:20:59 ok P5 rebuild errors: 0.0000 (expected 0.0000)
+09:20:59 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\d3\P5.stl 219084 bytes
+09:21:00 ---- P6: {'od': 76, 't': 6.0, 'bore': 34, 'na': 6, 'da': 3.4, 'ca': 46, 'nb': 3, 'db': 4.5, 'cb': 64, 'cbd': 8.0, 'cbdepth': 3.0, 'turn_a': 0.0, 'turn_b': 0.0, 'chamfer': 0.0}
+09:21:01 ok DISC volume change: 27218.7588 (expected 27218.7588)
+09:21:01 DISC: added 27218.76 mm3
+09:21:01 ok BORE volume change: 5447.5217 (expected 5447.5217)
+09:21:01 BORE: cut 5447.52 mm3
+09:21:02 ok RING_A volume change: 326.8513 (expected 326.8513)
+09:21:02 RING_A: cut 326.85 mm3
+09:21:02 ok RING_B volume change: 286.2776 (expected 286.2776)
+09:21:02 RING_B: cut 286.28 mm3
+09:21:03 ok CBORE volume change: 309.2505 (expected 309.2505)
+09:21:03 CBORE: cut 309.25 mm3
+09:21:03 ok P6 volume against the hand value: 20848.8576 (expected 20848.8576)
+09:21:03 ok P6 rebuild errors: 0.0000 (expected 0.0000)
+09:21:03 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\d3\P6.stl 115684 bytes
+09:21:03 closing pid 94508 committed MB 1982
+DONE d3 one
