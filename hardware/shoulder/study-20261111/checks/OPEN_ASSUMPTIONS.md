@@ -13,7 +13,7 @@ place, every fit that rests on a bought part's dimension, heat, loads not run.
 
 | # | Item | Where it is stated | What could go wrong | How bad | How to settle | Cost | Result so far |
 |---|---|---|---|---|---|---|---|
-| 1 | **Yaw dish loop has no slack storage** | CONCEPT.md "Wire passages" ("loop length for ±90 yaw is not checked") | The bundle fills the dish (13.5 mm radial, 5.5 mm axial). The exit-to-window distance changes by up to 97 mm over yaw ±90. The slack has nowhere to go but through the window or back up the exit | Stops the arm, or chafes the trunk through at 48 V | **Joey:** print and run the rig ([CABLE_LOOP_RIG.md](CABLE_LOOP_RIG.md)) | 25 g PLA, 1 h, 20 min test | Found 2026-11-13. Window at 248° passes under the exit at yaw -14°; moved to 68° (one-way loop). Slack still open |
+| 1 | **Yaw dish loop has no slack storage** | CONCEPT.md "Wire passages" ("loop length for ±90 yaw is not checked") | The bundle fills the dish (13.5 mm radial, 5.5 mm axial). The exit-to-window distance changes by up to 97 mm over yaw ±90. The slack has nowhere to go but through the window or back up the exit | Stops the arm, or chafes the trunk through at 48 V | **Joey:** print and run the rig ([CABLE_LOOP_RIG.md](CABLE_LOOP_RIG.md)) | 26 g PLA, 1 h 15 min, 20 min test | Found 2026-11-13. Window at 248° passes under the exit at yaw -14°; moved to 68° (one-way loop). Slack still open |
 | 2 | **Yaw has no stop and no limit** | MEASUREMENTS.md "Yaw: unlimited by geometry"; SOFTWARE_HANDOFF.md has no yaw position limit; ±90 appears only as a sweep range and in the trunk plan | A runaway or a wrong zero at first power-up winds the bundle round the dish until it tears | Trunk damage, short at 48 V | **Joey / coordinator:** fix the yaw travel. Then a soft limit in SOFTWARE_HANDOFF.md, and decide whether a printed hard stop is wanted | Decision; a stop is a hub and fork change | Soft limits -85…+85 (assumed) are in SOFTWARE_HANDOFF.md. Stop options below: no hidden stop for both ends fits |
 | 3 | **Motor heat into PETG** | Not stated anywhere | The RobStride ratings assume an aluminium heat sink (RS02: 6 N·m on 260 × 280 mm; RS03: 20 N·m on 215 × 220 mm; manuals section 1.2). Our mounts are PETG. The drives only fault at a thermistor reading of 135 °C (RS02) and 145 °C (RS03). PETG seats creep from about 60 °C | Seats and bosses relax; the 0.3 N·m joints loosen; continuous torque is well under the rating | **Other (software):** a temperature limit from the drive's reported temperature, well under 60 °C at the housing. **Joey:** a bench run logging temperature at a held torque | A config value; a 30 min bench run | Provisional limits (reduce from 50 °C, stop at 60 °C reported) and the bench procedure are in SOFTWARE_HANDOFF.md |
 | 4 | **Hub screws too long for the RS02's thread** | A_HUB_LUGS.md "close-fit screw holes": M4 × 30, "about 8 mm of thread engages" | The RS02 drawing gives **6 × M4, depth 7 min** (manual section 1.1), and warns not to exceed the thread depth. The head seats at Y 298.1 (boss 21.76), so M4 × 30 goes in 8.24 mm. It can bottom before it clamps | Hub loose at "tight", or a damaged output | **Here**, done. **Joey:** probe one hole | 5 min | **Settled on paper:** use M4 × 30 with 1.6-2 mm under the head (two washers) for 6.2-6.6 mm, or M4 × 28. Not M4 × 30 bare unless the probe shows 9 mm or more |
@@ -26,8 +26,8 @@ place, every fit that rests on a bought part's dimension, heat, loads not run.
 | 11 | **Re-torque after 24 h against access** | PRINT_NOTES.md; CAD_NOTES.md "Driver reach" | Assembled, only the 104° RS02 screw can be reached; the hub screws are behind the arm halves. The re-torque needs a strip-down | The low-preload joints never get their re-torque | **Here:** list which screws are reachable assembled. Then a procedure | 1 h | Open |
 | 12 | **Bundles against the RS02 in the fork** | CAD_NOTES.md "Side centre r 47" lays the bundles first; "RS02 re-clocked" fits the RS02 first | The two orders conflict. With the RS02 in, the 16 × 6 bundle may not go into the back cavity | Assembly stalls; forced cable | **Here:** section the back cavity with the RS02 in place | 1 h | Open |
 | 13 | **Plugs through the channels** | CONCEPT.md assembly steps | An XT30(2+2)-F body is 16 × 6.5 × 15. It does not pass a 16 × 6 channel or the 7 × 6 tap | Wires must be threaded before they are terminated | **Here / electrical plan:** write the order (thread, then solder) into the assembly notes | - | Open |
-| 14 | **Pitch loop over 270°** | CONCEPT.md, TORSO_INTERFACE.md ("flex life not checked") | Length change of about 300 mm at r 65; bend radius of a 4 mm band in a 16 mm channel | Trunk fatigue at the first joint | **Here:** length and bend radius on paper. **Joey:** a loop rig if the paper says tight | 1 h; a second rig | Open |
-| 15 | **Roll crossing as twist in the Ø25 stub bore** | CONCEPT.md ("125° as twist", bend radii not checked) | Power above the axis, signal below: off-axis, so twist plus a swing | Chafe in the stub bore | **Here:** free length and twist per mm | 1 h | Open |
+| 14 | **Pitch loop over 270°** | CONCEPT.md, TORSO_INTERFACE.md ("flex life not checked") | Length change of about 300 mm at r 65; bend radius of a 4 mm band in a 16 mm channel | Trunk fatigue at the first joint | **Here:** length and bend radius on paper. **Joey:** a loop rig if the paper says tight | 1 h; a second rig | **Paper says it does not work as drawn** (below): 306 mm of length change, no spiral fits, and a folded loop bends 16 AWG at 6.5-9 mm. **Rank it with item 1.** Needs a rig or a redesign |
+| 15 | **Roll crossing as twist in the Ø25 stub bore** | CONCEPT.md ("125° as twist", bend radii not checked) | Power above the axis, signal below: off-axis, so twist plus a swing | Chafe in the stub bore | **Here:** free length and twist per mm | 1 h | **Paper says tight** (below): 121° of roll over 18 mm of axial run between two right-angle bends, inside Ø25. **Rank it with item 1.** Needs a rig |
 | 16 | **RS03 connector bays** | CONCEPT.md, MEASUREMENTS.md ("vendor bays are empty") | The top-bay window and branch are sized from the bay, not a plug | Drum reprint, 227 g | **Joey:** photo and size of the plugs seated in an RS03 | 10 min | Open |
 | 17 | **RS03 output bearing rating** | C_LOAD_SHARE.md ("not published"; up to 28.6 N·m of tilt) | The roll output bearing is overloaded | Motor damage over time | **Other / vendor:** ask RobStride; the 6808 already shares the load | An email | Open |
 | 18 | **Preload, creep and friction values** | A_HUB_LUGS.md (0.35 kN per screw, half after creep, μ 0.25, hook scale ±15%) | The hub-top SF falls from 1.64 to 1.41 if over-tightened; slip if under | Loose or cracked hub top | **Joey:** bench: torque, wait 24 h, re-check | Part of the first bench session | Open |
@@ -121,6 +121,46 @@ the orientations of PRINT_NOTES.md. `cad/scripts/shoulder/slice_parts.py`.
   still to be looked at, part by part, in the sliced files. The fork rear is 120 mm tall on a 73 × 28 footprint.
 - The hub is left out until its window is settled.
 - These are a first look with the arm's settings, not print files.
+
+### 10, continued. Where the supports land (2026-11-13)
+
+Read from the sliced G-code (support extrusion mapped back into the robot's coordinates).
+
+| Part | Support | Where | Comment |
+|---|---|---|---|
+| Fork front | 37 g | Tree supports from the bed up to 90 mm, spread over the whole footprint; half of it below 30 mm. They stand under the dome cap (it starts 55 mm above the bed), the sleeve roof and the RS02 clearance roof | The most support of any part, and it reaches the RS02 seat. Worth a support-painted project before printing |
+| Pitch loop cover | 23.5 g | 84% in the first 10 mm, under the whole back wall | **The back wall is not on the bed:** the feed riser stands about 6 mm proud of it (X 69 against X 75), so the wall prints on support. Turn it over, or split the riser off. The cover waits anyway |
+| Drum | 21 g | 64% in the first 10 mm at the lip end, 23% in the next 10; a little at 60-70 mm (the neck) | As expected from the concept. Removal through the bore not yet checked |
+| Fork rear | 6 g | 38% in the first 10 mm (the hollow's roof at Y 340-349), the rest up the back to the tooth | As predicted |
+| Rear cap | 1.8 g | All in the first 10 mm, under the plate | Fine |
+| Flange ring | none | | Fine |
+
+### 14. Pitch loop over 270° (paper, 2026-11-13)
+
+- **Channel:** r 57.4-73.5 (16.1 radial) × 21.1 axial, round the pitch housing. The trunk enters from the fixed cover and
+  leaves through the mouth on the moving flange.
+- **Length change:** 270° at r 65 is **306 mm**.
+- **A spiral (clock spring) cannot do it.** For a 3 mm thick bundle the wound and unwound states need
+  (n + 0.75)(58.5 + 1.5 n) = n (73.5 - 1.5 n) turns to balance, which has no solution: the channel is too shallow for
+  three quarters of a turn of take-up. The shell-opening study found the same for a cassette (164° in one deck).
+- **A folded (rolling) loop fits in angle but not in bend radius.** Folded across the 16.1 mm radial gap, the fold's
+  centre radius is 6.5 mm. Folded across the 21.1 mm axial gap, 9 mm. The 16 AWG silicone wires are 3.0 mm: 9 mm is
+  their static minimum (3 × OD) and far under any flexing figure (the trunk plan uses 3 × OD = 24 mm for the 8 mm loom
+  at the elbow).
+- **So:** the pitch crossing has the same problem as the yaw dish, with three times the travel. A second small rig (the
+  channel as two rings, the real wires) would show whether a folded loop of loose wires survives. Otherwise the channel
+  needs more depth, or the pitch travel a limit.
+
+### 15. Roll crossing in the stub bore (paper, 2026-11-13)
+
+- **Route:** radial channel in the rear cap (centre Z -33.3, on the drum) → along the roll axis through the Ø25 stub bore
+  → radial channel in the fork rear (centre Z -51.3). The axial run between the two channels is **18 mm**.
+- **Travel:** -11° to +110°, so the two radial channels turn 121° against each other.
+- **What the wires do:** two right-angle bends 18 mm apart, inside Ø25, with the second turning 121° round the first. The
+  power pair runs 3-8 mm off the axis, so it also swings.
+- **Bend radius available:** at most about 8 mm inside the bore; the 16 AWG static minimum is 9.
+- **Twist:** 121° over 18 mm is 6.7° per mm. The trunk plan allows 185 mm of free length for 180° at the yaw joint.
+- **So:** tight on both counts. A stub-bore rig is two printed pieces and the real wires.
 
 ### 34. Hub cable window against the boss tubes (2026-11-13)
 Numbers and the table are in CAD_NOTES.md, "Hub cable window against the boss tubes".

@@ -35,8 +35,9 @@ Script: `cad/scripts/shoulder/cable_loop_rig.py`. Files in `cad/exports/fixtures
 | Boss | `fixtures_yaw_loop_rig_boss.STL` | 3.3 g | as modelled |
 | Cap | `fixtures_yaw_loop_rig_cap.STL` | 2.0 g | flat |
 
-- **Total 25 g.** About 1 h on the P2S at 0.20 mm (an estimate from the mass; not sliced).
-- No support. The exit stub's floor is a 16 mm bridge; the chutes lean 35° from vertical.
+- **Total 25.9 g, about 1 h 15 min on one plate** (sliced: 25 + 34 + 9 + 5 min of printing for the four parts, at
+  0.20 mm with the arm's PETG settings; PLA will be close). Turn supports off.
+- No support needed. The exit stub's floor is a 16 mm bridge; the chutes lean 35° from vertical.
 - Also needed: one M4 × 16 screw and nut, tape, a cable tie, a ruler, a marker.
 - Mesh: all four pass the integrity scan (watertight, no non-manifold edge, no zero-area face).
 

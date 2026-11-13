@@ -285,3 +285,14 @@ within X -32.8…+26.6 on the top row (Y 356.9) and -26…+21 on the lower row (
     nothing is lost under the head.
   - The inner pair's 5.5 mm recesses are unchanged; their heads just sit lower.
 
+### Fork joint inserts and screw lengths (2026-11-13)
+
+- **The joint FEA does not model inserts.** It has no insert length in it; the screws are taken as clamping the joint
+  face.
+- **Insert bores as built:** Ø5.6, 7.3-7.8 mm deep in the fork front.
+- **A standard 8.1 mm M4 heat-set insert stands 0.3-0.8 mm proud of the joint face,** so the joint would not close. Use
+  4 mm inserts, set flush or just below the face.
+- **Thread engaged with a 4 mm insert:** the full 4 mm with the screws below. M4 in brass at 0.3 N·m is far inside its
+  strength; pull-out of a 4 mm insert from PETG is the limit and has not been tested.
+- **Screws (ISO 7380):** 2 × M4 × 10 at X ±17 (5.5 mm under the head), 4 × M4 × 8 at the others (3.0 mm under the head).
+- Full table: CAD_NOTES.md, "Screw and pin lengths against the hole depths".

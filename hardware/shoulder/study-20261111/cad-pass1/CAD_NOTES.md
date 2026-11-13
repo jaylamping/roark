@@ -747,7 +747,8 @@ less, and warn that a screw must not go deeper than the thread.
   face. Use 4 mm inserts, or deepen the bores to 9 (the X -27 bore ends 1.5 mm from the plug channel, so not that one).
 - **RS02 body screws:** the drawing dimensions the M3 thread from the output side. The vendor model shows the holes
   through the flange, with a Ø3.2 × 1.5 lead at the rear face. Check on the motor that they take a screw from the rear.
-- **Not read off yet:** the rear cap's three ear screws.
+- **Rear cap's three screws: not settled.** The ear positions in `dims.py` (125 / 148 / 212° at r 61) don't show clean
+  screw holes in the built cap and drum STLs. They need reading in SolidWorks.
 
 ## Hub cable window against the boss tubes (2026-11-13)
 
