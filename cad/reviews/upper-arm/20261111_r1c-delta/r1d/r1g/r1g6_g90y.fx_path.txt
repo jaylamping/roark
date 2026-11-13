@@ -1,0 +1,15 @@
+-X lug mean displacement (mm): ux +0.0453 uy +0.0116 uz +0.0523
+-X lug bolt shank vs lug hole: smallest gap now 0.301 mm (initial 0.394; closure +0.094) toward 300 deg (0 = +X, 90 = +Y) at Z - CZ +4 +- 1 (10 hole / 7 shank surface nodes)
++X lug bolt shank vs lug hole: smallest gap now 0.185 mm (initial 0.392; closure +0.208) toward 330 deg (0 = +X, 90 = +Y) at Z - CZ +2 +- 1 (10 hole / 7 shank surface nodes)
+-X lug front face: lug hole rim (nominal r 1.9) deformed at r 1.797-2.012 from the deformed brass axis (plate edge r 1.7, insert rim r 2.0): over the plate (outside its edge); beyond the insert rim somewhere
+-X lug back face: lug hole rim (nominal r 1.9) deformed at r 1.783-2.021 from the deformed steel axis (plate edge r 1.7, insert rim r 2.0): over the plate (outside its edge); beyond the insert rim somewhere
++X lug front face: lug hole rim (nominal r 1.9) deformed at r 1.687-2.126 from the deformed brass axis (plate edge r 1.7, insert rim r 2.0): inside the plate edge somewhere; beyond the insert rim somewhere
++X lug back face: lug hole rim (nominal r 1.9) deformed at r 1.654-2.145 from the deformed steel axis (plate edge r 1.7, insert rim r 2.0): inside the plate edge somewhere; beyond the insert rim somewhere
+bolt shank at the lug mid-plane: mean txz -0.0, tyz -0.0 MPa -> transverse force about Fx -0 N, Fy -0 N
+   shank at dz -5.25: txz +0.0 MPa -> Fx about +0 N
+   shank at dz +5.25: txz +0.0 MPa -> Fx about +0 N
+lug outer face vs pocket wall: gap 0.20, lug ux +0.0448, wall ux +0.0789 -> closure +0.0341 (negative = the lug moved toward the wall); hub sx there +0.06 MPa
+plate face front: whole face mean txz +0.00, tyz -0.00, sz -0.20 MPa; at the hole edge (r 2.1-2.6): txz -0.02, tyz +0.00, sz +0.03 MPa (n 28)
+   relative X slip lug face vs plate face: -0.0707 mm (a frictionless face slides freely; ~0 means sticking)
+plate face back: whole face mean txz +0.00, tyz +0.10, sz -2.55 MPa; at the hole edge (r 2.1-2.6): txz -0.03, tyz +0.02, sz -0.04 MPa (n 31)
+   relative X slip lug face vs plate face: +0.0356 mm (a frictionless face slides freely; ~0 means sticking)

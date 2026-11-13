@@ -70,6 +70,29 @@ lug  face                                                                 Fx    
 +X   section at Y 294.5 (lug cross-section; should cancel the faces below it)     -0.6     -3.1    -80.7        nan     nan    0.00   0.00  0.99
 +X   sum of the four faces                                               0.7      4.6     95.6        nan     nan    0.00   0.00  1.00
 
+==================== G90 + YAW +17 (G90Y), r1g6_g90y
+-X lug outer face on our pocket wall (X offset 34.4 / 34.6): contact patch (the cells carrying 90 % of the compressive normal force; total compressive 2.5 N) Y 288.15-294.75, Z 1.05-10.95 (Z - CZ -4.94 to +4.96), centre Y 292.82 Z 3.06, area 7.4 mm2, normal force 2.3 N, peak 3.76 MPa, mean 0.31 MPa
++X lug outer face on our pocket wall (X offset 34.4 / 34.6): contact patch (the cells carrying 90 % of the compressive normal force; total compressive 2.2 N) Y 288.25-294.75, Z 1.05-10.95 (Z - CZ -4.94 to +4.96), centre Y 292.58 Z 9.83, area 4.3 mm2, normal force 2.0 N, peak 3.06 MPa, mean 0.46 MPa
+lug  face                                                                 Fx       Fy       Fz  CoP X off   CoP Y  p mean  p max cover
+-X   front Z face                                                       -0.7     -0.1    -14.2      19.94  289.25    0.63   5.66  1.00
+-X   back Z face                                                        -0.8     -3.4    321.4      31.66  292.40    5.12  45.88  1.00
+-X   outer face                                                         -2.0      0.3    -12.7        nan     nan    0.00   3.76  1.00
+-X   bolt-hole wall                                                      0.1      0.1     -0.1        nan     nan    0.00   0.00  0.95
+-X   section at Y 294.5 (lug cross-section; should cancel the faces below it)      0.7     -0.6   -272.2        nan     nan    0.00   0.00  0.99
+-X   sum of the four faces                                              -3.5     -3.0    294.4        nan     nan    0.00   0.00  1.00
++X   front Z face                                                        1.2     -1.0   -237.1      31.53  291.78    3.11  35.60  1.00
++X   back Z face                                                         0.4     -0.1      4.9      19.29  291.79    0.37   2.75  1.00
++X   outer face                                                          1.8     -0.5     10.5        nan     nan    0.00   3.06  1.00
++X   bolt-hole wall                                                      0.1      0.2      0.7        nan     nan    0.00   0.00  0.95
++X   section at Y 294.5 (lug cross-section; should cancel the faces below it)     -3.4     -0.1    219.6        nan     nan    0.00   0.00  0.99
++X   sum of the four faces                                               3.5     -1.4   -221.0        nan     nan    0.00   0.00  1.00
+applied (on the arm, at the RS02 centre X 170.49 Y 209.861 Z 5.986): F [0.0, 0.0, -62.0] N, M [17.2, 17.0, 0.0] N.m; carried to (X 170.49, Y 302.0, Z 5.986): M [22.91, 17.0, 0.0] N.m
+whole-hub section at Y 310.0 (everything the arm puts into the hub): F [0.5, -34.4, -67.6] N, M about the same point [23.38, 17.57, -0.22] N.m (cover 1.00)
+both lugs, from the faces:    F [0.1, -4.4, 73.5] N, M [-0.53, 16.56, 0.05] N.m
+both lugs, from the sections: F [2.7, 0.7, 52.7] N, M [-0.41, 15.35, 0.01] N.m (lever at each lug Z-face centre of pressure)
+ring, ridge, groove and spigot (applied minus lugs from the sections): F [-2.7, -0.7, -114.7] N, M [23.32, 1.65, -0.01] N.m
+balance: applied F [0.0, 0.0, -62.0] N, M [22.91, 17.0, 0.0] N.m against the whole-hub section F [0.5, -34.4, -67.6] N, M [23.38, 17.57, -0.22] N.m
+
 SUMMARY STOP_0 (r1g6)
 - -X lug: front Z face Fz -184 N (CoP X offset 30.0, Y 291.6); section Fz 179 N.
 - -X lug sideways: net about 26 N OUTWARD (-X) from our side (the lug section +25.6 N), carried in the model mostly by the lumped boss's
@@ -77,3 +100,4 @@ SUMMARY STOP_0 (r1g6)
   about 9 N INWARD (+X) from our pocket wall, centre about Y 293.2, Z 9.7 (Z - CZ +3.7), nodal peak 9.75 MPa.
 - +X lug: back Z face Fz +112 N; section 81 N. The outer face carries under 2 N.
 - Bolt-hole walls about 0 N: the bolt is free (smallest shank gap 0.102 on the -X lug).
+- G90 + YAW +17 (r1g6): -X lug Fz +272 N, +X lug Fz -220 N (sections); the lugs carry My +15.4 of +17.0 N.m (90 %). Sideways: lug sections 0.7 / 3.4 N in X; the outer faces carry about 2 N each (no wall landing); the bolt is free (gaps 0.301 / 0.185).
