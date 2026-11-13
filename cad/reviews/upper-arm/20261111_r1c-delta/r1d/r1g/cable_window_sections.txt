@@ -1,0 +1,27 @@
+Theta: atan2(Z - CZ, X - HX); 0 deg = +X (the +X lug), positive toward +Z (front half). Seam plane at 0 / 180.
+Material of ours inside r 22.0 of the yaw axis (X 170.49, Z 5.986), by Y plane; bolt / screw / insert holes filled.
+
+Y 298.0: area inside r 22.0: 0.0 mm2
+Y 296.0: area inside r 22.0: 0.0 mm2
+Y 292.0: area inside r 22.0: 39.4 mm2
+   piece    10.0 mm2: theta  194.5 ->  212.5 (ccw), r min  19.3, centroid X 151.0 Z -1.8
+   piece     9.9 mm2: theta  327.5 ->  345.5 (ccw), r min  19.4, centroid X 190.0 Z -1.8
+   piece     9.7 mm2: theta   14.7 ->   32.5 (ccw), r min  19.4, centroid X 190.0 Z 13.8
+   piece     9.8 mm2: theta  147.4 ->  165.3 (ccw), r min  19.3, centroid X 151.0 Z 13.8
+Y 288.0: area inside r 22.0: 41.1 mm2
+   piece    10.2 mm2: theta  327.3 ->  345.5 (ccw), r min  19.3, centroid X 190.0 Z -1.8
+   piece    10.2 mm2: theta   14.5 ->   32.7 (ccw), r min  19.3, centroid X 190.0 Z 13.8
+   piece    10.3 mm2: theta  147.2 ->  165.5 (ccw), r min  19.3, centroid X 151.0 Z 13.8
+   piece    10.3 mm2: theta  194.5 ->  212.8 (ccw), r min  19.3, centroid X 151.0 Z -1.8
+Y 284.0: area inside r 22.0: 41.1 mm2
+   piece    10.3 mm2: theta  194.5 ->  212.8 (ccw), r min  19.3, centroid X 151.0 Z -1.8
+   piece    10.2 mm2: theta  327.3 ->  345.5 (ccw), r min  19.3, centroid X 190.0 Z -1.8
+   piece    10.2 mm2: theta   14.5 ->   32.7 (ccw), r min  19.3, centroid X 190.0 Z 13.8
+   piece    10.3 mm2: theta  147.2 ->  165.5 (ccw), r min  19.3, centroid X 151.0 Z 13.8
+Y 270.0: area inside r 22.0: 373.0 mm2
+   piece   373.0 mm2: theta  314.7 ->  225.3 (ccw), r min  15.5, centroid X 170.5 Z 10.6
+
+Straight drop, bundle Dia 16.0 centred at r 13.0: free theta ranges (centre angle) [(235.0, 305.0)]
+   clearance (distance to our nearest material, minus 8) every 5 deg: 0:-5.5 5:-5.5 10:-5.3 15:-5.1 20:-4.7 25:-4.3 30:-3.8 35:-3.2 40:-2.5 45:-1.8 50:-2.4 55:-3.0 60:-3.5 65:-4.0 70:-4.4 75:-4.6 80:-4.9 85:-5.0 90:-5.0 95:-5.0 100:-4.8 105:-4.6 110:-4.3 115:-3.9 120:-3.5 125:-3.0 130:-2.4 135:-1.7 140:-2.5 145:-3.2 150:-3.8 155:-4.3 160:-4.7 165:-5.1 170:-5.3 175:-5.5 180:-5.5 185:-5.5 190:-5.3 195:-5.1 200:-4.7 205:-4.3 210:-3.8 215:-3.2 220:-2.5 225:-1.7 230:-0.9 235:+0.0 240:+1.0 245:+2.0 250:+3.0 255:+4.1 260:+5.2 265:+6.3 270:+7.5 275:+6.4 280:+5.2 285:+4.1 290:+3.0 295:+2.0 300:+1.0 305:+0.0 310:-0.9 315:-1.7 320:-2.5 325:-3.2 330:-3.8 335:-4.3 340:-4.7 345:-5.1 350:-5.3 355:-5.5
+Straight drop, bundle Dia 16.0 centred at r 15.5: free theta ranges (centre angle) [(241.5, 298.5)]
+   clearance (distance to our nearest material, minus 8) every 5 deg: 0:-8.0 5:-7.9 10:-7.8 15:-7.5 20:-7.1 25:-6.6 30:-5.9 35:-5.2 40:-4.4 45:-3.8 50:-4.6 55:-5.2 60:-5.8 65:-6.3 70:-6.8 75:-7.1 80:-7.3 85:-7.5 90:-7.5 95:-7.5 100:-7.3 105:-7.1 110:-6.7 115:-6.3 120:-5.7 125:-5.2 130:-4.5 135:-3.8 140:-4.4 145:-5.2 150:-6.0 155:-6.6 160:-7.1 165:-7.5 170:-7.8 175:-8.0 180:-8.0 185:-8.0 190:-7.8 195:-7.5 200:-7.1 205:-6.6 210:-5.9 215:-5.2 220:-4.4 225:-3.5 230:-2.5 235:-1.4 240:-0.3 245:+0.9 250:+2.2 255:+3.5 260:+4.8 265:+6.1 270:+7.5 275:+6.1 280:+4.8 285:+3.5 290:+2.2 295:+0.9 300:-0.3 305:-1.4 310:-2.5 315:-3.5 320:-4.4 325:-5.2 330:-5.9 335:-6.6 340:-7.1 345:-7.5 350:-7.8 355:-7.9
