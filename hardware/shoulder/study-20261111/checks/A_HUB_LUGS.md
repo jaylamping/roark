@@ -933,3 +933,78 @@ within 0.05.
 - **Lug-bolt preload is not modelled in any hub case.** The bolt is taken as clamping only. The 0.28-0.3 N·m above is for
   the six M4 hub-top screws, not the lug bolts. The arm caps the lug M3 at 0.3 N·m.
 - **Next: D3c,** bolstering the inner end from the bore side only (below).
+
+### D3c: bolstering the inner end of the R1.2 Z roots (2026-11-13)
+
+**Brief (coordinator, 12:02Z):**
+- Bring the worst-ball reading to at least 1.5 at 304 N and at least 1.2 at 370 N, on both lugs.
+- Change only the bore side; nothing the arm touches may change.
+
+**Variants**, HUBL_YAW3P38 in each case. Worst-ball shear at 0.5 mm, at 304 N, with 370 N in brackets:
+
+| Variant | What | Mass | -X lug | +X lug |
+|---|---|---|---|---|
+| D3b | exported candidate | 79.3 g | 1.11 (0.91) | 1.11 (0.91) |
+| D3c1 | + D2c: r 20 bore behind -X; cable-sector fill r 21 at +X | 80.0 | 1.65 (1.35) | 1.34 (1.10) |
+| D3c2 | D3c1 + D2d backing behind -X | 81.4 | 1.71 (1.41) | 1.33 (1.09) |
+| D3c3 | D3c1 + a web on each lug's top, inside its Z planes | 80.0 | 1.66 (1.36) | 1.33 (1.09) |
+| **D3c4** | **cable window moved 7.9 → 248°; r 20 bore behind both lugs; no cable-sector fill** | **80.2** | **1.63 (1.34)** | **1.64 (1.35)** |
+
+**Why the window moved:**
+- **The window sat on the +X lug's root.** HUB_WIN at 7.9°, ±8 mm, starts at the +X lug's inner corner as a 45° chamfer, from about (r 19.2, Y 296.2) to (22.5, 300). The +X lug's +Z R1.2 root (θ about +14°) runs out on that chamfer.
+- **No fill could fix it in place.** Any fill there narrows the window.
+- **D2c's cable-sector fill already narrowed it.** HUB_WIN is cut before the D2 fill, so the r 21 fill took up to 1.1 mm out of the window's lower corner, at the bundle's inner bend.
+- **D3c3's web did nothing,** because its sides are flush with the lug's Z planes.
+
+**Why 248°:**
+- **Hub:** the window has to sit midway between two of the six M4 boss tubes (38 / 98 / 158 / -142 / -82 / -22°, r 12, outer r 17).
+  - 270° would cut the -82° tube.
+  - 60° would nick the 38° tube.
+- **Arm thread:** 248° is clear in its back half from Y 298 down to Y 240. Its back -X fin ends at 224°, 0.46 mm from the ±8 mm footprint, so the slot must not widen or move toward 224°. 68° is out on the arm side.
+- **Cable:** a straight drop at r 15.5-19 into the arm's back half, which suits the elbow's back loop.
+
+**D3c4 (`LOOK=hubD3c4 HUB_GROOVE_RING=1 HUB_D3=1 HUB_D2=f HUB_WIN_A=248`):**
+- **Geometry:**
+  - **Window:** the same slot as before, turned to 248°.
+    - Centre line from (r 15.5, Y 298) to (r 31, Y 320.4).
+    - 9 mm wide in the radial plane, ±8 mm across it, corners R1.5.
+    - The bundle enters it at r 15.5-19.
+  - **Bore fill:** D2_LOCAL, r 20, Y 296-302.3 with a 45° top, behind both lugs (140-220° and -40..40°).
+  - **No D2_FILL_CS.**
+- **Old window closed:** at 7.9° the wall (r 20-29) and floor (Y 312.8-318.4) are restored and match a plain-wall section (128°).
+- **Locating holes** (-142 / 38°): the same as D3b.
+- **Boss tubes:**
+  - The -22° and 38° tubes are round again.
+  - The -82° and -142° tubes now take the same small side shave the window gave -22° / 38° in D3b: centroid shifted 0.3-0.6 mm, outer r 7-17 unchanged.
+- **Mass:** 80.2 g (+0.9 g on D3b).
+- **Integrity:** PASS.
+
+**Results** (SF at 304 N; 370 N in brackets):
+
+| Case | Reading | -X lug | +X lug |
+|---|---|---|---|
+| HUBL_YAW3P38, 742k nodes | worst-ball shear | 1.63 / 2.81 / 5.02 (1.34) | 1.64 / 2.97 / 5.12 (1.35) |
+| | worst-ball layer | 2.04 (1.68) | 2.03 (1.67) |
+| | centred shear | 1.64 / 2.95 / 5.11 (1.35) | 1.64 / 2.97 / 5.12 (1.35) |
+| | peak shear / layer | 11.5 / 17.5 MPa | 11.3 / 17.9 MPa |
+| **HUBL_YAW3P38F**: 0.2 mm on the R1.2 roots, 0.3 mm around them; 1.01 M nodes | worst-ball shear | **1.60** / 2.81 / 4.42 (**1.31**) | **1.60** / 2.75 / 4.38 (**1.32**) |
+| | worst-ball layer | 2.04 (1.67) | 2.02 (1.66) |
+| HUBL_STOP4 (stop loads) | worst-ball layer / shear | 1.79 / 1.83 (outer root, X off -30.2) | 4.38 / 3.96 |
+
+- **Where the minimum is now:** the R1.2 roots' run-out on the r 20 fill, at X off ±19.3-19.6, Y 295.3-295.7.
+- **Fine mesh against the standard mesh:** -2% (1.60 against 1.63). The result has converged; it is not mesh luck.
+- **Targets met on both lugs:** at least 1.5 at 304 N and at least 1.2 at 370 N, on the reading of record.
+
+**Arm-facing differences against D3b:** [hub_window/surface_diff_D3b_vs_D3c4.txt](hub_window/surface_diff_D3b_vs_D3c4.txt)
+- **Below Y 296 (the arm's side), one change:** the R1.2 Z roots now run about 2.5-3 mm further inboard. They reach X off about 19.4, where they stopped at about 22.4. That is at Y 294.9-296, r 20-23, on both lugs, along the same section.
+  - Nearest arm part (r1g4 front / back / plates, `cad/scripts/shoulder/arm_clear_hub.py`): 0.22 mm, beside the plate top. Nothing is inside the arm.
+- **Everything else is at Y 296 or above, inside the bore:** the window move, the fill, and the boss-tube shave.
+- **Unchanged:** the lug faces, lug holes, plate area, outer faces, R0.8, groove, land and disc face.
+
+**Cable-route sections:**
+![radial](hub_window/hub_window_radial_D3b_vs_D3c4.png)
+![plan](hub_window/hub_window_plan_D3b_vs_D3c4.png)
+
+**Export:** `cad/exports/shoulder/shoulder_hub_left_revD3c4_candidate.STEP/.STL`, recorded.
+- `adopt_hub_revD.sh` now adopts D3c4. It is not run.
+- The released hub and the earlier candidates are unchanged.

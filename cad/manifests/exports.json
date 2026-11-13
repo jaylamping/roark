@@ -93,6 +93,24 @@
       "recorded": "2026-11-13T08:15:18Z"
     },
     {
+      "export": "exports/shoulder/shoulder_hub_left_revD3c4_candidate.STEP",
+      "source": "scripts/shoulder/build_parts.py",
+      "config": "",
+      "settings": "rev D3c4 candidate: rev D3b + cable window moved 7.9 -> 248 deg (back half, between the -82 / -142 boss tubes), r 20 local bore fill behind both lugs (Y 296-302.3, 45 deg top), no cable-sector fill: LOOK=hubD3c4 HUB_GROOVE_RING=1 HUB_D3=1 HUB_D2=f HUB_WIN_A=248 build_parts.py port_cap hub",
+      "sourceSha256": "1cbe3566f9e8df90d24f3bc0d3dfcf1d379a41ac9f5acaddb811dabf43af6e06",
+      "exportSha256": "aabe958c6e4cb5a059528dafeb301f0547b27f9151c3b788cee3e30eb2916716",
+      "recorded": "2026-11-13T14:29:47Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_hub_left_revD3c4_candidate.STL",
+      "source": "scripts/shoulder/build_parts.py",
+      "config": "",
+      "settings": "rev D3c4 candidate: rev D3b + cable window moved 7.9 -> 248 deg (back half, between the -82 / -142 boss tubes), r 20 local bore fill behind both lugs (Y 296-302.3, 45 deg top), no cable-sector fill: LOOK=hubD3c4 HUB_GROOVE_RING=1 HUB_D3=1 HUB_D2=f HUB_WIN_A=248 build_parts.py port_cap hub",
+      "sourceSha256": "1cbe3566f9e8df90d24f3bc0d3dfcf1d379a41ac9f5acaddb811dabf43af6e06",
+      "exportSha256": "5b919048fcd16d2bcbe1205692b1f6b713065afa756cdfb93bbb8e12977a44cc",
+      "recorded": "2026-11-13T14:29:48Z"
+    },
+    {
       "export": "exports/shoulder/shoulder_hub_left_revD_candidate.STEP",
       "source": "scripts/shoulder/build_parts.py",
       "config": "",

@@ -572,6 +572,14 @@ CASES['HUBL_YAW3P38'] = dict(_d3((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 28.0, 28.0),
     remotes=[(_PFACE(-1, 1.0), _PAT(-1, 1.0), (0.0, 0.0, YAW3_F), (0.0, 0.0, 0.0), 1),
              (_PFACE(1, 11.0), _PAT(1, 11.0), (0.0, 0.0, -YAW3_F), (0.0, 0.0, 0.0), 1)])
 
+# mesh check (coordinator 12:02Z): the same with 0.2 mm on the four R1.2 Z roots and 0.3 mm on the faces round their inner
+# ends (X offset 17-26 both lugs), where the worst 0.5 mm ball sits on D3c
+CASES['HUBL_YAW3P38F'] = dict(CASES['HUBL_YAW3P38'],
+    ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [132, 294.5, -1.5, 209, 297.8, 13.5]), 0.2),
+          (cyl(0.5, [132, 293.5, 0.5, 209, 295.1, 11.5]), 0.35),
+          (('touch', [132.0, 292.5, -2.0, 154.0, 298.2, 14.0], 160.0), 0.3), (('touch', [187.0, 292.5, -2.0, 209.0, 298.2, 14.0], 160.0), 0.3),
+          (cyl(0.8, [132, 294.5, -0.5, 209, 296.2, 12.5]), 0.35)])
+
 # REV D, the arm thread's stop case on the full-ring joint (its fine-mesh repeat, roark 3c7114b): the full-ring ridge and groove
 # are axisymmetric and frictionless, so they carry no torque about the hub axis; that part of the stop moment goes into the
 # lugs as a Z-force pair. -X lug: Fz +169 N, Fx +40 N, 55 N axial (taken as a pull along -Y, like HUBL_I); +X lug: Fz -112 N.
