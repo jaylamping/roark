@@ -63,6 +63,9 @@ save(d)                                                       # 5. save
 | `extrude(cut=True)` raises on a plain round pocket where other cuts worked | not found (benchmark run sonnet-d, a Ø6 counterbore) | `revolve(cut=True)` of the same cylinder; a revolve about any axis in the sketch plane also makes pins and bosses that are not along X, Y or Z |
 | `cut_half_space` raises on a thin trim | it removes less than 1 mm³ | `cut_half_space(..., min_dv=0.01)` |
 | `pick(kind='plane', normal=...)` returns far more faces than you meant | every face with that normal matches, tilted ones too | add `at=` or `inside=` and check the count |
+| `edges_where` finds no edge on a disc rim | a full circle has no middle distinct from its ends, and the test point lands on the seam | pick the rim face and take its edges, or build the round into the revolved profile |
+| `fillet()` returns nothing where a loft meets another feature | the seam is many short edges at changing angles (22 on the benchmark link) and no radius builds | open: not solved. Do not leave it sharp in a stressed place without saying so; a sharp junction was the stress peak on the second link |
+| A loft fails when the section centres step sideways | not found (benchmark run sonnet-c2, a 2 mm step in Y between sections) | keep the centres on one line and move the outline within the section instead |
 | Feature added to the wrong body or merged | multi-body state | check `bodies(d)` before and after |
 
 ## Before you call a part done

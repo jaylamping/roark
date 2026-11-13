@@ -110,6 +110,26 @@ the request and said so; the other found why and got through. The cure is now in
 and the same task run again by Sonnet with it is the measure of whether a lesson written down is a lesson learned.
 The pick was not fully blind: the card that asked for it carried a recommendation.
 
+**The same task again, one lesson added** ([sonnet-c2](eval/sonnet-c2/), [sheet](eval/sonnet-c2/pictures/c2_before_after.png)).
+Sonnet with the playbook as it stood after sets C and D:
+
+| | Sonnet, first try | Sonnet, second try | Fable |
+| --- | --- | --- | --- |
+| Section through the shaft | rounded rectangle, the oval loft dropped after six tries | oval, eight sections, lofted at the first attempt | oval |
+| Sharp edge per root of area (boxy 12.3) | 7.9 | 6.5 | 3.4 |
+| Flat share of the surface (boxy 0.91) | not recorded here | 0.21 | not recorded here |
+| Mass, from 261 g | 160 g | 148 g | 137 g |
+| Wall time | 92 min | 82 min, 20 of them waiting | 71 min |
+| Lowest factor (need 2.0) | 3.46, "not shown" | 1.94 at the finest mesh, 1.55 with the other support: **requirement not met**, and reported so | 2.58 |
+| Its own verdict | "a smooth flat strap" | names the back of the flange, "added, not grown", and a step at the slot | names the neck crease |
+
+The lesson that was written down transferred: the loft that stopped the first try worked at once, and the form
+moved from a strap to a round stem. What did not transfer is what was never written: the stem meets the flange at
+a sharp edge because no fillet would build there, the stress peak sits on that edge, and the part ends below the
+requirement. Sonnet said so plainly and did not pass it, which is the set B gate working. The next lesson is
+therefore known and specific: how to blend a loft into a flange (start the loft from a section on the flange, or
+build the junction as its own loft, since a fillet across a loft seam does not build). It is not yet in the playbook.
+
 ## Set D: stress ([TASKS_D.md](eval/TASKS_D.md))
 
 A mount from a need with no drawing; a split bearing housing whose specification has three planted errors, with
