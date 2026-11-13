@@ -2,7 +2,7 @@
 
 Branch `left-arm-organic-r1`.
 
-Pinned commit: 367106fbe75957edcd3c86ecbc6862146f772118 (R1g final results, geometry and print files). Nothing here is
+Pinned commit: 06b3e5fb6607cf130e74c40f7700176e29c61ef2 (R1g4 results, geometry and print files). Nothing here is
 released.
 
 **Scope: the change from R1c to R1d "ring".** R1 was reviewed in `../20261111_print-release/` and R1c in
