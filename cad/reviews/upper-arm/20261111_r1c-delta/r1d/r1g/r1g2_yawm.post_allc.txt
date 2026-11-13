@@ -1,0 +1,9 @@
+GUARD: node 330239 [205.217, 295.447, 0.986] assigned hub sd -0.167 r from bolt 12.213
+GUARD: node 373395 [135.771, 295.45, 10.986] assigned hub sd -0.161 r from bolt 12.225
+GUARD: node 378232 [135.773, 295.451, 0.986] assigned hub sd -0.159 r from bolt 12.224
+GUARD: node 378235 [135.716, 295.474, 0.986] assigned hub sd -0.194 r from bolt 12.286
+GUARD: node 378463 [205.272, 295.469, 0.986] assigned hub sd -0.199 r from bolt 12.272
+GUARD: node 388373 [205.219, 295.447, 10.986] assigned hub sd -0.167 r from bolt 12.215
+GUARD: node 389072 [135.714, 295.473, 10.986] assigned hub sd -0.195 r from bolt 12.287
+GUARD: node 390125 [205.273, 295.468, 10.986] assigned hub sd -0.2 r from bolt 12.274
+GUARD FAILED: 0 arm and 8 hub nodes lie inside another body
