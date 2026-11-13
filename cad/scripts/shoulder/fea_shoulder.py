@@ -117,6 +117,48 @@ def layer(nodes, S, near, n, exclude):
     return s
 
 
+def read_stress_by_body(d, res):
+    """The nodal stresses of every node, read one component at a time over the solid bodies (GetStressForEntities3), in the
+    layout of GetStress: node id, sx sy sz txy txz tyz, p1 p2 p3, von Mises, intensity (MPa). On a 745,656-node hub this took
+    7 x 19 s against 734 s for GetStress and gave the same value at every node for all seven components (READ_TEST,
+    2026-11-13). The principals and the intensity are computed here from the tensor. None if the read fails or the
+    components do not list the same nodes (the caller then falls back to GetStress)."""
+    try:
+        bodies = list(d.GetBodies2(0, True))
+        cols = {}
+        ids = None
+        for ci, col in ((0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (9, 10)):
+            q = res.GetStressForEntities3(True, ci, 1, NUL, bodies, 3, 0, 0, False, I())
+            q = np.array(q[0] if isinstance(q, tuple) and len(q) == 2 else q, float).reshape(-1, 2)
+            i_ = q[:, 0].astype(np.int64)
+            o_ = np.argsort(i_, kind='stable')
+            i_, v_ = i_[o_], q[o_, 1]
+            keep = np.r_[True, i_[1:] != i_[:-1]]          # a node on two bodies' faces is listed once per body: the same value
+            i_, v_ = i_[keep], v_[keep]
+            if ids is None:
+                ids = i_
+            elif len(i_) != len(ids) or (i_ != ids).any():
+                print(' stress read per body: component', ci, 'lists other nodes; falling back', flush=True)
+                return None
+            cols[col] = v_
+        s = np.zeros((len(ids), 12))
+        s[:, 0] = ids
+        for col, v_ in cols.items():
+            s[:, col] = v_
+        t = np.empty((len(ids), 3, 3))
+        t[:, 0, 0], t[:, 1, 1], t[:, 2, 2] = s[:, 1], s[:, 2], s[:, 3]
+        t[:, 0, 1] = t[:, 1, 0] = s[:, 4]
+        t[:, 0, 2] = t[:, 2, 0] = s[:, 5]
+        t[:, 1, 2] = t[:, 2, 1] = s[:, 6]
+        w = np.linalg.eigvalsh(t)                           # ascending
+        s[:, 7], s[:, 8], s[:, 9] = w[:, 2], w[:, 1], w[:, 0]
+        s[:, 11] = w[:, 2] - w[:, 0]
+        return s
+    except Exception as ex:
+        print(' stress read per body failed:', str(ex)[:120], '- falling back', flush=True)
+        return None
+
+
 def read_test(d, res, s, name):
     """READ_TEST=1: time other ways of reading the stresses of a solved study and compare each with the all-node GetStress
     read `s` (node id, sx sy sz txy txz tyz, p1 p2 p3, von Mises, intensity). Prints only; changes nothing of record."""
@@ -208,11 +250,18 @@ def run(name, c):
             zp_, rects_, sels_ = sp_[:3]
             circs_ = sp_[3] if len(sp_) > 3 else []      # (X, Y, r): circles kept out of the loaded area (e.g. round a bolt hole)
             n0_ = len(faces_of(d))
-            with Sk(d, plane(d, 'Z', zp_, f'P_SPLIT_{zp_:g}'.replace('.', 'p')), f'SPLIT_{zp_:g}'.replace('.', 'p')) as s_:
-                for x0_, x1_, y0_, y1_ in rects_:
-                    s_.poly([(x0_, y0_, zp_), (x1_, y0_, zp_), (x1_, y1_, zp_), (x0_, y1_, zp_)])
-                for cx_, cy_, cr_ in circs_:
-                    s_.circle((cx_, cy_, zp_), cr_)
+            if isinstance(zp_, tuple):           # ('X', x): an X plane, rectangles as (Y0, Y1, Z0, Z1); e.g. a patch on a lug's outer face
+                xp_ = zp_[1]
+                tag_ = f'X{xp_:g}'.replace('.', 'p').replace('-', 'm')
+                with Sk(d, plane(d, 'X', xp_, 'P_SPLIT_' + tag_), 'SPLIT_' + tag_) as s_:
+                    for y0_, y1_, z0_, z1_ in rects_:
+                        s_.poly([(xp_, y0_, z0_), (xp_, y1_, z0_), (xp_, y1_, z1_), (xp_, y0_, z1_)])
+            else:
+                with Sk(d, plane(d, 'Z', zp_, f'P_SPLIT_{zp_:g}'.replace('.', 'p')), f'SPLIT_{zp_:g}'.replace('.', 'p')) as s_:
+                    for x0_, x1_, y0_, y1_ in rects_:
+                        s_.poly([(x0_, y0_, zp_), (x1_, y0_, zp_), (x1_, y1_, zp_), (x0_, y1_, zp_)])
+                    for cx_, cy_, cr_ in circs_:
+                        s_.circle((cx_, cy_, zp_), cr_)
             fs_ = [f_ for sel_ in sels_ for f_ in pick(d, sel_)]
             # split line by projection wants the sketch selected with mark 4 and the faces with mark 1 (with mark 0 it does nothing);
             # selected through Extension.SelectByID2 (the sketch by name, each face by its selector point), the documented route
@@ -388,10 +437,15 @@ def run(name, c):
     ids = raw[:, 0].astype(int)
     xyz = dict(zip(ids, raw[:, 1:] * 1000))
     t2 = time.time()
-    err = I()
-    s = res.GetStress(0, 1, NUL, 3, err)
+    s = None if os.environ.get('FEA_READ') == 'full' else read_stress_by_body(d, res)
+    how = 'per body and component'
+    if s is None:
+        how = 'all-node GetStress'
+        err = I()
+        s = res.GetStress(0, 1, NUL, 3, err)
+        s = np.array(s[0] if isinstance(s, tuple) and len(s) == 2 else s, float).reshape(-1, 12)
     t3 = time.time()
-    s = np.array(s[0] if isinstance(s, tuple) and len(s) == 2 else s, float).reshape(-1, 12)
+    print(' stress read:', how, flush=True)
     pos = np.array([xyz[int(i)] for i in s[:, 0]])
     print(' read-back s: GetNodes call %.0f, to arrays %.0f, GetStress call %.0f, to arrays %.0f' % (t1 - tr, t2 - t1, t3 - t2, time.time() - t3), flush=True)
     np.savez(str(F / (name + '.npz')), pos=pos, s=s)      # saved first: the fixture readback below has failed on contact models
@@ -673,6 +727,23 @@ _G90YAW_LUGS = [(_PFACE(-1, 11.0), _COP(-1, 11.0, 31.72, 291.88), (0.0, 0.0, -22
 CASES['HUBL_YAW_COPP'] = dict(CASES['HUBL_YAW3P38F'],
     remotes=[(_PFACE(-1, 1.0), _COP(-1, 1.0, 31.17, 292.44), (0.0, 0.0, 244.7), (0.0, 0.0, 0.0), 1),
              (_PFACE(1, 11.0), _COP(1, 11.0, 31.48, 292.37), (0.0, 0.0, -240.6), (0.0, 0.0, 0.0), 1)])
+# STOP CASE FROM THE ARM'S r1g6 (roark 765585a, STOP_0, 515 N on the elbow stop pad; hub lug holes dia 3.8, plate holes dia 3.4):
+# the bolt is free, and the -X lug's outer face lands on the arm's pocket wall. Three unit cases on one mesh, to be combined:
+#   HUBL_STOP6_Z   the Z-face loads: -X lug front face -184 N at X offset 30.0, Y 291.6 (the summary's figure; its section gives
+#                  179); +X lug by its section, 80.7 N net: back face +92.2 at 31.31 / 292.19, front face -11.5 at 19.79 / 289.78
+#   HUBL_STOP6_P   the outer-face load alone, 26 N toward -X (the lug section's sideways force, 25.6 N), on a 1.64 x 1.64 patch
+#                  (2.7 mm2, about the 9.75 MPa nodal peak) centred Y 293.2, Z 9.7
+#   HUBL_STOP6_S   the same 26 N spread over Y 289.6-294.6, Z 6.4-10.9 (22.5 mm2), for the sensitivity to the patch size
+_OX = RX - 34.4
+_STOP6 = dict(CASES['HUBL_YAW3P38F'],
+              split=CASES['HUBL_YAW3P38F']['split'] + [(('X', _OX), [(289.6, 294.6, 6.4, 10.9), (292.38, 294.02, 8.88, 10.52)], [('plane', (_OX, 291.0, 4.0), None, 'on')])])
+_P_SMALL, _P_RING = ('plane', (_OX, 293.2, 9.7), None, 'on'), ('plane', (_OX, 290.5, 7.0), None, 'on')
+CASES['HUBL_STOP6_Z'] = dict(_STOP6,
+    remotes=[(_PFACE(-1, 11.0), _COP(-1, 11.0, 30.0, 291.6), (0.0, 0.0, -184.0), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 1.0), _COP(1, 1.0, 31.31, 292.19), (0.0, 0.0, 92.2), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _COP(1, 11.0, 19.79, 289.78), (0.0, 0.0, -11.5), (0.0, 0.0, 0.0), 1)])
+CASES['HUBL_STOP6_P'] = dict(_STOP6, remotes=[(_P_SMALL, (_OX, 293.2, 9.7), (-26.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)])
+CASES['HUBL_STOP6_S'] = dict(_STOP6, remotes=[([_P_SMALL, _P_RING], (_OX, 292.1, 8.65), (-26.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)])
 CASES['HUBL_G90YAW_L'] = dict(CASES['HUBL_YAW3P38F'], remotes=_G90YAW_LUGS)
 #   HUBL_G90       G90 alone, for superposing with HUBL_YAW_COP at another yaw load: -X lug 30.8 N net (back +36.9, front -6.1),
 #                  +X lug 25.9 N net (back +38.5, front -12.6), and the spigot share (F -0.3, -0.9, -118.7 N; M 23.44, -0.17, -0.01)
