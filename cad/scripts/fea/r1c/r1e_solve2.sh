@@ -35,21 +35,24 @@ while ours_live; do sleep 30; done
 until ! python "$SWI" --status 2>/dev/null | grep -q "busy"; do sleep 30; done
 ls cad/_wip/arm-sw*/HUNG_PID >/dev/null 2>&1 && { echo "STOPPED: HUNG_PID present" >> $L; exit 1; }
 if [ -f $STAMP ]; then while [ $(( $(date +%s) - $(cat $STAMP) )) -lt 180 ]; do sleep 10; done; fi
-until [ "$(free)" -ge ${MINFREE:-18000} ]; do sleep 60; done
-# the machine-wide solve lock (coordinator, 2026-11-13): C:\joe\.fea_solve.lock, created exclusively just before the launch with
-# "owner pid start", removed after end_session; stale only if its PID is dead. Held as well as our worktree lock.
+# the machine-wide solve lock (coordinator, 2026-11-13; order fixed 14:17Z): C:\joe\.fea_solve.lock, "owner pid start folder",
+# created exclusively ONLY at the moment of launch: wait for free memory, take the lock, re-check free memory, launch. If the re-check
+# fails, release the lock and go back to waiting, so we never hold it while only waiting at the memory gate. Stale only if its PID
+# is dead. Removed after end_session. Held as well as our worktree lock.
 SL=/c/joe/.fea_solve.lock
 wpid() { cat /proc/$$/winpid 2>/dev/null || echo $$; }
 while true; do
-  if ( set -o noclobber; echo "left-arm-organic $(wpid) $(date +%s) $folder" > $SL ) 2>/dev/null; then break; fi
+  until [ "$(free)" -ge ${MINFREE:-18000} ]; do sleep 60; done
+  if ( set -o noclobber; echo "left-arm-organic $(wpid) $(date +%s) $folder" > $SL ) 2>/dev/null; then
+    [ "$(free)" -ge ${MINFREE:-18000} ] && break
+    rm -f $SL; echo "solve lock released, memory dropped after taking it $(date +%H:%M)" >> $L; sleep 60; continue
+  fi
   op=$(awk '{print $2}' $SL 2>/dev/null)
   if [ -n "$op" ] && ! powershell -NoProfile -c "if (Get-Process -Id $op -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"; then
     echo "stale solve lock (PID $op dead): removed $(date +%H:%M)" >> $L; rm -f $SL; continue
   fi
   sleep 30
-  # free memory may have dropped while waiting
 done
-until [ "$(free)" -ge ${MINFREE:-18000} ]; do sleep 60; done
 D=cad/_sim/$folder; rm -rf $D; mkdir -p $D
 cp cad/_sim/ua2/UA_HUBSEAT_r1d_$MTAG.SLDPRT $D/; cp cad/_sim/ua2/${HUBSTL:-HUB_GROOVE_RING.STL} $D/HUB_GROOVE_r1d.STL
 if [ "$FEA_MESH_ONLY" = 1 ]; then ENVX="HS_MODEL=UA_HUBSEAT_r1d_$MTAG.SLDPRT"; else ENVX="HS_MODEL=UA_HUBSEAT_r1d_$MTAG.SLDPRT FEA_SOLVER_MACRO=${DS_SOLVER:-1} FEA_STUDY_NAME=$folder"; fi

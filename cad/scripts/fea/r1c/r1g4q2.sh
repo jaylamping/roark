@@ -18,15 +18,18 @@ lock() {
   until mkdir $LK 2>/dev/null; do sleep 15; done; echo "$1 $$" > $LK/owner
   until ! python "$SWI" --status 2>/dev/null | grep -q "busy"; do sleep 30; done
   if [ -f $STAMP ]; then while [ $(( $(date +%s) - $(cat $STAMP) )) -lt 180 ]; do sleep 10; done; fi
-  while true; do
-    if ( set -o noclobber; echo "left-arm-organic $(wpid) $(date +%s) $1" > $SL ) 2>/dev/null; then break; fi
+  while true; do      # the shared solve lock only at the moment of launch (coordinator 14:17Z): memory, lock, re-check, else release and wait
+    until [ "$(free)" -ge 18000 ]; do sleep 60; done
+    if ( set -o noclobber; echo "left-arm-organic $(wpid) $(date +%s) $1" > $SL ) 2>/dev/null; then
+      [ "$(free)" -ge 18000 ] && break
+      rm -f $SL; sleep 60; continue
+    fi
     op=$(awk '{print $2}' $SL 2>/dev/null)
     if [ -n "$op" ] && ! powershell -NoProfile -c "if (Get-Process -Id $op -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"; then
       echo "stale solve lock (PID $op dead): removed $(date +%H:%M)" >> $L; rm -f $SL; continue
     fi
     sleep 30
-  done
-  until [ "$(free)" -ge 18000 ]; do sleep 60; done; }
+  done; }
 unlock() { (cd cad/scripts/arm && ARM_SW_DIR="$1" python -c "from swlib import finish; finish()") >> $L 2>&1; date +%s > $STAMP
   grep -q "^left-arm-organic $(wpid) " $SL 2>/dev/null && rm -f $SL
   grep -q " $$\$" $LK/owner 2>/dev/null && rm -rf $LK; }
