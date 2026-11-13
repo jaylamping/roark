@@ -57,6 +57,17 @@ BELL = dict(x=(106.3, 113.0, 120.0, 127.0, 134.0, 141.0), top=60.0, bot=41.0, fr
 # fork and RS02 swing, Z +34 / -27 inside the drum's span), hollow (2.5 wall), replacing the neck tube and flare
 CAP_SCREW_ANGLES = [0.0, 180.0, 270.0]   # SMOOTH: 3 x M3 thread-forming, axial, inside the outline, into 2.6 mm pilots in the drum wall
 CAP_SCREW_R = 50.0
+# CAP FIX candidate (2026-11-13, LOOK=capfix or CAPFIX=1; default off): the M3 pilots at r 50 have only 0.7 mm of wall toward
+# the drum's bore (r 48), and moving an M3 out breaks the cap's skin at the head pocket. So: 3 x M2.5 thread-forming at r 50.6
+# (pilot dia 2.1: 1.55 mm of wall to the bore, 4.3 to the skin; head pocket dia 5.2: 1.8 mm of cap outside it), and a
+# locating collar round each pilot on the drum's rear face (r 48.2-53.0, 8 mm wide, 2.5 high) in a pocket in the cap's
+# boss, so the roll stop's reaction goes through the collars and the screws only clamp. Collars on the drum, not lugs on
+# the cap: the cap prints front face down and must stay flat there.
+CAPFIX = os.environ.get('LOOK', '') == 'capfix' or bool(os.environ.get('CAPFIX'))
+CAP_FIX = dict(r=50.6, pilot_r=1.05, hole_r=1.45, pocket_r=2.6, collar_r=(48.2, 53.0), collar_half=4.6, collar_h=2.5, socket_r=(48.0, 53.2), socket_half=4.9, socket_d=2.7)
+if CAPFIX:
+    CAP_SCREW_R = CAP_FIX['r']
+CAP_PILOT_R, CAP_HOLE_R, CAP_POCKET_R = ((CAP_FIX['pilot_r'], CAP_FIX['hole_r'], CAP_FIX['pocket_r']) if CAPFIX else (1.3, 1.7, 3.25))
 # STOP REV 2 (A2, checks/B_ROLL_STOPS.md, approved 2026-11-12): one tooth at fork angle 270, where the fork rear's layers
 # (normal to Y) are normal to the tooth's radial direction, so its bending and shear lie in the layer plane; r 30-40, +-14
 # deg; carries a 60 N.m stall (RS03 peak) with SF 1.65. Was r 27-33, +-10 deg at 193 deg (SF 0.44 at a stall).

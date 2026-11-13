@@ -205,7 +205,16 @@ def build_drum():
     extrude(d, zsk(d, LIP_Z1 - 4.2, 'LIP_CB', lambda s: [s.circle(rpt(LIP_PCD_R, a, LIP_Z1 - 4.2), 4.8) for a in LUG_ANGLES]), 'LIP_CB', 10, Z, cut=True)
     pitch_rev(d, 'PAD_BORE', [(0, 95.0), (10.75, 95.0), (10.75, PAD_X[1]), (21.0, PAD_X[1]), (21.0, 131.0), (0, 131.0)], cut=True)
     extrude(d, xsk(d, 96.0, 'PAD_HOLES', lambda s: [s.circle(pitch_pt(15.2, a, 96.0), 2.25) for a in PAD_HOLES]), 'PAD_HOLES', 14, X, cut=True)
-    extrude(d, zsk(d, DRUM_Z0, 'CAP_PILOTS', lambda s: [s.circle(rpt(CAP_SCREW_R, a, DRUM_Z0), 1.3) for a in CAP_SCREW_ANGLES]), 'CAP_PILOTS', 8.5, Z, cut=True)
+    if CAPFIX:
+        # locating collars round the cap screw pilots, standing 2.5 mm proud of the rear face into sockets in the cap
+        cf = CAP_FIX
+        extrude(d, zsk(d, DRUM_Z0, 'CAP_COLLARS', lambda s: [sector(s, lambda r, a: rpt(r, a, DRUM_Z0), cf['collar_r'][0], cf['collar_r'][1],
+                                                                    a_ - cf['collar_half'], a_ + cf['collar_half'], 0.8) for a_ in CAP_SCREW_ANGLES]),
+                'CAP_COLLARS', cf['collar_h'], NZ, lo=-1.0)
+        extrude(d, zsk(d, DRUM_Z0 - cf['collar_h'] - 0.5, 'CAP_PILOTS', lambda s: [s.circle(rpt(CAP_SCREW_R, a, DRUM_Z0 - cf['collar_h'] - 0.5), CAP_PILOT_R) for a in CAP_SCREW_ANGLES]),
+                'CAP_PILOTS', 8.5 + cf['collar_h'] + 0.5, Z, cut=True)
+    else:
+        extrude(d, zsk(d, DRUM_Z0, 'CAP_PILOTS', lambda s: [s.circle(rpt(CAP_SCREW_R, a, DRUM_Z0), CAP_PILOT_R) for a in CAP_SCREW_ANGLES]), 'CAP_PILOTS', 8.5, Z, cut=True)
     extrude(d, xsk(d, sp['x1'], 'RING_INSERTS', lambda s: [s.circle(pitch_pt(sp['screw_r'], sp['a0'] + 72 * k, sp['x1']), 2.0) for k in range(5)]),
             'RING_INSERTS', sp['insert_depth'], NX, cut=True)
     # trunk channels
@@ -512,6 +521,12 @@ def build_cap():
     # screw bosses inside the cavity
     extrude(d, zsk(d, DRUM_Z0, 'SCREW_BOSSES', lambda s: [s.circle(rpt(CAP_SCREW_R, a, DRUM_Z0), 5.0) for a in CAP_SCREW_ANGLES]), 'SCREW_BOSSES',
             DRUM_Z0 - CAP_Z1, NZ, lo=-1.0)
+    if CAPFIX:
+        # sockets for the drum's locating collars, in the front face of each screw boss
+        cf = CAP_FIX
+        extrude(d, zsk(d, DRUM_Z0, 'COLLAR_SOCKETS', lambda s: [sector(s, lambda r, a: rpt(r, a, DRUM_Z0), cf['socket_r'][0], cf['socket_r'][1],
+                                                                       a_ - cf['socket_half'], a_ + cf['socket_half'], 0.6) for a_ in CAP_SCREW_ANGLES]),
+                'COLLAR_SOCKETS', cf['socket_d'], NZ, cut=True)
     # SMOOTH: stop ring on the inside of the rear face; the fork rear's tooth runs in an arc slot in it
     ss = STOP_SLOT
     a_lo = ss['tooth_angle'] - ss['tooth_half'] + ROLL_STOP_IN - ss['ring_past']
@@ -520,9 +535,9 @@ def build_cap():
             'STOP_RING', (DRUM_Z0 - 1.0) - (CAP_Z1 + 0.5), NZ, lo=-1.0)
     # ---- cuts
     roll_rev(d, 'BORE', [(0, DRUM_Z0 + 1), (STUB_BORE, DRUM_Z0 + 1), (STUB_BORE, BRG_Z[1] - 1), (0, BRG_Z[1] - 1)], cut=True)
-    extrude(d, zsk(d, CAP_Z1 - 1, 'SCREW_HOLES', lambda s: [s.circle(rpt(CAP_SCREW_R, a, CAP_Z1 - 1), 1.7) for a in CAP_SCREW_ANGLES]),
+    extrude(d, zsk(d, CAP_Z1 - 1, 'SCREW_HOLES', lambda s: [s.circle(rpt(CAP_SCREW_R, a, CAP_Z1 - 1), CAP_HOLE_R) for a in CAP_SCREW_ANGLES]),
             'SCREW_HOLES', 14, Z, cut=True)
-    extrude(d, zsk(d, CAP_Z1 - 1, 'SCREW_POCKETS', lambda s: [s.circle(rpt(CAP_SCREW_R, a, CAP_Z1 - 1), 3.25) for a in CAP_SCREW_ANGLES]),
+    extrude(d, zsk(d, CAP_Z1 - 1, 'SCREW_POCKETS', lambda s: [s.circle(rpt(CAP_SCREW_R, a, CAP_Z1 - 1), CAP_POCKET_R) for a in CAP_SCREW_ANGLES]),
             'SCREW_POCKETS', 3.5, Z, cut=True)
     zt = CAPZ + PH / 2
     extrude(d, zsk(d, zt, 'SPOKE_P', lambda s: s.rpoly(seg_rect((TRUNK_X, TRUNK_Y, zt), (RX, RY, zt), cu, PW, 2, 4, P_OFF), [1] * 4)), 'SPOKE_P', PH, NZ, cut=True)
