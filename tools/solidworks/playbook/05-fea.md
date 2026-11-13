@@ -32,7 +32,9 @@ print(r.summary())
 - **Fixtures:** `'fixed'` holds a face in all directions. `'hinge'` on a cylindrical face lets it turn about its axis.
   Restrain what the real part restrains, on the faces that really bear. A model with too little restraint fails with error
   24; one with too much hides the stress you were looking for.
-- **Loads:** `'normal'` presses on faces along their normals, the total in newtons. `'remote'` applies a force and a moment
+- **Loads:** `'normal'` presses on faces along their normals with the total in newtons, shared between the faces by
+  area as one even pressure (SolidWorks' own normal force puts the value on each face: [02-com.md](02-com.md)). Positive
+  pushes into the material. `'remote'` applies a force and a moment
   at a point and carries them rigidly to the faces: use it for a load that acts away from the part (a hand load at the end
   of the forearm, a motor torque).
 - **Material:** `PETG`, `STEEL`, `BRASS` in swfea.py; `materials={body name: dict}` when bodies differ. A linear study
@@ -45,9 +47,9 @@ print(r.summary())
 
 | # | Check | Pass |
 | --- | --- | --- |
-| 1 | **Reaction equals load.** `r.reaction` resultant against `r.applied` | within 1 %. If not, the load is not the one you meant |
+| 1 | **Reaction equals load.** `r.reaction` is `[Fx, Fy, Fz, resultant]` in N, what the fixtures push back with: equal and opposite to the load. Compare each component with the load you meant, and the resultant with `r.applied` | within 1 %. If not, the load is not the one you meant |
 | 2 | **Displacement is sane.** `r.max_disp()` against the hand estimate | same order of magnitude. Metres of displacement means a loose body |
-| 3 | **Stress in the plain section matches the hand estimate.** `r.average(point, 2.0)` at a point away from corners | within about 15 % |
+| 3 | **Stress in the plain section matches the hand estimate.** `r.average(point, 2.0)` at a point away from corners, and at least one section depth from a fixed face: a fixed face stops the part widening, which raised a Ø20 rod's stress 5.5 % over F / A 11 mm from the face (2026-11-12) | within about 15 % |
 | 4 | **The peak is not at a fixture or load face.** `r.peak()` already excludes nodes within two elements of them; say so, and look at `r.vm.max()` to see what was excluded | you can name the feature the peak sits on |
 | 5 | **The peak has converged.** `converge(run, (3.0, 2.0, 1.5))` | the last step moves it under 5 % |
 
@@ -63,6 +65,7 @@ against 22.5 MPa. Printed parts fail there first.
 
 | Nodes | Solver | Peak memory | Time on holly-pc |
 | --- | --- | --- | --- |
+| under 20,000 | automatic | under 2 GB | 2 to 7 s for mesh, solve and readback together |
 | under 100,000 | automatic | under 2 GB | seconds to a minute |
 | 300,000 to 450,000 | automatic, or direct sparse for contact | about 11 GB with direct sparse | 7 to 11 minutes with contact |
 | about 800,000 with contact, direct sparse | | **ran out of memory** on the 32 GB machine, reported as error 24 | |

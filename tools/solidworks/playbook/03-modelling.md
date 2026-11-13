@@ -40,11 +40,11 @@ save(d)                                                       # 5. save
 | Several holes in one feature | several `s.circle` in one sketch |
 | Turned shape (bore, seat, groove, ring) | profile with `s.poly` in a plane through the axis, `s.centerline(a, b)` on the axis, `revolve(d, s.feat, name, cut=...)`. A partial ring: `angle=`, `mid=True` |
 | Curved band between two radii and two angles | polygon of points along both arcs (60 per arc), `extrude` mid-plane. Arcs as polylines are fine for cuts and bosses; not for faces that must seal or bear |
-| Organic skin | closed spline sections (`s.spline`) on parallel planes, resampled to **even arc length with the same point count**, then `loft`; `shell` afterwards |
-| Rounded edges | `edges_where(d, test)` straight before `fillet(d, edges, (2.0, 1.5, 1.0), name)`: it tries the radii in order |
+| Organic skin | closed spline sections (`s.spline`) on parallel planes, resampled to **even arc length with the same point count**, then `loft`; `shell(d, [a point on each face to open], wall, name)` afterwards. Each point must lie inside one face, not on an edge. A 12-point spline circle lofts to within 0.03 % of the true cylinder |
+| Rounded edges | `edges_where(d, test)` straight before `fillet(d, edges, (2.0, 1.5, 1.0), name)`: it tries the radii in order. `chamfer(d, edges, width, name)` the same way |
 | Split a part | copy the master file, `cut_half_space(d, 'Z', z, +1, name)` in one copy and `-1` in the other |
-| Two parts in one model (for contact FEA) | `insert_body(d, other_part_path)`; both must have been modelled in the same frame, and must not overlap |
-| Import a vendor STEP | `import_step(sw, step, target)`, into `cad/vendor/<maker>/` |
+| Two parts in one model (for contact FEA) | `insert_body(d, other_part_path)`; both must have been modelled in the same frame. Find the new body by its box or volume in `bodies(d)`. An overlap is **not** reported: the bodies stay separate and overlapping, so compare their boxes yourself |
+| Import a vendor STEP | `import_step(sw, step, target)`, into `cad/vendor/<maker>/`. Volume and box come back exact; every full cylinder comes back as two half faces |
 | Change an existing part | prefer changing the script and rebuilding. To edit a native file with no script: open it, add features on top, never edit a sketch the script does not own |
 
 ## What goes wrong, and the cure
@@ -63,7 +63,9 @@ save(d)                                                       # 5. save
 
 ## Before you call a part done
 
-1. `feature_errors(d)` is empty and `bodies(d)` is what you expect (one body for a printed part).
+1. `feature_errors(d)` is empty and `bodies(d)` is what you expect (one body for a printed part). A feature that fails
+   when it is first made returns nothing and the helpers raise; `feature_errors` is for the ones that break later, when
+   something upstream changes (a cut whose sketch no longer meets the body reports code 71).
 2. Volume and bounding box match the hand values; mass = volume × 1.19 g/cm³ for PETG is in the report.
 3. The features that mate with something were checked against that something: a bore against the vendor model's diameter,
    a bolt pattern against the drawing, clearance on moving faces. Open the mating part or its export and measure.

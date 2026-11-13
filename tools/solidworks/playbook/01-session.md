@@ -24,7 +24,7 @@ The rules themselves live in [RULES.md](../RULES.md), [cad-workstation.md](../..
    | `--status` shows | Meaning | Do |
    | --- | --- | --- |
    | nothing, or instances that answer | clear | go on |
-   | `busy` | another session is solving; it does not answer while it solves | go on: `launch()` waits for it. Never treat it as hung |
+   | `busy` | another session is solving; it does not answer while it solves | go on: `launch()` waits for it, up to 300 s, then raises `did not answer for 300 s`. That is not an error in your script: run it again, or loop on that message. Never treat the other instance as hung (2026-11-12: three launches in one evening waited out other sessions' solves this way, the longest about 15 minutes) |
    | `HALF-CLOSED` | a dead instance that stalls every launch on the machine | stop. Report the PID and the `taskkill /PID <pid> /T /F` line for Joey. Do not launch |
 
 4. **Memory.** `job()` refuses to start under 8 GB free. Do not lower it. Joey's rule for holly-pc (2026-11-11): each job
