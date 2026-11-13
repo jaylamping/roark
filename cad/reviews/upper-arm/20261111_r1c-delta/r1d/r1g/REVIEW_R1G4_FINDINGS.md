@@ -26,6 +26,7 @@ right, that is said.
 | YAW +17 | 0.022 (0.155) | 0.116 (0.062) |
 | G90 | 0.144 (0.046) | 0.051 (0.136) |
 | G90 + YAW -17 | 0.202, **in contact** (-0.002) | 0.075 (0.115) |
+| G90 + YAW +17 (run after the review) | 0.095 (0.099) | 0.197, **in contact** (-0.007) |
 
 - **The reviewer's figures.** The reviewer's 0.182 closure is right. The margin is not 0.02: in three cases the gap is fully closed
   and the shank bears on the hole. In STOP_0 that is 32-43 N sideways on the -X lug (`r1g4_stop0.fx_path.txt` and the lug loads).

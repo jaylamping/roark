@@ -1,1 +1,1 @@
-6 rows checked, each against its own case reports (r1g4_<case>.*.txt): 0 failures
+7 rows checked, each against its own case reports (r1g4_<case>.*.txt): 0 failures

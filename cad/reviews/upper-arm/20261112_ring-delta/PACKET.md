@@ -85,6 +85,7 @@ peak, routine) therefore passes through the two lugs as a Z couple. On rev D:
 | YAW +17 | -X back post shear 3.05 / 4.46 / 5.10 | vm 6.09 / 7.13 / 9.47, shear 3.23 / 4.10 / 6.37 | lug root at the outer face shear 1.23 / 1.60 / 2.42, layer 1.41 / 2.41 / 4.16 | plate corner shear 1.14 / 1.71 / 3.08, vm 1.25 / 1.76 / 3.07; **end-face corner shear 0.96 / 1.90 / 4.47, vm 1.44 / 2.67 / 5.35** | 7.20 / 12.51 | hub root and both model edges at 0.5 mm |
 | G90 | -X fin top layer 3.64 / 5.67 / 9.72 | shear 18.13 / 25.24 / 39.01 | lug roots shear 6.09 / 7.07 / 9.31; groove bottom layer 2.41 / 2.93 / 3.89 | layer 3.75 / 5.23 / 10.07 | 33.24 / 62.21 | none |
 | G90 + YAW -17 | +X back post shear 2.28 / 3.70 / 4.69; +X fin top layer 2.66 / 3.66 / 7.92 | shear 4.80 / 5.43 / 7.32 | lug root at the outer face shear 1.02 / 1.33 / 2.13, layer 1.37 / 2.27 / 4.06; groove bottom layer 1.71 / 2.27 / 3.16 | plate corner shear 1.02 / 1.29 / 2.63, vm 1.05 / 1.54 / 2.71 | 9.03 / 14.62 | hub root at 0.5 and 1 mm; model edge at 0.5 and 1 mm |
+| G90 + YAW +17 | -X back post shear 2.63 / 4.09 / 4.36; -X fin top layer 2.55 / 4.23 / 7.86 | vm 8.24 / 9.28 / 12.19, shear 4.34 / 5.33 / 7.57 | lug root at the outer face shear 1.08 / 1.38 / 2.14, layer 1.31 / 2.33 / 4.04; groove bottom layer 1.82 / 2.42 / 3.59 | plate corner shear 0.93 / 1.28 / 2.50, vm 1.03 / 1.50 / 2.69; **end-face corner shear 0.76 / 1.56 / 3.81, vm 1.14 / 2.13 / 4.31** | 10.96 / 13.17 | hub root at 0.5 and 1 mm; both model edges at 0.5 mm, the plate corner also at 1 mm |
 
 **The plate-hole edge (the r1g2 known item) is closed.**
 - With Dia 4.4 (r1g2), the lumped boss step sat on PETG 0.2 outside the brass insert. STOP_0 read our post shear 0.33 / 0.76,
@@ -98,6 +99,7 @@ peak, routine) therefore passes through the two lugs as a Z couple. On rev D:
   - STOP_0: -X lug 0.186, in contact (-0.006; the shank bears 32-43 N sideways).
   - STOP_124: +X lug 0.200, in contact (-0.010).
   - G90 + YAW -17: -X lug 0.202, in contact (-0.002).
+  - G90 + YAW +17: +X lug 0.197, in contact (-0.007).
   - YAW -17: 0.133 (0.052 left). YAW +17: 0.116 (0.062). G90: 0.144 (0.046).
   - The real joint is clamped (0.3 N·m, about 0.33-0.5 kN), whose friction (about 200-300 N) holds far more than the 43 N
     here; it is not counted on.
@@ -106,21 +108,23 @@ peak, routine) therefore passes through the two lugs as a Z couple. On rev D:
 
 **Remaining below target. These are known items, not passes.**
 1. **The hub lug root at the extended lug's outer face** (X offset 34.4, Y 294.9).
-   - Readings: YAW +17 shear 1.23 / 1.60 / 2.42; YAW -17 shear 1.18 / 1.56 / 2.46; G90 + YAW -17 shear 1.02 / 1.33 / 2.13.
+   - Readings: YAW +17 shear 1.23 / 1.60 / 2.42; YAW -17 shear 1.18 / 1.56 / 2.46; G90 + YAW -17 shear 1.02 / 1.33 / 2.13;
+     G90 + YAW +17 shear 1.08 / 1.38 / 2.14.
    - This is the hub; the shoulder thread's FE governs it. Our FEA hub is the D3b shape on a coarser mesh.
    - The lug loads for their FE are in `r1g4_lug_loads.txt`.
      - Per lug, from the section: YAW -17 gives -245 / +241 N; G90 + YAW -17 gives -213 / +267 N.
      - The lugs carry 88 % of the yaw moment and almost none of the G90 moment, which goes through the ring, ridge, groove and
        spigot.
 2. **The lumped-plate outline corner on our post** (X offset 34.2, Y 294.7, the +X back post): G90 + YAW -17 shear 1.02 / 1.29 /
-   2.63, YAW -17 shear 1.19 / 1.72 / 3.31, YAW +17 shear 1.14 / 1.71 / 3.08 (the -X back post).
+   2.63, YAW -17 shear 1.19 / 1.72 / 3.31, YAW +17 shear 1.14 / 1.71 / 3.08 and G90 + YAW +17 shear 0.93 / 1.28 / 2.50 (the
+   -X back post).
    - It is the corner of the 0.5 boss that stands in for the separate plate. A real plate on a flat post face has no step there.
    - Like for like (G90 + YAW -17, tensor averages over the same arm nodes, `r1g4_plate_corner_probe.txt`): at the corner itself,
      shear SF 1.44 / 2.12 / 5.01, compressive bearing (p3 -32 / -24 / -9 MPa, p1 -8 / -7 / -2 MPa). Moved 0.5 mm into the post, off
      the step: shear 1.77 / 2.18 / 4.59, vm 3.10 / 3.16 / 6.51. At 1.0 mm: shear 2.04 / 2.46 / 4.22. (The 1.02 in the table is
      the spot report's average of nodal magnitudes, not the averaged tensor.)
    - Bench: the imprint inspection (BENCH_TESTS 2b step 10) covers the plate's outer corner as well as its hole edge.
-3. **The lumped-shim end-face corner** (YAW +17 only; theta 296, X 186.7, Y 302.0, Z -26.6, r 36.4): shear 0.96 / 1.90 / 4.47,
+3. **The lumped-shim end-face corner** (YAW +17, and G90 + YAW +17 at 0.76 / 1.56 / 3.81; theta 296, X 186.7, Y 302.0, Z -26.6, r 36.4): shear 0.96 / 1.90 / 4.47,
    vm 1.44 / 2.67 / 5.35 (9 / 26 / 108 nodes). The inner edge of our end face, where the shim (merged into the end face in the
    model) bears on the hub disc; listed in the R1g and r1g2 packets as a model edge (0.98 / 1.89, 0.96 / 2.06) and omitted from the
    first r1g4 table by mistake. Tensor-averaged at the corner: shear 1.05, p1 -7.4, p3 -34.6 MPa (compressive bearing). 0.5 mm
@@ -169,7 +173,8 @@ shoulder thread clamps the bundle at the window, so nothing slides into the arm 
 - Lug plates: `upper_arm_organic_lug_plates_{A,B}_r1g`, re-sliced at the final outline (Dia 3.8, top Y 294.6, short lip), with
   two full sets on each plate. The 0.7 strip above the hole prints as the hole's perimeter overlapping the outer perimeter
   (`r1g_lug_plate_strip_slice.png`).
-- Coupon yaw lever: `upper_arm_organic_coupon_yaw_lever` (106 min / 72 g).
+- Coupon yaw lever (106 min / 72 g): held back from git for now (the November LFS budget is at 998 of 1000 MB). It is in
+  `cad/_wip/yaw_lever/`, and `cad/scripts/arm/yaw_lever_print.py` makes it.
 
 Sheets: `r1g_back_half_sheet.png`, `r1g_front_half_sheet.png`, `r1g_shim_ring_set_sheet.png`, `r1g_lug_plate_set_sheet.png`,
 `r1g_seam_section.png`.

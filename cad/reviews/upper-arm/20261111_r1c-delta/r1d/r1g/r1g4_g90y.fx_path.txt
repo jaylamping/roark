@@ -1,0 +1,11 @@
+-X lug mean displacement (mm): ux +0.0470 uy +0.0147 uz +0.0504
+-X lug bolt shank vs lug hole: smallest gap now 0.099 mm (initial 0.194; closure +0.095) toward 300 deg (0 = +X, 90 = +Y) at Z - CZ +4 +- 1 (10 hole / 7 shank surface nodes)
++X lug bolt shank vs lug hole: smallest gap now -0.007 mm (initial 0.190; closure +0.197) toward 330 deg (0 = +X, 90 = +Y) at Z - CZ +2 +- 1 (9 hole / 7 shank surface nodes)
+bolt shank at the lug mid-plane: mean txz -0.0, tyz -0.0 MPa -> transverse force about Fx -0 N, Fy -0 N
+   shank at dz -5.25: txz +0.0 MPa -> Fx about +0 N
+   shank at dz +5.25: txz +0.0 MPa -> Fx about +0 N
+lug outer face vs pocket wall: gap 0.20, lug ux +0.0471, wall ux +0.0796 -> closure +0.0325 (negative = the lug moved toward the wall); hub sx there +0.08 MPa
+plate face front: whole face mean txz -0.01, tyz -0.01, sz -0.22 MPa; at the hole edge (r 2.1-2.6): txz -0.05, tyz +0.01, sz -0.02 MPa (n 32)
+   relative X slip lug face vs plate face: -0.0701 mm (a frictionless face slides freely; ~0 means sticking)
+plate face back: whole face mean txz +0.04, tyz +0.08, sz -2.89 MPa; at the hole edge (r 2.1-2.6): txz +0.00, tyz -0.01, sz -0.10 MPa (n 36)
+   relative X slip lug face vs plate face: +0.0366 mm (a frictionless face slides freely; ~0 means sticking)
