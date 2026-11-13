@@ -16,6 +16,8 @@ from shapely.geometry import Point, box
 from shapely import contains_xy
 
 HX, CZ, YC = 170.49, 5.985875, 294.5
+import os
+HOLR = float(os.environ.get('LUG_HOLE_R', '1.7'))      # hub lug hole radius: 1.7 (Dia 3.4), r1g5 / r1g6 1.9 (Dia 3.8)
 BOLTS = {-1: 147.5, 1: 193.5}
 d = np.load(sys.argv[1])
 p, s = d['pos'], d['s']
@@ -61,7 +63,7 @@ for side in (-1, 1):
     xo = side * (p[:, 0] - HX)
     bx = BOLTS[side]
     lugzone = hub & (xo > 18.5) & (xo < 34.6) & (p[:, 1] > 287.9) & (p[:, 1] < 295.0)
-    flat = box(18.76, 288.0, 34.4, 294.8).difference(Point(abs(bx - HX), 292.0).buffer(1.7, 64))
+    flat = box(18.76, 288.0, 34.4, 294.8).difference(Point(abs(bx - HX), 292.0).buffer(HOLR, 64))
     tot = np.zeros(3)
     for zf, nm, nz in ((11.0, 'front Z face', 1.0), (1.0, 'back Z face', -1.0)):
         m = lugzone & (np.abs(p[:, 2] - zf) < 0.03)
@@ -82,15 +84,15 @@ for side in (-1, 1):
         tot += r[0]
     # bolt-hole wall r 1.7, outward normal of the hub = toward the hole axis
     rb = np.hypot(p[:, 0] - bx, p[:, 1] - 292.0)
-    m = hub & (np.abs(rb - 1.7) < 0.03) & (np.abs(p[:, 2] - CZ) < 4.99)
+    m = hub & (np.abs(rb - HOLR) < 0.03) & (np.abs(p[:, 2] - CZ) < 4.99)
 
     def hc(q):
-        return np.c_[np.degrees(np.arctan2(p[q, 1] - 292.0, p[q, 0] - bx)) * np.pi / 180 * 1.7, p[q, 2]]
+        return np.c_[np.degrees(np.arctan2(p[q, 1] - 292.0, p[q, 0] - bx)) * np.pi / 180 * HOLR, p[q, 2]]
 
     def hn(q):
         v = np.c_[bx - p[q, 0], 292.0 - p[q, 1], np.zeros(len(q))]
         return v / np.linalg.norm(v, axis=1)[:, None]
-    r = integrate(m, hc, hn, box(-np.pi * 1.7, 1.0, np.pi * 1.7, 11.0))
+    r = integrate(m, hc, hn, box(-np.pi * HOLR, 1.0, np.pi * HOLR, 11.0))
     rows.append((side, 'bolt-hole wall', None if r is None else dict(F=r[0], cop=(np.nan, np.nan), cover=r[4], pmax=0.0, pmean=0.0)))
     if r is not None:
         tot += r[0]
