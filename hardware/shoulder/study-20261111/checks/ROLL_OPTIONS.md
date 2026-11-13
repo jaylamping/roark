@@ -32,6 +32,7 @@ Follows [CABLE_TRAVEL.md](CABLE_TRAVEL.md), roll section. **Only needed if the r
 | **(d)** | Keep the stop where it is but narrower (tooth r 37.5-43); spiral in r 26.5-36 | Cap, fork rear | Unchanged | **About 72°**, for example -11° to +61° | The narrower tooth: about 35% less section |
 | **(c)** | Move the roll stop to the front; the whole cap ring goes to the spiral | Cap, fork rear, drum (lip), fork front (dome) | Unchanged | Full | See below |
 | (a) | Stack the spiral behind the stop | Cap, fork rear | **Grows 7-8 mm at the back** | Full | Against the rule |
+| **(f)** | Keep today's on-axis route; hold the wires only at the far ends of the two channels, so they twist over about 143 mm | None (two lips rounded) | Unchanged | Full, on paper | The two right-angle bends in the bore, about R 6-9 |
 | (e) | Leave the cap alone: a spiral in the fork rear's cheek, behind the 6808, fed through the stub bore as today | Fork rear, cap (the stub runs on 6 mm as a post) | Unchanged | Full, **only with 18 AWG** | See below |
 
 ## (c) A stop at the front: an honest look
@@ -68,6 +69,34 @@ Follows [CABLE_TRAVEL.md](CABLE_TRAVEL.md), roll section. **Only needed if the r
 the evidence so far: (h) keeps the stop on the fork rear, where the layers suit it, and touches fewer parts. (c) is the
 fallback if the tooth of (h) fails in section or the lopsided cap fixing is not accepted.
 
+## (f) Keep the on-axis route and lengthen the free twist: paper check
+
+**The idea:** change no structure. Let the wires twist over more than the 18 mm between the two channels.
+
+- **What sets the twist length:** where each wire is first held. A loose single in a 16 × 6 channel can turn about its own
+  length, so the twist spreads back along the channel to the first clamp. Today's count of 18 mm assumes the wires are
+  held right at the bore.
+- **How far back the clamps can go:**
+
+  | Side | Straight channel from the bore | Clamp at |
+  |---|---|---|
+  | Rear cap | About 45 mm, from the bore to the trunk inlet at r 58 | The trunk inlet |
+  | Fork rear | About 80 mm, from the axis down the leg to where the R 24 bend starts (Y 343.6) | The top of the bend |
+
+- **Free length:** 45 + 18 + 80 = **about 143 mm.** Twist: 121° over 143 mm = **0.85° per mm.** The rule (150 mm per
+  ±90°) allows 1.2° per mm. **On paper it meets the rule.**
+- **With a funnel only** (each channel opened to a fan inside the cap's boss, r 12.5 to 24, and inside the fork's cheek,
+  r 12.5 to 30, and the wires clamped at the fan's edge): 11.5 + 18 + 17 = about 47 mm, 2.6° per mm. Not enough alone.
+- **What it does not fix:** the two right-angle bends at the bore's ends. They stay at about R 6-9 (the bore is r 12.5),
+  under the static rule of 15 mm, and the bend's direction turns round the wire as the joint rolls. A rounded lip
+  (R 5-6) at each channel mouth is the most the bore allows.
+- **Needs:** loose singles, nothing tied within the channels, no splice lump in those 45 and 80 mm, and the mouths' lips
+  rounded (two small cuts, inside the parts).
+- **It is exactly what the roll rig's test A can show,** if the wires are left free in the rig's channels and held
+  beyond them (test A2 in CABLE_RIGS.md).
+- **Judgement:** the cheapest option by far, and the only one that leaves both bearing supports alone. The bends are
+  the doubt.
+
 ## (e) A deck in the fork rear's cheek: paper check
 
 - **Where:** behind the 6808, inside the cheek (r 35, Z -45.9 to -56.7). The cable comes through the stub bore as today,
@@ -87,7 +116,8 @@ fallback if the tooth of (h) fails in section or the lopsided cap fixing is not 
 
 ## Where this leaves the roll crossing
 
-1. **Run the roll rig's test A first.** If today's route survives, nothing changes.
+1. **Run the roll rig's tests A and A2 first.** If today's route survives with the wires held far back (option (f)),
+   nothing structural changes.
 2. If it fails, the choice is between a spiral that weakens one of the two bearing supports (cap or cheek), less roll
    travel, or 18 AWG through the roll joint. None is free; each needs its own load case before it can be offered.
 

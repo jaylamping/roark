@@ -61,6 +61,21 @@ Not reproduced: the bends above and below each rig, PETG, the weight of the arm 
 at both ends of travel.
 **Fail:** any kink, or it needs force near either end, or the wires spring the top back.
 
+### Test A2: the same route with the wires free in the channels
+
+This is option (f) of [ROLL_OPTIONS.md](ROLL_OPTIONS.md): in the real parts the wires could be held only at the far ends
+of the two channels, 45 mm from the bore on the cap's side and 80 mm on the fork's.
+
+1. Take the tape off. Leave the wires loose in both channels.
+2. **Base side:** tape the wires to the bench 45 mm from the bore, in line with the base's channel (the base lies on the
+   bench).
+3. **Top side:** tape a 100 mm strip of card or a ruler along the top's channel so it sticks out, and tape the wires to
+   it 80 mm from the bore.
+4. Repeat steps 3 to 6 of test A.
+
+**Pass and fail:** as test A. **Also report:** whether the wires turn freely in the channels, and what the two bends at
+the bore's ends look like after 200 cycles. If A fails and A2 passes, the route stays and only the clamps move.
+
 ### Test B: spiral deck (deck rig)
 
 1. **Lay the spiral.** With the lid off, clamp the wires at the outer anchor with a tie (power wires stacked one on the

@@ -8,7 +8,7 @@ The pictures are schematic.
 | Joint | Travel wanted | Works today, as drawn | Best with no part redesign | What buys the full travel |
 |---|---|---|---|---|
 | **Yaw** | ±90° (not fixed) | No: 97 mm of slack with nowhere to go | **±90° as a spiral in the present dish, if this segment is 18 AWG.** With 16 AWG: about ±37° as a plain arc | Nothing more needed with 18 AWG. For 16 AWG: the dish 1.5 mm deeper (hub top) |
-| **Roll** | -11° to +110° (the stops) | No: good for about ±11° | None | A spiral deck in the rear cap where the stop slot is; the stop moves out. Cap, fork rear, stop |
+| **Roll** | -11° to +110° (the stops) | Not if the wires are held at the bore (about ±11°). **Possibly yes if they are held only at the channels' far ends** (twist over about 143 mm, 0.85° per mm): the rig decides | The same: clamps moved, two lips rounded | A spiral deck in the rear cap. It displaces the roll stop and takes away the 6808 stub's support ([ROLL_OPTIONS.md](ROLL_OPTIONS.md)) |
 | **Pitch** | 230-270° (not fixed) | No | **About 115°** as a spiral in the present channel | A bight in the void under the frame's step: no outline change, needs a pull-down, **marginal at 230° and not enough for 270°** ([PITCH_BIGHT.md](PITCH_BIGHT.md)). Or the channel 9.5 mm deeper (outline grows) |
 
 - **Outer outline:** every option marked alive below keeps it, except the deeper pitch channel.
@@ -99,6 +99,16 @@ radial channel in the fork rear. The axial run between the two channels is 18 mm
   whole of B_ROLL_STOPS.md has to be re-run.
 - **Mass:** about the same. **Look:** nothing visible changes.
 - **Not modelled.** The sketch is from the stack dimensions only.
+
+**Three things found after this table was written** ([ROLL_OPTIONS.md](ROLL_OPTIONS.md)):
+- **The deck and the roll stop want the same ring of the cap,** and the cap's three screws are in the zone outside it.
+  The stop can move out only if the screws move too.
+- **Any spiral in the cap cuts the 6808's stub off from the rim.** The spoke and the stop ring that carry it today
+  cross the spiral's ring. The stub would hang on the 3 mm rear plate.
+- **No hook tab is possible on the cap** (it prints front face down and its rim is 3.2 mm thick), so with the screws
+  moved the cap is held on one side only.
+- **A cheaper option, (f):** keep the on-axis route and hold the wires only at the far ends of the two channels. The
+  twist then spreads over about 143 mm: 0.85° per mm, inside the rule. The two tight bends at the bore remain.
 
 **Anchors:** none designed on either side today.
 
