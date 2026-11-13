@@ -7,7 +7,7 @@
 # Run it detached, so a dropped SSH session can't stop it half-way:
 #   sudo systemd-run --unit=pi-setup --collect bash /home/joey/setup/pi-setup.sh && sudo journalctl -fu pi-setup
 #
-# Left for the operator afterwards (they need a browser or a decision): `tailscale up`, and the reboot.
+# Left for the operator afterwards: `tailscale up`, the reboot, and the steps listed in the closing message.
 set -euo pipefail
 
 [ "$(id -u)" -eq 0 ] || { echo "run with sudo"; exit 1; }
@@ -34,7 +34,6 @@ if [ ! -e "$UPGRADED" ] || [ "${UPGRADE:-0}" = 1 ]; then
   touch "$UPGRADED"
 else
   echo "already upgraded once ($UPGRADED): skipped"
-  apt-get update
 fi
 
 step "3. freeze: no automatic updates"
@@ -49,7 +48,16 @@ fi
 systemctl mask rpi-eeprom-update.service
 
 step "12. tools: can-utils, rt-tests, stress-ng; 10. chrony; 9. ufw"
-$APT install can-utils rt-tests stress-ng chrony ufw
+# Only what is missing: a later run must not upgrade a tool that is already there.
+MISSING=""
+for p in can-utils rt-tests stress-ng chrony ufw; do
+  dpkg -s "$p" >/dev/null 2>&1 || MISSING="$MISSING $p"
+done
+if [ -n "$MISSING" ]; then
+  apt-get update
+  # shellcheck disable=SC2086  # a list of package names, split on purpose
+  $APT install $MISSING
+fi
 
 step "4. bootloader: PSU_MAX_CURRENT=5000 (BOOT_ORDER left alone: SD card for now)"
 if rpi-eeprom-config | grep -q '^PSU_MAX_CURRENT=5000'; then
@@ -90,20 +98,25 @@ id agent >/dev/null 2>&1 || useradd --create-home --shell /bin/bash agent
 mkdir -p /var/lib/robot /etc/robot /opt/robot/releases
 chown robot:robot /var/lib/robot
 # Passwordless sudo for `agent` (remote-access.md section 4), checked before it is put in place.
-T=$(mktemp)
-echo 'agent ALL=(ALL) NOPASSWD:ALL' > "$T"
-visudo -cf "$T" && install -m 440 -o root -g root "$T" /etc/sudoers.d/020_agent
-rm -f "$T"
+# sudo ignores names with a dot in /etc/sudoers.d, so the .new file is inert until the rename.
+S=/etc/sudoers.d/020_agent
+echo 'agent ALL=(ALL) NOPASSWD:ALL' > "$S.new"
+chmod 440 "$S.new"
+visudo -cf "$S.new" || { rm -f "$S.new"; echo "sudoers check failed: stop"; exit 1; }
+sync -f "$S.new"
+mv "$S.new" "$S"
 # The agent account's key (remote-access.md section 4: agents never log in as Joey). If the key file was put next
 # to this script, install it for `agent` and take the same key out of joey's list.
 if [ -s "$HERE/agent-key.pub" ]; then
-  install -d -m 700 -o agent -g agent /home/agent/.ssh
-  install -m 600 -o agent -g agent "$HERE/agent-key.pub" /home/agent/.ssh/authorized_keys
-  # The key itself is the field after the key type, wherever that is (a line may start with options).
-  keyblob='{for (i = 1; i < NF; i++) if ($i ~ /^(ssh-|ecdsa-|sk-)/) {print $(i+1); exit}}'
+  # One plain key line: "<type> <key> [comment]". An options prefix is refused, not parsed.
+  # shellcheck disable=SC2016  # awk programs, not shell expansions
+  keyblob='NF && $1 !~ /^#/ {n++; if ($1 ~ /^(ssh-|ecdsa-|sk-)/) k = $2} END {if (n == 1) print k}'
   KEY=$(awk "$keyblob" "$HERE/agent-key.pub")
   JK=/home/joey/.ssh/authorized_keys
-  [ -n "$KEY" ] || { echo "agent-key.pub holds no public key: stop"; exit 1; }
+  [ -n "$KEY" ] || { echo "agent-key.pub must be one plain public key line with no options: stop"; exit 1; }
+  install -d -m 700 -o agent -g agent /home/agent/.ssh
+  install -m 600 -o agent -g agent "$HERE/agent-key.pub" /home/agent/.ssh/authorized_keys
+  # shellcheck disable=SC2016
   has_key='{for (i = 1; i <= NF; i++) if ($i == k) f = 1} END {exit !f}'
   if [ -f "$JK" ] && awk -v k="$KEY" "$has_key" "$JK"; then
     # Drop only lines that hold exactly this key; keep comments and every other key.
@@ -120,7 +133,9 @@ if [ -s "$HERE/agent-key.pub" ]; then
 fi
 # sshd keeps the first value it reads, so this file has to sort before 50-cloud-init.conf and the rest.
 rm -f /etc/ssh/sshd_config.d/robot.conf
-printf 'PasswordAuthentication no\nPermitRootLogin no\n' > /etc/ssh/sshd_config.d/00-robot.conf
+printf 'PasswordAuthentication no\nPermitRootLogin no\n' > /etc/ssh/sshd_config.d/00-robot.conf.new
+sync -f /etc/ssh/sshd_config.d/00-robot.conf.new
+mv /etc/ssh/sshd_config.d/00-robot.conf.new /etc/ssh/sshd_config.d/00-robot.conf
 sshd -t
 systemctl reload ssh
 sshd -T | grep -qx 'passwordauthentication no' || { echo "sshd still allows passwords: stop"; exit 1; }
@@ -184,6 +199,7 @@ command -v tailscale >/dev/null || curl -fsSL https://tailscale.com/install.sh |
 step "report (for the setup log, section 13)"
 {
   date -Is
+  # shellcheck source=/dev/null
   . /etc/os-release; echo "os: $PRETTY_NAME"
   echo "kernel running: $(uname -r)"
   echo "eeprom: $(rpi-eeprom-update 2>/dev/null | grep -m1 CURRENT || true)"

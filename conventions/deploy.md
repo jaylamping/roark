@@ -130,7 +130,8 @@ PLAN item 3 says PREEMPT_RT only if the Pi's measurement misses its budget. How 
 
 - SSH by key only, no passwords. Access over Tailscale or the home LAN only ([remote-access.md](remote-access.md)).
 - Firewall denies incoming by default; what it lets in is listed in [remote-access.md](remote-access.md) section 6.
-- No services listening on anything but localhost, a Unix socket, or what `tailscale serve` publishes.
+- No robot service listens on anything but localhost, a Unix socket, or what `tailscale serve` publishes. (SSH and the
+  system's mDNS responder are the two system listeners the firewall lets the LAN reach.)
 
 ## Checklist for a change to `deploy/`
 

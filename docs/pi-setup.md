@@ -72,7 +72,8 @@ With **Raspberry Pi Imager** on the Mac:
 **Sections 3 to 12 as one script:** [deploy/pi-setup.sh](../deploy/pi-setup.sh) does the steps below except these, which stay by hand: `BOOT_ORDER` and the NVMe steps (sections 4 and 5),
 `tailscale up` and `tailscale set --auto-update=false` (section 8), enabling `systemd-networkd` and naming the buses
 (section 11), the CPU governor and the `cyclictest` run (section 12), and the reboot. It upgrades packages on its first
-run only; a later run rewrites the small config files and the firewall rules and leaves the packages alone. Copy it to the Pi (with `can-bench` and the agent's public key as
+run only, and installs a tool only if it is missing; a later run rewrites the small config files and the firewall rules
+and leaves the packages alone. Copy it to the Pi (with `can-bench` and the agent's public key as
 `agent-key.pub` next to it, if you have them) and run it detached, so a dropped SSH session can't stop it half-way:
 
 ```bash
@@ -91,7 +92,7 @@ sudo reboot
 Then stop anything from changing by itself (deploy.md section 6) **(→ image)**:
 
 ```bash
-sudo apt purge -y unattended-upgrades || true
+sudo apt purge -y unattended-upgrades    # if it is installed
 sudo apt-mark hold raspi-firmware rpi-eeprom linux-image-rpi-2712 linux-image-rpi-v8   # every linux-image-rpi-* installed
 sudo systemctl mask rpi-eeprom-update
 ```
@@ -175,10 +176,12 @@ sudo chown robot:robot /var/lib/robot
 
 - `agent` gets passwordless `sudo`, so agents can do setup and bench runs unattended
   ([remote-access.md section 4](../conventions/remote-access.md#4-accounts-on-the-pi) says what that costs). The file is
-  checked before it goes in place, because a broken sudoers file locks everyone out of `sudo`:
+  checked before it goes in place, because a broken sudoers file locks everyone out of `sudo`. `sudo` ignores file names
+  with a dot, so the `.new` file does nothing until the rename:
   ```
-  echo 'agent ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/020_agent
-  sudo chmod 440 /etc/sudoers.d/020_agent && sudo visudo -cf /etc/sudoers.d/020_agent
+  echo 'agent ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/020_agent.new
+  sudo chmod 440 /etc/sudoers.d/020_agent.new
+  sudo visudo -cf /etc/sudoers.d/020_agent.new && sudo mv /etc/sudoers.d/020_agent.new /etc/sudoers.d/020_agent
   ```
 - `/etc/ssh/sshd_config.d/00-robot.conf`: `PasswordAuthentication no` and `PermitRootLogin no`, then
   `sudo sshd -t && sudo systemctl reload ssh`. The `00-` matters: sshd keeps the first value it reads, and the image's
@@ -236,6 +239,8 @@ block there commented out, so swapping HATs is one edit. The robot's buses run o
 2026-11-11), so its block is the live one.
 
 ```ini
+[all]
+# --- robot CAN HAT (docs/pi-setup.md section 11): one block live, the other commented ---
 # Waveshare 2-CH CAN FD HAT (MCP2518FD), mode A (the default: CAN_0 on SPI0, CAN_1 on SPI1).
 dtparam=spi=on
 dtoverlay=spi1-3cs

@@ -56,7 +56,7 @@ do** there. Neither is trusted alone.
 | Account | Who | Can |
 |---|---|---|
 | Joey's user | Joey | Everything an operator can: `enable`, `clear`, start plans, stop, deploy, `sudo` |
-| `agent` | Cloud agents | Read logs and recordings, deploy, run anything on `vcan`, start approved plans, stop, and passwordless `sudo` for setup and maintenance. No `enable` or `clear` |
+| `agent` | Cloud agents | Read logs and recordings, deploy, run anything on `vcan`, start approved plans, stop. Passwordless `sudo`, for setup and maintenance. No `enable` or `clear` by rule (see below) |
 | Service user for the runtime | systemd | Run the runtime with the realtime and network capabilities it needs; no login |
 
 - **Motion authority is enforced by the `api` socket,** not by trust: the socket's permissions and the runtime's per-client
