@@ -25,7 +25,7 @@ S[:, 0, 0], S[:, 1, 1], S[:, 2, 2] = s[:, 1], s[:, 2], s[:, 3]
 S[:, 0, 1] = S[:, 1, 0] = s[:, 4]
 S[:, 0, 2] = S[:, 2, 0] = s[:, 5]
 S[:, 1, 2] = S[:, 2, 1] = s[:, 6]
-PT = 294.7
+PT = float(__import__("os").environ.get("PROBE_PT", 294.7))      # plate top (r1g6: 294.6)
 if len(sys.argv) >= 6:
     c0 = np.array([float(v) for v in sys.argv[3:6]])
 else:
