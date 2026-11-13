@@ -114,10 +114,16 @@ So `launch()` starts the process anyway and does not count time spent beside a s
 
 Before 2026-11-13 `launch()` waited for every instance that was not answering and refused after 300 s. That made threads take turns behind solves of 30 to 50 minutes, most of the time for an instance the new process would never have called.
 
-Two things follow for a thread that wants its launches never to wait:
+A thread that wants fewer launches keeps one instance through a run of jobs with `session()`, and recycles it on committed memory, not per job.
 
-- Keep one instance through a run of jobs with `session()`, and recycle it on committed memory, not per job.
-- An instance that stays idle and is the oldest one running would take the startup call for everyone. That is not set up, and "oldest" rests on the few starts above, not on documentation.
+### The keeper
+
+An instance that only ever idles, and is the oldest one running, takes that startup call for everyone and answers at once. Tested on holly-pc on 2026-11-13 for one hour with three threads at work: after the keeper became the oldest, 22 launches passed the splash screen in 1.6 to 2.2 s, 19 of them while another instance was busy or solving and not answering. Just before, a launch had waited about 19 minutes behind the then-oldest instance's result read-back. "Oldest" still rests on these observations, not on documentation.
+
+- `python tools/solidworks/sw_instance.py --keeper on` switches it on for the machine (a `keeper.on` file in the claims folder) and starts it: hidden, no add-ins, no documents, about 270 MB. `--keeper off` ends it and `--keeper status` shows it. It is on for holly-pc and off for Joey-PC.
+- Where it is on, every `launch()` checks it first and starts it if it is missing, so it comes back after a restart with the first launch. It only helps from the moment every instance older than it has exited.
+- `launch()` replaces a keeper that does not answer or has grown past 1.5 GB. It belongs to no session: never open a document in it, attach to it or close it.
+- **Cost:** SolidWorks gives Auto Recover to two instances. The keeper holds one, so a thread's second instance starts with the journal prompt and `no_auto_recover`. Rule 5 already covers that.
 
 What went wrong on holly-pc on 2026-11-11, and what the module now does about each step:
 
