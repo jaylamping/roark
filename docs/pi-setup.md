@@ -5,8 +5,9 @@ partition, and the bench tools. Follows
 [conventions/deploy.md](../conventions/deploy.md) and [conventions/remote-access.md](../conventions/remote-access.md); if a
 step here and a convention disagree, the convention wins and this page gets fixed.
 
-Until the repo has a `deploy/` folder and an image built with `rpi-image-gen`, these steps are done by hand. Each step that
-should later move into `deploy/` or the image config is marked **(→ deploy/)**. When that happens, this page shrinks to "flash
+Until the image is built with `rpi-image-gen`, most of these steps are run by [deploy/pi-setup.sh](../deploy/pi-setup.sh)
+(section 3) and the rest by hand. Each step that should later move into `deploy/` or the image config is marked
+**(→ deploy/)**. When that happens, this page shrinks to "flash
 the image, run the deploy script".
 
 ## 0. Before you wipe: back up the old Pi
@@ -68,6 +69,20 @@ With **Raspberry Pi Imager** on the Mac:
 
 ## 3. First boot: update once, then freeze
 
+**Sections 3 to 12 as one script:** [deploy/pi-setup.sh](../deploy/pi-setup.sh) does the steps below except these, which stay by hand: `BOOT_ORDER` and the NVMe steps (sections 4 and 5),
+`tailscale up` and `tailscale set --auto-update=false` (section 8), enabling `systemd-networkd` and naming the buses
+(section 11), the CPU governor and the `cyclictest` run (section 12), and the reboot. It upgrades packages on its first
+run only, and installs a tool only if it is missing; a later run rewrites the small config files and the firewall rules
+and leaves the packages alone. Copy it to the Pi (with `can-bench` and the agent's public key as
+`agent-key.pub` next to it, if you have them) and run it detached, so a dropped SSH session can't stop it half-way:
+
+```bash
+sudo systemd-run --unit=pi-setup --collect bash /home/joey/setup/pi-setup.sh
+sudo journalctl -fu pi-setup
+```
+
+The sections stay as the description of what it does, and for doing a step by hand.
+
 ```bash
 ssh joey@robot-pi.local
 sudo apt update && sudo apt full-upgrade -y
@@ -77,8 +92,8 @@ sudo reboot
 Then stop anything from changing by itself (deploy.md section 6) **(→ image)**:
 
 ```bash
-sudo apt purge -y unattended-upgrades || true
-sudo apt-mark hold raspi-firmware linux-image-rpi-2712 linux-image-rpi-v8
+sudo apt purge -y unattended-upgrades    # if it is installed
+sudo apt-mark hold raspi-firmware rpi-eeprom linux-image-rpi-2712 linux-image-rpi-v8   # every linux-image-rpi-* installed
 sudo systemctl mask rpi-eeprom-update
 ```
 
@@ -90,7 +105,8 @@ Write down the kernel version (`uname -r`) and OS release (`cat /etc/os-release`
 sudo rpi-eeprom-config --edit
 ```
 
-Set (deploy.md section 6) **(→ deploy/)**:
+Set (deploy.md section 6) **(→ deploy/)**. Saving also moves the bootloader to the newest release on the Pi, so
+don't cut power during the reboot that follows:
 
 ```
 BOOT_ORDER=0xf416        # NVMe first, then SD, then USB; skip if running from SD for now
@@ -158,15 +174,27 @@ sudo mkdir -p /var/lib/robot /etc/robot /opt/robot/releases
 sudo chown robot:robot /var/lib/robot
 ```
 
-- `agent` gets **no** `sudo` and isn't in any group that can open real CAN interfaces.
-- `/etc/ssh/sshd_config.d/robot.conf`: `PasswordAuthentication no` and `PermitRootLogin no`, then
-  `sudo systemctl restart ssh`.
+- `agent` gets passwordless `sudo`, so agents can do setup and bench runs unattended
+  ([remote-access.md section 4](../conventions/remote-access.md#4-accounts-on-the-pi) says what that costs). The file is
+  checked before it goes in place, because a broken sudoers file locks everyone out of `sudo`. `sudo` ignores file names
+  with a dot, so the `.new` file does nothing until the rename:
+  ```
+  echo 'agent ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/020_agent.new
+  sudo chmod 440 /etc/sudoers.d/020_agent.new
+  sudo visudo -cf /etc/sudoers.d/020_agent.new && sudo mv /etc/sudoers.d/020_agent.new /etc/sudoers.d/020_agent
+  ```
+- `/etc/ssh/sshd_config.d/00-robot.conf`: `PasswordAuthentication no` and `PermitRootLogin no`, then
+  `sudo sshd -t && sudo systemctl reload ssh`. The `00-` matters: sshd keeps the first value it reads, and the image's
+  `50-cloud-init.conf` can set `PasswordAuthentication` too. Check with `sudo sshd -T | grep -i passwordauth`.
 
 ## 8. Tailscale
 
 Follows [remote-access.md](../conventions/remote-access.md).
 
-1. In the Tailscale policy, `tag:robot` must exist with Joey as its owner (remote-access.md section 2).
+1. In the Tailscale policy, before `tailscale up`: `tag:robot` must be in `tagOwners` (without it the login fails with
+   "requested tags [tag:robot] are invalid or not permitted"), and an `ssh` rule must name `tag:robot` as `dst`
+   (remote-access.md sections 2 and 3). With `--ssh`, Tailscale answers port 22 on the tailnet address itself, so
+   without that rule every SSH over the tailnet is refused, plain OpenSSH included.
 2. On the Pi:
 
    ```bash
@@ -184,9 +212,13 @@ Follows [remote-access.md](../conventions/remote-access.md).
 sudo apt install -y ufw
 sudo ufw default deny incoming
 sudo ufw allow in on tailscale0
-sudo ufw allow from 192.168.0.0/16 to any port 22 proto tcp   # home LAN SSH fallback; narrow to your actual subnet
+sudo ufw allow from <lan-subnet> to any port 22 proto tcp     # home LAN SSH fallback
+sudo ufw allow from <lan-subnet> to any port 5353 proto udp   # mDNS, or <hostname>.local stops resolving
 sudo ufw enable
 ```
+
+The script fills in `<lan-subnet>` from the networks the Pi is on when it runs: each IPv4 subnet, IPv6 link-local, and each
+IPv6 /64. Run it again if the Pi moves to another network.
 
 ## 10. Time
 
@@ -207,6 +239,8 @@ block there commented out, so swapping HATs is one edit. The robot's buses run o
 2026-11-11), so its block is the live one.
 
 ```ini
+[all]
+# --- robot CAN HAT (docs/pi-setup.md section 11): one block live, the other commented ---
 # Waveshare 2-CH CAN FD HAT (MCP2518FD), mode A (the default: CAN_0 on SPI0, CAN_1 on SPI1).
 dtparam=spi=on
 dtoverlay=spi1-3cs
@@ -271,8 +305,17 @@ sudo apt install -y can-utils rt-tests stress-ng
 echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 ```
 
-**`can-bench`** ([docs/can-interface-comparison.md](can-interface-comparison.md)): cross-build it on the dev box and copy
-it over. The dev box needs the cross linker once (`.cargo/config.toml` names it):
+**`can-bench`** ([docs/can-interface-comparison.md](can-interface-comparison.md)): CI builds the Pi's binaries on every
+commit and keeps them for 30 days as the `pi-binaries` artifact (with `GIT_REV` and `SHA256SUMS`). Fetch the one for
+the commit being measured and copy it over:
+
+```bash
+gh run download --repo jaylamping/roark --name pi-binaries --dir /tmp/pi-binaries   # the latest run; -h for a given one
+(cd /tmp/pi-binaries && sha256sum -c SHA256SUMS && cat GIT_REV)
+scp /tmp/pi-binaries/can-bench joey@<pi-name>:setup/
+```
+
+Or cross-build it on the dev box and copy it over. The dev box needs the cross linker once (`.cargo/config.toml` names it):
 `ssh -t joey-wsl 'sudo apt install -y gcc-aarch64-linux-gnu'`. Then, from the checkout at the commit being measured:
 
 ```bash
@@ -296,6 +339,8 @@ sudo cyclictest --mlockall --smp --priority=80 --interval=1000 --distance=0 --du
 
 The worst latency per core (`Max:` in the summary, `# Max Latencies` in the histogram file) is the number deploy.md compares against the budget. Commit both files
 under `docs/bench-results/realtime/<date>/` with the kernel version (`uname -a`), and re-run after every kernel change.
+Before trusting a run, check that `vcgencmd get_throttled` still reads `0x0` and that the fan was turning: a throttled
+CPU doubled the worst case on the first try (2026-11-13).
 
 ## 13. Record what you set up
 
