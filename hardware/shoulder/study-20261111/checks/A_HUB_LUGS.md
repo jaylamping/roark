@@ -1089,11 +1089,49 @@ dish, on the +X side, and can lie as a spiral or an arc.
   0.5 mm ball: 304 N uniform, layer 4.69 and shear 5.51; yaw at the centres of pressure scaled to 304 N, 5.80 and 4.07;
   G90 + yaw -17, 6.27 and 4.00. The load is on the whole plate outline, nothing left out: the arm's plate hole is Ø3.4,
   so the plate bears flat across the rim of the hub's Ø3.8 hole.
-- **Stop case:** with the Ø3.8 holes the arm finds no contact between the lug's outer face and its pocket wall, so no
-  extra stop case is asked for. To be looked at again if the arm's next load file says otherwise.
+- **Stop case:** see "Stop case from the arm's r1g6 loads" below.
 
 **The hub top is not judged by these cases.** They hold the six screw holes and the top face rigidly, and the combined
 cases carry the 23 N·m bending into that fixed edge: read over the whole hub, G90 + yaw -17 shows 0.57 in layer stress at
 Y 318.4-319.5, about 24 mm from the axis. A rigid edge over-reads. The hub top's check is the bolted-contact case
 ("Hub-top bolted contact" above), which was last run before the window moved; **it is being re-run on D3c7 and is part
 of the release gate.**
+
+### Stop case from the arm's r1g6 loads (HUBL_STOP6, 2026-11-13)
+
+**Load:** the arm's STOP_0 (515 N on the elbow stop pad) with the hub's lug holes at Ø3.8 and the plate holes at Ø3.4
+(`r1g6_lug_loads.txt`, roark 7f824d3). The bolt is free in the hub.
+
+| On the -X lug | Force on the hub | Where |
+|---|---|---|
+| Front Z face | 184 N toward -Z | Centre of pressure X offset 30.0, Y 291.6 |
+| Outer face, from the arm's pocket wall | At most about 9 N inward (+X) | A patch near Y 293.2, Z 9.7; nodal peak 9.75 MPa |
+| Net sideways load | About 26 N outward (-X) | In the real joint through plate friction under the bolt clamp or, failing that, the bolt in the hole |
+
+The +X lug carries 81 N net on its Z faces (back +92, front -11.5) and under 2 N on its outer face.
+
+**Two variants,** for the two ways the 26 N can be carried:
+- **(a) friction:** as shear on the lug's two Z faces, 13 N on each plate outline. Unit cases on one mesh, combined.
+- **(b) bolt:** on the outboard strip of the hole wall (63° of it, about a bolt's bearing arc). One complete solve; the
+  hole wall is split for it.
+
+Both with the 9 N inward on a 2.7 mm² patch. FFEPlus, 1.00 million nodes, stop target 1.2.
+
+| Place on the -X lug (worst 0.5 mm ball) | (a) shear / layer / von Mises | (b) shear / layer / von Mises |
+|---|---|---|
+| **Whole lug** | **2.51** / 2.92 / 4.40 | **2.49** / 2.92 / 4.38 |
+| Outer R1.2 root | 2.84 / 3.12 / 4.84 | 2.81 / 3.11 / 4.80 |
+| Inner R1.2 root | 3.08 / 3.88 / 5.32 | 3.11 / 3.85 / 5.38 |
+| Outward R0.8 root | 4.30 / 4.18 / 6.30 | 4.32 / 4.11 / 6.33 |
+| Hole rim | 6.26 / 8.25 / 9.31 | 6.60 / 8.24 / 9.52 |
+| Ligament between the hole and the root above it | 4.64 / 3.56 / 6.40 | 4.88 / 3.59 / 6.52 |
+| Ligament between the hole and the outer face | 4.48 / 8.08 / 8.07 | 4.54 / 8.01 / 8.18 |
+
+- **Passes with a wide margin either way.** Governing: the R1.2 root at hub X offset 30.4-30.8, Y 295.65, at the lug's Z
+  face, shear 2.49.
+- **The sideways loads matter little:** the Z-face loads alone give 2.58 in shear; adding the sideways loads costs under
+  4%, and the two ways of carrying them differ by under 1% at the governing place.
+- **The patch size does not matter:** 9 N on 2.7 mm² or spread over 22.5 mm² gives the same whole-lug figure.
+- The arm's own reading at that root, on its coarse hub, was 1.16 in shear at the peak node and 1.76 at 0.5 mm.
+- **Cases:** `HUBL_STOP6_Z`, `_P`, `_S`, `_F` (unit cases) and `HUBL_STOP6_ZB` in `fea_shoulder.py`; ligament read by a
+  box round the hole (X offset 20-26, Y 293.85-295.0, and X offset 24.85-34.45, Y 290-294).
