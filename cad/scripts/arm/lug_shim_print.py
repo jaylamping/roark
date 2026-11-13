@@ -33,9 +33,9 @@ PLATES = {'A': (0.25, [0.25, 0.35, 0.45, 0.55, 0.65, 0.75] * 2), 'B': (0.20, [0.
 OUT = Path(os.environ.get('LUG_SHIM_OUT', P.REPO / 'cad' / '_wip' / 'r1f_lug_shims'))
 Y0 = 288.0
 # r1g4 (2026-11-13, after the review): Dia 3.8 hole, smaller than the insert's Dia 4.0 hole, so the plate holds the insert captive
-# between it and the post; top Y 294.7, so the strip above the hole is 0.8 (0.1 below the hub's R1.2 root tangent)
+# between it and the post; top Y 294.6 (0.2 below the hub's R1.2 root tangent line Y 294.8), so the strip above the hole is 0.7
 HOLE_R = float(os.environ.get('LUG_PLATE_HOLE_R', '1.9'))
-PLATE_TOP = float(os.environ.get('LUG_PLATE_TOP', '294.7'))      # local origin: offset 0 at the yaw axis, Y at the lug's free end
+PLATE_TOP = float(os.environ.get('LUG_PLATE_TOP', '294.6'))      # back to 294.6 (coordinator 14:56Z): 0.2 below the R1.2 tangent line, 0.7 strip      # local origin: offset 0 at the yaw axis, Y at the lug's free end
 
 
 def outline(t):

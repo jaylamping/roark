@@ -85,8 +85,9 @@ so the inserts must be flush (bench step).
 
 **Lug bolts and inserts (review C, 2026-11-13).** The front-post insert goes in from the lug face, so the lug bolt's tension
 pulls it out the way it went in.
-- **r1g4 (decided):** plate hole Dia 3.8, top Y 294.7. The plate hole is smaller than the insert's Dia 4.0 hole, so the plate sits
-  on the insert's rim and holds it captive (insert, plate, lug, plate, back post, bolt head). The strip above the hole is 0.8.
+- **r1g4 (decided):** plate hole Dia 3.8; print plate top Y 294.6 (coordinator 14:56Z: 0.2 below the R1.2 tangent line, a 0.7 strip
+  above the hole). The r1g4 FEA model keeps its lumped boss top at Y 294.7: not rebuilt for 0.1 mm. The plate hole is smaller than the insert's Dia 4.0 hole, so the plate sits
+  on the insert's rim and holds it captive (insert, plate, lug, plate, back post, bolt head). The strip above the hole is 0.7.
   Halves unchanged.
 - **The insert's outer diameter and pull-out rating have no source in the repo.** Only "Ruthex M3 × 5.7" in a Dia 4.0 hole
   is recorded (`cad/prints/upper-arm/SETTINGS_CHECKLIST.md`). The "about 1-1.5 kN" in R1D_NOTES has no source either.
