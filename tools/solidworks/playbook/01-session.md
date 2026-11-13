@@ -63,7 +63,8 @@ with job() as j:            # launches your own instance; closes it on the way o
 1. Do not start another instance. Run `sw_instance.py --status`.
 2. `busy`: it is working. A 400,000-node contact solve takes 7 to 11 minutes; reading back 2.4 M nodes over COM took over an
    hour. Wait.
-3. Read `%TEMP%\sw_hidden_<pid>.log`: a hidden modal dialog blocks the instance, and the log names it. A last line
+3. Read `%TEMP%\sw_hidden_<pid>.log`: a hidden modal dialog blocks the instance, and the log names it. No file means
+   nothing has been hidden yet, which is normal. A last line
    `#32770 | Simulation` during a solve is the solver asking a question ("Excessive displacements detected"); the
    solver's files beside the model stop changing while it waits. `swfea.static()` answers that one
    ([05-fea.md](05-fea.md), contact rule 8). In your own instance only, you may read such a dialog and press its button.

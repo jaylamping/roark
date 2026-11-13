@@ -199,6 +199,22 @@ class Result:
         i = np.flatnonzero(mask)[np.argmax(sn[mask])]
         return float(sn[i]), self.pos[i].round(2).tolist()
 
+    def layer_shear(self, normal, mask=None):
+        """(MPa, where) of the largest shear stress on the plane between print layers stacked along the given direction.
+
+        Judge it against the interlayer shear allowable (13 MPa for printed PETG, 05-fea.md).
+        """
+        n = np.array(normal, float)
+        n /= np.linalg.norm(n)
+        S = self.s
+        t = np.c_[S[:, 1] * n[0] + S[:, 4] * n[1] + S[:, 5] * n[2],       # traction on the layer plane
+                  S[:, 4] * n[0] + S[:, 2] * n[1] + S[:, 6] * n[2],
+                  S[:, 5] * n[0] + S[:, 6] * n[1] + S[:, 3] * n[2]]
+        tau = np.linalg.norm(t - np.outer(t @ n, n), axis=1)
+        mask = self.away() if mask is None else mask
+        i = np.flatnonzero(mask)[np.argmax(tau[mask])]
+        return float(tau[i]), self.pos[i].round(2).tolist()
+
     def in_box(self, box):
         return np.all((self.pos >= np.array(box[:3])) & (self.pos <= np.array(box[3:])), axis=1)
 
@@ -380,6 +396,9 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
             return None
 
     fixed_pts, loaded_pts = face_nodes(fixed), face_nodes(loaded)
+    for label, pts in (('fixture', fixed_pts), ('load', loaded_pts)):      # a wrong face shows here before it shows anywhere
+        if pts is not None and len(pts):
+            log(f'{name}: {label} nodes {len(pts)}, box {pts.min(axis=0).round(2).tolist()} to {pts.max(axis=0).round(2).tolist()}')
     disp = reaction = None
     try:
         disp = _arr(res.GetTranslationalDisplacement(1, NUL, 0, L()), 5)       # last argument: 0 mm, 1 cm, 2 m, 3 inch
@@ -407,10 +426,11 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
     return r
 
 
-def converge(run, sizes, tol=0.05):
+def converge(run, sizes, tol=0.05, layers=None):
     """Solve at each element size in turn (coarse to fine) until the peak away from fixtures moves by under tol.
 
-    run(el) -> Result. Returns the list of (el, nodes, peak) rows and whether it converged. The peak is taken outside the
+    run(el) -> Result. Returns the list of (el, nodes, peak) rows and whether it converged. With layers = the print
+    layer normal, each row also carries the tension across layers, and that must settle too. The peak is taken outside the
     same distance from fixtures and loads at every size (two of the coarsest elements). Give at least three sizes: two
     rows that agree can stop before a slow climb shows. A peak that keeps climbing as
     the mesh shrinks is a singularity (a sharp re-entrant corner or a fixture edge), not a stress: change the geometry
@@ -420,9 +440,11 @@ def converge(run, sizes, tol=0.05):
     dist = 2.0 * max(sizes)       # one exclusion distance for the whole series, set by the coarsest mesh
     for el in sizes:
         r = run(el)
-        rows.append((el, r.nodes, round(r.peak(r.away(dist=dist))[0], 2)))
+        keep = r.away(dist=dist)
+        row = (el, r.nodes, round(r.peak(keep)[0], 2))
+        rows.append(row if layers is None else row + (round(r.layer_stress(layers, keep)[0], 2),))
         log('converge', rows[-1])
-        if len(rows) > 1 and abs(rows[-1][2] - rows[-2][2]) <= tol * rows[-2][2]:
+        if len(rows) > 1 and all(abs(a - b) <= tol * abs(b) for a, b in zip(rows[-1][2:], rows[-2][2:])):
             return rows, True
     return rows, False
 

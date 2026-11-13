@@ -27,8 +27,14 @@ r = static(j, d, 'STOP_889N', PETG,
 print(r.summary())
 ```
 
+- **Order:** `j.simulation()`, then `open_doc()`, then `d.ForceRebuild3(False)`, then the picks, then `static()`. On a
+  freshly opened multi-body part the first study after a launch once solved a different problem without a word: 282,484
+  nodes for 53,556, 9.4 mm for 2.35, and the reaction still exact (2026-11-13). Loading Simulation before the open and
+  rebuilding before the picks cured it; which of the two matters is not known. `static()` logs the box of its fixture
+  and load nodes: read it, and stop if it is not where the faces are.
 - **Faces come from `pick()`**, and every pick is checked for its count before it is used. An empty or over-wide pick is
-  the commonest way to solve the wrong problem: `static()` refuses empty lists, and you print `len()` of every pick.
+  the commonest way to solve the wrong problem: `static()` refuses empty lists, and you print `len()` of every pick. A radius pick also returns rounds of that radius
+  and the faces of other bodies: narrow it with `inside=`.
 - **Fixtures:** `'fixed'` holds a face in all directions. `'hinge'` on a cylindrical face lets it turn about its axis.
   Restrain what the real part restrains, on the faces that really bear. A model with too little restraint fails with error
   24; one with too much hides the stress you were looking for.
@@ -67,7 +73,9 @@ not a stress. Either the real part has a radius there (model it, then it converg
 that recovers within 1 mm on fewer than about 10 nodes is a corner; one that holds over 2 mm is the section).
 
 Report the layer direction too: `r.layer_stress((0, 0, 1))` is the largest tension across layers stacked along Z, judged
-against 22.5 MPa. Printed parts fail there first.
+against 22.5 MPa, and `r.layer_shear((0, 0, 1))` the shear between them, against 13 MPa. A solve does not depend on print
+direction, so read the same result for each way the part could be printed before changing any geometry: on the
+benchmark bracket, turning it on its side took the layer factor from 2.2 to 4.6 at no mass. Printed parts fail there first.
 
 ## Sizing the job
 
@@ -79,8 +87,10 @@ against 22.5 MPa. Printed parts fail there first.
 | about 800,000 with contact, direct sparse | | **ran out of memory** on the 32 GB machine, reported as error 24 | |
 
 `static()` refuses meshes over 450,000 nodes, or over `max_nodes=` when a job has a smaller budget; halving the element
-size multiplies the nodes by about six, so work out the finest size before starting a series. A mesh control takes whole
-faces: a corner on a large face cannot be refined alone, so judge it by averages instead of a finer global mesh. To get under it, coarsen the global size and keep the local controls: a 4 mm
+size multiplies the nodes by about six, so work out the finest size before starting a series. A mesh control on a face
+takes the whole face; to refine one corner of a large face, put the control on its edge (`ctrl=[([edge], size)]`,
+edges from `edges_where`), which works and costs few nodes. `r.average()` is a mean over nodes, so it drifts as nodes
+crowd toward a corner: compare averages at one mesh, not across meshes. To get under it, coarsen the global size and keep the local controls: a 4 mm
 global mesh with 0.8 mm controls on the joint gave about 400,000 nodes where 0.8 mm everywhere-near-the-joint gave 800,000.
 Make the control catch only the faces that matter (by area and position), not every face that crosses a box.
 
