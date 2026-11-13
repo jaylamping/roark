@@ -14,11 +14,11 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
  +--------------------------------------------------------------+
  | runtime (one process, the only CAN writer)                   |
  |                                                              |
- |  bus thread can0 --+                                         |
- |  bus thread can1 --+-- safety --- control                    |      ui/ (browser)
- |  ...    one per bus|     ^            ^                      |         |
- |                    |     | requests   | requests             |         v
- |      snapshots     v     |  (rtrb)    |                      |   ui bridge (thin) ----+
+ |  bus thread can0 --+   batches, orders                       |
+ |  bus thread can1 --+<----------------- control thread        |      ui/ (browser)
+ |  ...    one per bus|-----------------> (safety runs here)    |         |
+ |  (veto, stop latch)|   snapshots             ^               |         v
+ |                    |   (rtrb rings)          | requests      |   ui bridge (thin) ----+
  |   +---------------------------------------------+            |                        |
  |   | api server (non-realtime): commands in,     |<-----------+---- mcp/ (agents) -----+
  |   | snapshots and events out                    |            |                        |
@@ -30,13 +30,14 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
    candump@<bus>: candump -L per bus, cut and pruned by candump-rotate: independent black box
 
  Dev box or CI: sim-drive on vcan can0..can4 (the skeleton's names) stands in for the drives; runtime runs unchanged.
- Later: Jetson (perception) is another api client, never a CAN writer.
+ Later: Jetson (perception) is another api client, never a CAN writer. It sends goals; every target a drive gets is
+ computed by control on the Pi, whole-body balance included.
 ```
 
 | Piece | Owns | Talks to | Must never |
 |---|---|---|---|
 | `runtime` bus threads | One CAN socket each, that bus's drive state, each limb's stop latch (`can`'s `BusTick`) | `robstride` codec, `safety`, rtrb queues | Allocate, lock, log or wait without a deadline in the tick |
-| `safety` | Preflight results, fault latches, limit checks | Bus threads, `control` | Be bypassed: every command to a drive passes it |
+| `safety` | Preflight, the enable sequence, the rule IDs, and the per-tick rules that need joints or the skeleton. Plain functions run on the control thread | `control`; the bus threads' snapshots and slow requests | Be bypassed: every command passes its rules on the control thread, then the bus thread's veto |
 | `control` | The active control mode per limb | `safety`, `dynamics` | Talk to a socket |
 | `api` server | The one external interface | Clients over the network; the realtime side over queues | Block the realtime side, or write hardware facts |
 | `telemetry` | MCAP files, metrics, structured logs | Event queues in, disk and Prometheus out | Be in the stop path (a slow disk never delays a stop) |
@@ -45,6 +46,24 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
 | `sim-drive` | Simulated drive state | `vcan` through the same `robstride` codec (its drive side, `robstride::drive`) | Be linked into `runtime`, or open an interface that isn't `vcan` |
 | `candump-rotate` | One bus's black-box files in `/var/lib/robot/candump` | `candump`'s output on a pipe; disk | Open a CAN socket, depend on `runtime`, or touch another bus's files |
 | `can-bench` | Nothing about the robot | One CAN interface, with its own frames that no drive acts on ([comparison](../docs/can-interface-comparison.md)) | Run with a drive or another host on the bus, or alongside `runtime` |
+
+**Safety is checked in two places** (the step 7 design, agreed 2026-11-08):
+
+- **The control thread decides** everything that needs joints, limbs or the skeleton: preflight, the enable sequence,
+  limits, torque, temperature, VBUS. It runs the `safety` crate's functions and publishes the batch for tick n+1 during
+  tick n.
+- **Each bus thread vetoes before every send**, on what it has just read: a fault bit, an enabled drive out of Run, too
+  many missed replies, or motion on stale feedback stops that drive's limb at once and sends it nothing that tick. The
+  bus thread is the only place that sees every frame, so the veto and each limb's stop latch live in `can`; `safety`
+  gives each of those stops its rule ID (`RuleId::of_stop`).
+- **A stop is an order, never a Disable in a batch.** Control asks a bus to stop a limb or the whole bus; the bus sends
+  the Disables, records what each drive did, and latches. Only the operator's clear re-arms a limb.
+- **Parameter traffic rides the slack**: one slow request in flight per bus, after the collect deadline, never to a
+  stopping or stopped limb.
+
+**A sensor that feeds control is a thread like a bus.** When a test needs one (an IMU for the legs, the power board's
+meters), it gets its own thread, stamps each sample on the monotonic clock and publishes snapshots to control over a
+bounded ring, with the same rule as feedback from a drive: a stale sample is visible as stale. None exists yet.
 
 The queues between the control thread and each bus thread, all bounded `rtrb` rings made before the first tick
 (`can::BusLinks`):
