@@ -55,12 +55,16 @@ Isolation on the stock kernel brings it back under the baseline: 253 µs on the 
 with the same load running on cores 0 and 1. The reserved cores carry nothing else, so this is what the realtime threads
 would see, at the price of two cores for everything else.
 
-The RT kernel boots on this Pi with the CAN FD HAT's two channels and the fan driver working (page size 4096;
+The RT kernel, with no isolation and the load on all four cores, has the shortest tail so far: 116 µs, with every core
+between 112 and 116 µs. Its average is the same as the stock kernel's (13 to 17 µs): `PREEMPT_RT` bounds the rare bad
+wake-up and does nothing for the typical one.
+
+It boots on this Pi with the CAN FD HAT's two channels and the fan driver working (page size 4096;
 `/sys/kernel/realtime` is absent on it, `uname` reports `PREEMPT_RT`).
 
 | Run | Worst µs | Per core max µs | Peak °C | Throttled |
 |---|---|---|---|---|
 | `stock` | 676 | 541, 513, 494, 676 | 65.3 | no |
 | `stock-isolated` | 253 | cores 2, 3: 182, 253 | 59.8 | no |
-| `rt` | | | | |
+| `rt` | 116 | 115, 112, 116, 112 | 64.8 | no |
 | `rt-isolated` | | | | |
