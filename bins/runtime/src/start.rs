@@ -22,6 +22,7 @@ use crate::control::{self, BusEnds, ControlExit, ControlLinks, View};
 use crate::dispatch::BusOrders;
 use crate::enable::{Enable, EnableReply, SLOW_RING, SlowEnds};
 use crate::events::Events;
+use crate::identity::{IdentityReply, IdentityRequest};
 use crate::latch::StopLatch;
 use crate::plan::{BusPlan, PlanError, offline, plan};
 use crate::request::{Clear, Reply, Scope};
@@ -35,6 +36,8 @@ const SNAPSHOTS: usize = 8;
 const ORDERS: usize = 16;
 /// Clears and enables in, their replies and views out.
 const REQUESTS: usize = 64;
+/// Scans and set-IDs in, and their replies out: one runs at a time, and a reply holds a whole scan's table.
+const IDENTITY: usize = 4;
 /// How far out the schedule's origin is, in periods: time for every thread to be spawned and asleep before tick 0 (a
 /// spawn takes far less than a period), and short enough that nobody waits on it. A thread that starts late anyway runs
 /// from the tick in progress and counts the ones it missed.
@@ -121,7 +124,7 @@ pub struct StartInfo {
     pub session: PathBuf,
 }
 
-/// A running runtime: stops, clears and enables in, their replies and each bus's newest snapshot out.
+/// A running runtime: stops, clears, enables, scans and set-IDs in, their replies and each bus's newest snapshot out.
 pub struct Runtime {
     /// The operator's clears. Each is answered once per bus its limb is on (by the bus, or refused `Busy`, `BusEnded`
     /// or `Ending`), or once with no bus when the limb is on none (`Offline`). A clear pushed after the run has
@@ -134,6 +137,11 @@ pub struct Runtime {
     pub enables: Producer<Enable>,
     /// The answers to enables.
     pub enable_replies: Consumer<EnableReply>,
+    /// The operator's scans and set-IDs, run one at a time, in turn, and never beside an enable. Each is answered once.
+    /// One pushed after the run has [`finished`](Runtime::finished) gets no reply.
+    pub identity: Producer<IdentityRequest>,
+    /// The answers to scans and set-IDs.
+    pub identity_replies: Consumer<IdentityReply>,
     /// Each bus's newest snapshot, once a tick, when [`RuntimeConfig::views`] asked for them.
     pub views: Option<Consumer<View>>,
     stops: Arc<StopLatch>,
@@ -141,6 +149,15 @@ pub struct Runtime {
     progress: Arc<AtomicU64>,
     info: StartInfo,
     threads: Threads,
+}
+
+/// The tick at `hz`, checked.
+fn checked_timing(hz: u64) -> Result<Timing, StartError> {
+    let timing = Timing::at_hz(hz);
+    timing
+        .check()
+        .map_err(|source| StartError::Timing { hz, source })?;
+    Ok(timing)
 }
 
 /// How one bus thread ended.
@@ -199,11 +216,7 @@ impl Runtime {
         let skeleton = skeleton::parse(&text)?;
         let plans = plan(&skeleton)?;
         let roster = Roster::new(&skeleton, &plans)?;
-        let timing = Timing::at_hz(config.hz);
-        timing.check().map_err(|source| StartError::Timing {
-            hz: config.hz,
-            source,
-        })?;
+        let timing = checked_timing(config.hz)?;
         let skeleton_ref = SkeletonRef::of(&config.skeleton, text.as_bytes());
         let sockets = sockets(&plans);
         let session = start_session(config, stage(&plans)?, &skeleton_ref, &sockets)?;
@@ -252,6 +265,8 @@ impl Runtime {
         let (replies_tx, replies) = RingBuffer::new(REQUESTS);
         let (enables, enables_rx) = RingBuffer::new(REQUESTS);
         let (enable_replies_tx, enable_replies) = RingBuffer::new(REQUESTS);
+        let (identity, identity_rx) = RingBuffer::new(IDENTITY);
+        let (identity_replies_tx, identity_replies) = RingBuffer::new(IDENTITY);
         let (views_tx, views) = views(config.views);
         let links = ControlLinks {
             buses: ends,
@@ -263,6 +278,8 @@ impl Runtime {
             slow,
             enables: enables_rx,
             enable_replies: enable_replies_tx,
+            identity: identity_rx,
+            identity_replies: identity_replies_tx,
             health,
             events: Events::new(Some(events), &roster),
             views: views_tx,
@@ -279,6 +296,8 @@ impl Runtime {
             replies,
             enables,
             enable_replies,
+            identity,
+            identity_replies,
             views,
             stops,
             finished,

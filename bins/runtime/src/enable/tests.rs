@@ -109,6 +109,7 @@ impl Rig {
             slow: &mut self.slow,
             batches: &mut self.batches,
             ended: &self.ended,
+            lent: None,
         }
     }
 

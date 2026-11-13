@@ -43,7 +43,7 @@ prove it. Never clamp a value to make it fit, and never build a frame outside th
 
 Nothing: it is the leaf of the [map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
 `skeleton` reads its model table and unit types; `sim-drive` uses `encode`, `decode` and its drive side; `can`,
-`safety` and `robot-cli` will use `encode` and `decode`.
+`safety` and `robot-cli` use `encode` and `decode`.
 
 ## Using it
 

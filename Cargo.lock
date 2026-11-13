@@ -454,6 +454,7 @@ version = "0.1.0"
 dependencies = [
  "nix",
  "robstride",
+ "serde_json",
  "skeleton",
  "socketcan",
  "thiserror",

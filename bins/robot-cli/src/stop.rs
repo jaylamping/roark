@@ -5,118 +5,270 @@
 //! each tick to every drive that hasn't been read in Reset, for at most 100 ms; then each drive's active reporting off
 //! (type 24) once its post-Disable silence is over, because a drive drops every frame in that silence. A drive still
 //! reporting after its reporting off gets it again, a bounded number of times.
+//!
+//! The timings are PLAN item 2's. The runtime's bus layer holds the resend tick and the silence as provisional values in
+//! `can::Timing`; this crate can't depend on `can` (PLAN item 3: `disable` depends on nothing else), so each is cited
+//! here instead. The report grace and watch and `END` are this stop's own.
+
+#![cfg_attr(
+    not(target_os = "linux"),
+    expect(
+        dead_code,
+        reason = "only the Linux bus thread drives the stop from a socket; the stop and its tests build everywhere"
+    )
+)]
+
+use std::fmt;
+use std::time::Duration;
 
 use robstride::{DeviceId, Frame, Inbound, Mode, Reporting, encode};
 
 /// Disables are sent again this often to a drive not yet read in Reset: one tick at the runtime's 250 Hz (PLAN item 3).
-pub const RESEND_NS: u64 = 4_000_000;
+pub const RESEND: Duration = Duration::from_millis(4);
 /// Disables go out for this long after the first (PLAN item 2, Stop: "Disables for 100 ms").
-pub const DISABLE_WINDOW_NS: u64 = 100_000_000;
-/// A drive drops every frame for up to this long after it takes a Disable (PLAN item 2, Silence windows: up to 48.7 ms
-/// measured; `sim-drive` draws up to 50 ms). Its reporting off waits this long after its Reset is read, plus one
-/// resend, in case a Disable sent again before the read restarted the silence.
-pub const SILENCE_NS: u64 = 50_000_000;
+pub const DISABLE_WINDOW: Duration = Duration::from_millis(100);
+/// A drive drops every frame for up to this long after it takes a Disable (PLAN item 2, Silence windows: silences up
+/// to 48.7 ms measured; `can::Timing::disable_silence_ns` and `sim-drive` use 50 ms). Its reporting off waits this long
+/// after its Reset is read, plus one resend, in case a Disable sent again before the read restarted the silence.
+pub const SILENCE: Duration = Duration::from_millis(50);
 /// A report read more than this long after reporting off was sent means it didn't take: a drive reports every 10 ms
 /// while reporting is on (§4.1.11), so a report already on its way when reporting off went is read inside it.
-pub const REPORT_GRACE_NS: u64 = 15_000_000;
+pub const REPORT_GRACE: Duration = Duration::from_millis(15);
 /// How long the bus is watched for reports after each reporting off: five report intervals.
-pub const REPORT_WATCH_NS: u64 = 50_000_000;
-/// Reporting off is sent at most this many times to one drive.
+pub const REPORT_WATCH: Duration = Duration::from_millis(50);
+/// Reporting off is sent at most this many times to one drive in one schedule. A drive seen out of Reset after its
+/// reporting off starts a new schedule, so it can get more in all, until `END`.
 pub const REPORTING_OFF_TRIES: u8 = 3;
-/// The stop ends by this time whatever happens. The longest it can need: the last Disable at 100 ms and its silence,
-/// one resend, then every reporting off try and its watch (100 + 50 + 4 + 3 × 50 ms), rounded up.
-pub const END_NS: u64 = 310_000_000;
+/// The stop ends by this time whatever happens: the longest an undisturbed stop needs, the last Disable at 100 ms and
+/// its silence, one resend, then every reporting off try and its watch (100 + 50 + 4 + 3 × 50 ms), rounded up. A drive
+/// that leaves Reset late may need longer; it is cut here and needs a person.
+pub const END: Duration = Duration::from_millis(310);
+
+/// An OS error code from the socket, kept as the number so outcomes stay plain values.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OsError(pub i32);
+
+impl fmt::Display for OsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        std::io::Error::from_raw_os_error(self.0).fmt(f)
+    }
+}
+
+impl OsError {
+    /// `EIO` (5, asm-generic/errno-base.h), for a failure that comes with no code of its own. A literal, as this module
+    /// builds on every OS and nix is a Linux-only dependency.
+    pub const EIO: Self = Self(5);
+}
+
+impl From<&std::io::Error> for OsError {
+    /// An error with no OS code (none of the socket calls make one) becomes `EIO`.
+    fn from(e: &std::io::Error) -> Self {
+        e.raw_os_error().map_or(Self::EIO, Self)
+    }
+}
+
+/// The bus-off class bit of an error frame's ID (`CAN_ERR_BUSOFF`, linux/can/error.h).
+const CAN_ERR_BUSOFF: u32 = 0x40;
+/// The controller class bit (`CAN_ERR_CRTL`): its byte is `data[1]`.
+const CAN_ERR_CRTL: u32 = 0x04;
+/// The controller's receive buffer overflowed (`CAN_ERR_CRTL_RX_OVERFLOW`, in `data[1]`): frames were lost.
+const CAN_ERR_CRTL_RX_OVERFLOW: u8 = 0x01;
+
+/// Whether the drain that just ran emptied the socket's queue.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Drain {
+    /// Nothing more was queued.
+    Emptied,
+    /// It stopped at its bound with frames still queued.
+    Capped,
+}
+
+/// What the bus thread does next.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Wait {
+    /// The stop is over: report.
+    Done,
+    /// Frames are still queued: read them before any wait.
+    DrainAgain,
+    /// Wait for a frame, or until this time.
+    Until(Duration),
+}
 
 /// Why a frame couldn't be handed to the socket.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SendError {
     /// The socket's queue is full (`ENOBUFS`, `EAGAIN`): tried again at the next wake while the frame is still due.
     Full,
     /// Anything else (the interface is down or gone): the bus is failed and the stop ends on it.
-    Failed(String),
+    Failed(OsError),
+}
+
+/// What went wrong with a whole bus.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum BusFault {
+    /// The interface couldn't be opened: nothing was sent.
+    #[error("can't open the interface: {0}")]
+    Open(OsError),
+    /// The bus's thread couldn't be started: nothing was sent.
+    #[error("can't start the bus's thread: {0}")]
+    Spawn(OsError),
+    /// A write failed with something other than a full queue: nothing more was sent.
+    #[error("a write failed: {0}")]
+    Write(OsError),
+    /// Reads failed: frames went on, but nothing after it was read, so nothing on this bus is confirmed.
+    #[error("reads failed: {0}")]
+    Read(OsError),
+}
+
+impl BusFault {
+    /// A stable name for machine-read output (`--json`).
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Open(_) => "open",
+            Self::Spawn(_) => "spawn",
+            Self::Write(_) => "write",
+            Self::Read(_) => "read",
+        }
+    }
 }
 
 /// What became of one drive.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Outcome {
-    /// Read in Reset after a Disable; reporting off sent and no report read after it.
+    /// Read in Reset after a Disable and not seen out of it since; reporting off sent and no report read more than
+    /// `REPORT_GRACE` after it.
     Stopped,
-    /// Nothing read from it (off, unpowered or not wired): Disables and reporting off were sent to it anyway.
+    /// Nothing read from it (off, unpowered or not wired), with no bus-off read on the bus after its socket opened and
+    /// its error frames readable: Disables and reporting off were sent to it anyway. Lesser error frames (warning, passive, ACK) don't
+    /// change this; a bus with no powered drive sends them.
     Silent,
-    /// It answered, but never in Reset.
+    /// Nothing read from it, and the socket couldn't be asked for error frames, so a bus-off wouldn't have been seen:
+    /// the silence may be the bus's, not the drive's.
+    SilentErrorsUnseen,
+    /// It answered, but was never read in Reset, or was read out of it since (an answer with no mode, such as a fault
+    /// or parameter reply, counts as an answer only).
     NotReset,
     /// Still reporting after every reporting off try.
     StillReporting,
-    /// A frame for it never left: the queue stayed full, or the bus failed or wasn't read.
-    NotSent(String),
+    /// The stop ended before its reporting off was due, or before the watch after it did.
+    WatchCut,
+    /// Frames from the bus went unread, still queued when the stop ended or dropped by the controller (RX overflow):
+    /// one of them may have withdrawn its Reset, or been its answer.
+    Unread,
+    /// A Disable or reporting off for it was due and never left: the socket's queue stayed full.
+    QueueFull,
+    /// The bus failed (`BusStop::fault` says how) or went bus-off: what was sent and read for it is in its record.
+    BusFailed,
 }
 
 impl Outcome {
-    /// True when nothing about this drive needs a person: it is stopped, or it never answered.
+    /// True when nothing about this drive needs a person: it is stopped, or it never answered, with no bus-off read on
+    /// its bus and its errors readable.
     #[must_use]
-    pub const fn ok(&self) -> bool {
+    pub const fn ok(self) -> bool {
         matches!(self, Self::Stopped | Self::Silent)
     }
 }
 
-/// One drive's stop and what was read from it. Times are nanoseconds since the stop began.
+impl Outcome {
+    /// A stable name for machine-read output (`--json`).
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Stopped => "stopped",
+            Self::Silent => "silent",
+            Self::SilentErrorsUnseen => "silent_errors_unseen",
+            Self::NotReset => "not_reset",
+            Self::StillReporting => "still_reporting",
+            Self::WatchCut => "watch_cut",
+            Self::Unread => "unread",
+            Self::QueueFull => "queue_full",
+            Self::BusFailed => "bus_failed",
+        }
+    }
+}
+
+impl fmt::Display for Outcome {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Stopped => "stopped",
+            Self::Silent => "silent (never answered)",
+            Self::SilentErrorsUnseen => {
+                "FAILED: never answered, and the bus's error frames couldn't be read"
+            }
+            Self::NotReset => "FAILED: answered, but never read in Reset or read out of it since",
+            Self::StillReporting => "FAILED: still reporting after reporting off",
+            Self::WatchCut => "FAILED: the stop ended before reporting off could be checked",
+            Self::Unread => {
+                "FAILED: frames from the bus went unread (still queued at the end, or lost to an RX overflow)"
+            }
+            Self::QueueFull => "FAILED: a frame never left, the socket's queue stayed full",
+            Self::BusFailed => "FAILED: the bus failed or went bus-off",
+        })
+    }
+}
+
+/// One drive's stop and what was read from it. Times are since the stop began.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DriveStop {
     /// The drive.
     pub id: DeviceId,
     /// Disables handed to the socket.
     pub disables: u32,
-    /// The first Disable handed to the socket.
-    pub first_disable_ns: Option<u64>,
-    /// When it was first read in Reset after a Disable had gone.
-    pub reset_ns: Option<u64>,
+    /// When it was read in Reset after a Disable had gone, unless it was read out of Reset since.
+    pub reset: Option<Duration>,
     /// It sent anything after the first Disable went.
     pub answered: bool,
     /// Reporting off handed to the socket.
     pub reporting_offs: u8,
     /// The last reporting off handed to the socket.
-    pub reporting_off_ns: Option<u64>,
+    pub reporting_off: Option<Duration>,
     /// The last report (type 24) read from it.
-    pub last_report_ns: Option<u64>,
-    next_disable_ns: u64,
+    pub last_report: Option<Duration>,
+    next_disable: Duration,
+    /// The last reporting off of the current schedule: a Reset withdrawn after a reporting off starts a new one.
+    off: Option<Duration>,
+    /// Reporting offs sent in the current schedule.
+    tries: u8,
 }
 
 impl DriveStop {
-    fn new(id: DeviceId) -> Self {
+    const fn new(id: DeviceId) -> Self {
         Self {
             id,
             disables: 0,
-            first_disable_ns: None,
-            reset_ns: None,
+            reset: None,
             answered: false,
             reporting_offs: 0,
-            reporting_off_ns: None,
-            last_report_ns: None,
-            next_disable_ns: 0,
+            reporting_off: None,
+            last_report: None,
+            next_disable: Duration::ZERO,
+            off: None,
+            tries: 0,
         }
     }
 
     /// When its reporting off is first due: its silence over after the Reset read, or after the last Disable.
-    const fn reporting_off_due_ns(&self) -> u64 {
-        match self.reset_ns {
-            Some(reset) => reset + SILENCE_NS + RESEND_NS,
-            None => DISABLE_WINDOW_NS + SILENCE_NS,
+    fn reporting_off_due(&self) -> Duration {
+        match self.reset {
+            Some(reset) => reset + SILENCE + RESEND,
+            None => DISABLE_WINDOW + SILENCE,
         }
     }
 
     /// Whether a report read after its reporting off shows reporting still on.
     fn still_reporting(&self) -> bool {
-        match (self.reporting_off_ns, self.last_report_ns) {
-            (Some(off), Some(report)) => report > off + REPORT_GRACE_NS,
+        match (self.off, self.last_report) {
+            (Some(off), Some(report)) => report > off + REPORT_GRACE,
             _ => false,
         }
     }
 
     /// Whether its reporting off has gone and the watch after it passed.
-    fn settled(&self, now_ns: u64) -> bool {
-        self.reporting_off_ns
-            .is_some_and(|off| now_ns >= off + REPORT_WATCH_NS)
-            && (!self.still_reporting() || self.reporting_offs >= REPORTING_OFF_TRIES)
+    fn settled(&self, now: Duration) -> bool {
+        self.off.is_some_and(|off| now >= off + REPORT_WATCH)
+            && (!self.still_reporting() || self.tries >= REPORTING_OFF_TRIES)
     }
 }
 
@@ -124,10 +276,23 @@ impl DriveStop {
 #[derive(Clone, Debug)]
 pub struct BusStop {
     drives: Vec<DriveStop>,
-    /// The bus failed: nothing more is sent, every drive not stopped is `NotSent`.
-    failed: Option<String>,
-    /// Reads failed: nothing more is read, sends go on, nothing more is confirmed.
-    deaf: Option<String>,
+    /// Nothing more is sent: the bus couldn't be opened, its thread started, or a write failed.
+    send_fault: Option<BusFault>,
+    /// Nothing more is read; frames still go.
+    read_fault: Option<OsError>,
+    /// Error frames read, of any class.
+    error_frames: u32,
+    /// A bus-off error frame was read (`CAN_ERR_BUSOFF`): the class the runtime latches on (can.md, Errors and
+    /// bus-off). Every drive on the bus then needs a person, as a late report or Run could have been lost.
+    bus_off: bool,
+    /// The socket couldn't be asked for error frames, so a bus-off wouldn't be seen. Only silent drives need a person
+    /// then: a drive read in Reset was read whatever the bus's state, while a bus-off that was read means frames were
+    /// lost, which no one confirmation rules out.
+    errors_unseen: Option<OsError>,
+    /// The last drain stopped at its bound with frames still queued.
+    backlog: bool,
+    /// The controller reported an RX overflow: frames from the bus were dropped before they could be read.
+    frames_lost: bool,
 }
 
 impl BusStop {
@@ -136,20 +301,33 @@ impl BusStop {
     pub fn new(ids: impl IntoIterator<Item = DeviceId>) -> Self {
         Self {
             drives: ids.into_iter().map(DriveStop::new).collect(),
-            failed: None,
-            deaf: None,
+            send_fault: None,
+            read_fault: None,
+            error_frames: 0,
+            bus_off: false,
+            errors_unseen: None,
+            backlog: false,
+            frames_lost: false,
         }
     }
 
-    /// A frame read at `now_ns`. Only statuses and reports from this stop's drives count, and only once a Disable has
-    /// gone to that drive.
-    pub fn heard(&mut self, now_ns: u64, inbound: &Inbound) {
-        let (header, report) = match inbound {
-            Inbound::Status(s) => (s.header, false),
-            Inbound::Report(s) => (s.header, true),
-            _ => return,
+    /// A frame read at `now`. Only frames from this stop's drives count, and only once a Disable has gone to that
+    /// drive. Any frame from it means it answered; a status, report or version reply also gives its mode: Reset
+    /// confirms it, and anything else withdraws a confirmation already made. A withdrawn drive's reporting off schedule
+    /// starts over: inside the 100 ms window it gets Disables again and its reporting off waits out their silence; after
+    /// it, no Disable goes, and its reporting off is due as for a drive never read in Reset (150 ms, so at once if that
+    /// has passed).
+    pub fn heard(&mut self, now: Duration, inbound: &Inbound) {
+        let (device, mode, report) = match inbound {
+            Inbound::Status(s) => (s.header.device, Some(s.header.mode), false),
+            Inbound::Report(s) => (s.header.device, Some(s.header.mode), true),
+            Inbound::Version { header, .. } => (header.device, Some(header.mode), false),
+            Inbound::Identity { device, .. }
+            | Inbound::Fault { device, .. }
+            | Inbound::Param { device, .. } => (*device, None, false),
+            Inbound::Echo(_) => return,
         };
-        let Some(drive) = self.drives.iter_mut().find(|d| d.id == header.device) else {
+        let Some(drive) = self.drives.iter_mut().find(|d| d.id == device) else {
             return;
         };
         if drive.disables == 0 {
@@ -157,355 +335,226 @@ impl BusStop {
         }
         drive.answered = true;
         if report {
-            drive.last_report_ns = Some(now_ns);
+            drive.last_report = Some(now);
         }
-        if header.mode == Mode::Reset && drive.reset_ns.is_none() {
-            drive.reset_ns = Some(now_ns);
+        match mode {
+            Some(Mode::Reset) => {
+                drive.reset.get_or_insert(now);
+            }
+            Some(Mode::Run | Mode::Calibration) if drive.reset.is_some() => {
+                drive.reset = None;
+                drive.off = None;
+                drive.tries = 0;
+            }
+            Some(Mode::Run | Mode::Calibration) | None => {}
         }
     }
 
-    /// Reads failed: nothing more can be confirmed, but the frames still go.
-    pub fn deafen(&mut self, error: String) {
-        self.deaf.get_or_insert(error);
+    /// An error frame was read; `class` is its ID's error class bits and `controller` its `data[1]` (linux/can/error.h).
+    /// Bus-off fails the bus, and an RX overflow means frames were lost, so no drive on the bus is ok. Warning, passive
+    /// and ACK errors count for nothing: they are what a bus with no powered drive on it sends.
+    pub(crate) const fn heard_error_frame(&mut self, class: u32, controller: u8) {
+        self.error_frames = self.error_frames.saturating_add(1);
+        self.bus_off |= class & CAN_ERR_BUSOFF != 0;
+        self.frames_lost |= class & CAN_ERR_CRTL != 0 && controller & CAN_ERR_CRTL_RX_OVERFLOW != 0;
     }
 
-    /// The bus failed before anything could be sent (it couldn't be opened).
-    pub fn fail(&mut self, error: String) {
-        self.failed.get_or_insert(error);
+    /// The socket couldn't be asked for error frames: a bus-off wouldn't be seen, so a silent drive can't be told from
+    /// one behind a dead bus.
+    pub(crate) const fn cant_see_errors(&mut self, e: OsError) {
+        self.errors_unseen = Some(e);
     }
 
-    /// Hand every frame due at `now_ns` to `send`, Disables to every drive before any reporting off. A full queue
-    /// leaves the frame due for the next wake; any other failure fails the bus and nothing more is sent.
-    pub fn step(&mut self, now_ns: u64, send: &mut dyn FnMut(Frame) -> Result<(), SendError>) {
-        if self.failed.is_some() {
+    /// The drain that just ran emptied the queue, or stopped at its bound with frames still in it.
+    pub(crate) fn drained(&mut self, drain: Drain) {
+        self.backlog = drain == Drain::Capped;
+    }
+
+    /// The bus failed. A read fault ends the reads and lets frames go on; any other ends the sending. The first of each
+    /// is kept.
+    pub(crate) fn fail(&mut self, fault: BusFault) {
+        if let BusFault::Read(e) = fault {
+            self.read_fault.get_or_insert(e);
+        } else {
+            self.send_fault.get_or_insert(fault);
+        }
+    }
+
+    /// Whether anything more may be sent: until a fault other than a read fault.
+    const fn sending(&self) -> bool {
+        self.send_fault.is_none()
+    }
+
+    /// Whether the socket is still read: until a read fault.
+    #[must_use]
+    pub(crate) const fn reading(&self) -> bool {
+        self.read_fault.is_none()
+    }
+
+    /// What the bus thread does after the step at `now`: read queued frames first, while there are any and the stop
+    /// isn't over, since one may withdraw a Reset; otherwise wait for the next due time, or report.
+    #[must_use]
+    pub(crate) fn wait(&self, now: Duration) -> Wait {
+        match self.next(now) {
+            _ if self.backlog && self.reading() && self.sending() && now < END => Wait::DrainAgain,
+            Some(at) => Wait::Until(at),
+            None => Wait::Done,
+        }
+    }
+
+    /// Hand every frame due at `now` to `send`, Disables to every drive before any reporting off. A full queue leaves
+    /// the frame due for the next wake; any other failure fails the bus and nothing more is sent.
+    pub fn step(&mut self, now: Duration, send: &mut dyn FnMut(Frame) -> Result<(), SendError>) {
+        if !self.sending() {
             return;
         }
-        let fail = |error: SendError, failed: &mut Option<String>| match error {
-            SendError::Full => false,
-            SendError::Failed(e) => {
-                failed.get_or_insert(e);
-                true
-            }
-        };
+        let failed = self.send_due(now, send);
+        if let Some(e) = failed {
+            self.fail(BusFault::Write(e));
+        }
+    }
+
+    /// `step`'s sending: the OS error that failed a write, if one did, after which nothing more is sent.
+    fn send_due(
+        &mut self,
+        now: Duration,
+        send: &mut dyn FnMut(Frame) -> Result<(), SendError>,
+    ) -> Option<OsError> {
         for drive in &mut self.drives {
-            if drive.reset_ns.is_none()
-                && now_ns < DISABLE_WINDOW_NS
-                && now_ns >= drive.next_disable_ns
-            {
-                match send(encode::disable(drive.id)) {
-                    Ok(()) => {
-                        drive.disables += 1;
-                        drive.first_disable_ns.get_or_insert(now_ns);
-                        drive.next_disable_ns = now_ns + RESEND_NS;
-                    }
-                    Err(e) => {
-                        if fail(e, &mut self.failed) {
-                            return;
-                        }
-                    }
+            if drive.reset.is_some() || now >= DISABLE_WINDOW || now < drive.next_disable {
+                continue;
+            }
+            match send(encode::disable(drive.id)) {
+                Ok(()) => {
+                    drive.disables += 1;
+                    drive.next_disable = now + RESEND;
                 }
+                Err(SendError::Full) => {}
+                Err(SendError::Failed(e)) => return Some(e),
             }
         }
         for drive in &mut self.drives {
-            let due = match drive.reporting_off_ns {
-                None => now_ns >= drive.reporting_off_due_ns(),
-                Some(_) => drive.still_reporting() && drive.reporting_offs < REPORTING_OFF_TRIES,
+            let due = match drive.off {
+                // Never before a Disable has left: PLAN item 2's order is Disable, then reporting off.
+                None => drive.disables > 0 && now >= drive.reporting_off_due(),
+                Some(_) => drive.still_reporting() && drive.tries < REPORTING_OFF_TRIES,
             };
             if !due {
                 continue;
             }
             match send(encode::active_reporting(drive.id, Reporting::Off)) {
                 Ok(()) => {
-                    drive.reporting_offs += 1;
-                    drive.reporting_off_ns = Some(now_ns);
+                    drive.reporting_offs = drive.reporting_offs.saturating_add(1);
+                    drive.tries += 1;
+                    drive.off = Some(now);
+                    drive.reporting_off = Some(now);
                 }
-                Err(e) => {
-                    if fail(e, &mut self.failed) {
-                        return;
-                    }
-                }
+                Err(SendError::Full) => {}
+                Err(SendError::Failed(e)) => return Some(e),
             }
         }
+        None
     }
 
-    /// The next time something falls due, if the stop isn't over by `now_ns`. The caller wakes then or on a frame.
-    #[must_use]
-    pub fn next_ns(&self, now_ns: u64) -> Option<u64> {
-        if self.done(now_ns) {
+    /// The next time after `now` that something falls due, if the stop isn't over. The caller wakes then or on a frame.
+    fn next(&self, now: Duration) -> Option<Duration> {
+        if self.done(now) {
             return None;
         }
         let at = self
             .drives
             .iter()
-            .filter_map(|d| {
-                let disable = (d.reset_ns.is_none() && d.next_disable_ns < DISABLE_WINDOW_NS)
-                    .then_some(d.next_disable_ns);
-                let off = match d.reporting_off_ns {
-                    None => Some(d.reporting_off_due_ns()),
-                    Some(off) => Some(off + REPORT_WATCH_NS),
+            .flat_map(|d| {
+                let disable = (d.reset.is_none() && d.next_disable < DISABLE_WINDOW)
+                    .then_some(d.next_disable);
+                let off = match d.off {
+                    None => d.reporting_off_due(),
+                    Some(off) => off + REPORT_WATCH,
                 };
-                [disable, off].into_iter().flatten().min()
+                [disable, Some(off)]
             })
+            .flatten()
+            .filter(|&t| t > now)
             .min()
-            .unwrap_or(END_NS);
-        Some(at.clamp(now_ns, END_NS))
+            .unwrap_or(END);
+        Some(at.min(END))
     }
 
-    /// True once every drive is settled, the bus failed, or `END_NS` has passed.
-    #[must_use]
-    pub fn done(&self, now_ns: u64) -> bool {
-        self.failed.is_some() || now_ns >= END_NS || self.drives.iter().all(|d| d.settled(now_ns))
+    /// True once every drive is settled, sending has stopped on a fault, or `END` has passed.
+    fn done(&self, now: Duration) -> bool {
+        !self.sending() || now >= END || self.drives.iter().all(|d| d.settled(now))
     }
 
-    /// Each drive's record and outcome, in the order given.
+    /// Each drive's record and outcome at `now`, the time the stop ended, in the order given.
     #[must_use]
-    pub fn outcomes(&self) -> Vec<(DriveStop, Outcome)> {
+    pub fn outcomes(&self, now: Duration) -> Vec<(DriveStop, Outcome)> {
         self.drives
             .iter()
-            .map(|d| (d.clone(), self.outcome(d)))
+            .map(|d| (d.clone(), self.outcome(d, now)))
             .collect()
     }
 
-    /// Why the bus failed, if it did.
+    /// How the bus failed, if it did: the fault that ended the sending, else the one that ended the reads.
     #[must_use]
-    pub fn failure(&self) -> Option<&str> {
-        self.failed.as_deref()
+    pub(crate) fn fault(&self) -> Option<BusFault> {
+        self.send_fault.or(self.read_fault.map(BusFault::Read))
     }
 
-    fn outcome(&self, d: &DriveStop) -> Outcome {
-        let unsent = |what: &str| match &self.failed {
-            Some(e) => Outcome::NotSent(format!("{what}: bus failed: {e}")),
-            None => Outcome::NotSent(format!("{what}: the socket's queue stayed full")),
-        };
-        if d.disables == 0 {
-            return unsent("no Disable sent");
+    /// The fault that ended the reads, if any, also when a later one ended the sending.
+    #[must_use]
+    pub(crate) const fn read_fault(&self) -> Option<OsError> {
+        self.read_fault
+    }
+
+    /// Error frames read, of any class.
+    #[must_use]
+    pub(crate) const fn error_frames(&self) -> u32 {
+        self.error_frames
+    }
+
+    /// Whether an RX overflow error frame was read: frames were lost.
+    #[must_use]
+    pub(crate) const fn frames_lost(&self) -> bool {
+        self.frames_lost
+    }
+
+    /// Whether a bus-off error frame was read.
+    #[must_use]
+    pub(crate) const fn bus_off(&self) -> bool {
+        self.bus_off
+    }
+
+    /// Why the socket couldn't be asked for error frames, if it couldn't.
+    #[must_use]
+    pub(crate) const fn errors_unseen(&self) -> Option<OsError> {
+        self.errors_unseen
+    }
+
+    fn outcome(&self, d: &DriveStop, now: Duration) -> Outcome {
+        if self.fault().is_some() || self.bus_off {
+            return Outcome::BusFailed;
         }
-        if d.reporting_offs == 0 {
-            return unsent("no reporting off sent");
+        if d.disables == 0 || (d.off.is_none() && now >= d.reporting_off_due()) {
+            return Outcome::QueueFull;
         }
         if d.still_reporting() {
             return Outcome::StillReporting;
         }
-        match (d.reset_ns, d.answered, &self.deaf) {
-            (Some(_), _, _) => Outcome::Stopped,
-            (None, true, _) => Outcome::NotReset,
-            (None, false, Some(e)) => {
-                Outcome::NotSent(format!("frames sent, but reads failed: {e}"))
-            }
-            (None, false, None) => Outcome::Silent,
+        let outcome = match (d.reset, d.answered) {
+            (Some(_), _) if !d.settled(now) => Outcome::WatchCut,
+            (Some(_), _) => Outcome::Stopped,
+            (None, true) => Outcome::NotReset,
+            (None, false) if self.errors_unseen.is_some() => Outcome::SilentErrorsUnseen,
+            (None, false) if !d.settled(now) => Outcome::WatchCut,
+            (None, false) => Outcome::Silent,
+        };
+        if (self.backlog || self.frames_lost) && outcome.ok() {
+            Outcome::Unread
+        } else {
+            outcome
         }
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use robstride::{DeviceId, Frame, Inbound, decode, drive};
-
-    use super::{
-        BusStop, DISABLE_WINDOW_NS, END_NS, Outcome, REPORT_GRACE_NS, REPORTING_OFF_TRIES,
-        RESEND_NS, SILENCE_NS, SendError,
-    };
-
-    const MS: u64 = 1_000_000;
-
-    fn id(n: u8) -> DeviceId {
-        DeviceId::new(u64::from(n)).unwrap()
-    }
-
-    /// A status (or report) from drive `n`: type 2 (or 24), mode in ID bits 23..22, the drive in bits 15..8.
-    fn from(n: u8, run: bool, report: bool) -> Inbound {
-        let kind: u32 = if report { 24 } else { 2 };
-        let mode: u32 = if run { 2 } else { 0 };
-        decode(
-            (kind << 24) | (mode << 22) | (u32::from(n) << 8) | 0xFD,
-            &[0x80, 0, 0x80, 0, 0x80, 0, 0, 0xFA],
-        )
-        .unwrap()
-    }
-
-    /// What a frame the stop sent is: `('D', n)` a Disable, `('R', n)` reporting off.
-    fn what(frame: Frame) -> (char, u8) {
-        let host = drive::command(frame.id(), &frame.data()).unwrap().unwrap();
-        let n = host.target.get();
-        let kind = match host.command {
-            drive::Command::Disable => 'D',
-            drive::Command::Reporting(robstride::Reporting::Off) => 'R',
-            _ => '?',
-        };
-        assert_ne!(kind, '?', "the stop sent {:?}", host.command);
-        (kind, n)
-    }
-
-    /// Frames the stop sent, each with its time.
-    type Sent = [(u64, (char, u8))];
-
-    /// Run `stop` a millisecond at a time to its end, `answer` giving each drive's frames at each millisecond after the
-    /// frames sent so far; every frame sent is returned with its time.
-    fn run(
-        stop: &mut BusStop,
-        answer: &dyn Fn(u64, &Sent) -> Vec<Inbound>,
-        send: &dyn Fn(u64, (char, u8)) -> Result<(), SendError>,
-    ) -> Vec<(u64, (char, u8))> {
-        let mut log = Vec::new();
-        let mut now = 0;
-        while !stop.done(now) {
-            for inbound in answer(now, &log) {
-                stop.heard(now, &inbound);
-            }
-            let mut out = Vec::new();
-            stop.step(now, &mut |f| {
-                let w = what(f);
-                send(now, w).map(|()| out.push((now, w)))
-            });
-            log.extend(out);
-            now += MS;
-        }
-        assert!(now <= END_NS + MS, "the stop ran past its end: {now}");
-        log
-    }
-
-    fn times(sent: &Sent, frame: (char, u8)) -> Vec<u64> {
-        sent.iter()
-            .filter(|(_, w)| *w == frame)
-            .map(|(t, _)| t / MS)
-            .collect()
-    }
-
-    /// Guards: safety - the independent stop's sequence (PLAN item 2, Stop): a Disable to every drive at once, sent
-    /// again each tick to a drive not read in Reset for 100 ms; reporting off only after the post-Disable silence (54 ms
-    /// after the Reset read, 150 ms for a drive never read in Reset); and the outcome is what was read: a drive read in
-    /// Reset is stopped, one that never answered is silent, one that answered only in Run needs a person.
-    #[test]
-    fn disables_go_to_every_drive_until_reset_then_reporting_off_after_the_silence() {
-        // 11 answers each Disable 1 ms later in Reset; 12 never answers; 13 answers each Disable in Run.
-        let answer = |now: u64, sent: &Sent| {
-            let mut out = Vec::new();
-            for (t, w) in sent {
-                if *t + MS == now {
-                    match w {
-                        ('D', 11) => out.push(from(11, false, false)),
-                        ('D', 13) => out.push(from(13, true, false)),
-                        _ => {}
-                    }
-                }
-            }
-            out
-        };
-        let mut stop = BusStop::new([id(11), id(12), id(13)]);
-        let sent = run(&mut stop, &answer, &|_, _| Ok(()));
-
-        // Every drive's first Disable goes in the first step, before any reporting off.
-        let first: Vec<(char, u8)> = sent.iter().take(3).map(|(_, w)| *w).collect();
-        assert_eq!(first, [('D', 11), ('D', 12), ('D', 13)]);
-        let every_tick: Vec<u64> = (0..DISABLE_WINDOW_NS / MS).step_by(4).collect();
-        assert_eq!(times(&sent, ('D', 11)), [0]);
-        assert_eq!(times(&sent, ('D', 12)), every_tick);
-        assert_eq!(times(&sent, ('D', 13)), every_tick);
-        assert_eq!(
-            times(&sent, ('R', 11)),
-            [(MS + SILENCE_NS + RESEND_NS) / MS]
-        );
-        assert_eq!(
-            times(&sent, ('R', 12)),
-            [(DISABLE_WINDOW_NS + SILENCE_NS) / MS]
-        );
-        assert_eq!(
-            times(&sent, ('R', 13)),
-            [(DISABLE_WINDOW_NS + SILENCE_NS) / MS]
-        );
-
-        let outcomes: Vec<Outcome> = stop.outcomes().into_iter().map(|(_, o)| o).collect();
-        assert_eq!(
-            outcomes,
-            [Outcome::Stopped, Outcome::Silent, Outcome::NotReset]
-        );
-        assert!(stop.failure().is_none());
-    }
-
-    /// Guards: bug - drives left reporting by a faulted session flooded every later start, marengo
-    /// `docs/safety.md` "Reporting Off at exit (2026-10-04)": a drive still reporting after its reporting off gets it
-    /// again, at most `REPORTING_OFF_TRIES` times, and is reported as needing a person if it never stops; a report
-    /// already on its way when reporting off went doesn't count.
-    #[test]
-    fn reporting_off_is_sent_again_while_reports_keep_coming() {
-        // 11 is in Reset and reports every 10 ms: 21 stops after its second reporting off, 22 never stops, and 23 sends
-        // one last report just inside the grace after its first.
-        let answer = |now: u64, sent: &Sent| {
-            let mut out = Vec::new();
-            for (n, stops_after) in [(21, 2), (22, usize::MAX), (23, 1)] {
-                let offs = times(sent, ('R', n));
-                if now.is_multiple_of(10 * MS) && offs.len() < stops_after {
-                    out.push(from(n, false, true));
-                }
-                // 23's last report, sent just before its reporting off arrived, is read just inside the grace.
-                if n == 23
-                    && offs
-                        .first()
-                        .is_some_and(|off| now == off * MS + REPORT_GRACE_NS - MS)
-                {
-                    out.push(from(n, false, true));
-                }
-            }
-            out
-        };
-        let mut stop = BusStop::new([id(21), id(22), id(23)]);
-        let sent = run(&mut stop, &answer, &|_, _| Ok(()));
-        assert_eq!(times(&sent, ('R', 21)).len(), 2);
-        assert_eq!(
-            times(&sent, ('R', 22)).len(),
-            usize::from(REPORTING_OFF_TRIES)
-        );
-        assert_eq!(times(&sent, ('R', 23)).len(), 1);
-        let outcomes: Vec<Outcome> = stop.outcomes().into_iter().map(|(_, o)| o).collect();
-        assert_eq!(
-            outcomes,
-            [Outcome::Stopped, Outcome::StillReporting, Outcome::Stopped]
-        );
-    }
-
-    /// Guards: safety - a socket failure on one bus (PLAN item 6, `host.bus`): a full queue only delays a frame to the
-    /// next wake, while any other write error fails the bus at once, sends nothing more on it and reports every drive
-    /// not confirmed as needing a person.
-    #[test]
-    fn a_full_queue_delays_a_frame_and_a_failed_write_ends_the_bus() {
-        // The queue is full for the first 2 ms: every Disable goes at 2 ms, all at once.
-        let mut full = BusStop::new([id(11), id(12)]);
-        let sent = run(
-            &mut full,
-            &|now, sent| {
-                sent.iter()
-                    .filter(|(t, w)| *t + MS == now && w.0 == 'D')
-                    .map(|(_, w)| from(w.1, false, false))
-                    .collect()
-            },
-            &|now, _| {
-                if now < 2 * MS {
-                    Err(SendError::Full)
-                } else {
-                    Ok(())
-                }
-            },
-        );
-        assert_eq!(times(&sent, ('D', 11)), [2]);
-        assert_eq!(times(&sent, ('D', 12)), [2]);
-        let outcomes: Vec<Outcome> = full.outcomes().into_iter().map(|(_, o)| o).collect();
-        assert_eq!(outcomes, [Outcome::Stopped, Outcome::Stopped]);
-
-        // The interface goes away on the second Disable of the first step: nothing more is sent, the stop is over.
-        let mut gone = BusStop::new([id(11), id(12)]);
-        let sent = run(&mut gone, &|_, _| Vec::new(), &|_, w| {
-            if w == ('D', 12) {
-                Err(SendError::Failed("ENODEV".to_owned()))
-            } else {
-                Ok(())
-            }
-        });
-        assert_eq!(sent, [(0, ('D', 11))]);
-        assert_eq!(gone.failure(), Some("ENODEV"));
-        assert!(
-            gone.outcomes()
-                .iter()
-                .all(|(_, o)| matches!(o, Outcome::NotSent(_)))
-        );
-    }
-}
+mod tests;
