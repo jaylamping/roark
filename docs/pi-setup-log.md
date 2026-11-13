@@ -42,10 +42,17 @@ allowed in: everything on `tailscale0`, and SSH and mDNS from the LAN's IPv4 sub
 - `can-bench` was not installed by the script (no binary beside it). It was installed afterwards from CI's `pi-binaries`
   artifact, checksum checked, and has not been given a bus.
 - The script that ran is the one at 6a516b6. Later changes to it (the `agent` sudoers file, `00-robot.conf` for sshd, the
-  once-only upgrade, the file writes by rename) have not run on a Pi; the sudoers file was put in by hand.
+  once-only upgrade, the file writes by rename) have not run on a Pi; the sudoers file and `00-robot.conf` were
+  put in by hand afterwards, and `sshd -T` shows passwords and root logins off.
 - `systemd-networkd` is not enabled: `deploy/` has no `.link` or `.network` files for the buses yet, so the bus names
   follow probe order (`can0` on `spi0.0`, `can1` on `spi1.0` on this boot).
 
-**Not done yet:** the NVMe drive, wired Ethernet, the `tag:agent` rules in the tailnet policy (remote-access.md section 2).
-The one-hour `cyclictest` under load (section 12) was started the same morning; its results go in
-`docs/bench-results/realtime/`.
+**First `cyclictest` run, not a baseline.** One hour under `stress-ng` with the section 12 commands, governor
+`performance`, stock kernel: worst latency 614 µs (per core 614, 473, 612, 396; averages 5 to 7 µs; no sample over
+1000 µs). The Pi overheated during it: 49 °C before, 81 °C after, `throttled=0xe0000` (frequency capped, throttled, soft
+temperature limit; no under-voltage), and the fan's tachometer read 0 RPM while the kernel was driving it. A throttled CPU
+makes the number worthless as a baseline, so nothing went into `docs/bench-results/realtime/`. Run it again once the
+cooling works.
+
+**Not done yet:** the cooling and the `cyclictest` baseline, the NVMe drive, wired Ethernet, the `tag:agent` rules in the
+tailnet policy (remote-access.md section 2).
