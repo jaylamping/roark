@@ -671,7 +671,7 @@ with the RS02 re-clocked +40° the 10 mm envelope fits inside the outline, over 
 
   | Pair | Clearance |
   |---|---|
-  | Ring | 1.04 |
+  | Ring | 1.04 (see below) |
   | Drum | 1.99 |
   | Hub | 2.19 |
   | Port cap | 2.62 |
@@ -679,6 +679,17 @@ with the RS02 re-clocked +40° the 10 mm envelope fits inside the outline, over 
   | Arm | 12.77 |
   | Torso | 15.73 |
 
+- **Fork front ↔ flange ring 1.04 is overtravel only, and older than pp_r.**
+  - **The parts:** the ring is the pitch flange ring (X 104.5-106.3, on the drum's spokes, pitch group). The fork front is in
+    the roll group, so the two move relative to each other with roll.
+  - **Where the 1.03-1.04 is:** only at roll -12°, 1° past the -11° hard stop; the sweep includes that degree of overtravel.
+    The spot is the fork front's inboard side at X - RX -49.2, Y 352.6.
+  - **Through the actual travel:**
+    - 2.10 at the stop (-11°).
+    - 4.27 at the soft limit (-9°).
+    - 9.2-9.4 everywhere else.
+  - **Before pp_r:** the same at every angle.
+  - **So the 2.0 rule between moving pairs holds** over the actual travel.
 - **Same-code before/after** (the full sweep re-run on the pre-pp_r fork front and plugs with `RS02_RECLOCK=0`;
   `_wip/.../clearance_pre_pp_r_same.json`): every pair is within 0.05 mm, except:
 

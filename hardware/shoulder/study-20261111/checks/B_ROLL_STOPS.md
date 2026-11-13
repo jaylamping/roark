@@ -238,8 +238,9 @@ them for the right).
 
 - These hold whatever is decided for the printed stop. They are the second layer even if the leg2 version or a stronger
   joint is adopted.
-- **Whether the printed stop must survive a full 60 N·m stall** (needing more mass and outline than leg2), or whether a
-  stall is the controller's job with the printed stop good for rated torque, is Joey's call.
+- **Decided by Joey (2026-11-13): software limits near the stops.** The parts stay as built. The printed stop is good to
+  the rated 20 N·m, and the controller limits above are the stall protection. The printed stop is not sized for a full
+  60 N·m stall.
 
 ## Stall and rated FEA on the real r 47 fork rear, six-screw joint (2026-11-12)
 
@@ -259,7 +260,8 @@ SF at the 1 mm average. Layer is tensile σy (the fork rear prints upright). Rat
   - Bulk 0.58-1.02, layer 0.55-1.59.
   - The pad junction, the leg and the joint stay under 1.0.
   - Surviving a full stall in print would need more than leg2 (leg2 reaches 0.55-1.08 layer).
-  - **This is Joey's call:** a stall-proof printed stop, or the controller limits above as the stall protection.
+  - **Decided by Joey (2026-11-13): software limits near the stops.** The printed stop stays as built, good to the rated
+    20 N·m. The controller limits in "FOR SOFTWARE" above are the stall protection.
 
 ## Fork joint screw layout N, adopted (2026-11-12)
 
