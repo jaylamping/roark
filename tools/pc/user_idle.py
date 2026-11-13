@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import sys
 
-
 NUDGE_S = 3  # seconds of input a keep-alive mouse nudge may make in one watch
 
 

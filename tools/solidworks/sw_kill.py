@@ -49,6 +49,12 @@ def settled(state: str, age_s: float) -> str:
     return "unsettled" if state in DEAD and age_s < YOUNG_S else state
 
 
+def working(state: str, cpu_s: float, watch_s: float) -> bool:
+    """An abandoned-looking instance that used a tenth of the watch in CPU time is meshing or reading a result back for
+    a client this module has no record of. A half-closed one is not excused: it spins a core for ever."""
+    return state == "orphan" and cpu_s > 0.1 * watch_s
+
+
 def stays_dead(look, watch_s: float, poll_s: float = 5.0, sleep=time.sleep) -> bool:
     """True if `look()` returns the same dead state on every look for `watch_s` seconds. One look that shows the
     instance answering, solving, driven or gone ends the watch: it was not dead."""
@@ -64,7 +70,7 @@ def stays_dead(look, watch_s: float, poll_s: float = 5.0, sleep=time.sleep) -> b
     return True
 
 
-def _helpers_without_solidworks():
+def _helpers_without_solidworks(keeper=None):
     """Solver and helper processes left behind when their SolidWorks was ended.
 
     A solver's helper parent can exit while the SolidWorks above it is alive and solving, which breaks the parent chain
@@ -77,7 +83,7 @@ def _helpers_without_solidworks():
     for p in psutil.process_iter(["name"]):
         try:
             name = (p.info["name"] or "").lower()
-            if name == "sldworks.exe":
+            if name == "sldworks.exe" and p.pid != keeper:  # the keeper never solves, and it is older than everything
                 sw_starts.append(p.create_time())
             elif name in HELPERS:
                 helpers.append(p)
@@ -98,6 +104,16 @@ def _helpers_without_solidworks():
     return out
 
 
+def _cpu_s(pid: int) -> float:
+    import psutil
+
+    try:
+        t = psutil.Process(pid).cpu_times()
+        return t.user + t.system
+    except psutil.Error:
+        return 0.0
+
+
 def _log(sw, line: str) -> None:
     try:
         d = str(sw._claims().claims_dir())
@@ -114,7 +130,6 @@ def main(argv: list[str]) -> int:
         return 2
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import psutil
-
     import sw_instance as sw
 
     force = "--force" in argv
@@ -137,7 +152,7 @@ def main(argv: list[str]) -> int:
         return "gone"
 
     rows = [(row[0], settled(sw.state(row), row[1]), row[0] == keeper, sw.who(row[0])) for row in sw.status()]
-    strays = _helpers_without_solidworks()
+    strays = _helpers_without_solidworks(keeper)
     code = 0
 
     if what == "--list":
@@ -157,11 +172,16 @@ def main(argv: list[str]) -> int:
             continue
         started = sw._started(pid)
         st = look(pid)  # again, now: an earlier end in this run may have taken half a minute
+        if st == "gone":
+            continue
         ok, why = may_end(st, is_keeper, force)
         if ok and not force:
             print(f"PID {pid} looks {st}; watching it for {WATCH_S[st]} s before ending it")
-            if not stays_dead(lambda: look(pid), WATCH_S[st]):
+            cpu0 = _cpu_s(pid)
+            if not stays_dead(lambda p=pid: look(p), WATCH_S[st]):
                 ok, why = False, f"it was {st} but changed while watched: not dead"
+            elif working(st, _cpu_s(pid) - cpu0, WATCH_S[st]):
+                ok, why = False, "it used CPU all through the watch: something is driving it; --force to end it"
         if not ok:
             if what.isdigit():
                 print(f"PID {pid} not ended: {why}")
