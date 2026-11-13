@@ -123,6 +123,13 @@ SEAT_RI, SEAT_RO = 33.5, 45.0
 RS02_SCREWS = [-136.0, -96.0, -56.0, 64.0, 104.0]   # 5 x M3 on PCD 73 (yaw angle atan2(z - YZ, x - RX))
 SOCKET_POCKETS = [(162.0, 198.0), (-26.0, 34.0)]   # CHANGED: 4 deg wider each side (RS02 socket body reached 196 deg)
 TAP_Y = (353.4, 359.4)
+RS02_ACCESS_ANG = (64.0, 104.0)  # the two front screws the cheek covers: straight-up driver bores, plugged flush
+if LOOK == 'pp_r':
+    # mock-up only (look-options/plug_pocket, radial plug): the RS02 re-clocked +40 deg, so its in-use socket sits at 228 deg
+    # over the socket tap. Its five screws, both socket pockets and the access bores turn with it (144 is under the cheek)
+    RS02_SCREWS = [a + 40.0 for a in RS02_SCREWS]
+    SOCKET_POCKETS = [(a0 + 40.0, a1 + 40.0) for a0, a1 in SOCKET_POCKETS]
+    RS02_ACCESS_ANG = (104.0, 144.0)
 JX = 21.5                        # joint pad half width (SMOOTH: a rounded flare of the arm, was 30)
 JZ0 = RZ + PH / 2 + WALL         # -45.9: joint face (front face of the rear arm)
 BACK_Z = RZ - PH / 2 - WALL      # -56.7: fork rear back face

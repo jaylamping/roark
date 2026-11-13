@@ -49,7 +49,8 @@ def about(R, o):
 
 # placements of the purchased parts in the torso frame (column vectors, mm)
 T_ROLL_RS03 = M4(Rz(180), (RX, RY, ROLL_OUT - 37.5))           # vendor output face z 37.5 -> Z 30.64
-_c, _s = math.cos(math.radians(98.0)), math.sin(math.radians(98.0))
+_CLK = 98.0 + (40.0 if LOOK == 'pp_r' else 0.0)   # LOOK pp_r: the RS02 re-clocked +40 deg (plug_pocket mock-up)
+_c, _s = math.cos(math.radians(_CLK)), math.sin(math.radians(_CLK))
 T_RS02 = M4(np.array([[_c, -_s, 0], [0, 0, -1], [_s, _c, 0]]), (RX, RS02_UNDER, YZ))  # vendor z (output +4) -> -Y; clock fitted to the placed STEP
 T_BRG = M4(np.eye(3), (RX, RY, BRG_Z[1]))
 

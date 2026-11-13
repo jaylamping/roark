@@ -426,13 +426,13 @@ def build_access_plugs():
     the dome's r 55 surface about the roll axis; a 2 x 1 mm pry notch on the back edge (toward the drum, out of sight)
     lifts them out with a small screwdriver."""
     d = new_part(OUT / 'shoulder_fork_access_plugs_left.SLDPRT')
-    for i_, a_ in enumerate((64.0, 104.0)):
+    for i_, a_ in enumerate(RS02_ACCESS_ANG):
         x_, _, z_ = ypt(36.5, a_, 0.0)
         y_top = RY + math.sqrt(55.0 ** 2 - (x_ - RX) ** 2)
         extrude(d, ysk(d, y_top - 7.0, f'PLUG{i_}', lambda s_, x_=x_, z_=z_, y_top=y_top: s_.circle((x_, y_top - 7.0, z_), 3.45)),
                 f'PLUG{i_}', 9.0, Y, merge=(i_ == 0))
     roll_rev(d, 'PLUG_TRIM', [(55.0, -30.0), (90.0, -30.0), (90.0, 80.0), (55.0, 80.0)], cut=True)
-    for i_, a_ in enumerate((64.0, 104.0)):
+    for i_, a_ in enumerate(RS02_ACCESS_ANG):
         x_, _, z_ = ypt(36.5, a_, 0.0)
         y_top = RY + math.sqrt(55.0 ** 2 - (x_ - RX) ** 2)
         extrude(d, ysk(d, y_top - 1.0, f'PRY{i_}', lambda s_, x_=x_, z_=z_, y_top=y_top: s_.poly(rect_pts((x_, y_top - 1.0, z_ - 3.2), X, Z, 2.0, 1.2))),
@@ -752,7 +752,7 @@ def build_fork_front():
         env_pts = [(x, y, -31.0) for x, y in list(env.exterior.coords)[:-1]]
         extrude(d, zsk(d, -31.0, 'DRUM_ENV', lambda s_: s_.poly(env_pts)), 'DRUM_ENV', 38.5 + 31.0, Z, cut=True, lo=-1.0)
         yaw_rev(d, 'WRAP_RS02_CLEAR', [(0, 361.0), (34.5, 361.0), (34.5, 367.3), (0, 367.3)], cut=True)
-        extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, SEAT_Y[1] - 3.5), 3.5) for a_ in (64.0, 104.0)]),
+        extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, SEAT_Y[1] - 3.5), 3.5) for a_ in RS02_ACCESS_ANG]),
                 'RS02_ACCESS', 140.0, Y, cut=True)
     elif FB:
         # FRONT BLEND: one loft from the cuff's own front (Y 356) into the cheek's exact crowned section at the flat cut
@@ -812,7 +812,7 @@ def build_fork_front():
         extrude(d, ysk(d, SEAT_Y[1], 'CHIN_ROOT', lambda s_: sector(s_, lambda r, a: ypt(r, a, SEAT_Y[1]), 34.5, 41.0, 40.0, 140.0, 2.0)),
                 'CHIN_ROOT', 367.0 - SEAT_Y[1], Y, lo=-1.0)
         # driver access to the two front RS02 screws (64 / 104 deg), blocked by the cheek: Ø7 straight up, plugged flush after
-        extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, SEAT_Y[1] - 3.5), 3.5) for a_ in (64.0, 104.0)]),
+        extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, SEAT_Y[1] - 3.5), 3.5) for a_ in RS02_ACCESS_ANG]),
                 'RS02_ACCESS', 140.0, Y, cut=True)
     # (the round-2 rear web is dropped: it sat 0.5 mm off the fork rear arm, carried no load and cost 6.5 g)
     # ---- cuts
@@ -842,6 +842,18 @@ def build_fork_front():
     extrude(d, ysk(d, TAP_Y[0], 'TAP_ARC', lambda s: sector(s, lambda r, a: ypt(r, a, TAP_Y[0]), 40.5, 47.5, -168, -94)), 'TAP_ARC', TAP_Y[1] - TAP_Y[0], Y, cut=True)
     tz = YZ - 41.0
     extrude(d, zsk(d, tz, 'TAP_LINK', lambda s: s.poly(rect_pts((RX - 4.0, sum(TAP_Y) / 2, tz), X, Y, 7.0, 6.0))), 'TAP_LINK', tz - RZ, NZ, cut=True)
+    if LOOK == 'pp_r':
+        # PLUG CHANNEL (mock-up, radial plug): the XT30(2+2)-F on the 228 deg socket and its folded lead, radial from the
+        # socket face (r 36.17) to 10 mm past the flange (r 49.25) + 0.75, 15.5 + 1 wide, Y 353.9-361.1 (plug height
+        # assumed from the XT30(2+2) data). Internal: it opens into the socket pocket and the socket tap only
+        # Its outer corner toward the back is clipped at Z - YZ -39.4: 1.5 mm off the blind end of the fork joint's insert bore
+        # (dia 5.6 at X - RX -27, Y 356.9, ending at Z - YZ -40.9)
+        from shapely.geometry import Polygon as _Pg, box as _bx2
+        a_ = math.radians(228.0); u_, v_ = (math.cos(a_), math.sin(a_)), (-math.sin(a_), math.cos(a_))
+        pg = _Pg([(r_ * u_[0] + w_ * v_[0], r_ * u_[1] + w_ * v_[1]) for r_, w_ in ((36.0, -8.25), (50.0, -8.25), (50.0, 8.25), (36.0, 8.25))])
+        pg = pg.intersection(_bx2(-80.0, -39.4, 80.0, 80.0))
+        pc = [(RX + x_, 353.9, YZ + z_) for x_, z_ in list(pg.exterior.coords)[:-1]]
+        extrude(d, ysk(d, 353.9, 'PLUG_CHANNEL', lambda s_: s_.poly(pc)), 'PLUG_CHANNEL', 361.1 - 353.9, Y, cut=True)
     if os.environ.get('PLUG_POCKET') == 'a':      # mock-up only: the power leads' bend does not fit under the drum at the worst-credible plug height (plug_pocket/README.md)
         # PLUG POCKET (a) mock-up (look-options/plug_pocket): a hidden column straight up from the 173 deg RS02 socket, inside
         # the wall (2-4 mm to the outer skin), opening only into the drum-facing surface: room for the XT30(2+2)-F pushed

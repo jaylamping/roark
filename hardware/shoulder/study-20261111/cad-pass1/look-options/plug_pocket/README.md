@@ -212,7 +212,54 @@ variant a2) is superseded.
     - The fork front's five RS02 screw holes move to the matching five of the nine-position 40° pattern.
     - The RS02's zero becomes a software offset.
     - The hub, the arm interface and the yaw stops do not change.
-    - At +40° the screws are reachable from above, so the two dome access bores and their plugs may be dropped.
+    - The two access bores and their plugs stay, but move from 64 / 104° to 104 / 144° (corrected below: the screw at
+      144° is under the cheek too).
 
-**Next:** sections at Y 355 / 360 and along the lead route, a CAD mock-up on a copy (`LOOK=pp_r`), and visibility
-pictures. The real parts stay unchanged.
+## Mock-up pp_r: RS02 re-clocked +40°, radial plug channel (2026-11-13)
+
+**Built on a copy** (`LOOK=pp_r`, into `_wip/look/pp_r`). The real parts are unchanged. Script:
+[render_plug_pocket_r.py](../../scripts/render_plug_pocket_r.py). Pictures: [radial/](radial/).
+
+**What the copy changes** (all switched on by `LOOK=pp_r` in `dims.py` / `build_parts.py` / `build_asm.py`):
+- **RS02 clock:** 98 → 138° in `build_asm.T_RS02`. The sockets move to 228° (in use) and 48° (spare).
+- **The fork front's five RS02 screw holes, both socket pockets and the two access bores turn with it:**
+  - Screws at -96 / -56 / -16 / 104 / 144°.
+  - Socket pockets at 202-238° and 14-74°.
+  - Access bores at 104 / 144°.
+- **Why the bores stay:** a ray check through the real fork front shows the screw at 144° is under the cheek (blocked at
+  Y 372.4), so its bore is needed. The 64° bore is no longer needed. The earlier "the bores may be dropped" was wrong.
+- **PLUG_CHANNEL at 228°:**
+  - r 36-50, 16.5 wide, Y 353.9-361.1: the plug and folded-lead envelope plus 0.5-0.75 mm.
+  - It opens only into the socket pocket and the socket tap.
+  - Its outer corner toward the back is clipped at Z - YZ -39.4. Unclipped, it ran 0.9 mm into the blind end of a fork
+    joint insert bore (Ø5.6, X - RX -27, Y 356.9). The first render showed the plug through that bolt hole from straight
+    behind. The clip leaves a 1.5 mm wall.
+- **Mass:** 155.2 g against 154.3 g real. The 144° bore removes less material than the 64° one.
+
+**Results** (orange in every picture: the plug and folded-lead envelope, r 36.17-49.25, 15.5 wide, Y 353.9-361.1):
+- **Wall outside the envelope, along the radials:**
+  - Today (socket at 188°): **-3.9 mm minimum (median -0.6)**. The envelope breaks through the skin. It is visible from the
+    front and from below-inboard.
+  - pp_r: **11.6 mm minimum (median 13.8)**.
+- **pp_r against the look rule:** no orange in any outside view (straight behind, back three-quarter inboard and outboard,
+  inboard and outboard side, front, below-inboard). Nothing breaks the outline, and no bulk is added.
+  ![outside views, today | pp_r](radial/SHEET_radial_plug.png)
+- **Sections:**
+  - Radial through the plug: ![radial section](radial/section_radial_through_plug.png)
+  - Y 355 / 357.5 / 360: ![sections](radial/sections_Y355_3575_360.png)
+  - Lead route: the plug lands in the middle of the existing socket tap (-168..-94°), so the lead runs along the tap to
+    TAP_LINK at -94° as today. ![lead route](radial/lead_route_unrolled.png)
+- **Surface diff** (real against pp_r):
+  - Changes are limited to the screw holes, the socket pockets, the channel and the access bores.
+  - The only change that reaches the outside is the access-bore exit, which moves from 64° to 144°.
+  - The 144° plug sits on the inboard flank at Y 464-473. It is hidden in the normal views
+    ([radial/SHEET_top_access_plugs.png](radial/SHEET_top_access_plugs.png)).
+
+**Open:**
+- **Driver reach to the 144° bore with the rest of the shoulder fitted** is not checked. It is the same as today's 104°
+  bore if the RS02 goes in before the fork meets the drum.
+- **The plug's height along the motor axis** is still assumed from the XT30(2+2) data.
+- **`mesh_check` integrity:** the copy's STL reports 2 zero-area faces. The real STL is clean at the same weld tolerance.
+  This is a mock-up export, and it is to be re-checked if pp_r is adopted.
+- **Adoption** would rebuild the real fork front and access plugs with these settings, and re-run the clearance sweep. Not
+  done.
