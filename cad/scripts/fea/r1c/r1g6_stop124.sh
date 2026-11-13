@@ -41,7 +41,7 @@ export ARM_R1C=1 ARM_R1D=1 ARM_SLOT_BREAK=1.2,1.6 ARM_LUG_POCKET=1 ARM_SLOT_CL=0
 export HS_GROOVE=1 HS_BOLTED=1 HS_ROUNDS=1 HS_LUG_FILLET=1.0 HS_GROOVE_R45=1.0 HS_REVCP=1 HS_FILL=1 HS_FILL_R0=23.0 HS_GROOVE_FULL=1 HS_PADS=1 HS_REUSE_HUB=1 HS_INSERT_MODEL=1
 export ARM_WIP_TAG=_ring_g00 ARM_FLANK_GAP=0 ARM_RIB_PROUD=0 ARM_FEA_NAME=UA_ORGANIC_BONDED_v32_ring_g00.SLDPRT HS_HUB_FILE=HUB_D3S38.SLDPRT HS_MODEL=UA_HUBSEAT_r1d_r1g5.SLDPRT
 until grep -q "R1G6Q_DONE" $L; do sleep 30; done
-echo "R1G6 STOP_124 rerun start $(date +%H:%M) (the queue run failed: mesh guard, 215 k nodes)" >> $L
+echo "R1G6 STOP_124 and G90 reruns start $(date +%H:%M) (the queue run failed: mesh guard, 215 k nodes)" >> $L
 export CAD_WRITER='upper-arm-r1:2bcc415b' SW_PART_TEMPLATE='C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2026\templates\MBD\part 0051mm to 0250mm.prtdot'
 export ARM_R1C=1 ARM_R1D=1 ARM_SLOT_BREAK=1.2,1.6 ARM_LUG_POCKET=1 ARM_SLOT_CL=0.5 ARM_PLATE_LUMP=1 ARM_PLATE_HOLE_R=1.9 ARM_PLATE_TOP=294.7 HS_D3=1
 # 1 hub-seat model (as r1g2 / r1g3, only the plate hole and top differ)
@@ -60,4 +60,5 @@ job() {
   grep -q "^SOLVED $1" cad/_wip/r1d_ring_ds.log && bash cad/scripts/fea/r1c/post_r1g.sh $1 1.7 294.6 >> $L 2>&1
 }
 job r1g6_stop124 HS_STOP_124_fine 0.5
+job r1g6_g90 HS_G90_fine 0.05      # its queue run also hit the mesh guard (194 k nodes)
 echo "R1G6_STOP124_RERUN_DONE $(date +%H:%M)" >> $L

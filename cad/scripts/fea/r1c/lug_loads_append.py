@@ -4,6 +4,8 @@ import sys
 F, title, src = sys.argv[1:4]
 t = open(F, encoding='utf-8').read()
 body = open(src, encoding='utf-8').read().split('\n', 1)[1].rstrip('\n')
+if 'Traceback' in body or 'section at Y' not in body:
+    sys.exit(f'not appended: {src} is not a lug_loads result (a failed run?)')
 blk = f'\n==================== {title}\n{body}\n'
 k = t.find('\nSUMMARY')
 t = t[:k] + blk + t[k:] if k >= 0 else t.rstrip('\n') + '\n' + blk
