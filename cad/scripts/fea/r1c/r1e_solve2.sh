@@ -61,10 +61,10 @@ env $ENVX ARM_FEA_NAME=UA_ORGANIC_BONDED_v32_ringg01p.SLDPRT ARM_SW_DIR="$S" ARM
 cpid=$!
 free0=$(free); peak=0
 while kill -0 $cpid 2>/dev/null; do
-  sleep 60
+  sleep ${MEM_SAMPLE:-60}
   fr=$(free); used=$(( free0 - ${fr:-$free0} )); [ "$used" -gt $peak ] && peak=$used
   echo "mem $(date +%H:%M) $folder used ${used} MB free ${fr} MB" >> cad/_wip/r1d_ring_ds_mem.log
-  if [ "$used" -gt 12288 ] || [ "${fr:-99999}" -lt 4096 ]; then
+  if [ "$used" -gt ${MEMSTOP_USED:-12288} ] || [ "${fr:-99999}" -lt ${MEMSTOP_FREE:-4096} ]; then
     echo "MEM_STOP $folder $(date +%H:%M) used ${used} MB free ${fr} MB: ending our session" >> $L
     break
   fi

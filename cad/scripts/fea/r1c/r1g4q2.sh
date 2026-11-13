@@ -4,6 +4,8 @@
 #   1. build the hub-seat model UA_HUBSEAT_r1d_r1g4 (both locks); the closing path with plates and lips is close_path_plates_r1g4
 #   2. STOP_0, YAW -17, G90, G90 + YAW -17, one at a time (r1e_solve2.sh: worktree lock + machine-wide solve lock, mesh guard,
 #      memory watch), each followed by post_r1g.sh (all-candidate averages, spot list with the PETG ring and brass apart)
+# Coordinator 15:49Z (Explorer holds about 14 GB): MINFREE=14000 (our footprint about 11.8 GB sampled + the 2 GB free stop), memory stop
+# at MEMSTOP_FREE=2048 free, sampling MEM_SAMPLE=15 s; R1G4_STOP_AFTER_STOP0=1 pauses after STOP_0 to report the memory low point.
 # The build also holds both locks (it runs SolidWorks).
 cd /j/code/roark-wt/left-arm-organic
 R=J:/code/roark-wt/left-arm-organic/cad
@@ -19,9 +21,9 @@ lock() {
   until ! python "$SWI" --status 2>/dev/null | grep -q "busy"; do sleep 30; done
   if [ -f $STAMP ]; then while [ $(( $(date +%s) - $(cat $STAMP) )) -lt 180 ]; do sleep 10; done; fi
   while true; do      # the shared solve lock only at the moment of launch (coordinator 14:17Z): memory, lock, re-check, else release and wait
-    until [ "$(free)" -ge 18000 ]; do sleep 60; done
+    until [ "$(free)" -ge ${MINFREE:-18000} ]; do sleep 60; done
     if ( set -o noclobber; echo "left-arm-organic $(wpid) $(date +%s) $1" > $SL ) 2>/dev/null; then
-      [ "$(free)" -ge 18000 ] && break
+      [ "$(free)" -ge ${MINFREE:-18000} ] && break
       rm -f $SL; sleep 60; continue
     fi
     op=$(awk '{print $2}' $SL 2>/dev/null)
@@ -63,6 +65,7 @@ job() {
   grep -q "^SOLVED $1" cad/_wip/r1d_ring_ds.log && bash cad/scripts/fea/r1c/post_r1g.sh $1 1.9 294.7 >> $L 2>&1
 }
 job r1g4_stop0 HS_STOP_0_fine 0.5
+[ "$R1G4_STOP_AFTER_STOP0" = 1 ] && { echo "R1G4Q2 paused after STOP_0 (coordinator: report memory first) $(date +%H:%M)" >> $L; exit 0; }
 job r1g4_yawm HS_LC2M_fine 0.5
 job r1g4_g90 HS_G90_fine 0.05
 job r1g4_g90ym HS_G90YM_fine 0.05
