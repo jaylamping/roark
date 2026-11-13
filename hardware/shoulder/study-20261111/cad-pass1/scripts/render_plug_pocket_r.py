@@ -44,9 +44,13 @@ def plug_box(theta, clip=None):
     return b, P_
 
 
-rs02_r = R.M['rs02'].copy(); rs02_r.apply_transform(yaw_rot(40.0))
+# build_asm.T_RS02 carries the clock in force (re-clocked +40 deg since the adoption): turn the other one from it
+if RS02_RECLOCK:
+    rs02_r = R.M['rs02']; rs02_now = R.M['rs02'].copy(); rs02_now.apply_transform(yaw_rot(-40.0))
+else:
+    rs02_now = R.M['rs02']; rs02_r = R.M['rs02'].copy(); rs02_r.apply_transform(yaw_rot(40.0))
 VAR = {
-    'now': ('Today: RS02 sockets 188 / 8 deg, plug envelope on 188 (orange)', W / 'stl', R.M['rs02'], 188.0, None),
+    'now': ('Today: RS02 sockets 188 / 8 deg, plug envelope on 188 (orange)', W / 'stl_now_pre_pp_r', rs02_now, 188.0, None),
     'ppr': ('Mock-up pp_r: RS02 re-clocked +40 deg, plug on 228 (orange)', W / 'stl_look_pp_r', rs02_r, 228.0, -39.4),
 }
 F = np.array([RX - 30, 368.0, 0.0])

@@ -23,7 +23,7 @@ from dims import *
 from swk import CAD, VENDOR, WIP
 
 QUICK = len(sys.argv) > 1 and sys.argv[1] == 'quick'
-STL = WIP / 'stl'
+STL = WIP / os.environ.get('CLEAR_STL', 'stl')   # CLEAR_STL: another STL set (e.g. a before / after pair)
 UA = CAD / 'reference' / 'shoulder'
 
 

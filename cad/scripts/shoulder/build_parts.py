@@ -99,7 +99,13 @@ def finish_part(d, key, props=None):
     try:      # every exported STL: watertight, no non-manifold edge, no zero-area face (tools/cad/mesh_check.integrity)
         sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..', 'tools', 'cad'))
         import mesh_check as MC
-        _ok, _lines, _ = MC.integrity_file(STL / f'{key}.stl')
+        _ok, _lines, _det = MC.integrity_file(STL / f'{key}.stl')
+        if not _ok and _det['watertight'] and _det['nonmanifold'] == 0 and _det['zero_area']:
+            # needle triangles (collinear T-junction slivers from tiny B-rep faces): split the neighbour, drop the needle; the
+            # surface is unchanged (tools/cad/mesh_fix_needles.py)
+            import mesh_fix_needles as MF
+            _n, _t, _ok, _lines = MF.fix(str(STL / f'{key}.stl'))
+            log(f'  needle triangles repaired: {_n} of {_t}')
         for _l in _lines:
             log('  ' + _l.strip())
     except Exception as e_:
@@ -334,8 +340,13 @@ def hub_d2(d, gplane):
         # r 23 bore; so only there: the bore brought to r 20 over 140-220 deg, Y 296 up to a 45 deg top (r 20 at Y 299.3 to
         # r 23 at Y 302.3, so it prints without support); the rest of rev D (and its print) unchanged
         part_rev('D2_LOCAL', [(20.0, 296.0), (23.5, 296.0), (23.5, 302.3), (23.0, 302.3), (20.0, 299.3)], 140.0, 80.0)
-    # 2. the cable sector: the wall fill only deepened to r 21, Y 296-302.3
-    part_rev('D2_FILL_CS', [(21.0, 296.0), (23.5, 296.0), (23.5, 302.3), (21.0, 302.3)], CS[0], CS[1] - CS[0])
+        if HUB_D2 == 'f':
+            # 'f' (D3c4, coordinator 13:25Z): the cable window moved off the +X lug (dims.HUB_WIN_A), so the +X lug gets the
+            # same local r 20 bore as the -X lug, and there is no cable-sector fill (the window keeps its full section)
+            part_rev('D2_LOCAL_PX', [(20.0, 296.0), (23.5, 296.0), (23.5, 302.3), (23.0, 302.3), (20.0, 299.3)], -40.0, 80.0)
+    # 2. the cable sector: the wall fill only deepened to r 21, Y 296-302.3 (not with 'f': the window is elsewhere)
+    if HUB_D2 != 'f':
+        part_rev('D2_FILL_CS', [(21.0, 296.0), (23.5, 296.0), (23.5, 302.3), (21.0, 302.3)], CS[0], CS[1] - CS[0])
     if HUB_D2 in ('2', 'd'):
         # 3. backing behind the -X lug: r 14.5-19.4 over 166-194 deg below Y 296, down to the lug's bottom (Y 288). At 19.4 it
         #    stays inside the lug's own band (|z| <= 4.7, x >= 18.8), so nothing grows past the lug outline; elsewhere it is
@@ -363,6 +374,16 @@ def hub_d3(d, gplane=None):
         for sg in (-1, 1):
             s_.poly([(x_, y_, 6.0) for x_, y_ in prof(sg)])
     extrude(d, s_.feat, 'D3_LUG_EXT', 10.0, Z, mode=MID)
+    if os.environ.get('HUB_D3_WEB') == '1':
+        # D3c web (coordinator 12:02Z, bore side only): the lug's own Z band (planes Z 1.0 / 11.0) carried up over the ledge
+        # between its flat inner face (X offset 18.76) and the bore wall (r 20 / 21 with HUB_D2=c), 45 deg top from the inner
+        # face at Y 296 to X offset 22.5 at Y 299.74 (inside the D2 fill there): the R1.2 Z roots then run on to the inner
+        # face instead of out on the bore wall. Above Y 296 and inside the lug's planes; below the cable window (Y 298+ at
+        # r 15.5 and higher further out)
+        with Sk(d, pl0, 'D3_WEB') as s_w:
+            for sg in (-1, 1):
+                s_w.poly([(RX + sg * 18.76, 296.0, 6.0), (RX + sg * 22.5, 296.0, 6.0), (RX + sg * 22.5, 299.74, 6.0)])
+        extrude(d, s_w.feat, 'D3_WEB', 10.0, Z, mode=MID)
     if gplane is not None and os.environ.get('HUB_D3_EDGE', '1') != '0':   # D3b: keeps the R0.8 outward roots clear of the R0.4
         # the spigot's bottom outer edge (r 35.8, Y 296) left square over each lug's band (+-10.9 deg, Z - YZ within +-6.77 at
         # r 35.8: inside the arm's pocket (|Z| <= 5.5) and root relief (Z 5.5-6.8, r <= 36.3)): the R1.2 Z roots then run out on plain faces instead of into
@@ -842,8 +863,8 @@ def build_fork_front():
     extrude(d, ysk(d, TAP_Y[0], 'TAP_ARC', lambda s: sector(s, lambda r, a: ypt(r, a, TAP_Y[0]), 40.5, 47.5, -168, -94)), 'TAP_ARC', TAP_Y[1] - TAP_Y[0], Y, cut=True)
     tz = YZ - 41.0
     extrude(d, zsk(d, tz, 'TAP_LINK', lambda s: s.poly(rect_pts((RX - 4.0, sum(TAP_Y) / 2, tz), X, Y, 7.0, 6.0))), 'TAP_LINK', tz - RZ, NZ, cut=True)
-    if LOOK == 'pp_r':
-        # PLUG CHANNEL (mock-up, radial plug): the XT30(2+2)-F on the 228 deg socket and its folded lead, radial from the
+    if RS02_RECLOCK:
+        # PLUG CHANNEL (radial plug): the XT30(2+2)-F on the 228 deg socket and its folded lead, radial from the
         # socket face (r 36.17) to 10 mm past the flange (r 49.25) + 0.75, 15.5 + 1 wide, Y 353.9-361.1 (plug height
         # assumed from the XT30(2+2) data). Internal: it opens into the socket pocket and the socket tap only
         # Its outer corner toward the back is clipped at Z - YZ -39.4: 1.5 mm off the blind end of the fork joint's insert bore

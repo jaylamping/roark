@@ -621,3 +621,76 @@ The RS02's two XT30PB(2+2) sockets face sideways: r 36.17, Y 354.9-360.1, at 188
 vendor model and our reference are right; the plug-pocket study's earlier "plug mates down onto the rear face" was a misreading.
 Rework in [look-options/plug_pocket](look-options/plug_pocket/README.md): at today's clocking only a lead folded to 7 mm fits (1-2 mm wall left);
 with the RS02 re-clocked +40° the 10 mm envelope fits inside the outline, over the middle of the socket tap. Mock-up next; real parts unchanged.
+
+## RS02 re-clocked +40°: plug pocket pp_r on the real parts (2026-11-13, Joey "go")
+
+**What changed:**
+- **RS02 clock:** `build_asm.T_RS02` 98 → 138° (`dims.RS02_RECLOCK`, default on; `RS02_RECLOCK=0` builds the old clock).
+  - **Socket in use:** the one at **228°**, over the middle of the socket tap.
+  - **Spare socket:** at 48°, left capped.
+- **RS02 zero:** a **+40° software offset** in the yaw joint's zero.
+- **Fork front, five RS02 M3 screws:** at -96 / -56 / -16 / 104 / 144°.
+  - The RS02's seat face has M3 holes at six positions on PCD 73: -176 / -96 / -56 / -16 / 104 / 144° after the re-clock.
+  - The other three 40° positions carry the socket bosses.
+- **Socket pockets:** 202-238° and 14-74°.
+- **Access bores and plugs:** at 104 / 144°, where they were at 64 / 104°. The 144° screw sits under the cheek too.
+- **PLUG_CHANNEL at 228°:** r 36-50, 16.5 wide, Y 353.9-361.1. It holds the XT30(2+2)-F and its folded lead (envelope r 36.17-49.25).
+  - It opens only into the socket pocket and the tap.
+  - **Its back corner is clipped at Z - YZ -39.4,** 1.5 mm off the blind end of the fork joint's insert bore (Ø5.6, X - RX -27, Y 356.9).
+  - **Wall left outside the envelope:** 11.6 mm minimum.
+- **Skeleton:** the seat sketch follows.
+
+**Masses:**
+- Fork front 155.2 g, against 154.3 g before (the 144° bore removes less than the 64° one).
+- Access plugs 0.7 g.
+
+**Mesh:**
+- **The fork front STL carried 2 needle triangles,** collinear T-junction slivers at (213.3, 358.6, 5.8) and (172.5, 361.9, 49.7).
+  - They come from tiny B-rep faces that predate pp_r: the pre-pp_r export has the same two.
+- **Fix:** `tools/cad/mesh_fix_needles.py` splits each needle's neighbour and drops the needle.
+  - The mesh is unchanged: mesh_diff 0.0000 mm both ways.
+  - `finish_part` now runs it whenever only zero-area faces fail.
+- **All exports pass integrity.**
+
+**Clearance sweep:**
+- **Method:** `check_clearance.py`, full, 36 brief poses, 492 sweeps.
+- **RS02 pairs, all unchanged or better:**
+
+  | Pair | Clearance |
+  |---|---|
+  | Drum ↔ RS02 | 2.60 |
+  | Port cap ↔ RS02 | 3.09 |
+  | Hub ↔ RS02 | 3.42 |
+  | Cap ↔ RS02 | 5.58 |
+  | Ring ↔ RS02 | 7.68 |
+  | Cover ↔ RS02 | 11.81 |
+  | RS02 ↔ arm | 21.86 |
+  | RS02 ↔ torso | 26.28 |
+
+- **Fork front:**
+
+  | Pair | Clearance |
+  |---|---|
+  | Ring | 1.04 |
+  | Drum | 1.99 |
+  | Hub | 2.19 |
+  | Port cap | 2.62 |
+  | Roll RS03 | 4.51 |
+  | Arm | 12.77 |
+  | Torso | 15.73 |
+
+- **The drum ↔ fork front 1.98-1.99 is the designed 2 mm drum-envelope cut,** read through the ±0.4 mm sampling.
+  - It is identical on the pre-pp_r fork front at every roll angle and at the same spots (Y 367-372, Z +27), so pp_r did not change it.
+
+**Driver reach** (rays straight up from each screw seat, the assembled shoulder at the neutral pose):
+- **On the bench** (fork front alone): all five screws are reachable. 104° and 144° go through their access bores.
+- **Assembled:** only 104° is reachable. The drum or cap blocks the other four, 144° at Y 374.8.
+- **This matches the old layout,** whose rear screws (-136 / -96 / -56) were also blocked by the drum or cap. So the assembly order is unchanged: the RS02 goes onto the fork front before the fork front goes onto the drum.
+
+**Exports** (recorded):
+- `cad/exports/shoulder/shoulder_fork_front_left.STEP/.STL`
+- `cad/exports/shoulder/shoulder_fork_access_plugs_left.STEP/.STL`
+
+**Pictures:**
+- [real_set_pp_r/SHEET_real_pp_r.png](real_set_pp_r/SHEET_real_pp_r.png): the outside is unchanged.
+- Mock-up comparison and sections: [look-options/plug_pocket/radial](look-options/plug_pocket/radial/).

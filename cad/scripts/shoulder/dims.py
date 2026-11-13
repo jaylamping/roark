@@ -124,9 +124,12 @@ RS02_SCREWS = [-136.0, -96.0, -56.0, 64.0, 104.0]   # 5 x M3 on PCD 73 (yaw angl
 SOCKET_POCKETS = [(162.0, 198.0), (-26.0, 34.0)]   # CHANGED: 4 deg wider each side (RS02 socket body reached 196 deg)
 TAP_Y = (353.4, 359.4)
 RS02_ACCESS_ANG = (64.0, 104.0)  # the two front screws the cheek covers: straight-up driver bores, plugged flush
-if LOOK == 'pp_r':
-    # mock-up only (look-options/plug_pocket, radial plug): the RS02 re-clocked +40 deg, so its in-use socket sits at 228 deg
-    # over the socket tap. Its five screws, both socket pockets and the access bores turn with it (144 is under the cheek)
+# PLUG POCKET pp_r, adopted (Joey "go", 2026-11-13; look-options/plug_pocket): the RS02 re-clocked +40 deg, so its in-use
+# socket sits at 228 deg over the socket tap and the radial XT30(2+2) plug and folded lead stay inside the wall. Its five
+# screws, both socket pockets and the access bores turn with it (144 is under the cheek). RS02_RECLOCK=0 builds the old clock.
+# The RS02's zero is then a +40 deg software offset.
+RS02_RECLOCK = os.environ.get('RS02_RECLOCK', '1') != '0' or LOOK == 'pp_r'
+if RS02_RECLOCK:
     RS02_SCREWS = [a + 40.0 for a in RS02_SCREWS]
     SOCKET_POCKETS = [(a0 + 40.0, a1 + 40.0) for a0, a1 in SOCKET_POCKETS]
     RS02_ACCESS_ANG = (104.0, 144.0)
@@ -142,7 +145,7 @@ BRG_LIP_Z = -47.7                # check (d): the outer-race lip 0.4 behind the 
 STUB_LEAD = 0.5                  # check (d): 0.5 x 45 lead-in on the stub's free end (stub stays Ø40.0, as the arm's coupon)
 # ---- hub (frozen interface; dished top) ----
 
-HUB_WIN_A = 7.9
+HUB_WIN_A = float(os.environ.get('HUB_WIN_A', '7.9'))   # D3c4 candidate: 248 (back half, midway between the -82 / -142 boss tubes)
 # Hub lower half, prepared for the arm joint work (all OFF by default; the frozen interface is unchanged when off):
 HUB = dict(spigot_ext_on=0, spigot_ext_len=6.0, spigot_taper=0.0, spigot_ri=28.0, spigot_ro=35.8, spigot_y0=296.0,
            groove_on=1,

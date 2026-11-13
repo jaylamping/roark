@@ -107,8 +107,9 @@ def export(d, path, stl_fine=True):
         # custom: 0.01 mm deviation, 3 deg angle (the 'fine' preset left sliver triangles at face boundaries, which the
         # pictures' 40 deg feature-edge pass drew as lines across smooth blends)
         sw.SetUserPreferenceIntegerValue(78, 3)
-        sw.SetUserPreferenceDoubleValue(2, 1e-5)
-        sw.SetUserPreferenceDoubleValue(3, 0.0524)
+        # STL_DEV_MM / STL_ANG_DEG override them (a re-export when a face boundary leaves a needle triangle)
+        sw.SetUserPreferenceDoubleValue(2, float(os.environ.get('STL_DEV_MM', '0.01')) / 1000.0)
+        sw.SetUserPreferenceDoubleValue(3, math.radians(float(os.environ.get('STL_ANG_DEG', '3.0'))))
     try:
         e, w = L(), L()
         ok = d.Extension.SaveAs(str(path), 0, 1, NUL, e, w)

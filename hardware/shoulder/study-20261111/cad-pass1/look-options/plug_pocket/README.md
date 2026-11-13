@@ -263,3 +263,9 @@ variant a2) is superseded.
   This is a mock-up export, and it is to be re-checked if pp_r is adopted.
 - **Adoption** would rebuild the real fork front and access plugs with these settings, and re-run the clearance sweep. Not
   done.
+
+**Adopted on the real parts (2026-11-13, Joey "go").** See CAD_NOTES.md, "RS02 re-clocked +40°".
+- **One correction to "Open" above:** driver reach is checked. The 144° screw is reachable on the bench, and so is every
+  other screw. The assembly order is the same as before.
+- **One change to the scripts:** this page's mock-up pictures were made with `LOOK=pp_r`. The real build now uses the same
+  settings by default. `render_plug_pocket_r.py` reads the pre-adoption fork front from `_wip/.../stl_now_pre_pp_r`.

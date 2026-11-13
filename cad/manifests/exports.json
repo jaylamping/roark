@@ -3,6 +3,42 @@
   "description": "Where each STEP/STL in cad/exports/ came from. Written by tools/cad/record_export.py; checked by tools/cad/check_cad_layout.py (a changed source makes its export stale). Paths are relative to cad/.",
   "exports": [
     {
+      "export": "exports/shoulder/shoulder_fork_access_plugs_left.STEP",
+      "source": "shoulder/left/shoulder_fork_access_plugs_left.SLDPRT",
+      "config": "",
+      "settings": "plug pocket pp_r: plugs for the RS02 access bores at 104 / 144 deg",
+      "sourceSha256": "e4cb9365ed24b39e9d49865245dc2744743e16221270745bded5766cd936087a",
+      "exportSha256": "b9794db48c02a3a0ab271736989521a3f7f28cfa78130fb6824c8747b590d147",
+      "recorded": "2026-11-13T14:22:48Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_fork_access_plugs_left.STL",
+      "source": "shoulder/left/shoulder_fork_access_plugs_left.SLDPRT",
+      "config": "",
+      "settings": "plug pocket pp_r: plugs for the RS02 access bores at 104 / 144 deg",
+      "sourceSha256": "e4cb9365ed24b39e9d49865245dc2744743e16221270745bded5766cd936087a",
+      "exportSha256": "52d37ac796fec41cd32d5eccdb50e785a75f3aea90c3eaf621ac6c7e980a28cc",
+      "recorded": "2026-11-13T14:22:51Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_fork_front_left.STEP",
+      "source": "shoulder/left/shoulder_fork_front_left.SLDPRT",
+      "config": "",
+      "settings": "plug pocket pp_r: RS02 re-clocked +40 deg (sockets 228 / 48), screws -96/-56/-16/104/144, access bores 104/144, internal radial plug channel at 228 deg",
+      "sourceSha256": "3a40cee8dc8c7d44f1adb7f5ec7de5950fded4f50a38972622e63feeb51c41d2",
+      "exportSha256": "87c3684159647f353d33663801bda325fe6fc44017e52c698a2373dba68d6139",
+      "recorded": "2026-11-13T14:22:48Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_fork_front_left.STL",
+      "source": "shoulder/left/shoulder_fork_front_left.SLDPRT",
+      "config": "",
+      "settings": "plug pocket pp_r: RS02 re-clocked +40 deg (sockets 228 / 48), screws -96/-56/-16/104/144, access bores 104/144, internal radial plug channel at 228 deg",
+      "sourceSha256": "3a40cee8dc8c7d44f1adb7f5ec7de5950fded4f50a38972622e63feeb51c41d2",
+      "exportSha256": "b168c6cb86b35a46290af9b0e7d098d810fd92cb204eaca3c431657351db17f3",
+      "recorded": "2026-11-13T14:22:50Z"
+    },
+    {
       "export": "exports/shoulder/shoulder_hub_left.STEP",
       "source": "shoulder/left/shoulder_hub_left.SLDPRT",
       "config": "Default",
