@@ -287,8 +287,17 @@ sudo apt install -y can-utils rt-tests stress-ng
 echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 ```
 
-**`can-bench`** ([docs/can-interface-comparison.md](can-interface-comparison.md)): cross-build it on the dev box and copy
-it over. The dev box needs the cross linker once (`.cargo/config.toml` names it):
+**`can-bench`** ([docs/can-interface-comparison.md](can-interface-comparison.md)): CI builds the Pi's binaries on every
+commit and keeps them for 30 days as the `pi-binaries` artifact (with `GIT_REV` and `SHA256SUMS`). Fetch the one for
+the commit being measured and copy it over:
+
+```bash
+gh run download --repo jaylamping/roark --name pi-binaries --dir /tmp/pi-binaries   # the latest run; -h for a given one
+(cd /tmp/pi-binaries && sha256sum -c SHA256SUMS && cat GIT_REV)
+scp /tmp/pi-binaries/can-bench joey@<pi-name>:setup/
+```
+
+Or cross-build it on the dev box and copy it over. The dev box needs the cross linker once (`.cargo/config.toml` names it):
 `ssh -t joey-wsl 'sudo apt install -y gcc-aarch64-linux-gnu'`. Then, from the checkout at the commit being measured:
 
 ```bash
