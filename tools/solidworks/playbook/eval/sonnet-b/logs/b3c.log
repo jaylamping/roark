@@ -1,0 +1,105 @@
+01:47:31 SolidWorks pid 129648 free GB 17.2
+01:47:33 ok PLATE volume change: 2856.0000 (expected 2856.0000)
+01:47:33 PLATE: added 2856.00 mm3
+01:47:34 ok ARM volume change: 5230.7500 (expected 5230.7500)
+01:47:34 ARM: added 5230.75 mm3
+01:47:34 ok fillet edges found: 2.0000 (expected 2.0000)
+01:47:34 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:47:35 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:47:35 SCREWS: cut 127.23 mm3
+01:47:35 S4_plate_strip volume 7992.350743633209 mass 9.51089738492352 errors [] bbox [0.0, 13.0, 5.0, 65.0, 27.0, 56.0]
+01:47:37 ok PAD volume change: 475.0000 (expected 475.0000)
+01:47:37 PAD: added 475.00 mm3
+01:47:38 ok PLATE volume change: 2856.0000 (expected 2856.0000)
+01:47:38 PLATE: added 2856.00 mm3
+01:47:39 ok ARM volume change: 4755.7500 (expected 4755.7500)
+01:47:39 ARM: added 4755.75 mm3
+01:47:39 ok fillet edges found: 2.0000 (expected 2.0000)
+01:47:39 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:47:40 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:47:40 SCREWS: cut 127.23 mm3
+01:47:41 ok fea volume equals deliverable: 7992.3507 (expected 7992.3507)
+01:47:42 picks 1 2 1 2
+01:47:42 ok wall: 1.0000 (expected 1.0000)
+01:47:42 ok screws: 2.0000 (expected 2.0000)
+01:47:42 ok top: 1.0000 (expected 1.0000)
+01:47:42 ok fillets: 2.0000 (expected 2.0000)
+01:47:47 S4wall: mesh rc 0, 36741 nodes, 23841 elements, free 17.0 GB
+01:47:51 S4wall: fixture nodes 1525, box [0.0, 13.0, 5.0] to [0.0, 27.0, 56.0]
+01:47:51 S4wall: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:47:52 RESULT S4_plate_strip wall {'nodes': 36741, 'reaction': [-0.001, 0.0, 60.0, 60.0], 'applied': 60.0, 'max_disp': 2.5077414512634277, 'peak': (18.352519989013672, [6.35, 23.94, 52.07]), 'peak_all': 18.352519989013672, 'peak_all_at': [6.35, 23.94, 52.07], 'layer_X': ((18.976207733154297, [6.36, 20.38, 52.07]), (6.463921209166586, [5.73, 19.23, 52.28])), 'layer_Y': ((4.8445515632629395, [6.36, 20.38, 52.07]), (3.6070122656728136, [4.0, 25.0, 51.67])), 'layer_Z': ((4.639969825744629, [4.88, 20.77, 52.88]), (6.458366011721114, [5.73, 19.23, 52.28]))}
+01:47:54 S4screws: mesh rc 0, 36741 nodes, 23841 elements, free 17.0 GB
+01:47:58 S4screws: fixture nodes 268, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+01:47:58 S4screws: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:48:00 RESULT S4_plate_strip screws {'nodes': 36741, 'reaction': [0.001, -0.002, 59.998, 59.998], 'applied': 60.0, 'max_disp': 3.2117161750793457, 'peak': (20.446321487426758, [6.36, 20.38, 52.07]), 'peak_all': 41.18818664550781, 'peak_all_at': [0.0, 19.24, 45.88], 'layer_X': ((21.446380615234375, [6.36, 20.38, 52.07]), (6.3793375267903265, [5.74, 17.69, 52.28])), 'layer_Y': ((3.798607349395752, [6.36, 21.15, 52.07]), (2.9779429537182067, [4.0, 15.0, 45.66])), 'layer_Z': ((9.076080322265625, [0.0, 18.85, 37.62]), (6.379604263517208, [5.74, 17.69, 52.28]))}
+01:48:00 closing pid 129648 committed MB 1818
+01:48:17 SolidWorks pid 107284 free GB 17.2
+01:48:19 ok PLATE volume change: 2856.0000 (expected 2856.0000)
+01:48:19 PLATE: added 2856.00 mm3
+01:48:20 ok ARM volume change: 4610.5833 (expected 4610.5833)
+01:48:20 ARM: added 4610.58 mm3
+01:48:20 ok fillet edges found: 2.0000 (expected 2.0000)
+01:48:20 ROOT_FILLETS: R5.0 on 2 edges, volume change +89.97 mm3
+01:48:21 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:48:21 SCREWS: cut 127.23 mm3
+01:48:22 S5_big_fillet volume 7429.320241315817 mass 8.840891087165822 errors [] bbox [0.0, 13.0, 5.0, 65.0, 27.0, 56.0]
+01:48:23 ok PAD volume change: 458.3333 (expected 458.3333)
+01:48:23 PAD: added 458.33 mm3
+01:48:25 ok PLATE volume change: 2856.0000 (expected 2856.0000)
+01:48:25 PLATE: added 2856.00 mm3
+01:48:25 ok ARM volume change: 4152.2500 (expected 4152.2500)
+01:48:25 ARM: added 4152.25 mm3
+01:48:25 ok fillet edges found: 2.0000 (expected 2.0000)
+01:48:26 ROOT_FILLETS: R5.0 on 2 edges, volume change +89.97 mm3
+01:48:26 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:48:26 SCREWS: cut 127.23 mm3
+01:48:27 ok fea volume equals deliverable: 7429.3202 (expected 7429.3202)
+01:48:28 picks 1 2 1 2
+01:48:28 ok wall: 1.0000 (expected 1.0000)
+01:48:28 ok screws: 2.0000 (expected 2.0000)
+01:48:28 ok top: 1.0000 (expected 1.0000)
+01:48:28 ok fillets: 2.0000 (expected 2.0000)
+01:48:34 S5wall: mesh rc 0, 35852 nodes, 23127 elements, free 17.0 GB
+01:48:38 S5wall: fixture nodes 1525, box [0.0, 13.0, 5.0] to [0.0, 27.0, 56.0]
+01:48:38 S5wall: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:48:39 RESULT S5_big_fillet wall {'nodes': 35852, 'reaction': [0.005, 0.0, 60.001, 60.001], 'applied': 60.0, 'max_disp': 3.6393778324127197, 'peak': (21.63631820678711, [8.21, 16.9, 52.05]), 'peak_all': 21.63631820678711, 'peak_all_at': [8.21, 16.9, 52.05], 'layer_X': ((22.83741569519043, [8.25, 20.38, 52.04]), (7.292501128610845, [6.61, 18.05, 52.56])), 'layer_Y': ((4.144146919250488, [7.3, 19.81, 52.26]), (2.850759217899656, [4.0, 15.0, 52.59])), 'layer_Z': ((4.663351535797119, [6.0, 20.2, 52.93]), (7.285799152946013, [6.67, 19.43, 52.52]))}
+01:48:41 S5screws: mesh rc 0, 35852 nodes, 23127 elements, free 17.0 GB
+01:48:45 S5screws: fixture nodes 268, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+01:48:45 S5screws: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:48:46 RESULT S5_big_fillet screws {'nodes': 35852, 'reaction': [-0.002, -0.001, 59.995, 59.995], 'applied': 60.0, 'max_disp': 4.302800178527832, 'peak': (22.901935577392578, [8.25, 20.38, 52.04]), 'peak_all': 45.86107635498047, 'peak_all_at': [0.0, 19.24, 45.88], 'layer_X': ((24.23951530456543, [8.25, 20.38, 52.04]), (6.5916648926443235, [6.67, 19.43, 52.52])), 'layer_Y': ((3.2796125411987305, [8.25, 20.38, 52.04]), (2.7337542316063455, [4.0, 25.0, 45.87])), 'layer_Z': ((7.55419921875, [0.0, 21.23, 37.62]), (6.591665407275463, [6.67, 19.43, 52.52]))}
+01:48:46 closing pid 107284 committed MB 1817
+01:48:53 SolidWorks pid 128864 free GB 17.2
+01:48:55 ok PLATE volume change: 2142.0000 (expected 2142.0000)
+01:48:55 PLATE: added 2142.00 mm3
+01:48:56 ok ARM volume change: 4722.3333 (expected 4722.3333)
+01:48:56 ARM: added 4722.33 mm3
+01:48:56 ok fillet edges found: 2.0000 (expected 2.0000)
+01:48:56 ROOT_FILLETS: R5.0 on 2 edges, volume change +89.97 mm3
+01:48:57 ok SCREWS volume change: 95.4259 (expected 95.4259)
+01:48:57 SCREWS: cut 95.43 mm3
+01:48:57 S6_plate3 volume 6858.878866933415 mass 8.162065851650764 errors [] bbox [0.0, 13.0, 5.0, 65.0, 27.0, 56.0]
+01:48:59 ok PAD volume change: 458.3333 (expected 458.3333)
+01:48:59 PAD: added 458.33 mm3
+01:49:00 ok PLATE volume change: 2142.0000 (expected 2142.0000)
+01:49:00 PLATE: added 2142.00 mm3
+01:49:01 ok ARM volume change: 4264.0000 (expected 4264.0000)
+01:49:01 ARM: added 4264.00 mm3
+01:49:01 ok fillet edges found: 2.0000 (expected 2.0000)
+01:49:01 ROOT_FILLETS: R5.0 on 2 edges, volume change +89.97 mm3
+01:49:02 ok SCREWS volume change: 95.4259 (expected 95.4259)
+01:49:02 SCREWS: cut 95.43 mm3
+01:49:03 ok fea volume equals deliverable: 6858.8789 (expected 6858.8789)
+01:49:04 picks 1 2 1 2
+01:49:04 ok wall: 1.0000 (expected 1.0000)
+01:49:04 ok screws: 2.0000 (expected 2.0000)
+01:49:04 ok top: 1.0000 (expected 1.0000)
+01:49:04 ok fillets: 2.0000 (expected 2.0000)
+01:49:09 S6wall: mesh rc 0, 34247 nodes, 22013 elements, free 17.0 GB
+01:49:13 S6wall: fixture nodes 1525, box [0.0, 13.0, 5.0] to [0.0, 27.0, 56.0]
+01:49:13 S6wall: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:49:14 RESULT S6_plate3 wall {'nodes': 34247, 'reaction': [-0.001, 0.0, 59.999, 59.999], 'applied': 60.0, 'max_disp': 3.7129170894622803, 'peak': (21.58409309387207, [7.06, 24.07, 52.07]), 'peak_all': 21.58409309387207, 'peak_all_at': [7.06, 24.07, 52.07], 'layer_X': ((22.75904655456543, [7.25, 21.15, 52.04]), (7.303465792822644, [5.66, 19.82, 52.53])), 'layer_Y': ((4.016508102416992, [6.3, 20.19, 52.26]), (2.9790020952260137, [3.0, 15.0, 40.6])), 'layer_Z': ((4.663022041320801, [5.09, 19.04, 52.87]), (7.302359280538336, [5.66, 19.82, 52.53]))}
+01:49:16 S6screws: mesh rc 0, 34247 nodes, 22013 elements, free 17.0 GB
+01:49:20 S6screws: fixture nodes 192, box [0.0, 17.75, 9.75] to [3.0, 22.24, 50.25]
+01:49:20 S6screws: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:49:21 RESULT S6_plate3 screws {'nodes': 34247, 'reaction': [-0.005, -0.002, 60.0, 60.0], 'applied': 60.0, 'max_disp': 4.78551721572876, 'peak': (24.261520385742188, [7.25, 19.62, 52.04]), 'peak_all': 66.67131805419922, 'peak_all_at': [0.0, 19.24, 45.88], 'layer_X': ((25.347797393798828, [7.25, 19.62, 52.04]), (6.717873936567841, [5.99, 19.62, 52.38])), 'layer_Y': ((2.816869020462036, [7.25, 21.15, 52.04]), (3.0756478817447808, [3.0, 25.0, 46.58])), 'layer_Z': ((9.977508544921875, [0.0, 19.5, 37.25]), (6.7163849813403145, [5.99, 19.62, 52.38]))}
+01:49:21 closing pid 128864 committed MB 1825
