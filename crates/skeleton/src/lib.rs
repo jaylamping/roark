@@ -11,7 +11,7 @@ mod yaml;
 use std::io::Read;
 use std::path::Path;
 
-pub use commissioning::{COMMISSIONING_SHARE, COMMISSIONING_SPEED_RAD_S, CommissioningCaps};
+pub use commissioning::Caps;
 pub use error::{LoadError, Problem, ProblemKind};
 pub use types::{
     Bus, BusName, Direction, Joint, JointName, Limb, LimbName, Power, PowerSource, Skeleton, Uid,
@@ -24,7 +24,7 @@ use crate::read::{Reader, integer, number, positive, range, text};
 use crate::yaml::Node;
 
 /// The schema version this loader reads. Bumped when an older file no longer loads (skeleton.md section 1).
-const SCHEMA: u64 = 1;
+const SCHEMA: u64 = 2;
 
 /// Upper bound on the file's size. The real file is a few kB; this stops a wrong path (a log, a disk image) from being
 /// read whole.

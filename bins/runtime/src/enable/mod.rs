@@ -18,11 +18,12 @@ mod tests;
 use can::{CommandBatch, Snapshot};
 use robstride::Drive;
 use safety::{
-    ANSWER_WITHIN_NS, EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal, Seen,
+    ANSWER_WITHIN_NS, Cause, EnableFailure, Enabling, Next, Preflight, PreflightPassed, Refusal,
+    RuleId, Seen,
 };
 use skeleton::LimbName;
 
-use crate::dispatch::StopLatch;
+use crate::latch::StopLatch;
 use crate::request::Scope;
 use crate::roster::{JointSet, Roster, RosterJoint};
 
@@ -80,6 +81,8 @@ pub(crate) struct Buses<'a> {
     pub(crate) batches: &'a mut [CommandBatch],
     /// Whether each bus thread has ended, by plan index.
     pub(crate) ended: &'a [bool],
+    /// The bus whose slow results a scan or set-ID takes, if one runs: the enabler leaves them.
+    pub(crate) lent: Option<usize>,
 }
 
 /// Where one joint of the enable running is, after its step.
@@ -127,6 +130,11 @@ impl Enabler {
             foreign: vec![0; buses],
             started_ns: 0,
         }
+    }
+
+    /// Whether an enable is running.
+    pub(crate) const fn running(&self) -> bool {
+        self.run.is_some()
     }
 
     /// Take a new enable at `now_ns`: refused at once if another runs, the recording has failed, it names nothing or a
@@ -274,7 +282,7 @@ impl Enabler {
         counts: &mut Counts,
     ) -> Option<EnableReply> {
         let Some((tag, joints)) = self.run else {
-            drain_stray(buses.slow, counts);
+            drain_stray(buses.slow, buses.lent, counts);
             return None;
         };
         self.route_results(roster, joints, buses.slow, now_ns, counts);
@@ -454,18 +462,6 @@ impl Enabler {
             Some(Phase::Enabled(_)) => true,
             Some(Phase::Off | Phase::Preflight { .. } | Phase::Passed(_)) | None => false,
         });
-        for joint in joints.iter() {
-            if let Some(phase) = self.phases.get_mut(joint) {
-                if let Phase::Enabled(_) = phase {
-                    counts.holds_ended += 1;
-                }
-                *phase = Phase::Off;
-            }
-            if stopped && let Some(entry) = roster.joint(joint) {
-                stops.ask(Scope::Limb(entry.limb));
-            }
-        }
-        self.run = None;
         let why = match failure {
             Failed::Preflight { joint, refusal } if !stopped => {
                 EnableRefused::Preflight { joint, refusal }
@@ -493,6 +489,22 @@ impl Enabler {
             Failed::Foreign { bus } => EnableRefused::ForeignHost { bus, stopped },
             Failed::Unseen { joint } => EnableRefused::Unseen { joint, stopped },
         };
+        // The stop goes under the refusal's rule, as its event names it. Every refusal built here has one
+        // (`a_failed_enable_stops_its_limb_under_the_rule_its_refusal_names` checks each), so the fallback, a stop
+        // carried for a cause recorded elsewhere, is never taken.
+        let cause = why.named().rule.map_or(Cause::Follows, Cause::Rule);
+        for joint in joints.iter() {
+            if let Some(phase) = self.phases.get_mut(joint) {
+                if let Phase::Enabled(_) = phase {
+                    counts.holds_ended += 1;
+                }
+                *phase = Phase::Off;
+            }
+            if stopped && let Some(entry) = roster.joint(joint) {
+                stops.ask(Scope::Limb(entry.limb), cause);
+            }
+        }
+        self.run = None;
         EnableReply {
             tag,
             outcome: Err(why),
@@ -554,7 +566,8 @@ fn place(buses: &mut Buses<'_>, stops: &StopLatch, entry: &RosterJoint, frame: r
             .is_some_and(|b| b.set(slot, frame))
     });
     if !placed {
-        stops.ask(Scope::Limb(entry.limb));
+        // The plan keeps every slot in range, so this is a runtime bug: a broken control side (`host.hang`).
+        stops.ask(Scope::Limb(entry.limb), Cause::Rule(RuleId::HostHang));
     }
 }
 

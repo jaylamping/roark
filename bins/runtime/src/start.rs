@@ -4,22 +4,26 @@
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::thread::JoinHandle;
 use std::time::Duration;
 
 use can::{BusConfig, BusExit, BusLinks, BusRunError, Counters, Snapshot, Timing, TimingError};
 use rtrb::{Consumer, Producer, RingBuffer};
+use safety::Cause;
 use skeleton::JointName;
 use telemetry::{
-    BusInfo, RING_BATCHES, RecordError, Recorder, Recording, Session, SessionInfo, SkeletonRef,
-    Stage,
+    BusInfo, RING_BATCHES, RING_EVENTS, RecordError, Recorder, Recording, Session, SessionInfo,
+    SkeletonRef, Stage,
 };
 
 use crate::clock::{Schedule, mono_now, wall_ns};
 use crate::control::{self, BusEnds, ControlExit, ControlLinks, View};
-use crate::dispatch::{BusOrders, StopLatch};
+use crate::dispatch::BusOrders;
 use crate::enable::{Enable, EnableReply, SLOW_RING, SlowEnds};
+use crate::events::Events;
+use crate::identity::{IdentityReply, IdentityRequest};
+use crate::latch::StopLatch;
 use crate::plan::{BusPlan, PlanError, offline, plan};
 use crate::request::{Clear, Reply, Scope};
 use crate::roster::{JointSet, Roster, TooManyJoints, UnknownJoint};
@@ -32,13 +36,12 @@ const SNAPSHOTS: usize = 8;
 const ORDERS: usize = 16;
 /// Clears and enables in, their replies and views out.
 const REQUESTS: usize = 64;
+/// Scans and set-IDs in, and their replies out: one runs at a time, and a reply holds a whole scan's table.
+const IDENTITY: usize = 4;
 /// How far out the schedule's origin is, in periods: time for every thread to be spawned and asleep before tick 0 (a
 /// spawn takes far less than a period), and short enough that nobody waits on it. A thread that starts late anyway runs
 /// from the tick in progress and counts the ones it missed.
 const ORIGIN_PERIODS: u64 = 4;
-/// `vcan` for every session: the bus layer refuses any other interface until the real adapter is supported (PLAN step
-/// 8).
-const STAGE: Stage = Stage::Vcan;
 
 /// How the runtime is started.
 #[derive(Clone, Debug)]
@@ -109,6 +112,8 @@ pub struct StartInfo {
     pub sockets: Vec<BusInfo>,
     /// Each bus socket's receive buffer as the kernel reports it, in plan order.
     pub receive_buffer_bytes: Vec<usize>,
+    /// Each bus's interface as checked against the skeleton, in plan order.
+    pub interfaces: Vec<can::Interface>,
     /// The joints on no bus.
     pub offline: Vec<JointName>,
     /// Every joint, where it is wired and what its preflight checks, in the order enables and their replies name them.
@@ -119,7 +124,7 @@ pub struct StartInfo {
     pub session: PathBuf,
 }
 
-/// A running runtime: stops, clears and enables in, their replies and each bus's newest snapshot out.
+/// A running runtime: stops, clears, enables, scans and set-IDs in, their replies and each bus's newest snapshot out.
 pub struct Runtime {
     /// The operator's clears. Each is answered once per bus its limb is on (by the bus, or refused `Busy`, `BusEnded`
     /// or `Ending`), or once with no bus when the limb is on none (`Offline`). A clear pushed after the run has
@@ -132,12 +137,27 @@ pub struct Runtime {
     pub enables: Producer<Enable>,
     /// The answers to enables.
     pub enable_replies: Consumer<EnableReply>,
+    /// The operator's scans and set-IDs, run one at a time, in turn, and never beside an enable. Each is answered once.
+    /// One pushed after the run has [`finished`](Runtime::finished) gets no reply.
+    pub identity: Producer<IdentityRequest>,
+    /// The answers to scans and set-IDs.
+    pub identity_replies: Consumer<IdentityReply>,
     /// Each bus's newest snapshot, once a tick, when [`RuntimeConfig::views`] asked for them.
     pub views: Option<Consumer<View>>,
     stops: Arc<StopLatch>,
     finished: Arc<AtomicBool>,
+    progress: Arc<AtomicU64>,
     info: StartInfo,
     threads: Threads,
+}
+
+/// The tick at `hz`, checked.
+fn checked_timing(hz: u64) -> Result<Timing, StartError> {
+    let timing = Timing::at_hz(hz);
+    timing
+        .check()
+        .map_err(|source| StartError::Timing { hz, source })?;
+    Ok(timing)
 }
 
 /// How one bus thread ended.
@@ -196,19 +216,13 @@ impl Runtime {
         let skeleton = skeleton::parse(&text)?;
         let plans = plan(&skeleton)?;
         let roster = Roster::new(&skeleton, &plans)?;
-        let timing = Timing::at_hz(config.hz);
-        timing.check().map_err(|source| StartError::Timing {
-            hz: config.hz,
-            source,
-        })?;
+        let timing = checked_timing(config.hz)?;
         let skeleton_ref = SkeletonRef::of(&config.skeleton, text.as_bytes());
-        let sockets: Vec<BusInfo> = plans
-            .iter()
-            .map(|p| can::bus_info(&p.name, p.bitrate_bps))
-            .collect();
-        let session = start_session(config, &skeleton_ref, &sockets)?;
+        let sockets = sockets(&plans);
+        let session = start_session(config, stage(&plans)?, &skeleton_ref, &sockets)?;
         let session_dir = session.dir().to_path_buf();
-        let (recording, recorders) = Recording::new(session, RING_BATCHES);
+        let (mut recording, recorders) = Recording::new(session, RING_BATCHES);
+        let events = recording.events(roster.names(), RING_EVENTS);
         let epoch = recording.epoch();
         let health = recording.health();
         let mut threads = Threads {
@@ -223,6 +237,7 @@ impl Runtime {
         let mut orders = Vec::new();
         let mut slow = Vec::new();
         let mut receive_buffer_bytes = Vec::new();
+        let mut interfaces = Vec::new();
         for (p, recorder) in plans.iter().zip(recorders) {
             match spawn_bus(p, timing, recorder, epoch, start, &threads.end) {
                 Ok(bus) => {
@@ -231,6 +246,7 @@ impl Runtime {
                     orders.push(bus.orders);
                     slow.push(bus.slow);
                     receive_buffer_bytes.push(bus.receive_buffer_bytes);
+                    interfaces.push(bus.interface);
                 }
                 Err(e) => return Err(threads.unwind(e.into())),
             }
@@ -244,10 +260,13 @@ impl Runtime {
         };
         let stops = Arc::new(StopLatch::default());
         let finished = Arc::new(AtomicBool::new(false));
+        let progress = Arc::new(AtomicU64::new(0));
         let (clears, clears_rx) = RingBuffer::new(REQUESTS);
         let (replies_tx, replies) = RingBuffer::new(REQUESTS);
         let (enables, enables_rx) = RingBuffer::new(REQUESTS);
         let (enable_replies_tx, enable_replies) = RingBuffer::new(REQUESTS);
+        let (identity, identity_rx) = RingBuffer::new(IDENTITY);
+        let (identity_replies_tx, identity_replies) = RingBuffer::new(IDENTITY);
         let (views_tx, views) = views(config.views);
         let links = ControlLinks {
             buses: ends,
@@ -259,16 +278,16 @@ impl Runtime {
             slow,
             enables: enables_rx,
             enable_replies: enable_replies_tx,
+            identity: identity_rx,
+            identity_replies: identity_replies_tx,
             health,
+            events: Events::new(Some(events), &roster),
             views: views_tx,
             end: Arc::clone(&threads.end),
             finished: Arc::clone(&finished),
+            progress: Arc::clone(&progress),
         };
-        let control_plans = plans.clone();
-        let control = std::thread::Builder::new()
-            .name("control".to_owned())
-            .spawn(move || control::run(&control_plans, &schedule, origin_ns, timing, links));
-        match control {
+        match spawn_control(plans.clone(), schedule, origin_ns, timing, links) {
             Ok(handle) => threads.control = Some(handle),
             Err(e) => return Err(threads.unwind(StartError::Thread(e))),
         }
@@ -277,13 +296,17 @@ impl Runtime {
             replies,
             enables,
             enable_replies,
+            identity,
+            identity_replies,
             views,
             stops,
             finished,
+            progress,
             info: StartInfo {
                 plans,
                 sockets,
                 receive_buffer_bytes,
+                interfaces,
                 offline: offline(&skeleton),
                 roster,
                 skeleton: skeleton_ref,
@@ -319,7 +342,7 @@ impl Runtime {
     /// The operator's stop of `scope`: always accepted, never waits, and taken by control ahead of any clear on its
     /// next pass (PLAN item 3a).
     pub fn stop(&self, scope: Scope) {
-        self.stops.ask(scope);
+        self.stops.ask(scope, Cause::Operator);
     }
 
     /// Set once the control thread has ended: after [`Runtime::end`], or on its own when its clock failed or a bus
@@ -327,6 +350,14 @@ impl Runtime {
     #[must_use]
     pub fn finished(&self) -> Arc<AtomicBool> {
         Arc::clone(&self.finished)
+    }
+
+    /// The count of control passes that made progress: passes in which every bus had published that tick's
+    /// snapshot (the rule is `control::progressing`). It stops rising when the control thread hangs, when any bus falls
+    /// behind, and once the run ends. The binary feeds systemd's watchdog only while it rises (PLAN item 3).
+    #[must_use]
+    pub fn progress(&self) -> Arc<AtomicU64> {
+        Arc::clone(&self.progress)
     }
 
     /// End the run: every bus stops its limbs and ends once control has taken a snapshot showing every limb at rest (or,
@@ -399,7 +430,10 @@ impl Threads {
         }
         let recording = match self.recorder.take() {
             Some(r) => r.close(recorders)?,
-            None => telemetry::wire::End { buses: Vec::new() },
+            None => telemetry::wire::End {
+                buses: Vec::new(),
+                events: telemetry::wire::EventTotals::default(),
+            },
         };
         if panicked {
             return Err(EndError::Panicked);
@@ -412,9 +446,32 @@ impl Threads {
     }
 }
 
+/// Every bus's interface, checked before the session exists, so a refused start leaves no session behind and a run on
+/// any real bus is recorded as a bench session, never as sim.
+fn stage(plans: &[BusPlan]) -> Result<Stage, BusRunError> {
+    let interfaces = plans
+        .iter()
+        .map(|p| can::check_interface(&p.name, &p.interface))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(stage_of(&interfaces))
+}
+
+/// A session is sim only when every bus is: one real bus makes it a bench session.
+fn stage_of(interfaces: &[can::Interface]) -> Stage {
+    if interfaces
+        .iter()
+        .any(|i| matches!(i, can::Interface::Real(_)))
+    {
+        Stage::Bench
+    } else {
+        Stage::Vcan
+    }
+}
+
 /// The session, recorded with what the runtime starts from.
 fn start_session(
     config: &RuntimeConfig,
+    stage: Stage,
     skeleton: &SkeletonRef,
     sockets: &[BusInfo],
 ) -> Result<Session, RecordError> {
@@ -423,12 +480,33 @@ fn start_session(
         SessionInfo {
             git_revision: config.git_revision.clone(),
             operator: config.operator.clone(),
-            stage: STAGE,
+            stage,
             skeleton: skeleton.clone(),
             buses: sockets.to_vec(),
         },
         wall_ns(),
     )
+}
+
+/// The control thread, on the buses' schedule.
+fn spawn_control(
+    plans: Vec<BusPlan>,
+    schedule: Schedule,
+    origin_ns: u64,
+    timing: Timing,
+    links: ControlLinks,
+) -> io::Result<JoinHandle<ControlExit>> {
+    std::thread::Builder::new()
+        .name("control".to_owned())
+        .spawn(move || control::run(&plans, &schedule, origin_ns, timing, links))
+}
+
+/// Each bus's socket, as the session records it.
+fn sockets(plans: &[BusPlan]) -> Vec<BusInfo> {
+    plans
+        .iter()
+        .map(|p| can::bus_info(&p.name, p.bitrate_bps))
+        .collect()
 }
 
 /// The views' ring, when anyone reads them.
@@ -449,6 +527,7 @@ struct SpawnedBus {
     orders: BusOrders,
     slow: SlowEnds,
     receive_buffer_bytes: usize,
+    interface: can::Interface,
 }
 
 /// One bus thread, control's ends of its rings, and its socket's receive buffer.
@@ -469,6 +548,7 @@ fn spawn_bus(
     let spawned = can::spawn(
         BusConfig {
             name: p.name.clone(),
+            interface: p.interface.clone(),
             drives: p.drives.clone(),
             timing,
         },
@@ -495,5 +575,35 @@ fn spawn_bus(
         orders: BusOrders::new(orders),
         slow: SlowEnds::new(requests_tx, results_rx),
         receive_buffer_bytes: spawned.receive_buffer_bytes,
+        interface: spawned.interface,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Guards: safety - a run on any real bus is recorded as a bench session, never as sim, which logging.md lets be
+    /// deleted on its own.
+    #[test]
+    fn one_real_bus_makes_a_bench_session() {
+        let real = can::Interface::Real(can::RealInterface {
+            driver: "mcp251xfd".to_owned(),
+            bitrate_bps: 1_000_000,
+            sample_point: "0.750".to_owned(),
+            state: "ERROR-ACTIVE".to_owned(),
+            modes: Vec::new(),
+            restart_ms: None,
+            clock_hz: None,
+            txqueuelen: None,
+        });
+        let rows = [
+            (vec![can::Interface::Sim, can::Interface::Sim], Stage::Vcan),
+            (vec![can::Interface::Sim, real.clone()], Stage::Bench),
+            (vec![real], Stage::Bench),
+        ];
+        for (interfaces, stage) in rows {
+            assert_eq!(stage_of(&interfaces), stage, "{interfaces:?}");
+        }
+    }
 }

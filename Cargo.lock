@@ -85,9 +85,27 @@ dependencies = [
  "nix",
  "robstride",
  "rtrb",
+ "serde_json",
  "socketcan",
  "telemetry",
  "thiserror",
+]
+
+[[package]]
+name = "can-bench"
+version = "0.1.0"
+dependencies = [
+ "nix",
+ "serde_json",
+ "socketcan",
+]
+
+[[package]]
+name = "candump-rotate"
+version = "0.1.0"
+dependencies = [
+ "nix",
+ "zstd",
 ]
 
 [[package]]
@@ -436,6 +454,7 @@ version = "0.1.0"
 dependencies = [
  "nix",
  "robstride",
+ "serde_json",
  "skeleton",
  "socketcan",
  "thiserror",
@@ -459,10 +478,12 @@ name = "runtime"
 version = "0.1.0"
 dependencies = [
  "can",
+ "mcap",
  "nix",
  "robstride",
  "rtrb",
  "safety",
+ "serde_json",
  "skeleton",
  "telemetry",
  "thiserror",
@@ -599,6 +620,7 @@ version = "0.1.0"
 dependencies = [
  "can",
  "mcap",
+ "nix",
  "robstride",
  "rtrb",
  "runtime",
@@ -608,6 +630,7 @@ dependencies = [
  "skeleton",
  "socketcan",
  "telemetry",
+ "zstd",
 ]
 
 [[package]]

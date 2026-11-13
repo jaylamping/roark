@@ -203,20 +203,26 @@ The buses connect through the GPIO header over SPI, never the USB ports, which f
 use (Joey, 2026-11-11). Until the robot's own CAN board exists, that's one Waveshare 2-channel HAT at a time.
 
 **Overlays (→ image):** add the fitted HAT's block to the end of `/boot/firmware/config.txt` and reboot. Keep the other
-block there commented out, so swapping HATs is one edit.
+block there commented out, so swapping HATs is one edit. The robot's buses run on the CAN FD HAT (both arms, Joey
+2026-11-11), so its block is the live one.
 
 ```ini
-# Waveshare 2-CH CAN HAT (MCP2515, 16 MHz crystal). Interrupts at the board's default pads: CAN_0 GPIO 23, CAN_1 GPIO 25.
-dtparam=spi=on
-dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=23
-dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=25
-
 # Waveshare 2-CH CAN FD HAT (MCP2518FD), mode A (the default: CAN_0 on SPI0, CAN_1 on SPI1).
+dtparam=spi=on
+dtoverlay=spi1-3cs
+dtoverlay=mcp251xfd,spi0-0,interrupt=25
+dtoverlay=mcp251xfd,spi1-0,interrupt=24
+
+# Waveshare 2-CH CAN HAT (MCP2515, 16 MHz crystal). Interrupts at the board's default pads: CAN_0 GPIO 23, CAN_1 GPIO 25.
 #dtparam=spi=on
-#dtoverlay=spi1-3cs
-#dtoverlay=mcp251xfd,spi0-0,interrupt=25
-#dtoverlay=mcp251xfd,spi1-0,interrupt=24
+#dtoverlay=mcp2515-can0,oscillator=16000000,interrupt=23
+#dtoverlay=mcp2515-can1,oscillator=16000000,interrupt=25
 ```
+
+**The skeleton names the driver.** Each bus in `config/skeleton.yaml` has a `driver`, and `runtime` refuses a bus whose
+interface has another one: `mcp251xfd` for the CAN FD HAT, `mcp251x` for the MCP2515 HAT. Swapping HATs means swapping the
+overlay block and those two lines. `can-bench` doesn't read the skeleton, so the interface comparison runs on either HAT
+as it is.
 
 The values are Waveshare's (the [2-CH CAN HAT](https://www.waveshare.com/wiki/2-CH_CAN_HAT) and
 [2-CH CAN FD HAT](https://www.waveshare.com/wiki/2-CH_CAN_FD_HAT) wiki pages). If a board's interrupt pads were moved, the
@@ -255,6 +261,8 @@ the SPI device path, in `deploy/` **(→ deploy/)**.
 ```bash
 sudo apt install -y can-utils rt-tests stress-ng
 ```
+
+`can-utils` stays installed: its `candump` is what the black box runs (`candump@<bus>.service`, logging.md section 8.6).
 
 `rt-tests` gives `cyclictest`. Set the CPU governor to `performance` when measuring (it resets at reboot)
 **(→ deploy/)**:

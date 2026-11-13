@@ -18,8 +18,8 @@ pub struct RosterJoint {
     pub limb: LimbName,
     /// Where it is wired; `None` when it is on no bus (offline).
     pub at: Option<Wire>,
-    /// What preflight checks its drive against, or why nothing can be: a null fact or cap, a model without settled
-    /// MIT scales, or no bus.
+    /// What preflight checks its drive against, or why nothing can be: no bus, a model without settled MIT scales, or a
+    /// cap its model can't take. A null fact or cap is no refusal: it lowers the caps (`skeleton::Joint::caps`).
     pub target: Result<Target, Refusal>,
 }
 
@@ -109,6 +109,16 @@ impl Roster {
     #[must_use]
     pub fn len(&self) -> usize {
         self.joints.len()
+    }
+
+    /// Every joint's name, by index: the table control's events name joints by.
+    #[cfg(target_os = "linux")]
+    #[must_use]
+    pub(crate) fn names(&self) -> Vec<String> {
+        self.joints
+            .iter()
+            .map(|j| j.name.as_str().to_owned())
+            .collect()
     }
 
     /// Whether there are none.

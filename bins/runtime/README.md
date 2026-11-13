@@ -30,6 +30,17 @@ thread per wired bus and the control thread on one schedule origin, and takes th
   bus fails the enable, so a limb over two buses enables only once both are cleared. Another host's frame on a named
   joint's bus during the enable fails it too, since its writes could change what preflight proved, as does a named
   drive its bus hasn't shown within preflight's answer window.
+- **Scans and set-IDs** (`IdentityRequest` naming a bus, through `Runtime::identity`) are answered by one
+  `IdentityReply`, one at a time, in turn, and never beside an enable: one asked while an enable runs is refused `Busy`,
+  and an enable asked while one runs is too. A scan probes every ID from 1 to 127 (type 0) and lists what answered at
+  each (`ScanTable`): one UID, two sharing the ID, or unsure once a probe's window couldn't be trusted three times. A
+  set-ID sends its type 7 only once probes have just shown exactly one drive at the old ID and none at the new, sends it
+  once, then probes the new ID and the old: `Moved` when the same UID answers at the new ID alone, `Unconfirmed` with
+  what answered at each otherwise (the only refusal that says a type 7 may have gone). The bus refuses every probe and
+  set-ID unless every limb on it is idle (`BusNotIdle`), so neither feeds a running or stopped drive (PLAN item 3, Scan
+  and identity; item 2). A request with no result a second after it was asked (`safety::ANSWER_WITHIN_NS`: the bus
+  dropped it, or is far behind) is given up: a probe is asked again, at most three times, and a type 7 counts as one
+  that may have gone, so no job waits for ever.
 - **The hold**: every enabled joint gets a slack MIT command each tick from the tick its own drive is in Run (zero gains,
   zero torque: watched by the bus's rules, holding nothing, so the motion rules have nothing to check yet) until real
   control modes and gains exist. A joint stops being held when its limb stops on any bus, and a stop on one bus is then
@@ -46,17 +57,54 @@ thread per wired bus and the control thread on one schedule origin, and takes th
 - **The run ends** with `Runtime::end` (or SIGINT and SIGTERM in the binary): every bus stops its limbs and ends once
   control has taken a snapshot with every limb at rest, then the session closes. It also ends on its own if control loses
   its clock or a bus thread ends: `Runtime::finished` is set, and the binary then ends the runtime and exits with failure.
+- **The watchdog** (PLAN item 3: fed only when the control loop and every bus in an active run make progress): each
+  control pass that completes counts up `Runtime::progress`, unless some bus hasn't published that tick's snapshot
+  (the rule, and why every bus counts, is on `control::progressing`). Under systemd (`Type=notify`,
+  `deploy/systemd/runtime.service`) the binary says `READY=1` once every thread runs, before it waits for a signal; if
+  that send fails, the watcher retries it each look until it goes or the run is ending. The watcher then sends `WATCHDOG=1` each time it looks (every 50 ms) and the count has risen; `STOPPING=1` goes as the
+  run ends. No send waits: a full socket fails it, logged. So a hung control thread, or a bus hanging or falling
+  behind for the unit's `WatchdogSec`, gets the process killed, and `ExecStopPost` runs the independent disable. The
+  count stops once the run ends on its own. Without `NOTIFY_SOCKET` (run by hand, or by a test) it tells nobody. The
+  power board's heartbeat is to come from the same count (PLAN item 10).
 
-The `api` socket (and so any way for the binary's operator to enable), `mlockall`, `SCHED_FIFO` and the systemd units
-come in the PRs that follow (PLAN step 7). Stops that control asks (an enable's failure, `host.mode`) reach the bus as
-operator stops, and control's enables and refusals emit no event yet: the session records them only as limb stops until
-a stop carries its cause and control has an event queue, the next PR, before any real drive is enabled (step 8).
+The `api` socket (and so any way for the binary's operator to enable), `mlockall` and `SCHED_FIFO` come in the PRs
+that follow (PLAN step 7).
+
+- **Events** (safety.md section 8): every stop control takes, enable it starts, enable answer and clear answer is an
+  event on the session's `/event` channel, handed to the recorder through its lock-free event ring (`Recording::events`),
+  so control never writes to disk. Kinds are `telemetry::EventKind` (logging.md section 2):
+  - `limb.stopped` and `robot.stopped`: one per cause the stop was asked for, each limb's kept even when a robot stop
+    covers it. The cause is a rule (an enable's failure under its failure's rule, a limb mate under `host.mode`, a hold
+    that couldn't be encoded or placed under `host.hang`, a bus's own stop of a held limb under that stop's rule when it
+    is one, as `host.fault` for a fault), or a reason: `operator`, `shutdown`, or `follows_bus_stop` when a held limb's
+    bus stop names no rule because it was asked (by the operator or control, whose own event names the cause) and
+    control carries it to the whole limb. The stop latch keeps every cause asked of each scope until
+    control takes it, in the same atomic word as the stop, so a stop is never taken without its cause. The run's end is
+    the robot's stop. Control asks it under `host.hang` for a lost clock or `host.bus` for a bus thread that ended. The
+    owner's end is asked as `shutdown` when it comes first: control sees it first, or finds it already set as it
+    decides its own before any pass has seen the end. Each cause is one `robot.stopped`. An owner's end after control's
+    own changes nothing and isn't recorded; a lost clock after the run has ended is still recorded under `host.hang`.
+    The bus behind `host.bus` is named in the exit and on stderr, not in the event. A take is written robot
+    first, then each limb in `LimbName::ALL` order, each one's causes in bit order, all with the pass's stamp, so stops
+    taken together aren't in the order they were asked. A cause bit nothing decodes is written as `unknown_cause`.
+  - `enable.started`: one per joint of an enable that passed its checks, under its tag. `enable.succeeded` carries the
+    tag; `enable.refused` carries the tag, the rule (none for a request that was wrong or came at the wrong time, which
+    no rule refused), a reason word, and whichever of joint (with its limb), limb or bus the refusal names.
+  - `limb.cleared` and `clear.refused`: per bus, with the limb, the bus, the tag and, refused, a reason word.
+  - `scan.started`, `scan.finished` and `scan.refused`, and `set_id.started`, `set_id.succeeded` and `set_id.refused`:
+    with the bus, the tag and, refused, a reason word; `unconfirmed` is the one that says a type 7 may have gone. The
+    IDs and UIDs are in the reply and the recording's frames.
+
+  Events carry no measured values yet: the operator's message (`Refusal::message`) has them, and the client gets the
+  reply itself. Stops a bus thread makes on its own are in its snapshots, not yet on `/event`, except as the cause of the
+  stop control carries to the limb's other buses.
 
 Known limits, each failing closed or only delaying a stop by a pass: control decides on the newest snapshots, so a stop
 seen on one bus reaches the limb's other buses a control pass later; a limb-mate's view carries no age, so a bus that
 missed its tick shows its last one; a bus with no snapshot yet when an enable is taken counts every other host's frame
 it later reports as new, refusing the enable; the recording's `Health` fails on write errors only, not on frames the
-recorder's ring dropped; and a full slow ring is reported as `NoStatus`.
+recorder's ring dropped; a full slow ring is reported as `NoStatus`; a full event ring drops the event, counted in the
+file's end marker.
 
 One limit does not fail closed, pending the bench: a drive that reboots after its preflight passed, while its enable
 waits for a mate's proof, loses its `canTimeout` with nothing on the bus to say so, and is enabled with no host-loss
@@ -81,6 +129,8 @@ frames), `skeleton` (the file it runs), `telemetry` (the session). The sim suite
 runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>] [--lock <file>]
 # on the dev box, with vcan up and sim-drive serving the skeleton's buses:
 scripts/devbox.sh run cargo run -p runtime -- --sessions /tmp/sessions --lock /tmp/runtime.lock
+# then, once it has exited, the independent stop with the same lock:
+scripts/devbox.sh run cargo run -p robot-cli -- disable --lock /tmp/runtime.lock
 ```
 
 Defaults: `config/skeleton.yaml`, `/var/lib/robot/sessions`, 250 Hz, `/run/robot/runtime.lock`. Before anything else it

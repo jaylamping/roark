@@ -64,9 +64,14 @@ impl Enabler {
     }
 }
 
-/// Results for no preflight: drained and counted, so an old one never answers a new preflight's tag.
-pub(super) fn drain_stray(slow: &mut [SlowEnds], counts: &mut Counts) {
-    for ends in slow.iter_mut() {
+/// Results for no preflight: drained and counted, so an old one never answers a new preflight's tag. The `lent` bus's
+/// are a scan's or set-ID's, which takes them itself.
+pub(super) fn drain_stray(slow: &mut [SlowEnds], lent: Option<usize>, counts: &mut Counts) {
+    for (_, ends) in slow
+        .iter_mut()
+        .enumerate()
+        .filter(|(bus, _)| Some(*bus) != lent)
+    {
         for _ in 0..ends.results.buffer().capacity() {
             if ends.results.pop().is_err() {
                 break;

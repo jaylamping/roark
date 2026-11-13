@@ -45,18 +45,19 @@ adds the power board interface (item 10).
 | # | Milestone | Done when |
 |---|---|---|
 | 1 | **Left arm online**: loose drives on the bench, then the actuator test stand, then the printed arm on the torso with the camera calibration loop | (a) every §6 rule has a passing `vcan` fault test, each before the test that needs it (§6, Which rules a test waits for); (b) three loose drives scanned, IDs 11 to 13 set, preflight passes, and a deliberately wrong `canTimeout` is refused; (c) a 1 h idle soak with no error frames or RX overflow, and latency and jitter recorded in the repo; (d) `kill -9` while enabled leaves the drives limp within 50 ms and the `ExecStopPost` disable shows in candump; (e) a drive power-cycled while enabled (pull its drop fuse) can't be enabled again until preflight passes again; (f) all five joints sign-checked and zeroed (calibration stage C1); (g) the elbow rig has passed before the forearm is powered; (h) test stand files exist for RS03 and RS02; (i) calibration stages C0 to C2 pass attended, plus one clean unattended C3 |
-| 2 | **Right arm moved to this stack**, then the legacy code deleted | Both arms enable from one runtime and one skeleton; silence on one drive stops only its limb; the right arm's taught limits and directions are moved and re-checked; legacy tree deleted from marengo |
+| 2 | **Right arm moved to this stack**, then the legacy code deleted | Both arms enable from one runtime and one skeleton; silence on one drive stops only its limb; the right arm's directions and limits are re-checked on this stack and entered as `robot-cli`'s edit; legacy tree deleted from marengo |
 | 3 | Waist | The waist enables on its own bus with no new code path. Waits on the waist hardware, which is parked |
 | 4 | Power board and battery | Stopping the heartbeat drops the motor latch within its window; port-fault decode names the port; self-test runs only under its conditions (item 10) |
 | 5 | Legs | Five buses at 250 Hz with measured bus load under 70 % per bus; legs run on the support gantry |
 
 ## Start here
 
-1. **Joey, now, in parallel with the code:** order one isolated STM32F0 adapter running mainline candleLight (item 5), and the
+1. **Joey, now, in parallel with the code:** order one Waveshare 2-CH isolated CAN FD HAT (MCP2518FD) for the [interface comparison](docs/can-interface-comparison.md) (item 5), and the
    luggage scale for the test stand.
 2. **Read** the tenets, this plan and [conventions/](conventions/).
-3. **Skeleton** (item 1): the `skeleton` crate and `config/skeleton.yaml` with all five limbs, including the right arm's
-   existing values. Putting two limbs in from day one exercises "no per-limb code" in sim long before milestone 2.
+3. **Skeleton** (item 1): the `skeleton` crate and `config/skeleton.yaml` with all five limbs, including the right arm's bus
+   and IDs (its signs and limits stay null until milestone 2 re-checks them). Putting two limbs in from day one exercises "no
+   per-limb code" in sim long before milestone 2.
 4. **Lift the legacy knowledge** into notes and test vectors (item 2).
 5. **Codec** (`robstride`) against the manual test vectors.
 6. **Bus loop and sim drive together** (items 3 and 4) on `vcan` interfaces named after the skeleton buses, with MCAP and
@@ -68,7 +69,8 @@ adds the power board interface (item 10).
    persistence test (item 1) and the caps-in-mode test (item 6).
 9. **First attended Enable** of the loose drives with Joey, as soon as the first row of
    [Which rules a test waits for](#which-rules-a-test-waits-for) passes: preflight, enable at the commissioning caps,
-   sign check, zero, unloaded jog.
+   sign check, zero, unloaded jog. The UIDs and directions found, and the zeros of models whose persistence test passed, go into
+   the skeleton as `robot-cli`'s edit (item 1).
 10. Then the test stand (item 7), the elbow rig result into item 8's limits, and the camera loop (item 9).
 
 Create each crate when an item first needs it. The crate table below is the naming target, not a to-do list.
@@ -78,11 +80,11 @@ Create each crate when an item first needs it. The crate table below is the nami
 | Hardware | State on 2026-11-08 | Software needed by then |
 |---|---|---|
 | Left shoulder and upper-arm drives (RS03 ×2, RS02), loose on the bench, 24 V supply | **Ready now** (drives owned, bench harness planned) | Items 1 to 6 |
-| USB-CAN adapter | Not bought. Buy **one** isolated STM32F0 board running mainline candleLight (Openlight CANable Pro class, ~$60), pre-flashed or flashed before use; not a "CANable 2.0 Pro" G431 clone, which ships with slcan firmware | Item 5 |
+| CAN interface | The Pi's USB ports face out the back for external use (Joey, 2026-11-11), so the buses connect over SPI. Buy one Waveshare 2-CH isolated CAN FD HAT (MCP2518FD, ~$55) and measure it against the MCP2515 HAT in the [interface comparison](docs/can-interface-comparison.md), with no drive on the bus. If it passes, the robot's buses need a CAN board on the header with one MCP2518FD and isolated transceiver per bus (hardware side). A USB adapter on an internal hub (MKS CANable V1.0 Pro, gs_usb) is the fallback | Item 5 |
 | Actuator test stand, RS03 waist unit first | Designed for all four sizes, waiting for Joey's review and print; luggage scale to buy | Item 7 |
-| Upper arm (printed) | Being redone as clamshells | Item 8 before it moves under power |
+| Upper arm (printed) | Redesigned as concept A (drum and caps) | Item 8 before it moves under power |
 | Elbow dummy-output rig | 6808 bearings arrive Mon 2026-11-09; rig is hand-loaded | **None.** No drive is used |
-| Forearm and RS00 | Designed, not printed | Item 8, after the elbow rig passes; the RS00 scale question (item 2) settled first |
+| Forearm and RS00 | Redesigned as concept A; not printed | Item 8, after the elbow rig passes; the RS00 scale question (item 2) settled first |
 | Camera rig (Logitech BRIO, AprilTag plates) | Plan approved; camera owned; plates not printed | Item 9 |
 | Arm on the robot torso | Waits for Joey's rebuilt torso frame | Items 8 and 9 on the real geometry |
 | Power board (rev B5) | Being routed; review, then fab | Item 10. The bench uses the 24 V supply and a physical E-stop until then |
@@ -136,14 +138,26 @@ One file, `config/skeleton.yaml`, describes the whole robot. The software owns t
 the values. When hardware changes, the hardware side opens one PR here that touches only the skeleton and adds a change-log
 line to STATUS.md the same day. The runtime never writes it; tools that teach limits produce a proposed diff for a PR.
 
+**Measured values reach the skeleton as a diff, not by hand.** The numbers commissioning finds on this stack (a drive's UID
+from the scan, a joint's `direction` from the sign check, a taught limit, and `zero_rad` only for a model whose persistence
+test below passed) come out of `robot-cli` as an edit to the skeleton: only the fields that changed, with comments and order
+kept, and a comment beside each value naming the session that measured it; a re-check that confirms a value still rewrites
+that comment. The edit carries the hash of the skeleton the session loaded (from `session.json`), and `robot-cli` refuses to
+produce it against a checkout whose skeleton differs. That catches an edit applied to a different skeleton than the session
+ran; it doesn't catch a checkout behind `main` or two edits open at once, which the skeleton review (skeleton.md section 6)
+still covers. The runtime never writes the file; the person applies the edit in a checkout and opens the PR, which is
+reviewed like any skeleton change. No value is copied in from legacy files ([skeleton.md](conventions/skeleton.md) section 6,
+check 3): the right arm's legacy values are only what its milestone-2 re-check compares against, and the re-checked values
+enter the skeleton only as that re-check's edit.
+
 Shape (the builder may adjust field names; the content is required):
 
 ```yaml
-schema: 1
+schema: 2
 name: roark                     # the only place the robot's name appears
 power: { source: bench_24v, vbus_min_v: 22, vbus_max_v: 26 }
 buses:
-  can1: { bitrate: 1000000, sample_point: 0.75, adapter_serial: "<USB serial, for its link file>" }
+  can1: { bitrate: 1000000, sample_point: 0.75, driver: mcp251xfd, adapter_serial: null }  # serial only for a USB adapter
 limbs:
   left_arm:
     joints:
@@ -235,8 +249,8 @@ The legacy code holds real bench lessons. Copy them into the codec's docs and te
   change that. For a drive that was enabling or enabled, with no Reset read after its Disable, counting resumes after
   the 100 ms, so a lost Disable can't leave a running drive uncounted.
 
-**Transmit allowlist:** types 0, 1, 3, 4, 6, 17, 18, 24. Type 7 (set ID) only from the set-ID command with exactly one drive
-answering on that bus. Never 22, 23 or 25; never write 0x7029, 0x702B or 0x702A; never type 4 with the fault-clear byte set.
+**Transmit allowlist:** types 0, 1, 3, 4, 6, 17, 18, 24. Type 7 (set ID) only from the set-ID command, with exactly one drive
+answering at the old ID on that bus and none at the new; a bus carries a limb, so other drives may answer at other IDs. Never 22, 23 or 25; never write 0x7029, 0x702B or 0x702A; never type 4 with the fault-clear byte set.
 
 **Don't copy** `scripts/can-up.sh` link settings: `restart-ms 100` and `txqueuelen 1000` were MCP2515 workarounds and contradict
 item 3.
@@ -281,9 +295,10 @@ Per [can-stack-for-marengo.md](https://github.com/jaylamping/marengo/blob/main/h
   file, per [deploy.md](conventions/deploy.md)); disable the HAT's `can1` before the
   adapter takes that name. At start, check each interface's driver against the skeleton.
 - **Only the realtime process transmits.** Scan, set-ID and parameter reads are runtime commands through `api`; `robot-cli` is
-  a client. The one exception is `robot-cli disable`: it reads only (bus, ID) pairs from the skeleton, opens the sockets itself,
+  a client. The one exception on a robot bus is `robot-cli disable`: it reads only (bus, ID) pairs from the skeleton, opens the sockets itself,
   sends Disable then active reporting off to every ID, depends on nothing else, and runs only after the runtime has exited
-  (systemd `ExecStopPost`).
+  (systemd `ExecStopPost`). `can-bench` also transmits, but only its own frames, which no drive acts on, on a bus with no
+  drive, and never while `runtime` can run.
 - **A hung control thread must let the drives time out.** Each command batch carries a tick number and an expiry. A bus thread
   sends only a fresh batch and never re-sends a stale one. If control hasn't published for two ticks, the bus thread stops its
   limbs. The systemd watchdog is fed only when the control loop and every bus in an active run are making progress.
@@ -327,14 +342,17 @@ names** (`ip link add dev can1 type vcan`), so the runtime runs literally unchan
 
 ## 5. Bench bring-up (milestone 1: `can1`)
 
-- Confirm the adapter: `dmesg` shows `gs_usb` (not slcan); write its link file; `ip -details link show can1` lists it.
+- **Before any drive:** the [interface comparison](docs/can-interface-comparison.md) measures each candidate interface
+  against the realtime budget (item 3, Open with Joey 9) with no drive on the bus, and picks the one every bus uses.
+- Confirm the interface the comparison chose: `dmesg` shows its driver (`mcp251xfd` for the CAN FD HAT; `gs_usb`, not
+  slcan, for the USB fallback); `ip -details link show can1` lists it.
 - Bench harness per [left-shoulder-bench-harness.md](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/wiring/left-shoulder-bench-harness.md):
-  120 Ω at each end (the adapter's termination jumper replaces the HAT end), about 60 Ω across CAN_H/CAN_L with power off, one
+  120 Ω at each end (the interface's termination jumper is one end), about 60 Ω across CAN_H/CAN_L with power off, one
   ground tie.
 - Scan, set IDs one drive at a time, then a 1 h idle soak (error frames, RX overflow, error counters, bus load). Then measure
-  round-trip latency and per-tick jitter at 250 Hz. Record the adapter's firmware version and check its bus-off behaviour
-  (item 3) by shorting CAN_H to CAN_L with no drive enabled. **Done when** the soak is clean and the numbers are committed. Only then buy
-  adapters for the other buses.
+  round-trip latency and per-tick jitter at 250 Hz. Record the interface's driver (and firmware, for a USB adapter) and check its bus-off behaviour
+  (item 3) by shorting CAN_H to CAN_L with no drive enabled. **Done when** the soak is clean and the numbers are committed. Only then build or buy
+  the interfaces for the other buses.
 
 ## 6. Safety: the three layers (tenet 3)
 
@@ -462,7 +480,8 @@ Not built before milestone 4; when it is, the sim drive gains a power-board mode
   `{bus, id, dlc, data, t_kernel, t_mono, dir}`, decoded joint state, commands, injected faults, events: state changes, stops,
   limit hits, operator actions with the client's identity) and `session.json` (skeleton file and hash, git revision, operator,
   stage).
-- **Black box:** `candump -L` per bus as its own systemd service, to `/var/lib/robot/candump/<bus>-<UTC>.log`, independent of the runtime.
+- **Black box:** `candump -L` per bus as its own systemd service (`candump@<bus>`), to `/var/lib/robot/candump/<bus>-<UTC>.log.zst`,
+  cut hourly and kept 7 days by `candump-rotate`, independent of the runtime.
 - **Logging runs inside the runtime on a non-realtime thread**, fed by a lock-free ring. When full it drops and counts. It can
   fail without affecting motion (tenet 5); see the logging row in §6.
 - **One clock:** the Pi disciplined by chrony; MCAP carries kernel CAN timestamps and monotonic time; the Jetson joins via chrony
@@ -482,9 +501,10 @@ evaluated only against a named need.
 
 ## Before the legacy code is deleted (milestone 2)
 
-1. Add the right arm to the skeleton: `can0`, IDs 1 to 5, directions from `marengo/config/motors.yaml` (sign-checked
-   2026-08-11), hard limits from its bench envelopes. The envelopes are relative to the legacy reference, so re-reference
-   before trusting them.
+1. The right arm is in the skeleton on `can0`, IDs 1 to 5, with its directions, hard limits and caps null. Step 3's sign
+   check compares against its legacy directions (`marengo/config/motors.yaml`, sign-checked 2026-08-11), and the result
+   enters as `robot-cli`'s edit (item 1). Where its hard limits and caps come from on this stack is open
+   ([Open with Joey](#open-with-joey) 12); the legacy bench envelopes are relative to the legacy reference.
 2. Don't carry the `control.yaml` gains: the RS03 gains were tuned while the drive saw 0.4 × the commanded velocity. Friction
    fits move to `config/dynamics.yaml` only after a re-check. `right_lower_arm_yaw`'s URDF axis is wrong (`kinematics.md`).
 3. Give `can0` its own adapter with its own link file and retire the HAT; rewrite `canTimeout` from 600 to 1000; run the sign check
@@ -500,9 +520,10 @@ Defaults apply until Joey answers.
 
 1. **Zero persistence and reference poses.** Default: treat the drive zero as volatile until the persistence test (§1) says
    otherwise; reference poses documented per joint in the skeleton.
-2. **HAT during milestone 1.** Default: keep the HAT fitted for the right arm on `can0`; disable its `can1` and give that name
-   to the USB adapter.
-3. **Right arm at milestone 2.** Default: its own adapter; retire the HAT.
+2. **CAN interface during milestone 1.** Default: the HAT the [interface comparison](docs/can-interface-comparison.md)
+   picks, on the Pi's header; its `can1` runs the left arm and its `can0` stays for the right arm. No USB adapter.
+3. **Right arm at milestone 2.** Default: that HAT's `can0`; the CAN board on the header replaces the HAT when the waist and
+   legs need buses.
 4. **Bus names for the waist and legs.** Default: ADR 0001 ID blocks; buses `can2` to `can4` named by the hardware ADR when it
    lands.
 5. **Who may enable and clear.** Default: a human at the CLI or UI; agents plan, run on `vcan`, start approved plans and stop.
@@ -515,3 +536,7 @@ Defaults apply until Joey answers.
 11. **Commissioning caps** (item 1). Default: 5 % of the model's `limit_torque` range (RS03 3 N·m, RS02 and RS00 0.7 N·m,
     RS04 6 N·m), the same share of its current range, and 0.5 rad/s. Accepted as a starting point (Joey, 2026-11-11);
     set them from logged runs once a full limb is connected and moving.
+12. **The right arm's hard limits and caps on this stack** (milestone 2). Its legacy bench envelopes are relative to the
+    legacy reference and aren't copied in (item 1). Options: STATUS.md's documented hardware stops, as for the left arm;
+    the envelopes re-referenced after the C1 re-check; or a measured procedure. Each needs the test that verifies it
+    (skeleton.md section 6, check 3). Default until decided: null, so the right arm runs at the commissioning caps.

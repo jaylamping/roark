@@ -1,6 +1,6 @@
 //! What an enable asks and how it is answered.
 
-use safety::{EnableFailure, Refusal};
+use safety::{EnableFailure, Refusal, RuleId};
 use skeleton::LimbName;
 
 use crate::roster::JointSet;
@@ -38,8 +38,8 @@ pub enum EnableRefused {
         /// The index.
         joint: usize,
     },
-    /// Another enable is still running.
-    #[error("another enable is running")]
+    /// Another enable, or a scan or set-ID, is still running.
+    #[error("another enable, or a scan or set-ID, is running")]
     Busy,
     /// The session's recording has failed: no new enable while the log can't be written (PLAN item 6 `host.logging`).
     #[error("the recording has failed")]
@@ -110,4 +110,79 @@ pub enum EnableRefused {
     /// The run is ending.
     #[error("the run is ending")]
     Ending,
+}
+
+/// What an [`EnableRefused`] names: the one table of each refusal's joint, limb, bus, rule and word, read by the stop a
+/// failed enable asks and by its event.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Named {
+    /// The joint, by roster index.
+    pub(crate) joint: Option<usize>,
+    /// The limb, where the refusal names one and no joint.
+    pub(crate) limb: Option<LimbName>,
+    /// The bus, by plan index.
+    pub(crate) bus: Option<usize>,
+    /// The rule that refused it; `None` for a request that was wrong or came at the wrong time, which no rule refused.
+    /// Every refusal that stops a limb has one.
+    pub(crate) rule: Option<RuleId>,
+    /// A word for it in the event log.
+    pub(crate) reason: &'static str,
+}
+
+impl EnableRefused {
+    /// Its [`Named`] fields.
+    pub(crate) fn named(&self) -> Named {
+        let none = Named {
+            joint: None,
+            limb: None,
+            bus: None,
+            rule: None,
+            reason: "",
+        };
+        let of = |joint: usize, rule: Option<RuleId>, reason| Named {
+            joint: Some(joint),
+            rule,
+            reason,
+            ..none
+        };
+        match *self {
+            Self::Empty => Named {
+                reason: "empty",
+                ..none
+            },
+            Self::Busy => Named {
+                reason: "busy",
+                ..none
+            },
+            Self::Ending => Named {
+                reason: "ending",
+                ..none
+            },
+            Self::Logging => Named {
+                rule: Some(RuleId::HostLogging),
+                reason: "logging",
+                ..none
+            },
+            Self::UnknownJoint { joint } => of(joint, None, "unknown_joint"),
+            Self::AlreadyEnabled { joint } => of(joint, None, "already_enabled"),
+            Self::Preflight { joint, refusal } => of(joint, Some(refusal.rule()), "preflight"),
+            Self::Sequence { joint, failure, .. } => of(joint, Some(failure.rule()), "sequence"),
+            Self::BusEnded { joint, .. } => of(joint, Some(RuleId::HostBus), "bus_ended"),
+            // Preflight's no-status clause: a drive the bus shows nothing of can't be proved.
+            Self::Unseen { joint, .. } => of(joint, Some(RuleId::HostPreflight), "unseen"),
+            // Another host's writes may have changed what preflight proved.
+            Self::ForeignHost { bus, .. } => Named {
+                bus: Some(bus),
+                rule: Some(RuleId::HostPreflight),
+                reason: "foreign_host",
+                ..none
+            },
+            Self::LimbMate { limb, .. } => Named {
+                limb: Some(limb),
+                rule: Some(RuleId::HostMode),
+                reason: "limb_mate",
+                ..none
+            },
+        }
+    }
 }

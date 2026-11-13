@@ -588,45 +588,84 @@ fn every_request_held_gets_its_result_when_the_thread_ends() {
 }
 
 /// Guards: safety - a slow frame the socket took counts as this host's last frame to the drive, so it holds a stopped
-/// limb's re-arm off for the drive timeout after it like any send: the drive's `canTimeout` counts from any frame
+/// limb's re-arm off for the drive timeout after it like any send, whether it named the drive by slot or by ID (a probe,
+/// or a set-ID from or to its ID): the drive's `canTimeout` counts from any frame
 /// (can.md section 2: re-arm only once each drive has been sent nothing past the drive timeout).
 #[test]
 fn a_slow_send_holds_off_the_rearm() {
-    let mut bus = two_limbs();
-    quiet_tick(&mut bus, 0);
-    assert_eq!(bus.submit(read(1, 0, Param::Vbus)), Ok(()));
-    let slow_at = deadline(0) + MS / 2;
-    assert_eq!(
-        bus.slow_send(slow_at),
-        Some(encode::param_read(id(101), Param::Vbus))
-    );
-    bus.slow_sent(SendOutcome::Sent, slow_at);
-    assert_eq!(bus.stop_limb(0), Ok(()));
-    // Every Disable is refused by the socket, so the slow read stays the last frame the drive was sent. The stop ends by
-    // `stop_max_ns` after tick 1's start.
-    let stop_ends = 1 + bus.timing().stop_max_ns().div_ceil(PERIOD);
-    let mut snap = None;
-    for tick in 1..=stop_ends {
-        let start = tick * PERIOD;
-        let sends = bus.begin(tick, start, start, Some(&batch(tick, &[])));
-        for (index, _) in sends.iter().enumerate() {
-            bus.sent(index, SendOutcome::QueueFull, start);
+    // (the request, the frame it sends): to drive 101 by its slot; a probe of it; a set-ID from it, and one to it.
+    let rows = [
+        (
+            read(1, 0, Param::Vbus),
+            encode::param_read(id(101), Param::Vbus),
+        ),
+        (
+            SlowRequest {
+                tag: 1,
+                slot: 0,
+                kind: SlowKind::Probe(id(101)),
+            },
+            encode::get_id(id(101)),
+        ),
+        (
+            SlowRequest {
+                tag: 1,
+                slot: 0,
+                kind: SlowKind::SetId {
+                    old: id(101),
+                    new: id(50),
+                },
+            },
+            encode::set_id(id(101), id(50)),
+        ),
+        (
+            SlowRequest {
+                tag: 1,
+                slot: 0,
+                kind: SlowKind::SetId {
+                    old: id(50),
+                    new: id(101),
+                },
+            },
+            encode::set_id(id(50), id(101)),
+        ),
+    ];
+    for (request, frame) in rows {
+        let mut bus = two_limbs();
+        quiet_tick(&mut bus, 0);
+        assert_eq!(bus.submit(request), Ok(()));
+        let slow_at = deadline(0) + MS / 2;
+        assert_eq!(bus.slow_send(slow_at), Some(frame));
+        bus.slow_sent(SendOutcome::Sent, slow_at);
+        assert_eq!(bus.stop_limb(0), Ok(()));
+        // Every Disable is refused by the socket, so the slow frame stays the last frame the drive was sent. The stop
+        // ends by `stop_max_ns` after tick 1's start.
+        let stop_ends = 1 + bus.timing().stop_max_ns().div_ceil(PERIOD);
+        let mut snap = None;
+        for tick in 1..=stop_ends {
+            let start = tick * PERIOD;
+            let sends = bus.begin(tick, start, start, Some(&batch(tick, &[])));
+            for (index, _) in sends.iter().enumerate() {
+                bus.sent(index, SendOutcome::QueueFull, start);
+            }
+            snap = Some(bus.end(deadline(tick)));
         }
-        snap = Some(bus.end(deadline(tick)));
+        assert_eq!(
+            snap.map(|s| common::limb(&s, 0).0),
+            Some(LimbState::Stopped),
+            "{frame:?}"
+        );
+        assert_eq!(
+            bus.submit(read(2, 0, Param::Vbus)),
+            Err(SlowRefusal::LimbStopped),
+            "stopped, on a healthy bus"
+        );
+        let quiet = DRIVE_TIMEOUT_NS + PERIOD;
+        assert_eq!(
+            bus.rearm(0, slow_at + quiet - 1),
+            Err(RearmRefused::DriveNotQuiet { slot: 0 }),
+            "{frame:?}"
+        );
+        assert_eq!(bus.rearm(0, slow_at + quiet), Ok(()), "{frame:?}");
     }
-    assert_eq!(
-        snap.map(|s| common::limb(&s, 0).0),
-        Some(LimbState::Stopped)
-    );
-    assert_eq!(
-        bus.submit(read(2, 0, Param::Vbus)),
-        Err(SlowRefusal::LimbStopped),
-        "stopped, on a healthy bus"
-    );
-    let quiet = DRIVE_TIMEOUT_NS + PERIOD;
-    assert_eq!(
-        bus.rearm(0, slow_at + quiet - 1),
-        Err(RearmRefused::DriveNotQuiet { slot: 0 })
-    );
-    assert_eq!(bus.rearm(0, slow_at + quiet), Ok(()));
 }

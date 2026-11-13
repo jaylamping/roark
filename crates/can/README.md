@@ -115,7 +115,7 @@ Disable counts from when it went). Each drive needs a fresh preflight before it 
 layer's.
 
 **Slow requests** (`submit`) are parameter reads, the codec's allowlisted writes and get-ID, for preflight and the
-once-a-second reads; they never ride in a batch. A bus holds `SLOW_SLOTS` of them and has at most one in flight, sent
+once-a-second reads, and a scan's probes and the set-ID (below); they never ride in a batch. A bus holds `SLOW_SLOTS` of them and has at most one in flight, sent
 after the collect deadline and only while its reply fits before the next tick starts (`Timing::slow_reply_ns`, a quarter
 period by default, provisional until the real adapter is measured), so a reply on time is read in the next tick's drain,
 before that tick's sends (a late one is below). A held tick (a late wake, a stall or a backlog, above) sends none: its
@@ -138,12 +138,36 @@ answer, so its value can be about a tick stale, and the newer read's own reply i
 
 The `run_mode` = MIT write goes only in control's batch (`BatchOnly`), so a slow frame's echo is never of a kind kept as
 the drive's `last_echo`. Each request gets exactly one result: its answer, `TimedOut` (no reply by the next tick's
-start), `NotSent` (the socket didn't take it, or it expired queued), or `Refused`, including when the thread ends with
+start), `Unsure` (a probe or set-ID whose window can't be trusted, below), `NotSent` (the socket didn't take it, or it expired queued), or `Refused`, including when the thread ends with
 it pending (`end_slow`: `Ended`, or `BusFailed`). Nothing is retried. A request for a drive whose limb is stopping,
 stopped or due to stop (a stop asked for and not yet taken, or what the veto stops on, on any drive of the limb: a
 fault, a drop out of Run, too many misses), while control has been silent for the silent-tick limit (counted on every
 tick, with every limb idle or stopped too), or on a failed bus is refused, and one already queued is cancelled as the
 next slack opens, so slow traffic never keeps a drive alive past a stop (`canTimeout` counts from any frame).
+
+**A scan's probe and the set-ID** are slow requests too, named by ID rather than slot, since the drive they look for
+may be in no slot: `Probe(id)` sends type 0 to `id` and `SetId { old, new }` sends type 7. When they may go, what
+answers them and how their window closes is in `src/slow/by_id.rs`. Each is answered by every type-0 reply from its ID
+read before the next tick's start: the probe's, or the set-ID's new one. The manual has a drive answer type 7 with its
+type-0 frame but doesn't say from which ID; the new one is assumed until the bench shows it. Its window ends one of
+three ways:
+
+- `Unsure`, whatever it heard, when it can't be trusted to hold every answer: an error frame was read in it, a frame
+  read in it carried a new kernel overflow count, the drain that closed it read a backlog (an overflow comes with one,
+  and the frame reporting it may not be read yet) or left frames unread, or the bus failed (a failed drain never
+  reports how it went). Two drives answering one ID on a real bus send the same CAN ID with different data and
+  collide; that is assumed to show as an error frame, and the bench checks it (whether it needs `berr-reporting` on
+  the link included). Until then `Found` with one UID is no proof that one drive holds the ID.
+- `Found { uid, other }`: the first UID heard, and a second, different one when both replies were read, as on `vcan`.
+- `TimedOut`: nothing from that ID. For a probe, no drive answers there; for a set-ID, also a drive that answered only
+  from its old ID. Either way the requester probes both IDs after a set-ID to see what took.
+
+Either goes only while every limb on the bus is idle, none due to stop or with a stop asked (`BusNotIdle`), since its
+frame reaches whichever drive holds the ID; one queued is cancelled as the next slack opens once that stops being so.
+The bus checks nothing more: the "exactly one drive answering at the old ID and none at the new" that PLAN item 2 asks before a set-ID is
+the requester's probes to prove, and whether the ID took is the requester's probes of both IDs to see. Each drive in the table the frame
+may have reached (the probed ID, or a set-ID's old and new) has its last send stamped, so a re-arm counts the drives'
+timeout from it.
 
 `BusTick` holds all of that as plain values with time passed in, so it runs and is tested without a socket. It refuses
 a drive table past `MAX_DRIVES`, a drive listed twice, a limb index past the table, and timing that breaks its
@@ -152,8 +176,15 @@ window: how long after its check a frame may go out) plus the most a read trails
 50 ms timeout; and each silence count must be at least one, and its span (the silent ticks; the missed replies plus
 the tick that stops on them) plus the write slack must stay under that timeout. With the default timing the last sets
 the slowest rate: three misses, the stopping tick and a quarter-period send window, 4.25 periods, so at least 86 Hz.
-The Linux shell (`spawn`) owns the socket: it
-opens only `vcan` until the real adapter is supported (PLAN step 8), takes every ID (no kernel filter), and reads each
+The Linux shell (`spawn`) owns the socket. Before it opens one it checks the interface (`interface`, can.md section 2):
+`vcan` is the simulator's bus and is taken as it is; a CAN controller runs only if it is up, its driver, bitrate and
+sample point are the skeleton's (`InterfaceSpec`), its controller isn't bus-off, stopped or asleep (error-passive is taken:
+frames sent while the drives were unpowered leave it there, and the bus doesn't stop for it mid-run either), and the
+controller modes loopback, listen-only and presume-ack are off, since each makes a frame look sent when nothing reached the wire or was acknowledged. Anything
+else, or a report it can't read, is refused with every mismatch named (`BusRunError::Interface`), and the interface as
+checked goes back in `Spawned::interface` for the startup log. `check_interface` does the same check without opening
+anything, for the runtime to label its session before it starts. The runtime doesn't set an interface up; `deploy/` link
+setup does. The socket takes every ID (no kernel filter), and reads each
 frame with its kernel timestamp, its direction and the overflow count in one `recvmsg`. `bus_info` is the session's
 record of that socket, from the same constants `open` applies, and `spawn` returns the receive buffer the kernel
 actually gave (`Spawned::receive_buffer_bytes`) for the runtime's startup log. Each tick's recorded batch is `valid`
@@ -184,7 +215,7 @@ Send a command late, retry one, or re-send a stale batch. Treat a TX echo or any
 Allocate, lock, log or wait without a deadline in the tick, or take a lock shared with non-realtime code. Let anyone
 but the runtime transmit. Retry a slow request, or send one to a stopped limb or while control is silent. Undo a stop
 on its own: a stopping or stopped limb gets none of control's frames until the operator's `rearm`, and a latched bus
-error stays latched. Open an interface that isn't `vcan` before the real adapter's checks exist (PLAN step 8).
+error stays latched. Open an interface that isn't `vcan` without checking it against the skeleton first, or set one up.
 
 ## Talks to
 

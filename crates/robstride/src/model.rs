@@ -67,6 +67,32 @@ pub struct ModelRanges {
     pub speed_max: RadPerSec,
 }
 
+impl ModelRanges {
+    /// The share of the `limit_torque` and `limit_cur` ranges a joint not yet commissioned is enabled at ([PLAN, Open
+    /// with Joey](https://github.com/jaylamping/roark/blob/main/PLAN.md#open-with-joey) 11: a starting point, to be set
+    /// from logged runs).
+    const COMMISSIONING_SHARE: f64 = 0.05;
+    /// The `limit_spd` a joint not yet commissioned is enabled at, rad/s, or the range's top if lower (Open with Joey
+    /// 11).
+    const COMMISSIONING_SPEED_RAD_S: f64 = 0.5;
+
+    /// The caps a joint of this model is enabled at until it is commissioned (PLAN item 1), each inside its range: the
+    /// highest each may be until then.
+    #[must_use]
+    pub const fn commissioning(self) -> Self {
+        let speed = self.speed_max.0;
+        Self {
+            torque_max: NewtonMeters(self.torque_max.0 * Self::COMMISSIONING_SHARE),
+            current_max: Amps(self.current_max.0 * Self::COMMISSIONING_SHARE),
+            speed_max: RadPerSec(if speed < Self::COMMISSIONING_SPEED_RAD_S {
+                speed
+            } else {
+                Self::COMMISSIONING_SPEED_RAD_S
+            }),
+        }
+    }
+}
+
 impl Model {
     /// Every model, in table order.
     pub(crate) const ALL: [Self; 4] = [Self::Rs00, Self::Rs02, Self::Rs03, Self::Rs04];

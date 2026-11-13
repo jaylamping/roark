@@ -6,9 +6,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use robstride::DeviceId;
+use robstride::{Amps, DeviceId};
 
-use crate::commissioning::CommissioningCaps;
 use crate::error::ProblemKind;
 use crate::joint::{Site, bus_name, read_joint};
 use crate::read::{Reader, integer, text};
@@ -63,14 +62,22 @@ pub(crate) fn read_buses(r: &mut Reader, node: &Node) -> Option<BusTable> {
             _ => Err(ProblemKind::OutOfRange("1 to 1000000")),
         });
         let sample_point = r.required(&mut bf, "sample_point", crate::sample_point);
+        let driver = r.required(&mut bf, "driver", |n| text(n).map(str::to_owned));
         let adapter_serial = r.nullable(&mut bf, "adapter_serial", |n| text(n).map(str::to_owned));
         bf.finish(r);
-        match (name, bitrate_bps, sample_point, adapter_serial) {
-            (Some(name), Some(bitrate_bps), Some(sample_point), Some(adapter_serial)) => {
+        match (name, bitrate_bps, sample_point, driver, adapter_serial) {
+            (
+                Some(name),
+                Some(bitrate_bps),
+                Some(sample_point),
+                Some(driver),
+                Some(adapter_serial),
+            ) => {
                 out.buses.push(Bus {
                     name,
                     bitrate_bps,
                     sample_point,
+                    driver,
                     adapter_serial,
                 });
             }
@@ -195,14 +202,9 @@ pub(crate) fn cross_joint(
                 },
             );
         }
-        // Every joint with a bus can be named in one enable (tenet 1), so each counts against the budget at the most
-        // it can be enabled at: its own cap if written, else its model's commissioning cap (PLAN item 1). An actuator
-        // that didn't parse is reported already.
-        current_sum_a += match (site.current_cap_a.flatten(), site.actuator) {
-            (Some(cap), _) => cap.get(),
-            (None, Some(model)) => CommissioningCaps::of(model).map_or(0.0, |c| c.current.get()),
-            (None, None) => 0.0,
-        };
+        // Every joint with a bus can be named in one enable (tenet 1), so each counts against the budget at the
+        // current it is enabled at (`Joint::caps`, PLAN item 1), a joint with a field that didn't parse included.
+        current_sum_a += site.current_a.map_or(0.0, Amps::get);
     }
 
     if let Some((budget_a, line)) = budget

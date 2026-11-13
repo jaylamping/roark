@@ -9,8 +9,11 @@ use serde::Serialize;
 
 use crate::RecordError;
 use crate::batch::{Loss, TickBatch};
+use crate::event::Event;
 use crate::session::SessionInfo;
-use crate::wire::{BusTotals, Clock, End, Frames, Gap, Header, SessionRecord, Stamp};
+use crate::wire::{
+    self, BusTotals, Clock, End, EventTotals, Frames, Gap, Header, SessionRecord, Stamp,
+};
 
 /// A chunk is closed after this long even if it hasn't reached [`CHUNK_BYTES`], so a crash loses about a second
 /// (logging.md section 8.4).
@@ -25,8 +28,10 @@ pub(crate) struct McapFile<W: Write + Seek> {
     gap: u16,
     clock: u16,
     session: u16,
+    events: u16,
     sequence: u32,
     totals: Vec<BusTotals>,
+    event_totals: EventTotals,
     chunk_started_ns: Option<u64>,
 }
 
@@ -66,6 +71,8 @@ impl<W: Write + Seek> McapFile<W> {
         let clock = channel(&mut mcap, clock_schema, "/clock")?;
         let session_schema = schema::<SessionRecord>(&mut mcap, "roark.Session")?;
         let session_channel = channel(&mut mcap, session_schema, "/session")?;
+        let event_schema = schema::<wire::Event>(&mut mcap, "roark.Event")?;
+        let events = channel(&mut mcap, event_schema, "/event")?;
         let totals = info
             .buses
             .iter()
@@ -81,8 +88,10 @@ impl<W: Write + Seek> McapFile<W> {
             gap,
             clock,
             session: session_channel,
+            events,
             sequence: 0,
             totals,
+            event_totals: EventTotals::default(),
             chunk_started_ns: None,
         };
         let header = SessionRecord::Header(Header {
@@ -132,6 +141,43 @@ impl<W: Write + Seek> McapFile<W> {
         self.write(self.gap, wall_ns, &gap)
     }
 
+    /// Write one of control's events, its wall time `wall_ns`; `joints` names its joint index.
+    pub(crate) fn event(
+        &mut self,
+        event: &Event,
+        joints: &[String],
+        wall_ns: u64,
+    ) -> Result<(), RecordError> {
+        let message = wire::Event {
+            monotonic: Stamp::from_ns(event.mono_ns),
+            wall: Stamp::from_ns(wall_ns),
+            level: event.level,
+            kind: event.kind,
+            limb: event.limb.map(str::to_owned),
+            // An index outside the table is the source's bug; the number is kept rather than the event dropped.
+            joint: event
+                .joint
+                .map(|j| joints.get(j).cloned().unwrap_or_else(|| j.to_string())),
+            bus: event.bus.map(|b| {
+                self.info
+                    .buses
+                    .get(b)
+                    .map_or_else(|| b.to_string(), |bus| bus.name.clone())
+            }),
+            rule: event.rule.map(str::to_owned),
+            reason: event.reason.map(str::to_owned),
+            tag: event.tag,
+        };
+        self.write(self.events, wall_ns, &message)?;
+        self.event_totals.written += 1;
+        Ok(())
+    }
+
+    /// Count events the ring dropped, for the end marker.
+    pub(crate) fn events_lost(&mut self, lost: u64) {
+        self.event_totals.lost = lost;
+    }
+
     /// Write the two clocks read together.
     pub(crate) fn clock(&mut self, mono_ns: u64, wall_ns: u64) -> Result<(), RecordError> {
         let clock = Clock {
@@ -159,6 +205,7 @@ impl<W: Write + Seek> McapFile<W> {
     pub(crate) fn finish(mut self, wall_ns: u64) -> Result<(W, End), RecordError> {
         let end = End {
             buses: std::mem::take(&mut self.totals),
+            events: self.event_totals,
         };
         self.write(self.session, wall_ns, &SessionRecord::End(end.clone()))?;
         self.mcap.finish()?;

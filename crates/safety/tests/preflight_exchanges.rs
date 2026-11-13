@@ -10,6 +10,7 @@ use common::preflight::{Drive, SLOT, UID, answer, register, run, volts};
 use common::{joint, quiet, shown, skeleton};
 use robstride::{
     Amps, CanTimeout, Damper, NewtonMeters, Param, ParamOutcome, ParamValue, RadPerSec, Uid, Volts,
+    Write,
 };
 use safety::{
     ANSWER_WITHIN_NS, CapKind, Exchange, Preflight, Refusal, Register, RuleId, Step, Target,
@@ -61,8 +62,8 @@ fn can_timeout_must_read_back_exactly_1000() {
     }
 }
 
-/// Guards: safety - `drive.caps`: the skeleton's three caps are written and must read back as written (PLAN item 6
-/// drive layer).
+/// Guards: safety - `drive.caps`: the caps a joint is enabled at are written and must read back as written: a
+/// commissioned joint's own, an uncommissioned one's commissioning caps (PLAN item 6 drive layer; item 1).
 #[test]
 fn the_caps_are_written_from_the_skeleton_and_read_back_as_written() {
     let torque = |v| ParamValue::NewtonMeters(NewtonMeters::new(v).unwrap());
@@ -82,6 +83,33 @@ fn the_caps_are_written_from_the_skeleton_and_read_back_as_written() {
             (Param::LimitCur, current(12.0)),
             (Param::LimitSpd, speed(1.0)),
         ]
+    );
+
+    // An uncommissioned joint (arm_joint_two: its facts and its torque cap null) gets its model's commissioning caps,
+    // written and read back like any cap: all three, though its current and speed caps are set, since they are higher.
+    let (verdict, written) = run(1, &Drive::honest());
+    assert_eq!(verdict, Ok(()));
+    let two = joint(&skeleton(), 1);
+    let drive = robstride::Drive::new(two.id, two.actuator);
+    let caps = two.caps();
+    assert_eq!(
+        written.get(1..),
+        Some(
+            &[
+                (
+                    Param::LimitTorque,
+                    Write::limit_torque(drive, caps.torque).unwrap().value()
+                ),
+                (
+                    Param::LimitCur,
+                    Write::limit_cur(drive, caps.current).unwrap().value()
+                ),
+                (
+                    Param::LimitSpd,
+                    Write::limit_spd(drive, caps.speed).unwrap().value()
+                ),
+            ][..]
+        )
     );
 
     for (param, read, written) in [

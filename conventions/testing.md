@@ -155,6 +155,10 @@ automatically.
 reach, not something that fires because an agent typed `cargo test` on the Pi. It also keeps `cargo test` safe to run anywhere,
 including a laptop with no CAN hardware. (`cargo test` here means any of our test commands, including `cargo nextest run`.)
 
+The bus layer opens a real interface that matches the skeleton, and the sim's buses carry the robot's real names, so it is
+the test that keeps `cargo test` off the Pi's buses: **every sim test checks each bus it uses is `vcan`**
+(`sim_drive::ensure_vcan`) before anything opens it, and fails if not.
+
 ## Rule 9: the UI tests only what could move the robot
 
 The operator UI is a client of `api` and can crash without affecting motion (tenet 5). Its tests cover only logic that decides
