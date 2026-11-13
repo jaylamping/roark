@@ -471,10 +471,10 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                 # 2026-11-12: the arm bore (r 35.9) and the hub spigot (r 35.85) are 0.05 apart radially. Their cylinder faces are too
                 # large for the seat control, so they meshed at the global size; at 5.0 the facets sag about 0.09 (L^2 / 8r) and the
                 # bodies overlapped (STOP_124 at 5.0: 8.8 GPa at the bore, θ 182). HS_BORE_MESH (default 1.5 whenever the global size
-                # is over 3.0): that size on every cylinder face of r 34.5-37.0 in the joint band not already controlled
+                # is over 4.5): that size on every cylinder face of r 34.5-37.0 in the joint band not already controlled
                 bm = float(os.environ.get('HS_BORE_MESH', '0') or 0)
                 gsz = gel if (rm and gel) else float(os.environ.get('HS_GLOBAL_EL', '0') or 0)
-                if bm <= 0 and gsz > 3.0:
+                if bm <= 0 and gsz > 4.5:      # (at 4.0 the bore / spigot nodes were checked: no overlap, arm r >= 35.900, hub r <= 35.793)
                     bm = 1.5
                 if bm > 0:
                     c['ctrl'] = list(c.get('ctrl', [])) + [(('cylr', 34.5, 37.0, [128.0, 288.0, -40.0, 213.0, 303.0, 50.0]), bm)]      # LAST: faces under the seat / root controls keep theirs
