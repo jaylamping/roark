@@ -89,7 +89,9 @@ if len(cert):
         body[seg[:k]] = A; body[seg[k:]] = B
 body = body.astype(np.int8)
 bad_arm = (body == 0) & ((sd > 0.15) | small_in)
-bad_hub = (body == 1) & ((sd < -0.15) | small_in)
+_HM = 0.25 if _os.environ.get('R1C_D3') == '1' else 0.15      # 2026-11-13: the D3 lug's R1.2 Z-root end blends (r about 34.7, Y 295.4) are
+# tessellated up to 0.2 off in the hub STL; hub surface nodes there read sd -0.17..-0.20
+bad_hub = (body == 1) & ((sd < -_HM) | small_in)
 if bad_arm.any() or bad_hub.any():
     for k in np.flatnonzero(bad_arm | bad_hub)[:10]:
         print('GUARD: node', k, p[k].round(3).tolist(), 'assigned', ['arm', 'hub'][body[k]], 'sd', round(float(sd[k]), 3), 'r from bolt', round(float(rb_all[k]), 3))

@@ -1,0 +1,5 @@
+-X lug front Z face: 459 face nodes, 407 cells (102 mm2 face); compressive force 31 N, torque 0.61 N.m; bearing mean over the loaded cells 0.5 MPa, worst 1 mm average 7.1, peak 12.6 MPa at x_off 19.0 Y 288.2
+-X lug back Z face: 465 face nodes, 415 cells (104 mm2 face); compressive force 341 N, torque 10.92 N.m; bearing mean over the loaded cells 4.9 MPa, worst 1 mm average 25.6, peak 54.9 MPa at x_off 34.2 Y 294.6
++X lug front Z face: 467 face nodes, 406 cells (102 mm2 face); compressive force 341 N, torque 10.71 N.m; bearing mean over the loaded cells 4.0 MPa, worst 1 mm average 26.1, peak 49.5 MPa at x_off 34.2 Y 294.6
++X lug back Z face: 470 face nodes, 413 cells (103 mm2 face); compressive force 28 N, torque 0.55 N.m; bearing mean over the loaded cells 0.6 MPa, worst 1 mm average 6.8, peak 12.0 MPa at x_off 19.0 Y 288.2
+torque through the plate faces (both lugs, the loaded faces): 22.80 N.m of 17.0 applied (134 %); the rest through the bolts, pads and elsewhere
