@@ -1,7 +1,9 @@
 # Upper arm R1g (ring + printed shim + yaw torque through extended lugs): delta review packet (2026-11-12/13)
 
-Branch `left-arm-organic-r1`. The pinned commit is set when the print rebuild is done. Until then this packet is a working
-draft, and rows marked *running* are not in yet. Nothing here is released.
+Branch `left-arm-organic-r1`.
+
+Pinned commit: 367106fbe75957edcd3c86ecbc6862146f772118 (R1g final results, geometry and print files). Nothing here is
+released.
 
 **Scope: the change from R1c to R1d "ring".** R1 was reviewed in `../20261111_print-release/` and R1c in
 `../20261111_r1c-delta/`. Review:
@@ -57,8 +59,8 @@ routine) therefore passes through the two lugs as a Z couple.
 | STOP_124, Dia 3.6 plate hole (superseded) | 2.5 or more | the plate-hole rim (hub, +X lug): shear 1.06 / 2.07 / 6.27; groove bottom layer 1.54 | - | SF 6.9 / 11 | **the plate-hole rim** (see the Dia 4.4 rows) |
 | **STOP_0, final (r1g2, Dia 4.4)** | post at the hole edge: shear 0.33 / 0.76 / 1.66 (known item below); others: layer 1.35 or more | hub face at the hole rim: shear 0.72 / 0.98 / 1.30 (spot) or 0.72 / 1.21 / 1.88 (region); lug roots layer 1.97 / 2.85 / 4.69; R1.2 root inner end (-X) shear 2.99 / 3.18 / 4.95 | - | 22 MPa (SF 10.7) / 18 MPa | **the plate-hole edge: known item** |
 | **STOP_124, final (r1g2, Dia 4.4)** | 2.1 or more (hole edge shear 2.13) | hole edge 7.5 or more; lug roots layer 2.66, shear 2.40; groove bottom layer 1.53 / 1.87 / 2.23; R1.2 root inner end 3.37 or more | - | SF 7.4 / 11.5 | none |
-| **G90, final (r1g2)** | *running* | | | | |
-| **YAW +17, final (r1g2, Dia 4.4)** | *queued* (the yaw rows above are on Dia 3.6; the hole edge stays at 3.3 or more there) | | | | |
+| **G90, final (r1g2)** | -X front post at the plate-hole edge: shear 1.12 / 3.08 / 10.6 (7 nodes at 0.5 mm), vm 1.20 / 3.31; otherwise layer 2.31 or more | hub lugs vm 2.22 / 4.18; groove bottom layer 2.44 / 2.98 / 3.95 | lug forces about 40 N; ring bearing mean 0.74 MPa, 30 deg sector 3.2 MPa, peak 7.3 MPa (SF 6 or more against 45) | 10 / 13 MPa | **the plate-hole edge at 0.5 mm only** (3.08 at 1 mm) |
+| **YAW +17, final (r1g2, Dia 4.4)** | posts and webs 2.32 or more; plate-hole edge 2.32 / 3.00 / 4.72 | hub lug face at the hole 5.35 or more; R1.2 root inner end 3.08 or more (ours; the shoulder thread's FE governs, 1.54 / 1.27); **hub lug root at the lug's outer face by the plate edge (X offset 34.4, Y 294.9): shear 1.23 / 1.45 / 1.94 (6 / 30 / 127 nodes)** | about 315 N per loaded face; mean 4.7 MPa (about 3.9 corrected for the 1.22 nodal over-count; hand check 341 N / 82 mm² = 4.2); 1 mm 22; peak 32 | SF 7.6 / 12.5 | hub root by the plate edge (the shoulder thread's FE governs); model edges: the lumped-plate outline corner (1.15 / 1.58 / 2.09) and the lumped-shim end-face corner (0.96 / 2.06) |
 
 **Torque share.** All of the yaw torque passes hub to arm through the plate faces. The lug bolts run along Z through the lug
 and can't carry a Z force from it; they only tie our two posts. The pads carry under 1 N. Bolt preload adds no strength; it
@@ -119,9 +121,7 @@ Sheets: `r1g_back_half_sheet.png`, `r1g_front_half_sheet.png`, `r1g_shim_ring_se
 `r1g_seam_section.png`.
 
 **Open:**
-- G90 and YAW +17 on the final geometry (r1g2), running;
 - the D3b adoption into the shoulder thread's release (our checks were on the candidate 6b2fd93);
-- the pinned commit (set once G90 and YAW +17 are in);
 - the bench: hub-end coupon first (BENCH_TESTS 2b: ring pick, lug-plate pick, rock and twist checks, stop-load test and plate-hole imprint inspection).
 
 Earlier, R1f (the D3 candidate with a step and column, plates lumped on the whole face): YAW gave posts 2.8 or more and hub
