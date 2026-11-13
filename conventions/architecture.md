@@ -41,7 +41,7 @@ owner) updates this file in the same PR. Until code exists, the map shows the ta
 | `api` server | The one external interface | Clients over the network; the realtime side over queues | Block the realtime side, or write hardware facts |
 | `telemetry` | MCAP files, metrics, structured logs | Event queues in, disk and Prometheus out | Be in the stop path (a slow disk never delays a stop) |
 | `ui/`, `mcp/`, `robot-cli` | Nothing about the hardware | `api` only | Open a CAN socket (the one exception below) |
-| `robot-cli disable` | Nothing | The bus directly, after `runtime` has exited; the runtime's lock (`/run/robot/runtime.lock`), which the runtime holds while it runs and `disable` refuses while held | Run while `runtime` is alive |
+| `robot-cli disable` | Nothing | The bus directly, after `runtime` has exited; the runtime's lock (`/run/robot/runtime.lock`), which the runtime holds while it runs and `disable` refuses while held | Run while `runtime` is alive. One accepted gap: with no lock file (no runtime using that path), `disable` goes on without a lock, so a runtime started by hand during the stop could run alongside it; systemd keeps the file through `ExecStopPost` and automatic restarts. Precondition: the runtime and `disable` use the same lock path (`--lock`); a runtime on another path can't be seen |
 | `sim-drive` | Simulated drive state | `vcan` through the same `robstride` codec (its drive side, `robstride::drive`) | Be linked into `runtime`, or open an interface that isn't `vcan` |
 | `candump-rotate` | One bus's black-box files in `/var/lib/robot/candump` | `candump`'s output on a pipe; disk | Open a CAN socket, depend on `runtime`, or touch another bus's files |
 | `can-bench` | Nothing about the robot | One CAN interface, with its own frames that no drive acts on ([comparison](../docs/can-interface-comparison.md)) | Run with a drive or another host on the bus, or alongside `runtime` |
@@ -146,10 +146,20 @@ sim-suite (tests only) --> can, runtime, safety, sim-drive, skeleton, robstride,
   start and says which line is wrong. Changing hardware facts means editing the file and restarting.
 - **One fact, one place.** A joint name, limit, ID, sign or scale lives in the skeleton or in the manual-derived codec table,
   nowhere else. **Why:** the legacy stack held limits in five places with three different values for one joint.
-- **Measured numbers are data with a source.** Friction fits, gravity fits and tuned gains come from a logged session and
-  record which session. They live in their own files, are reviewed like code, and are never written by the running robot.
+- **Measured numbers are data with a source.** Commissioning values (UID, direction, zero, taught limits), friction fits,
+  gravity fits and tuned gains come from a logged session and record which session. A tool turns the session into an edit of
+  the file the value lives in, and a person opens it as a PR (PLAN item 1); the running robot never writes them. **Why:** the
+  legacy stack's config pain came from many files and many writers, not from the file format.
 - **Runtime state is not configuration.** What the robot is doing now lives in memory and in the logs, not in a file the next
   run reads back.
+- **No database.** Facts live in reviewed files in git, live state in memory, and the record in MCAP and `session.json`.
+  No SQL server, embedded database or key-value store sits in the runtime or in its boot path. **Why:** a changed row has no
+  diff and no reviewer, so it would bypass the review every fact goes through; a database server is one more thing that must
+  start before the robot can, and can corrupt on a power cut; and `vcan` runs and CI read the same files from the same commit
+  with nothing to populate first. The legacy stack has a SQLite store for logs, sessions and settings, and the
+  [legacy review](https://github.com/jaylamping/marengo/blob/main/review/sw-foundation-20261108/RECONCILIATION.md)'s verdict
+  is to delete it. An index over past sessions, if one is ever wanted, runs off the Pi (dev box or Jetson), outside the
+  runtime and its boot path, and reads the recordings.
 
 ## 6. State is explicit
 
@@ -189,7 +199,9 @@ sim-suite (tests only) --> can, runtime, safety, sim-drive, skeleton, robstride,
 ## 10. The UI and agent tools
 
 - **Clients are views and request senders.** `ui/`, `mcp/` and `robot-cli` show state and send requests. They hold no safety
-  logic, limits or hardware facts of their own; what they display comes from `api`.
+  logic, limits or hardware facts of their own; what they display comes from `api`. The one exception is `robot-cli
+  disable`, the independent stop (section 1), which holds the stop sequence of PLAN item 2 and reads only the skeleton's
+  (bus, ID) pairs, and joint names for its report.
 - **One schema for the interface.** `api` message types are defined once and the UI's TypeScript types are generated from them,
   never hand-copied. **Why:** two hand-kept copies of a schema drift (the legacy proto carried 12 unreferenced messages and
   about 20 deprecated fields).

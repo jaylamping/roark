@@ -1,8 +1,11 @@
 //! The runtime's lock: held by the runtime for as long as it runs, so `disable` never sends while it is alive
 //! (architecture.md section 1: `robot-cli disable` must never run while `runtime` is alive). The kernel drops an
 //! `flock` when its holder dies, by `kill -9` too, so a dead runtime never blocks the stop.
+//!
+//! Only the runtime makes the file. `disable` opens it read-only, which is enough to lock it, so any user who can read
+//! it can tell whether a runtime holds it.
 
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
 
@@ -21,15 +24,14 @@ pub enum LockError {
     /// Another process holds it: a runtime is alive, or another `disable` is running.
     #[error("{0} is held: a runtime (or another disable) is running")]
     Held(PathBuf),
-    /// Its directory doesn't exist: no runtime has made it (systemd makes `/run/robot` when the runtime starts).
-    #[error("{path}: no such directory")]
-    NoDirectory {
-        /// The lock file.
-        path: PathBuf,
-    },
-    /// It couldn't be opened or locked for another reason.
+    /// It doesn't exist: no runtime using this path is running (the runtime makes it at start; `/run` is cleared at
+    /// boot, and systemd removes `/run/robot` once the runtime is stopped, after its `ExecStopPost`, but not before an
+    /// automatic restart).
+    #[error("{0} doesn't exist: no runtime using it is running")]
+    Missing(PathBuf),
+    /// It exists but couldn't be opened or locked (permissions, for one): whether a runtime holds it isn't known.
     #[error("{path}: {source}")]
-    Io {
+    Unknown {
         /// The lock file.
         path: PathBuf,
         /// What failed.
@@ -37,33 +39,25 @@ pub enum LockError {
     },
 }
 
-/// Take the lock at `path` without waiting, making the file if needed.
+/// Take the lock at `path` without waiting.
 ///
 /// # Errors
-/// [`LockError`]: `Held` while another process holds it.
+/// [`LockError`]: `Held` while another process holds it, `Missing` when no runtime made it, `Unknown` otherwise.
 pub fn claim(path: &Path) -> Result<Claim, LockError> {
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(path)
-        .map_err(|source| {
-            if source.kind() == io::ErrorKind::NotFound {
-                LockError::NoDirectory {
-                    path: path.to_owned(),
-                }
-            } else {
-                LockError::Io {
-                    path: path.to_owned(),
-                    source,
-                }
+    let file = File::open(path).map_err(|source| {
+        if source.kind() == io::ErrorKind::NotFound {
+            LockError::Missing(path.to_owned())
+        } else {
+            LockError::Unknown {
+                path: path.to_owned(),
+                source,
             }
-        })?;
+        }
+    })?;
     match Flock::lock(file, FlockArg::LockExclusiveNonblock) {
         Ok(lock) => Ok(Claim { _lock: lock }),
         Err((_, Errno::EWOULDBLOCK)) => Err(LockError::Held(path.to_owned())),
-        Err((_, e)) => Err(LockError::Io {
+        Err((_, e)) => Err(LockError::Unknown {
             path: path.to_owned(),
             source: e.into(),
         }),
@@ -75,21 +69,25 @@ mod tests {
     use super::{LockError, claim};
 
     /// Guards: safety - `robot-cli disable` never runs while the runtime is alive (architecture.md section 1): the lock
-    /// is refused while another holder has it, taken once that holder lets go, and a missing directory is told apart
-    /// from a held lock.
+    /// is refused while another holder has it and taken once that holder lets go; a lock that doesn't exist is told
+    /// apart from one that can't be checked, so only the first lets `disable` go on.
     #[test]
-    fn the_lock_is_refused_while_held_and_taken_once_released() {
+    fn the_lock_is_refused_while_held_and_unknown_when_it_cant_be_opened() {
         let dir = std::env::temp_dir().join(format!("robot-cli-lock-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("runtime.lock");
+        assert!(matches!(claim(&path), Err(LockError::Missing(_))));
+        std::fs::write(&path, b"").unwrap();
         // flock locks belong to the open file, so a second open in this process is a second holder.
         let first = claim(&path).unwrap();
         assert!(matches!(claim(&path), Err(LockError::Held(_))));
         drop(first);
-        assert!(claim(&path).is_ok());
+        drop(claim(&path).unwrap());
+        // A path that can't be opened for a reason other than not existing (here ENOTDIR, which root gets too, as
+        // another user gets EACCES on a runtime's file made 0600): whether a runtime holds it isn't known.
         assert!(matches!(
-            claim(&dir.join("gone").join("runtime.lock")),
-            Err(LockError::NoDirectory { .. })
+            claim(&path.join("under-a-file")),
+            Err(LockError::Unknown { .. })
         ));
         let _ = std::fs::remove_dir_all(&dir);
     }

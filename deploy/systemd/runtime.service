@@ -34,8 +34,11 @@ TimeoutStopSec=5s
 
 ConfigurationDirectory=robot
 StateDirectory=robot
-# /run/robot: the lock and, later, the api socket. Kept until ExecStopPost has run.
+# /run/robot: the lock and, later, the api socket. Kept until ExecStopPost has run, and through the gap before an
+# automatic restart, so a `robot-cli disable` run by hand in that gap finds the lock file, takes it, and the restarted
+# runtime refuses to start until it is free.
 RuntimeDirectory=robot
+RuntimeDirectoryPreserve=restart
 
 LimitRTPRIO=99
 LimitMEMLOCK=infinity
