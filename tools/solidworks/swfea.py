@@ -24,7 +24,7 @@ from pathlib import Path
 import numpy as np
 from scipy.spatial import cKDTree
 
-from swkit import NUL, Failed, L, call, dispatch_array, free_gb, log, save, solid_bodies
+from swkit import NUL, Failed, L, call, dispatch_array, free_gb, log, solid_bodies
 
 # Printed PETG as the arm studies use it: modulus and yield from the left-arm test coupons, and across layers half the
 # in-plane strength (cad/scripts/fea/p3_fea.py). Steel and brass for bolts and inserts in contact models.
@@ -60,8 +60,12 @@ def solver_macro(j, d, study, solver, folder):
 
     Writing StaticStudyOptions from python fails ("can not be set" / "server threw an exception") and reading it back
     after a write faults inside SolidWorks, so neither is done here. The study must be saved in the model first.
+    The saves here do not rebuild: a rebuild makes every face object the caller still holds stale, and reading results
+    for those faces then fails with "Memory is locked" (measured 2026-11-12).
+    Measured on SolidWorks 2026 SP0: asking for 1 (direct sparse) reads back as 7 (Intel direct sparse), and the
+    benchmark log beside the model then names "Intel Direct Sparse".
     """
-    save(d)
+    _save_as_is(d)
     folder = Path(folder)
     mlog, mac = folder / f'solver_{study}.log', folder / f'solver_{study}.swb'
     mac.write_text('\n'.join([
@@ -78,12 +82,26 @@ def solver_macro(j, d, study, solver, folder):
     text = mlog.read_text(errors='ignore') if mlog.exists() else ''
     if 'set err  0' not in text and 'set err 0' not in text:
         raise Failed(f'solver macro did not set the solver: {text!r} (RunMacro2 error {e.value})')
-    save(d)
+    _save_as_is(d)
     return text
 
 
+def _save_as_is(d):
+    """Save without rebuilding, so face and edge objects stay valid."""
+    e, w = L(), L()
+    if not d.Save3(1, e, w):
+        raise Failed(f'save failed: {d.GetPathName} errors {e.value} warnings {w.value}')
+
+
 class Result:
-    """Nodal results of one solved study. pos (n, 3) mm; s (n, 12): node, sx sy sz txy txz tyz, p1 p2 p3, von Mises, MPa."""
+    """Nodal results of one solved study, in the model frame.
+
+    pos (n, 3) mm. s (n, 12) MPa: node, sx sy sz, txy txz tyz, p1 p2 p3, von Mises, stress intensity (p1 - p3).
+    disp (n, 5) mm: node, UX UY UZ, resultant. reaction [Fx, Fy, Fz, resultant] N: what the fixtures push back with,
+    summed over every restrained node, so it is equal and opposite to the applied load. applied: the size of the
+    applied load in N (the sum of the sizes when there are several loads: compare by hand when they are not parallel).
+    Columns and units measured on SolidWorks 2026 SP0, 2026-11-12 (selftest.py beam, rod, steps).
+    """
 
     def __init__(self, name, el, pos, s, fixed_pts, loaded_pts, disp, reaction, nodes, elements, seconds, applied):
         self.name, self.el, self.pos, self.s = name, el, pos, s
@@ -148,16 +166,20 @@ class Result:
         return out
 
 
-def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), materials=None, solver=None, keep_study=False):
+def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), materials=None, solver=None, keep_study=False,
+           post=None):
     """Build, mesh and solve one linear static study on the open part d, and read the nodal results back.
 
     material: the dict for every body, unless materials = {body name: dict} names some bodies individually.
     fixtures: [('fixed' | 'hinge', faces)]. loads: [('normal', faces, newtons)] presses on the faces along their own
-    normals (positive pushes into the material), [('remote', faces, (x, y, z) mm, (Fx, Fy, Fz) N, (Mx, My, Mz) N.m)]
-    applies a force and moment at a point, carried to the faces rigidly.
+    normals with that many newtons IN TOTAL, shared between the faces by area (one even pressure; positive pushes into
+    the material). [('remote', faces, (x, y, z) mm, (Fx, Fy, Fz) N, (Mx, My, Mz) N.m)] applies a force and moment at a
+    point in the model frame, carried to the faces rigidly.
     el: global element size mm. ctrl: [(faces, size mm)] local mesh controls.
     contacts: [(NO_PENETRATION | BONDED, faces_a, faces_b)] for multi-body parts; everything else touching is bonded.
     solver: None leaves Automatic; SOLVER_DIRECT sets direct sparse through a macro (needed for no-penetration contact).
+    post: post(study, results) is called after the solve and before the study is deleted, for anything static() does
+    not read itself; what it returns is kept as Result.extra.
     Every face list must be non-empty: an empty pick is the commonest way to solve the wrong problem.
     """
     t0 = time.time()
@@ -192,8 +214,15 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
         loaded += fs
         err = L()
         if ld[0] == 'normal':
-            lbc.AddForce3(1, 0, -1, 0, 0, 0, NUL, NUL, False, False, 0, 0, 0, float(ld[2]), [1.0] * 6, False, False, fs, NUL,
-                          False, err)
+            # AddForce3 puts the value on EACH face it is given (two faces at 100 N reacted 200 N, 2026-11-12), so each
+            # face gets its own call with its share by area
+            areas = [call(f, 'GetArea') for f in fs]
+            for f, a in zip(fs, areas):
+                err = L()
+                lbc.AddForce3(1, 0, -1, 0, 0, 0, NUL, NUL, False, False, 0, 0, 0, float(ld[2]) * a / sum(areas), [1.0] * 6,
+                              False, False, [f], NUL, False, err)
+                if err.value:
+                    raise Failed(f'{name}: normal load failed ({err.value})')
             applied += abs(float(ld[2]))
         elif ld[0] == 'remote':
             at, f, mo = ld[2], ld[3], ld[4]
@@ -260,28 +289,28 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
             return None
 
     fixed_pts, loaded_pts = face_nodes(fixed), face_nodes(loaded)
-    disp = None
-    for args in ((1, NUL, 0), (0, 1, NUL, 0)):         # the argument list differs between Simulation builds
-        try:
-            disp = _arr(res.GetTranslationalDisplacement(*args, L()), 5)       # node, UX, UY, UZ, URES
-            break
-        except Exception:      # noqa: BLE001
-            continue
-    reaction = None
-    for args in ((0, NUL, 0), (1, NUL, 0)):
-        try:
-            q = res.GetReactionForces2(*args, L())
-            q = list(q[0] if isinstance(q, tuple) and len(q) == 2 else q)
-            reaction = [round(float(v), 3) for v in q[-4:]]         # whole model: Fx, Fy, Fz, resultant
-            break
-        except Exception:      # noqa: BLE001
-            continue
+    disp = reaction = None
+    try:
+        disp = _arr(res.GetTranslationalDisplacement(1, NUL, 0, L()), 5)       # last argument: 0 mm, 1 cm, 2 m, 3 inch
+    except Exception as ex:      # noqa: BLE001
+        log(f'{name}: displacements not read ({str(ex)[:80]})')
+    try:
+        # per node: id, Fx Fy Fz Fres, Mx My Mz Mres; zero except on restrained nodes. Last argument 0 = N (1 = lbf).
+        # GetReactionForces2 does not exist on SolidWorks 2026.
+        q = _arr(res.GetReactionForcesAndMoments(0, NUL, 0, L()), 9)
+        f = q[:, 1:4].sum(axis=0)
+        reaction = [round(float(v), 3) for v in f] + [round(float(np.linalg.norm(f)), 3)]
+    except Exception as ex:      # noqa: BLE001
+        log(f'{name}: reactions not read ({str(ex)[:80]})')
+    extra = post(st, res) if post is not None else None
     if not keep_study and os.environ.get('SWFEA_KEEP') != '1':
         try:
             sm.DeleteStudy(tag)
         except Exception:      # noqa: BLE001 - the study staying in the model only costs file size
             pass
-    return Result(name, el, pos, s, fixed_pts, loaded_pts, disp, reaction, nodes, elements, time.time() - t0, applied)
+    r = Result(name, el, pos, s, fixed_pts, loaded_pts, disp, reaction, nodes, elements, time.time() - t0, applied)
+    r.extra = extra
+    return r
 
 
 def converge(run, sizes, tol=0.05):
