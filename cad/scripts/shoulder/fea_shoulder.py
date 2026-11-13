@@ -478,6 +478,36 @@ CASES['HUBL_STOP3'] = dict(CASES['HUBL_STOP2'], ctrl_optional=1,
     ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [137, 294.5, -1.5, 153.5, 296.2, 13.5]), 0.35),
           (('touch', [137, 293.5, -2.0, 154.0, 297.5, 14.0], 160.0), 0.4)])
 
+# HUBL_STOP3 with the loads swapped onto the +X lug (the stop the other way; the +X lug sits in the cable sector and has no
+# backing): +X lug Fz 228 N, Fx -40 N (mirrored), 56 N axial; -X lug Fz -134 N. The same light mesh, mirrored onto the +X lug
+CASES['HUBL_STOP3X'] = dict(CASES['HUBL_STOP3'], ctrl_optional=1,
+    ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [187.5, 294.5, -1.5, 204, 296.2, 13.5]), 0.35),
+          (('touch', [187.0, 293.5, -2.0, 204.0, 297.5, 14.0], 160.0), 0.4)],
+    remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (0.0, 0.0, -134.0), (0.0, 0.0, 0.0), 1),
+             (LUG_HOLES[1], (193.5, 292.0, YZ), (-40.0, -56.0, 228.0), (0.0, 0.0, 0.0), 1)])
+
+# Yaw torque (coordinator 23:59Z): the full-ring ridge carries no torque about the yaw axis, so the RS02's whole torque goes
+# through the two lugs as a Z-force couple, F = T / 46.0 mm (lug bolt axes at X 147.5 and 193.5). At the 17 N.m peak (RS02
+# manual 260713 4.1.2) 370 N per lug; linear, so one solve gives both directions (the other is -sigma); rated 6 N.m = x 6/17.
+# Light mesh on both lugs: 0.35 mm on all four R1.2 Z roots, 0.4 mm on the small faces round both roots, 0.5 mm in the holes
+YAW_F = 17.0 / 0.046
+CASES['HUBL_YAW'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl_optional=1, regions=dict(GREG_C, lug_A=[143, 286, -2, 158, 297, 14], lug_B=[183, 286, -2, 198, 297, 14]),
+    ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [137, 294.5, -1.5, 205, 296.2, 13.5]), 0.35),
+          (('touch', [137, 293.5, -2.0, 154.0, 297.5, 14.0], 160.0), 0.4), (('touch', [187.0, 293.5, -2.0, 204.0, 297.5, 14.0], 160.0), 0.4)],
+    remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (0.0, 0.0, YAW_F), (0.0, 0.0, 0.0), 1),
+             (LUG_HOLES[1], (193.5, 292.0, YZ), (0.0, 0.0, -YAW_F), (0.0, 0.0, 0.0), 1)])
+
+# Rev D3: the yaw couple taken by the lug extensions pinched in the arm's collar. Load on each extension's outer end face
+# (X offset 37), along Z, about its centre (Y 295.4): F = 17 N.m / (2 x 33.9 mm) = 251 N (the shim contact's centroid,
+# r about 33.9); the root moment is then F x about 0.6 mm instead of F x 4 mm at the bolt. Same light mesh as HUBL_YAW,
+# boxes widened to the extensions
+YAW3_F = 17000.0 / (2 * 33.9)
+CASES['HUBL_YAW3'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl_optional=1, regions=dict(GREG_C, lug_A=[130, 286, -2, 158, 298, 14], lug_B=[183, 286, -2, 211, 298, 14]),
+    ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [132, 294.5, -1.5, 209, 296.2, 13.5]), 0.35), (cyl(1.0, [132, 292.0, -0.5, 209, 294.1, 12.5]), 0.35),
+          (('touch', [132.0, 292.5, -2.0, 154.0, 298.2, 14.0], 160.0), 0.4), (('touch', [187.0, 292.5, -2.0, 209.0, 298.2, 14.0], 160.0), 0.4)],
+    remotes=[(('plane', (RX - 37.0, 295.4, YZ), None), (RX - 37.0, 295.4, YZ), (0.0, 0.0, YAW3_F), (0.0, 0.0, 0.0), 1),
+             (('plane', (RX + 37.0, 295.4, YZ), None), (RX + 37.0, 295.4, YZ), (0.0, 0.0, -YAW3_F), (0.0, 0.0, 0.0), 1)])
+
 # REV D, the arm thread's stop case on the full-ring joint (its fine-mesh repeat, roark 3c7114b): the full-ring ridge and groove
 # are axisymmetric and frictionless, so they carry no torque about the hub axis; that part of the stop moment goes into the
 # lugs as a Z-force pair. -X lug: Fz +169 N, Fx +40 N, 55 N axial (taken as a pull along -Y, like HUBL_I); +X lug: Fz -112 N.

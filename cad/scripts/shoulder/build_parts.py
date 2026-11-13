@@ -332,11 +332,23 @@ def hub_d2(d, gplane):
         # 3. backing behind the -X lug: r 14.5-19.4 over 166-194 deg below Y 296, down to the lug's bottom (Y 288). At 19.4 it
         #    stays inside the lug's own band (|z| <= 4.7, x >= 18.8), so nothing grows past the lug outline; elsewhere it is
         #    inside r 18.7 (the arm's free zone). Carried up as a 45 deg band into the fill so it prints without support; then
-        #    the hub-screw driver columns (r 12 at 158 and 218 deg, R 5.0) are cut back out of it below the boss tubes (Y 298.5)
+        #    the hub-screw driver columns (r 12 at 158 and 218 deg, R 5.0) are cut back out of it below the boss tubes (Y 298.0)
         prof = [(14.5, 288.0), (19.4, 288.0), (19.4, 296.0), (20.2, 296.0), (36.3, 312.1), (36.3, 313.2), (31.7, 313.2), (14.5, 296.0)]
         part_rev('D2_BACK', prof, 166.0, 28.0)
         extrude(d, ysk(d, 286.0, 'D2_DRIVER', lambda s: [s.circle(ypt(12.0, a_, 286.0), 5.0) for a_ in (158.0, 218.0)]),
-                'D2_DRIVER', 298.4 - 286.0, Y, cut=True, lo=-1.0)
+                'D2_DRIVER', 297.9 - 286.0, Y, cut=True, lo=-1.0)   # the boss tubes (screw-head seats) start at Y 298.0: stop 0.1 short
+
+
+def hub_d3(d):
+    """REV D3 (see dims.HUB_D3): the lug extensions, one sketch on the plane Z = YZ extruded +-5 (the lugs' own thickness)."""
+    def prof(sg):
+        X_ = lambda o: RX + sg * o
+        return [(X_(37.0), 293.0), (X_(29.3), 293.0), (X_(29.3), 296.3), (X_(35.0), 296.3), (X_(35.0), 297.8), (X_(37.0), 297.8)]
+    pl0 = plane(d, 'Z', YZ, 'P_Z_YZ')
+    with Sk(d, pl0, 'D3_LUG_EXT') as s_:
+        for sg in (-1, 1):
+            s_.poly([(x_, y_, YZ) for x_, y_ in prof(sg)])
+    extrude(d, s_.feat, 'D3_LUG_EXT', 10.0, Z, mode=MID)
 
 
 def hub_lug_roots():
@@ -353,10 +365,17 @@ def hub_lug_roots():
         # REV D (agreed with the arm thread, 2026-11-12): R1.2 on the Z-facing lug roots, the lug faces at Z +-5 meeting the
         # spigot underside at Y 296, both lugs. The stop case loads the lugs mainly in Z, so these roots govern; the arm
         # breaks its slot's top edges by 1.4 to clear them
-        zroots = edges_where(d, lambda p: abs(p[1] - 296.0) < 0.05 and abs(abs(p[2] - YZ) - 5.0) < 0.1 and 18.0 < _r(p) < 31.5,   # the R1.0 outer root stretches them to r 30.5
+        r_out = 36.5 if HUB_D3 else 31.5      # rev D3: the root runs on to the land band (r 35.8) along the lug extension
+        zroots = edges_where(d, lambda p: abs(p[1] - 296.0) < 0.05 and abs(abs(p[2] - YZ) - 5.0) < 0.1 and 18.0 < _r(p) < r_out,   # the R1.0 outer root stretches them to r 30.5
                              pair=lambda p0, p1: all(abs(abs(q[2] - YZ) - 5.0) < 0.1 for q in (p0, p1)))
         log('  LUG_ZROOTS (post) edges', len(zroots))
         fillet(d, zroots, [1.2], 'LUG_ZROOTS')
+    if HUB_D3:
+        # the concave edge where each extension's underside (Y 293) meets the lug's flat outer face (29.5 off the axis): R1.0
+        ext = edges_where(d, lambda p: abs(p[1] - 293.0) < 0.05 and abs(abs(p[0] - RX) - 29.5) < 0.1 and abs(p[2] - YZ) < 5.05,
+                          pair=lambda p0, p1: abs(p0[2] - p1[2]) > 5.0)
+        log('  LUG_EXT_ROOT (post) edges', len(ext))
+        fillet(d, ext, [1.0], 'LUG_EXT_ROOT')
     return finish_part(d, 'hub')
 
 
@@ -1111,6 +1130,8 @@ def build_hub():
                                                                  for a0_, a1_ in wf['sectors']]), 'WALL_FILL', wf['y'][1] - wf['y'][0], Y, lo=-1.0)
     if HUB_D2:
         hub_d2(d, gplane)
+    if HUB_D3:
+        hub_d3(d)
     # REV C+: R0.3 in the concave corner between the spigot (r 35.8) and the disc face (Y 302.0); the arm breaks its bore-to-end-face
     # edge by 0.5 (20:33Z). A revolve boss of the fillet region, overlapping the solid by 0.05
     rc_ = hb['disc_corner_r']

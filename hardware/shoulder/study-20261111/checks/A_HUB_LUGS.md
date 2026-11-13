@@ -614,3 +614,131 @@ is r 20-23, its outer end r 29.9:
 - **Gain on the governing value, per gram:**
   - D2c: +41% peak, +13% over 0.5 mm, +3% over 1 mm, for 0.7 g.
   - D2: +73% / +55% / +43% for 17.6 g.
+
+## Yaw torque through the lugs, and the yaw torque key (2026-11-13)
+
+### Why the lugs carry the yaw torque now
+
+Rev D's full-ring groove and ridge are axisymmetric, so they carry no torque about the yaw axis; rev C+'s groove arcs did,
+at their run-out ends. So **all** RS02 torque between the hub and the upper arm now goes through the two lugs as a Z-force
+couple. That is a routine load, in both directions.
+- Lever arm 46.0 mm (our lug bolt axes, X 147.5 / 193.5; the arm thread uses lug centres, 48.2 mm).
+- Peak 17 N.m (RS02 manual 260713 §4.1.2): **370 N per lug**. Rated about 6 N.m: 130 N.
+
+### HUBL_YAW on D2d (FEA)
+
+- Mesh 1.5 mm, with 0.35 mm on all four R1.2 Z roots and 0.4 mm round both lug roots: 722k nodes. FFEPlus, run under the
+  6 GB cap.
+- The couple goes in on the lug bolt holes. One solve gives both directions (linear).
+
+Layer SF (σy), worst over both directions, as peak / 0.5 mm / 1 mm average at 17 N.m:
+
+| Spot | 17 N.m | 6 N.m rated (0.5 / 1 mm) |
+|---|---|---|
+| -X lug Z roots | 0.93 / 1.74 / 2.58 | 4.9 / 7.3 |
+| +X lug Z roots (cable sector, r 21 bore, no backing) | 0.77 / **1.33** / **1.98** | 3.8 / 5.6 |
+| Lug section at the bolt hole (Y 290-294) | 2.25 / 2.27 / 2.31 | 6.4 |
+| Spigot core | 1.14 / 2.58 / 3.25 | 7.3 / 9.2 |
+
+- **Against the routine target** (1.2 at 0.5 mm, 1.5 at 1 mm): D2d passes. The +X lug's outer end has only an 11% margin
+  at 0.5 mm.
+- **+X backing:** none fits. The bundle (16 × 6 + 10 × 5) climbs from the arm's Ø43 opening, inside r 18.7, to the cable
+  slot's entry at r 15.5, Y 298, θ 7.9. That route runs straight past the +X lug's inner face, and the slot already cuts
+  the lug block above Y 296.
+- **Bolt hole:** the yaw force is along Z, parallel to the M3 bolt, so the Ø3.4 hole carries no bearing from it.
+  - The lug's Z face bears on the arm's post: about 80 mm², 4.6 MPa.
+  - The bolt only clamps: 370 N against an M3 8.8 proof load of 2.9 kN.
+
+### Key options (with the arm thread's measurements, R1D_NOTES.md "Torque key at the spigot", left-arm-organic b76c707)
+
+- **Mid-half keys at θ 90 / 270, parallel-sided:** the faces lie parallel to the halves' closing direction (Z), so the play
+  equals the print error, up to 0.3 mm at r about 31, about 0.56°. Crush ribs only hide it until they creep.
+  - Also, the arm can give only 1.2-1.9 mm of pocket there. And above Y 296 a tooth sliding in from r 35.8 can only pass
+    through our 2 mm land band (Y 296-298): the hub wall inside the groove bottom (r 34.3) blocks it above Y 298. So a
+    flank is about 1.9 × 10 mm, about 15 MPa at 17 N.m.
+  - **Rejected.**
+- **Tapered (wedge) keys at θ 90 / 270:** these would seat by their flanks if the arm's bore had at least 0.45 mm of Z
+  clearance there. The arm thread finds they do not work with its bore and ridge fit. **Rejected.**
+- **A seam-clocked element pinched by the halves along Z (θ 0 / 180):** the only zero-play form. The halves close along Z,
+  which is the torque direction at the seam, so they squeeze it. A shim picked in 0.05 mm steps takes up the print error.
+  Our lugs are already this element; what they lack is lever, root section and zero gap. The arm thread's preferred form,
+  below, gives them all three.
+
+### Rev D3: the lugs extended into the arm's collar (the arm thread's preferred form)
+
+**Geometry** (`HUB_D3=1` on top of `HUB_D2=d`, default off; build `_wip/look/hubD3`). Each lug gets a block on its flat
+outer face (29.5 off the axis):
+- **Block:** from 29.5 to **37.0** off the axis, **Y 293.0-296.3**, at the lug's own thickness, **Z - YZ ±5.0**.
+- **Column:** up the outside of the land band, 35.8-37.0 off the axis, to **Y 297.8**.
+
+```
+  side view at theta 180 (the -X lug), looking along +Z; X offsets from the yaw axis
+                     groove (unchanged, Y 298-302, opens at r 35.8)
+  Y 298.0 ...........................  ----------- r 35.8 spigot outer
+  Y 297.8                            |....|           <- column, 35.8-37.0, top 0.2 below the groove mouth
+  Y 296.0 ===== spigot underside ====|    |
+          lug    |R1.2 Z roots run   |    |
+          (r 18.8|on to r 35.8)      |    |
+          -29.5) |                   |    |
+  Y 293.0        |__R1.0_____________|____|  <- block underside, R1.0 into the lug's outer face
+                 |  lug   |                 
+  Y 288.0        |________|
+               29.5                35.8  37.0   (offset from the yaw axis)
+  Thickness in Z: +-5.0 (the lug's own). Shim contact: the Z faces, Y 293-297.8, r 29.5-37
+```
+
+**(1) Does it suit the hub?**
+- **The land and the groove:** the block passes the land band (Y 296-298) only as the 1.2 mm column outside r 35.8. It
+  stops at Y 297.8, 0.2 below the groove's mouth (Y 298 at r 35.8), so the full-ring groove section is intact. The R0.4
+  spigot-edge round is filled locally at θ 0 / 180 (inside the arm's pocket).
+- **R1.2 Z roots:** the lug's Z-root edge at Y 296 now runs on from r 31 to the land band (r 35.8). The build lets the
+  same R1.2 follow it (tangent Y 294.8 / ±6.2, unchanged). The arm's pocket chamfer must run the same longer length.
+- **R1.0 outward roots:** buried (the lug's outer face above Y 293 is now inside the block). A new R1.0 sits where the
+  block's underside meets the lug's outer face, at Y 293.
+- **Lug Z thickness:** unchanged at ±5.0.
+- **+X lug and the cable slot:** the slot exists only above Y 298 (from r 15.5 at Y 298, out and up to r 31 near the dish),
+  so the extension at Y ≤ 297.8 is clear of it. The bundle runs inside r 18.7, also clear.
+
+**(2) Print (RS02 side down, spigot up):**
+- The block grows on the spigot underside and the land band, so nothing new needs support. Its Y 293 underside is an
+  upward-facing top surface in print (the lug tops at Y 288 are still the last layers).
+- One small overhang: the column's top (Y 297.8, 1.2 mm wide, 10 long) sits over the groove's open mouth in print. It
+  prints as a 1.2 mm ledge, or with a 45° chamfer if the arm's pocket allows.
+
+**(3) Strength at 17 N.m:**
+- **Force:** the shim contact on the Z faces (Y 293-297.8, 29.5-37 off the axis) has its centroid at about r 33.9, so
+  F = 17,000 / (2 × 33.9) = **251 N per lug**.
+- **Moment:** the force centroid is at about Y 295.4, so the root moment is about 251 × 0.6 = 151 N.mm, against
+  370 × 4 = 1,480 N.mm today (load at the bolt, Y 292).
+- **Root section:** 17 mm long (18.8-35.8 off the axis), against 11 before, so the section modulus is ×1.55.
+- **Scaling from HUBL_YAW:** the root bending stress falls to about 0.10 / 1.55, about 0.07 of today's. Even taking the
+  new corners at 2-3× that, the layer SF at 0.5 mm stays at 3 or more on both lugs, with no backing needed.
+- **Shear across the root:** 251 / (17 × 10) = 1.5 MPa.
+- **Bearing on the shim faces:** about 17 mm² (the R1.2 fillet takes Y 294.8-296 off the inner part), so 15 MPa, in the
+  layer plane (bulk SF 3).
+- **To confirm:** HUBL_YAW3 is queued. The couple goes on the extensions' end faces at the shim centroid height, under the
+  same light mesh.
+
+**(4) Assembly:**
+- The hub still enters as the halves close along Z. The extensions sit in seam-split pockets (half in each half), and their
+  faces are normal to Z, so there is no undercut.
+- **Shims:** one printed PETG U-clip per lug, two legs (one per Z face) joined by a 1 mm web over the extension's outer end.
+  - Leg thickness picked in 0.05 steps, 0.35-0.65 for a 0.5 nominal gap per side, covering ±0.15 print error.
+  - Slipped onto the extension before the halves close; held by the pinch afterwards.
+  - The lug bolts (M3, Y 292) clamp the halves right beside it.
+
+**(5) Our own parts near r 37, Y 293-298, at any yaw:** none.
+- The fork front's yaw-exit skirt ends at Y 314.5, 16.7 above the column top.
+- The cover's lowest point is Y 300, but at r 96.6 or more.
+- Everything else is 30 mm or more away (sweep over 360°).
+
+**(6) Preference: D3 (the arm thread's form) over separate keys.**
+- It is one feature where the torque already goes.
+- It is the only play-free form (seam pinch plus picked shims).
+- It moves the force up to the root plane, so lug-root bending, the weak link, almost disappears.
+- It needs no new cuts in the land or the groove's load path, and stays clear of the cable slot.
+- It moves the bearing from the arm's cantilevered posts to its collar.
+- Mass about +0.7 g (two blocks of about 270 mm³).
+
+**Next:** HUBL_YAW3 on D3 (queued). If it confirms the paper numbers, D3 becomes the export candidate in place of D2d. Its
+local bore and backing then matter less, and whether to keep them is a mass question.
