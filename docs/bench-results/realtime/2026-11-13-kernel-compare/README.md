@@ -48,9 +48,12 @@ Both CAN interfaces stayed down throughout.
 
 ## Results
 
+The heavier load alone more than doubles the stock kernel's worst case: 676 µs here against 294 µs in the baseline, and
+the average rises from 6 µs to between 13 and 19 µs. No sample went over 2000 µs.
+
 | Run | Worst µs | Per core max µs | Peak °C | Throttled |
 |---|---|---|---|---|
-| `stock` | | | | |
+| `stock` | 676 | 541, 513, 494, 676 | 65.3 | no |
 | `stock-isolated` | | | | |
 | `rt` | | | | |
 | `rt-isolated` | | | | |
