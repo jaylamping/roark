@@ -9,7 +9,7 @@ and the other lug (both mirror images). Outline in the lug's own face (offset fr
     Y 287.2-288.0, on the printed top face = the lug side) that hooks under the lug's free end (Y 288), so the plate stays put while
     the half closes; both stop at X offset 32.5, clear of our wall below the pocket floor (review 2026-11-13).
 Thickness t marked on the inner edge: narrow notch = 0.05, wide notch = 0.25, counted from t = 0.25 (0.25 has none).
-Plates (thickness = first layer + whole 0.10 layers), two of each size:
+Plates (thickness = first layer + whole 0.10 layers), four of each size (two full sets):
   A: first layer 0.25 -> 0.25 0.35 0.45 0.55 0.65 0.75
   B: first layer 0.20 -> 0.30 0.40 0.50 0.60 0.70
 Sliced with the arm halves' seed project; only the layer heights, 100 % infill, no support and no brim changed.
@@ -32,7 +32,8 @@ from shapely.ops import unary_union
 sys.path.insert(0, str(Path(__file__).parent))
 import organic_print as P
 
-PLATES = {'A': (0.25, [0.25, 0.35, 0.45, 0.55, 0.65, 0.75] * 2), 'B': (0.20, [0.30, 0.40, 0.50, 0.60, 0.70] * 2)}
+COPIES = int(os.environ.get('LUG_SHIM_COPIES', '4'))      # 4 of each = two full sets (2 per lug face pair) on each plate (2026-11-13)
+PLATES = {'A': (0.25, [0.25, 0.35, 0.45, 0.55, 0.65, 0.75] * COPIES), 'B': (0.20, [0.30, 0.40, 0.50, 0.60, 0.70] * COPIES)}
 OUT = Path(os.environ.get('LUG_SHIM_OUT', P.REPO / 'cad' / '_wip' / 'r1f_lug_shims'))
 Y0 = 288.0      # local origin: offset 0 at the yaw axis, Y at the lug's free end
 # r1g4 (2026-11-13, after the review): Dia 3.8 hole, smaller than the insert's Dia 4.0 hole, so the plate holds the insert captive

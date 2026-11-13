@@ -66,6 +66,11 @@ job() {
 ' ' ' | cut -c1-200) $(grep -E "^(SOLVED|SOLVE_FAILED) $1" cad/_wip/r1d_ring_ds.log | tail -1 | cut -c1-160)" >> $L
   grep -q "^SOLVED $1" cad/_wip/r1d_ring_ds.log && bash cad/scripts/fea/r1c/post_r1g.sh $1 1.9 294.7 >> $L 2>&1
 }
+if [ "$R1G4_EXTRA" = 1 ]; then      # the two cases kept from r1g2 until now, re-run on r1g4 for the packet (2026-11-13)
+  job r1g4_stop124 HS_STOP_124_fine 0.5
+  job r1g4_yawp HS_LC2_fine 0.5
+  echo "R1G4Q2_EXTRA_DONE $(date)" >> $L; exit 0
+fi
 [ "$R1G4_SKIP_STOP0" = 1 ] || job r1g4_stop0 HS_STOP_0_fine 0.5
 [ "$R1G4_STOP_AFTER_STOP0" = 1 ] && { echo "R1G4Q2 paused after STOP_0 (coordinator: report memory first) $(date +%H:%M)" >> $L; exit 0; }
 job r1g4_yawm HS_LC2M_fine 0.5
