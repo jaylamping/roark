@@ -524,6 +524,9 @@ def build_cap():
     if CAPFIX:
         # sockets for the drum's locating collars, in the front face of each screw boss
         cf = CAP_FIX
+        extrude(d, zsk(d, DRUM_Z0, 'SOCKET_PADS', lambda s: [sector(s, lambda r, a: rpt(r, a, DRUM_Z0), cf['pad_r'][0], cf['pad_r'][1],
+                                                                    a_ - cf['pad_half'], a_ + cf['pad_half'], 0.8) for a_ in CAP_SCREW_ANGLES]),
+                'SOCKET_PADS', cf['pad_d'], NZ, lo=-1.0)
         extrude(d, zsk(d, DRUM_Z0, 'COLLAR_SOCKETS', lambda s: [sector(s, lambda r, a: rpt(r, a, DRUM_Z0), cf['socket_r'][0], cf['socket_r'][1],
                                                                        a_ - cf['socket_half'], a_ + cf['socket_half'], 0.6) for a_ in CAP_SCREW_ANGLES]),
                 'COLLAR_SOCKETS', cf['socket_d'], NZ, cut=True)

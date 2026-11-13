@@ -65,7 +65,10 @@ CAP_BOSS_R = 50.0                 # the cap's screw bosses (r 5) stay centred he
 # boss, so the roll stop's reaction goes through the collars and the screws only clamp. Collars on the drum, not lugs on
 # the cap: the cap prints front face down and must stay flat there.
 CAPFIX = os.environ.get('LOOK', '') == 'capfix' or bool(os.environ.get('CAPFIX'))
-CAP_FIX = dict(r=50.6, pilot_r=1.05, hole_r=1.45, pocket_r=2.6, collar_r=(48.2, 53.0), collar_half=4.6, collar_h=2.5, socket_r=(48.0, 53.2), socket_half=4.9, socket_d=2.7)
+# Collars 12 mm wide (half angle 6.8 deg at r 50.6; the lug slots at +-22.5 deg leave room to 14 deg). The cap's r 5 boss is
+# narrower than that socket, so a pad (r 46.8-52, 5 mm deep, 2.5 mm past each socket end) backs the socket's end walls.
+CAP_FIX = dict(r=50.6, pilot_r=1.05, hole_r=1.45, pocket_r=2.6, collar_r=(48.2, 53.0), collar_half=6.8, collar_h=2.5, socket_r=(48.0, 53.2), socket_half=7.1, socket_d=2.7,
+               pad_r=(46.8, 52.0), pad_half=10.0, pad_d=5.0)
 if CAPFIX:
     CAP_SCREW_R = CAP_FIX['r']
 CAP_PILOT_R, CAP_HOLE_R, CAP_POCKET_R = ((CAP_FIX['pilot_r'], CAP_FIX['hole_r'], CAP_FIX['pocket_r']) if CAPFIX else (1.3, 1.7, 3.25))

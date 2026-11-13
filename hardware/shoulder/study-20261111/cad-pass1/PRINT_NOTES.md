@@ -123,6 +123,7 @@ clamps nothing.**
 | Fork rear → fork front (joint) | 6 × ISO 7380 M4 button heads: **2 × M4 × 10** (X ±17) and **4 × M4 × 8** | M4 heat-set inserts, bore Ø5.6 × 7.3-7.8 deep | The recesses are about 3.1 mm deep, so a DIN 912 head would stand proud. **Use short inserts (4 mm):** a standard 8.1 mm insert stands proud of the joint face |
 | Flange ring → drum spokes | 5 × **M3 × 5** | M3 × 4 inserts, bore 3.8 deep | Ring 1.8 mm. M3 × 6 bottoms in the bore |
 | Rear cap → drum | 3 × **M3 × 14 or M3 × 16, thread-forming** (for plastic), at r 50, 0 / 180 / 270° | Ø2.6 pilots, 8.5 deep, in the drum | 8.3 mm of cap under the head. M3 × 14 gives 5.7 mm in the pilot, M3 × 16 gives 7.7; **M3 × 18 bottoms.** **Open:** the pilots have only 0.7 mm of wall toward the drum's bore, and these screws carry the roll stop's reaction ([OPEN_ASSUMPTIONS.md](../checks/OPEN_ASSUMPTIONS.md), item 38) |
+| Rear cap → drum, **candidate fix (not adopted yet)** | 3 × **M2.5 × 14 or M2.5 × 16, thread-forming** (for plastic, pan or cap head up to Ø5.0), at r 50.6, 0 / 180 / 270° | Ø2.1 pilots through a 2.5 mm collar on the drum, 11 mm deep from the collar's top | 5.6 mm of cap under the head. M2.5 × 14 gives 8.2 mm in the pilot, M2.5 × 16 gives 10.2; **M2.5 × 18 bottoms.** These replace the M3 when the fix is adopted ([CAD_NOTES.md](CAD_NOTES.md), "Rear cap screws: fix candidate"). **To have in hand: 3 (and spares)** |
 
 ## Low preload and re-torque (every printed-to-RobStride joint)
 
