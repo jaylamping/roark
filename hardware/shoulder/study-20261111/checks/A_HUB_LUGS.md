@@ -850,7 +850,37 @@ margin, so D2d stays out of the candidate.
 | R1.2 run-out (Z root outer end) | **1.70 / 2.39 / 3.44 / 5.59** | **1.68 / 2.46 / 3.95 / 6.26** | 3.15 / 4.21 / 5.73 / 7.82 |
 | Bolt-hole rim (Z faces, r 1.7-2.6) | 3.87 / 5.03 / 8.00 / 14.47 | 3.20 / 3.36 / 3.61 / 3.88 | 4.98 / 5.26 / 5.43 / 5.43 |
 
-- **At 370 N** the governing R1.2 run-out is 1.96 layer and 2.02 shear at 0.5 mm.
-- **Shear stress for comparison with the arm's model:** 7.7 MPa peak and 5.2 over 0.5 mm at the run-out; 3.1 MPa peak at
-  the plate edge.
-- **Verdict:** passes the routine target (1.2 at 0.5 mm, 1.5 at 1 mm) with at least 60% margin at 370 N.
+- **Correction (2026-11-13, after HUBL_YAW3P6): the table above misses the governing spot.** The governing spot is the
+  R1.2 Z root's **inner** end (X offset 21.5-24.5), where the fillet runs out onto rev D's r 23 bore wall, not its outer end.
+  It is in the table below.
+- **Verdict:** passes the routine target (1.2 at 0.5 mm, 1.5 at 1 mm), but at 370 N the shear margin at the inner root is
+  only 6%. That rests on the assumed 13 MPa allowable.
+
+
+### Dia 6.0 shim plate hole (HUBL_YAW3P6), and the inner R1.2 root (2026-11-13)
+
+- **Run:** the same as HUBL_YAW3P on the exported D3b, except that a Ø6.0 circle (the arm's larger plate hole) is kept out
+  of the load. The circle reaches Y 295, past the plate outline's top (294.6).
+- **Mesh and solver:** 739k nodes, FFEPlus. Solved in 1,812 s, slow because it shared holly-pc with the arm's solve.
+- **Values:** SF as peak / 0.5 / 1 / 2 mm at 304 N; at 370 N, × 0.822. MPa at 304 N as peak / 0.5 mm.
+
+| Spot | Ø4.4 hole: layer / shear | Ø6.0 hole: layer / shear | At 370 N, 0.5 mm (Ø4.4 → Ø6.0) |
+|---|---|---|---|
+| **R1.2 root, inner end (X 21.5-24.5; r 23)** | 1.01 / 2.18 / 3.11 / 5.23 · 0.76 / 1.54 / 2.17 / 3.62 | 0.97 / 1.85 / 3.00 / 5.08 · 0.79 / 1.66 / 2.22 / 3.75 | layer 1.79 → 1.52; **shear 1.27 → 1.36** |
+| R1.2 root, outer end (X 32.5-34.7) | 1.70 / 2.39 / 3.44 / 5.59 · 1.68 / 2.46 / 3.95 / 6.26 | 1.74 / 2.41 / 3.45 / 5.67 · 1.68 / 2.45 / 3.98 / 6.24 | about 2.0 / 2.0 |
+| Plate edge (outer face X 34.4, Y 294.9) | 2.12 / 3.05 / 4.56 / 7.30 · 3.45 / 4.17 / 5.62 / 7.89 | 2.15 / 3.15 / 4.66 / 7.58 · 3.44 / 4.12 / 5.81 / 8.07 | 2.6 / 3.4 |
+| R0.8 outward root | 3.20 / 4.23 · 3.90 / 4.84 | 3.31 / 3.96 · 3.99 / 4.97 | 3.3 / 4.1 |
+| Lug Z face beside the bolt (flat, Y 292.6-294.8, r 1.7-3.4 of the bolt axis) | 2.67 / 2.89 / 3.27 / 4.37 · 2.79 / 2.91 / 3.16 / 3.95 | 2.80 / 2.89 / 3.21 / 4.34 · 2.58 / 2.74 / 2.95 / 3.76 | 2.4 / 2.3 |
+
+- **MPa, inner R1.2 root at 304 N:**
+  - Ø4.4: shear 17.1 peak / 8.4 over 0.5 mm; layer 22.3 / 10.3.
+  - Ø6.0: shear 16.5 / 7.8; layer 23.2 / 12.2.
+- **Ø6.0 against Ø4.4:**
+  - The inner root is slightly better in shear (1.66 against 1.54 at 0.5 mm) and worse in layer (1.85 against 2.18).
+  - The flat face beside the bolt is unchanged (about 2.9).
+  - The Ø6.0 edge on the flat face is not a low spot. The band r 2.6-3.4 that reaches above Y 294.8 is the inner R1.2
+    root above.
+- **Both pass** 1.2 at 0.5 mm and 1.5 at 1 mm at 370 N.
+- **Thin margin:** the inner root's shear at 370 N, 6-13% over 1.2 on the assumed allowable.
+- **If more margin is wanted:** D2c's local r 20 bore behind the lug (+0.7 g, tested under the stop loads) moves exactly
+  this inner end, where the fillet runs out on the r 23 bore.

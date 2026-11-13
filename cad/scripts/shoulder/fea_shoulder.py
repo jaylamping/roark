@@ -157,13 +157,14 @@ def run(name, c):
                 for cx_, cy_, cr_ in circs_:
                     s_.circle((cx_, cy_, zp_), cr_)
             fs_ = [f_ for sel_ in sels_ for f_ in pick(d, sel_)]
-            # split line by projection wants the sketch selected with mark 4 and the faces with mark 1 (with mark 0 it does nothing)
+            # split line by projection wants the sketch selected with mark 4 and the faces with mark 1 (with mark 0 it does nothing);
+            # selected through Extension.SelectByID2 (the sketch by name, each face by its selector point), the documented route
             d.ClearSelection2(True)
-            s_.feat.Select2(False, 4)
-            sd_ = d.SelectionManager.CreateSelectData()
-            sd_.Mark = 1
-            for f_ in fs_:
-                f_.Select4(True, sd_)
+            ok_sel = [d.Extension.SelectByID2(s_.feat.Name, 'SKETCH', 0, 0, 0, False, 4, NUL, 0)]
+            for sel_ in sels_:
+                px_, py_, pz_ = sel_[1]
+                ok_sel.append(d.Extension.SelectByID2('', 'FACE', px_ / 1000, py_ / 1000, pz_ / 1000, True, 1, NUL, 0))
+            print(' split selection', ok_sel, flush=True)
             ok_ = d.InsertSplitLineProject(False, False)
             d.ForceRebuild3(False)
             n1_ = len(faces_of(d))
@@ -550,6 +551,14 @@ CASES['HUBL_YAW3P'] = dict(_d3((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 28.0, 28.0),
     # the arm's plates have a dia 4.4 hole at the lug bolt (X offset 23.0, Y 292): that circle is kept out of the load (07:31Z)
     split=[(1.0, [_PL(-1), _PL(1)], [_PFACE(-1, 1.0), _PFACE(1, 1.0)], [(RX - 23.0, 292.0, 2.2), (RX + 23.0, 292.0, 2.2)]),
            (11.0, [_PL(-1), _PL(1)], [_PFACE(-1, 11.0), _PFACE(1, 11.0)], [(RX - 23.0, 292.0, 2.2), (RX + 23.0, 292.0, 2.2)])],
+    ctrl=D3_CTRL + [(cyl(0.8, [132, 294.5, -0.5, 209, 296.2, 12.5]), 0.35)],
+    remotes=[(_PFACE(-1, 1.0), _PAT(-1, 1.0), (0.0, 0.0, YAW3_F), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _PAT(1, 11.0), (0.0, 0.0, -YAW3_F), (0.0, 0.0, 0.0), 1)])
+# the same with the arm's larger plate hole (dia 6.0, coordinator 08:56Z)
+CASES['HUBL_YAW3P6'] = dict(_d3((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 28.0, 28.0),
+    # the arm's plates have a dia 4.4 hole at the lug bolt (X offset 23.0, Y 292): that circle is kept out of the load (07:31Z)
+    split=[(1.0, [_PL(-1), _PL(1)], [_PFACE(-1, 1.0), _PFACE(1, 1.0)], [(RX - 23.0, 292.0, 3.0), (RX + 23.0, 292.0, 3.0)]),
+           (11.0, [_PL(-1), _PL(1)], [_PFACE(-1, 11.0), _PFACE(1, 11.0)], [(RX - 23.0, 292.0, 3.0), (RX + 23.0, 292.0, 3.0)])],
     ctrl=D3_CTRL + [(cyl(0.8, [132, 294.5, -0.5, 209, 296.2, 12.5]), 0.35)],
     remotes=[(_PFACE(-1, 1.0), _PAT(-1, 1.0), (0.0, 0.0, YAW3_F), (0.0, 0.0, 0.0), 1),
              (_PFACE(1, 11.0), _PAT(1, 11.0), (0.0, 0.0, -YAW3_F), (0.0, 0.0, 0.0), 1)])

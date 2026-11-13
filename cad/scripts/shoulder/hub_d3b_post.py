@@ -41,6 +41,7 @@ spots = {
     'R0.8 outward root': (ax > 34.3) & (ax < 35.4) & (y > 295.1) & (y < 296.2) & (np.abs(zz) < 5.05),
     'R1.2 run-out (Z root outer end)': (ax > 32.5) & (ax < 34.7) & (y > 294.7) & (y < 296.2) & (np.abs(zz) > 4.9) & (np.abs(zz) < 6.3),
     'bolt-hole rim (Z faces, r 1.7-2.6 of the hole axis)': (np.hypot(ax - 23.0, y - 292.0) > 1.65) & (np.hypot(ax - 23.0, y - 292.0) < 2.6) & (np.abs(np.abs(zz) - 5.0) < 0.15),
+    'plate-hole edge dia 6.0 (Z faces, r 2.6-3.4)': (np.hypot(ax - 23.0, y - 292.0) > 2.6) & (np.hypot(ax - 23.0, y - 292.0) < 3.4) & (np.abs(np.abs(zz) - 5.0) < 0.15),
 }
 print(f'== {sys.argv[1]}: {len(pos)} nodes. SF peak / 0.5 / 1 / 2 mm at 304 N; [370 N] = x {K370:.3f}')
 for lug, lx in (('-X lug', x < 0), ('+X lug', x > 0)):
@@ -60,4 +61,6 @@ for lug, lx in (('-X lug', x < 0), ('+X lug', x > 0)):
             st, p, sgn = worst[nm]
             f = ' / '.join(f'{v:5.2f}' for v in st)
             f370 = ' / '.join(f'{v * K370:5.2f}' for v in st)
-            print(f'  {lug} {k:38s} {nm:5s} {f}   [370 N: {f370}]   at {p.round(2).tolist()}' + (f' dir {"+" if sgn > 0 else "-"}' if nm == 'layer' else ''))
+            allow = {'layer': L, 'shear': T, 'vM': B}[nm]
+            mpa = ' / '.join(f'{allow / v:5.1f}' for v in st)
+            print(f'  {lug} {k:38s} {nm:5s} {f}   [370 N: {f370}]   MPa at 304 N: {mpa}   at {p.round(2).tolist()}' + (f' dir {"+" if sgn > 0 else "-"}' if nm == 'layer' else ''))
