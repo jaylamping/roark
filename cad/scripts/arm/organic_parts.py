@@ -249,7 +249,11 @@ def r1d_slot_break(d, sg, zl):
 # R1f lug pocket (hub rev D3: the lugs grown out to r 36.8 into seam-split pockets in our collar; coordinator / shoulder thread,
 # 2026-11-12). Offsets are X from the yaw axis on each lug's side. Our pocket edge: the hub's outer edge + 0.2, the hub's edge
 # capped so our wall to the skin keeps >= 1.2 (skin at Z 5.5: 36.3 at Y 288 ... 38.1 at Y 294 ... 38.5 at Y 298).
-R1F_POCKET = [(287.5, 35.1), (289.0, 35.5), (290.0, 35.8), (291.0, 36.1), (292.0, 36.4), (293.0, 36.7), (294.0, 36.9), (295.0, 37.0), (297.8, 37.0)]
+# D3 as built by the shoulder thread (coordinator 2026-11-13 01:35Z): lug Z faces Z 1.0 / 11.0; outer edge X offset 34.4 for
+# Y 288-294.5, stepping to 36.35 for Y 294.5-297.6 (45 deg top chamfer 36.35 @ Y 296.7 to the land 35.45 @ 297.6); R1.2 Z roots
+# along Y 296 out to X 35.45 (tangents Y 294.8, |Z| 6.2); R0.5 inside corner at (34.4, 294.5). Our pocket 0.2 outside:
+# wall to the skin (at Z 5.5) 1.7 at Y 288, 1.55 at Y 294.3, 1.95 at Y 297.8.
+R1F_POCKET = [(287.5, 34.6), (294.3, 34.6), (294.3, 36.55), (297.8, 36.55)]
 R1F_LUG_SIDES = (-1, 1)      # the -X lug (theta 180) and the +X lug (theta 0)
 
 
@@ -287,6 +291,10 @@ def r1f_lug_pocket(d, sg, zl):
         with Sk(d, plane(d, 'Z', zc, f'R1F_POCKET{tag}_P'), f'R1F_POCKET{tag}') as s:
             s.poly([(HX + side * o, y, zc) for o, y in prof])
         feat(d, s.feat, f'R1F_POCKET{tag}', dz, True, mode=MID, lo=0.01)
+        # relief for the hub's R0.5 inside corner at (34.4, 294.5): 0.5 x 45 deg off our pocket's corner at (34.6, 294.3)
+        with Sk(d, plane(d, 'Z', zc, f'R1F_R05{tag}_P'), f'R1F_R05{tag}') as s:
+            s.poly([(HX + side * o, y, zc) for o, y in [(34.5, 294.4), (35.2, 294.4), (34.5, 293.7)]])
+        feat(d, s.feat, f'R1F_R05{tag}', dz, True, mode=MID, lo=0.01)
         # root relief, extruded along X over offsets 18.3-36.3
         o0, o1 = 18.3, 36.3
         xm = HX + side * (o0 + o1) / 2

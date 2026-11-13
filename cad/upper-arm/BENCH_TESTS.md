@@ -116,9 +116,20 @@ by trial, once, at assembly.
      with the seam shut. That ring is the one.
    - **Never force it closed with the screws.** A ring that's too thick only closes by crushing the ridge flank, which makes play
      later.
-4. With the chosen ring in, fit the two lug bolts (M3 × 25 DIN 912) and torque to 0.5 N·m. The seam must stay shut: no gap a
+   - **R1f (with the D3 hub's extended lugs; WIP, not for printing yet): then pick the lug plates.**
+     - **The plates:** flat printed plates, 0.25-0.75 in 0.05 steps, two of each, on plates A and B (about 15 min each). They
+       are marked on the inner edge: wide notch = 0.25, narrow = 0.05, counted from 0.25.
+     - **Fitting:** one plate goes on each Z face of each lug, with its lip hooked under the lug's free end. The bolt hole lines
+       up with the lug's.
+     - **Pick, with the ring chosen:** "Start each lug with the thickest pair, and take one plate down a step at a time,
+       alternating sides, until the front half closes by hand with the seam shut; use those." Both lugs are picked in the same
+       trials.
+     - **Never force it closed with the screws.**
+4. With the chosen ring (and, R1f, the lug plates) in, fit the two lug bolts (M3 × 25 DIN 912) and torque to 0.5 N·m. The seam must stay shut: no gap a
    0.1 mm feeler enters, if you have one; otherwise none you can see against a light.
 5. **Rock check:** clamp the hub. Push and pull the coupon along the hub axis, then rock it firmly by hand in every direction.
+   R1f: also twist the coupon about the hub axis, both ways: there must be no click or free turn (the lug plates take the
+   yaw torque).
    There should be no movement and no click. Then do ten firm rocking cycles and check again.
 6. **Open and look:** take the bolts out and the front coupon off. Check the ring (flat, not cut or crushed at its inner edge),
    the ridge flank and the hub's groove flank (marks, scuffing), especially near the seam. Photograph them.
