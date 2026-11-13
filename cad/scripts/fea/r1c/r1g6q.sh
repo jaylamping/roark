@@ -102,12 +102,21 @@ fi
 # (coordinator 22:51Z) after the R1h build: the STOP_124 and G90 reruns first, then the convergence run last; a 3 minute gap after
 # each of our jobs so the shoulder thread's solves can take the shared lock in between; the mesh retried once if a body is left out
 export MESH_MIN_NODES=300000
+holdsolver() {      # (coordinator 22:54Z) never launch while another session's solver runs: wait while any star.exe exists (none of
+  # ours runs between our jobs), on top of the free-memory gate, which can be fooled early in their solve
+  while tasklist //FI "IMAGENAME eq star.exe" 2>/dev/null | grep -qi "star.exe"; do
+    grep -q "HOLD star.exe" <(tail -1 $L) || echo "HOLD star.exe running (another session's solve) $(date +%H:%M): waiting" >> $L
+    sleep 30
+  done
+}
 jobg() {
+  holdsolver
   job "$@"
   echo "GAP after $1 $(date +%H:%M): 180 s for other threads' solves" >> $L
   sleep 180
 }
 jobg r1g6_stop124 HS_STOP_124_fine 0.5
 jobg r1g6_g90 HS_G90_fine 0.05
+holdsolver
 MEMSTOP_USED=15360 MINFREE=20000 HS_LOCAL_REFINE=0.5 job r1g6_g90y_ref HS_G90Y_fine 0.05
 echo "R1G6Q_DONE $(date)" >> $L
