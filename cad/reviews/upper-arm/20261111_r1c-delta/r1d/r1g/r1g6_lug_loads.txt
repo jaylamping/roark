@@ -1,0 +1,64 @@
+r1g6 hub lug loads by face, for the shoulder thread's FE (2026-11-13, INTERIM: cases are added as they land). Upper arm r1g6: hub lug
+holes Dia 3.8 (the bolt is free in them), lug plates Dia 3.4, lumped as a 0.5 boss of our post inside the plate outline (top Y 294.6);
+our FEA hub is the D3b-shaped hub with Dia 3.8 lug holes (straight lugs to X offset 34.4, R1.2 Z roots).
+
+FRAME AND UNITS
+- Arm frame, mm, N, N.m, MPa. Yaw axis (the hub axis) = the line X 170.49, Z 5.986, parallel to Y. Y increases toward the shoulder
+  (hub top at Y 320, fixed in the model); the arm hangs toward -Y.
+- X offset = |X - 170.49| (the -X lug lies at X 136-152, the +X lug at X 189-205). Z: front half +Z. Lug Z faces: front Z 11.0,
+  back Z 1.0 (Z - CZ +-5). Lug outer face at X offset 34.4. Bolt holes Dia 3.4 at X 147.5 / 193.5, Y 292.0, along Z.
+- Moments are about the point (X 170.49, Y 302.0, Z 5.986): on the yaw axis, at the hub disc face.
+
+LOAD CASES (applied to the arm as a remote load at the RS02 centre X 170.49, Y 209.861, Z 5.986; hub top fixed)
+- YAW -17 (LC2M): moment -17 N.m about +Y (the RS02's yaw peak, the sign that presses the -X lug into its front plate); no force.
+- G90: force -62 N in Z, moment +17.2 N.m about +X (arm horizontal; the forearm and hand load). Carried to the disc face:
+  Mx = 17.2 + 62 N x 92.1 mm = 22.91 N.m.
+- G90 + YAW -17 (G90YM): both together.
+- G90 + YAW +17 (G90Y): G90 with the yaw peak at +17 N.m about +Y (added after the second review).
+
+HOW THE FORCES WERE INTEGRATED
+- Face rows: hub-side nodal stresses, traction t = sigma . n (n = the hub's outward normal), interpolated linearly over each face and
+  integrated on a 0.1 mm grid. Z faces over the flat lug face (X offset 18.76-34.4, Y 288-294.8, less the Dia 3.8 hole); outer face
+  over Z 1-11, Y 288-294.8; bolt-hole wall over the cylinder. The force is what OUR ARM APPLIES TO THE HUB.
+  Centre of pressure = the compressive-pressure-weighted centre on each Z face. "p mean / p max" = the normal pressure over the
+  loaded part and its nodal peak (MPa).
+- Section rows: the stress integrated over a Y 294.5 cut through each lug (interior nodes, not extrapolated surface values). They
+  must cancel the face forces below the cut; the sign is opposite. The difference measures the nodal over-read of the face rows.
+- NO over-count correction is applied to the face rows. The -X lug faces close to their section within 5 %; the +X lug faces read
+  16-17 % high (the back-face edge peak, 115-133 MPa nodal). USE THE SECTION TOTALS PER LUG; use the face rows for the split between
+  faces and the centres of pressure.
+- Whole-hub section at Y 310 (above the disc): everything the arm puts into the hub. Balance: applied vs that section. Moments close
+  within 2-3 %, Fz within 10 %. Its Fy reads -9 to -41 N where 0 is applied: integration error on the hub's coarse 4 mm mesh at
+  Y 310 (bending stresses that should cancel). The "ring, ridge, groove and spigot" share = applied minus the lugs (sections).
+
+THE LUG'S OUTER FACE ON OUR POCKET WALL (new in r1g6: with the bolt free, the lug drifts sideways until its outer face, X offset 34.4,
+lands on our pocket wall, X offset 34.6, 0.20 away)
+- Robust figure: the lug's sideways force from its Y 294.5 section. With the bolt free (bolt-hole wall about 0 N) and the Z faces
+  frictionless, it is what the outer face carries.
+- The face rows below integrate nodal (extrapolated) stress over the whole outer face, both signs. Their compressive part, the
+  cells carrying 90 % of it, gives the patch centre and the nodal peak; those cells are scattered over the face, so read the centre,
+  not an extent.
+
+==================== STOP_0 (515 N on the elbow stop pad), r1g6_stop0
+-X lug outer face on our pocket wall (X offset 34.4 / 34.6): contact patch (the cells carrying 90 % of the compressive normal force; total compressive 9.2 N) Y 288.45-294.75, Z 1.05-10.95 (Z - CZ -4.94 to +4.96), centre Y 293.23 Z 9.74, area 3.5 mm2, normal force 8.3 N, peak 9.75 MPa, mean 2.40 MPa
++X lug outer face on our pocket wall (X offset 34.4 / 34.6): contact patch (the cells carrying 90 % of the compressive normal force; total compressive 1.6 N) Y 288.35-294.75, Z 1.05-10.95 (Z - CZ -4.94 to +4.96), centre Y 293.27 Z 3.86, area 4.9 mm2, normal force 1.4 N, peak 2.60 MPa, mean 0.29 MPa
+lug  face                                                                 Fx       Fy       Fz  CoP X off   CoP Y  p mean  p max cover
+-X   front Z face                                                      -21.1      3.4   -178.7      30.18  291.53    2.10  20.47  1.00
+-X   back Z face                                                        -2.7    -12.6     -3.8      26.07  288.77    0.07   1.26  1.00
+-X   outer face                                                        -32.0     -0.3     11.7        nan     nan    0.00   9.75  1.00
+-X   bolt-hole wall                                                      0.1      0.1     -1.5        nan     nan    0.00   0.00  0.95
+-X   section at Y 294.5 (lug cross-section; should cancel the faces below it)     25.6     12.4    178.6        nan     nan    0.00   0.00  0.99
+-X   sum of the four faces                                             -55.6     -9.4   -172.3        nan     nan    0.00   0.00  1.00
++X   front Z face                                                        0.4      2.6    -11.5      19.79  289.78    0.47   4.58  1.00
++X   back Z face                                                         0.1      4.1    112.5      31.31  292.19    2.03  49.58  1.00
++X   outer face                                                          0.3     -2.1     -5.4        nan     nan    0.00   2.60  1.00
++X   bolt-hole wall                                                     -0.1      0.0      0.0        nan     nan    0.00   0.00  0.95
++X   section at Y 294.5 (lug cross-section; should cancel the faces below it)     -0.6     -3.1    -80.7        nan     nan    0.00   0.00  0.99
++X   sum of the four faces                                               0.7      4.6     95.6        nan     nan    0.00   0.00  1.00
+
+SUMMARY STOP_0 (r1g6)
+- -X lug: front Z face Fz -184 N (CoP X offset 30.0, Y 291.6); section Fz 179 N.
+- -X lug outer face on our pocket wall: about 26 N toward -X (the lug section's sideways force 25.6 N). Contact centre at about
+  Y 293.2, Z 9.7 (Z - CZ +3.7): the upper front corner of the outer face, below its R0.8 root. Nodal peak 9.75 MPa.
+- +X lug: back Z face Fz +112 N; section 81 N. The outer face carries under 2 N.
+- Bolt-hole walls about 0 N: the bolt is free (smallest shank gap 0.102 on the -X lug).

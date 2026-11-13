@@ -58,6 +58,7 @@ def integrate(mask, coords, normal_fn, region, ymask=None):
 
 
 rows = []
+PATCH = {}
 Yref = 302.0
 for side in (-1, 1):
     xo = side * (p[:, 0] - HX)
@@ -82,6 +83,21 @@ for side in (-1, 1):
     rows.append((side, 'outer face', None if r is None else dict(F=r[0], cop=(np.nan, np.nan), cover=r[4], pmax=float((-r[3][:, 0] * side).max()), pmean=0.0)))
     if r is not None:
         tot += r[0]
+        # the contact patch on our pocket wall (r1g6: the lug's outer face lands when the bolt is free): the cells carrying 90 % of the
+        # compressive normal force (a fixed pressure threshold missed the wide low-pressure part)
+        gz, gy, tt = r[1], r[2], r[3]
+        pn = -tt[:, 0] * side
+        pos = np.clip(pn, 0, None)
+        pm = np.zeros(len(pn), bool)
+        if pos.sum() > 0:      # the smallest set of grid cells that carries 90 % of the face's compressive force
+            o = np.argsort(-pos)
+            cum = np.cumsum(pos[o]) / pos.sum()
+            pm[o[:int(np.searchsorted(cum, 0.90)) + 1]] = True
+        if pm.any() and pos.sum() * G * G > 1.0:
+            w = pn[pm]
+            PATCH[side] = dict(n=int(pm.sum()), area=float(pm.sum() * G * G), y=(float(gy[pm].min()), float(gy[pm].max())),
+                               z=(float(gz[pm].min()), float(gz[pm].max())), cy=float((w * gy[pm]).sum() / w.sum()),
+                               cz=float((w * gz[pm]).sum() / w.sum()), pmax=float(w.max()), pmean=float(w.mean()), F=float(w.sum() * G * G), Ftot=float(pos.sum() * G * G))
     # bolt-hole wall r 1.7, outward normal of the hub = toward the hole axis
     rb = np.hypot(p[:, 0] - bx, p[:, 1] - 292.0)
     m = hub & (np.abs(rb - HOLR) < 0.03) & (np.abs(p[:, 2] - CZ) < 4.99)
@@ -135,6 +151,12 @@ Mcut = (np.cross(rr, tt[ok]) * dA).sum(axis=0) / 1000.0
 # what the arm puts into the hub = minus what the upper hub puts on the lower hub through the cut (outward normal +Y); Mcut is about
 # (HX, Yref, CZ) already
 print(f'result: {sys.argv[1]}')
+for side_, pt in sorted(PATCH.items()):
+    print(f"{'-X' if side_ < 0 else '+X'} lug outer face on our pocket wall (X offset 34.4 / 34.6): contact patch (the cells carrying 90 % of the compressive normal force; total compressive {pt['Ftot']:.1f} N) "
+          f"Y {pt['y'][0]:.2f}-{pt['y'][1]:.2f}, Z {pt['z'][0]:.2f}-{pt['z'][1]:.2f} (Z - CZ {pt['z'][0] - CZ:+.2f} to {pt['z'][1] - CZ:+.2f}), "
+          f"centre Y {pt['cy']:.2f} Z {pt['cz']:.2f}, area {pt['area']:.1f} mm2, normal force {pt['F']:.1f} N, peak {pt['pmax']:.2f} MPa, mean {pt['pmean']:.2f} MPa")
+if not PATCH:
+    print('outer faces: no contact patch (compressive normal force under 1 N)')
 print(f'{"lug":4s} {"face":62s} {"Fx":>8s} {"Fy":>8s} {"Fz":>8s}  {"CoP X off":>9s} {"CoP Y":>7s}  {"p mean":>6s} {"p max":>6s} {"cover":>5s}')
 for side, nm, r in rows:
     lab = '-X' if side < 0 else '+X'
