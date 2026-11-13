@@ -687,3 +687,53 @@ Rules from now on (`r1e_solve1.sh`, `r1e_queue.sh`):
   - at least 16 GB is free.
 - One queue process runs the jobs in order. It waits for the previous queue's process to exit before it starts; it does not
   kill and race it.
+
+## YAW_17: remedies on paper, in case it fails (2026-11-12, draft before the results)
+
+**Load.** The full ring carries no torque about the hub axis, so all of the yaw torque passes through the two lugs. They act as a
+couple in Z, opposite on the two lugs.
+- Lug centres X 146.4 / 194.6, 48.2 mm apart, so 17 N·m gives about 353 N per lug.
+- The stop cases gave about 190-228 N per lug, with the posts at about 1.8 (0.5 mm). Scaled linearly to 353 N that is about 1.0-1.2,
+  short of 1.5. The hub lug roots scale the same way: layer 1.27 / shear 1.21 at about 190 N becomes about 0.7.
+- The joint is not symmetric in Z. The front posts hold the brass inserts, the back posts the Ø3.4 clearance holes and the bolt
+  heads. Each sign of torque pushes one lug into a front post and the other into a back post.
+- The lug bolts (X 147.5 / 193.5) run along Z, through post, lug, post: parallel to this load.
+
+Remedies, cheapest first (gains are first estimates, to be scaled from the YAW_17 results):
+1. **Software yaw torque cap.** No hardware change. The RS02's rated (stall) torque is 6 N·m (PLAN.md); its peak is 17.
+   - Capping upper-arm yaw at 10 N·m gives 1.7×; at 6 N·m, 2.8×.
+   - It is a duty decision, not a fix. It does not cover back-driven impacts.
+2. **Line-to-line slot plus bolt preload** (our side only).
+   - Today each lug has 0.086-0.1 gap to each post face, and the bolt has no modelled preload. So one post bends alone, and the
+     bolt only ties the far post in once that gap closes.
+   - Printing the slot line-to-line (like the flank), and relying on the 0.5 N·m preload (about 0.8 kN on M3), makes post-lug-post
+     a clamped stack. The lug load then splits between the two posts of its pair: about 1.6-2× on post bending and bearing.
+   - Costs: bolt tension rises by about half the lug load (fine for 8.8 M3). The brass insert pull-out in PETG (about 1-1.5 kN)
+     becomes the item to check. PETG under the clamp relaxes, so re-torque on the bench and add it to the inspection list.
+   - No hub change. The closing path needs a lug-slot lead-in like the flank's.
+   - It does nothing for the hub lug roots, which still carry 353 N each.
+3. **Bigger posts on our side.** The posts are capped at Y 295.7 by the spigot (Y 296) and at Y 288 by the lug. They can grow
+   outward in Z, away from the slot, and get a larger root.
+   - Bending stiffness and strength scale with thickness²: +25 % thickness gives about 1.5×.
+   - Limits: the skin (r 38-41 there) and the harness path past the neck (3.5 × 13 at Y 292). Print: more mass at the hub end,
+     and the slice is unchanged in kind.
+   - No hub change, so nothing for the hub lug roots.
+4. **Close-fit (dowel) lug bolt.** This does not help here. The bolt axis is parallel to the yaw load, so a tight fit adds no
+   shear path.
+   - The equivalent would be a pin along X or Y through post, lug and post. That is a hub change (a hole across the lug) and
+     cuts the lug where its root is already the hub's low spot.
+5. **Third and fourth lug at θ 90 / 270** (hub change).
+   - The couple splits over four lugs: about 176 N each, about 2× on the posts, lug roots and inserts alike.
+   - The new lugs point along ±Z, so each half closes onto its lug along Z, into a pocket whose walls face X: feasible.
+   - Shoulder thread: a hub rev with two more lugs, its FEA and its closing check. Ours: two pockets, new posts or bosses, a
+     re-check of the harness path at θ 90 (front) and 270 (back), new print and coupon.
+6. **Positive torque key between ridge and groove** (hub change).
+   - One or two key blocks or flats in the groove at θ 90 / 270, with matching flats on our ridge. Keys at the seam (θ 0 / 180)
+     can't close along Z.
+   - A short, stiff key in parallel with the lugs takes most of the torque. At r about 35 the key face sees about 490 N for
+     17 N·m (one key) or 245 N (two), on a face of about 3 × 8 mm. That could relieve the lugs 3× or more, the largest gain.
+   - Costs: the full-ring groove that the shoulder thread just settled changes (its FEA and print). Our ridge stops being a plain
+     ring, so the closing path, the ring FEA and the fit coupon are re-done.
+
+Suggested order, if YAW_17 fails: (1) as the stated duty in the meantime; (2) plus (3) on our side, since neither touches the hub;
+(5) or (6) only if the hub lug roots fail on their own.
