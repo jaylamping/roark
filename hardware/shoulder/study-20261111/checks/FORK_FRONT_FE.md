@@ -44,6 +44,43 @@ driver-access bore, which the analysis builds above leave out). Von Mises / laye
 - **The stop case is worse at the boss root for the same reason:** 0.40 / 0.30 at a stall, 1.41 / 1.06 at 17 N·m.
 - The 13 mm rounds at the shoulder ends (9.5 in the look build) cost nothing: lower cheek 4.79 / 3.78 or better.
 
+## The six-screw joint between fork front and fork rear (2026-11-14)
+
+The adopted fork front and fork rear as **two bodies**, joined as built: six M4 button heads from the fork rear's
+counterbores into the fork front's inserts, each a bolt connector with a preload, and no-penetration contact on the
+joint pad. Boss fixed, 6808 seat held radially. Intel direct sparse, 185,490 nodes (3.5 mm, 1.5 mm in the joint zone),
+40-odd contact iterations each. Read in the joint zone (Y 338-366, within 14 mm of the joint plane), without the nodes
+within 2 mm of a screw's head seat or insert bore, where the connector ties in. Von Mises / layer tension, worst 0.5 mm
+ball. `fea_shoulder.py` J_*, `run_joint.sh`, `joint_post.py`.
+
+| Case | Preload per screw | Joint zone, fork rear side | Joint zone, fork front side |
+|---|---|---|---|
+| Preload alone | 400 N | **1.01** / 3.14 | 3.86 / 4.74 |
+| Forward, yaw +17 | 400 N | 1.02 / 3.44 | 3.19 / 3.75 |
+| Forward, yaw -17 | 400 N | 0.99 / 2.38 | 3.15 / 2.10 |
+| Sideways | 400 N | 1.04 / 3.31 | 3.07 / 2.08 |
+| Sideways | 200 N | 2.11 / 3.13 | 3.03 / 2.09 |
+| Stop at the controller's 17 N·m | 400 N | 0.98 / 1.29 | 2.29 / 1.37 |
+| Stop at the controller's 17 N·m | 200 N | 1.88 / **1.34** | 2.33 / **1.41** |
+
+- **The joint is stiff:** the RS02 seat moves 0.42 mm forward and 0.25 mm sideways, the same as with the joint solid
+  (0.41 and 0.26). The six screws add no real compliance, so the merged model's load share stands.
+- **The screws' own preload is the largest load on the joint.** At 400 N per screw (about 0.3 N·m on an M4) the
+  counterbore floor under the head at X +20, Y 345.5 reads 1.01 on von Mises with no outside load at all, and 0.7 right
+  at the head's edge. That floor is 3.0 mm thick; the head bears on a 29 mm² ring. At 200 N (about 0.15 N·m) it reads
+  2.1.
+- **Design loads:** with 200 N of preload the joint zone reads 2.09 or better sideways. The design loads add little to
+  what the preload does.
+- **Stop at 17 N·m:** 1.88 / 1.34 on the fork rear side (the pad's lower corner by the -27 and -22 screws) and
+  2.33 / 1.41 on the fork front side (the insert boss at -27). Under 1.5 on layer tension, by a little, where the tooth's
+  load crosses the joint. At a 60 N·m stall it would be about 0.4.
+- **What to do:** tighten the six joint screws to **0.15 N·m**, not more (PRINT_NOTES now says so). If the stop at
+  17 N·m is to clear 1.5, the lower pair's counterbore floors and the pad's lower corners want about 1 mm more material;
+  that is a small change to the fork rear's skirt and can ride with the next fork rear revision.
+- **Not read:** the bolt forces under load and the gap opening on the pad. The contact converged every time.
+- These runs use a coarser mesh than the merged model and no fine zone at the boss root, so their figures outside the
+  joint zone are not to be compared with the tables above.
+
 ## Verdict
 
 | Question | Answer |

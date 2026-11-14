@@ -28,6 +28,12 @@ def build(tag):
     d.ForceRebuild3(False)
     v0 = vol(d)
     print(tag, 'bodies before', v0, flush=True)
+    if os.environ.get('FORK2_NOCOMBINE'):
+        # two separate bodies, for the joint check (bolt connectors and contact between them): saved as forkj_<tag>
+        e, w = L(), L()
+        ok = d.Extension.SaveAs(str(F / f'forkj_{tag}.SLDPRT'), 0, 1, NUL, e, w)
+        print(tag, 'two bodies kept, saved as forkj_%s.SLDPRT' % tag, ok, e.value, flush=True)
+        return
     done = False
     for mark in (2, 0, 1):
         d.ClearSelection2(True)

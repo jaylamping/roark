@@ -30,6 +30,7 @@ PARTS = {'hub': F / os.environ.get('HUB_FEA_FILE', 'hub_fea.SLDPRT')}   # a seco
 PARTS['fork'] = F / os.environ.get('FORK_FEA_FILE', 'fork_fea.SLDPRT')
 PARTS['fork1'] = F / 'fork1_fea.SLDPRT'
 PARTS['fork2'] = F / os.environ.get('FORK2_FEA_FILE', 'fork2_fea.SLDPRT')      # fork front and fork rear combined into one body (fork2_fea_part.py): F2_* cases
+PARTS['forkj'] = F / os.environ.get('FORKJ_FEA_FILE', 'forkj_real.SLDPRT')      # fork front and fork rear as TWO bodies: J_* cases (the six-screw joint)
 PARTS['ff'] = F / os.environ.get('FF_FEA_FILE', 'ff_fea.SLDPRT')      # the fork front alone (a copy of the part): FF_* cases
 PARTS['stop_fr'] = F / 'stop_fork_rear.SLDPRT'   # stop rev 2 checks
 PARTS['stop_cap'] = F / 'stop_cap.SLDPRT'
@@ -1039,6 +1040,72 @@ CASES['F2_STOP'] = dict(part='fork2', fix=[('fixed', FK_BOSS), ('radial', FK_SEA
                         forces=[(('plane', _rp(35.0, _ta - _th, -37.0), None, 'on'), STOP_F, None)])
 CASES['P_MXbs'] = dict(CASES['P_MXb'], fix=FF_SEATS + [('axialY', FF_JOINT[0])])
 CASES['F2_MXs'] = dict(CASES['F2_MX'], fix=FF_SEATS + [('radial', FK_SEAT6808)])
+# THE SIX-SCREW JOINT (OPEN_ASSUMPTIONS item 41, 2026-11-14). The fork front and the fork rear as two bodies, joined as built:
+# six M4 (ISO 7380 button heads, dia 7.6) from the fork rear's counterbores into the fork front's heat-set inserts, each a
+# bolt connector with a preload; no-penetration contact on the joint pad (Z = JZ0). Boss fixed, 6808 seat held radially.
+# Intel direct sparse (FFEPlus fails on bolted contact on this machine since 2026-11-13). Preload: J_PRE N per screw
+# (assumed: 400 N, about 0.3 N.m on an M4 in an insert; half of it for the crept joint).
+J_PRE = float(os.environ.get('J_PRE', '400'))
+J_REGION = [RX - 36, 338.0, JZ0 - 12.0, RX + 36, 366.0, JZ0 + 14.0]
+
+
+def joint_setup(preload):
+    def hook(st, d, lbc):
+        cm = st.ContactManager
+        try:
+            r_ = cm.SetGlobalContact(2, 0)
+        except Exception as e_:
+            r_ = repr(e_)
+        print(' global contact no-penetration', r_, flush=True)
+        from swk import edges_where
+        out = []
+        for dx, jy in JOINT_PTS:
+            zf = JZ0 - (5.5 if abs(dx) < 20 else 3.0)
+            cx = RX + dx
+            head = edges_where(d, lambda p, cx=cx, jy=jy, zf=zf: abs(p[2] - zf) < 0.08 and math.hypot(p[0] - cx, p[1] - jy) < 2.4,
+                               pair=lambda p0, p1, cx=cx, jy=jy: all(abs(math.hypot(q[0] - cx, q[1] - jy) - 2.25) < 0.12 for q in (p0, p1)))
+            thr = pick(d, cyl(2.8, [cx - 3.2, jy - 3.2, JZ0 - 0.1, cx + 3.2, jy + 3.2, JZ0 + 12.5]))
+            err = I()
+            b = lbc.AddBoltConnector(2, head[:1], thr, err)
+            if b is None:
+                print(' bolt', dx, jy, 'head edges', len(head), 'thread faces', len(thr), 'err', err.value, flush=True)
+                raise SystemExit('bolt failed')
+            call(b, 'BoltConnectorBeginEdit')
+            b.HeadDiameterUnit = 0
+            b.HeadDiameterValue = 7.6
+            b.BoltShankDiameterUnit = 0
+            b.BoltShankDiameterValue = 4.0
+            b.MaterialSource = 1
+            b.MaterialUnit = 0
+            b.YoungModulus = 210e9
+            b.PoissonsRatio = 0.28
+            b.ThermalCoefficient = 1.2e-5
+            b.PreLoadForceType = 0
+            b.PreLoadForceValue = float(preload)
+            rc = call(b, 'BoltConnectorEndEdit')
+            out.append((dx, jy, len(head), len(thr), rc))
+        print(' bolts', out, flush=True)
+        fr, rr = [], []
+        for f, (t_, r_, n_, bx, a_) in infos(d):
+            if t_ == 'plane' and abs(bx[2] - JZ0) < 0.02 and abs(bx[5] - JZ0) < 0.02 and n_ is not None:
+                (fr if n_[2] < -0.9 else rr if n_[2] > 0.9 else []).append(f)
+        err = I()
+        cs = cm.CreateContactSet2(0, 0, fr, rr, err)
+        print(' joint contact set: fork front faces', len(fr), 'fork rear faces', len(rr), 'err', err.value, 'set', cs is not None, flush=True)
+        if cs is None or err.value:
+            raise SystemExit('contact set failed')
+        return None
+    return hook
+
+
+_fj = dict(part='forkj', fix=[('fixed', FK_BOSS), ('radial', FK_SEAT6808)], coupling=0, el=2.5, disp=FF_DISP, react={},
+           ctrl=[(('touch', J_REGION, 400.0), float(os.environ.get('J_CTRL', '1.0')))], ctrl_optional=1, pre_mesh=joint_setup(J_PRE), stabilise=True)
+CASES['J_MX'] = dict(_fj, remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (23.0, YAW_T, 0.0)))
+CASES['J_MXn'] = dict(_fj, remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (23.0, -YAW_T, 0.0)))
+CASES['J_MZ'] = dict(_fj, remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (0.0, YAW_T, 23.0)))
+CASES['J_STOP17'] = dict(_fj, forces=[(('plane', _rp(35.0, _ta - _th, -37.0), None, 'on'), STOP_F * 17.0 / 60.0, None)])
+CASES['J_PRE0'] = dict(_fj)      # preload alone: what the screws do to the pad and the insert bosses before any load
+
 # the stop as the fork front sees it with the 6808 in place: the tooth's force is taken radially by the 6808, and the 60 N.m
 # about the roll axis goes from the joint face through the cheek to the boss (FF_STOP, the bare force, has no 6808 and is not used)
 CASES['FF_STOPM'] = dict(_ff, remote=(FF_JOINT, (RX, RY, -37.0), (0.0, 0.0, 0.0), (0.0, 0.0, 60.0)))
