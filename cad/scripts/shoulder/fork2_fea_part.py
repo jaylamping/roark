@@ -6,7 +6,7 @@ Saved as cad/_sim/shoulder/fork2_<tag>.SLDPRT for fea_shoulder.py's F2_* cases.
 """
 import sys
 
-from swk import CAD, L, app, finish, new_part
+from swk import CAD, L, NUL, app, finish, new_part
 
 F = CAD / '_sim' / 'shoulder'
 REAR = CAD / 'shoulder' / 'left' / 'shoulder_fork_rear_left.SLDPRT'
@@ -33,7 +33,7 @@ def build(tag):
             sd = d.SelectionManager.CreateSelectData
             sd.Mark = mark
             ok.append(b.Select2(True, sd))
-        f = d.FeatureManager.InsertCombineFeature(15903, None, None)      # add
+        f = d.FeatureManager.InsertCombineFeature(15903, NUL, NUL)      # add
         d.ForceRebuild3(False)
         v1 = vol(d)
         print(tag, 'combine with mark', mark, 'selected', ok, 'feature', f is not None, 'bodies after', v1, flush=True)

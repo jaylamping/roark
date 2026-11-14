@@ -79,10 +79,8 @@ def worst(pos, tree, v, mk):
 
 def logged(tag):
     out, case = {}, None
-    f = WIP / f'P_{tag}.txt'
-    if not f.exists():
-        return out
-    for ln in f.read_text(errors='replace').splitlines():
+    text = chr(10).join((WIP / f'{k}_{tag}.txt').read_text(errors='replace') for k in ('P', 'F') if (WIP / f'{k}_{tag}.txt').exists())
+    for ln in text.splitlines():
         if (ln.startswith('P_') or ln.startswith('F2_')) and ' study ' in ln:
             case = ln.split()[0]
         if ln.startswith(' extra ') and case:
