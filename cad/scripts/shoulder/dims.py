@@ -91,6 +91,8 @@ CUFF = dict(ri=39.75, ro_top=43.0, ro_bot=41.35, ro_mid=(42.9, 336.0), y0=DISH_Y
 # DRESSED 2: cuff round the RS02 housing (r 39.25), tapering to r 41.7 and down to 2 mm above the hub rim (Y 315.8), to
 # continue the arm's top (r 39 at Y 302); notched round the fork rear's yaw exit
 DOME = dict(r=55.0, edge=5.0, back_t=2.4, pocket_r=(24.5, 52.6), pockets=[(-20.0, 40.0), (50.0, 130.0), (140.0, 200.0), (212.0, 252.0), (288.0, 328.0)])
+# YOKE (LOOK=yoke, look build; Joey picked the yoke on 2026-11-14, the real part waits for his go): yoke.py
+YOKE = dict(r=30.0, wedge=36.0, fillet=22.0, round=9.5, pocket_wall=4.0, half_w=0.0)
 # DRESSED 2: fork front as a full dome cap r 55 (drum skin r 57: the dome sits 3 mm in front of the lip face), R5-ish
 # front edge (arm cheeks R5, drum R7), pocketed from the back
 RS03_BUMP = dict(x0=RX - 53.0, x1=RX - 46.0, y=9.5, z0=18.6)   # relief for the RS03 housing boss at r 50.25 inboard (Z 19.6-28.1)
@@ -102,6 +104,7 @@ NECK = dict(ri_core=21.0, ro=40.0, ri=35.6, x0=100.5, x_disc=106.0, x1=130.0)
 SPOKES = dict(n=5, a0=108.0, w=9.0, r0=21.0, r1=50.0, x0=100.5, x1=104.5, screw_r=46.0, insert_depth=3.8)   # M3 x 4 inserts   # carry the flange ring
 # ---- flange ring (separate printed part; CHANGED: was the 1.8 mm flange on P1 at X 100.5-102.3) ----
 RING = dict(ri=42.0, ro=77.5, x0=104.5, x1=106.3)   # 1.8 thick, printed flat
+RIM_B = dict(deep=4.2, roll=3.2, land=5.0, ease=9.2, blend=6.0)   # LOOK=rimB: rolled rim on the ring's outboard face (look build)
 # ---- pitch loop cover (torso side, fixed); CHANGED: outer wall runs on to 2 mm short of the ring (X 104.5)
 COVER = dict(ri=56.0, back_x=(75.0, 77.4), out=(73.5, 75.9), in_=(55.0, 57.4), in_x1=98.5)
 COVER['x1'] = RING['x0'] - 2.0

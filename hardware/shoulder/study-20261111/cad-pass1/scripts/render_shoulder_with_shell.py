@@ -24,7 +24,7 @@ T = np.array([[0, 1, 0, -38.0], [0, 0, 1, -810.14], [1, 0, 0, 0], [0, 0, 0, 1.0]
 SHELL_COL = (0.36, 0.42, 0.52)
 
 
-def outer_shell():
+def outer_shell(open_r=80.0):
     ms = []
     for f in sorted(glob.glob('J:/code/marengo/cad/exports/shell/marengo_shell_*.STL')):
         n = f.split('marengo_shell_')[-1][:-4]
@@ -36,7 +36,7 @@ def outer_shell():
     m = trimesh.util.concatenate(ms)
     v = m.vertices
     r = np.hypot(v[:, 1] - RY, v[:, 2] - PZ)
-    inside = (r < 80.0) & (v[:, 0] > 40.0)                    # the left socket's floor and inner cone
+    inside = (r < open_r) & (v[:, 0] > 40.0)                    # the left socket's floor and inner cone
     keep = ~inside[m.faces].all(axis=1)
     return trimesh.Trimesh(v, m.faces[keep], process=False)
 

@@ -474,7 +474,15 @@ def build_access_plugs():
 def build_ring():
     d = new_part(OUT / f"{NAMES['ring']}.SLDPRT")
     rg = RING
-    pitch_rev(d, 'RING', [(rg['ri'], rg['x0']), (rg['ro'], rg['x0']), (rg['ro'], rg['x1']), (rg['ri'], rg['x1'])], [0.5, 0.9, 0.9, 0.5])
+    if LOOK == 'rimB':
+        # ROLLED RIM B (look build; Joey picked it from the render pictures, 2026-11-14): the outboard face rolls R3.2 from the
+        # rim into a rim 4.2 deep and eases back to the 1.8 web by r 68.3 (9.2 mm of radius). The inboard face stays flat
+        # (it still prints on it), the outer radius and the 2 mm gap to the cover are unchanged.
+        xr = rg['x0'] + RIM_B['deep']
+        pitch_rev(d, 'RING', [(rg['ri'], rg['x0']), (rg['ro'], rg['x0']), (rg['ro'], xr), (rg['ro'] - RIM_B['land'], xr), (rg['ro'] - RIM_B['ease'], rg['x1']), (rg['ri'], rg['x1'])],
+                  [0.5, 0.9, RIM_B['roll'], RIM_B['blend'], RIM_B['blend'], 0.5])
+    else:
+        pitch_rev(d, 'RING', [(rg['ri'], rg['x0']), (rg['ro'], rg['x0']), (rg['ro'], rg['x1']), (rg['ri'], rg['x1'])], [0.5, 0.9, 0.9, 0.5])
     extrude(d, xsk(d, rg['x0'] - 1, 'TRUNK_HOLE', lambda s: s.rpoly(rect_pts((rg['x0'] - 1, TRUNK_AY, 0.0), Z, Y, SHW + 1.0, SHH + 1.0), [2.5] * 4)),
             'TRUNK_HOLE', 5, X, cut=True)
     extrude(d, xsk(d, rg['x0'] - 1, 'SCREWS', lambda s: [s.circle(pitch_pt(SPOKES['screw_r'], SPOKES['a0'] + 72 * k, rg['x0'] - 1), 1.7) for k in range(5)]),
@@ -671,6 +679,18 @@ def build_fork_front():
     xl_, yl_, rl_ = (33.8, 372.0, 10.0) if FB == '3' else (22.0, 362.0, 10.0)   # FB 3: the cheek reaches the cuff's full width (+-43.8): no waist
     Y_CUT = 372.0 if FB in ('1', '2') else 392.0   # FB: the cheek is cut flat here; the chin / wrap loft continues its exact section
     hull = lambda k: hull_pts([(RX, RY, dm['r'] - k), (RX - xl_, yl_ + 0.5 * k, max(rl_ - k, 3.0)), (RX + xl_, yl_ + 0.5 * k, max(rl_ - k, 3.0))])
+    # yoke / yokeS / ffYS: the yoke outline. Names ending in S: a solid neck (the two lower pockets on the back face left
+    # out) and a 4.5 x 4.5 blend cone at the boss root (the root is a sharp corner on today's part). Names starting with ff are
+    # analysis builds: the same part without the two dia 7 driver-access bores (plugged in service; today's part will not
+    # mesh with them): ffT today's part, ffTS today's part with the solid neck, ffYS the yoke with the solid neck.
+    YK = LOOK in ('yoke', 'yokeS', 'ffYS')
+    SOLID = LOOK in ('yokeS', 'ffTS', 'ffYS')
+    NOACC = LOOK.startswith('ff')
+    if YK:
+        # YOKE (look build): nothing above the hub. One outline (yoke.py): today's lower cheek below two shoulder lines, the
+        # hub disc, blended; the same crowned edge runs all round it. The wrap below takes its top section from this outline
+        import yoke as YKM
+        hull = lambda k: YKM.outline(k)
     fc = FRONT_CROWN
     z0, z1 = FRONT_Z[0], fc['z1']
     extrude(d, zsk(d, z0, 'CHEEK', lambda s: s.spline([(x, y, z0) for x, y in hull(0.0)])), 'CHEEK', fc['z0'] - z0, Z)
@@ -791,8 +811,9 @@ def build_fork_front():
         env_pts = [(x, y, -31.0) for x, y in list(env.exterior.coords)[:-1]]
         extrude(d, zsk(d, -31.0, 'DRUM_ENV', lambda s_: s_.poly(env_pts)), 'DRUM_ENV', 38.5 + 31.0, Z, cut=True, lo=-1.0)
         yaw_rev(d, 'WRAP_RS02_CLEAR', [(0, 361.0), (34.5, 361.0), (34.5, 367.3), (0, 367.3)], cut=True)
-        extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, SEAT_Y[1] - 3.5), 3.5) for a_ in RS02_ACCESS_ANG]),
-                'RS02_ACCESS', 140.0, Y, cut=True)
+        if not NOACC:
+            extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, SEAT_Y[1] - 3.5), 3.5) for a_ in RS02_ACCESS_ANG]),
+                    'RS02_ACCESS', 140.0, Y, cut=True)
     elif FB:
         # FRONT BLEND: one loft from the cuff's own front (Y 356) into the cheek's exact crowned section at the flat cut
         # (Y 372), so the cheek runs down into the cuff as one surface. '1' plain: the cuff front from Z 40.5;
@@ -855,8 +876,20 @@ def build_fork_front():
                 'RS02_ACCESS', 140.0, Y, cut=True)
     # (the round-2 rear web is dropped: it sat 0.5 mm off the fork rear arm, carried no load and cost 6.5 g)
     # ---- cuts
-    extrude(d, zsk(d, z0 - 1, 'DOME_POCKETS', lambda s: [sector(s, lambda r, a: rpt(r, a, z0 - 1), dm['pocket_r'][0], dm['pocket_r'][1], a0, a1, 3.0)
-                                                         for a0, a1 in dm['pockets']]), 'DOME_POCKETS', z1 - z0 - dm['back_t'] + 1, Z, cut=True)
+    if SOLID and YK:
+        log('  DOME_POCKETS: none (solid neck)')
+    elif SOLID:
+        extrude(d, zsk(d, z0 - 1, 'DOME_POCKETS', lambda s: [sector(s, lambda r, a: rpt(r, a, z0 - 1), dm['pocket_r'][0], dm['pocket_r'][1], a0, a1, 3.0)
+                                                             for a0, a1 in dm['pockets'] if a0 < 200.0]), 'DOME_POCKETS', z1 - z0 - dm['back_t'] + 1, Z, cut=True)
+    elif YK:
+        # only the two lower pockets, kept inside the yoke's outline (today's 2.4 mm wall); the hub's head is solid
+        extrude(d, zsk(d, z0 - 1, 'DOME_POCKETS', lambda s: [s.poly([(x, y, z0 - 1) for x, y in pk]) for pk in YKM.pockets()]),
+                'DOME_POCKETS', z1 - z0 - dm['back_t'] + 1, Z, cut=True)
+    else:
+        extrude(d, zsk(d, z0 - 1, 'DOME_POCKETS', lambda s: [sector(s, lambda r, a: rpt(r, a, z0 - 1), dm['pocket_r'][0], dm['pocket_r'][1], a0, a1, 3.0)
+                                                             for a0, a1 in dm['pockets']]), 'DOME_POCKETS', z1 - z0 - dm['back_t'] + 1, Z, cut=True)
+    if SOLID:
+        roll_rev(d, 'BOSS_ROOT', [(21.8, z0 + 0.3), (26.5, z0 + 0.3), (26.5, z0), (22.0, z0 - 4.5), (21.8, z0 - 4.5)])
     try:     # the sleeve's back is open toward the fork rear, so the notch may find nothing left to cut
         if SC47:
             raise SystemExit('closed ring: the exit runs inside it, no notch')

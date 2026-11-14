@@ -29,6 +29,8 @@ EX, NU, YIELD, LAYER, RHO = 1.9e9, 0.38, 45.0, 0.5, 1270.0
 PARTS = {'hub': F / os.environ.get('HUB_FEA_FILE', 'hub_fea.SLDPRT')}   # a second solve stream uses its own copy
 PARTS['fork'] = F / os.environ.get('FORK_FEA_FILE', 'fork_fea.SLDPRT')
 PARTS['fork1'] = F / 'fork1_fea.SLDPRT'
+PARTS['fork2'] = F / os.environ.get('FORK2_FEA_FILE', 'fork2_fea.SLDPRT')      # fork front and fork rear combined into one body (fork2_fea_part.py): F2_* cases
+PARTS['ff'] = F / os.environ.get('FF_FEA_FILE', 'ff_fea.SLDPRT')      # the fork front alone (a copy of the part): FF_* cases
 PARTS['stop_fr'] = F / 'stop_fork_rear.SLDPRT'   # stop rev 2 checks
 PARTS['stop_cap'] = F / 'stop_cap.SLDPRT'
 PARTS['stop_fr_leg2'] = F / 'stop_fork_rear_leg2.SLDPRT'
@@ -81,10 +83,26 @@ def _safe(f, default=None):
         return default
 
 
+_INFO = {}
+
+
+def infos(d):
+    """(face, info) for every face. With FEA_FACE_CACHE set, the infos are read once per file and reused for the following
+    cases on it (the faces come in the same order each time the file is opened); only for cases that add no feature."""
+    fs = faces_of(d)
+    if not os.environ.get('FEA_FACE_CACHE'):
+        return [(f, info(f)) for f in fs]
+    key = (str(d.GetPathName), len(fs))
+    if key not in _INFO:
+        t_ = time.time()
+        _INFO[key] = [info(f) for f in fs]
+        print(' face infos read:', len(fs), 'faces in %.0f s' % (time.time() - t_), flush=True)
+    return list(zip(fs, _INFO[key]))
+
+
 def pick(d, sel):
     out = []
-    for f in faces_of(d):
-        t, r, n, b, a = info(f)
+    for f, (t, r, n, b, a) in infos(d):
         lo, hi = (min(b[0], b[3]), min(b[1], b[4]), min(b[2], b[5])), (max(b[0], b[3]), max(b[1], b[4]), max(b[2], b[5]))
         if sel[0] == 'cyl' and t == 'cyl' and abs(r - sel[1]) < 0.02:
             q = sel[2]
@@ -224,6 +242,16 @@ def run(name, c):
     e, w = L(), L()
     d = sw.OpenDoc6(str(PARTS[c['part']]), 1, 1, '', e, w)
     sw.ActivateDoc3(d.GetTitle, False, 0, L())
+    for fn_ in [x for x in os.environ.get('FEA_SUPPRESS', '').split(',') if x]:
+        # features suppressed on the FEA copy only (e.g. bores that are plugged in service and stop the mesher); the copy is not saved
+        f_ = d.FeatureByName(fn_)
+        ok_ = False
+        if f_ is not None:
+            d.ClearSelection2(True)
+            f_.Select2(False, 0)
+            ok_ = call(d, 'EditSuppress2')
+            d.ForceRebuild3(False)
+        print(' suppressed on the FEA copy:', fn_, ok_, flush=True)
     if c.get('dummy'):
         # a stiff dummy of the RS02 output: an aluminium disc seated on the hub's step face, a separate body bonded to it
         # (the six preloaded M4 on PCD 24 keep the joint closed: about 0.6 kN of bolt load change at 23 N.m against about
@@ -363,6 +391,7 @@ def run(name, c):
                 fs.append(x)
         loaded += fs
         err = I()
+        print(' remote faces', len(fs), [info(x)[0] for x in fs], round(time.time() - t0), 's', flush=True)
         r = lbc.AddRemoteLoad(1, fs, 0, at[0], at[1], at[2], err)
         print(' remote', len(fs), 'err', err.value, flush=True)
         call(r, 'RemoteLoadBeginEdit')
@@ -425,7 +454,8 @@ def run(name, c):
         q.ElementSize = size
         q.Ratio = 1.5
         print(' control', len(fs), size, call(q, 'MeshControlEndEdit'), flush=True)
-    rc = st.CreateMesh(0, el, el * 0.05)
+    tolf = float(os.environ.get('FEA_TOL', '0.05'))      # mesh tolerance as a fraction of the element size (0.05 unless a part will not mesh)
+    rc = st.CreateMesh(0, el, el * tolf)
     print(' mesh', rc, 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, flush=True)
     # fallbacks when the curvature mesher fails (rev C run-out lofts leave narrow faces): blended curvature, then finer
     for mt, k in ((1, 1.0), (1, 0.8), (0, 0.8)):
@@ -435,7 +465,7 @@ def run(name, c):
             mesh.MesherType = mt
         except Exception as e_:
             print(' mesher type set failed', e_, flush=True)
-        rc = st.CreateMesh(0, el * k, el * k * 0.05)
+        rc = st.CreateMesh(0, el * k, el * k * tolf)
         print(' mesh retry', mt, el * k, rc, 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, flush=True)
     if rc:
         raise SystemExit('mesh failed')
@@ -469,7 +499,10 @@ def run(name, c):
     if c.get('react') or c.get('disp'):
         try:
             err = I()
-            u = res.GetDisplacement(0, 1, NUL, 0, err)
+            try:
+                u = res.GetDisplacement(0, 1, NUL, 0, err)
+            except Exception:
+                u = res.GetTranslationalDisplacement(1, NUL, 0, err)       # this build's name: step, plane, unit (0: mm), error
             u = np.array(u[0] if isinstance(u, tuple) and len(u) == 2 else u, float).reshape(-1, 5)
             upos = np.array([xyz[int(i)] for i in u[:, 0]])
             extra['u_max'] = round(float(u[:, 4].max()), 4)
@@ -967,6 +1000,53 @@ CASES['STOP_A2_CAP'] = dict(part='stop_cap', el=1.5,
                             regions=dict(slot_end=[RX - 30, RY - 46, -40.5, RX + 2, RY - 20, -28.0]))
 
 CASES['FORK1_G_free'] = dict(CASES['FORK_G_free'], part='fork1')
+
+# THE FORK FRONT ALONE (2026-11-14, for the yoke look build against today's part, like for like). One body, so nothing
+# floats (the two-body FORK_* model never solved). The boss face on the RS03 output is fixed; the 6808 and the fork rear
+# are left out, so the RS03 side takes everything: the bound of C_LOAD_SHARE.md that loads the fork front most.
+#   FF_MX / FF_MZ   the arm's design load of check (a) through the RS02 seat (310 N down, 23 N.m about X or Z, 17 N.m yaw)
+#   FF_MXn          FF_MX with the yaw torque reversed
+#   FF_STOP         the roll stop at the RS03 peak: 1714 N on the fork rear's tooth (r 35 at 270 deg, Z -37), carried rigidly
+#                   to the fork front's joint face and its insert bores; the boss holds the 60 N.m (either sign: linear)
+#   FF_SIDE         100 N along Z at the arm's hub point (the fork front's own out-of-plane stiffness; in the assembly the
+#                   fork rear and the 6808 share this as a portal)
+# the seat's faces by their box only (no closest-point test: on today's fork front that call never returned for one face)
+FF_RS02 = [('plane', q[1], None) for q in FK_RS02[:-1]] + [FK_RS02[-1]]
+FF_JOINT = [('plane', (RX, JY + 2.0, JZ0), None), cyl(2.8, [RX - 35, 340.0, JZ0 - 1.0, RX + 35, 364.0, JZ0 + 13.0])]
+FF_DISP = dict(rs02_seat=[RX - 45, SEAT_Y[0] - 0.2, YZ - 45, RX + 45, SEAT_Y[0] + 0.2, YZ + 45])
+_ff = dict(part='ff', fix=[('fixed', FK_BOSS)], coupling=0, el=2.0, disp=FF_DISP, react=dict(boss=[FK_BOSS]))
+CASES['FF_MX'] = dict(_ff, remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (23.0, YAW_T, 0.0)))
+CASES['FF_MXn'] = dict(_ff, remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (23.0, -YAW_T, 0.0)))
+CASES['FF_MZ'] = dict(_ff, remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (0.0, YAW_T, 23.0)))
+CASES['FF_SIDE'] = dict(_ff, remote=(FF_RS02, AT, (0.0, 0.0, 100.0), (0.0, 0.0, 0.0)))
+# THE PROPER NECK CHECK (2026-11-14). P_*: the fork front alone with a 0.7 mm mesh round the boss root; F2_*: the fork front
+# and the fork rear as one combined body, the 6808 seat held radially (the outer race floats axially), so the loads share
+# between the RS03 output and the rear leg as the parts' own stiffness makes them. Suffix s: the boss not glued to a rigid
+# face but held as the screws and pins hold it: the six screw-head seats fixed, the three pin holes held radially, the boss
+# face free to slide (it cannot lift here; with 0.35 kN per screw it does not lift below about 12 N.m of prying).
+FF_ROOT = [(('touch', [RX - 27.5, RY - 27.5, 33.5, RX + 27.5, RY + 27.5, 39.7], 600.0), 0.7)]
+FF_SEATS = [('fixed', ('plane', _rp(18.4, 30.0 + 60.0 * k_, CAP_FLOOR - 2.0), None, 'on')) for k_ in range(6)] +            [('radial', cyl(1.9, [RX - 20, RY - 20, ROLL_OUT - 0.1, RX + 20, RY + 20, ROLL_OUT + 9.3])), ('roller', FK_BOSS)]
+for sfx_, yaw_ in (('', YAW_T), ('n', -YAW_T)):
+    rem_ = (FF_RS02, AT, (0.0, -310.0, 0.0), (23.0, yaw_, 0.0))
+    CASES['P_MX' + sfx_] = dict(_ff, remote=rem_, ctrl=FF_ROOT, ctrl_optional=1, react={})
+    CASES['P_MX' + sfx_ + 'b'] = dict(CASES['P_MX' + sfx_], fix=[('fixed', FK_BOSS), ('axialY', FF_JOINT[0])])
+    CASES['F2_MX' + sfx_] = dict(CASES['P_MX' + sfx_], part='fork2', fix=[('fixed', FK_BOSS), ('radial', FK_SEAT6808)])
+# the sideways moment (23 N.m about the roll axis: the roll motor's own torque) and the stop at the RS03 peak (1714 N on the
+# rear leg's tooth flank, as STOP_A2_TOOTH), both on the combined body so the 6808 takes its radial share
+CASES['P_MZ'] = dict(CASES['P_MX'], remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (0.0, YAW_T, 23.0)))
+CASES['F2_MZ'] = dict(CASES['F2_MX'], remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (0.0, YAW_T, 23.0)))
+CASES['F2_STOP'] = dict(part='fork2', fix=[('fixed', FK_BOSS), ('radial', FK_SEAT6808)], el=2.0, ctrl=FF_ROOT, ctrl_optional=1, disp=FF_DISP,
+                        forces=[(('plane', _rp(35.0, _ta - _th, -37.0), None, 'on'), STOP_F, None)])
+CASES['P_MXbs'] = dict(CASES['P_MXb'], fix=FF_SEATS + [('axialY', FF_JOINT[0])])
+CASES['F2_MXs'] = dict(CASES['F2_MX'], fix=FF_SEATS + [('radial', FK_SEAT6808)])
+# the stop as the fork front sees it with the 6808 in place: the tooth's force is taken radially by the 6808, and the 60 N.m
+# about the roll axis goes from the joint face through the cheek to the boss (FF_STOP, the bare force, has no 6808 and is not used)
+CASES['FF_STOPM'] = dict(_ff, remote=(FF_JOINT, (RX, RY, -37.0), (0.0, 0.0, 0.0), (0.0, 0.0, 60.0)))
+# the other bound for the forward moment: the joint face to the fork rear held along Y (the rear leg is stiff along its length,
+# about 7.5 kN/mm, and carries the Y-couple to the 6808: C_LOAD_SHARE.md). The truth lies between FF_MX and FF_MXb
+for k_ in ('FF_MX', 'FF_MXn'):
+    CASES[k_ + 'b'] = dict(CASES[k_], fix=[('fixed', FK_BOSS), ('axialY', FF_JOINT[0])], react={})
+CASES['FF_STOP'] = dict(_ff, remote=(FF_JOINT, _rp(35.0, _ta, -37.0), (STOP_F, 0.0, 0.0), (0.0, 0.0, 0.0)))
 
 if __name__ == '__main__':
     try:
