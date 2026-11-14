@@ -101,16 +101,18 @@ PLAN item 3 says PREEMPT_RT only if the Pi's measurement misses its budget. How 
 - **Measure first, on the real image:** `cyclictest` (or `rtla timerlat`) for at least an hour **under load** (`stress-ng`
   including memory pressure, plus the runtime on `vcan`), with the result committed per kernel version. **Why:** worst case
   under load is what matters. Published Pi 5 numbers show a stock kernel can exceed 9 ms under stress, while PREEMPT_RT stays
-  around 100 to 225 µs, so expect the measurement to point at RT.
+  around 100 to 225 µs, which is why the measurement comes first. Our own Pi's results, per kernel and setup, are under
+  [docs/bench-results/realtime/](../docs/bench-results/realtime/). The CAN round trip is `can-bench`'s to measure.
 - **If RT is needed:** Raspberry Pi's apt repository has a `PREEMPT_RT` kernel, `linux-image-rpi-v8-rt`, at the same
   version as the stock one (seen 2026-11-13 at 6.18.60). It installs beside the stock kernel, is selected with a `kernel=`
   line in `config.txt`, and is held like the rest. It is the generic arm64 build with 4K pages (the Pi 5's default kernel
-  uses 16K); there is no Pi 5 specific RT package, and the stock kernel has no `NO_HZ_FULL`. Only if it falls short: build from the
-  Raspberry Pi kernel tree (`PREEMPT_RT` is in mainline since 6.12), packaged and held. Real-time Ubuntu for Pi would mean
-  a different OS and is the last resort.
-- **CPU isolation:** realtime bus threads get their own cores (`isolcpus`, `nohz_full`, `rcu_nocbs` on those cores,
-  `irqaffinity` to the others); the recorder, UI bridge and everything else stay off them. Which cores depends on the bus count
-  and is decided by the measurement.
+  uses 16K); there is no Pi 5 specific RT package. Only if it falls short: build from the Raspberry Pi kernel tree
+  (`PREEMPT_RT` is in mainline since 6.12), packaged and held. Real-time Ubuntu for Pi would mean a different OS and is
+  the last resort.
+- **CPU isolation:** realtime bus threads get their own cores (`isolcpus` on those cores, `irqaffinity` to the others);
+  the recorder, UI bridge and everything else stay off them. `nohz_full` and `rcu_nocbs` need a kernel built with
+  `NO_HZ_FULL` and `RCU_NOCB_CPU`, which neither Raspberry Pi's stock kernel nor its RT one is. Which cores depends on
+  the bus count and is decided by the measurement.
 - **Check where interrupts really land** (`/proc/interrupts`). On the Pi 5, USB and GPIO interrupts arrive through the RP1 chip,
   and moving them has had kernel bugs. Don't assume it worked.
 - **CPU governor `performance`** so clocks don't change under the loop.
