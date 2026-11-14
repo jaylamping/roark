@@ -2,7 +2,7 @@
 
 Branch `left-arm-organic-r1`.
 
-Pinned commit: 0fb42a291b050475ad3cc12c5ff6eb53676507ca (r1g6 after review 3; hub D3c7 released at 355aa9b; no-instrument bench). Nothing here is
+Pinned commit: 9a73dca66f5c0546555d4400fde486af425be6df (r1g6 after review 3; hub D3c7 released; stage 1 bench simplified). Nothing here is
 released.
 
 **Review 3 (head 131cd60) verdict: the coupon, the hub, the shim rings and the yaw lever only.**
