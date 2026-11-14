@@ -1,0 +1,52 @@
+02:54:16 SolidWorks pid 133928 free GB 13.3
+02:54:26 ok PROFILE volume change: 15040.0000 (expected 15040.0000)
+02:54:26 PROFILE: added 15040.00 mm3
+02:54:28 ok WINDOW volume change: 7982.3081 (expected 7982.3081)
+02:54:28 WINDOW: cut 7982.31 mm3
+02:54:30 ok SCREW_HOLES volume change: 159.0431 (expected 159.0431)
+02:54:30 SCREW_HOLES: cut 159.04 mm3
+02:54:31 ok inside corner edges: 4.0000 (expected 4.0000)
+02:54:31 CORNERS: R2.0 on 4 edges, volume change +121.72 mm3
+02:54:33 NARROW: cut 2214.70 mm3
+02:54:33 NARROW removed 2214.7 mm3
+02:54:33 member-side to strip edges 4
+02:54:34 FOOT_SIDES: R1.0 on 4 edges, volume change -4.04 mm3
+02:54:34 FOOT_SIDES radius 1.0
+02:54:35 ok hole faces: 2.0000 (expected 2.0000)
+02:54:35 ok hole y: 20.0000 (expected 20.0000)
+02:54:35 ok hole z: 12.0000 (expected 12.0000)
+02:54:35 ok hole along X: 1.0000 (expected 1.0000)
+02:54:35 ok hole y: 20.0000 (expected 20.0000)
+02:54:35 ok hole z: 48.0000 (expected 48.0000)
+02:54:35 ok hole along X: 1.0000 (expected 1.0000)
+02:54:35 ok wall face at X 0: 1.0000 (expected 1.0000)
+02:54:35 ok load patch: 1.0000 (expected 1.0000)
+02:54:35 ok patch area: 100.0000 (expected 100.0000)
+02:54:35 ok patch box[0]: 55.0000 (expected 55.0000)
+02:54:35 ok patch box[1]: 15.0000 (expected 15.0000)
+02:54:35 ok patch box[3]: 65.0000 (expected 65.0000)
+02:54:35 ok patch box[4]: 25.0000 (expected 25.0000)
+02:54:35 ok patch box[5]: 52.0000 (expected 52.0000)
+02:54:35 HAND {'chord_tension_n': 90.3, 'chord_stress_mpa': 9.03, 'strut_force_n': 102.9, 'strut_stress_mpa': 3.96, 'strut_len_mm': 57.6, 'euler_in_plane_n': 332, 'euler_out_of_plane_n': 307, 'buckling_factor_pinned': 2.98, 'zc': 53.0} mass g 5.714
+02:54:35 ok s2_narrow_wall_1p5 hole faces: 2.0000 (expected 2.0000)
+02:54:35 ok s2_narrow_wall_1p5 wall faces: 1.0000 (expected 1.0000)
+02:54:35 ok s2_narrow_wall_1p5 load patch faces: 1.0000 (expected 1.0000)
+02:54:35 fillet faces for mesh control 6
+02:54:35 s2_narrow_wall_1p5: PREDICT nodes ~30958, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 9.03 / 3.96 MPa
+02:54:38 s2_narrow_wall_1p5: mesh rc 0, 39348 nodes, 24840 elements, free 14.3 GB
+02:54:42 s2_narrow_wall_1p5: fixture nodes 1075, box [0.0, 15.0, 6.0] to [0.0, 25.0, 56.0]
+02:54:42 s2_narrow_wall_1p5: load nodes 230, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:54:45 s2_narrow_wall_1p5 checks {'reaction': [0.001, 0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 9.576, 'sx_hand': 7.5, 'sx_nodes': 99, 'sx_err_pct': 27.68, 'max_disp': 1.422, 'vm_all': 23.99, 'vm_all_at': [49.28, 19.68, 50.41], 'nodes': 39348, 'excessive_prompt': False}
+02:54:45 s2_narrow_wall_1p5 chord sx 9.09 hand 9.03 | Y factors (1.88, 8.25, 3.03, 1.88) | vm (23.99, [49.28, 19.68, 50.41], 1.88) | Y {"tension": [2.73, [49.24, 18.64, 50.42], 8.25], "shear": [4.29, [5.31, 20.27, 53.17], 3.03]} | excluded {'vm': 18.39, 'at': [54.26, 20.0, 52.06]}
+02:54:45 ok s2_narrow_holes_1p5 hole faces: 2.0000 (expected 2.0000)
+02:54:45 ok s2_narrow_holes_1p5 wall faces: 1.0000 (expected 1.0000)
+02:54:45 ok s2_narrow_holes_1p5 load patch faces: 1.0000 (expected 1.0000)
+02:54:45 fillet faces for mesh control 6
+02:54:45 s2_narrow_holes_1p5: PREDICT nodes ~30958, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 9.03 / 3.96 MPa
+02:54:46 s2_narrow_holes_1p5: mesh rc 0, 39348 nodes, 24840 elements, free 15.9 GB
+02:54:51 s2_narrow_holes_1p5: fixture nodes 376, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+02:54:51 s2_narrow_holes_1p5: load nodes 230, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:54:53 s2_narrow_holes_1p5 checks {'reaction': [-0.001, -0.002, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 9.837, 'sx_hand': 7.5, 'sx_nodes': 99, 'sx_err_pct': 31.16, 'max_disp': 1.604, 'vm_all': 25.31, 'vm_all_at': [4.0, 20.37, 50.22], 'nodes': 39348, 'excessive_prompt': False}
+02:54:53 s2_narrow_holes_1p5 chord sx 9.07 hand 9.03 | Y factors (2.01, 4.66, 1.99, 1.99) | vm (22.41, [49.28, 19.68, 50.41], 2.01) | Y {"tension": [4.83, [5.2, 20.39, 55.78], 4.66], "shear": [6.53, [5.15, 20.47, 52.59], 1.99]} | excluded {'vm': 25.31, 'at': [4.0, 20.37, 50.22]}
+02:54:53 closing pid 133928 committed MB 1921
+STEP s2_narrow mass 5.714 worst Y factors (yield, layer, shear, min) [1.88, 4.66, 1.99, 1.88] buckling 2.98

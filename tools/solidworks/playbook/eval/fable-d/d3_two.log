@@ -1,0 +1,58 @@
+09:23:19 SolidWorks pid 123324 free GB 12.3
+09:23:19 ---- P1_b: {'od': 70, 't': 7.5, 'bore': 30, 'na': 6, 'da': 3.4, 'ca': 50, 'nb': 4, 'db': 4.5, 'cb': 60, 'cbd': 8.0, 'cbdepth': 4.5, 'turn_a': 0.0, 'turn_b': 45.0, 'chamfer': 0.4}
+09:23:21 DISC: D1@DISC@P1_b.Part 6.0 -> 7.5
+09:23:21 TOP_P: D1@TOP_P@P1_b.Part 6.0 -> 7.5
+09:23:21 CBORE: D1@CBORE@P1_b.Part 3.0 -> 4.5
+09:23:21 ok P1_b top outside edge: 1.0000 (expected 1.0000)
+09:23:21 ok P1_b chamfer volume: 17.5259 (expected 17.5259)
+09:23:21 ok P1_b volume against the hand value: 22040.2244 (expected 22040.2244)
+09:23:21 ok P1_b rebuild errors: 0.0000 (expected 0.0000)
+09:23:21 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\d3\P1_b.stl 136784 bytes
+09:23:22 ---- P2_b: {'od': 84, 't': 7.5, 'bore': 40, 'na': 6, 'da': 4.5, 'ca': 62, 'nb': 6, 'db': 4.5, 'cb': 62, 'cbd': 8.0, 'cbdepth': 4.5, 'turn_a': 0.0, 'turn_b': 30.0, 'chamfer': 1.0}
+09:23:23 DISC: D1@DISC@P2_b.Part 6.0 -> 7.5
+09:23:23 TOP_P: D1@TOP_P@P2_b.Part 6.0 -> 7.5
+09:23:23 CBORE: D1@CBORE@P2_b.Part 3.0 -> 4.5
+09:23:23 ok P2_b top outside edge: 1.0000 (expected 1.0000)
+09:23:23 ok P2_b chamfer volume: 130.8997 (expected 130.8997)
+09:23:24 ok P2_b volume against the hand value: 29648.4534 (expected 29648.4534)
+09:23:24 ok P2_b rebuild errors: 0.0000 (expected 0.0000)
+09:23:24 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\d3\P2_b.stl 167284 bytes
+09:23:24 ---- P3_b: {'od': 96, 't': 9.5, 'bore': 52, 'na': 8, 'da': 3.4, 'ca': 70.0, 'nb': 4, 'db': 5.5, 'cb': 84, 'cbd': 10.0, 'cbdepth': 5.5, 'turn_a': 22.5, 'turn_b': 0.0, 'chamfer': 0.4}
+09:23:25 DISC: D1@DISC@P3_b.Part 8.0 -> 9.5
+09:23:25 TOP_P: D1@TOP_P@P3_b.Part 8.0 -> 9.5
+09:23:25 CBORE: D1@CBORE@P3_b.Part 4.0 -> 5.5
+09:23:25 RING_A_SK: 8 segments deleted, 8 circles drawn
+09:23:25 ok P3_b top outside edge: 1.0000 (expected 1.0000)
+09:23:26 ok P3_b chamfer volume: 24.0604 (expected 24.0604)
+09:23:26 ok P3_b volume against the hand value: 45765.7835 (expected 45765.7835)
+09:23:26 ok P3_b rebuild errors: 0.0000 (expected 0.0000)
+09:23:26 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\d3\P3_b.stl 153684 bytes
+09:23:26 ---- P4_b: {'od': 70.0, 't': 6.5, 'bore': 28, 'na': 4, 'da': 3.4, 'ca': 40, 'nb': 6, 'db': 4.5, 'cb': 58, 'cbd': 8.0, 'cbdepth': 4.5, 'turn_a': 0.0, 'turn_b': 0.0, 'chamfer': 1.0}
+09:23:27 DISC: D1@DISC@P4_b.Part 5.0 -> 6.5
+09:23:27 TOP_P: D1@TOP_P@P4_b.Part 5.0 -> 6.5
+09:23:27 CBORE: D1@CBORE@P4_b.Part 3.0 -> 4.5
+09:23:27 ok P4_b top outside edge: 1.0000 (expected 1.0000)
+09:23:27 ok P4_b chamfer volume: 108.9085 (expected 108.9085)
+09:23:27 ok P4_b volume against the hand value: 19119.5549 (expected 19119.5549)
+09:23:27 ok P4_b rebuild errors: 0.0000 (expected 0.0000)
+09:23:28 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\d3\P4_b.stl 151584 bytes
+09:23:28 ---- P5_b: {'od': 120, 't': 9.5, 'bore': 60, 'na': 12, 'da': 4.5, 'ca': 80, 'nb': 6, 'db': 6.6, 'cb': 104, 'cbd': 11.0, 'cbdepth': 6.5, 'turn_a': 0.0, 'turn_b': 0.0, 'chamfer': 1.0}
+09:23:28 DISC: D1@DISC@P5_b.Part 8.0 -> 9.5
+09:23:28 TOP_P: D1@TOP_P@P5_b.Part 8.0 -> 9.5
+09:23:28 CBORE: D1@CBORE@P5_b.Part 5.0 -> 6.5
+09:23:29 ok P5_b top outside edge: 1.0000 (expected 1.0000)
+09:23:29 ok P5_b chamfer volume: 187.4484 (expected 187.4484)
+09:23:29 ok P5_b volume against the hand value: 74259.2026 (expected 74259.2026)
+09:23:29 ok P5_b rebuild errors: 0.0000 (expected 0.0000)
+09:23:29 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\d3\P5_b.stl 225084 bytes
+09:23:29 ---- P6_b: {'od': 76, 't': 7.5, 'bore': 34, 'na': 6, 'da': 3.4, 'ca': 46, 'nb': 3, 'db': 4.5, 'cb': 64, 'cbd': 8.0, 'cbdepth': 4.5, 'turn_a': 0.0, 'turn_b': 0.0, 'chamfer': 1.0}
+09:23:30 DISC: D1@DISC@P6_b.Part 6.0 -> 7.5
+09:23:30 TOP_P: D1@TOP_P@P6_b.Part 6.0 -> 7.5
+09:23:30 CBORE: D1@CBORE@P6_b.Part 3.0 -> 4.5
+09:23:30 ok P6_b top outside edge: 1.0000 (expected 1.0000)
+09:23:30 ok P6_b chamfer volume: 118.3333 (expected 118.3333)
+09:23:31 ok P6_b volume against the hand value: 25865.4261 (expected 25865.4261)
+09:23:31 ok P6_b rebuild errors: 0.0000 (expected 0.0000)
+09:23:31 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\d3\P6_b.stl 121884 bytes
+09:23:31 closing pid 123324 committed MB 1909
+DONE d3 two

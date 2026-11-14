@@ -1,0 +1,1511 @@
+{
+ "plates": {
+  "P1": {
+   "volume_mm3": 22040.22,
+   "hand_volume_mm3": 22040.22,
+   "diff_pct": 0.0,
+   "mass_g": 26.23,
+   "bodies": 1,
+   "stl_watertight": true,
+   "stl_shells": 1,
+   "stl_volume_ok": true,
+   "stl_box_ok": false,
+   "min_wall_mm": 0.6,
+   "min_wall_where": "B counterbore to outside, at the top face",
+   "min_wall_measured_mm": 0.6,
+   "bbox": [
+    -35.0,
+    -35.0,
+    0.0,
+    35.0,
+    35.0,
+    7.5
+   ],
+   "measured": {
+    "od": 70.0,
+    "bore": 30.0,
+    "thick": 7.5,
+    "n_a": 6,
+    "n_b": 4,
+    "n_cb": 4,
+    "a_angles": [
+     0.0,
+     60.0,
+     120.0,
+     180.0,
+     240.0,
+     300.0
+    ],
+    "b_angles": [
+     45.0,
+     135.0,
+     225.0,
+     315.0
+    ],
+    "a_circle": [
+     50.0
+    ],
+    "b_circle": [
+     60.0
+    ],
+    "a_dia": [
+     3.4
+    ],
+    "b_dia": [
+     4.5
+    ],
+    "cb_dia": [
+     8.0
+    ],
+    "floor_z": [
+     3.0
+    ],
+    "cb_top_z": [
+     7.5
+    ],
+    "a_z": [
+     [
+      0.0,
+      7.5
+     ]
+    ],
+    "min_wall_measured": 0.6,
+    "as_specified": true
+   },
+   "changed": true,
+   "why": [
+    "ring B turned 45 degrees: at 0 and 180 degrees an A hole (r 25) cut 0.70 mm into a B counterbore (r 30); turned, the wall is 3.02 mm",
+    "chamfer 0.4 mm, not 1.0: the counterbores are 1.0 mm from the outside, a 1 mm chamfer would leave 0.0 mm at the top face; 0.4 leaves 0.6 mm"
+   ],
+   "counterbore_floor_z_mm": 3.0,
+   "floor_z_before": 3.0,
+   "built": {
+    "od": 70,
+    "t": 7.5,
+    "bore": 30,
+    "na": 6,
+    "da": 3.4,
+    "ca": 50,
+    "nb": 4,
+    "db": 4.5,
+    "cb": 60,
+    "cbd": 8.0,
+    "cbdepth": 4.5,
+    "turn_a": 0.0,
+    "turn_b": 45.0,
+    "chamfer": 0.4
+   },
+   "how": {
+    "edits": [
+     "D1@DISC@P1_b.Part: 6.0 -> 7.5",
+     "D1@TOP_P@P1_b.Part: 6.0 -> 7.5",
+     "D1@CBORE@P1_b.Part: 3.0 -> 4.5"
+    ],
+    "tree_before": [
+     [
+      "DISC_SK",
+      "ProfileFeature",
+      24,
+      "11/13/2026 9:20:41 AM"
+     ],
+     [
+      "DISC",
+      "Extrusion",
+      30,
+      "11/13/2026 9:20:41 AM"
+     ],
+     [
+      "BORE_SK",
+      "ProfileFeature",
+      31,
+      "11/13/2026 9:20:41 AM"
+     ],
+     [
+      "BORE",
+      "ICE",
+      44,
+      "11/13/2026 9:20:42 AM"
+     ],
+     [
+      "RING_A_SK",
+      "ProfileFeature",
+      45,
+      "11/13/2026 9:20:42 AM"
+     ],
+     [
+      "RING_A",
+      "ICE",
+      57,
+      "11/13/2026 9:20:42 AM"
+     ],
+     [
+      "RING_B_SK",
+      "ProfileFeature",
+      58,
+      "11/13/2026 9:20:42 AM"
+     ],
+     [
+      "RING_B",
+      "ICE",
+      70,
+      "11/13/2026 9:20:42 AM"
+     ],
+     [
+      "TOP_P",
+      "RefPlane",
+      72,
+      "11/13/2026 9:20:43 AM"
+     ],
+     [
+      "CBORE_SK",
+      "ProfileFeature",
+      73,
+      "11/13/2026 9:20:43 AM"
+     ],
+     [
+      "CBORE",
+      "ICE",
+      79,
+      "11/13/2026 9:20:43 AM"
+     ]
+    ],
+    "tree_after": [
+     [
+      "DISC_SK",
+      "ProfileFeature",
+      24,
+      "11/13/2026 9:20:41 AM"
+     ],
+     [
+      "DISC",
+      "Extrusion",
+      30,
+      "11/13/2026 9:20:41 AM"
+     ],
+     [
+      "BORE_SK",
+      "ProfileFeature",
+      31,
+      "11/13/2026 9:20:41 AM"
+     ],
+     [
+      "BORE",
+      "ICE",
+      44,
+      "11/13/2026 9:20:42 AM"
+     ],
+     [
+      "RING_A_SK",
+      "ProfileFeature",
+      45,
+      "11/13/2026 9:20:42 AM"
+     ],
+     [
+      "RING_A",
+      "ICE",
+      57,
+      "11/13/2026 9:20:42 AM"
+     ],
+     [
+      "RING_B_SK",
+      "ProfileFeature",
+      58,
+      "11/13/2026 9:20:42 AM"
+     ],
+     [
+      "RING_B",
+      "ICE",
+      70,
+      "11/13/2026 9:20:42 AM"
+     ],
+     [
+      "TOP_P",
+      "RefPlane",
+      72,
+      "11/13/2026 9:20:43 AM"
+     ],
+     [
+      "CBORE_SK",
+      "ProfileFeature",
+      73,
+      "11/13/2026 9:20:43 AM"
+     ],
+     [
+      "CBORE",
+      "ICE",
+      79,
+      "11/13/2026 9:20:43 AM"
+     ],
+     [
+      "TOP_CHAMFER",
+      "Chamfer",
+      82,
+      "11/13/2026 9:23:21 AM"
+     ]
+    ],
+    "same_features_same_ids_same_creation_time": true,
+    "volume_before": 17728.67
+   }
+  },
+  "P2": {
+   "volume_mm3": 29648.45,
+   "hand_volume_mm3": 29648.45,
+   "diff_pct": -0.0,
+   "mass_g": 35.28,
+   "bodies": 1,
+   "stl_watertight": true,
+   "stl_shells": 1,
+   "stl_volume_ok": true,
+   "stl_box_ok": false,
+   "min_wall_mm": 3.0,
+   "min_wall_where": "counterbore floor",
+   "min_wall_measured_mm": 3.0,
+   "bbox": [
+    -42.0,
+    -42.0,
+    0.0,
+    42.0,
+    42.0,
+    7.5
+   ],
+   "measured": {
+    "od": 84.0,
+    "bore": 40.0,
+    "thick": 7.5,
+    "n_a": 6,
+    "n_b": 6,
+    "n_cb": 6,
+    "a_angles": [
+     0.0,
+     60.0,
+     120.0,
+     180.0,
+     240.0,
+     300.0
+    ],
+    "b_angles": [
+     30.0,
+     90.0,
+     150.0,
+     210.0,
+     270.0,
+     330.0
+    ],
+    "a_circle": [
+     62.0
+    ],
+    "b_circle": [
+     62.0
+    ],
+    "a_dia": [
+     4.5
+    ],
+    "b_dia": [
+     4.5
+    ],
+    "cb_dia": [
+     8.0
+    ],
+    "floor_z": [
+     3.0
+    ],
+    "cb_top_z": [
+     7.5
+    ],
+    "a_z": [
+     [
+      0.0,
+      7.5
+     ]
+    ],
+    "min_wall_measured": 3.0,
+    "as_specified": true
+   },
+   "changed": true,
+   "why": [
+    "ring B turned 30 degrees: rings A and B are both 6 x dia 4.5 on the same dia 62 circle from 0 degrees, so the twelve holes were six; turned, the wall is 9.80 mm"
+   ],
+   "counterbore_floor_z_mm": 3.0,
+   "floor_z_before": 3.0,
+   "built": {
+    "od": 84,
+    "t": 7.5,
+    "bore": 40,
+    "na": 6,
+    "da": 4.5,
+    "ca": 62,
+    "nb": 6,
+    "db": 4.5,
+    "cb": 62,
+    "cbd": 8.0,
+    "cbdepth": 4.5,
+    "turn_a": 0.0,
+    "turn_b": 30.0,
+    "chamfer": 1.0
+   },
+   "how": {
+    "edits": [
+     "D1@DISC@P2_b.Part: 6.0 -> 7.5",
+     "D1@TOP_P@P2_b.Part: 6.0 -> 7.5",
+     "D1@CBORE@P2_b.Part: 3.0 -> 4.5"
+    ],
+    "tree_before": [
+     [
+      "DISC_SK",
+      "ProfileFeature",
+      24,
+      "11/13/2026 9:20:46 AM"
+     ],
+     [
+      "DISC",
+      "Extrusion",
+      30,
+      "11/13/2026 9:20:46 AM"
+     ],
+     [
+      "BORE_SK",
+      "ProfileFeature",
+      31,
+      "11/13/2026 9:20:46 AM"
+     ],
+     [
+      "BORE",
+      "ICE",
+      44,
+      "11/13/2026 9:20:46 AM"
+     ],
+     [
+      "RING_A_SK",
+      "ProfileFeature",
+      45,
+      "11/13/2026 9:20:46 AM"
+     ],
+     [
+      "RING_A",
+      "ICE",
+      57,
+      "11/13/2026 9:20:46 AM"
+     ],
+     [
+      "RING_B_SK",
+      "ProfileFeature",
+      58,
+      "11/13/2026 9:20:47 AM"
+     ],
+     [
+      "RING_B",
+      "ICE",
+      70,
+      "11/13/2026 9:20:47 AM"
+     ],
+     [
+      "TOP_P",
+      "RefPlane",
+      72,
+      "11/13/2026 9:20:47 AM"
+     ],
+     [
+      "CBORE_SK",
+      "ProfileFeature",
+      73,
+      "11/13/2026 9:20:47 AM"
+     ],
+     [
+      "CBORE",
+      "ICE",
+      79,
+      "11/13/2026 9:20:48 AM"
+     ]
+    ],
+    "tree_after": [
+     [
+      "DISC_SK",
+      "ProfileFeature",
+      24,
+      "11/13/2026 9:20:46 AM"
+     ],
+     [
+      "DISC",
+      "Extrusion",
+      30,
+      "11/13/2026 9:20:46 AM"
+     ],
+     [
+      "BORE_SK",
+      "ProfileFeature",
+      31,
+      "11/13/2026 9:20:46 AM"
+     ],
+     [
+      "BORE",
+      "ICE",
+      44,
+      "11/13/2026 9:20:46 AM"
+     ],
+     [
+      "RING_A_SK",
+      "ProfileFeature",
+      45,
+      "11/13/2026 9:20:46 AM"
+     ],
+     [
+      "RING_A",
+      "ICE",
+      57,
+      "11/13/2026 9:20:46 AM"
+     ],
+     [
+      "RING_B_SK",
+      "ProfileFeature",
+      58,
+      "11/13/2026 9:20:47 AM"
+     ],
+     [
+      "RING_B",
+      "ICE",
+      70,
+      "11/13/2026 9:20:47 AM"
+     ],
+     [
+      "TOP_P",
+      "RefPlane",
+      72,
+      "11/13/2026 9:20:47 AM"
+     ],
+     [
+      "CBORE_SK",
+      "ProfileFeature",
+      73,
+      "11/13/2026 9:20:47 AM"
+     ],
+     [
+      "CBORE",
+      "ICE",
+      79,
+      "11/13/2026 9:20:48 AM"
+     ],
+     [
+      "TOP_CHAMFER",
+      "Chamfer",
+      82,
+      "11/13/2026 9:23:23 AM"
+     ]
+    ],
+    "same_features_same_ids_same_creation_time": true,
+    "volume_before": 23947.18
+   }
+  },
+  "P3": {
+   "volume_mm3": 45765.78,
+   "hand_volume_mm3": 45765.78,
+   "diff_pct": -0.0,
+   "mass_g": 54.46,
+   "bodies": 1,
+   "stl_watertight": true,
+   "stl_shells": 1,
+   "stl_volume_ok": true,
+   "stl_box_ok": false,
+   "min_wall_mm": 0.6,
+   "min_wall_where": "B counterbore to outside, at the top face",
+   "min_wall_measured_mm": 0.6,
+   "bbox": [
+    -48.0,
+    -48.0,
+    0.0,
+    48.0,
+    48.0,
+    9.5
+   ],
+   "measured": {
+    "od": 96.0,
+    "bore": 52.0,
+    "thick": 9.5,
+    "n_a": 8,
+    "n_b": 4,
+    "n_cb": 4,
+    "a_angles": [
+     22.5,
+     67.5,
+     112.5,
+     157.5,
+     202.5,
+     247.5,
+     292.5,
+     337.5
+    ],
+    "b_angles": [
+     0.0,
+     90.0,
+     180.0,
+     270.0
+    ],
+    "a_circle": [
+     70.0
+    ],
+    "b_circle": [
+     84.0
+    ],
+    "a_dia": [
+     3.4
+    ],
+    "b_dia": [
+     5.5
+    ],
+    "cb_dia": [
+     10.0
+    ],
+    "floor_z": [
+     4.0
+    ],
+    "cb_top_z": [
+     9.5
+    ],
+    "a_z": [
+     [
+      0.0,
+      9.5
+     ]
+    ],
+    "min_wall_measured": 0.6,
+    "as_specified": true
+   },
+   "changed": true,
+   "why": [
+    "ring A moved to dia 70 as asked AND turned 22.5 degrees: left at 0 degrees it stands 0.3 mm from the B counterbores; turned, 9.816 mm",
+    "chamfer 0.4 mm, not 1.0: the counterbores are 1.0 mm from the outside, a 1 mm chamfer would leave 0.0 mm at the top face; 0.4 leaves 0.6 mm"
+   ],
+   "counterbore_floor_z_mm": 4.0,
+   "floor_z_before": 4.0,
+   "built": {
+    "od": 96,
+    "t": 9.5,
+    "bore": 52,
+    "na": 8,
+    "da": 3.4,
+    "ca": 70.0,
+    "nb": 4,
+    "db": 5.5,
+    "cb": 84,
+    "cbd": 10.0,
+    "cbdepth": 5.5,
+    "turn_a": 22.5,
+    "turn_b": 0.0,
+    "chamfer": 0.4
+   },
+   "how": {
+    "edits": [
+     "D1@DISC@P3_b.Part: 8.0 -> 9.5",
+     "D1@TOP_P@P3_b.Part: 8.0 -> 9.5",
+     "D1@CBORE@P3_b.Part: 4.0 -> 5.5",
+     "RING_A_SK: 8 circles redrawn on dia 70.0 turned 22.5"
+    ],
+    "tree_before": [
+     [
+      "DISC_SK",
+      "ProfileFeature",
+      24,
+      "11/13/2026 9:20:49 AM"
+     ],
+     [
+      "DISC",
+      "Extrusion",
+      30,
+      "11/13/2026 9:20:49 AM"
+     ],
+     [
+      "BORE_SK",
+      "ProfileFeature",
+      31,
+      "11/13/2026 9:20:50 AM"
+     ],
+     [
+      "BORE",
+      "ICE",
+      44,
+      "11/13/2026 9:20:50 AM"
+     ],
+     [
+      "RING_A_SK",
+      "ProfileFeature",
+      45,
+      "11/13/2026 9:20:50 AM"
+     ],
+     [
+      "RING_A",
+      "ICE",
+      57,
+      "11/13/2026 9:20:50 AM"
+     ],
+     [
+      "RING_B_SK",
+      "ProfileFeature",
+      58,
+      "11/13/2026 9:20:50 AM"
+     ],
+     [
+      "RING_B",
+      "ICE",
+      70,
+      "11/13/2026 9:20:50 AM"
+     ],
+     [
+      "TOP_P",
+      "RefPlane",
+      72,
+      "11/13/2026 9:20:51 AM"
+     ],
+     [
+      "CBORE_SK",
+      "ProfileFeature",
+      73,
+      "11/13/2026 9:20:51 AM"
+     ],
+     [
+      "CBORE",
+      "ICE",
+      79,
+      "11/13/2026 9:20:51 AM"
+     ]
+    ],
+    "tree_after": [
+     [
+      "DISC_SK",
+      "ProfileFeature",
+      24,
+      "11/13/2026 9:20:49 AM"
+     ],
+     [
+      "DISC",
+      "Extrusion",
+      30,
+      "11/13/2026 9:20:49 AM"
+     ],
+     [
+      "BORE_SK",
+      "ProfileFeature",
+      31,
+      "11/13/2026 9:20:50 AM"
+     ],
+     [
+      "BORE",
+      "ICE",
+      44,
+      "11/13/2026 9:20:50 AM"
+     ],
+     [
+      "RING_A_SK",
+      "ProfileFeature",
+      45,
+      "11/13/2026 9:20:50 AM"
+     ],
+     [
+      "RING_A",
+      "ICE",
+      57,
+      "11/13/2026 9:20:50 AM"
+     ],
+     [
+      "RING_B_SK",
+      "ProfileFeature",
+      58,
+      "11/13/2026 9:20:50 AM"
+     ],
+     [
+      "RING_B",
+      "ICE",
+      70,
+      "11/13/2026 9:20:50 AM"
+     ],
+     [
+      "TOP_P",
+      "RefPlane",
+      72,
+      "11/13/2026 9:20:51 AM"
+     ],
+     [
+      "CBORE_SK",
+      "ProfileFeature",
+      73,
+      "11/13/2026 9:20:51 AM"
+     ],
+     [
+      "CBORE",
+      "ICE",
+      79,
+      "11/13/2026 9:20:51 AM"
+     ],
+     [
+      "TOP_CHAMFER",
+      "Chamfer",
+      82,
+      "11/13/2026 9:23:25 AM"
+     ]
+    ],
+    "same_features_same_ids_same_creation_time": true,
+    "volume_before": 38698.26
+   }
+  },
+  "P4": {
+   "volume_mm3": 19119.55,
+   "hand_volume_mm3": 19119.55,
+   "diff_pct": 0.0,
+   "mass_g": 22.75,
+   "bodies": 1,
+   "stl_watertight": true,
+   "stl_shells": 1,
+   "stl_volume_ok": true,
+   "stl_box_ok": false,
+   "min_wall_mm": 1.0,
+   "min_wall_where": "B counterbore to outside, at the top face",
+   "min_wall_measured_mm": 1.0,
+   "bbox": [
+    -35.0,
+    -35.0,
+    0.0,
+    35.0,
+    35.0,
+    6.5
+   ],
+   "measured": {
+    "od": 70.0,
+    "bore": 28.0,
+    "thick": 6.5,
+    "n_a": 4,
+    "n_b": 6,
+    "n_cb": 6,
+    "a_angles": [
+     0.0,
+     90.0,
+     180.0,
+     270.0
+    ],
+    "b_angles": [
+     0.0,
+     60.0,
+     120.0,
+     180.0,
+     240.0,
+     300.0
+    ],
+    "a_circle": [
+     40.0
+    ],
+    "b_circle": [
+     58.0
+    ],
+    "a_dia": [
+     3.4
+    ],
+    "b_dia": [
+     4.5
+    ],
+    "cb_dia": [
+     8.0
+    ],
+    "floor_z": [
+     2.0
+    ],
+    "cb_top_z": [
+     6.5
+    ],
+    "a_z": [
+     [
+      0.0,
+      6.5
+     ]
+    ],
+    "min_wall_measured": 1.0,
+    "as_specified": true
+   },
+   "changed": true,
+   "why": [
+    "outside dia 60 -> 70: ring B on dia 58 puts its dia 4.5 holes 1.25 mm and its dia 8 counterbores 3.0 mm through the dia 60 edge; the bolt circle mates with something, so it is kept and the disc grows to leave 2.0 mm outside the counterbores (as P6 has)",
+    "counterbore depth 4.6 -> 3.0: 4.6 in a 5.0 plate leaves a 0.4 mm floor; 3.0 leaves 2.0 mm, and is the depth of the other three dia 8 counterbores"
+   ],
+   "counterbore_floor_z_mm": 2.0,
+   "floor_z_before": 2.0,
+   "built": {
+    "od": 70.0,
+    "t": 6.5,
+    "bore": 28,
+    "na": 4,
+    "da": 3.4,
+    "ca": 40,
+    "nb": 6,
+    "db": 4.5,
+    "cb": 58,
+    "cbd": 8.0,
+    "cbdepth": 4.5,
+    "turn_a": 0.0,
+    "turn_b": 0.0,
+    "chamfer": 1.0
+   },
+   "how": {
+    "edits": [
+     "D1@DISC@P4_b.Part: 5.0 -> 6.5",
+     "D1@TOP_P@P4_b.Part: 5.0 -> 6.5",
+     "D1@CBORE@P4_b.Part: 3.0 -> 4.5"
+    ],
+    "tree_before": [
+     [
+      "DISC_SK",
+      "ProfileFeature",
+      24,
+      "11/13/2026 9:20:53 AM"
+     ],
+     [
+      "DISC",
+      "Extrusion",
+      30,
+      "11/13/2026 9:20:53 AM"
+     ],
+     [
+      "BORE_SK",
+      "ProfileFeature",
+      31,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "BORE",
+      "ICE",
+      44,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "RING_A_SK",
+      "ProfileFeature",
+      45,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "RING_A",
+      "ICE",
+      57,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "RING_B_SK",
+      "ProfileFeature",
+      58,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "RING_B",
+      "ICE",
+      70,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "TOP_P",
+      "RefPlane",
+      72,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "CBORE_SK",
+      "ProfileFeature",
+      73,
+      "11/13/2026 9:20:55 AM"
+     ],
+     [
+      "CBORE",
+      "ICE",
+      79,
+      "11/13/2026 9:20:55 AM"
+     ]
+    ],
+    "tree_after": [
+     [
+      "DISC_SK",
+      "ProfileFeature",
+      24,
+      "11/13/2026 9:20:53 AM"
+     ],
+     [
+      "DISC",
+      "Extrusion",
+      30,
+      "11/13/2026 9:20:53 AM"
+     ],
+     [
+      "BORE_SK",
+      "ProfileFeature",
+      31,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "BORE",
+      "ICE",
+      44,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "RING_A_SK",
+      "ProfileFeature",
+      45,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "RING_A",
+      "ICE",
+      57,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "RING_B_SK",
+      "ProfileFeature",
+      58,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "RING_B",
+      "ICE",
+      70,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "TOP_P",
+      "RefPlane",
+      72,
+      "11/13/2026 9:20:54 AM"
+     ],
+     [
+      "CBORE_SK",
+      "ProfileFeature",
+      73,
+      "11/13/2026 9:20:55 AM"
+     ],
+     [
+      "CBORE",
+      "ICE",
+      79,
+      "11/13/2026 9:20:55 AM"
+     ],
+     [
+      "TOP_CHAMFER",
+      "Chamfer",
+      82,
+      "11/13/2026 9:23:27 AM"
+     ]
+    ],
+    "same_features_same_ids_same_creation_time": true,
+    "volume_before": 14886.28
+   }
+  },
+  "P5": {
+   "volume_mm3": 74259.2,
+   "hand_volume_mm3": 74259.2,
+   "diff_pct": 0.0,
+   "mass_g": 88.37,
+   "bodies": 1,
+   "stl_watertight": true,
+   "stl_shells": 1,
+   "stl_volume_ok": true,
+   "stl_box_ok": false,
+   "min_wall_mm": 1.5,
+   "min_wall_where": "B counterbore to outside, at the top face",
+   "min_wall_measured_mm": 1.5,
+   "bbox": [
+    -60.0,
+    -60.0,
+    0.0,
+    60.0,
+    60.0,
+    9.5
+   ],
+   "measured": {
+    "od": 120.0,
+    "bore": 60.0,
+    "thick": 9.5,
+    "n_a": 12,
+    "n_b": 6,
+    "n_cb": 6,
+    "a_angles": [
+     0.0,
+     30.0,
+     60.0,
+     90.0,
+     120.0,
+     150.0,
+     180.0,
+     210.0,
+     240.0,
+     270.0,
+     300.0,
+     330.0
+    ],
+    "b_angles": [
+     0.0,
+     60.0,
+     120.0,
+     180.0,
+     240.0,
+     300.0
+    ],
+    "a_circle": [
+     80.0
+    ],
+    "b_circle": [
+     104.0
+    ],
+    "a_dia": [
+     4.5
+    ],
+    "b_dia": [
+     6.6
+    ],
+    "cb_dia": [
+     11.0
+    ],
+    "floor_z": [
+     3.0
+    ],
+    "cb_top_z": [
+     9.5
+    ],
+    "a_z": [
+     [
+      0.0,
+      9.5
+     ]
+    ],
+    "min_wall_measured": 1.5,
+    "as_specified": true
+   },
+   "changed": false,
+   "why": [],
+   "counterbore_floor_z_mm": 3.0,
+   "floor_z_before": 3.0,
+   "built": {
+    "od": 120,
+    "t": 9.5,
+    "bore": 60,
+    "na": 12,
+    "da": 4.5,
+    "ca": 80,
+    "nb": 6,
+    "db": 6.6,
+    "cb": 104,
+    "cbd": 11.0,
+    "cbdepth": 6.5,
+    "turn_a": 0.0,
+    "turn_b": 0.0,
+    "chamfer": 1.0
+   },
+   "how": {
+    "edits": [
+     "D1@DISC@P5_b.Part: 8.0 -> 9.5",
+     "D1@TOP_P@P5_b.Part: 8.0 -> 9.5",
+     "D1@CBORE@P5_b.Part: 5.0 -> 6.5"
+    ],
+    "tree_before": [
+     [
+      "DISC_SK",
+      "ProfileFeature",
+      24,
+      "11/13/2026 9:20:57 AM"
+     ],
+     [
+      "DISC",
+      "Extrusion",
+      30,
+      "11/13/2026 9:20:57 AM"
+     ],
+     [
+      "BORE_SK",
+      "ProfileFeature",
+      31,
+      "11/13/2026 9:20:57 AM"
+     ],
+     [
+      "BORE",
+      "ICE",
+      44,
+      "11/13/2026 9:20:58 AM"
+     ],
+     [
+      "RING_A_SK",
+      "ProfileFeature",
+      45,
+      "11/13/2026 9:20:58 AM"
+     ],
+     [
+      "RING_A",
+      "ICE",
+      57,
+      "11/13/2026 9:20:58 AM"
+     ],
+     [
+      "RING_B_SK",
+      "ProfileFeature",
+      58,
+      "11/13/2026 9:20:58 AM"
+     ],
+     [
+      "RING_B",
+      "ICE",
+      70,
+      "11/13/2026 9:20:58 AM"
+     ],
+     [
+      "TOP_P",
+      "RefPlane",
+      72,
+      "11/13/2026 9:20:58 AM"
+     ],
+     [
+      "CBORE_SK",
+      "ProfileFeature",
+      73,
+      "11/13/2026 9:20:59 AM"
+     ],
+     [
+      "CBORE",
+      "ICE",
+      79,
+      "11/13/2026 9:20:59 AM"
+     ]
+    ],
+    "tree_after": [
+     [
+      "DISC_SK",
+      "ProfileFeature",
+      24,
+      "11/13/2026 9:20:57 AM"
+     ],
+     [
+      "DISC",
+      "Extrusion",
+      30,
+      "11/13/2026 9:20:57 AM"
+     ],
+     [
+      "BORE_SK",
+      "ProfileFeature",
+      31,
+      "11/13/2026 9:20:57 AM"
+     ],
+     [
+      "BORE",
+      "ICE",
+      44,
+      "11/13/2026 9:20:58 AM"
+     ],
+     [
+      "RING_A_SK",
+      "ProfileFeature",
+      45,
+      "11/13/2026 9:20:58 AM"
+     ],
+     [
+      "RING_A",
+      "ICE",
+      57,
+      "11/13/2026 9:20:58 AM"
+     ],
+     [
+      "RING_B_SK",
+      "ProfileFeature",
+      58,
+      "11/13/2026 9:20:58 AM"
+     ],
+     [
+      "RING_B",
+      "ICE",
+      70,
+      "11/13/2026 9:20:58 AM"
+     ],
+     [
+      "TOP_P",
+      "RefPlane",
+      72,
+      "11/13/2026 9:20:58 AM"
+     ],
+     [
+      "CBORE_SK",
+      "ProfileFeature",
+      73,
+      "11/13/2026 9:20:59 AM"
+     ],
+     [
+      "CBORE",
+      "ICE",
+      79,
+      "11/13/2026 9:20:59 AM"
+     ],
+     [
+      "TOP_CHAMFER",
+      "Chamfer",
+      82,
+      "11/13/2026 9:23:29 AM"
+     ]
+    ],
+    "same_features_same_ids_same_creation_time": true,
+    "volume_before": 62864.78
+   }
+  },
+  "P6": {
+   "volume_mm3": 25865.43,
+   "hand_volume_mm3": 25865.43,
+   "diff_pct": 0.0,
+   "mass_g": 30.78,
+   "bodies": 1,
+   "stl_watertight": true,
+   "stl_shells": 1,
+   "stl_volume_ok": true,
+   "stl_box_ok": false,
+   "min_wall_mm": 1.0,
+   "min_wall_where": "B counterbore to outside, at the top face",
+   "min_wall_measured_mm": 1.0,
+   "bbox": [
+    -38.0,
+    -38.0,
+    0.0,
+    38.0,
+    38.0,
+    7.5
+   ],
+   "measured": {
+    "od": 76.0,
+    "bore": 34.0,
+    "thick": 7.5,
+    "n_a": 6,
+    "n_b": 3,
+    "n_cb": 3,
+    "a_angles": [
+     0.0,
+     60.0,
+     120.0,
+     180.0,
+     240.0,
+     300.0
+    ],
+    "b_angles": [
+     0.0,
+     120.0,
+     240.0
+    ],
+    "a_circle": [
+     46.0
+    ],
+    "b_circle": [
+     64.0
+    ],
+    "a_dia": [
+     3.4
+    ],
+    "b_dia": [
+     4.5
+    ],
+    "cb_dia": [
+     8.0
+    ],
+    "floor_z": [
+     3.0
+    ],
+    "cb_top_z": [
+     7.5
+    ],
+    "a_z": [
+     [
+      0.0,
+      7.5
+     ]
+    ],
+    "min_wall_measured": 1.0,
+    "as_specified": true
+   },
+   "changed": false,
+   "why": [],
+   "counterbore_floor_z_mm": 3.0,
+   "floor_z_before": 3.0,
+   "built": {
+    "od": 76,
+    "t": 7.5,
+    "bore": 34,
+    "na": 6,
+    "da": 3.4,
+    "ca": 46,
+    "nb": 3,
+    "db": 4.5,
+    "cb": 64,
+    "cbd": 8.0,
+    "cbdepth": 4.5,
+    "turn_a": 0.0,
+    "turn_b": 0.0,
+    "chamfer": 1.0
+   },
+   "how": {
+    "edits": [
+     "D1@DISC@P6_b.Part: 6.0 -> 7.5",
+     "D1@TOP_P@P6_b.Part: 6.0 -> 7.5",
+     "D1@CBORE@P6_b.Part: 3.0 -> 4.5"
+    ],
+    "tree_before": [
+     [
+      "DISC_SK",
+      "ProfileFeature",
+      24,
+      "11/13/2026 9:21:01 AM"
+     ],
+     [
+      "DISC",
+      "Extrusion",
+      30,
+      "11/13/2026 9:21:01 AM"
+     ],
+     [
+      "BORE_SK",
+      "ProfileFeature",
+      31,
+      "11/13/2026 9:21:01 AM"
+     ],
+     [
+      "BORE",
+      "ICE",
+      44,
+      "11/13/2026 9:21:01 AM"
+     ],
+     [
+      "RING_A_SK",
+      "ProfileFeature",
+      45,
+      "11/13/2026 9:21:01 AM"
+     ],
+     [
+      "RING_A",
+      "ICE",
+      57,
+      "11/13/2026 9:21:02 AM"
+     ],
+     [
+      "RING_B_SK",
+      "ProfileFeature",
+      58,
+      "11/13/2026 9:21:02 AM"
+     ],
+     [
+      "RING_B",
+      "ICE",
+      70,
+      "11/13/2026 9:21:02 AM"
+     ],
+     [
+      "TOP_P",
+      "RefPlane",
+      72,
+      "11/13/2026 9:21:02 AM"
+     ],
+     [
+      "CBORE_SK",
+      "ProfileFeature",
+      73,
+      "11/13/2026 9:21:03 AM"
+     ],
+     [
+      "CBORE",
+      "ICE",
+      79,
+      "11/13/2026 9:21:03 AM"
+     ]
+    ],
+    "tree_after": [
+     [
+      "DISC_SK",
+      "ProfileFeature",
+      24,
+      "11/13/2026 9:21:01 AM"
+     ],
+     [
+      "DISC",
+      "Extrusion",
+      30,
+      "11/13/2026 9:21:01 AM"
+     ],
+     [
+      "BORE_SK",
+      "ProfileFeature",
+      31,
+      "11/13/2026 9:21:01 AM"
+     ],
+     [
+      "BORE",
+      "ICE",
+      44,
+      "11/13/2026 9:21:01 AM"
+     ],
+     [
+      "RING_A_SK",
+      "ProfileFeature",
+      45,
+      "11/13/2026 9:21:01 AM"
+     ],
+     [
+      "RING_A",
+      "ICE",
+      57,
+      "11/13/2026 9:21:02 AM"
+     ],
+     [
+      "RING_B_SK",
+      "ProfileFeature",
+      58,
+      "11/13/2026 9:21:02 AM"
+     ],
+     [
+      "RING_B",
+      "ICE",
+      70,
+      "11/13/2026 9:21:02 AM"
+     ],
+     [
+      "TOP_P",
+      "RefPlane",
+      72,
+      "11/13/2026 9:21:02 AM"
+     ],
+     [
+      "CBORE_SK",
+      "ProfileFeature",
+      73,
+      "11/13/2026 9:21:03 AM"
+     ],
+     [
+      "CBORE",
+      "ICE",
+      79,
+      "11/13/2026 9:21:03 AM"
+     ],
+     [
+      "TOP_CHAMFER",
+      "Chamfer",
+      82,
+      "11/13/2026 9:23:30 AM"
+     ]
+    ],
+    "same_features_same_ids_same_creation_time": true,
+    "volume_before": 20848.86
+   }
+  }
+ },
+ "problems": [
+  {
+   "plate": "P1",
+   "part": "two",
+   "what": "1 mm chamfer: B counterbore to outside at the top face 0.0 mm (the counterbores stand 1.0 mm from the edge, so a 1 mm chamfer meets them in a knife edge)",
+   "built": "chamfer 0.4 mm on this plate: 0.6 mm is left at the top face"
+  },
+  {
+   "plate": "P3",
+   "part": "two",
+   "what": "ring A on dia 70 from 0 degrees: A hole to B counterbore 0.3 mm (an A hole at r 35 beside a dia 10 counterbore at r 42)",
+   "built": "ring A also turned 22.5 degrees, half its pitch"
+  },
+  {
+   "plate": "P3",
+   "part": "two",
+   "what": "1 mm chamfer: B counterbore to outside at the top face 0.0 mm (the counterbores stand 1.0 mm from the edge, so a 1 mm chamfer meets them in a knife edge)",
+   "built": "chamfer 0.4 mm on this plate: 0.6 mm is left at the top face"
+  }
+ ]
+}

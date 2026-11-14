@@ -1,0 +1,162 @@
+{
+ "valid": true,
+ "why": "reaction equals load on every mesh (299.87 + 0.12 N, 299.85 + 0.15 N); every body is held without the contact; the plug carries 0.04 to 0.06 %; 1 N moves the ring 0.077 mm across its 0.075 mm clearance where a bond would move it 0.0005 mm; the four screw sections carry 298.3 of 300 N; bodies split by geometry; two supports agree outside 2 mm of the held faces. Valid for a snug pair with NO preload: tightening is a separate, larger load, treated by scaling only",
+ "verdict": {
+  "yield_": "met, 7.6, converged",
+  "shear_between_layers": "met, 5.8, converged on the last step (3 %)",
+  "tension_across_layers": "not shown by the playbook rule: 17.8 at the finest mesh but still moving 19 % (1.26 MPa at the edge of a bonded insert)"
+ },
+ "screw_torque_limit": {
+  "preload_per_screw_n": 285,
+  "torque_nm": 0.17,
+  "basis": "the +Y case scaled: upper half reaches a factor of 2.0 at 1,440 N through the ring; not solved"
+ },
+ "second_support": {
+  "Y300": {
+   "rows": [
+    {
+     "outside_mm": 1,
+     "vm": 3.8,
+     "vm_at": [
+      29.4,
+      -7.6,
+      1.1
+     ],
+     "layer": 1.17,
+     "shear": 0.98,
+     "shear_at": [
+      -26.7,
+      -25.1,
+      0.7
+     ]
+    },
+    {
+     "outside_mm": 2,
+     "vm": 3.8,
+     "vm_at": [
+      29.4,
+      -7.6,
+      1.1
+     ],
+     "layer": 1.1,
+     "shear": 0.84,
+     "shear_at": [
+      29.8,
+      -7.7,
+      1.6
+     ]
+    },
+    {
+     "outside_mm": 3,
+     "vm": 3.8,
+     "vm_at": [
+      29.4,
+      -7.6,
+      1.1
+     ],
+     "layer": 1.1,
+     "shear": 0.84,
+     "shear_at": [
+      29.8,
+      -7.7,
+      1.6
+     ]
+    },
+    {
+     "outside_mm": 5,
+     "vm": 3.8,
+     "vm_at": [
+      29.4,
+      -7.6,
+      1.1
+     ],
+     "layer": 1.1,
+     "shear": 0.84,
+     "shear_at": [
+      29.8,
+      -7.7,
+      1.6
+     ]
+    }
+   ],
+   "inside_1mm": {
+    "vm": 4.32,
+    "shear": 1.61,
+    "layer": 3.67
+   }
+  },
+  "X300": {
+   "rows": [
+    {
+     "outside_mm": 1,
+     "vm": 9.83,
+     "vm_at": [
+      28.0,
+      -24.2,
+      3.7
+     ],
+     "layer": 2.63,
+     "shear": 2.8,
+     "shear_at": [
+      23.3,
+      -23.9,
+      -0.5
+     ]
+    },
+    {
+     "outside_mm": 2,
+     "vm": 5.92,
+     "vm_at": [
+      24.9,
+      -22.0,
+      1.8
+     ],
+     "layer": 1.29,
+     "shear": 2.05,
+     "shear_at": [
+      23.6,
+      -11.9,
+      7.0
+     ]
+    },
+    {
+     "outside_mm": 3,
+     "vm": 5.1,
+     "vm_at": [
+      22.5,
+      -13.9,
+      0.3
+     ],
+     "layer": 1.29,
+     "shear": 2.05,
+     "shear_at": [
+      23.6,
+      -11.9,
+      7.0
+     ]
+    },
+    {
+     "outside_mm": 5,
+     "vm": 5.1,
+     "vm_at": [
+      22.5,
+      -13.9,
+      0.3
+     ],
+     "layer": 1.29,
+     "shear": 2.05,
+     "shear_at": [
+      23.6,
+      -11.9,
+      7.0
+     ]
+    }
+   ],
+   "inside_1mm": {
+    "vm": 13.3,
+    "shear": 4.75,
+    "layer": 6.38
+   }
+  }
+ }
+}

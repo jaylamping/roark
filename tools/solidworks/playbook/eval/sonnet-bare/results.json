@@ -1,0 +1,437 @@
+{
+  "T1": {
+    "volume_mm3": 32976.08,
+    "hand_volume_mm3": 32974.02,
+    "mass_g": 39.242,
+    "bbox_mm": [
+      0,
+      0,
+      0,
+      80,
+      50,
+      46
+    ],
+    "bodies": 1,
+    "stl_watertight": true,
+    "stl_volume_mm3": 32974.9,
+    "status": "done",
+    "notes": "Mass = SW volume x 1190 kg/m3: assigning the custom material to the part through SetMaterialPropertyName2 did not change SW's density (stayed 1000), so SW's own mass (32.98 g) is not used. SW volume is 2.06 mm3 (0.006%) above the hand value; SW's volume after the four base holes is already 0.24 mm3 off the hand value while the earlier steps agree to 0.001 mm3: unexplained, I take it as integration noise. All hole centres/radii were verified from the face geometry. First build had upright holes moved/resized by sketch inference (fixed with SketchManager.AddToDB=True). STL taken from the saved part reopened: an STL exported straight from the freshly built doc was not watertight."
+  },
+  "T2": {
+    "volume_mm3": 31645.06,
+    "hand_volume_mm3": 31643.0,
+    "counterbore_floor_z_mm": 3.0,
+    "bodies": 1,
+    "status": "done",
+    "notes": "bracket.SLDPRT opened and SaveAs bracket_b.SLDPRT. Slot sketched as two lines and two semicircles (it would not cut until sketch inference was turned off with AddToDB). SW volume is 2.06 mm3 above hand, the same offset as T1 (the counterbore and slot removals match hand to 0.001 mm3). Counterbore floor read from the planar face at Z=3.00 mm."
+  },
+  "T3": {
+    "hand_root_stress_mpa": 11.0,
+    "el_mm": 0.25,
+    "nodes": 117537,
+    "peak_vm_mpa": 18.57,
+    "peak_at_mm": [
+      5.89,
+      34.31,
+      17.46
+    ],
+    "layer_stress_mpa": 16.13,
+    "sf_yield": 2.42,
+    "sf_layer": 1.4,
+    "max_disp_mm": 2.743,
+    "reaction_n": 149.99,
+    "converged": true,
+    "convergence_rows": [
+      {
+        "mesh": "global 4.0 mm",
+        "el_mm": 4.0,
+        "nodes": 15120,
+        "peak_vm_away_from_bolts": 16.94,
+        "peak_vm_root": 13.72,
+        "layer_sz": 16.67,
+        "peak_vm_at_bolt_hole_edge": 26.5,
+        "max_disp_mm": 2.727
+      },
+      {
+        "mesh": "global 3.0 mm",
+        "el_mm": 3.0,
+        "nodes": 23143,
+        "peak_vm_away_from_bolts": 16.72,
+        "peak_vm_root": 14.18,
+        "layer_sz": 15.95,
+        "peak_vm_at_bolt_hole_edge": 28.11,
+        "max_disp_mm": 2.74
+      },
+      {
+        "mesh": "global 2.5 mm",
+        "el_mm": 2.5,
+        "nodes": 34034,
+        "peak_vm_away_from_bolts": 16.68,
+        "peak_vm_root": 14.71,
+        "layer_sz": 17.34,
+        "peak_vm_at_bolt_hole_edge": 27.38,
+        "max_disp_mm": 2.745
+      },
+      {
+        "mesh": "global 2.0 mm",
+        "el_mm": 2.0,
+        "nodes": 59644,
+        "peak_vm_away_from_bolts": 16.15,
+        "peak_vm_root": 15.2,
+        "layer_sz": 16.21,
+        "peak_vm_at_bolt_hole_edge": 28.03,
+        "max_disp_mm": 2.749
+      },
+      {
+        "mesh": "global 1.75 mm",
+        "el_mm": 1.75,
+        "nodes": 82172,
+        "peak_vm_away_from_bolts": 16.7,
+        "peak_vm_root": 15.1,
+        "layer_sz": 16.35,
+        "peak_vm_at_bolt_hole_edge": 29.1,
+        "max_disp_mm": 2.75
+      },
+      {
+        "mesh": "global 1.5 mm",
+        "el_mm": 1.5,
+        "nodes": 119012,
+        "peak_vm_away_from_bolts": 16.98,
+        "peak_vm_root": 15.4,
+        "layer_sz": 16.0,
+        "peak_vm_at_bolt_hole_edge": 29.35,
+        "max_disp_mm": 2.752
+      },
+      {
+        "mesh": "global 3.0 mm + 1.0 mm control on the four dia 3.4 hole faces",
+        "el_mm": 1.0,
+        "nodes": 24222,
+        "peak_vm_away_from_bolts": 17.71,
+        "peak_vm_root": 14.31,
+        "layer_sz": 16.62,
+        "peak_vm_at_bolt_hole_edge": 23.21,
+        "max_disp_mm": 2.74
+      },
+      {
+        "mesh": "global 3.0 mm + 0.7 mm control on the four dia 3.4 hole faces",
+        "el_mm": 0.7,
+        "nodes": 30880,
+        "peak_vm_away_from_bolts": 17.49,
+        "peak_vm_root": 14.24,
+        "layer_sz": 16.57,
+        "peak_vm_at_bolt_hole_edge": 23.27,
+        "max_disp_mm": 2.742
+      },
+      {
+        "mesh": "global 3.0 mm + 0.5 mm control on the four dia 3.4 hole faces",
+        "el_mm": 0.5,
+        "nodes": 43946,
+        "peak_vm_away_from_bolts": 18.18,
+        "peak_vm_root": 14.33,
+        "layer_sz": 16.43,
+        "peak_vm_at_bolt_hole_edge": 22.5,
+        "max_disp_mm": 2.741
+      },
+      {
+        "mesh": "global 3.0 mm + 0.35 mm control on the four dia 3.4 hole faces",
+        "el_mm": 0.35,
+        "nodes": 72194,
+        "peak_vm_away_from_bolts": 18.49,
+        "peak_vm_root": 14.17,
+        "layer_sz": 16.35,
+        "peak_vm_at_bolt_hole_edge": 22.95,
+        "max_disp_mm": 2.743
+      },
+      {
+        "mesh": "global 3.0 mm + 0.25 mm control on the four dia 3.4 hole faces",
+        "el_mm": 0.25,
+        "nodes": 117537,
+        "peak_vm_away_from_bolts": 18.57,
+        "peak_vm_root": 14.43,
+        "layer_sz": 16.13,
+        "peak_vm_at_bolt_hole_edge": 22.61,
+        "max_disp_mm": 2.743
+      }
+    ],
+    "verdict": "fail",
+    "status": "done",
+    "notes": "Restraint: Fixed on the four dia 5.5 base-hole faces. Load: 150 N +X as a total on the dia 22 bore face (reference direction = Right Plane normal). Peak = max over surface nodes outside 8 mm of the bolt axes at Z<7; the bolt-hole top edges read 26.5-29.3 MPa on global meshes (28.1 vs 23.2 MPa at the same 3 mm global size once a local control is added), so that value is a fixed-wall edge effect and was excluded; with it, SF_yield would be 1.5. Layer stress = max sigma_Z (tension) at the rim of a dia 3.4 hole on the X=0 face; Z is the stack direction (base on the bed). Failing on the layer criterion (SF 1.4 < 2.0)."
+  },
+  "T4": {
+    "convergence_rows": [
+      {
+        "mesh": "global 3.0 mm",
+        "nodes": 22170,
+        "corner_vm": 9.37,
+        "peak_vm_away_from_bolts": 16.66,
+        "layer_sz_peak": 16.62,
+        "max_disp_mm": 3.016
+      },
+      {
+        "mesh": "global 2.0 mm",
+        "nodes": 58998,
+        "corner_vm": 13.33,
+        "peak_vm_away_from_bolts": 16.7,
+        "layer_sz_peak": 16.75,
+        "max_disp_mm": 3.033
+      },
+      {
+        "mesh": "global 1.5 mm",
+        "nodes": 118126,
+        "corner_vm": 13.73,
+        "peak_vm_away_from_bolts": 17.53,
+        "layer_sz_peak": 17.02,
+        "max_disp_mm": 3.044
+      },
+      {
+        "mesh": "global 3.0 mm + 1.0 mm control on the corner edge",
+        "nodes": 26348,
+        "corner_vm": 16.74,
+        "peak_vm_away_from_bolts": 20.6,
+        "layer_sz_peak": 16.73,
+        "max_disp_mm": 3.037
+      },
+      {
+        "mesh": "global 3.0 mm + 0.5 mm control on the corner edge",
+        "nodes": 33961,
+        "corner_vm": 26.78,
+        "peak_vm_away_from_bolts": 27.18,
+        "layer_sz_peak": 16.57,
+        "max_disp_mm": 3.044
+      },
+      {
+        "mesh": "global 3.0 mm + 0.25 mm control on the corner edge",
+        "nodes": 48849,
+        "corner_vm": 39.9,
+        "peak_vm_away_from_bolts": 39.9,
+        "layer_sz_peak": 15.77,
+        "max_disp_mm": 3.048
+      },
+      {
+        "mesh": "global 3.0 mm + 0.12 mm control on the corner edge",
+        "nodes": 79765,
+        "corner_vm": 59.12,
+        "peak_vm_away_from_bolts": 59.12,
+        "layer_sz_peak": 16.94,
+        "max_disp_mm": 3.05
+      },
+      {
+        "mesh": "global 3.0 mm + 0.06 mm control on the corner edge",
+        "nodes": 128105,
+        "corner_vm": 78.75,
+        "peak_vm_away_from_bolts": 78.75,
+        "layer_sz_peak": 20.03,
+        "max_disp_mm": 3.05
+      }
+    ],
+    "converged": false,
+    "reported_stress_mpa": 26.4,
+    "how_judged": "The FE reading at the sharp inside corner does not converge (VM 16.7, 26.8, 39.9, 59.1, 78.8 MPa as the edge element size goes 1.0, 0.5, 0.25, 0.12, 0.06 mm, about r^-0.4, the 270-degree re-entrant-corner singularity), so no FE number is reported; it is judged from the nominal root bending stress 3300 N*mm/300 mm3 = 11.0 MPa times a handbook Kt of about 2.4 (recalled from a Peterson shoulder-fillet chart, not looked up) for a printed corner radius of about 0.4 mm = 26.4 MPa, SF_yield 1.7.",
+    "verdict": "fail",
+    "status": "done",
+    "notes": "Fails for two independent reasons: the corner estimate gives SF_yield 1.7 < 2, and the layer tension at the dia 3.4 hole rim is unchanged from T3 (16.7-17.0 MPa on global meshes, SF_layer 1.3 against 22.5 MPa). The corner is on the compressed (X=6) side for a +X pull, so the corner itself is not a layer-tension site, but the 270-degree corner field also puts a singular sigma_Z tension (20 MPa at 0.06 mm) in the base top face. bracket_sharp STL volume is 32803.0 mm3 (about 171 mm3 less than bracket, the fillet)."
+  },
+  "T5": {
+    "change": "Print the bracket on its side (Y=0 face on the bed, layers stacked along Y) so the dominant tensions (sigma_Z in the upright, sigma_X in the base) lie in the layer plane, and raise the inside fillet from R4 to R6 (+0.65 % mass); hole positions, bore and footprint unchanged.",
+    "mass_g": 39.497,
+    "mass_growth_pct": 0.65,
+    "sf_yield": 2.42,
+    "sf_layer": 2.95,
+    "print_orientation": "on its side: Y=0 face on the bed, layers stacked along Y",
+    "verdict": "pass",
+    "status": "done",
+    "convergence_rows": [
+      {
+        "mesh": "global 4.0 mm",
+        "nodes": 15130,
+        "peak_vm_away_from_bolts": 16.68,
+        "sigma_y_tension": 7.13,
+        "sigma_z_tension": 16.75,
+        "sigma_x_tension": 13.85,
+        "max_disp_mm": 2.558
+      },
+      {
+        "mesh": "global 3.0 mm",
+        "nodes": 23513,
+        "peak_vm_away_from_bolts": 16.8,
+        "sigma_y_tension": 7.01,
+        "sigma_z_tension": 16.02,
+        "sigma_x_tension": 13.64,
+        "max_disp_mm": 2.566
+      },
+      {
+        "mesh": "global 2.0 mm",
+        "nodes": 59714,
+        "peak_vm_away_from_bolts": 17.0,
+        "sigma_y_tension": 7.12,
+        "sigma_z_tension": 16.01,
+        "sigma_x_tension": 13.65,
+        "max_disp_mm": 2.573
+      },
+      {
+        "mesh": "global 1.5 mm",
+        "nodes": 118968,
+        "peak_vm_away_from_bolts": 17.3,
+        "sigma_y_tension": 7.2,
+        "sigma_z_tension": 16.12,
+        "sigma_x_tension": 13.57,
+        "max_disp_mm": 2.576
+      },
+      {
+        "mesh": "global 3.0 mm + 1.0 mm control on the dia 3.4 hole faces",
+        "nodes": 24585,
+        "peak_vm_away_from_bolts": 17.47,
+        "sigma_y_tension": 7.09,
+        "sigma_z_tension": 16.44,
+        "sigma_x_tension": 13.65,
+        "max_disp_mm": 2.567
+      },
+      {
+        "mesh": "global 3.0 mm + 0.7 mm control on the dia 3.4 hole faces",
+        "nodes": 31158,
+        "peak_vm_away_from_bolts": 17.63,
+        "sigma_y_tension": 7.49,
+        "sigma_z_tension": 16.63,
+        "sigma_x_tension": 13.63,
+        "max_disp_mm": 2.569
+      },
+      {
+        "mesh": "global 3.0 mm + 0.5 mm control on the dia 3.4 hole faces",
+        "nodes": 44461,
+        "peak_vm_away_from_bolts": 18.39,
+        "sigma_y_tension": 7.64,
+        "sigma_z_tension": 16.44,
+        "sigma_x_tension": 13.57,
+        "max_disp_mm": 2.569
+      },
+      {
+        "mesh": "global 3.0 mm + 0.35 mm control on the dia 3.4 hole faces",
+        "nodes": 72223,
+        "peak_vm_away_from_bolts": 18.46,
+        "sigma_y_tension": 7.45,
+        "sigma_z_tension": 16.36,
+        "sigma_x_tension": 13.52,
+        "max_disp_mm": 2.569
+      },
+      {
+        "mesh": "global 3.0 mm + 0.25 mm control on the dia 3.4 hole faces",
+        "nodes": 116687,
+        "peak_vm_away_from_bolts": 18.6,
+        "sigma_y_tension": 7.38,
+        "sigma_z_tension": 16.02,
+        "sigma_x_tension": 13.61,
+        "max_disp_mm": 2.569
+      }
+    ],
+    "fixed_bottom_face_sensitivity": {
+      "setup": "same load, whole bottom face of bracket_c fixed instead of the four bolt-hole walls",
+      "nodes": 88967,
+      "peak_vm_mpa": 17.3,
+      "sigma_y_tension_mpa": 6.63,
+      "sigma_z_tension_mpa": 17.06,
+      "sigma_x_tension_mpa": 3.16,
+      "max_disp_mm": 0.989
+    },
+    "notes": "Study as T3 (Fixed bolt-hole walls, 150 N +X on the bore), on bracket_c.SLDPRT. SF_yield = 45 / 18.60 MPa (peak VM away from the bolt-hole walls, finest local mesh 116,687 nodes); SF_layer = 22.5 / 7.64 MPa where 7.64 is the largest sigma_Y tension over the 0.5-0.25 mm local meshes (sigma_Y is the across-layer stress for this orientation). Same study with the same orientation the other ways: stack along Z gives sigma_Z 16.0 MPa (SF 1.4), stack along X gives sigma_X 13.6 MPa (SF 1.7). The 24-30 MPa peak at the bolt-hole top edges (SF 1.5-1.9) is excluded as a fixed-wall edge effect; a second study with the whole bottom face fixed instead has no such peak and gives VM 17.3 MPa (SF 2.6), sigma_Y 6.6 MPa (SF 3.4). Not checked: layer-to-layer shear, creep, the overhang of the dia 22 bore when printed on its side (needs a teardrop or support), real bolt preload."
+  },
+  "T6": {
+    "hand_bearing_mpa": 1.67,
+    "nodes": 106193,
+    "solver": "SOLIDWORKS Simulation static, frictionless No Penetration contact set (surface-to-surface), Intel direct sparse (set Direct Sparse, reads back swsSolverTypeINTEL=7)",
+    "how_pin_was_stabilised": "Simulation's soft-spring option (UseSoftSpring2 = True); the pin is otherwise free to slide along Y and rotate about its axis. A coarse (12,752-node) node-to-surface solve with no stabiliser at all gave the same stress, contact pressure (11.56 vs 11.55 MPa) and pin rise (0.135 mm) as with the springs, so the springs do not drive the result; the pin's axial displacement is arbitrary either way (max displacement 70 mm without springs).",
+    "peak_contact_vm_mpa": 4.91,
+    "block_peak_at_mm": [
+      -2.27,
+      15.0,
+      15.49
+    ],
+    "pin_rise_mm": 0.127,
+    "reaction_n": 500.0,
+    "valid": true,
+    "why": "Peak contact pressure on the hole 6.5 MPa (surface-to-surface, 106,193 nodes). Evidence: (1) equilibrium: bottom-face reaction 500.0 N and normal contact force on the hole 500.08 N for the 500 N applied; (2) surface-to-surface peak pressure over 5,674 / 26,020 / 62,261 / 106,193 nodes = 9.1, 7.6, 6.3, 6.6 MPa, the last step +3.4 %; (3) an independent line-contact (Hertz) hand estimate for a 0.1 mm radial clearance gives 6.8 MPa (a = 1.6 mm, E* = 2.2 GPa, R_eff = 255 mm); (4) pin rise 0.127 mm = the 0.1 mm clearance plus 0.027 mm of local deformation; (5) the soft springs do not change the result. Not fully settled: the node-to-surface formulation on the same meshes does not agree (8.2, 10.1, 13.2, 13.3 MPa and a normal force 495 N, spiky nodal pressures), so the number depends on the contact formulation and I take the surface-to-surface one; block peak von Mises 5.6 MPa sits on the entry edge of the hole at the Y faces and is still creeping up about 2 % per refinement; contact is frictionless, the hole is nominal (no print tolerance), the PETG is isotropic and linear.",
+    "status": "done",
+    "convergence_rows": [
+      {
+        "formulation": "node-to-surface",
+        "mesh": "global 4.0 mm",
+        "nodes": 5674,
+        "peak_contact_pressure_mpa": 8.24,
+        "block_peak_vm_mpa": 5.39,
+        "contact_normal_force_N": 500.0,
+        "pin_rise_mid_mm": 0.136
+      },
+      {
+        "formulation": "node-to-surface",
+        "mesh": "global 4.0 mm + 1.5 mm control on pin and hole faces",
+        "nodes": 26020,
+        "peak_contact_pressure_mpa": 10.13,
+        "block_peak_vm_mpa": 6.0,
+        "contact_normal_force_N": 495.19,
+        "pin_rise_mid_mm": 0.138
+      },
+      {
+        "formulation": "node-to-surface",
+        "mesh": "global 4.0 mm + 1.0 mm control on pin and hole faces",
+        "nodes": 62261,
+        "peak_contact_pressure_mpa": 13.23,
+        "block_peak_vm_mpa": 7.57,
+        "contact_normal_force_N": 495.063,
+        "pin_rise_mid_mm": 0.187
+      },
+      {
+        "formulation": "node-to-surface",
+        "mesh": "global 4.0 mm + 0.8 mm control on pin and hole faces",
+        "nodes": 106193,
+        "peak_contact_pressure_mpa": 13.28,
+        "block_peak_vm_mpa": 5.57,
+        "contact_normal_force_N": 495.03,
+        "pin_rise_mid_mm": 0.131
+      },
+      {
+        "formulation": "surface-to-surface",
+        "mesh": "global 4.0 mm",
+        "nodes": 5674,
+        "peak_contact_pressure_mpa": 9.08,
+        "block_peak_vm_mpa": 4.66,
+        "contact_normal_force_N": 500.0,
+        "pin_rise_mid_mm": 0.123
+      },
+      {
+        "formulation": "surface-to-surface",
+        "mesh": "global 4.0 mm + 1.5 mm control on pin and hole faces",
+        "nodes": 26020,
+        "peak_contact_pressure_mpa": 7.57,
+        "block_peak_vm_mpa": 5.26,
+        "contact_normal_force_N": 500.0,
+        "pin_rise_mid_mm": 0.126
+      },
+      {
+        "formulation": "surface-to-surface",
+        "mesh": "global 4.0 mm + 1.0 mm control on pin and hole faces",
+        "nodes": 62261,
+        "peak_contact_pressure_mpa": 6.34,
+        "block_peak_vm_mpa": 5.49,
+        "contact_normal_force_N": 500.0,
+        "pin_rise_mid_mm": 0.127
+      },
+      {
+        "formulation": "surface-to-surface",
+        "mesh": "global 4.0 mm + 0.8 mm control on pin and hole faces",
+        "nodes": 106193,
+        "peak_contact_pressure_mpa": 6.55,
+        "block_peak_vm_mpa": 5.6,
+        "contact_normal_force_N": 500.081,
+        "pin_rise_mid_mm": 0.127
+      }
+    ],
+    "hand_peak_contact_hertz_mpa": 6.76,
+    "peak_contact_pressure_mpa": 6.55,
+    "block_peak_vm_mpa": 5.6,
+    "time_min": 25,
+    "notes": "One launch waited 300 s behind another session's solve; that wait is inside the 25 min."
+  },
+  "T7": {
+    "status": "done",
+    "notes": "Answers are in REPORT.md under T7."
+  }
+}

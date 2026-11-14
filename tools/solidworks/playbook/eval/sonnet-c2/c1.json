@@ -1,0 +1,28 @@
+{
+ "volume_mm3": 219436.0382232845,
+ "hand_volume_mm3": 219436.1901765125,
+ "mass_g": 261.0285908578996,
+ "bodies": 1,
+ "watertight": true,
+ "stl_volume": 219351.757023445,
+ "shape": {
+  "triangles": 1632,
+  "area_mm2": 38261.4,
+  "flat_share": 0.91,
+  "largest_flat": 0.144,
+  "sharp_mm": 2406.4,
+  "sharp_per_area": 12.3
+ },
+ "bounds": [
+  [
+   -34.99992370605469,
+   -22.0,
+   -215.0
+  ],
+  [
+   34.99992370605469,
+   22.0,
+   35.0
+  ]
+ ]
+}

@@ -1,0 +1,28 @@
+{
+ "link_boxy.stl": {
+  "triangles": 1632,
+  "area_mm2": 38261.4,
+  "flat_share": 0.91,
+  "largest_flat": 0.144,
+  "sharp_mm": 2406.4,
+  "sharp_per_area": 12.3,
+  "bbox_mm": [
+   70.0,
+   44.0,
+   250.0
+  ]
+ },
+ "link_organic.stl": {
+  "triangles": 11768,
+  "area_mm2": 32838.4,
+  "flat_share": 0.155,
+  "largest_flat": 0.076,
+  "sharp_mm": 1429.0,
+  "sharp_per_area": 7.89,
+  "bbox_mm": [
+   65.97,
+   44.38,
+   245.31
+  ]
+ }
+}

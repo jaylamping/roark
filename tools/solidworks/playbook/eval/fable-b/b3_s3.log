@@ -1,0 +1,52 @@
+02:55:34 SolidWorks pid 101552 free GB 15.6
+02:55:44 ok PROFILE volume change: 15040.0000 (expected 15040.0000)
+02:55:44 PROFILE: added 15040.00 mm3
+02:55:45 ok WINDOW volume change: 7731.5347 (expected 7731.5347)
+02:55:45 WINDOW: cut 7731.53 mm3
+02:55:46 ok SCREW_HOLES volume change: 159.0431 (expected 159.0431)
+02:55:46 SCREW_HOLES: cut 159.04 mm3
+02:55:46 ok inside corner edges: 4.0000 (expected 4.0000)
+02:55:46 CORNERS: R2.0 on 4 edges, volume change +121.72 mm3
+02:55:47 NARROW: cut 2340.09 mm3
+02:55:47 NARROW removed 2340.1 mm3
+02:55:48 member-side to strip edges 4
+02:55:48 FOOT_SIDES: R1.0 on 4 edges, volume change -3.93 mm3
+02:55:48 FOOT_SIDES radius 1.0
+02:55:48 ok hole faces: 2.0000 (expected 2.0000)
+02:55:48 ok hole y: 20.0000 (expected 20.0000)
+02:55:48 ok hole z: 12.0000 (expected 12.0000)
+02:55:48 ok hole along X: 1.0000 (expected 1.0000)
+02:55:48 ok hole y: 20.0000 (expected 20.0000)
+02:55:48 ok hole z: 48.0000 (expected 48.0000)
+02:55:48 ok hole along X: 1.0000 (expected 1.0000)
+02:55:48 ok wall face at X 0: 1.0000 (expected 1.0000)
+02:55:49 ok load patch: 1.0000 (expected 1.0000)
+02:55:49 ok patch area: 100.0000 (expected 100.0000)
+02:55:49 ok patch box[0]: 55.0000 (expected 55.0000)
+02:55:49 ok patch box[1]: 15.0000 (expected 15.0000)
+02:55:49 ok patch box[3]: 65.0000 (expected 65.0000)
+02:55:49 ok patch box[4]: 25.0000 (expected 25.0000)
+02:55:49 ok patch box[5]: 52.0000 (expected 52.0000)
+02:55:49 HAND {'chord_tension_n': 91.5, 'chord_stress_mpa': 7.32, 'strut_force_n': 104.2, 'strut_stress_mpa': 4.01, 'strut_len_mm': 56.7, 'euler_in_plane_n': 342, 'euler_out_of_plane_n': 316, 'buckling_factor_pinned': 3.04, 'zc': 52.75} mass g 5.863
+02:55:49 ok s3_chord_wall_1p5 hole faces: 2.0000 (expected 2.0000)
+02:55:49 ok s3_chord_wall_1p5 wall faces: 1.0000 (expected 1.0000)
+02:55:49 ok s3_chord_wall_1p5 load patch faces: 1.0000 (expected 1.0000)
+02:55:49 fillet faces for mesh control 6
+02:55:49 s3_chord_wall_1p5: PREDICT nodes ~31767, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.32 / 4.01 MPa
+02:55:51 s3_chord_wall_1p5: mesh rc 0, 39554 nodes, 24976 elements, free 14.8 GB
+02:55:56 s3_chord_wall_1p5: fixture nodes 1075, box [0.0, 15.0, 6.0] to [0.0, 25.0, 56.0]
+02:55:56 s3_chord_wall_1p5: load nodes 230, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:55:58 s3_chord_wall_1p5 checks {'reaction': [-0.0, 0.001, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 7.756, 'sx_hand': 7.5, 'sx_nodes': 78, 'sx_err_pct': 3.41, 'max_disp': 1.2758, 'vm_all': 20.73, 'vm_all_at': [48.48, 19.68, 49.98], 'nodes': 39554, 'excessive_prompt': False}
+02:55:58 s3_chord_wall_1p5 chord sx 7.31 hand 7.32 | Y factors (2.17, 9.72, 3.17, 2.17) | vm (20.73, [48.48, 19.68, 49.98], 2.17) | Y {"tension": [2.31, [48.63, 18.76, 49.92], 9.72], "shear": [4.1, [57.14, 20.0, 49.5], 3.17]} | excluded {'vm': 16.05, 'at': [54.24, 20.0, 52.06]}
+02:55:58 ok s3_chord_holes_1p5 hole faces: 2.0000 (expected 2.0000)
+02:55:58 ok s3_chord_holes_1p5 wall faces: 1.0000 (expected 1.0000)
+02:55:58 ok s3_chord_holes_1p5 load patch faces: 1.0000 (expected 1.0000)
+02:55:58 fillet faces for mesh control 6
+02:55:58 s3_chord_holes_1p5: PREDICT nodes ~31767, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.32 / 4.01 MPa
+02:56:00 s3_chord_holes_1p5: mesh rc 0, 39554 nodes, 24976 elements, free 14.5 GB
+02:56:05 s3_chord_holes_1p5: fixture nodes 376, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+02:56:05 s3_chord_holes_1p5: load nodes 230, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:56:08 s3_chord_holes_1p5 checks {'reaction': [-0.001, -0.002, 60.002, 60.002], 'reaction_err_pct': 0.003, 'reaction_fz': 60.002, 'sx_top': 7.987, 'sx_hand': 7.5, 'sx_nodes': 78, 'sx_err_pct': 6.5, 'max_disp': 1.4596, 'vm_all': 28.08, 'vm_all_at': [4.0, 18.28, 49.45], 'nodes': 39554, 'excessive_prompt': False}
+02:56:08 s3_chord_holes_1p5 chord sx 7.25 hand 7.32 | Y factors (2.36, 5.57, 2.03, 2.03) | vm (19.06, [48.48, 19.68, 49.98], 2.36) | Y {"tension": [4.04, [5.28, 20.3, 55.58], 5.57], "shear": [6.39, [5.24, 20.35, 52.28], 2.03]} | excluded {'vm': 28.08, 'at': [4.0, 18.28, 49.45]}
+02:56:08 closing pid 101552 committed MB 1879
+STEP s3_chord mass 5.863 worst Y factors (yield, layer, shear, min) [2.17, 5.57, 2.03, 2.03] buckling 3.04

@@ -1,0 +1,69 @@
+02:26:48 SolidWorks pid 127020 free GB 15.3
+02:26:54 ok B2E_wall_0p4 hole faces: 2.0000 (expected 2.0000)
+02:26:54 ok B2E_wall_0p4 wall faces: 1.0000 (expected 1.0000)
+02:26:54 ok B2E_wall_0p4 load patch faces: 1.0000 (expected 1.0000)
+02:26:54 ok sharp side edges: 2.0000 (expected 2.0000)
+02:26:54 ok fillet faces: 2.0000 (expected 2.0000)
+02:26:54 B2E_wall_0p4: PREDICT nodes ~40,000 to 150,000, max disp ~1.51 (wall) / 1.88 (holes), as b2_study mm, peak vm 18.5 to 19.6 in the upper fillet as before; layer measures on the side edges
+02:26:55 B2E_wall_0p4: mesh rc 0, 51397 nodes, 33425 elements, free 14.7 GB
+02:27:02 B2E_wall_0p4: fixture nodes 2923, box [0.0, 0.0, 0.0] to [0.0, 40.0, 60.0]
+02:27:02 B2E_wall_0p4: load nodes 125, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:27:06 B2E_wall_0p4 checks {'reaction': [-0.006, -0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 6.182, 'sx_hand': 6.25, 'sx_nodes': 21, 'sx_err_pct': 1.09, 'max_disp': 1.5116, 'vm_all': 19.57, 'vm_all_at': [7.44, 16.15, 52.05], 'nodes': 51397, 'excessive_prompt': False}
+02:27:06 B2E_wall_0p4 {"tension": {"peak": 13.27, "at": [5.0, 25.0, 50.86], "factor": 1.7, "avg_0.5": [4.43, 56], "avg_1.0": [2.94, 250], "avg_2.0": [2.12, 886]}, "shear": {"peak": 7.67, "at": [5.0, 15.0, 51.94], "factor": 1.7, "avg_0.5": [3.2, 60], "avg_1.0": [2.29, 261], "avg_2.0": [1.7, 943]}} vm (19.57, [7.44, 16.15, 52.05], 2.3)
+02:27:06 ok B2E_wall_0p2 hole faces: 2.0000 (expected 2.0000)
+02:27:06 ok B2E_wall_0p2 wall faces: 1.0000 (expected 1.0000)
+02:27:06 ok B2E_wall_0p2 load patch faces: 1.0000 (expected 1.0000)
+02:27:06 ok sharp side edges: 2.0000 (expected 2.0000)
+02:27:06 ok fillet faces: 2.0000 (expected 2.0000)
+02:27:06 B2E_wall_0p2: PREDICT nodes ~40,000 to 150,000, max disp ~1.51 (wall) / 1.88 (holes), as b2_study mm, peak vm 18.5 to 19.6 in the upper fillet as before; layer measures on the side edges
+02:27:09 B2E_wall_0p2: mesh rc 0, 65948 nodes, 43243 elements, free 14.2 GB
+02:27:18 B2E_wall_0p2: fixture nodes 2923, box [0.0, 0.0, 0.0] to [0.0, 40.0, 60.0]
+02:27:18 B2E_wall_0p2: load nodes 125, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:27:24 B2E_wall_0p2 checks {'reaction': [0.001, -0.001, 59.998, 59.998], 'reaction_err_pct': 0.003, 'reaction_fz': 59.998, 'sx_top': 6.182, 'sx_hand': 6.25, 'sx_nodes': 21, 'sx_err_pct': 1.1, 'max_disp': 1.512, 'vm_all': 22.41, 'vm_all_at': [5.1, 25.0, 51.72], 'nodes': 65948, 'excessive_prompt': False}
+02:27:24 B2E_wall_0p2 {"tension": {"peak": 19.63, "at": [5.0, 25.0, 51.31], "factor": 1.15, "avg_0.5": [4.71, 238], "avg_1.0": [3.63, 819], "avg_2.0": [2.72, 2326]}, "shear": {"peak": 10.47, "at": [5.0, 25.0, 51.31], "factor": 1.24, "avg_0.5": [3.17, 238], "avg_1.0": [2.5, 819], "avg_2.0": [2.01, 2326]}} vm (22.41, [5.1, 25.0, 51.72], 2.01)
+02:27:25 ok B2E_wall_0p1 hole faces: 2.0000 (expected 2.0000)
+02:27:25 ok B2E_wall_0p1 wall faces: 1.0000 (expected 1.0000)
+02:27:25 ok B2E_wall_0p1 load patch faces: 1.0000 (expected 1.0000)
+02:27:25 ok sharp side edges: 2.0000 (expected 2.0000)
+02:27:25 ok fillet faces: 2.0000 (expected 2.0000)
+02:27:25 B2E_wall_0p1: PREDICT nodes ~40,000 to 150,000, max disp ~1.51 (wall) / 1.88 (holes), as b2_study mm, peak vm 18.5 to 19.6 in the upper fillet as before; layer measures on the side edges
+02:27:26 B2E_wall_0p1: mesh rc 0, 92448 nodes, 60897 elements, free 13.9 GB
+02:27:46 B2E_wall_0p1: fixture nodes 2923, box [0.0, 0.0, 0.0] to [0.0, 40.0, 60.0]
+02:27:46 B2E_wall_0p1: load nodes 125, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:27:57 B2E_wall_0p1 checks {'reaction': [-0.0, -0.0, 59.999, 59.999], 'reaction_err_pct': 0.002, 'reaction_fz': 59.999, 'sx_top': 6.182, 'sx_hand': 6.25, 'sx_nodes': 21, 'sx_err_pct': 1.09, 'max_disp': 1.5121, 'vm_all': 28.98, 'vm_all_at': [5.05, 15.0, 40.49], 'nodes': 92448, 'excessive_prompt': False}
+02:27:57 B2E_wall_0p1 {"tension": {"peak": 30.12, "at": [5.0, 25.0, 51.54], "factor": 0.75, "avg_0.5": [5.62, 846], "avg_1.0": [4.47, 2318], "avg_2.0": [3.57, 5296]}, "shear": {"peak": 14.67, "at": [5.0, 15.0, 51.9], "factor": 0.89, "avg_0.5": [3.61, 803], "avg_1.0": [2.94, 2240], "avg_2.0": [2.37, 5222]}} vm (28.98, [5.05, 15.0, 40.49], 1.55)
+02:27:57 ok B2E_holes_0p4 hole faces: 2.0000 (expected 2.0000)
+02:27:57 ok B2E_holes_0p4 wall faces: 1.0000 (expected 1.0000)
+02:27:57 ok B2E_holes_0p4 load patch faces: 1.0000 (expected 1.0000)
+02:27:57 ok sharp side edges: 2.0000 (expected 2.0000)
+02:27:57 ok fillet faces: 2.0000 (expected 2.0000)
+02:27:57 B2E_holes_0p4: PREDICT nodes ~40,000 to 150,000, max disp ~1.51 (wall) / 1.88 (holes), as b2_study mm, peak vm 18.5 to 19.6 in the upper fillet as before; layer measures on the side edges
+02:27:58 B2E_holes_0p4: mesh rc 0, 51397 nodes, 33425 elements, free 14.8 GB
+02:28:06 B2E_holes_0p4: fixture nodes 282, box [0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+02:28:06 B2E_holes_0p4: load nodes 125, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:28:10 B2E_holes_0p4 checks {'reaction': [0.001, -0.002, 60.001, 60.001], 'reaction_err_pct': 0.002, 'reaction_fz': 60.001, 'sx_top': 6.182, 'sx_hand': 6.25, 'sx_nodes': 21, 'sx_err_pct': 1.09, 'max_disp': 1.8743, 'vm_all': 25.72, 'vm_all_at': [0.0, 19.14, 45.92], 'nodes': 51397, 'excessive_prompt': False}
+02:28:10 B2E_holes_0p4 {"tension": {"peak": 11.84, "at": [5.0, 25.0, 50.86], "factor": 1.9, "avg_0.5": [4.12, 56], "avg_1.0": [2.77, 250], "avg_2.0": [1.96, 886]}, "shear": {"peak": 7.33, "at": [5.0, 25.0, 40.42], "factor": 1.77, "avg_0.5": [3.12, 54], "avg_1.0": [2.23, 279], "avg_2.0": [1.64, 1084]}} vm (18.36, [7.43, 19.71, 52.05], 2.45)
+02:28:10 ok B2E_holes_0p2 hole faces: 2.0000 (expected 2.0000)
+02:28:10 ok B2E_holes_0p2 wall faces: 1.0000 (expected 1.0000)
+02:28:10 ok B2E_holes_0p2 load patch faces: 1.0000 (expected 1.0000)
+02:28:10 ok sharp side edges: 2.0000 (expected 2.0000)
+02:28:10 ok fillet faces: 2.0000 (expected 2.0000)
+02:28:10 B2E_holes_0p2: PREDICT nodes ~40,000 to 150,000, max disp ~1.51 (wall) / 1.88 (holes), as b2_study mm, peak vm 18.5 to 19.6 in the upper fillet as before; layer measures on the side edges
+02:28:12 B2E_holes_0p2: mesh rc 0, 65948 nodes, 43243 elements, free 14.8 GB
+02:28:23 B2E_holes_0p2: fixture nodes 282, box [0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+02:28:23 B2E_holes_0p2: load nodes 125, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:28:29 B2E_holes_0p2 checks {'reaction': [-0.0, -0.001, 60.002, 60.002], 'reaction_err_pct': 0.003, 'reaction_fz': 60.002, 'sx_top': 6.182, 'sx_hand': 6.25, 'sx_nodes': 21, 'sx_err_pct': 1.09, 'max_disp': 1.8746, 'vm_all': 25.67, 'vm_all_at': [0.0, 19.14, 45.92], 'nodes': 65948, 'excessive_prompt': False}
+02:28:29 B2E_holes_0p2 {"tension": {"peak": 17.4, "at": [5.0, 25.0, 51.31], "factor": 1.29, "avg_0.5": [4.32, 238], "avg_1.0": [3.34, 819], "avg_2.0": [2.5, 2326]}, "shear": {"peak": 10.04, "at": [5.0, 25.0, 39.43], "factor": 1.29, "avg_0.5": [3.26, 228], "avg_1.0": [2.51, 773], "avg_2.0": [1.93, 2363]}} vm (19.48, [5.1, 15.0, 51.54], 2.31)
+02:28:29 ok B2E_holes_0p1 hole faces: 2.0000 (expected 2.0000)
+02:28:29 ok B2E_holes_0p1 wall faces: 1.0000 (expected 1.0000)
+02:28:29 ok B2E_holes_0p1 load patch faces: 1.0000 (expected 1.0000)
+02:28:29 ok sharp side edges: 2.0000 (expected 2.0000)
+02:28:29 ok fillet faces: 2.0000 (expected 2.0000)
+02:28:29 B2E_holes_0p1: PREDICT nodes ~40,000 to 150,000, max disp ~1.51 (wall) / 1.88 (holes), as b2_study mm, peak vm 18.5 to 19.6 in the upper fillet as before; layer measures on the side edges
+02:28:31 B2E_holes_0p1: mesh rc 0, 92448 nodes, 60897 elements, free 14.8 GB
+02:28:49 B2E_holes_0p1: fixture nodes 282, box [0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+02:28:49 B2E_holes_0p1: load nodes 125, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:29:00 B2E_holes_0p1 checks {'reaction': [0.001, -0.002, 60.004, 60.004], 'reaction_err_pct': 0.007, 'reaction_fz': 60.004, 'sx_top': 6.182, 'sx_hand': 6.25, 'sx_nodes': 21, 'sx_err_pct': 1.09, 'max_disp': 1.8733, 'vm_all': 26.99, 'vm_all_at': [5.0, 25.0, 39.38], 'nodes': 92448, 'excessive_prompt': False}
+02:29:00 B2E_holes_0p1 {"tension": {"peak": 26.6, "at": [5.0, 25.0, 51.54], "factor": 0.85, "avg_0.5": [5.1, 846], "avg_1.0": [4.08, 2318], "avg_2.0": [3.27, 5296]}, "shear": {"peak": 13.76, "at": [5.0, 25.0, 39.38], "factor": 0.95, "avg_0.5": [3.68, 753], "avg_1.0": [3.0, 2067], "avg_2.0": [2.4, 5208]}} vm (26.99, [5.0, 25.0, 39.38], 1.67)
+02:29:00 closing pid 127020 committed MB 1714
+B2 EDGES DONE

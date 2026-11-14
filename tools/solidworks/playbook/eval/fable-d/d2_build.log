@@ -1,0 +1,77 @@
+08:51:54 SolidWorks pid 38000 free GB 12.5
+08:51:57 ok BLOCK volume change: 34128.0000 (expected 34128.0000)
+08:51:57 BLOCK: added 34128.00 mm3
+08:51:57 ok OPENING volume change: 13849.0705 (expected 13849.0705)
+08:51:57 OPENING: cut 13849.07 mm3
+08:51:58 ok SEAT volume change: 891.8115 (expected 891.8115)
+08:51:58 SEAT: cut 891.81 mm3
+08:51:59 ok CLEAR_HOLES volume change: 1147.6112 (expected 1147.6112)
+08:51:59 CLEAR_HOLES: cut 1147.61 mm3
+08:52:00 ok CBORES volume change: 268.7318 (expected 268.7318)
+08:52:00 CBORES: cut 268.73 mm3
+08:52:00 ok housing_upper volume: 17970.7749 (expected 17970.7749)
+08:52:00 ok housing_upper box[0]: -36.0000 (expected -36.0000)
+08:52:00 ok housing_upper box[1]: 0.4000 (expected 0.4000)
+08:52:00 ok housing_upper box[2]: -4.0000 (expected -4.0000)
+08:52:00 ok housing_upper box[3]: 36.0000 (expected 36.0000)
+08:52:00 ok housing_upper box[4]: 32.0000 (expected 32.0000)
+08:52:00 ok housing_upper box[5]: 11.0000 (expected 11.0000)
+08:52:00 ok rebuild errors: 0.0000 (expected 0.0000)
+08:52:01 ok seat faces: 1.0000 (expected 1.0000)
+08:52:01 ok opening faces (one per shoulder): 2.0000 (expected 2.0000)
+08:52:01 ok clearance hole faces: 4.0000 (expected 4.0000)
+08:52:01 ok counterbore faces: 4.0000 (expected 4.0000)
+08:52:01 housing_upper measured {"seat": {"dia": 52.15, "z": [-0.1, 7.1], "y_crown": 26.075}, "opening": [{"dia": 49.0, "z": [-4.0, -0.1]}, {"dia": 49.0, "z": [7.1, 11.0]}], "split_faces": {"count": 2, "y": 0.4, "area_each": [143.05, 143.05]}, "clear_holes": [[-31.0, 0.0, 3.4, 0.4, 28.5], [-31.0, 7.0, 3.4, 0.4, 28.5], [31.0, 0.0, 3.4, 0.4, 28.5], [31.0, 7.0, 3.4, 0.4, 28.5]], "cbores": [[-31.0, 0.0, 6.0, 28.5, 32.0], [-31.0, 7.0, 6.0, 28.5, 32.0], [31.0, 0.0, 6.0, 28.5, 32.0], [31.0, 7.0, 6.0, 28.5, 32.0]]}
+08:52:01 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\housing_upper.stl 77284 bytes
+08:52:01 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\housing_upper.step 74775 bytes
+08:52:02 housing_upper STL {'watertight': True, 'shells': 1, 'volume': 18005.53, 'volume_ok': True, 'box': [-36.0, 0.4, -4.0, 36.0, 32.0, 11.0], 'box_ok': True}
+08:52:03 ok BLOCK volume change: 34128.0000 (expected 34128.0000)
+08:52:03 BLOCK: added 34128.00 mm3
+08:52:04 ok OPENING volume change: 13849.0705 (expected 13849.0705)
+08:52:04 OPENING: cut 13849.07 mm3
+08:52:04 ok SEAT volume change: 891.8115 (expected 891.8115)
+08:52:04 SEAT: cut 891.81 mm3
+08:52:05 ok INSERT_HOLES volume change: 402.1239 (expected 402.1239)
+08:52:05 INSERT_HOLES: cut 402.12 mm3
+08:52:06 ok M4_HOLES volume change: 394.0814 (expected 394.0814)
+08:52:06 M4_HOLES: cut 394.08 mm3
+08:52:06 ok housing_lower volume: 18590.9128 (expected 18590.9128)
+08:52:06 ok housing_lower box[0]: -36.0000 (expected -36.0000)
+08:52:06 ok housing_lower box[1]: -32.0000 (expected -32.0000)
+08:52:06 ok housing_lower box[2]: -4.0000 (expected -4.0000)
+08:52:07 ok housing_lower box[3]: 36.0000 (expected 36.0000)
+08:52:07 ok housing_lower box[4]: -0.4000 (expected -0.4000)
+08:52:07 ok housing_lower box[5]: 11.0000 (expected 11.0000)
+08:52:07 ok rebuild errors: 0.0000 (expected 0.0000)
+08:52:07 ok seat faces: 1.0000 (expected 1.0000)
+08:52:07 ok opening faces (one per shoulder): 2.0000 (expected 2.0000)
+08:52:07 ok insert hole faces: 4.0000 (expected 4.0000)
+08:52:07 ok M4 hole faces: 2.0000 (expected 2.0000)
+08:52:07 housing_lower measured {"seat": {"dia": 52.15, "z": [-0.1, 7.1], "y_crown": -26.075}, "opening": [{"dia": 49.0, "z": [-4.0, -0.1]}, {"dia": 49.0, "z": [7.1, 11.0]}], "split_faces": {"count": 2, "y": -0.4, "area_each": [136.07, 136.07]}, "insert_holes": [[-31.0, 0.0, 4.0, -8.4, -0.4], [-31.0, 7.0, 4.0, -8.4, -0.4], [31.0, 0.0, 4.0, -8.4, -0.4], [31.0, 7.0, 4.0, -8.4, -0.4]], "m4_holes": [[-24.0, 3.5, 5.6, -32.0, -24.0], [24.0, 3.5, 5.6, -32.0, -24.0]]}
+08:52:07 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\housing_lower.stl 62684 bytes
+08:52:07 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\housing_lower.step 65103 bytes
+08:52:07 housing_lower STL {'watertight': True, 'shells': 1, 'volume': 18622.52, 'volume_ok': True, 'box': [-36.0, -32.0, -4.0, 36.0, -0.4, 11.0], 'box_ok': True}
+08:52:09 ok OUTER_RACE volume change: 2199.1149 (expected 2199.1149)
+08:52:09 OUTER_RACE: added 2199.11 mm3
+08:52:09 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\ring.stl 24484 bytes
+08:52:10 ok SOFTPLUG volume change: 3562.5661 (expected 3562.5661)
+08:52:10 SOFTPLUG: added 3562.57 mm3
+08:52:12 ok M3SCREW volume change: 350.9552 (expected 350.9552)
+08:52:12 M3SCREW: added 350.96 mm3
+08:52:13 ok M3SCREW volume change: 350.9552 (expected 350.9552)
+08:52:13 M3SCREW: added 350.96 mm3
+08:52:14 ok M3SCREW volume change: 350.9552 (expected 350.9552)
+08:52:15 M3SCREW: added 350.96 mm3
+08:52:16 ok M3SCREW volume change: 350.9552 (expected 350.9552)
+08:52:16 M3SCREW: added 350.96 mm3
+08:52:19 pair body ('<screw_3>-<M3SCREW>', 350.96, [-33.75, -6.4, 4.25, -28.25, 31.5, 9.75])
+08:52:19 pair body ('<plug>-<SOFTPLUG>', 3562.57, [-24.0, -24.0, 2.5, 24.0, 24.0, 4.5])
+08:52:19 pair body ('<housing_upper>-<CBORES>', 17970.77, [-36.0, 0.4, -4.0, 36.0, 32.0, 11.0])
+08:52:19 pair body ('<screw_1>-<M3SCREW>', 350.96, [28.25, -6.4, 4.25, 33.75, 31.5, 9.75])
+08:52:19 pair body ('<ring>-<OUTER_RACE>', 2199.11, [-26.0, -26.0, 0.0, 26.0, 26.0, 7.0])
+08:52:19 pair body ('M4_HOLES', 18590.91, [-36.0, -32.0, -4.0, 36.0, -0.4, 11.0])
+08:52:19 pair body ('<screw_2>-<M3SCREW>', 350.96, [-33.75, -6.4, -2.75, -28.25, 31.5, 2.75])
+08:52:19 pair body ('<screw_0>-<M3SCREW>', 350.96, [28.25, -6.4, -2.75, 33.75, 31.5, 2.75])
+08:52:19 ok bodies in the pair: 8.0000 (expected 8.0000)
+08:52:19 closing pid 38000 committed MB 1992
+DONE d2_build

@@ -6,6 +6,75 @@ thread per wired bus and the control thread on one schedule origin, and takes th
 
 ## What it does
 
+- **Start** (`Runtime::start`): reads the skeleton once, maps it onto one bus thread per wired bus (`plan`), and starts
+  the session recording, the bus threads and the control thread on one schedule. Nothing is enabled, at start or after a
+  restart.
+- **The control thread** runs once a tick, after the buses' collect deadline: it reads each bus's snapshot, steps the
+  running enable, holds every enabled joint, turns stops and clears into orders for the buses, and publishes the next
+  tick's batches.
+- **Enable** (`Runtime::enables`): one at a time. Every named joint passes preflight (`safety`), then all are enabled
+  together. A refusal before any Enable may have gone stops nothing; a failure after stops every limb the enable named.
+  A joint with null facts or caps enables at its model's commissioning caps (PLAN item 1).
+- **Hold**: each enabled joint gets a slack MIT command every tick (zero gains, zero torque) until real control modes
+  exist.
+- **Stop** (`Runtime::stop`): a latch, never a queue. Always accepted, taken each tick before any clear.
+- **Clear** (`Runtime::clears`): re-arms one stopped limb on every bus it is on.
+- **Scan and set-ID** (`Runtime::identity`): one at a time, never beside an enable, and only on a bus whose limbs are
+  all idle.
+- **End**: every bus stops its limbs, then the session closes. The run also ends on its own if control loses its clock
+  or a bus thread ends.
+- **Watchdog**: systemd's is fed only while control and every bus make progress, so a hang gets the process killed and
+  `ExecStopPost` runs the independent disable.
+- **Events**: every stop, enable, refusal and clear control handles is recorded on the session's `/event` channel with
+  its rule or reason.
+
+What each request refuses, the event kinds and the known limits are under [In detail](#in-detail).
+
+## Must never
+
+Enable a drive on its own, or one an enable didn't name. Send an Enable before every named joint's preflight has passed. Send Disables in a batch: a stop is an order to the bus (step 7 design, D2). Let a clear reach a
+bus before a stop asked before it. Block the control thread on a client: stops go through a latch, clears and replies
+through bounded rings, and a full ring drops and counts.
+
+## Talks to
+
+`can` (bus threads and their rings), `safety` (preflight and the enable sequence), `robstride` (the hold's MIT
+frames), `skeleton` (the file it runs), `telemetry` (the session). The sim suite drives it on
+`vcan` (`crates/sim-suite/tests/runtime.rs`). See the
+[map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
+
+## Using it
+
+```bash
+runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>] [--lock <file>]
+# on the dev box, with vcan up and sim-drive serving the skeleton's buses:
+scripts/devbox.sh run cargo run -p runtime -- --sessions /tmp/sessions --lock /tmp/runtime.lock
+# then, once it has exited, the independent stop with the same lock:
+scripts/devbox.sh run cargo run -p robot-cli -- disable --lock /tmp/runtime.lock
+```
+
+Defaults: `config/skeleton.yaml`, `/var/lib/robot/sessions`, 250 Hz, `/run/robot/runtime.lock`. Before anything else it
+takes its lock and refuses to start if the lock is held: by another runtime, so two never write to one bus, or by
+`robot-cli disable`, which refuses in turn while a runtime holds it. The kernel drops the lock when the process dies.
+systemd runs `robot-cli disable` after every exit (`deploy/systemd/runtime.service`). It logs what it checked at startup (build, skeleton
+hash, each bus's settings and joints, the offline joints) and, at the end, control's counts. SIGUSR1 also ends it: the binary raises it itself when the run ends on its own. The build's git revision,
+with `-dirty` for a changed tree, is embedded at build time and recorded in every session.
+
+In code, the plan and the routing are pure. With the test robot in `tests/skeleton.yaml`, whose right arm spans two
+buses:
+
+```rust
+use skeleton::LimbName;
+
+let text = std::fs::read_to_string("tests/skeleton.yaml").unwrap();
+let plans = runtime::plan(&skeleton::parse(&text).unwrap()).unwrap();
+let stop = runtime::route_stop(&plans, runtime::Scope::Limb(LimbName::RightArm));
+assert_eq!(stop.count(), 2);
+assert_eq!(runtime::route_clear(&plans, LimbName::LeftLeg).count(), 0);
+```
+
+## In detail
+
 - **`plan`** maps the skeleton onto bus threads: one per bus with a joint on it, slots limb by limb in file order, each
   bus's limb indices naming the skeleton limb they stand for. A joint with no bus is offline and on none (`offline`); a
   skeleton with no joint on any bus is refused.
@@ -109,46 +178,3 @@ file's end marker.
 One limit does not fail closed, pending the bench: a drive that reboots after its preflight passed, while its enable
 waits for a mate's proof, loses its `canTimeout` with nothing on the bus to say so, and is enabled with no host-loss
 timeout. Whether a real RobStride leaves a trace of a reboot on the bus is for the attended bench.
-
-## Must never
-
-Enable a drive on its own, or one an enable didn't name. Send an Enable before every named joint's preflight has passed. Send Disables in a batch: a stop is an order to the bus (step 7 design, D2). Let a clear reach a
-bus before a stop asked before it. Block the control thread on a client: stops go through a latch, clears and replies
-through bounded rings, and a full ring drops and counts.
-
-## Talks to
-
-`can` (bus threads and their rings), `safety` (preflight and the enable sequence), `robstride` (the hold's MIT
-frames), `skeleton` (the file it runs), `telemetry` (the session). The sim suite drives it on
-`vcan` (`crates/sim-suite/tests/runtime.rs`). See the
-[map](https://github.com/jaylamping/roark/blob/main/conventions/architecture.md).
-
-## Using it
-
-```bash
-runtime [--skeleton <file>] [--sessions <dir>] [--hz <n>] [--lock <file>]
-# on the dev box, with vcan up and sim-drive serving the skeleton's buses:
-scripts/devbox.sh run cargo run -p runtime -- --sessions /tmp/sessions --lock /tmp/runtime.lock
-# then, once it has exited, the independent stop with the same lock:
-scripts/devbox.sh run cargo run -p robot-cli -- disable --lock /tmp/runtime.lock
-```
-
-Defaults: `config/skeleton.yaml`, `/var/lib/robot/sessions`, 250 Hz, `/run/robot/runtime.lock`. Before anything else it
-takes its lock and refuses to start if the lock is held: by another runtime, so two never write to one bus, or by
-`robot-cli disable`, which refuses in turn while a runtime holds it. The kernel drops the lock when the process dies.
-systemd runs `robot-cli disable` after every exit (`deploy/systemd/runtime.service`). It logs what it checked at startup (build, skeleton
-hash, each bus's settings and joints, the offline joints) and, at the end, control's counts. SIGUSR1 also ends it: the binary raises it itself when the run ends on its own. The build's git revision,
-with `-dirty` for a changed tree, is embedded at build time and recorded in every session.
-
-In code, the plan and the routing are pure. With the test robot in `tests/skeleton.yaml`, whose right arm spans two
-buses:
-
-```rust
-use skeleton::LimbName;
-
-let text = std::fs::read_to_string("tests/skeleton.yaml").unwrap();
-let plans = runtime::plan(&skeleton::parse(&text).unwrap()).unwrap();
-let stop = runtime::route_stop(&plans, runtime::Scope::Limb(LimbName::RightArm));
-assert_eq!(stop.count(), 2);
-assert_eq!(runtime::route_clear(&plans, LimbName::LeftLeg).count(), 0);
-```

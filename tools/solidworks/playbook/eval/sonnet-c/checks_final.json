@@ -1,0 +1,82 @@
+{
+ "watertight": true,
+ "bodies": 1,
+ "volume_mm3": 134256.36324811832,
+ "mass_g": 159.7650722652608,
+ "bounds": [
+  [
+   -32.99,
+   -22.19,
+   -212.38
+  ],
+  [
+   32.99,
+   22.19,
+   32.93
+  ]
+ ],
+ "ring_points": 11094,
+ "ring_material_above_pct": 100.0,
+ "ring_material_below_pct": 0.0,
+ "outer_diameter_mm": null,
+ "holes_at_y-4 (radius from axis, angle deg, diameter)": [
+  [
+   0.0,
+   272.6,
+   0.0
+  ],
+  [
+   25.0,
+   180.0,
+   0.0
+  ],
+  [
+   25.0,
+   120.0,
+   0.0
+  ],
+  [
+   25.0,
+   240.0,
+   0.0
+  ],
+  [
+   25.0,
+   60.0,
+   0.0
+  ],
+  [
+   25.0,
+   300.0,
+   0.0
+  ],
+  [
+   25.0,
+   360.0,
+   0.0
+  ]
+ ],
+ "screw_clear_points_inside_material": 0,
+ "slot_points": 18445,
+ "slot_points_inside_material": 0,
+ "pin_ring_min_outer_dist_mm (need >= 9)": {
+  "16.3": 12.28,
+  "18.0": 11.53,
+  "20.0": 10.59,
+  "-16.3": 12.42,
+  "-18.0": 12.84,
+  "-20.0": 12.16
+ },
+ "inner_cheek_flat (material just outside, just inside)": {
+  "16": [
+   1.0,
+   0.0
+  ],
+  "-16": [
+   1.0,
+   0.0
+  ]
+ },
+ "cable_passage_axis_y2.5_r2.7_points_inside_material": 0,
+ "cable_passage_points": 1944
+}

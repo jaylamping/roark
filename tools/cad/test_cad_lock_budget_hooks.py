@@ -26,7 +26,6 @@ import pre_push
 
 NO_LIMITS = {
     "pushMaxBytes": 10**12,
-    "monthMaxBytes": 10**12,
     "storageWarnBytes": 10**12,
     "storageMaxBytes": 10**12,
 }
@@ -222,14 +221,13 @@ def test_budget_counts_only_objects_the_target_remote_lacks(repo: Path, monkeypa
 @pytest.mark.parametrize(
     ("limits", "expected"),
     [
-        ({"monthMaxBytes": 10_000_000}, (False, ["takes {month} past 10 MB of new LFS data"])),
         ({"storageMaxBytes": 10_000_000}, (False, ["takes storage past 0 GB (GitHub Free quota is 10 GiB)"])),
         ({"storageWarnBytes": 10_000_000}, (True, ["warning: storage past 0 GB; plan a cleanup or paid data pack"])),
-        ({"monthMaxBytes": 11_000_000, "storageMaxBytes": 11_000_000}, (True, [])),
+        ({"storageMaxBytes": 11_000_000}, (True, [])),
     ],
 )
-def test_month_and_storage_limits(repo: Path, monkeypatch: pytest.MonkeyPatch, limits: dict, expected: tuple) -> None:
-    """Guards: number - monthMaxBytes, storageMaxBytes and storageWarnBytes: 5 MB stored + 6 MB new against each limit."""
+def test_storage_limits(repo: Path, monkeypatch: pytest.MonkeyPatch, limits: dict, expected: tuple) -> None:
+    """Guards: number - storageMaxBytes and storageWarnBytes: 5 MB stored + 6 MB new against each limit."""
     monkeypatch.delenv("CAD_BUDGET_OK", raising=False)
     month = time.strftime("%Y-%m", time.gmtime())
     commit(repo, {"cad/shoulder/shoulder_c.SLDPRT": pointer(6_000_000, "5" * 64)}, "six")

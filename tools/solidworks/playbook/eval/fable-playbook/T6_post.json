@@ -1,0 +1,267 @@
+{
+  "hand": {
+    "mean_projected_mpa": 1.667,
+    "hertz_peak_pressure_mpa": 6.76,
+    "hertz_half_width_mm": 1.57,
+    "hertz_peak_vm_mpa_approx": 3.79,
+    "relative_radius_mm": 255.0000000000009,
+    "e_star_mpa": 2199.2
+  },
+  "runs": [
+    {
+      "study": "T6_MAIN0",
+      "nodes": 86289,
+      "hole_local_mm": 0.8,
+      "total_n": 500.0,
+      "reaction_n": [
+        0.0,
+        -0.0,
+        -500.0,
+        500.0
+      ],
+      "solve_s": 108,
+      "node_split": {
+        "pin": 39447,
+        "block": 45884,
+        "pad": 958,
+        "unassigned": 0
+      },
+      "pin_rise_mm": 0.12771,
+      "pin_rise_end_mm": 0.13884,
+      "pin_uz_range_mm": [
+        0.12541,
+        0.14101
+      ],
+      "pin_ux_uy_abs_max_mm": [
+        0.00224,
+        0.00667
+      ],
+      "block_max_disp_mm": 0.05061,
+      "max_disp_mm": 0.14904,
+      "max_disp_body": "pad",
+      "peak_contact_vm_mpa": 5.393,
+      "block_peak_at_mm": [
+        -2.25,
+        15.0,
+        15.52
+      ],
+      "block_peak_rho_mm": 5.957,
+      "pad_attachment_artefact": {
+        "vm_mpa": 3.86,
+        "at_mm": [
+          0.79,
+          15.0,
+          4.96
+        ],
+        "radial_stress_mpa": 3.49
+      },
+      "peak_contact_pressure_mpa": 6.451,
+      "peak_pressure_at_mm": [
+        -0.17,
+        12.13,
+        15.1
+      ],
+      "mid_length_peak_pressure_mpa": 5.965,
+      "mid_length_peak_at_mm": [
+        0.15,
+        -4.54,
+        15.1
+      ],
+      "mid_length_peak_vm_mpa": 4.334,
+      "contact_half_angle_deg": 22.5,
+      "contact_half_width_mm": 1.95,
+      "free_wall_radial_stress_abs_max_mpa": 0.1625,
+      "pressure_integral_fz_n": 506.1,
+      "pressure_grid_empty_bins": 0,
+      "top_pressure_by_y": {
+        "-15..-9": 5.62,
+        "-9..-3": 5.69,
+        "-3..+3": 5.62,
+        "+3..+9": 5.65,
+        "+9..+15": 5.65
+      },
+      "ligament_fz_n": 498.6,
+      "ligament_mean_sz_mpa": 0.558,
+      "pad_mean_sz_mpa": 0.01302,
+      "pad_force_n_from_stress": 0.1563,
+      "pad_peak_vm_mpa": 0.1362,
+      "pin_peak_vm_mpa": 43.8,
+      "pad_force_n_from_stiffness": 2.424,
+      "pad_share_pct": 0.485
+    },
+    {
+      "study": "T6_MAIN1",
+      "nodes": 111601,
+      "hole_local_mm": 0.6,
+      "total_n": 500.0,
+      "reaction_n": [
+        -0.0,
+        -0.0,
+        -500.0,
+        500.0
+      ],
+      "solve_s": 168,
+      "node_split": {
+        "pin": 39447,
+        "block": 71196,
+        "pad": 958,
+        "unassigned": 0
+      },
+      "pin_rise_mm": 0.12769,
+      "pin_rise_end_mm": 0.13886,
+      "pin_uz_range_mm": [
+        0.1259,
+        0.14052
+      ],
+      "pin_ux_uy_abs_max_mm": [
+        0.00171,
+        0.00574
+      ],
+      "block_max_disp_mm": 0.04741,
+      "max_disp_mm": 0.1495,
+      "max_disp_body": "pad",
+      "peak_contact_vm_mpa": 5.427,
+      "block_peak_at_mm": [
+        -2.29,
+        15.0,
+        15.76
+      ],
+      "block_peak_rho_mm": 6.196,
+      "pad_attachment_artefact": {
+        "vm_mpa": 5.33,
+        "at_mm": [
+          0.91,
+          15.0,
+          4.98
+        ],
+        "radial_stress_mpa": 5.64
+      },
+      "peak_contact_pressure_mpa": 6.125,
+      "peak_pressure_at_mm": [
+        -0.19,
+        -11.63,
+        15.1
+      ],
+      "mid_length_peak_pressure_mpa": 5.797,
+      "mid_length_peak_at_mm": [
+        -0.37,
+        3.0,
+        15.09
+      ],
+      "mid_length_peak_vm_mpa": 4.206,
+      "contact_half_angle_deg": 22.5,
+      "contact_half_width_mm": 1.95,
+      "free_wall_radial_stress_abs_max_mpa": 0.1138,
+      "pressure_integral_fz_n": 490.6,
+      "pressure_grid_empty_bins": 0,
+      "top_pressure_by_y": {
+        "-15..-9": 5.56,
+        "-9..-3": 5.6,
+        "-3..+3": 5.55,
+        "+3..+9": 5.59,
+        "+9..+15": 5.58
+      },
+      "ligament_fz_n": 505.1,
+      "ligament_mean_sz_mpa": 0.565,
+      "pad_mean_sz_mpa": 0.01303,
+      "pad_force_n_from_stress": 0.1564,
+      "pad_peak_vm_mpa": 0.1379,
+      "pin_peak_vm_mpa": 43.8,
+      "pad_force_n_from_stiffness": 2.424,
+      "pad_share_pct": 0.485
+    },
+    {
+      "study": "T6_MAIN2",
+      "nodes": 135714,
+      "hole_local_mm": 0.5,
+      "total_n": 500.0,
+      "reaction_n": [
+        0.0,
+        -0.0,
+        -500.0,
+        500.0
+      ],
+      "solve_s": 260,
+      "node_split": {
+        "pin": 39447,
+        "block": 95309,
+        "pad": 958,
+        "unassigned": 0
+      },
+      "pin_rise_mm": 0.12762,
+      "pin_rise_end_mm": 0.13865,
+      "pin_uz_range_mm": [
+        0.11626,
+        0.15042
+      ],
+      "pin_ux_uy_abs_max_mm": [
+        0.01148,
+        0.01217
+      ],
+      "block_max_disp_mm": 0.0466,
+      "max_disp_mm": 0.15068,
+      "max_disp_body": "pin",
+      "peak_contact_vm_mpa": 5.435,
+      "block_peak_at_mm": [
+        -1.86,
+        -15.0,
+        15.71
+      ],
+      "block_peak_rho_mm": 6.008,
+      "pad_attachment_artefact": {
+        "vm_mpa": 98.28,
+        "at_mm": [
+          -0.98,
+          15.0,
+          5.0
+        ],
+        "radial_stress_mpa": 92.63
+      },
+      "peak_contact_pressure_mpa": 6.263,
+      "peak_pressure_at_mm": [
+        -0.01,
+        -11.54,
+        15.1
+      ],
+      "mid_length_peak_pressure_mpa": 5.934,
+      "mid_length_peak_at_mm": [
+        0.02,
+        1.37,
+        15.1
+      ],
+      "mid_length_peak_vm_mpa": 4.289,
+      "contact_half_angle_deg": 22.3,
+      "contact_half_width_mm": 1.93,
+      "free_wall_radial_stress_abs_max_mpa": 0.0896,
+      "pressure_integral_fz_n": 491.6,
+      "pressure_grid_empty_bins": 0,
+      "top_pressure_by_y": {
+        "-15..-9": 5.52,
+        "-9..-3": 5.59,
+        "-3..+3": 5.5,
+        "+3..+9": 5.57,
+        "+9..+15": 5.5
+      },
+      "ligament_fz_n": 502.1,
+      "ligament_mean_sz_mpa": 0.562,
+      "pad_mean_sz_mpa": 0.01299,
+      "pad_force_n_from_stress": 0.1559,
+      "pad_peak_vm_mpa": 0.132,
+      "pin_peak_vm_mpa": 43.7,
+      "pad_force_n_from_stiffness": 2.422,
+      "pad_share_pct": 0.484
+    }
+  ],
+  "lift": {
+    "total_n": 0.02,
+    "pin_rise_mm": 0.001054,
+    "pad_stiffness_n_per_mm": 18.981,
+    "reaction_n": [
+      -0.0,
+      0.0,
+      -0.02,
+      0.02
+    ],
+    "block_max_disp_mm": 0.00038747850339859724
+  }
+}

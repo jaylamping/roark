@@ -1,0 +1,47 @@
+02:52:46 SolidWorks pid 92892 free GB 15.3
+02:52:53 ok PROFILE volume change: 15040.0000 (expected 15040.0000)
+02:52:53 PROFILE: added 15040.00 mm3
+02:52:54 ok WINDOW volume change: 7880.0564 (expected 7880.0564)
+02:52:54 WINDOW: cut 7880.06 mm3
+02:52:55 ok SCREW_HOLES volume change: 159.0431 (expected 159.0431)
+02:52:55 SCREW_HOLES: cut 159.04 mm3
+02:52:56 ok inside corner edges: 4.0000 (expected 4.0000)
+02:52:56 CORNERS: R2.0 on 4 edges, volume change +121.72 mm3
+02:52:56 ok hole faces: 2.0000 (expected 2.0000)
+02:52:56 ok hole y: 20.0000 (expected 20.0000)
+02:52:56 ok hole z: 12.0000 (expected 12.0000)
+02:52:56 ok hole along X: 1.0000 (expected 1.0000)
+02:52:56 ok hole y: 20.0000 (expected 20.0000)
+02:52:56 ok hole z: 48.0000 (expected 48.0000)
+02:52:56 ok hole along X: 1.0000 (expected 1.0000)
+02:52:56 ok wall face at X 0: 1.0000 (expected 1.0000)
+02:52:56 ok load patch: 1.0000 (expected 1.0000)
+02:52:56 ok patch area: 100.0000 (expected 100.0000)
+02:52:56 ok patch box[0]: 55.0000 (expected 55.0000)
+02:52:56 ok patch box[1]: 15.0000 (expected 15.0000)
+02:52:56 ok patch box[3]: 65.0000 (expected 65.0000)
+02:52:56 ok patch box[4]: 25.0000 (expected 25.0000)
+02:52:56 ok patch box[5]: 52.0000 (expected 52.0000)
+02:52:56 HAND {'chord_tension_n': 90.8, 'chord_stress_mpa': 3.03, 'strut_force_n': 103.4, 'strut_stress_mpa': 2.3, 'strut_len_mm': 57.2, 'euler_in_plane_n': 435, 'euler_out_of_plane_n': 2150, 'buckling_factor_pinned': 4.21, 'zc': 52.5} mass g 8.476
+02:52:56 ok s1_truss_wall_1p5 hole faces: 2.0000 (expected 2.0000)
+02:52:56 ok s1_truss_wall_1p5 wall faces: 1.0000 (expected 1.0000)
+02:52:56 ok s1_truss_wall_1p5 load patch faces: 1.0000 (expected 1.0000)
+02:52:56 fillet faces for mesh control 4
+02:52:56 s1_truss_wall_1p5: PREDICT nodes ~45922, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 3.03 / 2.3 MPa
+02:52:58 s1_truss_wall_1p5: mesh rc 0, 54774 nodes, 35379 elements, free 14.6 GB
+02:53:05 s1_truss_wall_1p5: fixture nodes 1071, box [0.0, 15.0, 6.0] to [0.0, 25.0, 56.0]
+02:53:05 s1_truss_wall_1p5: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:53:09 s1_truss_wall_1p5 checks {'reaction': [-0.0, -0.0, 60.0, 60.0], 'reaction_err_pct': 0.0, 'reaction_fz': 60.0, 'sx_top': 2.93, 'sx_hand': 7.5, 'sx_nodes': 164, 'sx_err_pct': 60.94, 'max_disp': 0.3115, 'vm_all': 5.38, 'vm_all_at': [48.91, 20.45, 49.45], 'nodes': 54774, 'excessive_prompt': False}
+02:53:09 s1_truss_wall_1p5 chord sx 3.04 hand 3.03 | Y factors (8.36, 16.72, 20.84, 8.36) | vm (5.38, [48.91, 20.45, 49.45], 8.36) | Y {"tension": [1.35, [48.91, 19.55, 49.45], 16.72], "shear": [0.62, [50.0, 15.99, 48.69], 20.84]} | excluded {'vm': 4.59, 'at': [0.0, 25.0, 56.0]}
+02:53:09 ok s1_truss_holes_1p5 hole faces: 2.0000 (expected 2.0000)
+02:53:09 ok s1_truss_holes_1p5 wall faces: 1.0000 (expected 1.0000)
+02:53:09 ok s1_truss_holes_1p5 load patch faces: 1.0000 (expected 1.0000)
+02:53:10 fillet faces for mesh control 4
+02:53:10 s1_truss_holes_1p5: PREDICT nodes ~45922, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 3.03 / 2.3 MPa
+02:53:11 s1_truss_holes_1p5: mesh rc 0, 54774 nodes, 35379 elements, free 15.3 GB
+02:53:18 s1_truss_holes_1p5: fixture nodes 382, box [0.0, 17.75, 9.75] to [5.0, 22.25, 50.25]
+02:53:18 s1_truss_holes_1p5: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+02:53:22 s1_truss_holes_1p5 checks {'reaction': [0.001, -0.001, 60.002, 60.002], 'reaction_err_pct': 0.003, 'reaction_fz': 60.002, 'sx_top': 2.85, 'sx_hand': 7.5, 'sx_nodes': 164, 'sx_err_pct': 62.0, 'max_disp': 0.3977, 'vm_all': 22.19, 'vm_all_at': [5.0, 19.92, 50.25], 'nodes': 54774, 'excessive_prompt': False}
+02:53:22 s1_truss_holes_1p5 chord sx 3.03 hand 3.03 | Y factors (5.7, 14.44, 8.47, 5.7) | vm (7.89, [5.59, 19.88, 16.73], 5.7) | Y {"tension": [1.56, [0.0, 17.83, 51.64], 14.44], "shear": [1.54, [1.77, 17.09, 51.17], 8.47]} | excluded {'vm': 22.19, 'at': [5.0, 19.92, 50.25]}
+02:53:22 closing pid 92892 committed MB 1900
+STEP s1_truss mass 8.476 worst Y factors (yield, layer, shear, min) [5.7, 14.44, 8.47, 5.7] buckling 4.21

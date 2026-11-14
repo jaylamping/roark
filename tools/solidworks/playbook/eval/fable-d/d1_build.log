@@ -1,0 +1,93 @@
+08:43:53 SolidWorks pid 126664 free GB 12.6
+08:43:55 ok SPINE volume change: 4080.0000 (expected 4080.0000)
+08:43:55 SPINE: added 4080.00 mm3
+08:43:56 ok TAB_PX volume change: 1280.0000 (expected 1280.0000)
+08:43:56 TAB_PX: added 1280.00 mm3
+08:43:57 ok TAB_NX volume change: 1280.0000 (expected 1280.0000)
+08:43:57 TAB_NX: added 1280.00 mm3
+08:43:58 ok ARM0 volume change: 574.0000 (expected 574.0000)
+08:43:58 ARM0: added 574.00 mm3
+08:43:58 ok ARM1 volume change: 574.0000 (expected 574.0000)
+08:43:58 ARM1: added 574.00 mm3
+08:43:59 ok ARM2 volume change: 574.0000 (expected 574.0000)
+08:43:59 ARM2: added 574.00 mm3
+08:44:00 ok ARM3 volume change: 574.0000 (expected 574.0000)
+08:44:00 ARM3: added 574.00 mm3
+08:44:01 ok POSTS volume change: 923.6282 (expected 923.6282)
+08:44:01 POSTS: added 923.63 mm3
+08:44:01 ok INSERT_HOLES volume change: 301.5929 (expected 301.5929)
+08:44:01 INSERT_HOLES: cut 301.59 mm3
+08:44:01 ok M5_HOLES volume change: 190.0664 (expected 190.0664)
+08:44:01 M5_HOLES: cut 190.07 mm3
+08:44:02 ok SPOT volume change: 62.8319 (expected 62.8319)
+08:44:02 SPOT: cut 62.83 mm3
+08:44:02 ok root edges found: 8.0000 (expected 8.0000)
+08:44:02 ROOT_ROUNDS: R2.0 on 8 edges, volume change +27.47 mm3
+08:44:02 ok root rounds volume change: 27.4690 (expected 27.4690)
+08:44:02 ok mount volume: 9332.6062 (expected 9332.6062)
+08:44:03 ok box[0]: -58.5000 (expected -58.5000)
+08:44:03 ok box[1]: -30.0000 (expected -30.0000)
+08:44:03 ok box[2]: 0.0000 (expected 0.0000)
+08:44:03 ok box[3]: 58.5000 (expected 58.5000)
+08:44:03 ok box[4]: 30.0000 (expected 30.0000)
+08:44:03 ok box[5]: 8.0000 (expected 8.0000)
+08:44:03 ok rebuild errors: 0.0000 (expected 0.0000)
+08:44:03 ok insert hole faces: 4.0000 (expected 4.0000)
+08:44:03 ok M5 hole faces: 2.0000 (expected 2.0000)
+08:44:03 ok post top faces: 4.0000 (expected 4.0000)
+08:44:03 measured {"insert_holes": [[-39.0, -26.5, 4.0, 2.0, 8.0], [-39.0, 26.5, 4.0, 2.0, 8.0], [39.0, -26.5, 4.0, 2.0, 8.0], [39.0, 26.5, 4.0, 2.0, 8.0]], "m5_holes": [[-50.5, 0.0, 5.5, 0.0, 3.5], [50.5, 0.0, 5.5, 0.0, 3.5]], "post_top_z": [8.0, 8.0, 8.0, 8.0], "post_od": [7.0, 7.0, 7.0, 7.0]}
+08:44:04 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\buck_mount.step 135482 bytes
+08:44:04 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\buck_mount.stl 104684 bytes
+08:44:05 STL check {'watertight': True, 'shells': 1, 'volume': 9331.24, 'volume_ok': True, 'box': [-58.5, -30.0, 0.0, 58.5, 30.0, 8.0], 'box_ok': True}
+08:44:05 STEP in mm True
+08:44:06 ok SPINE volume change: 4080.0000 (expected 4080.0000)
+08:44:06 SPINE: added 4080.00 mm3
+08:44:07 ok TAB_PX volume change: 1280.0000 (expected 1280.0000)
+08:44:07 TAB_PX: added 1280.00 mm3
+08:44:07 ok TAB_NX volume change: 1280.0000 (expected 1280.0000)
+08:44:07 TAB_NX: added 1280.00 mm3
+08:44:08 ok ARM0 volume change: 574.0000 (expected 574.0000)
+08:44:08 ARM0: added 574.00 mm3
+08:44:09 ok ARM1 volume change: 574.0000 (expected 574.0000)
+08:44:09 ARM1: added 574.00 mm3
+08:44:10 ok ARM2 volume change: 574.0000 (expected 574.0000)
+08:44:10 ARM2: added 574.00 mm3
+08:44:10 ok ARM3 volume change: 574.0000 (expected 574.0000)
+08:44:10 ARM3: added 574.00 mm3
+08:44:11 POSTS: added 923.63 mm3
+08:44:11 ok PINS volume change: 70.6858 (expected 70.6858)
+08:44:11 PINS: added 70.69 mm3
+08:44:12 ok LATCH_ARM0 volume change: 1052.0000 (expected 1052.0000)
+08:44:12 LATCH_ARM0: added 1052.00 mm3
+08:44:13 ok LATCH0 volume change: 172.0000 (expected 172.0000)
+08:44:13 LATCH0: added 172.00 mm3
+08:44:13 ok HOOK0 volume change: 35.1000 (expected 35.1000)
+08:44:13 HOOK0: added 35.10 mm3
+08:44:14 ok LATCH_ARM1 volume change: 1052.0000 (expected 1052.0000)
+08:44:14 LATCH_ARM1: added 1052.00 mm3
+08:44:15 ok LATCH1 volume change: 172.0000 (expected 172.0000)
+08:44:15 LATCH1: added 172.00 mm3
+08:44:15 ok HOOK1 volume change: 35.1000 (expected 35.1000)
+08:44:15 HOOK1: added 35.10 mm3
+08:44:16 exported C:\joe\code\roark-wt\sw-eval-fable-d\cad\_wip\sw-eval\fable-d\idea_b_snap.stl 64284 bytes
+08:44:21 ok post top faces: 4.0000 (expected 4.0000)
+08:44:21 ok spot faces: 2.0000 (expected 2.0000)
+08:44:21 PREDICT el 1.2: nodes 66565; Z case: arm root bending 2.47 MPa nominal (x1.3 at the R2.0 round), post deflection 0.091 mm from the arm alone (about twice that with the spine and tab); peak on the top or bottom face of an arm at its root round
+08:44:22 D1_Z_remote: mesh rc 0, 78212 nodes, 49818 elements, free 12.7 GB
+08:44:33 D1_Z_remote: fixture nodes 474, box [-55.75, -5.25, 3.5] to [55.75, 5.25, 3.5]
+08:44:33 D1_Z_remote: load nodes 352, box [-42.49, -30.0, 8.0] to [42.5, 30.0, 8.0]
+08:44:39 {'study': 'D1_Z_remote', 'el_mm': 1.2, 'nodes': 78212, 'elements': 49818, 'solve_s': 19, 'peak_vm_all': 1.77, 'peak_vm_away': 1.77, 'at': [-39.31, 23.01, 4.52], 'sf_yield': 25.48, 'max_disp_mm': 0.03852945566177368, 'reaction_N': [-0.0, 0.0, 9.0, 9.0], 'applied_N': 9.0}
+08:44:42 D1_X_remote: mesh rc 0, 78212 nodes, 49818 elements, free 12.4 GB
+08:44:54 D1_X_remote: fixture nodes 474, box [-55.75, -5.25, 3.5] to [55.75, 5.25, 3.5]
+08:44:54 D1_X_remote: load nodes 352, box [-42.49, -30.0, 8.0] to [42.5, 30.0, 8.0]
+08:45:00 {'study': 'D1_X_remote', 'el_mm': 1.2, 'nodes': 78212, 'elements': 49818, 'solve_s': 19, 'peak_vm_all': 1.24, 'peak_vm_away': 1.24, 'at': [37.34, -23.42, 4.43], 'sf_yield': 36.3, 'max_disp_mm': 0.019570715725421906, 'reaction_N': [-9.0, -0.0, -0.0, 9.0], 'applied_N': 9.0}
+08:45:02 D1_Y_remote: mesh rc 0, 78212 nodes, 49818 elements, free 11.4 GB
+08:45:15 D1_Y_remote: fixture nodes 474, box [-55.75, -5.25, 3.5] to [55.75, 5.25, 3.5]
+08:45:15 D1_Y_remote: load nodes 352, box [-42.49, -30.0, 8.0] to [42.5, 30.0, 8.0]
+08:45:21 {'study': 'D1_Y_remote', 'el_mm': 1.2, 'nodes': 78212, 'elements': 49818, 'solve_s': 20, 'peak_vm_all': 1.45, 'peak_vm_away': 1.45, 'at': [42.57, -11.48, 4.0], 'sf_yield': 31.14, 'max_disp_mm': 0.07247696071863174, 'reaction_N': [-0.0, -9.0, -0.0, 9.0], 'applied_N': 9.0}
+08:45:23 D1_Z_even: mesh rc 0, 78212 nodes, 49818 elements, free 12.1 GB
+08:45:35 D1_Z_even: fixture nodes 474, box [-55.75, -5.25, 3.5] to [55.75, 5.25, 3.5]
+08:45:35 D1_Z_even: load nodes 352, box [-42.49, -30.0, 8.0] to [42.5, 30.0, 8.0]
+08:45:41 {'study': 'D1_Z_even', 'el_mm': 1.2, 'nodes': 78212, 'elements': 49818, 'solve_s': 19, 'peak_vm_all': 2.92, 'peak_vm_away': 2.92, 'at': [42.57, -11.48, 4.0], 'sf_yield': 15.4, 'max_disp_mm': 0.15656234323978424, 'reaction_N': [-0.0, -0.0, 9.0, 9.0], 'applied_N': 9.0}
+08:45:42 closing pid 126664 committed MB 1768
+DONE d1_build

@@ -1,0 +1,78 @@
+01:50:09 SolidWorks pid 133768 free GB 17.2
+01:50:11 ok PLATE volume change: 2856.0000 (expected 2856.0000)
+01:50:11 PLATE: added 2856.00 mm3
+01:50:12 ok ARM volume change: 5230.7500 (expected 5230.7500)
+01:50:12 ARM: added 5230.75 mm3
+01:50:12 ok fillet edges found: 2.0000 (expected 2.0000)
+01:50:12 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:50:13 ok WEBSLOT volume change: 1344.6400 (expected 1344.6400)
+01:50:13 WEBSLOT: cut 1344.64 mm3
+01:50:14 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:50:14 SCREWS: cut 127.23 mm3
+01:50:14 S7_web_slot volume 6647.710743633211 mass 7.910775784923521 errors [] bbox [0.0, 13.0, 5.0, 65.0, 27.0, 56.0]
+01:50:16 ok PAD volume change: 475.0000 (expected 475.0000)
+01:50:16 PAD: added 475.00 mm3
+01:50:17 ok PLATE volume change: 2856.0000 (expected 2856.0000)
+01:50:17 PLATE: added 2856.00 mm3
+01:50:18 ok ARM volume change: 4755.7500 (expected 4755.7500)
+01:50:18 ARM: added 4755.75 mm3
+01:50:18 ok fillet edges found: 2.0000 (expected 2.0000)
+01:50:18 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:50:19 ok WEBSLOT volume change: 1344.6400 (expected 1344.6400)
+01:50:19 WEBSLOT: cut 1344.64 mm3
+01:50:20 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:50:20 SCREWS: cut 127.23 mm3
+01:50:21 ok fea volume equals deliverable: 6647.7107 (expected 6647.7107)
+01:50:22 picks 1 2 1 2
+01:50:22 ok wall: 1.0000 (expected 1.0000)
+01:50:22 ok screws: 2.0000 (expected 2.0000)
+01:50:22 ok top: 1.0000 (expected 1.0000)
+01:50:22 ok fillets: 2.0000 (expected 2.0000)
+01:50:27 S7wall: mesh rc 0, 32574 nodes, 20326 elements, free 17.0 GB
+01:50:31 S7wall: fixture nodes 1525, box [0.0, 13.0, 5.0] to [0.0, 27.0, 56.0]
+01:50:31 S7wall: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:50:32 RESULT S7_web_slot wall {'nodes': 32574, 'reaction': [-0.001, -0.0, 59.999, 59.999], 'applied': 60.0, 'max_disp': 3.4243223667144775, 'peak': (37.85405349731445, [43.31, 21.1, 49.97]), 'peak_all': 37.85405349731445, 'peak_all_at': [43.31, 21.1, 49.97], 'layer_X': ((44.81914138793945, [43.34, 19.64, 49.97]), (10.224819382536527, [44.0, 17.86, 46.85])), 'layer_Y': ((16.818119049072266, [44.0, 20.0, 50.0]), (4.517484468855704, [44.0, 15.0, 47.64])), 'layer_Z': ((17.218717575073242, [44.0, 20.0, 50.0]), (10.17622770461984, [44.0, 17.86, 46.85]))}
+01:50:33 S7screws: mesh rc 0, 32574 nodes, 20326 elements, free 17.0 GB
+01:50:37 S7screws: fixture nodes 268, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+01:50:37 S7screws: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:50:38 RESULT S7_web_slot screws {'nodes': 32574, 'reaction': [0.002, 0.002, 60.002, 60.002], 'applied': 60.0, 'max_disp': 4.127128601074219, 'peak': (37.943607330322266, [43.31, 21.1, 49.97]), 'peak_all': 47.86564636230469, 'peak_all_at': [0.0, 19.24, 45.88], 'layer_X': ((44.92870330810547, [43.34, 19.64, 49.97]), (10.195528806860134, [44.0, 17.86, 46.85])), 'layer_Y': ((16.875810623168945, [44.0, 20.0, 50.0]), (4.508797232775071, [44.0, 15.0, 47.64])), 'layer_Z': ((17.289241790771484, [44.0, 20.0, 50.0]), (10.14715597841737, [44.0, 17.86, 46.85]))}
+01:50:38 closing pid 133768 committed MB 1817
+01:50:55 SolidWorks pid 131992 free GB 17.2
+01:50:58 ok PLATE volume change: 2856.0000 (expected 2856.0000)
+01:50:58 PLATE: added 2856.00 mm3
+01:50:58 ok ARM volume change: 5230.7500 (expected 5230.7500)
+01:50:58 ARM: added 5230.75 mm3
+01:50:59 ok fillet edges found: 2.0000 (expected 2.0000)
+01:50:59 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:50:59 ok WEBSLOT volume change: 1380.1000 (expected 1380.1000)
+01:50:59 WEBSLOT: cut 1380.10 mm3
+01:51:00 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:51:00 SCREWS: cut 127.23 mm3
+01:51:01 S8_long_slot volume 6612.250743633213 mass 7.868578384923524 errors [] bbox [0.0, 13.0, 5.0, 65.0, 27.0, 56.0]
+01:51:02 ok PAD volume change: 475.0000 (expected 475.0000)
+01:51:02 PAD: added 475.00 mm3
+01:51:04 ok PLATE volume change: 2856.0000 (expected 2856.0000)
+01:51:04 PLATE: added 2856.00 mm3
+01:51:04 ok ARM volume change: 4755.7500 (expected 4755.7500)
+01:51:04 ARM: added 4755.75 mm3
+01:51:05 ok fillet edges found: 2.0000 (expected 2.0000)
+01:51:05 ROOT_FILLETS: R3.0 on 2 edges, volume change +32.84 mm3
+01:51:05 ok WEBSLOT volume change: 1380.1000 (expected 1380.1000)
+01:51:05 WEBSLOT: cut 1380.10 mm3
+01:51:06 ok SCREWS volume change: 127.2345 (expected 127.2345)
+01:51:06 SCREWS: cut 127.23 mm3
+01:51:07 ok fea volume equals deliverable: 6612.2507 (expected 6612.2507)
+01:51:08 picks 1 2 1 2
+01:51:08 ok wall: 1.0000 (expected 1.0000)
+01:51:08 ok screws: 2.0000 (expected 2.0000)
+01:51:08 ok top: 1.0000 (expected 1.0000)
+01:51:08 ok fillets: 2.0000 (expected 2.0000)
+01:51:13 S8wall: mesh rc 0, 32841 nodes, 20443 elements, free 17.0 GB
+01:51:17 S8wall: fixture nodes 1525, box [0.0, 13.0, 5.0] to [0.0, 27.0, 56.0]
+01:51:17 S8wall: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:51:19 RESULT S8_long_slot wall {'nodes': 32841, 'reaction': [-0.002, -0.001, 60.001, 60.001], 'applied': 60.0, 'max_disp': 3.736563205718994, 'peak': (43.109439849853516, [47.31, 21.81, 50.0]), 'peak_all': 43.109439849853516, 'peak_all_at': [47.31, 21.81, 50.0], 'layer_X': ((50.546958923339844, [47.31, 21.1, 50.0]), (13.345556047332016, [48.0, 21.43, 47.41])), 'layer_Y': ((18.40980339050293, [48.0, 21.43, 50.03]), (5.795387915239237, [48.0, 25.0, 48.07])), 'layer_Z': ((17.239238739013672, [48.0, 21.43, 50.03]), (13.351829579908205, [48.0, 21.43, 47.41]))}
+01:51:20 S8screws: mesh rc 0, 32841 nodes, 20443 elements, free 16.9 GB
+01:51:24 S8screws: fixture nodes 268, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+01:51:24 S8screws: load nodes 241, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+01:51:25 RESULT S8_long_slot screws {'nodes': 32841, 'reaction': [-0.001, -0.002, 59.998, 59.998], 'applied': 60.0, 'max_disp': 4.443161487579346, 'peak': (43.25918960571289, [47.31, 21.81, 50.0]), 'peak_all': 47.34974670410156, 'peak_all_at': [0.0, 19.24, 45.88], 'layer_X': ((50.72673034667969, [47.31, 21.1, 50.0]), (13.286949449183378, [48.0, 21.43, 47.41])), 'layer_Y': ((18.493953704833984, [48.0, 21.43, 50.03]), (5.78111229881248, [48.0, 25.0, 48.07])), 'layer_Z': ((17.339096069335938, [48.0, 21.43, 50.03]), (13.293347911217182, [48.0, 21.43, 47.41]))}
+01:51:25 closing pid 131992 committed MB 1815

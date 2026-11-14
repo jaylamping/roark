@@ -1,0 +1,82 @@
+{
+ "watertight": true,
+ "shells": 1,
+ "stl_volume_mm3": 114740.0,
+ "stl_bounds": [
+  [
+   -35.0,
+   -23.11,
+   -213.69
+  ],
+  [
+   35.0,
+   23.11,
+   35.0
+  ]
+ ],
+ "ring_solid_at_y-3.95": 1.0,
+ "ring_empty_at_y-4.05": 1.0,
+ "lowest_y_within_r31": -4.0,
+ "bore_empty": 1.0,
+ "bore_wall_solid": 1.0,
+ "bolt_holes_empty": [
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0
+ ],
+ "bolt_hole_walls_solid": [
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0
+ ],
+ "screw_head_cylinders_clear": [
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0
+ ],
+ "pin_hole_empty": 1.0,
+ "cheek_face_flat_O16": {
+  "1": [
+   1.0,
+   1.0
+  ],
+  "-1": [
+   1.0,
+   1.0
+  ]
+ },
+ "5mm_ring_solid_from_16_to_abs_y": {
+  "1": 22.55,
+  "-1": 22.55
+ },
+ "slot_clear_below_-183": 1.0,
+ "sweep_O30_clear": 1.0,
+ "cable_O6_clear": 1.0,
+ "cable_axis": [
+  [
+   0.0,
+   17.0,
+   -45.0
+  ],
+  [
+   0.0,
+   -7.4,
+   -186.0
+  ]
+ ],
+ "cable_roofed_from_z": -90.0,
+ "cable_roofed_to_z": -175.0,
+ "mass_g_from_stl": 136.5,
+ "step_mm": true,
+ "fixed_items_ok": true,
+ "failed": []
+}

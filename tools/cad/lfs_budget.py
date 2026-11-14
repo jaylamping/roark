@@ -8,8 +8,9 @@ Usage:
     python tools/cad/lfs_budget.py push [--remote R] REV...   check what these commits would add to R (origin)
                                                        (e.g. origin/main..HEAD); used by pre-push
 Limits: cad/manifests/lfs-budget.json. "push" fails (exit 1) when the push adds more than
-pushMaxBytes, takes this month past monthMaxBytes, or takes storage past storageMaxBytes,
-unless CAD_BUDGET_OK=1 is set (Joey's OK for that push). Exit 2 = bad usage.
+pushMaxBytes or takes storage past storageMaxBytes, unless CAD_BUDGET_OK=1 is set (Joey's OK for
+that push). There is no monthly limit: GitHub's storage quota is a running total, not a monthly
+allowance, so the total is what is capped. Exit 2 = bad usage.
 """
 
 from __future__ import annotations
@@ -110,11 +111,6 @@ def check_push(
     if adding > budget["pushMaxBytes"]:
         ok = False
         msgs.append(f"over the per-push limit of {budget['pushMaxBytes'] / 1e6:.0f} MB")
-    if this_month + adding > budget["monthMaxBytes"]:
-        ok = False
-        msgs.append(
-            f"takes {month} past {budget['monthMaxBytes'] / 1e6:.0f} MB of new LFS data"
-        )
     if total + adding > budget["storageMaxBytes"]:
         ok = False
         msgs.append(

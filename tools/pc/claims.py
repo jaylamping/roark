@@ -10,6 +10,10 @@ same file. Stdlib only.
     python tools/pc/claims.py list [--stale MINUTES]                        # default 15
     python tools/pc/claims.py who <worktree path or SolidWorks PID>
 
+`who <PID>` also answers for an instance nobody claimed: sw_instance.py leaves a note for every SolidWorks it starts or
+attaches to (`instances/sw-<pid>.json` in the claims folder: worktree, client PID, command line), so a session that never
+ran `claim` still shows as the owner of what it launched.
+
 claim, beat and release run inside a short mutex (claims.mutex in the folder, created exclusively), so a check and the
 write that depends on it can't interleave with another session's. claim and beat refuse a worktree or SolidWorks PID that
 another live session holds; `<session>-fea`, a thread's second SolidWorks instance, may share its parent's worktree. A
@@ -34,6 +38,7 @@ NAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 FEA = "-fea"
 MUTEX = "claims.mutex"
 MUTEX_WAIT_S = 5.0
+INSTANCES = "instances"
 
 
 def claims_dir() -> Path:
@@ -167,10 +172,47 @@ def release(d: Path, session: str) -> None:
         f.unlink(missing_ok=True)
 
 
+def instance_file(d: Path, sw_pid: int) -> Path:
+    return d / INSTANCES / f"sw-{int(sw_pid)}.json"
+
+
+def note_instance(d: Path, sw_pid: int, sw_started: float, worktree: str, client_pid: int, command: str, t: float) -> dict:
+    """Record who launched or attached to a SolidWorks instance. Written by sw_instance.py, not by hand; it needs no claim
+    and never refuses, so it can't stop a launch. The subfolder keeps these out of load_all()."""
+    n = {"sw_pid": int(sw_pid), "sw_started": sw_started, "worktree": norm(worktree), "client_pid": client_pid,
+         "command": command[:300], "since": t}
+    f = instance_file(d, sw_pid)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    tmp = f.with_suffix(".tmp")
+    tmp.write_text(json.dumps(n, indent=1), encoding="utf-8")
+    os.replace(tmp, f)
+    return n
+
+
+def drop_instance(d: Path, sw_pid: int) -> None:
+    instance_file(d, sw_pid).unlink(missing_ok=True)
+
+
+def instance_note(d: Path, sw_pid: int, sw_started: float | None = None) -> dict | None:
+    """The note for this PID, or None. Windows reuses PIDs: pass the process start time to reject another process's note."""
+    try:
+        n = json.loads(instance_file(d, sw_pid).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(n, dict) or (sw_started is not None and n.get("sw_started") != sw_started):
+        return None
+    return n
+
+
 def who(d: Path, what: str) -> list[dict]:
     pid = int(what) if what.isdigit() else None
     key = norm(what) if pid is None else None
-    return [c for c in load_all(d) if (pid and c.get("sw_pid") == pid) or (key and c.get("worktree") == key)]
+    found = [c for c in load_all(d) if (pid and c.get("sw_pid") == pid) or (key and c.get("worktree") == key)]
+    if pid and not found:
+        n = instance_note(d, pid)
+        if n:
+            found.append({"session": None, "unclaimed": True, **n})
+    return found
 
 
 def table(d: Path, t: float, stale: float) -> list[str]:

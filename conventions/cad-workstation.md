@@ -66,6 +66,9 @@ python tools/pc/claims.py release left-arm                           # when done
   comes back doesn't take back what someone claimed meanwhile. The one exception is a thread's FEA instance:
   `<session>-fea` may share `<session>`'s worktree, never its PID. A claim silent for 15 minutes no longer blocks anyone,
   but **don't close its SolidWorks**: that still needs its owner or Joey (section 4).
+- **An instance nobody claimed still has a name.** `sw_instance.py` leaves a note for every SolidWorks it starts or
+  attaches to (worktree, client PID, command line), and `claims.py who <pid>` and `sw_instance.py --status` show it. The
+  note blocks nothing and is no substitute for a claim: it has no heartbeat, so it can't tell a live job from a dead one.
 - A claim file that can't be read blocks every `claim` and `beat` (it may be a live session's) until it is checked and
   deleted by hand, which needs Joey (section 4).
 - **Long jobs beat.** A script that runs longer than a few minutes calls `beat` between steps (each FEA case, each export).
@@ -105,7 +108,9 @@ and `git lfs prune` (the shared LFS store). `cad_lock.py acquire` asks every tim
 - installing software or Python packages;
 - changing shared git config or hooks (`git config` without `--worktree`, `install_hooks.py`, `git lfs install`, anything
   in `.git/hooks`);
-- closing or killing another session's SolidWorks, or taking over a stale CAD lock (`--take-stale`);
+- closing or killing another session's live SolidWorks (`sw_kill.py --force`), or taking over a stale CAD lock
+  (`--take-stale`). Ending a dead one with `python tools/solidworks/sw_kill.py --dead` is routine
+  ([RULES.md](../tools/solidworks/RULES.md#ending-instances));
 - a push over the LFS budget (`CAD_BUDGET_OK=1`);
 - system settings, drivers, scheduled tasks.
 
@@ -151,3 +156,32 @@ A thread asks for these by name and says why. It doesn't ask for anything on the
 6. Restart the "holly-pc (joe)" Remote Control server so it reloads the settings.
 
 After a week, count the approvals that still got stuck and trim the lists.
+
+## 5. Where the time goes, and which machine to use
+
+Measured on holly-pc on 2026-11-13 (8 cores, 16 threads, 32 GB), over ten minutes with three threads at work and from the
+day's logs:
+
+- The PC was mostly idle: 16 % CPU on average, 19 to 21 GB of memory free, the disk 99 % idle, no paging.
+- SolidWorks uses **one core** to open, mesh and read a result back. Only the solver uses several (about 8).
+- In fifteen shoulder studies of 0.7 to 1.0 million nodes the solver ran 20 to 30 s each, 1.9 % of the run time. Reading
+  the result back through the API took 12 to 25 minutes each, 72 %.
+- While it reads a result back an instance answers nothing, and a new SolidWorks waits at the splash screen for the oldest
+  running instance to answer ([RULES.md](../tools/solidworks/RULES.md#launching-beside-a-busy-instance)). So one thread's
+  read-back holds up every other thread's launch. A benchmark run lost 35 to 40 of 88 minutes this way.
+
+So the waits are not a shortage of machine. What follows:
+
+- **Read back only what is judged.** Ask for the bodies, faces or plot extremes the pass criterion uses, not every node of
+  the study. This is the largest saving and it shortens the time other threads wait.
+- **Keep every worktree on the current `tools/solidworks/`.** Each script imports the copy in its own worktree, so a
+  worktree that has not merged `main` keeps old launch rules. Merge `main` before a run of jobs.
+- **holly-pc first, Joey-PC for the overflow** (Joey, 2026-11-13). Fill holly-pc as far as its limits allow
+  ([RULES.md rule 6](../tools/solidworks/RULES.md#rules), memory free before each launch). Only a job that would still wait
+  there, 15 minutes behind a guard or a launch, moves to Joey-PC, hidden, under Joey-PC's rules
+  ([cad.md section 9](cad.md#9-cad-workstation)).
+- **Tell Joey first if he is at Joey-PC.** Before the job starts there, run `python tools/pc/user_idle.py` on Joey-PC.
+  Exit 0 means it watched for three minutes, saw no more input than his keep-alive mouse script makes, and nothing
+  fullscreen is in front: start. Exit 1 means he is using it: write to him in the thread that a job is about to start
+  there and what it is, then start it. Check again before each new job, not once per session.
+- **Time-critical work starts on Joey-PC** only when Joey says so in the request that starts it.

@@ -1,0 +1,99 @@
+hand wall forces 180.84033613445376 100.84033613445376 rigid tip disp 0.4361344537815126
+02:00:53 SolidWorks pid 116164 free GB 17.0
+02:00:56 ok BLOCK volume change: 16000.0000 (expected 16000.0000)
+02:00:56 BLOCK: added 16000.00 mm3
+02:00:57 ok SLOT volume change: 1968.0000 (expected 1968.0000)
+02:00:57 SLOT: cut 1968.00 mm3
+02:00:57 ok block volume: 14032.0000 (expected 14032.0000)
+02:00:59 ok TLOW volume change: 3504.0000 (expected 3504.0000)
+02:00:59 TLOW: added 3504.00 mm3
+02:01:00 ok TUP volume change: 1600.0000 (expected 1600.0000)
+02:01:00 TUP: added 1600.00 mm3
+02:01:02 ok SOFTPAD0 volume change: 7.6341 (expected 7.6341)
+02:01:02 SOFTPAD0: added 7.63 mm3
+02:01:03 ok SOFTPAD1 volume change: 7.6341 (expected 7.6341)
+02:01:03 SOFTPAD1: added 7.63 mm3
+02:01:04 ok SOFTPAD2 volume change: 7.6341 (expected 7.6341)
+02:01:04 SOFTPAD2: added 7.63 mm3
+02:01:06 ok SOFTPAD3 volume change: 7.6341 (expected 7.6341)
+02:01:06 SOFTPAD3: added 7.63 mm3
+02:01:07 ok BLK volume change: 16000.0000 (expected 16000.0000)
+02:01:07 BLK: added 16000.00 mm3
+02:01:08 ok SLOT volume change: 1968.0000 (expected 1968.0000)
+02:01:08 SLOT: cut 1968.00 mm3
+02:01:10 body ('<b4_softpad0>-<SOFTPAD0>', 7.63, [1.1, 10.0, 23.1, 2.9, 13.0, 24.9])
+02:01:10 body ('<b4_softpad1>-<SOFTPAD1>', 7.63, [-2.9, 10.0, 23.1, -1.1, 13.0, 24.9])
+02:01:10 body ('<b4_softpad2>-<SOFTPAD2>', 7.63, [1.1, -13.0, 23.1, 2.9, -10.0, 24.9])
+02:01:10 body ('<b4_tongue_up>-<TUP>', 1600.0, [-4.0, -10.0, 30.0, 4.0, 10.0, 40.0])
+02:01:10 body ('<b4_softpad3>-<SOFTPAD3>', 7.63, [-2.9, -13.0, 23.1, -1.1, -10.0, 24.9])
+02:01:10 body ('<b4_tongue_low>-<TLOW>', 3504.0, [-4.0, -10.0, 8.1, 4.0, 10.0, 30.0])
+02:01:10 body ('SLOT', 14032.0, [-20.0, -10.0, 0.0, 20.0, 10.0, 20.0])
+02:01:10 ok bodies: 7.0000 (expected 7.0000)
+02:01:10 ok assembly volume = sum of parts: 19166.5363 (expected 19166.5363)
+02:01:15 pick bottom 1
+02:01:15 ok bottom: 1.0000 (expected 1.0000)
+02:01:15 pick wall_p 1
+02:01:15 ok wall_p: 1.0000 (expected 1.0000)
+02:01:15 pick wall_n 1
+02:01:15 ok wall_n: 1.0000 (expected 1.0000)
+02:01:15 pick tg_p 1
+02:01:15 ok tg_p: 1.0000 (expected 1.0000)
+02:01:15 pick tg_n 1
+02:01:15 ok tg_n: 1.0000 (expected 1.0000)
+02:01:15 pick load 1
+02:01:15 ok load: 1.0000 (expected 1.0000)
+02:01:15 pick padouts 4
+02:01:15 ok padouts: 4.0000 (expected 4.0000)
+02:01:15 wall_p {'kind': 'plane', 'r': None, 'normal': [-1.0, -0.0, 0.0], 'box': [4.1, -10.0, 8.0, 4.1, 10.0, 20.0], 'area': 239.99999999999997}
+02:01:15 tg_p {'kind': 'plane', 'r': None, 'normal': [1.0, -0.0, -0.0], 'box': [4.0, -10.0, 8.100000000000001, 4.0, 10.0, 30.0], 'area': 437.9999999999999}
+02:01:15 load {'kind': 'plane', 'r': None, 'normal': [-1.0, -0.0, 0.0], 'box': [-4.0, -10.0, 30.000000000000004, -4.0, 10.0, 40.0], 'area': 199.99999999999997}
+02:01:15 PREDICT: tongue tip x-disp ~ +0.45..0.6 mm (rigid 0.436 + elastic), wall forces 180.8 (+X wall) / 100.8 (-X wall), nodes 20k-80k
+02:01:16 B4_1p2: body "SolidBody 1(<b4_tongue_low>-<TLOW>)" is PETG printed
+02:01:16 B4_1p2: body "SolidBody 2(<b4_softpad3>-<SOFTPAD3>)" is Soft pad
+02:01:16 B4_1p2: body "SolidBody 3(<b4_tongue_up>-<TUP>)" is PETG printed
+02:01:16 B4_1p2: body "SolidBody 4(<b4_softpad2>-<SOFTPAD2>)" is Soft pad
+02:01:16 B4_1p2: body "SolidBody 5(<b4_softpad1>-<SOFTPAD1>)" is Soft pad
+02:01:16 B4_1p2: body "SolidBody 6(<b4_softpad0>-<SOFTPAD0>)" is Soft pad
+02:01:16 B4_1p2: body "SolidBody 7(SLOT)" is PETG printed
+02:01:18 B4_1p2: mesh rc 0, 35651 nodes, 22970 elements, free 16.7 GB
+02:01:18 B4_1p2: solver macro: before  0  | set err  0   | after  7  | 
+02:01:35 B4_1p2: fixture nodes 679, box [-20.0, -13.0, 0.0] to [20.0, 13.0, 24.9]
+02:01:35 B4_1p2: load nodes 121, box [-4.0, -10.0, 30.0] to [-4.0, 10.0, 40.0]
+02:01:38 ROW {'el': 3.0, 'ctrl': 1.2, 'section_shear': {'10.0': (-108.58159529368048, 160.00000402331335, 412), '12.0': (-104.39951485279565, 160.00000402331335, 512), '14.0': (-104.75882470817092, 160.00000402331335, 583), '16.0': (-103.9646278109414, 160.00000402331335, 560), '18.0': (-104.56290042022636, 160.00000402331335, 545), '24.0': (77.91586890224, 160.00000402331335, 726), '26.0': (79.99001421676547, 160.00000402331335, 505), '28.0': (79.73757769413588, 160.00000402331335, 411)}, 'block_peak_away_from_edges': (9.883418083190918, [6.1, -2.3, 20.0]), 'block_vm_below_edge': [9.136677742004395, 5.682278156280518, 3.7818853855133057, 2.5512731075286865, 5.394744396209717], 'tongue_min_uz_all': -0.12762224674224854, 'tongue_max_ux': 0.8306902647018433, 'nodes': 35651, 'reaction': [-80.0, 0.0, -0.0, 80.0], 'applied': 80.0, 'F_plusX_wall': 170.2008864051527, 'z_plusX': 21.56205220584908, 'F_minusX_wall': 81.38548804157713, 'z_minusX': 8.57427769344722, 'wall_area_check': (239.99997809529341, 239.99997809529341), 'block_peak_vm': 34.97042465209961, 'block_peak_at': [4.1, -1.18, 20.0], 'tip_ux': 0.8294007778167725, 'tip_uy': -0.014240361040546781, 'tip_uz': 0.013578713365963528, 'tongue_bottom_uz_min': -0.09026914834976196, 'tongue_peak_vm': 7.715106010437012, 'pads': {'pad_sum': [-0.07900426969445107, 0.01143838063990188, -0.0036552093963280186], 'pad_abs': 0.37339603559419743, 'other': [-79.92099558445625, -0.011437997076427564, 0.00365437229629606]}, 'excessive': False, 'max_disp': 0.8442842960357666, 'seconds': 23}
+02:01:38 B4_0p8: body "SolidBody 1(<b4_tongue_low>-<TLOW>)" is PETG printed
+02:01:38 B4_0p8: body "SolidBody 2(<b4_softpad3>-<SOFTPAD3>)" is Soft pad
+02:01:38 B4_0p8: body "SolidBody 3(<b4_tongue_up>-<TUP>)" is PETG printed
+02:01:38 B4_0p8: body "SolidBody 4(<b4_softpad2>-<SOFTPAD2>)" is Soft pad
+02:01:38 B4_0p8: body "SolidBody 5(<b4_softpad1>-<SOFTPAD1>)" is Soft pad
+02:01:38 B4_0p8: body "SolidBody 6(<b4_softpad0>-<SOFTPAD0>)" is Soft pad
+02:01:38 B4_0p8: body "SolidBody 7(SLOT)" is PETG printed
+02:01:41 B4_0p8: mesh rc 0, 78380 nodes, 52173 elements, free 16.7 GB
+02:01:41 B4_0p8: solver macro: before  0  | set err  0   | after  7  | 
+02:02:57 B4_0p8: fixture nodes 855, box [-20.0, -13.0, 0.0] to [20.0, 13.0, 24.9]
+02:02:57 B4_0p8: load nodes 153, box [-4.0, -10.0, 30.0] to [-4.0, 10.0, 40.0]
+02:03:10 ROW {'el': 2.5, 'ctrl': 0.8, 'section_shear': {'10.0': (-104.88980561671875, 160.00000402331335, 882), '12.0': (-103.90810821041741, 160.00000402331335, 1326), '14.0': (-103.92803713592022, 160.00000402331335, 1580), '16.0': (-103.93435473700426, 160.00000402331335, 1646), '18.0': (-103.72656696821932, 160.00000402331335, 1599), '24.0': (77.17330378683151, 160.00000402331335, 1711), '26.0': (79.9699293545925, 160.00000402331335, 1420), '28.0': (79.81352707443776, 160.00000402331335, 904)}, 'block_peak_away_from_edges': (9.419434547424316, [6.08, -5.31, 20.0]), 'block_vm_below_edge': [9.797028541564941, 6.501707077026367, 3.9967994689941406, 2.4965062141418457, 8.300029754638672], 'tongue_min_uz_all': -0.11753267049789429, 'tongue_max_ux': 0.8276326656341553, 'nodes': 78380, 'reaction': [-80.0, 0.0, 0.0, 80.0], 'applied': 80.0, 'F_plusX_wall': 174.2191614991193, 'z_plusX': 21.222701206823853, 'F_minusX_wall': 77.60376579448894, 'z_minusX': 8.374262204151075, 'wall_area_check': (239.9999780952934, 239.99997809529341), 'block_peak_vm': 37.47256088256836, 'block_peak_at': [4.1, -2.0, 20.0], 'tip_ux': 0.8263343830262461, 'tip_uy': -0.010065143591453952, 'tip_uz': 0.022409523735123296, 'tongue_bottom_uz_min': -0.07987358421087265, 'tongue_peak_vm': 13.40674114227295, 'pads': {'pad_sum': [-0.07877947921952, 0.00966914858418022, -0.005731317432832839], 'pad_abs': 0.3726969850721389, 'other': [-79.92121996927744, -0.009669078921433538, 0.0057320380001328886]}, 'excessive': False, 'max_disp': 0.8424171805381775, 'seconds': 91}
+02:03:10 B4_0p6: body "SolidBody 1(<b4_tongue_low>-<TLOW>)" is PETG printed
+02:03:10 B4_0p6: body "SolidBody 2(<b4_softpad3>-<SOFTPAD3>)" is Soft pad
+02:03:10 B4_0p6: body "SolidBody 3(<b4_tongue_up>-<TUP>)" is PETG printed
+02:03:10 B4_0p6: body "SolidBody 4(<b4_softpad2>-<SOFTPAD2>)" is Soft pad
+02:03:10 B4_0p6: body "SolidBody 5(<b4_softpad1>-<SOFTPAD1>)" is Soft pad
+02:03:10 B4_0p6: body "SolidBody 6(<b4_softpad0>-<SOFTPAD0>)" is Soft pad
+02:03:10 B4_0p6: body "SolidBody 7(SLOT)" is PETG printed
+02:03:13 B4_0p6: mesh rc 0, 149727 nodes, 101733 elements, free 16.6 GB
+02:03:13 B4_0p6: solver macro: before  0  | set err  0   | after  7  | 
+02:06:58 B4_0p6: fixture nodes 1215, box [-20.0, -13.0, 0.0] to [20.0, 13.0, 24.9]
+02:06:58 B4_0p6: load nodes 255, box [-4.0, -10.0, 30.0] to [-4.0, 10.0, 40.0]
+02:07:42 ROW {'el': 2.0, 'ctrl': 0.6, 'section_shear': {'10.0': (-102.7248982702418, 160.00000402331335, 1578), '12.0': (-103.37773260154313, 160.00000402331335, 2669), '14.0': (-103.28369711141215, 160.00000402331335, 3286), '16.0': (-103.32140495294188, 160.00000402331335, 3266), '18.0': (-103.50985739108557, 160.00000402331335, 3420), '24.0': (78.87068149245091, 160.00000402331335, 3461), '26.0': (80.00593876832934, 160.00000402331335, 2673), '28.0': (79.97598354446052, 160.00000402331335, 1639)}, 'block_peak_away_from_edges': (8.650452613830566, [6.21, 2.31, 20.0]), 'block_vm_below_edge': [10.664179801940918, 5.780710697174072, 3.862950563430786, 2.507718086242676, 6.00494909286499], 'tongue_min_uz_all': -0.12273610383272171, 'tongue_max_ux': 0.8277499675750732, 'nodes': 149727, 'reaction': [-80.0, 0.0, 0.0, 80.0], 'applied': 80.0, 'F_plusX_wall': 169.62887139542013, 'z_plusX': 20.972771574185256, 'F_minusX_wall': 80.31316658570947, 'z_minusX': 8.281751848118521, 'wall_area_check': (239.99997809529341, 239.99997809529341), 'block_peak_vm': 41.001895904541016, 'block_peak_at': [4.1, -2.73, 20.0], 'tip_ux': 0.826448207494443, 'tip_uy': -0.0036859504974609803, 'tip_uz': 0.012497196158778572, 'tongue_bottom_uz_min': -0.08495675772428513, 'tongue_peak_vm': 18.60125160217285, 'pads': {'pad_sum': [-0.07894136077447911, 0.004637614791136002, -0.003790682339513296], 'pad_abs': 0.38191710602814055, 'other': [-79.92105892272593, -0.004637441295926692, 0.003791442191868555]}, 'excessive': False, 'max_disp': 0.8410792946815491, 'seconds': 272}
+02:07:42 B4_REV: body "SolidBody 1(<b4_tongue_low>-<TLOW>)" is PETG printed
+02:07:42 B4_REV: body "SolidBody 2(<b4_softpad3>-<SOFTPAD3>)" is Soft pad
+02:07:42 B4_REV: body "SolidBody 3(<b4_tongue_up>-<TUP>)" is PETG printed
+02:07:42 B4_REV: body "SolidBody 4(<b4_softpad2>-<SOFTPAD2>)" is Soft pad
+02:07:42 B4_REV: body "SolidBody 5(<b4_softpad1>-<SOFTPAD1>)" is Soft pad
+02:07:42 B4_REV: body "SolidBody 6(<b4_softpad0>-<SOFTPAD0>)" is Soft pad
+02:07:42 B4_REV: body "SolidBody 7(SLOT)" is PETG printed
+02:07:44 B4_REV: mesh rc 0, 35651 nodes, 22970 elements, free 16.5 GB
+02:07:44 B4_REV: solver macro: before  0  | set err  0   | after  7  | 
+02:08:17 B4_REV: fixture nodes 679, box [-20.0, -13.0, 0.0] to [20.0, 13.0, 24.9]
+02:08:17 B4_REV: load nodes 121, box [-4.0, -10.0, 30.0] to [-4.0, 10.0, 40.0]
+02:08:20 REVERSE {'tip_ux': -0.11154976132370177, 'reaction': [0.001, -0.0, -0.0, 0.001], 'applied': 0.001, 'pads': {'pad_sum': [0.0011239243077199035, -4.5506567403208464e-09, 3.4088998290826567e-08], 'pad_abs': 0.019209928830193235, 'other': [-0.00012392450521763604, 4.540658155895161e-09, -3.4115240035714756e-08]}, 'excessive': False}
+02:08:20 closing pid 116164 committed MB 1919

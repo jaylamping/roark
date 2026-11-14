@@ -1,0 +1,66 @@
+07:17:47 PREDICTED {'nodes': 125000, 'XP': {'disp_mm': 3.5, 'peak': 'neck edges at x = +-a, Z -35 to -50, about 5 to 6 MPa'}, 'YP': {'disp_mm': 5.0, 'peak': 'neck +-Y skin at Z -28 to -36 just outside the mount, about 12 to 18 MPa'}}
+07:18:15 SolidWorks pid 128180 free GB 14.6
+07:18:21 ok DISC volume change: 30787.6080 (expected 30787.6080)
+07:18:21 DISC: added 30787.61 mm3
+07:18:21 rim edges 2
+07:18:21 RIM: R3.5 on 2 edges, volume change -1130.41 mm3
+07:18:31 SHAFT: added 112341.80 mm3 (merge True)
+07:18:32 END: added 14024.25 mm3
+07:18:33 SLOT: cut 31110.11 mm3
+07:18:34 ELBOW_HOLES: cut 6090.67 mm3
+07:18:35 PIN_HOLE: cut 713.34 mm3
+07:18:35 holes removed 6804.0
+07:18:36 CABLE: cut 3114.51 mm3
+07:18:37 neck edges 12
+07:18:39 NECK_BLEND: no round built on 12 edges at (3.0, 2.0, 1.2)
+07:18:39 neck blend None
+07:18:39 slot edges 12 kept 10
+07:18:40 SLOT_EDGES: R1.5 on 10 edges, volume change -188.36 mm3
+07:18:40 slot edge round 1.5
+07:18:40 feature errors []
+07:18:41 exported C:\joe\code\roark-wt\sw-eval-fable-c\cad\_wip\sw-eval\fable-c\link_r3.stl 763084 bytes
+07:18:41 link_r3 {'volume_mm3': 114806.2, 'mass_g': 136.6, 'bodies': 1, 'bbox': [-35.0, -23.29, -213.69, 35.0, 23.29, 35.0], 'feature_errors': []}
+07:18:42 exported C:\joe\code\roark-wt\sw-eval-fable-c\cad\_wip\sw-eval\fable-c\link_r3.step 616042 bytes
+07:19:27 link_r3 fixed items ok: True [] neck blend None
+07:19:28 ok DISC volume change: 30787.6080 (expected 30787.6080)
+07:19:28 DISC: added 30787.61 mm3
+07:19:28 rim edges 2
+07:19:28 RIM: R3.5 on 2 edges, volume change -1130.41 mm3
+07:19:38 SHAFT: added 112341.80 mm3 (merge True)
+07:19:39 END: added 14024.25 mm3
+07:19:40 SLOT: cut 31110.11 mm3
+07:19:41 ELBOW_HOLES: cut 6090.67 mm3
+07:19:42 PIN_HOLE: cut 713.34 mm3
+07:19:42 holes removed 6804.0
+07:19:43 CABLE: cut 3114.51 mm3
+07:19:44 slot edges 12 kept 10
+07:19:45 SLOT_EDGES: R1.5 on 10 edges, volume change -188.36 mm3
+07:19:45 slot edge round 1.5
+07:19:45 feature errors []
+07:19:46 exported C:\joe\code\roark-wt\sw-eval-fable-c\cad\_wip\sw-eval\fable-c\link_r3n.stl 763084 bytes
+07:19:46 link_r3n {'volume_mm3': 114806.2, 'mass_g': 136.6, 'bodies': 1, 'bbox': [-35.0, -23.29, -213.69, 35.0, 23.29, 35.0], 'feature_errors': []}
+07:19:47 exported C:\joe\code\roark-wt\sw-eval-fable-c\cad\_wip\sw-eval\fable-c\link_r3n.step 616058 bytes
+07:20:32 link_r3n fixed items ok: True [] neck blend None
+07:20:32 the blended link is not usable: the study runs on the unblended one
+07:20:33 picks: mount face 1 pin faces 2 bolt walls 6
+07:20:42 XP: mesh rc 0, 118924 nodes, 78376 elements, free 14.9 GB
+07:21:07 XP: fixture nodes 2178, box [-31.5, -4.0, -31.5] to [31.5, -4.0, 31.5]
+07:21:07 XP: load nodes 1720, box [-4.0, -23.11, -204.0] to [4.0, 23.11, -196.0]
+07:21:20 {'study': 'XP', 'el_mm': 2.5, 'nodes': 118924, 'elements': 78376, 'solve_s': 47, 'peak_vm_all': 8.72, 'peak_vm_away': 5.54, 'at': [17.43, -2.51, -31.9], 'sf_yield': 8.12, 'max_disp_mm': 2.3273839950561523, 'reaction_N': [-60.0, 0.0, 0.0, 60.0], 'applied_N': 60.0}
+07:21:23 picks: mount face 1 pin faces 2 bolt walls 6
+07:21:30 YP: mesh rc 0, 118924 nodes, 78376 elements, free 14.8 GB
+07:21:56 YP: fixture nodes 2178, box [-31.5, -4.0, -31.5] to [31.5, -4.0, 31.5]
+07:21:56 YP: load nodes 1720, box [-4.0, -23.11, -204.0] to [4.0, 23.11, -196.0]
+07:22:09 {'study': 'YP', 'el_mm': 2.5, 'nodes': 118924, 'elements': 78376, 'solve_s': 46, 'peak_vm_all': 57.92, 'peak_vm_away': 16.52, 'at': [-0.64, 4.8, -25.83], 'sf_yield': 2.72, 'max_disp_mm': 5.3807806968688965, 'reaction_N': [0.0, -60.0, 0.0, 60.0], 'applied_N': 60.0}
+07:22:12 picks: mount face 1 pin faces 2 bolt walls 6
+07:22:17 YP_coarse: mesh rc 0, 69364 nodes, 44144 elements, free 15.2 GB
+07:22:28 YP_coarse: fixture nodes 1483, box [-31.5, -4.0, -31.5] to [31.5, -4.0, 31.5]
+07:22:28 YP_coarse: load nodes 1720, box [-4.0, -23.11, -204.0] to [4.0, 23.11, -196.0]
+07:22:33 {'study': 'YP_coarse', 'el_mm': 4.0, 'nodes': 69364, 'elements': 44144, 'solve_s': 21, 'peak_vm_all': 54.28, 'peak_vm_away': 14.74, 'at': [1.0, 5.27, -26.26], 'sf_yield': 3.05, 'max_disp_mm': 5.359375953674316, 'reaction_N': [-0.0, -60.0, 0.0, 60.0], 'applied_N': 60.0}
+07:22:34 picks: mount face 1 pin faces 2 bolt walls 6
+07:22:41 YP_holes: mesh rc 0, 118924 nodes, 78376 elements, free 15.4 GB
+07:23:06 YP_holes: fixture nodes 1452, box [-26.7, -4.0, -23.35] to [26.7, 4.0, 23.35]
+07:23:06 YP_holes: load nodes 1720, box [-4.0, -23.11, -204.0] to [4.0, 23.11, -196.0]
+07:23:19 {'study': 'YP_holes', 'el_mm': 2.5, 'nodes': 118924, 'elements': 78376, 'solve_s': 45, 'peak_vm_all': 63.43, 'peak_vm_away': 20.89, 'at': [-18.28, 3.88, -26.76], 'sf_yield': 2.15, 'max_disp_mm': 9.246715545654297, 'reaction_N': [-0.0, -60.0, 0.0, 60.0], 'applied_N': 60.0}
+07:23:21 closing pid 128180 committed MB 1778
+{"predicted": {"nodes": 125000, "XP": {"disp_mm": 3.5, "peak": "neck edges at x = +-a, Z -35 to -50, about 5 to 6 MPa"}, "YP": {"disp_mm": 5.0, "peak": "neck +-Y skin at Z -28 to -36 just outside the mount, about 12 to 18 MPa"}}, "el": 2.5, "build_link_r3": {"volume_mm3": 114806.2, "mass_g": 136.6, "bodies": 1, "bbox": [-35.0, -23.29, -213.69, 35.0, 23.29, 35.0], "feature_errors": [], "neck_blend": null}, "build_link_r3n": {"volume_mm3": 114806.2, "mass_g": 136.6, "bodies": 1, "bbox": [-35.0, -23.29, -213.69, 35.0, 23.29, 35.0], "feature_errors": [], "neck_blend": null}, "studied": "link_r3n", "XP": {"nodes": 118924, "el": 2.5, "max_disp_mm": 2.327, "reaction": [-60.0, 0.0, 0.0, 60.0], "vm_all": 8.72, "away_1mm": {"vm": [7.51, [10.88, -3.82, -30.75]], "layer_X": [2.11, [-10.23, -3.5, -31.7]], "shear_X": [1.83, [23.38, 1.45, -25.87]], "layer_Y": [2.82, [8.95, -3.13, -29.94]], "shear_Y": [2.43, [12.49, -3.06, -28.35]], "layer_Z": [8.16, [-10.23, -3.5, -31.7]], "shear_Z": [2.28, [12.49, -3.06, -28.35]]}, "away_2mm": {"vm": [6.53, [-13.23, -3.32, -32.24]], "layer_X": [1.78, [-11.49, -3.35, -31.51]], "shear_X": [1.83, [23.38, 1.45, -25.87]], "layer_Y": [1.42, [9.48, -1.81, -29.07]], "shear_Y": [1.68, [-11.96, -3.54, -32.47]], "layer_Z": [7.41, [-11.49, -3.35, -31.51]], "shear_Z": [2.08, [23.38, 1.45, -25.87]]}, "away_3mm": {"vm": [6.53, [-13.23, -3.32, -32.24]], "layer_X": [1.6, [12.84, 2.35, -23.32]], "shear_X": [1.83, [23.38, 1.45, -25.87]], "layer_Y": [1.26, [12.84, 2.35, -23.32]], "shear_Y": [1.68, [-11.96, -3.54, -32.47]], "layer_Z": [6.98, [-13.23, -3.32, -32.24]], "shear_Z": [2.08, [23.38, 1.45, -25.87]]}, "away_5mm": {"vm": [5.54, [17.43, -2.51, -31.9]], "layer_X": [1.6, [12.84, 2.35, -23.32]], "shear_X": [1.83, [23.38, 1.45, -25.87]], "layer_Y": [1.26, [12.84, 2.35, -23.32]], "shear_Y": [1.42, [-12.11, -4.28, -34.53]], "layer_Z": [5.48, [-14.2, 2.99, -21.66]], "shear_Z": [2.08, [23.38, 1.45, -25.87]]}, "shaft_z-110_vm_mean": [3.66]}, "XN": {"nodes": 118924, "el": 2.5, "max_disp_mm": 2.327, "reaction": [-60.0, 0.0, 0.0, 60.0], "vm_all": 8.72, "away_1mm": {"vm": [7.51, [10.88, -3.82, -30.75]], "layer_X": [2.64, [8.43, -3.68, -31.88]], "shear_X": [1.83, [23.38, 1.45, -25.87]], "layer_Y": [2.86, [-12.04, -3.08, -28.59]], "shear_Y": [2.43, [12.49, -3.06, -28.35]], "layer_Z": [8.27, [8.43, -3.68, -31.88]], "shear_Z": [2.28, [12.49, -3.06, -28.35]]}, "away_2mm": {"vm": [6.53, [-13.23, -3.32, -32.24]], "layer_X": [2.1, [13.16, -3.11, -31.17]], "shear_X": [1.83, [23.38, 1.45, -25.87]], "layer_Y": [1.8, [13.16, -3.11, -31.17]], "shear_Y": [1.68, [-11.96, -3.54, -32.47]], "layer_Z": [7.58, [13.16, -3.11, -31.17]], "shear_Z": [2.08, [23.38, 1.45, -25.87]]}, "away_3mm": {"vm": [6.53, [-13.23, -3.32, -32.24]], "layer_X": [1.66, [-12.84, 2.34, -23.32]], "shear_X": [1.83, [23.38, 1.45, -25.87]], "layer_Y": [1.31, [-12.84, 2.34, -23.32]], "shear_Y": [1.68, [-11.96, -3.54, -32.47]], "layer_Z": [7.31, [12.9, -3.38, -32.3]], "shear_Z": [2.08, [23.38, 1.45, -25.8
