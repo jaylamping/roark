@@ -96,18 +96,22 @@ DOME = dict(r=55.0, edge=5.0, back_t=2.4, pocket_r=(24.5, 52.6), pockets=[(-20.0
 # of yoke.py, a solid neck (no pockets on the back face) and a 4.5 mm blend cone at the boss root. FORK_YOKE=0 builds the
 # dome of 2026-11-13 again (LOOK=ffT, ffTS do so for the analysis builds).
 FORK_YOKE = os.environ.get('FORK_YOKE', '1') != '0'
-# KEY SLOT (look variant until adopted): the 104 deg RS02 screw is reached with a ball-end key tilted KEY_SLOT_DEG back
+# KEY SLOT: the 104 deg RS02 screw is reached with a ball-end key tilted KEY_SLOT_DEG back
 # from the screw's axis, through a short slot that comes out on the fork front's hidden underside (the drum's envelope, open
 # on the bench where the RS02 goes on). It replaces the dia 7 driver bore that ran 95 mm up through the neck beside the boss
-# root to the top of the hub's head, and its plug. KEY_SLOT=1 to build it.
-KEY_SLOT = os.environ.get('KEY_SLOT', '0') != '0'
+# root to the top of the hub's head, and its plug. KEY_SLOT=0 builds the bore again.
+KEY_SLOT = os.environ.get('KEY_SLOT', '1') != '0'      # adopted 2026-11-14 (checks/FORK_FRONT_FE.md, structural revision)
 KEY_SLOT_DEG = 20.0
-# counterbore floor under the four outer joint screws' heads in the fork rear (the inner pair has 5.5): 3.0 as first built
-JOINT_FLOOR = float(os.environ.get('JOINT_FLOOR', '3.0'))
+# counterbore floor under the four outer joint screws' heads in the fork rear (the inner pair has 5.5)
+JOINT_FLOOR = float(os.environ.get('JOINT_FLOOR', '4.0'))      # 4.0 adopted 2026-11-14 (3.0 before)
 # more material at the joint between fork front and fork rear, all inside the sleeve (the stop's torque crosses the joint as
 # a pull along Y on the end screws): the fork front's pad JOINT_EXTRA x 2 thicker (1 mm as first built), 2.5 mm further down
 # and 3 mm wider each side; the fork rear's front plate JOINT_EXTRA thicker (1.6 as first built)
-JOINT_EXTRA = float(os.environ.get('JOINT_EXTRA', '0'))
+JOINT_EXTRA = float(os.environ.get('JOINT_EXTRA', '1.0'))      # 1.0 adopted 2026-11-14 (0 before)
+# two gussets inside the fork front's sleeve, in the pad's plane, from the pad's two lower corners JOINT_GUSSET mm down the
+# sleeve's walls (6 mm wide at the pad, tapering to nothing): the stop's pull runs into the wall over a length. Clear of the
+# cable exit by 2.4 mm or more (the channel is X -15.8 to +17 with its walls and enters this plane only below Y 332)
+JOINT_GUSSET = float(os.environ.get('JOINT_GUSSET', '10'))      # 10 adopted 2026-11-14 (0 before)
 YOKE = dict(r=30.0, wedge=36.0, fillet=22.0, round=13.0, pocket_wall=4.0, half_w=0.0)   # round 13 (was 9.5): softer shoulder ends
 # COVER RING (new part, 2026-11-14, optional): a dark ring pressed into the drum's lip bore. It closes the 7 mm slot between
 # the RS03's turning face (to r 36) and the lip's bore (r 43), which the yoke leaves open to view, and gives the opening one

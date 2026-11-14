@@ -456,6 +456,8 @@ def build_access_plugs():
     """FRONT BLEND mock-up: press-in plugs (Ø6.9 in the Ø7 RS02 access holes) at the dome's top, 7 deep, top trimmed to
     the dome's r 55 surface about the roll axis; a 2 x 1 mm pry notch on the back edge (toward the drum, out of sight)
     lifts them out with a small screwdriver."""
+    if KEY_SLOT and FORK_YOKE and LOOK not in ('ffT', 'ffTS'):
+        raise SystemExit('no access plug: the key slot ends on the hidden underside and the long driver bore is gone')
     d = new_part(OUT / 'shoulder_fork_access_plugs_left.SLDPRT')
     if FORK_YOKE and LOOK not in ('ffT', 'ffTS'):
         # YOKE: one plug. The 104 deg driver bore comes out at the top of the hub's head (r 30 about the roll axis); the plug
@@ -776,6 +778,22 @@ def build_fork_front():
         _py0, _pw = _py0 - 2.5, _pw + 6.0
     extrude(d, zsk(d, JZ0 + _pt, 'JOINT_PAD', lambda s: s.rpoly(rect_pts((RX, (_py0 + SEAT_Y[1]) / 2, JZ0 + _pt), X, Y, _pw, SEAT_Y[1] - _py0), [4, 4, 4, 4])),
             'JOINT_PAD', _pt, NZ, lo=-1.0)
+    if JOINT_GUSSET:
+        def _wall_x(y_, side):
+            q = [(a_[0], a_[2]) for a_ in EV.sleeve_section(y_, 2.0)]
+            zc_ = JZ0 + _pt / 2
+            xs_ = []
+            for (x0, z0_), (x1, z1_) in zip(q, q[1:] + q[:1]):
+                if (z0_ - zc_) * (z1_ - zc_) <= 0 and z0_ != z1_:
+                    xs_.append(x0 + (x1 - x0) * (zc_ - z0_) / (z1_ - z0_))
+            return (min(xs_) if side < 0 else max(xs_))
+        yT, yB = _py0 + 0.3, _py0 + 0.3 - JOINT_GUSSET
+        for sd_ in (-1, 1):
+            xT, xB = _wall_x(yT, sd_), _wall_x(yB, sd_)
+            g_ = [(xT + sd_ * 1.0, yT), (xT - sd_ * 6.0, yT), (xB - sd_ * 0.3, yB), (xB + sd_ * 1.0, yB)]
+            log(f'  gusset {sd_:+d}: wall X offset {xT - RX:.1f} at Y {yT:.1f}, {xB - RX:.1f} at Y {yB:.1f}')
+            extrude(d, zsk(d, JZ0 + _pt, f'JOINT_GUSSET_{"L" if sd_ < 0 else "R"}', lambda s, g_=g_: s.poly([(x_, y_, JZ0 + _pt) for x_, y_ in g_])),
+                    f'JOINT_GUSSET_{"L" if sd_ < 0 else "R"}', _pt, NZ, lo=-1.0)
     if FB == '3':
         # FRONT BLEND 3, true wrap: ONE loft from the cuff's whole front half (+-90 deg about the yaw axis) at the seat top up
         # into the cheek's exact crowned section at Y 392 (and on inside the cheek), so cuff, skirt and cheek are one
@@ -1052,8 +1070,12 @@ def build_fork_rear():
     fillet(d, edges_where(d, _in_root), [ss['root_r'], 1.0], 'TOOTH_ROOT')
     # the hollow stops 1.6 short of the joint plane: a front plate, so the skin does not run out to a knife edge where the
     # outline meets the plane at a shallow angle (the cable channel cuts through the plate where the cables pass)
-    hy = [y_ for y_ in ((Y_SPLIT - 0.5, 344.0, 349.0) if SC47 else (SL['y_bot'] + 2.0, 322.0, 330.0, 338.0, 344.0, 349.0)) if min(q[2] for q in EV.sleeve_section(y_, 2.0)) < JZ0 - (1.6 + JOINT_EXTRA) - 1.0]
-    hs = [clip_sk(y_, 'rear', 2.0, 0.0, f'SLEEVE_R_IN{i}', zc=JZ0 - (1.6 + JOINT_EXTRA)) for i, y_ in enumerate(hy)]   # SIDE CENTRE: the thin bottom stays solid
+    # front plate at the joint: 1.6 as first built. With the thicker counterbore floors (JOINT_FLOOR over 3) it is at least
+    # 0.4 more than the floor, so every screw head seats on solid plate: as first built the hollow reached under the lower
+    # pair's counterbores, the head sat partly on the 1.6 mm plate, and the floor plane touched the hollow along an edge
+    _plate = max(1.6 + JOINT_EXTRA, JOINT_FLOOR + 0.4) if JOINT_FLOOR > 3.0 else 1.6 + JOINT_EXTRA
+    hy = [y_ for y_ in ((Y_SPLIT - 0.5, 344.0, 349.0) if SC47 else (SL['y_bot'] + 2.0, 322.0, 330.0, 338.0, 344.0, 349.0)) if min(q[2] for q in EV.sleeve_section(y_, 2.0)) < JZ0 - _plate - 1.0]
+    hs = [clip_sk(y_, 'rear', 2.0, 0.0, f'SLEEVE_R_IN{i}', zc=JZ0 - _plate) for i, y_ in enumerate(hy)]   # SIDE CENTRE: the thin bottom stays solid
     d.ClearSelection2(True)
     for k in hs:
         k.Select2(True, 1)

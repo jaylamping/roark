@@ -255,58 +255,40 @@
       "recorded": "2026-11-14T04:49:44Z"
     },
     {
-      "export": "exports/shoulder/shoulder_fork_access_plugs_left.STEP",
-      "source": "shoulder/left/shoulder_fork_access_plugs_left.SLDPRT",
-      "config": "",
-      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py access_plugs",
-      "sourceSha256": "be4fac17128e360d02c8710a058f4e84b2a5b42658bc744b7ef80f99a1f33399",
-      "exportSha256": "abf8cdc15c5992ba6e53adf47182476fb8a3aedf8cd25d55db44674965d76998",
-      "recorded": "2026-11-14T11:13:12Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_fork_access_plugs_left.STL",
-      "source": "shoulder/left/shoulder_fork_access_plugs_left.SLDPRT",
-      "config": "",
-      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py access_plugs",
-      "sourceSha256": "be4fac17128e360d02c8710a058f4e84b2a5b42658bc744b7ef80f99a1f33399",
-      "exportSha256": "45505073b9ef99cedf0180fc24ae60af55ae002ee4c549fcc17c975351346a1b",
-      "recorded": "2026-11-14T11:13:13Z"
-    },
-    {
       "export": "exports/shoulder/shoulder_fork_front_left.STEP",
       "source": "shoulder/left/shoulder_fork_front_left.SLDPRT",
       "config": "",
-      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py fork_front",
-      "sourceSha256": "0f7d8e1118cde5ee94a8110f92dcef201bd21fac8652c11b7bad3ab9ad06cc13",
-      "exportSha256": "05351e9176b92da58d4813edfd008ef5ce232241f21efdbabbf564f6775afb8c",
-      "recorded": "2026-11-14T11:13:09Z"
+      "settings": "adopted 2026-11-14 (key slot, joint floors, pad and plate): build_parts.py fork_front",
+      "sourceSha256": "cead959aa1026e5aea72357e844a7cb3c153ec122ec4a87f41ce4f252fff5a1c",
+      "exportSha256": "b6233861acc4bb82ea535d00a0226caa1b8aa39d53610b30e1cfca8e46d64bec",
+      "recorded": "2026-11-14T14:45:30Z"
     },
     {
       "export": "exports/shoulder/shoulder_fork_front_left.STL",
       "source": "shoulder/left/shoulder_fork_front_left.SLDPRT",
       "config": "",
-      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py fork_front",
-      "sourceSha256": "0f7d8e1118cde5ee94a8110f92dcef201bd21fac8652c11b7bad3ab9ad06cc13",
-      "exportSha256": "6e12603dbf2d1089337817e5fe34c1b30e4cc644b0052a94b7194e786f4283bf",
-      "recorded": "2026-11-14T11:13:11Z"
+      "settings": "adopted 2026-11-14 (key slot, joint floors, pad and plate): build_parts.py fork_front",
+      "sourceSha256": "cead959aa1026e5aea72357e844a7cb3c153ec122ec4a87f41ce4f252fff5a1c",
+      "exportSha256": "4dfe5d2fca7ee9e37c4e16869a8029ec2bec8c70c27e369f63dfb0f85f0b5ace",
+      "recorded": "2026-11-14T14:45:32Z"
     },
     {
       "export": "exports/shoulder/shoulder_fork_rear_left.STEP",
       "source": "shoulder/left/shoulder_fork_rear_left.SLDPRT",
       "config": "",
-      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py fork_rear",
-      "sourceSha256": "74a79c15c59b29ba739b5abfd233c4bc38061ef14742b8f3578032547e640938",
-      "exportSha256": "b065313470da5b6278e9d7446eb36d61dca7b839c5ba92626d13b60b184a0756",
-      "recorded": "2026-11-14T11:13:11Z"
+      "settings": "adopted 2026-11-14 (key slot, joint floors, pad and plate): build_parts.py fork_rear",
+      "sourceSha256": "7859dc3d275a596516cb5b1923ef4adae2ecaaad9cef496bab45605a21594dc5",
+      "exportSha256": "d4ca46a722ba787bf57f0cfaca927a6c1594c51e89c31128d17e0103fd09ff14",
+      "recorded": "2026-11-14T14:45:32Z"
     },
     {
       "export": "exports/shoulder/shoulder_fork_rear_left.STL",
       "source": "shoulder/left/shoulder_fork_rear_left.SLDPRT",
       "config": "",
-      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py fork_rear",
-      "sourceSha256": "74a79c15c59b29ba739b5abfd233c4bc38061ef14742b8f3578032547e640938",
-      "exportSha256": "013aff3288eda40588894874929fb3349b872c4982c68728653d9c067e2d5529",
-      "recorded": "2026-11-14T11:13:11Z"
+      "settings": "adopted 2026-11-14 (key slot, joint floors, pad and plate): build_parts.py fork_rear",
+      "sourceSha256": "7859dc3d275a596516cb5b1923ef4adae2ecaaad9cef496bab45605a21594dc5",
+      "exportSha256": "50e07a3378599f311d41adb772dd60fc3ca065bd349dfc892e4120d8b6b45e3f",
+      "recorded": "2026-11-14T14:45:33Z"
     },
     {
       "export": "exports/shoulder/shoulder_hub_left.STEP",

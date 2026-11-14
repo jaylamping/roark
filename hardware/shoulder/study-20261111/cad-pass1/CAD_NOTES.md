@@ -956,3 +956,42 @@ on the fork front itself (boss root, sideways). Table and the stop case: checks/
 
 **Sheet:** [../checks/size_audit/YOKE_ADOPTED.png](../checks/size_audit/YOKE_ADOPTED.png).
 
+## Adopted 2026-11-14: structural revision (key slot, joint floors, pad, plate and gussets)
+
+`adopt_rev.sh`. Defaults in `dims.py`: `KEY_SLOT` on, `JOINT_FLOOR` 4.0, `JOINT_EXTRA` 1.0, `JOINT_GUSSET` 10 (each can be
+set back). Aim: the roll stop at the controller's 17 N·m to clear 1.5 everywhere; it does (checks/FORK_FRONT_FE.md).
+
+- **Fork front:** the Ø7 driver bore through the neck, and its plug at the top of the hub's head, are replaced by a
+  **key slot** on the hidden underside (a 2.5 mm ball-end key at 20°). The joint pad is 3 mm thick (1), 2.5 mm further
+  down and 3 mm wider each side, with **two gussets inside the sleeve** from its lower corners 10 mm down the walls.
+  119,497 mm³, **151.8 g** (146.8). Integrity PASS. The outside is unchanged except that the plug is gone.
+- **Fork rear:** counterbore floors under the four outer joint screws 4.0 mm (3.0) on a **solid 4.4 mm front plate**
+  (1.6). As first built the hollow reached under the lower pair's counterbores: the heads sat partly on the 1.6 mm
+  plate. 53,727 mm³, **68.2 g** (67.2). Integrity PASS.
+- **Access plug:** the part is removed (`shoulder_fork_access_plugs_left`, its exports and records).
+- Exports of fork front and fork rear replaced and recorded; layout check 0 errors. Assembly rebuilt.
+
+**Masses now:**
+
+| Part | g |
+|---|---|
+| Drum with pitch adaptor | 227.1 |
+| Fork front | 151.8 |
+| Rear cap | 85.4 |
+| Hub | 80.2 |
+| Fork rear | 68.2 |
+| Flange ring | 38.1 |
+| Port cap | 1.4 |
+| **Shoulder total** | **652.2** |
+| Cover ring (optional) | 13.1 |
+| Pitch loop cover (torso side) | 102.2 |
+
+**Clearance sweep on the real set** (full run, with the cover ring), against the sweep after the yoke's adoption: nothing
+moved. Cap ↔ fork rear 0.02 (0.03; the stop's contact), flange ring ↔ fork front 1.06 one degree past the inward stop
+(1.07), drum ↔ fork front 1.98 (1.98), flange ring ↔ cover 2.00 (2.00), fork front ↔ hub 2.19 (2.19), fork front ↔ cover
+ring 2.44 (2.44), drum ↔ RS02 2.59 (2.59), fork front ↔ port cap 2.62 (2.62), hub ↔ RS02 3.42 (3.42). The changes are
+inside the sleeve and on the fork front's underside.
+
+**Sheets:** [../checks/size_audit/YOKE_ADOPTED.png](../checks/size_audit/YOKE_ADOPTED.png) (refreshed),
+[../checks/size_audit/KEY_ACCESS.png](../checks/size_audit/KEY_ACCESS.png).
+

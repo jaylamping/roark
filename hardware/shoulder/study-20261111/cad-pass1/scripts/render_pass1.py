@@ -46,7 +46,7 @@ def step_mesh(path, M=None, tol=0.2):
 
 SRC = np.array([[-1, 0, 0, 97], [0, 0, 1, 424.860667548201], [0, 1, 0, -0.0141253439872], [0, 0, 0, 1]], float)   # left source -> torso
 print('loading', flush=True)
-P = {k: trimesh.load(STL / f'{k}.stl') for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'hub', 'cover', 'port_cap', 'access_plugs')}   # access plugs: front blend 3   # fork cap dropped (look option a)
+P = {k: trimesh.load(STL / f'{k}.stl') for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'hub', 'cover', 'port_cap') + (() if KEY_SLOT else ('access_plugs',))}   # no access plug once the key slot is adopted   # access plugs: front blend 3   # fork cap dropped (look option a)
 brg = trimesh.creation.annulus(r_min=20.0, r_max=26.0, height=7.0, sections=96)
 brg.apply_translation((RX, RY, (BRG_Z[0] + BRG_Z[1]) / 2))
 M = dict(roll_rs03=step_mesh(REPO / 'cad/vendor/robstride/vendor_robstride_rs03.stp', T_ROLL_RS03),

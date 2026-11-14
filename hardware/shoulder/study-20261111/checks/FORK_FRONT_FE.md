@@ -1,6 +1,6 @@
 # The fork in finite elements: today's parts, the yoke, and the rear leg (2026-11-14)
 
-**Status:** the checks are done and **the yoke, rim B, the stiffer rear leg and the cover ring are adopted (2026-11-14)**. The real set has its own figures below ("The adopted set").
+**Status:** the checks are done. **Adopted 2026-11-14:** the yoke, rim B, the stiffer rear leg and the cover ring; then the structural revision (key slot, joint floors, pad, plate, gussets). The real set's figures: "The adopted set" below.
 
 ## Short answer
 
@@ -23,28 +23,56 @@
 > neck (0.92 / 0.70). That came from the fork front analysed alone, in bounds that left the rear leg and the 6808 out.
 > In the combined model the fork front passes. The alone-model tables further down are kept as bounds, not as a verdict.
 
-## The adopted set (real parts, 2026-11-14)
+## The adopted set (real parts, 2026-11-14, after the structural revision)
 
-Combined model on the real fork front and fork rear as released (530,413 nodes; the real fork front keeps its
-driver-access bore, which the analysis builds above leave out). Von Mises / layer tension, worst 0.5 mm ball.
+The released fork front and fork rear: yoke, solid neck and root cone, stiffer rear leg, **key slot**, 4 mm joint floors
+on a solid plate, 3 mm pad and two inside gussets. Von Mises / layer tension, worst 0.5 mm ball, target 1.5.
+
+**Combined model** (the two parts as one body, 6808 seat held radially; 510,634 nodes, 0.7 mm at the boss root; FFEPlus,
+no contact in this model):
 
 | Case | Boss root | Head and neck | Lower cheek | Joint | Rear leg | Seat moves |
 |---|---|---|---|---|---|---|
-| Forward, yaw +17 | 4.44 / 2.48 | 3.77 / 2.42 | 4.79 / 3.78 | 2.18 / 3.22 | 5.22 / 3.69 | 0.41 mm |
-| Forward, yaw -17 | 4.25 / 4.78 | 4.04 / 2.75 | 5.84 / 4.07 | 2.03 / 2.34 | 5.29 / 2.76 | 0.43 mm |
-| Sideways | 3.41 / 1.93 | 4.40 / 2.82 | 7.40 / 3.51 | 1.76 / 2.62 | 4.60 / 2.58 | 0.26 mm |
-| Stop, 60 N·m stall | 0.40 / 0.30 | 0.78 / 0.50 | 0.61 / 0.53 | 0.38 / 0.33 | 0.97 / 0.47 | |
-| Stop at the controller's 17 N·m | 1.41 / 1.06 | 2.75 / 1.77 | 2.15 / 1.87 | 1.34 / 1.16 | 3.42 / 1.66 | |
+| Forward, yaw +17 | 6.82 / 4.93 | 6.39 / 3.79 | 5.34 / 3.79 | 4.33 / 4.61 | 5.39 / 4.82 | 0.39 mm |
+| Forward, yaw -17 | 7.35 / 4.19 | 6.61 / 3.97 | 6.55 / 4.32 | 3.74 / 3.60 | 5.31 / 3.25 | 0.40 mm |
+| Sideways | 6.65 / 3.17 | 5.97 / 3.07 | 7.65 / 3.69 | 3.29 / 3.25 | 4.58 / 3.08 | 0.24 mm |
+| Stop, 60 N·m stall | 0.96 / 0.85 | 1.15 / 0.70 | 0.69 / 0.54 | 0.53 / 0.51 | 0.98 / 0.57 | |
+| **Stop at the controller's 17 N·m** | 3.39 / 3.00 | 4.06 / 2.47 | 2.44 / 1.91 | 1.87 / 1.80 | 3.46 / 2.01 | |
 
-- **Design cases: everything at or above 1.76.** The lowest on the fork front is 1.93 (boss root, sideways, layer
-  tension); the lowest of all is the joint region's 1.76.
-- **The real set reads lower at the boss root than the analysis build** (4.44 / 2.48 against 5.92 / 4.20 forward):
-  the driver-access bore passes through the neck beside the boss root, and the peak sits at the bore's edge
-  (X offset -6 to -12, Y 399-401). It still passes. Open item 42.
-- **The stop case is worse at the boss root for the same reason:** 0.40 / 0.30 at a stall, 1.41 / 1.06 at 17 N·m.
-- The 13 mm rounds at the shoulder ends (9.5 in the look build) cost nothing: lower cheek 4.79 / 3.78 or better.
+**Bolted joint** (the two parts as two bodies, six preloaded screws, contact on the pad; Intel direct sparse, 188,031
+nodes; joint zone away from the connector ties; fork rear side, then fork front side):
 
-## The six-screw joint between fork front and fork rear (2026-11-14)
+| Case | Preload per screw | Fork rear side | Fork front side |
+|---|---|---|---|
+| Preload alone | 400 N (0.3 N·m) | 3.06 / 5.69 | 7.66 / 8.18 |
+| Sideways | 400 N | 2.87 / 3.52 | 4.15 / 2.36 |
+| Stop at 17 N·m | 400 N | 2.65 / 1.68 | 2.48 / **1.67** |
+| Stop at 17 N·m | 200 N | 3.56 / 1.77 | 2.85 / **1.66** |
+
+**Lowest figure per case, and where:**
+
+| Case | Lowest | Where |
+|---|---|---|
+| Forward, yaw +17 | 3.79 (layer) | Head and neck, front face beside the hub (X offset +20.6, Y 414, Z 45) |
+| Forward, yaw -17 | 3.25 (layer) | Rear leg at its foot on the joint (X +28, Y 362, Z -45.9) |
+| Sideways | 3.07 (layer) | Head and neck, back face at the neck (X -29.3, Y 411.5, Z 39) |
+| Stop at 17 N·m, combined | 1.80 (layer) | Joint region, pad's upper corner (X -29.9, Y 358.9, on the joint plane) |
+| Stop at 17 N·m, bolted joint | 1.66 (layer) | Fork front, where the left gusset meets the pad (X -22.3, Y 338.5, Z -43.7) |
+| Stop at a 60 N·m stall | 0.47 (layer, bolted: 1.66 x 17/60) | The same place. Covered by the software limit; the bench break test settles it |
+
+- **The 17 N·m stop clears 1.5 everywhere:** lowest 1.66. Before the revision it read 1.06 at the driver bore and 1.34
+  at the joint.
+- **Design cases: lowest 3.07** (1.76 before the revision).
+- **Joint screws at 0.3 N·m:** supported. Under that preload alone the joint reads 3.06 (1.01 before, when the lower
+  heads sat partly over the hollow).
+- **Outside unchanged,** except that the plug at 12 o'clock on the hub is gone.
+- These figures are the same as the look builds `ykK3` and `frJ3` gave: the real parts have the same volumes to the cubic
+  millimetre and the same meshes.
+- **Not verified:** the bolt forces under load and the gap on the pad were not read; the fork rear's 6808 seat is held
+  rigidly in the radial direction; the stop case's figures away from the joint come from the combined model, where the
+  joint is solid.
+
+## The six-screw joint between fork front and fork rear (2026-11-14, first check, before the structural revision)
 
 The adopted fork front and fork rear as **two bodies**, joined as built: six M4 button heads from the fork rear's
 counterbores into the fork front's inserts, each a bolt connector with a preload, and no-penetration contact on the
@@ -81,10 +109,11 @@ ball. `fea_shoulder.py` J_*, `run_joint.sh`, `joint_post.py`.
 - These runs use a coarser mesh than the merged model and no fine zone at the boss root, so their figures outside the
   joint zone are not to be compared with the tables above.
 
-## Structural revision for the 17 N·m stop (2026-11-14): look variants, NOT adopted
+## Structural revision for the 17 N·m stop (2026-11-14): how it got there (variants 1 and 2; variant 3 with gussets is adopted)
 
-Aim: the stop at the controller's 17 N·m to clear 1.5 everywhere. Two variants built and run; the second is one figure
-short, so nothing is adopted. The switches are off by default (`KEY_SLOT`, `JOINT_FLOOR`, `JOINT_EXTRA` in `dims.py`).
+Aim: the stop at the controller's 17 N·m to clear 1.5 everywhere. Variants 1 and 2 below were one figure short; variant 3
+(variant 2 plus two gussets inside the sleeve, and the fork rear's plate made solid under the screw heads) clears it and
+is adopted: see "The adopted set" above. The switches are `KEY_SLOT`, `JOINT_FLOOR`, `JOINT_EXTRA`, `JOINT_GUSSET` in `dims.py`.
 
 **What the variants change** (all inside or underneath; the outside is unchanged except that the plug on the hub goes):
 
@@ -133,11 +162,12 @@ fork front goes onto the drum): the assembly order is unchanged. No access plug 
   stop's torque crosses the joint as a pull along Y, the layer direction, on the end screws; at those two corners it
   runs from the pad into the sleeve's 2 mm wall where the wall crosses the joint plane. The thicker pad moved it from
   1.34 to 1.42; the fork rear side now passes (1.69).
-- **Next step, not built:** two small gussets inside the sleeve, from the pad's lower corners about 10 mm down the two
-  walls, so the pull runs into the wall over a length and not at a corner. They have to stay clear of the cable exit that
-  runs inside the ring; that needs a look at the exit's path before drawing.
-- The second variant's fork rear STL failed the integrity scan on export (one non-manifold edge); it would need a
-  re-export before any adoption.
+- **What closed it (variant 3, adopted):** two small gussets inside the sleeve, from the pad's lower corners 10 mm down
+  the two walls. The cable exit was checked first: its channel is X -15.8 to +17 with its walls and enters the pad's
+  plane only below Y 332; the gussets stay 2.4 mm or more clear, touch nothing that moves, and print without support.
+- **The second variant's fork rear STL had a non-manifold edge.** Cause: the hollow reached under the lower screws'
+  counterbores, so the counterbore floor's plane touched the hollow along an edge and the heads sat partly on the thin
+  plate. Fixed by making the front plate solid under the floors (4.4 mm); the mesh is clean and the joint much stronger.
 
 ## Verdict
 

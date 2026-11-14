@@ -15,9 +15,8 @@ still needs its pre-print gate
 | Flange ring | `shoulder_pitch_flange_ring_left` | 38.1 g | 2026-11-14 (rolled rim B, adopted) | Exported and recorded 2026-11-14. Prints in the visible white |
 | Rear cap | `shoulder_roll_cap_left` | 85.4 g | 2026-11-14 (rear cap screw fix: sockets, Ø2.9 holes) | Exported and recorded 2026-11-14. **Waits** for the roll cable decision (the roll rig) |
 | Drum port cap | `shoulder_roll_drum_port_cap_left` | 1.4 g | 2026-11-11 | Geometry settled. **No recorded export** |
-| Fork front | `shoulder_fork_front_left` | 146.8 g | 2026-11-14 (yoke, solid neck, root cone: adopted) | Exported and recorded 2026-11-14. **Waits** for a real plug tried in the channel, and for the rig (the skirt bounds the dish loop) |
-| Access plug (1) | `shoulder_fork_access_plugs_left` | 0.3 g | 2026-11-14 (one plug, at the top of the hub's head) | Exported and recorded 2026-11-14. Print with the fork front |
-| Fork rear | `shoulder_fork_rear_left` | 67.2 g | 2026-11-14 (stiffer leg, adopted) | Exported and recorded 2026-11-14. **Waits** for the 6808 coupon and for the rig (it carries the yaw exit) |
+| Fork front | `shoulder_fork_front_left` | 151.8 g | 2026-11-14 (yoke; then the key slot, 3 mm joint pad and two inside gussets) | Exported and recorded 2026-11-14. **Waits** for a real plug tried in the channel, and for the rig (the skirt bounds the dish loop) |
+| Fork rear | `shoulder_fork_rear_left` | 68.2 g | 2026-11-14 (stiffer leg; then 4 mm counterbore floors on a solid 4.4 mm front plate) | Exported and recorded 2026-11-14. **Waits** for the 6808 coupon and for the rig (it carries the yaw exit) |
 | Cover ring (optional) | `shoulder_roll_cover_ring_left` | 13.1 g | 2026-11-14 (new) | Exported and recorded 2026-11-14. Dark PETG. Can be left off |
 | **Hub** | `shoulder_hub_left` | 80.2 g | 2026-11-14 (rev D3c7, adopted) | **Released for the stage 1 print. Print file ready** (hub section below) |
 | Pitch loop cover | `shoulder_pitch_loop_cover_left` | 102.3 g | 2026-11-11 | **Waits:** its M5 pads are placeholders and the feed position waits for the final shell (CAD_NOTES "Still open") |
@@ -26,8 +25,8 @@ still needs its pre-print gate
 - **Hub:** `cad/exports/shoulder/shoulder_hub_left.STEP/.STL` is rev D3c7 (2026-11-14), the adopted hub. STL SHA-256
   `a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b`.
 - **Drum, rear cap:** exported and recorded 2026-11-14, with the rear cap screw fix.
-- **Fork front, access plug, fork rear, flange ring, cover ring:** exported and recorded 2026-11-14 with the adoption of
-  the yoke (CAD_NOTES "Adopted 2026-11-14: yoke fork front").
+- **Fork front, fork rear, flange ring, cover ring:** exported and recorded 2026-11-14 (CAD_NOTES "Adopted 2026-11-14: yoke
+  fork front" and "Adopted 2026-11-14: structural revision"). There is no access plug any more.
 - **Port cap:** no export in `cad/exports/` yet. Its STL is in the scratch folder only.
 
 ## Part by part
@@ -69,20 +68,19 @@ Material PETG throughout. "Not sliced" applies to every orientation and support 
   flatness after printing (CAD_NOTES "Still open").
 - **The opened area needs no support:** it is open air above the two shoulders, which face upward. The hub's head widens
   from the neck by 2 mm a side over 17 mm of height, and the root cone is 45°: both print without support.
-- **The driver-access bore** (Ø7, for the 104° RS02 screw) runs up through the neck and comes out at the top of the hub's
-  head. It prints as a vertical hole. Its plug goes in after the RS02 screws are tight.
+- **Key slot for the 104° RS02 screw** (adopted 2026-11-14; it replaces the Ø7 driver bore through the neck and its
+  plug): a 7 mm slot from the screw's head, tilted 20° back, out onto the fork front's hidden underside. Reach the screw
+  with a **2.5 mm ball-end hex key held 20° back from the screw's axis** (a ball end works to about 25°). **Bench only:** the
+  RS02 goes onto the fork front before the fork front goes onto the drum; once the drum is on, the slot is covered.
+  Section: checks/size_audit/KEY_ACCESS.png.
+- **Inside the sleeve at the joint:** the pad is 3 mm thick with two small gussets down the walls. They print without
+  support (31° from vertical) and stay 2.4 mm or more clear of the cable exit.
 - **Holes printed Ø3.8, reamed Ø4.00:** three on the RS03 boss, at 0° and ±120° on r 15.2. They take Ø4 × 16 pins into the
   RS03's three plain locating holes.
 - **Inserts:** six M4 for the fork joint.
 - **Before the first print:** try a real XT30(2+2)-F with its lead in the plug channel's size (r 36-50, 16.5 wide,
   Y 353.9-361.1). The plug's height along the motor axis is assumed.
 - Source: CAD_NOTES "Side centre r 47" and "RS02 re-clocked +40°".
-
-### Access plug
-- **One plug** (Ø6.9 × about 7), flat. It presses into the 104° access bore at the top of the hub's head after the RS02
-  screws are in; a pry notch on its back edge lifts it out.
-- The 144° bore ends under the drum, out of sight, and gets no plug. (The second plug of the earlier part sat inside the
-  drum's volume; it is dropped.)
 
 ### Cover ring (optional)
 - **What:** a dark ring pressed into the drum's lip bore (Ø86), flush with the lip's face. It closes the 7 mm slot between
@@ -94,7 +92,10 @@ Material PETG throughout. "Not sliced" applies to every orientation and support 
 
 ### Fork rear
 - **Leg, adopted 2026-11-14:** 2 mm wider each side and 2 mm deeper at its upper stations (Y 380 and 402). The thin
-  section beside the cable channel read 0.87 on layer tension before and reads 2.6 or better now (FORK_FRONT_FE.md).
+  section beside the cable channel read 0.87 on layer tension before and reads 3.1 or better now (FORK_FRONT_FE.md).
+- **Joint, adopted 2026-11-14:** the four outer joint screws' counterbore floors are 4.0 mm (3.0 before) on a solid
+  4.4 mm front plate; before, the hollow reached under the lower pair's heads. A button head now sits about flush
+  (0.1 mm proud of its recess).
 - **Orientation:** upright, Y up; it starts on its flat bottom at Y 340.
 - **Supports:** its hollow's roof (Y 340-349); a small one under the stop tooth's outer face (that face carries no load).
 - **6808 housing:** modelled Ø52.2 with a 0.4 mm flat at the top, because the bore prints on its side. **Print the seat
@@ -189,7 +190,7 @@ clamps nothing.**
 | Drum → pitch RS03 output | 6 × **M4 × 18 with one washer**, or M4 × 16 | 6 × M4, depth 6, blind | Pad 11.7 mm. M4 × 18 bare goes in 6.3 mm and bottoms; with a 0.8 mm washer 5.5 mm; M4 × 16 gives 4.3 mm |
 | Drum → roll RS03 housing | 8 × **M4 × 10** | 8 × M4, depth 8 | Flange 3.5 mm under the head. M4 × 10 gives 6.5 mm; M4 × 12 goes in 8.5 mm and bottoms |
 | Fork front → RS02 body | 5 × **M3 × 12** on PCD 73 at -96 / -56 / -16 / 104 / 144° | 9 × M3, depth 8 (given from the output side) | Seat 6.5 mm. 5.5 mm into the motor. M3 × 16 bottoms. **Check on the motor** that the holes are threaded from the rear, as the old bracket used them |
-| Fork rear → fork front (joint) | 6 × ISO 7380 M4 button heads: **2 × M4 × 10** (X ±17) and **4 × M4 × 8** | M4 heat-set inserts, bore Ø5.6 × 7.3-7.8 deep | **Torque 0.15 N·m, no more:** the counterbore floors are 3 mm thick and read 1.0 under 0.3 N·m of screw load alone (FORK_FRONT_FE.md, "The six-screw joint"). The recesses are about 3.1 mm deep, so a DIN 912 head would stand proud. **Use short inserts (4 mm):** a standard 8.1 mm insert stands proud of the joint face |
+| Fork rear → fork front (joint) | 6 × ISO 7380 M4 button heads: **2 × M4 × 10** (X ±17) and **4 × M4 × 8** | M4 heat-set inserts, bore Ø5.6 × 7.3-7.8 deep | **Torque 0.3 N·m** (about 400 N per screw): with the 4 mm floors on solid plate the joint reads 3.1 under that preload alone and 1.67 or better at the 17 N·m stop (FORK_FRONT_FE.md, "The adopted set"). The recesses are about 3.1 mm deep, so a DIN 912 head would stand proud. **Use short inserts (4 mm):** a standard 8.1 mm insert stands proud of the joint face |
 | Flange ring → drum spokes | 5 × **M3 × 5** | M3 × 4 inserts, bore 3.8 deep | Ring 1.8 mm. M3 × 6 bottoms in the bore |
 | Rear cap → drum | 3 × **M2.5 × 14, thread-forming** (for plastics; pan or cap head up to Ø5.0), at r 50.6, 0 / 180 / 270°. M2.5 × 16 also fits | Ø2.1 pilots through a 2.5 mm locating collar on the drum, 11 mm deep from the collar's top | 5.6 mm of cap under the head. M2.5 × 14 gives 8.2 mm in the pilot; × 16 gives 10.2 with 0.8 to spare; **M2.5 × 18 bottoms.** The collars locate the cap and carry the roll stop's reaction; the screws only clamp. **Buy 3, and spares.** (Adopted 2026-11-14; before that the parts took M3 at r 50, which no longer fit) |
 
@@ -229,7 +230,7 @@ clamps nothing.**
    3. Fit the five RS02 screws: the three rear ones from above, and the 104° and 144° ones through their access bores.
 2. **Fork front onto the drum,** after the 24 h re-torque of the RS02 screws. After this the drum blocks every RS02
    screw except 104°, so the order is fixed.
-3. Press in the access plug at the top of the hub's head.
+3. (No access plug: the key slot is on the underside.)
 4. Feed the bundle down from the ring's open top (Y 340), round the bend and out of the exit, as bare wire with no
    plug on it. Then fit the fork rear (six button heads).
    - The side-centre round laid the bundles first and slid the RS02 in past them. With the RS02 fitted first, the
