@@ -1,32 +1,33 @@
-# Left shoulder print package (updated 2026-11-13)
+# Left shoulder print package (updated 2026-11-14)
 
-Collected from the checks. Each item names where it comes from. **No shoulder part has been sliced yet:** orientations
-and supports below are judged from the geometry, and each part still needs its pre-print gate
+Collected from the checks. Each item names where it comes from. **Only the hub has a sliced print file** (its section
+below). For the other parts, orientations and supports are judged from the geometry and a first-look slice, and each
+still needs its pre-print gate
 ([part-lifecycle.md](../../../../conventions/part-lifecycle.md)).
 
 ## What can print now, and what waits
 
 | Part | File | Mass (PETG) | Geometry last changed | Status |
 |---|---|---|---|---|
-| Yaw loop test rig (PLA) | `cad/exports/fixtures/fixtures_yaw_loop_rig_*.STL` | 25.9 g, 1 h 15 min | 2026-11-13 | **Print now.** It decides the hub window and the yaw exit ([CABLE_LOOP_RIG.md](../checks/CABLE_LOOP_RIG.md)) |
+| Cable test rigs: roll, yaw, pitch (PLA) | `cad/exports/fixtures/fixtures_cable_rig_*.STL`; sliced plates in `C:\joe\prints\cable-rigs\` and `J:\code\prints\cable-rigs\` | 35 g / 45 g / 42 g | 2026-11-13 | **Print now, roll first.** They decide the three cable crossings ([CABLE_RIGS.md](../checks/CABLE_RIGS.md)) |
 | 6808 housing seat coupon | not modelled yet | about 5 g | | **Print before the fork rear** (D_6808_FITS.md) |
-| Drum | `shoulder_roll_drum_left` | 226.5 g | 2026-11-11 | Geometry settled. **No recorded export** |
+| Drum | `shoulder_roll_drum_left` | 227.1 g | 2026-11-14 (rear cap screw fix: collars, Ø2.1 pilots) | Exported and recorded 2026-11-14. **Waits** for the roll cable decision (the roll rig) |
 | Flange ring | `shoulder_pitch_flange_ring_left` | 29.3 g | 2026-11-11 | Geometry settled. **No recorded export** |
-| Rear cap | `shoulder_roll_cap_left` | 85.2 g | 2026-11-11 (stop rev 2, 6808 land) | Geometry settled. **No recorded export** |
+| Rear cap | `shoulder_roll_cap_left` | 85.4 g | 2026-11-14 (rear cap screw fix: sockets, Ø2.9 holes) | Exported and recorded 2026-11-14. **Waits** for the roll cable decision (the roll rig) |
 | Drum port cap | `shoulder_roll_drum_port_cap_left` | 1.4 g | 2026-11-11 | Geometry settled. **No recorded export** |
 | Fork front | `shoulder_fork_front_left` | 155.2 g | 2026-11-13 (plug pocket pp_r) | Export current. **Waits** for a real plug tried in the channel, and for the rig (the skirt bounds the dish loop) |
 | Access plugs (2) | `shoulder_fork_access_plugs_left` | 0.7 g | 2026-11-13 | Export current. Print with the fork front |
 | Fork rear | `shoulder_fork_rear_left` | 63.7 g | 2026-11-12 (six-screw joint) | **Waits** for the 6808 coupon and for the rig (it carries the yaw exit). **No recorded export** |
-| Hub | `shoulder_hub_left` | 80.2 g | in work | **Waits.** See below |
+| **Hub** | `shoulder_hub_left` | 80.2 g | 2026-11-14 (rev D3c7, adopted) | **Released for the stage 1 print. Print file ready** (hub section below) |
 | Pitch loop cover | `shoulder_pitch_loop_cover_left` | 102.3 g | 2026-11-11 | **Waits:** its M5 pads are placeholders and the feed position waits for the final shell (CAD_NOTES "Still open") |
 
-**Exports that don't match their part:**
-- **Hub:** the committed `cad/exports/shoulder/shoulder_hub_left.STEP/.STL` is rev C+ (2026-11-11). The hub has moved on
-  to rev D3c (lugs to X 34.4, r 20 fill behind both lugs, cable window moved). The window angle is being settled
-  (68°, hub D3c5, in checks), so the export is replaced when that hub is released. Do not print the committed hub.
-- **Drum, flange ring, rear cap, port cap, fork rear:** no export in `cad/exports/` at all. The STLs made with each build
-  are in the scratch folder only. They need exporting and recording before a print.
-- Fork front and access plugs: exported and recorded with the part, 2026-11-13.
+**Exports:**
+- **Hub:** `cad/exports/shoulder/shoulder_hub_left.STEP/.STL` is rev D3c7 (2026-11-14), the adopted hub. STL SHA-256
+  `a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b`.
+- **Drum, rear cap:** exported and recorded 2026-11-14, with the rear cap screw fix.
+- **Fork front, access plugs:** exported and recorded with the part, 2026-11-13.
+- **Flange ring, port cap, fork rear:** no export in `cad/exports/` yet. The STLs made with each build are in the scratch
+  folder only. They need exporting and recording before a print.
 
 ## Part by part
 
@@ -119,8 +120,9 @@ pre-print gate report). STL SHA-256 `a73103adb49bb9a4fe3b3901fea852e6668e928e7e1
   3. **Measure the spigot** (Ø71.6 in CAD) with calipers in two directions at right angles and report both. The arm's
      ring and halves are fitted to the printed size.
   4. **Look at the groove's flanks:** smooth, no support marks, no sagging strands.
-- **Iron the disc face (Y 302)** if the slicer offers it for that face: it is an up-facing surface, and the arm's shim
-  ring seats on it. Not set in the 3MF.
+- **No ironing:** the print file has none, and the hub is printed as the file is. The disc face (Y 302), where the arm's
+  shim ring seats, is an up-facing surface and prints as an ordinary top surface. If the first print shows that face is
+  too rough for the ring, ironing it is the next thing to try.
 - **Holes printed Ø3.8, reamed Ø4.00:** two on the top, at -142° and 38° on r 12, for the plain shank of the partially
   threaded M4 screws. Ream when the shoulder goes together, not for the stage 1 fit.
 - **Bought parts the hub itself needs:** none to print or to fit the arm's parts to it. To bolt it to the RS02 later:
@@ -138,7 +140,7 @@ pre-print gate report). STL SHA-256 `a73103adb49bb9a4fe3b3901fea852e6668e928e7e1
 - **6808 housing seat ring** (D_6808_FITS.md): a thin ring with the fork rear's Ø52.2 bore, about 3 mm wall, 7 mm deep,
   printed upright like the fork rear. Adjust Ø52.2 to a hand-push fit.
 - The cap's Ø40.0 stub needs no coupon.
-- **Yaw loop rig** (above).
+- **The three cable test rigs** (table above; CABLE_RIGS.md).
 
 ## Ream steps (holes printed Ø3.8, hand-reamed Ø4.00 with a 4 mm H7 hand reamer or a sharp 4.0 drill turned by hand)
 
@@ -182,9 +184,10 @@ clamps nothing.**
 
 ## Arm-side parts at the hub (owned by the arm thread; for reference)
 
-- **Shim ring:** a printed ring, r 36.2-38.4, picked by measurement, between the arm's end face and the hub's disc face.
-  It is why the disc face is ironed.
-- **Lug shim plates:** fixed plates with a Ø3.8 hole in the arm's collar pockets; they pinch the hub's lugs and carry the
+- **Shim ring:** a printed ring, r 36.2-38.4, picked by measurement, between the arm's end face and the hub's disc face
+  (an ordinary top surface in the hub's print file; not ironed).
+- **Lug shim plates:** fixed plates with a Ø3.4 hole (the hub's lug holes are Ø3.8, so the bolt is free in the hub) in the
+  arm's collar pockets; they pinch the hub's lugs and carry the
   yaw torque. The lug M3 is capped at 0.3 N·m.
 - Details: the arm thread's `R1D_NOTES.md` and its print-release packet (`cad/reviews/upper-arm/`).
 
