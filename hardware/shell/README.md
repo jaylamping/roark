@@ -31,8 +31,10 @@ Y 424.86, Z 0.
 
 Check at the rebuild:
 
-- The skin itself needs no trim for the 11° inward stop: it stays 3.5 mm or more from the arm, and first contact comes at
-  13-15°. Pitch +90° had not been swept yet when this was written
+- **The skin needs about 0.54 mm trimmed just below the r 80 opening** (X 142-143, Y 332-342). At the 11° inward stop,
+  pitch -30°, yaw -90°, it clears the shoulder's fork front by 2.46 mm against the 3 mm the check asks for. This replaces
+  the earlier note that the skin needed no trim, which was true until the fork front changed on 2026-11-13. Re-run the
+  shoulder study's `check_shell_trim.py` against the rebuilt shell
   ([CAD_NOTES.md](../shoulder/study-20261111/cad-pass1/CAD_NOTES.md)).
 
 - The moving flange ring sits outboard of the skin and overlaps the opening edge as a labyrinth. Keep at least 2 mm between
