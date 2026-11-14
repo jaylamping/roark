@@ -1,0 +1,96 @@
+LEFT P2 L04B — EXACT DEVELOPMENT PRINT REVIEW — 2026-11-05
+HOLD pending Opus/Fable exact review and final parent decision.
+User's latest choice is100% Rectilinear P2, not40% Gyroid. No P1 revision in this task.
+
+REQUESTED DECISION
+Is this exact one-sided P2 candidate suitable for development printing and loose-part
+inspection, with connector orientation and physical fit still provisional? Identify
+any must-change print defect, separately from subsequent clamp/load/powered gates.
+No named final review has yet been completed for this exact project.
+
+CURRENT FILE (ignore inputs and earlier diagnostic slice)
+print-HOLD/LEFT_P2_L04B_04HF_100R_6W.3mf
+SHA256 90367bc237a87b12274acbf46eb948555168afb75d906f3a7f8901b7d684116c
+Exact copy of slice-current-HF/P2_LEFT_L04B_04HF_100R_6W_REVIEW_HOLD.3mf.
+One part, one plate; no P1 or spacer included. Estimate5h48m20s /188.624g total job
+including support. Slicer2.9.1.70 reports success and no warnings.
+
+SELECTION
+L03's existing openings fit the reference rear features but collide with the assumed
+external mate. L04B enlarges ONLY the torso-side/source+X opening, keeping the opposite
+side and top wall unchanged. This is the smallest existing SIDE SELECTION consistent
+with the single RS02 rear branch; not a mathematical minimum-removal optimization.
+Do not populate both ports by default or infer a CAN star.
+L04B removes1121.58mm3 (0.792% of L03). Valid single solid, same bounding dimensions.
+14.3mm-wide bottom-open relief, R2 upper corners. Five defined mounting-seat annuli
+were excluded from removal; that alone is not whole-seat support or strength proof.
+Real rigid RS02 clock172.12 retained; motor is not mirrored. Physical phase, handed
+label/calibration and upper-arm clock remain conditional as in L03/L01.
+
+CONNECTOR / ACCESS EVIDENCE
+Fresh exact B-only distance checks: plug1.000mm, illustrative15mm withdrawal1.000mm,
+straight assumedD6lead1.19265mm. Assumed body11.8radial x12.3tangential x4.2high.
+These are not real boot, keying, heat-shrink, finger grip, cable bend or tolerance facts.
+Actual side/exit orientation remains to be confirmed physically; part may need reprint.
+No final cable guide/harness is included. L10/L11 failed/variable-length routes are
+NOT validation of this part or permission to move a wired arm.
+L03 neutral assembly clearance and rigid driver paths transfer by material removal
+from L03 to L04B; no new continuous-motion or solid-Boolean assembly proof is asserted.
+Four of five RS02 rear driver paths encounter upstream parts when fully assembled.
+Investigated assembly order: RS02 to P2 first, then P2 to roll; handles, real fastener
+engagement/stack, clamp force and wire-installed access remain unverified.
+
+MESH AND EXPORT DISCLOSURE
+Raw OCCT tessellation omitted planar face83 (17.9931mm2) at sourceZ=-72.5,
+X[-38.097,-25.669],Y[27.836,35], away from the new opening center.
+Fresh tessellation at two resolutions also omitted it. VTK contour triangulation
+dropped two tiny tip vertices, so it was rejected. Ordered planar ear triangulation
+retains all33 boundary vertices and adds31 triangles on the existing plane only.
+No CAD geometry/vertex movement, smoothing, arbitrary hole fill or source repair.
+Patch polygon area17.9378mm2, difference-0.05531mm2 due existing curved-edge chords.
+Mesh volume140381.329 vsCAD140422.789mm3 (-0.029526%); closed consistently oriented
+174726triangles,87339vertices. See PLANAR_FACE_TESSELLATION and initial diagnostics.
+First slicer import rounds mesh coordinates to float precision, maximum1.9531e-6mm;
+triangle connectivity and placement are unchanged. Final current-schema re-slice
+preserves exact serialized geometry/placement and settings. No slicer auto-repair relied on.
+
+SLICER VERSION COMPATIBILITY
+Installed2.9.1.70 is newer than template2.8.4.57. First import added new default fields
+including extruder_nozzle_volume_type=Standard despite legacy HighFlow selection.
+Final separate copy explicitly sets BOTH nozzle fields HighFlow. Gcode resolves
+Direct Drive High Flow,0.4mm, sixwalls and100%zig-zag (UI Rectilinear).
+All selected PETG/support/layer process values retained. Version-added defaults recorded
+in schema evidence. No live Bambu, user project or printer settings touched.
+
+CRITICAL TOOLPATH / SECTION EVIDENCE
+Views01 and07: actual opening underside/roof/remnant paths at buildZ0.2..12mm.
+Support/interface paths are present beneath the opening roof; bridge/overhang paths
+occur around buildZ10. This is not an unsupported free-span assertion.
+Views02/03: five rear holes and ring layers, disc/gusset rootsZ50..60.8, horizontal
+roll bores/upper opening at62.4/75/80/95. No missing intended wall path identified in
+these sampled views. Narrow regions use fewer than six physical paths where six will
+not fit; the global setting is six, not a promise of six everywhere.
+LOCAL_MATERIAL_RAYS gives24 exact CAD local tangent-ray sections, including a1.974mm
+material chord at sourceZ-66,radial8. It is a selected chord near an exposed remnant,
+NOT a proven global minimum ligament or load-bearing strength. Clipped intervals are
+marked, not mistaken for full wall thickness. Opening-section views show roof joining
+above sourceZ-63.3. Prior sampled B roof7.6365mm is vertical sample only, not globalmin.
+Review the remnant, support extraction and remaining exposed edges explicitly.
+
+PRINT ORIENTATION / REMOVAL
+SourceZ up; RS02 annular mounting side/sourceZ-73 down;102mm tall. Same general
+orientation as reviewed P2,45deg plate rotation, unchanged by slicer. Normal supports
+can start on part surfaces. Supports occupy the side opening, outer overhangs, central
+roll opening and horizontal bores. Remove in small pieces through bottom/side opening
+and open motor pocket BEFORE fitting motors. Do not pry against the thin exposed rim,
+cut intended seats/walls, force a plug, use motor bolts to pull a misfit into place or
+hang the arm. Inspect for cracks, layer separation, damaged roots, support residue,
+rough cable-contact edges, distorted seats and undersized bores. Physical cleanup and
+flatness not validated. Merely printing this candidate is not clamping/load approval.
+
+REMAINING GATES
+Named exact print reviews and loaded-project check pending. Actual connector/boot/exit,
+thread engagement/stack, tightening/clamp/creep behavior, arm phase, cable route, motion,
+fatigue and loaded structural qualification remain unresolved. No FEA run on L04B.
+No hardware or printer operated; old sources/projects preserved. No upload needed for
+local review. Frozen manifest identifies every selected review artifact.

@@ -29,6 +29,41 @@ THIN = 0.6
 THIN_AREA = 0.5
 
 
+def integrity(m, raw=None, area_tol=1e-6):
+    """Topology checks every exported mesh gets: watertight, no non-manifold edge (an edge on other than two faces), no
+    zero-area face. raw: the (vertices, faces) as exported, before trimesh processing, so a degenerate sliver that trimesh would
+    silently drop is still seen. Returns (ok, lines, details)."""
+    import collections
+    v, f = (np.asarray(raw[0], float), np.asarray(raw[1], int)) if raw is not None else (m.vertices, m.faces)
+    # weld coincident vertices (STL repeats them per face) on a 1e-5 grid
+    key = np.round(v / 1e-5).astype(np.int64)
+    _, inv = np.unique(key, axis=0, return_inverse=True)
+    f2 = inv.reshape(-1)[f] if inv.ndim > 1 else inv[f]
+    a = np.linalg.norm(np.cross(v[f[:, 1]] - v[f[:, 0]], v[f[:, 2]] - v[f[:, 0]]), axis=1) / 2
+    zero = np.where(a <= area_tol)[0]
+    cnt = collections.Counter()
+    for t in f2:
+        for e in ((t[0], t[1]), (t[1], t[2]), (t[2], t[0])):
+            cnt[(min(e), max(e))] += 1
+    nonman = [e for e, c in cnt.items() if c != 2]
+    wt = m.is_watertight
+    ok = wt and not nonman and len(zero) == 0
+    lines = [f'[{"PASS" if ok else "FAIL"}] integrity: watertight {wt}, non-manifold edges {len(nonman)}, zero-area faces {len(zero)}']
+    vv = np.unique(key, axis=0) * 1e-5
+    for e in nonman[:10]:
+        lines.append(f'    non-manifold edge ({cnt[e]} faces) at {np.round((vv[e[0]] + vv[e[1]]) / 2, 3).tolist()}')
+    for i in zero[:10]:
+        lines.append(f'    zero-area face at {np.round(v[f[i]].mean(axis=0), 3).tolist()}')
+    return ok, lines, dict(watertight=bool(wt), nonmanifold=len(nonman), zero_area=int(len(zero)))
+
+
+def integrity_file(path):
+    """integrity() on an STL file as exported."""
+    raw = trimesh.load(str(path), process=False)
+    m = trimesh.load(str(path))
+    return integrity(m, raw=(raw.vertices, raw.faces))
+
+
 def _near(p, wl, r=1.5):
     return [w for w in wl if 'pt' in w and np.linalg.norm(np.asarray(p) - w['pt']) <= w.get('r', r)]
 
@@ -62,6 +97,9 @@ def check(mesh, name, bodies=1, corners=(), folds=(), thin=(), revolve=None):
     good = (bodies is None or len(parts) == bodies) and m.is_watertight
     rep.append(f'[{"PASS" if good else "FAIL"}] bodies {len(parts)} (allowed {bodies}), watertight {m.is_watertight}')
     ok &= good
+    iok, ilines, _ = integrity(m)
+    rep += ilines
+    ok &= iok
     s = np.zeros(len(m.vertices))
     np.add.at(s, m.faces.ravel(), m.face_angles.ravel())
     defect = 360 - np.degrees(s)

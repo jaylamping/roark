@@ -1,0 +1,37 @@
+LEFT P2 L04B — REVIEW HOLD, NOT YET RELEASED
+This is P2 only. No new P1 print is requested.
+
+Exact project: print-HOLD\LEFT_P2_L04B_04HF_100R_6W.3mf
+Open as a complete PROJECT, not geometry-only import. Do not combine with another part.
+Before starting, compare the loaded values below; presets previously reset wall/infill
+settings. If values differ, stop and reconcile rather than assuming saved settings won.
+No printer was operated or live Bambu session changed to prepare this file.
+
+Printer/nozzle: Bambu Lab P2S,0.4mm High Flow (standard Bambu HF, not E3D).
+Material/plate: Generic PETG @BBL P2S / Textured PEI.
+Layer/first layer:0.20/0.20mm.
+Walls:6. Infill:100% Rectilinear (stored as zig-zag). Top5layers / bottom3layers.
+Nozzle:first/all255C. Textured bed:first/all70C.
+Flow ratio0.95. Max volumetric speed12mm3/s.
+Normal AUTO supports,45degree threshold; critical-regions-only OFF; build-plate-only OFF.
+Top/bottom support gaps0.20mm. Top/bottom interfaces2/2layers. Interface spacing0.50mm.
+Support/part XY gap0.35mm. Base spacing2.5mm,basepatterndefault,interfaceauto.
+Auto brim5mm,objectgap0.10mm.
+Keep saved upright orientation,45degree plate rotation and position; height102mm.
+
+Resolved HF speed ceilings, mm/s:
+firstlayer50; outerwall500; innerwall600; sparseinfill600; solidinfill600;
+support150; interface80; bridge50; travel600. These are preset ceilings: the12mm3/s
+flow cap, cooling/overhang rules and acceleration reduce executed extrusion speeds.
+Partfan min40%/max90%,off first3layers; layer-cooling slowdown ON; overhang slowdown ON.
+Complete saved/resolved values: evidence\RESOLVED_SETTINGS.json.
+
+Estimate:5h48m20s,188.624g TOTAL JOB including supports; not measured finished part mass.
+Slicer returned no warnings. Always inspect the actual loaded preview and warning list.
+
+After review authorizes printing: inspect the loose part only. Remove supports in
+small pieces before motors. Protect the cable-opening rim, seats and roots from prying.
+Check cracks/layer splits, residue in bores, flat seats, opening roof and rough edges.
+Connector envelope/orientation is assumed; do not force-fit. No bolt tightening,
+unsupported arm loading or powered use is approved by this development-print project.
+Future cable/stack revisions may require a reprint.

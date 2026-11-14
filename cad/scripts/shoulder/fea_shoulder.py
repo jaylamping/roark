@@ -1,0 +1,1138 @@
+"""Linear static FEA of the shoulder parts in SolidWorks Simulation, in this session's own instance.
+
+    python fea_shoulder.py <case> [...]
+
+Engine adapted from the arm thread's cad/scripts/fea/p3_fea.py (left-arm-organic), so the numbers compare: PETG E 1.9 GPa,
+nu 0.38, yield 45 MPa, layer strength 0.5 x yield. Each case reports the peak von Mises away from the fixtures (bulk SF),
+the peak normal stress across each layer direction (layer SF), and the same peaks with nothing excluded (sf_noexcl).
+Models are copies in cad/_sim/shoulder (gitignored); rows go to cad/_sim/shoulder/fea_runs.json.
+"""
+import hashlib
+import json
+import math
+import os
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+from scipy.spatial import cKDTree
+
+from swk import app, session, STATE, L, NUL, CAD, VARIANT, pythoncom
+from dims import *
+
+F = CAD / '_sim' / 'shoulder'
+F.mkdir(parents=True, exist_ok=True)
+RUNS = F / 'fea_runs.json'
+I = lambda v=0: VARIANT(pythoncom.VT_BYREF | pythoncom.VT_I4, v)
+EX, NU, YIELD, LAYER, RHO = 1.9e9, 0.38, 45.0, 0.5, 1270.0
+PARTS = {'hub': F / os.environ.get('HUB_FEA_FILE', 'hub_fea.SLDPRT')}   # a second solve stream uses its own copy
+PARTS['fork'] = F / os.environ.get('FORK_FEA_FILE', 'fork_fea.SLDPRT')
+PARTS['fork1'] = F / 'fork1_fea.SLDPRT'
+PARTS['fork2'] = F / os.environ.get('FORK2_FEA_FILE', 'fork2_fea.SLDPRT')      # fork front and fork rear combined into one body (fork2_fea_part.py): F2_* cases
+PARTS['forkj'] = F / os.environ.get('FORKJ_FEA_FILE', 'forkj_real.SLDPRT')      # fork front and fork rear as TWO bodies: J_* cases (the six-screw joint)
+PARTS['ff'] = F / os.environ.get('FF_FEA_FILE', 'ff_fea.SLDPRT')      # the fork front alone (a copy of the part): FF_* cases
+PARTS['stop_fr'] = F / 'stop_fork_rear.SLDPRT'   # stop rev 2 checks
+PARTS['stop_cap'] = F / 'stop_cap.SLDPRT'
+PARTS['stop_fr_leg2'] = F / 'stop_fork_rear_leg2.SLDPRT'
+PARTS['stop_fr_G'] = F / 'stop_fork_rear_G.SLDPRT'
+PARTS['stop_fr_N'] = F / 'stop_fork_rear_N.SLDPRT'
+PARTS['stop_fr_N2'] = F / 'stop_fork_rear_N2.SLDPRT'      # fork front alone (debug of the two-body model)   # fork front + fork rear, two bodies (fork_fea_part.py)
+
+
+def cyl(r, box):
+    return ('cyl', r, box)
+
+
+def pl(point, area=None):
+    return ('plane', point, area, 'on')
+
+
+def call(o, n, *a):
+    v = getattr(o, n)
+    return v(*a) if callable(v) else v
+
+
+def faces_of(d):
+    return [f for b in d.GetBodies2(0, True) for f in b.GetFaces()]
+
+
+def info(f):
+    s = f.GetSurface
+    x = list(call(f, 'GetBox'))
+    box = [x[i] * 1000 for i in range(6)]
+    t = 'other'
+    r = None
+    n = None
+    if s.IsCylinder:
+        t = 'cyl'
+        r = s.CylinderParams[6] * 1000
+    elif s.IsPlane:
+        t = 'plane'
+        n = [round(v, 3) for v in f.Normal]
+    elif s.IsTorus:
+        t = 'tor'
+        tp = s.TorusParams
+        r = (tp[6] * 1000, tp[7] * 1000)      # major, minor
+    return t, r, n, box, f.GetArea * 1e6 if not callable(f.GetArea) else f.GetArea() * 1e6
+
+
+def _safe(f, default=None):
+    try:
+        return f()
+    except Exception:
+        return default
+
+
+_INFO = {}
+
+
+def infos(d):
+    """(face, info) for every face. With FEA_FACE_CACHE set, the infos are read once per file and reused for the following
+    cases on it (the faces come in the same order each time the file is opened); only for cases that add no feature."""
+    fs = faces_of(d)
+    if not os.environ.get('FEA_FACE_CACHE'):
+        return [(f, info(f)) for f in fs]
+    key = (str(d.GetPathName), len(fs))
+    if key not in _INFO:
+        t_ = time.time()
+        _INFO[key] = [info(f) for f in fs]
+        print(' face infos read:', len(fs), 'faces in %.0f s' % (time.time() - t_), flush=True)
+    return list(zip(fs, _INFO[key]))
+
+
+def pick(d, sel):
+    out = []
+    for f, (t, r, n, b, a) in infos(d):
+        lo, hi = (min(b[0], b[3]), min(b[1], b[4]), min(b[2], b[5])), (max(b[0], b[3]), max(b[1], b[4]), max(b[2], b[5]))
+        if sel[0] == 'cyl' and t == 'cyl' and abs(r - sel[1]) < 0.02:
+            q = sel[2]
+            if all(lo[i] >= q[i] - .01 and hi[i] <= q[i + 3] + .01 for i in range(3)):
+                out.append(f)
+        if sel[0] == 'tor' and t == 'tor' and abs(r[1] - sel[1]) < 0.02 and sel[2][0] <= r[0] <= sel[2][1]:   # minor radius, major range
+            out.append(f)
+        if sel[0] == 'cone' and f.GetSurface.IsCone:      # cones whose box lies inside the given box
+            q = sel[1]
+            if all(lo[i] >= q[i] - .01 and hi[i] <= q[i + 3] + .01 for i in range(3)):
+                out.append(f)
+        if sel[0] == 'touch':      # any face whose box meets the given box and whose area is under the limit (local mesh control)
+            q, amax = sel[1], sel[2]
+            if all(lo[i] <= q[i + 3] and hi[i] >= q[i] for i in range(3)) and a <= amax:
+                out.append(f)
+        if sel[0] == 'plane' and t == 'plane':
+            p = sel[1]
+            if all(lo[i] - .3 <= p[i] <= hi[i] + .3 for i in range(3)) and (sel[2] is None or abs(a - sel[2]) < sel[2] * .3):
+                if len(sel) > 3 and sel[3] == 'on':       # the point must lie on the face itself (within 0.05 mm)
+                    q = f.GetClosestPointOn(p[0] / 1000, p[1] / 1000, p[2] / 1000)
+                    if q is None or math.dist([v * 1000 for v in list(q)[:3]], p) > 0.05:
+                        continue
+                out.append(f)
+    return out
+
+
+def layer(nodes, S, near, n, exclude):
+    n = np.array(n, float)
+    s = n[0] ** 2 * S[:, 0] + n[1] ** 2 * S[:, 1] + n[2] ** 2 * S[:, 2] + 2 * (n[0] * n[1] * S[:, 3] + n[0] * n[2] * S[:, 4] + n[1] * n[2] * S[:, 5])
+    return s
+
+
+def read_stress_by_body(d, res):
+    """The nodal stresses of every node, read one component at a time over the solid bodies (GetStressForEntities3), in the
+    layout of GetStress: node id, sx sy sz txy txz tyz, p1 p2 p3, von Mises, intensity (MPa). On a 745,656-node hub this took
+    7 x 19 s against 734 s for GetStress and gave the same value at every node for all seven components (READ_TEST,
+    2026-11-13). The principals and the intensity are computed here from the tensor. None if the read fails or the
+    components do not list the same nodes (the caller then falls back to GetStress)."""
+    try:
+        bodies = list(d.GetBodies2(0, True))
+        cols = {}
+        ids = None
+        for ci, col in ((0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (9, 10)):
+            q = res.GetStressForEntities3(True, ci, 1, NUL, bodies, 3, 0, 0, False, I())
+            q = np.array(q[0] if isinstance(q, tuple) and len(q) == 2 else q, float).reshape(-1, 2)
+            i_ = q[:, 0].astype(np.int64)
+            o_ = np.argsort(i_, kind='stable')
+            i_, v_ = i_[o_], q[o_, 1]
+            keep = np.r_[True, i_[1:] != i_[:-1]]          # a node on two bodies' faces is listed once per body: the same value
+            i_, v_ = i_[keep], v_[keep]
+            if ids is None:
+                ids = i_
+            elif len(i_) != len(ids) or (i_ != ids).any():
+                print(' stress read per body: component', ci, 'lists other nodes; falling back', flush=True)
+                return None
+            cols[col] = v_
+        s = np.zeros((len(ids), 12))
+        s[:, 0] = ids
+        for col, v_ in cols.items():
+            s[:, col] = v_
+        t = np.empty((len(ids), 3, 3))
+        t[:, 0, 0], t[:, 1, 1], t[:, 2, 2] = s[:, 1], s[:, 2], s[:, 3]
+        t[:, 0, 1] = t[:, 1, 0] = s[:, 4]
+        t[:, 0, 2] = t[:, 2, 0] = s[:, 5]
+        t[:, 1, 2] = t[:, 2, 1] = s[:, 6]
+        w = np.linalg.eigvalsh(t)                           # ascending
+        s[:, 7], s[:, 8], s[:, 9] = w[:, 2], w[:, 1], w[:, 0]
+        s[:, 11] = w[:, 2] - w[:, 0]
+        return s
+    except Exception as ex:
+        print(' stress read per body failed:', str(ex)[:120], '- falling back', flush=True)
+        return None
+
+
+def read_test(d, res, s, name):
+    """READ_TEST=1: time other ways of reading the stresses of a solved study and compare each with the all-node GetStress
+    read `s` (node id, sx sy sz txy txz tyz, p1 p2 p3, von Mises, intensity). Prints only; changes nothing of record."""
+    ref = {int(r[0]): r for r in s}
+    COMP = ((0, 1, 'sx'), (1, 2, 'sy'), (2, 3, 'sz'), (3, 4, 'txy'), (4, 5, 'txz'), (5, 6, 'tyz'), (9, 10, 'vm'))
+
+    def arr(q, w):
+        return np.array(q[0] if isinstance(q, tuple) and len(q) == 2 else q, float).reshape(-1, w)
+
+    def cmp(tag, q, col):
+        ids = q[:, 0].astype(int)
+        hit = np.array([i in ref for i in ids])
+        dv = np.abs(q[hit, 1] - np.array([ref[i][col] for i in ids[hit]])) if hit.any() else np.zeros(1)
+        print(f' READ_TEST {tag}: {len(ids)} rows, {len(set(ids))} nodes of {len(ref)}, {int(hit.sum())} known; largest difference {dv.max():.5f} MPa', flush=True)
+
+    for tag, fn in (('min/max von Mises', lambda: res.GetMinMaxStress(9, 0, 1, NUL, 3, I())),
+                    ('average at mid-nodes flag', lambda: res.GetAverageStressesAtMidnodes())):
+        t = time.time()
+        try:
+            v = fn()
+            print(f' READ_TEST {tag}: {time.time() - t:.1f} s -> {str(v)[:160]}', flush=True)
+        except Exception as ex:
+            print(f' READ_TEST {tag} failed: {str(ex)[:120]}', flush=True)
+    bodies = list(d.GetBodies2(0, True))
+    faces = [f for b_ in bodies for f in b_.GetFaces()]
+    for tag, ents in (('bodies', bodies), ('all faces', faces)):
+        for ci, col, cn in COMP:
+            t = time.time()
+            try:
+                q = arr(res.GetStressForEntities3(True, ci, 1, NUL, ents, 3, 0, 0, False, I()), 2)
+                print(f' READ_TEST ForEntities3 {tag} {cn}: {time.time() - t:.1f} s', flush=True)
+                cmp(f'ForEntities3 {tag} {cn}', q, col)
+            except Exception as ex:
+                print(f' READ_TEST ForEntities3 {tag} {cn} failed after {time.time() - t:.1f} s: {str(ex)[:120]}', flush=True)
+                break
+    t = time.time()
+    try:
+        q = res.GetStressTensorValuesForAllNodesOfElement(list(range(1, 2001)), 3, 1, I())
+        q = np.array(q[0] if isinstance(q, tuple) and len(q) == 2 else q, float)
+        print(f' READ_TEST tensor at the nodes of 2000 elements: {time.time() - t:.1f} s, {q.size} values, first {q[:14].round(3).tolist()}', flush=True)
+    except Exception as ex:
+        print(f' READ_TEST tensor per element failed after {time.time() - t:.1f} s: {str(ex)[:120]}', flush=True)
+    if os.environ.get('READ_TEST') == '2':          # the all-node read again with the mid-node averaging switched the other way
+        try:
+            cur = bool(res.GetAverageStressesAtMidnodes())
+            res.SetAverageStressesAtMidnodes(not cur)
+            t = time.time()
+            s2 = arr(res.GetStress(0, 1, NUL, 3, I()), 12)
+            dt = time.time() - t
+            res.SetAverageStressesAtMidnodes(cur)
+            dv = np.abs(s2[:, 1:7] - s[:, 1:7]).max(axis=1)
+            print(f' READ_TEST GetStress with mid-node averaging {not cur} (was {cur}): {dt:.0f} s; rows {len(s2)}; nodes whose tensor differs by over 0.001 MPa: {int((dv > 1e-3).sum())}, largest {dv.max():.3f}', flush=True)
+            np.savez(str(F / (name + '_midnode_alt.npz')), s=s2)
+        except Exception as ex:
+            print(f' READ_TEST mid-node switch failed: {str(ex)[:160]}', flush=True)
+
+
+def run(name, c):
+    sw = app()
+    t0 = time.time()
+    el = float(os.environ.get('FEA_EL', c.get('el', 3.0)))
+    sw.CloseAllDocuments(True)        # a failed case leaves its model open, and a second copy by the same name won't open
+    e, w = L(), L()
+    d = sw.OpenDoc6(str(PARTS[c['part']]), 1, 1, '', e, w)
+    sw.ActivateDoc3(d.GetTitle, False, 0, L())
+    for fn_ in [x for x in os.environ.get('FEA_SUPPRESS', '').split(',') if x]:
+        # features suppressed on the FEA copy only (e.g. bores that are plugged in service and stop the mesher); the copy is not saved
+        f_ = d.FeatureByName(fn_)
+        ok_ = False
+        if f_ is not None:
+            d.ClearSelection2(True)
+            f_.Select2(False, 0)
+            ok_ = call(d, 'EditSuppress2')
+            d.ForceRebuild3(False)
+        print(' suppressed on the FEA copy:', fn_, ok_, flush=True)
+    if c.get('dummy'):
+        # a stiff dummy of the RS02 output: an aluminium disc seated on the hub's step face, a separate body bonded to it
+        # (the six preloaded M4 on PCD 24 keep the joint closed: about 0.6 kN of bolt load change at 23 N.m against about
+        # 3 kN of preload each), so the load reaches the hub through the seat and the bolt pattern, not through hub faces
+        from swk import Sk, plane, extrude
+        dm_ = c['dummy']
+        with Sk(d, plane(d, 'Y', dm_['y0'], 'P_DUMMY'), 'DUMMY') as s_:
+            s_.circle((RX, dm_['y0'], YZ), dm_['r'])
+        extrude(d, s_.feat, 'DUMMY', dm_['t'], (0, 1, 0), merge=False)
+        if dm_.get('bolts'):
+            # tapped M4 holes in the dummy (thread faces for the bolt connectors), on the hub's six screw axes
+            cen_ = hole_centres(d)
+            print(' hub hole centres', [tuple(round(v, 3) for v in c_) for c_ in cen_], flush=True)
+            with Sk(d, plane(d, 'Y', dm_['y0'], 'P_DUMMY_T'), 'DUMMY_TAPS') as s_:
+                for cx_, cz_ in cen_:
+                    s_.circle((cx_, dm_['y0'], cz_), 1.65)
+            extrude(d, s_.feat, 'DUMMY_TAPS', 8.0, (0, 1, 0), cut=True)
+        d.ForceRebuild3(False)
+    if c.get('split'):
+        # split lines on the FEA copy, so a load can go on part of a face (e.g. only inside the arm's shim plates): for each
+        # Z plane, the rectangles (X0, X1, Y0, Y1, model mm) projected onto the faces picked by the point selectors
+        from swk import Sk, plane
+        for sp_ in c['split']:
+            zp_, rects_, sels_ = sp_[:3]
+            circs_ = sp_[3] if len(sp_) > 3 else []      # (X, Y, r): circles kept out of the loaded area (e.g. round a bolt hole)
+            n0_ = len(faces_of(d))
+            if isinstance(zp_, tuple) and zp_[0] == 'Y':     # ('Y', y): a Y plane, rectangles as (X0, X1, Z0, Z1); e.g. a hole wall cut in halves
+                yp_ = zp_[1]
+                tag_ = f'Y{yp_:g}'.replace('.', 'p').replace('-', 'm')
+                with Sk(d, plane(d, 'Y', yp_, 'P_SPLIT_' + tag_), 'SPLIT_' + tag_) as s_:
+                    for x0_, x1_, z0_, z1_ in rects_:
+                        s_.poly([(x0_, yp_, z0_), (x1_, yp_, z0_), (x1_, yp_, z1_), (x0_, yp_, z1_)])
+            elif isinstance(zp_, tuple):         # ('X', x): an X plane, rectangles as (Y0, Y1, Z0, Z1); e.g. a patch on a lug's outer face
+                xp_ = zp_[1]
+                tag_ = f'X{xp_:g}'.replace('.', 'p').replace('-', 'm')
+                with Sk(d, plane(d, 'X', xp_, 'P_SPLIT_' + tag_), 'SPLIT_' + tag_) as s_:
+                    for y0_, y1_, z0_, z1_ in rects_:
+                        s_.poly([(xp_, y0_, z0_), (xp_, y1_, z0_), (xp_, y1_, z1_), (xp_, y0_, z1_)])
+            else:
+                with Sk(d, plane(d, 'Z', zp_, f'P_SPLIT_{zp_:g}'.replace('.', 'p')), f'SPLIT_{zp_:g}'.replace('.', 'p')) as s_:
+                    for x0_, x1_, y0_, y1_ in rects_:
+                        s_.poly([(x0_, y0_, zp_), (x1_, y0_, zp_), (x1_, y1_, zp_), (x0_, y1_, zp_)])
+                    for cx_, cy_, cr_ in circs_:
+                        s_.circle((cx_, cy_, zp_), cr_)
+            fs_ = [f_ for sel_ in sels_ for f_ in pick(d, sel_)]
+            # split line by projection wants the sketch selected with mark 4 and the faces with mark 1 (with mark 0 it does nothing);
+            # selected through Extension.SelectByID2 (the sketch by name, each face by its selector point), the documented route
+            d.ClearSelection2(True)
+            ok_sel = [d.Extension.SelectByID2(s_.feat.Name, 'SKETCH', 0, 0, 0, False, 4, NUL, 0)]
+            for sel_ in sels_:
+                if sel_[0] != 'plane':
+                    # a curved face (e.g. a hole wall) is selected as the face object: by a point, SolidWorks picked another
+                    # face or no face at all once the sketch was selected (split_try.py, 2026-11-13)
+                    for f_ in pick(d, sel_):
+                        sd_ = d.SelectionManager.CreateSelectData
+                        sd_.Mark = 1
+                        ok_sel.append(f_.Select4(True, sd_))
+                    continue
+                px_, py_, pz_ = sel_[1]
+                ok_sel.append(d.Extension.SelectByID2('', 'FACE', px_ / 1000, py_ / 1000, pz_ / 1000, True, 1, NUL, 0))
+            print(' split selection', ok_sel, flush=True)
+            ok_ = d.InsertSplitLineProject(False, False)
+            d.ForceRebuild3(False)
+            n1_ = len(faces_of(d))
+            print(' split', zp_, 'faces picked', len(fs_), 'ok', ok_, 'faces', n0_, '->', n1_, flush=True)
+            if n1_ <= n0_:
+                raise SystemExit(f'split line on Z {zp_} did not split any face: stopping (the load would cover the whole face)')
+    cw = session(STATE).load_simulation()
+    doc = cw.ActiveDoc
+    sm = doc.StudyManager
+    err = I()
+    tag = name[:20] + time.strftime('_%H%M%S')
+    st = sm.CreateNewStudy3(tag, 0, 0, err)
+    print(name, 'study', err.value, flush=True)
+    sol = st.SolidManager
+    comp = sol.GetComponentAt(0, I())
+    b = comp.GetSolidBodyAt(0, I())
+    m = b.GetDefaultMaterial
+    m.MaterialUnits = 0
+    m.MaterialName = 'T'
+    for k, v in (('EX', EX), ('NUXY', NU), ('GXY', EX / (2 * (1 + NU))), ('DENS', RHO), ('SIGYLD', YIELD * 1e6), ('SIGXT', 50e6)):
+        m.SetPropertyByName2(k, v, False)
+    mats = []
+    for k in range(comp.SolidBodyCount):
+        cb = comp.GetSolidBodyAt(k, I())
+        is_dummy = False
+        if c.get('dummy'):
+            nm_ = ''
+            for a_ in ('SolidBodyName', 'Name'):
+                try:
+                    nm_ = str(getattr(cb, a_)); break
+                except Exception:
+                    pass
+            # the dummy is the body made by the DUMMY feature (created last); by name if the name is readable
+            is_dummy = ('DUMMY' in nm_.upper()) if nm_ else (k == comp.SolidBodyCount - 1)
+            print(' body', k, repr(nm_), 'dummy' if is_dummy else 'hub', flush=True)
+        if is_dummy:
+            ma = cb.GetDefaultMaterial
+            ma.MaterialUnits = 0
+            ma.MaterialName = 'AL'
+            for k_, v_ in (('EX', 69e9), ('NUXY', 0.33), ('GXY', 26e9), ('DENS', 2700.0), ('SIGYLD', 250e6), ('SIGXT', 300e6)):
+                ma.SetPropertyByName2(k_, v_, False)
+            mats.append(('dummy', cb.SetSolidBodyMaterial(ma)))
+        else:
+            mats.append(('petg', cb.SetSolidBodyMaterial(m)))
+    print(' material', mats, flush=True)
+    lbc = st.LoadsAndRestraintsManager
+    fixed = []
+    for kind, sel in c['fix']:
+        fs = pick(d, sel)
+        if kind.endswith('?'):          # optional: only where the part has these faces
+            if not fs:
+                continue
+            kind = kind[:-1]
+        err = I()
+        if kind in ('radial', 'axialY'):
+            # radial only on cylinders (type 7: radial, circumferential, axial), or only normal to the Top plane (type 5)
+            ref = d.FeatureByName('Top Plane') if kind == 'axialY' else NUL
+            r_ = lbc.AddRestraint(7 if kind == 'radial' else 5, fs, ref, err)
+            call(r_, 'RestraintBeginEdit')
+            r_.SetTranslationComponentsValues2(*((1, 0, 0) if kind == 'radial' else (0, 0, 1)), 0.0, 0.0, 0.0)
+            print(' restraint edit', call(r_, 'RestraintEndEdit'), flush=True)
+        else:
+            lbc.AddRestraint({'fixed': 0, 'roller': 3, 'hinge': 4}[kind], fs, NUL, err)
+        print(' fixture', kind, len(fs), 'err', err.value, flush=True)
+        if not fs or err.value:
+            raise SystemExit('fixture failed')
+        fixed += fs
+    loaded = []
+    rems = ([c['remote'] + (c.get('coupling', 0),)] if 'remote' in c else []) + [tuple(x) for x in c.get('remotes', [])]
+    for sel, at, f, mm_, cpl in rems:
+        fs, seen_ = [], set()
+        for x in [x for s_ in (sel if isinstance(sel, list) else [sel]) for x in pick(d, s_)]:
+            k_ = tuple(round(v, 3) for v in info(x)[3])
+            if k_ not in seen_:
+                seen_.add(k_)
+                fs.append(x)
+        loaded += fs
+        err = I()
+        print(' remote faces', len(fs), [info(x)[0] for x in fs], round(time.time() - t0), 's', flush=True)
+        r = lbc.AddRemoteLoad(1, fs, 0, at[0], at[1], at[2], err)
+        print(' remote', len(fs), 'err', err.value, flush=True)
+        call(r, 'RemoteLoadBeginEdit')
+        r.ConnectionType = cpl                         # 0 rigid, 1 distributed
+        r.ForceUnit = 0
+        r.MomentUnit = 0
+        r.SetForceOrTranslationValues2(any(f), f[0] != 0, float(f[0]), f[1] != 0, float(f[1]), f[2] != 0, float(f[2]))
+        r.SetMomentOrRotationValues2(any(mm_), mm_[0] != 0, float(mm_[0]), mm_[1] != 0, float(mm_[1]), mm_[2] != 0, float(mm_[2]))
+        print(' remote end', call(r, 'RemoteLoadEndEdit'), flush=True)
+    for sel, newton, ref in c.get('forces', []):
+        fs = pick(d, sel)
+        loaded += fs
+        err = I()
+        lbc.AddForce3(1, 0, -1, 0, 0, 0, NUL, NUL, False, False, 0, 0, 0, float(newton), [1.0] * 6, False, False, fs, NUL, False, err)
+        print(' normal force', len(fs), newton, 'err', err.value, flush=True)
+        if not fs or err.value:
+            raise SystemExit('force failed')
+    post = c['pre_mesh'](st, d, lbc) if 'pre_mesh' in c else None     # contacts, connectors: returns a result hook
+    mesh = st.Mesh
+    mesh.Quality = 1
+    if c.get('stabilise'):
+        # contact models: soft springs hold the dummy against rigid-body motion until contact closes; Intel direct sparse
+        so_ = st.StaticStudyOptions
+        try:
+            so_.UseSoftSpring = 1
+            so_.SolverType = int(os.environ.get('FEA_SOLVER', '7'))   # 7 Intel direct sparse; 2 FFEPlus (iterative) if direct runs out of memory
+        except Exception as e_:
+            print(' study options failed', e_, flush=True)
+    if os.environ.get('FEA_SOLVER') and not c.get('stabilise'):
+        for try_ in range(3):      # set and read back on one options object; a fresh COM handle sometimes fails to read
+            try:
+                so_ = st.StaticStudyOptions
+                so_.SolverType = int(os.environ['FEA_SOLVER'])   # 2 FFEPlus (iterative)
+                got_ = so_.SolverType
+                print(' solver set', got_, flush=True)
+                if got_ == int(os.environ['FEA_SOLVER']):
+                    break
+            except Exception as e_:
+                print(' solver override failed', try_, e_, flush=True)
+                time.sleep(2)
+    opts = {}      # defaults this script does not set: logged so runs on different machines can be compared
+    for k, o, a in (('solver', st, 'StaticStudyOptions.SolverType'), ('mesher', mesh, 'MesherType'), ('jacobian', mesh, 'JacobianPoints'),
+                    ('auto_transition', mesh, 'AutomaticTransition'), ('jacobian_check', mesh, 'UseJacobianCheck')):
+        try:
+            for part in a.split('.'):
+                o = getattr(o, part)
+            opts[k] = o
+        except Exception:
+            opts[k] = '?'
+    print(' options', opts, flush=True)
+    for sel, size in c.get('ctrl', []):
+        fs = pick(d, sel)
+        if not fs and c.get('ctrl_optional'):      # like-for-like runs on variants: a face set one geometry lacks is skipped
+            print(' control', sel[0], 'no faces: skipped', flush=True)
+            continue
+        q = mesh.ApplyMeshControl(fs, I())
+        q = q[0] if isinstance(q, tuple) else q
+        call(q, 'MeshControlBeginEdit')
+        q.Units = 0
+        q.ElementSize = size
+        q.Ratio = 1.5
+        print(' control', len(fs), size, call(q, 'MeshControlEndEdit'), flush=True)
+    tolf = float(os.environ.get('FEA_TOL', '0.05'))      # mesh tolerance as a fraction of the element size (0.05 unless a part will not mesh)
+    rc = st.CreateMesh(0, el, el * tolf)
+    print(' mesh', rc, 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, flush=True)
+    # fallbacks when the curvature mesher fails (rev C run-out lofts leave narrow faces): blended curvature, then finer
+    for mt, k in ((1, 1.0), (1, 0.8), (0, 0.8)):
+        if not rc:
+            break
+        try:
+            mesh.MesherType = mt
+        except Exception as e_:
+            print(' mesher type set failed', e_, flush=True)
+        rc = st.CreateMesh(0, el * k, el * k * tolf)
+        print(' mesh retry', mt, el * k, rc, 'nodes', mesh.NodeCount, 'elements', mesh.ElementCount, flush=True)
+    if rc:
+        raise SystemExit('mesh failed')
+    rc = call(st, 'RunAnalysis')
+    print(' solve', rc, round(time.time() - t0), 's', flush=True)
+    res = st.Results
+    if rc or res is None:
+        raise SystemExit('solve failed')
+    tr = time.time()
+    raw = call(mesh, 'GetNodes')
+    t1 = time.time()
+    raw = np.array(raw[0] if isinstance(raw, tuple) and len(raw) == 2 else raw, float).reshape(-1, 4)
+    ids = raw[:, 0].astype(int)
+    xyz = dict(zip(ids, raw[:, 1:] * 1000))
+    t2 = time.time()
+    s = None if os.environ.get('FEA_READ') == 'full' else read_stress_by_body(d, res)
+    how = 'per body and component'
+    if s is None:
+        how = 'all-node GetStress'
+        err = I()
+        s = res.GetStress(0, 1, NUL, 3, err)
+        s = np.array(s[0] if isinstance(s, tuple) and len(s) == 2 else s, float).reshape(-1, 12)
+    t3 = time.time()
+    print(' stress read:', how, flush=True)
+    pos = np.array([xyz[int(i)] for i in s[:, 0]])
+    print(' read-back s: GetNodes call %.0f, to arrays %.0f, GetStress call %.0f, to arrays %.0f' % (t1 - tr, t2 - t1, t3 - t2, time.time() - t3), flush=True)
+    np.savez(str(F / (name + '.npz')), pos=pos, s=s)      # saved first: the fixture readback below has failed on contact models
+    if os.environ.get('READ_TEST'):
+        read_test(d, res, s, name)
+    extra = {}
+    if c.get('react') or c.get('disp'):
+        try:
+            err = I()
+            try:
+                u = res.GetDisplacement(0, 1, NUL, 0, err)
+            except Exception:
+                u = res.GetTranslationalDisplacement(1, NUL, 0, err)       # this build's name: step, plane, unit (0: mm), error
+            u = np.array(u[0] if isinstance(u, tuple) and len(u) == 2 else u, float).reshape(-1, 5)
+            upos = np.array([xyz[int(i)] for i in u[:, 0]])
+            extra['u_max'] = round(float(u[:, 4].max()), 4)
+            for k_, box in c.get('disp', {}).items():         # mean displacement (as the solver reports it) of the nodes in a box
+                mk = np.all((upos >= np.array(box[:3])) & (upos <= np.array(box[3:])), axis=1)
+                extra['u_' + k_] = [round(float(v), 4) for v in u[mk, 1:5].mean(axis=0)] + [int(mk.sum())]
+            np.savez(str(F / (name + '_u.npz')), pos=upos, u=u)
+        except Exception as ex:
+            extra['u_err'] = str(ex)[:120]
+        for k_, sels in c.get('react', {}).items():
+            try:
+                fs_ = [x for s_ in sels for x in pick(d, s_)]
+                err = I()
+                r_ = res.GetReactionForcesAndMoments(1, NUL, fs_, 0, err)
+                r_ = r_[0] if isinstance(r_, tuple) and len(r_) == 2 else r_
+                extra['R_' + k_] = [round(float(v), 2) for v in list(r_)[:8]] + [len(fs_), err.value]
+            except Exception as ex:
+                extra['R_' + k_ + '_err'] = str(ex)[:120]
+        print(' extra', extra, flush=True)
+    try:
+        err = I()
+        tf = time.time()
+        q = res.GetStressForEntities2(True, 9, 1, NUL, fixed, 3, err)
+        print(' read-back s: fixture faces %.0f' % (time.time() - tf), flush=True)
+        q = q[0] if isinstance(q, tuple) and len(q) == 2 else q
+        fid = np.array(q, float).reshape(-1, 2)[:, 0].astype(int)
+        anchors = np.array([xyz[int(i)] for i in fid if int(i) in xyz])
+        dist = cKDTree(anchors).query(pos)[0]
+    except Exception as ex:      # no fixture exclusion then (said in the log)
+        print(' fixture nodes not read:', str(ex)[:80], flush=True)
+        dist = np.full(len(pos), 1e9)
+    away = dist >= 2 * el
+    for bx in c.get('exclude', []):          # judged elsewhere (listed with the results): not part of the bulk / layer peaks
+        away &= ~np.all((pos >= np.array(bx[:3])) & (pos <= np.array(bx[3:])), axis=1)
+    if c.get('exclude'):
+        print(' excluded', c['exclude'], flush=True)
+    if c.get('dummy'):
+        keep_ = pos[:, 1] <= c['dummy']['y0'] + 0.01      # hub nodes only (the dummy sits above the seat)
+        pos, s, away = pos[keep_], s[keep_], away[keep_]
+    vm = s[:, 10]
+    np.savez(str(F / (name + '.npz')), pos=pos, s=s)
+    i = np.flatnonzero(away)[np.argmax(vm[away])]
+    out = dict(extra, case=name, part=c['part'], el=el, nodes=int(len(pos)), elements=int(_safe(lambda: mesh.ElementCount, -1)), peak_vm=round(float(vm.max()), 2), vm=round(float(vm[i]), 2), at=pos[i].round(1).tolist(), sf=round(YIELD / float(vm[i]), 2))
+    for label, n in (('x', (1, 0, 0)), ('y', (0, 1, 0)), ('z', (0, 0, 1))):
+        ln = layer(pos, s[:, 1:7], None, n, None)
+        j = np.flatnonzero(away)[np.argmax(ln[away])]
+        out['layer_' + label] = dict(mpa=round(float(ln[j]), 2), at=pos[j].round(1).tolist(), sf=round(YIELD * LAYER / max(float(ln[j]), 1e-9), 2))
+    for k, box in c.get('regions', {}).items():
+        mk = np.all((pos >= np.array(box[:3])) & (pos <= np.array(box[3:])), axis=1)
+        if mk.any():
+            k_ = np.flatnonzero(mk)[np.argmax(vm[mk])]
+            out['region_' + k] = dict(vm=round(float(vm[k_]), 2), at=pos[k_].round(1).tolist(), sf=round(YIELD / float(vm[k_]), 2), p1=round(float(s[mk, 7].max()), 2), p3=round(float(s[mk, 9].min()), 2), layer_x=round(float(layer(pos[mk], s[mk, 1:7], None, (1, 0, 0), None).max()), 2), layer_y=round(float(layer(pos[mk], s[mk, 1:7], None, (0, 1, 0), None).max()), 2), sf_layer_y=round(YIELD * LAYER / max(float(layer(pos[mk], s[mk, 1:7], None, (0, 1, 0), None).max()), 1e-9), 2))
+            # 1 mm averages: mean over the nodes within 1 mm of the region's bulk peak and of its layer (sigma_y) peak
+            ly_all = layer(pos, s[:, 1:7], None, (0, 1, 0), None)
+            kl = np.flatnonzero(mk)[np.argmax(ly_all[mk])]
+            near_v = np.linalg.norm(pos - pos[k_], axis=1) <= 1.0
+            near_l = np.linalg.norm(pos - pos[kl], axis=1) <= 1.0
+            n5_v = np.linalg.norm(pos - pos[k_], axis=1) <= 0.5
+            n5_l = np.linalg.norm(pos - pos[kl], axis=1) <= 0.5
+            out['region_' + k].update(layer_at=pos[kl].round(1).tolist(), sf_avg1=round(YIELD / float(vm[near_v].mean()), 2),
+                                      sf_layer_y_avg1=round(YIELD * LAYER / max(float(ly_all[near_l].mean()), 1e-9), 2), n_avg1=int(near_l.sum()),
+                                      sf_avg05=round(YIELD / float(vm[n5_v].mean()), 2),
+                                      sf_layer_y_avg05=round(YIELD * LAYER / max(float(ly_all[n5_l].mean()), 1e-9), 2), n_avg05=int(n5_l.sum()))
+    if loaded:
+        err = I()
+        q = res.GetStressForEntities2(True, 9, 1, NUL, loaded, 3, err)
+        q = q[0] if isinstance(q, tuple) and len(q) == 2 else q
+        lid = np.array(q, float).reshape(-1, 2)[:, 0].astype(int)
+        lpts = np.array([xyz[int(i)] for i in lid if int(i) in xyz])
+        far = away & (cKDTree(lpts).query(pos)[0] >= 2 * el)
+        i = np.flatnonzero(far)[np.argmax(vm[far])]
+        out['clear'] = dict(vm=round(float(vm[i]), 2), at=pos[i].round(1).tolist(), sf=round(YIELD / float(vm[i]), 2))
+        for label, n in (('x', (1, 0, 0)), ('z', (0, 0, 1))):
+            ln = layer(pos, s[:, 1:7], None, n, None)
+            j = np.flatnonzero(far)[np.argmax(ln[far])]
+            out['clear']['layer_' + label] = dict(sf=round(YIELD * LAYER / max(float(ln[j]), 1e-9), 2), at=pos[j].round(1).tolist())
+    if post:
+        out.update(post(st, res))
+    out['model_sha256'] = hashlib.sha256(Path(PARTS[c['part']]).read_bytes()).hexdigest()
+    out['peak_layer_noexcl'] = {lb: round(float(layer(pos, s[:, 1:7], None, n_, None).max()), 2) for lb, n_ in (('x', (1, 0, 0)), ('y', (0, 1, 0)), ('z', (0, 0, 1)))}
+    out['sf_noexcl'] = dict(bulk=round(YIELD / float(vm.max()), 2), **{'layer_' + lb: round(YIELD * LAYER / max(v, 1e-9), 2) for lb, v in out['peak_layer_noexcl'].items()})
+    print(json.dumps(out), round(time.time() - t0), 's', flush=True)
+    rows = json.loads(RUNS.read_text()) if RUNS.exists() else []
+    RUNS.write_text(json.dumps(rows + [out], indent=0))
+    sw.CloseDoc(d.GetTitle)
+
+
+
+# ---- (a) hub lugs: seam-bolt holes (r 1.7 along Z at X 147.5 / 193.5, Y 292) carry the arm. Fixed at the six hub screws
+# (r 2.15 on PCD 24) and the step ring face that bears on the RS02 output. All the arm load is put through the lugs (the
+# spigot's bearing on the arm's hub seat is ignored): conservative for the lugs. Hub prints with the yaw axis vertical:
+# layers normal to Y, so the layer stress is sigma_y.
+HUB_FIX = [('fixed', cyl(2.15, [150, 297, -20, 192, 321, 30])), ('fixed', pl((RX + 21.5, RS02_OUT, YZ))),
+           ('fixed?', cyl(1.9, [150, 297, -20, 192, 321, 30]))]   # ?: the two Ø3.8 locating holes, where the hub has them
+LUG_R = (float(os.environ.get('HUB_LUG_D', '3.8')) or 3.4) / 2      # the hub's lug bolt hole: dia 3.8 since D3c7 was adopted (HUB_LUG_D=0: the old 3.4)
+LUG_HOLES = [cyl(LUG_R, [144, 289, 0, 151, 295, 12]), cyl(LUG_R, [190, 289, 0, 197, 295, 12])]
+AT = (RX, 292.0, YZ)
+YAW_T = 17.0          # RS02 peak torque (the arm thread's rating, 17 N.m)
+CASES = {}
+for tag, mom in (('MX', (23.0, YAW_T, 0.0)), ('MZ', (0.0, YAW_T, 23.0)), ('MXn', (-23.0, -YAW_T, 0.0))):
+    CASES['HUB_' + tag] = dict(part='hub', fix=HUB_FIX, remote=(LUG_HOLES, AT, (0.0, -2 * 155.0, 0.0), mom), el=1.5,
+                               ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5)], regions={'lug_A': [143, 286, -2, 158, 297, 14], 'lug_B': [183, 286, -2, 198, 297, 14]})
+
+# the other bound: the arm's hub seat clamps the spigot (r 35.8, Y 296-302) as well, so the load enters through lugs and spigot
+SPIGOT = cyl(35.8, [130, 295, -35, 212, 303, 47])
+for tag, mom in (('MX', (23.0, YAW_T, 0.0)), ('MZ', (0.0, YAW_T, 23.0))):
+    CASES['HUBS_' + tag] = dict(CASES['HUB_' + tag], remote=(LUG_HOLES + [SPIGOT], AT, (0.0, -2 * 155.0, 0.0), mom))
+
+# arm-thread load cases (2026-11-11), spigot held over Y 296-302 with the lugs (rigid remote on both):
+# A: arm horizontal, 5 kg payload: 62 N shear + 310 N, 22.9 N.m about X, 17 N.m yaw.  B: elbow end stop at 515 N:
+# 7.0 N.m about X, 8.6 about Y (yaw), 14.7 about Z (sideways), with the 62 N shear.
+CASES['HUBS_A'] = dict(CASES['HUBS_MX'], remote=(LUG_HOLES + [SPIGOT], AT, (0.0, -372.0, 0.0), (22.9, 17.0, 0.0)))
+CASES['HUBS_B'] = dict(CASES['HUBS_MX'], remote=(LUG_HOLES + [SPIGOT], AT, (0.0, -62.0, 0.0), (7.0, 8.6, 14.7)))
+
+# ---- groove model (hub rev B + groove): spigot held radially only (roller on the r 35.8 cylinder), axially only on the
+# groove's load flanks (roller on the 30 deg cones, low-Y side), lugs bolted (fixed holes). The arm loads go in as their
+# reaction at the RS02 side (remote load on the hub screws and the step-ring face, -F and -M about the same point).
+RS02_SIDE = [cyl(2.15, [150, 297, -20, 192, 321, 30]), pl((RX + 21.5, RS02_OUT, YZ)), cyl(1.9, [150, 297, -20, 192, 321, 30])]   # + the Ø3.8 locating holes where present
+GROOVE_FIX = [('radial', cyl(35.8, [130, 295.5, -35, 212, 302.5, 47])), ('axialY', ('cone', [130, 296.8, -35, 212, 298.0, 47])),
+              ('fixed', LUG_HOLES[0]), ('fixed', LUG_HOLES[1])]
+GREG = {'load_flank_90': [150, 296.5, 25, 192, 298.2, 47], 'load_flank_270': [150, 296.5, -35, 192, 298.2, -13],
+        'land_below': [130, 295.9, -35, 212, 297.05, 47], 'spigot_ring': [130, 295.9, -35, 212, 302.1, 47],
+        'lug_A': [143, 286, -2, 158, 297, 14], 'lug_B': [183, 286, -2, 198, 297, 14], 'hub_top': [130, 311.5, -35, 212, 320, 47]}
+for k_, f_, m_ in (('A', (0.0, -372.0, 0.0), (22.9, 17.0, 0.0)), ('B', (0.0, -62.0, 0.0), (7.0, 8.6, 14.7))):
+    CASES['HUBG_' + k_] = dict(part='hub', fix=GROOVE_FIX, remote=(RS02_SIDE, AT, tuple(-v for v in f_), tuple(-v for v in m_)), el=1.5,
+                               ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (('cone', [130, 296.8, -35, 212, 298.0, 47]), 0.4)], regions=GREG)
+
+# REV C: groove Y 298-302, cones of the load flank in Y 297.9-299.0; distributed coupling at the RS02 side; optional
+# end-face contact on the disc face at Y 302 (bilateral axial support: the optimistic bound of a compression-only contact)
+CONE_C = ('cone', [130, 297.8, -35, 212, 299.0, 47])
+FACE_302 = pl((RX, 302.0, YZ - 37.5))
+GREG_C = dict(GREG, load_flank_90=[150, 297.5, 25, 192, 299.2, 47], load_flank_270=[150, 297.5, -35, 192, 299.2, -13],
+              land_below=[130, 295.9, -35, 212, 298.05, 47], window_band=[130, 302.2, -35, 212, 312.8, 47],
+              groove_bottom=[130, 298.6, -35, 212, 300.8, 47], spigot_edge=[130, 295.4, -35, 212, 296.8, 47], disc_corner=[130, 301.4, -35, 212, 303.0, 47],
+              corner45_t135=[139.0, 299.9, 24.0, 151.5, 301.2, 37.5], corner45_t315=[189.5, 299.9, -25.5, 202.0, 301.2, -12.0])
+for k_, f_, m_ in (('A', (0.0, -372.0, 0.0), (22.9, 17.0, 0.0)), ('B', (0.0, -62.0, 0.0), (7.0, 8.6, 14.7))):
+    base = dict(part='hub', remote=(RS02_SIDE, AT, tuple(-v for v in f_), tuple(-v for v in m_)), coupling=1, el=1.5,
+                ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (CONE_C, float(os.environ.get('CONE_EL', '0.7')))], regions=GREG_C)
+    # (SolidWorks gives the r 35.8 faces loose boxes, Y 294.3-304.4: the box is wide; only r 35.8 cylinders are taken)
+    fx = [('radial', cyl(35.8, [130, 294.0, -35, 212, 305.0, 47])), ('axialY', CONE_C), ('fixed', LUG_HOLES[0]), ('fixed', LUG_HOLES[1])]
+    CASES['HUBC_' + k_] = dict(base, fix=fx)
+    CASES['HUBCF_' + k_] = dict(base, fix=fx + [('axialY', FACE_302)])
+
+# REV C, interim lug case (arm thread's earlier bolted run, no ridge; rough, +-20%): each lug about 230 N along -Y plus
+# about 170 N of opposed X shear (pulling the lugs apart), as a distributed remote load on each seam-bolt hole about the
+# hole centre; hub held at the RS02 side (hub screws and step-ring face fixed). An upper bound for the lug roots.
+CASES['HUBL_I'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5)], regions=GREG_C,
+                       remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (-170.0, -230.0, 0.0), (0.0, 0.0, 0.0), 1),
+                                (LUG_HOLES[1], (193.5, 292.0, YZ), (170.0, -230.0, 0.0), (0.0, 0.0, 0.0), 1)])
+
+# REV D2 comparison (2026-11-12): the arm's grown stop loads (its STOP_124 nominal: -X lug Fz 228 N, Fx 40, 56 N axial;
+# +X lug Fz -134 N), same mesh on rev D, D2 and D2b: 0.4 mm on the lug-root R1.2 fillets, the groove bottom (r 34.3 and its
+# bottom rounds) and the bore faces of the inward fill (r 23 on rev D; r 20 / 21 and the 45 deg cone on D2)
+CASES['HUBL_STOP2'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl_optional=1, regions=dict(GREG_C, lug_A=[143, 286, -2, 158, 297, 14], lug_B=[183, 286, -2, 198, 297, 14]),
+    ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [137, 294.5, -1.5, 205, 296.2, 13.5]), 0.4),
+          (cyl(34.3, [130, 297.5, -35, 212, 302.0, 47]), 0.4), (('tor', 0.4, (34.0, 35.0)), 0.4), (('tor', 1.0, (34.0, 35.6)), 0.4),
+          # the bore faces: SolidWorks gives large faces loose boxes, so a wide box; the radius alone picks them
+          (cyl(23.0, [110, 285, -50, 231, 320, 62]), 0.4), (cyl(20.0, [110, 285, -50, 231, 320, 62]), 0.4), (cyl(21.0, [110, 285, -50, 231, 320, 62]), 0.4),
+          (('cone', [130, 295.9, -35, 212, 313.5, 47]), 0.4)],
+    remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (40.0, -56.0, 228.0), (0.0, 0.0, 0.0), 1),
+             (LUG_HOLES[1], (193.5, 292.0, YZ), (0.0, 0.0, -134.0), (0.0, 0.0, 0.0), 1)])
+
+# HUBL_STOP2 loads with a light, identical mesh for every variant (coordinator, 21:58Z: under about 700k nodes): 0.35 mm on
+# the -X lug's two R1.2 Z roots, 0.4 mm on the small faces round the -X lug's root (its Z faces, inner face, outer R1.0
+# roots and any local backing; large faces such as the bore and underside rings are excluded by area), 0.5 mm in the lug
+# holes, 1.5 mm elsewhere. The groove bottom and bore are single full-ring faces, so they are not refined (a face control
+# cannot be limited to an arc)
+CASES['HUBL_STOP3'] = dict(CASES['HUBL_STOP2'], ctrl_optional=1,
+    ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [137, 294.5, -1.5, 153.5, 296.2, 13.5]), 0.35),
+          (('touch', [137, 293.5, -2.0, 154.0, 297.5, 14.0], 160.0), 0.4)])
+
+# HUBL_STOP3 with the loads swapped onto the +X lug (the stop the other way; the +X lug sits in the cable sector and has no
+# backing): +X lug Fz 228 N, Fx -40 N (mirrored), 56 N axial; -X lug Fz -134 N. The same light mesh, mirrored onto the +X lug
+CASES['HUBL_STOP3X'] = dict(CASES['HUBL_STOP3'], ctrl_optional=1,
+    ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [187.5, 294.5, -1.5, 204, 296.2, 13.5]), 0.35),
+          (('touch', [187.0, 293.5, -2.0, 204.0, 297.5, 14.0], 160.0), 0.4)],
+    remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (0.0, 0.0, -134.0), (0.0, 0.0, 0.0), 1),
+             (LUG_HOLES[1], (193.5, 292.0, YZ), (-40.0, -56.0, 228.0), (0.0, 0.0, 0.0), 1)])
+
+# Yaw torque (coordinator 23:59Z): the full-ring ridge carries no torque about the yaw axis, so the RS02's whole torque goes
+# through the two lugs as a Z-force couple, F = T / 46.0 mm (lug bolt axes at X 147.5 and 193.5). At the 17 N.m peak (RS02
+# manual 260713 4.1.2) 370 N per lug; linear, so one solve gives both directions (the other is -sigma); rated 6 N.m = x 6/17.
+# Light mesh on both lugs: 0.35 mm on all four R1.2 Z roots, 0.4 mm on the small faces round both roots, 0.5 mm in the holes
+YAW_F = 17.0 / 0.046
+CASES['HUBL_YAW'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl_optional=1, regions=dict(GREG_C, lug_A=[143, 286, -2, 158, 297, 14], lug_B=[183, 286, -2, 198, 297, 14]),
+    ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [137, 294.5, -1.5, 205, 296.2, 13.5]), 0.35),
+          (('touch', [137, 293.5, -2.0, 154.0, 297.5, 14.0], 160.0), 0.4), (('touch', [187.0, 293.5, -2.0, 204.0, 297.5, 14.0], 160.0), 0.4)],
+    remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (0.0, 0.0, YAW_F), (0.0, 0.0, 0.0), 1),
+             (LUG_HOLES[1], (193.5, 292.0, YZ), (0.0, 0.0, -YAW_F), (0.0, 0.0, 0.0), 1)])
+
+# Rev D3 (the arm thread's extended-lug torque path, 45b2e71): the lugs and their extensions bear on the arm through flat
+# printed shim plates on their Z faces (the planes Z 1.0 / 11.0, r 18.7-36.8 x Y 288-297.6 short of the fillets). The couple
+# goes in as a distributed load on the pushing Z face of each lug (-X lug: Z 1.0 face, pushed +Z; +X lug: Z 11.0 face, pushed
+# -Z; linear, so the other direction is -sigma).
+#   HUBL_YAW3   17 N.m on the arm's mating face (r 18.5-35.3 x Y 288-294.3, centroid about r 28): 304 N per lug, at r 28,
+#               Y 291.2. 370 N (the conservative bolt-lever figure) is the same result x 370/304 (linear, same distribution)
+#   HUBL_STOP4  the stop-case lug loads (-X: Fz 228, Fx 40, 56 N along -Y; +X: Fz -134) on the same faces, at r 28
+D3_FACE = lambda sg: ('plane', (RX + sg * 28.0, 290.0, 1.0 if sg < 0 else 11.0), None, 'on')   # a point on the flat face, 5.4 clear of the bolt hole (X offset 23, Y 292)
+D3_AT = lambda sg, r_: (RX + sg * r_, 291.2, 1.0 if sg < 0 else 11.0)
+D3_CTRL = [(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [132, 294.5, -1.5, 209, 297.8, 13.5]), 0.35), (cyl(0.5, [132, 293.5, 0.5, 209, 295.1, 11.5]), 0.35),
+           (('touch', [132.0, 292.5, -2.0, 154.0, 298.2, 14.0], 160.0), 0.4), (('touch', [187.0, 292.5, -2.0, 209.0, 298.2, 14.0], 160.0), 0.4)]
+D3_REG = dict(GREG_C, lug_A=[130, 286, -2, 158, 298, 14], lug_B=[183, 286, -2, 211, 298, 14])
+_d3 = lambda fa, fb, ra, rb: dict(part='hub', fix=HUB_FIX, el=1.5, ctrl_optional=1, ctrl=D3_CTRL, regions=D3_REG,
+                                  remotes=[(D3_FACE(-1), D3_AT(-1, ra), fa, (0.0, 0.0, 0.0), 1), (D3_FACE(1), D3_AT(1, rb), fb, (0.0, 0.0, 0.0), 1)])
+YAW3_F = 17000.0 / (2 * 28.0)
+CASES['HUBL_YAW3'] = _d3((0.0, 0.0, YAW3_F), (0.0, 0.0, -YAW3_F), 28.0, 28.0)
+CASES['HUBL_STOP4'] = _d3((40.0, -56.0, 228.0), (0.0, 0.0, -134.0), 28.0, 28.0)
+# D3b with the arm's shim plates (coordinator 06:37Z): the couple only inside the plate outline on each lug's pushing Z face,
+# X offset 18.96-34.2, Y 288.2-294.6 (split lines on the FEA copy); 304 N at the plates' centroid (370 N is the same x 370/304)
+_PL = lambda sg: (min(RX + sg * 18.96, RX + sg * 34.2), max(RX + sg * 18.96, RX + sg * 34.2), 288.2, 294.6)
+_PFACE = lambda sg, zp: ('plane', (RX + sg * 28.0, 290.0, zp), None, 'on')
+_PAT = lambda sg, zp: (RX + sg * 26.6, 291.4, zp)
+CASES['HUBL_YAW3P'] = dict(_d3((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 28.0, 28.0),
+    # the arm's plates have a dia 4.4 hole at the lug bolt (X offset 23.0, Y 292): that circle is kept out of the load (07:31Z)
+    split=[(1.0, [_PL(-1), _PL(1)], [_PFACE(-1, 1.0), _PFACE(1, 1.0)], [(RX - 23.0, 292.0, 2.2), (RX + 23.0, 292.0, 2.2)]),
+           (11.0, [_PL(-1), _PL(1)], [_PFACE(-1, 11.0), _PFACE(1, 11.0)], [(RX - 23.0, 292.0, 2.2), (RX + 23.0, 292.0, 2.2)])],
+    ctrl=D3_CTRL + [(cyl(0.8, [132, 294.5, -0.5, 209, 296.2, 12.5]), 0.35)],
+    remotes=[(_PFACE(-1, 1.0), _PAT(-1, 1.0), (0.0, 0.0, YAW3_F), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _PAT(1, 11.0), (0.0, 0.0, -YAW3_F), (0.0, 0.0, 0.0), 1)])
+# the same with the arm's larger plate hole (dia 6.0, coordinator 08:56Z)
+CASES['HUBL_YAW3P6'] = dict(_d3((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 28.0, 28.0),
+    # the arm's plates have a dia 4.4 hole at the lug bolt (X offset 23.0, Y 292): that circle is kept out of the load (07:31Z)
+    split=[(1.0, [_PL(-1), _PL(1)], [_PFACE(-1, 1.0), _PFACE(1, 1.0)], [(RX - 23.0, 292.0, 3.0), (RX + 23.0, 292.0, 3.0)]),
+           (11.0, [_PL(-1), _PL(1)], [_PFACE(-1, 11.0), _PFACE(1, 11.0)], [(RX - 23.0, 292.0, 3.0), (RX + 23.0, 292.0, 3.0)])],
+    ctrl=D3_CTRL + [(cyl(0.8, [132, 294.5, -0.5, 209, 296.2, 12.5]), 0.35)],
+    remotes=[(_PFACE(-1, 1.0), _PAT(-1, 1.0), (0.0, 0.0, YAW3_F), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _PAT(1, 11.0), (0.0, 0.0, -YAW3_F), (0.0, 0.0, 0.0), 1)])
+
+# the arm's fixed shim plate (coordinator 11:59Z): hole dia 3.8, plate top edge Y 294.7, otherwise as HUBL_YAW3P. The case of record
+_PL38 = lambda sg: (min(RX + sg * 18.96, RX + sg * 34.2), max(RX + sg * 18.96, RX + sg * 34.2), 288.2, 294.7)
+# with the lug hole itself at dia 3.8 (D3c7) the plate hole is the lug hole: no circle is split out of the load
+_C38 = [] if LUG_R >= 1.89 else [(RX - 23.0, 292.0, 1.9), (RX + 23.0, 292.0, 1.9)]
+CASES['HUBL_YAW3P38'] = dict(_d3((0.0, 0.0, 0.0), (0.0, 0.0, 0.0), 28.0, 28.0),
+    split=[(1.0, [_PL38(-1), _PL38(1)], [_PFACE(-1, 1.0), _PFACE(1, 1.0)], _C38),
+           (11.0, [_PL38(-1), _PL38(1)], [_PFACE(-1, 11.0), _PFACE(1, 11.0)], _C38)],
+    ctrl=D3_CTRL + [(cyl(0.8, [132, 294.5, -0.5, 209, 296.2, 12.5]), 0.35)],
+    remotes=[(_PFACE(-1, 1.0), _PAT(-1, 1.0), (0.0, 0.0, YAW3_F), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _PAT(1, 11.0), (0.0, 0.0, -YAW3_F), (0.0, 0.0, 0.0), 1)])
+
+# mesh check (coordinator 12:02Z): the same with 0.2 mm on the four R1.2 Z roots and 0.3 mm on the faces round their inner
+# ends (X offset 17-26 both lugs), where the worst 0.5 mm ball sits on D3c
+CASES['HUBL_YAW3P38F'] = dict(CASES['HUBL_YAW3P38'],
+    ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5), (cyl(1.2, [132, 294.5, -1.5, 209, 297.8, 13.5]), 0.2),
+          (cyl(0.5, [132, 293.5, 0.5, 209, 295.1, 11.5]), 0.35),
+          (('touch', [132.0, 292.5, -2.0, 154.0, 298.2, 14.0], 160.0), 0.3), (('touch', [187.0, 292.5, -2.0, 209.0, 298.2, 14.0], 160.0), 0.3),
+          (cyl(0.8, [132, 294.5, -0.5, 209, 296.2, 12.5]), 0.35)])
+
+# The arm thread's contact solution on its r1g4 model (left-arm-organic r1g4_lug_loads.txt, 1c605d7): what the arm puts on each
+# lug face, with the centre of pressure. The Z-face loads sit at X offset 31.2-31.7, Y 291.9-292.6: well outboard of the
+# uniform plate load of HUBL_YAW3P38 (centroid X offset 26.6). Section totals per lug; the outer face (under 18 N) and the bolt
+# wall (under 5 N) are folded into the loaded Z face. Fine mesh on all four R1.2 roots, inner and outer ends, as HUBL_YAW3P38F.
+#   HUBL_YAW_COP   YAW -17 N.m: -X lug 244.7 N on its front face (Z 11.0), +X lug 240.6 N on its back face (Z 1.0). The lugs
+#                  carry 88 % of the torque; the ring and groove carry the rest (not applied: it does not load the lugs).
+#   HUBL_G90YAW    arm horizontal with 5 kg (G90) + YAW -17: -X lug 212.6 N net (front -222.0, back +9.4), +X lug 266.6 N net
+#                  (back +285.1, front -18.5); and the ring, ridge, groove and spigot share on the spigot surface
+#                  (F 7.4, 4.4, -116.0 N; M 23.32, -2.12, -0.07 N.m about the yaw axis at the disc face, Y 302).
+#   HUBL_G90YAW_L  the same without the spigot share (lugs only), in case the spigot faces cannot be picked.
+_COP = lambda sg, zp, xo, y_: (RX + sg * xo, y_, zp)
+CASES['HUBL_YAW_COP'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=[(_PFACE(-1, 11.0), _COP(-1, 11.0, 31.17, 292.44), (0.0, 0.0, -244.7), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 1.0), _COP(1, 1.0, 31.48, 292.37), (0.0, 0.0, 240.6), (0.0, 0.0, 0.0), 1)])
+_G90YAW_LUGS = [(_PFACE(-1, 11.0), _COP(-1, 11.0, 31.72, 291.88), (0.0, 0.0, -222.0), (0.0, 0.0, 0.0), 1),
+                (_PFACE(-1, 1.0), _COP(-1, 1.0, 19.41, 291.67), (0.0, 0.0, 9.4), (0.0, 0.0, 0.0), 1),
+                (_PFACE(1, 1.0), _COP(1, 1.0, 31.47, 292.57), (0.0, 0.0, 285.1), (0.0, 0.0, 0.0), 1),
+                (_PFACE(1, 11.0), _COP(1, 11.0, 20.12, 289.26), (0.0, 0.0, -18.5), (0.0, 0.0, 0.0), 1)]
+#   HUBL_YAW_COPP  yaw alone in the +17 sign: the other Z face of each lug (the -X lug's back face, the +X lug's front face). The
+#                  mirror of HUBL_YAW_COP in the lug's mid-plane; solved, not assumed, because reversing the sign of a contact
+#                  case does not give the other sign's contact. For the 272 N bound with G90 in sign +17.
+CASES['HUBL_YAW_COPP'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=[(_PFACE(-1, 1.0), _COP(-1, 1.0, 31.17, 292.44), (0.0, 0.0, 244.7), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _COP(1, 11.0, 31.48, 292.37), (0.0, 0.0, -240.6), (0.0, 0.0, 0.0), 1)])
+# STOP CASE FROM THE ARM'S r1g6 (roark 765585a, STOP_0, 515 N on the elbow stop pad; hub lug holes dia 3.8, plate holes dia 3.4):
+# the bolt is free, and the -X lug's outer face lands on the arm's pocket wall. Three unit cases on one mesh, to be combined:
+#   HUBL_STOP6_Z   the Z-face loads: -X lug front face -184 N at X offset 30.0, Y 291.6 (the summary's figure; its section gives
+#                  179); +X lug by its section, 80.7 N net: back face +92.2 at 31.31 / 292.19, front face -11.5 at 19.79 / 289.78
+#   HUBL_STOP6_P   the outer-face load alone, 26 N toward -X (the lug section's sideways force, 25.6 N), on a 1.64 x 1.64 patch
+#                  (2.7 mm2, about the 9.75 MPa nodal peak) centred Y 293.2, Z 9.7
+#   HUBL_STOP6_S   the same 26 N spread over Y 289.6-294.6, Z 6.4-10.9 (22.5 mm2), for the sensitivity to the patch size
+#   Corrected by the arm (roark 7f824d3): the wall pushes the outer face INWARD with at most about 9 N (the patch cases scale
+#   to that); the lug's net sideways load is about 26 N OUTWARD, which in the real joint goes through plate friction under the
+#   bolt clamp or, failing that, the bolt in the hole. Two more unit cases:
+#   HUBL_STOP6_F   26 N toward -X as shear on the -X lug's two Z faces (13 N on each plate outline)
+#   HUBL_STOP6_B   26 N toward -X on the outboard half of the -X lug's bolt-hole wall (the hole wall is split at X = its axis)
+_OX = RX - 34.4
+_HX = RX - 22.99                                   # the -X lug's bolt-hole axis (X 147.5), Y 292.0
+_STOP6 = dict(CASES['HUBL_YAW3P38F'],
+              split=CASES['HUBL_YAW3P38F']['split'] + [(('X', _OX), [(289.6, 294.6, 6.4, 10.9), (292.38, 294.02, 8.88, 10.52)], [('plane', (_OX, 291.0, 4.0), None, 'on')])])
+# the bolt-wall load needs the hole wall split, which changes the mesh: its cases are solved complete, not combined node by node
+# (a Y-plane sketch through the hole did not split its wall; a band Y 291-293 projected along X does: it cuts the wall into
+# an outboard strip, an inboard strip, a top and a bottom. The outboard strip is 63 deg of the wall, about the bolt's bearing arc)
+_STOP6H = dict(_STOP6, split=_STOP6['split'] + [(('X', _OX - 1.0), [(291.0, 293.0, 0.5, 11.5)], [LUG_HOLES[0]])])
+_HOLE_OUT = ('cyl', LUG_R, [_HX - LUG_R - 0.05, 290.9, 0.9, _HX - 1.5, 293.1, 11.1])
+_P_SMALL, _P_RING = ('plane', (_OX, 293.2, 9.7), None, 'on'), ('plane', (_OX, 290.5, 7.0), None, 'on')
+CASES['HUBL_STOP6_Z'] = dict(_STOP6,
+    remotes=[(_PFACE(-1, 11.0), _COP(-1, 11.0, 30.0, 291.6), (0.0, 0.0, -184.0), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 1.0), _COP(1, 1.0, 31.31, 292.19), (0.0, 0.0, 92.2), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _COP(1, 11.0, 19.79, 289.78), (0.0, 0.0, -11.5), (0.0, 0.0, 0.0), 1)])
+CASES['HUBL_STOP6_P'] = dict(_STOP6, remotes=[(_P_SMALL, (_OX, 293.2, 9.7), (-26.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)])
+CASES['HUBL_STOP6_F'] = dict(_STOP6, remotes=[(_PFACE(-1, 1.0), _PAT(-1, 1.0), (-13.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1),
+                                              (_PFACE(-1, 11.0), _PAT(-1, 11.0), (-13.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)])
+CASES['HUBL_STOP6_B'] = dict(_STOP6H, remotes=[(_HOLE_OUT, (_HX, 292.0, YZ), (-26.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)])
+#   HUBL_STOP6_ZB  variant (b) complete: the Z-face loads, 9 N inward on the small outer-face patch, 26 N outward on the bolt wall
+CASES['HUBL_STOP6_S'] = dict(_STOP6, remotes=[([_P_SMALL, _P_RING], (_OX, 292.1, 8.65), (-26.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)])
+CASES['HUBL_STOP6_ZB'] = dict(_STOP6H, remotes=CASES['HUBL_STOP6_Z']['remotes'] + [
+    (_P_SMALL, (_OX, 293.2, 9.7), (9.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1),
+    (_HOLE_OUT, (_HX, 292.0, YZ), (-26.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)])
+# THE ARM'S r1g6 COMBINED CASES AT THE LARGER OF EACH LUG'S SECTION AND FACE TOTAL (r1g6_lug_loads_uncertainty.md, roark c67a5dc):
+# the face totals over-read the sections by up to 11 %, and for design the arm says to take the larger. Each lug's main face
+# carries that total plus what its other face takes off; centres of pressure from r1g6_lug_loads.txt; the G90 share through
+# the spigot as in HUBL_G90 (unchanged).
+_G90_SPIGOT = (SPIGOT, (RX, 302.0, YZ), (-0.3, -0.9, -118.7), (23.44, -0.17, -0.01), 1)
+#   G90 + yaw -17: -X lug 219 N (front face), +X lug 299 N (back face)
+CASES['HUBL_G90YAWM_MAX'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=[(_PFACE(-1, 11.0), _COP(-1, 11.0, 31.66, 291.87), (0.0, 0.0, -227.7), (0.0, 0.0, 0.0), 1),
+             (_PFACE(-1, 1.0), _COP(-1, 1.0, 19.41, 291.77), (0.0, 0.0, 8.7), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 1.0), _COP(1, 1.0, 31.67, 292.48), (0.0, 0.0, 316.9), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _COP(1, 11.0, 20.05, 289.17), (0.0, 0.0, -17.9), (0.0, 0.0, 0.0), 1), _G90_SPIGOT])
+#   G90 + yaw +17: -X lug 294 N (back face), +X lug 221 N (front face)
+CASES['HUBL_G90YAWP_MAX'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=[(_PFACE(-1, 1.0), _COP(-1, 1.0, 31.66, 292.40), (0.0, 0.0, 308.2), (0.0, 0.0, 0.0), 1),
+             (_PFACE(-1, 11.0), _COP(-1, 11.0, 19.94, 289.25), (0.0, 0.0, -14.2), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _COP(1, 11.0, 31.53, 291.78), (0.0, 0.0, -225.9), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 1.0), _COP(1, 1.0, 19.29, 291.79), (0.0, 0.0, 4.9), (0.0, 0.0, 0.0), 1), _G90_SPIGOT])
+
+CASES['HUBL_G90YAW_L'] = dict(CASES['HUBL_YAW3P38F'], remotes=_G90YAW_LUGS)
+#   HUBL_G90       G90 alone, for superposing with HUBL_YAW_COP at another yaw load: -X lug 30.8 N net (back +36.9, front -6.1),
+#                  +X lug 25.9 N net (back +38.5, front -12.6), and the spigot share (F -0.3, -0.9, -118.7 N; M 23.44, -0.17, -0.01)
+CASES['HUBL_G90'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=[(_PFACE(-1, 1.0), _COP(-1, 1.0, 30.54, 293.36), (0.0, 0.0, 36.9), (0.0, 0.0, 0.0), 1),
+             (_PFACE(-1, 11.0), _COP(-1, 11.0, 32.02, 288.56), (0.0, 0.0, -6.1), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 1.0), _COP(1, 1.0, 31.79, 293.00), (0.0, 0.0, 38.5), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _COP(1, 11.0, 22.17, 289.56), (0.0, 0.0, -12.6), (0.0, 0.0, 0.0), 1),
+             (SPIGOT, (RX, 302.0, YZ), (-0.3, -0.9, -118.7), (23.44, -0.17, -0.01), 1)])
+CASES['HUBL_G90YAW'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=_G90YAW_LUGS + [(SPIGOT, (RX, 302.0, YZ), (7.4, 4.4, -116.0), (23.32, -2.12, -0.07), 1)])
+#   HUBL_G90YAWP   G90 + YAW +17 from the arm's own solve (r1g4_lug_loads.txt at 924c423): section totals per lug (-X +265.7 N,
+#                  +X -222.3 N), split between the faces as the face rows give it, and the spigot share
+CASES['HUBL_G90YAWP'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=[(_PFACE(-1, 1.0), _COP(-1, 1.0, 31.39, 292.40), (0.0, 0.0, 277.8), (0.0, 0.0, 0.0), 1),
+             (_PFACE(-1, 11.0), _COP(-1, 11.0, 19.94, 289.26), (0.0, 0.0, -12.1), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _COP(1, 11.0, 31.42, 291.85), (0.0, 0.0, -225.7), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 1.0), _COP(1, 1.0, 19.57, 291.77), (0.0, 0.0, 3.4), (0.0, 0.0, 0.0), 1),
+             (SPIGOT, (RX, 302.0, YZ), (-4.8, 3.8, -105.3), (23.24, 1.82, -0.03), 1)])
+
+# REV D, the arm thread's stop case on the full-ring joint (its fine-mesh repeat, roark 3c7114b): the full-ring ridge and groove
+# are axisymmetric and frictionless, so they carry no torque about the hub axis; that part of the stop moment goes into the
+# lugs as a Z-force pair. -X lug: Fz +169 N, Fx +40 N, 55 N axial (taken as a pull along -Y, like HUBL_I); +X lug: Fz -112 N.
+CASES['HUBL_STOP'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl=[(LUG_HOLES[0], 0.5), (LUG_HOLES[1], 0.5)], regions=dict(GREG_C, lug_A=[143, 286, -2, 158, 297, 14], lug_B=[183, 286, -2, 198, 297, 14]),
+                          remotes=[(LUG_HOLES[0], (147.5, 292.0, YZ), (40.0, -55.0, 169.0), (0.0, 0.0, 0.0), 1),
+                                   (LUG_HOLES[1], (193.5, 292.0, YZ), (0.0, 0.0, -112.0), (0.0, 0.0, 0.0), 1)])
+
+SCREW_ANGLES = [-142.0, -82.0, -22.0, 38.0, 98.0, 158.0]     # hub screws on PCD 24 (measured on the hub)
+HEAD_SEAT_Y = 298.06                                          # bottom face of each screw boss (tube r 2.15-4.4 in the lightening
+                                                              # pocket, Y 298.06-319.86): the heads bear here, clamping 21.8 mm of boss
+WASHER_OD, SHANK_D = 8.8, 4.0                                 # bearing limited by the boss OD 8.8 (washer Ø9): r 2.15-4.4, 46.3 mm2
+
+
+def hole_centres(d):
+    """Actual centres (X, Z) of the six hub screw holes, from the circle parameters of their edges (the imported holes sit a
+    few hundredths off the nominal PCD 24 positions; the bolt connector needs head and thread concentric)."""
+    import inspect
+    out = []
+    for a_ in SCREW_ANGLES:
+        t_ = math.radians(a_)
+        nx, nz = RX + 12.0 * math.cos(t_), YZ + 12.0 * math.sin(t_)
+        found = None
+        for b in d.GetBodies2(0, True):
+            es = b.GetEdges
+            for ed in (es() if inspect.ismethod(es) else es):
+                cv = ed.GetCurve
+                if not cv.IsCircle:
+                    continue
+                cp = cv.CircleParams
+                cx_, cy_, cz_, r_ = cp[0] * 1e3, cp[1] * 1e3, cp[2] * 1e3, cp[6] * 1e3
+                if (abs(r_ - 2.15) < 0.1 or abs(r_ - 1.9) < 0.1) and math.hypot(cx_ - nx, cz_ - nz) < 0.5:   # 1.9: the two locating holes (Ø3.8)
+                    found = (cx_, cz_)
+                    break
+            if found:
+                break
+        out.append(found or (nx, nz))
+    return out
+
+
+def bolt_setup(preload):
+    """pre_mesh hook: no-penetration contact between hub and dummy everywhere, and six bolt connectors (counterbore screw:
+    head on the hub hole edge at the seat, thread in the dummy's tapped hole) with an axial preload."""
+    def hook(st, d, lbc):
+        cm = st.ContactManager
+        try:
+            r_ = cm.SetGlobalContact(2, 0)
+        except Exception as e_:
+            r_ = repr(e_)
+        print(' global contact no-penetration', r_, flush=True)
+        from swk import edges_where
+        out = []
+        for a_, (cx, cz) in zip(SCREW_ANGLES, hole_centres(d)):
+            head = edges_where(d, lambda p, cx=cx, cz=cz: abs(p[1] - HEAD_SEAT_Y) < 0.08 and math.hypot(p[0] - cx, p[2] - cz) < 2.3,
+                               pair=lambda p0, p1, cx=cx, cz=cz: all(min(abs(math.hypot(q[0] - cx, q[2] - cz) - 2.145), abs(math.hypot(q[0] - cx, q[2] - cz) - 1.9)) < 0.12 for q in (p0, p1)))   # Ø4.3 clearance or Ø3.8 locating
+            thr = pick(d, cyl(1.65, [cx - 2, RS02_OUT - 0.1, cz - 2, cx + 2, RS02_OUT + 8.2, cz + 2]))
+            err = I()
+            b = lbc.AddBoltConnector(2, head[:1], thr, err)
+            if b is None:
+                print(' bolt', a_, 'head edges', len(head), 'thread faces', len(thr), 'err', err.value, flush=True)
+                raise SystemExit('bolt failed')
+            call(b, 'BoltConnectorBeginEdit')
+            b.HeadDiameterUnit = 0
+            b.HeadDiameterValue = WASHER_OD
+            b.BoltShankDiameterUnit = 0
+            b.BoltShankDiameterValue = SHANK_D
+            b.MaterialSource = 1
+            b.MaterialUnit = 0
+            b.YoungModulus = 210e9
+            b.PoissonsRatio = 0.28
+            b.ThermalCoefficient = 1.2e-5
+            b.PreLoadForceType = 0
+            b.PreLoadForceValue = float(preload)
+            rc = call(b, 'BoltConnectorEndEdit')
+            out.append((a_, len(head), len(thr), rc))
+        print(' bolts', out, flush=True)
+        # local no-penetration contact on the seat (the solver refuses bolt connectors with no contact defined on them)
+        dn, up = [], []
+        for f in faces_of(d):
+            t_, r_, n_, bx, a_ = info(f)
+            if t_ == 'plane' and abs(bx[1] - RS02_OUT) < 0.02 and abs(bx[4] - RS02_OUT) < 0.02 and n_ is not None:
+                (dn if n_[1] < -0.9 else up if n_[1] > 0.9 else []).append(f)
+        err = I()
+        cs = cm.CreateContactSet2(0, 0, dn, up, err)      # contact-set type 0 = no penetration (2 is shrink fit)
+        print(' seat contact set: dummy faces', len(dn), 'hub faces', len(up), 'err', err.value, 'set', cs is not None, flush=True)
+        if cs is None or err.value:
+            raise SystemExit('contact set failed')
+        return None
+    return hook
+
+
+# REV C+ honest top: the RS02 output as an aluminium dummy disc (r 23.4, 10 thick) on the step face (Y 319.86), bonded;
+# the arm loads go in as their reaction on the dummy's top face about the arm's hub point. The spigot side as in HUBCF_*.
+for k_ in ('A', 'B'):
+    base_ = CASES['HUBCF_' + k_]
+    CASES['HUBD_' + k_] = dict(base_, dummy=dict(r=23.4, y0=RS02_OUT, t=10.0),
+                               remote=(pl((RX, RS02_OUT + 10.0, YZ)), AT, base_['remote'][2], base_['remote'][3]), coupling=0,
+                               regions=dict(GREG_C, hub_top=[130, 311.5, -35, 212, RS02_OUT + 0.01, 47]))
+
+# contact seat + six preloaded M4 (bearing 15 MPa on the boss end, 46.3 mm2 -> 0.69 kN; relaxed after creep: half)
+for k_, pre_ in (('A', 690.0), ('B', 690.0), ('Ah', 345.0)):
+    base_ = CASES['HUBD_' + k_[0]]
+    CASES['HUBB_' + k_] = dict(base_, dummy=dict(base_['dummy'], bolts=True), pre_mesh=bolt_setup(pre_), stabilise=True)
+# the same with the yaw moment reversed (-17 N.m): the window moved to 68 deg, and which yaw sign is worse at its slot is
+# not known beforehand
+for k_ in ('A', 'Ah'):
+    r_ = CASES['HUBB_' + k_]['remote']
+    CASES['HUBB_' + k_ + 'n'] = dict(CASES['HUBB_' + k_], remote=(r_[0], r_[1], r_[2], (r_[3][0], -r_[3][1], r_[3][2])))
+
+# (c) roll joint load share and deflection. The fork front and fork rear as two bonded bodies (fork_fea_part.py). The
+# arm load of check (a) (310 N down, 23 N.m bending, 17 N.m yaw torque at the hub point) goes in through the RS02 seat
+# (seat face and the five screw holes, rigid). RS03 output: the boss face bolted to it, fixed (a rigid output bearing).
+# 'free': no 6808 (all load to the RS03); 'brg': 6808 seat held radially (rigid stub, outer race floating axially), its
+# reaction is the 6808's share. The truth sits between these two and the pinned-RS03 statics (written in checks/).
+FK_BOSS = pl((RX + 9.0, RY + 15.59, ROLL_OUT))   # r 18 at 60 deg: clear of the screw holes (30/90) and the pin holes (0/120)
+FK_SEAT6808 = cyl(BRG_SEAT_R, [RX - 27, RY - 27, BRG_LIP_Z - 0.1, RX + 27, RY + 27, HOUSE_Z0 + 1.1])   # follows the seat (r 26.1 since check (d))
+_sa = [-150.0, -116.0, -76.0, 84.0, 130.0]
+FK_RS02 = [pl((RX + 37.0 * math.cos(math.radians(a_)), SEAT_Y[0], YZ + 37.0 * math.sin(math.radians(a_)))) for a_ in _sa] +           [cyl(1.8, [RX - 45, SEAT_Y[0] - 6, YZ - 45, RX + 45, SEAT_Y[1] + 0.1, YZ + 45])]
+FK_DISP = dict(seat6808=[RX - 27, RY - 27, -47.4, RX + 27, RY + 27, -40.7], rs02_seat=[RX - 45, SEAT_Y[0] - 0.2, YZ - 45, RX + 45, SEAT_Y[0] + 0.2, YZ + 45],
+               cheek_top=[RX - 50, RY + 45, 38.0, RX + 50, RY + 60, 50.0], rear_top=[RX - 40, RY + 25, -57.0, RX + 40, RY + 40, -45.0])
+for tag, f_, mom in (('MX', (0.0, -310.0, 0.0), (23.0, YAW_T, 0.0)), ('MZ', (0.0, -310.0, 0.0), (0.0, YAW_T, 23.0)),
+                     ('G', (0.0, -100.0, 0.0), (0.0, 0.0, 0.0)), ('GZ', (0.0, 0.0, -100.0), (0.0, 0.0, 0.0)), ('GX', (-100.0, 0.0, 0.0), (0.0, 0.0, 0.0))):
+    for sup in ('free', 'brg'):
+        CASES[f'FORK_{tag}_{sup}'] = dict(part='fork', fix=[('fixed', FK_BOSS)] + ([('radial', FK_SEAT6808)] if sup == 'brg' else []),
+                                          remote=(FK_RS02, AT, f_, mom), coupling=0, el=2.5, disp=FK_DISP,
+                                          react=dict(boss=[FK_BOSS], **({'seat6808': [FK_SEAT6808]} if sup == 'brg' else {})))
+
+# STOP REV 2 (A2) at the RS03 peak (60 N.m, manual 261013 s1.3): 1714 N on the contact flank at r 35 (60 / 0.035), as a
+# normal force on the flank face. Tooth: fork rear held at its joint face to the fork front and its two joint screws (the
+# torque goes fork rear -> joint -> fork front -> RS03). Cap: held at its three M3 screws and its front face on the drum.
+_ss = STOP_SLOT
+_ta, _th = _ss['tooth_angle'], _ss['tooth_half']
+def _rp(r, a, z):
+    return (RX + r * math.cos(math.radians(a)), RY + r * math.sin(math.radians(a)), z)
+STOP_F = 60000.0 / 35.0
+CASES['STOP_A2_TOOTH'] = dict(part='stop_fr', el=1.5,
+                              fix=[('fixed', ('plane', (RX, 356.9, JZ0), None, 'on')), ('fixed', cyl(2.25, [RX - 25, 350, -70, RX + 25, 364, JZ0 + 1]))],
+                              forces=[(('plane', _rp(35.0, _ta - _th, -37.0), None, 'on'), STOP_F, None)],
+                              ctrl=[(('touch', [RX - 14, RY - 44, -46.5, RX + 14, RY - 27, -32.5], 400.0), 0.5)],
+                              regions=dict(tooth=[RX - 14, RY - 44, -46.5, RX + 14, RY - 27, -32.5]))
+# the realistic hold: the two joint screws (the torque goes down the leg to the fork front) and the 6808 seat held radially
+CASES['STOP_A2_TOOTH_J'] = dict(CASES['STOP_A2_TOOTH'], fix=[('fixed', cyl(2.25, [RX - 33, 340, -70, RX + 33, 364, JZ0 + 1])),
+                                                            ('radial', cyl(BRG_SEAT_R, [RX - 27, RY - 27, BRG_LIP_Z - 0.1, RX + 27, RY + 27, HOUSE_Z0 + 1.1]))])
+CASES['STOP_A2_TOOTH_LEG2'] = dict(CASES['STOP_A2_TOOTH_J'], part='stop_fr_leg2')   # the outward-leg mock-up
+CASES['STOP_A2_TOOTH_G'] = dict(CASES['STOP_A2_TOOTH_J'], part='stop_fr_G')   # rear_screws layout G
+CASES['STOP_A2_TOOTH_N'] = dict(CASES['STOP_A2_TOOTH_J'], part='stop_fr_N')   # rear_screws layout N
+CASES['STOP_A2_TOOTH_N2'] = dict(CASES['STOP_A2_TOOTH_J'], part='stop_fr_N2')
+CASES['STOP_A2_CAP'] = dict(part='stop_cap', el=1.5,
+                            fix=[('fixed', cyl(1.7, [RX - 60, RY - 60, CAP_Z1 - 2, RX + 60, RY + 60, DRUM_Z0 + 1])), ('fixed', ('plane', _rp(54.0, 225.0, DRUM_Z0), None, 'on'))],
+                            forces=[(('plane', _rp(35.0, _ta - _th + ROLL_STOP_IN, -36.0), None, 'on'), STOP_F, None)],
+                            ctrl=[(('touch', [RX - 30, RY - 46, -40.5, RX + 2, RY - 20, -28.0], 400.0), 0.5)],
+                            regions=dict(slot_end=[RX - 30, RY - 46, -40.5, RX + 2, RY - 20, -28.0]))
+
+CASES['FORK1_G_free'] = dict(CASES['FORK_G_free'], part='fork1')
+
+# THE FORK FRONT ALONE (2026-11-14, for the yoke look build against today's part, like for like). One body, so nothing
+# floats (the two-body FORK_* model never solved). The boss face on the RS03 output is fixed; the 6808 and the fork rear
+# are left out, so the RS03 side takes everything: the bound of C_LOAD_SHARE.md that loads the fork front most.
+#   FF_MX / FF_MZ   the arm's design load of check (a) through the RS02 seat (310 N down, 23 N.m about X or Z, 17 N.m yaw)
+#   FF_MXn          FF_MX with the yaw torque reversed
+#   FF_STOP         the roll stop at the RS03 peak: 1714 N on the fork rear's tooth (r 35 at 270 deg, Z -37), carried rigidly
+#                   to the fork front's joint face and its insert bores; the boss holds the 60 N.m (either sign: linear)
+#   FF_SIDE         100 N along Z at the arm's hub point (the fork front's own out-of-plane stiffness; in the assembly the
+#                   fork rear and the 6808 share this as a portal)
+# the seat's faces by their box only (no closest-point test: on today's fork front that call never returned for one face)
+FF_RS02 = [('plane', q[1], None) for q in FK_RS02[:-1]] + [FK_RS02[-1]]
+FF_JOINT = [('plane', (RX, JY + 2.0, JZ0), None), cyl(2.8, [RX - 35, 340.0, JZ0 - 1.0, RX + 35, 364.0, JZ0 + 13.0])]
+FF_DISP = dict(rs02_seat=[RX - 45, SEAT_Y[0] - 0.2, YZ - 45, RX + 45, SEAT_Y[0] + 0.2, YZ + 45])
+_ff = dict(part='ff', fix=[('fixed', FK_BOSS)], coupling=0, el=2.0, disp=FF_DISP, react=dict(boss=[FK_BOSS]))
+CASES['FF_MX'] = dict(_ff, remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (23.0, YAW_T, 0.0)))
+CASES['FF_MXn'] = dict(_ff, remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (23.0, -YAW_T, 0.0)))
+CASES['FF_MZ'] = dict(_ff, remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (0.0, YAW_T, 23.0)))
+CASES['FF_SIDE'] = dict(_ff, remote=(FF_RS02, AT, (0.0, 0.0, 100.0), (0.0, 0.0, 0.0)))
+# THE PROPER NECK CHECK (2026-11-14). P_*: the fork front alone with a 0.7 mm mesh round the boss root; F2_*: the fork front
+# and the fork rear as one combined body, the 6808 seat held radially (the outer race floats axially), so the loads share
+# between the RS03 output and the rear leg as the parts' own stiffness makes them. Suffix s: the boss not glued to a rigid
+# face but held as the screws and pins hold it: the six screw-head seats fixed, the three pin holes held radially, the boss
+# face free to slide (it cannot lift here; with 0.35 kN per screw it does not lift below about 12 N.m of prying).
+FF_ROOT = [(('touch', [RX - 27.5, RY - 27.5, 33.5, RX + 27.5, RY + 27.5, 39.7], 600.0), 0.7)]
+FF_SEATS = [('fixed', ('plane', _rp(18.4, 30.0 + 60.0 * k_, CAP_FLOOR - 2.0), None, 'on')) for k_ in range(6)] +            [('radial', cyl(1.9, [RX - 20, RY - 20, ROLL_OUT - 0.1, RX + 20, RY + 20, ROLL_OUT + 9.3])), ('roller', FK_BOSS)]
+for sfx_, yaw_ in (('', YAW_T), ('n', -YAW_T)):
+    rem_ = (FF_RS02, AT, (0.0, -310.0, 0.0), (23.0, yaw_, 0.0))
+    CASES['P_MX' + sfx_] = dict(_ff, remote=rem_, ctrl=FF_ROOT, ctrl_optional=1, react={})
+    CASES['P_MX' + sfx_ + 'b'] = dict(CASES['P_MX' + sfx_], fix=[('fixed', FK_BOSS), ('axialY', FF_JOINT[0])])
+    CASES['F2_MX' + sfx_] = dict(CASES['P_MX' + sfx_], part='fork2', fix=[('fixed', FK_BOSS), ('radial', FK_SEAT6808)])
+# the sideways moment (23 N.m about the roll axis: the roll motor's own torque) and the stop at the RS03 peak (1714 N on the
+# rear leg's tooth flank, as STOP_A2_TOOTH), both on the combined body so the 6808 takes its radial share
+CASES['P_MZ'] = dict(CASES['P_MX'], remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (0.0, YAW_T, 23.0)))
+CASES['F2_MZ'] = dict(CASES['F2_MX'], remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (0.0, YAW_T, 23.0)))
+CASES['F2_STOP'] = dict(part='fork2', fix=[('fixed', FK_BOSS), ('radial', FK_SEAT6808)], el=2.0, ctrl=FF_ROOT, ctrl_optional=1, disp=FF_DISP,
+                        forces=[(('plane', _rp(35.0, _ta - _th, -37.0), None, 'on'), STOP_F, None)])
+CASES['P_MXbs'] = dict(CASES['P_MXb'], fix=FF_SEATS + [('axialY', FF_JOINT[0])])
+CASES['F2_MXs'] = dict(CASES['F2_MX'], fix=FF_SEATS + [('radial', FK_SEAT6808)])
+# THE SIX-SCREW JOINT (OPEN_ASSUMPTIONS item 41, 2026-11-14). The fork front and the fork rear as two bodies, joined as built:
+# six M4 (ISO 7380 button heads, dia 7.6) from the fork rear's counterbores into the fork front's heat-set inserts, each a
+# bolt connector with a preload; no-penetration contact on the joint pad (Z = JZ0). Boss fixed, 6808 seat held radially.
+# Intel direct sparse (FFEPlus fails on bolted contact on this machine since 2026-11-13). Preload: J_PRE N per screw
+# (assumed: 400 N, about 0.3 N.m on an M4 in an insert; half of it for the crept joint).
+J_PRE = float(os.environ.get('J_PRE', '400'))
+J_REGION = [RX - 36, 338.0, JZ0 - 12.0, RX + 36, 366.0, JZ0 + 14.0]
+
+
+def joint_setup(preload):
+    def hook(st, d, lbc):
+        cm = st.ContactManager
+        try:
+            r_ = cm.SetGlobalContact(2, 0)
+        except Exception as e_:
+            r_ = repr(e_)
+        print(' global contact no-penetration', r_, flush=True)
+        from swk import edges_where
+        out = []
+        for dx, jy in JOINT_PTS:
+            zf = JZ0 - (5.5 if abs(dx) < 20 else JOINT_FLOOR)
+            cx = RX + dx
+            head = edges_where(d, lambda p, cx=cx, jy=jy, zf=zf: abs(p[2] - zf) < 0.08 and math.hypot(p[0] - cx, p[1] - jy) < 2.4,
+                               pair=lambda p0, p1, cx=cx, jy=jy: all(abs(math.hypot(q[0] - cx, q[1] - jy) - 2.25) < 0.12 for q in (p0, p1)))
+            thr = pick(d, cyl(2.8, [cx - 3.2, jy - 3.2, JZ0 - 0.1, cx + 3.2, jy + 3.2, JZ0 + 12.5]))
+            err = I()
+            b = lbc.AddBoltConnector(2, head[:1], thr, err)
+            if b is None:
+                print(' bolt', dx, jy, 'head edges', len(head), 'thread faces', len(thr), 'err', err.value, flush=True)
+                raise SystemExit('bolt failed')
+            call(b, 'BoltConnectorBeginEdit')
+            b.HeadDiameterUnit = 0
+            b.HeadDiameterValue = 7.6
+            b.BoltShankDiameterUnit = 0
+            b.BoltShankDiameterValue = 4.0
+            b.MaterialSource = 1
+            b.MaterialUnit = 0
+            b.YoungModulus = 210e9
+            b.PoissonsRatio = 0.28
+            b.ThermalCoefficient = 1.2e-5
+            b.PreLoadForceType = 0
+            b.PreLoadForceValue = float(preload)
+            rc = call(b, 'BoltConnectorEndEdit')
+            out.append((dx, jy, len(head), len(thr), rc))
+        print(' bolts', out, flush=True)
+        fr, rr = [], []
+        for f, (t_, r_, n_, bx, a_) in infos(d):
+            if t_ == 'plane' and abs(bx[2] - JZ0) < 0.02 and abs(bx[5] - JZ0) < 0.02 and n_ is not None:
+                (fr if n_[2] < -0.9 else rr if n_[2] > 0.9 else []).append(f)
+        err = I()
+        cs = cm.CreateContactSet2(0, 0, fr, rr, err)
+        print(' joint contact set: fork front faces', len(fr), 'fork rear faces', len(rr), 'err', err.value, 'set', cs is not None, flush=True)
+        if cs is None or err.value:
+            raise SystemExit('contact set failed')
+        return None
+    return hook
+
+
+_fj = dict(part='forkj', fix=[('fixed', FK_BOSS), ('radial', FK_SEAT6808)], coupling=0, el=2.5, disp=FF_DISP, react={},
+           ctrl=[(('touch', J_REGION, 400.0), float(os.environ.get('J_CTRL', '1.0')))], ctrl_optional=1, pre_mesh=joint_setup(J_PRE), stabilise=True)
+CASES['J_MX'] = dict(_fj, remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (23.0, YAW_T, 0.0)))
+CASES['J_MXn'] = dict(_fj, remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (23.0, -YAW_T, 0.0)))
+CASES['J_MZ'] = dict(_fj, remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (0.0, YAW_T, 23.0)))
+CASES['J_STOP17'] = dict(_fj, forces=[(('plane', _rp(35.0, _ta - _th, -37.0), None, 'on'), STOP_F * 17.0 / 60.0, None)])
+CASES['J_PRE0'] = dict(_fj)      # preload alone: what the screws do to the pad and the insert bosses before any load
+
+# the stop as the fork front sees it with the 6808 in place: the tooth's force is taken radially by the 6808, and the 60 N.m
+# about the roll axis goes from the joint face through the cheek to the boss (FF_STOP, the bare force, has no 6808 and is not used)
+CASES['FF_STOPM'] = dict(_ff, remote=(FF_JOINT, (RX, RY, -37.0), (0.0, 0.0, 0.0), (0.0, 0.0, 60.0)))
+# the other bound for the forward moment: the joint face to the fork rear held along Y (the rear leg is stiff along its length,
+# about 7.5 kN/mm, and carries the Y-couple to the 6808: C_LOAD_SHARE.md). The truth lies between FF_MX and FF_MXb
+for k_ in ('FF_MX', 'FF_MXn'):
+    CASES[k_ + 'b'] = dict(CASES[k_], fix=[('fixed', FK_BOSS), ('axialY', FF_JOINT[0])], react={})
+CASES['FF_STOP'] = dict(_ff, remote=(FF_JOINT, _rp(35.0, _ta, -37.0), (STOP_F, 0.0, 0.0), (0.0, 0.0, 0.0)))
+
+if __name__ == '__main__':
+    try:
+        for n in sys.argv[1:]:
+            run(n, CASES[n])
+    finally:
+        if not os.environ.get('SW_KEEP'):      # one instance per run: exit it when the run ends
+            from sw_instance import end_session
+            try:
+                app().CloseAllDocuments(True)
+            except Exception:
+                pass
+            try:
+                end_session(STATE)
+            except Exception as e_:      # a dropped COM handle (AttributeError) escapes end_session: stop our own instance
+                import sw_instance as SI
+                print(' end_session failed:', type(e_).__name__, e_, '- stopping our instance', flush=True)
+                pid_ = SI._session_pid(str(STATE))
+                if pid_ is not None:
+                    SI.kill_tree(pid_, SI._started(pid_))
+                if os.path.exists(str(STATE)):
+                    os.remove(str(STATE))

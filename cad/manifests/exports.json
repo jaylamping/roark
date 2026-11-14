@@ -1,5 +1,384 @@
 {
   "version": 1,
   "description": "Where each STEP/STL in cad/exports/ came from. Written by tools/cad/record_export.py; checked by tools/cad/check_cad_layout.py (a changed source makes its export stale). Paths are relative to cad/.",
-  "exports": []
+  "exports": [
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_pitch_lid.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "059a4075e13990fb888d5e6bc732f50df1340e921e00449611c8bc0bba96944e",
+      "recorded": "2026-11-14T04:49:31Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_pitch_lid.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "cce58ae0ec7aa1cd451692fae7bf4dcba6e21c54c3e75e6cfa5c1cafc6acd06a",
+      "recorded": "2026-11-14T04:49:32Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_pitch_lid_r75.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "a8af6ba75ac67a3242e9f5a33e7ae0526faa716e6ff859ada5429c3c2ede58c5",
+      "recorded": "2026-11-14T04:49:32Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_pitch_lid_r75.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "8b6445060405648b01def9c42051ffa9692fc636d8e75755467ffb6ce454112d",
+      "recorded": "2026-11-14T04:49:33Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_pitch_tray.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "676085f7d00f6aa1fc2498eae8ba279ee329f13106659e1605bb86639b2fb9fb",
+      "recorded": "2026-11-14T04:49:33Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_pitch_tray.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "c87b26ea11293eaf069600130a98bd74a0ba73fefd81fe4f5caa736854c2ed5d",
+      "recorded": "2026-11-14T04:49:34Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_pitch_tray_r75.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "eaa99e668ba97f136a4acb56a356a1599cd504e9e880c18b257b2ba923c2ff99",
+      "recorded": "2026-11-14T04:49:34Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_pitch_tray_r75.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "bbd637da8702637387b7a9434a10c954ce021d05215b01c027df3fcffe86cee1",
+      "recorded": "2026-11-14T04:49:35Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_axis_base.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "cc833d3eea581d43af527d3a6ba4cc8e68a901582c847383ddf63778389a08e7",
+      "recorded": "2026-11-14T04:49:35Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_axis_base.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "d4bc0d6e416d634515e803ff659f18d529f8d2783e331f802af52c8cea087bd0",
+      "recorded": "2026-11-14T04:49:36Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_axis_top.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "60c414386c6973a477e9e16945e09b9d673a94fa890ac521f3b77a908cc5a78a",
+      "recorded": "2026-11-14T04:49:36Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_axis_top.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "4c58bda7951f82149a2cb6d2692b8dedbf5bb4572ce1b67595d9379f9f1cfb7a",
+      "recorded": "2026-11-14T04:49:37Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_deck_lid.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "e80e883c920e74ef7f77b466ebc38bf235d9d8eff579df1c3b0cea06e5dc21d4",
+      "recorded": "2026-11-14T04:49:37Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_deck_lid.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "efef513f245ef70cfee25d5df505fac64ab1babe1d5de0dba27b3117ef4c9c50",
+      "recorded": "2026-11-14T04:49:38Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_deck_tray.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "c51a7f9c43ccc6ceb9c93b9ac162864cd62fcb7f140a79cf99d824bfae903f41",
+      "recorded": "2026-11-14T04:49:38Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_roll_deck_tray.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "bc36cfd71eba0fb87cd69f9c99213b25a9148da6a848d0aae62e2122749aa01f",
+      "recorded": "2026-11-14T04:49:38Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_yaw2_boss.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "3cb327830f37d6a84d8d2cbd638afba4000f19599a227ff59e8ba4bed70d4cbc",
+      "recorded": "2026-11-14T04:49:39Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_yaw2_boss.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "81e46b9c20e6ec8e9b0221a9eddc4a0c77cc259441faca284d362e41454b57ee",
+      "recorded": "2026-11-14T04:49:39Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_yaw2_boss_7.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "7bd733e151c983861b4c22040b613a7f5d6b144d267efefdc16e48cb75533a3e",
+      "recorded": "2026-11-14T04:49:39Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_yaw2_boss_7.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "f7d0130103f9e7f17dbe79e0f8ad27c4aa76b13ad2cabde18dfdd847304984c1",
+      "recorded": "2026-11-14T04:49:40Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_yaw2_cap.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "040d74aa2cf808097d961c782a5b86cd1d3e8f0208bf7b85ec8b81c93534d1ea",
+      "recorded": "2026-11-14T04:49:40Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_yaw2_cap.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "4497d841f6438072a0a2e8fa84802910f7c43d1d514b383083c0fc046385a63c",
+      "recorded": "2026-11-14T04:49:41Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_yaw2_fork.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "5d5205b30379162c1d6037441c36b89ec3b40f466cce88c9866d0c7baa916cce",
+      "recorded": "2026-11-14T04:49:41Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_yaw2_fork.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "3c9c2a76888f39d65be07e8581267aecf1a5faec1fcb772842e9752d8cffe85b",
+      "recorded": "2026-11-14T04:49:42Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_yaw2_fork_7.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "0ff21902df4a8c6d5a52a9aa801f93f00286c904afbc6fca1e898f3ce28dab69",
+      "recorded": "2026-11-14T04:49:42Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_yaw2_fork_7.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "5997673e362f7741853709d23360fe66a7ac6b6f8c6a46f64d7e54d8a920f8d7",
+      "recorded": "2026-11-14T04:49:43Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_yaw2_hub.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "bd2ec7652767123089de642aca489b6ec1002154b7ecb6c2c03b99da5d487001",
+      "recorded": "2026-11-14T04:49:43Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_yaw2_hub.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "1baf95fd5952b261968a3fc4567936ceaa5ba2fb6af31a80f0ccc704e5020260",
+      "recorded": "2026-11-14T04:49:44Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_fork_front_left.STEP",
+      "source": "shoulder/left/shoulder_fork_front_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (key slot, joint floors, pad and plate): build_parts.py fork_front",
+      "sourceSha256": "cead959aa1026e5aea72357e844a7cb3c153ec122ec4a87f41ce4f252fff5a1c",
+      "exportSha256": "b6233861acc4bb82ea535d00a0226caa1b8aa39d53610b30e1cfca8e46d64bec",
+      "recorded": "2026-11-14T14:45:30Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_fork_front_left.STL",
+      "source": "shoulder/left/shoulder_fork_front_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (key slot, joint floors, pad and plate): build_parts.py fork_front",
+      "sourceSha256": "cead959aa1026e5aea72357e844a7cb3c153ec122ec4a87f41ce4f252fff5a1c",
+      "exportSha256": "4dfe5d2fca7ee9e37c4e16869a8029ec2bec8c70c27e369f63dfb0f85f0b5ace",
+      "recorded": "2026-11-14T14:45:32Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_fork_rear_left.STEP",
+      "source": "shoulder/left/shoulder_fork_rear_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (key slot, joint floors, pad and plate): build_parts.py fork_rear",
+      "sourceSha256": "7859dc3d275a596516cb5b1923ef4adae2ecaaad9cef496bab45605a21594dc5",
+      "exportSha256": "d4ca46a722ba787bf57f0cfaca927a6c1594c51e89c31128d17e0103fd09ff14",
+      "recorded": "2026-11-14T14:45:32Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_fork_rear_left.STL",
+      "source": "shoulder/left/shoulder_fork_rear_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (key slot, joint floors, pad and plate): build_parts.py fork_rear",
+      "sourceSha256": "7859dc3d275a596516cb5b1923ef4adae2ecaaad9cef496bab45605a21594dc5",
+      "exportSha256": "50e07a3378599f311d41adb772dd60fc3ca065bd349dfc892e4120d8b6b45e3f",
+      "recorded": "2026-11-14T14:45:33Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_hub_left.STEP",
+      "source": "shoulder/left/shoulder_hub_left.SLDPRT",
+      "config": "",
+      "settings": "rev D3c7: full-ring groove and fill, 2 x \u00d83.8 locating holes, R1.2 Z lug roots, lugs to X 34.4 with R0.8 outward roots (yaw torque path), cable window at 68 deg clipped clear of the boss tubes, r 20 fill behind both lugs",
+      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
+      "exportSha256": "744e2f78e9fa6378f2e564c9d25416794b778e52ec63a30b9a1718691056f2a0",
+      "recorded": "2026-11-14T02:51:53Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_hub_left.STL",
+      "source": "shoulder/left/shoulder_hub_left.SLDPRT",
+      "config": "",
+      "settings": "rev D3c7: full-ring groove and fill, 2 x \u00d83.8 locating holes, R1.2 Z lug roots, lugs to X 34.4 with R0.8 outward roots (yaw torque path), cable window at 68 deg clipped clear of the boss tubes, r 20 fill behind both lugs",
+      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
+      "exportSha256": "a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b",
+      "recorded": "2026-11-14T02:51:54Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_pitch_flange_ring_left.STEP",
+      "source": "shoulder/left/shoulder_pitch_flange_ring_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py ring",
+      "sourceSha256": "cd8ae28b84ecec50f805d49668bb0ef170e3f11aab421edfbac5cab9529a4b0b",
+      "exportSha256": "d8f7026a251800dc9930f2fcc0b1baa026c2291e4176e2a64fee074845fd28ef",
+      "recorded": "2026-11-14T11:13:11Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_pitch_flange_ring_left.STL",
+      "source": "shoulder/left/shoulder_pitch_flange_ring_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py ring",
+      "sourceSha256": "cd8ae28b84ecec50f805d49668bb0ef170e3f11aab421edfbac5cab9529a4b0b",
+      "exportSha256": "4558a5edb0d92d0d42a429e385bf21605ebc182efb3e17174668e4d7b21def28",
+      "recorded": "2026-11-14T11:13:12Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_roll_cap_left.STEP",
+      "source": "shoulder/left/shoulder_roll_cap_left.SLDPRT",
+      "config": "",
+      "settings": "rear cap screw fix (3 x M2.5 thread-forming at r 50.6, 12 mm locating collars on the drum in sockets in the cap), adopted 2026-11-14: build_parts.py drum cap",
+      "sourceSha256": "0eb6a2659e16e82cfd9059beb0ad7e3fa631a89fc03b1b4952ada0dad4950bf7",
+      "exportSha256": "75dd93b90fbf725d70a65f234cf0f0835f3ed90fdf0d6ab5a215fba3a5e9f97d",
+      "recorded": "2026-11-14T02:55:22Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_roll_cap_left.STL",
+      "source": "shoulder/left/shoulder_roll_cap_left.SLDPRT",
+      "config": "",
+      "settings": "rear cap screw fix (3 x M2.5 thread-forming at r 50.6, 12 mm locating collars on the drum in sockets in the cap), adopted 2026-11-14: build_parts.py drum cap",
+      "sourceSha256": "0eb6a2659e16e82cfd9059beb0ad7e3fa631a89fc03b1b4952ada0dad4950bf7",
+      "exportSha256": "fa20a6bb30d2f3037361013c120c11db53b5e3313a121a2f5957bf8a6b3674a4",
+      "recorded": "2026-11-14T02:55:24Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_roll_cover_ring_left.STEP",
+      "source": "shoulder/left/shoulder_roll_cover_ring_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py cover_ring",
+      "sourceSha256": "4aec690731393298340ea2a57b42d37a6d757bc6079322925ba6507c8c3f7785",
+      "exportSha256": "5ea7f7a819c2bbe48146df8fcf9c54c8810381a8385b230876a809a60c843540",
+      "recorded": "2026-11-14T11:13:13Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_roll_cover_ring_left.STL",
+      "source": "shoulder/left/shoulder_roll_cover_ring_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py cover_ring",
+      "sourceSha256": "4aec690731393298340ea2a57b42d37a6d757bc6079322925ba6507c8c3f7785",
+      "exportSha256": "80f3084b3f47dbf2bd0e7e4deffc2a5f517d83fd2d7d68045bc18c3ce6636691",
+      "recorded": "2026-11-14T11:13:14Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_roll_drum_left.STEP",
+      "source": "shoulder/left/shoulder_roll_drum_left.SLDPRT",
+      "config": "",
+      "settings": "rear cap screw fix (3 x M2.5 thread-forming at r 50.6, 12 mm locating collars on the drum in sockets in the cap), adopted 2026-11-14: build_parts.py drum cap",
+      "sourceSha256": "929f767d249989dd04db177e8794f529a7a73450cfd39962ef6a43dce190d92f",
+      "exportSha256": "d41d64b436064f26c0486eb10514699e65deb95ba1c94acac32e439815586531",
+      "recorded": "2026-11-14T02:55:20Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_roll_drum_left.STL",
+      "source": "shoulder/left/shoulder_roll_drum_left.SLDPRT",
+      "config": "",
+      "settings": "rear cap screw fix (3 x M2.5 thread-forming at r 50.6, 12 mm locating collars on the drum in sockets in the cap), adopted 2026-11-14: build_parts.py drum cap",
+      "sourceSha256": "929f767d249989dd04db177e8794f529a7a73450cfd39962ef6a43dce190d92f",
+      "exportSha256": "d3b036a9eaa47da42f4c85a870a2416be4c5f4a63ff937aa78e7240306f4992c",
+      "recorded": "2026-11-14T02:55:21Z"
+    }
+  ]
 }
