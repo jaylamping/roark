@@ -8,6 +8,11 @@
   shell, solid and see-through.
 - [size_audit/SLIM_OPTIONS.png](size_audit/SLIM_OPTIONS.png): today beside three slimmer ideas, as quick envelope models.
 
+> **Correction, 2026-11-14.** The first version of this page said the drum's skin could come in by 2-3 mm over the lugs
+> and its sides "from 96.8 toward 70". Both were wrong, and the "tight skin" row of SLIM_OPTIONS.png shows a drum that
+> cannot be built (its skin is pulled inside its own lug slots). The rows below are corrected. What stands: the
+> comparison with the built shoulder, the depth behind the motor, and the back-of-shoulder savings.
+
 ## The motors it wraps
 
 | Motor | Size |
@@ -22,8 +27,9 @@
 | Depth front to back at the roll joint | 56.6 | **110.6** (Z -60.8 to +49.8) | 54 | 34.8 behind the motor, 19.2 in front |
 | Behind the motor | | 34.8 | | Drum rim 2.5; rear cap plate 10.8 (6 of it is the cable channel); gap 1; 6808 bearing 7.0; fork rear cheek 13.5 (6 cable channel, walls, R6 dome) |
 | In front of the motor | | 19.2 | | Drum lip with its 8 screws 5.4; the fork front's hub on the motor's output; a crowned dome with pockets behind it |
-| Drum, across the roll axis | 99.6 over the lugs | 114-118 | 7-9 a side | Lug slots to r 54.5, wall, closed crowned skin with pockets under it |
-| Drum, along the roll axis | 56.6 | 96.8 at its widest, 64.5 at the rims | 8-40 | 2.5 and 5.4 at the rims are needed; the rest is the crowned skin and the bell to the pitch motor (look) |
+| Drum, across the roll axis | Lugs to r 53.0 | Skin r 56.1-57.0; up to r 61 on top | 3-4 over the lugs; **1.6 mm of skin over the lug slots and the connector window (r 54.5)**; 4 more on top | The skin is as tight as the motor allows. The extra on top is the swell over the cable trunk and its branch |
+| Drum, along the roll axis | 56.6 | 64.5, rim to rim | 8 | 2.5 behind and 5.4 in front, both needed (rear rim, front lip with the 8 screws) |
+| The same printed part, at the body | Pitch RS03 Ø99 | 96.8 across (the bell, neck and spokes round the pitch motor) | | Joins the drum to the pitch motor; inside or at the shell's socket |
 | Fork, side to side | 99.6 | 110 | 5 a side | Cheek walls |
 | Sleeve round the yaw motor | Ø78.5 | 94 side to side, 110 front to back | 7.9 a side, 4.6 in front, 27.5 behind | Wall and a 2 mm gap at the sides; behind is the fork rear's leg with the cable channel |
 | Ring at the body | Drum Ø118 | Cover Ø152, flange ring Ø155 | 18 all round | The pitch cable channel (r 57 to 73.5) and its cover. It sits in the shell's socket |
@@ -60,7 +66,8 @@ cable cover on the torso is another 102 g.
 
 | # | Idea | Saves | Keeps Joey's decisions | Cost |
 |---|---|---|---|---|
-| 1 | **Tighter skin:** drum's crowned sides and bell from 96.8 toward 70; fork front dome from +49.8 to about +42; drum wall over the lugs 2-3 mm closer | About 25 mm of apparent drum width, 7 of depth, about 60 g | Yes | A flatter look (less of look option a's blend). Clearance sweep again |
+| 1 | **Fork front dome lower,** from +49.8 to about +42 | 7 mm of depth, about 15 g | Yes | A flatter front. Clearance sweep again |
+| 1b | **Drum's top swell removed** (r 61 back to r 57), only if the roll cable no longer runs over the top of the drum | 4 mm of height at the top | Yes | Follows from the roll cable decision. The drum's sides and bottom cannot come in: 1.6 mm of skin over the lug slots |
 | 2 | **Wires out from behind the motor:** the cap's and the fork cheek's cable channels (12 of the 34.8 mm) moved to the side of the bearing | Up to 12 mm of depth | Yes | Depends on the roll cable decision, which the roll rig informs. New rear cap and fork rear |
 | 3 | **Thinner sleeve round the yaw motor:** 7.9 a side to about 4.5 | 7 mm off the fork's width at the neck | Yes | Fork FE again |
 | 4 | **Smaller ring at the body** | Up to 18 mm of radius | Yes | Follows from the pitch cable choice: only if pitch travel is limited to what a smaller loop takes. Mostly inside the shell |
@@ -70,8 +77,9 @@ cable cover on the torso is another 102 g.
 
 ## What the pictures show
 
-`SLIM_OPTIONS.png` puts today beside "tight skin" (1 + 3), "tight skin and short back" (1 + 2 + 3) and "no rear support"
-(1 + 3 + 5). Depth at the roll joint: 111, 104, 92 and 82 mm.
+`SLIM_OPTIONS.png` puts today beside "tight skin", "tight skin and short back" and "no rear support". Depth at the roll
+joint: 111, 104, 92 and 82 mm. **Its "tight skin" drum is wrong** (see the correction at the top): read those rows for the
+back of the shoulder and the fork front only.
 
 - **The variants are hard to tell apart at a glance.** Pulling the skin in by 7 to 20 mm changes the outline little,
   because the motors themselves set most of it: the roll motor is Ø100 and the yaw motor hangs under it, 120 mm out from
