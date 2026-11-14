@@ -83,8 +83,23 @@ peak, routine) therefore passes through the two lugs as a Z couple. On rev D:
 - **Bolts:** in the model, with a no-penetration contact set between the hub's lug faces (hole wall included) and every bolt
   face. No preload.
 - **Mesh and convergence, said plainly:** at the 0.8 face size, a 0.5 mm sphere holds 4-9 nodes, so the 0.5 mm values are
-  near-nodal and are read only at contact and model edges. A convergence run (G90 + YAW +17 with local refinement 0.5 at the
-  plate outline corners, the bolt boxes and the end-face corner) is running: meshed at 489,186 nodes (the base model 390-398 k).
+  near-nodal and are read only at contact and model edges.
+- **Convergence run** (`r1g6_convergence_g90y.txt`): G90 + YAW +17 again with local refinement 0.5 at the plate outline corners,
+  the bolt boxes and the end-face corner box. 489,186 nodes, against 390,748 for the base run.
+  - **Hub lug root:** converged. Shear 1.00 / 1.36 / 2.12 becomes 1.03 / 1.30 / 2.06. Layer 1.24 rises to 1.43; vm 1.84 drops
+    to 1.48.
+  - **Lumped-plate outline corner: not converged, and it gets worse with refinement**, as a re-entrant step corner does: shear
+    0.94 / 1.49 / 2.64 becomes 0.56 / 1.06 / 2.43, vm 0.72 becomes 0.61.
+    - Tensor probe 0.5 mm into the post: shear SF 2.09 becomes 1.39.
+    - At 1.0 mm in: 1.87 becomes 2.07.
+    - So the corner value depends on the mesh, and only the 2 mm average (2.43-2.64) is stable. It stays a known item, for the
+      bench imprint inspection.
+  - **Arm end-face corner (θ 296):** vm 4.45 becomes 5.39. The refined mesh supports the r1g6 reading, not r1g4's 1.14 (see
+    known item 3).
+  - **Everything else in our part moves by under 0.3 at 0.5 mm**, or improves: the PETG ring by the insert vm 4.16 becomes 8.75,
+    the hub lug face at the plate-hole edge 3.50 becomes 6.45.
+  - **Whole-part rows:** the arm's worst is the plate corner in both runs. The hub's worst is the lug root.
+  - The refined run's whole-part post-processing needed a 9 GB Python cap (the machine was idle) instead of 6 GB.
 - **Averaging:** sphere averages at 0.5 / 1 / 2 mm, with every node a candidate centre. vm is reported apart from the signed
   components (layer = signed across-layer tension, shear = interlayer magnitude).
 - **Reports per case** (in `../20261111_r1c-delta/r1d/r1g/`):
@@ -133,8 +148,9 @@ clearance (the mesh reads 0.36-0.40).
   - It dips inside the plate edge in four cases, on the loaded lug: STOP_0 -X to r 1.600; STOP_124 +X to 1.625; G90 + YAW -17 -X
     to 1.681; G90 + YAW +17 +X to 1.654. Otherwise it stays over the plate (r 1.708 or more).
   - It goes past the insert rim (up to r 2.203) in places on the loaded faces, in every case.
-  - So the hub's hole edge can ride over the plate's hole edge by up to 0.10 under the stops and G90 + yaw, in the frictionless,
-    unclamped model.
+  - So in the frictionless, unclamped model the hub's lug hole rim rides up to 0.10 over the plate's hole edge (Dia 3.4 kept) in
+    those four cases. The PETG ring by the insert still reads 2.52 or more and the hub lug face at the plate-hole edge 2.10 or
+    more at 0.5 mm in every case. The bench imprint inspection (BENCH_TESTS 2b step 10) covers the plate's hole edge.
 - **The real joint is clamped** (0.3 N·m, about 0.33-0.5 kN). Its friction (about 200-300 N) holds far more than these side loads.
   It is not counted on.
 
@@ -155,13 +171,27 @@ clearance (the mesh reads 0.36-0.40).
    - Tensor averages over the same arm nodes (`r1g6_plate_corner_probe.txt`):
      - STOP_0: shear 0.48 at the edge itself (3 nodes), 1.31 at 0.5 mm into the post, 2.84 at 1.0 mm. Layer 2.72 / 1.20 / 1.60.
      - Yaw and G90 + yaw: shear 1.44-1.61 at the edge and 1.76-2.47 at 0.5 mm in.
+   - The convergence run shows the value at the corner itself is mesh-dependent (shear 0.94 at 0.5 mm becomes 0.56 when refined;
+     1.0 mm in, 1.87 becomes 2.07).
    - Bench: the imprint inspection (BENCH_TESTS 2b step 10) covers the plate's outer corner as well as its hole edge.
-3. **The arm end-face corner (r1g4's third item) no longer reads low.**
-   - The same node (θ 296, X 186.7, Y 302.0, Z -26.6) now reads YAW +17 vm 4.07, and G90 + YAW +17 vm 4.45 / 6.04 / 6.58 (r1g4:
-     1.14 / 2.13 / 4.31, shear 0.76).
-   - The cause of the change is not established. The end-face geometry and mesh settings are the same; r1g6 differs only in the
-     lug holes.
-   - The convergence run refines this corner.
+3. **The arm end-face corner (r1g4's third item): the r1g4 low was a contact-pressure spike at single inner-edge nodes, and it did
+   not move elsewhere** (`r1g4_r1g6_g90y_endface_compare.txt`, G90 + YAW +17, post-processing only).
+   - **Same place, same mesh there:** the r1g4 spot (θ 296, X 186.7, Y 302.0, Z -26.6) has a node at the same position in both
+     meshes (0.011 mm from the point). 0.5 mm average there: r1g4 vm 1.14, shear 0.76; r1g6 vm 4.50, shear 6.08.
+   - **Same load path:** the end-face contact force by 30 deg sector agrees within about 10 % (270-300 deg: 240 / 253 N on the arm
+     face; 300-330: 189 / 226 N). The arm-to-hub displacement at the spot agrees within 0.03 mm, and the face tilts match within
+     3 % (arm face plane fit: -94 / -96 and -104 / -108 mdeg). The freed bolt did not shift or tilt the arm on the disc.
+   - **What differs is the nodal pressure peak at the face's inner edge (r 36.40):** r1g4 put 57.7 MPa at one node in 270-300
+     deg (mean 4.7), 40.0 in 300-330 and 29.7 in 120-150; r1g6 puts 17.1, 17.4 and 6.4 there (means 4.9, 4.4, 1.3). The hub
+     side shows the same (26.2 against 9.1 MPa).
+   - **The peak did not move:** searching every node of the end-face corner band and the ridge flank as a 0.5 mm centre, r1g6's
+     worst in the band is the same node at vm SF 4.45 (then θ 307 at 4.51; shear 4.53 at θ 314), and on the ridge flank vm 3.60
+     at θ 171. Nothing lower appears elsewhere, so the table has no new entry for it.
+   - **Cause, as far as it is established:** a local contact solution at the sharp inner edge, where the frictionless contact
+     concentrated pressure on single nodes in r1g4 and not in r1g6. The load path is the same in both. Why the contact iteration
+     settled differently is not established beyond that: r1g6 changes only the lug holes, which changes the contact iteration path.
+     The convergence run refines this corner and reads vm 4.45 / 6.04 / 6.58 becoming 5.39 / 6.54 / 7.11, so the mesh supports the r1g6
+     reading.
 
 **Bench (BENCH_TESTS 2b), on the final hub only:**
 1. A bare fit.
@@ -188,7 +218,6 @@ the R1h back half in `../20261111_r1c-delta/r1d/r1g/r1h_back_sheet.png`.
 
 **Open:**
 - The hub: D3c7 to be pushed (its STL hash must match), and the shoulder thread's FE on the lug root with `r1g6_lug_loads.txt`.
-- The convergence run (above).
 - The bench (hub-end coupon first).
 
 **Superseded (record only).**

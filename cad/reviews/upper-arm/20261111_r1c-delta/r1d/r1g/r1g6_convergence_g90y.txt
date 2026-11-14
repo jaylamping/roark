@@ -1,0 +1,75 @@
+Convergence check, G90 + YAW +17 on r1g6 (2026-11-13): base mesh (r1g6_g90y, 390,748 nodes) against local refinement 0.5
+(r1g6_g90y_ref, HS_LOCAL_REFINE=0.5 at the plate outline corners, the bolt boxes and the end-face corner box; 489,186 nodes; solve 552 s, sanity OK).
+SF at 0.5 / 1 / 2 mm, sphere averages of nodal values with every node a candidate centre (spot and region reports), the 30 lowest base rows.
+
+spot plate outline corner (our face, X offset 34.2, Y 294.6)    vm                     base 0.72/1.36/2.50     refined 0.61/1.23/2.49
+spot plate outline corner (our face, X offset 34.2, Y 294.6)    shear                  base 0.94/1.49/2.64     refined 0.56/1.06/2.43
+spot hub lug roots (Y 294-297.5)                                shear                  base 1.00/1.36/2.12     refined 1.03/1.30/2.06
+regi hub lug -X incl. roots                                     shear                  base 1.00/1.36/2.12     refined 1.03/1.30/2.06
+spot hub lug roots (Y 294-297.5)                                layer                  base 1.24/2.14/4.01     refined 1.43/2.37/3.92
+regi hub lug -X incl. roots                                     layer (sy)             base 1.24/2.14/3.98     refined 1.43/2.37/4.06
+regi hub lug +X incl. roots                                     shear                  base 1.50/1.88/2.80     refined 1.60/1.92/2.85
+regi hub lug +X incl. roots                                     layer (sy)             base 1.51/2.53/4.24     refined 1.56/2.57/4.30
+spot hub lug roots (Y 294-297.5)                                vm                     base 1.84/2.08/2.77     refined 1.48/2.00/2.72
+regi hub lug -X incl. roots                                     vm                     base 1.84/2.08/2.71     refined 1.48/2.00/2.61
+spot hub groove bottom (Y 299.1-302, r 31-35.85)                shear                  base 1.86/2.24/3.03     refined 1.88/2.16/2.93
+spot hub groove bottom (Y 299.1-302, r 31-35.85)                layer                  base 1.87/2.43/3.52     refined 1.84/2.51/3.53
+spot plate outline corner (our face, X offset 34.2, Y 294.6)    layer                  base 2.26/3.08/4.28     refined 2.18/2.89/4.51
+regi fins -X                                                    layer (sz)             base 2.57/3.99/7.13     refined 2.60/4.24/7.75
+regi post -X back (clearance)                                   shear                  base 2.71/3.69/4.26     refined 2.71/3.61/4.29
+regi hub lug +X incl. roots                                     vm                     base 2.74/3.02/3.83     refined 2.57/3.13/3.85
+regi arm elsewhere in the hub end (|Z - CZ| > 20, Y > 270)      shear                  base 2.83/3.85/5.48     refined 2.80/4.07/5.70
+regi post -X back (clearance)                                   vm                     base 2.89/3.48/4.97     refined 2.67/3.28/4.75
+regi fins -X                                                    vm                     base 3.11/4.12/4.94     refined 3.27/4.15/4.91
+regi hub lug +X incl. roots                                     bolt-hole bearing (-p3) base 3.12/5.24/17.09    refined 11.34/12.86/16.65
+regi fins -X                                                    shear                  base 3.15/3.15/3.48     refined 2.76/3.10/3.47
+spot hub R1.2 root inner end, -X lug (X off 21.5-24.5, Y 294.8- shear                  base 3.29/5.34/7.60     refined 2.98/5.26/7.63
+spot hub groove bottom (Y 299.1-302, r 31-35.85)                vm                     base 3.33/4.04/5.11     refined 3.30/3.92/4.90
+spot hub lug face at the plate-hole edge                        shear                  base 3.50/6.66/8.96     refined 6.45/7.88/9.46
+regi arm end-face corner band (r 35.8-37.6, Y 300.8-302.1)      layer (sz)             base 3.71/3.87/4.03     refined 3.77/3.93/4.15
+regi arm elsewhere in the hub end (|Z - CZ| > 20, Y > 270)      vm                     base 3.82/4.69/6.07     refined 3.80/4.77/6.09
+spot hub lug face at the plate-hole edge                        vm                     base 3.92/7.37/12.13    refined 10.59/11.94/14.21
+spot our post at the boss hole edge                             vm                     base 4.16/6.74/11.71    refined 8.75/10.38/14.00
+spot PETG ring just outside the insert (arm, r 2.0-3.0, front p spot vm                base 4.16/7.25/12.04    refined 8.75/10.25/14.00
+spot PETG ring just outside the insert (arm, r 2.0-3.0, front p region vm              base 4.22/8.40/11.18    refined 8.76/9.93/13.54
+
+Whole-part rows (post_allc, nothing excluded), worst 0.5 / 1 / 2 mm averages:
+  r1g6_g90y
+    arm WHOLE ARM vm peak 76.3 SF 0.59 at [136.3, 294.6, 1.0] th 188 | worst avg .5/1/2 SF 0.72/1.36/2.50
+    arm WHOLE ARM layer peak 75.7 SF 0.30 at [136.3, 294.6, 0.4] th 189 | worst avg .5/1/2 SF 1.87/2.71/3.84
+    arm WHOLE ARM shear peak 27.3 SF 0.48 at [136.3, 294.5, 0.4] th 189 | worst avg .5/1/2 SF 0.94/1.49/2.49
+    hub WHOLE HUB vm peak 41.1 SF 1.10 at [141.5, 293.0, 1.0] th 190 | worst avg .5/1/2 SF 1.84/2.08/2.71
+    hub WHOLE HUB layer peak 23.8 SF 0.94 at [137.0, 295.6, 1.0] th 189 | worst avg .5/1/2 SF 1.24/2.14/3.52
+    hub WHOLE HUB shear peak 17.6 SF 0.74 at [140.9, 295.4, 1.0] th 190 | worst avg .5/1/2 SF 1.00/1.36/2.12
+  r1g6_g90y_ref
+    arm WHOLE ARM vm peak 121.9 SF 0.37 at [136.3, 294.6, 1.0] th 188 | worst avg .5/1/2 SF 0.61/1.23/2.49
+    arm WHOLE ARM layer peak 52.3 SF 0.43 at [136.3, 294.6, 0.4] th 189 | worst avg .5/1/2 SF 1.81/2.89/3.83
+    arm WHOLE ARM shear peak 31.3 SF 0.42 at [136.3, 294.6, 1.0] th 188 | worst avg .5/1/2 SF 0.56/1.06/2.43
+    hub WHOLE HUB vm peak 38.9 SF 1.16 at [136.6, 294.1, 1.0] th 188 | worst avg .5/1/2 SF 1.48/2.00/2.61
+    hub WHOLE HUB layer peak 25.8 SF 0.87 at [140.9, 295.4, 1.0] th 190 | worst avg .5/1/2 SF 1.43/2.37/3.53
+    hub WHOLE HUB shear peak 19.9 SF 0.65 at [136.6, 294.6, 1.0] th 188 | worst avg .5/1/2 SF 1.03/1.30/2.06
+
+Plate outline corner, tensor averages (corner_probe.py, PROBE_PT=294.6), at the r1g6 base centre [136.29, 294.6, 0.44]:
+  result: cad/_sim/r1g6_g90y_ref/org16_HS_G90Y_fine.npz
+  -- spot (the model edge): centre [136.29, 294.6, 0.44] (X offset 34.20, Z - CZ -5.55)
+     R 0.5: n   11  p1    +7.1  p2    -7.2  p3   -20.4  vm   23.8 (SF  1.89)  sz   -9.0 (layer SF 99.00)  shear  13.5 (SF  0.96)
+     R 1.0: n   51  p1    -0.8  p2   -10.2  p3   -17.8  vm   14.7 (SF  3.05)  sz  -11.0 (layer SF 99.00)  shear   8.1 (SF  1.61)
+     R 2.0: n  310  p1    -1.4  p2    -3.6  p3    -8.0  vm    5.8 (SF  7.80)  sz   -5.6 (layer SF 99.00)  shear   2.9 (SF  4.55)
+  -- 0.5 mm in along [0.0, 0.0, -1.0] (off the model edge): centre [136.29, 294.6, -0.06] (X offset 34.20, Z - CZ -6.05)
+     R 0.5: n    7  p1    +5.2  p2    +0.7  p3   -13.8  vm   17.2 (SF  2.61)  sz   -2.5 (layer SF 99.00)  shear   9.4 (SF  1.39)
+     R 1.0: n   54  p1    +0.2  p2    -3.1  p3   -16.6  vm   15.4 (SF  2.93)  sz   -9.5 (layer SF 99.00)  shear   8.3 (SF  1.57)
+     R 2.0: n  339  p1    -1.0  p2    -3.3  p3    -8.1  vm    6.3 (SF  7.11)  sz   -5.6 (layer SF 99.00)  shear   3.1 (SF  4.13)
+  -- 1.0 mm in along [0.0, 0.0, -1.0] (off the model edge): centre [136.29, 294.6, -0.56] (X offset 34.20, Z - CZ -6.55)
+     R 0.5: n    3  p1    +1.0  p2    -0.7  p3   -13.1  vm   13.3 (SF  3.37)  sz   -6.6 (layer SF 99.00)  shear   6.3 (SF  2.07)
+     R 1.0: n   45  p1    +0.4  p2    -0.8  p3   -12.9  vm   12.8 (SF  3.53)  sz   -7.0 (layer SF 99.00)  shear   6.3 (SF  2.08)
+     R 2.0: n  339  p1    -0.6  p2    -2.9  p3    -8.3  vm    6.8 (SF  6.58)  sz   -5.7 (layer SF 99.00)  shear   3.4 (SF  3.83)
+
+Arm end-face corner band (the r1g4 low spot, theta 296), region report rows:
+  r1g6_g90y
+    vm peak 12.8 | SF .5/1/2 4.45/6.04/6.58 (n 8/39/112) at [186.7, 302.0, -26.6] th 296
+    layer (sz) peak 6.3 | SF .5/1/2 3.71/3.87/4.03 (n 8/37/120) at [206.4, 302.0, 0.0] th 351
+    shear peak 4.8 | SF .5/1/2 4.31/5.14/5.39 (n 9/24/110) at [189.5, 301.5, -24.5] th 302
+  r1g6_g90y_ref
+    vm peak 11.9 | SF .5/1/2 5.39/6.54/7.11 (n 13/66/313) at [187.4, 301.7, -25.9] th 298
+    layer (sz) peak 6.2 | SF .5/1/2 3.77/3.93/4.15 (n 15/80/306) at [206.2, 301.7, 0.5] th 351
+    shear peak 4.4 | SF .5/1/2 4.61/5.43/5.65 (n 9/94/324) at [195.8, 301.5, -19.3] th 315
