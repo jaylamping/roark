@@ -2,7 +2,7 @@
 
 Branch `left-arm-organic-r1`.
 
-Pinned commit: dd12f818d24fd2bff239a1de78a0801f50ad08eb (r1g6 after review 3: bench 2b, checker, table, plate files r1h_d34). Nothing here is
+Pinned commit: 3ecba66c883e361baa0872ba1cff192ca1c273b8 (r1g6 after review 3, with the shoulder thread's lug-root re-solve). Nothing here is
 released.
 
 **Review 3 (head 131cd60) verdict: the coupon, the hub, the shim rings and the yaw lever only.**
