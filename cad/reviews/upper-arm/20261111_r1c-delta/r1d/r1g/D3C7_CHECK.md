@@ -11,7 +11,12 @@ r 15.7-21.0, ±8 across).
 - **Halves:** the R1h halves (`cad/_wip/r1d_r1h_print/exports`): the R1h back half with the tie bridge, and the R1g front half.
   Rerun on 2026-11-13 17:30 (see `R1H_BACK.md`). Every check gives the same result as on the R1g halves: the maxima and minima
   below are unchanged; only the hit and path-collision counts of the sampled closing path move by a few points.
-- **Plates:** the final plates (Dia 3.8, Y 288.2-294.6, short lips) at 0.45 and 0.75.
+- **Plates:** the final plates (Dia 3.4 hole, Y 288.2-294.6, short lips) at 0.45 and 0.75.
+  - Correction, 2026-11-14 (review 3, item 7): the first version of this check built the plate STLs with a Dia 3.8 hole, and the
+    0.75 file had been rebuilt that way by this script.
+  - Checks 2, 3 and 6 were rerun with Dia 3.4 plates. The plate-to-fillet gap stays 0.267 on every lug and face, and the roots
+    against our posts stay 0.300.
+  - The hole size does not reach either measure; only the sampled point counts and their worst location moved.
 - **Ring:** the 0.70 shim ring on the disc face.
 
 **Method.** Everything ran under the 6 GB cap, with no solve of ours running. The script is

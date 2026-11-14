@@ -1,1 +1,1 @@
-7 rows checked, each against its own case reports (r1g4_<case>.*.txt): 0 failures
+7 rows checked, each against its own case reports (r1g6_<case>.*.txt; spot, region and whole-part rows, all three radii, triplets tied to their labels): 0 failures

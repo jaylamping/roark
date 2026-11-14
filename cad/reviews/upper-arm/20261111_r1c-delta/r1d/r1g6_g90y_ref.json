@@ -3,8 +3,7 @@
   "runs": [
    "arm 0-247970",
    "brass 247971-249754",
-   "hub 249755-279354",
-   "hub 279356-484515",
+   "hub 249755-484515",
    "pad 484516-484901",
    "steel 484902-486850",
    "pad 486851-487043",
@@ -15,7 +14,7 @@
   "guard": "ok"
  },
  "arm: WHOLE ARM (nothing excluded)": {
-  "nodes": 247972,
+  "nodes": 247971,
   "vm": {
    "peak": 121.9,
    "sf": 0.37,
@@ -507,7 +506,7 @@
   }
  },
  "arm: seat bore + end face elsewhere (Y 295-302.6, r<38)": {
-  "nodes": 17628,
+  "nodes": 17627,
   "vm": {
    "peak": 28.1,
    "sf": 1.6,
@@ -566,7 +565,7 @@
    "sf_avg": [
     1.81,
     3.03,
-    4.05
+    4.0
    ],
    "worst_avg_at": [
     [
@@ -1008,7 +1007,7 @@
   "sigma_n_mean": -1.9
  },
  "hub: WHOLE HUB (nothing excluded)": {
-  "nodes": 234760,
+  "nodes": 234761,
   "vm": {
    "peak": 38.9,
    "sf": 1.16,
@@ -1377,7 +1376,7 @@
   }
  },
  "hub: 2 mm land (Y 295.5-298, r 33-35.85)": {
-  "nodes": 16370,
+  "nodes": 16371,
   "vm": {
    "peak": 17.5,
    "sf": 2.57,
@@ -1992,7 +1991,7 @@
   }
  },
  "hub: lugs incl. roots (Y < 297.5)": {
-  "nodes": 37600,
+  "nodes": 37601,
   "vm": {
    "peak": 38.9,
    "sf": 1.16,
@@ -2115,7 +2114,7 @@
   }
  },
  "hub: lug roots (Y 294-297.5)": {
-  "nodes": 16559,
+  "nodes": 16560,
   "vm": {
    "peak": 38.9,
    "sf": 1.16,

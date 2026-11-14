@@ -2,8 +2,11 @@
 
 Branch `left-arm-organic-r1`.
 
-Pinned commit: 6086d113e126a39082b55ecaad4c91e8217c73f4 (r1g6 results with the convergence run, the R1h back half, geometry and print files). Nothing here is
-released.
+Pinned commit: PIN_PENDING. Nothing here is released.
+
+**Review 3 (head 131cd60) verdict: the coupon, the hub, the shim rings and the yaw lever only.**
+- The halves wait for the hub release, the hub-root reconciliation, the coupon insert result and a corrected bench 2b that passes.
+- Findings and responses: `../20261111_r1c-delta/r1d/r1g/REVIEW_R1G6_FINDINGS.md`.
 
 **Scope: the change from R1c to R1d "ring".** R1 was reviewed in `../20261111_print-release/` and R1c in
 `../20261111_r1c-delta/`. Review:
@@ -46,8 +49,12 @@ peak, routine) therefore passes through the two lugs as a Z couple. On rev D:
   - The ridge stays whole, with 1.7 or more of wall to the skin.
 - **Harness tie bridge (R1h, back half only).** A bar 2.0 thick on the -X inner wall at the neck (Y 255-261), standing on the seam
   face, with a 1.7 × 3.0 slot for a 2.5 × 1.0 cable tie.
-  - Its edges are rounded R0.5 against chafing.
+  - Its edges are rounded R0.5 against chafing: the bar's corners and lower edges. Its post-to-wall corners are not rounded.
   - It adds 0.09 g and needs no support.
+  - **It is in no FEA.** Without it, the wall where it stands reads SF 2.77 or more in every r1g6 case (STOP_124 shear 2.77 / 2.77 /
+    2.96; STOP_0 3.43; `r1h_tie_wall_probe.txt`, a coarse 4 mm mesh there).
+  - The geometry stays as built. The unrounded post-to-wall corners are on the whole-arm test's inspection list
+    (BENCH_TESTS 5).
   - Checks: `../20261111_r1c-delta/r1d/r1g/R1H_BACK.md`.
   - The front half and the ring are unchanged from R1g.
 - **Lug plates (final).** Flat printed PETG plates, one on each lug Z face, for zero yaw play.
@@ -59,8 +66,8 @@ peak, routine) therefore passes through the two lugs as a Z couple. On rev D:
   - **Lip:** short, X offset 19.5-32.5, hooked under the lug's free end.
   - **Sizes and pick:** 0.25-0.75 in 0.05 steps. Each print plate carries four of each thickness, two full sets. The pick is made
     after the ring (BENCH_TESTS 2b).
-  - **Print:** plate A 19 min / 1.75 g, plate B 19 min / 1.47 g (`r1g_lug_plate_set_sheet.png`, with the thickness scan).
-- **Lug bolts.** Capped at 0.3 N·m until the coupon's insert check (BENCH_TESTS 2b step 6). The insert's outer diameter and
+  - **Print:** plate A 19 min / 1.75 g, plate B 19 min / 1.47 g (`r1h_d34_lug_plate_set_sheet.png`, with the thickness scan).
+- **Lug bolts.** Capped at 0.3 N·m until the coupon's insert check (BENCH_TESTS 2b step 14). The insert's outer diameter and
   pull-out rating have no source in the repo; only "Ruthex M3 × 5.7" in a Dia 4.0 hole is recorded
   (`cad/prints/upper-arm/SETTINGS_CHECKLIST.md`). The seam screws stay at 0.5 N·m.
 - **Print orientation.** The halves print seam face down, so their layers lie in Z planes: the arm layer allowable (22.5) is on σz,
@@ -87,11 +94,15 @@ peak, routine) therefore passes through the two lugs as a Z couple. On rev D:
   near-nodal and are read only at contact and model edges.
 - **Convergence run** (`r1g6_convergence_g90y.txt`): G90 + YAW +17 again with local refinement 0.5 at the plate outline corners,
   the bolt boxes and the end-face corner box. 489,186 nodes, against 390,748 for the base run.
-  - **Hub lug root:** converged. Shear 1.00 / 1.36 / 2.12 becomes 1.03 / 1.30 / 2.06. Layer 1.24 rises to 1.43; vm 1.84 drops
-    to 1.48.
+  - **Hub lug root: shear converged, vm not.**
+    - Shear 1.00 / 1.36 / 2.12 becomes 1.03 / 1.30 / 2.06, and layer 1.24 rises to 1.43.
+    - But vm 1.84 drops to 1.48 (the refinement boxes reach the root's outer corner), so the root's vm is still moving at the
+      first radius.
+    - Corrected after review 3: an earlier version called the root converged.
   - **Lumped-plate outline corner: not converged, and it gets worse with refinement**, as a re-entrant step corner does: shear
     0.94 / 1.49 / 2.64 becomes 0.56 / 1.06 / 2.43, vm 0.72 becomes 0.61.
-    - Tensor probe 0.5 mm into the post: shear SF 2.09 becomes 1.39.
+    - Tensor probe at the corner edge itself: shear SF 1.44 becomes **0.96**.
+    - 0.5 mm into the post: 2.09 becomes **1.39**.
     - At 1.0 mm in: 1.87 becomes 2.07.
     - So the corner value depends on the mesh, and only the 2 mm average (2.43-2.64) is stable. It stays a known item, for the
       bench imprint inspection.
@@ -100,6 +111,11 @@ peak, routine) therefore passes through the two lugs as a Z couple. On rev D:
   - **Everything else in our part moves by under 0.3 at 0.5 mm**, or improves: the PETG ring by the insert vm 4.16 becomes 8.75,
     the hub lug face at the plate-hole edge 3.50 becomes 6.45.
   - **Whole-part rows:** the arm's worst is the plate corner in both runs. The hub's worst is the lug root.
+  - **Body split:** the refined run first had one hub node (279355, at the lug's outward root) classed as arm. Review 3 found it.
+    - The fix: hub_r1c.py moves a run of 3 nodes or fewer to the body on both sides of it in node order when 80 % of its 0.6 mm
+      neighbours are of that body.
+    - After the fix, every r1g6 result passes the per-body node-count check (`r1g6_body_check.txt`).
+    - Re-post-processing changed nothing but one 2 mm value (4.05 to 4.00), so "worse when refined" stands.
   - The refined run's whole-part post-processing needed a 9 GB Python cap (the machine was idle) instead of 6 GB.
 - **Averaging:** sphere averages at 0.5 / 1 / 2 mm, with every node a candidate centre. vm is reported apart from the signed
   components (layer = signed across-layer tension, shear = interlayer magnitude).
@@ -109,28 +125,38 @@ peak, routine) therefore passes through the two lugs as a Z couple. On rev D:
   - `.fx_path.txt`: shank gaps, the deformed hole rim, the lug outer face against our pocket wall, and plate slip;
   - `.post_allc.txt`: whole-part rows.
 - **Lug loads:** `r1g6_lug_loads.txt`, every case.
+  - Which totals to trust, an uncertainty per case, and how the plate force spreads over the lug face: see
+    `r1g6_lug_loads_uncertainty.md`.
+  - Use the section totals, ±8-18 % against the face totals; for design, the larger face total, at most 299 N per lug.
+  - About half the plate force lies within 1 mm of the plate outline.
 
 **Results (r1g6)**, SF at 0.5 / 1 / 2 mm; targets: 1.5 for yaw and G90, 1.2 for the stops:
 
-| Case | Posts / webs / fins (lowest) | Arm end-face corner band | PETG ring by the insert (r 2-3) | Hub lugs and groove (lowest; the shoulder FE governs) | Model edge: lumped-plate outline corner | Inserts / bolts (SF) | Below target |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| STOP_0 | hub-end wall shear 2.69 / 3.81 / 4.85; -X fin shear 3.41 / 3.71 / 4.12 | vm 4.09 / 4.34 / 4.60 | shear 6.06 / 7.80 / 12.26 | lug roots vm 0.98 / 1.46 / 3.16, shear 1.16 / 1.76 / 3.06; groove bottom shear 1.30 / 1.60 / 2.17, layer 1.31 / 1.66 / 2.28 | shear 0.47 / 1.27 / 3.17, vm 0.65 / 1.51 / 3.44, layer 1.00 / 3.58 / 4.80 | 11.45 / 33.03 | hub root and model edge at the first radius; the model edge's shear also at 1 mm |
-| STOP_124 | hub-end wall shear 2.35 / 3.43 / 3.82; +X fin layer 2.75 / 3.91 / 6.45 | vm 3.49 / 4.84 / 5.48 | shear 3.40 / 4.74 / 7.61 | groove bottom layer 1.44 / 1.79 / 2.51; lug face at the plate-hole edge shear 2.10 / 4.24 / 9.75; lug roots shear 2.42 / 3.25 / 5.37 | vm 1.52 / 2.81 / 4.89 | 6.85 / 11.43 | none |
-| YAW -17 | +X back post shear 2.93 / 3.95 / 5.19; -X front post shear 3.21 / 3.87 / 5.40 | vm 3.99 / 5.93 / 6.77 | shear 3.21 / 3.99 / 6.46 | lug roots shear 1.17 / 1.53 / 2.40, layer 1.49 / 2.48 / 4.22 | vm 0.88 / 1.65 / 3.08, shear 1.05 / 1.74 / 3.52 | 7.21 / 11.60 | hub root and model edge at the first radius |
-| YAW +17 | -X back post shear 3.12 / 4.21 / 5.10; +X front post shear 3.12 / 3.94 / 5.47 | vm 4.07 / 6.04 / 6.95 | shear 3.33 / 4.07 / 6.59 | lug roots shear 1.14 / 1.54 / 2.38, layer 1.41 / 2.41 / 4.33 | vm 0.83 / 1.59 / 2.93, shear 1.06 / 1.70 / 3.09 | 7.44 / 12.76 | hub root and model edge at the first radius |
-| G90 | hub-end wall shear 3.28 / 5.23 / 6.58; +X fin layer 3.39 / 5.09 / 10.21 | vm 8.36 / 8.76 / 9.22 | shear 18.54 / 24.95 / 41.45 | groove bottom layer 2.25 / 2.81 / 3.96; lug roots shear 6.29 / 8.17 / 10.95 | layer 3.52 / 5.58 / 11.98 | 35.17 / 62.46 | none |
-| G90 + YAW -17 | +X back post shear 2.38 / 3.21 / 4.68; +X fin layer 2.41 / 3.83 / 8.33 | vm 3.36 / 4.79 / 5.29 | vm 2.52 / 4.19 / 9.22 | lug roots shear 1.00 / 1.31 / 2.09, layer 1.42 / 2.19 / 3.97; groove bottom shear 1.75 / 2.10 / 2.68 | vm 0.73 / 1.38 / 2.55, shear 0.98 / 1.49 / 2.91 | 9.57 / 14.94 | hub root at the first radius and 1 mm; model edge at the first radius and 1 mm |
-| G90 + YAW +17 | -X fin layer 2.57 / 3.99 / 7.13; -X back post shear 2.71 / 3.69 / 4.26 | layer 3.71 / 3.87 / 4.03 | vm 4.16 / 7.25 / 12.04 | lug roots shear 1.00 / 1.36 / 2.12, layer 1.24 / 2.14 / 4.01; groove bottom shear 1.86 / 2.24 / 3.03 | vm 0.72 / 1.36 / 2.50, shear 0.94 / 1.49 / 2.64 | 10.99 / 13.06 | hub root at the first radius and 1 mm; model edge at the first radius and 1 mm |
+| Case | Posts / webs / fins (lowest) | Arm end-face corner band | PETG ring by the insert (r 2-3) | Hub lugs and groove (lowest; the shoulder FE governs) | Model edge: lumped-plate outline corner | Whole part, nothing excluded (where the 1 and 2 mm worst sit) | Inserts / bolts (SF) | Below target |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| STOP_0 | hub-end wall shear 2.69 / 3.81 / 4.85; -X fin shear 3.41 / 3.71 / 4.12 | vm 4.09 / 4.34 / 4.60 | shear 6.06 / 7.80 / 12.26 | -X lug outer front edge vm 0.74 / 1.26 / 2.80 (X offset 34.4, Y 293.4, at the lumped boss's step edge: the shoulder FE reads about 8 there and governs); -X lug shear 1.16 / 1.76 / 2.89; lug roots vm 0.98 / 1.46 / 3.16, shear 1.16 / 1.76 / 3.06; groove bottom shear 1.30 / 1.60 / 2.17, layer 1.31 / 1.66 / 2.28; whole hub shear 1.16 / 1.60 / 2.17 | shear 0.47 / 1.27 / 3.17, vm 0.65 / 1.51 / 3.44, layer 1.00 / 3.58 / 4.80; outline skin layer 1.00 / 2.45 / 4.26 | whole arm shear 0.47 / 1.02 / 1.17 (the first radius at the plate corner; 1 and 2 mm at the loaded stop-lug pad, Y 228), vm 0.65 / 1.51 / 1.88 (the same places), layer 1.00 / 1.29 / 1.49 (the plate corner; 1 and 2 mm in the neck, Y 250, X 165.7, Z 14.3) | 11.45 / 33.03 | hub edge and roots, plate corner at the first radius; whole arm at the stop pad at 1 and 2 mm (the R1 precedent: a load-introduction patch, excluded in R1) |
+| STOP_124 | hub-end wall shear 2.35 / 3.43 / 3.82; +X fin layer 2.75 / 3.91 / 6.45 | vm 3.49 / 4.84 / 5.48 | shear 3.40 / 4.74 / 7.61 | groove bottom layer 1.44 / 1.79 / 2.51; lug face at the plate-hole edge shear 2.10 / 4.24 / 9.75; lug roots shear 2.42 / 3.25 / 5.37 | vm 1.52 / 2.81 / 4.89 | whole arm shear 0.82 / 0.98 / 1.17 (all three radii at the loaded stop-lug pad, Y 192; R1 listed the same patch) | 6.85 / 11.43 | whole arm at the stop pad, all three radii (the R1 precedent: a load-introduction patch) |
+| YAW -17 | +X back post shear 2.93 / 3.95 / 5.19; -X front post shear 3.21 / 3.87 / 5.40 | vm 3.99 / 5.93 / 6.77 | shear 3.21 / 3.99 / 6.46 | lug roots shear 1.17 / 1.53 / 2.40, layer 1.49 / 2.48 / 4.22; -X lug shear 1.26 / 1.67 / 2.58, layer 1.49 / 2.64 / 4.74; 2 mm land layer 1.49 / 2.48 / 5.09 | vm 0.88 / 1.65 / 3.08, shear 1.05 / 1.74 / 3.52 | whole arm and whole hub are the plate corner and the lug roots | 7.21 / 11.60 | hub roots, land and plate corner at the first radius |
+| YAW +17 | -X back post shear 3.12 / 4.21 / 5.10; +X front post shear 3.12 / 3.94 / 5.47 | vm 4.07 / 6.04 / 6.95 | shear 3.33 / 4.07 / 6.59 | lug roots shear 1.14 / 1.54 / 2.38, layer 1.41 / 2.41 / 4.33; +X lug shear 1.28 / 1.64 / 2.59, layer 1.49 / 2.64 / 4.31; -X lug layer 1.41 / 2.41 / 4.28; 2 mm land layer 1.41 / 2.41 / 4.96; whole hub layer 1.41 / 2.41 / 4.26 | vm 0.83 / 1.59 / 2.93, shear 1.06 / 1.70 / 3.09 | whole arm is the plate corner | 7.44 / 12.76 | hub roots, land and plate corner at the first radius |
+| G90 | hub-end wall shear 3.28 / 5.23 / 6.58; +X fin layer 3.39 / 5.09 / 10.21 | vm 8.36 / 8.76 / 9.22 | shear 18.54 / 24.95 / 41.45 | groove bottom layer 2.25 / 2.81 / 3.96; lug roots shear 6.29 / 8.17 / 10.95 | layer 3.52 / 5.58 / 11.98 | whole arm layer 2.47 / 3.49 / 4.96 | 35.17 / 62.46 | none |
+| G90 + YAW -17 | +X back post shear 2.38 / 3.21 / 4.68; +X fin layer 2.41 / 3.83 / 8.33 | vm 3.36 / 4.79 / 5.29 | vm 2.52 / 4.19 / 9.22 | lug roots shear 1.00 / 1.31 / 2.09, layer 1.42 / 2.19 / 3.97; -X lug shear 1.41 / 1.83 / 2.70, layer 1.49 / 2.50 / 4.51; +X lug layer 1.42 / 2.19 / 3.98; 2 mm land layer 1.42 / 2.19 / 4.54; whole hub layer 1.42 / 2.19 / 3.28; groove bottom shear 1.75 / 2.10 / 2.68 | vm 0.73 / 1.38 / 2.55, shear 0.98 / 1.49 / 2.91 | whole arm is the plate corner | 9.57 / 14.94 | hub root at the first radius and 1 mm; land at the first radius; plate corner at the first radius and 1 mm |
+| G90 + YAW +17 | -X fin layer 2.57 / 3.99 / 7.13; -X back post shear 2.71 / 3.69 / 4.26 | layer 3.71 / 3.87 / 4.03 | vm 4.16 / 7.25 / 12.04 | lug roots shear 1.00 / 1.36 / 2.12, layer 1.24 / 2.14 / 4.01; -X lug layer 1.24 / 2.14 / 3.98; 2 mm land layer 1.24 / 2.14 / 4.42; whole hub layer 1.24 / 2.14 / 3.52; groove bottom shear 1.86 / 2.24 / 3.03 | vm 0.72 / 1.36 / 2.50, shear 0.94 / 1.49 / 2.64 | whole arm shear 0.94 / 1.49 / 2.49 (the plate corner) | 10.99 / 13.06 | hub root at the first radius and 1 mm; land at the first radius; plate corner at the first radius and 1 mm |
 
 `packet_numbers_check.py` checks every number in this table against that case's own reports. It also checks that every region
 below target is listed.
 
 **Our part passes everywhere off the model edge.** Posts, webs, fins, the end-face band, the PETG ring by the insert and the brass
 read 1.89 or more at 0.5 mm in every case (the lowest: our post at the boss hole edge, G90 + YAW -17 vm; then 2.35, the hub-end
-wall in STOP_124). The inserts read 6.85 or more and the bolts 11.4 or more. The whole-arm rows (`r1g6_<case>.post_allc.txt`, nothing
-excluded) find nothing lower than the table except at the plate outline corner and, in STOP_124, the load-introduction patch at the
-elbow stop-lug pad (shear 0.82 at the first radius, Y 192; r1g4 read 0.95 there); STOP_124's next lowest is layer 1.32 at the neck
-(Y 242), above its 1.2 target.
+wall in STOP_124). The inserts read 6.85 or more and the bolts 11.4 or more.
+- **Whole-arm rows** (`r1g6_<case>.post_allc.txt`, nothing excluded), now in the table's whole-part column. Where the 1 and 2 mm
+  worst centres sit is in `r1g6_stop0.worst_centres.txt` and `r1g6_stop124.worst_centres.txt`.
+  - The lowest are the plate outline corner and, in the stops, the loaded elbow stop-lug pad.
+    - STOP_0 at Y 228: shear 1.02 / 1.17 at 1 and 2 mm.
+    - STOP_124 at Y 192: 0.82 / 0.98 / 1.17.
+  - The pads are the load-introduction patches, where the 515 N goes on as a pressure. R1 excluded them, and they are listed
+    here as below target, not as passes.
+  - STOP_0's whole-arm layer at 1 and 2 mm (1.29 / 1.49) is in the neck at Y 250 (X 165.7, Z 14.3). STOP_124's next lowest is
+    layer 1.32 at the neck, Y 242. Both are above the 1.2 stop target.
 
 **Where the lug lands** (`r1g6_<case>.fx_path.txt`, surface nodes). The M3 shank sits in the Dia 3.8 lug hole with 0.40 radial
 clearance (the mesh reads 0.36-0.40).
@@ -151,7 +177,7 @@ clearance (the mesh reads 0.36-0.40).
   - It goes past the insert rim (up to r 2.203) in places on the loaded faces, in every case.
   - So in the frictionless, unclamped model the hub's lug hole rim rides up to 0.10 over the plate's hole edge (Dia 3.4 kept) in
     those four cases. The PETG ring by the insert still reads 2.52 or more and the hub lug face at the plate-hole edge 2.10 or
-    more at 0.5 mm in every case. The bench imprint inspection (BENCH_TESTS 2b step 10) covers the plate's hole edge.
+    more at 0.5 mm in every case. The bench imprint inspection (BENCH_TESTS 2b step 12) covers the plate's hole edge.
 - **The real joint is clamped** (0.3 N·m, about 0.33-0.5 kN). Its friction (about 200-300 N) holds far more than these side loads.
   It is not counted on.
 
@@ -159,6 +185,16 @@ clearance (the mesh reads 0.36-0.40).
 1. **The hub lug root at the extended lug's outer face** (X offset 34.4, Y 294.9).
    - Readings: YAW ±17 shear 1.14-1.17; G90 + YAW ±17 1.00; STOP_0 vm 0.98 and shear 1.16 on the -X outer root.
    - This is the hub, and the shoulder thread's FE governs it. Our FEA hub is the D3b shape on a coarser mesh.
+   - **STOP_0, -X lug outer front edge** (X offset 34.4, Y 293.4, Z 11.0): vm 0.74 / 1.26 / 2.80.
+     - The shoulder thread's fine hub reads about 8 there (von Mises 7.98 peak, 8.71 at 0.5 mm, friction variant; 8.13 / 8.89 with
+       the bolt-wall variant; their `A_HUB_LUGS.md` at b5679c6). **Their number governs.**
+     - Ours is the lumped plate boss's step edge (`r1g6_stop0_hub_edge_probe.txt`, findings item 6). The arm's boss carries
+       16-23 MPa on its last 0.5 mm before its edge at X offset 34.2.
+     - The hub face nodes at X offset 34.3-34.45, beyond the boss, still read 12.9 MPa mean: values extrapolated from that edge,
+       with no arm face opposite.
+     - The tensor average there is p1 +51.5, p3 -16.9 MPa, edge bending at the corner of the lug's front and outer faces.
+     - It is gone within 1 mm. 0.5 / 1.0 mm into the lug, vm reads SF 1.47 / 3.11; 0.5 / 1.0 mm inward, inside the boss outline,
+       1.38 / 2.37.
    - The lug loads for their FE are in `r1g6_lug_loads.txt`. Per lug, from the section:
      - YAW -17: +247 / -242 N.
      - YAW +17: -243 / +247 N.
@@ -174,7 +210,8 @@ clearance (the mesh reads 0.36-0.40).
      - Yaw and G90 + yaw: shear 1.44-1.61 at the edge and 1.76-2.47 at 0.5 mm in.
    - The convergence run shows the value at the corner itself is mesh-dependent (shear 0.94 at 0.5 mm becomes 0.56 when refined;
      1.0 mm in, 1.87 becomes 2.07).
-   - Bench: the imprint inspection (BENCH_TESTS 2b step 10) covers the plate's outer corner as well as its hole edge.
+   - Bench: the imprint inspection (BENCH_TESTS 2b step 12) covers the plate's outer corner and the hub lug's outer front edge
+     as well as the hole edges.
 3. **The arm end-face corner (r1g4's third item): the r1g4 low was a contact-pressure spike at single inner-edge nodes, and it did
    not move elsewhere** (`r1g4_r1g6_g90y_endface_compare.txt`, G90 + YAW +17, post-processing only).
    - **Same place, same mesh there:** the r1g4 spot (θ 296, X 186.7, Y 302.0, Z -26.6) has a node at the same position in both
@@ -194,30 +231,47 @@ clearance (the mesh reads 0.36-0.40).
      The convergence run refines this corner and reads vm 4.45 / 6.04 / 6.58 becoming 5.39 / 6.54 / 7.11, so the mesh supports the r1g6
      reading.
 
-**Bench (BENCH_TESTS 2b), on the final hub only:**
-1. A bare fit.
-2. Callipers on every ring and plate; three inserts measured (outer diameter) before pressing, flush to 0.05.
-3. The ring pick, then the plate pick, with a blue check of the plate top against the hub fillet.
-4. The lug bolts at 0.3 N·m; the insert check at 0.3 / 0.5 / 0.7 N·m.
+**Bench (BENCH_TESTS 2b), on the final hub only** (rewritten after review 3: D3c7, Dia 3.4 plates, r1g6 loads, readings on the
+coupon, not the lever):
+1. A bare fit; callipers on every ring and plate.
+2. Hole gauges: every plate hole takes a Dia 3.4 drill shank and not a 3.8; each hub lug hole takes a 3.8.
+3. Three inserts measured and pressed flush to 0.05; the scrap-block insert torque check (0.3 / 0.5 / 0.7 N·m). The coupon's own
+   inserts get only 0.3 N·m until after the loads.
+4. The ring pick, then the plate pick, with a blue check of the plate top against the hub fillet; lug bolts at 0.3 N·m.
 5. The rock check.
-6. Yaw with the printed lever: 8.7 kg at 200 mm, play read at 60 mm. Pass: loaded at most 0.47 mm (the FEA's elastic 0.37 + 0.1),
-   back within 0.05; repeated with the bolts loosened.
-7. A stop-equivalent load: the lever plus 4.5 kg sideways at the -X lug, reproducing STOP_0's plate and side forces.
-8. The imprint inspection after all the loads.
-9. A 24 h re-check.
+6. **Play reversal, bolts loosened:** ±1 kg at the hook (±0.39 N·m). The dial is on the coupon at r 40 from the hub axis, against
+   the hub. Pass: total travel at most 0.04.
+   - A pick one plate step loose (0.05 at X offset about 30.5) turns the coupon 1.6 mrad, which is 0.066 at r 40. The ±0.39 N·m
+     itself adds 0.010 elastically, and the dial reads to 0.01.
+   - So a one-step-loose joint reads about 0.076 and fails; a tight one reads 0.01-0.02.
+7. Yaw 8.7 kg at 200 mm (17 N·m), each way, read on the coupon. The FEA gives 0.22 at r 40, ±0.04 for the modulus. Pass: at most
+   0.29 loaded, back within 0.02.
+8. The stop-equivalent load (lever plus 4.5 kg sideways at the -X lug; r1g6 STOP_0: 179 N on the plate, about 26 N sideways), with
+   its own readings and pass. The X slip of the lug is recorded with the bolts loosened: at most 0.25, and back within 0.03.
+9. A 1.5 × yaw proof, 13 kg at 200 mm (25.5 N·m), as the last load: no click, crack or whitening, back within 0.03.
+10. The imprint inspection after all the loads: the plate hole edge and the hub hole rim, the plate's outer corner, and the hub
+    lug's outer front edge.
+11. A 24 h re-check (rock and play reversal); then the coupon inserts' 0.5 / 0.7 N·m check.
 
 **Prints (not released):** in `cad/prints/upper-arm/`.
 - Halves: `upper_arm_organic_back_r1h.3mf/.gcode` (with the tie bridge) and `upper_arm_organic_front_r1g.3mf/.gcode`.
 - Hub-end coupon: `..._r1g_coupon`.
 - Shim ring set: `upper_arm_organic_shim_rings_{A,B,C}_r1g` (0.30-1.10 by 0.05).
-- Lug plates: `upper_arm_organic_lug_plates_{A,B}_r1g`, re-sliced with the Dia 3.4 hole, two full sets on each plate. The 0.9
-  strip above the hole prints as 2 whole perimeters (`r1g_lug_plate_strip_slice.png`).
+- Lug plates: `upper_arm_organic_lug_plates_{A,B}_r1h_d34` (Dia 3.4 hole), two full sets on each plate.
+  - They were renamed from `..._r1g` (review 3, item 8), so a Dia 3.8 file from an older commit cannot be mistaken for them.
+  - `cad/prints/upper-arm/SUPERSEDED.md` lists what not to print.
+  - The 0.9 strip above the hole prints as 2 whole perimeters, plus the outer perimeter
+    (`r1h_d34_lug_plate_strip_slice.png`: 3 lines cross the strip on every plate).
 - Coupon yaw lever: `upper_arm_organic_coupon_yaw_lever` (106 min / 72 g; `cad/scripts/arm/yaw_lever_print.py`).
 
-Sheets: `r1g_front_half_sheet.png`, `r1g_shim_ring_set_sheet.png`, `r1g_lug_plate_set_sheet.png`, `r1g_seam_section.png` here, and
+Sheets: `r1g_front_half_sheet.png`, `r1g_shim_ring_set_sheet.png`, `r1h_d34_lug_plate_set_sheet.png`, `r1g_seam_section.png` here, and
 the R1h back half in `../20261111_r1c-delta/r1d/r1g/r1h_back_sheet.png`.
 
 **Open:**
+- **Read-back trim test** (all-node GetStress against per-body GetStressForEntities3): not done.
+  - A saved r1g6 study re-opened in a hidden instance gives no Results object out of process. Results stays None, and the
+    results folder can only be read through StaticStudyOptions, which faults from Python.
+  - Proposed: do the two reads right after the next real solve, while the result is in memory.
 - The hub: D3c7 to be pushed (its STL hash must match), and the shoulder thread's FE on the lug root with `r1g6_lug_loads.txt`.
 - The bench (hub-end coupon first).
 

@@ -1,6 +1,7 @@
-bodies by geometry + node order (10 runs, 1 of 50 nodes or fewer): arm 0-247970, brass 247971-249754, hub 249755-279354, hub 279356-484515, pad 484516-484901, steel 484902-486850, pad 486851-487043, steel 487044-488992, pad 488993-489185
+bodies by geometry + node order (8 runs, 0 of 50 nodes or fewer): arm 0-247970, brass 247971-249754, hub 249755-484515, pad 484516-484901, steel 484902-486850, pad 486851-487043, steel 487044-488992, pad 488993-489185
+body split: nodes 279355-279355 moved from arm to hub (100 % of 15 neighbours within 0.6 mm; sd [-0.534])
 GUARD OK: no arm or hub node inside another body (unsure nodes decided by node order: 118073)
-nodes: arm 247972, hub 234760, bolts 3898, inserts 1784
+nodes: arm 247971, hub 234761, bolts 3898, inserts 1784
 arm WHOLE ARM (nothing excluded)                 vm    peak  121.9 SF  0.37 at [136.3, 294.6, 1.0] th 188 | worst avg .5/1/2 SF 0.61/1.23/2.93 (0.5 mm: 3 nodes at [136.3, 294.6, 1.0] th 188)
 arm WHOLE ARM (nothing excluded)                 layer peak   52.3 SF  0.43 at [136.3, 294.6, 0.4] th 189 | worst avg .5/1/2 SF -/-/- (0.5 mm: 9 nodes at [136.3, 294.6, 0.7] th 189)
 arm WHOLE ARM (nothing excluded)                 shear peak   31.3 SF  0.42 at [136.3, 294.6, 1.0] th 188 | worst avg .5/1/2 SF 0.56/1.06/2.79 (0.5 mm: 3 nodes at [136.3, 294.6, 1.0] th 188)
@@ -14,7 +15,7 @@ arm ridge root / bore wall (r 35.9-37.5, Y 297.5-302) vm    peak   11.9 SF  3.78
 arm ridge root / bore wall (r 35.9-37.5, Y 297.5-302) layer peak    6.2 SF  3.61 at [206.4, 302.0, 0.0] th 351 | worst avg .5/1/2 SF 3.72/3.88/4.21 (0.5 mm: 17 nodes at [206.0, 301.5, 0.4] th 351)
 arm ridge root / bore wall (r 35.9-37.5, Y 297.5-302) shear peak    4.4 SF  2.95 at [183.8, 301.7, -27.6] th 292 | worst avg .5/1/2 SF 4.78/5.37/5.73 (0.5 mm: 6 nodes at [206.3, 297.9, 8.0] th 3)
 arm seat bore + end face elsewhere (Y 295-302.6, r<38) vm    peak   28.1 SF  1.60 at [135.3, 295.7, 12.9] th 169 | worst avg .5/1/2 SF 3.01/4.12/5.79 (0.5 mm: 9 nodes at [135.3, 295.7, 13.1] th 169)
-arm seat bore + end face elsewhere (Y 295-302.6, r<38) layer peak   14.9 SF  1.51 at [136.6, 295.7, 18.0] th 160 | worst avg .5/1/2 SF 1.81/3.03/4.05 (0.5 mm: 1 nodes at [146.6, 295.7, 32.8] th 132)
+arm seat bore + end face elsewhere (Y 295-302.6, r<38) layer peak   14.9 SF  1.51 at [136.6, 295.7, 18.0] th 160 | worst avg .5/1/2 SF 1.81/3.03/4.00 (0.5 mm: 1 nodes at [146.6, 295.7, 32.8] th 132)
 arm seat bore + end face elsewhere (Y 295-302.6, r<38) shear peak    7.3 SF  1.79 at [135.3, 295.7, -1.0] th 191 | worst avg .5/1/2 SF 2.09/2.66/2.86 (0.5 mm: 4 nodes at [135.5, 295.7, -2.1] th 193)
 arm hub posts (Y 285-296)                        vm    peak   21.6 SF  2.09 at [141.4, 294.6, 1.0] th 190 | worst avg .5/1/2 SF 2.62/3.50/5.24 (0.5 mm: 4 nodes at [141.4, 294.6, 1.0] th 190)
 arm hub posts (Y 285-296)                        layer peak   12.5 SF  1.80 at [145.0, 295.1, 31.7] th 135 | worst avg .5/1/2 SF 1.81/2.89/5.36 (0.5 mm: 1 nodes at [146.6, 295.7, 32.8] th 132)
@@ -62,11 +63,3 @@ lug -X: nodes 815, axial Fy ~     -23 N, shear Fx ~      8 N, shear Fz ~   -296 
 lug +X: nodes 721, axial Fy ~       4 N, shear Fx ~    -15 N, shear Fz ~    211 N (section 177 mm2)
 soft pads: axial force each (N) [0.025, 0.082, -0.015, 0.026], sum 0.148 N
 SANITY: OK
- options {'solver': 0, 'mesher': 2, 'jacobian': 16, 'auto_transition': False, 'jacobian_check': '?'}
- mesh 0 nodes 489186 elements 301885 31 s
- solver macro ran True err 0
- solver macro log: addin  0   | studies  1  err  0  | before  0  | set err  0   | after  7  | 
- solve 0 552 s
- displacements saved (489186, 5) args (1, win32com.client.VARIANT(9, None), 0) err 0
- displacement min/max {'raw': [249886.0, 0.0, 225153.0, 1.36701], 'err': 0}
-{"case": "org16_HS_G90Y_fine", "part": "hubseat", "el": 4.0, "nodes": 489186, "elements": 301885, "peak_vm": 121.86, "vm": 121.86, "at": [136.3, 294.6, 1.0], "sf": 0.37, "layer_x": {"mpa": 34.25, "at": [135.3, 295.7, 12.9], "sf": 0.66}, "layer_y": {"mpa": 25.8, "at": [140.9, 295.4, 1.0], "sf": 0.87}, "layer_z": {"mpa": 52.29, "at": [136.3, 294.6, 0.4], "sf": 0.43}, "region_ring_zone_excluded": {"vm": 18.42, "at": [154.8, 242.1, -20.6], "sf": 2.44, "p1": 29.33, "p3": -28.79, "layer_x": 13.24}, "region_neck_blend": {"vm": 18.42, "at": [154.8, 242.1, -20.6], "sf": 2.44, "p1": 29.33, "p3": -28.79, "layer_x": 13.24}, "region_drum_wall": {"vm": 18.42, "at": [154.8, 242.1, -20.6], "sf": 2.44, "p1": 29.33, "p3": -28.79, "layer_x": 13.24}, "region_rib": {"vm": 18.42, "at": [154.8, 242.1, -20.6], "sf": 2.44, "p1": 29.33, "p3": -28.79, "layer_x": 13.24}, "region_lug": {"vm": 9.36, "at": [144.9, 254.9, 14.3], "sf": 4.81, "p1": 11.26, "p3": -5.53, "layer_x": 2.08}, "region_neck": {"vm": 121.86, "at": [136.3, 294.6, 1.0], "sf": 0.37, "p1": 56.57, "p3": -108.1, "layer_x": 34.25}, "clear": {"vm": 121.86, "at": [136.3, 294.6, 1.0], "sf": 0.37, "layer_x": {"sf": 0.66, "at": [135.3, 295.7, 12.9]}, "layer_z": {"sf": 0.43, "at": [136.3, 294.6, 0.4]}}, "model": "hub as its own body, seat by contact, lugs in frictionless contact with the posts and steel bolts (no preload)", "soft_springs": false, "reaction": {"error": "<unknown>.GetReactionForces2"}, "displacement": {"raw": [249886.0, 0.0, 225153.0, 1.36701], "err": 0}, "model_sha256": "61486d15dfbf09b150ae25b0932368800d1b0c818ce6bd662fabe817ddbbee11"} 934 s

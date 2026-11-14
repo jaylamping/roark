@@ -1,0 +1,9 @@
+BODY CHECK OK r1g6_stop0: arm 203589, brass 1784, hub 188232, pad 386+193+193, steel 1949+1949
+BODY CHECK OK r1g6_stop124: arm 203593, brass 1784, hub 188232, pad 386+193+193, steel 1949+1949
+BODY CHECK OK r1g6_yawm: arm 196062, brass 1784, hub 188232, pad 386+193+193, steel 1949+1949
+BODY CHECK OK r1g6_yawp: arm 196062, brass 1784, hub 188232, pad 386+193+193, steel 1949+1949
+BODY CHECK OK r1g6_g90: arm 196062, brass 1784, hub 188232, pad 386+193+193, steel 1949+1949
+BODY CHECK OK r1g6_g90ym: arm 196062, brass 1784, hub 188232, pad 386+193+193, steel 1949+1949
+BODY CHECK OK r1g6_g90y: arm 196062, brass 1784, hub 188232, pad 386+193+193, steel 1949+1949
+BODY CHECK OK r1g6_g90y_ref: arm 247971, brass 1784, hub 234761, pad 386+193+193, steel 1949+1949
+BODY CHECK FAILED r1g6_g90y_ref before the split fix: hub: 2 runs, expected 1; 1 runs of 50 nodes or fewer (a split body or a misclassed node) (counts: arm 247971, brass 1784, hub 29600+205160, pad 386+193+193, steel 1949+1949)

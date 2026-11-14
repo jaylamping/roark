@@ -1,4 +1,4 @@
-"""Slice-preview check of the lug plates' 0.7 strip above the Dia 3.8 hole (2026-11-13, review C11): reads the sliced gcode of a
+"""Slice-preview check of the lug plates' strip above the plate hole (2026-11-13, review C11; since 68c5356 the final plates: the 0.9 strip above the Dia 3.4 hole, the hole radius read from the STL): reads the sliced gcode of a
 plate set, takes the extrusion moves of one layer, and plots them zoomed on the strip above each plate's hole (located from the
 plate STL; gcode and STL matched by their XY bounding boxes). Reports per plate how many separate extrusion lines cross the strip
 (a closed perimeter around the hole plus the outer perimeter = at least 2).

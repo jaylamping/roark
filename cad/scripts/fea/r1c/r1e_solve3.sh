@@ -86,6 +86,7 @@ echo "job $folder ended $(date +%H:%M); peak used ${peak} MB; Intel-solver lines
 [ "$FEA_MESH_ONLY" = 1 ] && exit 0
 if ls $D/org16_$CASE.npz >/dev/null 2>&1; then
   python $R/scripts/fea/r1c/capped.py --mb 6144 -- python cad/scripts/fea/r1c/hub_r1c.py $D/org16_$CASE.npz $D/HUB_GROOVE_r1d.STL > $D/post.txt 2>&1
+  python cad/scripts/fea/r1c/body_check.py $D/post.txt $folder >> $L 2>&1      # per-body node counts (review 3, item 10)
   cp $D/org16_$CASE.npz.r1c.json $RV/$folder.json; cp $D/post.txt $RV/$folder.post.txt; grep -E "mesh|solve |reaction|displacement|solver" $D/run.log | tail -8 >> $RV/$folder.post.txt
   echo "SOLVED $folder $(date +%H:%M) $(grep -E 'solve ' $D/run.log | tail -1) $(grep SANITY $D/post.txt)" >> $L
   until mkdir cad/_wip/.r1d_git_lock 2>/dev/null; do sleep 5; done

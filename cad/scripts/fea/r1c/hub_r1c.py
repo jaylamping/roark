@@ -88,10 +88,32 @@ if len(cert):
         k = int(np.argmin(bad_a + bad_b))
         body[seg[:k]] = A; body[seg[k:]] = B
 body = body.astype(np.int8)
+# (review 3, 2026-11-14) a run of 3 nodes or fewer between two runs of one other body, outside every small body, whose 0.6 mm
+# neighbours are mostly (80 %) of that other body, belongs to it: bodies are contiguous in node order. The r1g6 refined run had one hub
+# node (279355, at the D3 lug's outward root, Y 296.3) classed as arm because the STL signed distance read -0.53 there while its
+# neighbours 0.35 mm away read +0.25..+0.96 inside the hub.
+from scipy.spatial import cKDTree as _KD
+_rb = np.flatnonzero(np.diff(body)) + 1
+_bl = [(int(a), int(b)) for a, b in zip(np.r_[0, _rb], np.r_[_rb, N])]
+_kd = None
+_moved = np.zeros(N, bool)
+_msgs = []      # printed after the bodies line: the reports read the body runs from post.txt's first line
+for _k in range(1, len(_bl) - 1):
+    a_, b_ = _bl[_k]
+    B_ = body[_bl[_k - 1][0]]
+    if b_ - a_ <= 3 and body[_bl[_k + 1][0]] == B_ != body[a_] and not small_in[a_:b_].any():
+        _kd = _kd or _KD(p)
+        nb_ = [q for i_ in range(a_, b_) for q in _kd.query_ball_point(p[i_], 0.6) if not a_ <= q < b_]
+        if nb_ and np.mean(body[nb_] == B_) >= 0.8:
+            _msgs.append(f'body split: nodes {a_}-{b_ - 1} moved from {["arm", "hub", "steel", "brass", "pad", "shim"][body[a_]]} to '
+                  f'{["arm", "hub", "steel", "brass", "pad", "shim"][B_]} ({np.mean(body[nb_] == B_) * 100:.0f} % of {len(nb_)} neighbours '
+                  f'within 0.6 mm; sd {np.round(sd[a_:b_], 3).tolist()})')
+            body[a_:b_] = B_
+            _moved[a_:b_] = True
 bad_arm = (body == 0) & ((sd > 0.15) | small_in)
 _HM = 0.25 if _os.environ.get('R1C_D3') == '1' else 0.15      # 2026-11-13: the D3 lug's R1.2 Z-root end blends (r about 34.7, Y 295.4) are
 # tessellated up to 0.2 off in the hub STL; hub surface nodes there read sd -0.17..-0.20
-bad_hub = (body == 1) & ((sd < -_HM) | small_in)
+bad_hub = (body == 1) & ((sd < -_HM) | small_in) & ~_moved      # nodes moved by the neighbour rule above are reported there
 if bad_arm.any() or bad_hub.any():
     for k in np.flatnonzero(bad_arm | bad_hub)[:10]:
         print('GUARD: node', k, p[k].round(3).tolist(), 'assigned', ['arm', 'hub'][body[k]], 'sd', round(float(sd[k]), 3), 'r from bolt', round(float(rb_all[k]), 3))
@@ -101,6 +123,8 @@ blocks = [(int(a), int(b - 1), int(body[a])) for a, b in zip(np.r_[0, runs], np.
 names = ['arm', 'hub', 'steel', 'brass', 'pad', 'shim']
 big = [f'{names[c]} {a}-{b}' for a, b, c in blocks if b - a > 50]
 print(f'bodies by geometry + node order ({len(blocks)} runs, {sum(b - a <= 50 for a, b, c in blocks)} of 50 nodes or fewer): ' + ', '.join(big))
+for _m in _msgs:
+    print(_m)
 print(f'GUARD OK: no arm or hub node inside another body (unsure nodes decided by node order: {int((lab < 0).sum())})')
 arm = np.flatnonzero(body == 0); hb = np.flatnonzero(body == 1); bl = np.flatnonzero(body == 2); br = np.flatnonzero(body == 3)
 in_hub = body == 1; bolt = (body == 2) | (body == 3)

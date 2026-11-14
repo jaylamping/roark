@@ -13,7 +13,8 @@ H=$X/exports
 if [ -f $R/_wip/r1d_r1h_print/exports/upper_arm_organic_back_left.STL ]; then H=$R/_wip/r1d_r1h_print/exports; fi
 echo "halves: $H" > $RV/d3c7_halves_used.txt
 sha256sum $C7 >> $RV/d3c7_halves_used.txt
-$PYC $R/scripts/fea/r1c/plates_close_stl.py $X/checks/lug_plates_075_final.STL 0.75 1.9 294.6 > /dev/null 2>&1
+# the final plates, Dia 3.4 holes (review 3, item 7: this line had HOLE_R 1.9, Dia 3.8, until 2026-11-14)
+for t in 075:0.75 045:0.45; do $PYC $R/scripts/fea/r1c/plates_close_stl.py $X/checks/lug_plates_${t%%:*}_final.STL ${t#*:} 1.7 294.6 > /dev/null 2>&1; done
 # 1, 2, 6 (+ the window, generic): hash, watertight, diff against D3c4, roots / plates proximity, bore fill
 HUB_NEW=D3c7 HUB_OLD=D3c4 $PYC $R/scripts/fea/r1c/d3c4_check.py $C7 $C4 $H $X/checks/lug_plates_075_final.STL $RV/d3c7_check.json > $RV/d3c7_check.txt 2>&1
 # 3: plate top and halves against the fillet, final plates 0.45 and 0.75

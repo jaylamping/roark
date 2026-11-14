@@ -28,7 +28,7 @@ result: cad/_sim/r1g6_g90y_ref/org16_HS_G90Y_fine.npz | single
    layer (sy)                                  peak   25.8 | SF .5/1/2 1.43/2.37/4.06 (n 4/31/293) at [138.4, 295.5, 1.0] th 189
    shear                                       peak   19.9 | SF .5/1/2 1.03/1.30/2.06 (n 5/43/259) at [136.1, 294.9, 2.0] th 187
    bolt-hole bearing (-p3)                     peak    4.9 | SF .5/1/2 10.84/12.59/17.01 (n 8/28/103) at [146.0, 293.2, 11.0] th 168
--- hub lug +X incl. roots: 22647 nodes
+-- hub lug +X incl. roots: 22648 nodes
    vm                                          peak   35.9 | SF .5/1/2 2.57/3.13/3.85 (n 6/29/134) at [204.2, 294.3, 10.4] th 8
    layer (sy)                                  peak   17.6 | SF .5/1/2 1.56/2.57/4.30 (n 7/44/302) at [204.0, 295.6, 11.0] th 8
    shear                                       peak   18.8 | SF .5/1/2 1.60/1.92/2.85 (n 6/32/233) at [204.9, 294.9, 10.0] th 7
