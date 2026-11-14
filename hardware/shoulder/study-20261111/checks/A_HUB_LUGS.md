@@ -1118,6 +1118,9 @@ share through the spigot unchanged (`HUBL_G90YAWM_MAX`, `HUBL_G90YAWP_MAX`; 1.00
 - **Which number is softer:** the allowable. The load is now pinned between section and face totals, 8-11% apart. The
   13 MPa for shear across the layers is an assumption with no test behind it; a coupon result of 11 or 16 MPa moves every
   figure here by 15-25%.
+- **Decision (2026-11-14):** the case of record stays the arm's section totals (1.58 / 1.59); the face-total figures
+  (1.42 / 1.44) stand beside them as an open item tied to the shear-across-layers coupon (OPEN_ASSUMPTIONS.md, item 39).
+  No new hub revision for this; if another hub change is forced, the outer Z-facing root goes to R1.6 in the same revision.
 - **No geometry is changed.** The smallest change that would lift it over 1.5 at the larger totals, if wanted, is a
   larger radius at the outer root (R1.2 to about R1.6 on the Z-facing root, inside the hub's own envelope) or 1 mm more
   lug thickness; either changes the hub's hash and needs the arm's fit check again.
