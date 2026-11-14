@@ -2,7 +2,8 @@
 
 Branch `left-arm-organic-r1`.
 
-Pinned commit: PIN_PENDING. Nothing here is released.
+Pinned commit: dd12f818d24fd2bff239a1de78a0801f50ad08eb (r1g6 after review 3: bench 2b, checker, table, plate files r1h_d34). Nothing here is
+released.
 
 **Review 3 (head 131cd60) verdict: the coupon, the hub, the shim rings and the yaw lever only.**
 - The halves wait for the hub release, the hub-root reconciliation, the coupon insert result and a corrected bench 2b that passes.
