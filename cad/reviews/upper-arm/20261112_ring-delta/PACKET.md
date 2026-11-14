@@ -37,10 +37,13 @@ peak, routine) therefore passes through the two lugs as a Z couple. On rev D:
 **Design.**
 - **Hub (shoulder thread).** The lugs grow out to one straight outer face at X offset 34.4, over Y 288-296, with the R1.2 Z roots
   and an R0.8 outward root.
-  - Checked candidate: **D3c7**, the shoulder thread's local build, not yet pushed. It is D3c6 plus the Dia 3.8 lug holes and the
-    cable window at 68 deg; STL SHA-256 a73103ad...259b.
-  - All checks PASS, on the R1h halves (`../20261111_r1c-delta/r1d/r1g/D3C7_CHECK.md`). They are provisional until the pushed
-    STL matches that hash.
+  - The hub is **D3c7**: D3c6 plus the Dia 3.8 lug holes and the cable window at 68 deg.
+    - Pushed by the shoulder thread in commit 96f74abc669b20ee1ed6831b4f1c47b818df69d2 (branch `claude/project-thread-90ef87`),
+      as `cad/exports/shoulder/shoulder_hub_left_revD3c7_candidate.STL`.
+    - The real LFS object hashes to SHA-256 a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b (3,136,484 bytes),
+      the same file the checks were run on.
+  - All checks PASS, on the R1h halves (`../20261111_r1c-delta/r1d/r1g/D3C7_CHECK.md`). Final for the pushed file.
+  - The shoulder thread has the go on D3c7. Its print file is still to come from them.
   - The D3c4 and D3b checks are in `D3C4_CHECK.md` and `D3B_CHECK.md` alongside it.
 - **Our side (unchanged since R1g).**
   - A shallow seam pocket at X offset 34.6 for the whole lug height.
@@ -241,24 +244,35 @@ clearance (the mesh reads 0.36-0.40).
      The convergence run refines this corner and reads vm 4.45 / 6.04 / 6.58 becoming 5.39 / 6.54 / 7.11, so the mesh supports the r1g6
      reading.
 
-**Bench (BENCH_TESTS 2b), on the final hub only** (rewritten after review 3: D3c7, Dia 3.4 plates, r1g6 loads, readings on the
-coupon, not the lever):
+**Bench (BENCH_TESTS 2b), on the final hub only.** Rewritten after review 3: D3c7, Dia 3.4 plates, r1g6 loads, readings on the
+coupon, not the lever.
+- Joey's step-by-step sheet is `cad/upper-arm/STAGE1_PRINT_AND_BENCH.md`.
+- **Default method: no special instruments.**
+  - Torque comes from a weight hung on the 2.5 mm hex key: grams = 102 000 × N·m ÷ the measured hang distance in mm. About ±10 %.
+  - Movement is read with a 300 mm steel pointer glued to the coupon's skin below the lever. Its tip is read with photos against
+    a fixed ruler, to about 0.1 mm at R 300, which is 0.013 at r 40.
+  - The pointer's glue joint is checked by a push-and-return test, done before the loads and again before the proof.
+- **Alternative:** a torque screwdriver and a 0.01 dial indicator at r 40.
+- The pass numbers are given below at r 40 (dial), with the pointer's at R 300 in brackets (× 7.5).
+
 1. A bare fit; callipers on every ring and plate.
 2. Hole gauges: every plate hole takes a Dia 3.4 drill shank and not a 3.8; each hub lug hole takes a 3.8.
 3. Three inserts measured and pressed flush to 0.05; the scrap-block insert torque check (0.3 / 0.5 / 0.7 N·m). The coupon's own
    inserts get only 0.3 N·m until after the loads.
 4. The ring pick, then the plate pick, with a blue check of the plate top against the hub fillet; lug bolts at 0.3 N·m.
 5. The rock check.
-6. **Play reversal, bolts loosened:** ±1 kg at the hook (±0.39 N·m). The dial is on the coupon at r 40 from the hub axis, against
-   the hub. Pass: total travel at most 0.04.
-   - A pick one plate step loose (0.05 at X offset about 30.5) turns the coupon 1.6 mrad, which is 0.066 at r 40. The ±0.39 N·m
-     itself adds 0.010 elastically, and the dial reads to 0.01.
-   - So a one-step-loose joint reads about 0.076 and fails; a tight one reads 0.01-0.02.
-7. Yaw 8.7 kg at 200 mm (17 N·m), each way, read on the coupon. The FEA gives 0.22 at r 40, ±0.04 for the modulus. Pass: at most
-   0.29 loaded, back within 0.02.
-8. The stop-equivalent load (lever plus 4.5 kg sideways at the -X lug; r1g6 STOP_0: 179 N on the plate, about 26 N sideways), with
-   its own readings and pass. The X slip of the lug is recorded with the bolts loosened: at most 0.25, and back within 0.03.
-9. A 1.5 × yaw proof, 13 kg at 200 mm (25.5 N·m), as the last load: no click, crack or whitening, back within 0.03.
+6. **Play reversal, bolts loosened:** ±1 kg at the hook (±0.39 N·m). Pass: total travel at most 0.04 (0.30).
+   - A pick one plate step loose (0.05 at X offset about 30.5) turns the coupon 1.6 mrad, which is 0.066 at r 40.
+   - The ±0.39 N·m itself adds 0.010 elastically.
+   - So a one-step-loose joint reads about 0.076 (0.57) and fails; a tight one reads 0.01-0.02 (0.1-0.15).
+7. Yaw 8.7 kg at 200 mm (17 N·m), each way, read on the coupon. The FEA gives 0.22 at r 40 (1.7), ±0.04 for the modulus. Pass:
+   at most 0.29 (2.2) loaded, back within 0.02 (0.15).
+8. The stop-equivalent load: the lever plus 4.5 kg sideways at the -X lug (r1g6 STOP_0: 179 N on the plate, about 26 N sideways).
+   - Sideways, bolts tight: at most 0.05 with a dial. With the pointer method this check is lost; it becomes "no visible
+     movement, under about 0.1".
+   - The lug's X slip is recorded with the bolts loosened: at most 0.25, and back within 0.03 (dial) or no visible offset (mark).
+9. A 1.5 × yaw proof, 13 kg at 200 mm (25.5 N·m), as the last load. Pass: no click, crack or whitening, back within 0.03 (0.23).
+   Then the hub lug roots are inspected and photographed.
 10. The imprint inspection after all the loads: the plate hole edge and the hub hole rim, the plate's outer corner, and the hub
     lug's outer front edge.
 11. A 24 h re-check (rock and play reversal); then the coupon inserts' 0.5 / 0.7 N·m check.
@@ -282,7 +296,7 @@ the R1h back half in `../20261111_r1c-delta/r1d/r1g/r1h_back_sheet.png`.
   - A saved r1g6 study re-opened in a hidden instance gives no Results object out of process. Results stays None, and the
     results folder can only be read through StaticStudyOptions, which faults from Python.
   - Proposed: do the two reads right after the next real solve, while the result is in memory.
-- The hub: D3c7 to be pushed (its STL hash must match), and the shoulder thread's FE on the lug root with `r1g6_lug_loads.txt`.
+- The hub: D3c7 is pushed and checked (96f74ab). Its print file is still to come from the shoulder thread.
 - The bench (hub-end coupon first).
 
 **Superseded (record only).**
