@@ -9,7 +9,7 @@ export(j.sw, d, r"J:\code\roark-wt\<session>\cad\exports\<region>\<part>.step")
 export(j.sw, d, r"J:\code\roark-wt\<session>\cad\exports\<region>\<part>.stl")
 ```
 
-`export()` pins the options first, because they are per-machine SolidWorks settings and holly-pc's defaults differ from
+`export()` sets the options for the export and puts back what the machine had, because they are per-user SolidWorks settings (written to the registry when SolidWorks closes, so a script that left them set would change the PC for everyone) and holly-pc's defaults differ from
 Joey-PC's ([cad.md section 9](../../../conventions/cad.md#9-cad-workstation)): binary STL in mm, quality Fine, **kept in the
 model frame**, STEP AP203.
 

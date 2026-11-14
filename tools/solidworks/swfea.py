@@ -110,8 +110,9 @@ def _solver_dialogs(pid, stop, seen):
     The solver (star.exe, a child of the instance) asks Yes / No / Cancel when a body moves a long way. On a hidden
     instance nobody sees it: the solve waits for ever, --status shows busy, and every other session's launch waits
     behind it (10 minutes on 2026-11-12 before it was found). No finishes the solve with the small-displacement
-    result. Only dialogs titled "Simulation" in this instance's own process tree are read, and only that one is
-    answered; any other is logged with its text, which is the first thing to read if a solve never returns.
+    result. Only dialogs titled "Simulation" in this instance's own process tree are read. Any other dialog is logged
+    with its text and static() fails the run with it ("Fixture transfer failed" went unread on 2026-11-13 and the run
+    was reported as if it had solved); one that offers only OK is dismissed first so the solve returns.
     """
     done = set()
 
@@ -143,8 +144,15 @@ def _solver_dialogs(pid, stop, seen):
                         seen.append(('noconverge', text))
                         log('solver could not reach equilibrium: answered OK; the result is not valid')
             else:
-                seen.append(('unanswered', text))
-                log('solver dialog NOT answered, the solve may be waiting on it:', text[:300])
+                btns = [c for c in kids if win32gui.GetClassName(c) == 'Button']
+                names = [win32gui.GetWindowText(c).replace('&', '').strip() for c in btns]
+                if names == ['OK']:            # a notice with nothing to choose: dismiss it so the solve returns
+                    win32gui.PostMessage(btns[0], win32con.BM_CLICK, 0, 0)
+                    seen.append(('notice', text))
+                    log('solver notice dismissed with OK, the run will be failed with its text:', text[:300])
+                else:
+                    seen.append(('unanswered', text))
+                    log('solver dialog NOT answered, the solve may be waiting on it:', text[:300])
         except Exception:      # noqa: BLE001 - a window that closed while it was being read
             pass
         return True
@@ -450,6 +458,10 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
         raise Failed(f'{name}: the contact iteration did not converge ("Failure to achieve equilibrium"): a body with '
                      'nothing to decide which way it goes. Move the pads, or load it the way that seats it. '
                      'playbook/05-fea.md, "Contact between bodies"')
+    other = [t for k, t in seen if k in ('notice', 'unanswered')]
+    if other:                                      # e.g. "Fixture transfer failed": whatever came back was not the model asked for
+        raise Failed(f'{name}: the solver raised a dialog this helper does not know, so the result is not valid: '
+                     f'{other[0][:300]}')
     res = st.Results
     if rc or res is None:
         raise Failed(f'{name}: solve failed ({rc}). 24 is a singular model (a body free to move) or out of memory: '

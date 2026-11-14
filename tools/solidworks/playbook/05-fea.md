@@ -132,7 +132,11 @@ first. Most questions do not need a heavy solve: coarsen the global size and kee
 | about 800,000 with contact, direct sparse | | **ran out of memory** on the 32 GB machine, reported as error 24 | |
 
 `static()` refuses meshes over 450,000 nodes, or over `max_nodes=` when a job has a smaller budget; halving the element
-size multiplies the nodes by about six, so work out the finest size before starting a series. A mesh control on a face
+size multiplies the nodes by about six, so work out the finest size before starting a series. That rule holds only
+for a mesh with no local controls: with controls most of the nodes sit in the controlled faces and the global size
+hardly moves the count, so mesh once and read the count before planning (it is checked before the solve, and a refused
+mesh costs seconds). For the same reason a series that changes only the global size is not a convergence series when the
+peak sits inside a control: shrink the control with it, or say that the peak was read at one control size. A mesh control on a face
 takes the whole face; to refine one corner of a large face, put the control on its edge (`ctrl=[([edge], size)]`,
 edges from `edges_where`), which works and costs few nodes. `r.average()` is a mean over nodes, so it drifts as nodes
 crowd toward a corner: compare averages at one mesh, not across meshes. To get under it, coarsen the global size and keep the local controls: a 4 mm
