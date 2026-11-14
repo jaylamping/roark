@@ -93,8 +93,9 @@ become:
 
 ## 2b. Hub-end fit coupon: shim ring, lug plates and loads (before printing the halves: R1h back, R1g front)
 
-**Run this on the final hub only:** the shoulder thread's frozen release. The candidate today is D3c7, the shoulder thread's
-local build with Dia 3.8 lug holes and the 68 deg cable window. The ring and plate picks depend on the hub as printed, so a hub
+**Run this on the final hub only:** the shoulder thread's frozen release. The hub is D3c7, the shoulder thread's
+release, adopted 2026-11-14 at commit 355aa9b (`shoulder_hub_left.STL`, SHA-256 a73103ad…259b), with Dia 3.8 lug
+holes and the 68 deg cable window. The ring and plate picks depend on the hub as printed, so a hub
 printed before the shoulder thread freezes it forces a re-pick.
 
 **Picking the ring: start with the thickest ring, and work down until the front half closes by hand with the seam shut. Use that
@@ -150,7 +151,13 @@ by trial, once, at assembly.
 
 **Steps.**
 
-0. **Bare fit first, no ring and no plates:** lay the hub into the back coupon and close the front coupon by hand. Note whether
+0. **The hub's own checks, right after printing it** (the shoulder thread's, from its PRINT_NOTES):
+   - pull the support out of the dish;
+   - both lug holes take a 3.8 mm drill shank freely (if not, clear them by hand with a 3.8 drill);
+   - measure the spigot (Dia 71.6 in CAD) with calipers in two directions at right angles and record both;
+   - the groove's flanks are smooth, with no support marks and no sagging strands.
+
+   **Then the bare fit, no ring and no plates:** lay the hub into the back coupon and close the front coupon by hand. Note whether
    it closes, and the play along the axis and in twist. This shows the coupon and hub fit before anything is added.
 1. **Calliper check, every piece:**
    - Measure every ring (four places) and every lug plate (two places), and write the readings on the set sheet.

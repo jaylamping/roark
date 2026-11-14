@@ -43,7 +43,10 @@ peak, routine) therefore passes through the two lugs as a Z couple. On rev D:
     - The real LFS object hashes to SHA-256 a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b (3,136,484 bytes),
       the same file the checks were run on.
   - All checks PASS, on the R1h halves (`../20261111_r1c-delta/r1d/r1g/D3C7_CHECK.md`). Final for the pushed file.
-  - The shoulder thread has the go on D3c7. Its print file is still to come from them.
+  - **Released for the stage 1 print:** adopted at commit 355aa9b3c1ffd0e5c1fa4ebe013ef0fa41353b85 as
+    `cad/exports/shoulder/shoulder_hub_left.STL`, the same SHA-256.
+    - Its print file `shoulder_hub_left_revD3c7.3mf` (2 h 47 min, 81.9 g) holds the same mesh.
+    - The 3MF is on the PCs, not in the repo.
   - The D3c4 and D3b checks are in `D3C4_CHECK.md` and `D3B_CHECK.md` alongside it.
 - **Our side (unchanged since R1g).**
   - A shallow seam pocket at X offset 34.6 for the whole lug height.
@@ -296,7 +299,7 @@ the R1h back half in `../20261111_r1c-delta/r1d/r1g/r1h_back_sheet.png`.
   - A saved r1g6 study re-opened in a hidden instance gives no Results object out of process. Results stays None, and the
     results folder can only be read through StaticStudyOptions, which faults from Python.
   - Proposed: do the two reads right after the next real solve, while the result is in memory.
-- The hub: D3c7 is pushed and checked (96f74ab). Its print file is still to come from the shoulder thread.
+- The hub: D3c7 released (355aa9b) with its print file; stage 1 can print.
 - The bench (hub-end coupon first).
 
 **Superseded (record only).**

@@ -6,6 +6,12 @@
   bytes, SHA-256 a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b.
 - That equals the local build these checks were run on (`cad/_wip/shoulder_hub_d3c7_local/`, same SHA-256). So every result
   below holds for the pushed candidate as it is, and no rerun is needed.
+- **Released (2026-11-14):** the shoulder thread adopted D3c7 in commit 355aa9b3c1ffd0e5c1fa4ebe013ef0fa41353b85, as
+  `cad/exports/shoulder/shoulder_hub_left.STL` (the `_candidate` files are gone). Its real LFS object also hashes to a73103ad…259b
+  (3,136,484 bytes).
+  - The print file `shoulder_hub_left_revD3c7.3mf` (SHA-256 d8022071…397d, on holly-pc in `C:\joe\prints\shoulder-hub\`)
+    holds the same mesh: 62,728 triangles, 31,336 vertices, extents 31.86 × 78.6 × 78.6, volume 63,186.8 mm³.
+  - That folder's STL hashes to a73103ad…259b as well.
 - Before the push, this file was marked provisional: it was a copy of the shoulder thread's local build
   (`C:\joe\code\roark-wt\shoulder-study\cad\_wip\shoulder-pass1\stl_look_hubD3c7\hub.STL`).
 

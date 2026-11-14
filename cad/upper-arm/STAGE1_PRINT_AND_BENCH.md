@@ -1,14 +1,16 @@
 # Upper arm, stage 1: print the hub-end test set, then test it on the bench
 
-**Status: ready, not released.** Print it when the shoulder thread releases the hub and I say go. The two arm halves stay on hold
-until these tests pass (see "What happens after").
+**Status: ready to print, hub first, once I say go.** The shoulder thread released the hub for stage 1 (2026-11-14). The two arm
+halves stay on hold until these tests pass (see "What happens after").
 
 Stage 1 is a short test of the arm's hub end before the 10 h of halves:
+- the **shoulder hub**, printed first, because everything else is fitted to it;
 - a cut-down **hub-end coupon** (both halves);
 - the **shim rings** and **lug plates** that take up the play;
 - a printed **yaw lever** to load it.
 
-The hub is the shoulder thread's part. Everything here is in `cad/prints/upper-arm/` on branch `left-arm-organic-r1`.
+The hub is the shoulder thread's part, and its print file is on the PCs (below). Everything else is in `cad/prints/upper-arm/` on
+branch `left-arm-organic-r1`.
 
 ## 1. Print (white PETG, Cool Plate SuperTack, no glue, 0.4 High Flow nozzle)
 
@@ -19,18 +21,23 @@ For every plate:
 
 | Order | File (3MF) | Picture | Time | PETG | Differs from your arm defaults |
 | --- | --- | --- | --- | --- | --- |
-| 1 | [lug plates A](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_lug_plates_A_r1h_d34.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/reviews/upper-arm/20261112_ring-delta/r1h_d34_lug_plate_set_sheet.png) | 19 min | 1.8 g | **0.10 layers, first layer 0.25**, 100 % infill, no support, no brim |
-| 2 | [lug plates B](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_lug_plates_B_r1h_d34.3mf) | same sheet | 19 min | 1.5 g | **0.10 layers, first layer 0.20**, 100 %, no support, no brim |
-| 3 | [shim rings A](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_shim_rings_A_r1g.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/reviews/upper-arm/20261112_ring-delta/r1g_shim_ring_set_sheet.png) | 21 min | 3.8 g | **0.10 layers, first layer 0.20**, 100 %, no support, no brim |
-| 4 | [shim rings B](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_shim_rings_B_r1g.3mf) | same sheet | 21 min | 3.8 g | **0.10 layers, first layer 0.15**, 100 %, no support, no brim |
-| 5 | [shim rings C](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_shim_rings_C_r1g.3mf) | same sheet | 13 min | 1.5 g | **0.10 layers, first layer 0.20**, 100 %, no support, no brim |
-| 6 | [coupon, back](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_back_r1g_coupon.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_back_r1g_coupon_sheet.png) | 1 h 12 min | 18.2 g | none: as the halves (6 walls, 50 %, tree supports, 5 mm outer brim) |
-| 7 | [coupon, front](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_front_r1g_coupon.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_front_r1g_coupon_sheet.png) | 1 h 7 min | 17.0 g | none: as the halves |
-| 8 | [yaw lever](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_coupon_yaw_lever.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_coupon_yaw_lever_sheet.png) | 1 h 46 min | 72.4 g | **100 % infill, no support, no brim** |
-| (hub) | the shoulder thread's D3c7: [shoulder_hub_left_revD3c7_candidate.STL](https://github.com/jaylamping/roark/blob/claude/project-thread-90ef87/cad/exports/shoulder/shoulder_hub_left_revD3c7_candidate.STL) (commit 96f74ab, SHA-256 a73103ad…259b, checked against ours: `D3C7_CHECK.md`) | | | | **No sliced 3MF exists for it yet.** Its print file and settings come from the shoulder thread; don't slice it yourself until they say how it prints. |
+| **1 (first)** | **Shoulder hub, rev D3c7:** `shoulder_hub_left_revD3c7.3mf` on Joey-PC in `J:\code\prints\shoulder-hub\` (on holly-pc in `C:\joe\prints\shoulder-hub\`), with its README. The STL is [shoulder_hub_left.STL](https://github.com/jaylamping/roark/blob/claude/project-thread-90ef87/cad/exports/shoulder/shoulder_hub_left.STL) at commit 355aa9b (SHA-256 a73103ad…259b, checked against ours) | [plate](https://github.com/jaylamping/roark/blob/claude/project-thread-90ef87/hardware/shoulder/study-20261111/checks/hub_print/shoulder_hub_left_revD3c7_plate.png) | 2 h 47 min | 81.9 g | **100 % infill, no brim**; tree supports with a blocker over the groove and lugs (support only in the dish under the RS02 face). **RS02 face (the flat 50 mm ring) down, lugs up: don't turn it.** |
+| 2 | [lug plates A](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_lug_plates_A_r1h_d34.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/reviews/upper-arm/20261112_ring-delta/r1h_d34_lug_plate_set_sheet.png) | 19 min | 1.8 g | **0.10 layers, first layer 0.25**, 100 % infill, no support, no brim |
+| 3 | [lug plates B](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_lug_plates_B_r1h_d34.3mf) | same sheet | 19 min | 1.5 g | **0.10 layers, first layer 0.20**, 100 %, no support, no brim |
+| 4 | [shim rings A](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_shim_rings_A_r1g.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/reviews/upper-arm/20261112_ring-delta/r1g_shim_ring_set_sheet.png) | 21 min | 3.8 g | **0.10 layers, first layer 0.20**, 100 %, no support, no brim |
+| 5 | [shim rings B](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_shim_rings_B_r1g.3mf) | same sheet | 21 min | 3.8 g | **0.10 layers, first layer 0.15**, 100 %, no support, no brim |
+| 6 | [shim rings C](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_shim_rings_C_r1g.3mf) | same sheet | 13 min | 1.5 g | **0.10 layers, first layer 0.20**, 100 %, no support, no brim |
+| 7 | [coupon, back](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_back_r1g_coupon.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_back_r1g_coupon_sheet.png) | 1 h 12 min | 18.2 g | none: as the halves (6 walls, 50 %, tree supports, 5 mm outer brim) |
+| 8 | [coupon, front](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_front_r1g_coupon.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_front_r1g_coupon_sheet.png) | 1 h 7 min | 17.0 g | none: as the halves |
+| 9 | [yaw lever](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_coupon_yaw_lever.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_coupon_yaw_lever_sheet.png) | 1 h 46 min | 72.4 g | **100 % infill, no support, no brim** |
 
-Total: about 5 h 40 min and 120 g.
+Total: about 8 h 27 min and 202 g (the hub 2 h 47 min and 81.9 g of it).
 
+- **The hub's own notes** are in its README and in the hub section of
+  [PRINT_NOTES.md](https://github.com/jaylamping/roark/blob/claude/project-thread-90ef87/hardware/shoulder/study-20261111/cad-pass1/PRINT_NOTES.md).
+  - Leave its two small top holes (the ones a 4 mm pin won't enter) for now; they are reamed later, when the shoulder goes
+    together.
+  - The shoulder thread mentions ironing the disc face if the slicer offers it. It is not set in the 3MF, so print it as it is.
 - **Don't change the layer heights of the plates and rings.** Their thickness is built from those layers.
 - The coupons' tree supports come out of the hub seat; pick them off the ridge flanks.
 - The plates have notches (wide = 0.25, narrow = +0.05), and the rings have notches (thickness = 0.25 + 0.05 × notches).
@@ -109,6 +116,7 @@ times more than the coupon does at 40 mm.
 
 | # | Do | Pass (pointer tip at R 300) |
 | --- | --- | --- |
+| 0 | **The hub, right after printing** (shoulder thread's checks): pull the support out of the dish; push a 3.8 mm drill shank through both lug holes; measure the spigot (the round part between the groove and the lugs) with calipers in two directions at right angles; look at the groove's two sloping flanks. | Both lug holes take 3.8 freely (if not, clear them by hand with a 3.8 drill). Spigot: write both numbers down (CAD 71.6; send them to me). Flanks smooth, no support marks, no sagging strands. |
 | 1 | Bare fit: hub into the back coupon, close the front by hand. No ring, no plates. | Note only |
 | 2 | Calipers: every ring (4 places) and every plate (2 places), written on the form. | A whole set off by the same amount: note it |
 | 3 | Hole gauges: drill shanks in each plate hole and each hub lug hole. | Plate takes 3.4, **not** 3.8. Hub lug takes 3.8. |
@@ -200,7 +208,7 @@ steps.
 
 | Item | Result |
 | --- | --- |
-| Hub file and print date | |
+| Hub: print date; support out of the dish; lug holes take 3.8 (both); spigot Dia in two directions (CAD 71.6); groove flanks clean? | |
 | Bare fit (step 1): closes? play? | |
 | Ring thicknesses measured (if a set is offset, note it) | |
 | Plate thicknesses measured | |
@@ -222,5 +230,5 @@ steps.
 | Step 16 coupon inserts: moved at (0.3 / 0.5 / 0.7 / none) | |
 | Pass / fail overall | |
 
-**Photos:** the hub lug roots after the proof (both lugs, both Z faces), the ring (both faces), each plate (both faces, hole edge and top corner), the post faces round each lug bolt, both
+**Photos:** the printed hub before use (both lugs, the groove), the hub lug roots after the proof (both lugs, both Z faces), the ring (both faces), each plate (both faces, hole edge and top corner), the post faces round each lug bolt, both
 hub lug faces including the outer front edge, the ridge flank, the pointer (or dial) set-up, every pointer reading, and anything that looks wrong.
