@@ -9,7 +9,10 @@ import sys
 from swk import CAD, L, NUL, app, finish, new_part
 
 F = CAD / '_sim' / 'shoulder'
-REAR = CAD / 'shoulder' / 'left' / 'shoulder_fork_rear_left.SLDPRT'
+import os
+# FORK2_REAR_TAG: a look build of the fork rear (cad/_wip/look/<tag>) in place of the real one; the result is fork2_<TAG>_<rear tag>
+RT = os.environ.get('FORK2_REAR_TAG', '')
+REAR = (CAD / '_wip' / 'look' / RT / 'shoulder_fork_rear_left.SLDPRT') if RT else (CAD / 'shoulder' / 'left' / 'shoulder_fork_rear_left.SLDPRT')
 
 
 def vol(d):
@@ -18,7 +21,7 @@ def vol(d):
 
 def build(tag):
     front = CAD / '_wip' / 'look' / tag / 'shoulder_fork_front_left.SLDPRT'
-    d = new_part(F / f'fork2_{tag}.SLDPRT')
+    d = new_part(F / (f'fork2_{tag}_{RT}.SLDPRT' if RT else f'fork2_{tag}.SLDPRT'))
     for p in (front, REAR):
         f = d.InsertPart3(str(p), 1 | 2, '')          # solid bodies, no planes or axes
         print(tag, p.name, 'inserted', f is not None, flush=True)

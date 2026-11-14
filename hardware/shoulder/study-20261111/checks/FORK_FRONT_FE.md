@@ -1,28 +1,79 @@
-# Fork front: first finite-element cases, the yoke, and where the work stopped (2026-11-14)
+# The fork in finite elements: today's parts, the yoke, and the rear leg (2026-11-14)
 
-**Status: work in progress, stopped at 01:25 local on 2026-11-14 for a reboot of holly-pc.** This page holds the results
-so far and the queue to resume. Nothing real is changed: every build here is a look or analysis build.
+**Status:** the checks are done. Nothing real is changed: every build here is a look or analysis build. The adoption is prepared at the end of this page and waits for the word.
 
-## Short answer so far
-
-> **Corrected 2026-11-14, 03:10 local.** The first version of this page said today's fork front was under target at the
-> neck (0.92 / 0.70). That came from the fork front analysed alone, in bounds that left the rear leg and the 6808 out.
-> In the combined model the fork front passes. The alone-model tables below are kept as bounds, not as a verdict.
+## Short answer
 
 - **The fork never had a finite-element case.** C_LOAD_SHARE.md used a beam model after the two-body model failed.
 - **Combined model** (fork front and fork rear merged into one body, 6808 seat held radially): it solves, and it is the
-  one to judge by. The RS02 seat moves 0.5 mm in it, against 2.9 to 6.6 mm in the alone bounds.
-- **Today's adopted fork front passes everywhere:** lowest 1.74 (lower cheek, layer tension, sideways case). Boss root
-  3.90 / 3.29 forward and 3.64 / 1.84 sideways.
-- **The fork rear's thin leg does not:** 2.13 / 1.26 forward, 1.80 / 1.55 with the yaw reversed, **1.73 / 0.87
-  sideways** (von Mises / layer tension, target 1.5). It is where the leg holds the cable channel (Y 384-392, back face).
-- **The boss root is a sharp corner in CAD** (the boss r 22 meets the cheek's back face at Z 39 with no blend). In the
-  combined model it still reads 1.84 or better on today's part.
-- **A solid neck with a 4.5 mm cone, on today's outline, makes the sideways case worse at the boss root** (2.24 / 1.16
-  against 3.64 / 1.84): the cone's rim lands on the upper dome pocket's inner edge. Today's part needs no change there.
-- **The stop at a 60 N·m stall does not hold anywhere along the fork** (0.34 to 0.64). At the controller's 17 N·m limit
-  the same figures are 1.2 to 2.3, still under 1.5 on layer tension at the boss root, the joint and the rear leg.
-- **Still to do:** the yoke with solid neck in the combined model (running), then the fix for the rear leg.
+  one to judge by. The RS02 seat moves 0.5 mm in it, against 2.9 to 6.6 mm when the fork front is analysed alone.
+- **Today's adopted fork front passes everywhere:** lowest 1.74.
+- **The yoke with a solid neck and a blend cone at the boss root passes everywhere with more room:** lowest 2.78 on the
+  fork front. It is 8 g lighter than today's part and no softer (seat 0.47 mm against 0.49 mm).
+- **The fork rear's thin leg is under target with either fork front:** 0.87 (today) and 0.98 (yoke) on layer tension in
+  the sideways case, 1.26 and 1.37 forward. Target 1.5.
+- **The fix:** the rear leg 2 mm wider each side and 2 mm deeper at its upper stations (the LEG2 section, drawn on
+  2026-11-12 and never adopted). With it the thin section reads 3.2 or better and nothing in the design cases is under
+  1.6. It adds 2.4 g, at the back.
+- **The stop at a 60 N·m stall does not hold with any of these** (0.36 to 1.1). At the controller's 17 N·m limit the
+  yoke with the stiffer leg reads 1.27 at the joint between the two fork parts and 1.66 or better elsewhere.
+- **The boss root is a sharp corner in CAD on today's part.** The yoke gets a 4.5 mm cone there.
+
+> **Corrected 2026-11-14, 03:10 local.** The first version of this page said today's fork front was under target at the
+> neck (0.92 / 0.70). That came from the fork front analysed alone, in bounds that left the rear leg and the 6808 out.
+> In the combined model the fork front passes. The alone-model tables further down are kept as bounds, not as a verdict.
+
+## Verdict
+
+| Question | Answer |
+|---|---|
+| Is the yoke with solid neck fit to adopt? | **Yes.** Lowest figure on the fork front in the design cases 2.78 (today 1.74). Clearances as today |
+| Does it need a fix of its own? | **No.** The solid neck and the root cone are already in the look build `yokeS` |
+| What is still under 1.5? | **The fork rear's thin leg**, with either fork front. Not a yoke question, but the yoke should not be adopted without it |
+| Smallest change that clears it | **LEG2 on the fork rear:** +2 mm each side and +2 mm depth at the stations Y 380 and 402. Thin section from 0.98 to 3.22 (sideways), 1.37 to 5.5 (forward). +2.4 g |
+| What would today's adopted fork front need, if kept? | Nothing at the fork front. The same LEG2 on the fork rear |
+| Should today's part get the solid neck and cone? | **No.** On today's outline the cone's rim meets the upper dome pocket and the sideways case drops from 3.64 / 1.84 to 2.24 / 1.16 |
+| Stop at a 60 N·m stall | Does not hold (0.36 at the joint, 0.47 to 1.1 elsewhere). Joey's software-limit decision, as before |
+| Stop at the controller's 17 N·m | Yoke and stiffer leg: joint 1.27 / 1.34, lower cheek 2.3 / 1.9, rear leg 3.3 / 1.66, boss root 3.4 / 3.0. The joint between the two fork parts stays under 1.5 |
+
+## Combined model: the yoke with solid neck, and with the stiffer rear leg
+
+Safety factor, von Mises / layer tension, worst 0.5 mm ball. 0.7 mm mesh at the boss root. Analysis builds `ffYS`
+(yoke, 501,813 nodes) and `ffYS` with the fork rear look build `frL2` (504,187 nodes).
+
+| Case | Region | Today as adopted | Yoke, solid neck | Yoke and stiffer rear leg |
+|---|---|---|---|---|
+| Forward, yaw +17 (F2_MX) | Boss root | 3.90 / 3.29 | 5.92 / 4.20 | 6.41 / 4.74 |
+| | Head and neck | 3.19 / 3.24 | 5.79 / 3.41 | 6.24 / 3.65 |
+| | Lower cheek | 6.54 / 3.75 | 5.85 / 3.57 | 6.19 / 3.86 |
+| | Joint | 1.88 / 2.99 | 2.04 / 3.19 | 2.02 / 3.23 |
+| | Rear leg, thin section | **2.13 / 1.26** | **2.31 / 1.37** | 9.3 / 5.5 |
+| | Rear leg, whole | 2.13 / 1.26 | 2.31 / 1.37 | 5.30 / 3.69 |
+| Forward, yaw -17 (F2_MXn) | Boss root | 4.13 / 3.04 | 6.41 / 4.17 | 7.11 / 4.19 |
+| | Lower cheek | 6.61 / 3.84 | 5.96 / 4.34 | 6.32 / 4.47 |
+| | Joint | 1.75 / 2.31 | 1.88 / 2.51 | 1.87 / 2.47 |
+| | Rear leg, whole | 1.80 / 1.55 | 1.92 / 1.64 | 5.61 / 2.87 |
+| Forward, held by seats and pins (F2_MXs) | Boss root | 4.16 / 3.90 | 7.14 / 4.39 | not run |
+| Sideways (F2_MZ) | Boss root | 3.64 / 1.84 | 5.82 / 2.78 | 6.34 / 3.04 |
+| | Head and neck | 2.58 / 1.85 | 5.72 / 2.95 | 5.86 / 3.02 |
+| | Lower cheek | 3.10 / 1.74 | 7.20 / 3.61 | 7.85 / 3.70 |
+| | Joint | 1.40 / 2.35 | 1.62 / 2.63 | 1.62 / 2.68 |
+| | Rear leg, thin section | **1.73 / 0.87** | **1.94 / 0.98** | 6.27 / 3.22 |
+| | Rear leg, whole | 1.73 / 0.87 | 1.94 / 0.98 | 4.88 / 2.58 |
+| Stop, 1714 N on the tooth (F2_STOP) | Boss root | 0.51 / 0.36 | 1.03 / 0.85 | 0.97 / 0.85 |
+| | Head and neck | 0.57 / 0.53 | 1.01 / 0.61 | 1.11 / 0.67 |
+| | Lower cheek | 0.64 / 0.49 | 0.65 / 0.52 | 0.66 / 0.54 |
+| | Joint | 0.36 / 0.34 | 0.39 / 0.36 | 0.36 / 0.38 |
+| | Rear leg, whole | 0.45 / 0.42 | 0.48 / 0.44 | 0.94 / 0.47 |
+
+- Seat deflection, forward / sideways: today 0.49 / 0.36 mm; yoke 0.47 / 0.30 mm; yoke and stiffer leg 0.41 / 0.25 mm.
+- "Joint" is everything below Y 362: the sleeve and the joint between the two fork parts, which is one solid in this
+  model. Its figures are an upper bound for the real six-screw joint.
+- The thin section's low figure on today's fork rear sits beside the cable channel at X ±13, Z -53 to -54: a thin wall
+  between the channel and the skin. Two millimetres more width and depth roughly double that wall, which is why the
+  gain is so large.
+- Why the yoke reads higher than today's part at the neck although it has less material above the hub: its neck is
+  solid and blended where today's has two pockets and a sharp root; the dome above the hub carried next to nothing.
 
 ## Combined model: today's adopted part and today's part with the solid neck
 
@@ -140,9 +191,7 @@ Today's part with the 0.7 mm mesh at the boss root (P_*, analysis build ffT):
 - Builds: `LOOK=yoke` (two lower pockets kept, 134.3 g), `LOOK=yokeS` (solid neck and a 4.5 × 4.5 blend cone at the boss
   root, **147.2 g**, clean mesh). Today's part: 155.2 g.
 - Print: Y up as today. Three pocket ceilings fewer to support; the hub's head overhangs the neck by less than 45°.
-- Sweep with the solid-neck yoke and rim B on the flange ring (`clearance_yoke_rimB.json`): drum ↔ fork front 1.98 (as
-  today, by design), fork front ↔ hub 2.19, ring ↔ fork front 2.03 at the -11° stop (2.13 with today's flat ring),
-  ring ↔ cover 2.00. Nothing under the 2.0 rule beyond what today has.
+- Sweep: in the adoption plan below. Nothing closer than today.
 - **What the opened area shows:** the RS03's turning output face out to r 36, then a 7 mm slot between it and the lip's
   bore (r 43) that goes deep into the motor. Today the dome hides it. No wire and no pocket is exposed. The slot is
   between a turning cylinder and a fixed bore (they shear, they do not close), but it is an open way into the motor for
@@ -153,7 +202,8 @@ Today's part with the 0.7 mm mesh at the boss root (P_*, analysis build ffT):
 - **Looks worse than the quick cut:** a small notch at the top of the hub's head, where the driver-access bore for one
   RS02 screw comes out (today it comes out on top of the dome). And the shoulder ends are the tops of the two side
   strips: from above they read as the corners of a plate standing in front of the drum.
-- Sheet: [size_audit/YOKE.png](size_audit/YOKE.png) (draft: the figures block is not on it yet).
+- Sheet: [size_audit/YOKE.png](size_audit/YOKE.png): today above, the yoke with rim B and the white band below, the yoke at
+  roll +90, -11 and +45, the opened area with and without the cover ring, the 150 mm opening as a what-if, the figures.
 
 ## Rim B and the white band
 
@@ -161,45 +211,58 @@ Today's part with the 0.7 mm mesh at the boss root (P_*, analysis build ffT):
   against 29.3 g. Prints flat on its inboard face, no support. Clean mesh. Clearance: above.
 - Cover and ring in the visible white: PRINT_NOTES.md.
 
-## Stopped a second time, 01:25 local, for the reboot
+## Adoption plan (prepared, NOT run: it waits for the word)
 
-Between the two stops the queue ran hidden (`SW_VISIBLE=0`, a switch in `swk.py`: no window on the screen; it works
-with Simulation) and got this far:
+**What would change on the real parts:**
 
-- **The fork front and the fork rear do merge into one body** (`fork2_fea_part.py`, build ffTS: 188,033 mm³ kept of
-  188,029). So the combined model can be solved; no F2 case has run yet.
-- **Today's part with a solid neck and the root cone** (build ffTS, 172 g with its access bores; 516,351 nodes), boss
-  root: supported 1.34 / 0.82 (yaw +17), 1.43 / 0.89 (yaw -17), 1.31 / 0.81 held by seats and pins. Today as adopted:
-  0.93 / 0.70. Better, but its peak has moved to where the upper dome pocket (140-200°) meets the cone, at r 27: on
-  today's outline the upper pockets' inner edge needs to move out as well. The yoke has no upper pockets.
-- Seat deflection, supported: 1.45 mm (today 2.93).
-- Not kept: P_MX on ffTS had solved but its result file was not complete when I stopped; re-run it.
+| Part | Change | Mass | Source |
+|---|---|---|---|
+| Fork front | The yoke outline (`yoke.py`), solid neck, 4.5 mm cone at the boss root | 155.2 → 147.2 g | `LOOK=yokeS` |
+| Flange ring | Rolled rim B (4.2 deep, R3.2, eased to the 1.8 web by r 68.3) | 29.3 → 38.1 g | `LOOK=rimB` |
+| Fork rear | LEG2: leg +2 mm each side and +2 mm depth at the stations Y 380 and 402 | 63.7 → 66.1 g | `LEG2=1` |
+| Cover ring (new, optional) | Dark PETG ring pressed into the drum's lip: OD 86 (the lip's bore), bore Ø52, 2.5 thick at Z 33.5-36 with a 3.5 mm skirt on its outside for grip | about 14 g | not built |
+| Pitch loop cover, flange ring | Printed in the visible white (colour only) | | PRINT_NOTES.md |
 
-## To resume (in this order, one SolidWorks instance at a time, hidden)
+**Steps, in order:**
 
-All from `cad/scripts/shoulder`. The runners take a claim and beat it with the instance's PID. `export SW_VISIBLE=0`.
+1. `dims.py`: three defaults switched on, each with its date and Joey's words: `FORK_YOKE = True` (the fork front builds
+   as `yokeS` does now without `LOOK`), `RIM_B = True`, `LEG2` on in `envelope.py`. The `LOOK` names stay for comparison.
+2. Real builds of fork front, fork rear and flange ring (`build_parts.py fork_front fork_rear ring`), integrity scan of
+   each. The yoke's STL had a zero-area triangle in two of its look builds and was clean in `yokeS`: the scan decides.
+3. Clearance sweep on the real set (`check_clearance.py`), compared pair by pair with the adopted set of 2026-11-14 and
+   with the look-build sweep on this page. Stop if any pair is under 2.0 that was not before.
+4. The shell skin check (`check_shell_trim.py`): the yoke is smaller than today's fork front above the hub and the same
+   below, so it can only gain; the 2.46 mm finding at pitch -30, yaw -90 stays as it is.
+5. Exports: `cad/exports/shoulder/shoulder_fork_front_left`, `shoulder_fork_rear_left`, `shoulder_pitch_flange_ring_left`
+   (STEP and STL), each recorded with `tools/cad/record_export.py`; layout check 0 errors.
+6. Assembly: rebuild the shoulder assembly (not done at the hub adoption either: one rebuild covers both).
+7. Docs: PRINT_NOTES.md (summary table masses; fork front section: yoke, three pocket ceilings fewer, the driver-access
+   bore now comes out at the top of the hub's head; flange ring: rim B, still flat on its inboard face; fork rear: leg),
+   CAD_NOTES.md ("Adopted" entry with masses and the sweep table), SIZE_AUDIT.md (mass line, the fork front's face),
+   C_LOAD_SHARE.md (a pointer to this page in place of "the beam model is the result"), OPEN_ASSUMPTIONS item 40
+   settled.
+8. The cover ring, if wanted: a new small part (`shoulder_roll_cover_ring_left`), built, swept (2.0 to the fork front's
+   cone at Z 36, 2.86 to the motor's turning face, 3.0 to the yoke's back), exported, a line in PRINT_NOTES ("dark PETG,
+   flat, no support, press in after the eight lip screws"). It needs nothing from the other parts.
+9. One commit for the adoption (the pre-commit layout check wants the parts and their records together), then the push.
 
-1. `NOSWEEP=1 NOBUILD=1 TAGS=ffTS CASES_P="P_MX P_MXn P_MZ" bash run_p.sh`: the rest of ffTS and its five F2 cases
-   (its combined part `cad/_sim/shoulder/fork2_ffTS.SLDPRT` exists). About 25 minutes.
-2. `NOSWEEP=1 TAGS=ffYS bash run_p.sh`: builds the yoke with solid neck as an analysis build, merges it with the fork
-   rear, six P cases and five F2 cases. About 40 minutes.
-3. `NOSWEEP=1 NOBUILD=1 TAGS=ffT CASES_P=P_MZ CASES_F=F2_MX bash run_p.sh`: today's part, the one P case not reached
-   (the F2 case named there fails at once, because today's merged part is made in the next step; that is harmless).
-4. `bash run_f2.sh`: merges today's part (ffT) with the fork rear and runs its five F2 cases. About 20 minutes.
-5. `python ff_proper_post.py ffT ffTS ffYS`: the table by region for today, today with solid neck, yoke with solid
-   neck; supported, unsupported, combined.
-6. Write the figures block (`cad/_wip/shoulder-pass1/yoke_figs.json`, `{"lines": [...]}`) and re-render:
-   `python render_yoke.py ../../../../../cad/_wip/shoulder-pass1/stl_look_rimB/ring.STL` from
-   `hardware/shoulder/study-20261111/cad-pass1/scripts` (under `capped.py`, with `PYTHONPATH=.`).
-7. If today's part is confirmed under target: the smallest fix goes into the yoke design and into
-   OPEN_ASSUMPTIONS.md item 40.
+**Not in the plan:** the stop path at a stall (Joey's decision), the six-screw joint's own check, the right shoulder.
 
-`cad/_wip/shoulder-pass1/resume.sh` chains steps of this kind; read it before using it, it was written for the first
-stop.
+**Look-build sweep, all three changes together** (`clearance_yoke_adopt.json`: yoke with solid neck, rim B ring,
+fork rear with the stiffer leg; brief poses and the stops):
 
-Results on disk (not in git): `cad/_sim/shoulder/FF_*_{today,yoke,yokeT,yokeS}.npz`, `P_*_ffT.npz`,
-`P_{MXb,MXnb,MXbs}_ffTS.npz`; `cad/_wip/shoulder-pass1/ff_post.json`, `ff_proper.json`, `FF_*.txt`, `P_ffT.txt`,
-`P_ffTS.txt`, `queue5.log`.
+| Pair | Adopted set of 2026-11-14 | With the three changes |
+|---|---|---|
+| Drum ↔ fork front | 1.98 | 1.98 (by design: the drum's 2 mm envelope) |
+| Fork front ↔ hub | 2.19 | 2.19 |
+| Fork front ↔ port cap | 2.62 | 2.66 |
+| Flange ring ↔ cover | 2.00 | 2.00 |
+| Flange ring ↔ fork front | 2.13 | 2.03 (rim B, at the -11° stop) |
+| Rear cap ↔ fork rear, roll 0 and 45 | 2.00 / 1.99 | 1.99 / 1.99 |
+| Rear cap ↔ fork rear at the stops | 0.03-0.05 (the stop's contact) | 0.03-0.10 (the same contact) |
+
+Nothing moved by more than the sweep's accuracy except the ring's rim, which is still over 2.0. The stiffer leg changes
+no clearance: its extra width and depth are behind and beside the leg, away from the cap.
 
 ## Open questions
 
