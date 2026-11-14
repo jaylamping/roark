@@ -5,18 +5,55 @@ so far and the queue to resume. Nothing real is changed: every build here is a l
 
 ## Short answer so far
 
-- **The fork front never had a finite-element case.** C_LOAD_SHARE.md used a beam model after the two-body model failed.
-- **Today's adopted fork front reads under target at the neck** for the design load: 0.92 on von Mises and 0.70 on layer
-  tension with the joint to the fork rear held along Y, on a 0.7 mm mesh at the boss root. Target 1.5.
-- **It is not an artefact of the rigid fixture.** Held by its six screw-head seats and three pins with the boss face
-  free to slide, the figures are the same (0.92 / 0.72).
-- **The boss root is a sharp corner in CAD** (the boss r 22 meets the cheek's back face at Z 39 with no blend), and the
-  dome pockets begin 2.5 mm outside it (r 24.5).
-- **The yoke with pockets reads about the same as today at the neck** and worse in the lower cheek.
-- **The yoke with a solid neck and a 4.5 mm blend cone at the boss root reads about twice today's part at the neck,**
-  is 8 g lighter than today's part and 30 % stiffer. It is the yoke on the sheet.
-- **Still to do:** the same fine-mesh check on the solid-neck builds, and the combined model with the rear leg and the
-  6808, which says how the loads really share. Until then no fork front should be printed for load.
+> **Corrected 2026-11-14, 03:10 local.** The first version of this page said today's fork front was under target at the
+> neck (0.92 / 0.70). That came from the fork front analysed alone, in bounds that left the rear leg and the 6808 out.
+> In the combined model the fork front passes. The alone-model tables below are kept as bounds, not as a verdict.
+
+- **The fork never had a finite-element case.** C_LOAD_SHARE.md used a beam model after the two-body model failed.
+- **Combined model** (fork front and fork rear merged into one body, 6808 seat held radially): it solves, and it is the
+  one to judge by. The RS02 seat moves 0.5 mm in it, against 2.9 to 6.6 mm in the alone bounds.
+- **Today's adopted fork front passes everywhere:** lowest 1.74 (lower cheek, layer tension, sideways case). Boss root
+  3.90 / 3.29 forward and 3.64 / 1.84 sideways.
+- **The fork rear's thin leg does not:** 2.13 / 1.26 forward, 1.80 / 1.55 with the yaw reversed, **1.73 / 0.87
+  sideways** (von Mises / layer tension, target 1.5). It is where the leg holds the cable channel (Y 384-392, back face).
+- **The boss root is a sharp corner in CAD** (the boss r 22 meets the cheek's back face at Z 39 with no blend). In the
+  combined model it still reads 1.84 or better on today's part.
+- **A solid neck with a 4.5 mm cone, on today's outline, makes the sideways case worse at the boss root** (2.24 / 1.16
+  against 3.64 / 1.84): the cone's rim lands on the upper dome pocket's inner edge. Today's part needs no change there.
+- **The stop at a 60 N·m stall does not hold anywhere along the fork** (0.34 to 0.64). At the controller's 17 N·m limit
+  the same figures are 1.2 to 2.3, still under 1.5 on layer tension at the boss root, the joint and the rear leg.
+- **Still to do:** the yoke with solid neck in the combined model (running), then the fix for the rear leg.
+
+## Combined model: today's adopted part and today's part with the solid neck
+
+Safety factor, von Mises / layer tension, worst 0.5 mm ball. 0.7 mm mesh at the boss root. "Joint" is the region below
+Y 362 (the sleeve and the joint between the two fork parts, which is solid in this model: an upper bound for six screws).
+
+| Case | Region | Today as adopted (590,071 nodes) | Today with solid neck and cone (628,642 nodes) |
+|---|---|---|---|
+| Forward, yaw +17 (F2_MX) | Boss root | 3.90 / 3.29 | 3.99 / 2.27 |
+| | Head and neck | 3.19 / 3.24 | 4.48 / 3.73 |
+| | Lower cheek | 6.54 / 3.75 | 8.31 / 4.61 |
+| | Joint | 1.88 / 2.99 | 2.19 / 3.39 |
+| | **Rear leg** | **2.13 / 1.26** | 2.57 / 1.53 |
+| Forward, yaw -17 (F2_MXn) | Boss root | 4.13 / 3.04 | 4.05 / 2.31 |
+| | Rear leg | 1.80 / 1.55 | 2.09 / 1.85 |
+| Forward, held by seats and pins (F2_MXs) | Boss root | 4.16 / 3.90 | 3.94 / 2.27 |
+| Sideways (F2_MZ) | Boss root | 3.64 / 1.84 | **2.24 / 1.16** |
+| | Head and neck | 2.58 / 1.85 | 4.57 / 2.42 |
+| | Lower cheek | 3.10 / 1.74 | 7.22 / 3.56 |
+| | Joint | 1.40 / 2.35 | 1.60 / 2.56 |
+| | **Rear leg** | **1.73 / 0.87** | 1.90 / 0.96 |
+| Stop, 1714 N on the tooth (F2_STOP) | Boss root | 0.51 / 0.36 | 0.93 / 0.88 |
+| | Head and neck | 0.57 / 0.53 | 0.74 / 0.64 |
+| | Lower cheek | 0.64 / 0.49 | 0.69 / 0.80 |
+| | Joint | 0.36 / 0.34 | 0.43 / 0.42 |
+| | Rear leg | 0.45 / 0.42 | 0.52 / 0.46 |
+
+Seat deflection: 0.49 mm forward, 0.36 mm sideways (today); 0.39 and 0.31 mm with the solid neck.
+
+The stop figures at the roll controller's 17 N·m limit are these times 3.53: today 1.80 / 1.27 at the boss root,
+2.0 / 1.9 head and neck, 2.3 / 1.7 lower cheek, 1.27 / 1.20 joint, 1.59 / 1.48 rear leg.
 
 ## What the design load is
 
@@ -44,7 +81,7 @@ The arm's design load of check (a), applied through the RS02 seat about the arm'
 - The two Ø7 driver-access bores are suppressed (FF_*) or left out (analysis builds): they are plugged in service, and
   today's part does not mesh with them (code 8 at every size and tolerance tried).
 
-## Results so far: safety factor, von Mises / layer tension
+## The fork front alone (bounds only): safety factor, von Mises / layer tension
 
 Fork front alone, 2.0 mm mesh (FF_*), by region.
 
