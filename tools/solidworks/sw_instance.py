@@ -663,6 +663,19 @@ class Instance:
         _drop_owner(self.pid)
 
 
+def temp_problem(environ):
+    """Why SolidWorks would not start with this environment, or None. With TEMP or TMP unset, or naming a folder that
+    does not exist, it stops at a box ("Environment variable 'temp' must be set to a temp directory") that nothing
+    answers when it is hidden, and the launch waits out its whole timeout."""
+    for name in ("TEMP", "TMP"):
+        value = environ.get(name)
+        if not value:
+            return f"{name} is not set in this process: SolidWorks would stop at a box asking for a temp directory"
+        if not os.path.isdir(value):
+            return f"{name} names a folder that does not exist ({value}): SolidWorks would stop at a box"
+    return None
+
+
 def launch(timeout=300, visible=False, busy_wait=7200):
     """Start a new SolidWorks process and return an Instance attached to it by PID.
 
@@ -676,6 +689,9 @@ def launch(timeout=300, visible=False, busy_wait=7200):
     """
     if not os.path.exists(EXE):
         raise RuntimeError(f"SolidWorks not found at {EXE}")
+    problem = temp_problem(os.environ)
+    if problem:
+        raise RuntimeError(problem)
     pythoncom.CoInitialize()
     with _LaunchLock(busy_wait + 2 * timeout):
         _retire_keeper()  # before the blocker check: a hung keeper would read as an orphan and refuse the launch
