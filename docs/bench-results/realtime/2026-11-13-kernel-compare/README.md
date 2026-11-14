@@ -32,7 +32,7 @@ Facts that shaped this:
 Same load and measurement for every run, one hour each, governor `performance`, detached with `systemd-run`:
 
 ```bash
-stress-ng --vm 2 --vm-bytes 50% --cpu 4 --hdd 1 --hdd-bytes 256M --sock 2 --timeout 65m
+stress-ng --vm 2 --vm-bytes 50% --cpu 4 --hdd 1 --hdd-bytes 256M --sock 2 --temp-path /home/agent/kc/tmp --timeout 65m
 cyclictest --mlockall --smp --priority=80 --interval=1000 --distance=0 --duration=1h --histogram=2000 \
   --histfile=cyclictest-hist.txt --quiet
 ```
@@ -68,11 +68,12 @@ What the numbers say:
 - **`PREEMPT_RT` fixes the tail and leaves the average alone.** 676 µs becomes 116 µs with the measured threads sharing
   all four cores with the load; the average stays at 13 to 17 µs.
 - **Isolation fixes the average on either kernel** (1 to 2 µs), and on the stock kernel it also cuts the tail to 253 µs.
-  The isolated cores carry nothing else, so this is what realtime threads on reserved cores would see, at the price of two
-  cores for everything else.
+  The isolated cores run no other user tasks and take no device interrupts, so this is close to what realtime threads on
+  reserved cores would see, at the price of two cores for everything else. They are not idle: without `NO_HZ_FULL` and
+  `RCU_NOCB_CPU` they still take the timer tick and run their per-CPU kernel threads.
 - **RT with isolation was not better than RT alone on the worst case.** Its 158 µs is one sample on core 2 (the next are
-  151 and 142 µs; core 3's worst is 119 µs). With one hour per case, 116 against 158 µs is within run-to-run spread: it
-  shows isolation did not help the RT kernel's worst case here, not that it hurt.
+  151 and 142 µs; core 3's worst is 119 µs). With one run per case the run-to-run spread is not known, so 116 against
+  158 µs shows only that isolation did not improve the RT kernel's worst case here; it does not show that it hurt.
 - In both isolated runs `stress-ng` stayed on cores 0 and 1, `cyclictest` on cores 2 and 3, and the device interrupts
   (both SPI controllers, both SD/SDIO controllers) on CPU 0.
 
@@ -101,7 +102,10 @@ One folder per run (`stock/`, `stock-isolated/`, `rt/`, `rt-isolated/`):
 - `cyclictest-hist-over-100us.txt`: the histogram file's comment lines and every row above 100 µs with a count. Columns:
   latency in µs, then the count per measured core. These rows were transcribed from the files on the Pi, not copied
   byte for byte; in each, the row counts and the highest row per core agree with the file's own `# Max Latencies` line.
-  The full histograms (2000 rows each) and the per-minute temperature and fan logs are kept off the repo.
+  The full histograms (2000 rows each) are kept off the repo.
+- `temp-fan.txt`: temperature, fan speed, fan drive and `throttled` once a minute, 65 samples. The sample times slip by
+  a few seconds now and then because the logger ran under the same load. On the isolated runs the fan mostly stays on
+  its first step, since only two cores carry the load.
 - `stress-ng.txt`: the load generator's report.
 
 The command line in every run was the image's stock one, with ` isolcpus=2,3 irqaffinity=0,1` appended on the isolated
