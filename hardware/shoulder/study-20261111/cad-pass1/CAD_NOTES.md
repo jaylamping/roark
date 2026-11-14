@@ -822,3 +822,18 @@ thin on the bore side.
   The stall fails here as it does at the tooth; it is covered by the software limit (B_ROLL_STOPS.md).
 - **Not done:** a solve. The numbers above are hand figures.
 
+## Hub rev D3c7 candidate (2026-11-14, exported, not adopted)
+
+- **What it is:** hub D3c4's lugs, roots and fills, with the cable window at 68° (was 248°), the window's slot clipped at
+  15.7 mm along its line so the two boss tubes beside it stay whole, and the two lug bolt holes at Ø3.8 (was Ø3.4).
+- **Why the window moved:** at 248° the fork's exit is almost over the window, so the bundle has no length in the dish to
+  give or take as the yaw turns. At 68° it runs half way round the dish.
+- **Build:** `LOOK=hubD3c7 HUB_GROOVE_RING=1 HUB_D3=1 HUB_D2=f HUB_WIN_A=68 HUB_WIN_CLIP=15.7 HUB_LUG_D=3.8`.
+- **Export:** `cad/exports/shoulder/shoulder_hub_left_revD3c7_candidate.STEP/.STL`; STL SHA-256
+  `a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b`; 80.2 g.
+- **Checks:** A_HUB_LUGS.md, "D3c5 to D3c7" onward (lugs in both yaw signs, the stop case, the hub top). Gate table at
+  the end of that file.
+- **After printing:** gauge both lug holes with a 3.8 mm drill shank (PRINT_NOTES.md).
+- **Adoption** onto the real hub waits for the arm's check of this file's hash; `adopt_hub_revD.sh` is not run and still
+  names D3c6.
+

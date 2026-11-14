@@ -327,6 +327,24 @@
       "recorded": "2026-11-13T14:29:48Z"
     },
     {
+      "export": "exports/shoulder/shoulder_hub_left_revD3c7_candidate.STEP",
+      "source": "scripts/shoulder/build_parts.py",
+      "config": "",
+      "settings": "rev D3c7 candidate: D3c4's lugs with the cable window at 68 deg, its slot clipped at 15.7 mm along its line (boss tubes whole), lug bolt holes dia 3.8: LOOK=hubD3c7 HUB_GROOVE_RING=1 HUB_D3=1 HUB_D2=f HUB_WIN_A=68 HUB_WIN_CLIP=15.7 HUB_LUG_D=3.8 build_parts.py port_cap hub (built 2026-11-14 00:43Z)",
+      "sourceSha256": "e42486569a24c62d1280e37d344f49ee85a8199536f0b3a814e5ace02f857256",
+      "exportSha256": "1c6f50826240e69f01b1e3bd9c846a71af691e2bb1cf9020ad5edc81de5948f9",
+      "recorded": "2026-11-14T02:45:31Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_hub_left_revD3c7_candidate.STL",
+      "source": "scripts/shoulder/build_parts.py",
+      "config": "",
+      "settings": "rev D3c7 candidate: D3c4's lugs with the cable window at 68 deg, its slot clipped at 15.7 mm along its line (boss tubes whole), lug bolt holes dia 3.8: LOOK=hubD3c7 HUB_GROOVE_RING=1 HUB_D3=1 HUB_D2=f HUB_WIN_A=68 HUB_WIN_CLIP=15.7 HUB_LUG_D=3.8 build_parts.py port_cap hub (built 2026-11-14 00:43Z)",
+      "sourceSha256": "e42486569a24c62d1280e37d344f49ee85a8199536f0b3a814e5ace02f857256",
+      "exportSha256": "a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b",
+      "recorded": "2026-11-14T02:45:32Z"
+    },
+    {
       "export": "exports/shoulder/shoulder_hub_left_revD_candidate.STEP",
       "source": "scripts/shoulder/build_parts.py",
       "config": "",

@@ -1175,3 +1175,60 @@ Both with the 9 N inward on a 2.7 mm² patch. FFEPlus, 1.00 million nodes, stop 
   holes with a 3.8 mm drill shank, and clear them by hand with a 3.8 mm drill if it does not pass freely.**
 - **Cases:** `HUBL_STOP6_Z`, `_P`, `_S`, `_F` (unit cases) and `HUBL_STOP6_ZB` in `fea_shoulder.py`; ligament read by a
   box round the hole (X offset 20-26, Y 293.85-295.0, and X offset 24.85-34.45, Y 290-294).
+
+### Hub top on D3c7: bolted contact, both yaw signs (2026-11-14)
+
+**Why again:** the cable window moved to 68° and was clipped since the hub-top cases were last run (rev C+ and rev D).
+
+**How:** the same model as "Hub-top bolted contact" above (aluminium dummy for the RS02 output, six M4 bolt connectors
+with preload, contact on the seat, soft springs), on the D3c7 hub. **Solver and mesh differ from the record:** Intel
+direct sparse at element size 2.6 (350,266 nodes), because FFEPlus could not get through the contact step of any bolted
+case on holly-pc that day, on old geometry or new (below). A control on the rev D hub with the same mesh and solver is
+given for comparison.
+
+| Hub top, layer, peak / 1 mm (the read the record used) | Result |
+|---|---|
+| **D3c7, case A** (690 N preload, 372 N, 22.9 N·m about X, yaw +17) | 0.41 / **1.47** |
+| **D3c7, case An** (the same, yaw -17) | 0.46 / **1.67** |
+| **D3c7, case Ah** (345 N preload, the joint as specified, yaw +17) | 0.46 / **1.47** |
+| Rev C+ of record: A / Ah (FFEPlus, 575 k nodes) | 0.41 / 1.41, 0.48 / 1.64 |
+| Rev D, Ah, on this mesh and solver (control) | 0.48 / 1.72 |
+
+- **Passes the 1.2 line** in every case. Yaw +17 is the worse sign for the hub top.
+- **Against rev D on the same mesh and solver, D3c7 is about 15% lower** at the hub top's worst spot (1.47 against 1.72 for
+  Ah). That spot is in the dish floor, arm X 169.8, Y 315.9, Z -13.2: 19.5 mm from the axis, on the side away from the
+  window. In the earlier runs it was the second-highest spot; the highest was a screw hole's rim.
+- **Round the window at 68°** (worst 0.5 / 1 mm ball, layer): 1.63 / 1.64 (A), 1.87 / 1.87 (An), 1.29 / 1.29 (Ah), at the
+  slot's edge 4 mm below the top. The slot is not the weak place.
+- **Wall under the groove:** 2.7 / 4.6 or better in all three.
+- **Worst-ball read of the hub top** (`hub_top_post.py`; harsher than the read of record, which averages round the single
+  peak node): D3c7 Ah 0.65 / 0.91 against 0.69 / 1.07 for the stored rev C result, at the same place in both. The boss
+  tubes read 0.6-0.8 at their head seats (Y 298.1) and the locating holes 0.9-1.1 at 0.5 mm, also in both revisions:
+  these are the bolt connectors' bearing and the clamped rims, the reason the notes specify the low preload.
+- **No geometry change follows.**
+
+**FFEPlus and bolted contact on holly-pc, 2026-11-13/14.** Every bolted case run with FFEPlus failed with code 24 at
+the first contact iteration ("element stiffness (contact)" starts and never ends): D3c7 three times, and the rev D case
+that had solved on 2026-11-12, at 606 k and at 356 k nodes. Ruled out: memory (6 and 14 GB ceilings, 20 GB free), the
+geometry, shared scratch files in %TEMP% (a private TEMP made no difference), a crash (no record), this script (unchanged
+for these cases), a changed Simulation default (no option key written since before the run that solved). The same model
+solves with Intel direct sparse. The cause is not found; the splits still to run are a solve with the keeper instance
+off and a solve from a checkout of the 2026-11-12 code.
+
+### D3c7 candidate export (2026-11-14)
+
+`cad/exports/shoulder/shoulder_hub_left_revD3c7_candidate.STEP/.STL`, recorded. STL SHA-256
+`a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b`, 63,187 mm³, 80.2 g PETG, watertight. All six boss
+tubes whole (walls 2.19-2.47 mm, seats 100%). All sides:
+[hub_window/SHEET_hub_D3c7_candidate.png](hub_window/SHEET_hub_D3c7_candidate.png). **Not adopted:** the real hub part is
+unchanged.
+
+| Gate item on D3c7 | Result | Target |
+|---|---|---|
+| Yaw alone, either sign, at the arm's centres of pressure (247 N) | 1.89 | 1.5 |
+| G90 + yaw -17 / +17 at the arm's section totals | 1.58 / 1.59 | 1.5 |
+| The same at the arm's face totals (open item 39) | 1.42 / 1.44 | 1.5 |
+| Bound: all 17 N·m through the lugs, with G90 | 1.49 | 1.2 |
+| Elbow stop, both ways of carrying the sideways load | 2.49 | 1.2 |
+| Hub top, bolted contact (read of record) | 1.47 | 1.2 |
+
