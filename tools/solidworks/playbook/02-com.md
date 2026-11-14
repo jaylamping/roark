@@ -44,6 +44,9 @@ These are enum values written as numbers, because late binding has no constants.
 | Simulation `GetReactionForcesAndMoments(0, NUL, units, e)` | units 0 N (1 lbf); 9 columns per node: id, Fx Fy Fz Fres, Mx My Mz Mres, zero except on restrained nodes. Sum the Fx Fy Fz columns for the whole model; do not sum Fres. `GetReactionForces2` does not exist on SolidWorks 2026 |
 | Simulation `AddForce3(1, 0, -1, ..., value, ..., faces, ...)` (normal force) | the value in N goes on **each** face in the list, positive pushing into the material. `swfea.static` makes one call per face so that its number is the total |
 | Simulation `AddRemoteLoad(1, faces, 0, x, y, z, e)` | location in mm in the model frame; with `ForceUnit = 0` and `MomentUnit = 0` the force is N and the moment N·m; moments follow the right-hand rule about the model axes |
+| Simulation `AddBearingLoad(coordinate system feature, faces, e)` | the first argument is a coordinate-system **feature** whose Z is the bore axis, passed as the object (a `dispatch_array` of it is a type mismatch); the faces go as a plain list. Then `BearingLoadBeginEdit`, `BearingLoadUnit = 0` (N), `Direction = 0` (the system's X), `XDirectionValue`, `DistributionType` 0 sinusoidal or 1 parabolic, `BearingLoadEndEdit`. A positive value pushes the bore towards +X. Measured 2026-11-14 |
+| `FeatureManager.CreateCoordinateSystemUsingNumericalValues(True, x, y, z, True, ax, ay, az)` | metres and radians; makes a coordinate system without selecting anything, and face objects held before it stay valid (so does deleting it). Late binding takes it for a property: `fm._FlagAsMethod(...)` first. The order of the three angles is not documented: read the result back with `d.Extension.GetCoordinateSystemTransformByName(name).ArrayData` (first three numbers are its X axis, numbers 7 to 9 its Z axis), as `swfea._bearing_csys` does. `Extension.CreateCoordinateSystem` does not exist on SolidWorks 2026 |
+| `sw.GetMathUtility.CreateTransform(array)` | late binding reads `CreateTransform` as a property and hands back an identity transform, then fails on the call: `_FlagAsMethod('CreateTransform')` first |
 | Simulation `CreateMesh(0, size, tolerance)` | sizes in **mm**, unlike the rest of the API |
 
 ## Things that look like bugs and are not
@@ -72,6 +75,12 @@ These are enum values written as numbers, because late binding has no constants.
 
 Rebuilding from the script is the first choice ([03-modelling.md](03-modelling.md)). When the part has no script, or the
 task says to edit it, open it and change it in place:
+
+**When the change is to become a new file, `save_as` to the new name first and edit that.** `save()` writes into the
+file that is open: a run that edited `bracket.SLDPRT` and saved before `save_as` lost the original, and every later
+study ran on the wrong part without an error. After `save_as(d, new)` the open document `d` is the new file
+(`d.GetPathName` says so) and `save(d)` goes there; the original on disk is not written to (same SHA-256 after an
+edit and a save, `selftest.py verdict`, 2026-11-14). Afterwards check the original still has its old volume.
 
 | To change | Call | Then |
 | --- | --- | --- |
