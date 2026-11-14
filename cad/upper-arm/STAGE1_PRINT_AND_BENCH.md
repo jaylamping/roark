@@ -63,7 +63,7 @@ the lever.
 | 10 | Re-tighten to 0.3. Yaw: 8.7 kg at the hook, 10 s, each way. Read the dial loaded and unloaded. | **Loaded ≤ 0.29 mm**; back within 0.02 |
 | 11 | Stop load: 8.7 kg at the hook toward the front side, plus 4.5 kg hanging sideways from a cord round the coupon at the lug line, -X side, 10 s. Then the mirror. Read both dials. | **Yaw ≤ 0.29, sideways ≤ 0.05**; both back within 0.02 |
 | 12 | Same stop load with the bolts a quarter turn loose; read the sideways slip. | **Slip ≤ 0.25**; back within 0.03 after re-tightening |
-| 13 | Proof: 13 kg at the hook, 10 s, each way, bolts at 0.3. | No click, crack or whitening; back within 0.03 |
+| 13 | Proof: 13 kg at the hook, 10 s, each way, bolts at 0.3. Then open it and look at the **hub lug roots**: the outer R1.2 round where each lug's Z faces meet the hub, on both lugs, both faces, with the torch. Photograph each one. | No click; no crack or whitening anywhere, including the hub lug roots; back within 0.03 |
 | 14 | Open it and photograph: ring, ridge, plate holes, plate corners, hub lug edges. | Imprints at most "felt", nothing that catches a fingernail |
 | 15 | Close again with the same ring and plates, 0.3 N·m, leave 24 h, re-torque, redo steps 8 and 9. | Same passes |
 | 16 | Last: the coupon's 2 inserts, 0.3 → 0.5 → 0.7 N·m with the pen line. | None moves at 0.3 (record where they move) |
@@ -126,11 +126,11 @@ the lever.
 | Step 10 yaw, loaded each way / unloaded (≤ 0.29 / within 0.02) | |
 | Step 11 stop load: yaw dial, sideways dial, loaded / unloaded | |
 | Step 12 slip, bolts loose: loaded / unloaded after re-torque (≤ 0.25 / ≤ 0.03) | |
-| Step 13 proof: click / crack / whitening? Back within 0.03? | |
+| Step 13 proof: click / crack / whitening? Back within 0.03? Hub lug roots (4 places): whitening or crack? Photos taken? | |
 | Step 14 imprints (none / felt / catches) at each place, with photos | |
 | Step 15 after 24 h: step 8 and step 9 again | |
 | Step 16 coupon inserts: moved at (0.3 / 0.5 / 0.7 / none) | |
 | Pass / fail overall | |
 
-**Photos:** the ring (both faces), each plate (both faces, hole edge and top corner), the post faces round each lug bolt, both
+**Photos:** the hub lug roots after the proof (both lugs, both Z faces), the ring (both faces), each plate (both faces, hole edge and top corner), the post faces round each lug bolt, both
 hub lug faces including the outer front edge, the ridge flank, the dial set-up, and anything that looks wrong.

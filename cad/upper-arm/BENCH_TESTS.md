@@ -235,6 +235,11 @@ by trial, once, at assembly.
 11. **1.5 × yaw proof (the last load):** 13 kg at 200 mm (25.5 N·m), 10 s, each way, bolts at 0.3 N·m.
     - **Read:** the yaw dial, loaded and unloaded.
     - **Pass:** no click, no crack or whitening, and back within 0.03 of the start.
+    - **Then inspect the hub lug roots.** Open the coupon. With the torch, look at the outer R1.2 round where each lug's Z faces meet
+      the hub (X offset about 33, Y 295.6), on both lugs and both faces. Look for whitening or a crack, and photograph each one.
+      - This proof is the test of that root in the real material. The shoulder thread's FE gives shear 1.42-1.44 there at the
+        upper-bound lug force, and 1.58-1.59 at the design load.
+      - Any whitening or crack: stop and tell me.
 12. **Open and look, after all the loads:** take the bolts out and the front coupon off.
     - Check the ring: flat, not cut or crushed at its inner edge.
     - Check the ridge flank and the hub's groove flank for marks or scuffing, especially near the seam.

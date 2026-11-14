@@ -186,6 +186,15 @@ clearance (the mesh reads 0.36-0.40).
 1. **The hub lug root at the extended lug's outer face** (X offset 34.4, Y 294.9).
    - Readings: YAW ±17 shear 1.14-1.17; G90 + YAW ±17 1.00; STOP_0 vm 0.98 and shear 1.16 on the -X outer root.
    - This is the hub, and the shoulder thread's FE governs it. Our FEA hub is the D3b shape on a coarser mesh.
+   - **The shoulder thread's re-solve (D3c7, 1.0 M nodes, their `A_HUB_LUGS.md` at b399e84), at our centres of pressure:**
+     - At our section totals (governing lug 270.9 / 272.2 N): shear 1.58 / 1.59. That passes 1.5.
+     - At the larger of the section and face totals (299 / 294 N), at the outer R1.2 root (X offset 32.6-33.0, Y 295.6):
+       - G90 + YAW -17: shear 1.42, layer 1.57;
+       - G90 + YAW +17: shear 1.44, layer 1.58.
+     - **The design load is the section totals.** Both figures are stated here.
+     - It clears the 1.2 bound either way. No hub change.
+     - Accepted for the test print because the bench ends with the 1.5 × yaw proof (25.5 N·m) on the printed hub, which loads that
+       root in the real material. After the proof, the hub lug roots are inspected and photographed.
    - **STOP_0, -X lug outer front edge** (X offset 34.4, Y 293.4, Z 11.0): vm 0.74 / 1.26 / 2.80.
      - The shoulder thread's fine hub reads about 8 there (von Mises 7.98 peak, 8.71 at 0.5 mm, friction variant; 8.13 / 8.89 with
        the bolt-wall variant; their `A_HUB_LUGS.md` at b5679c6). **Their number governs.**
