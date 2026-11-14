@@ -27,35 +27,37 @@ free() { powershell -NoProfile -c '[int]((Get-CimInstance Win32_OperatingSystem)
 endjob() {      # end our session, stamp the time, release the lock (only if it is ours)
   (cd cad/scripts/arm && ARM_SW_DIR="$S" python -c "from swlib import finish; finish(); print('ended $folder')") >> $L 2>&1
   date +%s > $STAMP
-  grep -q "^left-arm-organic $(wpid) " $SL 2>/dev/null && rm -f $SL
+  slrelease
   grep -q "^$folder $$\$" $LK/owner 2>/dev/null && rm -rf $LK
 }
 ours_live() { for f in cad/_wip/arm-sw-job-*/.sw_instance_pid cad/_wip/arm-sw-fea/.sw_instance_pid; do [ -f "$f" ] && python -c "import sys; sys.path.insert(0, r'C:/joe/code/roark-wt/sw-hang-fix/tools/solidworks'); import sw_instance as S; sys.exit(0 if S._session_pid(r'$f') else 1)" 2>/dev/null && return 0; done; return 1; }
 # lock first, then the checks (the lock is what serialises launches)
 until mkdir $LK 2>/dev/null; do sleep 15; done
 echo "$folder $$" > $LK/owner
-trap 'grep -q "^$folder $$\$" $LK/owner 2>/dev/null && rm -rf $LK; grep -q "^left-arm-organic $(cat /proc/$$/winpid 2>/dev/null) " /c/joe/.fea_solve.lock 2>/dev/null && rm -f /c/joe/.fea_solve.lock' EXIT
+# the large-solve lock is held by a helper process (solve_lock_hold.py, main's big_solve layout); RELF tells it to let go
+STF=$R/_wip/.solve_lock_held_$folder; RELF=$R/_wip/.solve_lock_release_$folder
+slrelease() { [ -n "$hpid" ] || return 0; touch $RELF; for i in $(seq 30); do kill -0 $hpid 2>/dev/null || break; sleep 1; done; hpid=; }
+trap 'grep -q "^$folder $$\$" $LK/owner 2>/dev/null && rm -rf $LK; slrelease' EXIT
 while ours_live; do sleep 30; done
 until ! python "$SWI" --status 2>/dev/null | grep -q "busy"; do sleep 30; done
 ls cad/_wip/arm-sw*/HUNG_PID >/dev/null 2>&1 && { echo "STOPPED: HUNG_PID present" >> $L; exit 1; }
 if [ -f $STAMP ]; then while [ $(( $(date +%s) - $(cat $STAMP) )) -lt 180 ]; do sleep 10; done; fi
-# the machine-wide solve lock (coordinator, 2026-11-13; order fixed 14:17Z): C:\joe\.fea_solve.lock, "owner pid start folder",
-# created exclusively ONLY at the moment of launch: wait for free memory, take the lock, re-check free memory, launch. If the re-check
-# fails, release the lock and go back to waiting, so we never hold it while only waiting at the memory gate. Stale only if its PID
-# is dead. Removed after end_session. Held as well as our worktree lock.
-SL=/c/joe/.fea_solve.lock
+# The machine-wide large-solve lock C:\joe\.fea_solve.lock (RULES.md rule 6), taken ONLY at the moment of launch: wait for free
+# memory, take the lock, re-check free memory, launch; if the re-check fails, let it go and wait again. Since 2026-11-14 (coordinator)
+# it is taken in main's big_solve layout by a helper process (solve_lock_hold.py) that lives for the whole job, and a lock that looks
+# stale is NEVER removed: the helper waits and logs it for a person (a Git Bash pid in another thread's lock looked dead on 2026-11-13
+# while its solve was alive). Released by slrelease after end_session.
 wpid() { cat /proc/$$/winpid 2>/dev/null || echo $$; }
+hpid=
 while true; do
   until [ "$(free)" -ge ${MINFREE:-18000} ]; do sleep 60; done
-  if ( set -o noclobber; echo "left-arm-organic $(wpid) $(date +%s) $folder" > $SL ) 2>/dev/null; then
-    [ "$(free)" -ge ${MINFREE:-18000} ] && break
-    rm -f $SL; echo "solve lock released, memory dropped after taking it $(date +%H:%M)" >> $L; sleep 60; continue
-  fi
-  op=$(awk '{print $2}' $SL 2>/dev/null)
-  if [ -n "$op" ] && ! powershell -NoProfile -c "if (Get-Process -Id $op -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"; then
-    echo "stale solve lock (PID $op dead): removed $(date +%H:%M)" >> $L; rm -f $SL; continue
-  fi
-  sleep 30
+  rm -f $STF $RELF
+  python cad/scripts/fea/r1c/solve_lock_hold.py "left-arm-organic $folder" $STF $RELF $(wpid) $L &
+  hpid=$!
+  until [ -f $STF ] || ! kill -0 $hpid 2>/dev/null; do sleep 5; done
+  if [ ! -f $STF ]; then echo "solve lock helper ended without the lock $(date +%H:%M)" >> $L; hpid=; sleep 60; continue; fi
+  [ "$(free)" -ge ${MINFREE:-18000} ] && break
+  slrelease; echo "solve lock released, memory dropped after taking it $(date +%H:%M)" >> $L; sleep 60
 done
 D=cad/_sim/$folder; rm -rf $D; mkdir -p $D
 cp cad/_sim/ua2/UA_HUBSEAT_r1d_$MTAG.SLDPRT $D/; cp cad/_sim/ua2/${HUBSTL:-HUB_GROOVE_RING.STL} $D/HUB_GROOVE_r1d.STL
