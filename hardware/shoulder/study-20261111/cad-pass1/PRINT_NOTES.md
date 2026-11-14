@@ -77,6 +77,10 @@ Material PETG throughout. "Not sliced" applies to every orientation and support 
 - Source: CAD_NOTES "Side centre r 47"; D_6808_FITS.md; B_ROLL_STOPS.md.
 
 ### Hub (when released)
+
+- **Lug bolt holes (hub D3c7, Ø3.8):** after printing, gauge both with a 3.8 mm drill shank. If it does not pass
+  freely, clear the hole by hand with a 3.8 mm drill. The M3 bolt must be free in these holes: the arm's plates carry
+  the load, and at the elbow stop the shank comes within 0.10 mm of the wall.
 - **Orientation:** RS02 face (Y 319.86) down; spigot and lugs grow up.
 - **Supports:** in the dish annulus only (the dish floor is 1.5 mm above the bed); it pulls out at the open rim. The
   groove's load flank is a 60° overhang, 1.5 mm tall; expect about 0.2 mm of droop on it (A_HUB_LUGS.md, "Print

@@ -1137,5 +1137,13 @@ Both with the 9 N inward on a 2.7 mm² patch. FFEPlus, 1.00 million nodes, stop 
   lug carries 180 N by its section (179 in STOP_0; the solve above uses 184), its centre of pressure is 1.3 mm further
   inboard (X offset 28.9 against 30.2, Y 292.8), so its lever on the root is shorter, and its outer face and bolt-hole
   wall carry under 5 N. Its +X lug carries 72 N (81 in STOP_0).
+- **The lug's outer front edge** (arm coordinates X 136.1, Y 293.4, Z 11.0), where the arm's coarse hub reads von Mises
+  0.74 / 1.26 / 2.80: on this mesh the worst node within 1 mm of that point reads von Mises 8.0 at the peak and 8.7 at
+  0.5 mm (5.6 MPa), shear 5.4 / 6.4, layer 6.0 / 9.2, in both variants. The arm's figure there comes from its lumped plate
+  boss's step edge pressing on the lug (the 22 N it lists as a model artefact); a separate plate cannot do that. Even the
+  arm's nodal peak pressure on the outer face, 9.75 MPa, would leave von Mises above 4 there.
+- **Printed hole size:** in STOP_0 the M3 shank comes within 0.10 mm of the Ø3.8 hole's wall, so a hole printed 0.2 mm
+  undersize would touch and the bolt would start to carry load. The hole stays Ø3.8. **After printing, gauge both lug
+  holes with a 3.8 mm drill shank, and clear them by hand with a 3.8 mm drill if it does not pass freely.**
 - **Cases:** `HUBL_STOP6_Z`, `_P`, `_S`, `_F` (unit cases) and `HUBL_STOP6_ZB` in `fea_shoulder.py`; ligament read by a
   box round the hole (X offset 20-26, Y 293.85-295.0, and X offset 24.85-34.45, Y 290-294).
