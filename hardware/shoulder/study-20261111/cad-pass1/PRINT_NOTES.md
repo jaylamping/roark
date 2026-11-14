@@ -44,6 +44,9 @@ Material PETG throughout. "Not sliced" applies to every orientation and support 
 - **Orientation:** flat. No support. 5 × M3 into the drum's spoke inserts.
 
 ### Rear cap
+
+- **Three locating collars** on the drum's rear face sit in sockets in the cap (adopted 2026-11-14). Check that the cap
+  seats flat on the drum with all three collars home before driving the screws.
 - **Orientation:** front face down, so the stub's axis is vertical and the Ø40.0 stub prints round.
 - **Supports:** under the plate between rim and boss (open from the front).
 - **Fit:** the stub is Ø40.0 with a 0.5 × 45° lead-in. No coupon needed; the arm's coupon proved Ø40.0 (D_6808_FITS.md).
@@ -76,19 +79,54 @@ Material PETG throughout. "Not sliced" applies to every orientation and support 
   head would stand proud.
 - Source: CAD_NOTES "Side centre r 47"; D_6808_FITS.md; B_ROLL_STOPS.md.
 
-### Hub (when released)
+### Hub (rev D3c7, released for the stage 1 print 2026-11-14)
 
-- **Lug bolt holes (hub D3c7, Ø3.8):** after printing, gauge both with a 3.8 mm drill shank. If it does not pass
-  freely, clear the hole by hand with a 3.8 mm drill. The M3 bolt must be free in these holes: the arm's plates carry
-  the load, and at the elbow stop the shank comes within 0.10 mm of the wall.
-- **Orientation:** RS02 face (Y 319.86) down; spigot and lugs grow up.
-- **Supports:** in the dish annulus only (the dish floor is 1.5 mm above the bed); it pulls out at the open rim. The
-  groove's load flank is a 60° overhang, 1.5 mm tall; expect about 0.2 mm of droop on it (A_HUB_LUGS.md, "Print
-  orientation").
-- **Iron the disc face (Y 302).** It is an up-facing surface in this orientation, and the arm's shim ring seats on it.
-- **Holes printed Ø3.8, reamed Ø4.00:** two on the top, at -142° and 38° on r 12. They take the plain shank of the
-  partially threaded M4 screws (lengths under "Screws").
-- **Lug holes:** printed Ø3.8 for the arm's fixed shim plates; the arm thread owns that fit.
+**Print file:** `shoulder_hub_left_revD3c7.3mf` with the STL and a README, on holly-pc in `C:\joe\prints\shoulder-hub\`
+and on Joey-PC in `J:\code\prints\shoulder-hub\`. The 3MF is not in the repo (a 3MF under `cad/prints/` needs a
+pre-print gate report). STL SHA-256 `a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b`.
+
+![plate](../checks/hub_print/shoulder_hub_left_revD3c7_plate.png)
+
+| Setting | Value | Differs from the arm's PETG profile? |
+|---|---|---|
+| Printer, nozzle | P2S, 0.4 | |
+| Filament | PETG (profile Generic PETG @BBL P2S, 255 °C) | |
+| Plate | Cool Plate SuperTack, 70 °C, no glue | |
+| Layer | 0.20 mm | |
+| Walls | 6 | |
+| Infill | **100%** | **Yes** (profile 50%). The strength checks and the 80 g are for a solid part |
+| Brim | **None** | **Yes** (profile: outer, 5 mm). The foot is a flat Ø50 ring face; a brim would have to be trimmed off the face the RS02 seats on |
+| Supports | Tree, automatic, **blocked round the groove and at the two lugs** | Blockers added |
+| Sliced | **81.9 g, 2 h 47 min** | |
+
+- **Orientation:** RS02 face (Y 319.86) down; spigot and lugs grow up. Layers are normal to the yaw axis.
+- **Why this orientation, given that shear across the layers at the outer R1.2 lug root governs:** at that root the
+  layers lie across the lug's cross-section, so the governing stress is exactly the weak direction. The other two
+  orientations are worse or not printable as a fitted part:
+  - On a lug's Z face: the plates then press through the lug's thickness, across the layers, and the lug peels.
+  - On its side with the layers along the lugs: the root's stress would be in-plane, but the spigot, the groove and the
+    RS02 face would print as stacked arcs. The spigot's roundness and the groove's flanks, which the arm's ring fits on,
+    would need support on the flanks, and the hub top's bending under the six screws would then cross the layers.
+  So the lug root's margin is carried in the figures (1.58 at the section loads, on an assumed 13 MPa), not in the
+  orientation.
+- **Supports:** only in the dish annulus (its floor is 1.5 mm above the bed); they pull out at the open rim. The groove's
+  load flank is a 60° overhang, 1.5 mm tall, printed without support: expect about 0.2 mm of droop.
+- **After printing:**
+  1. Pull the support out of the dish.
+  2. **Gauge both lug holes with a 3.8 mm drill shank.** If it does not pass freely, clear the hole by hand with a
+     3.8 mm drill. The M3 bolt must be free in these holes: the arm's plates carry the load, and at the elbow stop the
+     shank comes within 0.10 mm of the wall.
+  3. **Measure the spigot** (Ø71.6 in CAD) with calipers in two directions at right angles and report both. The arm's
+     ring and halves are fitted to the printed size.
+  4. **Look at the groove's flanks:** smooth, no support marks, no sagging strands.
+- **Iron the disc face (Y 302)** if the slicer offers it for that face: it is an up-facing surface, and the arm's shim
+  ring seats on it. Not set in the 3MF.
+- **Holes printed Ø3.8, reamed Ø4.00:** two on the top, at -142° and 38° on r 12, for the plain shank of the partially
+  threaded M4 screws. Ream when the shoulder goes together, not for the stage 1 fit.
+- **Bought parts the hub itself needs:** none to print or to fit the arm's parts to it. To bolt it to the RS02 later:
+  six M4 screws with washers (four M4 × 28 or × 30 and two partially threaded ones for the reamed holes, lengths under
+  "Screws"). The M3 lug bolts and their inserts belong to the arm's parts. Whether these are on the bench list is not
+  recorded in this repo.
 
 ### Pitch loop cover
 - **Orientation:** not settled. Back wall (X 75) down puts the whole wall on support, because the feed riser stands
@@ -126,8 +164,7 @@ clamps nothing.**
 | Fork front → RS02 body | 5 × **M3 × 12** on PCD 73 at -96 / -56 / -16 / 104 / 144° | 9 × M3, depth 8 (given from the output side) | Seat 6.5 mm. 5.5 mm into the motor. M3 × 16 bottoms. **Check on the motor** that the holes are threaded from the rear, as the old bracket used them |
 | Fork rear → fork front (joint) | 6 × ISO 7380 M4 button heads: **2 × M4 × 10** (X ±17) and **4 × M4 × 8** | M4 heat-set inserts, bore Ø5.6 × 7.3-7.8 deep | The recesses are about 3.1 mm deep, so a DIN 912 head would stand proud. **Use short inserts (4 mm):** a standard 8.1 mm insert stands proud of the joint face |
 | Flange ring → drum spokes | 5 × **M3 × 5** | M3 × 4 inserts, bore 3.8 deep | Ring 1.8 mm. M3 × 6 bottoms in the bore |
-| Rear cap → drum | 3 × **M3 × 14 or M3 × 16, thread-forming** (for plastic), at r 50, 0 / 180 / 270° | Ø2.6 pilots, 8.5 deep, in the drum | 8.3 mm of cap under the head. M3 × 14 gives 5.7 mm in the pilot, M3 × 16 gives 7.7; **M3 × 18 bottoms.** **Open:** the pilots have only 0.7 mm of wall toward the drum's bore, and these screws carry the roll stop's reaction ([OPEN_ASSUMPTIONS.md](../checks/OPEN_ASSUMPTIONS.md), item 38) |
-| Rear cap → drum, **candidate fix (not adopted yet)** | 3 × **M2.5 × 14 or M2.5 × 16, thread-forming** (for plastic, pan or cap head up to Ø5.0), at r 50.6, 0 / 180 / 270° | Ø2.1 pilots through a 2.5 mm collar on the drum, 11 mm deep from the collar's top | 5.6 mm of cap under the head. M2.5 × 14 gives 8.2 mm in the pilot, M2.5 × 16 gives 10.2; **M2.5 × 18 bottoms.** These replace the M3 when the fix is adopted ([CAD_NOTES.md](CAD_NOTES.md), "Rear cap screws: fix candidate"). **To have in hand: 3 (and spares)** |
+| Rear cap → drum | 3 × **M2.5 × 14, thread-forming** (for plastics; pan or cap head up to Ø5.0), at r 50.6, 0 / 180 / 270°. M2.5 × 16 also fits | Ø2.1 pilots through a 2.5 mm locating collar on the drum, 11 mm deep from the collar's top | 5.6 mm of cap under the head. M2.5 × 14 gives 8.2 mm in the pilot; × 16 gives 10.2 with 0.8 to spare; **M2.5 × 18 bottoms.** The collars locate the cap and carry the roll stop's reaction; the screws only clamp. **Buy 3, and spares.** (Adopted 2026-11-14; before that the parts took M3 at r 50, which no longer fit) |
 
 ## Low preload and re-torque (every printed-to-RobStride joint)
 

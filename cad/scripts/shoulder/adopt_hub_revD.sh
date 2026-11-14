@@ -47,8 +47,7 @@ s = s.replace(k, "HUB_WIN_CLIP = float(os.environ.get('HUB_WIN_CLIP', '15.7'))")
 g = "HUB_LUG_D = float(os.environ.get('HUB_LUG_D', '0'))"
 assert g in s, 'lug hole line not found'
 s = s.replace(g, "HUB_LUG_D = float(os.environ.get('HUB_LUG_D', '3.8'))   # rev D3c7 adopted: the bolt is free in the hub")
-io.open(p, 'w', encoding='utf8', newline='
-').write(s)
+io.open(p, 'w', encoding='utf8').write(s)
 print('dims: HUB_GROOVE_RING, HUB_D3 on, HUB_D2 f, HUB_WIN_A 68, HUB_WIN_CLIP 15.7, HUB_LUG_D 3.8 by default')
 PYEOF
 

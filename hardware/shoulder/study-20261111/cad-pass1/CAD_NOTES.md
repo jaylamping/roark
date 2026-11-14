@@ -834,6 +834,67 @@ thin on the bore side.
 - **Checks:** A_HUB_LUGS.md, "D3c5 to D3c7" onward (lugs in both yaw signs, the stop case, the hub top). Gate table at
   the end of that file.
 - **After printing:** gauge both lug holes with a 3.8 mm drill shank (PRINT_NOTES.md).
-- **Adoption** onto the real hub waits for the arm's check of this file's hash; `adopt_hub_revD.sh` is not run and still
-  names D3c6.
+- **Adopted 2026-11-14** (below).
+
+## Adopted 2026-11-14: hub rev D3c7 and the rear cap screw fix
+
+**Hub.** `adopt_hub_revD.sh`, after the arm thread's check of the candidate's hash. The switches are now the defaults in
+`dims.py` (`HUB_GROOVE_RING`, `HUB_D3`, `HUB_D2=f`, `HUB_WIN_A=68`, `HUB_WIN_CLIP=15.7`, `HUB_LUG_D=3.8`).
+- The rebuilt hub's STL is **byte for byte the candidate**: SHA-256
+  `a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b`. 63,181 mm³, 80.2 g. Integrity PASS; all six boss
+  tubes whole (walls 2.19-2.47 mm, seats 100%).
+- Released exports replaced: `cad/exports/shoulder/shoulder_hub_left.STEP/.STL`. All hub candidate exports removed.
+
+**Rear cap screws.** `CAPFIX` is now on by default (`CAPFIX=0` builds the old M3 at r 50). The rebuilt drum and cap are
+byte for byte the look build checked in "Rear cap screws: fix candidate": 3 × M2.5 thread-forming at r 50.6, a 12 mm
+locating collar round each pilot on the drum, a socket and a backing pad in the cap. Outside unchanged.
+- Drum 178,789 mm³, 227.1 g; cap 85.4 g. Integrity PASS on both.
+- First exports of both: `cad/exports/shoulder/shoulder_roll_drum_left.STEP/.STL`,
+  `shoulder_roll_cap_left.STEP/.STL`, recorded.
+- Screws: 3 × M2.5 × 14 thread-forming (PRINT_NOTES.md).
+
+**All sides:** [hub](adopted-20261114/SHEET_hub.png), [drum](adopted-20261114/SHEET_drum.png),
+[cap](adopted-20261114/SHEET_cap.png).
+
+**Masses now** (solid PETG 1.27 g/cc, from the build meshes):
+
+| Part | g |
+|---|---|
+| Drum with pitch adaptor | 227.1 |
+| Fork front | 155.2 |
+| Rear cap | 85.4 |
+| Hub | 80.2 |
+| Fork rear | 63.7 |
+| Flange ring | 29.3 |
+| Port cap, access plugs | 2.1 |
+| **Shoulder total** | **643.0** |
+| Pitch loop cover (torso side) | 102.2 |
+
+**Clearance sweep after the adoption** (`check_clearance.py`, the full run: roll -12 to +111, yaw ±90, the brief's
+poses; 58 pairs; distances good to about ±0.4 mm), against the sweep of 2026-11-13:
+
+| Pair | Now | Before | |
+|---|---|---|---|
+| Cap ↔ fork rear | 0.03 | 0.02 | The stop tooth in its slot at the two stops: contact by design |
+| Flange ring ↔ fork front | 1.04 | 1.05 | At roll -12, one degree past the inward stop |
+| Drum ↔ fork front | 1.98 | 1.98 | The 2 mm shut line (within the method's ±0.4) |
+| Flange ring ↔ cover | 2.00 | 2.00 | |
+| Fork front ↔ hub | 2.19 | 2.19 | |
+| Drum ↔ RS02 | 2.59 | 2.60 | |
+| Fork front ↔ port cap | 2.62 | 2.62 | |
+| Hub ↔ RS02 | 3.44 | 3.44 | |
+
+- **Nothing moved:** every pair is within 0.01 mm of the earlier sweep except drum ↔ fork rear (9.15 → 8.46, the collars)
+  and RS02 ↔ torso (25.97 → 26.28). No new pair under 2.0. No contact with the frame, the gussets or the wings.
+- The three figures under 2.0 are the same three as before the adoption.
+
+**Shell at the -11° stop** (`check_shell_trim.py`):
+- Upper spine pads and the right lower pad: more than 3.5 mm.
+- Left lower spine pad: 0.01 mm from the upper arm at pitch -30°, yaw -45° (the known item; the shell's trim proposal,
+  hardware/shell/README.md).
+- **Shell skin: 2.46 mm from the fork front** at pitch -30°, yaw -90° (rev A frame X 142-143, Y 332-342, just below the
+  r 80 opening). **This is under the 3 mm the check asks for, and it is not from this adoption:** the fork front is
+  unchanged since 2026-11-13. The earlier note ("3.5 mm or more") was taken before the fork front's true-wrap front and
+  the plug channel; the shell check was not repeated after them. 0.54 mm of skin trim there would restore 3 mm. Open
+  item for the shell's change list.
 

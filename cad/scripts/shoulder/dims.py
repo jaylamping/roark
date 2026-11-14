@@ -58,7 +58,7 @@ BELL = dict(x=(106.3, 113.0, 120.0, 127.0, 134.0, 141.0), top=60.0, bot=41.0, fr
 CAP_SCREW_ANGLES = [0.0, 180.0, 270.0]   # SMOOTH: 3 x M3 thread-forming, axial, inside the outline, into 2.6 mm pilots in the drum wall
 CAP_SCREW_R = 50.0
 CAP_BOSS_R = 50.0                 # the cap's screw bosses (r 5) stay centred here whatever the screw circle: further out they stand proud of the cap's skin
-# CAP FIX candidate (2026-11-13, LOOK=capfix or CAPFIX=1; default off): the M3 pilots at r 50 have only 0.7 mm of wall toward
+# CAP FIX (candidate 2026-11-13, adopted 2026-11-14; CAPFIX=0 for the old screws): the M3 pilots at r 50 have only 0.7 mm of wall toward
 # the drum's bore (r 48), and moving an M3 out breaks the cap's skin at the head pocket. So: 3 x M2.5 thread-forming at r 50.6
 # (pilot dia 2.1: 1.55 mm of wall to the bore, 4.3 to the skin; head pocket dia 5.2: 1.8 mm of cap outside it), and a
 # locating collar round each pilot on the drum's rear face (r 48.2-53.0, 8 mm wide, 2.5 high) in a pocket in the cap's
@@ -72,7 +72,7 @@ CAP_BOSS_R = 50.0                 # the cap's screw bosses (r 5) stay centred he
 IB_OPEN = dict(ibA=[(27.0, 45.0, -20.0, 40.0, 3.0), (27.0, 45.0, 50.0, 130.0, 3.0), (27.0, 45.0, 140.0, 200.0, 3.0)],
                ibB=[(26.5, 62.0, -28.0, 208.0, 3.0)],
                ibC=[(28.0, 44.0, -20.0, 200.0, 4.0)])
-CAPFIX = os.environ.get('LOOK', '') == 'capfix' or bool(os.environ.get('CAPFIX'))
+CAPFIX = os.environ.get('CAPFIX', '1') != '0'   # adopted 2026-11-14 with hub D3c7 (CAPFIX=0 builds the old M3 at r 50)
 # Collars 12 mm wide (half angle 6.8 deg at r 50.6; the lug slots at +-22.5 deg leave room to 14 deg). The cap's r 5 boss is
 # narrower than that socket, so a pad (r 46.8-52, 5 mm deep, 2.5 mm past each socket end) backs the socket's end walls.
 CAP_FIX = dict(r=50.6, pilot_r=1.05, hole_r=1.45, pocket_r=2.6, collar_r=(48.2, 53.0), collar_half=6.8, collar_h=2.5, socket_r=(48.0, 53.2), socket_half=7.1, socket_d=2.7,
@@ -168,9 +168,9 @@ BRG_LIP_Z = -47.7                # check (d): the outer-race lip 0.4 behind the 
 STUB_LEAD = 0.5                  # check (d): 0.5 x 45 lead-in on the stub's free end (stub stays Ø40.0, as the arm's coupon)
 # ---- hub (frozen interface; dished top) ----
 
-HUB_WIN_A = float(os.environ.get('HUB_WIN_A', '7.9'))   # D3c4 candidate: 248 (back half, midway between the -82 / -142 boss tubes)
-HUB_WIN_CLIP = float(os.environ.get('HUB_WIN_CLIP', '0'))   # D3c6: the window's slot is not cut inside this distance along its centre line (15.7 keeps both boss tubes beside it whole); 0 = off
-HUB_LUG_D = float(os.environ.get('HUB_LUG_D', '0'))   # D3c7: lug bolt holes opened to this diameter (3.8, as the arm's plate holes; the imported hub has 3.4); 0 = as imported
+HUB_WIN_A = float(os.environ.get('HUB_WIN_A', '68'))   # rev D3c6 adopted: front half, one-way cable loop   # D3c4 candidate: 248 (back half, midway between the -82 / -142 boss tubes)
+HUB_WIN_CLIP = float(os.environ.get('HUB_WIN_CLIP', '15.7'))   # D3c6: the window's slot is not cut inside this distance along its centre line (15.7 keeps both boss tubes beside it whole); 0 = off
+HUB_LUG_D = float(os.environ.get('HUB_LUG_D', '3.8'))   # rev D3c7 adopted: the bolt is free in the hub   # D3c7: lug bolt holes opened to this diameter (3.8, as the arm's plate holes; the imported hub has 3.4); 0 = as imported
 # Hub lower half, prepared for the arm joint work (all OFF by default; the frozen interface is unchanged when off):
 HUB = dict(spigot_ext_on=0, spigot_ext_len=6.0, spigot_taper=0.0, spigot_ri=28.0, spigot_ro=35.8, spigot_y0=296.0,
            groove_on=1,
@@ -243,17 +243,17 @@ if os.environ.get('JOINT2'):          # the earlier two-screw joint, for the loo
 HUB_RIM_CHAMFER = 0.5 if os.environ.get('HUB_CHAMFER') else 0.0
 # REV D candidate (arm thread's split-collar stop case, 2026-11-12): the groove a full ring at full depth (no run-outs) and the
 # inward wall fill a full ring (r 23-28.2). Default off until the arm thread's result says it fixes the stop case.
-HUB_GROOVE_RING = bool(os.environ.get('HUB_GROOVE_RING'))   # hub-top fix (A_HUB_LUGS): 0.5 x 45 on the six screw-hole rims at the RS02 face
+HUB_GROOVE_RING = os.environ.get('HUB_GROOVE_RING', '1') != '0'   # rev D adopted   # hub-top fix (A_HUB_LUGS): 0.5 x 45 on the six screw-hole rims at the RS02 face
 # REV D2 (bolster on rev D, default off; needs HUB_GROOVE_RING): '1' the inward fill deepened to r 20 (the lugs' inner
 # corners are at r 19.4) and carried up to the floor as a 45 deg cone, outside the cable sector (-22..38 deg), where it only goes to
 # r 21 (bundle r 15.5-20 + 1); '2' adds a backing block (r 14.5-19.4) behind the -X lug below Y 296, clear of the hub-screw
 # driver columns at 158 and 218 deg. No interface surface changes (groove, r 35.8, lug faces, holes, land).
 # 'c' trimmed: the r 20 bore only behind the -X lug (140-220 deg, Y 296-302.3, 45 deg top) plus the cable-sector r 21; 'd' = 'c'
 # plus the backing; 'e' D2's full profile (bore + 45 deg cone into the floor) over 140-220 deg only, plus the cable-sector r 21
-HUB_D2 = os.environ.get('HUB_D2', '') if HUB_GROOVE_RING else ''
+HUB_D2 = os.environ.get('HUB_D2', 'f') if HUB_GROOVE_RING else ''   # rev D3c4 adopted: r 20 fill behind both lugs
 # REV D3 (D3b as agreed 2026-11-13 05:43Z; yaw torque path, default off): both lugs grown outward to one straight outer face at
 # X offset 34.4 (from 29.5) over their whole height, Y 288 to the spigot underside (Y 296), on their own Z faces (Z 1.0 / 11.0).
 # The arm's seam-split collar pockets pinch the lugs along Z through picked flat shim plates, so the yaw torque bears on the
 # whole lug face at a larger radius instead of through the lug bolts. Also remakes the spigot skin (topology; see build_parts)
-HUB_D3 = bool(os.environ.get('HUB_D3')) and HUB_GROOVE_RING      # on rev D, with or without D2
+HUB_D3 = os.environ.get('HUB_D3', '1') != '0' and HUB_GROOVE_RING      # rev D3 adopted
 CH_DZ = -1.0 if os.environ.get('LEG2') else 0.0   # LEG2 mock-up: the fork rear's channels 1 mm further back (front wall 3.4)

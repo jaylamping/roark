@@ -257,110 +257,56 @@
     {
       "export": "exports/shoulder/shoulder_hub_left.STEP",
       "source": "shoulder/left/shoulder_hub_left.SLDPRT",
-      "config": "Default",
-      "settings": "STEP (SolidWorks default AP214), mm",
-      "sourceSha256": "625c70d823630b4958f0a7fc9dec6373f982ffeb452d0842ecad83bf25d53047",
-      "exportSha256": "39f002b915ce916eb8ff256c39f99f4f1015a02a0972ccfe14087cd88802f690",
-      "recorded": "2026-11-12T00:06:21Z"
+      "config": "",
+      "settings": "rev D3c7: full-ring groove and fill, 2 x \u00d83.8 locating holes, R1.2 Z lug roots, lugs to X 34.4 with R0.8 outward roots (yaw torque path), cable window at 68 deg clipped clear of the boss tubes, r 20 fill behind both lugs",
+      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
+      "exportSha256": "744e2f78e9fa6378f2e564c9d25416794b778e52ec63a30b9a1718691056f2a0",
+      "recorded": "2026-11-14T02:51:53Z"
     },
     {
       "export": "exports/shoulder/shoulder_hub_left.STL",
       "source": "shoulder/left/shoulder_hub_left.SLDPRT",
-      "config": "Default",
-      "settings": "STL binary, mm, custom: deviation 0.01 mm, angle 5 deg, model coordinates kept",
-      "sourceSha256": "625c70d823630b4958f0a7fc9dec6373f982ffeb452d0842ecad83bf25d53047",
-      "exportSha256": "523eb9946660f90e92bf84c16c820bc1c9c4296ebbe1852d6a1f80397356d176",
-      "recorded": "2026-11-12T00:06:21Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_hub_left_revD3_candidate.STEP",
-      "source": "scripts/shoulder/build_parts.py",
       "config": "",
-      "settings": "rev D3 candidate: rev D (full-ring groove and fill, 2 x \u00d83.8 locating holes, R1.2 Z lug roots) + lugs extended to X offset 34.4 (Y 288-294.5) and 36.35 (Y 294.5-297.6, 45 deg top): LOOK=hubD3 HUB_GROOVE_RING=1 HUB_D3=1 build_parts.py port_cap hub",
-      "sourceSha256": "10a076ee44c12ec01972e5d527094aefeddc9e8d7be571797189904614fe03cf",
-      "exportSha256": "f3cde3d9537451eac148e7f04a0d0d5cc5ec2537a5182b9f712d9ab97076b35d",
-      "recorded": "2026-11-13T03:09:41Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_hub_left_revD3_candidate.STL",
-      "source": "scripts/shoulder/build_parts.py",
-      "config": "",
-      "settings": "rev D3 candidate: rev D (full-ring groove and fill, 2 x \u00d83.8 locating holes, R1.2 Z lug roots) + lugs extended to X offset 34.4 (Y 288-294.5) and 36.35 (Y 294.5-297.6, 45 deg top): LOOK=hubD3 HUB_GROOVE_RING=1 HUB_D3=1 build_parts.py port_cap hub",
-      "sourceSha256": "10a076ee44c12ec01972e5d527094aefeddc9e8d7be571797189904614fe03cf",
-      "exportSha256": "e0eae4049416d30864452735c1c26379e816f9671c05088568a696dee943cb7d",
-      "recorded": "2026-11-13T03:09:41Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_hub_left_revD3b_candidate.STEP",
-      "source": "scripts/shoulder/build_parts.py",
-      "config": "",
-      "settings": "rev D3b candidate: rev D + lugs grown to one straight outer face at X offset 34.4 (Y 288-296), R0.8 outward roots, R1.2 Z roots, square spigot edge over the lug bands, spigot skin remade (topology): LOOK=hubD3b HUB_GROOVE_RING=1 HUB_D3=1 build_parts.py port_cap hub",
-      "sourceSha256": "a740bd93c3c0a1b1acf5719bb5c681e5d062ed4ee435d743eb0d5ca5d19ff5ca",
-      "exportSha256": "4b65c86806d92c93c9e0ce69b30aa94bae92f6f5b66b7f8341de47c3bafa5799",
-      "recorded": "2026-11-13T08:15:14Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_hub_left_revD3b_candidate.STL",
-      "source": "scripts/shoulder/build_parts.py",
-      "config": "",
-      "settings": "rev D3b candidate: rev D + lugs grown to one straight outer face at X offset 34.4 (Y 288-296), R0.8 outward roots, R1.2 Z roots, square spigot edge over the lug bands, spigot skin remade (topology): LOOK=hubD3b HUB_GROOVE_RING=1 HUB_D3=1 build_parts.py port_cap hub",
-      "sourceSha256": "a740bd93c3c0a1b1acf5719bb5c681e5d062ed4ee435d743eb0d5ca5d19ff5ca",
-      "exportSha256": "b221df3d4bfcee6289281e568aef33c5625bdb8d5bf88b760e75e2013b3ec80e",
-      "recorded": "2026-11-13T08:15:18Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_hub_left_revD3c4_candidate.STEP",
-      "source": "scripts/shoulder/build_parts.py",
-      "config": "",
-      "settings": "rev D3c4 candidate: rev D3b + cable window moved 7.9 -> 248 deg (back half, between the -82 / -142 boss tubes), r 20 local bore fill behind both lugs (Y 296-302.3, 45 deg top), no cable-sector fill: LOOK=hubD3c4 HUB_GROOVE_RING=1 HUB_D3=1 HUB_D2=f HUB_WIN_A=248 build_parts.py port_cap hub",
-      "sourceSha256": "1cbe3566f9e8df90d24f3bc0d3dfcf1d379a41ac9f5acaddb811dabf43af6e06",
-      "exportSha256": "aabe958c6e4cb5a059528dafeb301f0547b27f9151c3b788cee3e30eb2916716",
-      "recorded": "2026-11-13T14:29:47Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_hub_left_revD3c4_candidate.STL",
-      "source": "scripts/shoulder/build_parts.py",
-      "config": "",
-      "settings": "rev D3c4 candidate: rev D3b + cable window moved 7.9 -> 248 deg (back half, between the -82 / -142 boss tubes), r 20 local bore fill behind both lugs (Y 296-302.3, 45 deg top), no cable-sector fill: LOOK=hubD3c4 HUB_GROOVE_RING=1 HUB_D3=1 HUB_D2=f HUB_WIN_A=248 build_parts.py port_cap hub",
-      "sourceSha256": "1cbe3566f9e8df90d24f3bc0d3dfcf1d379a41ac9f5acaddb811dabf43af6e06",
-      "exportSha256": "5b919048fcd16d2bcbe1205692b1f6b713065afa756cdfb93bbb8e12977a44cc",
-      "recorded": "2026-11-13T14:29:48Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_hub_left_revD3c7_candidate.STEP",
-      "source": "scripts/shoulder/build_parts.py",
-      "config": "",
-      "settings": "rev D3c7 candidate: D3c4's lugs with the cable window at 68 deg, its slot clipped at 15.7 mm along its line (boss tubes whole), lug bolt holes dia 3.8: LOOK=hubD3c7 HUB_GROOVE_RING=1 HUB_D3=1 HUB_D2=f HUB_WIN_A=68 HUB_WIN_CLIP=15.7 HUB_LUG_D=3.8 build_parts.py port_cap hub (built 2026-11-14 00:43Z)",
-      "sourceSha256": "e42486569a24c62d1280e37d344f49ee85a8199536f0b3a814e5ace02f857256",
-      "exportSha256": "1c6f50826240e69f01b1e3bd9c846a71af691e2bb1cf9020ad5edc81de5948f9",
-      "recorded": "2026-11-14T02:45:31Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_hub_left_revD3c7_candidate.STL",
-      "source": "scripts/shoulder/build_parts.py",
-      "config": "",
-      "settings": "rev D3c7 candidate: D3c4's lugs with the cable window at 68 deg, its slot clipped at 15.7 mm along its line (boss tubes whole), lug bolt holes dia 3.8: LOOK=hubD3c7 HUB_GROOVE_RING=1 HUB_D3=1 HUB_D2=f HUB_WIN_A=68 HUB_WIN_CLIP=15.7 HUB_LUG_D=3.8 build_parts.py port_cap hub (built 2026-11-14 00:43Z)",
-      "sourceSha256": "e42486569a24c62d1280e37d344f49ee85a8199536f0b3a814e5ace02f857256",
+      "settings": "rev D3c7: full-ring groove and fill, 2 x \u00d83.8 locating holes, R1.2 Z lug roots, lugs to X 34.4 with R0.8 outward roots (yaw torque path), cable window at 68 deg clipped clear of the boss tubes, r 20 fill behind both lugs",
+      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
       "exportSha256": "a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b",
-      "recorded": "2026-11-14T02:45:32Z"
+      "recorded": "2026-11-14T02:51:54Z"
     },
     {
-      "export": "exports/shoulder/shoulder_hub_left_revD_candidate.STEP",
-      "source": "scripts/shoulder/build_parts.py",
+      "export": "exports/shoulder/shoulder_roll_cap_left.STEP",
+      "source": "shoulder/left/shoulder_roll_cap_left.SLDPRT",
       "config": "",
-      "settings": "rev D candidate with the two \u00d83.8 locating holes and R1.2 Z-facing lug roots: LOOK=hubD HUB_GROOVE_RING=1 build_parts.py port_cap hub",
-      "sourceSha256": "9bb4a997a00f84ce2d9deea4bbe8f17fdf7f80771e8d0309c8cec56aef097a46",
-      "exportSha256": "3c9a836dd1860e0b698fb8bf0c1bd0f3c8f01a9158c0a1b9acfc3c5c96bde92c",
-      "recorded": "2026-11-12T16:43:08Z"
+      "settings": "rear cap screw fix (3 x M2.5 thread-forming at r 50.6, 12 mm locating collars on the drum in sockets in the cap), adopted 2026-11-14: build_parts.py drum cap",
+      "sourceSha256": "0eb6a2659e16e82cfd9059beb0ad7e3fa631a89fc03b1b4952ada0dad4950bf7",
+      "exportSha256": "75dd93b90fbf725d70a65f234cf0f0835f3ed90fdf0d6ab5a215fba3a5e9f97d",
+      "recorded": "2026-11-14T02:55:22Z"
     },
     {
-      "export": "exports/shoulder/shoulder_hub_left_revD_candidate.STL",
-      "source": "scripts/shoulder/build_parts.py",
+      "export": "exports/shoulder/shoulder_roll_cap_left.STL",
+      "source": "shoulder/left/shoulder_roll_cap_left.SLDPRT",
       "config": "",
-      "settings": "rev D candidate with the two \u00d83.8 locating holes and R1.2 Z-facing lug roots: LOOK=hubD HUB_GROOVE_RING=1 build_parts.py port_cap hub",
-      "sourceSha256": "9bb4a997a00f84ce2d9deea4bbe8f17fdf7f80771e8d0309c8cec56aef097a46",
-      "exportSha256": "18db56760e94540fd333bca3d591ad4c369cd6497baa27573556708fb8d2f61e",
-      "recorded": "2026-11-12T16:43:08Z"
+      "settings": "rear cap screw fix (3 x M2.5 thread-forming at r 50.6, 12 mm locating collars on the drum in sockets in the cap), adopted 2026-11-14: build_parts.py drum cap",
+      "sourceSha256": "0eb6a2659e16e82cfd9059beb0ad7e3fa631a89fc03b1b4952ada0dad4950bf7",
+      "exportSha256": "fa20a6bb30d2f3037361013c120c11db53b5e3313a121a2f5957bf8a6b3674a4",
+      "recorded": "2026-11-14T02:55:24Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_roll_drum_left.STEP",
+      "source": "shoulder/left/shoulder_roll_drum_left.SLDPRT",
+      "config": "",
+      "settings": "rear cap screw fix (3 x M2.5 thread-forming at r 50.6, 12 mm locating collars on the drum in sockets in the cap), adopted 2026-11-14: build_parts.py drum cap",
+      "sourceSha256": "929f767d249989dd04db177e8794f529a7a73450cfd39962ef6a43dce190d92f",
+      "exportSha256": "d41d64b436064f26c0486eb10514699e65deb95ba1c94acac32e439815586531",
+      "recorded": "2026-11-14T02:55:20Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_roll_drum_left.STL",
+      "source": "shoulder/left/shoulder_roll_drum_left.SLDPRT",
+      "config": "",
+      "settings": "rear cap screw fix (3 x M2.5 thread-forming at r 50.6, 12 mm locating collars on the drum in sockets in the cap), adopted 2026-11-14: build_parts.py drum cap",
+      "sourceSha256": "929f767d249989dd04db177e8794f529a7a73450cfd39962ef6a43dce190d92f",
+      "exportSha256": "d3b036a9eaa47da42f4c85a870a2416be4c5f4a63ff937aa78e7240306f4992c",
+      "recorded": "2026-11-14T02:55:21Z"
     }
   ]
 }
