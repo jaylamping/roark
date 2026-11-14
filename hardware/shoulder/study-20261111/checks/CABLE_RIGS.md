@@ -212,7 +212,7 @@ Every part from all sides: [SHEET_pitch.png](cable_rigs/SHEET_pitch.png)
   is the same (inner wall, depth, finger, slot, tongue, clamp holes). Plates `fixtures_cable_rig_pitch_tray_r75.3mf`
   (28.8 g, 46 min) and `fixtures_cable_rig_pitch_lid_r75.3mf` (8.2 g, 28 min), 139 × 175 mm; STLs of the same names.
   Use them as a pair, and run tests E and F on both pairs with the same wires. Expect about 45-60° from test E on
-  the narrow tray against about 90-115° on the first.
+  the narrow tray against about 90-115° on the first. Sheet: [cable_rigs/HOWTO_pitch_r75.png](cable_rigs/HOWTO_pitch_r75.png).
 - Also needed: one M4 × 30 screw and nut, three small cable ties, about 30 g to hang (six M8 nuts on a paper clip) or a
   thin elastic, a pen to mark angles on the tray's rim (the lid has a pointer).
 
