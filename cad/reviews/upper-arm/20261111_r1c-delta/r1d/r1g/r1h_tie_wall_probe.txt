@@ -1,0 +1,28 @@
+r1g6_stop0: -X neck wall at the tie bridge (X 139-147.5, Y 254-262, Z - CZ -6 to +1): 52 arm nodes; wall inner face X 146.55
+   vm    SF .5/1/2 5.24 / 5.24 / 5.76  (0.5 mm: +8.59 MPa, n 1, at [143.35, 255.4, 1.25])
+   layer SF .5/1/2 3.47 / 3.47 / 4.06  (0.5 mm: +6.48 MPa, n 1, at [146.3, 257.05, 6.34])
+   shear SF .5/1/2 3.43 / 3.43 / 3.60  (0.5 mm: +3.78 MPa, n 1, at [143.21, 255.71, 5.4])
+r1g6_stop124: -X neck wall at the tie bridge (X 139-147.5, Y 254-262, Z - CZ -6 to +1): 52 arm nodes; wall inner face X 146.55
+   vm    SF .5/1/2 5.23 / 5.23 / 5.59  (0.5 mm: +8.60 MPa, n 1, at [146.18, 255.3, 5.37])
+   layer SF .5/1/2 99.00 / 99.00 / 99.00  (0.5 mm: -0.87 MPa, n 1, at [144.54, 259.86, 6.89])
+   shear SF .5/1/2 2.77 / 2.77 / 2.96  (0.5 mm: +4.70 MPa, n 1, at [146.18, 255.3, 5.37])
+r1g6_g90: -X neck wall at the tie bridge (X 139-147.5, Y 254-262, Z - CZ -6 to +1): 52 arm nodes; wall inner face X 146.55
+   vm    SF .5/1/2 12.34 / 12.34 / 12.91  (0.5 mm: +3.65 MPa, n 1, at [146.18, 255.3, 5.37])
+   layer SF .5/1/2 6.16 / 6.16 / 6.85  (0.5 mm: +3.65 MPa, n 1, at [145.98, 260.15, 6.18])
+   shear SF .5/1/2 7.55 / 7.55 / 7.87  (0.5 mm: +1.72 MPa, n 1, at [146.18, 255.3, 5.37])
+r1g6_g90y: -X neck wall at the tie bridge (X 139-147.5, Y 254-262, Z - CZ -6 to +1): 52 arm nodes; wall inner face X 146.55
+   vm    SF .5/1/2 6.71 / 6.71 / 7.58  (0.5 mm: +6.71 MPa, n 1, at [145.6, 261.85, 5.32])
+   layer SF .5/1/2 4.40 / 4.40 / 4.92  (0.5 mm: +5.12 MPa, n 1, at [145.98, 260.15, 6.18])
+   shear SF .5/1/2 4.12 / 4.12 / 4.54  (0.5 mm: +3.15 MPa, n 1, at [145.6, 261.85, 5.32])
+r1g6_g90ym: -X neck wall at the tie bridge (X 139-147.5, Y 254-262, Z - CZ -6 to +1): 52 arm nodes; wall inner face X 146.55
+   vm    SF .5/1/2 8.16 / 8.16 / 8.29  (0.5 mm: +5.51 MPa, n 1, at [146.18, 255.3, 5.37])
+   layer SF .5/1/2 12.28 / 12.28 / 13.06  (0.5 mm: +1.83 MPa, n 1, at [145.98, 260.15, 6.18])
+   shear SF .5/1/2 4.10 / 4.10 / 4.22  (0.5 mm: +3.17 MPa, n 1, at [146.18, 255.3, 5.37])
+r1g6_yawm: -X neck wall at the tie bridge (X 139-147.5, Y 254-262, Z - CZ -6 to +1): 52 arm nodes; wall inner face X 146.55
+   vm    SF .5/1/2 9.91 / 9.91 / 10.83  (0.5 mm: +4.54 MPa, n 1, at [145.6, 261.85, 5.32])
+   layer SF .5/1/2 72.78 / 72.78 / 320.34  (0.5 mm: +0.31 MPa, n 1, at [142.63, 261.39, 4.63])
+   shear SF .5/1/2 5.20 / 5.20 / 5.61  (0.5 mm: +2.50 MPa, n 1, at [145.6, 261.85, 5.32])
+r1g6_yawp: -X neck wall at the tie bridge (X 139-147.5, Y 254-262, Z - CZ -6 to +1): 52 arm nodes; wall inner face X 146.55
+   vm    SF .5/1/2 9.56 / 9.56 / 10.39  (0.5 mm: +4.71 MPa, n 1, at [145.6, 261.85, 5.32])
+   layer SF .5/1/2 15.46 / 15.46 / 18.26  (0.5 mm: +1.46 MPa, n 1, at [146.3, 257.05, 6.34])
+   shear SF .5/1/2 4.83 / 4.83 / 5.25  (0.5 mm: +2.69 MPa, n 1, at [145.6, 261.85, 5.32])
