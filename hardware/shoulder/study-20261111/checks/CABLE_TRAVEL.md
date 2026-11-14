@@ -9,7 +9,7 @@ The pictures are schematic.
 |---|---|---|---|---|
 | **Yaw** | ±90° (agreed) | No: 97 mm of slack with nowhere to go | **A spiral in the present dish with 18 AWG: ±90° if the two signal pairs lie untwisted in the dish, about ±72° if they stay twisted.** With 16 AWG: about ±37° as a plain arc | For 16 AWG: the dish 1.5 mm deeper (hub top), about ±85° with the pairs untwisted, ±56° twisted |
 | **Roll** | -11° to +110° (the stops) | Not if the wires are held at the bore (about ±11°). **Possibly yes if they are held only at the channels' far ends** (twist over about 143 mm, 0.85° per mm): the rig decides | The same: clamps moved, two lips rounded | A spiral deck in the rear cap. It displaces the roll stop and takes away the 6808 stub's support ([ROLL_OPTIONS.md](ROLL_OPTIONS.md)) |
-| **Pitch** | 230-270° (not fixed) | No | **About 115°** as a spiral in the present channel | A bight in the void under the frame's step: no outline change, needs a pull-down, **marginal at 230° and not enough for 270°** ([PITCH_BIGHT.md](PITCH_BIGHT.md)). Or the channel 9.5 mm deeper (outline grows) |
+| **Pitch** | 230-270° (not fixed) | No | **About 115°** as a spiral in the present channel | A bight in the void under the frame's step: no outline change, needs a pull-down, **about 140° alone; 230° only together with the spiral; not enough for 270°** ([PITCH_BIGHT.md](PITCH_BIGHT.md), corrected 2026-11-14). Or the channel 9.5 mm deeper (outline grows) |
 
 - **Outer outline:** every option marked alive below keeps it, except the deeper pitch channel.
 - **The cheapest fix everywhere is less travel.** What each joint really needs is a question for Joey (facts at the end).
@@ -151,8 +151,8 @@ still holds.
 | Spiral, 16 AWG | 2 to 2.3 turns | **About 115°** (for example -25° to +90°). Radii 57 or more | kept | **Alive for reduced travel** |
 | Spiral, full 270° | | Needs a band of 1.3 mm or less, or the outer wall at about r 83 (shell opening r 80, flange ring r 77.5) | grows 9.5 mm | No, without growing |
 | Folded (rolling) loop | | The fold is 6.5 mm radius across the radial gap, 9 mm across the axial gap | kept | **No** |
-| **Wrap and bight** | The cable wraps on the channel's inner wall; what is not wrapped hangs as a bight in the void under the frame's step | 230°: 241 mm to store, bight 133 mm deep. 270°: 283 mm, bight 154 mm deep. The void is 38 mm deep (X), 140 mm wide between the gussets, and open down to Y 175: **180 mm.** Bight 60 mm wide at R 30, 12 mm thick: it fits for both | kept | **Alive on paper.** Needs a pull-down |
-| Spiral and bight together | The spiral takes 115°, the bight the rest | Bight 73-90 mm deep | kept | Alive; two mechanisms |
+| **Wrap and bight** | The cable wraps on the channel's inner wall; what is not wrapped hangs as a bight in the void under the frame's step | 230°: 236 mm to store, bight 163 mm deep. 270°: 278 mm, bight 184 mm deep (corrected 2026-11-14: the first figures, 133 and 154, left the loop's radius out). The void is 38 mm deep (X), 140 mm wide between the gussets, and open down to Y 175: **180 mm** on paper, 117 mm once checked against the models (below). Bight 60 mm wide at R 30, 12 mm thick | kept | **Alive on paper.** Needs a pull-down |
+| Spiral and bight together | The spiral takes 115°, the bight the rest | Bight 104-119 mm deep for another 115° | kept | Alive; two mechanisms |
 | Free loop inside the torso | A dress-pack loop from the drum to the frame | **Not connectable.** The pitch RS03 (Ø99) fills the frame's window (100 × 101), and the drum never enters the torso. The only way from the torso to anything that turns with the drum is the ring round the motor outboard of the frame: the loop channel | - | **No** |
 
 **Wrap and bight, what it needs:**
@@ -168,11 +168,11 @@ still holds.
 
 **Checked against the frame and shell models afterwards** ([PITCH_BIGHT.md](PITCH_BIGHT.md)): the loop cannot hang
 straight down (the shell's wall closes in after 55 mm, and the cable feed stands in the void), so it jogs 38 mm inboard
-first and has 117 mm of depth, down to hardpoint H6. **230° is marginal and 270° does not fit.** An elastic pull-down
+first and has 117 mm of depth, down to hardpoint H6. **The bight alone gives about 140°; 230° needs the spiral as well; 270° does not fit** (corrected 2026-11-14). An elastic pull-down
 does not work in that height; a weight or a small spring retractor does.
 
 **Recommendation:** decide the pitch travel first. For a first build, the spiral alone at about 115° needs only two
-clamps. For more, the spiral with a short loop (fits), or the full wrap and bight (marginal at 230°), on a rig first.
+clamps. For more, the spiral with a short loop (fits), or the wrap and bight (about 140° alone), on a rig first.
 
 **Rig:** two printed rings 21 mm apart (inner wall r 57.4, outer r 73.5) with a slot at the bottom, the real wires, a
 weight. About 40 g.

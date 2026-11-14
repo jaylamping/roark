@@ -207,6 +207,12 @@ Every part from all sides: [SHEET_pitch.png](cable_rigs/SHEET_pitch.png)
 
 - 149 × 180 mm on the bed, so the two parts are two plates: `fixtures_cable_rig_pitch_tray.3mf` (31.3 g, 48 min) and
   `fixtures_cable_rig_pitch_lid.3mf` (10.2 g, 31 min). No support. Both pass the integrity scan.
+- **A second, narrower pair for the 150 mm shell opening what-if** ([PITCH_OPENING_150.md](PITCH_OPENING_150.md)): the
+  outer wall at r 68.5, so the channel is 11.1 mm instead of 16.1; the lid's mouth is at mid channel. Everything else
+  is the same (inner wall, depth, finger, slot, tongue, clamp holes). Plates `fixtures_cable_rig_pitch_tray_r75.3mf`
+  (28.8 g, 46 min) and `fixtures_cable_rig_pitch_lid_r75.3mf` (8.2 g, 28 min), 139 × 175 mm; STLs of the same names.
+  Use them as a pair, and run tests E and F on both pairs with the same wires. Expect about 45-60° from test E on
+  the narrow tray against about 90-115° on the first.
 - Also needed: one M4 × 30 screw and nut, three small cable ties, about 30 g to hang (six M8 nuts on a paper clip) or a
   thin elastic, a pen to mark angles on the tray's rim (the lid has a pointer).
 
@@ -225,6 +231,11 @@ Every part from all sides: [SHEET_pitch.png](cable_rigs/SHEET_pitch.png)
 **Report** the angle.
 
 ### Test F: wrap and bight, 230°
+
+> **Note, 2026-11-14.** On the bench the loop can be as deep as it likes. In the robot the room under the frame's step
+> is 117 mm, which a bight alone turns into about 140° (PITCH_BIGHT.md, corrected). So run the test twice: as written
+> (230°, loop to 140 mm), which shows whether the mechanism works at all, and with the loop never deeper than 117 mm,
+> turning until it has risen to 45 mm: report that angle.
 
 **Wires:** as test E, about 900 mm.
 

@@ -8,7 +8,7 @@ proven on a rig ([CABLE_RIGS.md](CABLE_RIGS.md)).
 
 | Crossing | Form | Wire in it | Length inside the crossing | Clamp, fixed side | Clamp, moving side |
 |---|---|---|---|---|---|
-| Pitch | Wrap on the loop channel's inner wall, with a bight hanging in the void under the frame's step | 2 × 16 AWG + 2 pairs of 28 AWG, side by side | About 450 mm (up to 285 mm wrapped, the rest in the bight) for -50° to +180° | On the frame, at the top of the void | On the drum's flange, at the trunk mouth |
+| Pitch | Wrap on the loop channel's inner wall, with a bight hanging in the void under the frame's step | 2 × 16 AWG + 2 pairs of 28 AWG, side by side | About 450 mm (up to 285 mm wrapped, the rest in the bight) for -50° to +180°. **Corrected 2026-11-14: the bight alone gives about 140° in the room there is; -50° to +180° needs the spiral as well (PITCH_BIGHT.md)** | On the frame, at the top of the void | On the drum's flange, at the trunk mouth |
 | Roll | Not settled: today's route on the roll axis if the rig passes it, otherwise a spiral in the rear cap | 2 × 16 AWG + 2 pairs of 28 AWG | On-axis: about 60 mm. Spiral: about 300 mm | On the cap (drum side) | On the fork rear |
 | Yaw | Spiral in the dish under the RS02, 2 to 2.5 turns | **2 × 18 AWG** (agreed, with a 10 A fuse at the step; Joey decides the gauge after the yaw rig) + 2 pairs of 28 AWG | **About 470 mm** | At the fork's exit | At the hub's cable window (a tie round a boss tube) |
 

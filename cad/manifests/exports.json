@@ -7,216 +7,252 @@
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "059a4075e13990fb888d5e6bc732f50df1340e921e00449611c8bc0bba96944e",
-      "recorded": "2026-11-13T18:09:11Z"
+      "recorded": "2026-11-14T04:49:31Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_pitch_lid.STL",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "cce58ae0ec7aa1cd451692fae7bf4dcba6e21c54c3e75e6cfa5c1cafc6acd06a",
-      "recorded": "2026-11-13T18:09:11Z"
+      "recorded": "2026-11-14T04:49:32Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_pitch_lid_r75.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "a8af6ba75ac67a3242e9f5a33e7ae0526faa716e6ff859ada5429c3c2ede58c5",
+      "recorded": "2026-11-14T04:49:32Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_pitch_lid_r75.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "8b6445060405648b01def9c42051ffa9692fc636d8e75755467ffb6ce454112d",
+      "recorded": "2026-11-14T04:49:33Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_pitch_tray.STEP",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "676085f7d00f6aa1fc2498eae8ba279ee329f13106659e1605bb86639b2fb9fb",
-      "recorded": "2026-11-13T18:09:10Z"
+      "recorded": "2026-11-14T04:49:33Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_pitch_tray.STL",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "c87b26ea11293eaf069600130a98bd74a0ba73fefd81fe4f5caa736854c2ed5d",
-      "recorded": "2026-11-13T18:09:10Z"
+      "recorded": "2026-11-14T04:49:34Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_pitch_tray_r75.STEP",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "eaa99e668ba97f136a4acb56a356a1599cd504e9e880c18b257b2ba923c2ff99",
+      "recorded": "2026-11-14T04:49:34Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_cable_rig_pitch_tray_r75.STL",
+      "source": "scripts/shoulder/cable_rigs.py",
+      "config": "",
+      "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
+      "exportSha256": "bbd637da8702637387b7a9434a10c954ce021d05215b01c027df3fcffe86cee1",
+      "recorded": "2026-11-14T04:49:35Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_roll_axis_base.STEP",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "cc833d3eea581d43af527d3a6ba4cc8e68a901582c847383ddf63778389a08e7",
-      "recorded": "2026-11-13T18:09:07Z"
+      "recorded": "2026-11-14T04:49:35Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_roll_axis_base.STL",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "d4bc0d6e416d634515e803ff659f18d529f8d2783e331f802af52c8cea087bd0",
-      "recorded": "2026-11-13T18:09:07Z"
+      "recorded": "2026-11-14T04:49:36Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_roll_axis_top.STEP",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "60c414386c6973a477e9e16945e09b9d673a94fa890ac521f3b77a908cc5a78a",
-      "recorded": "2026-11-13T18:09:09Z"
+      "recorded": "2026-11-14T04:49:36Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_roll_axis_top.STL",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "4c58bda7951f82149a2cb6d2692b8dedbf5bb4572ce1b67595d9379f9f1cfb7a",
-      "recorded": "2026-11-13T18:09:08Z"
+      "recorded": "2026-11-14T04:49:37Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_roll_deck_lid.STEP",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "e80e883c920e74ef7f77b466ebc38bf235d9d8eff579df1c3b0cea06e5dc21d4",
-      "recorded": "2026-11-13T18:09:06Z"
+      "recorded": "2026-11-14T04:49:37Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_roll_deck_lid.STL",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "efef513f245ef70cfee25d5df505fac64ab1babe1d5de0dba27b3117ef4c9c50",
-      "recorded": "2026-11-13T18:09:06Z"
+      "recorded": "2026-11-14T04:49:38Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_roll_deck_tray.STEP",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "c51a7f9c43ccc6ceb9c93b9ac162864cd62fcb7f140a79cf99d824bfae903f41",
-      "recorded": "2026-11-13T18:09:05Z"
+      "recorded": "2026-11-14T04:49:38Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_roll_deck_tray.STL",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "bc36cfd71eba0fb87cd69f9c99213b25a9148da6a848d0aae62e2122749aa01f",
-      "recorded": "2026-11-13T18:09:05Z"
+      "recorded": "2026-11-14T04:49:38Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_yaw2_boss.STEP",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "3cb327830f37d6a84d8d2cbd638afba4000f19599a227ff59e8ba4bed70d4cbc",
-      "recorded": "2026-11-13T18:09:02Z"
+      "recorded": "2026-11-14T04:49:39Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_yaw2_boss.STL",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "81e46b9c20e6ec8e9b0221a9eddc4a0c77cc259441faca284d362e41454b57ee",
-      "recorded": "2026-11-13T18:09:02Z"
+      "recorded": "2026-11-14T04:49:39Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_yaw2_boss_7.STEP",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "7bd733e151c983861b4c22040b613a7f5d6b144d267efefdc16e48cb75533a3e",
-      "recorded": "2026-11-13T18:09:03Z"
+      "recorded": "2026-11-14T04:49:39Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_yaw2_boss_7.STL",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "f7d0130103f9e7f17dbe79e0f8ad27c4aa76b13ad2cabde18dfdd847304984c1",
-      "recorded": "2026-11-13T18:09:03Z"
+      "recorded": "2026-11-14T04:49:40Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_yaw2_cap.STEP",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "040d74aa2cf808097d961c782a5b86cd1d3e8f0208bf7b85ec8b81c93534d1ea",
-      "recorded": "2026-11-13T18:09:04Z"
+      "recorded": "2026-11-14T04:49:40Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_yaw2_cap.STL",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "4497d841f6438072a0a2e8fa84802910f7c43d1d514b383083c0fc046385a63c",
-      "recorded": "2026-11-13T18:09:04Z"
+      "recorded": "2026-11-14T04:49:41Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_yaw2_fork.STEP",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "5d5205b30379162c1d6037441c36b89ec3b40f466cce88c9866d0c7baa916cce",
-      "recorded": "2026-11-13T18:09:00Z"
+      "recorded": "2026-11-14T04:49:41Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_yaw2_fork.STL",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "3c9c2a76888f39d65be07e8581267aecf1a5faec1fcb772842e9752d8cffe85b",
-      "recorded": "2026-11-13T18:08:59Z"
+      "recorded": "2026-11-14T04:49:42Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_yaw2_fork_7.STEP",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "0ff21902df4a8c6d5a52a9aa801f93f00286c904afbc6fca1e898f3ce28dab69",
-      "recorded": "2026-11-13T18:09:01Z"
+      "recorded": "2026-11-14T04:49:42Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_yaw2_fork_7.STL",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "5997673e362f7741853709d23360fe66a7ac6b6f8c6a46f64d7e54d8a920f8d7",
-      "recorded": "2026-11-13T18:09:01Z"
+      "recorded": "2026-11-14T04:49:43Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_yaw2_hub.STEP",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "bd2ec7652767123089de642aca489b6ec1002154b7ecb6c2c03b99da5d487001",
-      "recorded": "2026-11-13T18:08:58Z"
+      "recorded": "2026-11-14T04:49:43Z"
     },
     {
       "export": "exports/fixtures/fixtures_cable_rig_yaw2_hub.STL",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
       "settings": "cable crossing test rig, as printed (cadquery; STL tolerance 0.01 mm)",
-      "sourceSha256": "3aa4e669f78d08409210f08e09a0068ded5be3e5b09c56f4e3fd5fd629ebfba9",
+      "sourceSha256": "0060292ae265958bdfc3cd1b9f497f3edfc3ad42962b05326cec04e1024ddff1",
       "exportSha256": "1baf95fd5952b261968a3fc4567936ceaa5ba2fb6af31a80f0ccc704e5020260",
-      "recorded": "2026-11-13T18:08:58Z"
+      "recorded": "2026-11-14T04:49:44Z"
     },
     {
       "export": "exports/shoulder/shoulder_fork_access_plugs_left.STEP",

@@ -43,6 +43,9 @@ Material PETG throughout. "Not sliced" applies to every orientation and support 
 
 ### Flange ring
 - **Orientation:** flat. No support. 5 × M3 into the drum's spoke inserts.
+- **Colour:** the visible white PETG, like the drum and the fork (Joey, 2026-11-14).
+- **Rolled rim B** (Joey's pick from the pictures, 2026-11-14) is a look build only so far (`LOOK=rimB`): the real ring
+  is unchanged until he has seen the sheet. With it the ring still prints flat, on its inboard face, without support.
 
 ### Rear cap
 
@@ -131,6 +134,8 @@ pre-print gate report). STL SHA-256 `a73103adb49bb9a4fe3b3901fea852e6668e928e7e1
   recorded in this repo.
 
 ### Pitch loop cover
+- **Colour:** the visible white PETG, like the shell (Joey, 2026-11-14). Its outer band shows between the shell's
+  opening and the flange ring; in the shell's white it stops reading as a separate part. Colour only: no change to the part.
 - **Orientation:** not settled. Back wall (X 75) down puts the whole wall on support, because the feed riser stands
   about 6 mm proud of it (sliced: 23.5 g of support, 84% of it under the wall). Turn it over, or split the riser off.
   Waits, as above.

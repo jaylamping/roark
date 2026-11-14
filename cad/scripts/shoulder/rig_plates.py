@@ -33,6 +33,8 @@ PLATES = {
             ('fixtures_cable_rig_yaw2_boss', 85, 92, 0), ('fixtures_cable_rig_yaw2_boss_7', 138, 92, 0), ('fixtures_cable_rig_yaw2_cap', 191, 92, 0)],
     'pitch_tray': ['fixtures_cable_rig_pitch_tray'],
     'pitch_lid': ['fixtures_cable_rig_pitch_lid'],
+    'pitch_tray_r75': ['fixtures_cable_rig_pitch_tray_r75'],
+    'pitch_lid_r75': ['fixtures_cable_rig_pitch_lid_r75'],
 }
 EXTRA = {'enable_support': '0', 'brim_type': 'no_brim', 'wall_loops': '3', 'sparse_infill_density': '15%'}
 PLA = 'Bambu PLA Basic @BBL P2S'

@@ -10,7 +10,8 @@ without support.
          fork's post (r 28-31) and its slot. on-axis rig: today's route, a dia 25 bore 18 mm long between two radial
          16 x 6 channels that turn against each other.
   pitch  the loop channel (inner wall r 57.4, outer wall r 73.5, 21.1 apart) as a fixed tray with a bottom slot and a
-         guide finger, and a turning lid with the trunk mouth.
+         guide finger, and a turning lid with the trunk mouth. A second tray and lid (_r75) have the outer wall at r 68.5:
+         the 11.1 mm channel a 150 mm shell opening would leave.
 """
 import math
 import sys
@@ -192,15 +193,18 @@ def roll_axis_top():
 RI, RO, AX = 57.4, 73.5, 21.1
 
 
-def pitch_tray():
+def pitch_tray(ro=None):
     """The fixed side (the cover): floor, inner wall, outer wall with a slot at the bottom (270 deg) and a guide finger
     (a rounded lip the cable leaves the wall over), three spokes to a centre pin, and a clamp bar below the slot."""
-    t = ring(RI - 2.0, RO + 1.0, -0.8, 0)
+    # ro: the outer wall's inside radius, for a narrower channel (the r 75 opening what-if: 68.5, a channel of 11.1). The
+    # guide finger, the tongue's end and the clamp stay where they are, so only the outer wall moves in
+    ro = ro or RO
+    t = ring(RI - 2.0, ro + 1.0, -0.8, 0)
     t = t.union(ring(RI - 0.9, RI, 0, AX))
-    t = t.union(ring(RO, RO + 0.9, 0, AX))
-    t = t.cut(sector(RO - 0.5, RO + 3.0, 270 - 12, 270 + 12, 0, AX + 1))           # bottom slot in the outer wall, about 30 mm wide
+    t = t.union(ring(ro, ro + 0.9, 0, AX))
+    t = t.cut(sector(ro - 0.5, ro + 3.0, 270 - 12, 270 + 12, 0, AX + 1))           # bottom slot in the outer wall, about 30 mm wide
     # tongue below the slot: the floor runs on 32 mm, with the guide finger and the fixed clamp's tie holes
-    t = t.union(box(-36.0, 36.0, RO - 2.0, RO + 32.0, -0.8, 0))
+    t = t.union(box(-36.0, 36.0, ro - 2.0, RO + 32.0, -0.8, 0))
     # guide finger: a round post R 10 the cable turns over as it leaves the inner wall and drops through the slot
     t = t.union(cq.Workplane('XY').center(12.0, RI + 13.4).circle(10.0).circle(8.8).extrude(AX))
     for x_ in (-31.0, -25.0):                                                       # fixed clamp: two tie holes
@@ -211,12 +215,13 @@ def pitch_tray():
     return t
 
 
-def pitch_lid():
+def pitch_lid(ro=None):
     """The moving side (the drum's flange): a ring over the channel with the trunk mouth (13 x 4) and tie holes at r 65,
     three spokes to the centre pin, viewing slots, and a pointer."""
+    RO = ro or globals()['RO']      # a narrower channel: the ring, the trunk mouth (mid channel), the slots and the pointer follow
     z0 = AX + 0.3
     l = ring(RI - 2.0, RO + 1.0, z0, z0 + 0.8)
-    x, y = pt(65.5, 90.0)
+    x, y = pt((RI + RO) / 2 + 0.05, 90.0)
     l = l.cut(cq.Workplane('XY').workplane(offset=z0 - 1).center(x, y).rect(13.0, 4.0).extrude(3))
     for dx in (-10.0, 10.0):
         l = l.cut(cq.Workplane('XY').workplane(offset=z0 - 1).center(x + dx, y).circle(1.3).extrude(3))
@@ -251,6 +256,8 @@ def main():
         'roll_axis_top': (roll_axis_top(), lambda p: flip(p, 25.0)),
         'pitch_tray': (pitch_tray(), lambda p: p.translate((0, 0, 0.8))),
         'pitch_lid': (pitch_lid(), lambda p: flip(p, AX + 1.1)),
+        'pitch_tray_r75': (pitch_tray(68.5), lambda p: p.translate((0, 0, 0.8))),
+        'pitch_lid_r75': (pitch_lid(68.5), lambda p: flip(p, AX + 1.1)),
     }
     for k, (p, pr) in parts.items():
         vol = p.val().Volume()

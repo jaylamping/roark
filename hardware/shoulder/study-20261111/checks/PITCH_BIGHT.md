@@ -6,9 +6,15 @@ part is changed.
 
 ## Short answer
 
+> **Corrected 2026-11-14.** The depth table below left the loop's own radius out of the 230° and 270° rows. With it in,
+> the bight alone gives about 140°, not 230°. The rows and this summary are corrected; see also
+> [PITCH_OPENING_150.md](PITCH_OPENING_150.md).
+
 - **It is tighter than the first sketch showed.** The loop cannot hang straight down from the channel: the shell's side
   wall closes in below it, and the cable feed duct stands in the same void.
-- **230° is marginal** (the room is 117 mm deep; the loop needs 118 to 133). **270° does not fit.**
+- **The bight alone gives about 140°** in the 117 mm of room (loop radius 30, 30 mm spare); about 160° with a tighter
+  loop. **230° and 270° do not fit** as a bight alone.
+- **Spiral and bight together give about 230° to 260°** with today's channel.
 - **A pull-down by elastic alone does not work in the height available.** A weight works only with the robot upright. A
   small spring retractor would work in any attitude.
 - The spiral alone (about 115°) needs none of this.
@@ -41,29 +47,32 @@ part is changed.
 ## Depth against travel
 
 - Wrapped length changes by 1.03 mm per degree (r 58.9).
-- Loop depth needed: half the change, plus one radius, plus half the spare length.
+- Loop depth needed: half the change, plus the loop's radius (30), plus half the spare length.
 
-| Travel | Change | Depth needed (spare 30 / 60 mm) | Room (Y 295 to 178) | |
+| Travel taken by the bight | Change | Depth needed (spare 30 / 60 mm) | Room (Y 295 to 178) | |
 |---|---|---|---|---|
-| 115° more than the spiral gives (spiral 115°, loop the rest of 230°) | 118 mm | 74 / 89 mm | 117 mm | **Fits** |
-| 230° (-50° to +180°) | 236 mm | 118 / 133 mm | 117 mm | **Marginal: 1 mm short with the least spare** |
-| 270° | 278 mm | 139 / 154 mm | 117 mm | **No** |
+| 115° (the spiral takes another 115°: 230° together) | 118 mm | 104 / 119 mm | 117 mm | **Fits with the smaller spare** |
+| **140°** | 144 mm | 117 / 132 mm | 117 mm | **The most the room takes** |
+| 230° (-50° to +180°) | 236 mm | 163 / 178 mm | 117 mm | **No** |
+| 270° | 278 mm | 184 / 199 mm | 117 mm | **No** |
 
+- A loop of radius 24 or 18 instead of 30 stores 12 or 24 mm more: 152° or 163°. Whether the wires take that radius
+  for the life of the robot is not known.
 - More room would come from moving hardpoint H6 (the torso thread's), or from starting the loop higher, which needs the
-  feed duct moved out of the void's top.
+  feed duct moved out of the void's top. For 230° as a bight alone the room would have to be 163 mm: 46 mm more.
 
 ## Pull-down
 
-- **Travel of the loop's bottom:** up to 117 mm.
+- **Travel of the loop's bottom:** up to 72 mm (half of 144 mm).
 - **Elastic alone:** its anchor has to be below the loop's lowest point (Y 178), and the frame ends at Y 155. That leaves
-  about 20 mm of elastic to stretch 117 mm. **It does not work** without a turn round a pulley and a long run along the
+  about 20 mm of elastic to stretch 72 mm. **It does not work** without a turn round a pulley and a long run along the
   frame.
 - **Weight (20-30 g on the loop):** simplest. Works with the torso upright; not lying down or inverted, where the loop
   goes slack and can leave the channel.
 - **Spring retractor** (a badge-reel mechanism, about 0.5-1 N, 600 mm of cord) on hardpoint H6, cord to a ring on the
   loop: constant pull in any attitude. About 15 g. Not a printed part.
-- **Force needed:** unknown. Friction round the channel wall multiplies it by about 4 at 250° of wrap if the friction
-  coefficient is 0.3, by about 9 if it is 0.5. The pitch rig (test F) measures it.
+- **Force needed:** unknown. Friction round the channel wall multiplies it by about 2 at 140° of wrap if the friction
+  coefficient is 0.3, by about 3.4 if it is 0.5. The pitch rig (test F) measures it.
 
 ## Keep-out note for the torso frame and body shell threads
 
@@ -78,7 +87,7 @@ If the pitch crossing is built as a wrap and bight, the left side needs this kep
 
 - **Shell:** the inner side wall must not come further in than it is now between Y 175 and 300 (X 73-76 old frame).
 - **Frame:** nothing new on the lower box's outer face between the posts in that window. Hardpoint H6 (Y 155-175) sets
-  the loop's floor; moving it down 20 mm would make 230° comfortable.
+  the loop's floor; moving it down 46 mm would be needed for 230° as a bight alone.
 - **Cable feed:** stays at Z ±16.4 and X 63.6-74.4; the loop passes inboard of it and the jog passes beside it at
   Z +8 to +40.
 - None of this is needed if pitch is limited to about 115° and the crossing is a spiral in the channel.
