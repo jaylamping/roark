@@ -282,7 +282,8 @@ Per [can-stack-for-marengo.md](https://github.com/jaylamping/marengo/blob/main/h
 - **Linux:** bitrate and sample point set explicitly, error frames on, short TX queue. PREEMPT_RT only if the Pi 5 measurement
   misses its budget, but expect it to: published Pi 5 numbers show a stock kernel past 9 ms worst case under stress against
   about 100 to 225 µs with PREEMPT_RT. The first measurement on our Pi (2026-11-13, stock kernel, CPU and memory load only) was
-  294 µs worst case; Raspberry Pi's apt repository now has an RT kernel, `linux-image-rpi-v8-rt`. Measure with 1 h of `cyclictest` or `rtla` under
+  294 µs worst case, and under a heavier load 676 µs against 116 µs on Raspberry Pi's own RT kernel, `linux-image-rpi-v8-rt`
+  ([comparison](docs/bench-results/realtime/2026-11-13-kernel-compare/README.md)). Measure with 1 h of `cyclictest` or `rtla` under
   `stress-ng` memory load ([deploy.md](conventions/deploy.md)). Pin a kernel that includes the fix for CVE-2023-53523 (gs_usb timestamp init).
 - **Bus-off is latched in software.** Current candleLight firmware restarts the bus by itself about 100 ms after bus-off unless
   the host claims recovery (`GS_CAN_FEATURE_BUS_OFF_RECOVERY`, `CAN_BUS_OFF_RESTART_DELAY_MS` in `src/can_common.c`), and

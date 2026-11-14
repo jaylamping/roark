@@ -101,7 +101,10 @@ PLAN item 3 says PREEMPT_RT only if the Pi's measurement misses its budget. How 
 - **Measure first, on the real image:** `cyclictest` (or `rtla timerlat`) for at least an hour **under load** (`stress-ng`
   including memory pressure, plus the runtime on `vcan`), with the result committed per kernel version. **Why:** worst case
   under load is what matters. Published Pi 5 numbers show a stock kernel can exceed 9 ms under stress, while PREEMPT_RT stays
-  around 100 to 225 µs, so expect the measurement to point at RT.
+  around 100 to 225 µs, so expect the measurement to point at RT. Our own Pi, 2026-11-13, one hour each under CPU, memory,
+  SD card and socket load: 676 µs worst case on the stock kernel, 253 µs with two isolated cores, 116 µs on the RT kernel
+  ([the comparison](../docs/bench-results/realtime/2026-11-13-kernel-compare/README.md)). The CAN round trip under RT is
+  still to be measured with `can-bench`.
 - **If RT is needed:** Raspberry Pi's apt repository has a `PREEMPT_RT` kernel, `linux-image-rpi-v8-rt`, at the same
   version as the stock one (seen 2026-11-13 at 6.18.60). It installs beside the stock kernel, is selected with a `kernel=`
   line in `config.txt`, and is held like the rest. It is the generic arm64 build with 4K pages (the Pi 5's default kernel

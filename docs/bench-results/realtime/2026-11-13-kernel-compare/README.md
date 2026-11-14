@@ -93,6 +93,20 @@ A first `stock` run (11:35:38 to 12:40:47) had the RT kernel package being insta
 12:34:02. It reached 794 µs (per core 640, 532, 499, 794). The histogram has no timestamps, so the install's share of
 that can't be separated out; the run was repeated and is not in the table.
 
+## Files
+
+One folder per run (`stock/`, `stock-isolated/`, `rt/`, `rt-isolated/`):
+
+- `run.txt`: `uname -a`, start and end, temperature and `throttled` before and after, and the two commands as run.
+- `cyclictest-hist-over-100us.txt`: the histogram file's comment lines and every row above 100 µs with a count. Columns:
+  latency in µs, then the count per measured core. These rows were transcribed from the files on the Pi, not copied
+  byte for byte; in each, the row counts and the highest row per core agree with the file's own `# Max Latencies` line.
+  The full histograms (2000 rows each) and the per-minute temperature and fan logs are kept off the repo.
+- `stress-ng.txt`: the load generator's report.
+
+The command line in every run was the image's stock one, with ` isolcpus=2,3 irqaffinity=0,1` appended on the isolated
+runs.
+
 ## State left on the Pi
 
 Stock kernel and stock command line by default, verified after a plain reboot. `config.txt`, `cmdline.txt` and the stock
