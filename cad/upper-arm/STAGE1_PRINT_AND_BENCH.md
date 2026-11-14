@@ -27,7 +27,7 @@ For every plate:
 | 6 | [coupon, back](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_back_r1g_coupon.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_back_r1g_coupon_sheet.png) | 1 h 12 min | 18.2 g | none: as the halves (6 walls, 50 %, tree supports, 5 mm outer brim) |
 | 7 | [coupon, front](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_front_r1g_coupon.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_front_r1g_coupon_sheet.png) | 1 h 7 min | 17.0 g | none: as the halves |
 | 8 | [yaw lever](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_coupon_yaw_lever.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_coupon_yaw_lever_sheet.png) | 1 h 46 min | 72.4 g | **100 % infill, no support, no brim** |
-| (hub) | from the shoulder release: *to be filled* | | | | |
+| (hub) | the shoulder thread's D3c7: [shoulder_hub_left_revD3c7_candidate.STL](https://github.com/jaylamping/roark/blob/claude/project-thread-90ef87/cad/exports/shoulder/shoulder_hub_left_revD3c7_candidate.STL) (commit 96f74ab, SHA-256 a73103ad…259b, checked against ours: `D3C7_CHECK.md`) | | | | **No sliced 3MF exists for it yet.** Its print file and settings come from the shoulder thread; don't slice it yourself until they say how it prints. |
 
 Total: about 5 h 40 min and 120 g.
 

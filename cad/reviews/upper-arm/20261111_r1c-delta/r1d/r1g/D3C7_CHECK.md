@@ -1,8 +1,13 @@
-# Hub D3c7 candidate against R1g, the final plates and the 0.70 ring: checks (2026-11-13), PROVISIONAL
+# Hub D3c7 candidate against R1g / R1h, the final plates and the 0.70 ring: checks (2026-11-13), FINAL for the pushed candidate
 
-**Provisional.** D3c7 is the shoulder thread's local build, not yet pushed. It was copied read-only from
-`C:\joe\code\roark-wt\shoulder-study\cad\_wip\shoulder-pass1\stl_look_hubD3c7\hub.STL` to `cad/_wip/shoulder_hub_d3c7_local/`.
-These checks hold for the pushed candidate only if its STL SHA-256 equals the one below.
+**Final (2026-11-14).** The shoulder thread pushed D3c7 in commit 96f74abc669b20ee1ed6831b4f1c47b818df69d2 on branch
+`claude/project-thread-90ef87`, as `cad/exports/shoulder/shoulder_hub_left_revD3c7_candidate.STL` (and `.STEP`).
+- I fetched the real LFS object (git lfs smudge into a scratch folder, not the pointer) and hashed it: a binary STL, 3,136,484
+  bytes, SHA-256 a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b.
+- That equals the local build these checks were run on (`cad/_wip/shoulder_hub_d3c7_local/`, same SHA-256). So every result
+  below holds for the pushed candidate as it is, and no rerun is needed.
+- Before the push, this file was marked provisional: it was a copy of the shoulder thread's local build
+  (`C:\joe\code\roark-wt\shoulder-study\cad\_wip\shoulder-pass1\stl_look_hubD3c7\hub.STL`).
 
 **What D3c7 is.** D3c6 plus Dia 3.8 lug holes, with the cable window at 68 deg (a flat inner wall; footprint at Y 298:
 r 15.7-21.0, ±8 across).
