@@ -127,9 +127,15 @@ by trial, once, at assembly.
     pocket's 0.20 clearance alone can move the lever up to about 0.3 mm at a dial.
 - **Dial set-up for steps 8-11:**
   - Set a dial indicator (0.01 mm) on a stand fixed to the same base as the hub clamp.
-  - Put its tip on the coupon's outer side face, square to the face, at r = 40 mm from the hub axis, near the cut end. Measure
-    the actual r and write it down; every limit below is for r = 40 and scales with r / 40.
-  - A second dial on the coupon's -X side face, reading along X, is used in step 10.
+  - **Give the dial a face that turns with the coupon.** Yaw turns the coupon about the hub axis, so its round outer skin slides
+    past a dial tip without pushing it.
+    - Glue a small flat-sided block (a 10 mm cube of scrap PETG or aluminium, CA glue) onto the coupon's flat cut end (Y 284),
+      as far out as it fits, about r 35-38 from the hub axis.
+    - One flat side must face along the turning direction, square to the line from the hub axis.
+    - Put the dial tip on that side, square to it.
+  - Measure the actual r (hub axis to the tip) and write it down. Every limit below is for r = 40 and scales with r / 40; at
+    r 36, multiply by 0.9.
+  - A second dial for step 10 reads the coupon's X movement against the hub: tip on the coupon's -X outer side, square to it.
 
 **Steps.**
 
