@@ -146,20 +146,27 @@ linked worktree. A worktree whose
 branch has no `tools/cad/hooks/` (one cut before them) prints a warning and skips the CAD checks; its pre-push still runs Git
 LFS. **Why:** on Joey-PC an install from a CAD worktree once broke every commit in the power-board worktrees.
 
-**LFS budget.** The pre-push hook fails a push over the per-push, monthly or storage limit in
-[cad/manifests/lfs-budget.json](../cad/manifests/lfs-budget.json). With Joey's OK for that one push, run
-`CAD_BUDGET_OK=1 git push ...` (never export it). `python3 tools/cad/lfs_budget.py report` shows the totals. It counts what
-local history can see, so it is a lower bound: objects from deleted branches or rewritten history are still billed. It dates
-objects by commit, not by push, so the monthly limit only catches data committed and pushed in the same month; and with stale
-remote-tracking refs it can count an object the remote already has as new. Fetch before a big push. Check the
-real figure on GitHub (Settings, Billing, Git LFS) at the start of each month.
+**LFS budget.** The pre-push hook fails a push over the per-push or storage limit in
+[cad/manifests/lfs-budget.json](../cad/manifests/lfs-budget.json): 300 MB in one push, and 8 GB stored in total, with a
+warning from 6 GB. There is no monthly limit. **Why:** GitHub Free's 10 GiB of LFS storage is a running total of every
+version ever pushed, not an allowance that refills each month, so the total is the figure to cap. With Joey's OK for
+that one push, run `CAD_BUDGET_OK=1 git push ...` (never export it). `python3 tools/cad/lfs_budget.py report` shows the
+total and what each month added.
+
+**How it is counted.** The hook reads the LFS pointer files in git history, so it needs no LFS content. "Stored" is every
+distinct LFS object reachable from the remote's branches as this clone last fetched them; a new version of a file is a new
+object, and the old one still counts. The push adds the objects in its commits that the remote does not hold yet. This is
+a lower bound: objects from deleted branches or rewritten history are still stored by GitHub, and with stale
+remote-tracking refs it can count an object the remote already has as new. Fetch before a big push. Check the real figure
+on GitHub (Settings, Billing, Git LFS) at the start of each month.
 
 ## 7. Clones and bandwidth
 
 Install [Git LFS](https://git-lfs.com) and run `git lfs install` once per machine before adding anything under `cad/`. Without
 it, `git add` stores a CAD file as a plain blob, in history for good.
 
-Every LFS download counts against the 10 GiB a month. CI checks out without LFS content, and every check here reads sizes from
+Downloads have their own limit: 10 GiB a month, and every LFS download counts against it, including each clone and each
+pull of new CAD on every machine (holly-pc, Joey-PC, the Mac, cloud sessions). The storage cap above does not cover this. CI checks out without LFS content, and every check here reads sizes from
 the pointer files. A plain `git clone` on a machine with Git LFS installed downloads all of it, so clone with
 `GIT_LFS_SKIP_SMUDGE=1 git clone ...` unless you need the CAD, then fetch only what you need:
 `git lfs pull --include "cad/shoulder/**"`.
@@ -172,7 +179,8 @@ its own yet: promote a design before it would hurt to lose it. Joey-PC keeps the
 ## 9. CAD workstation
 
 All SolidWorks, Simulation and KiCad work runs on **holly-pc**, a PC kept for it, from 2026-11-11. Joey-PC is Joey's own
-PC: it keeps the older copies as a backup and is not used for CAD runs.
+PC: it keeps the older copies as a backup and is the fallback CAD machine. There SolidWorks runs hidden only, never
+visible, because Joey may be using it.
 
 - The shared checkout is `C:\joe\code\roark`. `subst J: C:\joe` maps it to `J:\code\roark`, the same path it had on
   Joey-PC, so scripts and SolidWorks references keep working. If `J:` is missing after a restart, run that line first.
@@ -199,3 +207,9 @@ holly-pc's SolidWorks is a fresh install. Its defaults differ from Joey-PC's in 
 Bambu Studio **2.09.01.70**, the version the upper-arm slices used, is installed at `C:\Program Files\Bambu Studio`. Its GUI had
 not been run, so `%APPDATA%\BambuStudio\system\BBL` didn't exist. Fall back to the presets the install ships in
 `resources\profiles\BBL`. Re-slicing the reviewed ring that way reproduced the stored slice exactly (3465 s, 19.04 g).
+
+## 10. Requirements, gate and print log
+
+Each printed part also has a requirements spec in its region folder, a pre-print gate report and a print log in
+`prints/<region>/`: [part-lifecycle.md](part-lifecycle.md). Sharing the CAD workstation between threads (worktrees, claims,
+the FEA queue): [cad-workstation.md](cad-workstation.md).

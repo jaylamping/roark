@@ -109,6 +109,7 @@ impl Rig {
             slow: &mut self.slow,
             batches: &mut self.batches,
             ended: &self.ended,
+            lent: None,
         }
     }
 
@@ -135,9 +136,13 @@ impl Rig {
         reply
     }
 
-    /// The limbs asked to stop since the last call.
-    fn stopped(&self) -> Vec<Scope> {
-        self.stops.take().scopes().collect()
+    /// The limbs asked to stop since the last call, each with its cause.
+    fn stopped(&self) -> Vec<(Scope, Cause)> {
+        self.stops
+            .take()
+            .asked()
+            .flat_map(|(scope, causes)| causes.iter().map(move |c| (scope, c)))
+            .collect()
     }
 
     /// Bus `bus`'s batch with a slack hold for each joint named.
@@ -319,7 +324,13 @@ fn a_limb_mate_out_of_reset_on_another_bus_stops_the_whole_held_limb() {
     rig.show(1, &[], &["arm_b_three"], 0);
     assert_eq!(rig.tick(&mut enabler), None);
     assert_eq!(rig.batches[0], CommandBatch::new(1, u64::MAX));
-    assert_eq!(rig.stopped(), [Scope::Limb(LimbName::RightArm)]);
+    assert_eq!(
+        rig.stopped(),
+        [(
+            Scope::Limb(LimbName::RightArm),
+            Cause::Rule(RuleId::HostMode)
+        )]
+    );
     assert_eq!(rig.tick(&mut enabler), None);
     assert_eq!(rig.stopped(), []);
     assert_eq!(
@@ -334,7 +345,13 @@ fn a_limb_mate_out_of_reset_on_another_bus_stops_the_whole_held_limb() {
     enabled(&mut rig, &mut enabler, &["arm_b_one"]);
     rig.snapshots[1] = None;
     assert_eq!(rig.tick(&mut enabler), None);
-    assert_eq!(rig.stopped(), [Scope::Limb(LimbName::RightArm)]);
+    assert_eq!(
+        rig.stopped(),
+        [(
+            Scope::Limb(LimbName::RightArm),
+            Cause::Rule(RuleId::HostMode)
+        )]
+    );
 }
 
 /// Guards: safety - a held limb over two buses stopped on either bus stops on every bus: its holds end and a stop of
@@ -350,7 +367,10 @@ fn a_held_limb_stopped_on_one_bus_is_stopped_on_every_bus() {
     rig.show(1, &[(LimbName::RightArm, LimbState::Stopped)], &[], 0);
     assert_eq!(rig.tick(&mut enabler), None);
     assert_eq!(rig.batches[0], CommandBatch::new(1, u64::MAX));
-    assert_eq!(rig.stopped(), [Scope::Limb(LimbName::RightArm)]);
+    assert_eq!(
+        rig.stopped(),
+        [(Scope::Limb(LimbName::RightArm), Cause::Follows)]
+    );
     assert_eq!(rig.counts.holds_ended, 2);
     // Held on can0, stopped there (a fault, say): the part on can1, idle, is stopped too.
     let mut rig = Rig::new();
@@ -364,7 +384,10 @@ fn a_held_limb_stopped_on_one_bus_is_stopped_on_every_bus() {
     );
     assert_eq!(rig.tick(&mut enabler), None);
     assert_eq!(rig.batches[0], CommandBatch::new(1, u64::MAX));
-    assert_eq!(rig.stopped(), [Scope::Limb(LimbName::RightArm)]);
+    assert_eq!(
+        rig.stopped(),
+        [(Scope::Limb(LimbName::RightArm), Cause::Follows)]
+    );
     assert_eq!(rig.counts.holds_ended, 2);
     assert_eq!(rig.tick(&mut enabler), None);
     assert_eq!(rig.stopped(), []);
@@ -409,7 +432,13 @@ fn an_enable_that_fails_stops_its_limbs_once_an_enable_may_have_gone() {
             })
         })
     );
-    assert_eq!(rig.stopped(), [Scope::Limb(LimbName::LeftArm)]);
+    assert_eq!(
+        rig.stopped(),
+        [(
+            Scope::Limb(LimbName::LeftArm),
+            Cause::Rule(RuleId::HostPreflight)
+        )]
+    );
     assert!(enabler.phases.iter().all(|p| matches!(p, Phase::Off)));
 
     // The limb stops while the preflights run: refused, nothing to stop.
@@ -451,8 +480,8 @@ fn an_enable_that_fails_stops_its_limbs_once_an_enable_may_have_gone() {
                 })
             })
         );
-        let expected: &[Scope] = if stopped {
-            &[Scope::Limb(LimbName::LeftArm)]
+        let expected: &[(Scope, Cause)] = if stopped {
+            &[(Scope::Limb(LimbName::LeftArm), Cause::Rule(RuleId::HostBus))]
         } else {
             &[]
         };
@@ -500,7 +529,13 @@ fn an_enable_whose_limb_mate_leaves_reset_fails_with_its_limb_stopped() {
             })
         })
     );
-    assert_eq!(rig.stopped(), [Scope::Limb(LimbName::RightArm)]);
+    assert_eq!(
+        rig.stopped(),
+        [(
+            Scope::Limb(LimbName::RightArm),
+            Cause::Rule(RuleId::HostMode)
+        )]
+    );
     assert_eq!(
         rig.counts,
         Counts {
@@ -546,4 +581,44 @@ fn the_hold_commands_nothing() {
     assert_eq!(command.velocity.get(), 0.0);
     let drive = Drive::new(DeviceId::new(11).unwrap(), Model::Rs03);
     assert!(encode::mit(drive, &command).is_ok());
+}
+
+/// Guards: safety - every way an enable can fail once an Enable may have gone stops its limb under a rule, the same
+/// rule its refusal names, so the stop and the refusal are never recorded under two rules or as a stop carried from
+/// another bus (safety.md section 8: every stop names its rule).
+#[test]
+fn a_failed_enable_stops_its_limb_under_the_rule_its_refusal_names() {
+    let mut rig = Rig::new();
+    let joint = rig.joint("arm_a_one");
+    let failures = [
+        Failed::Preflight {
+            joint,
+            refusal: Refusal::NoStatus,
+        },
+        Failed::Sequence {
+            joint,
+            failure: EnableFailure::NoEcho,
+        },
+        Failed::Ended { joint },
+        Failed::Foreign { bus: 1 },
+        Failed::Mode {
+            limb: LimbName::LeftArm,
+        },
+        Failed::Unseen { joint },
+    ];
+    for failure in failures {
+        let mut enabler = Enabler::new(&rig.roster, rig.plans.len());
+        enabled(&mut rig, &mut enabler, &["arm_a_one"]);
+        let joints = rig.roster.set(["arm_a_one"]).unwrap();
+        let mut counts = Counts::default();
+        let reply = enabler.fail(&rig.roster, 1, joints, failure, &rig.stops, &mut counts);
+        let rule = reply.outcome.err().and_then(|why| why.named().rule);
+        assert!(rule.is_some(), "{failure:?} names no rule");
+        let rule = rule.unwrap();
+        assert_eq!(
+            rig.stopped(),
+            [(Scope::Limb(LimbName::LeftArm), Cause::Rule(rule))],
+            "{failure:?}"
+        );
+    }
 }

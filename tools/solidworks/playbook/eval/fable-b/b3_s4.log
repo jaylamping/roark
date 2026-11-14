@@ -1,0 +1,54 @@
+03:02:32 SolidWorks pid 128632 free GB 14.5
+03:02:47 ok PROFILE volume change: 15040.0000 (expected 15040.0000)
+03:02:47 PROFILE: added 15040.00 mm3
+03:02:48 ok WINDOW volume change: 7731.5347 (expected 7731.5347)
+03:02:48 WINDOW: cut 7731.53 mm3
+03:02:49 ok SCREW_HOLES volume change: 159.0431 (expected 159.0431)
+03:02:49 SCREW_HOLES: cut 159.04 mm3
+03:02:50 ok inside corner edges: 4.0000 (expected 4.0000)
+03:02:50 CORNERS: R2.0 on 4 edges, volume change +121.72 mm3
+03:02:51 NARROW: cut 2340.09 mm3
+03:02:51 NARROW removed 2340.1 mm3
+03:02:51 member-side to strip edges 4
+03:02:52 FOOT_SIDES: R1.0 on 4 edges, volume change -3.93 mm3
+03:02:52 FOOT_SIDES radius 1.0
+03:02:52 ok WAIST volume change: 405.0000 (expected 405.0000)
+03:02:52 WAIST: cut 405.00 mm3
+03:02:53 ok hole faces: 2.0000 (expected 2.0000)
+03:02:53 ok hole y: 20.0000 (expected 20.0000)
+03:02:53 ok hole z: 12.0000 (expected 12.0000)
+03:02:53 ok hole along X: 1.0000 (expected 1.0000)
+03:02:53 ok hole y: 20.0000 (expected 20.0000)
+03:02:53 ok hole z: 48.0000 (expected 48.0000)
+03:02:53 ok hole along X: 1.0000 (expected 1.0000)
+03:02:53 ok wall face at X 0: 1.0000 (expected 1.0000)
+03:02:53 ok load patch: 1.0000 (expected 1.0000)
+03:02:53 ok patch area: 100.0000 (expected 100.0000)
+03:02:53 ok patch box[0]: 55.0000 (expected 55.0000)
+03:02:53 ok patch box[1]: 15.0000 (expected 15.0000)
+03:02:53 ok patch box[3]: 65.0000 (expected 65.0000)
+03:02:53 ok patch box[4]: 25.0000 (expected 25.0000)
+03:02:53 ok patch box[5]: 52.0000 (expected 52.0000)
+03:02:53 HAND {'chord_tension_n': 91.5, 'chord_stress_mpa': 7.32, 'strut_force_n': 104.2, 'strut_stress_mpa': 4.01, 'strut_len_mm': 56.7, 'euler_in_plane_n': 342, 'euler_out_of_plane_n': 316, 'buckling_factor_pinned': 3.04, 'zc': 52.75} mass g 5.381
+03:02:53 ok s4_waist_wall_1p5 hole faces: 2.0000 (expected 2.0000)
+03:02:53 ok s4_waist_wall_1p5 wall faces: 1.0000 (expected 1.0000)
+03:02:54 ok s4_waist_wall_1p5 load patch faces: 1.0000 (expected 1.0000)
+03:02:54 fillet faces for mesh control 6
+03:02:54 s4_waist_wall_1p5: PREDICT nodes ~29155, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.32 / 4.01 MPa
+03:02:56 s4_waist_wall_1p5: mesh rc 0, 37974 nodes, 23854 elements, free 14.3 GB
+03:03:00 s4_waist_wall_1p5: fixture nodes 1075, box [0.0, 15.0, 6.0] to [0.0, 25.0, 56.0]
+03:03:00 s4_waist_wall_1p5: load nodes 230, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:03:03 s4_waist_wall_1p5 checks {'reaction': [-0.001, -0.0, 59.999, 59.999], 'reaction_err_pct': 0.002, 'reaction_fz': 59.999, 'sx_top': 7.765, 'sx_hand': 7.5, 'sx_nodes': 88, 'sx_err_pct': 3.53, 'max_disp': 1.2756, 'vm_all': 20.76, 'vm_all_at': [48.48, 19.68, 49.98], 'nodes': 37974, 'excessive_prompt': False}
+03:03:03 s4_waist_wall_1p5 chord sx 7.31 hand 7.32 | Y factors (2.17, 10.12, 3.22, 2.17) | vm (20.76, [48.48, 19.68, 49.98], 2.17) | Y {"tension": [2.22, [48.62, 18.52, 49.93], 10.12], "shear": [4.04, [5.28, 20.3, 52.89], 3.22]} | excluded {'vm': 16.37, 'at': [54.24, 20.0, 52.06]}
+03:03:03 ok s4_waist_holes_1p5 hole faces: 2.0000 (expected 2.0000)
+03:03:03 ok s4_waist_holes_1p5 wall faces: 1.0000 (expected 1.0000)
+03:03:03 ok s4_waist_holes_1p5 load patch faces: 1.0000 (expected 1.0000)
+03:03:03 fillet faces for mesh control 6
+03:03:03 s4_waist_holes_1p5: PREDICT nodes ~29155, max disp ~0.3 to 1.0 mm, peak in a window corner fillet or the strut foot fillet at the strip; members at 7.32 / 4.01 MPa
+03:03:06 s4_waist_holes_1p5: mesh rc 0, 37974 nodes, 23854 elements, free 14.2 GB
+03:03:10 s4_waist_holes_1p5: fixture nodes 376, box [0.0, 17.75, 9.75] to [4.0, 22.25, 50.25]
+03:03:10 s4_waist_holes_1p5: load nodes 230, box [55.0, 15.0, 52.0] to [65.0, 25.0, 52.0]
+03:03:12 s4_waist_holes_1p5 checks {'reaction': [0.001, -0.001, 59.999, 59.999], 'reaction_err_pct': 0.002, 'reaction_fz': 59.999, 'sx_top': 8.01, 'sx_hand': 7.5, 'sx_nodes': 88, 'sx_err_pct': 6.8, 'max_disp': 1.4556, 'vm_all': 26.52, 'vm_all_at': [0.0, 19.3, 50.14], 'nodes': 37974, 'excessive_prompt': False}
+03:03:12 s4_waist_holes_1p5 chord sx 7.24 hand 7.32 | Y factors (2.38, 5.83, 2.07, 2.07) | vm (18.87, [48.48, 19.68, 49.98], 2.38) | Y {"tension": [3.86, [5.2, 20.4, 55.78], 5.83], "shear": [6.27, [5.24, 20.35, 52.28], 2.07]} | excluded {'vm': 26.52, 'at': [0.0, 19.3, 50.14]}
+03:03:12 closing pid 128632 committed MB 1884
+STEP s4_waist mass 5.381 worst Y factors (yield, layer, shear, min) [2.17, 5.83, 2.07, 2.07] buckling 3.04

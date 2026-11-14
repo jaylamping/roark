@@ -2,6 +2,9 @@
 
 Windows only; needs `pywin32` and `psutil` (`pip install pywin32 psutil`). Used by `tools/cad/check_sw_refs.py`.
 
+This page is the rules for sharing SolidWorks. How to model, export and run studies from a script, with the helpers that
+check each step, is the [playbook](playbook/README.md).
+
 Every session runs its own SolidWorks instance, so sessions do not take turns. Joey made this the standard on 2026-11-06.
 
 ```python
@@ -57,7 +60,7 @@ Measured on 2026-11-09 with the Core Audio peak meters of every session (`python
 - The hider still mutes any audio session owned by our instance or its children, in case a sound such as collision detection ever plays through one. Windows saves an app's mute by exe path, so `close()` raises `sw_unmute_<pid>.flag` and unmutes before exit. That way Joey's own SolidWorks never starts muted. If an instance crashes while muted and Joey's SolidWorks goes quiet, unmute SolidWorks in the Windows volume mixer.
 - SolidWorks' own sound options live in the registry and are shared with Joey's SolidWorks. Do not change them.
 
-**A launch stalls at the splash screen while another instance is mid-solve.** It resumes once the solve stops. So coordinate a short hold with any thread that is solving before you launch, and hold between cases if another thread asks.
+**A launch can wait at the splash screen while the oldest running instance is busy.** `launch()` handles it and no hold needs agreeing between threads: see [Launching beside a busy instance](#launching-beside-a-busy-instance).
 
 **A launch takes focus about 6 times in its first 20 s, and nothing tried stops it.** So reuse one instance across scripts with `session()` and don't restart between runs. Each measured on one launch, Joey-PC, 2026-11-07:
 
@@ -80,14 +83,82 @@ For Bambu Studio, use the CLI (`--slice`), which opens no window.
 
 solidworks-mcp servers start their instance through their own code, so they don't get this until that build is changed.
 
+## Hung, half-closed and orphaned instances
+
+`python tools/solidworks/sw_instance.py --status` lists every SolidWorks process with its age, threads, windows, committed memory, whether it answers, and what it is doing. It only looks. Run it before reporting a hang.
+
+| State | What is seen | Healthy | A launch |
+| --- | --- | --- | --- |
+| idle | Answers | Yes | Goes ahead |
+| solving | Not answering, `cwanalysisproc.exe` or `star.exe` runs under it | Yes | Goes ahead |
+| busy | Not answering, no solver, but a live client process is driving it (mesh, rebuild, reading a result back) | Yes | Goes ahead |
+| orphan | Not answering, still has its windows, no solver and no live client: its client was killed mid-call | Maybe | Waits 300 s for it, then refuses and names the PID |
+| HALF-CLOSED | Not answering and no windows left | No | Refuses at once and names the PID |
+
+Under each row `--status` names who drives the instance: its claim ([cad-workstation.md section 2](../../conventions/cad-workstation.md#2-claims-and-heartbeats)),
+or, when the session made none, the worktree and command line that `launch()` or `attach()` noted for it.
+
+The live client is the process named in `sw_owner_<pid>.txt` in the temp folder, which `launch()` and `attach()` write, or failing that the process that started the instance.
+
+## Launching beside a busy instance
+
+Sessions do not take turns to launch. `launch()` starts a new instance beside any number of solving or busy ones.
+
+What SolidWorks does, traced on holly-pc on 2026-11-13 with Wait Chain Traversal on a process held at the splash screen: **at startup a new SolidWorks makes one COM call into an instance that is already running, and stays at the splash screen until that instance answers.** Five traces caught the call. In four, one other instance was running and the call went to it. In the fifth, two were running and the call went to the older. Three more starts were made while a newer instance was solving and not answering, with an older one idle: all three were ready in their usual 3 to 8 s. So the call appears to go to the oldest running instance, and a newer busy one does not hold a launch up.
+
+- While the oldest instance meshes, rebuilds or reads a result back, it does not answer at all, and the new process waits for the whole of it. One wait was still going at 150 s.
+- While the oldest instance solves, it answers now and then. A new process got through 14 s into an 18 s solve of 476k nodes.
+- The `/r`, `-Embedding` and `/Automation` switches make the same call and wait the same way.
+
+So `launch()` starts the process anyway and does not count time spent beside a solving or busy instance against its `timeout`, up to `busy_wait` (two hours). The launch lock is held meanwhile, so other launches queue behind it, which is where they would be waiting in any case. The launch comes up the moment the old instance answers. It still raises at once if an instance turns out half-closed.
+
+Before 2026-11-13 `launch()` waited for every instance that was not answering and refused after 300 s. That made threads take turns behind solves of 30 to 50 minutes, most of the time for an instance the new process would never have called.
+
+A thread that wants fewer launches keeps one instance through a run of jobs with `session()`, and recycles it on committed memory, not per job.
+
+### The keeper
+
+An instance that only ever idles, and is the oldest one running, takes that startup call for everyone and answers at once. Tested on holly-pc on 2026-11-13 for one hour with three threads at work: after the keeper became the oldest, 22 launches passed the splash screen in 1.6 to 2.2 s, 19 of them while another instance was busy or solving and not answering. Just before, a launch had waited about 19 minutes behind the then-oldest instance's result read-back. "Oldest" still rests on these observations, not on documentation.
+
+- `python tools/solidworks/sw_instance.py --keeper on` switches it on for the machine (a `keeper.on` file in the claims folder) and starts it: hidden, no add-ins, no documents, about 270 MB. `--keeper off` ends it and `--keeper status` shows it. It is on for holly-pc and off for Joey-PC.
+- Where it is on, every `launch()` checks it first and starts it if it is missing, so it comes back after a restart with the first launch. It only helps from the moment every instance older than it has exited, and `launch()` says so when it starts one beside older instances. It is started through WMI, outside the caller's job object, so a client run under `capped.py` or a tool that ends its process tree does not take the keeper with it.
+- `launch()` replaces a keeper that does not answer or has grown past 1.5 GB. It belongs to no session: never open a document in it, attach to it or close it.
+- **Cost:** SolidWorks gives Auto Recover to two instances. The keeper holds one, so a thread's second instance starts with the journal prompt and `no_auto_recover`. Rule 5 already covers that.
+
+What went wrong on holly-pc on 2026-11-11, and what the module now does about each step:
+
+- A job ran as `timeout 7200 python job.py`. At two hours `timeout` killed the Python client in the middle of a COM call that was returning a 2.4 M-node result. **Do not wrap a SolidWorks job in a bare `timeout`.** If a job needs a time limit, the limit must be followed by `end_session(state_file)`, which now always ends the instance.
+- The cleanup then called `ExitApp` on that instance. It half-closed: no windows, one thread spinning a core, 3.6 GB still committed, still in the ROT. A COM call has no timeout, so the cleanup never returned and never reached its force-stop. `close()` now checks that the instance answers before any COM call, puts a deadline on each call, and force-stops the instance and everything it started when either fails.
+- The state file still named the half-closed instance, so the next run attached to it and hung for its whole time limit. `attach()` and `session()` now raise `NotAnswering` within 30 s without touching it, and `end_session()` force-stops an instance that does not answer and always removes the state file.
+- **A launch stalls at the splash screen while any other instance is not answering**, so one half-closed instance stopped every thread's launches. Seven launches sat at the splash for five minutes each. `launch()` raises at once, naming the PID, when one is half-closed, and goes ahead beside a solving or busy one ([Launching beside a busy instance](#launching-beside-a-busy-instance)).
+- An instance that was 28 minutes into a real solve was taken for hung and killed. That left `cwanalysisproc.exe` and `star.exe` running on several cores and 4 GB with nothing to read the result. **An instance does not answer while it solves: that is not a hang.** `--status` shows `solving` or `busy` for it and `HALF-CLOSED` for the real thing. `close()` and `end_session()` now stop the solver with the instance.
+- Committed memory grows with use: one instance reached 26 GB over about 30 rebuilds, with a working set of only 1.7 GB. Check `inst.private_mb()`, not `rss_mb()`, and start a fresh instance for each job or when it passes a few GB.
+- A hidden modal dialog holds the client, not other sessions: the instance still answers, so `--status` shows it idle while its script hangs. On 2026-11-13 `load_simulation()` sat for 35 minutes behind a hidden "Yes, continue to load SOLIDWORKS Simulation / No, disable SOLIDWORKS Simulation" prompt, which came up after test instances had been stopped during startup. `sw_hidden_<pid>.log` showed it.
+
+### Ending instances
+
+`python tools/solidworks/sw_kill.py` ends SolidWorks processes with the checks a bare `taskkill` lacks, and logs each one
+to `kills.log` in the claims folder (time, state, who launched it, the command that ended it).
+
+- `--list` shows every instance and what would be ended.
+- `--dead` ends only what can never finish: a half-closed instance, an instance that has not answered for 300 s with no
+  solver and no live client, and solver or helper processes whose SolidWorks has gone. Any session may run it, before a
+  launch that would otherwise refuse. It watches each one first, 20 s for a half-closed instance and 300 s for an
+  abandoned one, so it can take five minutes; a stray solver is ended only if no running SolidWorks started before it.
+- `<pid>` ends one instance and everything it started. Without `--force` it refuses an instance that is idle, solving or
+  busy, and the keeper.
+- `--force`, with a PID or with `--all`, ends a live session's instance at once. `--all --force` leaves the keeper
+  switched on, so the next launch starts a new one. That is for the session that owns it, or on
+  Joey's say-so in the thread.
+
 ## Rules
 
 1. Each session starts its own instance with `launch()` and uses that handle. Keep it hidden.
 2. Never use `GetActiveObject`, `Dispatch("SldWorks.Application")` or anything else that reaches "the running SolidWorks". It can land in another session's instance.
-3. Never call `ExitApp`, close documents in, or kill a PID the session did not start.
+3. Never call `ExitApp`, close documents in, or kill a PID the session did not start. The one exception is `sw_kill.py --dead`, which ends only instances that can never finish ([Ending instances](#ending-instances)).
 4. One file belongs to one session. Other sessions open a copy, read-only. Agree ownership before writing.
 5. Save after each step. A third instance has no Auto Recover, and an instance can crash.
-6. Concurrent Simulation solves are allowed, up to the two tested so far. Keep large solves to one at a time until a larger pair is tested.
+6. Concurrent Simulation solves are allowed, up to the two tested so far, and the limit is per machine (What was tested, below). Joey-PC ran a pair of 476k nodes each. On holly-pc a pair of about 390k nodes each crashed, so there solves that size run one at a time; smaller pairs ran together. Keep large solves to one at a time on any machine until a pair that size is tested there. A solve expected to need more than about 6 GB takes the workstation's large-solve lock first: `with big_solve("thread name"): study.RunAnalysis`. The lock is the file `C:\joe\.fea_solve.lock` (owner, PID, process start time, time taken), created exclusively and removed afterwards. `big_solve` waits while another session holds it and takes over a lock only when its process has gone. A lock written by hand in another layout is respected as long as any number in it is a running PID. Smaller solves do not take it. `swfea.static()` takes the same lock by itself for a solve over 200,000 nodes (`heavy_solve_lock`).
 7. Exit the instance when the work is done. Each one holds about 1 GB idle and about 1.6 GB after a solve.
 8. solidworks-mcp follows these rules from branch `feat/owned-instance`: each MCP server launches and owns one instance, attached by PID. **A server started before that build still attaches to the running SolidWorks until it restarts**, so do not use its tools alongside other sessions. Running servers are not restarted for you.
 
@@ -114,6 +185,7 @@ holly-pc, SolidWorks 2026 SP0, 2026-11-11, one instance, hidden:
 | Simulation add-in | Pass, 4 s, no license prompt |
 | Mesh and solve, Ø40 × 100 mm cylinder, 100 N axial, 48,724 nodes | Pass, 0.5 s mesh and 1.9 s solve; peak displacement 2.24 µm against 2.27 µm by hand |
 | RAM | About 740 MB |
+| Two instances solving at once, upper-arm halves, about 390k nodes each (2026-11-11, upper-arm R1 FEA) | **Fail:** crashed reading back the results. Run solves that size one at a time |
 
 `CreateMesh` takes element sizes in mm. A new install has no default part template until SolidWorks has been opened once
 by hand, so pass a template path to `NewDocument` until then.
@@ -134,4 +206,4 @@ Two startup problems came up. `launch()` handles both:
 
 Four instances ran at once in the solidworks-mcp test, each in its own PID, with no modeling load on all four.
 
-`ExitApp` can leave a half-closed process with no documents and no Simulation license, so `close()` force-stops its own PID if it has not gone after 60 seconds.
+`ExitApp` can leave a half-closed process with no documents and no Simulation license, so `close()` force-stops its own PID, and what that PID started, if it has not gone after 60 seconds.

@@ -1,0 +1,8 @@
+stress-ng: info:  [1279] setting to a 1 hour, 5 mins run per stressor
+stress-ng: info:  [1279] dispatching hogs: 2 vm, 4 cpu
+stress-ng: info:  [1291] vm: using 899.59M per stressor instance (total 1.76G of 3.49G available memory)
+stress-ng: info:  [1279] skipped: 0
+stress-ng: info:  [1279] passed: 6: vm (2) cpu (4)
+stress-ng: info:  [1279] failed: 0
+stress-ng: info:  [1279] metrics untrustworthy: 0
+stress-ng: info:  [1279] successful run completed in 1 hour, 5 mins

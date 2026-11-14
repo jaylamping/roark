@@ -1,0 +1,80 @@
+{
+ "volumes_mm3": {
+  "upper": 18912.8,
+  "lower": 19568.1,
+  "ring": 2196.8
+ },
+ "watertight": {
+  "upper": true,
+  "lower": true,
+  "ring": true
+ },
+ "boxes": {
+  "upper": [
+   [
+    -36.0,
+    0.3,
+    -4.0
+   ],
+   [
+    36.0,
+    32.0,
+    11.0
+   ]
+  ],
+  "lower": [
+   [
+    -36.0,
+    -32.0,
+    -4.0
+   ],
+   [
+    36.0,
+    -0.3,
+    11.0
+   ]
+  ],
+  "ring": [
+   [
+    -26.0,
+    -25.967,
+    0.2
+   ],
+   [
+    26.0,
+    25.967,
+    7.2
+   ]
+  ]
+ },
+ "pair_box": [
+  [
+   -36.0,
+   -32.0,
+   -4.0
+  ],
+  [
+   36.0,
+   32.0,
+   11.0
+  ]
+ ],
+ "clearances_mm": {
+  "ring_outside_to_seat_mm (line to line by design)": 0.005,
+  "ring_top_face_to_upper_shoulder_mm": 0.2,
+  "ring_bottom_face_to_lower_shoulder_mm": 0.2,
+  "inner_ring_outside_to_shoulders_mm (radial, turning)": 0.997,
+  "inner_ring_end_face_circle_to_shoulders_mm": 0.986,
+  "shaft_\u00d840_to_shoulders_mm (radial)": 2.964,
+  "screw_clearance_hole_radial_mm (\u00d83.4 for M3)": 0.2,
+  "screw_head_in_counterbore_radial_mm (\u00d86 for a \u00d85.5 head)": 0.25,
+  "screw_head_height_vs_counterbore_mm (3.0 head, 3.5 deep)": 0.5,
+  "upper: M3 hole wall to the seat (clear hole r1.7, hole centre X30), mm": 2.303,
+  "lower: M3 hole wall to the seat (clear hole r1.7, hole centre X30), mm": 2.303,
+  "spec as drawn: screw at X 28.2 with a \u00d84.0 insert hole, wall to the \u00d852 seat (r 26), mm": 0.2,
+  "spec as drawn: screw at X 28.2 with a \u00d83.4 clearance hole, wall to the seat, mm": 0.5,
+  "built: \u00d84.0 insert hole wall to the seat at X 30, mm": 2.0,
+  "M4 insert hole (\u00d85.6 at X 24, Z 3.5, 8 deep from Y -32) to the seat, mm": 5.141
+ },
+ "split_gap_mm": 0.6
+}

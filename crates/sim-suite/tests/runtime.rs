@@ -7,6 +7,8 @@
 
 #[expect(dead_code, reason = "each test file uses some of the shared helpers")]
 mod common;
+#[path = "runtime/events.rs"]
+mod events;
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -128,8 +130,9 @@ fn replies(runtime: &mut Runtime, n: usize, end: Instant) -> Vec<Reply> {
 fn the_runtime_runs_stops_and_clears_every_bus_and_never_enables_on_vcan() {
     let path = skeleton_path();
     let skeleton = skeleton::load(&path).unwrap();
-    let names = ["can0", "can1"];
-    for name in names {
+    // Every bus the skeleton names, so a bus added to it is checked before anything opens it.
+    let names: Vec<&str> = skeleton.buses.iter().map(|b| b.name.as_str()).collect();
+    for name in names.iter().copied() {
         ensure_vcan(name).unwrap();
     }
     let root = std::env::temp_dir().join(format!("sim-suite-runtime-{}", std::process::id()));
@@ -275,6 +278,10 @@ fn the_runtime_runs_stops_and_clears_every_bus_and_never_enables_on_vcan() {
         }
         assert_eq!(exit.recording.buses.len(), plans.len());
         assert!(session.join("session.json").is_file());
+        let events = common::events(&session);
+        events::of_the_stop_and_clear_run(&events);
+        assert_eq!(exit.recording.events.written, events.len() as u64);
+        assert_eq!(exit.recording.events.lost, 0);
 
         stop_sim.store(true, Ordering::Release);
         for sim in sims {
@@ -338,8 +345,9 @@ impl Drop for Flags<'_> {
 fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
     let path = skeleton_path();
     let skeleton = skeleton::load(&path).unwrap();
-    let names = ["can0", "can1"];
-    for name in names {
+    // Every bus the skeleton names, so a bus added to it is checked before anything opens it.
+    let names: Vec<&str> = skeleton.buses.iter().map(|b| b.name.as_str()).collect();
+    for name in names.iter().copied() {
         ensure_vcan(name).unwrap();
     }
     let root =
@@ -601,6 +609,7 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
             })
         );
 
+        let session = runtime.session().to_path_buf();
         let exit = runtime.end().unwrap();
         assert!(exit.control.error.is_none(), "{:?}", exit.control);
         assert_eq!(exit.control.bus_ended, None, "{:?}", exit.control);
@@ -608,6 +617,11 @@ fn an_enable_preflights_enables_and_holds_only_the_named_joints_on_vcan() {
         assert_eq!(exit.control.batches_dropped, 0);
         assert_eq!(exit.control.stray_results, 0);
         assert_eq!(exit.control.mode_stops, 1, "{:?}", exit.control);
+
+        let events = common::events(&session);
+        events::of_the_enable_run(&events);
+        assert_eq!(exit.recording.events.written, events.len() as u64);
+        assert_eq!(exit.recording.events.lost, 0);
         // Two joints after the first stop, two after the second, one after host.mode, one after host.fault.
         assert_eq!(exit.control.holds_ended, 6, "{:?}", exit.control);
         for bus in &exit.buses {

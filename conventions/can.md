@@ -64,13 +64,14 @@ Every socket is opened by one function that sets, and logs at startup, all of:
   **Why:** a duplicate sender is exactly the frame a filter would hide (see Transmit).
 - **Loopback left on.** It's how the `candump` black box sees what the runtime sent. Turning it off blinds the black box.
 - **Kernel timestamps** on every frame (`SO_TIMESTAMPNS_NEW`, 64-bit time), recorded with it, and the overflow counter
-  (`SO_RXQ_OVFL`). Hardware timestamps are requested once the real adapter is supported (PLAN step 8); the startup check
-  logs whether the adapter provides them. Reply ages and matching use the monotonic time the bus thread read the frame,
+  (`SO_RXQ_OVFL`). Hardware timestamps are a later step-8 change (PLAN step 8): they need their own epoch in
+  the recording, and the startup log will say whether the adapter provides them. Reply ages and matching use the monotonic time the bus thread read the frame,
   never the recorded wall-clock stamp, which can step.
 
 Interface settings (bitrate, sample point, TX queue length, restart) are applied by `deploy/` link setup, not by the runtime,
 and the runtime **checks** them at start (driver, bitrate, sample point, state) against the skeleton and refuses to run a bus
-that doesn't match. **Why:** bit timing left to defaults is the classic cause of an error-prone bus (kernel SocketCAN docs).
+that doesn't match, naming every mismatch. It also refuses the controller modes loopback, listen-only and presume-ack (not the
+socket's loopback option above), which make a frame look sent when nothing reached the wire or was acknowledged; `vcan` is the simulator and has none of these to check. **Why:** bit timing left to defaults is the classic cause of an error-prone bus (kernel SocketCAN docs).
 
 ### Transmit
 
@@ -126,7 +127,9 @@ that doesn't match. **Why:** bit timing left to defaults is the classic cause of
   are rebuilt. Nothing in the bus layer re-arms itself.
 - **Slow requests ride in the slack,** one in flight per bus, sent after the collect deadline only when the reply fits
   before the next tick starts, never on a tick whose reads can't be trusted, never to a limb the veto would stop or
-  while control is silent, and writes only to an idle limb's drive with no command of that tick unanswered. A request
+  while control is silent, and writes only to an idle limb's drive with no command of that tick unanswered. A scan's
+  probe (type 0 to any ID) or the set-ID (type 7) may reach any drive on the bus, so it goes only while every limb on
+  the bus is idle. A request
   waits queued only a bounded number of ticks. The bus produces exactly one result for every request, including when the
   thread ends, and retries none; a result control's full ring can't take is dropped and counted, and the requester times
   out. **Why:** a parameter read must not crowd out a command. A write's answer is a plain status, like a command's, so

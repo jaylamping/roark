@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ALLOWED_DEPS = {
     "can": {"robstride", "telemetry"},
     "can-bench": set(),
+    "candump-rotate": set(),
     "robot-cli": {"robstride", "skeleton"},
     "robstride": set(),
     "runtime": {"can", "robstride", "safety", "skeleton", "telemetry"},
@@ -41,6 +42,7 @@ ALLOWED_DEPS = {
 DOC_KIND = {
     "can": "library",
     "can-bench": "binary",  # no library; the README shows its commands
+    "candump-rotate": "binary",  # no library; the README shows its commands and the unit
     "robot-cli": "library",  # its library is the stop as plain values; the README also covers the binary
     "robstride": "library",
     "runtime": "library",  # its library is what the sim suite drives; the README also covers the binary
@@ -188,7 +190,11 @@ def check_lines():
 
 
 def is_test_code(path, lines, i):
-    return "tests" in path.parts or any("#[cfg(test)]" in line for line in lines[:i])
+    return (
+        "tests" in path.parts
+        or path.name == "tests.rs"
+        or any("#[cfg(test)]" in line for line in lines[:i])
+    )
 
 
 def check_guards():

@@ -2,7 +2,6 @@
 
 use std::io;
 use std::os::fd::AsFd;
-use std::process::Command;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
@@ -16,6 +15,7 @@ use telemetry::{BusInfo, BusRecorder, Epoch, TickBatch, TimestampSource};
 use crate::clock::{Clock, mono_now, sleep_relative, wall_ns};
 use crate::error_frame::BusError;
 use crate::exit_wait::{ExitWait, Pushed};
+use crate::interface::{self, Interface, InterfaceSpec, Refusal};
 use crate::order::{Order, Rearmed};
 use crate::slow::{SlowRequest, SlowResult};
 use crate::tick::BusTick;
@@ -61,6 +61,9 @@ pub fn bus_info(bus: &str, bitrate: u32) -> BusInfo {
 pub struct BusConfig {
     /// The interface, as the skeleton names it.
     pub name: String,
+    /// What the skeleton says its interface must be. A real interface that differs isn't opened; `vcan` (sim) is
+    /// taken as it is.
+    pub interface: InterfaceSpec,
     /// The drives the skeleton puts on it, in slot order, each with its limb's index on this bus.
     pub drives: Vec<BusDrive>,
     /// The tick.
@@ -70,21 +73,13 @@ pub struct BusConfig {
 /// Why a bus can't start or stopped running.
 #[derive(Debug, thiserror::Error)]
 pub enum BusRunError {
-    /// The interface isn't `vcan`. Real adapters come with their driver and bitrate checks (PLAN step 8).
-    #[error(
-        "{bus} is not a vcan interface; the bus layer runs only on vcan until the real adapter's checks exist"
-    )]
-    NotVcan {
+    /// The interface couldn't be read, or it is a real interface that doesn't match the skeleton, so it isn't opened.
+    #[error("{bus}: {source}")]
+    Interface {
         /// The interface.
         bus: String,
-    },
-    /// The interface's kind couldn't be read, so it isn't opened.
-    #[error("{bus}: can't tell what kind of interface it is: {reason}")]
-    Unchecked {
-        /// The interface.
-        bus: String,
-        /// Why not.
-        reason: String,
+        /// Why it was refused.
+        source: Refusal,
     },
     /// The drive table or timing is one the tick refuses.
     #[error("{bus}: {source}")]
@@ -147,13 +142,15 @@ pub struct Spawned {
     /// The socket's receive buffer as the kernel reports it (`SO_RCVBUF`, which Linux doubles for its bookkeeping),
     /// for the runtime's startup log: without `CAP_NET_ADMIN` the kernel caps it at `rmem_max`.
     pub receive_buffer_bytes: usize,
+    /// The interface as checked, for the runtime's startup log.
+    pub interface: Interface,
 }
 
 /// The rings and flags a bus thread runs with, all made before the first tick.
 pub struct BusLinks {
     /// Command batches from control; the newest one each tick is used.
     pub commands: Consumer<CommandBatch>,
-    /// Slow requests from control (parameter reads, allowlisted writes, get-ID), queued as room frees up.
+    /// Slow requests from control (parameter reads, allowlisted writes, get-ID, a scan's probes, set-ID), queued as room frees up.
     pub requests: Consumer<SlowRequest>,
     /// Each slow request's one result. When the ring is full the result is dropped and counted
     /// (`Counters::slow_results_dropped`, and in all at the end [`BusExit::slow_results_dropped`]), and the requester
@@ -192,16 +189,35 @@ pub struct BusLinks {
     pub exit: Arc<AtomicBool>,
 }
 
+/// Check `bus`'s interface against what the skeleton says (`spec`) without opening it: `vcan` is taken as it is, a real
+/// interface must match. [`spawn`] does the same before it opens the socket; a caller that must know before then (the
+/// runtime, to label its session real or simulated) checks first.
+///
+/// # Errors
+/// [`BusRunError::Interface`]: the kernel's report couldn't be read, or the interface doesn't match.
+pub fn check_interface(bus: &str, spec: &InterfaceSpec) -> Result<Interface, BusRunError> {
+    interface::check_bus(bus, spec).map_err(|source| BusRunError::Interface {
+        bus: bus.to_owned(),
+        source,
+    })
+}
+
 /// Open the bus and start its thread, named `bus-<name>`.
 ///
 /// # Errors
 /// [`BusRunError`] before any frame is sent.
 pub fn spawn(config: BusConfig, links: BusLinks) -> Result<Spawned, BusRunError> {
-    let tick =
+    let mut tick =
         BusTick::new(&config.drives, config.timing).map_err(|source| BusRunError::Config {
             bus: config.name.clone(),
             source,
         })?;
+    let interface = check_interface(&config.name, &config.interface)?;
+    if let Interface::Real(real) = &interface
+        && real.starts_error_passive()
+    {
+        tick.start_error_passive();
+    }
     let socket = open(&config.name)?;
     let receive_buffer_bytes =
         sys::receive_buffer(socket.as_fd()).map_err(|source| BusRunError::Socket {
@@ -218,22 +234,14 @@ pub fn spawn(config: BusConfig, links: BusLinks) -> Result<Spawned, BusRunError>
     Ok(Spawned {
         thread,
         receive_buffer_bytes,
+        interface,
     })
 }
 
 /// Open `bus` with can.md section 2's settings: error frames on, loopback on, our own frames back (so they record as
 /// `tx_echo`), every ID accepted (so unexpected senders stay visible), kernel timestamps, the overflow counter, a large
-/// receive buffer, non-blocking. [`bus_info`] records the same settings.
+/// receive buffer, non-blocking. [`bus_info`] records the same settings. [`spawn`] has checked the interface first.
 fn open(bus: &str) -> Result<CanSocket, BusRunError> {
-    let vcan = is_vcan(bus).map_err(|reason| BusRunError::Unchecked {
-        bus: bus.to_owned(),
-        reason,
-    })?;
-    if !vcan {
-        return Err(BusRunError::NotVcan {
-            bus: bus.to_owned(),
-        });
-    }
     let err = |source| BusRunError::Socket {
         bus: bus.to_owned(),
         source,
@@ -261,22 +269,6 @@ fn open(bus: &str) -> Result<CanSocket, BusRunError> {
     }
     socket.set_nonblocking(true).map_err(err)?;
     Ok(socket)
-}
-
-/// Whether `bus` is a `vcan` interface, from `ip -details -json`, or why that can't be read. `ip ... show dev` prints
-/// one link with at most one `info_kind`, so the pair appearing is the answer; a plain device such as `lo` has none.
-fn is_vcan(bus: &str) -> Result<bool, String> {
-    if bus.is_empty() || bus.starts_with('-') {
-        return Err(format!("{bus:?} is not an interface name"));
-    }
-    let out = Command::new("ip")
-        .args(["-details", "-json", "link", "show", "dev", bus])
-        .output()
-        .map_err(|e| format!("can't run ip: {e}"))?;
-    if !out.status.success() {
-        return Err(String::from_utf8_lossy(&out.stderr).trim().to_owned());
-    }
-    Ok(String::from_utf8_lossy(&out.stdout).contains(r#""info_kind":"vcan""#))
 }
 
 #[expect(

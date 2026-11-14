@@ -1,0 +1,5 @@
+uname -a: Linux robot-pi 6.18.60+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.18.60-1+rpt1 (2026-11-03) aarch64 GNU/Linux
+started 2026-11-13T14:55:35-06:00  finished 2026-11-13T16:00:43-06:00
+before: temp=47.7'C throttled=0x0  after: temp=54.3'C throttled=0x0  peak: temp=59.8'C
+taskset -c 0,1 stress-ng --vm 2 --vm-bytes 50% --cpu 4 --hdd 1 --hdd-bytes 256M --sock 2 --temp-path /home/agent/kc/tmp --timeout 65m
+cyclictest --mlockall --affinity=2,3 --threads=2 --priority=80 --interval=1000 --distance=0 --duration=1h --histogram=2000 --histfile=cyclictest-hist.txt --quiet

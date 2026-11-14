@@ -582,7 +582,11 @@ impl Preflight {
             }
             (
                 Exchange::Identity | Exchange::Write(_) | Exchange::Read(_),
-                SlowOutcome::Identity(_) | SlowOutcome::WriteAnswered | SlowOutcome::Read(_),
+                SlowOutcome::Identity(_)
+                | SlowOutcome::WriteAnswered
+                | SlowOutcome::Read(_)
+                | SlowOutcome::Found { .. }
+                | SlowOutcome::Unsure,
             ) => Err(no_answer(Unanswered::WrongAnswer)),
         }
     }

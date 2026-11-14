@@ -35,10 +35,15 @@ pub(crate) fn register(param: Param) -> Register {
     .unwrap_or_else(|| panic!("{param:?} isn't preflight's"))
 }
 
+#[expect(
+    clippy::panic,
+    reason = "test helper; preflight asks only its own drive"
+)]
 fn exchange_of(kind: SlowKind) -> Exchange {
     match kind {
         SlowKind::GetId => Exchange::Identity,
         SlowKind::Write(w) => Exchange::Write(register(w.param())),
+        SlowKind::Probe(_) | SlowKind::SetId { .. } => panic!("preflight asks only its own drive"),
         SlowKind::Read(p) => Exchange::Read(register(p)),
     }
 }
@@ -80,7 +85,8 @@ impl Drive {
 /// Run preflight for joint `n` of the fixture against `drive`: the verdict, and every write submitted.
 #[expect(
     clippy::unwrap_used,
-    reason = "test helper; the fixture's first joint has every cap"
+    clippy::panic,
+    reason = "test helper; the fixture's first joint has every cap, and preflight asks only its own drive"
 )]
 pub(crate) fn run(n: usize, drive: &Drive) -> (Result<(), Refusal>, Vec<(Param, ParamValue)>) {
     let skeleton = skeleton();
@@ -122,6 +128,9 @@ pub(crate) fn run(n: usize, drive: &Drive) -> (Result<(), Refusal>, Vec<(Param, 
             SlowKind::Write(w) => {
                 written.push((w.param(), w.value()));
                 SlowOutcome::WriteAnswered
+            }
+            SlowKind::Probe(_) | SlowKind::SetId { .. } => {
+                panic!("preflight asks only its own drive")
             }
             SlowKind::Read(param) => SlowOutcome::Read(ParamOutcome::Read(match param {
                 Param::CanTimeout => ParamValue::CanTimeout(CanTimeout::RUNTIME),

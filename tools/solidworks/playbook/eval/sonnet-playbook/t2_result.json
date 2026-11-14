@@ -1,0 +1,10 @@
+{
+ "volume_mm3": 31642.99990167725,
+ "hand_volume_mm3": 31642.999901677274,
+ "counterbore_floor_z_mm": 3.0,
+ "bodies": 1,
+ "floors_seen": [
+  3.0
+ ],
+ "input_volume": 32974.02416773478
+}

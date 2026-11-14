@@ -14,9 +14,11 @@ import ctypes
 import ctypes.wintypes as wt
 import msvcrt
 import os
+import re
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 import psutil
@@ -30,6 +32,8 @@ EXE = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\SLDWORKS.exe"
 SIM_DLL = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\Simulation\cosworks.dll"
 SIM_DIR = os.path.normcase(os.path.dirname(SIM_DLL))
 LOCK = os.path.join(tempfile.gettempdir(), "sw_instance_launch.lock")
+SOLVERS = ("cwanalysisproc.exe", "star.exe")
+SOLVE_LOCK = r"C:\joe\.fea_solve.lock"  # one large solve at a time on the CAD workstation (RULES.md, rule 6)
 
 
 class _LaunchLock:
@@ -56,6 +60,269 @@ class _LaunchLock:
         self.f.seek(0)
         msvcrt.locking(self.f.fileno(), msvcrt.LK_UNLCK, 1)
         self.f.close()
+
+
+class NotAnswering(RuntimeError):
+    """The instance is running but not answering: mid-solve, stuck behind a hidden dialog, or half-closed."""
+
+
+def _top_windows(pid):
+    tops = []
+
+    def find(h, _):
+        if win32process.GetWindowThreadProcessId(h)[1] == pid:
+            tops.append(h)
+        return True
+
+    win32gui.EnumWindows(find, None)
+    return tops
+
+
+def answers(pid, wait=3.0):
+    """True if this PID's window thread answers a null message within `wait` seconds. Sends nothing else.
+
+    A solving instance does not answer until the solve ends. A half-closed one has no windows left and never will.
+    """
+    tops = _top_windows(pid)
+    try:
+        # A window can be destroyed between the listing and the look, while its instance is closing.
+        main = [h for h in tops if win32gui.GetClassName(h).startswith("Afx:")] or tops
+    except win32gui.error:
+        return False
+    if not main:
+        return False
+    try:
+        win32gui.SendMessageTimeout(main[0], win32con.WM_NULL, 0, 0, win32con.SMTO_ABORTIFHUNG, int(wait * 1000))
+        return True
+    except win32gui.error:
+        return False
+
+
+def _wait_answers(pid, seconds):
+    end = time.time() + seconds
+    while True:
+        if answers(pid):
+            return True
+        if time.time() >= end or _started(pid) is None:
+            return False
+        time.sleep(2)
+
+
+def kill_tree(pid, started):
+    """Force-stop this process and everything it started (cwanalysisproc, star, sldProcMon, sldexitapp).
+
+    Only the process with this exact start time, because Windows reuses pids. Returns the pids stopped.
+    """
+    if started is None or _started(pid) != started:
+        return []
+    try:
+        root = psutil.Process(pid)
+        procs = root.children(recursive=True) + [root]
+    except psutil.Error:
+        return []
+    for p in reversed(procs):  # the instance first, so it cannot start anything new
+        try:
+            p.kill()
+        except psutil.Error:
+            pass
+    _, left = psutil.wait_procs(procs, timeout=15)
+    # A process already exiting refuses to be terminated (taskkill: "no running instance of the task") while its
+    # last thread spins in user code for ever. Ending its threads lets the exit finish.
+    for p in left:
+        try:
+            for t in p.threads():
+                h = ctypes.windll.kernel32.OpenThread(0x0001, False, t.id)  # THREAD_TERMINATE
+                if h:
+                    ctypes.windll.kernel32.TerminateThread(h, 1)
+                    ctypes.windll.kernel32.CloseHandle(h)
+        except psutil.Error:
+            pass
+    psutil.wait_procs(left, timeout=15)
+    return [p.pid for p in procs if not p.is_running()]
+
+
+def _deadline(seconds, on_expire, fn):
+    """Run one blocking COM call. If it has not returned after `seconds`, run on_expire() from another thread.
+
+    COM gives an outgoing call no timeout of its own, so a hung instance holds its caller for ever.
+    """
+    done = threading.Event()
+
+    def dog():
+        if not done.wait(seconds):
+            on_expire()
+
+    threading.Thread(target=dog, daemon=True).start()
+    try:
+        return fn()
+    finally:
+        done.set()
+
+
+def status():
+    """Every SLDWORKS.exe on this machine: (pid, age s, threads, windows, private MB, answers). Looks, never touches."""
+    rows = []
+    for p in psutil.process_iter(["name"]):
+        if (p.info["name"] or "").lower() != "sldworks.exe":
+            continue
+        try:
+            rows.append(
+                (
+                    p.pid,
+                    round(time.time() - p.create_time()),
+                    p.num_threads(),
+                    len(_top_windows(p.pid)),
+                    round(p.memory_info().private / 2**20),
+                    answers(p.pid),
+                )
+            )
+        except psutil.Error:
+            pass
+    return rows
+
+
+def owner_file(pid):
+    return os.path.join(tempfile.gettempdir(), f"sw_owner_{pid}.txt")
+
+
+def _write_owner(pid, started):
+    """Record this Python process as the client driving that instance: "sw_start client_pid client_start"."""
+    try:
+        with open(owner_file(pid), "w") as f:
+            f.write(f"{started!r} {os.getpid()} {_started(os.getpid())!r}")
+    except OSError:
+        pass
+
+
+def _drop_owner(pid):
+    try:
+        os.remove(owner_file(pid))
+    except OSError:
+        pass
+    try:
+        _claims().drop_instance(_claims().claims_dir(), pid)
+    except Exception:
+        pass
+
+
+def _claims():
+    """tools/pc/claims.py, which is stdlib only. Imported late so this module still loads if it is missing."""
+    here = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pc")
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    import claims
+
+    return claims
+
+
+def _note_instance(pid, started):
+    """Leave a note saying which worktree and command drive this instance, so `--status` and `claims.py who <pid>` name
+    an owner even when the session made no claim. Never raises: a note must not stop a launch."""
+    try:
+        c = _claims()
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        c.note_instance(c.claims_dir(), pid, started, repo, os.getpid(), " ".join(sys.argv) or sys.executable, time.time())
+    except Exception:
+        pass
+
+
+def who(pid):
+    """One line on who drives this instance: its claim if it has one, else the note its launcher left, else ''."""
+    try:
+        c = _claims()
+        d = c.claims_dir()
+        for claim in c.load_all(d):
+            if claim.get("sw_pid") == pid and not claim.get("broken"):
+                return f"claimed by {claim['session']}: {claim.get('status', '')}"
+        n = c.instance_note(d, pid, _started(pid))
+        if n:
+            if pid == keeper_pid():
+                return n["command"]
+            return f"no claim; {n['worktree']} (client PID {n['client_pid']}): {n['command']}"
+    except Exception:
+        pass
+    return ""
+
+
+def _owner_alive(pid):
+    """True if a client process is still driving this instance: the one in its owner file, or the one that started it.
+
+    A client blocked in a long COM call (mesh, rebuild, reading a result back) is alive. One killed mid-call is not.
+    """
+    try:
+        with open(owner_file(pid)) as f:
+            sw_started, client, client_started = f.read().split()
+        if sw_started == repr(_started(pid)) and repr(_started(int(client))) == client_started:
+            return True
+    except (OSError, ValueError):
+        pass
+    try:
+        parent = psutil.Process(pid).parent()  # None once the launching process has gone, even if its pid was reused
+        return parent is not None and parent.is_running()
+    except psutil.Error:
+        return False
+
+
+def _solving(pid):
+    """True if this instance has a Simulation solver running under it."""
+    try:
+        return any(c.name().lower() in SOLVERS for c in psutil.Process(pid).children(recursive=True))
+    except psutil.Error:
+        return False
+
+
+def classify(answers_now, windows, solving, owner_alive):
+    """What an instance is doing, from what can be seen without touching it.
+
+    idle     answers.
+    solving  not answering, a solver process runs under it. Healthy.
+    busy     not answering, a live client is driving it (mesh, rebuild, reading a result back). Healthy.
+    orphan   not answering, still has its windows, but no solver and no live client: finishing a call whose client
+             was killed, or stuck. It may recover.
+    zombie   not answering and no windows left: half-closed. It never recovers.
+    """
+    if answers_now:
+        return "idle"
+    if windows == 0:
+        return "zombie"
+    if solving:
+        return "solving"
+    if owner_alive:
+        return "busy"
+    return "orphan"
+
+
+def state(row):
+    """classify() for one row of status()."""
+    pid, _age, _threads, windows, _mb, ok = row
+    return classify(ok, windows, (not ok) and _solving(pid), (not ok) and _owner_alive(pid))
+
+
+def _others(own_pid=None):
+    """Other instances that are not answering, as (pid, state). The first 30 s of a process are its own startup."""
+    return [(row[0], state(row)) for row in status() if row[0] != own_pid and not row[5] and row[1] > 30]
+
+
+def _zombies(others, settle=20):
+    """The pids among `others` that are half-closed, and stay so for `settle` seconds.
+
+    An instance in an ordinary exit also has no windows and does not answer, for a few seconds. Only one that
+    stays that way stalls launches, so a launch must not be refused, or stopped half way, for the first kind.
+    """
+    dead = [pid for pid, what in others if what == "zombie"]
+    end = time.time() + settle
+    while dead and time.time() < end:
+        time.sleep(5)
+        still = {pid for pid, what in _others() if what == "zombie"}
+        dead = [pid for pid in dead if pid in still]
+    return dead
+
+
+def _zombie_error(pids):
+    return RuntimeError(
+        f"SolidWorks PID {pids} is half-closed (no windows, not answering) and stalls every launch. "
+        f"Its owner must end_session() it, or run: taskkill /PID {pids[0]} /T /F"
+    )
 
 
 def _clear_journal_prompt(pid):
@@ -331,8 +598,19 @@ class Instance:
             raise RuntimeError("Simulation add-in object not available")
         return wc.dynamic.Dispatch(add.CosmosWorks._oleobj_)
 
-    def close(self, timeout=60):
-        """Close this instance's documents and exit it. Only ever touches self.pid."""
+    def private_mb(self):
+        """Committed memory. Recycle the instance when this grows: the working set (rss_mb) hides it."""
+        return round(psutil.Process(self.pid).memory_info().private / 2**20)
+
+    def answers(self):
+        return answers(self.pid)
+
+    def close(self, timeout=60, busy_wait=30):
+        """Close this instance's documents and exit it. Only ever touches self.pid and what it started.
+
+        Always returns within about busy_wait + 4 * timeout seconds: an instance that does not answer for
+        `busy_wait` seconds (still solving, or half-closed) is force-stopped with its solver, not asked to exit.
+        """
         if not self.owned:
             raise RuntimeError("this session does not own that instance")
         # Unmute this instance's sessions before it exits, so Windows saves SLDWORKS.exe as unmuted (see the hider).
@@ -344,68 +622,300 @@ class Instance:
             _mute([self.pid] + [k.pid for k in kids], False)
         except (OSError, psutil.Error):
             pass
+        try:
+            kids = psutil.Process(self.pid).children(recursive=True) if _started(self.pid) == self.started else []
+        except psutil.Error:
+            kids = []
+
+        def stop():
+            kill_tree(self.pid, self.started)
+
         if self.sw is not None:
-            try:
-                if int(self.sw.GetProcessID) != self.pid:
-                    raise RuntimeError("handle does not match this instance's PID")
-                self.sw.CloseAllDocuments(True)
-                self.sw.ExitApp()
-            except pythoncom.com_error:
-                pass  # crashed or hung: the process cleanup below still runs
-            finally:
-                self.sw = None
+            # An instance that is not answering would hold ExitApp for ever, so it is never asked: it is stopped.
+            if _wait_answers(self.pid, busy_wait):
+                try:
+                    # If a call is still out after `timeout`, the instance is stopped, which makes the call return.
+                    if int(_deadline(timeout, stop, lambda: self.sw.GetProcessID)) != self.pid:
+                        raise RuntimeError("handle does not match this instance's PID")
+                    _deadline(timeout, stop, lambda: self.sw.CloseAllDocuments(True))
+                    _deadline(timeout, stop, lambda: self.sw.ExitApp())
+                except pythoncom.com_error:
+                    pass  # crashed, hung or stopped above: the process cleanup below still runs
+            self.sw = None
         pythoncom.CoFreeUnusedLibraries()
         if self.started is not None and _started(self.pid) == self.started:
             try:
-                proc = psutil.Process(self.pid)
-                try:
-                    proc.wait(timeout)
-                except psutil.TimeoutExpired:
-                    # ExitApp can leave a half-closed process with no documents and no Simulation license.
-                    proc.kill()
-                    proc.wait(30)
+                psutil.Process(self.pid).wait(timeout)
+            except psutil.TimeoutExpired:
+                pass  # ExitApp can leave a half-closed process with no documents and no Simulation license.
             except psutil.NoSuchProcess:
                 pass
-        # ExitApp can start sldexitapp.exe, which opens a visible Error Report. Only this PID's own child.
-        for p in psutil.process_iter(["name", "ppid"]):
-            if p.info["ppid"] == self.pid and (p.info["name"] or "").lower() == "sldexitapp.exe":
-                try:
+            stop()
+        # What the instance started must not outlive it: a solver (cwanalysisproc, star) keeps its cores and memory
+        # with nothing left to read the result, and sldexitapp.exe opens a visible Error Report.
+        for p in kids + [q for q in psutil.process_iter(["name", "ppid"]) if q.info["ppid"] == self.pid]:
+            try:
+                if p.name().lower() in ("cwanalysisproc.exe", "star.exe", "sldexitapp.exe", "sldprocmon.exe"):
                     p.kill()
-                except psutil.NoSuchProcess:
-                    pass
+            except psutil.Error:
+                pass
+        # Last, so that while a slow CloseAllDocuments holds the instance it still reads as driven, not orphaned.
+        _drop_owner(self.pid)
 
 
-def launch(timeout=300, visible=False):
+def launch(timeout=300, visible=False, busy_wait=7200):
     """Start a new SolidWorks process and return an Instance attached to it by PID.
 
     Hidden by default, so it never stays on screen; a launch can still take focus briefly (RULES.md, Hidden by
     default). Pass visible=True only when someone needs to see it.
+
+    Starts beside instances that are solving or busy. If the splash screen has to wait for one of them (RULES.md,
+    Launching beside a busy instance), that wait is not counted against `timeout`, up to `busy_wait` seconds.
+    Refuses only when another instance is half-closed, or has not answered for `timeout` seconds with nothing
+    driving it.
     """
     if not os.path.exists(EXE):
         raise RuntimeError(f"SolidWorks not found at {EXE}")
     pythoncom.CoInitialize()
-    with _LaunchLock(2 * timeout):
+    with _LaunchLock(busy_wait + 2 * timeout):
+        _retire_keeper()  # before the blocker check: a hung keeper would read as an orphan and refuse the launch
+        _wait_for_blockers(timeout)
+        _ensure_keeper(timeout, busy_wait)
+        inst = _start(timeout, visible, busy_wait)
+    _write_owner(inst.pid, inst.started)
+    _note_instance(inst.pid, inst.started)
+    return inst
+
+
+class _WmiProc:
+    """The two things _finish_launch asks of a Popen, for a process this one did not start as its child."""
+
+    def __init__(self, pid):
+        self.pid = pid
+        self.returncode = None
+        self._started = _started(pid)
+
+    def poll(self):
+        if _started(self.pid) == self._started and self._started is not None:
+            return None
+        self.returncode = -1
+        return self.returncode
+
+    def kill(self):
+        kill_tree(self.pid, self._started)
+
+
+def _start_outside_job():
+    """Start SolidWorks hidden through WMI, so it is not a child of this process, or None if that fails.
+
+    A child started the usual way joins this process's job object. Under tools/pc/capped.py, or a tool that ends its
+    whole process tree, that would end the keeper with the client that happened to start it.
+    """
+    try:
+        wmi = wc.GetObject("winmgmts:")
+        startup = wmi.Get("Win32_ProcessStartup").SpawnInstance_()
+        startup.ShowWindow = win32con.SW_HIDE
+        method = wmi.Get("Win32_Process")
+        params = method.Methods_("Create").InParameters.SpawnInstance_()
+        params.CommandLine = f'"{EXE}"'
+        params.ProcessStartupInformation = startup
+        out = method.ExecMethod_("Create", params)
+        if int(out.ReturnValue) == 0 and out.ProcessId:
+            return _WmiProc(int(out.ProcessId))
+    except Exception:
+        pass
+    return None
+
+
+def _start(timeout, visible, busy_wait, outside_job=False):
+    """Start one SolidWorks process and wait for it. The caller holds the launch lock."""
+    proc = _start_outside_job() if outside_job else None
+    if proc is None:
         si = subprocess.STARTUPINFO()
         if not visible:
             si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             si.wShowWindow = win32con.SW_HIDE
         proc = subprocess.Popen([EXE], startupinfo=si)
-        try:
-            return _finish_launch(proc, timeout, visible)
-        except BaseException:
-            proc.kill()  # never leave a hidden instance behind
-            raise
+    started = _started(proc.pid)
+    try:
+        return _finish_launch(proc, timeout, visible, busy_wait)
+    except BaseException:
+        kill_tree(proc.pid, started)  # never leave a hidden instance, or its sldProcMon, behind
+        proc.kill()
+        raise
 
 
-def _finish_launch(proc, timeout, visible):
+KEEPER_MAX_MB = 1500
+KEEPER_NOTE = "keeper: idle instance that takes other launches' startup call; leave it running"
+
+
+def _keeper_paths():
+    """(switch file, state file) in the claims folder, so every worktree's copy of this module agrees on them."""
+    d = str(_claims().claims_dir())
+    return os.path.join(d, "keeper.on"), os.path.join(d, "keeper.state")
+
+
+def keeper_pid():
+    """PID of the running keeper instance, or None."""
+    try:
+        return _session_pid(_keeper_paths()[1])
+    except Exception:
+        return None
+
+
+def keeper_due(switched_on, pid, answers_now, private_mb):
+    """What launch() does about the keeper: "none" (leave things as they are), "start", or "restart" (end it, start another).
+
+    The keeper has no client, so nothing else would ever restart one that hangs or grows.
+    """
+    if not switched_on:
+        return "none"
+    if pid is None:
+        return "start"
+    if not answers_now or private_mb > KEEPER_MAX_MB:
+        return "restart"
+    return "none"
+
+
+def _retire_keeper():
+    """End a keeper that does not answer or has grown too large. Never raises."""
+    try:
+        switch, _state = _keeper_paths()
+        pid = keeper_pid()
+        if pid is None or not os.path.exists(switch):
+            return
+        mb = round(psutil.Process(pid).memory_info().private / 2**20)
+        # 90 s, not the 30 s an attach allows: under heavy paging an idle instance can be slow, and nothing drives it
+        if keeper_due(True, pid, _wait_answers(pid, 90), mb) == "restart":
+            print(f"sw_instance: replacing the keeper, PID {pid} ({mb} MB)", file=sys.stderr)
+            kill_tree(pid, _started(pid))
+            _drop_owner(pid)
+    except Exception as e:
+        print(f"sw_instance: keeper not checked ({e})", file=sys.stderr)
+
+
+def _note_keeper(pid):
+    c = _claims()
+    if c.instance_note(c.claims_dir(), pid, _started(pid)) is None:
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        c.note_instance(c.claims_dir(), pid, _started(pid), repo, 0, KEEPER_NOTE, time.time())
+
+
+def _ensure_keeper(timeout=300, busy_wait=7200):
+    """Keep one idle, hidden SolidWorks running where the workstation asks for it (RULES.md, The keeper).
+
+    A new SolidWorks waits at the splash screen until the oldest running instance answers. An instance that only ever
+    idles answers at once, so once the keeper is the oldest no launch waits behind another session's mesh or result
+    read-back. Called with the launch lock held. Never raises: a launch must not fail because the keeper did.
+    """
+    try:
+        switch, state = _keeper_paths()
+        pid = keeper_pid()
+        if pid is not None:
+            _note_keeper(pid)  # one adopted from a state file has no note yet
+        if keeper_due(os.path.exists(switch), pid, True, 0) != "start":
+            return
+        older = [row[0] for row in status()]
+        inst = _start(timeout, False, busy_wait, outside_job=True)
+        with open(state, "w") as f:
+            f.write(f"{inst.pid} {inst.started!r}")
+        _note_keeper(inst.pid)
+        inst.sw = None  # let go of it without closing: it outlives this process
+        if older:
+            print(f"sw_instance: keeper started as PID {inst.pid}; it only helps once the older instances "
+                  f"{older} have exited", file=sys.stderr)
+    except Exception as e:
+        print(f"sw_instance: keeper not started ({e})", file=sys.stderr)
+
+
+def keeper(switch_on):
+    """Turn the workstation's keeper on (and start it) or off (and end it). `python sw_instance.py --keeper on|off`."""
+    switch, state = _keeper_paths()
+    if switch_on:
+        os.makedirs(os.path.dirname(switch), exist_ok=True)
+        open(switch, "a").close()
+        pythoncom.CoInitialize()
+        with _LaunchLock(7200):
+            _retire_keeper()
+            _ensure_keeper()
+        return keeper_pid()
+    with _LaunchLock(7200):  # not while another process is in its startup call into the keeper
+        if os.path.exists(switch):
+            os.remove(switch)
+        pid = keeper_pid()
+        if pid is not None:
+            kill_tree(pid, _started(pid))
+            _drop_owner(pid)
+        if os.path.exists(state):
+            os.remove(state)
+    return None
+
+
+def _wait_for_blockers(timeout):
+    """Do not start beside an instance that will hold the new one at the splash screen for ever.
+
+    A half-closed instance never answers again, so that raises at once with its PID: its owner must end it
+    (end_session), or Joey must (taskkill /PID <pid> /T /F). An orphan (not answering, no solver, no live client)
+    may still be finishing a call, so it gets `timeout` seconds. A solving or busy instance is healthy: the launch
+    goes ahead beside it.
+    """
+    start = time.time()
+    while True:
+        others = _others()
+        dead = _zombies(others)
+        if dead:
+            raise _zombie_error(dead)
+        orphans = [pid for pid, what in others if what == "orphan"]
+        if not orphans:
+            return
+        if time.time() - start > timeout:
+            raise RuntimeError(
+                f"SolidWorks PID {orphans} has not answered for {timeout} s and nothing is driving it (no solver, "
+                "no live client), so a launch could wait at the splash screen for ever. Read its sw_hidden_<pid>.log; "
+                f"its owner must end_session() it, or run: taskkill /PID {orphans[0]} /T /F"
+            )
+        time.sleep(5)
+
+
+class _StartClock:
+    """The startup time limit. It stops while another instance is solving or busy, because the new process then
+    waits at the splash screen for that instance to answer (RULES.md, Launching beside a busy instance)."""
+
+    def __init__(self, own_pid, timeout, busy_wait):
+        self.own_pid = own_pid
+        self.left = timeout
+        self.end = time.time() + timeout + busy_wait
+        self.last = time.time()
+        self.looked = 0.0
+        self.held_by = []
+
+    def running(self):
+        now = time.time()
+        if now - self.looked > 10:  # looking costs up to 3 s for each instance that is not answering
+            others = _others(self.own_pid)
+            dead = _zombies(others)
+            if dead:
+                raise _zombie_error(dead)
+            self.held_by = [pid for pid, what in others if what in ("solving", "busy")]
+            self.looked = now = time.time()
+        if not self.held_by:
+            self.left -= now - self.last
+        self.last = now
+        return self.left > 0 and now < self.end
+
+    def why(self):
+        return f"; PID {self.held_by} was busy and may have held it at the splash screen" if self.held_by else ""
+
+
+def _finish_launch(proc, timeout, visible, busy_wait=0):
     """Attach to the process launch() just started and wait for it to finish starting."""
     pid = proc.pid
     if not visible:
         _start_hider(pid)
-    start = time.time()
+    clock = _StartClock(pid, timeout, busy_wait)
     disp = None
     journal = False
-    while time.time() - start < timeout:
+    while clock.running():
         if proc.poll() is not None:
             raise RuntimeError(f"SolidWorks exited during start, code {proc.returncode}")
         journal = _clear_journal_prompt(pid) or journal
@@ -417,9 +927,9 @@ def _finish_launch(proc, timeout, visible):
             break
         time.sleep(1)
     if disp is None:
-        raise RuntimeError(f"SolidWorks PID {pid} never registered in the ROT")
+        raise RuntimeError(f"SolidWorks PID {pid} never registered in the ROT{clock.why()}")
     sw = wc.dynamic.Dispatch(disp)
-    while time.time() - start < timeout:
+    while clock.running():
         if proc.poll() is not None:
             raise RuntimeError(f"SolidWorks exited during start, code {proc.returncode}")
         journal = _clear_journal_prompt(pid) or journal
@@ -430,7 +940,7 @@ def _finish_launch(proc, timeout, visible):
             pass
         time.sleep(1)
     else:
-        raise RuntimeError(f"SolidWorks PID {pid} did not finish starting")
+        raise RuntimeError(f"SolidWorks PID {pid} did not finish starting{clock.why()}")
     got = int(sw.GetProcessID)
     if got != pid:
         raise RuntimeError(f"attached to PID {got}, expected {pid}")
@@ -442,9 +952,18 @@ def _finish_launch(proc, timeout, visible):
     return inst
 
 
-def attach(pid):
-    """Attach to an instance this session already launched, for example from an earlier script run."""
+def attach(pid, busy_wait=30):
+    """Attach to an instance this session already launched, for example from an earlier script run.
+
+    Raises NotAnswering, without touching it, if the instance does not answer within `busy_wait` seconds.
+    """
     pythoncom.CoInitialize()
+    # The first call into an instance that is not answering never returns, so check before making it.
+    if not _wait_answers(pid, busy_wait):
+        raise NotAnswering(
+            f"SolidWorks PID {pid} is not answering (still solving, stuck behind a hidden dialog, or half-closed). "
+            "Wait for the solve, or end_session() to stop it."
+        )
     disp = _attach_by_pid(pid)
     if disp is None:
         raise RuntimeError(f"no SolidWorks PID {pid} in the ROT")
@@ -452,7 +971,10 @@ def attach(pid):
     got = int(sw.GetProcessID)
     if got != pid:
         raise RuntimeError(f"attached to PID {got}, expected {pid}")
-    return Instance(pid, sw)
+    inst = Instance(pid, sw)
+    _write_owner(pid, inst.started)  # this process drives it now: other sessions' launches read it as busy, not orphaned
+    _note_instance(pid, inst.started)
+    return inst
 
 
 def _session_pid(state):
@@ -487,15 +1009,117 @@ def session(state_file, visible=False):
     return inst
 
 
-def end_session(state_file):
-    """Close this session's instance if it is running. Never starts one."""
+def end_session(state_file, busy_wait=30):
+    """Close this session's instance if it is running. Never starts one.
+
+    Always ends it: an instance that does not answer within `busy_wait` seconds is force-stopped with its solver,
+    and the state file is removed either way, so the next session() starts clean.
+    """
     state = str(state_file)
     if os.path.exists(state):
         pid = _session_pid(state)
         if pid is not None:
-            attach(pid).close()
+            started = _started(pid)
+            try:
+                attach(pid, busy_wait).close()
+            except (NotAnswering, RuntimeError, pythoncom.com_error):
+                pass  # not answering, or gone from the ROT: it is still this session's, so stop it below
+            kill_tree(pid, started)
+            _drop_owner(pid)
         os.remove(state)
 
 
+def _solve_lock_holder(path):
+    """The lock file's text if its holder may still be running, else None. Lines: owner, pid, process start time, taken at.
+
+    A lock is only ever taken over on proof that its holder has gone, because a session may have written the file
+    by hand in another layout: big_solve's own layout with a dead or reused pid, or any text whose every number is
+    not a running pid. An empty file is a holder between creating and writing it, unless it is a minute old.
+    """
+    try:
+        with open(path) as f:
+            text = f.read()
+        age = time.time() - os.path.getmtime(path)
+    except OSError:
+        return None
+    lines = text.splitlines()
+    try:
+        pid, born = int(lines[1]), float(lines[2])
+    except (IndexError, ValueError):
+        if not text.strip():
+            return None if age > 60 else "(being written)"
+        pids = [int(n) for n in re.findall(r"\d+", text) if len(n) < 10]
+        return text if not pids or any(_started(p) is not None for p in pids) else None
+    return text if _started(pid) == born else None
+
+
+class big_solve:  # noqa: N801 - reads as a verb at the call site: `with big_solve("shoulder"):`
+    """Hold the workstation's one large-solve slot for the length of a `with` block (RULES.md, rule 6).
+
+        with big_solve("shoulder hub yaw"):
+            study.RunAnalysis
+
+    For a Simulation solve expected to need more than about 6 GB. Waits while another session holds it. The lock
+    is a file created exclusively and removed on the way out; one whose holder process has gone is taken over.
+    Two sessions that find the same dead lock at the same instant can both take it; the window is a few
+    milliseconds and the cost is two large solves at once, which is what happened without the lock.
+    """
+
+    def __init__(self, owner, path=SOLVE_LOCK, timeout=6 * 3600, poll=15):
+        self.owner, self.path, self.timeout, self.poll = str(owner), path, timeout, poll
+
+    def __enter__(self):
+        mine = f"{self.owner}\n{os.getpid()}\n{_started(os.getpid())!r}\n{time.strftime('%Y-%m-%dT%H:%M:%S%z')}\n"
+        end = time.time() + self.timeout
+        while True:
+            try:
+                fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            except FileExistsError:
+                holder = _solve_lock_holder(self.path)
+                if holder is None:
+                    try:
+                        os.remove(self.path)
+                        continue
+                    except FileNotFoundError:
+                        continue
+                    except OSError:
+                        holder = "a lock left behind that cannot be removed"
+                if time.time() > end:
+                    raise TimeoutError(f"large-solve lock {self.path} still held after {self.timeout} s by: {holder}") from None
+                time.sleep(self.poll)
+                continue
+            with os.fdopen(fd, "w") as f:
+                f.write(mine)
+            self.mine = mine
+            return self
+
+    def __exit__(self, *exc):
+        try:
+            with open(self.path) as f:
+                ours = f.read() == self.mine
+            if ours:
+                os.remove(self.path)
+        except OSError:
+            pass
+
+
+NOTES = {
+    "idle": "",
+    "solving": "  solving",
+    "busy": "  busy: a live client is driving it",
+    "orphan": "  ORPHAN: not answering, no solver, no live client; launches wait for it, then refuse",
+    "zombie": "  HALF-CLOSED: stalls every launch",
+}
+
 if __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--hide-watch":
     _watch_hidden(int(sys.argv[2]))
+elif __name__ == "__main__" and sys.argv[1:] == ["--status"]:
+    print("    pid   age_s threads windows private_MB answers")
+    for row in status():
+        print("{:7d} {:7d} {:7d} {:7d} {:10d} {!s:>7}".format(*row) + NOTES[state(row)])
+        if who(row[0]):
+            print("        " + who(row[0]))
+elif __name__ == "__main__" and len(sys.argv) == 3 and sys.argv[1] == "--keeper" and sys.argv[2] in ("on", "off", "status"):
+    if sys.argv[2] != "status":
+        keeper(sys.argv[2] == "on")
+    print(f"keeper switch {'on' if os.path.exists(_keeper_paths()[0]) else 'off'}, PID {keeper_pid()}")

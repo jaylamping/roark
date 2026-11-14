@@ -1,0 +1,182 @@
+{
+ "info": {
+  "materials": {
+   "SolidBody 1(Cut-Extrude1)": {
+    "name": "PETG printed",
+    "source": 1,
+    "EX": 1900000000.0,
+    "NUXY": 0.38,
+    "DENS": 1190.0,
+    "SIGYLD": 45000000.0,
+    "SIGXT": 45000000.0
+   },
+   "SolidBody 2(Boss-Extrude2)": {
+    "name": "Steel pin",
+    "source": 1,
+    "EX": 210000000000.0,
+    "NUXY": 0.28,
+    "DENS": 7800.0,
+    "SIGYLD": 250000000.0,
+    "SIGXT": 400000000.0
+   }
+  },
+  "solver_default": 0,
+  "contact_options": 1,
+  "friction": false
+ },
+ "rows": [
+  {
+   "mesh": "global 4.0 mm",
+   "nodes": 5674,
+   "elements": 3374,
+   "peak_contact_pressure": 9.083314895629883,
+   "peak_contact_pressure_node": 4226,
+   "peak_contact_pressure_at": [
+    0.37,
+    -12.07,
+    15.09
+   ],
+   "block_peak_vm": 4.658369541168213,
+   "block_peak_at": [
+    -3.21,
+    15.0,
+    15.36
+   ],
+   "pin_peak_vm": 44.28929138183594,
+   "pin_peak_at": [
+    -0.75,
+    -1.05,
+    5.06
+   ],
+   "hole_face_peak_vm": 4.420258045196533,
+   "hole_face_peak_at": [
+    -3.57,
+    11.74,
+    13.65
+   ],
+   "swminmax_vm": 44.28929138183594,
+   "reaction_sum_N": [
+    0.0,
+    -0.0,
+    -500.0
+   ],
+   "reaction_n": 499.99999799532816,
+   "contact_normal_force_hole": [
+    0.0,
+    0.0,
+    500.0,
+    500.0
+   ],
+   "pin_rise_mid_mm": 0.1226325735449791,
+   "pin_uz_min_max_mm": [
+    0.12006453424692154,
+    0.13761329650878906
+   ],
+   "hole_top_uz_mm": 0.02630667629487374,
+   "max_disp_mm": 1.2593644857406616,
+   "solve_s": 2.8
+  },
+  {
+   "mesh": "global 4.0 mm + 1.5 mm control on pin and hole faces",
+   "nodes": 26020,
+   "elements": 16830,
+   "peak_contact_pressure": 7.570672988891602,
+   "peak_contact_pressure_node": 7794,
+   "peak_contact_pressure_at": [
+    1.05,
+    12.47,
+    14.99
+   ],
+   "block_peak_vm": 5.260293483734131,
+   "block_peak_at": [
+    -2.97,
+    15.0,
+    16.34
+   ],
+   "pin_peak_vm": 43.69794464111328,
+   "pin_peak_at": [
+    0.16,
+    0.38,
+    5.0
+   ],
+   "hole_face_peak_vm": 4.863889217376709,
+   "hole_face_peak_at": [
+    3.54,
+    -13.2,
+    13.67
+   ],
+   "swminmax_vm": 43.69794464111328,
+   "reaction_sum_N": [
+    0.0,
+    -0.0,
+    -500.0
+   ],
+   "reaction_n": 499.9999976545805,
+   "contact_normal_force_hole": [
+    -0.0,
+    0.0,
+    500.0,
+    500.0
+   ],
+   "pin_rise_mid_mm": 0.12614052618543306,
+   "pin_uz_min_max_mm": [
+    0.12597037851810455,
+    0.1373867392539978
+   ],
+   "hole_top_uz_mm": 0.027601731957442928,
+   "max_disp_mm": 0.14268536865711212,
+   "solve_s": 19.5
+  },
+  {
+   "mesh": "global 4.0 mm + 0.8 mm control on pin and hole faces",
+   "nodes": 106193,
+   "elements": 71543,
+   "peak_contact_pressure": 6.5538225173950195,
+   "peak_contact_pressure_node": 17316,
+   "peak_contact_pressure_at": [
+    -1.22,
+    10.55,
+    14.95
+   ],
+   "block_peak_vm": 5.599619388580322,
+   "block_peak_at": [
+    -2.27,
+    15.0,
+    15.49
+   ],
+   "pin_peak_vm": 43.7949333190918,
+   "pin_peak_at": [
+    0.13,
+    0.4,
+    5.0
+   ],
+   "hole_face_peak_vm": 4.907017707824707,
+   "hole_face_peak_at": [
+    4.07,
+    -13.5,
+    13.07
+   ],
+   "swminmax_vm": 43.7949333190918,
+   "reaction_sum_N": [
+    0.0,
+    -0.0,
+    -500.0
+   ],
+   "reaction_n": 499.99999149749056,
+   "contact_normal_force_hole": [
+    -0.004,
+    0.0,
+    500.081,
+    500.081
+   ],
+   "pin_rise_mid_mm": 0.12710848501883448,
+   "pin_uz_min_max_mm": [
+    0.12668836116790771,
+    0.13855712115764618
+   ],
+   "hole_top_uz_mm": 0.028680096545457084,
+   "max_disp_mm": 0.13857130706310272,
+   "solve_s": 201.9
+  }
+ ]
+}

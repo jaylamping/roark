@@ -1,0 +1,17 @@
+{
+ "start": "06:13:35",
+ "reading_playbook": 5,
+ "C1_build_and_picture": 1,
+ "restate": 1,
+ "C2_ideas_and_first_checkpoint": 23,
+ "C2_first_detailed_link_and_checks": 12,
+ "C2_first_study": 7,
+ "C2_round_2_build_and_study": 7,
+ "report": 18,
+ "blocked_waiting_for_other_sessions_solves": 27,
+ "lost_to_a_slow_point_in_solid_test": 10,
+ "end": "07:30",
+ "total": 77,
+ "limit": 100,
+ "round_3_wait_and_run": 16
+}

@@ -1,0 +1,111 @@
+{
+ "ring solid at Y -3.9": {
+  "ok": true,
+  "n": 288,
+  "bad": 0
+ },
+ "ring empty at Y -4.1 (flat, nothing proud)": {
+  "ok": true,
+  "n": 288,
+  "bad": 0
+ },
+ "six D3.4 holes clear": {
+  "ok": true,
+  "n": 144,
+  "bad": 0
+ },
+ "hole walls solid at r 1.85": {
+  "ok": true,
+  "n": 144,
+  "bad": 0
+ },
+ "D30 bore clear": {
+  "ok": true,
+  "n": 450,
+  "bad": 0
+ },
+ "D7 x 10 screw clearances clear (Y 4.2 to 13.8)": {
+  "ok": true,
+  "n": 360,
+  "bad": 0
+ },
+ "pin D8 clear (Y -30 to 30)": {
+  "ok": true,
+  "n": 600,
+  "bad": 0
+ },
+ "ligament_fraction_solid_r4_to_9_by_y": {
+  "16.2": 1.0,
+  "17": 1.0,
+  "18": 1.0,
+  "19": 1.0,
+  "20": 1.0,
+  "21": 1.0
+ },
+ "cheek inner face Y 16 flat over D16: solid behind": {
+  "ok": true,
+  "n": 100,
+  "bad": 0
+ },
+ "cheek inner face Y 16 flat over D16: clear in front": {
+  "ok": true,
+  "n": 100,
+  "bad": 0
+ },
+ "cheek inner face Y -16 flat over D16: solid behind": {
+  "ok": true,
+  "n": 100,
+  "bad": 0
+ },
+ "cheek inner face Y -16 flat over D16: clear in front": {
+  "ok": true,
+  "n": 100,
+  "bad": 0
+ },
+ "slot clear |Y|<15.9, Z -183.2 to -230": {
+  "ok": true,
+  "n": 1500,
+  "bad": 0
+ },
+ "D30 swing cylinder clear (Y +-15.9)": {
+  "ok": true,
+  "n": 300,
+  "bad": 0
+ },
+ "D6 cable passage clear, Z -15 to -183, X 0 Y 2": {
+  "ok": true,
+  "n": 800,
+  "bad": 0
+ },
+ "cable passage walls solid at r 3.4 below Z -34": {
+  "ok": true,
+  "n": 240,
+  "bad": 0
+ },
+ "min_wall_round_passage_mm": 0.6021112790412695,
+ "mass_g": 148.1364683727536,
+ "volume": 124484.42720399461,
+ "watertight": true,
+ "bodies": 1,
+ "bounds": [
+  [
+   -34.89645004272461,
+   -23.733604431152344,
+   -212.0
+  ],
+  [
+   34.89460754394531,
+   23.733604431152344,
+   34.999996185302734
+  ]
+ ],
+ "shape": {
+  "triangles": 14660,
+  "area_mm2": 31275.9,
+  "flat_share": 0.205,
+  "largest_flat": 0.081,
+  "sharp_mm": 1151.7,
+  "sharp_per_area": 6.51
+ },
+ "all_ok": true
+}

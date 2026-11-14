@@ -1,0 +1,19 @@
+{
+  "volume_mm3": 32974.02,
+  "hand_volume_mm3": 32974.02,
+  "mass_g": 39.24,
+  "bbox_mm": [
+    0.0,
+    0.0,
+    0.0,
+    80.0,
+    50.0,
+    46.0
+  ],
+  "bodies": 1,
+  "stl_watertight": true,
+  "stl_volume_mm3": 32990.38,
+  "status": "done",
+  "notes": "STL one shell, bounds equal the part box (model frame); STEP is mm, AP203. Hole, bore and fillet positions measured on the model. STL volume is +0.050 % off the part (faceted cylinders).",
+  "seconds": 28
+}

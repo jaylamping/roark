@@ -1,0 +1,26 @@
+{
+ "run": "sonnet-c2",
+ "c1": {"volume_mm3": 219436.04, "hand_volume_mm3": 219436.19, "mass_g": 261.03, "bodies": 1,
+        "shape": {"flat_share": 0.91, "largest_flat": 0.144, "sharp_mm": 2406.4, "sharp_per_area": 12.3, "area_mm2": 38261.4}},
+ "c2": {
+  "mass_before_g": 261.03, "mass_after_g": 148.14,
+  "shape_before": {"flat_share": 0.91, "sharp_per_area": 12.3},
+  "shape_after": {"flat_share": 0.205, "sharp_per_area": 6.51},
+  "print_orientation": "on its side, layers stacked along X; the flange stands on its edge",
+  "sf_yield": 1.94, "sf_layer": 4.12, "sf_shear": 2.21,
+  "sf_yield_note": "lowest case +Y at the stem root: 2.13 at 3 mm, 1.94 at 2.5 mm, 1.52 at 4 mm. Not converged and under 2.0 at the finest mesh: requirement NOT shown",
+  "governing": "von Mises, +Y load, stem root at Z -32 (the loft start against the flange ridge)",
+  "fixed_items_ok": true,
+  "ideas_tried": ["A: one grown oval stem lofted from superellipse sections (chosen)", "B: two slim struts joined at a wrist block (dropped)"],
+  "checkpoints": [
+   {"time": "09:41", "picture": "checkpoint_01.png", "missing": "plain flat flange, no cable passage, thin horn-like cheek tips"},
+   {"time": "09:51", "picture": "checkpoint_02.png", "missing": "flange rim sharp; material round the pin 8 mm at mid-cheek, needs 9; no root check"},
+   {"time": "09:55", "picture": "checkpoint_03.png", "missing": "rim now rounded by revolve; junction fillet failed; wrist silhouette stepped; no FEA"},
+   {"time": "09:56", "picture": "checkpoint_04.png", "missing": "same, wrist sections tuned"},
+   {"time": "09:58", "picture": "checkpoint_05.png", "missing": "thicker root; FEA not run; passage skins in the flange not yet seen"},
+   {"time": "10:06", "picture": "checkpoint_06.png", "missing": "lip on the flange back for +Y; peak 24 to 29 MPa at the lip foot; passage through the 8 mm plate"},
+   {"time": "10:33", "picture": "checkpoint_07.png", "missing": "final: ridge on the passage, factor 2.1 at 3 mm but 1.94 at 2.5 mm; no real fillets; flange back reads as added"}
+  ],
+  "minutes": 80
+ }
+}

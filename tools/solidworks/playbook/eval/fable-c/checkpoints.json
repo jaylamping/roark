@@ -1,0 +1,11 @@
+[
+ {"time": "06:37", "minutes_into_C2": 18, "picture": "pictures/checkpoint_01.png",
+  "what": "the whole bone form, crude: a skin drawn straight from the section table (not a SolidWorks solid, launches were blocked by another session's solve)",
+  "missing": "not a solid yet; no slot between the cheeks, no holes, no cable passage; the neck meets the disc at a corner instead of flowing out of it; nothing measured, nothing loaded"},
+ {"time": "06:42", "minutes_into_C2": 23, "picture": "pictures/checkpoint_02.png",
+  "what": "first detailed SolidWorks solid: bullnosed disc, shaft, arched slot, round cheek ends, holes, cable tunnel with its mouth in the neck, slot edges rounded; 136.3 g; every fixed item measured ok",
+  "missing": "not shown to do its job (no study yet); the outline still has a notch where the neck meets the rim and a step where the swell leaves the disc face; the shaft is a straight handle, not yet a limb"},
+ {"time": "07:02", "minutes_into_C2": 42, "picture": "pictures/checkpoint_03.png",
+  "what": "round 2 after the first study failed in +Y (interlayer shear 1.42 at the cable mouth in the neck): deeper and wider neck, cable mouth moved down the back of the shaft, slight waist; 136.6 g; fixed items ok; passes at 2.58 printed on its side",
+  "missing": "the notch at the rim and the step on the disc face are still there (the blend caught one edge of the crease); printed flat it still fails shear at that step; stress next to the mount is not converged"}
+]

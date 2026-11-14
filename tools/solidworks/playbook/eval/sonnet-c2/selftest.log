@@ -1,0 +1,189 @@
+﻿09:33:25 SolidWorks pid 128212 free GB 11.8
+09:33:25 ---- model
+09:33:27 ok PLATE volume change: 18000.0000 (expected 18000.0000)
+09:33:27 PLATE: added 18000.00 mm3
+09:33:28 ok HOLE volume change: 502.6548 (expected 502.6548)
+09:33:28 HOLE: cut 502.65 mm3
+09:33:29 ok corner edges found: 4.0000 (expected 4.0000)
+09:33:29 CORNERS: R3.0 on 4 edges, volume change -77.26 mm3
+09:33:29 ok plate volume: 17420.0885 (expected 17420.0885)
+09:33:29 ok box[0]: 0.0000 (expected 0.0000)
+09:33:29 ok box[1]: 0.0000 (expected 0.0000)
+09:33:29 ok box[2]: 0.0000 (expected 0.0000)
+09:33:29 ok box[3]: 60.0000 (expected 60.0000)
+09:33:29 ok box[4]: 30.0000 (expected 30.0000)
+09:33:29 ok box[5]: 10.0000 (expected 10.0000)
+09:33:29 ok hole faces: 1.0000 (expected 1.0000)
+09:33:29 ok rebuild errors: 0.0000 (expected 0.0000)
+09:33:29 exported C:\joe\code\roark-wt\sw-eval-sonnet-c2\cad\_wip\sw-selftest\plate.step 31303 bytes
+09:33:29 exported C:\joe\code\roark-wt\sw-eval-sonnet-c2\cad\_wip\sw-selftest\plate.stl 15284 bytes
+09:33:30 ok STL watertight: 1.0000 (expected 1.0000)
+09:33:30 ok STL volume (mm, model frame): 17421.2033 (expected 17420.0885)
+09:33:30 ok STL min x (not shifted): 0.0000 (expected 0.0000)
+09:33:30 ---- beam
+09:33:31 ok BEAM volume change: 10000.0000 (expected 10000.0000)
+09:33:31 BEAM: added 10000.00 mm3
+09:33:31 ok root faces: 1.0000 (expected 1.0000)
+09:33:31 ok tip faces: 1.0000 (expected 1.0000)
+09:33:35 BEAM_TIP_10N: mesh rc 0, 18931 nodes, 12284 elements, free 11.5 GB
+09:33:37 BEAM_TIP_10N: fixture nodes 125, box [0.0, -0.0, -0.0] to [0.0, 10.0, 10.0]
+09:33:37 BEAM_TIP_10N: load nodes 125, box [100.0, -0.0, -0.0] to [100.0, 10.0, 10.0]
+09:33:38 {'study': 'BEAM_TIP_10N', 'el_mm': 2.0, 'nodes': 18931, 'elements': 12284, 'solve_s': 7, 'peak_vm_all': 6.25, 'peak_vm_away': 5.68, 'at': [5.05, 5.15, 10.0], 'sf_yield': 7.92, 'max_disp_mm': 2.101469039916992, 'reaction_N': [0.0, -0.0, 10.0, 10.0], 'applied_N': 10.0}
+09:33:38 ok tip deflection mm: 2.1015 (expected 2.1227)
+09:33:38 ok peak stress away from the root MPa: 5.6788 (expected 5.7600)
+09:33:38 ok reaction Fz N (opposes the 10 N down): 10.0000 (expected 10.0000)
+09:33:38 ok reaction resultant N: 10.0000 (expected 10.0000)
+09:33:38 ---- rod
+09:33:39 ok ROD volume change: 15707.9633 (expected 15707.9633)
+09:33:39 ROD: added 15707.96 mm3
+09:33:40 ROD_100N: mesh rc 0, 12296 nodes, 8129 elements, free 11.4 GB
+09:33:42 ROD_100N: fixture nodes 263, box [-10.0, -10.0, 0.0] to [10.0, 10.0, 0.0]
+09:33:42 ROD_100N: load nodes 259, box [-10.0, -10.0, 50.0] to [10.0, 10.0, 50.0]
+09:33:42 {'study': 'ROD_100N', 'el_mm': 2.5, 'nodes': 12296, 'elements': 8129, 'solve_s': 2, 'peak_vm_all': 0.44, 'peak_vm_away': 0.34, 'at': [0.12, -0.46, 11.04], 'sf_yield': 134.0, 'max_disp_mm': 0.00825029518455267, 'reaction_N': [0.0, -0.0, 100.0, 100.0], 'applied_N': 100.0}
+09:33:42 ok end shortening mm: 0.0083 (expected 0.0084)
+09:33:42 ok axial stress in the middle MPa: 0.3196 (expected 0.3183)
+09:33:42 ok sz in the middle MPa (a positive normal load pushes in): -0.3183 (expected -0.3183)
+09:33:42 ok reaction Fz N: 100.0000 (expected 100.0000)
+09:33:42 ---- extras
+09:33:43 ok TRAY volume change: 8000.0000 (expected 8000.0000)
+09:33:43 TRAY: added 8000.00 mm3
+09:33:43 ok upright edges found: 4.0000 (expected 4.0000)
+09:33:43 ok volume after chamfer: 7920.0000 (expected 7920.0000)
+09:33:44 TRIM: cut 1960.00 mm3
+09:33:44 ok volume after half-space cut: 5960.0000 (expected 5960.0000)
+09:33:44 ok box x max after cut: 30.0000 (expected 30.0000)
+09:33:44 ok top face picked by a point on it: 1.0000 (expected 1.0000)
+09:33:45 WALL: 2.0 mm wall, volume 2637.5 mm3
+09:33:45 ok volume after shell: 2637.4903 (expected 2637.4903)
+09:33:45 ok rebuild errors: 0.0000 (expected 0.0000)
+09:33:46 ok RING volume change: 1570.7963 (expected 1570.7963)
+09:33:46 RING: added 1570.80 mm3
+09:33:46 ok ring box[0]: -15.0000 (expected -15.0000)
+09:33:46 ok ring box[1]: -15.0000 (expected -15.0000)
+09:33:46 ok ring box[2]: 0.0000 (expected 0.0000)
+09:33:46 ok ring box[3]: 15.0000 (expected 15.0000)
+09:33:46 ok ring box[4]: 15.0000 (expected 15.0000)
+09:33:46 ok ring box[5]: 4.0000 (expected 4.0000)
+09:33:48 FRUSTUM: added 7000.00 mm3 (merge True)
+09:33:48 ok frustum volume: 7000.0000 (expected 7000.0000)
+09:33:51 TUBE: added 9422.32 mm3 (merge True)
+09:33:51 ok three-section spline loft volume: 9422.3221 (expected 9424.7780)
+09:33:52 ok UPPER volume change: 4000.0000 (expected 4000.0000)
+09:33:52 UPPER: added 4000.00 mm3
+09:33:54 ok LOWER volume change: 4000.0000 (expected 4000.0000)
+09:33:54 LOWER: added 4000.00 mm3
+09:33:54 ok PIN volume change: 141.3717 (expected 141.3717)
+09:33:54 PIN: added 141.37 mm3
+09:33:54 ok pin goes up: 15.0000 (expected 15.0000)
+09:33:55 ok POCKET volume change: 50.2655 (expected 50.2655)
+09:33:55 POCKET: cut 50.27 mm3
+09:33:56 ok DSHAPE volume change: 392.6991 (expected 392.6991)
+09:33:56 DSHAPE: added 392.70 mm3
+09:33:56 ok bodies before insert: 2.0000 (expected 2.0000)
+0 plane n [-1.0, -0.0, 0.0] area 200.0 box [0.0, 0.0, 0.0, 0.0, 20.0, 10.0]
+1 plane n [-0.0, -1.0, -0.0] area 200.0 box [0.0, 0.0, 0.0, 20.0, 0.0, 10.0]
+2 plane n [1.0, -0.0, -0.0] area 200.0 box [20.0, 0.0, 0.0, 20.0, 20.0, 10.0]
+3 plane n [-0.0, 1.0, -0.0] area 200.0 box [0.0, 20.0, 0.0, 20.0, 20.0, 10.0]
+4 plane n [-0.0, 0.0, 1.0] area 359.16 box [0.0, 0.0, 10.0, 20.0, 20.0, 10.0]
+5 plane n [0.0, -0.0, -1.0] area 400.0 box [0.0, 0.0, 0.0, 20.0, 20.0, 0.0]
+09:33:57 ok bodies after two inserts: 4.0000 (expected 4.0000)
+09:33:57 ok volume with the inserted bodies: 10054.6016 (expected 10054.6016)
+09:33:58 ok bodies after delete: 3.0000 (expected 3.0000)
+09:33:58 ok volume after delete: 6054.6016 (expected 6054.6016)
+09:33:58 ok rebuild errors: 0.0000 (expected 0.0000)
+09:33:59 ok BLOCK volume change: 4000.0000 (expected 4000.0000)
+09:33:59 BLOCK: added 4000.00 mm3
+09:34:00 ok BORE volume change: 282.7433 (expected 282.7433)
+09:34:00 BORE: cut 282.74 mm3
+09:34:00 ok rebuild errors before the break: 0.0000 (expected 0.0000)
+09:34:00 broken tree reports [('BORE', 71)]
+09:34:00 ok volume with the cut broken: 4000.0000 (expected 4000.0000)
+09:34:01 ok BLOCK volume change: 4000.0000 (expected 4000.0000)
+09:34:01 BLOCK: added 4000.00 mm3
+09:34:02 ok BORE volume change: 282.7433 (expected 282.7433)
+09:34:02 BORE: cut 282.74 mm3
+09:34:03 BLOCK: D1@BLOCK@edit.Part 10.0 -> 12.0
+09:34:03 ok volume after set_dim: 4517.2567 (expected 4517.2567)
+09:34:03 BORE_SK: 1 segments deleted, 2 circles drawn
+09:34:03 ok rebuild errors after the edit: 0.0000 (expected 0.0000)
+09:34:03 ok volume after redraw_circles: 4548.6726 (expected 4548.6726)
+09:34:04 ok imported bodies: 1.0000 (expected 1.0000)
+09:34:04 ok imported volume: 17420.0885 (expected 17420.0885)
+09:34:04 ok imported box[0]: 0.0000 (expected 0.0000)
+09:34:04 ok imported box[1]: 0.0000 (expected 0.0000)
+09:34:04 ok imported box[2]: 0.0000 (expected 0.0000)
+09:34:04 ok imported box[3]: 60.0000 (expected 60.0000)
+09:34:04 ok imported box[4]: 30.0000 (expected 30.0000)
+09:34:04 ok imported box[5]: 10.0000 (expected 10.0000)
+09:34:04 ok imported hole faces (two halves): 2.0000 (expected 2.0000)
+09:34:04 ---- loads
+09:34:05 ok BASE volume change: 4000.0000 (expected 4000.0000)
+09:34:05 BASE: added 4000.00 mm3
+09:34:06 ok STEP volume change: 1000.0000 (expected 1000.0000)
+09:34:06 STEP: added 1000.00 mm3
+09:34:06 ok top faces: 2.0000 (expected 2.0000)
+09:34:07 STEPS_100N: mesh rc 0, 4018 nodes, 2512 elements, free 11.4 GB
+09:34:07 STEPS_100N: fixture nodes 317, box [0.0, 0.0, 0.0] to [20.0, 20.0, 0.0]
+09:34:07 STEPS_100N: load nodes 306, box [0.0, 0.0, 10.0] to [20.0, 20.0, 15.0]
+09:34:08 {'study': 'STEPS_100N', 'el_mm': 2.5, 'nodes': 4018, 'elements': 2512, 'solve_s': 1, 'peak_vm_all': 0.47, 'peak_vm_away': 0.26, 'at': [4.84, 13.09, 9.73], 'sf_yield': 175.06, 'max_disp_mm': 0.0021170182153582573, 'reaction_N': [0.0, -0.0, 100.0, 100.0], 'applied_N': 100.0}
+09:34:08 ok two-face normal load: reaction Fz N: 100.0000 (expected 100.0000)
+09:34:08 ok two-face normal load: sz in the base MPa: -0.2478 (expected -0.2500)
+09:34:09 BEAM_MY_1NM: mesh rc 0, 18931 nodes, 12284 elements, free 11.4 GB
+09:34:11 BEAM_MY_1NM: fixture nodes 125, box [0.0, -0.0, -0.0] to [0.0, 10.0, 10.0]
+09:34:11 BEAM_MY_1NM: load nodes 125, box [100.0, -0.0, -0.0] to [100.0, 10.0, 10.0]
+09:34:11 ok 1 N.m about +Y: tip moves down, M L^2 / 2 E I mm: -3.1310 (expected -3.1579)
+09:34:12 BEAM_FAR: mesh rc 0, 18931 nodes, 12284 elements, free 11.4 GB
+09:34:14 BEAM_FAR: fixture nodes 125, box [0.0, -0.0, -0.0] to [0.0, 10.0, 10.0]
+09:34:14 BEAM_FAR: load nodes 125, box [100.0, -0.0, -0.0] to [100.0, 10.0, 10.0]
+09:34:15 ok 10 N placed 50 mm beyond the tip mm: -3.6611 (expected -3.7016)
+09:34:15 ok txz (column 5) for a -Z load MPa: -0.0943 (expected -0.1000)
+09:34:15 ok txy (column 4) for a -Z load MPa: 0.0000 (expected 0.0000)
+09:34:15 BEAM_SIDE: mesh rc 0, 18931 nodes, 12284 elements, free 11.4 GB
+09:34:17 BEAM_SIDE: fixture nodes 125, box [0.0, -0.0, -0.0] to [0.0, 10.0, 10.0]
+09:34:17 BEAM_SIDE: load nodes 125, box [100.0, -0.0, -0.0] to [100.0, 10.0, 10.0]
+09:34:18 ok txy (column 4) for a -Y load MPa: -0.0956 (expected -0.1000)
+09:34:18 ok txz (column 5) for a -Y load MPa: 0.0000 (expected 0.0000)
+09:34:18 ok reaction Fy N: 10.0000 (expected 10.0000)
+09:34:18 ROD_DIRECT: mesh rc 0, 12296 nodes, 8129 elements, free 11.4 GB
+09:34:19 ROD_DIRECT: solver macro: before  0  | set err  0   | after  7  | 
+09:34:20 ROD_DIRECT: fixture nodes 263, box [-10.0, -10.0, 0.0] to [10.0, 10.0, 0.0]
+09:34:20 ROD_DIRECT: load nodes 259, box [-10.0, -10.0, 50.0] to [10.0, 10.0, 50.0]
+09:34:20 ok direct solver: end shortening mm: 0.0083 (expected 0.0084)
+09:34:20 ok direct solver: axial stress in the middle MPa: 0.3196 (expected 0.3183)
+09:34:20 ok direct solver: reaction Fz N: 100.0000 (expected 100.0000)
+09:34:20 ---- contact
+09:34:22 ok STACK_UPPER volume change: 4000.0000 (expected 4000.0000)
+09:34:22 STACK_UPPER: added 4000.00 mm3
+09:34:23 ok STACK_PAD volume change: 64.0000 (expected 64.0000)
+09:34:23 STACK_PAD: added 64.00 mm3
+09:34:25 ok STACK volume change: 4000.0000 (expected 4000.0000)
+09:34:25 STACK: added 4000.00 mm3
+09:34:25 ok bodies in the stack: 3.0000 (expected 3.0000)
+09:34:26 ok bottom faces: 1.0000 (expected 1.0000)
+09:34:26 ok top faces: 1.0000 (expected 1.0000)
+09:34:26 ok lower top faces: 1.0000 (expected 1.0000)
+09:34:26 ok upper bottom faces: 1.0000 (expected 1.0000)
+09:34:26 STACK_PRESS: body "SolidBody 1(<stack_upper>-<STACK_UPPER>)" is PETG printed
+09:34:26 STACK_PRESS: body "SolidBody 2(<stack_pad>-<STACK_PAD>)" is Soft pad
+09:34:26 STACK_PRESS: body "SolidBody 3(STACK)" is PETG printed
+09:34:27 STACK_PRESS: mesh rc 0, 6430 nodes, 3919 elements, free 11.4 GB
+09:34:27 STACK_PRESS: solver macro: before  0  | set err  0   | after  7  | 
+09:34:29 STACK_PRESS: fixture nodes 317, box [0.0, 0.0, 0.0] to [20.0, 20.0, 0.0]
+09:34:29 STACK_PRESS: load nodes 317, box [0.0, 0.0, 20.0] to [20.0, 20.0, 20.0]
+09:34:29 {'study': 'STACK_PRESS', 'el_mm': 2.5, 'nodes': 6430, 'elements': 3919, 'solve_s': 3, 'peak_vm_all': 0.43, 'peak_vm_away': 0.29, 'at': [13.65, 6.46, 10.0], 'sf_yield': 152.88, 'max_disp_mm': 0.002658928744494915, 'reaction_N': [-0.0, 0.0, 100.0, 100.0], 'applied_N': 100.0}
+09:34:29 ok pressed: reaction Fz N: 100.0000 (expected 100.0000)
+09:34:29 ok pressed: top face moves down, F L / A E mm: -0.0025 (expected -0.0026)
+09:34:29 ok pressed: sz in the lower block MPa: -0.2454 (expected -0.2500)
+09:34:29 ok pressed: pad stress MPa (it is the soft material, and unloaded): 0.0000 (expected 0.0000)
+09:34:29 STACK_LIFT: body "SolidBody 1(<stack_upper>-<STACK_UPPER>)" is PETG printed
+09:34:29 STACK_LIFT: body "SolidBody 2(<stack_pad>-<STACK_PAD>)" is Soft pad
+09:34:29 STACK_LIFT: body "SolidBody 3(STACK)" is PETG printed
+09:34:29 STACK_LIFT: mesh rc 0, 6430 nodes, 3919 elements, free 11.4 GB
+09:34:30 STACK_LIFT: solver macro: before  0  | set err  0   | after  7  | 
+09:34:31 STACK_LIFT: fixture nodes 317, box [0.0, 0.0, 0.0] to [20.0, 20.0, 0.0]
+09:34:31 STACK_LIFT: load nodes 317, box [0.0, 0.0, 20.0] to [20.0, 20.0, 20.0]
+09:34:31 {'study': 'STACK_LIFT', 'el_mm': 2.5, 'nodes': 6430, 'elements': 3919, 'solve_s': 2, 'peak_vm_all': 0.0, 'peak_vm_away': 0.0, 'at': [20.0, 11.25, 10.0], 'sf_yield': 18034.86, 'max_disp_mm': 0.18832643330097198, 'reaction_N': [0.0, 0.0, -0.001, 0.001], 'applied_N': 0.001}
+09:34:31 ok lifted: reaction Fz N: -0.0010 (expected -0.0010)
+09:34:31 ok lifted: the block comes away 0.0846 mm on the pad alone (bonded would be 2.6e-8)
+09:34:31 closing pid 128212 committed MB 2326
+PASS model beam rod extras loads contact

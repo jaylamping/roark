@@ -1,0 +1,8 @@
+06:04:24 SolidWorks pid 135956 free GB 16.4
+06:04:34 ring faces 1 [2500.0647445517175] pin faces 2 [[-4.0, 16.0, -204.00000000000003, 4.0, 22.418843557787525, -196.0], [-4.0, -22.418859470862497, -204.00000000000003, 4.0, -16.0, -196.0]]
+06:04:34 PREDICT PY: nodes about 60000, disp about 2-6 mm, peak at the neck near the disc
+06:04:46 PY: mesh rc 0, 172573 nodes, 115916 elements, free 15.7 GB
+06:05:43 PY: fixture nodes 3470, box [-31.6, -4.0, -36.0] to [31.6, -4.0, 31.6]
+06:05:43 PY: load nodes 1064, box [-4.0, -22.19, -204.0] to [4.0, 22.19, -196.0]
+06:06:20 {"summary": {"study": "PY", "el_mm": 2.2, "nodes": 172573, "elements": 115916, "solve_s": 103, "peak_vm_all": 18.31, "peak_vm_away": 8.48, "at": [15.59, 6.86, -26.45], "sf_yield": 5.3, "max_disp_mm": 4.630697727203369, "reaction_N": [0.0, -60.0, 0.0, 60.0], "applied_N": 60.0}, "reaction": [0.0, -60.0, 0.0, 60.0], "applied": 60.0, "layers_Y": {"tension_MPa": 4.89, "tension_at": [-2.91, 1.78, -36.49], "shear_MPa": 3.76, "shear_at": [-16.73, 3.98, -28.42], "sf_tension": 4.6, "sf_shear": 3.46}, "layers_X": {"tension_MPa": 1.95, "tension_at": [0.59, -5.55, -40.67], "shear_MPa": 4.24, "shear_at": [-14.82, 8.53, -25.24], "sf_tension": 11.52, "sf_shear": 3.07}, "layers_Z": {"tension_MPa": 7.43, "tension_at": [-0.59, -5.55, -40.68], "shear_MPa": 4.27, "shear_at": [-14.82, 8.53, -25.24], "sf_tension": 3.03, "sf_shear": 3.05}, "peak_all": 18.313133239746094, "peak_all_at": [-6.8, -4.0, -35.4], "peak_away_1el": [10.17080307006836, [3.8, -3.36, -38.01]], "peak_away_2el": [8.482638359069824, [15.59, 6.86, -26.45]], "peak_away_3el": [8.482638359069824, [15.59, 6.86, -26.45]], "peak_away_5el": [8.452408790588379, [-14.82, 8.53, -25.24]]}
+06:06:21 closing pid 135956 committed MB 1721

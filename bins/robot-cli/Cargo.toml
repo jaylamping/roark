@@ -6,10 +6,13 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
+# The runtime's build script, shared: it embeds the git revision as ROARK_GIT_REVISION (rust.md section 1).
+build = "../runtime/build.rs"
 
 [dependencies]
 robstride.workspace = true
 skeleton.workspace = true
+serde_json.workspace = true
 thiserror = { workspace = true, features = ["std"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]

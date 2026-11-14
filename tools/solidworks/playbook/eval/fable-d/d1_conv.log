@@ -1,0 +1,128 @@
+08:49:15 SolidWorks pid 130368 free GB 13.0
+08:49:21 ok post top faces: 4.0000 (expected 4.0000)
+08:49:21 ok spot faces: 2.0000 (expected 2.0000)
+08:49:21 PREDICT el 2.0: nodes 16893, displacement and peak as the 1.2 mm solve of d1_build.py
+08:49:23 D1_CONV_20: mesh rc 0, 19093 nodes, 11005 elements, free 12.6 GB
+08:49:24 D1_CONV_20: fixture nodes 162, box [-55.74, -5.24, 3.5] to [55.75, 5.25, 3.5]
+08:49:24 D1_CONV_20: load nodes 240, box [-42.49, -29.98, 8.0] to [42.5, 29.98, 8.0]
+08:49:25 converge {'el': 2.0, 'nodes': 19093, 'vm': 2.864, 'vm_at': [-42.65, 11.23, 0.0], 'layer': 0.298, 'layer_at': [-42.63, 11.29, 4.0], 'shear': 0.919, 'shear_at': [43.71, 10.16, 2.35], 'max_disp': 0.1552, 'reaction': [-0.0, -0.0, 9.0, 9.0], 'vm_all': 2.864}
+08:49:26 ok post top faces: 4.0000 (expected 4.0000)
+08:49:26 ok spot faces: 2.0000 (expected 2.0000)
+08:49:26 PREDICT el 1.4: nodes 49253, displacement and peak as the 1.2 mm solve of d1_build.py
+08:49:27 D1_CONV_14: mesh rc 0, 45075 nodes, 27536 elements, free 12.6 GB
+08:49:32 D1_CONV_14: fixture nodes 360, box [-55.74, -5.25, 3.5] to [55.75, 5.25, 3.5]
+08:49:32 D1_CONV_14: load nodes 300, box [-42.5, -30.0, 8.0] to [42.5, 30.0, 8.0]
+08:49:34 converge {'el': 1.4, 'nodes': 45075, 'vm': 2.904, 'vm_at': [-42.65, 11.23, 0.0], 'layer': 0.234, 'layer_at': [-42.88, 10.83, 3.24], 'shear': 0.923, 'shear_at': [43.71, 10.16, 2.33], 'max_disp': 0.156, 'reaction': [-0.0, 0.0, 9.0, 9.0], 'vm_all': 2.904}
+08:49:35 ok post top faces: 4.0000 (expected 4.0000)
+08:49:35 ok spot faces: 2.0000 (expected 2.0000)
+08:49:35 PREDICT el 1.0: nodes 135150, displacement and peak as the 1.2 mm solve of d1_build.py
+08:49:37 D1_CONV_10: mesh rc 0, 117242 nodes, 75946 elements, free 11.9 GB
+08:50:00 D1_CONV_10: fixture nodes 700, box [-55.75, -5.25, 3.5] to [55.75, 5.25, 3.5]
+08:50:00 D1_CONV_10: load nodes 740, box [-42.49, -30.0, 8.0] to [42.5, 30.0, 8.0]
+08:50:13 converge {'el': 1.0, 'nodes': 117242, 'vm': 2.881, 'vm_at': [42.57, 11.48, 4.0], 'layer': 0.26, 'layer_at': [-39.19, -23.0, 4.0], 'shear': 0.938, 'shear_at': [-43.69, -10.17, 2.0], 'max_disp': 0.1567, 'reaction': [-0.0, -0.0, 9.0, 9.0], 'vm_all': 2.881}
+08:50:13 closing pid 130368 committed MB 1760
+{
+ "rows": [
+  {
+   "el": 2.0,
+   "nodes": 19093,
+   "vm": 2.864,
+   "vm_at": [
+    -42.65,
+    11.23,
+    0.0
+   ],
+   "layer": 0.298,
+   "layer_at": [
+    -42.63,
+    11.29,
+    4.0
+   ],
+   "shear": 0.919,
+   "shear_at": [
+    43.71,
+    10.16,
+    2.35
+   ],
+   "max_disp": 0.1552,
+   "reaction": [
+    -0.0,
+    -0.0,
+    9.0,
+    9.0
+   ],
+   "vm_all": 2.864
+  },
+  {
+   "el": 1.4,
+   "nodes": 45075,
+   "vm": 2.904,
+   "vm_at": [
+    -42.65,
+    11.23,
+    0.0
+   ],
+   "layer": 0.234,
+   "layer_at": [
+    -42.88,
+    10.83,
+    3.24
+   ],
+   "shear": 0.923,
+   "shear_at": [
+    43.71,
+    10.16,
+    2.33
+   ],
+   "max_disp": 0.156,
+   "reaction": [
+    -0.0,
+    0.0,
+    9.0,
+    9.0
+   ],
+   "vm_all": 2.904
+  },
+  {
+   "el": 1.0,
+   "nodes": 117242,
+   "vm": 2.881,
+   "vm_at": [
+    42.57,
+    11.48,
+    4.0
+   ],
+   "layer": 0.26,
+   "layer_at": [
+    -39.19,
+    -23.0,
+    4.0
+   ],
+   "shear": 0.938,
+   "shear_at": [
+    -43.69,
+    -10.17,
+    2.0
+   ],
+   "max_disp": 0.1567,
+   "reaction": [
+    -0.0,
+    -0.0,
+    9.0,
+    9.0
+   ],
+   "vm_all": 2.881
+  }
+ ],
+ "last_step_change": {
+  "vm": 0.0079,
+  "layer": 0.1111,
+  "shear": 0.0163
+ },
+ "converged": {
+  "vm": true,
+  "layer": false,
+  "shear": true
+ },
+ "excluded_within_mm": 4.0
+}
