@@ -2,7 +2,8 @@
 
 Branch `left-arm-organic-r1`.
 
-Pinned commit: not yet set (it is set once the convergence run below is in). Nothing here is released.
+Pinned commit: 6086d113e126a39082b55ecaad4c91e8217c73f4 (r1g6 results with the convergence run, the R1h back half, geometry and print files). Nothing here is
+released.
 
 **Scope: the change from R1c to R1d "ring".** R1 was reviewed in `../20261111_print-release/` and R1c in
 `../20261111_r1c-delta/`. Review:
