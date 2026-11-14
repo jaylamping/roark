@@ -7,10 +7,9 @@ render_shoulder_with_shell.py (panels of 2026-11-06 with the r 80 opening drawn 
     python render_slim_options.py        (under capped.py)
 
   today        as built in CAD
-  tight skin   drum's crowned sides and bell pulled in to 3 mm outside the rims (Z -31.5 / +39), drum wall 3 mm closer to the
-               motor's lugs, fork front dome 7 mm lower, sleeve round the yaw motor 3.5 mm a side closer
-  short back   tight skin, and the 12 mm of cable channel behind the motor taken out of the depth (rear face -60.8 -> -48.8)
-  no rear      tight skin, and no rear bearing or rear fork leg at all (shown only to see what it buys; not recommended)
+  short back   the 12 mm of cable channel behind the motor taken out of the depth (rear face -60.8 -> -48.8)
+  no rear      no rear bearing or rear fork leg at all (shown only to see what it buys; not recommended)
+(A "tight skin" row was withdrawn on 2026-11-14: it pulled skins in that are already as tight as the motors allow.)
 """
 import numpy as np
 import trimesh
@@ -47,17 +46,8 @@ def variant(kind):
     M = {k: m.copy() for k, m in R.M.items()}
     if kind == 'today':
         return P, M
-    d = P['drum'].vertices
-    squeeze(d, 2, 39.0, 0.25, True)
-    squeeze(d, 2, -31.5, 0.25, False)
-    radial(d, 50.0, 0.67)
-    squeeze(P['fork_front'].vertices, 2, 40.0, 0.3, True)
-    for k in ('fork_front', 'fork_rear'):                   # the sleeve round the yaw motor, below the drum
-        v = P[k].vertices
-        low = v[:, 1] < 372.0
-        for sg in (1, -1):
-            m = low & (sg * (v[:, 0] - RX) > 41.5)
-            v[m, 0] = RX + sg * (41.5 + (sg * (v[m, 0] - RX) - 41.5) * 0.4)
+    # (the first version also pulled the drum's skin, the dome and the yaw sleeve in: withdrawn 2026-11-14. The build code
+    # shows the drum's skin is 1.6 mm over the lug slots, the sleeve wall 1.6-3.3 mm and the hub's height a screw-and-pin stack)
     if kind == 'short back':
         for k in ('fork_rear', 'cap'):
             squeeze(P[k].vertices, 2, -39.3, 0.442, False)
@@ -71,7 +61,8 @@ def variant(kind):
 
 
 def depth_of(P):
-    z = np.concatenate([P[k].vertices[:, 2] for k in P if k in ('drum', 'cap', 'fork_front', 'fork_rear')])
+    # at the roll joint: the drum's bell, neck and spokes round the pitch motor (X under 125) are at the body, not here
+    z = np.concatenate([P[k].vertices[P[k].vertices[:, 0] > 125.0, 2] for k in P if k in ('drum', 'cap', 'fork_front', 'fork_rear')])
     return z.min(), z.max()
 
 
@@ -84,11 +75,10 @@ def main():
              ('Straight from the left side', F + np.array([1150.0, 0.0, 0.0]), F, (0, 1, 0), ((330.0, 175.0, -50.0), (0, 0, 1))),
              ('Straight from above (front at the bottom)', np.array([110.0, 345.0, 0.0]) + np.array([0.0, 900.0, 0.0]), np.array([110.0, 345.0, 0.0]), (0, 0, -1), ((120.0, 520.0, 110.0), (1, 0, 0)))]
     notes = {'today': 'TODAY, as built in CAD',
-             'tight skin': 'TIGHT SKIN: drum sides, bell and dome pulled in, thinner sleeve round the yaw motor. No function lost',
-             'short back': 'TIGHT SKIN + SHORT BACK: the wires moved out from behind the motor, 12 mm less depth',
-             'no rear': 'NO REAR SUPPORT: tight skin, no rear bearing and no rear fork leg. Shown to see what it buys; not recommended'}
+             'short back': 'SHORT BACK: the wires moved out from behind the motor, 12 mm less depth',
+             'no rear': 'NO REAR SUPPORT: no rear bearing and no rear fork leg. Shown to see what it buys; not recommended'}
     rows = []
-    for kind in ('today', 'tight skin', 'short back', 'no rear'):
+    for kind in ('today', 'short back', 'no rear'):
         P, M = variant(kind)
         z0, z1 = depth_of(P)
         ims = []
@@ -105,7 +95,7 @@ def main():
         w = 5 * 760 + 4 * 16
         rows.append(H.column([H.heading(notes[kind], w, 34, f'depth front to back at the roll joint {z1 - z0:.0f} mm (the motor is 57)'), H.row(ims)], gap=6))
         print(kind, 'depth %.1f (%.1f to %.1f)' % (z1 - z0, z0, z1), flush=True)
-    head = H.heading('Shoulder: today beside three slimmer ideas', rows[0].width, 46,
+    head = H.heading('Shoulder: today beside two shorter-back ideas (the earlier "tight skin" row is withdrawn: those skins cannot come in)', rows[0].width, 46,
                      'Quick envelope models, not finished CAD: today\'s shapes with the skin pulled in by simple rules, to judge the look only. Plastic is drawn see-through; the dark shapes inside are the motors. '
                      'Outer body shell of 2026-11-06 with the r 80 opening drawn in.')
     sheet = H.column([head] + rows, gap=10)

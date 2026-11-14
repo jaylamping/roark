@@ -64,6 +64,14 @@ CAP_BOSS_R = 50.0                 # the cap's screw bosses (r 5) stay centred he
 # locating collar round each pilot on the drum's rear face (r 48.2-53.0, 8 mm wide, 2.5 high) in a pocket in the cap's
 # boss, so the roll stop's reaction goes through the collars and the screws only clamp. Collars on the drum, not lugs on
 # the cap: the cap prints front face down and must stay flat there.
+# IN-BETWEEN LOOK (Joey, 2026-11-14: drum closed, fork front opened; mock-ups only): windows through the fork front's face
+# as (ri, ro, a0, a1, corner radius) about the roll axis, angles from +X, 90 = up. The hub keeps r 26.5 (cap recess r 24).
+#   ibA  three windows between spokes (the spokes are the ribs between today's dome pockets), rim kept over the drum's lip screws
+#   ibB  a yoke: everything above the hub removed, rim and all; the cheek below carries on down to the sleeve
+#   ibC  one arc window, no spokes: hub and rim joined only through the lower cheek
+IB_OPEN = dict(ibA=[(27.0, 45.0, -20.0, 40.0, 3.0), (27.0, 45.0, 50.0, 130.0, 3.0), (27.0, 45.0, 140.0, 200.0, 3.0)],
+               ibB=[(26.5, 62.0, -28.0, 208.0, 3.0)],
+               ibC=[(28.0, 44.0, -20.0, 200.0, 4.0)])
 CAPFIX = os.environ.get('LOOK', '') == 'capfix' or bool(os.environ.get('CAPFIX'))
 # Collars 12 mm wide (half angle 6.8 deg at r 50.6; the lug slots at +-22.5 deg leave room to 14 deg). The cap's r 5 boss is
 # narrower than that socket, so a pad (r 46.8-52, 5 mm deep, 2.5 mm past each socket end) backs the socket's end walls.

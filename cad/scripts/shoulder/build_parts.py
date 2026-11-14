@@ -874,6 +874,13 @@ def build_fork_front():
     extrude(d, zsk(d, ROLL_OUT - 1, 'PIN_HOLES', lambda s: [s.circle(rpt(15.2, 120.0 * k, ROLL_OUT - 1), 1.9) for k in range(3)]), 'PIN_HOLES', 1.0 + 9.0, Z, cut=True)
     extrude(d, zsk(d, CAP_FLOOR - 2, 'OUT_CB', lambda s: [s.circle(rpt(15.2, 30 + 60 * k, CAP_FLOOR - 2), 4.25) for k in range(6)]), 'OUT_CB', 10, Z, cut=True)
     extrude(d, zsk(d, CAP_FLOOR, 'CAP_RECESS', lambda s: s.circle((RX, RY, CAP_FLOOR), 24.0)), 'CAP_RECESS', 8, Z, cut=True)
+    if LOOK in IB_OPEN:
+        # IN-BETWEEN LOOK mock-ups (2026-11-14, pictures only): the fork front's face opened above the hub so the roll motor's
+        # face shows dark behind it. Cut from in front of the crown back to Z 38.5 (the plate's back is Z 39, the drum's lip
+        # ends at Z 36). The hub (r 26.5: output screws, pins, cap recess) and the lower cheek down to the sleeve stay whole.
+        zc_ = 53.0
+        extrude(d, zsk(d, zc_, 'IB_OPEN', lambda s: [sector(s, lambda r, a: rpt(r, a, zc_), ri_, ro_, a0_, a1_, rc_) for ri_, ro_, a0_, a1_, rc_ in IB_OPEN[LOOK]]),
+                'IB_OPEN', zc_ - 38.5, NZ, cut=True)
     extrude(d, ysk(d, SEAT_Y[0] - 5, 'RS02_HOLES', lambda s: [s.circle(ypt(36.5, a, SEAT_Y[0] - 5), 1.8) for a in RS02_SCREWS]), 'RS02_HOLES', 30, Y, cut=True)
     extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_CB', lambda s: [s.circle(ypt(36.5, a, SEAT_Y[1] - 3.5), 3.3) for a in RS02_SCREWS]), 'RS02_CB', 10, Y, cut=True)
     extrude(d, ysk(d, SEAT_Y[0] - 1, 'SOCKETS', lambda s: [sector(s, lambda r, a: ypt(r, a, SEAT_Y[0] - 1), 30.0, 40.5, a0, a1, 1.5) for a0, a1 in SOCKET_POCKETS]),
