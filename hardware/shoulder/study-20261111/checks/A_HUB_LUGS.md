@@ -1097,6 +1097,31 @@ Y 318.4-319.5, about 24 mm from the axis. A rigid edge over-reads. The hub top's
 ("Hub-top bolted contact" above), which was last run before the window moved; **it is being re-run on D3c7 and is part
 of the release gate.**
 
+### Combined cases at the larger of each lug's section and face total (2026-11-14)
+
+The arm's loads note (`r1g6_lug_loads_uncertainty.md`, roark c67a5dc) says its face totals over-read its section totals
+by up to 11%, and that for design the larger should be taken. The figures above use the **section** totals (270.9 and
+272.2 N on the governing lug). Solved again with each lug at the larger total, at the r1g6 centres of pressure, the G90
+share through the spigot unchanged (`HUBL_G90YAWM_MAX`, `HUBL_G90YAWP_MAX`; 1.00 million nodes):
+
+| Case | Lug loads | Shear across layers, -X / +X | Layer, -X / +X |
+|---|---|---|---|
+| G90 + yaw -17 | -X 219 N, +X **299 N** | 1.98 / **1.42** | 2.36 / 1.57 |
+| G90 + yaw +17 | -X **294 N**, +X 221 N | **1.44** / 2.04 | 1.58 / 2.40 |
+
+- **At the larger totals the governing lug is 5% under the 1.5 design target** (1.42 and 1.44), and well over the 1.2
+  bound. At the section totals it is 1.58 and 1.59.
+- **Where:** the outer R1.2 root, hub X offset 32.6-33.0, Y 295.6, at the lug's Z face on the pressed side.
+
+  ![root](hub_window/D3c7_lug_root_299N.png)
+
+- **Which number is softer:** the allowable. The load is now pinned between section and face totals, 8-11% apart. The
+  13 MPa for shear across the layers is an assumption with no test behind it; a coupon result of 11 or 16 MPa moves every
+  figure here by 15-25%.
+- **No geometry is changed.** The smallest change that would lift it over 1.5 at the larger totals, if wanted, is a
+  larger radius at the outer root (R1.2 to about R1.6 on the Z-facing root, inside the hub's own envelope) or 1 mm more
+  lug thickness; either changes the hub's hash and needs the arm's fit check again.
+
 ### Stop case from the arm's r1g6 loads (HUBL_STOP6, 2026-11-13)
 
 **Load:** the arm's STOP_0 (515 N on the elbow stop pad) with the hub's lug holes at Ø3.8 and the plate holes at Ø3.4

@@ -776,6 +776,24 @@ CASES['HUBL_STOP6_S'] = dict(_STOP6, remotes=[([_P_SMALL, _P_RING], (_OX, 292.1,
 CASES['HUBL_STOP6_ZB'] = dict(_STOP6H, remotes=CASES['HUBL_STOP6_Z']['remotes'] + [
     (_P_SMALL, (_OX, 293.2, 9.7), (9.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1),
     (_HOLE_OUT, (_HX, 292.0, YZ), (-26.0, 0.0, 0.0), (0.0, 0.0, 0.0), 1)])
+# THE ARM'S r1g6 COMBINED CASES AT THE LARGER OF EACH LUG'S SECTION AND FACE TOTAL (r1g6_lug_loads_uncertainty.md, roark c67a5dc):
+# the face totals over-read the sections by up to 11 %, and for design the arm says to take the larger. Each lug's main face
+# carries that total plus what its other face takes off; centres of pressure from r1g6_lug_loads.txt; the G90 share through
+# the spigot as in HUBL_G90 (unchanged).
+_G90_SPIGOT = (SPIGOT, (RX, 302.0, YZ), (-0.3, -0.9, -118.7), (23.44, -0.17, -0.01), 1)
+#   G90 + yaw -17: -X lug 219 N (front face), +X lug 299 N (back face)
+CASES['HUBL_G90YAWM_MAX'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=[(_PFACE(-1, 11.0), _COP(-1, 11.0, 31.66, 291.87), (0.0, 0.0, -227.7), (0.0, 0.0, 0.0), 1),
+             (_PFACE(-1, 1.0), _COP(-1, 1.0, 19.41, 291.77), (0.0, 0.0, 8.7), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 1.0), _COP(1, 1.0, 31.67, 292.48), (0.0, 0.0, 316.9), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _COP(1, 11.0, 20.05, 289.17), (0.0, 0.0, -17.9), (0.0, 0.0, 0.0), 1), _G90_SPIGOT])
+#   G90 + yaw +17: -X lug 294 N (back face), +X lug 221 N (front face)
+CASES['HUBL_G90YAWP_MAX'] = dict(CASES['HUBL_YAW3P38F'],
+    remotes=[(_PFACE(-1, 1.0), _COP(-1, 1.0, 31.66, 292.40), (0.0, 0.0, 308.2), (0.0, 0.0, 0.0), 1),
+             (_PFACE(-1, 11.0), _COP(-1, 11.0, 19.94, 289.25), (0.0, 0.0, -14.2), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 11.0), _COP(1, 11.0, 31.53, 291.78), (0.0, 0.0, -225.9), (0.0, 0.0, 0.0), 1),
+             (_PFACE(1, 1.0), _COP(1, 1.0, 19.29, 291.79), (0.0, 0.0, 4.9), (0.0, 0.0, 0.0), 1), _G90_SPIGOT])
+
 CASES['HUBL_G90YAW_L'] = dict(CASES['HUBL_YAW3P38F'], remotes=_G90YAW_LUGS)
 #   HUBL_G90       G90 alone, for superposing with HUBL_YAW_COP at another yaw load: -X lug 30.8 N net (back +36.9, front -6.1),
 #                  +X lug 25.9 N net (back +38.5, front -12.6), and the spigot share (F -0.3, -0.9, -118.7 N; M 23.44, -0.17, -0.01)
