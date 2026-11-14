@@ -24,6 +24,7 @@ NAMES = {
     'drum': 'shoulder_roll_drum_left', 'ring': 'shoulder_pitch_flange_ring_left', 'cap': 'shoulder_roll_cap_left',
     'fork_front': 'shoulder_fork_front_left', 'fork_rear': 'shoulder_fork_rear_left', 'fork_cap': 'shoulder_fork_cap_left',
     'hub': 'shoulder_hub_left', 'cover': 'shoulder_pitch_loop_cover_left', 'port_cap': 'shoulder_roll_drum_port_cap_left',
+    'cover_ring': 'shoulder_roll_cover_ring_left',
 }
 X, Y, Z = (1, 0, 0), (0, 1, 0), (0, 0, 1)
 NX, NY, NZ = (-1, 0, 0), (0, -1, 0), (0, 0, -1)
@@ -456,6 +457,19 @@ def build_access_plugs():
     the dome's r 55 surface about the roll axis; a 2 x 1 mm pry notch on the back edge (toward the drum, out of sight)
     lifts them out with a small screwdriver."""
     d = new_part(OUT / 'shoulder_fork_access_plugs_left.SLDPRT')
+    if FORK_YOKE and LOOK not in ('ffT', 'ffTS'):
+        # YOKE: one plug. The 104 deg driver bore comes out at the top of the hub's head (r 30 about the roll axis); the plug
+        # is trimmed 0.4 inside that outline so it sits just under the crowned edge. The 144 deg bore ends under the drum
+        # (out of sight, reached on the bench only) and needs no plug; on the dome its plug had sat inside the drum's volume.
+        import yoke as YKM
+        rt = YOKE['r'] - 0.4
+        a_ = RS02_ACCESS_ANG[0] if abs(ypt(36.5, RS02_ACCESS_ANG[0], 0.0)[0] - RX) < abs(ypt(36.5, RS02_ACCESS_ANG[1], 0.0)[0] - RX) else RS02_ACCESS_ANG[1]
+        x_, _, z_ = ypt(36.5, a_, 0.0)
+        y_top = RY + math.sqrt(rt ** 2 - (x_ - RX) ** 2)
+        extrude(d, ysk(d, y_top - 7.0, 'PLUG0', lambda s_: s_.circle((x_, y_top - 7.0, z_), 3.45)), 'PLUG0', 9.0, Y)
+        roll_rev(d, 'PLUG_TRIM', [(rt, 20.0), (rt + 40.0, 20.0), (rt + 40.0, 80.0), (rt, 80.0)], cut=True)
+        extrude(d, ysk(d, y_top - 1.0, 'PRY0', lambda s_: s_.poly(rect_pts((x_, y_top - 1.0, z_ - 3.2), X, Z, 2.0, 1.2))), 'PRY0', 3.0, Y, cut=True, lo=-1.0)
+        return finish_part(d, 'access_plugs', dict(Note='press-in plug for the RS02 driver bore at the top of the hub head (yoke)'))
     for i_, a_ in enumerate(RS02_ACCESS_ANG):
         x_, _, z_ = ypt(36.5, a_, 0.0)
         y_top = RY + math.sqrt(55.0 ** 2 - (x_ - RX) ** 2)
@@ -470,11 +484,21 @@ def build_access_plugs():
     return finish_part(d, 'access_plugs', dict(Note='mock-up: press-in plugs for the RS02 access holes (front blend)'))
 
 
+# =========================================================================================================== cover ring
+def build_cover_ring():
+    """Dark cover ring in the drum's lip bore (dims.COVER_RING): optional. Prints flat, plate down, no support."""
+    d = new_part(OUT / f"{NAMES['cover_ring']}.SLDPRT")
+    c = COVER_RING
+    roll_rev(d, 'RING', [(c['ri'], c['z1']), (c['ro'], c['z1']), (c['ro'], c['skirt_z0']), (c['skirt_ri'], c['skirt_z0']), (c['skirt_ri'], c['z0']), (c['ri'], c['z0'])],
+             [0.6, 0.5, 0.4, 0.4, 0.8, 0.6])
+    return finish_part(d, 'cover_ring', dict(Note='optional: dark PETG, press into the drum lip bore after the eight lip screws'))
+
+
 # ========================================================================================================== flange ring
 def build_ring():
     d = new_part(OUT / f"{NAMES['ring']}.SLDPRT")
     rg = RING
-    if LOOK == 'rimB':
+    if LOOK == 'rimB' or RIM_B_ON:
         # ROLLED RIM B (look build; Joey picked it from the render pictures, 2026-11-14): the outboard face rolls R3.2 from the
         # rim into a rim 4.2 deep and eases back to the 1.8 web by r 68.3 (9.2 mm of radius). The inboard face stays flat
         # (it still prints on it), the outer radius and the 2 mm gap to the cover are unchanged.
@@ -683,8 +707,8 @@ def build_fork_front():
     # out) and a 4.5 x 4.5 blend cone at the boss root (the root is a sharp corner on today's part). Names starting with ff are
     # analysis builds: the same part without the two dia 7 driver-access bores (plugged in service; today's part will not
     # mesh with them): ffT today's part, ffTS today's part with the solid neck, ffYS the yoke with the solid neck.
-    YK = LOOK in ('yoke', 'yokeS', 'ffYS')
-    SOLID = LOOK in ('yokeS', 'ffTS', 'ffYS')
+    YK = LOOK in ('yoke', 'yokeS', 'ffYS') or (FORK_YOKE and LOOK not in ('ffT', 'ffTS'))      # the adopted default
+    SOLID = LOOK in ('yokeS', 'ffTS', 'ffYS') or (YK and LOOK != 'yoke')
     NOACC = LOOK.startswith('ff')
     if YK:
         # YOKE (look build): nothing above the hub. One outline (yoke.py): today's lower cheek below two shoulder lines, the
@@ -1385,7 +1409,7 @@ def build_hub():
 
 
 BUILD = dict(drum=build_drum, ring=build_ring, cap=lambda: finish_part(build_cap(), 'cap'), fork_front=build_fork_front, fork_rear=build_fork_rear,
-             fork_cap=build_fork_cap, cover=build_cover, hub=lambda: (build_hub(), hub_lug_roots())[-1], port_cap=build_port_cap, access_plugs=build_access_plugs)
+             fork_cap=build_fork_cap, cover=build_cover, hub=lambda: (build_hub(), hub_lug_roots())[-1], port_cap=build_port_cap, access_plugs=build_access_plugs, cover_ring=build_cover_ring)
 
 if __name__ == '__main__':
     which = sys.argv[1:] or list(BUILD)

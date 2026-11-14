@@ -105,6 +105,10 @@ def load():
     P = {}
     for k in ('drum', 'ring', 'cap', 'fork_front', 'fork_rear', 'hub', 'cover', 'port_cap'):   # fork cap dropped (look option a)
         P[k] = samp(trimesh.load((WIP / os.environ['PART_STL_DIR'] if k in os.environ.get('PART_STL_PARTS', '').split(',') else STL) / f'{k}.stl'), 0.7)
+    for k in ('cover_ring',):      # optional parts: swept when their STL exists
+        f_ = (WIP / os.environ['PART_STL_DIR'] if k in os.environ.get('PART_STL_PARTS', '').split(',') else STL) / f'{k}.stl'
+        if f_.exists():
+            P[k] = samp(trimesh.load(f_), 0.7)
     P['roll_rs03'] = samp(mesh_step(VENDOR / 'vendor_robstride_rs03.stp', T_ROLL_RS03), 0.7)
     P['rs02'] = samp(mesh_step(VENDOR / 'vendor_robstride_rs02.step', T_RS02), 0.7)
     pm = samp(mesh_step(UA / 'torso_pitch_rs03_left.step', tol=0.3), 0.7)
@@ -126,7 +130,7 @@ def load():
     return P
 
 
-GROUP = dict(cover='fixed', torso='fixed', port_cap='pitch', drum='pitch', ring='pitch', cap='pitch', stops='pitch', roll_rs03='pitch',
+GROUP = dict(cover='fixed', torso='fixed', port_cap='pitch', drum='pitch', ring='pitch', cap='pitch', stops='pitch', roll_rs03='pitch', cover_ring='pitch',
              fork_front='roll', fork_rear='roll', fork_cap='roll', rs02='roll', hub='yaw', upper_arm='yaw')
 ORDER = ['fixed', 'pitch', 'roll', 'yaw']
 # pairs that are bolted or seated together (static fits), not running clearances

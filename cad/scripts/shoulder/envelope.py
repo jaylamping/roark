@@ -107,7 +107,9 @@ ARM_STATIONS = [(402.0, 0.0, 17.0, 10.3), (380.0, 0.0, 18.0, 11.8), (364.0, 0.0,
 
 # LEG2 mock-up (checks/B_ROLL_STOPS.md, roll stop torque path): the rear leg 2 mm wider each side and 2 mm deeper where the
 # stop tooth loads it (stations Y 380 and 402); not on the real parts until Joey has seen it
-if os.environ.get('LEG2'):
+# ADOPTED 2026-11-14 with the yoke (checks/FORK_FRONT_FE.md): the thin section read 0.87-0.98 on layer tension in the combined
+# model and 3.2 with this. LEG2=0 builds the earlier leg
+if os.environ.get('LEG2', '1') != '0':
     ARM_STATIONS = [(y_, cx_, w_ + 2.0, d_ + 2.0) if y_ >= 380.0 else (y_, cx_, w_, d_) for y_, cx_, w_, d_ in ARM_STATIONS]
 
 

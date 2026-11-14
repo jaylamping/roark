@@ -898,3 +898,61 @@ poses; 58 pairs; distances good to about ±0.4 mm), against the sweep of 2026-11
   the plug channel; the shell check was not repeated after them. 0.54 mm of skin trim there would restore 3 mm. Open
   item for the shell's change list.
 
+## Adopted 2026-11-14: yoke fork front, rolled rim B, stiffer rear leg, cover ring
+
+`adopt_yoke.sh`. The switches are the defaults now: `FORK_YOKE` and `RIM_B_ON` in `dims.py`, `LEG2` in `envelope.py`
+(each can be set to 0 to build the earlier shape). Joey: "I think I like the Yoke design", and on the finished sheet
+"Yep I like where this design is heading, keep it going"; adopted once the strength runs passed.
+
+- **Fork front:** the outline of `yoke.py` (today's lower cheek below two shoulder lines 36° under the horizontal, the hub
+  disc r 30, a 22 mm blend, 13 mm rounds at the shoulder ends), a solid neck, a 4.5 × 4.5 cone at the boss root.
+  115,620 mm³, **146.8 g** (155.2 before). The STL needed a re-export at 0.008 mm / 2.5° and one needle triangle
+  repaired to pass the integrity scan.
+- **Flange ring:** rolled rim B. 30,030 mm³, **38.1 g** (29.3).
+- **Fork rear:** the LEG2 section. 52,932 mm³, **67.2 g** (63.7).
+- **Access plug:** one, at the top of the hub's head. 0.3 g. The plug for the 144° bore is dropped: that bore ends under
+  the drum, and the old plug had sat inside the drum's volume.
+- **Cover ring (new, optional):** `shoulder_roll_cover_ring_left`, 10,346 mm³, **13.1 g**, dark PETG, in the drum's lip.
+- Integrity PASS on all five. First exports of fork rear, flange ring and cover ring; fork front and plug replaced. All
+  recorded; layout check 0 errors. The assembly is rebuilt with the cover ring in it.
+
+**Masses now** (solid PETG 1.27 g/cc, from the build meshes):
+
+| Part | g |
+|---|---|
+| Drum with pitch adaptor | 227.1 |
+| Fork front | 146.8 |
+| Rear cap | 85.4 |
+| Hub | 80.2 |
+| Fork rear | 67.2 |
+| Flange ring | 38.1 |
+| Port cap, access plug | 1.7 |
+| **Shoulder total** | **646.5** |
+| Cover ring (optional) | 13.1 |
+| Pitch loop cover (torso side) | 102.2 |
+
+**Clearance sweep on the real set** (`check_clearance.py`, the full run, with the cover ring), against the sweep after
+the hub's adoption:
+
+| Pair | Now | Before | |
+|---|---|---|---|
+| Cap ↔ fork rear | 0.03 | 0.03 | The stop tooth in its slot at the two stops: contact by design |
+| Flange ring ↔ fork front | 1.07 | 1.04 | At roll -12, one degree past the inward stop. Rim B did not close it |
+| Drum ↔ fork front | 1.98 | 1.98 | The 2 mm shut line |
+| Flange ring ↔ cover | 2.00 | 2.00 | |
+| Fork front ↔ hub | 2.19 | 2.19 | |
+| **Fork front ↔ cover ring** | **2.44** | new | The root cone against the ring's bore |
+| Drum ↔ RS02 | 2.59 | 2.59 | |
+| Fork front ↔ port cap | 2.62 | 2.62 | |
+| Hub ↔ RS02 | 3.42 | 3.42 | |
+| Flange ring ↔ RS02 | 5.75 | 7.68 | The rolled rim |
+| Flange ring ↔ fork rear | 9.98 | 12.12 | The rolled rim and the wider leg |
+
+Nothing new under 2.0.
+
+**Strength of the adopted set** (combined model, the real parts with their driver-access bores, 530,413 nodes; von
+Mises / layer tension, worst 0.5 mm ball, target 1.5): lowest in the design cases 1.76 (joint region, sideways) and 1.93
+on the fork front itself (boss root, sideways). Table and the stop case: checks/FORK_FRONT_FE.md, "The adopted set".
+
+**Sheet:** [../checks/size_audit/YOKE_ADOPTED.png](../checks/size_audit/YOKE_ADOPTED.png).
+

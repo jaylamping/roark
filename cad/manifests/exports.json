@@ -258,37 +258,55 @@
       "export": "exports/shoulder/shoulder_fork_access_plugs_left.STEP",
       "source": "shoulder/left/shoulder_fork_access_plugs_left.SLDPRT",
       "config": "",
-      "settings": "plug pocket pp_r: plugs for the RS02 access bores at 104 / 144 deg",
-      "sourceSha256": "e4cb9365ed24b39e9d49865245dc2744743e16221270745bded5766cd936087a",
-      "exportSha256": "b9794db48c02a3a0ab271736989521a3f7f28cfa78130fb6824c8747b590d147",
-      "recorded": "2026-11-13T14:22:48Z"
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py access_plugs",
+      "sourceSha256": "be4fac17128e360d02c8710a058f4e84b2a5b42658bc744b7ef80f99a1f33399",
+      "exportSha256": "abf8cdc15c5992ba6e53adf47182476fb8a3aedf8cd25d55db44674965d76998",
+      "recorded": "2026-11-14T11:13:12Z"
     },
     {
       "export": "exports/shoulder/shoulder_fork_access_plugs_left.STL",
       "source": "shoulder/left/shoulder_fork_access_plugs_left.SLDPRT",
       "config": "",
-      "settings": "plug pocket pp_r: plugs for the RS02 access bores at 104 / 144 deg",
-      "sourceSha256": "e4cb9365ed24b39e9d49865245dc2744743e16221270745bded5766cd936087a",
-      "exportSha256": "52d37ac796fec41cd32d5eccdb50e785a75f3aea90c3eaf621ac6c7e980a28cc",
-      "recorded": "2026-11-13T14:22:51Z"
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py access_plugs",
+      "sourceSha256": "be4fac17128e360d02c8710a058f4e84b2a5b42658bc744b7ef80f99a1f33399",
+      "exportSha256": "45505073b9ef99cedf0180fc24ae60af55ae002ee4c549fcc17c975351346a1b",
+      "recorded": "2026-11-14T11:13:13Z"
     },
     {
       "export": "exports/shoulder/shoulder_fork_front_left.STEP",
       "source": "shoulder/left/shoulder_fork_front_left.SLDPRT",
       "config": "",
-      "settings": "plug pocket pp_r: RS02 re-clocked +40 deg (sockets 228 / 48), screws -96/-56/-16/104/144, access bores 104/144, internal radial plug channel at 228 deg",
-      "sourceSha256": "3a40cee8dc8c7d44f1adb7f5ec7de5950fded4f50a38972622e63feeb51c41d2",
-      "exportSha256": "87c3684159647f353d33663801bda325fe6fc44017e52c698a2373dba68d6139",
-      "recorded": "2026-11-13T14:22:48Z"
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py fork_front",
+      "sourceSha256": "0f7d8e1118cde5ee94a8110f92dcef201bd21fac8652c11b7bad3ab9ad06cc13",
+      "exportSha256": "05351e9176b92da58d4813edfd008ef5ce232241f21efdbabbf564f6775afb8c",
+      "recorded": "2026-11-14T11:13:09Z"
     },
     {
       "export": "exports/shoulder/shoulder_fork_front_left.STL",
       "source": "shoulder/left/shoulder_fork_front_left.SLDPRT",
       "config": "",
-      "settings": "plug pocket pp_r: RS02 re-clocked +40 deg (sockets 228 / 48), screws -96/-56/-16/104/144, access bores 104/144, internal radial plug channel at 228 deg",
-      "sourceSha256": "3a40cee8dc8c7d44f1adb7f5ec7de5950fded4f50a38972622e63feeb51c41d2",
-      "exportSha256": "b168c6cb86b35a46290af9b0e7d098d810fd92cb204eaca3c431657351db17f3",
-      "recorded": "2026-11-13T14:22:50Z"
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py fork_front",
+      "sourceSha256": "0f7d8e1118cde5ee94a8110f92dcef201bd21fac8652c11b7bad3ab9ad06cc13",
+      "exportSha256": "6e12603dbf2d1089337817e5fe34c1b30e4cc644b0052a94b7194e786f4283bf",
+      "recorded": "2026-11-14T11:13:11Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_fork_rear_left.STEP",
+      "source": "shoulder/left/shoulder_fork_rear_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py fork_rear",
+      "sourceSha256": "74a79c15c59b29ba739b5abfd233c4bc38061ef14742b8f3578032547e640938",
+      "exportSha256": "b065313470da5b6278e9d7446eb36d61dca7b839c5ba92626d13b60b184a0756",
+      "recorded": "2026-11-14T11:13:11Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_fork_rear_left.STL",
+      "source": "shoulder/left/shoulder_fork_rear_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py fork_rear",
+      "sourceSha256": "74a79c15c59b29ba739b5abfd233c4bc38061ef14742b8f3578032547e640938",
+      "exportSha256": "013aff3288eda40588894874929fb3349b872c4982c68728653d9c067e2d5529",
+      "recorded": "2026-11-14T11:13:11Z"
     },
     {
       "export": "exports/shoulder/shoulder_hub_left.STEP",
@@ -309,6 +327,24 @@
       "recorded": "2026-11-14T02:51:54Z"
     },
     {
+      "export": "exports/shoulder/shoulder_pitch_flange_ring_left.STEP",
+      "source": "shoulder/left/shoulder_pitch_flange_ring_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py ring",
+      "sourceSha256": "cd8ae28b84ecec50f805d49668bb0ef170e3f11aab421edfbac5cab9529a4b0b",
+      "exportSha256": "d8f7026a251800dc9930f2fcc0b1baa026c2291e4176e2a64fee074845fd28ef",
+      "recorded": "2026-11-14T11:13:11Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_pitch_flange_ring_left.STL",
+      "source": "shoulder/left/shoulder_pitch_flange_ring_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py ring",
+      "sourceSha256": "cd8ae28b84ecec50f805d49668bb0ef170e3f11aab421edfbac5cab9529a4b0b",
+      "exportSha256": "4558a5edb0d92d0d42a429e385bf21605ebc182efb3e17174668e4d7b21def28",
+      "recorded": "2026-11-14T11:13:12Z"
+    },
+    {
       "export": "exports/shoulder/shoulder_roll_cap_left.STEP",
       "source": "shoulder/left/shoulder_roll_cap_left.SLDPRT",
       "config": "",
@@ -325,6 +361,24 @@
       "sourceSha256": "0eb6a2659e16e82cfd9059beb0ad7e3fa631a89fc03b1b4952ada0dad4950bf7",
       "exportSha256": "fa20a6bb30d2f3037361013c120c11db53b5e3313a121a2f5957bf8a6b3674a4",
       "recorded": "2026-11-14T02:55:24Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_roll_cover_ring_left.STEP",
+      "source": "shoulder/left/shoulder_roll_cover_ring_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py cover_ring",
+      "sourceSha256": "4aec690731393298340ea2a57b42d37a6d757bc6079322925ba6507c8c3f7785",
+      "exportSha256": "5ea7f7a819c2bbe48146df8fcf9c54c8810381a8385b230876a809a60c843540",
+      "recorded": "2026-11-14T11:13:13Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_roll_cover_ring_left.STL",
+      "source": "shoulder/left/shoulder_roll_cover_ring_left.SLDPRT",
+      "config": "",
+      "settings": "adopted 2026-11-14 (yoke, rim B, LEG2, cover ring): build_parts.py cover_ring",
+      "sourceSha256": "4aec690731393298340ea2a57b42d37a6d757bc6079322925ba6507c8c3f7785",
+      "exportSha256": "80f3084b3f47dbf2bd0e7e4deffc2a5f517d83fd2d7d68045bc18c3ce6636691",
+      "recorded": "2026-11-14T11:13:14Z"
     },
     {
       "export": "exports/shoulder/shoulder_roll_drum_left.STEP",

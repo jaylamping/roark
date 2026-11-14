@@ -1,6 +1,6 @@
 # The fork in finite elements: today's parts, the yoke, and the rear leg (2026-11-14)
 
-**Status:** the checks are done. Nothing real is changed: every build here is a look or analysis build. The adoption is prepared at the end of this page and waits for the word.
+**Status:** the checks are done and **the yoke, rim B, the stiffer rear leg and the cover ring are adopted (2026-11-14)**. The real set has its own figures below ("The adopted set").
 
 ## Short answer
 
@@ -22,6 +22,27 @@
 > **Corrected 2026-11-14, 03:10 local.** The first version of this page said today's fork front was under target at the
 > neck (0.92 / 0.70). That came from the fork front analysed alone, in bounds that left the rear leg and the 6808 out.
 > In the combined model the fork front passes. The alone-model tables further down are kept as bounds, not as a verdict.
+
+## The adopted set (real parts, 2026-11-14)
+
+Combined model on the real fork front and fork rear as released (530,413 nodes; the real fork front keeps its
+driver-access bore, which the analysis builds above leave out). Von Mises / layer tension, worst 0.5 mm ball.
+
+| Case | Boss root | Head and neck | Lower cheek | Joint | Rear leg | Seat moves |
+|---|---|---|---|---|---|---|
+| Forward, yaw +17 | 4.44 / 2.48 | 3.77 / 2.42 | 4.79 / 3.78 | 2.18 / 3.22 | 5.22 / 3.69 | 0.41 mm |
+| Forward, yaw -17 | 4.25 / 4.78 | 4.04 / 2.75 | 5.84 / 4.07 | 2.03 / 2.34 | 5.29 / 2.76 | 0.43 mm |
+| Sideways | 3.41 / 1.93 | 4.40 / 2.82 | 7.40 / 3.51 | 1.76 / 2.62 | 4.60 / 2.58 | 0.26 mm |
+| Stop, 60 N·m stall | 0.40 / 0.30 | 0.78 / 0.50 | 0.61 / 0.53 | 0.38 / 0.33 | 0.97 / 0.47 | |
+| Stop at the controller's 17 N·m | 1.41 / 1.06 | 2.75 / 1.77 | 2.15 / 1.87 | 1.34 / 1.16 | 3.42 / 1.66 | |
+
+- **Design cases: everything at or above 1.76.** The lowest on the fork front is 1.93 (boss root, sideways, layer
+  tension); the lowest of all is the joint region's 1.76.
+- **The real set reads lower at the boss root than the analysis build** (4.44 / 2.48 against 5.92 / 4.20 forward):
+  the driver-access bore passes through the neck beside the boss root, and the peak sits at the bore's edge
+  (X offset -6 to -12, Y 399-401). It still passes. Open item 42.
+- **The stop case is worse at the boss root for the same reason:** 0.40 / 0.30 at a stall, 1.41 / 1.06 at 17 N·m.
+- The 13 mm rounds at the shoulder ends (9.5 in the look build) cost nothing: lower cheek 4.79 / 3.78 or better.
 
 ## Verdict
 
@@ -211,7 +232,7 @@ Today's part with the 0.7 mm mesh at the boss root (P_*, analysis build ffT):
   against 29.3 g. Prints flat on its inboard face, no support. Clean mesh. Clearance: above.
 - Cover and ring in the visible white: PRINT_NOTES.md.
 
-## Adoption plan (prepared, NOT run: it waits for the word)
+## Adoption plan (run on 2026-11-14: CAD_NOTES "Adopted 2026-11-14: yoke fork front")
 
 **What would change on the real parts:**
 

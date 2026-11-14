@@ -63,6 +63,7 @@ PARTS = [  # (key, file, group, base transform, colour)
     ('ring', OUT / 'shoulder_pitch_flange_ring_left.SLDPRT', 'pitch', None, 'petg'),
     ('port_cap', OUT / 'shoulder_roll_drum_port_cap_left.SLDPRT', 'pitch', None, 'petg'),
     ('cap', OUT / 'shoulder_roll_cap_left.SLDPRT', 'pitch', None, 'petg'),
+    ('cover_ring', OUT / 'shoulder_roll_cover_ring_left.SLDPRT', 'pitch', None, 'motor'),   # optional dark ring in the drum's lip (2026-11-14)
     ('bearing', BRG, 'pitch', T_BRG, 'steel'),
     ('roll_rs03', VENDOR / 'vendor_robstride_rs03.SLDPRT', 'pitch', T_ROLL_RS03, 'motor'),
     ('fork_front', OUT / 'shoulder_fork_front_left.SLDPRT', 'roll', None, 'petg'),

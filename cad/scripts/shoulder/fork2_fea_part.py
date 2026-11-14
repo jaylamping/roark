@@ -20,7 +20,7 @@ def vol(d):
 
 
 def build(tag):
-    front = CAD / '_wip' / 'look' / tag / 'shoulder_fork_front_left.SLDPRT'
+    front = (CAD / 'shoulder' / 'left' / 'shoulder_fork_front_left.SLDPRT') if tag == 'real' else (CAD / '_wip' / 'look' / tag / 'shoulder_fork_front_left.SLDPRT')      # 'real': the released part
     d = new_part(F / (f'fork2_{tag}_{RT}.SLDPRT' if RT else f'fork2_{tag}.SLDPRT'))
     for p in (front, REAR):
         f = d.InsertPart3(str(p), 1 | 2, '')          # solid bodies, no planes or axes

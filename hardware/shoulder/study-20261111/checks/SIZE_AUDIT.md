@@ -37,8 +37,8 @@
 **Overall:** 120 mm outboard of the body's side (shell at X 107-109, the fork's outer face at X 227.5); 110.6 deep; 198
 high from the drum's top to the hub's underside.
 
-**Mass:** about 630 g: drum 238, fork front 141, hub 80 (D3c7), rear cap 75, fork rear 61, flange ring 29, plugs 6. The
-cable cover on the torso is another 102 g.
+**Mass:** 646.5 g as adopted 2026-11-14: drum 227, fork front 147 (the yoke), rear cap 85, hub 80, fork rear 67, flange
+ring 38 (rolled rim), port cap and plug 2. The optional cover ring is 13 g; the cable cover on the torso another 102 g.
 
 ## Against the shoulder as built today (the bracket design, same motors)
 
@@ -83,8 +83,8 @@ at the roll joint: 111, 99 and 89 mm. The earlier "tight skin" row is withdrawn.
 - **The rows are hard to tell apart from the front.** The change is at the back, in the side and top views.
 - **Nearly every skin is already within 2-4 mm of a motor or a working face.** The millimetres that exist are the 12 mm of
   cable channel behind the motor and 3 mm at the fork front's hub.
-- **The visible lever is the fork front's face,** which today covers the roll motor's whole front: see
-  `IN_BETWEEN_OPTIONS.png` (in work).
+- **The visible lever is the fork front's face,** which covered the roll motor's whole front. Joey picked the yoke from
+  `IN_BETWEEN_OPTIONS.png`; it is adopted (2026-11-14): `YOKE.png` (the design), `YOKE_ADOPTED.png` (the real parts).
 - A real reduction in how far the shoulder stands off the body would need the motors themselves arranged differently,
   which is outside "drum and fork".
 - No mass saving is claimed: the earlier "about 60 g" had no basis.

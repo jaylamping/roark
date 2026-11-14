@@ -1,6 +1,11 @@
 # Check (c): roll joint load share (RS03 output vs 6808 stub) and deflection (2026-11-12, beam model)
 
-**Status: the beam model below is the result.** The FEA of the fork front and fork rear as two bodies (`fea_shoulder.py`
+> **Superseded 2026-11-14 by a finite-element model that solves** (fork front and fork rear as one body, 6808 seat held
+> radially): [FORK_FRONT_FE.md](FORK_FRONT_FE.md). It shows the rear leg and the 6808 carrying far more than the bounds
+> below assume (the RS02 seat moves 0.4-0.5 mm), and it found the rear leg's thin section under target; the leg is
+> stiffer since the adoption of that date. The beam model stays here as the first estimate.
+
+**Status (2026-11-12): the beam model below was the result.** The FEA of the fork front and fork rear as two bodies (`fea_shoulder.py`
 `FORK_*`, from `fork_fea_part.py`) fails to solve with code 24.
 - Attempts: the direct solver (2.5 mm mesh), and on 2026-11-12 the one allowed retry on FFEPlus with a 3.5 mm mesh
   (51,215 nodes, 226 s, `fea_fork_MX_brg.txt` alongside).
