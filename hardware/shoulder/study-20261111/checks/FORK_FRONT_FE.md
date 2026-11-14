@@ -81,6 +81,64 @@ ball. `fea_shoulder.py` J_*, `run_joint.sh`, `joint_post.py`.
 - These runs use a coarser mesh than the merged model and no fine zone at the boss root, so their figures outside the
   joint zone are not to be compared with the tables above.
 
+## Structural revision for the 17 N·m stop (2026-11-14): look variants, NOT adopted
+
+Aim: the stop at the controller's 17 N·m to clear 1.5 everywhere. Two variants built and run; the second is one figure
+short, so nothing is adopted. The switches are off by default (`KEY_SLOT`, `JOINT_FLOOR`, `JOINT_EXTRA` in `dims.py`).
+
+**What the variants change** (all inside or underneath; the outside is unchanged except that the plug on the hub goes):
+
+| | Fork front | Fork rear |
+|---|---|---|
+| Variant 1 (`ykK` + `frJ`) | **Key slot** in place of the Ø7 driver bore through the neck. 150.1 g | Counterbore floors under the four outer joint screws 4.0 mm (3.0). 67.4 g |
+| Variant 2 (`ykK2` + `frJ2`) | Key slot; joint pad 3 mm thick (1), 2.5 mm further down, 3 mm wider each side. 151.5 g | 4.0 mm floors; front plate at the joint 2.6 mm (1.6). 67.8 g |
+
+**Key access** ([size_audit/KEY_ACCESS.png](size_audit/KEY_ACCESS.png), `key_access.py`): the 104° RS02 screw is reached
+by a 2.5 mm ball-end key 20° back from the screw's axis (a ball end works to about 25°), through a 7 mm slot that comes
+out on the fork front's hidden underside, inside the drum's envelope. Shank clearance 2.0 mm, the long arm 6.8 mm; the
+key passes behind the boss. It works on the bench, which is where the RS02 goes onto the fork front anyway (before the
+fork front goes onto the drum): the assembly order is unchanged. No access plug is needed any more.
+
+**Combined model** (von Mises / layer tension, worst 0.5 mm ball):
+
+| Case | Region | Adopted set | Variant 1 | Variant 2 |
+|---|---|---|---|---|
+| Forward, yaw +17 | Boss root | 4.44 / 2.48 | 6.69 / 4.50 | 6.56 / 4.80 |
+| | Joint | 2.18 / 3.22 | 2.47 / 3.32 | 4.06 / 4.29 |
+| Forward, yaw -17 | Boss root | 4.25 / 4.78 | 7.16 / 4.88 | 7.15 / 4.96 |
+| | Joint | 2.03 / 2.34 | 2.50 / 2.56 | 3.42 / 2.96 |
+| Sideways | Boss root | 3.41 / 1.93 | 6.28 / 2.95 | 6.37 / 3.06 |
+| | Joint | 1.76 / 2.62 | 2.11 / 2.74 | 3.01 / 3.19 |
+| **Lowest in the design cases** | | **1.76** | **2.11** | **2.96** |
+| Stop at 17 N·m | Boss root | 1.41 / 1.06 | 4.1 / 3.7 | 4.1 / 3.7 |
+| | Head and neck | 2.75 / 1.77 | 3.95 / 2.40 | 4.0 / 2.47 |
+| | Lower cheek | 2.15 / 1.87 | 2.29 / 1.91 | 2.33 / 1.80 |
+| | Joint | 1.34 / 1.16 | 1.41 / 1.34 | 1.77 / **1.45** |
+| | Rear leg | 3.42 / 1.66 | 3.32 / 1.62 | 3.7 / 2.0 |
+
+**Bolted joint** (two bodies, six preloaded screws, contact; joint zone away from the connector ties):
+
+| Case | Adopted set | Variant 1 | Variant 2 |
+|---|---|---|---|
+| Preload alone, 400 N per screw, fork rear side | 1.01 / 3.14 | 1.63 / 2.64 | 1.87 / 5.30 |
+| Stop at 17 N·m, 200 N: fork rear side | 1.88 / 1.34 | 2.82 / 1.39 | 2.57 / 1.69 |
+| Stop at 17 N·m, 200 N: fork front side | 2.33 / 1.41 | 2.39 / 1.34 | 2.57 / **1.42** |
+
+- **The key slot settles the boss root:** 1.06 becomes 3.7 at the 17 N·m stop, and the design cases rise.
+- **The 4 mm floors let the joint screws take about 0.3 N·m** (1.6 to 1.9 under 400 N of preload alone, against 1.0).
+  A washer does not do this: the counterbore is Ø8, a Ø8 washer adds 17 % of bearing area and stands the head proud.
+  With 4 mm floors a button head sits about flush (0.1 mm proud of the recess).
+- **One figure is still short: 1.42 to 1.45 on layer tension at the 17 N·m stop,** at the fork front's joint face, at its
+  two lower corners (X offset -28 and +24, Y 339-340): [size_audit/JOINT_STOP17.png](size_audit/JOINT_STOP17.png). The
+  stop's torque crosses the joint as a pull along Y, the layer direction, on the end screws; at those two corners it
+  runs from the pad into the sleeve's 2 mm wall where the wall crosses the joint plane. The thicker pad moved it from
+  1.34 to 1.42; the fork rear side now passes (1.69).
+- **Next step, not built:** two small gussets inside the sleeve, from the pad's lower corners about 10 mm down the two
+  walls, so the pull runs into the wall over a length and not at a corner. They have to stay clear of the cable exit that
+  runs inside the ring; that needs a look at the exit's path before drawing.
+- The second variant's fork rear STL failed the integrity scan on export (one non-manifold edge); it would need a
+  re-export before any adoption.
+
 ## Verdict
 
 | Question | Answer |

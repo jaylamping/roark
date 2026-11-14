@@ -771,8 +771,11 @@ def build_fork_front():
     # the joint face: the 0.5 mm from the sleeve's back (JZ0 + 0.5) down to the joint plane, over the bolted pad
     _py0 = min([SEAT_Y[0]] + [y_ - 4.0 for _, y_ in JOINT_PTS])   # r 47: the pad reaches down past the lower screw pair
     _pw = max([2 * JX] + [2 * (abs(x_) + 5.0) for x_, y_ in JOINT_PTS if y_ < SEAT_Y[0]])
-    extrude(d, zsk(d, JZ0 + 1.0, 'JOINT_PAD', lambda s: s.rpoly(rect_pts((RX, (_py0 + SEAT_Y[1]) / 2, JZ0 + 1.0), X, Y, _pw, SEAT_Y[1] - _py0), [4, 4, 4, 4])),
-            'JOINT_PAD', 1.0, NZ, lo=-1.0)
+    _pt = 1.0 + 2.0 * JOINT_EXTRA
+    if JOINT_EXTRA:
+        _py0, _pw = _py0 - 2.5, _pw + 6.0
+    extrude(d, zsk(d, JZ0 + _pt, 'JOINT_PAD', lambda s: s.rpoly(rect_pts((RX, (_py0 + SEAT_Y[1]) / 2, JZ0 + _pt), X, Y, _pw, SEAT_Y[1] - _py0), [4, 4, 4, 4])),
+            'JOINT_PAD', _pt, NZ, lo=-1.0)
     if FB == '3':
         # FRONT BLEND 3, true wrap: ONE loft from the cuff's whole front half (+-90 deg about the yaw axis) at the seat top up
         # into the cheek's exact crowned section at Y 392 (and on inside the cheek), so cuff, skirt and cheek are one
@@ -835,7 +838,20 @@ def build_fork_front():
         env_pts = [(x, y, -31.0) for x, y in list(env.exterior.coords)[:-1]]
         extrude(d, zsk(d, -31.0, 'DRUM_ENV', lambda s_: s_.poly(env_pts)), 'DRUM_ENV', 38.5 + 31.0, Z, cut=True, lo=-1.0)
         yaw_rev(d, 'WRAP_RS02_CLEAR', [(0, 361.0), (34.5, 361.0), (34.5, 367.3), (0, 367.3)], cut=True)
-        if not NOACC:
+        if not NOACC and KEY_SLOT and YK:
+            # the bore that ends under the drum stays; the one under the cheek (Z over 38) becomes a slot tilted back
+            # KEY_SLOT_DEG from the screw's axis, 7 wide, out into the drum's envelope (cut on the plane X = the screw's)
+            low = [a_ for a_ in RS02_ACCESS_ANG if ypt(36.5, a_, 0.0)[2] < 38.0]
+            extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, SEAT_Y[1] - 3.5), 3.5) for a_ in low]),
+                    'RS02_ACCESS', 140.0, Y, cut=True)
+            for a_ in [q for q in RS02_ACCESS_ANG if q not in low]:
+                xk, _, zk = ypt(36.5, a_, 0.0)
+                t_ = math.radians(KEY_SLOT_DEG)
+                u_, n_ = (math.cos(t_), -math.sin(t_)), (math.sin(t_), math.cos(t_))      # (Y, Z): along the key, across it
+                y0_ = SEAT_Y[1] - 2.0
+                pts = [(xk, y0_ + sy * 3.5 * n_[0] + L_ * u_[0], zk + sy * 3.5 * n_[1] + L_ * u_[1]) for sy, L_ in ((1, 0.0), (1, 46.0), (-1, 46.0), (-1, 0.0))]
+                extrude(d, xsk(d, xk, 'KEY_SLOT', lambda s_, pts=pts: s_.poly(pts)), 'KEY_SLOT', 7.0, X, cut=True, mode=MID)
+        elif not NOACC:
             extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, SEAT_Y[1] - 3.5), 3.5) for a_ in RS02_ACCESS_ANG]),
                     'RS02_ACCESS', 140.0, Y, cut=True)
     elif FB:
@@ -1036,8 +1052,8 @@ def build_fork_rear():
     fillet(d, edges_where(d, _in_root), [ss['root_r'], 1.0], 'TOOTH_ROOT')
     # the hollow stops 1.6 short of the joint plane: a front plate, so the skin does not run out to a knife edge where the
     # outline meets the plane at a shallow angle (the cable channel cuts through the plate where the cables pass)
-    hy = [y_ for y_ in ((Y_SPLIT - 0.5, 344.0, 349.0) if SC47 else (SL['y_bot'] + 2.0, 322.0, 330.0, 338.0, 344.0, 349.0)) if min(q[2] for q in EV.sleeve_section(y_, 2.0)) < JZ0 - 1.6 - 1.0]
-    hs = [clip_sk(y_, 'rear', 2.0, 0.0, f'SLEEVE_R_IN{i}', zc=JZ0 - 1.6) for i, y_ in enumerate(hy)]   # SIDE CENTRE: the thin bottom stays solid
+    hy = [y_ for y_ in ((Y_SPLIT - 0.5, 344.0, 349.0) if SC47 else (SL['y_bot'] + 2.0, 322.0, 330.0, 338.0, 344.0, 349.0)) if min(q[2] for q in EV.sleeve_section(y_, 2.0)) < JZ0 - (1.6 + JOINT_EXTRA) - 1.0]
+    hs = [clip_sk(y_, 'rear', 2.0, 0.0, f'SLEEVE_R_IN{i}', zc=JZ0 - (1.6 + JOINT_EXTRA)) for i, y_ in enumerate(hy)]   # SIDE CENTRE: the thin bottom stays solid
     d.ClearSelection2(True)
     for k in hs:
         k.Select2(True, 1)
@@ -1080,7 +1096,7 @@ def build_fork_rear():
     # about 6 mm deep behind it, 3.0
     for dx, jy in JOINT_PTS:
         nm_ = f'JOINT_CB_{dx:+.0f}_{jy:.0f}'.replace('+', 'p').replace('-', 'm')
-        zf_ = JZ0 - (5.5 if abs(dx) < 20 else 3.0)
+        zf_ = JZ0 - (5.5 if abs(dx) < 20 else JOINT_FLOOR)
         try:
             if os.environ.get('JOINT_CAPS'):
                 # rear_screws mock-up (b): a flush printed cap fills each counterbore; only a fine shut circle shows

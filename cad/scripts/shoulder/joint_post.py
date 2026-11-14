@@ -19,7 +19,7 @@ from scipy.spatial import cKDTree
 
 import fea_shoulder as FS
 import ff_proper_post as P
-from dims import JOINT_PTS, RX
+from dims import JOINT_FLOOR, JOINT_PTS, RX
 
 JZ0 = FS.JZ0
 L, B = P.L, P.B
@@ -28,7 +28,7 @@ L, B = P.L, P.B
 def near_bolts(pos, d=2.0):
     m = np.zeros(len(pos), bool)
     for dx, jy in JOINT_PTS:
-        zf = JZ0 - (5.5 if abs(dx) < 20 else 3.0)
+        zf = JZ0 - (5.5 if abs(dx) < 20 else JOINT_FLOOR)
         r = np.hypot(pos[:, 0] - (RX + dx), pos[:, 1] - jy)
         m |= (np.abs(pos[:, 2] - zf) < d) & (np.abs(r - 2.25) < d + 1.6)            # head seat: the hole edge and the button head's ring
         m |= (pos[:, 2] > JZ0 - 0.2) & (pos[:, 2] < JZ0 + 12.7) & (r < 2.8 + d)     # insert bore wall

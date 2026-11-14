@@ -1060,7 +1060,7 @@ def joint_setup(preload):
         from swk import edges_where
         out = []
         for dx, jy in JOINT_PTS:
-            zf = JZ0 - (5.5 if abs(dx) < 20 else 3.0)
+            zf = JZ0 - (5.5 if abs(dx) < 20 else JOINT_FLOOR)
             cx = RX + dx
             head = edges_where(d, lambda p, cx=cx, jy=jy, zf=zf: abs(p[2] - zf) < 0.08 and math.hypot(p[0] - cx, p[1] - jy) < 2.4,
                                pair=lambda p0, p1, cx=cx, jy=jy: all(abs(math.hypot(q[0] - cx, q[1] - jy) - 2.25) < 0.12 for q in (p0, p1)))
