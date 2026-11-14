@@ -14,9 +14,9 @@ change the panels only if needed.
 
 ## Changes owed at the next rebuild
 
-### 1. Shoulder opening grows (shoulder option A, 2026-11-11; target r 70 from 2026-11-14)
+### 1. Shoulder opening grows (shoulder option A, 2026-11-11; target r 75 from 2026-11-14)
 
-The arm cable passes through the shell beside the pitch actuator, so the shell opening grows. With the r 70 target the
+The arm cable passes through the shell beside the pitch actuator, so the shell opening grows. With the r 75 target the
 shoulder's flange ring gets a rolled rim and the cover band behind it is shell white; the ring and cover sizes in the table
 below are from the r 80 layout and will change with the final radius.
 The study is [hardware/shoulder/study-20261111/shell-opening/OPTIONS.md](../shoulder/study-20261111/shell-opening/OPTIONS.md)
@@ -25,7 +25,7 @@ Y 424.86, Z 0.
 
 | Item | Now | Change |
 | --- | --- | --- |
-| Opening round the pitch axis, both sides | r 60 | **Target r 70 (140 mm), not yet confirmed.** It narrows the pitch cable channel from 16 mm to 6 mm, and a printed cable rig decides the final radius, which may land at r 72-74. The earlier figure was r 80. Don't rebuild the socket until the shoulder work gives the final radius and the ring and cover sizes |
+| Opening round the pitch axis, both sides | r 60 | **Target r 75 (150 mm), not yet confirmed.** A smaller opening narrows the pitch cable channel (16 mm at r 80, 6 mm at r 70), and a printed cable rig decides the final radius. Don't rebuild the socket until the shoulder work gives the final radius and the ring and cover sizes |
 | Shell collar at X 135-137 and its 8 screws at r ≈ 45 | fitted | **Removed.** The screw heads sit where the shoulder drum's spokes turn |
 | Lower spine pad (X 119.4-129, Y 202-276) | ends at X 129 | **Trim up to 3 mm off the outboard end**, to end at about X 126, so the pad keeps 3 mm from the upper arm at the 11° inward stop (today 0.01 mm at pitch -30°, yaw -45°). Chosen 2026-11-11 over moving the stop to 8°: the trim is out of sight on the back and keeps the arm's full inward range |
 | Upper spine pad (X 68-147, Y 368-481, Z -124 to -77) | ends at X 147 | **End it inboard of X 140.** It overlaps the moving flange ring (r 77.5, X 142.5-144.3) by about 0.5 mm and is 1.1 mm from the fixed cover |
@@ -42,7 +42,7 @@ Check at the rebuild:
 - The moving flange ring sits outboard of the skin and overlaps the opening edge as a labyrinth. Keep at least 2 mm between
   the edge and the ring through full pitch travel.
 - In the marengo shell, the socket floor is flat out to r 78 round the pitch axis (X 133.1-135.5), with a hole of r 53.5 and
-  stepped collars, and a cone wall beyond it. At r 70 the opening lands on the flat floor, so its edge is a plain flat ring.
+  stepped collars, and a cone wall beyond it. At r 75 the opening lands on the flat floor, 3 mm inside its edge, so its edge is a plain flat ring.
   A cut at r 78 or more would take out the whole floor and put the edge on the cone wall: re-run the wall-thickness and
   print-support checks if the radius grows that far.
 
