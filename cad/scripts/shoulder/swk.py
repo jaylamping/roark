@@ -50,7 +50,7 @@ _APP = []
 
 def app():
     if not _APP:
-        _APP.append(session(STATE, visible=True).sw)
+        _APP.append(session(STATE, visible=os.environ.get('SW_VISIBLE', '1') != '0').sw)      # SW_VISIBLE=0: no window on the screen during long queues
     return _APP[0]
 
 

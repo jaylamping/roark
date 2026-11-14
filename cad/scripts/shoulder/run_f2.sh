@@ -1,7 +1,6 @@
 #!/bin/bash
 # After run_p.sh: the combined fork parts and the F2_* cases for each analysis build.
 cd /j/code/roark-wt/shoulder-study/cad/_wip/shoulder-pass1
-until grep -q "proper check all done" queue5.log; do sleep 20; done
 cd /j/code/roark-wt/shoulder-study/cad/scripts/shoulder
 W=../../_wip/shoulder-pass1
 L=$W/queue5.log
@@ -25,7 +24,7 @@ job() {
   wait $pid
 }
 CASES_F=${CASES_F:-F2_MX F2_MXn F2_MXs F2_MZ F2_STOP}
-for T in ${TAGS:-ffT ffTS ffYS}; do
+for T in ${TAGS:-ffT}; do      # ffTS and ffYS get their combined part and F2 cases inside run_p.sh
   job .sw_instance_pid_f2_$T "fork2 part $T" $W/fork2_$T.txt $CAP $PY -u fork2_fea_part.py $T
   echo "  $T combined: $(grep 'volume kept\|did not combine\|Error' $W/fork2_$T.txt | cut -c1-110)" >> $L
   grep -q "volume kept" $W/fork2_$T.txt || continue

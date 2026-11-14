@@ -1,6 +1,6 @@
 # Fork front: first finite-element cases, the yoke, and where the work stopped (2026-11-14)
 
-**Status: work in progress, stopped at 01:09 local on 2026-11-14 for a reboot of holly-pc.** This page holds the results
+**Status: work in progress, stopped at 01:25 local on 2026-11-14 for a reboot of holly-pc.** This page holds the results
 so far and the queue to resume. Nothing real is changed: every build here is a look or analysis build.
 
 ## Short answer so far
@@ -124,26 +124,45 @@ Today's part with the 0.7 mm mesh at the boss root (P_*, analysis build ffT):
   against 29.3 g. Prints flat on its inboard face, no support. Clean mesh. Clearance: above.
 - Cover and ring in the visible white: PRINT_NOTES.md.
 
-## To resume (in this order, one SolidWorks instance at a time)
+## Stopped a second time, 01:25 local, for the reboot
 
-All from `cad/scripts/shoulder`. The runners take a claim and beat it with the instance's PID.
+Between the two stops the queue ran hidden (`SW_VISIBLE=0`, a switch in `swk.py`: no window on the screen; it works
+with Simulation) and got this far:
 
-1. `bash run_p.sh` with `NOSWEEP=1 TAGS="ffTS ffYS"`: builds the two solid-neck analysis builds and runs the P_* cases
-   on them (about 20 minutes each). Then `NOSWEEP=1 NOBUILD=1 TAGS=ffT CASES_P=P_MZ CASES_F= bash run_p.sh` for the
-   one case of today's part that was not reached.
-2. Remove the line `until grep -q "proper check all done" ...` from `run_f2.sh` (or leave it and let step 1 write that
-   line), then `bash run_f2.sh`: combines each fork front with the fork rear (`fork2_fea_part.py`, not yet proven: the
-   combine call was fixed after its first failure and has not run since) and runs F2_MX, F2_MXn, F2_MXs, F2_MZ, F2_STOP.
-3. `python ff_proper_post.py ffT ffTS ffYS`: the table by region for today, today with solid neck, yoke with solid neck;
-   supported, unsupported, combined.
-4. Write the figures block (`cad/_wip/shoulder-pass1/yoke_figs.json`, `{"lines": [...]}`) and re-render:
+- **The fork front and the fork rear do merge into one body** (`fork2_fea_part.py`, build ffTS: 188,033 mm³ kept of
+  188,029). So the combined model can be solved; no F2 case has run yet.
+- **Today's part with a solid neck and the root cone** (build ffTS, 172 g with its access bores; 516,351 nodes), boss
+  root: supported 1.34 / 0.82 (yaw +17), 1.43 / 0.89 (yaw -17), 1.31 / 0.81 held by seats and pins. Today as adopted:
+  0.93 / 0.70. Better, but its peak has moved to where the upper dome pocket (140-200°) meets the cone, at r 27: on
+  today's outline the upper pockets' inner edge needs to move out as well. The yoke has no upper pockets.
+- Seat deflection, supported: 1.45 mm (today 2.93).
+- Not kept: P_MX on ffTS had solved but its result file was not complete when I stopped; re-run it.
+
+## To resume (in this order, one SolidWorks instance at a time, hidden)
+
+All from `cad/scripts/shoulder`. The runners take a claim and beat it with the instance's PID. `export SW_VISIBLE=0`.
+
+1. `NOSWEEP=1 NOBUILD=1 TAGS=ffTS CASES_P="P_MX P_MXn P_MZ" bash run_p.sh`: the rest of ffTS and its five F2 cases
+   (its combined part `cad/_sim/shoulder/fork2_ffTS.SLDPRT` exists). About 25 minutes.
+2. `NOSWEEP=1 TAGS=ffYS bash run_p.sh`: builds the yoke with solid neck as an analysis build, merges it with the fork
+   rear, six P cases and five F2 cases. About 40 minutes.
+3. `NOSWEEP=1 NOBUILD=1 TAGS=ffT CASES_P=P_MZ CASES_F=F2_MX bash run_p.sh`: today's part, the one P case not reached
+   (the F2 case named there fails at once, because today's merged part is made in the next step; that is harmless).
+4. `bash run_f2.sh`: merges today's part (ffT) with the fork rear and runs its five F2 cases. About 20 minutes.
+5. `python ff_proper_post.py ffT ffTS ffYS`: the table by region for today, today with solid neck, yoke with solid
+   neck; supported, unsupported, combined.
+6. Write the figures block (`cad/_wip/shoulder-pass1/yoke_figs.json`, `{"lines": [...]}`) and re-render:
    `python render_yoke.py ../../../../../cad/_wip/shoulder-pass1/stl_look_rimB/ring.STL` from
-   `hardware/shoulder/study-20261111/cad-pass1/scripts`.
-5. If today's part is confirmed under target: the smallest fix (solid neck and root cone on today's outline is build
-   ffTS) goes into the yoke design and into OPEN_ASSUMPTIONS.md item 40.
+   `hardware/shoulder/study-20261111/cad-pass1/scripts` (under `capped.py`, with `PYTHONPATH=.`).
+7. If today's part is confirmed under target: the smallest fix goes into the yoke design and into
+   OPEN_ASSUMPTIONS.md item 40.
 
-Results on disk (not in git): `cad/_sim/shoulder/FF_*_{today,yoke,yokeT,yokeS}.npz`, `P_*_ffT.npz`;
-`cad/_wip/shoulder-pass1/ff_post.json`, `ff_proper.json`, `FF_*.txt`, `P_ffT.txt`, `queue5.log`.
+`cad/_wip/shoulder-pass1/resume.sh` chains steps of this kind; read it before using it, it was written for the first
+stop.
+
+Results on disk (not in git): `cad/_sim/shoulder/FF_*_{today,yoke,yokeT,yokeS}.npz`, `P_*_ffT.npz`,
+`P_{MXb,MXnb,MXbs}_ffTS.npz`; `cad/_wip/shoulder-pass1/ff_post.json`, `ff_proper.json`, `FF_*.txt`, `P_ffT.txt`,
+`P_ffTS.txt`, `queue5.log`.
 
 ## Open questions
 
