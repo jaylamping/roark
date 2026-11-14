@@ -93,6 +93,13 @@ become:
 
 ## 2b. Hub-end fit coupon: shim ring, lug plates and loads (before printing the halves: R1h back, R1g front)
 
+**Stage 1, first iteration (Joey, 2026-11-14): run the short version in
+[STAGE1_PRINT_AND_BENCH.md](STAGE1_PRINT_AND_BENCH.md).**
+- Bolts are "snug": two fingers on the short end of the hex key, then stop. That is about the 0.3 N·m cap, by hand feel.
+- No measured torque, no insert torque test (steps 3's scrap block and 14), and no 24 h re-check (step 13).
+- After the test there is a plain look instead: inserts not lifted or spun, plates not cracked.
+- The steps below are the full version, kept for reference and for later iterations.
+
 **Run this on the final hub only:** the shoulder thread's frozen release. The hub is D3c7, the shoulder thread's
 release, adopted 2026-11-14 at commit 355aa9b (`shoulder_hub_left.STL`, SHA-256 a73103ad…259b), with Dia 3.8 lug
 holes and the 68 deg cable window. The ring and plate picks depend on the hub as printed, so a hub
@@ -126,16 +133,11 @@ by trial, once, at assembly.
   - The hook hole is 200 mm from the yaw axis.
   - The lever only applies the load. **All movement is read on the coupon itself, against the hub**, never on the lever: the
     pocket's 0.20 clearance alone can move the lever up to about 0.3 mm at a dial.
-- **Measuring methods (2026-11-14).** The default needs no special instruments. A torque screwdriver and a dial indicator are the
+- **Measuring methods (2026-11-14).** The default needs no special instruments. A dial indicator (and a torque screwdriver) are the
   alternative. Both are written out step by step in
   [STAGE1_PRINT_AND_BENCH.md](STAGE1_PRINT_AND_BENCH.md), sections 2.1-2.5.
-  - **Torque, default: a weight on the 2.5 mm hex key's long arm, held level.**
-    - Weight in grams = 102 000 × torque (N·m) ÷ hang distance (mm). Measure the hang distance: a standard key's arm is about
-      56 mm, a long-arm key's about 90 mm.
-    - 0.3 N·m is 546 g at 56 mm, or 340 g at 90 mm.
-    - Lower the weight gently. The bolt is at torque once the hanging weight no longer turns the key.
-    - About ±10 %.
-    - Alternative: a torque screwdriver.
+  - **Torque, stage 1: snug by hand** (two fingers on the short end of the key). Optional, for someone who owns one: a torque
+    screwdriver at 0.3 N·m.
   - **Movement, default: a 300 mm steel ruler as a pointer, read with photos against a second ruler (0.5 mm marks) fixed to the
     base, to about 0.1 mm.**
     - The ruler lies flat, so it is stiff sideways. It is glued with epoxy or CA gel onto a small block, which is glued to the

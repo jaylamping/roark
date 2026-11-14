@@ -249,7 +249,14 @@ clearance (the mesh reads 0.36-0.40).
 
 **Bench (BENCH_TESTS 2b), on the final hub only.** Rewritten after review 3: D3c7, Dia 3.4 plates, r1g6 loads, readings on the
 coupon, not the lever.
-- Joey's step-by-step sheet is `cad/upper-arm/STAGE1_PRINT_AND_BENCH.md`.
+- Joey's step-by-step sheet is `cad/upper-arm/STAGE1_PRINT_AND_BENCH.md`, a short version of 12 steps (0-11).
+- **Simplified for the first iteration by Joey's choice (2026-11-14):**
+  - The bolts are "snug" by hand (two fingers on the short end of the key). **The 0.3 N·m cap is now a hand-feel rule, not a
+    measured torque.**
+  - **The inserts' torque capacity is untested:** the stepped insert torque test is dropped. So is the 24 h re-check.
+  - After the test there is a plain look instead: inserts not lifted or spun, plates not cracked.
+  - The 1.5 × yaw proof stays, as the last and optional step.
+  - The full version below is kept in BENCH_TESTS 2b for later iterations.
 - **Default method: no special instruments.**
   - Torque comes from a weight hung on the 2.5 mm hex key: grams = 102 000 × N·m ÷ the measured hang distance in mm. About ±10 %.
   - Movement is read with a 300 mm steel pointer glued to the coupon's skin below the lever. Its tip is read with photos against
@@ -295,6 +302,8 @@ Sheets: `r1g_front_half_sheet.png`, `r1g_shim_ring_set_sheet.png`, `r1h_d34_lug_
 the R1h back half in `../20261111_r1c-delta/r1d/r1g/r1h_back_sheet.png`.
 
 **Open:**
+- **Insert torque capacity: untested** (Joey's choice, 2026-11-14). The lug bolts' 0.3 N·m cap is a hand-feel rule ("snug") until a
+  later iteration measures it.
 - **Read-back trim test** (all-node GetStress against per-body GetStressForEntities3): not done.
   - A saved r1g6 study re-opened in a hidden instance gives no Results object out of process. Results stays None, and the
     results folder can only be read through StaticStudyOptions, which faults from Python.
