@@ -125,17 +125,28 @@ by trial, once, at assembly.
   - The hook hole is 200 mm from the yaw axis.
   - The lever only applies the load. **All movement is read on the coupon itself, against the hub**, never on the lever: the
     pocket's 0.20 clearance alone can move the lever up to about 0.3 mm at a dial.
-- **Dial set-up for steps 8-11:**
-  - Set a dial indicator (0.01 mm) on a stand fixed to the same base as the hub clamp.
-  - **Give the dial a face that turns with the coupon.** Yaw turns the coupon about the hub axis, so its round outer skin slides
-    past a dial tip without pushing it.
-    - Glue a small flat-sided block (a 10 mm cube of scrap PETG or aluminium, CA glue) onto the coupon's flat cut end (Y 284),
-      as far out as it fits, about r 35-38 from the hub axis.
-    - One flat side must face along the turning direction, square to the line from the hub axis.
-    - Put the dial tip on that side, square to it.
-  - Measure the actual r (hub axis to the tip) and write it down. Every limit below is for r = 40 and scales with r / 40; at
-    r 36, multiply by 0.9.
-  - A second dial for step 10 reads the coupon's X movement against the hub: tip on the coupon's -X outer side, square to it.
+- **Measuring methods (2026-11-14).** The default needs no special instruments. A torque screwdriver and a dial indicator are the
+  alternative. Both are written out step by step in
+  [STAGE1_PRINT_AND_BENCH.md](STAGE1_PRINT_AND_BENCH.md), sections 2.1-2.5.
+  - **Torque, default: a weight on the 2.5 mm hex key's long arm, held level.**
+    - Weight in grams = 102 000 × torque (N·m) ÷ hang distance (mm). Measure the hang distance: a standard key's arm is about
+      56 mm, a long-arm key's about 90 mm.
+    - 0.3 N·m is 546 g at 56 mm, or 340 g at 90 mm.
+    - Lower the weight gently. The bolt is at torque once the hanging weight no longer turns the key.
+    - About ±10 %.
+    - Alternative: a torque screwdriver.
+  - **Movement, default: a 300 mm steel ruler as a pointer, read with photos against a second ruler (0.5 mm marks) fixed to the
+    base, to about 0.1 mm.**
+    - The ruler lies flat, so it is stiff sideways. It is glued with epoxy or CA gel onto a small block, which is glued to the
+      coupon's outer skin, front coupon, +Z side, below the yaw lever (the lever covers the cut end).
+    - Check the joint: a fingertip push on the tip, each way; it must return to its mark within 0.1. Recheck before the proof.
+    - The pass numbers are given at a tip radius R = 300: multiply the r 40 numbers by 7.5. For another R, use R / 40.
+    - The sideways slip is read directly, with a pen mark on the coupon's -X side against a fixed ruler: no magnification, about
+      0.1.
+  - **Alternative: a dial indicator** (0.01 mm) on a stand fixed to the hub clamp's base.
+    - Its tip goes on a 10 mm cube glued in the pointer's place, with the cube's side facing the turning direction, at about r 40.
+    - Every limit below is written for r 40, then for the pointer at R 300.
+  - **Never read the lever.** Its pocket clearance can move it 0.3 mm on its own.
 
 **Steps.**
 
@@ -157,7 +168,8 @@ by trial, once, at assembly.
    - Each must sit flush with the face or up to 0.05 below it. Check with a straightedge and a 0.05 feeler.
    - **Scrap block insert check, now:**
      - Mark the insert's rim and the face with a fine pen line across both.
-     - Tighten an M3 bolt in steps of 0.3, 0.5 and 0.7 N·m. After each step, back the bolt out and look for movement: the pen
+     - Tighten an M3 bolt in steps of 0.3, 0.5 and 0.7 N·m (clamp the block so the bolt lies sideways for the weight method).
+       After each step, back the bolt out and look for movement: the pen
        line broken, the rim proud, or the insert turning.
      - Record the torque at which it moved, or that it did not move at 0.7.
      - **The coupon's own inserts get only 0.3 N·m until step 14,** so the play and load tests run on inserts that have not been
@@ -189,8 +201,9 @@ by trial, once, at assembly.
    - Twist it about the hub axis both ways: no click and no free turn.
    - Do ten firm rocking cycles and check again.
 8. **Play reversal, lug bolts loosened (the test that finds a loose pick):**
-   - Back the lug bolts off a quarter turn (finger tight), so only the plates hold the lugs. Fit the lever and zero the dial.
-   - Pull 1 kg at the hook one way and read the dial; then 1 kg the other way and read it. Do it three times.
+   - Back the lug bolts off a quarter turn (finger tight), so only the plates hold the lugs. Fit the lever.
+   - Check the pointer's joint, then take the starting photo (or zero the dial).
+   - Hang or pull 1 kg at the hook one way and read; then 1 kg the other way and read. Do it three times.
    - The total travel is the difference between the two readings.
    - **Why this finds one plate step:**
      - A pick one step loose leaves 0.05 of clearance at a lug face.
@@ -198,17 +211,19 @@ by trial, once, at assembly.
        lets the coupon turn 0.05 / 30.5 = 1.6 mrad.
      - At r 40 that is **0.066**.
      - The ±1 kg (±0.39 N·m) itself turns the coupon elastically by 2 × 0.39 / 17 × 0.32° = 0.015° in total: **0.010** at r 40.
-     - The dial reads to 0.01.
-   - **Pass: total travel at most 0.04** at r 40 (0.010 elastic + 0.01 reading + 0.02 margin). A one-step-loose pick reads
-     0.066 + 0.010 = 0.076 and fails; a tight pick reads about 0.01-0.02. At r 60 the same limit would be 0.06.
+     - The dial reads to 0.01. The pointer reads to 0.1 at R 300, which is 0.013 at r 40.
+   - **Pass: total travel at most 0.04 at r 40 (dial), 0.30 at R 300 (pointer).** That is 0.010 elastic + 0.01 reading +
+     0.02 margin.
+   - A one-step-loose pick reads 0.066 + 0.010 = 0.076 at r 40 (0.57 at R 300) and fails. A tight pick reads about
+     0.01-0.02 (0.1-0.15 at R 300).
    - Re-torque the lug bolts to 0.3 N·m after this step.
 9. **Yaw load, bolts at 0.3 N·m:**
    - Pull the luggage scale horizontally at the hook, square to the lever, to 8.7 kg (17 N·m), 10 s. Do it each way.
    - "Toward the front coupon's side" is the sense that presses the -X lug's front plate, the YAW -17 case.
-   - **Read:** the dial on the coupon, loaded and unloaded.
-   - **Expected from the FEA:** the coupon turns 0.32° under 17 N·m: **0.22 mm at r 40**, uncertain by about ±0.04 with the PETG
-     modulus.
-   - **Pass:** loaded at most **0.29** each way; unloaded, back to within 0.02 of the start.
+   - **Read:** the pointer (or the dial) on the coupon, loaded and unloaded.
+   - **Expected from the FEA:** the coupon turns 0.32° under 17 N·m: **0.22 mm at r 40** (1.7 at R 300), uncertain by about
+     ±0.04 (±0.3) with the PETG modulus.
+   - **Pass:** loaded at most **0.29** each way (2.2 at R 300); unloaded, back to within 0.02 (0.15).
    - This reading is the elastic check. The play is found in step 8.
 10. **Stop-equivalent load:**
     - **What it reproduces (r1g6 STOP_0 FEA):**
@@ -224,17 +239,22 @@ by trial, once, at assembly.
         coupon's cut end in this set-up), on the -X side, pulling toward -X. That covers the 26 N with a factor of 1.7.
       - Hold both for 10 s.
       - Then do it again in the mirror sense (the lever toward the back side, the cord toward +X).
-    - **Read:** the yaw dial (loaded and unloaded), and the X dial on the coupon's -X side face (loaded and unloaded).
-    - **Pass (bolts at 0.3 N·m):** yaw dial loaded at most 0.29 and back within 0.02; X dial at most 0.05 loaded and back within
-      0.02.
+    - **Read:** the pointer (or the yaw dial) and the sideways reading on the coupon's -X side (mark against a fixed ruler, or
+      the X dial), loaded and unloaded.
+    - **Pass (bolts at 0.3 N·m):**
+      - yaw at most 0.29 (pointer 2.2), back within 0.02 (0.15);
+      - sideways at most 0.05 with a dial and back within 0.02;
+      - with the mark and ruler: no visible movement, under about 0.1. **This is the one check the no-instrument method
+        cannot make at 0.05.**
     - **Then once more with the lug bolts loosened** (a quarter turn). Record the X slip of the coupon against the hub, loaded and
       unloaded.
       - The FEA's free lug closes its 0.20 outer-face gap and lands, so expect up to about 0.2.
-      - **Pass:** at most 0.25 loaded, and back within 0.03 unloaded once the bolts are re-torqued.
+      - **Pass:** at most 0.25 loaded, and back within 0.03 (dial) or with no visible offset (mark) once the bolts are
+        re-torqued.
       - Re-torque the lug bolts to 0.3 N·m afterwards.
 11. **1.5 × yaw proof (the last load):** 13 kg at 200 mm (25.5 N·m), 10 s, each way, bolts at 0.3 N·m.
-    - **Read:** the yaw dial, loaded and unloaded.
-    - **Pass:** no click, no crack or whitening, and back within 0.03 of the start.
+    - **Read:** the pointer (recheck its joint first) or the yaw dial, loaded and unloaded.
+    - **Pass:** no click, no crack or whitening, and back within 0.03 of the start (0.23 at R 300).
     - **Then inspect the hub lug roots.** Open the coupon. With the torch, look at the outer R1.2 round where each lug's Z faces meet
       the hub (X offset about 33, Y 295.6), on both lugs and both faces. Look for whitening or a crack, and photograph each one.
       - This proof is the test of that root in the real material. The shoulder thread's FE gives shear 1.42-1.44 there at the
@@ -265,10 +285,12 @@ by trial, once, at assembly.
 - **Plates:** one pick closes by hand with the seam shut; the plates are flat and whole (the strip above the hole intact); no blue
   on the hub fillet.
 - **Inserts:** all flush to 0.05 below. None moved at 0.3 N·m in the scrap block or the coupon.
-- **Play (step 8):** total travel at most 0.04 at r 40, three times, bolts loosened; and again in the 24 h re-check.
-- **Yaw (step 9):** no click or free turn; loaded at most 0.29 at r 40 each way, back within 0.02 unloaded.
+- **Play (step 8):** total travel at most 0.04 at r 40 (0.30 at R 300), three times, bolts loosened; and again in the 24 h
+  re-check.
+- **Yaw (step 9):** no click or free turn; loaded at most 0.29 at r 40 (2.2 at R 300) each way, back within 0.02 (0.15)
+  unloaded.
 - **Stop-equivalent (step 10):** as stated there, with the bolts tight and the X slip with them loosened.
-- **Proof (step 11):** no click, crack or whitening; back within 0.03.
+- **Proof (step 11):** no click, crack or whitening; back within 0.03 (0.23 at R 300); hub lug roots clean.
 - **Imprint:** none, or felt only; nothing that catches a fingernail.
 - **24 h:** the same results after the re-torque.
 
