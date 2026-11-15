@@ -82,7 +82,7 @@ pair of 16 AWG silicone (13.2 mΩ/m, 3.0 mm OD), in still air with about 12 W/m�
 
 **18 AWG down the arm (decided 2026-11-14).** The arm harness drops to 18 AWG where it crosses the upper-arm yaw joint
 (16 AWG allowed only about ±37° there; 18 AWG gives ±90°). The board pigtails J8 and J9 stay 16 AWG: they carry the whole
-arm, and the shoulder pitch and roll runs are still 16 AWG. Nothing on the board changes: the pads take either gauge, and
+arm, and the shoulder pitch and roll runs stay 16 AWG (decided 2026-11-15). The 20 A inline fuse on each arm port stays. Nothing on the board changes: the pads take either gauge, and
 the port breaker (30 A overload, 35–45 A short circuit) opens on a short at the end of an 18 AWG run as it does on 16 AWG.
 
 The same check for a twisted pair of 18 AWG silicone (20.9 mΩ/m, 2.3 mm OD), copper resistance corrected for temperature:
@@ -98,8 +98,8 @@ The same check for a twisted pair of 18 AWG silicone (20.9 mΩ/m, 2.3 mm OD), co
 So every 18 AWG run needs its own fuse where the gauge steps down, **10 A** (the same 58 V MINI family), with the sustained
 software limit for that section at 7.5 A. It feeds the upper-arm yaw, elbow and forearm drives and the hand. The drives'
 bus currents are not measured yet; the arm trunk plan's branch fuses for them add up to 13 A plus 3 A for the hand, and it
-expects a real draw of a few amps. If the shoulder runs also go to 18 AWG later, the arm port's inline fuse drops from 20 A to
-15 A at most (10 A if the measured draw allows) and the pigtail may then be 18 AWG as well.
+expects a real draw of a few amps. A shoulder run on 18 AWG would need the arm port's inline fuse at 15 A at most
+instead of 20 A; that is not the plan.
 
 **Pi link J21 pinout** (JST GH 8, 26 AWG; rev B5 added pin 8 for the power-fail warning). Every Pi input here is
 open drain or driven at 3.3 V from the Pi's own rail; nothing above 3.3 V reaches the cable.
