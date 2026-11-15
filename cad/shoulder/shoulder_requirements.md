@@ -124,8 +124,8 @@ The `[[load_case]]` table above is the list the gate checks. In words:
 
 ## Mass and CoM
 
-- As modelled, solid PETG at 1.27 g/cm³ (CN): drum 227.1 g, fork front 151.8, rear cap 85.4, fork rear 68.2, flange ring
-  38.1, port cap 1.4, hub rev E1 117.3 (rev D3c7 was 80.2). Total about **689 g** with the rev E1 hub. Cover ring 13.1 g
+- As modelled, solid PETG at 1.27 g/cm³ (CN): drum 227.1 g, fork front 152.3, rear cap 85.4, fork rear 68.4, flange ring
+  38.1, port cap 1.4, hub rev E1 117.3 (rev D3c7 was 80.2). Total about **690 g** (hub rev E1 and the fork revision of 2026-11-15). Cover ring 13.1 g
   (optional), pitch loop cover 102.3 g (torso side).
 - Sliced: hub rev E1 115.8 g. Nothing has been weighed.
 - **OPEN: budget.** None from Joey. The concept note's target was 520 g and the working number about 600 g (CN, OA item 32).
@@ -135,13 +135,14 @@ The `[[load_case]]` table above is the list the gate checks. In words:
 
 - **Pitch RS03 output** to the drum: 6 × M4 × 18 with one washer (or M4 × 16). **Roll RS03 housing** to the drum:
   8 × M4 × 10 on Ø98. **Roll RS03 output** to the fork front: 6 × M4 × 18 and 3 × Ø4 pins, at most 7 mm into the motor (PN).
-- **Yaw RS02 body** to the fork front: 5 × M3 on PCD 73 at −96, −56, −16, 104 and 144° (PN). The seats are being revised
-  for washers (OA item 49). RS02 clocked +40°, one socket in use at 228° (Joey 2026-11-13, CN).
+- **Yaw RS02 body** to the fork front: 5 × M3 × 14, each with one standard washer, on PCD 73 at −96, −56, −16, 104 and
+  144°, snug only (PN; seats revised 2026-11-15, FFE). RS02 clocked +40°, one socket in use at 228° (Joey 2026-11-13, CN).
 - **Yaw RS02 output** to the hub: 6 × M4 × 30, each with one standard flat washer, 5.2 mm into the motor, whose holes
   bottom out at 6.5 to 7 mm (Joey, decided and measured 2026-11-15); two of the six holes reamed to 4.00 (PN).
 - **Fork joint:** 6 × ISO 7380 M4 into M4 inserts. **Flange ring:** 5 × M3 × 5 into M3 inserts. **Rear cap:** 3 × M2.5 × 14
   thread-forming (PN).
-- **Bearing:** 6808-2RS, 40 × 52 × 7; stub Ø40.0, housing Ø52.2 (D68, 2026-11-12).
+- **Bearing:** 6808-2RS, 40 × 52 × 7; stub Ø40.0; housing Ø52.0, sized on the coupon to a hand push with no play: the
+  fork's strength depends on it (D68, 2026-11-15).
 - **Hub to arm:** spigot Ø71.6, two lugs with Ø3.8 holes; the hub's centre sits 3 mm taller from rev E1, so the arm hangs
   3 mm lower: motor face to the arm's seat 20.86 mm (Joey 2026-11-15, AHL).
 - **Screws:** snug by hand for the first iterations, no torque procedure, no threadlocker in testing (Joey 2026-11-15, PN).
@@ -187,7 +188,7 @@ The rules in the [upper arm spec](../upper-arm/upper_arm_requirements.md) apply.
 
 For Joey:
 
-1. Mass budget and CoM (none on record; about 689 g as modelled).
+1. Mass budget and CoM (none on record; about 690 g as modelled).
 2. Pass marks: keep 1.5 / 1.5 with 1.2 on the elbow stop, or take the arm's 1.5 / 1.25 with 2.0 for creep at 90°.
 3. Which statement of the arm's load governs: 310 N and 23 N·m, or 372 N and 22.9 N·m.
 4. Whether a 60 N·m roll stall is a design case.

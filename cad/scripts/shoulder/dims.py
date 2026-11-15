@@ -196,7 +196,7 @@ ARM_HW = 17.0
 Y_EX = 319.55                    # yaw exit channel centre
 Y_BOT = Y_EX - 3 - WALL
 CHEEK_R, HOUSE_R = 35.0, 33.0
-BRG_SEAT_R, BRG_LIP_R = float(os.environ.get('BRG_SEAT_R', '26.1')), 24.0   # check (d): housing Ø52.2 (printed on its side) with a flat-topped teardrop
+BRG_SEAT_R, BRG_LIP_R = float(os.environ.get('BRG_SEAT_R', '26.0')), 24.0   # housing dia 52.0 since the adoption of 2026-11-15: the outer race a hand push with no play (D_6808_FITS.md; final size from the seat coupon). 26.1 = the dia 52.2 of check (d). Flat-topped teardrop kept
 BRG_LIP_Z = -47.7                # check (d): the outer-race lip 0.4 behind the bearing's rear face (the outer race floats)
 STUB_LEAD = 0.5                  # check (d): 0.5 x 45 lead-in on the stub's free end (stub stays Ø40.0, as the arm's coupon)
 # ---- hub (frozen interface; dished top) ----
@@ -295,9 +295,11 @@ HUB_D3 = os.environ.get('HUB_D3', '1') != '0' and HUB_GROOVE_RING      # rev D3 
 # each lug's inner block (its flat end at Y 300, X offset 18.76 to 20.7, in the lug's own Z band), lying on that cone.
 HUB_NOSUP = os.environ.get('HUB_NOSUP') == '1'
 HUB_SLIT_FILL = os.environ.get('HUB_SLIT_FILL') == '1'      # candidate, default off: see STEP_RING in build_hub
-SKIRT_DROP = float(os.environ.get('SKIRT_DROP', '0'))      # candidate, default off: the fork front's skirt this much longer at its lower edge (3.0 with the +3.0 hub)
-RS02_SEAT_FIX = os.environ.get('RS02_SEAT_FIX') == '1'      # candidate, default off: washer seats for the five RS02 screws (build_fork_front)
+# ADOPTED 2026-11-15 (fork front, adopt_fork_seats.sh): the five values below are the fork front's defaults now; the old part is
+# SKIRT_DROP=0 RS02_SEAT_FIX=0 KEY_ROUND=0
+SKIRT_DROP = float(os.environ.get('SKIRT_DROP', '3.0'))      # the fork front's skirt this much longer at its lower edge (follows hub rev E1's taller centre)
+RS02_SEAT_FIX = os.environ.get('RS02_SEAT_FIX', '1') == '1'      # washer seats for the five RS02 screws (build_fork_front)
 RS02_SEAT_DEPTH = float(os.environ.get('RS02_SEAT_DEPTH', '2.0'))      # with RS02_SEAT_FIX: how far the screw seats lie below the seat ring's top (0 = on top, no counterbore; floor 10.0)
-KEY_ROUND = os.environ.get('KEY_ROUND') == '1'      # candidate, default off: the key access to the 104 deg RS02 screw as a round tunnel
-RS02_SEAT_R_CHEEK = float(os.environ.get('RS02_SEAT_R_CHEEK', '1.0'))      # with RS02_SEAT_FIX: the round from the washer flat into the counterbore wall at the two screws under the cheek
+KEY_ROUND = os.environ.get('KEY_ROUND', '1') == '1'      # the key access to the 104 deg RS02 screw as a round tunnel (0: the square-ended slot)
+RS02_SEAT_R_CHEEK = float(os.environ.get('RS02_SEAT_R_CHEEK', '2.5'))      # with RS02_SEAT_FIX: the round from the washer flat into the pocket wall at the two screws under the cheek
 CH_DZ = -1.0 if os.environ.get('LEG2') else 0.0   # LEG2 mock-up: the fork rear's channels 1 mm further back (front wall 3.4)

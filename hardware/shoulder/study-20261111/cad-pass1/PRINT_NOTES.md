@@ -22,8 +22,8 @@ still needs its pre-print gate
 | Flange ring | `shoulder_pitch_flange_ring_left` | 38.1 g | 2026-11-14 (rolled rim B, adopted) | Exported and recorded 2026-11-14. Colour not decided |
 | Rear cap | `shoulder_roll_cap_left` | 85.4 g | 2026-11-14 (rear cap screw fix: sockets, Ø2.9 holes) | Exported and recorded 2026-11-14. **Waits** for the roll cable decision (the roll rig) |
 | Drum port cap | `shoulder_roll_drum_port_cap_left` | 1.4 g | 2026-11-11 | Geometry settled. **No recorded export** |
-| Fork front | `shoulder_fork_front_left` | 151.8 g | 2026-11-14 (yoke; then the key slot, 3 mm joint pad and two inside gussets) | Exported and recorded 2026-11-14. **Waits** for a real plug tried in the channel, and for the rig (the skirt bounds the dish loop) |
-| Fork rear | `shoulder_fork_rear_left` | 68.2 g | 2026-11-14 (stiffer leg; then 4 mm counterbore floors on a solid 4.4 mm front plate) | Exported and recorded 2026-11-14. **Waits** for the 6808 coupon and for the rig (it carries the yaw exit) |
+| Fork front | `shoulder_fork_front_left` | 152.3 g | 2026-11-15 (washer seats for the RS02's five M3, round key tunnel, skirt 3.00 mm longer) | Exported and recorded 2026-11-15. **Not for load yet:** no print file; it waits for the 6808 coupon, the rig and a real plug tried in the channel (CAD_NOTES, "Adopted 2026-11-15", lists what is still needed) |
+| Fork rear | `shoulder_fork_rear_left` | 68.4 g | 2026-11-15 (6808 housing Ø52.0: the outer race a hand push with no play) | Exported and recorded 2026-11-15. **Waits** for the 6808 coupon (the housing is sized from it) and for the rig (it carries the cable channels) |
 | Cover ring (optional) | `shoulder_roll_cover_ring_left` | 13.1 g | 2026-11-14 (new) | Exported and recorded 2026-11-14. Dark PETG. Can be left off |
 | **Hub** | `shoulder_hub_left` | 117.3 g | 2026-11-15 (rev E1, adopted) | **Print file ready** (hub section below). Rev D3c7's print is superseded: fit bench only |
 | Pitch loop cover | `shoulder_pitch_loop_cover_left` | 102.3 g | 2026-11-11 | **Waits:** its M5 pads are placeholders and the feed position waits for the final shell (CAD_NOTES "Still open") |
@@ -105,8 +105,9 @@ Material PETG throughout. "Not sliced" applies to every orientation and support 
   (0.1 mm proud of its recess).
 - **Orientation:** upright, Y up; it starts on its flat bottom at Y 340.
 - **Supports:** its hollow's roof (Y 340-349); a small one under the stop tooth's outer face (that face carries no load).
-- **6808 housing:** modelled Ø52.2 with a 0.4 mm flat at the top, because the bore prints on its side. **Print the seat
-  coupon first** and adjust Ø52.2 to a hand-push fit.
+- **6808 housing:** modelled **Ø52.0** (since 2026-11-15) with a 0.4 mm flat at the top, because the bore prints on its
+  side. **Print the seat coupon first** and size the housing from it: a hand push **with no play**. The fork's strength
+  depends on it (D_6808_FITS.md): if the race rocks in the seat, that fork rear is not for a loaded arm.
 - **Joint:** 6 × ISO 7380 M4 button heads into the fork front's inserts. The recesses are about 3.1 mm deep, so a DIN 912
   head would stand proud.
 - Source: CAD_NOTES "Side centre r 47"; D_6808_FITS.md; B_ROLL_STOPS.md.
@@ -219,8 +220,8 @@ pre-print gate report). STL SHA-256 `a73103adb49bb9a4fe3b3901fea852e6668e928e7e1
 
 ## Coupons first
 
-- **6808 housing seat ring** (D_6808_FITS.md): a thin ring with the fork rear's Ø52.2 bore, about 3 mm wall, 7 mm deep,
-  printed upright like the fork rear. Adjust Ø52.2 to a hand-push fit.
+- **6808 housing seat ring** (D_6808_FITS.md): a thin ring with the fork rear's Ø52.0 bore, about 3 mm wall, 7 mm deep,
+  printed upright like the fork rear. Size the housing from it: a hand push with no play.
 - The cap's Ø40.0 stub needs no coupon.
 - **The three cable test rigs** (table above; CABLE_RIGS.md).
 
@@ -245,7 +246,7 @@ clamps nothing.**
 | Fork front → RS03 roll output | 6 × **M4 × 18** + 3 × Ø4 pins | 6 × M4, depth 6, blind; 3 × Ø4, depth 7, blind | Snug by hand (0.3 N·m is the background figure). 5.6 mm engaged. M4 × 20 bottoms. Pins: at most 7 mm into the motor |
 | Drum → pitch RS03 output | 6 × **M4 × 18 with one washer**, or M4 × 16 | 6 × M4, depth 6, blind | Pad 11.7 mm. M4 × 18 bare goes in 6.3 mm and bottoms; with a 0.8 mm washer 5.5 mm; M4 × 16 gives 4.3 mm |
 | Drum → roll RS03 housing | 8 × **M4 × 10** | 8 × M4, depth 8 | Flange 3.5 mm under the head. M4 × 10 gives 6.5 mm; M4 × 12 goes in 8.5 mm and bottoms |
-| Fork front → RS02 body | 5 × **M3 × 12** on PCD 73 at -96 / -56 / -16 / 104 / 144° | 9 × M3, depth 8 (given from the output side) | Seat 6.5 mm. 5.5 mm into the motor. M3 × 16 bottoms. **Check on the motor** that the holes are threaded from the rear, as the old bracket used them |
+| Fork front → RS02 body | 5 × **M3 × 14, each with one standard washer** (dia 7 × 0.5), on PCD 73 at -96 / -56 / -16 / 104 / 144° | 9 × M3, depth 8 (given from the output side) | **Snug only, never hard.** Seat floor 8.0 mm. 5.5 mm into the motor. M3 × 16 goes 7.5 mm in: too close to the bottom. **Check on the motor** that the five holes are threaded from the rear |
 | Fork rear → fork front (joint) | 6 × ISO 7380 M4 button heads: **2 × M4 × 10** (X ±17) and **4 × M4 × 8** | M4 heat-set inserts, bore Ø5.6 × 7.3-7.8 deep | **Snug by hand.** Background: at 0.3 N·m (about 400 N per screw), with the 4 mm floors on solid plate, the joint reads 3.1 under that preload alone and 1.67 or better at the 17 N·m stop (FORK_FRONT_FE.md, "The adopted set"). The recesses are about 3.1 mm deep, so a DIN 912 head would stand proud. **Use short inserts (4 mm):** a standard 8.1 mm insert stands proud of the joint face |
 | Flange ring → drum spokes | 5 × **M3 × 5** | M3 × 4 inserts, bore 3.8 deep | Ring 1.8 mm. M3 × 6 bottoms in the bore |
 | Rear cap → drum | 3 × **M2.5 × 14, thread-forming** (for plastics; pan or cap head up to Ø5.0), at r 50.6, 0 / 180 / 270°. M2.5 × 16 also fits | Ø2.1 pilots through a 2.5 mm locating collar on the drum, 11 mm deep from the collar's top | 5.6 mm of cap under the head. M2.5 × 14 gives 8.2 mm in the pilot; × 16 gives 10.2 with 0.8 to spare; **M2.5 × 18 bottoms.** The collars locate the cap and carry the roll stop's reaction; the screws only clamp. **Buy 3, and spares.** (Adopted 2026-11-14; before that the parts took M3 at r 50, which no longer fit) |
@@ -302,6 +303,6 @@ clamps nothing.**
 Checked with the washers as real parts in the model: the plastic under a washer's rim is the first place to go past the
 target, and it does so quickly as the screw is tightened.
 - **Hub → RS02 output, six M4 × 30 with one washer each:** snug by hand, never hard; re-snug once after the first hours.
-- **Fork front → RS02 body, five M3 with one washer each** (M3 × 12 on the released part; M3 × 14 on the seat candidate):
+- **Fork front → RS02 body, five M3 with one washer each** (M3 × 14 since the adoption of 2026-11-15):
   snug by hand, never hard. At about four times snug (1000 N per screw) the model reads 0.65 in shear under the washers.
 - A screw that keeps coming loose is a finding to report, not a reason to tighten harder.

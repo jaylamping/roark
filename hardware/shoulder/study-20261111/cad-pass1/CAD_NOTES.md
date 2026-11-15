@@ -1025,3 +1025,39 @@ been shown to it.
 - **Not done here:** the fork front's skirt, 3.00 mm longer to follow the hub (with the fork front's next revision,
   OPEN_ASSUMPTIONS item 49). Until then the skirt covers the hub's rim by less than before; it is a matter of looks,
   not of clearance.
+
+
+## Adopted 2026-11-15: fork front with washer seats for the RS02, fork rear with the 6808 housing at Ø52.0
+
+Joey's yes on the sheet [checks/fork_seats/FORK_SEATS_CANDIDATE.png](../checks/fork_seats/FORK_SEATS_CANDIDATE.png) ("adopt the
+fork front and fork rear", 2026-11-15); he ran `adopt_fork_seats.sh` himself.
+
+- **Built** from scratch by `build_parts.py fork_front fork_rear`; the values are the defaults in `dims.py` now
+  (`RS02_SEAT_FIX`, `RS02_SEAT_R_CHEEK` 2.5, `KEY_ROUND`, `SKIRT_DROP` 3.0, `BRG_SEAT_R` 26.0). The trial run and the real
+  run both reproduced the candidate exports byte for byte.
+- **Fork front** (`shoulder_fork_front_left`): the five RS02 screw seats are a flat to r 3.5 for a standard M3 washer on an
+  8.0 mm floor (was a dia 6.6 counterbore on 6.5 mm), R 1 into the pocket wall and R 2.5 at the two screws under the
+  cheek; the key access to the 104° screw is a round tunnel dia 7.8 (was a square-ended slot 7.0 wide); the 144° screw's
+  access bore dia 7.8; the skirt 3.00 mm longer (covers the hub's rim by 3.9 mm). STL SHA-256 `93d18d5b0c9c440ad84efca06a79fd9a46c3bd2893ecff68a085fd44b3b3d29f`
+  (one sliver facet of the export collapsed, `stl_sliver_fix.py`). 119,912 mm³, **152.3 g** (151.8).
+- **Fork rear** (`shoulder_fork_rear_left`): 6808 housing Ø52.0 (was 52.2), flat-topped teardrop kept. STL SHA-256
+  `e5dc3dcccc2aec9af0c2963f5198deec916ebbeb8e382de81d80c0e3374ae5b9`. 53,825 mm³, **68.4 g** (68.2).
+- **Screws, fork front to RS02:** five **M3 × 14**, each with one standard washer (dia 7 × 0.5): 5.5 mm into the motor's
+  8 mm threads. **Snug only.**
+- **Strength:** [checks/FORK_FRONT_FE.md](../checks/FORK_FRONT_FE.md), "The RS02's five screw seats". Layer tension at
+  the governing screw 0.79 / 1.40 before, 1.17 / 1.93 now (1.58 / 2.03 on the finer mesh), washers as bodies, the fork
+  read alone with nothing left out. One figure under target, accepted: shear on the 0.5 mm ball under the 104° washer's
+  rim, 0.92 to 0.94, in compression. The 6808 seat passes with the race carrying load
+  ([checks/D_6808_FITS.md](../checks/D_6808_FITS.md)).
+- **Clearance sweep on the real set** (hub rev E1, arm 3 mm lower; `clearance_adopt_fork_seats.json`, not in git): nothing
+  new under the 2.0 mm running gap. Fork front to hub 2.20 (2.20 before), fork front to upper arm 12.77 (15.72), fork rear to cover 15.97 (16.29), flange ring to fork front 1.05 (1.06, past the roll stop), rear cap to fork rear 0.04 at the stop (the stop's own contact).
+- **Shoulder total by volume:** drum 227.1, fork front 152.3, hub 117.3, rear cap 85.4, fork rear 68.4, flange ring 38.1,
+  port cap 1.4: **690.0 g** (652.2 before hub rev E1 and this revision).
+- **Still needed before the fork is printed for load:**
+  1. the 6808 seat coupon printed and the housing sized from it; at assembly the race must not rock in the seat
+     (with 0.1 mm of play the fork reads 0.4 to 0.5 at the 17 N·m stop);
+  2. print files (none exist; walls, infill and colour for the fork are not decided);
+  3. the fork rear's two wiring changes if they are wanted in the same print (OPEN_ASSUMPTIONS items 47 and 51);
+  4. the six-screw joint between the two parts, read with nothing left out (1.07 on the 0.5 mm ball at 200 N in the
+     audit; not revisited here);
+  5. the requirements and the pre-print gate, as for the hub.

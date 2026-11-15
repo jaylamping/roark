@@ -449,11 +449,13 @@ no clearance: its extra width and depth are behind and beside the leg, away from
 - The yoke STL with pockets (`LOOK=yoke`) is not watertight after export (3 non-manifold edges); the solid-neck build
   is clean. Only the solid-neck build should go further.
 
-## The RS02's five screw seats: candidate "sf5" (2026-11-15, not adopted)
+## The RS02's five screw seats: candidate "sf5" (2026-11-15; adopted the same day)
 
 Sheet for Joey: [fork_seats/FORK_SEATS_CANDIDATE.png](fork_seats/FORK_SEATS_CANDIDATE.png). Look build
 `cad/_wip/look/sf5` (`RS02_SEAT_FIX=1 RS02_SEAT_R_CHEEK=2.5 KEY_ROUND=1 SKIRT_DROP=3.0`, `build_parts.py fork_front`),
-combined with the released fork rear as `cad/_sim/shoulder/fork2_sf5.SLDPRT`. Nothing real is changed.
+combined with the then-released fork rear as `cad/_sim/shoulder/fork2_sf5.SLDPRT`. **Adopted 2026-11-15** with the fork
+rear's Ø52.0 housing (CAD_NOTES, "Adopted 2026-11-15: fork front with washer seats"); "released" below means the part
+before that.
 
 **Why.** The audit of 2026-11-15 found that the record's read-outs left a band out round the RS02's seats. Run as a
 bolted joint (`R2_*` cases: an aluminium stand-in for the RS02 under the seat ring, five M3 bolt connectors at 250 N,

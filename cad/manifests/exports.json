@@ -258,73 +258,37 @@
       "export": "exports/shoulder/shoulder_fork_front_left.STEP",
       "source": "shoulder/left/shoulder_fork_front_left.SLDPRT",
       "config": "",
-      "settings": "adopted 2026-11-14 (key slot, joint floors, pad and plate): build_parts.py fork_front",
-      "sourceSha256": "cead959aa1026e5aea72357e844a7cb3c153ec122ec4a87f41ce4f252fff5a1c",
-      "exportSha256": "b6233861acc4bb82ea535d00a0226caa1b8aa39d53610b30e1cfca8e46d64bec",
-      "recorded": "2026-11-14T14:45:30Z"
+      "settings": "adopted 2026-11-15 (RS02 washer seats, round key tunnel, skirt +3.00; 6808 housing dia 52.0): build_parts.py fork_front with RS02_SEAT_FIX=1 RS02_SEAT_R_CHEEK=2.5 KEY_ROUND=1 SKIRT_DROP=3.0 BRG_SEAT_R=26.0",
+      "sourceSha256": "ffa7b36168152ce92ae71d018f935924cb4bad8e0299a9429c18de911481985b",
+      "exportSha256": "689fda5735eaea767c412cd1e283299bb0de329f5be1fd11d93e16534e94de47",
+      "recorded": "2026-11-15T18:19:04Z"
     },
     {
       "export": "exports/shoulder/shoulder_fork_front_left.STL",
       "source": "shoulder/left/shoulder_fork_front_left.SLDPRT",
       "config": "",
-      "settings": "adopted 2026-11-14 (key slot, joint floors, pad and plate): build_parts.py fork_front",
-      "sourceSha256": "cead959aa1026e5aea72357e844a7cb3c153ec122ec4a87f41ce4f252fff5a1c",
-      "exportSha256": "4dfe5d2fca7ee9e37c4e16869a8029ec2bec8c70c27e369f63dfb0f85f0b5ace",
-      "recorded": "2026-11-14T14:45:32Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_fork_front_left_seats_candidate.STEP",
-      "source": "shoulder/left/shoulder_fork_front_left.SLDPRT",
-      "config": "",
-      "settings": "candidate (not adopted), look fk1: build_parts.py fork_front fork_rear with RS02_SEAT_FIX=1 RS02_SEAT_DEPTH=2.0 RS02_SEAT_R_CHEEK=2.5 KEY_ROUND=1 SKIRT_DROP=3.0 BRG_SEAT_R=26.0 (washer seats for the five RS02 screws, round key tunnel, skirt 3.00 mm longer; 6808 housing dia 52.0); fork front STL with one sliver facet collapsed (stl_sliver_fix.py)",
-      "sourceSha256": "cead959aa1026e5aea72357e844a7cb3c153ec122ec4a87f41ce4f252fff5a1c",
-      "exportSha256": "1b901355d3aa0ebce4b20fc1f9dec466117c48a6a5a96c09466598ad11a71cc2",
-      "recorded": "2026-11-15T17:22:31Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_fork_front_left_seats_candidate.STL",
-      "source": "shoulder/left/shoulder_fork_front_left.SLDPRT",
-      "config": "",
-      "settings": "candidate (not adopted), look fk1: build_parts.py fork_front fork_rear with RS02_SEAT_FIX=1 RS02_SEAT_DEPTH=2.0 RS02_SEAT_R_CHEEK=2.5 KEY_ROUND=1 SKIRT_DROP=3.0 BRG_SEAT_R=26.0 (washer seats for the five RS02 screws, round key tunnel, skirt 3.00 mm longer; 6808 housing dia 52.0); fork front STL with one sliver facet collapsed (stl_sliver_fix.py)",
-      "sourceSha256": "cead959aa1026e5aea72357e844a7cb3c153ec122ec4a87f41ce4f252fff5a1c",
+      "settings": "adopted 2026-11-15 (RS02 washer seats, round key tunnel, skirt +3.00; 6808 housing dia 52.0): build_parts.py fork_front with RS02_SEAT_FIX=1 RS02_SEAT_R_CHEEK=2.5 KEY_ROUND=1 SKIRT_DROP=3.0 BRG_SEAT_R=26.0",
+      "sourceSha256": "ffa7b36168152ce92ae71d018f935924cb4bad8e0299a9429c18de911481985b",
       "exportSha256": "93d18d5b0c9c440ad84efca06a79fd9a46c3bd2893ecff68a085fd44b3b3d29f",
-      "recorded": "2026-11-15T17:22:33Z"
+      "recorded": "2026-11-15T18:19:06Z"
     },
     {
       "export": "exports/shoulder/shoulder_fork_rear_left.STEP",
       "source": "shoulder/left/shoulder_fork_rear_left.SLDPRT",
       "config": "",
-      "settings": "adopted 2026-11-14 (key slot, joint floors, pad and plate): build_parts.py fork_rear",
-      "sourceSha256": "7859dc3d275a596516cb5b1923ef4adae2ecaaad9cef496bab45605a21594dc5",
-      "exportSha256": "d4ca46a722ba787bf57f0cfaca927a6c1594c51e89c31128d17e0103fd09ff14",
-      "recorded": "2026-11-14T14:45:32Z"
+      "settings": "adopted 2026-11-15 (RS02 washer seats, round key tunnel, skirt +3.00; 6808 housing dia 52.0): build_parts.py fork_rear with RS02_SEAT_FIX=1 RS02_SEAT_R_CHEEK=2.5 KEY_ROUND=1 SKIRT_DROP=3.0 BRG_SEAT_R=26.0",
+      "sourceSha256": "f7a34e5f910101156177cace2005b9a2108f021f65936c8a271d269a49472687",
+      "exportSha256": "650a6ab2fb93eae144e081586109a296f6d044652db7cddadc39a82ca6b0a8a5",
+      "recorded": "2026-11-15T18:19:06Z"
     },
     {
       "export": "exports/shoulder/shoulder_fork_rear_left.STL",
       "source": "shoulder/left/shoulder_fork_rear_left.SLDPRT",
       "config": "",
-      "settings": "adopted 2026-11-14 (key slot, joint floors, pad and plate): build_parts.py fork_rear",
-      "sourceSha256": "7859dc3d275a596516cb5b1923ef4adae2ecaaad9cef496bab45605a21594dc5",
-      "exportSha256": "50e07a3378599f311d41adb772dd60fc3ca065bd349dfc892e4120d8b6b45e3f",
-      "recorded": "2026-11-14T14:45:33Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_fork_rear_left_seats_candidate.STEP",
-      "source": "shoulder/left/shoulder_fork_rear_left.SLDPRT",
-      "config": "",
-      "settings": "candidate (not adopted), look fk1: build_parts.py fork_front fork_rear with RS02_SEAT_FIX=1 RS02_SEAT_DEPTH=2.0 RS02_SEAT_R_CHEEK=2.5 KEY_ROUND=1 SKIRT_DROP=3.0 BRG_SEAT_R=26.0 (washer seats for the five RS02 screws, round key tunnel, skirt 3.00 mm longer; 6808 housing dia 52.0); fork front STL with one sliver facet collapsed (stl_sliver_fix.py)",
-      "sourceSha256": "7859dc3d275a596516cb5b1923ef4adae2ecaaad9cef496bab45605a21594dc5",
-      "exportSha256": "5b741dd375f94ac947f97a9f91c12c73be744c8db4b8e62e1b86e55621743abc",
-      "recorded": "2026-11-15T17:22:34Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_fork_rear_left_seats_candidate.STL",
-      "source": "shoulder/left/shoulder_fork_rear_left.SLDPRT",
-      "config": "",
-      "settings": "candidate (not adopted), look fk1: build_parts.py fork_front fork_rear with RS02_SEAT_FIX=1 RS02_SEAT_DEPTH=2.0 RS02_SEAT_R_CHEEK=2.5 KEY_ROUND=1 SKIRT_DROP=3.0 BRG_SEAT_R=26.0 (washer seats for the five RS02 screws, round key tunnel, skirt 3.00 mm longer; 6808 housing dia 52.0); fork front STL with one sliver facet collapsed (stl_sliver_fix.py)",
-      "sourceSha256": "7859dc3d275a596516cb5b1923ef4adae2ecaaad9cef496bab45605a21594dc5",
+      "settings": "adopted 2026-11-15 (RS02 washer seats, round key tunnel, skirt +3.00; 6808 housing dia 52.0): build_parts.py fork_rear with RS02_SEAT_FIX=1 RS02_SEAT_R_CHEEK=2.5 KEY_ROUND=1 SKIRT_DROP=3.0 BRG_SEAT_R=26.0",
+      "sourceSha256": "f7a34e5f910101156177cace2005b9a2108f021f65936c8a271d269a49472687",
       "exportSha256": "e5dc3dcccc2aec9af0c2963f5198deec916ebbeb8e382de81d80c0e3374ae5b9",
-      "recorded": "2026-11-15T17:22:35Z"
+      "recorded": "2026-11-15T18:19:07Z"
     },
     {
       "export": "exports/shoulder/shoulder_hub_left.STEP",

@@ -53,6 +53,7 @@ _CLK = 98.0 + (40.0 if RS02_RECLOCK else 0.0)   # plug pocket pp_r: the RS02 re-
 _c, _s = math.cos(math.radians(_CLK)), math.sin(math.radians(_CLK))
 T_RS02 = M4(np.array([[_c, -_s, 0], [0, 0, -1], [_s, _c, 0]]), (RX, RS02_UNDER, YZ))  # vendor z (output +4) -> -Y; clock fitted to the placed STEP
 T_BRG = M4(np.eye(3), (RX, RY, BRG_Z[1]))
+T_UA = M4(np.eye(3), (0.0, -HUB_ARM_DROP, 0.0))      # hub rev E1: the arm's reference parts (in their pre-E1 coordinates) sit this much lower on the yaw axis
 
 PARTS = [  # (key, file, group, base transform, colour)
     ('skeleton', OUT / 'shoulder_skeleton_left.SLDPRT', 'fixed', None, None),
@@ -70,9 +71,9 @@ PARTS = [  # (key, file, group, base transform, colour)
     ('fork_rear', OUT / 'shoulder_fork_rear_left.SLDPRT', 'roll', None, 'petg'),
     ('rs02', VENDOR / 'vendor_robstride_rs02.SLDPRT', 'roll', T_RS02, 'motor'),
     ('hub', OUT / 'shoulder_hub_left.SLDPRT', 'yaw', None, 'petg'),
-    ('ua_front', REF / 'shoulder_ref_upper_arm_front_left.SLDPRT', 'yaw', None, 'arm'),
-    ('ua_back', REF / 'shoulder_ref_upper_arm_back_left.SLDPRT', 'yaw', None, 'arm'),
-    ('ua_ring', REF / 'shoulder_ref_upper_arm_rs02_ring_left.SLDPRT', 'yaw', None, 'motor'),
+    ('ua_front', REF / 'shoulder_ref_upper_arm_front_left.SLDPRT', 'yaw', T_UA, 'arm'),
+    ('ua_back', REF / 'shoulder_ref_upper_arm_back_left.SLDPRT', 'yaw', T_UA, 'arm'),
+    ('ua_ring', REF / 'shoulder_ref_upper_arm_rs02_ring_left.SLDPRT', 'yaw', T_UA, 'motor'),
 ]
 FRAME_SHIFT = 38.0      # rev A frame: the shoulder sits 38 mm further outboard than in the old-frame coordinates used here
 COLOURS = dict(petg=(0.93, 0.93, 0.91), frame=(0.55, 0.57, 0.6), steel=(0.75, 0.76, 0.78), motor=(0.22, 0.23, 0.25), arm=(0.86, 0.86, 0.84))

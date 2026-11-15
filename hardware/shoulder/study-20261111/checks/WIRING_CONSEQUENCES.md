@@ -48,7 +48,7 @@ decided: whether 18 AWG also replaces the scheme's 20 AWG below the elbow (the a
     (TAP_LINK). Same 16 × 6 channel, same concern. The 10 A fuse for the 18 AWG segment would also be here, and there is
     no room for a fuse holder in the channel.
   - **Elbow RS02 (M14):** in the upper arm; the arm thread's.
-- **Inline drop fuses:** the plan puts a blade fuse holder on each motor's drop "where a hatch gives access". The
+- **Inline drop fuses (closed 2026-11-15: no drop fuses in the shoulder, see "Decided 2026-11-15" at the end):** the plan puts a blade fuse holder on each motor's drop "where a hatch gives access". The
   shoulder has no hatch and no pocket for a holder at the roll or yaw motors. Either those fuses sit in the torso (a
   separate fused feed per motor instead of a drop from the trunk), or the shoulder gets pockets for them. Open.
 - **CAN pair in the yaw dish:** the 2.2 mm gap between the hub's rim and the fork's skirt will take a 2.0 mm pair. Keep
@@ -153,7 +153,7 @@ The trunk plan sleeves the trunk in 1/4 in PET braid. In the shoulder:
 - Where do the drop fuses for the roll and yaw motors go?
 - Is silicone acceptable in the crossings if it passes the rigs, or must the jumpers be flex-rated regardless?
 
-## Option C in detail: the 10 A fuse in the upper arm, just below the yaw joint (2026-11-15, a proposal)
+## Option C in detail: the 10 A fuse in the upper arm, just below the yaw joint (2026-11-15; decided, see the next section)
 
 For the arm thread and the power thread. Nothing here is designed or agreed.
 
@@ -206,3 +206,66 @@ For the arm thread and the power thread. Nothing here is designed or agreed.
 
 **If the arm has no place that opens:** fall back to option B, or to option A (the fuse in the shoulder's cavity, a
 strip-down to change).
+
+## Decided 2026-11-15: option C, and what the shoulder has to hold
+
+**Joey, 2026-11-15 (power board thread):** the 10 A fuse goes in the upper arm just below the yaw joint, and it is the only
+fuse below the shoulder apart from the hand's 3 A. The motors' inline drop fuses go. Fuse: Littelfuse 0997010.WXN (MINI,
+58 V, 10 A). The arm thread checks its pocket. So the shoulder holds splices and taps only, no fuse holder.
+
+Checked on the adopted parts (cuts of the exports and the placed motor models), not by hand:
+
+**1. The splices behind the yaw RS02: they fit, but not in a straight line.**
+- What is joined there: the 16 AWG trunk pair, the 18 AWG pair going on to the arm, and the yaw RS02's tap. That is one
+  three-way joint per conductor: two power joints, about 6 mm across and 20 mm long under adhesive heat-shrink (assumed
+  from the trunk plan's splice), plus the CAN pair's two small joints (about 2.5 × 12 mm).
+- The cavity: 44 mm across, 20 mm front to back on the centre line (12 mm at its two ends), 20 mm high usable (Y 320 to
+  340), about 17 cm³. The joints are about 2 cm³. Volume is not the limit.
+- **The limit is length.** The trunk enters at the top back centre (the fork rear's channel ends at Y 340) and leaves
+  for the cable space at the bottom back centre (the exit at 261.7°, floor Y 315.4): a direct run of about **25 mm**.
+  - **Side by side:** the two power joints next to each other, staggered by 5 mm at most, are 12 × 6 mm in section and
+    25 mm long. That fits the direct run (the cavity is 12 mm deep or more everywhere). Each joint is insulated on its
+    own, so side by side is electrically fine; it is not the staggered splice of the trunk plan.
+  - **Staggered by a joint's length (20 to 25 mm):** about 50 mm long. Then the bundle has to lie across the cavity as a
+    loop, with bends of about R 10. That is under the static rule for 16 AWG (15 mm) and just under it for 18 AWG
+    (11.5 mm).
+- So: **stagger 5 mm, joints side by side.** The 16 AWG tail ends at the joints; nothing 16 AWG goes down into the cable
+  space.
+
+**2. A 16 AWG tap of about 45 mm to the yaw RS02: the channels take it; the fold behind the plug is the tight place.**
+- The tap channel (TAP_LINK) is 7 × 6 mm. Two 16 AWG wires side by side are 6.0 × 3.0 (silicone, OD 3.0 assumed), with
+  the CAN pair on top 6.0 × 4.2. It fits with 1 mm to spare in width and 1.8 in height. Two 18 AWG are 4.6 wide.
+- The plug channel (PLUG_CHANNEL at 228°) is r 36 to 50, 16.5 wide, 7.2 high. The XT30(2+2)-F body is 16 × 6.5 × 15
+  (not measured, item 7) and mates radially at r 36.2, so the plug ends at about r 51 and **the lead has to fold over
+  within a few millimetres of the plug's back**, inside the channel's 7.2 mm height. The record calls it "the folded
+  lead"; its envelope was read from photos.
+- That fold is about R 3 for 16 AWG and R 2.5 for 18 AWG: far under the static rule for either (15 and 11.5 mm). It is
+  a fixed bend made once, in silicone wire. 18 AWG folds more easily and leaves more room; 16 AWG is not ruled out by
+  any channel size.
+- Length: from the plug's back (r 50 at 228°) to the tap's mouth is about 30 to 35 mm along the back of the cuff, so a
+  45 mm tap reaches with slack for the fold.
+- **To confirm by the power thread:** that the XT30(2+2) power contacts take 16 AWG. **By Joey:** the real plug's size
+  and how its lead leaves (item 7). If the plug is longer than 15 mm the fold has no room in either gauge.
+
+**3. 16 AWG taps with no drop fuse at the pitch and roll RS03 plugs.**
+- **Roll RS03 (in the drum):** the drum's power branch is 16 × 6 mm with 9.5 mm free beside the motor; a 16 AWG pair
+  (6.0 × 3.0) lies in it flat. With no drop fuse there is nothing else to house: the open point "the shoulder has no
+  pocket for a fuse holder at the roll or yaw motors" goes away. Only the top connector bay can be used (the bottom bay
+  faces the yaw motor). **Not known:** the plug in that bay and which way its lead leaves (the vendor model's bays are
+  empty, item 16). The branch and its window were sized from the bay, not from a plug.
+- **Pitch RS03:** it sits on the torso side; its plug and tap are not inside any printed shoulder part, so nothing in
+  the shoulder limits a 16 AWG tap there. The torso's own room was not looked at here.
+- Both taps are the trunk's own gauge, so each is one three-way joint per conductor at the motor, as at the yaw motor.
+
+**Further decisions the same day (recorded here as passed on by the coordinator)**
+- **Joey, 2026-11-15, power board thread: "Drop them, thicker taps".** The pitch, roll and yaw motor taps are 16 AWG
+  behind the 20 A fuse at the board, with **no drop fuses anywhere in the shoulder** (roark PR 93,
+  `hardware/power-board/HARNESS_INTERFACE.md`). That closes the open point under "Where things can and cannot sit"
+  ("Inline drop fuses": the shoulder has no hatch and no pocket for a holder at the roll or yaw motors).
+- **Power thread:** the splice behind the yaw RS02 is made **side by side with a 5 mm stagger,** each joint insulated on
+  its own; no full-stagger loop. It found a seller's page giving the XT30(2+2)-F power pins as 20 A with 16 AWG (not a
+  datasheet).
+- **Arm thread:** the 10 A fuse's pocket fits in the arm's neck at Y 251 to 290 with no change to the halves
+  (`OPTION_C_FUSE.md` on its branch).
+- **Still open here:** the real XT30(2+2)-F plug's length and how its lead leaves at the yaw motor (Joey's calipers,
+  OPEN_ASSUMPTIONS item 7); the splice tried with real wire in the printed parts.
