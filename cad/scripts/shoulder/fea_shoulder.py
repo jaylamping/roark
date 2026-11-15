@@ -564,7 +564,7 @@ def run(name, c):
     print(' read-back s: GetNodes call %.0f, to arrays %.0f, GetStress call %.0f, to arrays %.0f' % (t1 - tr, t2 - t1, t3 - t2, time.time() - t3), flush=True)
     np.savez(str(F / (name + '.npz')), pos=pos, s=s)      # saved first: the fixture readback below has failed on contact models
     body = bnames = None
-    if c.get('dummy'):      # more than one body: record which body each node is in, so a read-out can take the printed part alone
+    if c.get('dummy') or c.get('part') == 'forkj':      # more than one body: record which body each node is in, so a read-out can take one part alone
         try:
             body, bnames = node_bodies(d, res, s[:, 0].astype(np.int64))
             np.savez(str(F / (name + '.npz')), pos=pos, s=s, body=body, body_names=np.array(bnames))

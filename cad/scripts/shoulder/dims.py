@@ -302,4 +302,6 @@ RS02_SEAT_FIX = os.environ.get('RS02_SEAT_FIX', '1') == '1'      # washer seats 
 RS02_SEAT_DEPTH = float(os.environ.get('RS02_SEAT_DEPTH', '2.0'))      # with RS02_SEAT_FIX: how far the screw seats lie below the seat ring's top (0 = on top, no counterbore; floor 10.0)
 KEY_ROUND = os.environ.get('KEY_ROUND', '1') == '1'      # the key access to the 104 deg RS02 screw as a round tunnel (0: the square-ended slot)
 RS02_SEAT_R_CHEEK = float(os.environ.get('RS02_SEAT_R_CHEEK', '2.5'))      # with RS02_SEAT_FIX: the round from the washer flat into the pocket wall at the two screws under the cheek
+FR_JOIN_H = float(os.environ.get('FR_JOIN_H', '6.0'))      # candidate (default as built): height of the opening between the fork rear's signal and power channels (18.0: the dividing wall ends 12 mm higher)
+FR_TIE_BAR = os.environ.get('FR_TIE_BAR') == '1'      # candidate, default off: a tie bar across the fork rear's power channel at its underside
 CH_DZ = -1.0 if os.environ.get('LEG2') else 0.0   # LEG2 mock-up: the fork rear's channels 1 mm further back (front wall 3.4)

@@ -1150,11 +1150,27 @@ def build_fork_rear():
     def ch_s(s):
         s.rpoly(rect_pts((RX + S_OFF + CH_DX, (RY + 9.0 + sig_end) / 2, zc), X, Y, SW, RY + 9.0 - sig_end), [1] * 4)
     extrude(d, zsk(d, zc, 'CH_S', ch_s), 'CH_S', SH, NZ, cut=True)
-    extrude(d, zsk(d, zc, 'CH_JOIN', lambda s: s.poly(rect_pts((RX + 3.0 + CH_DX, sig_end + 3.0, zc), X, Y, 6.0, 6.0))), 'CH_JOIN', SH, NZ, cut=True)
+    if FR_JOIN_H > 6.0:
+        # the opening between the signal and the power channel taller, so the dividing wall ends higher and the signal wires
+        # cross over a longer run (OPEN_ASSUMPTIONS item 47); the wall's end sloped, higher on the signal side
+        x0_ = RX + CH_DX
+        extrude(d, zsk(d, zc, 'CH_JOIN', lambda s: s.poly([(x0_, sig_end, zc), (x0_ + 6.0, sig_end, zc), (x0_ + 6.0, sig_end + FR_JOIN_H, zc), (x0_, sig_end + FR_JOIN_H - 4.0, zc)])),
+                'CH_JOIN', SH, NZ, cut=True)
+    else:
+        extrude(d, zsk(d, zc, 'CH_JOIN', lambda s: s.poly(rect_pts((RX + 3.0 + CH_DX, sig_end + 3.0, zc), X, Y, 6.0, 6.0))), 'CH_JOIN', SH, NZ, cut=True)
     if SC:
         exit_bend(d, 'EXIT_BEND')
     else:
         extrude(d, zsk(d, RZ - 3.0, 'EXIT_CH', lambda s: s.poly(rect_pts((RX - 6.0 + CH_DX, Y_EX, RZ - 3.0), X, Y, 16.0, 6.0))), 'EXIT_CH', (YZ - 37.0) - RZ + 3.0 + 1, Z, cut=True, lo=-1.0)
+    if FR_TIE_BAR:
+        # a tie bar at the fork rear's underside, where the cable leaves for the yaw joint (OPEN_ASSUMPTIONS item 51): below Y 349
+        # the part is a hollow shell (the exit bend), so the bar runs from the outer skin to the front wall, 2 x 2 mm, on
+        # the plate as printed (Y 340 to 342), 2 mm off the power channel's centre line; its outer end stops inside the skin
+        # (Z -57.4), so nothing shows outside. A small cable tie goes round it and
+        # the bundle; the wires thread past it on either side
+        xb_ = RX + P_OFF + CH_DX + 3.4
+        extrude(d, ysk(d, 340.0, 'TIE_BAR', lambda s: s.poly([(xb_ - 1.0, 340.0, -57.4), (xb_ + 1.0, 340.0, -57.4), (xb_ + 1.0, 340.0, -47.0), (xb_ - 1.0, 340.0, -47.0)])),
+                'TIE_BAR', 2.0, Y, lo=0.5)
     # the outer joint pair (X +-27): bosses through the sleeve's hollow, from the joint plane back to 1 mm inside the outline
     for i_, (dx, jy) in enumerate(JOINT_PTS[2:]):
         _sec = EV.sleeve_section(jy, 0.0, 0.0, 720)
