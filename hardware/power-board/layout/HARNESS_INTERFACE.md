@@ -96,7 +96,7 @@ The same check for a twisted pair of 18 AWG silicone (20.9 mΩ/m, 2.3 mm OD), co
 | 15 A | about 105 K → about 145 °C | survivable for 200 °C silicone, not a running point: the most an 18 AWG run may ever be fused at |
 | 20 A | about 265 K | over the insulation rating: **18 AWG must never sit behind only the 20 A port fuse** |
 
-So every 18 AWG run needs its own fuse where the gauge steps down, **10 A** (the same 58 V MINI family), with the sustained
+So every 18 AWG run needs its own fuse, **10 A** (the same 58 V MINI family), with the sustained
 software limit for that section at 7.5 A. It feeds the upper-arm yaw, elbow and forearm drives and the hand. The drives'
 bus currents are not measured yet; the arm trunk plan's branch fuses for them add up to 13 A plus 3 A for the hand, and it
 expects a real draw of a few amps. A shoulder run on 18 AWG would need the arm port's inline fuse at 15 A at most
@@ -113,24 +113,46 @@ against 0.42 V at 20 A.
 
 **Arm trunk gauges and fuses, as of 2026-11-15.** This table replaces the gauges in the reference repo's
 [left-arm-trunk README](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/wiring/left-arm-trunk/README.md)
-(S3 at 16 AWG, S4 as four paralleled 18 AWG wires); its segment names, splices and drop fuses still apply.
+(S3 at 16 AWG, S4 as four paralleled 18 AWG wires); its segment names and splices still apply; its fuses are replaced by the plan below.
 
 | Segment | Power wire | Fuse ahead of it | Sustained limit |
 | --- | --- | --- | --- |
 | Board pigtail, S0, S1 (pitch), S2 (roll) | one 16 AWG pair | 20 A, inline at the board pigtail | 15 A |
-| S3 (upper-arm yaw to the elbow drive) | one 18 AWG pair | 10 A, where the gauge steps down at the yaw drive splice | 7.5 A |
-| S4 (across the elbow to the forearm drive and the hand drop) | one 18 AWG pair | 5 A segment fuse at the elbow drive splice | 5 A |
+| S3 (upper-arm yaw to the elbow drive) | one 18 AWG pair | 10 A, in the upper arm just below the yaw joint | 7.5 A |
+| S4 (across the elbow to the forearm drive and the hand drop) | one 18 AWG pair | the same 10 A; no fuse of its own | 7.5 A |
+
+**One 10 A fuse for everything below the yaw joint (decided 2026-11-15).** The 16 to 18 AWG splice stays in the shoulder,
+in the cavity behind the yaw drive, but a fuse there cannot be reached once the fork is closed. So the 10 A fuse sits in
+the upper arm, in the neck just below the hub, where the arm's front half comes off. It is the only fuse below the
+shoulder apart from the hand's own 3 A: the elbow drive's 5 A drop fuse and the 5 A segment fuse at the elbow are
+dropped, since all the wire behind the 10 A fuse is 18 AWG (39 K rise at 10 A in free air) and the drives limit their
+own current.
+
+- Fuse: Littelfuse **0997010.WXN** (MINI blade, 58 V DC, 10 A). Ordinary MINI fuses are 32 V and must not be used on
+  this bus.
+- Holder: a generic inline MINI holder (about 36 × 14 × 9 mm, assumed; measure the one bought). These are marked 32 V.
+  The fuse does the interrupting and the holder only has to insulate 58 V, so this is accepted here as a judgment, not
+  as a rating. The one inline MINI holder found with a 58 V marking is Littelfuse FHM (0FHM0001XP, 14 AWG leads), larger
+  and about $7 to $10.
+- Pocket: about 70 × 16 × 11 mm with the straight wire at each end, in the upper arm neck.
+- Not covered by this fuse: about 0.5 m of 18 AWG between the splice and the fuse (the yaw cable space and the hub's
+  tunnel). A hard short there opens the port breaker. A steady 10 to 15 A partial short would put about 500 W into the
+  fault point and is not expected to stay partial.
+- The board cannot measure this section alone (it meters the whole port), so the 7.5 A sustained limit is for software
+  to hold from the drives' own current reports.
+- Still open: the trunk plan's drop fuses for the pitch, roll and yaw drives (7.5, 7.5 and 5 A) have no reachable place
+  in the shoulder. Proposed, not decided: make those three taps 16 AWG, so the 20 A fuse at the board covers them, and
+  fit no drop fuses.
 
 S4 carries the RS00 and a future hand. One 18 AWG pair is enough: 5 A sustained is about 9 K of rise in free air, 7.5 A
 about 20 K, and 0.5 m there and back drops 0.1 V at 5 A. The second pair in the old spec was margin for "about 6 A", not a
 need. Expected sustained load is about 3 to 3.5 A: the RS00 manual (RS00_User_Manual_260713) gives 4.7 Apk phase current at
 the rated 5 N·m and 15.5 Apk at the 14 N·m peak, which is about 1.5 A from the bus at rated load with losses assumed, and
-the hand budget is 2 A at 48 V (an estimate; no hand is designed). Neither is measured. If a real hand trips the 5 A fuse,
-the same pair takes a 7.5 A fuse with no rewiring; a hand that needs more than about 7.5 A sustained (360 W) would need a
+the hand budget is 2 A at 48 V (an estimate; no hand is designed). Neither is measured. A hand that needs more than about 7.5 A sustained (360 W) would need a
 second pair, which the elbow spiral does not fit.
 
 **Arm wire to buy** (replaces the wire rows of the reference repo's left-arm-trunk BUY_LIST; connectors and fuses there
-still apply, plus one 58 V 10 A MINI fuse and holder per arm for the gauge step):
+still apply, less the drop fuses, plus one 58 V 10 A MINI fuse, Littelfuse 0997010.WXN, and holder per arm):
 
 | Use | Wire | Outside diameter | Buy | For both arms |
 | --- | --- | --- | --- | --- |
