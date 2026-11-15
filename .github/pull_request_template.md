@@ -1,5 +1,6 @@
-<!-- Describe the change itself. Not who asked for it, not the chat or agent session it came from, no AI attribution or
-"Generated with" footers (conventions/git.md section 2). -->
+<!-- Describe the change itself. Not who asked for it, and not the chat or agent session it came from.
+No AI or tool attribution: no "Generated with" footer, no "Requested by ... project thread" line, no hidden attribution
+comment, no session or thread link (conventions/git.md section 2). If a tool added one, edit it out. -->
 
 ## Why
 

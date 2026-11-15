@@ -23,6 +23,7 @@ PATTERNS = [
     (re.compile(r"claude\.ai/", re.I), "claude.ai link"),
     (re.compile(r"generated (with|by) \[?claude", re.I), "\"Generated with\" footer"),
     (re.compile(r"claude-projects-attribution", re.I), "attribution marker"),
+    (re.compile(r"^[\W_]*requested by\b", re.I), "\"Requested by\" line"),
     (re.compile(r"\U0001F916"), "robot emoji footer"),
 ]
 
