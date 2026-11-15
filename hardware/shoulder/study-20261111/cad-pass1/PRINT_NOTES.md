@@ -134,10 +134,30 @@ pre-print gate report). STL SHA-256 `a73103adb49bb9a4fe3b3901fea852e6668e928e7e1
     would need support on the flanks, and the hub top's bending under the six screws would then cross the layers.
   So the lug root's margin is carried in the figures (1.58 at the section loads, on an assumed 13 MPa), not in the
   orientation.
-- **Supports:** only in the dish annulus (its floor is 1.5 mm above the bed); they pull out at the open rim. The groove's
-  load flank is a 60° overhang, 1.5 mm tall, printed without support: expect about 0.2 mm of droop.
+- **Supports, as the print file really has them** (read from its G-code, 2026-11-15: 6.5 g of the 81.9 g, tree;
+  [picture](../checks/hub_print/HUB_SUPPORT_REMOVAL.png)). An earlier version of this note said "only in the dish
+  annulus"; that was wrong.
+  - **Under the dish floor** (2.1 g, 0.2 to 1.9 mm above the bed, r 25 to 45): a thin layer all round, open at the rim.
+  - **In shallow recesses of the RS02 face** (0.5 g, the first 1.4 mm, inside r 25): open toward the bed.
+  - **Inside the hub** (3.9 g, 2 to 20 mm above the bed, r 15 to 36, all round): tree trunks standing on the floor of the
+    hub's inner pocket, holding up the underside of the spigot's inner ledge (a flat ledge 7 to 10 mm wide, 17.5 mm
+    above the bed) and the lugs' inner undersides. **The pocket is not closed, but it is an undercut:** it opens only
+    upward through the spigot's bore (Ø45.6, with the six screw bosses standing in it: a 6.6 mm gap all round them) and
+    sideways through the cable window (a 9 mm slot). You cannot see most of this support from straight above.
+  - None on the groove's flanks, the lugs' outsides or the spigot's outside (blocked). The groove's load flank is a 60°
+    overhang, 1.5 mm tall, printed without support: expect about 0.2 mm of droop.
 - **After printing:**
-  1. Pull the support out of the dish.
+  1. **Remove the support.** Tools: long-nose pliers, a hooked pick or a bent paper clip, a small flat screwdriver.
+     1. Under the dish: slide the screwdriver under the thin layer at the rim and peel it off outward, all round. Pick
+        the small pieces out of the recesses in the RS02 face.
+     2. Inside: hold the hub with the lugs up and look down the spigot's bore. The trunks stand in a ring between the six
+        bosses and the outer wall, under the ledge. Grip each trunk with the pliers low down, twist it to break it off the
+        floor, and lift it out through the gap round the bosses. Work round the ring; there are about a dozen clumps.
+     3. Hook out what is left under the ledge with the pick, pulling toward the centre. The cable window is a second way
+        in for the pieces near it.
+     4. Run a fingertip or the pick round under the ledge and along the pocket's floor: nothing loose may stay in, because
+        the yaw cable passes through this pocket. The underside of the ledge will be rough; that face fits nothing.
+     5. The dish floor is where the cable loop slides: scrape off any nubs and rub it smooth with fine paper.
   2. **Gauge both lug holes with a 3.8 mm drill shank.** If it does not pass freely, clear the hole by hand with a
      3.8 mm drill. The M3 bolt must be free in these holes: the arm's plates carry the load, and at the elbow stop the
      shank comes within 0.10 mm of the wall.
