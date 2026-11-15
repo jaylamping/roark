@@ -116,24 +116,26 @@ the single-passage total, so no split is needed there.
 Bend radius: the coil under the cap is flat and bends in its own plane, at r 22 and up. The 25–30 mm dynamic radius applies
 to a round bundle and doesn't apply there.
 
-### Drop splices and fuses in the arm (checked 2026-11-15)
+### Drop splices and fuses in the arm (checked 2026-11-15; fuses changed by Joey 2026-11-15)
 
 Sources: the trunk spec, marengo `hardware/electrical/wiring/left-arm-trunk/README.md` and `BUY_LIST.md` (option B: spliced trunk,
-inline 58 V Littelfuse 997 MINI fuse on every drop, XT30(2+2)-F plug on each RS02 / RS00).
+XT30(2+2)-F plug on each RS02 / RS00). The fuses are now per roark PR 93 (`HARNESS_INTERFACE.md`).
 
+- **Fuses below the shoulder (Joey, 2026-11-15 18:27Z):** ONE 10 A fuse in our neck, just below the yaw joint (Littelfuse
+  0997010.WXN, 58 V, standard MINI, in one inline holder on the 18 AWG pair). Apart from it there is only the hand's 3 A.
+  **The elbow RS02's 5 A drop fuse and the 5 A S4 segment fuse are dropped.**
 - **The elbow RS02's own cable ends inside the upper arm.** It is the M14 drop: from the XT30(2+2)-F plugged into the RS02's
-  socket at the ring window, up the neck, at most 150 mm, to the **M14 splice** on the trunk. Per the trunk spec that splice is at
-  the shoulder end of the upper arm.
-  - The M14 splice has two inline fuse holders: the 5 A drop fuse, and the 5 A segment fuse for the elbow crossing (S4).
-  - The splice lump is about 6 mm across, with its four conductors staggered 10 mm apart.
-- **Room in the halves: yes, no change needed.**
-  - The neck cavity, halves closed, is 1438-3393 mm² at every 5 mm from Y 250 to 295.
-  - It takes two inline holders side by side (assumed 15 × 10 mm in section and about 38 mm long; Joey to check the holders he
-    buys) beside the 3.5 × 13 bundle reserve.
+  socket at the ring window, up the neck, at most 150 mm, to the **M14 splice** on the trunk (no holder beside it now). The splice
+  lump is about 6 mm across, its four conductors staggered 10 mm apart.
+- **It all fits, with no change to the halves** (`../reviews/upper-arm/20261115_elbow-cable/OPTION_C_FUSE.md`): the 10 A holder,
+  the M14 splice, the plug break and the RS02's cable beside the 3.5 × 13 bundle reserve.
+  - The holder body stands in Y 251-290, 12-51 mm below the hub seat (Y 302).
+  - It is lashed to the bundle, which is tied at the existing tie bridge.
   - A drop of up to 150 mm from the plug, at about Y 252, reaches a splice anywhere in Y 255-295.
-- **Fuse change: only by opening the front half.** That means 2 seam screws and 2 lug bolts; the ring and plates stay with the
-  back half and the hub. There is no hatch, and adding one would change the halves, so the front half is the cover the trunk spec
-  asks for ("put each fuse holder where a hatch or cover gives access").
+- **Fuse change: front half off, arm on the robot, hub left on the motor.** That means 2 seam screws and 2 lug bolts, all from
+  the back; the ring and plates stay with the back half and the hub. **Support the forearm while the front half is off.** There
+  is no hatch, and adding one would change the halves, so the front half is the cover the trunk spec asks for ("put each fuse
+  holder where a hatch or cover gives access").
 - **Forearm yaw RS00 (M15 drop, 3 A fuse, the 120 Ω terminator, the hand drop):** all in the forearm, on the static side.
   - The trunk spec found little room there ("RS00 fills it").
   - That is an open item for the forearm rebuild (a pocket for a holder, the splice and the hand drop's XT30 cap). It does not touch

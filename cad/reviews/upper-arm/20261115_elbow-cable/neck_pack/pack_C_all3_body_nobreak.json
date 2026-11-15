@@ -1,0 +1,70 @@
+{
+ "variant": "C_all3_body_nobreak",
+ "margin": 0.5,
+ "cavity_mm2": {
+  "300": 806,
+  "295": 2817,
+  "290": 2377,
+  "285": 2503,
+  "280": 2203,
+  "275": 1787,
+  "270": 1455,
+  "265": 1835,
+  "260": 1635,
+  "255": 1605,
+  "250": 1771,
+  "245": 735,
+  "240": 399,
+  "235": 431,
+  "230": 0
+ },
+ "partial": [
+  {
+   "name": "holder_M14_drop_5A",
+   "w": 10,
+   "h": 15,
+   "length": 38,
+   "y_top": 290.0,
+   "y_bot": 253.0,
+   "x": 165.0,
+   "z": -8.0,
+   "from_hub_end_face_Y302": 12.0
+  },
+  {
+   "name": "RS02_cable_dia7",
+   "w": 7,
+   "h": 7,
+   "length": 30,
+   "y_top": 288.0,
+   "y_bot": 259.0,
+   "x": 161.0,
+   "z": 12.0,
+   "from_hub_end_face_Y302": 14.0
+  },
+  {
+   "name": "holder_S4_segment_5A",
+   "w": 10,
+   "h": 15,
+   "length": 38,
+   "y_top": 286.0,
+   "y_bot": 249.0,
+   "x": 177.0,
+   "z": -8.0,
+   "from_hub_end_face_Y302": 16.0
+  },
+  {
+   "name": "M14_splice_lump",
+   "w": 8,
+   "h": 8,
+   "length": 40,
+   "y_top": 290.0,
+   "y_bot": 251.0,
+   "x": 160.0,
+   "z": 4.0,
+   "from_hub_end_face_Y302": 12.0
+  }
+ ],
+ "trials": 400,
+ "all_items_placed_in": 0,
+ "example": null
+}

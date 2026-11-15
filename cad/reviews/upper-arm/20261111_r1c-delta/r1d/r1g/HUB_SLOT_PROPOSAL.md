@@ -39,7 +39,7 @@ The bundle bends across its thin direction (2.6) in the tunnel's 4.5 plane, neve
 
 - **Nothing of ours is above Y 302.6.** That covers the halves' end face (Y 302), the shim ring (r 36.2-38.4, Y 301.3-302), the
   lug bolts and their heads and tool access (lugs at Y 288-296, bolts along Z, heads on our back posts), the RS02 ring (at the
-  elbow), and the M14 splice and fuse holders (neck, Y 255-295).
+  elbow), and the M14 splice and the 10 A fuse holder (neck, Y 255-295; fuses per Joey 2026-11-15).
   - The thicker centre plate (down to about Y 312), the filled pocket and the thicker tubes are all above that.
   - The bundle in the bore runs below Y 309.1, so it stays 2.9 or more under the thicker plate.
 - **The Dia 10.8 tube at 98 deg (r 12) against the bundle**, flat 8.8 × 2.6:
@@ -55,7 +55,7 @@ The bundle bends across its thin direction (2.6) in the tunnel's 4.5 plane, neve
 
 1. With the hub on the bench, thread the bare trunk wires from the dish side, one or two at a time, through the knee into the bore
    and out at Y 298.
-2. Make the M14 splice and fuse holders in our neck, lay the hub in the back half, route up the neck, close the front half: our
+2. Make the M14 splice and fit the 10 A fuse holder in our neck, lay the hub in the back half, route up the neck, close the front half: our
    order, unchanged.
 - No plug or fuse holder passes the tunnel.
 - **Removing the arm** then means unsoldering at M14, unless there is a joint break inside the neck. The trunk spec's optional
