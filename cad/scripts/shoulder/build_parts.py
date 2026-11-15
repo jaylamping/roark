@@ -888,7 +888,12 @@ def build_fork_front():
                 u_, n_ = (math.cos(t_), -math.sin(t_)), (math.sin(t_), math.cos(t_))      # (Y, Z): along the key, across it
                 y0_ = SEAT_Y[1] - (RS02_SEAT_DEPTH - 1.5 if RS02_SEAT_FIX else 2.0)      # 1.5 above the screw seat either way: the slot's low corner stays off the seat
                 pts = [(xk, y0_ + sy * _ar * n_[0] + L_ * u_[0], zk + sy * _ar * n_[1] + L_ * u_[1]) for sy, L_ in ((1, 0.0), (1, 46.0), (-1, 46.0), (-1, 0.0))]
-                extrude(d, xsk(d, xk, 'KEY_SLOT', lambda s_, pts=pts: s_.poly(pts)), 'KEY_SLOT', 2 * _ar, X, cut=True, mode=MID)
+                if KEY_ROUND:      # a round tunnel of the same clear width along the key's line, in place of the square-ended slot:
+                    # the slot's flat end and long square corners stand 3.9 mm from the screw's axis, where the bolted case reads lowest
+                    half = [(xk, y0_ + L_ * u_[0] + w_ * n_[0], zk + L_ * u_[1] + w_ * n_[1]) for L_, w_ in ((0.0, 0.0), (46.0, 0.0), (46.0, _ar), (0.0, _ar))]
+                    revolve(d, xsk(d, xk, 'KEY_SLOT', lambda s_, half=half: (s_.poly(half), s_.cline(half[0], half[1]))), 'KEY_SLOT', cut=True)
+                else:
+                    extrude(d, xsk(d, xk, 'KEY_SLOT', lambda s_, pts=pts: s_.poly(pts)), 'KEY_SLOT', 2 * _ar, X, cut=True, mode=MID)
         elif not NOACC:
             extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, SEAT_Y[1] - 3.5), 3.5) for a_ in RS02_ACCESS_ANG]),
                     'RS02_ACCESS', 140.0, Y, cut=True)
@@ -1004,13 +1009,17 @@ def build_fork_front():
             with Sk(d, plane(d, 'Z', cz, f'P_RS02_CB{i_}'), f'RS02_CB{i_}') as s_:
                 sm_ = d.SketchManager
                 Pt = lambda dx_, y_: s_.p((cx + dx_, y_, cz))
-                A_, B_, C_, D_, E_ = Pt(0.0, ys_), Pt(3.5, ys_), Pt(4.5, ys_ + 1.0), Pt(4.5, ys_ + 10.0), Pt(0.0, ys_ + 10.0)
-                M_ = Pt(3.5 + math.sqrt(0.5), ys_ + 1.0 - math.sqrt(0.5))      # the fillet's mid point: a three-point arc has one way round only
+                rr_ = RS02_SEAT_R_CHEEK if a in RS02_ACCESS_ANG else 1.0      # the two screws under the cheek can take a larger round
+                A_, B_, C_, D_, E_ = Pt(0.0, ys_), Pt(3.5, ys_), Pt(3.5 + rr_, ys_ + rr_), Pt(3.5 + rr_, ys_ + 10.0), Pt(0.0, ys_ + 10.0)
+                M_ = Pt(3.5 + rr_ * math.sqrt(0.5), ys_ + rr_ - rr_ * math.sqrt(0.5))      # the fillet's mid point: a three-point arc has one way round only
                 for u_, v_ in ((A_, B_), (C_, D_), (D_, E_), (E_, A_)):
                     sm_.CreateLine(u_[0], u_[1], 0, v_[0], v_[1], 0)
                 sm_.Create3PointArc(B_[0], B_[1], 0, C_[0], C_[1], 0, M_[0], M_[1], 0)
                 s_.cline((cx, ys_ - 5.0, cz), (cx, ys_ + 15.0, cz))
-            revolve(d, s_.feat, f'RS02_CB{i_}', cut=True, lo=0.5)
+            try:
+                revolve(d, s_.feat, f'RS02_CB{i_}', cut=True, lo=0.5)
+            except SystemExit as e_:      # a seat on the ring's top with nothing standing beside it: no cut to make
+                log(f'  RS02_CB{i_}: nothing to cut ({e_})')
     else:
         extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_CB', lambda s: [s.circle(ypt(36.5, a, SEAT_Y[1] - 3.5), 3.3) for a in RS02_SCREWS]), 'RS02_CB', 10, Y, cut=True)
     extrude(d, ysk(d, SEAT_Y[0] - 1, 'SOCKETS', lambda s: [sector(s, lambda r, a: ypt(r, a, SEAT_Y[0] - 1), 30.0, 40.5, a0, a1, 1.5) for a0, a1 in SOCKET_POCKETS]),

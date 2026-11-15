@@ -1009,7 +1009,7 @@ _ss = STOP_SLOT
 _ta, _th = _ss['tooth_angle'], _ss['tooth_half']
 def _rp(r, a, z):
     return (RX + r * math.cos(math.radians(a)), RY + r * math.sin(math.radians(a)), z)
-STOP_F = 60000.0 / 35.0
+STOP_F = float(os.environ.get('STOP_TQ', '60')) * 1000.0 / 35.0      # STOP_TQ: the roll torque at the stop, N.m (60 = the RS03's peak; 17 = the controller's limit near the stops)
 CASES['STOP_A2_TOOTH'] = dict(part='stop_fr', el=1.5,
                               fix=[('fixed', ('plane', (RX, 356.9, JZ0), None, 'on')), ('fixed', cyl(2.25, [RX - 25, 350, -70, RX + 25, 364, JZ0 + 1]))],
                               forces=[(('plane', _rp(35.0, _ta - _th, -37.0), None, 'on'), STOP_F, None)],
