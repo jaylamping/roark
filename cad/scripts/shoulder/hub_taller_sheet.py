@@ -27,7 +27,7 @@ from swk import CAD, WIP
 from yaw_cable_section import section
 
 H = 3.0
-LOOKN = 'hubT30A'
+LOOKN = 'hubT31'
 OUT = CAD.parent / 'hardware' / 'shoulder' / 'study-20261111' / 'checks' / 'hub_print' / 'HUB_TALLER_CENTRE.png'
 T = WIP / 'taller_views'
 COL = dict(hub='#3b4a5a', rs02='#c9ccd1', fork_front='#b9a27c', fork_rear='#b9a27c', arm='#e6e6e3', add='#2ca02c')

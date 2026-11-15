@@ -1,6 +1,6 @@
 #!/bin/bash
 # Adopt hub rev E1 as THE hub part, in one step. Rev E1 = rev D3c7 with, at the top (hub_candidate2.py):
-#   - the centre 2 mm taller (cable gap under the RS02 7.5 mm; the hub and the arm sit 2 mm lower on the yaw axis),
+#   - the centre 3 mm taller (cable gap under the RS02 8.5 mm; the hub and the arm sit 3 mm lower on the yaw axis),
 #   - the six through-slits in the top (r 19.0-19.5) filled,
 #   - the inner pocket filled solid, the centre plate 4 mm thicker, the six boss tubes dia 10.8,
 #   - the cable slot 4.5 x 11 as a dog-leg clear of the step ring, with rounded mouth, knee and corners,
@@ -14,7 +14,7 @@
 #   3. Checks the rebuilt STL against the candidate: the same file, or the same surface within 0.01 mm.
 #   4. Replaces cad/exports/shoulder/shoulder_hub_left.STEP/.STL, records them, removes the candidate files and their
 #      manifest entries, runs the layout check.
-#   5. Runs the clearance sweep with the arm 2 mm lower (UA_SHIFT_Y=-2). No SolidWorks may be in set-up beside it.
+#   5. Runs the clearance sweep with the arm 3 mm lower (UA_SHIFT_Y=-3). No SolidWorks may be in set-up beside it.
 # The commit is left to the operator (as Joey, with CAD_WRITER set). The print file is made separately (hub_plate.py).
 set -e
 REPO=/j/code/roark-wt/shoulder-study
@@ -40,7 +40,7 @@ $CL claim shoulder-study-fea --worktree 'J:\code\roark-wt\shoulder-study' --stat
 trap '$CL release shoulder-study-fea > /dev/null 2>&1' EXIT
 echo "adoption of hub rev E1: build start $(date +%T)" >> $L
 unset LOOK
-SW_VISIBLE=0 HUB_ADOPT=1 TOP_RAISE=2.0 SW_STATE_NAME=.sw_instance_pid_adoptE1 $PY capped.py --mb 6144 -- $PY -u hub_candidate2.py > $W/build_adopt_revE1.txt 2>&1 &
+SW_VISIBLE=0 HUB_ADOPT=1 TOP_RAISE=3.0 SEAT_Y=299.86 SW_STATE_NAME=.sw_instance_pid_adoptE1 $PY capped.py --mb 6144 -- $PY -u hub_candidate2.py > $W/build_adopt_revE1.txt 2>&1 &
 pid=$!
 while kill -0 $pid 2>/dev/null; do
   SP=$(cut -d" " -f1 $W/.sw_instance_pid_adoptE1 2>/dev/null)
@@ -48,7 +48,7 @@ while kill -0 $pid 2>/dev/null; do
   sleep 5
 done
 wait $pid
-for f_ in "POCKET_FILL_A1: added" "POCKET_FILL_B2: added" "NEW_WIN: cut" "WIN_MOUTH" "SLIT_FILL: added" "PLATE_THICK: added" "TUBE_THICK: added" "TOP_RAISE: added" "STEP_FILLET: added" "moved -2.0 in Y"; do
+for f_ in "POCKET_FILL_A1: added" "POCKET_FILL_B2: added" "NEW_WIN: cut" "WIN_MOUTH" "SLIT_FILL: added" "PLATE_THICK: added" "TUBE_THICK: added" "TOP_RAISE: added" "STEP_FILLET: added" "moved -3.0 in Y" "seat-face hole edges: none" "head seats at Y 299.86"; do
   grep -q "$f_" $W/build_adopt_revE1.txt || { echo "feature missing from the build log ($f_): stopping"; exit 1; }
 done
 grep "integrity:" $W/build_adopt_revE1.txt | tail -1 | grep -q "PASS" || { echo 'the hub STL failed the integrity check: stopping'; exit 1; }
@@ -77,7 +77,7 @@ cp cad/_wip/shoulder-pass1/step/hub.step cad/exports/shoulder/shoulder_hub_left.
 cp cad/_wip/shoulder-pass1/stl/hub.stl cad/exports/shoulder/shoulder_hub_left.STL
 for f in STEP STL; do
   C:/Users/holly/AppData/Local/Programs/Python/Python312/python.exe tools/cad/record_export.py \
-    exports/shoulder/shoulder_hub_left.$f shoulder/left/shoulder_hub_left.SLDPRT --settings "rev E1: centre 2 mm taller, top slits filled, pocket solid, plate and boss tubes thicker, dog-leg cable slot 4.5 x 11; hub_candidate2.py on the rev D3c7 part" > /dev/null
+    exports/shoulder/shoulder_hub_left.$f shoulder/left/shoulder_hub_left.SLDPRT --settings "rev E1: centre 3 mm taller, top slits filled, pocket solid, plate and boss tubes thicker, head seats for M4 x 30 with one washer, dog-leg cable slot 4.5 x 11; hub_candidate2.py on the rev D3c7 part" > /dev/null
 done
 git rm -q --ignore-unmatch cad/exports/shoulder/shoulder_hub_left_revE1_candidate.STEP cad/exports/shoulder/shoulder_hub_left_revE1_candidate.STL \
   cad/exports/shoulder/shoulder_hub_left_revE1_candidate_armframe.STEP cad/exports/shoulder/shoulder_hub_left_revE1_candidate_armframe.STL
@@ -96,9 +96,9 @@ print('manifest: candidate entries removed')
 PYEOF
 $PY tools/cad/check_cad_layout.py $REPO/cad
 
-# 5. the sweep with the arm 2 mm lower
+# 5. the sweep with the arm 3 mm lower
 cd $REPO/cad/scripts/shoulder
 echo "adoption of hub rev E1: clearance sweep start $(date +%T)" >> $L
-UA_SHIFT_Y=-2.0 CLEAR_JSON=clearance_adopt_hubE1.json $PY capped.py --mb 6144 -- $PY check_clearance.py > $W/clearance_adopt_hubE1.txt 2>&1
+UA_SHIFT_Y=-3.0 CLEAR_JSON=clearance_adopt_hubE1.json $PY capped.py --mb 6144 -- $PY check_clearance.py > $W/clearance_adopt_hubE1.txt 2>&1
 echo "adoption of hub rev E1: sweep done $(date +%T) exit $?" >> $L
 echo 'Rev E1 adopted in the working tree. Next: read the sweep, make the print file, commit as Joey, push.'

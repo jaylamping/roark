@@ -1250,3 +1250,67 @@ unchanged.
 | Elbow stop, both ways of carrying the sideways load | 2.49 | 1.2 |
 | Hub top, bolted contact (read of record) | 1.47 | 1.2 |
 
+## Rev E1 candidate: taller, solid top (2026-11-15, exported, not adopted)
+
+`cad/exports/shoulder/shoulder_hub_left_revE1_candidate.STEP/.STL` (assembly frame: the hub 3 mm lower on the yaw axis)
+and `..._candidate_armframe.STEP/.STL` (the same solid in the arm's present coordinates). Armframe STL SHA-256
+`ec8c8a592d71f1dca96f6f40d940408df3c612e0657353c72f51756744874fb4`; assembly-frame STL
+`1392a808ffab59eb052bf44a83f6eb2ebd02b79af58a322f63125824a091a190`. 90,700 mm³, 115.2 g, watertight, one shell.
+Built by `hub_candidate2.py` on a copy of the rev D3c7 part. Sheet: [hub_print/HUB_TALLER_CENTRE.png](hub_print/HUB_TALLER_CENTRE.png).
+
+**Why.** Three things found on 2026-11-15:
+1. **Rev D3c7 has six slits right through its top.** The imported arm hub's top plate ends at r 19.0 between its six
+   screw spokes and the shoulder's step ring was started at r 19.5: six arcs 0.5 mm wide, about 40° each, through the
+   whole 4 mm plate. The screw plate joined the rest of the hub by six bridges about 20° wide.
+2. **The read-out of the hub top was wrong in two ways.** The figure of record (the average round the single peak
+   node: 1.47) depends on the mesh, and the selection included the bottom face of the aluminium stand-in for the RS02
+   flange, whose nodes at its thread radius were read against PETG (the "hole rims at 0.4 to 1.0"). The read-out now
+   is the worst 0.5 mm ball over hub nodes only (`hub_top_post.py`, `hub_hole_post.py`; the nodes on the seat plane
+   itself are left out, so the hub's surface layer is read from 0.3 mm below).
+3. **On that read-out rev D3c7's top is at 0.4 to 0.7,** at the slits.
+
+**What rev E1 changes** (nothing below Y 302 in the arm's coordinates; the arm thread's check found its side identical):
+the centre 3 mm taller (Joey: cable gap 8.5 mm); slits filled; the pocket under the spigot's ledge solid; the centre
+plate 4 mm thicker downward between the screw tubes (11 mm in all); the tubes dia 10.8; head seats for M4 × 30 with one
+flat washer (Y 299.86 in the arm's coordinates, grip 23.0, 6.2 mm into the RS02); the cable slot 4.5 × 11 as a dog-leg
+that no longer cuts the step ring (down through the dish floor at r 27.0-31.5, then 50° inward, out through the bore
+wall at Y 302.1-309.1), mouth rounded 1.5, knee rounded 2.0, exit lip cut square; R 2 from the step wall into the
+floor; square hole edges on the seat face.
+
+**Hub top, bolted case Ah** (six M4 bolt connectors, 345 N each, contact on the seat, 372 N and 22.9 N·m with yaw +17;
+Intel direct sparse). Safety factor, worst 0.5 mm ball / 1 mm ball, hub nodes only:
+
+| | Layer tension | Shear across layers | Von Mises |
+|---|---|---|---|
+| Rev D3c7 (element 2.6) | 0.65 / 0.91 | 0.38 / 0.39 | 0.73 / 0.74 |
+| Rev D3c7 with only the slits filled (2.6) | 1.02 / 1.02 | 0.84 / 0.84 | 1.15 / 1.15 |
+| Rev D3c7 (element 4.5, control) | 0.91 / 1.05 | 0.44 / 0.48 | 0.78 / 0.85 |
+| **Rev E1, final shape** (global element 6.0, fine zones as before) | **3.16 / 3.54** | **2.07 / 2.68** | **3.68 / 4.20** |
+| Rev E1 at 1500 N per screw (heavy-handed, about 1.2 N·m), 0.5 chamfer shape, away from the holes | 2.82 | 1.53 | 2.20 |
+| Rev E1 with the flange touching only r 6.75-14.9 (the vendor model's flange), away from the holes | 3.68 | 1.84 | 2.90 |
+
+- **Round the cable tunnel:** 2.76 / 2.38 / 2.23. Its four long corners are square (filleting them took SolidWorks
+  down) and are not a low spot. **Wall under the groove:** 5.7 / 4.8 / 7.4 (rev D3c7 2.7 / 2.5 / 3.8).
+- **Hole edges on the seat face.** With a 0.5 mm chamfer the foot of the chamfer read 0.66 in shear (1.27 von Mises):
+  the flange then bears on a ring beside an unloaded cone. 1.0 chamfer: 1.11. A 0.2 × 1.0 relief ring round the
+  chamfer: 6.7. **Square edges, as rev D3c7 has them: 6.9 / 4.9, the best,** and what E1 has.
+- **Under the screw heads** (the tube ends): at 345 N with a washer, von Mises 4.3 and bearing 2.9 on the 0.5 mm ball;
+  at 1500 N 1.25 and 0.83 with a washer, 1.07 and 0.57 without. The model's screws are tied rigidly to the hole edge
+  there, and on that tie ring the final run reads 0.59 in layer tension (0.92 on 1 mm); rev D3c7 reads 0.64 at the same
+  place. A real washer spreads 345 N over 49 mm² (7 MPa).
+- **Lug gate** (G90 + yaw +17 at the arm's face totals, 1.19 M nodes): governing lug shear **1.56**, layer 1.61
+  (rev D3c7 1.44 / 1.58). **Elbow stop:** 3.10 (2.49). Both on the first E1 shape; the later edits do not touch the lugs.
+- **Mesh:** rev E1 has more solid than rev D3c7 and passes the 14 GB limit of the direct solver at element 2.6, so it
+  ran at a global 6.0 with the same fine zones (0.5 at the lug holes, 0.7 at the groove); the control row shows what
+  that does to rev D3c7.
+- **Print** (one slice, same settings and blockers): 113.8 g, 3 h 12 min, 4.9 g of support, all of it in the lowest
+  4.6 mm on the plate side. Nothing inside the hub. A 4 mm rod clears both legs of the tunnel.
+- **Cable:** the 18 AWG bundle with the third pair (3.8 × 7.2 stacked, or 8.8 × 2.6 flat as the arm lays it) passes
+  the 4.5 × 11 tunnel; the arm thread's route check gives 3.64 mm smallest clearance with the bundle hanging at r 21.5.
+- **Not verified:** a real RS02's flange face and thread depth; the yaw rig; a print.
+
+| Gate item | Rev D3c7 | Rev E1 | Target |
+|---|---|---|---|
+| G90 + yaw at the arm's face totals, governing lug | 1.44 | 1.56 | 1.5 |
+| Elbow stop | 2.49 | 3.10 | 1.2 |
+| Hub top, bolted, worst 0.5 mm ball (layer / shear / von Mises) | 0.65 / 0.38 / 0.73 | 3.16 / 2.07 / 3.68 | 1.5 |
