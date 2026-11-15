@@ -526,3 +526,30 @@ sideways 2.29 / 2.78 layer, 1.22 / 1.73 shear. Rest of the fork in all these run
 
 Result files written since 2026-11-15 carry each node's body (`body`, `body_names`), so a read-out no longer has to
 tell bodies apart by position.
+
+## The six-screw joint on the adopted set, with nothing left out (2026-11-15)
+
+The audit read 1.07 on the 0.5 mm ball under a joint screw's head at the stop, at a rigid tie. Run again on the parts
+adopted on 2026-11-15 (`J_*` cases, two bodies, six preloaded M4 with rigid head ties, contact on the pad, Intel direct
+sparse), read body by body from the body record with **nothing left out** (`joint_body_post.py`; only the 4 mm at the
+fixed boss face is out of "the rest"). Lowest safety factors, worst 0.5 mm / 1 mm ball:
+
+| Case | Preload per screw | Lowest reading | Where |
+|---|---|---|---|
+| Design load, moment about X | 400 N | von Mises **1.54 / 2.17** | fork rear, screw at X +26 (head seat) |
+| | | layer **1.76 / 2.32** | fork front, insert boss |
+| | 200 N | all 1.96 or better | |
+| Design load, moment about Z | 400 N | von Mises **1.50 / 2.11** | fork rear, screw at X +26 |
+| Roll stop at 17 N·m | 400 N | shear **1.15 / 2.39** | fork rear, screw at X +17 |
+| | | layer tension **1.04 / 1.93** | fork front, screw at X −27 |
+| | | layer, either sign 0.94 / 1.68 | fork rear, screw at X +20: compression under the head |
+| | 200 N | layer tension **1.29 / 2.34** | fork front, screw at X −27 |
+| | | shear 1.71 / 2.41 | fork rear |
+
+- Every 1 mm reading is 1.93 or better. Every tension or shear reading on the 0.5 mm ball is 1.04 or better. The one
+  figure under 1 is compression under a screw head at a rigid tie, where the model over-reads and PETG does not split.
+- Less preload reads better at the stop: 200 N per screw is enough to keep the joint closed, and 400 N only adds to the
+  stress under the heads. That agrees with **snug only** for these screws.
+- **Verdict: the joint passes as it is. No shape change.** The head seats are read at rigid ties, not at washers as
+  bodies; that is the remaining over-reading, on the safe side.
+- Not done: the joint at a 60 N·m stall (not a design case, Joey's decision); a printed joint loaded on the bench.
