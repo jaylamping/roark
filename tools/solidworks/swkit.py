@@ -31,7 +31,7 @@ import pythoncom
 from win32com.client import VARIANT
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sw_instance import close_welcome, launch  # noqa: E402
+from sw_instance import STALL_S, close_welcome, launch, stall_watch  # noqa: E402
 
 m = 1e-3
 NUL = VARIANT(pythoncom.VT_DISPATCH, None)       # "no object" for an optional COM argument; plain None is refused
@@ -86,12 +86,15 @@ class job:
     both for memory and for a launch queued behind a busy instance. j.sw is the SldWorks object, j.inst the
     sw_instance.Instance (j.inst.pid for claims.py), j.simulation() loads the Simulation add-in.
     The job changes no SolidWorks setting: export() sets the export options and puts them back.
+    A call that does not come back while SolidWorks sits idle is written up after stall_s seconds (stall_watch: a
+    stall_<pid>_<time>.txt beside runs.log, and a "STALLED" line in the claims folder's runs.log). Nothing is stopped.
     Every job adds one line to runs.log beside the script (or in log_to): when it started, how long it ran, and
     whether it ended ok or with which error.
     """
 
-    def __init__(self, min_free_gb=MIN_FREE_GB, visible=False, wait_s=0, log_to=None):
+    def __init__(self, min_free_gb=MIN_FREE_GB, visible=False, wait_s=0, log_to=None, stall_s=STALL_S):
         self.min_free_gb, self.visible, self.wait_s = min_free_gb, visible, wait_s
+        self.stall_s, self.watch = stall_s, None
         self.inst = self.sw = None
         self.log_to = Path(log_to) if log_to else Path(sys.argv[0] or '.').resolve().parent
         self.t0 = time.time()
@@ -129,12 +132,15 @@ class job:
                 time.sleep(20)
         self.sw = self.inst.sw
         log('SolidWorks pid', self.inst.pid, 'free GB', round(free_gb(), 1))
+        self.watch = stall_watch(self.inst.pid, self.log_to, self.stall_s).__enter__()
         return self
 
     def simulation(self):
         return self.inst.load_simulation()
 
     def __exit__(self, et, ev, tb):
+        if self.watch is not None:       # before the close: a slow exit is not a stall
+            self.watch.__exit__(et, ev, tb)
         self._record('ok' if et is None else f'FAILED {et.__name__}: {ev}')
         log('closing pid', self.inst.pid, 'committed MB', self._private())
         self.inst.close()

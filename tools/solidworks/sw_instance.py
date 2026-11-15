@@ -10,6 +10,7 @@ Read RULES.md first. launch() starts a new SLDWORKS.exe and attaches through the
 Running Object Table entry for that PID, so it can never reach another session's
 instance. Never use GetActiveObject or Dispatch('SldWorks.Application').
 """
+import atexit
 import ctypes
 import ctypes.wintypes as wt
 import msvcrt
@@ -20,6 +21,8 @@ import sys
 import tempfile
 import threading
 import time
+import traceback
+from pathlib import Path
 
 import psutil
 import pythoncom
@@ -33,17 +36,18 @@ SIM_DLL = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS\Simulation\cosworks.dll"
 SIM_DIR = os.path.normcase(os.path.dirname(SIM_DLL))
 LOCK = os.path.join(tempfile.gettempdir(), "sw_instance_launch.lock")
 SOLVERS = ("cwanalysisproc.exe", "star.exe")
+STALL_S = 180  # a call out this long with SolidWorks idle is written up (stall_watch)
 SOLVE_LOCK = r"C:\joe\.fea_solve.lock"  # one large solve at a time on the CAD workstation (RULES.md, rule 6)
 
 
 class _LaunchLock:
     """Two SolidWorks processes started together can hang at startup, so launches queue across sessions."""
 
-    def __init__(self, timeout):
-        self.timeout = timeout
+    def __init__(self, timeout, path=LOCK, what="another SolidWorks launch"):
+        self.timeout, self.path, self.what = timeout, path, what
 
     def __enter__(self):
-        self.f = open(LOCK, "a+b")
+        self.f = open(self.path, "a+b")
         start = time.time()
         while True:
             try:
@@ -53,7 +57,7 @@ class _LaunchLock:
             except OSError:
                 if time.time() - start > self.timeout:
                     self.f.close()
-                    raise RuntimeError("timed out waiting for another SolidWorks launch to finish")
+                    raise RuntimeError(f"timed out waiting for {self.what} to finish")
                 time.sleep(1)
 
     def __exit__(self, *exc):
@@ -341,6 +345,211 @@ def close_welcome(pid):
     return len(hit)
 
 
+def windows(pid):
+    """This PID's top-level windows that say something: [(class, title, visible, enabled, [texts inside a dialog])].
+
+    Looks, never touches. A disabled main window means a modal dialog holds the instance; a "#32770" row is a dialog,
+    and its texts are what it asks.
+    """
+    rows = []
+
+    def find(h, _):
+        try:
+            if win32process.GetWindowThreadProcessId(h)[1] != pid:
+                return True
+            cls, title = win32gui.GetClassName(h), win32gui.GetWindowText(h)
+            texts = []
+            if cls == "#32770":
+                win32gui.EnumChildWindows(h, lambda c, _: texts.append(win32gui.GetWindowText(c)) or True, None)
+            if cls in ("IME", "MSCTFIME UI", "NVOpenGLPbuffer") or title == "hotWnd":
+                return True  # present in every instance, and say nothing
+            if title or cls in ("#32770", "swWelcomeScreen"):
+                rows.append((cls, title, bool(win32gui.IsWindowVisible(h)), bool(win32gui.IsWindowEnabled(h)), [t for t in texts if t]))
+        except win32gui.error:
+            pass  # a window destroyed between the listing and the look
+        return True
+
+    win32gui.EnumWindows(find, None)
+    return rows
+
+
+SIM_PROMPT_YES = "&Yes, continue to load SOLIDWORKS Simulation"
+
+
+def _answer_simulation_prompt(pid):
+    """Press Yes on this PID's "continue to load SOLIDWORKS Simulation?" prompt. Returns True if it was there.
+
+    SolidWorks asked it on 2026-11-15 when Simulation was loaded seconds after another instance of the same user had
+    loaded it or started up, and again in the next instance while one sat at the prompt or had been killed there. The
+    instance waits at it, hidden, for ever; Yes lets it carry on. Only that exact prompt, only in this PID.
+    """
+    hit = []
+
+    def find(h, _):
+        try:
+            if win32process.GetWindowThreadProcessId(h)[1] != pid or win32gui.GetClassName(h) != "#32770":
+                return True
+            kids = []
+            win32gui.EnumChildWindows(h, lambda c, _: kids.append(c) or True, None)
+            for c in kids:
+                if win32gui.GetWindowText(c) == SIM_PROMPT_YES:
+                    win32gui.PostMessage(c, win32con.BM_CLICK, 0, 0)
+                    hit.append(h)
+        except win32gui.error:
+            pass  # a window destroyed between the listing and the look
+        return True
+
+    win32gui.EnumWindows(find, None)
+    return bool(hit)
+
+
+def _say(*a):
+    print(time.strftime("%H:%M:%S"), *a, flush=True)
+
+
+def _holds_solve_lock(path=None):
+    """A sentence if this process or one of its parents holds the large-solve lock (rule 6), else ''. The lock is left
+    alone: released, a second large solve would start beside an instance that goes on the moment its dialog is answered."""
+    try:
+        with open(path or SOLVE_LOCK) as f:
+            lines = f.read().splitlines()
+        pid = int(lines[1])
+        me = psutil.Process()
+        if pid == me.pid or any(a.pid == pid for a in me.parents()):
+            return f"this script holds the large-solve lock {path or SOLVE_LOCK} ({lines[0]}): every other large solve waits behind it"
+    except (OSError, IndexError, ValueError, psutil.Error):
+        pass
+    return ""
+
+
+class stall_watch:  # noqa: N801 - reads as a verb at the call site
+    """with stall_watch(pid, folder): write a report when this thread makes no progress while SolidWorks sits idle.
+
+    A COM call has no timeout: when a hidden dialog holds the instance the script waits for ever and says nothing
+    (the Welcome dialog under a first STEP import, 2026-11-15, found only by hand). The watch looks every few seconds at
+    the processor time this script has used; when the script has used next to none for stall_s seconds, is not
+    standing in a wait of its own (a sleep() loop, a child process, an event), and the instance is neither solving nor using a core (a long mesh
+    or rebuild does), it writes stall_<pid>_<time>.txt into folder: where the script stands, the
+    instance's windows and dialog texts, and the end of its hidden-window log. One report per stall, one log line, and
+    one line in the claims folder's runs.log (outcome "STALLED ..."), so that tools/pc/sw_watch.py finds it even when
+    the job is later killed and never writes its own line. It stops nothing and changes nothing: ending a stuck instance
+    stays with its owner (playbook/01-session.md). swkit.job() runs one for its instance and
+    session() one for the script that holds an instance through it; stall_s=0 turns it off.
+
+    180 s: the hang it was written for never returns, the slowest call seen to sit idle and still come back is a
+    launch behind a busy instance (150 s, before the job has an instance to watch), and every long call that is
+    working (mesh, rebuild, solve, reading results) shows a solver process or a busy core and is passed over.
+    It costs the script nothing: a first version counted calls through sys.setprofile and made Python-heavy code six
+    times slower (measured 2026-11-15).
+    """
+
+    def __init__(self, pid, folder, stall_s=STALL_S, poll=5.0):
+        self.pid, self.folder, self.stall_s, self.poll = pid, Path(folder), stall_s, poll
+        self.reports, self._stop = [], None
+
+    def __enter__(self):
+        if not self.stall_s:
+            return self
+        self.tid = threading.get_ident()
+        self._stop = threading.Event()
+        threading.Thread(target=self._run, daemon=True).start()
+        return self
+
+    def __exit__(self, *exc):
+        if self._stop is not None:
+            self._stop.set()
+
+    def _where(self):
+        """(the watched thread's stack, the innermost line of it that is the script's own: file:line text)."""
+        frame = sys._current_frames().get(self.tid)
+        stack = traceback.extract_stack(frame) if frame is not None else []
+        lib = os.path.dirname(os.__file__)  # the standard library; win32com is in a site-packages
+        own = [f for f in stack if not f.filename.startswith((lib, "<")) and "site-packages" not in f.filename] or stack
+        return stack, (f"{Path(own[-1].filename).name}:{own[-1].lineno} {own[-1].line}" if own else "?")
+
+    def _waiting_on_purpose(self):
+        """True when the watched thread stands in a wait of the script's own making and not in a call into SolidWorks:
+        its innermost frame is inside the standard library (subprocess, threading, queue, socket: a child process, an
+        event, a lock) or is a line that calls sleep(. A COM call's innermost frame is win32com's, in site-packages."""
+        frame = sys._current_frames().get(self.tid)
+        stack = traceback.extract_stack(frame) if frame is not None else []
+        if not stack:
+            return False
+        lib, inner = os.path.dirname(os.__file__), stack[-1]
+        if inner.filename.startswith(lib) and "site-packages" not in inner.filename:
+            return True
+        return "sleep(" in (inner.line or "")
+
+    def _working(self):
+        """True while the instance is solving or using more than a tenth of a core: slow, not stuck."""
+        try:
+            return _solving(self.pid) or psutil.Process(self.pid).cpu_percent(interval=1.0) > 10.0
+        except psutil.Error:
+            return False
+
+    def _run(self):
+        def cpu():  # the script's processor time: the process's less this thread's, or a report would read as progress
+            return time.process_time() - time.thread_time()
+
+        seen, at, since, told = cpu(), time.time(), time.time(), False
+        while not self._stop.wait(self.poll):
+            try:
+                used, now = cpu() - seen, time.time()
+                seen, busy, at = seen + used, used > 0.02 * (now - at), now
+                if busy:  # the script is computing or making calls that come back
+                    since, told = now, False
+                    continue
+                idle = now - since
+                if idle < self.stall_s or told:
+                    continue
+                if self._waiting_on_purpose() or self._working():  # waiting on purpose, or SolidWorks is at work
+                    since = now
+                    continue
+                told = True
+                self._report(idle)
+            except Exception as ex:      # noqa: BLE001 - the watch must never be what breaks a job
+                _say(f'stall watch: {str(ex)[:120]}')
+
+    def _report(self, idle):
+        stack, where = self._where()
+        wins = windows(self.pid)
+        try:
+            with open(hider_log(self.pid), encoding='utf8') as f:
+                hidden = f.read().splitlines()[-30:]
+        except OSError:
+            hidden = ['(no hidden-window log)']
+        held = _holds_solve_lock()
+        path = self.folder / f'stall_{self.pid}_{time.strftime("%Y%m%d_%H%M%S")}.txt'
+        text = '\n'.join(
+            [f'{time.strftime("%Y-%m-%d %H:%M:%S %z")}  no progress for {idle:.0f} s at {where}',
+             f'script: {" ".join(sys.argv)}',
+             f'SolidWorks pid {self.pid}: answers {answers(self.pid)}, not solving, under a tenth of a core',
+             held or 'this script does not hold the large-solve lock',
+             '', 'windows (class | title | visible | enabled | dialog texts):']
+            + [f'  {c} | {t} | {v} | {e} | {k}' for c, t, v, e, k in wins]
+            + ['', 'hidden-window log, newest last:'] + ['  ' + h for h in hidden]
+            + ['', 'where the script stands:'] + [ln.rstrip() for ln in traceback.format_list(stack)])
+        try:
+            path.write_text(text + '\n', encoding='utf-8')
+        except OSError as ex:
+            path = f'(not written: {ex})'
+        self.reports.append(str(path))
+        try:                 # a job's five fields and the folder it ran in, where session() writes its runs
+            claims = Path(_claims().claims_dir())
+            claims.mkdir(parents=True, exist_ok=True)
+            with open(claims / 'runs.log', 'a', encoding='utf-8') as f:
+                f.write('\t'.join([time.strftime('%Y-%m-%d %H:%M:%S %z', time.localtime(time.time() - idle)), f'{idle:.0f} s',
+                                   ' '.join(Path(a).name for a in sys.argv) or '-', f'pid {self.pid}',
+                                   ' '.join(f'STALLED at {where}{"; HOLDS THE SOLVE LOCK" if held else ""}; report {path}'.split())[:300], os.getcwd()]) + '\n')
+        except Exception:    # noqa: BLE001 - the report file is written; a log line must not be what fails
+            pass
+        dialogs = [(t, k) for c, t, _v, _e, k in wins if c == '#32770'] or 'none listed'
+        disabled = any(not e for c, _t, _v, e, _k in wins if c.startswith('Afx:'))
+        _say(f'STALLED {idle:.0f} s at {where}; SolidWorks pid {self.pid} is idle'
+             + (', its main window disabled (a modal dialog holds it)' if disabled else '') + (f'; {held}' if held else '')
+             + f'; dialogs: {dialogs}; report: {path}')
+
+
 def _clear_journal_prompt(pid):
     """A third SolidWorks process stops at a modal 'journal file could not be created' prompt. Click OK on it.
 
@@ -596,7 +805,45 @@ class Instance:
         return round(psutil.Process(self.pid).memory_info().rss / 1e6)
 
     def load_simulation(self):
-        """Load the Simulation add-in in this instance. Returns its CosmosWorks object."""
+        """Load the Simulation add-in in this instance. Returns its CosmosWorks object.
+
+        The load takes the launch lock (it waits up to 300 s for it, then goes without), so that it does not run
+        beside another instance's load or startup: on
+        2026-11-15 a load that came seconds after another instance's load or startup stopped at a hidden "continue to
+        load SOLIDWORKS Simulation?" prompt, four times, for up to half an hour. What exactly raises the prompt is not
+        known (six deliberate overlaps did not), so while the load runs the prompt is also answered Yes in this PID;
+        that is what released every real case.
+        """
+        add = None
+        for prog in ("SldWorks.Simulation", "CosmosWorks.CosmosWorks"):  # already loaded: nothing to queue for
+            try:
+                add = self.sw.GetAddInObject(prog)
+            except Exception:  # noqa: BLE001 - not loaded
+                add = None
+            if add is not None:
+                return wc.dynamic.Dispatch(add.CosmosWorks._oleobj_)
+        done = threading.Event()
+
+        def answer():
+            while not done.wait(1.0):
+                if _answer_simulation_prompt(self.pid):
+                    _say(f"sw_instance: answered Yes to the 'continue to load SOLIDWORKS Simulation' prompt in PID {self.pid}")
+
+        threading.Thread(target=answer, daemon=True).start()
+        try:
+            try:
+                lock = _LaunchLock(300, LOCK).__enter__()
+            except RuntimeError:  # a launch queued behind a long solve holds the lock for as long: load without it
+                _say(f"sw_instance: PID {self.pid} loads Simulation without the launch lock, held for over 300 s")
+                return self._load_simulation()
+            try:
+                return self._load_simulation()
+            finally:
+                lock.__exit__()
+        finally:
+            done.set()
+
+    def _load_simulation(self):
         add = None
         for prog in ("SldWorks.Simulation", "CosmosWorks.CosmosWorks"):
             try:
@@ -1027,18 +1274,89 @@ def _session_pid(state):
     return None
 
 
+def _record_run(pid, t0):
+    """Write this script run to runs.log in the claims folder when the script ends: start, seconds, script, pid, "ok" or
+    the uncaught error, and the folder it ran in. swkit.job() writes such a line beside its script; scripts that hold
+    an instance through session() wrote none, so tools/pc/sw_watch.py could not see them fail (2026-11-15). Once per
+    process. raise SystemExit('FAIL ...') is how most scripts fail, and no hook sees it: sys.monitoring does, on
+    Python 3.12 and later; before that such an exit reads as ok. Never raises: a log line must not stop a script."""
+    if getattr(_record_run, "on", False):
+        return
+    _record_run.on = True
+    outcome, left, before = ["ok"], [None], sys.excepthook
+    try:
+        mon = getattr(sys, "monitoring", None)
+        if mon is not None and mon.get_tool(mon.PROFILER_ID) is None:
+            mon.use_tool_id(mon.PROFILER_ID, "sw_record_run")
+
+            def raised(_code, _offset, exc):
+                if isinstance(exc, SystemExit):
+                    left[0] = exc.code
+
+            def handled(_code, _offset, exc):
+                if isinstance(exc, SystemExit):
+                    left[0] = None  # the script caught it
+
+            mon.register_callback(mon.PROFILER_ID, mon.events.RAISE, raised)
+            mon.register_callback(mon.PROFILER_ID, mon.events.EXCEPTION_HANDLED, handled)
+            mon.set_events(mon.PROFILER_ID, mon.events.RAISE | mon.events.EXCEPTION_HANDLED)
+    except Exception:
+        pass
+
+    def hook(kind, err, tb):
+        outcome[0] = " ".join(f"{kind.__name__}: {err}".split())[:300]
+        before(kind, err, tb)
+
+    def write():
+        try:
+            if outcome[0] == "ok" and left[0] not in (None, 0):
+                outcome[0] = " ".join(f"SystemExit: {left[0]}".split())[:300]
+            folder = _claims().claims_dir()
+            os.makedirs(folder, exist_ok=True)
+            with open(os.path.join(folder, "runs.log"), "a", encoding="utf-8") as f:
+                f.write("\t".join([time.strftime("%Y-%m-%d %H:%M:%S %z", time.localtime(t0)), f"{time.time() - t0:.0f} s",
+                                   " ".join(os.path.basename(a) for a in sys.argv) or "-", f"pid {pid}", outcome[0],
+                                   os.getcwd()]) + "\n")
+        except Exception:
+            pass
+
+    sys.excepthook = hook
+    atexit.register(write)
+
+
+def _watch_session(pid):
+    """Start the stall watch for a script that holds its instance through session(). Once per process; the reports go
+    to the claims folder. Never raises."""
+    if getattr(_watch_session, "on", False):
+        return
+    _watch_session.on = True
+    try:
+        folder = Path(_claims().claims_dir())
+        folder.mkdir(parents=True, exist_ok=True)
+        watch = stall_watch(pid, folder, float(os.environ.get("SW_STALL_S", STALL_S))).__enter__()
+        atexit.register(watch.__exit__)
+    except Exception:  # noqa: BLE001 - a watch must not stop a script
+        pass
+
+
 def session(state_file, visible=False):
     """Reuse this session's instance across script runs, keyed by a state file the session owns.
 
-    `visible` applies only when a new instance is launched; an existing one keeps how it was started.
+    `visible` applies only when a new instance is launched; an existing one keeps how it was started. The script is
+    watched for a call that does not come back (stall_watch; SW_STALL_S=0 in the environment turns that off).
     """
-    state = str(state_file)
+    state, t0 = str(state_file), time.time()
     pid = _session_pid(state) if os.path.exists(state) else None
     if pid is not None:
-        return attach(pid)
+        _record_run(pid, t0)
+        inst = attach(pid)
+        _watch_session(pid)
+        return inst
     inst = launch(visible=visible)
     with open(state, "w") as f:
         f.write(f"{inst.pid} {inst.started!r}")
+    _record_run(inst.pid, t0)
+    _watch_session(inst.pid)
     return inst
 
 
