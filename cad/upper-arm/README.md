@@ -116,6 +116,38 @@ the single-passage total, so no split is needed there.
 Bend radius: the coil under the cap is flat and bends in its own plane, at r 22 and up. The 25–30 mm dynamic radius applies
 to a round bundle and doesn't apply there.
 
+### Drop splices and fuses in the arm (checked 2026-11-15)
+
+Sources: the trunk spec, marengo `hardware/electrical/wiring/left-arm-trunk/README.md` and `BUY_LIST.md` (option B: spliced trunk,
+inline 58 V Littelfuse 997 MINI fuse on every drop, XT30(2+2)-F plug on each RS02 / RS00).
+
+- **The elbow RS02's own cable ends inside the upper arm.** It is the M14 drop: from the XT30(2+2)-F plugged into the RS02's
+  socket at the ring window, up the neck, at most 150 mm, to the **M14 splice** on the trunk. Per the trunk spec that splice is at
+  the shoulder end of the upper arm.
+  - The M14 splice has two inline fuse holders: the 5 A drop fuse, and the 5 A segment fuse for the elbow crossing (S4).
+  - The splice lump is about 6 mm across, with its four conductors staggered 10 mm apart.
+- **Room in the halves: yes, no change needed.**
+  - The neck cavity, halves closed, is 1438-3393 mm² at every 5 mm from Y 250 to 295.
+  - It takes two inline holders side by side (assumed 15 × 10 mm in section and about 38 mm long; Joey to check the holders he
+    buys) beside the 3.5 × 13 bundle reserve.
+  - A drop of up to 150 mm from the plug, at about Y 252, reaches a splice anywhere in Y 255-295.
+- **Fuse change: only by opening the front half.** That means 2 seam screws and 2 lug bolts; the ring and plates stay with the
+  back half and the hub. There is no hatch, and adding one would change the halves, so the front half is the cover the trunk spec
+  asks for ("put each fuse holder where a hatch or cover gives access").
+- **Forearm yaw RS00 (M15 drop, 3 A fuse, the 120 Ω terminator, the hand drop):** all in the forearm, on the static side.
+  - The trunk spec found little room there ("RS00 fills it").
+  - That is an open item for the forearm rebuild (a pocket for a holder, the splice and the hand drop's XT30 cap). It does not touch
+    the halves.
+- **Through the hub slot: only the bare trunk segment S3** (power pair, CAN, reserve pairs). The M13 splice is at the yaw RS02
+  housing, outside our arm. M14 is inside the arm. No plug or fuse holder passes the slot.
+- **Mismatch to settle: the elbow segment's power wires.**
+  - The trunk spec has S4 as **2 × 18 AWG red + 2 × 18 AWG black, paralleled per rail** (for RS00 plus the future hand, about
+    6 A).
+  - The A3 study and the elbow cable rig assume **one 18 AWG pair**. Four power wires don't fit A3's strip: the capacity drops to
+    about 107 deg for 124 needed.
+  - One 18 AWG silicone pair carries 6 A comfortably, so the paralleling looks like margin, not a need.
+  - **Decision needed:** S4 as one 18 AWG pair (A3 works as studied), or as four wires (A3 needs rework).
+
 ### Elbow cable: findings for the elbow and forearm rebuild (2026-11-15)
 
 **Decision (Joey, 2026-11-15 05:05Z): option A3, the inside spiral, rig first.** The halves print only after the rig passes, the bench passes and the corrected hub exists. The outside back loop (11-08) is superseded, pending the rig.
