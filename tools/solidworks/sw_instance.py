@@ -10,6 +10,7 @@ Read RULES.md first. launch() starts a new SLDWORKS.exe and attaches through the
 Running Object Table entry for that PID, so it can never reach another session's
 instance. Never use GetActiveObject or Dispatch('SldWorks.Application').
 """
+import atexit
 import ctypes
 import ctypes.wintypes as wt
 import msvcrt
@@ -1027,6 +1028,35 @@ def _session_pid(state):
     return None
 
 
+def _record_run(pid):
+    """Write this script run to runs.log in the claims folder when the script ends: start, seconds, script, pid, "ok" or
+    the uncaught error, and the folder it ran in. swkit.job() writes such a line beside its script; scripts that hold
+    an instance through session() wrote none, so tools/pc/sw_watch.py could not see them fail (2026-11-15). Once per
+    process. An exit through SystemExit reads as ok. Never raises: a log line must not stop a script."""
+    if getattr(_record_run, "on", False):
+        return
+    _record_run.on = True
+    t0, outcome, before = time.time(), ["ok"], sys.excepthook
+
+    def hook(kind, err, tb):
+        outcome[0] = " ".join(f"{kind.__name__}: {err}".split())[:300]
+        before(kind, err, tb)
+
+    def write():
+        try:
+            folder = _claims().claims_dir()
+            os.makedirs(folder, exist_ok=True)
+            with open(os.path.join(folder, "runs.log"), "a", encoding="utf-8") as f:
+                f.write("\t".join([time.strftime("%Y-%m-%d %H:%M:%S %z", time.localtime(t0)), f"{time.time() - t0:.0f} s",
+                                   " ".join(os.path.basename(a) for a in sys.argv) or "-", f"pid {pid}", outcome[0],
+                                   os.getcwd()]) + "\n")
+        except Exception:
+            pass
+
+    sys.excepthook = hook
+    atexit.register(write)
+
+
 def session(state_file, visible=False):
     """Reuse this session's instance across script runs, keyed by a state file the session owns.
 
@@ -1035,10 +1065,12 @@ def session(state_file, visible=False):
     state = str(state_file)
     pid = _session_pid(state) if os.path.exists(state) else None
     if pid is not None:
+        _record_run(pid)
         return attach(pid)
     inst = launch(visible=visible)
     with open(state, "w") as f:
         f.write(f"{inst.pid} {inst.started!r}")
+    _record_run(inst.pid)
     return inst
 
 

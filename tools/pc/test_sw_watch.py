@@ -32,3 +32,20 @@ def test_the_same_fault_in_two_parts_is_one_kind_and_a_known_kind_is_not_reporte
     later = sw_watch.sort(rows, since, {solve})
     assert list(later["again"]) == [solve] and len(later["new"]) == 1
     assert "did not return" in next(iter(later["new"].values()))["example"]
+
+
+def test_kinds_keep_what_tells_two_faults_apart_and_drop_what_does_not() -> None:
+    """Guards: on holly-pc (2026-11-15) the first kind() made one kind of every COM error ("RPC server is unavailable"
+    and "remote procedure call failed" alike), cut a path at its first space, and made a kind per feature name; 32
+    crash events in three days read as 32 lines, and solver (STAR.exe) crashes were left out."""
+    kind, crash = sw_watch.kind, sw_watch.crash_kind
+    assert kind("com_error: (-2147023174, 'The RPC server is unavailable.', None, None)") != kind(
+        "com_error: (-2147023170, 'The remote procedure call failed.', None, None)")
+    assert kind("Failed: import failed: C:\\joe\\my parts\\a.step error 3") == kind("Failed: import failed: D:\\b.step error 9")
+    assert kind("Failed: HUB_T2f: loft failed") == kind("Failed: STEM: loft failed")
+    a = "Faulting application name: SLDWORKS.exe, version: 34.0.0.5070, time stamp: 0x1 Faulting module name: cosworks.dll, "
+    assert crash(a + "version: 1 Exception code: 0xc0000005") == crash(a + "version: 2 Exception code: 0xc0000005")
+    assert crash(a + "Exception code: 0xc0000005") != crash(a.replace("SLDWORKS", "STAR") + "Exception code: 0xc0000005")
+    two = [{"when": "2026-11-15 01:00:00", "id": 1000, "text": a + "Exception code: 0xc0000005"}] * 2
+    got = sw_watch.sort([], 0, set(), two)
+    assert got["crashes"] == 2 and [g["count"] for g in got["new"].values()] == [2]
