@@ -596,12 +596,25 @@ def revolve(d, sk, name, cut=False, angle=360.0, mid=False, min_dv=1.0, expect_d
     return f
 
 
-def loft(d, sketches, name):
-    """Loft through closed section sketches, in order. Tries with and without merging into the existing body."""
+def loft(d, sketches, name, at=None):
+    """Loft through closed section sketches, in order. Tries with and without merging into the existing body.
+
+    at: one model point (x, y, z in mm) per sketch, ON that section's outline, the same corner of every section (all
+    the lowest points, say). SolidWorks joins the sections where they were picked; picked nowhere it chooses for
+    itself, and where its choice changes from one section to the next the loft is twisted and pinched there. Give
+    `at` for any loft of more than two sections, then check the export with sheet.loft_twist(): if it still reads
+    twisted, pick another corner."""
     v0 = volume(d)
+    if at is not None and len(at) != len(sketches):
+        raise Failed(f'{name}: {len(sketches)} sketches but {len(at)} pick points')
     for merge in (True, False):
         d.ClearSelection2(True)
-        for k in sketches:
+        for n, k in enumerate(sketches):
+            if at is not None:
+                p = at[n]
+                if d.Extension.SelectByID2(k.Name, 'SKETCH', p[0] / 1000.0, p[1] / 1000.0, p[2] / 1000.0, True, 1, NUL, 0):
+                    continue
+                log(f'{name}: section {k.Name} was not selected at {p}; selected without a point')
             k.Select2(True, 1)
         f = d.FeatureManager.InsertProtrusionBlend2(False, True, False, 1.0, 0, 0, 1.0, 1.0, True, True, False, 0, 0, 0,
                                                     True, merge, merge, 0)

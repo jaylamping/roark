@@ -179,6 +179,42 @@ def printability(tris, up='+z', bed=256.0, overhang_deg=45.0):
                 overhang_share=round(float(area[over].sum() / area.sum()), 3), worst_overhang_at=worst)
 
 
+def loft_twist(tris, stations, axis='z', limit_deg=20.0):
+    """Does a lofted surface turn about its own axis between sections? For a loft whose sections lie at the given
+    stations along axis ('x', 'y' or 'z'), e.g. the Z of every section plane.
+
+    A loft joins its sections corner to corner. When SolidWorks pairs the wrong corners, the surface between two
+    sections is twisted (often a quarter turn), and a twisted loft between two near-round sections is narrower in the
+    middle than either end: a pinch that no added section removes. The STL's own triangle edges run along the loft,
+    so their turn about the axis shows it. Returns dict(ok, worst_deg, rows), rows = one dict(a, b, edges, turn_deg,
+    ok) per stretch between two stations; turn_deg is the median turn of the edges, scaled to the whole stretch. A
+    sound loft reads under 10, a quarter-turn twist 60 to 90. The axis line goes through the middle of each stretch's
+    own points, and points nearer to it than half the stretch's outer radius (a bore, a cable tunnel) are left out.
+    A stretch with under 50 edges (flat or coarse faces) reads 0 and counts as ok."""
+    k = 'xyz'.index(axis.lower())
+    i, j = [m for m in range(3) if m != k]
+    st = sorted(float(s) for s in stations)
+    rows = []
+    for a, b in zip(st[:-1], st[1:]):
+        m_in = (tris[:, :, k].min(axis=1) > a + 0.5) & (tris[:, :, k].max(axis=1) < b - 0.5)
+        t = tris[m_in]
+        rate = np.zeros(0)
+        if len(t):
+            c = t.reshape(-1, 3)[:, [i, j]].mean(axis=0)
+            r_out = np.percentile(np.hypot(t[:, :, i] - c[0], t[:, :, j] - c[1]), 90)
+            parts = []
+            for u, v in ((0, 1), (1, 2), (2, 0)):
+                p, q = t[:, u], t[:, v]
+                rp, rq = np.hypot(p[:, i] - c[0], p[:, j] - c[1]), np.hypot(q[:, i] - c[0], q[:, j] - c[1])
+                m = (np.abs(p[:, k] - q[:, k]) > 1.0) & (rp > r_out / 2) & (rq > r_out / 2)
+                th = np.degrees(np.arctan2(q[m, j] - c[1], q[m, i] - c[0]) - np.arctan2(p[m, j] - c[1], p[m, i] - c[0]))
+                parts.append(((th + 180.0) % 360.0 - 180.0) / (q[m, k] - p[m, k]))
+            rate = np.concatenate(parts)
+        turn = abs(float(np.median(rate))) * (b - a) if len(rate) >= 50 else 0.0
+        rows.append(dict(a=a, b=b, edges=int(len(rate)), turn_deg=round(turn, 1), ok=bool(turn < limit_deg)))
+    return dict(ok=all(r['ok'] for r in rows), worst_deg=max([r['turn_deg'] for r in rows], default=0.0), rows=rows)
+
+
 def _surface_points(tris, n, seed):
     """n points spread over the surface by area, the same every time for one seed."""
     rng = np.random.default_rng(seed)
@@ -341,10 +377,17 @@ if __name__ == '__main__':
                     '...) away from the bed, and print the numbers')
     ap.add_argument('--bed', type=float, default=256.0, help='bed size in mm for --printable')
     ap.add_argument('--diff', action='store_true', help='no picture: compare the first STL with the second')
+    ap.add_argument('--twist', metavar='AXIS:S1,S2,...', help='no picture: check a loft along AXIS (x, y or z) with '
+                    'sections at these stations for a twist between sections, e.g. z:-145,-130,-115,-100,-85')
     a = ap.parse_args()
     if a.printable:
         print(json.dumps(printability(read_stl(a.stl[0]), a.printable, a.bed), indent=1))
         sys.exit(0)
+    if a.twist:
+        ax, _, st = a.twist.partition(':')
+        res = loft_twist(read_stl(a.stl[0]), [float(v) for v in st.split(',')], ax)
+        print(json.dumps(res, indent=1))
+        sys.exit(0 if res['ok'] else 1)
     if a.diff:
         if len(a.stl) != 2:
             raise SystemExit('--diff takes exactly two STL files')
