@@ -1,0 +1,47 @@
+{
+  "sources": {
+    "exports/shoulder/shoulder_hub_left.STL": "1392a808ffab59eb052bf44a83f6eb2ebd02b79af58a322f63125824a091a190"
+  },
+  "load_cases": {
+    "HUB_TOP": "e73202b0fe2df9a67fd13d5e5e448f6f5eca7030854b4eaada5a053a614155ce",
+    "HUB_LUG": "3573fd3d110eba48e2dd93df01b002eebadd6409ad7a373e8076f9690bbe492b",
+    "HUB_ESTOP": "395ae53bb84e517a0534c0d3a1a779e199f9127f76f651cccb75483687de66f4"
+  },
+  "fea": [
+    {
+      "case": "HUB_TOP",
+      "part": "shoulder_hub_left",
+      "bulk_sf": 3.68,
+      "layer_sf": 3.16,
+      "shear_sf": 2.07,
+      "converged": false,
+      "note": "HUBB_Ah on the final rev E1 shape, global element 6.0 with the fine zones, Intel direct sparse; 1 mm ball 4.20 / 3.54 / 2.68. Not converged by the rule: a finer global mesh passes the 14 GB limit of the direct solver, and on rev D3c7 the same step (4.5 against 2.6) moved the layer figure from 0.91 to 0.65"
+    },
+    {
+      "case": "HUB_LUG",
+      "part": "shoulder_hub_left",
+      "bulk_sf": 1.56,
+      "layer_sf": 1.61,
+      "shear_sf": 1.56,
+      "converged": false,
+      "note": "HUBL_G90YAWP_MAX, 1.19 M nodes; 1.56 is the governing figure (shear across the layers at the lug), entered as bulk. Run on the first rev E1 shape; the later edits (hole edges, step fillet, head seats) do not touch the lugs, but the run has not been repeated on this export"
+    },
+    {
+      "case": "HUB_ESTOP",
+      "part": "shoulder_hub_left",
+      "bulk_sf": 3.1,
+      "layer_sf": 3.1,
+      "converged": false,
+      "note": "HUBL_STOP6_ZB; 3.10 is the governing figure of the read-out, entered for both marks. Run on the first rev E1 shape, not repeated on this export"
+    }
+  ],
+  "access": [
+    {
+      "part": "shoulder_hub_left",
+      "insertion_clear": true,
+      "screws_reachable": true,
+      "method": "by geometry, not a ray check: the six M4 heads sit on the tube ends in the open centre bore and take a straight driver from the arm side before the arm goes on; the arm thread compared this export with the released hub below Y 302 (identical) and checked its cable route (3.64 mm smallest clearance)",
+      "notes": "the RS02 output thread depth (7 mm on the drawing) is not measured on a real motor"
+    }
+  ]
+}
