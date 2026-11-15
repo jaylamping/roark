@@ -118,6 +118,7 @@ against 0.42 V at 20 A.
 | Segment | Power wire | Fuse ahead of it | Sustained limit |
 | --- | --- | --- | --- |
 | Board pigtail, S0, S1 (pitch), S2 (roll) | one 16 AWG pair | 20 A, inline at the board pigtail | 15 A |
+| Taps to the pitch, roll and yaw drives | one 16 AWG pair each | the same 20 A; no drop fuses | |
 | S3 (upper-arm yaw to the elbow drive) | one 18 AWG pair | 10 A, in the upper arm just below the yaw joint | 7.5 A |
 | S4 (across the elbow to the forearm drive and the hand drop) | one 18 AWG pair | the same 10 A; no fuse of its own | 7.5 A |
 
@@ -140,9 +141,14 @@ own current.
   fault point and is not expected to stay partial.
 - The board cannot measure this section alone (it meters the whole port), so the 7.5 A sustained limit is for software
   to hold from the drives' own current reports.
-- Still open: the trunk plan's drop fuses for the pitch, roll and yaw drives (7.5, 7.5 and 5 A) have no reachable place
-  in the shoulder. Proposed, not decided: make those three taps 16 AWG, so the 20 A fuse at the board covers them, and
-  fit no drop fuses.
+- **No drop fuses on the shoulder drives (decided 2026-11-15).** The trunk plan's drop fuses for the pitch, roll and yaw
+  drives (7.5, 7.5 and 5 A) have no reachable place in the shoulder. Their three taps are 16 AWG instead, so the 20 A
+  fuse at the board covers them. The shoulder's tap channels take a 16 AWG pair (checked on the part exports, not with
+  real wire). A seller's page for the XT30(2+2) gives its power pins as 20 A with 16 AWG; the plug's real length and
+  lead exit at the yaw drive are still to be measured.
+- Fit, checked on the part exports by the arm and shoulder work, not yet with real wire: the holder sits in the neck
+  12 to 51 mm below the hub seat with no change to the arm halves, and the fuse is changed with the front half off; the
+  three-way splices fit behind the yaw drive side by side with a 5 mm stagger, each insulated on its own.
 
 S4 carries the RS00 and a future hand. One 18 AWG pair is enough: 5 A sustained is about 9 K of rise in free air, 7.5 A
 about 20 K, and 0.5 m there and back drops 0.1 V at 5 A. The second pair in the old spec was margin for "about 6 A", not a
