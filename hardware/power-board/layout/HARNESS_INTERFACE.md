@@ -110,6 +110,24 @@ through PETG parts, which soften near 80 °C, so the sustained wire temperature 
 rating. Voltage drop is not the issue either way: about 13 mΩ against 21 mΩ for a 0.5 m section there and back, 0.26 V
 against 0.42 V at 20 A.
 
+**Arm trunk gauges and fuses, as of 2026-11-15.** This table replaces the gauges in the reference repo's
+[left-arm-trunk README](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/wiring/left-arm-trunk/README.md)
+(S3 at 16 AWG, S4 as four paralleled 18 AWG wires); its segment names, splices and drop fuses still apply.
+
+| Segment | Power wire | Fuse ahead of it | Sustained limit |
+| --- | --- | --- | --- |
+| Board pigtail, S0, S1 (pitch), S2 (roll) | one 16 AWG pair | 20 A, inline at the board pigtail | 15 A |
+| S3 (upper-arm yaw to the elbow drive) | one 18 AWG pair | 10 A, where the gauge steps down at the yaw drive splice | 7.5 A |
+| S4 (across the elbow to the forearm drive and the hand drop) | one 18 AWG pair | 5 A segment fuse at the elbow drive splice | 5 A |
+
+S4 carries the RS00 and a future hand. One 18 AWG pair is enough: 5 A sustained is about 9 K of rise in free air, 7.5 A
+about 20 K, and 0.5 m there and back drops 0.1 V at 5 A. The second pair in the old spec was margin for "about 6 A", not a
+need. Expected sustained load is about 3 to 3.5 A: the RS00 manual (RS00_User_Manual_260713) gives 4.7 Apk phase current at
+the rated 5 N·m and 15.5 Apk at the 14 N·m peak, which is about 1.5 A from the bus at rated load with losses assumed, and
+the hand budget is 2 A at 48 V (an estimate; no hand is designed). Neither is measured. If a real hand trips the 5 A fuse,
+the same pair takes a 7.5 A fuse with no rewiring; a hand that needs more than about 7.5 A sustained (360 W) would need a
+second pair, which the elbow spiral does not fit.
+
 **Pi link J21 pinout** (JST GH 8, 26 AWG; rev B5 added pin 8 for the power-fail warning). Every Pi input here is
 open drain or driven at 3.3 V from the Pi's own rail; nothing above 3.3 V reaches the cable.
 
