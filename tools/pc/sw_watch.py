@@ -149,8 +149,8 @@ def main(argv: list[str]) -> int:
         print(f'since {res["since"]}: {res["jobs"]} jobs, {res["failed"]} failed, '
               f'{"?" if res["crashes"] is None else res["crashes"]} crashes or hangs, {len(res["new"])} new kinds')
         for label in ("new", "again"):
-            for g in res[label].values():
-                print(f'{label.upper():5} x{g["count"]} last {g["last"]}  {g["example"][:200]}')
+            for k, g in res[label].items():
+                print(f'{label.upper():5} x{g["count"]} last {g["last"]}  {k if k.startswith("crash: ") else g["example"][:200]}')
                 if g["scripts"]:
                     print(f'      scripts: {"; ".join(g["scripts"])}\n      in: {"; ".join(g["folders"])}')
     return 1 if res["new"] else 0

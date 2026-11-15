@@ -342,6 +342,34 @@ def close_welcome(pid):
     return len(hit)
 
 
+def windows(pid):
+    """This PID's top-level windows that say something: [(class, title, visible, enabled, [texts inside a dialog])].
+
+    Looks, never touches. A disabled main window means a modal dialog holds the instance; a "#32770" row is a dialog,
+    and its texts are what it asks.
+    """
+    rows = []
+
+    def find(h, _):
+        try:
+            if win32process.GetWindowThreadProcessId(h)[1] != pid:
+                return True
+            cls, title = win32gui.GetClassName(h), win32gui.GetWindowText(h)
+            texts = []
+            if cls == "#32770":
+                win32gui.EnumChildWindows(h, lambda c, _: texts.append(win32gui.GetWindowText(c)) or True, None)
+            if cls in ("IME", "MSCTFIME UI", "NVOpenGLPbuffer") or title == "hotWnd":
+                return True  # present in every instance, and say nothing
+            if title or cls in ("#32770", "swWelcomeScreen"):
+                rows.append((cls, title, bool(win32gui.IsWindowVisible(h)), bool(win32gui.IsWindowEnabled(h)), [t for t in texts if t]))
+        except win32gui.error:
+            pass  # a window destroyed between the listing and the look
+        return True
+
+    win32gui.EnumWindows(find, None)
+    return rows
+
+
 def _clear_journal_prompt(pid):
     """A third SolidWorks process stops at a modal 'journal file could not be created' prompt. Click OK on it.
 
@@ -1028,15 +1056,34 @@ def _session_pid(state):
     return None
 
 
-def _record_run(pid):
+def _record_run(pid, t0):
     """Write this script run to runs.log in the claims folder when the script ends: start, seconds, script, pid, "ok" or
     the uncaught error, and the folder it ran in. swkit.job() writes such a line beside its script; scripts that hold
     an instance through session() wrote none, so tools/pc/sw_watch.py could not see them fail (2026-11-15). Once per
-    process. An exit through SystemExit reads as ok. Never raises: a log line must not stop a script."""
+    process. raise SystemExit('FAIL ...') is how most scripts fail, and no hook sees it: sys.monitoring does, on
+    Python 3.12 and later; before that such an exit reads as ok. Never raises: a log line must not stop a script."""
     if getattr(_record_run, "on", False):
         return
     _record_run.on = True
-    t0, outcome, before = time.time(), ["ok"], sys.excepthook
+    outcome, left, before = ["ok"], [None], sys.excepthook
+    try:
+        mon = getattr(sys, "monitoring", None)
+        if mon is not None and mon.get_tool(mon.PROFILER_ID) is None:
+            mon.use_tool_id(mon.PROFILER_ID, "sw_record_run")
+
+            def raised(_code, _offset, exc):
+                if isinstance(exc, SystemExit):
+                    left[0] = exc.code
+
+            def handled(_code, _offset, exc):
+                if isinstance(exc, SystemExit):
+                    left[0] = None  # the script caught it
+
+            mon.register_callback(mon.PROFILER_ID, mon.events.RAISE, raised)
+            mon.register_callback(mon.PROFILER_ID, mon.events.EXCEPTION_HANDLED, handled)
+            mon.set_events(mon.PROFILER_ID, mon.events.RAISE | mon.events.EXCEPTION_HANDLED)
+    except Exception:
+        pass
 
     def hook(kind, err, tb):
         outcome[0] = " ".join(f"{kind.__name__}: {err}".split())[:300]
@@ -1044,6 +1091,8 @@ def _record_run(pid):
 
     def write():
         try:
+            if outcome[0] == "ok" and left[0] not in (None, 0):
+                outcome[0] = " ".join(f"SystemExit: {left[0]}".split())[:300]
             folder = _claims().claims_dir()
             os.makedirs(folder, exist_ok=True)
             with open(os.path.join(folder, "runs.log"), "a", encoding="utf-8") as f:
@@ -1062,15 +1111,15 @@ def session(state_file, visible=False):
 
     `visible` applies only when a new instance is launched; an existing one keeps how it was started.
     """
-    state = str(state_file)
+    state, t0 = str(state_file), time.time()
     pid = _session_pid(state) if os.path.exists(state) else None
     if pid is not None:
-        _record_run(pid)
+        _record_run(pid, t0)
         return attach(pid)
     inst = launch(visible=visible)
     with open(state, "w") as f:
         f.write(f"{inst.pid} {inst.started!r}")
-    _record_run(inst.pid)
+    _record_run(inst.pid, t0)
     return inst
 
 
