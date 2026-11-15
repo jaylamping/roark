@@ -128,6 +128,9 @@ The `[[load_case]]` table above is the list the gate checks. In words:
 ## Harness
 
 - Elbow back loop, as on the upper arm (Joey 2026-11-08), with a forearm saddle on the cheek rim at 140°.
+  - **Not what the organic parts build (2026-11-15).** They route the cable internally, through the hollow stub into a
+    flat coil under the inboard cap and down a slot in the inboard cheek. Which route stands is open; see `cad/upper-arm/README.md`,
+    "Elbow cable".
 - Cable from the elbow loop to the RS00 (draft 4: to the RS00 ring slot, captured in the clamshell seam).
 - Yaw: reverse-wound FFC clock spring, about 400 mm, in the r 21.5–26.1 gap; anchors and part number open.
 - **Reserve** one spare fused trunk drop and one CAN drop at the forearm end for the hand (hand research, 11-06).

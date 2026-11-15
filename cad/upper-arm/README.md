@@ -114,7 +114,49 @@ the single-passage total, so no split is needed there.
 | RS02 plug and cable | ring window, φ ±16°, through the ring, opening into the neck | plug body 16 × 6.5 × 15 and a Ø7 cable, 0 interference | the RS02's own cable | fits, checked with the vendor model |
 
 Bend radius: the coil under the cap is flat and bends in its own plane, at r 22 and up. The 25–30 mm dynamic radius applies
-to a round bundle and doesn't apply there. Free sections are from `cad/_wip/organic-arm/cad/passages.py` (neck slices) and
+to a round bundle and doesn't apply there.
+
+### Elbow cable: findings for the elbow and forearm rebuild (2026-11-15)
+
+Checked against our current parts: the upper-arm R1h back and R1g front halves; the forearm parts, whose exports (11-10) match the
+forearm models except the inboard cheek's stop lug, 23 min newer and away from this region. Exports in `cad/exports/forearm/`.
+
+- **Which route the parts build.** The organic parts build the **internal** route:
+  1. the rib gap and the drum end wall;
+  2. the hollow stub, Ø32;
+  3. the cheek's shoulder-layer opening, r 21.5;
+  4. a flat one-layer coil in the pocket under the inboard cap (r 22–34.8, 4.3 deep);
+  5. the drop slot down the inboard cheek (`organic_master.py`: CAP, POCKET, STUB_PASS, POCKET_DROP).
+
+  They have no outside back loop, and no clip or saddle for one. The back loop (round cable in loom, about 190 mm free, R ≥ 27.9,
+  Joey 2026-11-08) is still written in `upper_arm_requirements.md` and `forearm_requirements.md` and in the trunk README. The
+  organic parts don't implement it. **Which of the two stands is open.** (An earlier note of mine called the back loop's R 27.9
+  "unaffected" by 18 AWG; that requirement isn't built.)
+- **Coil length and turns over 0–124°: not designed.** No file gives the coil's length or number of turns.
+  - The pocket is an annulus r 22–34.8 (12.8 radial) × 4.3 deep, and the bundle it is sized for is 3 × 12 laid flat in one layer.
+    The bundle fills 12 of the 12.8 mm radially, and all of it with 18 AWG (above).
+  - A wound coil has to change radius as the elbow turns. 124° is 0.34 turn: a 1.25-turn coil at r 28 (201 mm, the render's
+    assumption) needs its mean radius to move by roughly a third, about 7-9 mm, against 0-0.8 mm free.
+  - So the coil as specified cannot wind and unwind through 124°. Its geometry has to be designed with the elbow/forearm rebuild:
+    for example, wires spread across the annulus with the length to spare, a narrower bundle, a deeper pocket, or the back loop.
+- **Cap-rim pinch at the drop slot: real in the current parts, not a stale-export effect.**
+  - Measured between the inboard cap (`forearm_organic_cap_inboard_left`) and the inboard cheek: the coil pocket is 4.3-5.5 deep
+    (X) at r 24-34.
+  - Under the cap's rim (r 35.9-36.9, arm Y 173-174), the free gap along X is **1.2 mm** all round. Where the drop slot starts
+    (θ 180, |Z - CZ| up to 5), it is 2.4 over about 4.5 mm of the slot's width and 1.2 over the rest. Then the slot is 3 × 10.
+  - The wires have to pass under that rim. 18 AWG is about 2.3-2.4 OD, and the six wires side by side need about 9.4 wide.
+  - **Fix (forearm parts only):** cut the cap rim and the cheek recess open over the slot's width, at least 3 deep and 12 wide,
+    when the drop is widened to 4 × 12 as already planned.
+- **The upper-arm halves are not involved in any of these.**
+  - Below Y 185 the halves start at X 141.5. The cap, the cheek, the stub ring, the pocket and the drop slot are all forearm
+    parts, at X 125.6-141.
+  - The halves' own passages (neck, rib gap, down to the stub) meet the 3.5 × 13 reserve, and they gain room with 18 AWG.
+  - **One condition:** if the rebuild chooses the outside back loop instead of the internal route, the cable has to leave the
+    upper arm before the elbow. The halves have no exit for that, so they would change. Decide the elbow route before the halves
+    are printed, or accept that the halves commit the arm to the internal route.
+- **Signal wires our passages were sized for:** up to three signal pairs per joint (Joey, 2026-11-11), each pair 2.2 × 3.4, three
+  together 2.2 × 8. That fits pairs of about 1.1 mm OD wire: 26 AWG silicone, as CABLE_SLACK assumes ("plus 26 AWG pairs"). One
+  26 AWG pair, or two 28 AWG pairs plus a reserved pair, both fit inside that allowance. Free sections are from `cad/_wip/organic-arm/cad/passages.py` (neck slices) and
 the CAD dimensions (everything else).
 
 ## FEA
