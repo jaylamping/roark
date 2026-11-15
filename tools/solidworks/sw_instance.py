@@ -427,9 +427,10 @@ class stall_watch:  # noqa: N801 - reads as a verb at the call site
     """with stall_watch(pid, folder): write a report when this thread makes no progress while SolidWorks sits idle.
 
     A COM call has no timeout: when a hidden dialog holds the instance the script waits for ever and says nothing
-    (the Welcome dialog under a first STEP import, 2026-11-15, found only by hand). The watch counts this thread's
-    calls and returns; when the count has not moved for stall_s seconds, and the instance is neither solving nor using
-    a core (a long mesh or rebuild does), it writes stall_<pid>_<time>.txt into folder: where the script stands, the
+    (the Welcome dialog under a first STEP import, 2026-11-15, found only by hand). The watch looks every few seconds at
+    the processor time this script has used; when the script has used next to none for stall_s seconds, is not
+    standing in a sleep() of its own (a wait loop), and the instance is neither solving nor using a core (a long mesh
+    or rebuild does), it writes stall_<pid>_<time>.txt into folder: where the script stands, the
     instance's windows and dialog texts, and the end of its hidden-window log. One report per stall, one log line, and
     one line in the claims folder's runs.log (outcome "STALLED ..."), so that tools/pc/sw_watch.py finds it even when
     the job is later killed and never writes its own line. It stops nothing and changes nothing: ending a stuck instance
@@ -439,29 +440,33 @@ class stall_watch:  # noqa: N801 - reads as a verb at the call site
     180 s: the hang it was written for never returns, the slowest call seen to sit idle and still come back is a
     launch behind a busy instance (150 s, before the job has an instance to watch), and every long call that is
     working (mesh, rebuild, solve, reading results) shows a solver process or a busy core and is passed over.
+    It costs the script nothing: a first version counted calls through sys.setprofile and made Python-heavy code six
+    times slower (measured 2026-11-15).
     """
 
     def __init__(self, pid, folder, stall_s=STALL_S, poll=5.0):
         self.pid, self.folder, self.stall_s, self.poll = pid, Path(folder), stall_s, poll
-        self.n, self.reports, self._stop = 0, [], None
-
-    def _tick(self, _frame, _event, _arg):
-        self.n += 1
+        self.reports, self._stop = [], None
 
     def __enter__(self):
-        if not self.stall_s or sys.getprofile() is not None:        # off, or the script runs its own profiler
+        if not self.stall_s:
             return self
         self.tid = threading.get_ident()
         self._stop = threading.Event()
-        sys.setprofile(self._tick)
         threading.Thread(target=self._run, daemon=True).start()
         return self
 
     def __exit__(self, *exc):
         if self._stop is not None:
             self._stop.set()
-            if sys.getprofile() == self._tick:
-                sys.setprofile(None)
+
+    def _where(self):
+        """(the watched thread's stack, the innermost line of it that is the script's own: file:line text)."""
+        frame = sys._current_frames().get(self.tid)
+        stack = traceback.extract_stack(frame) if frame is not None else []
+        lib = os.path.dirname(os.__file__)  # the standard library and, under it, site-packages (win32com)
+        own = [f for f in stack if not f.filename.startswith((lib, "<"))] or stack
+        return stack, (f"{Path(own[-1].filename).name}:{own[-1].lineno} {own[-1].line}" if own else "?")
 
     def _working(self):
         """True while the instance is solving or using more than a tenth of a core: slow, not stuck."""
@@ -471,14 +476,19 @@ class stall_watch:  # noqa: N801 - reads as a verb at the call site
             return False
 
     def _run(self):
-        seen, since, told = self.n, time.time(), False
+        seen, at, since, told = time.process_time(), time.time(), time.time(), False
         while not self._stop.wait(self.poll):
             try:
-                if self.n != seen:
-                    seen, since, told = self.n, time.time(), False
+                used, now = time.process_time() - seen, time.time()
+                seen, busy, at = seen + used, used > 0.02 * (now - at), now
+                if busy:  # the script is computing or making calls that come back
+                    since, told = now, False
                     continue
-                idle = time.time() - since
-                if idle < self.stall_s or told or self._working():
+                idle = now - since
+                if idle < self.stall_s or told:
+                    continue
+                if "sleep(" in self._where()[1] or self._working():  # waiting on purpose, or SolidWorks is at work
+                    since = now
                     continue
                 told = True
                 self._report(idle)
@@ -486,10 +496,7 @@ class stall_watch:  # noqa: N801 - reads as a verb at the call site
                 _say(f'stall watch: {str(ex)[:120]}')
 
     def _report(self, idle):
-        frame = sys._current_frames().get(self.tid)
-        stack = traceback.extract_stack(frame) if frame is not None else []
-        own = [f for f in stack if 'win32com' not in f.filename and not f.filename.startswith('<')] or stack
-        where = f'{Path(own[-1].filename).name}:{own[-1].lineno} {own[-1].line}' if own else '?'
+        stack, where = self._where()
         wins = windows(self.pid)
         try:
             with open(hider_log(self.pid), encoding='utf8') as f:
