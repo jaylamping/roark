@@ -140,7 +140,7 @@ inline 58 V Littelfuse 997 MINI fuse on every drop, XT30(2+2)-F plug on each RS0
     the halves.
 - **Through the hub slot: only the bare trunk segment S3** (power pair, CAN, reserve pairs). The M13 splice is at the yaw RS02
   housing, outside our arm. M14 is inside the arm. No plug or fuse holder passes the slot.
-- **Mismatch to settle: the elbow segment's power wires.**
+- **The elbow segment's power wires (settled 2026-11-15: one 18 AWG pair, see the signal-wire note below).** Earlier note:
   - The trunk spec has S4 as **2 × 18 AWG red + 2 × 18 AWG black, paralleled per rail** (for RS00 plus the future hand, about
     6 A).
   - The A3 study and the elbow cable rig assume **one 18 AWG pair**. Four power wires don't fit A3's strip: the capacity drops to
@@ -191,8 +191,13 @@ forearm models except the inboard cheek's stop lug, 23 min newer and away from t
     upper arm before the elbow. The halves have no exit for that, so they would change. Decide the elbow route before the halves
     are printed, or accept that the halves commit the arm to the internal route.
 - **Signal wires our passages were sized for:** up to three signal pairs per joint (Joey, 2026-11-11), each pair 2.2 × 3.4, three
-  together 2.2 × 8. That fits pairs of about 1.1 mm OD wire: 26 AWG silicone, as CABLE_SLACK assumes ("plus 26 AWG pairs"). One
-  26 AWG pair, or two 28 AWG pairs plus a reserved pair, both fit inside that allowance. Free sections are from `cad/_wip/organic-arm/cad/passages.py` (neck slices) and
+  together 2.2 × 8.
+  - **Signal wire (corrected 2026-11-15):** 28 AWG (1.2 mm), per the 11-11 scheme, pending the coordinator's single definition. That means two pairs plus one reserved. The earlier "26 AWG" came from the older
+    trunk README.
+  - A pair of 1.2 mm wires laid flat (2.4 × 1.2) fits the 2.2 × 3.4 allowance. Twisted, a pair's envelope is about Ø2.4, so 0.2
+    over the 2.2 thickness; flatten the twist where a pair passes a 2.2 slot.
+  - **Power across the elbow: one 18 AWG pair**, confirmed by the power board thread (2026-11-15, about 3-3.5 A expected, fine to
+    7.5 A). The four-wire S4 in the trunk README is being corrected in roark PR #84. Free sections are from `cad/_wip/organic-arm/cad/passages.py` (neck slices) and
 the CAD dimensions (everything else).
 
 ## FEA

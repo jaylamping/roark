@@ -26,7 +26,7 @@ About 2 h and 54 g. Everything prints the way it lies.
 - **For the signal test, pick one:**
   - **FFC stand-in:** a strip of thin plastic (cut from a plastic folder or sheet protector), 4.5 mm wide and 700 mm long, taped
     end to end if needed. It behaves like a flat flex cable. Nothing to buy for the test.
-  - **Or 26 AWG wire, three pairs of 300 mm**, if you have it. If you don't, skip that part.
+  - **Or the signal wire itself, 28 AWG (1.2 mm), per the 11-11 scheme, pending the coordinator's single definition: three pairs of 300 mm**, if you have it. If you don't, skip that part.
 - Nothing needs buying. A real FFC (8-way, 0.5 mm pitch, about 700 mm) only matters later, for the arm.
 
 ## 3. Set up
@@ -45,7 +45,7 @@ About 2 h and 54 g. Everything prints the way it lies.
    - Lead the tail out through the gap in the pocket wall, and tie it to the two holes outside the gap. That is the forearm end.
 7. **Signals, pick one:**
    - FFC stand-in: tape it to the power strip's side at both ends and wind it with the strip.
-   - 26 AWG: run the pairs straight down through the stub's bore. Tie them to the two holes near the bottom of the tube (upper
+   - 28 AWG pairs: run the pairs straight down through the stub's bore. Tie them to the two holes near the bottom of the tube (upper
      arm end) and to the two holes next to the lid's centre hole (forearm end).
 8. Put the lid on: three pegs into the wall top.
 
@@ -63,7 +63,7 @@ winds it in. Hold the tray's tab, not the stub.
 | The ends of travel | at 242°: the outer turn just touches the wall. At 118°: the inner turn sits round the stub without pinching. | the strip wedges against the wall or crushes at the stub notch |
 | The strip | the two wires still one above the other, tape holding | they split apart or roll |
 | The insulation | clean | shiny rubbed bands, cuts, or a kink at the stub notch or the wall gap |
-| The signals | FFC flat, no creases; or 26 AWG twisting freely in the bore | the FFC creases, or the wires knot or rub on the bore edge |
+| The signals | FFC flat, no creases; or the 28 AWG pairs twisting freely in the bore | the FFC creases, or the wires knot or rub on the bore edge |
 
 **If all good, keep going to about 1000 cycles** and look again. Take photos at 0, 200 and 1000 cycles, from above with the lid
 off, at both ends of the swing.
