@@ -3,11 +3,23 @@
 **Status: ready to print, hub first.** The shoulder thread released the hub for stage 1 (2026-11-14). The two arm halves stay on
 hold until these tests pass (see "What happens after").
 
-**The first hub (rev D3c7) is for fit checks only: steps 0-7 and 11.**
-- **Why:** its motor plate (the round boss on the RS02 face) has six thin slits from a build error, 0.5 mm wide, right through.
-- **Wait for the corrected hub** for the weight steps (8-10). A corrected hub is coming from the shoulder thread: the same
-  groove, lugs and spigot, about 15 g more.
-- The ring and plate picks should carry over. On the corrected hub, redo steps 4-7 quickly to confirm them before loading it.
+**Two hubs in stage 1:**
+- **First hub, rev D3c7: fit checks only (steps 0-7 and 11). Done or doing.** Its motor plate has six thin slits from a build
+  error.
+- **Corrected hub, rev E1: the weight tests (steps 8-10).**
+  - File: `C:\joe\prints\shoulder-hub\staged_revE1_NOT_RELEASED\shoulder_hub_left_revE1.3mf` on holly-pc. It is staged, not
+    yet released; the released path follows. The shoulder thread's README in that folder still says "do not print until
+    released"; you have the go to print from the staged file anyway.
+  - **Black PETG**, SuperTack, 3 h 12 min, 113.8 g (4.9 g of it support, all in the bottom 4.6 mm).
+  - **RS02 face down, lugs up: don't turn it.**
+  - The groove, lugs and spigot are identical to D3c7.
+  - It bolts to the motor later with M4 × 30 and one flat washer each.
+- **After printing E1:**
+  1. Follow its README: pull the support, and clear the cable tunnel with a 4 mm rod (in at the mouth, out in the bore).
+  2. Redo step 0: both lug holes take a 3.8 shank, the spigot in two directions, the groove flanks clean.
+  3. Redo steps 4-7 quickly. The ring and plate picks should carry over: just confirm them.
+  4. Then do steps 8-11 on E1.
+- **Clamp it by its body** (the wide part above the groove), never by the round boss on the motor face.
 
 Stage 1 is a short test of the arm's hub end before the 10 h of halves:
 - the **shoulder hub**, printed first, because everything else is fitted to it;
@@ -38,6 +50,7 @@ For every plate:
 | 9 | [yaw lever](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_coupon_yaw_lever.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_coupon_yaw_lever_sheet.png) | 1 h 46 min | 72.4 g | **100 % infill, no support, no brim** |
 
 Total: about 8 h 27 min and 202 g (the hub 2 h 47 min and 81.9 g of it).
+Plus the corrected hub E1 for the weight tests: 3 h 12 min, 113.8 g, black PETG (above).
 
 - **The hub's own notes** are in its README and in the hub section of
   [PRINT_NOTES.md](https://github.com/jaylamping/roark/blob/claude/project-thread-90ef87/hardware/shoulder/study-20261111/cad-pass1/PRINT_NOTES.md).
@@ -78,12 +91,12 @@ The brass inserts sit in PETG, and a hard turn pulls them out. "Loose" means bac
 | 5 | **Plate pick:** blue marker on the plate tops, close and bolt (snug), open, check. Then step plates down, alternating sides, until it closes by hand. | No blue on the hub fillet; one pick closes |
 | 6 | **Bolt it** (snug), clamp the hub upright by its body (not the small boss on the RS02 face), coupon on top. Rock and twist it by hand. | Seam shut; no click, no free turn |
 | 7 | **Play:** lever on, pointer fixed. Bolts loose. 1 kg at the lever's hook one way, photo; 1 kg the other way, photo; three times. Then snug the bolts again. | **Travel ≤ 0.3 mm** (a plate one size too thin reads about 0.6) |
-| 8 | **Corrected hub only.** **Yaw:** 8.7 kg at the hook, 10 s, each way. Photo loaded and unloaded. | **≤ 2.2 mm** loaded; back to the start |
-| 9 | **Corrected hub only.** **Stop load:** 8.7 kg at the hook plus 4.5 kg hanging sideways on a cord round the coupon at the lug line, 10 s, each way. Then once more with the bolts loose, watching a pen mark on the coupon's side against a ruler. | Pointer ≤ 2.2 and back; with the bolts loose, the side mark moves ≤ 0.25 |
-| 10 | **Corrected hub only. Last, and optional: proof.** 13 kg at the hook, 10 s, each way. Skip it if you'd rather keep the coupon. | No click, crack or whitening; back to the start |
+| 8 | **Hub E1 only.** **Yaw:** 8.7 kg at the hook, 10 s, each way. Photo loaded and unloaded. | **≤ 2.2 mm** loaded; back to the start |
+| 9 | **Hub E1 only.** **Stop load:** 8.7 kg at the hook plus 4.5 kg hanging sideways on a cord round the coupon at the lug line, 10 s, each way. Then once more with the bolts loose, watching a pen mark on the coupon's side against a ruler. | Pointer ≤ 2.2 and back; with the bolts loose, the side mark moves ≤ 0.25 |
+| 10 | **Hub E1 only. Last, and optional: proof.** 13 kg at the hook, 10 s, each way. Skip it if you'd rather keep the coupon. | No click, crack or whitening; back to the start |
 | 11 | **Open it and look**, and photograph everything: ring, plates, inserts, the hub's lugs and lug roots (the rounded corner where each lug meets the hub), the groove. | Inserts not lifted or spun; plates not cracked; no whitening or cracks; imprints at most felt, nothing that catches a fingernail |
 
-Twelve steps (0-11). On the first hub: 0-7, then 11. On the corrected hub: 4-7 again, then 8-11.
+Twelve steps (0-11). On the first hub (D3c7): 0-7, then 11. On hub E1: 0 and 4-7 again, then 8-11.
 
 **What this short version gives up:**
 - **No torque numbers.** "Snug" replaces the 0.3 N·m cap, so the clamp varies from bolt to bolt. That matters little: the play

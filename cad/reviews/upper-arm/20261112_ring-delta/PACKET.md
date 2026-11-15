@@ -311,6 +311,16 @@ Sheets: `r1g_front_half_sheet.png`, `r1g_shim_ring_set_sheet.png`, `r1h_d34_lug_
 the R1h back half in `../20261111_r1c-delta/r1d/r1g/r1h_back_sheet.png`.
 
 **Open:**
+- **Hub rev E1 print file (staged, not yet released), checked 2026-11-15:** `C:\joe\prints\shoulder-hub\staged_revE1_NOT_RELEASED\`
+  on holly-pc.
+  - 3MF SHA-256 aa4c7dd378e9b5ee82cfa43ed5c9d6ebc185fe205cfc2ad0d04a7e834ebd4a81; the STL beside it ec8c8a59…74fb4.
+  - The mesh inside is identical to the STL: 63,410 triangles, 31,689 vertices, extents 34.86 × 78.6 × 78.6, volume 90,676.
+  - Settings: PETG at 0.20, 6 walls, 100 %, no brim, tree hybrid, SuperTack. 3 h 12 min 23 s, 113.84 g.
+  - RS02 face down (Ø47 contact), lugs up.
+  - The blocker covers z 20.06-36.36, which is the groove (z 20.86-23.86) and both lugs.
+  - Support only within z 0.2-4.6 (hub Y 318.26-322.66: the dish floor, the hole mouths, the tunnel mouth's first 0.24 mm). None
+    in the tunnel, the bore, or on any arm-facing face.
+  - The bench weight steps run on it.
 - **Hub rev E1, final candidate (shoulder thread 92cf101, SHA-256 ec8c8a59…74fb4; first candidate c7231b1), 2026-11-15:** checked in `../20261111_r1c-delta/r1d/r1g/HUB_E1_CHECK.md`.
   - GO for the arm interface: identical on every arm-facing surface, no slits or loose bodies.
   - It moves the arm 3.00 mm down the yaw axis, against Joey's "215 mm shoulder to elbow, don't lengthen it": **Joey to decide**,
