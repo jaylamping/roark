@@ -20,20 +20,20 @@
     {
       "case": "HUB_LUG",
       "part": "shoulder_hub_left",
-      "bulk_sf": 1.55,
+      "bulk_sf": 1.54,
       "layer_sf": 1.62,
-      "shear_sf": 1.55,
-      "converged": false,
-      "note": "HUBL_G90YAWP_MAX on the adopted shape, 1.20 M nodes; 1.55 is the governing figure (shear across the layers at the lug), entered as bulk; von Mises 2.66. Not repeated on a second mesh for this shape: the lugs are those of rev D3c7, whose mesh study is in A_HUB_LUGS.md, and the figure moved by 0.01 across the four rev E1 shapes"
+      "shear_sf": 1.54,
+      "converged": true,
+      "note": "HUBL_G90YAWP_MAX on the adopted shape; 1.54 is the governing figure (shear across the layers at the lug), entered as bulk; von Mises 2.63. The lower of two meshes: 1.20 M nodes reads layer 1.62, shear 1.55, von Mises 2.66; 1.54 M nodes (mesh controls x 0.8) reads 1.63, 1.54, 2.63. Within 1.2 % on the 0.5 mm ball and 2 % on the 1 mm ball"
     },
     {
       "case": "HUB_ESTOP",
       "part": "shoulder_hub_left",
-      "bulk_sf": 3.11,
-      "layer_sf": 3.27,
-      "shear_sf": 3.11,
-      "converged": false,
-      "note": "HUBL_STOP6_ZB on the adopted shape, 1.20 M nodes; 3.11 is shear across the layers, entered as bulk; von Mises 5.44. Not repeated on a second mesh"
+      "bulk_sf": 3.1,
+      "layer_sf": 3.26,
+      "shear_sf": 3.1,
+      "converged": true,
+      "note": "HUBL_STOP6_ZB on the adopted shape; 3.10 is shear across the layers, entered as bulk; von Mises 5.40. The lower of two meshes: 1.20 M nodes reads layer 3.27, shear 3.11, von Mises 5.44; 1.55 M nodes (mesh controls x 0.8) reads 3.26, 3.10, 5.40. Within 1 % on the 0.5 mm ball and 4 % on the 1 mm ball"
     }
   ],
   "access": [

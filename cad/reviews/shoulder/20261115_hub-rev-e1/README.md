@@ -11,9 +11,9 @@ and the gate report is written only by `tools/cad/gate.py` once the spec is agre
 - **Picture sheet:** [shoulder_hub_left_sheet.png](shoulder_hub_left_sheet.png), eight views including the bed side
   (`cad/scripts/shoulder/part_sheet.py`). The gate looks for it at `prints/shoulder/shoulder_hub_left_sheet.png`.
 - **Evidence:** [evidence.json](evidence.json), written by `cad/scripts/shoulder/hub_evidence.py` from the runs in
-  `hardware/shoulder/study-20261111/checks/A_HUB_LUGS.md` ("Rev E1 as adopted"). The hub-top case is recorded as
-  converged (two meshes); the lug and elbow-stop cases pass their marks but are recorded as not converged, because they
-  were not repeated on a second mesh for this shape.
+  `hardware/shoulder/study-20261111/checks/A_HUB_LUGS.md` ("Rev E1 as adopted"). All three cases (hub top, lug, elbow stop) are
+  recorded as converged: each was repeated on a second mesh and held within 6 % on the 0.5 mm ball (the lug and
+  elbow-stop cases within 1.2 %, 2026-11-15).
 - **Print file** (not in the repo until the gate passes): `cad/_wip/prints/shoulder/shoulder_hub_left_revE1.3mf`,
   SHA-256 `c384a067f1f3d5a9532ac16758862e919518f8ac2e4b7a91abf1b6615895fc5a`.
 
@@ -30,7 +30,7 @@ the rounds changed; not repeated on the adopted shape.
 | Requirements agreed | FAIL: the spec is a draft |
 | Export, 3MF and picture sheet present | PASS |
 | 3MF settings | PASS: 6 settings match, all flagged or preset |
-| Evidence | FAIL on convergence only (all three results recorded as not converged); every figure clears its pass mark |
+| Evidence | At the trial run: FAIL on convergence only; every figure cleared its pass mark. Since then all three results are recorded as converged (second meshes run); the gate has not been run again |
 | Mesh | **did not finish**, see below. `mesh_check.integrity_file` alone: watertight, 0 non-manifold edges, 0 zero-area faces, one body |
 | Support on visible faces, interference | not reached; need `hidden_by` and `mates` meshes |
 

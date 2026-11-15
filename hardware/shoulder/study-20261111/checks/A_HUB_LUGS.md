@@ -1351,6 +1351,8 @@ The earlier figures for the hub top (3.16 / 2.07 / 3.68) were read on meshes too
 |---|---|---|---|---|
 | Lug gate, G90 + yaw +17 at the arm's face totals (1.20 M nodes) | 1.62 / 2.39 | **1.55** / 2.13 | 2.66 / 3.34 | 1.5 |
 | Elbow stop (1.20 M nodes) | 3.27 / 4.54 | 3.11 / 4.30 | 5.44 / 6.81 | 1.2 |
+| Lug gate, second mesh (1.54 M nodes, mesh controls × 0.8) | 1.63 / 2.36 | **1.54** / 2.10 | 2.63 / 3.28 | 1.5 |
+| Elbow stop, second mesh (1.55 M nodes) | 3.26 / 4.37 | 3.10 / 4.18 | 5.40 / 6.60 | 1.2 |
 | Hub top, tube-to-plate rounds (1.3 zone) | 8.14 / 16.75 | 1.83 / 2.07 | 3.08 / 3.75 | 1.5 |
 | Hub top above the rounds (1.3 zone) | 3.89 / 4.62 | 2.37 / 3.03 | 4.32 / 5.43 | 1.5 |
 | Round the cable tunnel (1.3 zone) | 2.30 / 3.55 | 1.90 / 1.96 | 2.84 / 2.84 | 1.5 |

@@ -1332,6 +1332,15 @@ for k_ in ('FF_MX', 'FF_MXn'):
     CASES[k_ + 'b'] = dict(CASES[k_], fix=[('fixed', FK_BOSS), ('axialY', FF_JOINT[0])], react={})
 CASES['FF_STOP'] = dict(_ff, remote=(FF_JOINT, _rp(35.0, _ta, -37.0), (STOP_F, 0.0, 0.0), (0.0, 0.0, 0.0)))
 
+# HUBL_CTRL_SCALE: a second mesh for the lug cases. Every local mesh zone of the HUBL_* cases is scaled by this factor
+# (0.8: the zones at the lug holes, roots and plate edges 20 % finer), the global size left as it is
+_ls = float(os.environ.get('HUBL_CTRL_SCALE', '1.0'))
+if _ls != 1.0:
+    for k_ in [k for k in CASES if k.startswith('HUBL_')]:
+        if CASES[k_].get('ctrl'):
+            CASES[k_] = dict(CASES[k_], ctrl=[(s_, round(e_ * _ls, 3)) for s_, e_ in CASES[k_]['ctrl']])
+
+
 if __name__ == '__main__':
     try:
         for n in sys.argv[1:]:
