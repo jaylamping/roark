@@ -152,3 +152,57 @@ The trunk plan sleeves the trunk in 1/4 in PET braid. In the shoulder:
 - ~~Is 18 AWG acceptable for S3?~~ Decided 2026-11-15: yes. Open: where its 10 A fuse sits, or whether it is needed.
 - Where do the drop fuses for the roll and yaw motors go?
 - Is silicone acceptable in the crossings if it passes the rigs, or must the jumpers be flex-rated regardless?
+
+## Option C in detail: the 10 A fuse in the upper arm, just below the yaw joint (2026-11-15, a proposal)
+
+For the arm thread and the power thread. Nothing here is designed or agreed.
+
+**What moves and what stays**
+- **The 16 to 18 AWG splice stays in the shoulder,** in the cavity behind the yaw RS02 (44 × 20 × 20 mm), with the RS02's own
+  tap. It has to: a 16 AWG tail must not enter the cable space under the motor, and no joint fits in a channel. Three
+  staggered solder splices, about 6 mm across and 40 mm of wire length, under heat-shrink. A splice needs no service.
+- **Only the 10 A fuse moves,** to the upper arm, in the 18 AWG pair after it has come down the hub's bore.
+- The RS02's own 5 A drop fuse is a separate question (it is upstream of the yaw joint whatever is decided here).
+
+**The path to it**
+- From the splice the 18 AWG pair and the signal pairs run to the yaw exit, 2.25 turns in the cable space (about
+  500 mm), through the hub's tunnel (4.5 × 11 mm, bare wires only), and hang down the hub's bore against its wall at
+  about r 21.5, tied to the screw tube beside the tunnel.
+- Below the hub they are in the arm. The fuse holder goes at the first place there where the arm's halves open.
+
+**Space the arm must give**
+- One inline blade-fuse holder with its two pigtails. A typical MINI holder is about 36 × 14 × 9 mm (**assumed**; measure
+  the one bought), plus about 15 mm of straight wire at each end before any bend (static rule for 18 AWG: R 11.5).
+  Call it a pocket of **70 × 16 × 11 mm** on the power pair's run.
+- It must not sit in the hub's bore or anywhere that turns against the shoulder: below the hub everything turns with the
+  arm, so any fixed place in the upper arm is fine.
+- The signal pairs pass beside it; they need no break.
+
+**Reach**
+- The fuse must be changeable with the arm on the robot: by opening the arm's cover or halves, without taking the hub
+  off the motor and without disturbing the cable in the shoulder.
+- The holder is tied or clipped down so that pulling the fuse does not pull on the wires going up into the hub.
+
+**What it protects, and what it does not**
+- Everything below the yaw joint draws through it. A fault or overload anywhere in the arm is cut at 10 A, so the 18 AWG
+  in the cable space never carries more than 10 A for long because of the arm (32 K of rise in still air at 10 A,
+  figures above; worse when coiled).
+- **Not covered:** a fault inside the 0.5 m of 18 AWG between the splice and the fuse (the cable space and the hub's
+  tunnel). A hard short there trips the board's port (15 A). A partial short of 10 to 15 A there is the one case nothing
+  clears.
+- The drop fuses below the joint add up to 11 A (5 + 3 + 3) behind this 10 A. All three at their limits together would
+  blow it; the power thread says whether that is wanted.
+
+**What each thread must confirm**
+
+| Thread | To confirm |
+|---|---|
+| Arm | A pocket of about 70 × 16 × 11 mm for the holder on the power pair's run, at a place that opens with the arm on the robot. Where it is, measured from the hub's seat. How the holder is fixed. That the pair's length from the hub's tunnel to the holder is fixed, so nothing is pulled when the arm yaws (the take-up is all in the shoulder's cable space) |
+| Arm | Whether 18 AWG continues below the fuse in place of the 20 AWG now drawn below the elbow (asked in "Places outside this study") |
+| Power | The fuse and holder by part number, rated for the bus voltage. **Ordinary automotive blade fuses are rated 32 V; the bus is 48 V nominal, 58 V at the board's fuse.** The fuse needs a 58 V DC rating or better, and the holder to match; that may change the holder's size above |
+| Power | 10 A as the value: against the 15 A port trip above it and the 5 A, 3 A and 3 A drop fuses below it (11 A in all); and whether the uncovered case (a partial short in the 0.5 m upstream) is acceptable, or the port's trip should come down |
+| Power | Whether option B (no separate fuse at all) is the better answer once bus currents at stall have been measured: they are not in the repo |
+| Shoulder (here) | The splice in the cavity: tried by hand on the printed parts; a tie point for the bundle where it leaves the fork rear (item 51) |
+
+**If the arm has no place that opens:** fall back to option B, or to option A (the fuse in the shoulder's cavity, a
+strip-down to change).
