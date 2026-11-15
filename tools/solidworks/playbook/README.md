@@ -41,20 +41,24 @@ How well this works for a smaller model, measured: [EVAL.md](EVAL.md).
 4. **Pick faces and edges by where they are,** never by name or index: names and order change with every rebuild.
 5. **Save after every step that worked,** in `cad/_wip/<topic>/` until the part is chosen.
 6. **Right numbers are the start, not the end.** [07-done.md](07-done.md) lists what a finished model, study and report
-   contain; "it passes" is not on the list.
+   contain; "it passes" is not on the list. Neither is stopping with tasks open: every task ends done, shown not possible, or
+   blocked after three different tries.
 7. **Report what you checked, not what you hope.** Give the numbers, the hand value beside them, what was excluded, and what
    you could not verify.
 
 ## Stop and hand it up
 
-Stop and report, with the log, instead of trying a fourth variation, when:
+Stop **that task** and report it, with the log, instead of trying a fourth variation, when one of these holds. Each one
+ends the task it happened in, never the whole job: carry on with every task it does not block
+([07-done.md](07-done.md), "Do not stop early").
 
 - an instance shows `HALF-CLOSED` in `sw_instance.py --status`, or a launch sits at the splash screen;
 - the same step has failed three times in different ways;
 - a study's peak stress keeps rising as the mesh shrinks and you cannot name the corner or edge that causes it;
 - a solve fails with error 24 after the checks in [05-fea.md](05-fea.md);
 - the result disagrees with the hand calculation by more than 20 % and you cannot say why;
-- the machine has under 8 GB free, or the job would need more than a 450,000-node mesh;
+- the machine is still under 8 GB free after `job(wait_s=1800)` has waited, or the job would need more than a
+  450,000-node mesh;
 - the task needs a decision about the design itself (a load path, a split line, a print orientation, a joint).
 
 What still needs a stronger model or Joey is listed in [06-judgment.md](06-judgment.md).

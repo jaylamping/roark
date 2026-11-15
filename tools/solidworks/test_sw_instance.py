@@ -93,3 +93,13 @@ def test_the_keeper_is_started_only_where_switched_on_and_replaced_when_it_hangs
     assert due(True, 4242, True, 270) == "none"
     assert due(True, 4242, False, 270) == "restart"
     assert due(True, 4242, True, sw_instance.KEEPER_MAX_MB + 1) == "restart"
+
+
+def test_a_launch_is_refused_when_the_temp_folder_is_unset_or_missing(tmp_path):
+    """Guards: bug - a launch from a process with TEMP unset stopped at a hidden "Environment variable 'temp' must be
+    set" box and waited out its whole timeout (holly-pc, 2026-11-14)."""
+    good = str(tmp_path)
+    assert sw_instance.temp_problem({"TEMP": good, "TMP": good}) is None
+    assert "TEMP is not set" in sw_instance.temp_problem({"TMP": good})
+    assert "TMP is not set" in sw_instance.temp_problem({"TEMP": good, "TMP": ""})
+    assert "does not exist" in sw_instance.temp_problem({"TEMP": good, "TMP": str(tmp_path / "gone")})

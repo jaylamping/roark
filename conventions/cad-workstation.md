@@ -181,7 +181,7 @@ So the waits are not a shortage of machine. What follows:
   there, 15 minutes behind a guard or a launch, moves to Joey-PC, hidden, under Joey-PC's rules
   ([cad.md section 9](cad.md#9-cad-workstation)).
 - **Tell Joey first if he is at Joey-PC.** Before the job starts there, run `python tools/pc/user_idle.py` on Joey-PC.
-  Exit 0 means it watched for three minutes, saw no more input than one nudge of his keep-alive mouse script, and nothing
+  Exit 0 means it watched for three minutes, saw no more input than his keep-alive mouse script makes, and nothing
   fullscreen is in front: start. Exit 1 means he is using it: write to him in the thread that a job is about to start
   there and what it is, then start it. Check again before each new job, not once per session.
 - **Time-critical work starts on Joey-PC** only when Joey says so in the request that starts it.
