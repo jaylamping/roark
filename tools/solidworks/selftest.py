@@ -245,8 +245,9 @@ def extras(j):
         with Sk(d, plane(d, 'Z', z, f'C{z:.0f}_P'), f'C{z:.0f}') as s:
             s.spline([(10 * math.cos(math.radians(t)), 10 * math.sin(math.radians(t)), z) for t in range(0, 360, 30)])
         secs.append(s.feat)
-    loft(d, secs, 'TUBE')
-    expect('three-section spline loft volume', volume(d), math.pi * 100 * 30, 0.01)
+    # picked: unpicked, SolidWorks chooses where to join the sections, and the choice differs between machines
+    loft(d, secs, 'TUBE', at=[(10.0, 0.0, z) for z in (0.0, 15.0, 30.0)])
+    expect('three-section spline loft volume', volume(d), math.pi * 100 * 30, 0.002)
     save(d)
     close(j.sw, d)
 
