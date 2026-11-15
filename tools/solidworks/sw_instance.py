@@ -791,7 +791,8 @@ class Instance:
     def load_simulation(self):
         """Load the Simulation add-in in this instance. Returns its CosmosWorks object.
 
-        The load takes the launch lock, so that it never runs beside another instance's load or startup: on
+        The load takes the launch lock (it waits up to 300 s for it, then goes without), so that it does not run
+        beside another instance's load or startup: on
         2026-11-15 a load that came seconds after another instance's load or startup stopped at a hidden "continue to
         load SOLIDWORKS Simulation?" prompt, four times, for up to half an hour. What exactly raises the prompt is not
         known (six deliberate overlaps did not), so while the load runs the prompt is also answered Yes in this PID;
@@ -814,8 +815,15 @@ class Instance:
 
         threading.Thread(target=answer, daemon=True).start()
         try:
-            with _LaunchLock(600, LOCK, "a SolidWorks launch or another instance's Simulation load"):
+            try:
+                lock = _LaunchLock(300, LOCK).__enter__()
+            except RuntimeError:  # a launch queued behind a long solve holds the lock for as long: load without it
+                _say(f"sw_instance: PID {self.pid} loads Simulation without the launch lock, held for over 300 s")
                 return self._load_simulation()
+            try:
+                return self._load_simulation()
+            finally:
+                lock.__exit__()
         finally:
             done.set()
 
