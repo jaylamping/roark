@@ -128,6 +128,8 @@ The `[[load_case]]` table above is the list the gate checks. In words:
 ## Harness
 
 - Elbow back loop, as on the upper arm (Joey 2026-11-08), with a forearm saddle on the cheek rim at 140°.
+  - **Superseded, pending the rig (Joey, 2026-11-15 05:05Z):** the elbow crossing is option A3, a flat clock-spring of the power
+    pair under the inboard cap (`cad/reviews/upper-arm/20261115_elbow-cable/ELBOW_CABLE_STUDY.md`).
   - **Not what the organic parts build (2026-11-15).** They route the cable internally, through the hollow stub into a
     flat coil under the inboard cap and down a slot in the inboard cheek. Which route stands is open; see `cad/upper-arm/README.md`,
     "Elbow cable".

@@ -1,5 +1,7 @@
 # Elbow cable crossing: options for Joey (2026-11-15)
 
+**Decision (Joey, 2026-11-15 05:05Z): option A3, the inside spiral, rig first.** The halves print only after the rig passes, the bench passes and the corrected hub exists.
+
 **The question:** how 2 × 18 AWG power plus up to three 26 AWG signal pairs cross the elbow through 0-124 deg for many cycles, and
 whether that changes the upper-arm halves Joey prints next.
 

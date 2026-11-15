@@ -307,6 +307,10 @@ Sheets: `r1g_front_half_sheet.png`, `r1g_shim_ring_set_sheet.png`, `r1h_d34_lug_
 the R1h back half in `../20261111_r1c-delta/r1d/r1g/r1h_back_sheet.png`.
 
 **Open:**
+- **Stage 2 (the halves) waits for:** the bench on the corrected hub, and the elbow cable rig passing.
+  - The elbow cable crossing is option A3, chosen by Joey on 2026-11-15 (05:05Z): a flat clock-spring of the power pair under the
+    inboard cap, in forearm parts only. Rig first (`cad/upper-arm/ELBOW_CABLE_RIG.md`).
+  - The halves need no change for it.
 - **The corrected hub** (the D3c7 motor-plate slits filled): needed for the bench weight steps. The fit steps run on D3c7.
 - **Insert torque capacity: untested** (Joey's choice, 2026-11-14). The lug bolts' 0.3 N·m cap is a hand-feel rule ("snug") until a
   later iteration measures it.

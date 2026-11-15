@@ -118,6 +118,8 @@ to a round bundle and doesn't apply there.
 
 ### Elbow cable: findings for the elbow and forearm rebuild (2026-11-15)
 
+**Decision (Joey, 2026-11-15 05:05Z): option A3, the inside spiral, rig first.** The halves print only after the rig passes, the bench passes and the corrected hub exists. The outside back loop (11-08) is superseded, pending the rig.
+
 The options and the recommendation are in [ELBOW_CABLE_STUDY.md](../reviews/upper-arm/20261115_elbow-cable/ELBOW_CABLE_STUDY.md). In short: a flat clock-spring of the power pair under the inboard cap, with the signals on an FFC, and forearm changes only.
 
 Checked against our current parts: the upper-arm R1h back and R1g front halves; the forearm parts, whose exports (11-10) match the

@@ -1,13 +1,14 @@
 # Elbow cable rig: does the power coil survive the elbow's swing? (option A3)
 
-**Status: ready to print, only if you pick option A3** (`cad/reviews/upper-arm/20261115_elbow-cable/ELBOW_CABLE_STUDY.md`). It
+**Status: ready to print. Option A3 chosen by Joey, 2026-11-15, rig first** (`cad/reviews/upper-arm/20261115_elbow-cable/ELBOW_CABLE_STUDY.md`). It
 tests the elbow's cable coil at full size before any forearm part changes. It needs no hub and no halves.
 
 ![rig](../reviews/upper-arm/20261115_elbow-cable/elbow_cable_rig_sheet.png)
 
 ## 1. Print (white PETG, Cool Plate SuperTack, cheap settings: 0.20, 3 walls, 15 %, no support, no brim)
 
-Files on holly-pc in `C:\joe\prints\elbow-cable-rig\`:
+Files on Joey-PC in `J:\code\prints\elbow-cable-rig\` (copied 2026-11-15, 3MF hashes checked), and on holly-pc in
+`C:\joe\prints\elbow-cable-rig\`:
 
 | # | File | What it is | Time | PETG |
 | --- | --- | --- | --- | --- |

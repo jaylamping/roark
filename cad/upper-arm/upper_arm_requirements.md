@@ -121,6 +121,8 @@ The `[[load_case]]` table above is the list the gate checks. In words:
 - Trunk entry Ø10 in the back wall below the hub; RS00 branch Ø6.8 out to the loop clip (draft 3).
 - Elbow: round cable in braided loom as a free **back loop** outside the bend, about 190 mm free, bend radius at least
   27.9 mm; no printed guard (Joey 2026-11-08 05:24Z).
+  - **Superseded, pending the rig (Joey, 2026-11-15 05:05Z):** the elbow crossing is option A3, a flat clock-spring of the power
+    pair under the inboard cap (`cad/reviews/upper-arm/20261115_elbow-cable/ELBOW_CABLE_STUDY.md`).
   - **Not what the organic parts build (2026-11-15).** They route the cable internally, through the hollow stub into a
     flat coil under the inboard cap and down a slot in the inboard cheek. Which route stands is open; see `cad/upper-arm/README.md`,
     "Elbow cable".
