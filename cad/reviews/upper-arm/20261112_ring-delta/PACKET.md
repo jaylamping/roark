@@ -203,6 +203,10 @@ clearance (the mesh reads 0.36-0.40).
        - G90 + YAW -17: shear 1.42, layer 1.57;
        - G90 + YAW +17: shear 1.44, layer 1.58.
      - **The design load is the section totals.** Both figures are stated here.
+     - **2026-11-15, under re-read:** Their hub-top figure of 1.47 was mesh-dependent. On a steady 0.5 / 1 mm ball read-out, D3c7 as released reads shear 0.38 / 0.39
+       at the slits, under 1. In that load case the +X lug reads 0.94 / 1.51.
+       They are re-reading the earlier lug-root figures (1.58 at the section loads, 1.42 at the upper bound) the same way.
+       Until that is in, the accepted hub figures are not final, and the bench weight tests stay held.
      - It clears the 1.2 bound either way. No hub change.
      - Accepted for the test print because the bench ends with the 1.5 × yaw proof (25.5 N·m) on the printed hub, which loads that
        root in the real material. After the proof, the hub lug roots are inspected and photographed.
