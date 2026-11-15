@@ -28,6 +28,7 @@ with the helper code that makes the lessons hard to forget:
 | Run a static study, or a study with contact | [05-fea.md](05-fea.md) |
 | Decide whether a result can be trusted, and when to hand the problem up | [06-judgment.md](06-judgment.md) |
 | Know when a model, a study or a report is finished: **read before every task** | [07-done.md](07-done.md) |
+| Decide which model plans, which builds and which reviews | [08-workflow.md](08-workflow.md) |
 
 How well this works for a smaller model, measured: [EVAL.md](EVAL.md).
 
