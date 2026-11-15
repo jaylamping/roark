@@ -1,6 +1,6 @@
 """Prove swkit and swfea against hand answers on this machine's SolidWorks. Also the worked example for the playbook.
 
-    python tools/solidworks/selftest.py [model] [beam] [rod] [extras] [loads] [contact] [bearing] [blend] [verdict]
+    python tools/solidworks/selftest.py [model] [beam] [rod] [extras] [loads] [contact] [bearing] [blend] [verdict] [picks]
 
 All of them when none is named.
 
@@ -22,6 +22,8 @@ SolidWorks has started (a launch waits while another session's instance is solvi
   verdict: judge() on series worked by hand (settled, moving, a growing step, the floor on small changes), expect()
            and its tolerances, stamp()'s clock file, a materials key that
            matches no body of a two-body study, and save_as before an edit leaving the original file as it was.
+  picks:   side(), edges_of() and edges_along() on a plate, the measured part kept after each feature, what a refused
+           round and a refused sketch say, the job's runs.log, and sheet.py's printability() and mesh_diff().
 """
 import math
 import sys
@@ -542,7 +544,7 @@ def refused(what, fn, *needles):
         missing = [n for n in needles if n not in str(ex)]
         if missing:
             raise SystemExit(f'FAIL: {what}: the refusal does not say {missing}: {ex}')
-        log(f'ok {what} is refused:', str(ex)[:110])
+        log(f'ok {what} is refused:', str(ex) if '\n  try: ' in str(ex) else str(ex)[:110])
     else:
         raise SystemExit(f'FAIL: {what} was accepted')
 
@@ -748,6 +750,94 @@ def verdict(j):
 
 TESTS = {'model': model, 'beam': beam, 'rod': rod, 'extras': extras, 'loads': loads, 'contact': contact, 'bearing': bearing}
 
+def picks(j):
+    """side(), edges_of(), edges_along(), edge_info(), the state line after a feature, what a refused fillet says,
+    Failed's try and stop lines, the job's runs.log, and sheet.py's printability() and mesh_diff()."""
+    import swkit
+    from sheet import mesh_diff, printability, read_stl
+    from swkit import edge_info, edges_along, edges_of, side, state
+    d = new_part(j.sw, OUT / 'picks.SLDPRT')
+    with Sk(d, plane(d, 'Z', 5.0, 'PK_P'), 'PK') as s:
+        s.rect((0, 0, 5.0), (60, 30, 5.0))
+    extrude(d, s.feat, 'PK', 10.0, mode=MID, expect_dv=18000)
+    expect('state after the block: volume', swkit.last['volume_mm3'], 18000, 0.001)
+    if swkit.last['feature'] != 'PK' or swkit.last['bodies'] != 1 or swkit.last['errors']:
+        raise SystemExit(f'FAIL: swkit.last after the block is {swkit.last}')
+    for k, want in enumerate((0, 0, 0, 60, 30, 10)):
+        expect(f'state box[{k}]', swkit.last['box'][k], want, 0.01, abs_tol=0.01)
+    for where, area in (('+z', 1800), ('-z', 1800), ('+x', 300), ('-x', 300), ('+y', 600), ('-y', 600)):
+        fs = side(d, where)
+        expect(f'side {where}: faces', len(fs), 1, 0)
+        expect(f'side {where}: area', call(fs[0], 'GetArea') * 1e6, area, 0.001)
+    top = side(d, '+z')[0]
+    expect('side +z lies at z 10', [v * 1e3 for v in call(top, 'GetBox')][2], 10.0, 0.01, abs_tol=0.01)
+    rim = edges_of(side(d, '+z'))
+    expect('edges of the top face', len(rim), 4, 0)
+    expect('their total length', sum(edge_info(e)['length'] for e in rim), 180.0, 0.001)
+    expect('edges of top and front together (one shared)', len(edges_of(side(d, '+z') + side(d, '-y'))), 7, 0)
+    expect('edges along Z', len(edges_along(d, 'Z')), 4, 0)
+    expect('edges along X', len(edges_along(d, 'X')), 4, 0)
+    expect('edges along Z in the left half', len(edges_along(d, 'Z', inside=[-1, -1, -1, 30, 31, 11])), 2, 0)
+    i = edge_info(edges_along(d, 'Z')[0])
+    expect('a Z edge: length', i['length'], 10.0, 0.001)
+    if not i['straight']:
+        raise SystemExit('FAIL: a straight edge is not reported straight')
+    refused('side with a bad word', lambda: side(d, 'top'), '+x -x')
+    # a round larger than the 10 mm edges it is asked for is refused: fillet returns None and says why
+    said, keep = [], swkit.log
+    swkit.log = lambda *a: (said.append(' '.join(str(v) for v in a)), keep(*a))[1]
+    try:
+        if fillet(d, edges_along(d, 'Z'), (40.0,), 'TOO_BIG') is not None:
+            raise SystemExit('FAIL: an R40 round on a 30 mm wide plate built')
+    finally:
+        swkit.log = keep
+    if not any('4 of them are shorter than the smallest radius tried' in s for s in said):
+        raise SystemExit(f'FAIL: the refused round does not say its edges are shorter than the radius: {said}')
+    expect('nothing changed after the refused round', volume(d), 18000, 0.001)
+    r = fillet(d, edges_along(d, 'Z'), (40.0, 3.0), 'CORNERS')
+    expect('the second radius builds', r, 3.0, 0)
+    expect('state after the round: volume', swkit.last['volume_mm3'], 18000 - (4 - math.pi) * 9 * 10, 0.001)
+    expect('side +z after the round is still one face', len(side(d, '+z')), 1, 0)
+    with Sk(d, plane(d, 'Z', 5.0, 'PKH_P'), 'PKH') as s:
+        s.circle((30, 15, 5.0), 5.0)
+    extrude(d, s.feat, 'PKH', 10.0, cut=True, mode=MID, expect_dv=math.pi * 25 * 10)
+    hole_rim = [e for e in edges_of(side(d, '+z')) if not edge_info(e)['straight'] and edge_info(e)['length'] > 25]
+    expect('the hole rim on the top face', len(hole_rim), 1, 0)
+    expect('its length (16 chords read 0.6 % short)', edge_info(hole_rim[0])['length'], 2 * math.pi * 5, 0.01)
+    st = state(d)
+    expect('state(): volume', st['volume_mm3'], volume(d), 0.0001)
+    # an open sketch is refused, and the refusal says what to try and when to stop
+    with Sk(d, plane(d, 'Z', 5.0, 'OPEN_P'), 'OPEN') as s:
+        s.poly([(5, 5, 5.0), (10, 5, 5.0), (10, 10, 5.0)], closed=False)
+    refused('an open sketch as a cut', lambda: extrude(d, s.feat, 'OPEN', 10.0, cut=True, mode=MID),
+            'try:', 'stop when:', 'closed loop')
+    save(d)
+    export(j.sw, d, OUT / 'picks.stl')
+    close(j.sw, d)
+    tris = read_stl(OUT / 'picks.stl')
+    pr = printability(tris, '+z')
+    want_v = 18000 - (4 - math.pi) * 90 - math.pi * 250
+    expect('printability: volume', pr['volume_mm3'], want_v, 0.005)
+    expect('printability: area on the bed', pr['bed_contact_mm2'], 1800 - (4 - math.pi) * 9 - math.pi * 25, 0.01)
+    expect('printability: overhang lying flat', pr['overhang_mm2'], 0.0, 0.5)
+    if not pr['ok'] or pr['shells'] != 1 or pr['open_edges'] != 0 or pr['height_mm'] != 10.0:
+        raise SystemExit(f'FAIL: printability of the plate lying flat: {pr}')
+    if printability(tris, '+z', bed=50)['ok'] or printability(tris, '+z', bed=50)['fits_bed']:
+        raise SystemExit('FAIL: a 60 mm plate fits a 50 mm bed')
+    up = printability(tris, '+x')                      # standing on its end: the upper half of the bore overhangs
+    if not up['ok'] or not 20 < up['overhang_mm2'] < 200:      # a quarter of the bore and two corner rounds
+        raise SystemExit(f'FAIL: printability standing on end: {up}')
+    same = mesh_diff(tris, tris)
+    if same['volume_diff_pct'] != 0 or same['box_diff_mm'] != 0 or same['a_to_b']['max_mm'] > 3 * same['resolution_mm']:
+        raise SystemExit(f'FAIL: a mesh against itself: {same}')
+    other = mesh_diff(tris, read_stl(OUT / 'plate.stl')) if (OUT / 'plate.stl').exists() else None
+    if other is not None:                              # plate.stl has its hole at x 15, this one at x 30
+        if not (other['box_diff_mm'] < 0.01 and abs(other['volume_diff_pct']) > 1 and other['a_to_b']['max_mm'] > 3):
+            raise SystemExit(f'FAIL: mesh_diff against the plate with its hole elsewhere: {other}')
+        log('ok mesh_diff finds the moved hole:', other['a_to_b'])
+
+
+TESTS['picks'] = picks      # side(), edges_of(), edges_along(), the state line, refusals, printability(), mesh_diff()
 TESTS['blend'] = blend      # skirt(): a lofted stem rounded into the face it stands on
 TESTS['verdict'] = verdict  # judge(), expect(), stamp(), the materials refusal, save_as before an edit
 
@@ -758,4 +848,9 @@ if __name__ == '__main__':
         for name in todo:
             log('----', name)
             TESTS[name](j)
+    # the job wrote its own line as it closed: one line per job, so that pc/run_metrics.py counts jobs and not lines
+    runs = Path(sys.argv[0]).resolve().parent / 'runs.log'
+    last = runs.read_text(encoding='utf-8').splitlines()[-1].split('\t')
+    if len(last) < 5 or last[4] != 'ok' or last[2] != ' '.join(Path(a).name for a in sys.argv):
+        raise SystemExit(f'FAIL: {runs} does not end with this job\'s "ok" line: {last}')
     print('PASS', ' '.join(todo), flush=True)

@@ -53,6 +53,17 @@ Record the export right after making it, from the worktree root:
 
 ## Printing
 
+Before a part is called printable, ask the STL: `python tools/solidworks/sheet.py part.stl --printable +y` (the direction that
+points away from the bed; `sheet.printability(tris, up)` from a script). It answers with numbers: whether it fits the
+256 mm bed, whether it is one watertight piece, the area lying on the bed, and the area that faces down more steeply
+than 45 degrees and so needs support, with where the largest patch is. Quote those in the report in place of "prints
+fine". `ok` means it fits, is one closed piece and touches the bed: it does not mean no supports, and it says nothing
+about wall thickness or bridges.
+
+To check a part against a reference (an earlier revision, a supplier's model, a scan), both in the same frame:
+`python tools/solidworks/sheet.py part.stl ref.stl --diff` gives the volume and box differences and the largest gap between
+the two surfaces, with where it is. A gap under about twice the `resolution_mm` it prints is no finding.
+
 A print project is built from the STL export, not from SolidWorks: orientation, the 100 % infill modifiers, supports and
 the Bambu Studio command line are in `cad/scripts/arm/organic_print.py` on branch `left-arm-organic-r1`, and the gate every
 print passes is [part-lifecycle.md](../../../conventions/part-lifecycle.md). Slice with the CLI (`--slice 0 --export-3mf`),

@@ -18,6 +18,11 @@ A smoothed flat strap and a round bone can score alike, and faces the task requi
 `inside(tris, points)` says which points lie in the solid: the way to check that a clearance is clear and a boss is
 solid. `--crop x0,y0,z0,x1,y1,z1` draws only the triangles inside a box, to look closely at one junction.
 
+    python tools/solidworks/sheet.py part.stl --printable +z   # fits the bed, one watertight piece, overhang area
+    python tools/solidworks/sheet.py part.stl ref.stl --diff   # how far the part is from a reference mesh
+
+`printability(tris, up)` and `mesh_diff(tris_a, tris_b)` are the same checks from a script.
+
 Run it under the cap for big meshes: python tools/pc/capped.py --mb 2048 -- python tools/solidworks/sheet.py part.stl
 """
 import argparse
@@ -112,6 +117,105 @@ def inside(tris, points, chunk=200):
         z = w0 * a[:, 2] + w1 * b[:, 2] + w2 * c[:, 2]
         hit = box & (w0 >= 0) & (w1 >= 0) & (w2 >= 0) & (z > q[:, 2][:, None])
         out[i:i + chunk] = hit.sum(axis=1) % 2 == 1
+    return out
+
+
+def _topology(tris):
+    """(open_edges, shells): edges not shared by exactly two triangles, and the number of separate closed pieces."""
+    v, vid = np.unique(np.round(tris.reshape(-1, 3), 4), axis=0, return_inverse=True)
+    f = vid.reshape(-1, 3)
+    e = np.sort(np.concatenate([f[:, [0, 1]], f[:, [1, 2]], f[:, [2, 0]]]), axis=1)
+    _, cnt = np.unique(e, axis=0, return_counts=True)
+    parent = np.arange(len(v))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+    for a_, b_ in np.unique(e, axis=0):
+        ra, rb = find(a_), find(b_)
+        if ra != rb:
+            parent[ra] = rb
+    return int((cnt != 2).sum()), len({find(i) for i in range(len(v))})
+
+
+def volume(tris):
+    """Enclosed volume in mm3 (signed: negative means the triangles face inwards)."""
+    return float(np.einsum('ij,ij->i', tris[:, 0], np.cross(tris[:, 1], tris[:, 2])).sum() / 6)
+
+
+def printability(tris, up='+z', bed=256.0, overhang_deg=45.0):
+    """Can this STL be printed as it lies, with `up` ('+x' ... '-z') pointing away from the bed? Needs numpy only.
+
+    Returns dict(ok, size_mm along the bed's two axes and height_mm, fits_bed, watertight, open_edges, shells,
+    volume_mm3, bed_contact_mm2 (area lying on the bed), overhang_mm2 (area facing down more steeply than
+    overhang_deg from the vertical and not on the bed: what needs support), overhang_share of the whole surface, and
+    worst_overhang_at: the centre of the largest such triangle). ok means it fits the bed, is one watertight piece and
+    has some area on the bed; it does not mean no supports. It says nothing about wall thickness or bridges: thin
+    walls are found with inside() on sample points, bridges by looking at the picture.
+    """
+    w = up.strip().lower()
+    if len(w) != 2 or w[0] not in '+-' or w[1] not in 'xyz':
+        raise SystemExit(f'printability: up must be one of +x -x +y -y +z -z, not {up!r}')
+    k = 'xyz'.index(w[1])
+    u = np.zeros(3)
+    u[k] = 1.0 if w[0] == '+' else -1.0
+    n, area = _normals(tris)
+    h = tris @ u                                               # height of every corner above the origin, along up
+    h0 = float(h.min())
+    size = tris.reshape(-1, 3).max(0) - tris.reshape(-1, 3).min(0)
+    flat = [float(size[j]) for j in range(3) if j != k]
+    down = n @ u
+    on_bed = (h.max(axis=1) - h0 < 0.05) & (down < -0.99)
+    over = (down < -np.sin(np.radians(overhang_deg))) & ~on_bed & (area > 1e-12)
+    open_edges, shells = _topology(tris)
+    worst = tris[over][np.argmax(area[over])].mean(axis=0).round(2).tolist() if over.any() else None
+    fits = max(flat) <= bed and float(size[k]) <= bed
+    return dict(ok=bool(fits and open_edges == 0 and shells == 1 and on_bed.any()), up=w,
+                size_mm=[round(v, 2) for v in flat], height_mm=round(float(size[k]), 2), fits_bed=bool(fits),
+                watertight=open_edges == 0, open_edges=open_edges, shells=shells, volume_mm3=round(volume(tris), 2),
+                bed_contact_mm2=round(float(area[on_bed].sum()), 1), overhang_mm2=round(float(area[over].sum()), 1),
+                overhang_share=round(float(area[over].sum() / area.sum()), 3), worst_overhang_at=worst)
+
+
+def _surface_points(tris, n, seed):
+    """n points spread over the surface by area, the same every time for one seed."""
+    rng = np.random.default_rng(seed)
+    _, area = _normals(tris)
+    pick = rng.choice(len(tris), n, p=area / area.sum())
+    r1, r2 = np.sqrt(rng.random(n)), rng.random(n)
+    t = tris[pick]
+    return (1 - r1)[:, None] * t[:, 0] + (r1 * (1 - r2))[:, None] * t[:, 1] + (r1 * r2)[:, None] * t[:, 2]
+
+
+def mesh_diff(tris_a, tris_b, n=4000, dense=60000, chunk=200):
+    """How far two STLs differ: for a part against a reference (a scan, an earlier revision, a supplier's model).
+
+    Both must be in the same frame and units. Returns dict(volume_a, volume_b, volume_diff_pct, box_a, box_b,
+    box_diff_mm (largest difference of any box coordinate), a_to_b and b_to_a each with max_mm, mean_mm and at (where
+    the largest gap is), and resolution_mm). Distances go from n points on one surface to the nearest of `dense`
+    points on the other, so they read up to resolution_mm too large and identical parts do not read zero: a gap
+    under about twice resolution_mm is no finding. Raise `dense` for a finer answer; memory is chunk x dense x 24
+    bytes.
+    """
+    out = {}
+    for name, t in (('a', tris_a), ('b', tris_b)):
+        p = t.reshape(-1, 3)
+        out['volume_' + name] = round(volume(t), 2)
+        out['box_' + name] = np.round(np.r_[p.min(0), p.max(0)], 3).tolist()
+    out['volume_diff_pct'] = round(100 * (out['volume_b'] - out['volume_a']) / out['volume_a'], 3) if out['volume_a'] else None
+    out['box_diff_mm'] = round(float(np.abs(np.array(out['box_a']) - np.array(out['box_b'])).max()), 3)
+    res = 0.0
+    for name, src, dst in (('a_to_b', tris_a, tris_b), ('b_to_a', tris_b, tris_a)):
+        q, ref = _surface_points(src, n, 1), _surface_points(dst, dense, 2)
+        res = max(res, float(np.sqrt(_normals(dst)[1].sum() / dense)))
+        dist = np.empty(len(q))
+        for i in range(0, len(q), chunk):
+            dist[i:i + chunk] = np.sqrt(((q[i:i + chunk, None, :] - ref[None, :, :]) ** 2).sum(axis=2).min(axis=1))
+        out[name] = dict(max_mm=round(float(dist.max()), 3), mean_mm=round(float(dist.mean()), 3),
+                         at=q[int(dist.argmax())].round(2).tolist())
+    out['resolution_mm'] = round(res, 3)
     return out
 
 
@@ -233,7 +337,19 @@ if __name__ == '__main__':
     ap.add_argument('--px', type=int, default=420, help='tile size in pixels')
     ap.add_argument('--crop', help='x0,y0,z0,x1,y1,z1 in mm: draw only what lies inside this box')
     ap.add_argument('--together', action='store_true', help='draw all the files as one scene (an assembly)')
+    ap.add_argument('--printable', metavar='UP', help='no picture: check the first STL for printing with UP (+z, -y, '
+                    '...) away from the bed, and print the numbers')
+    ap.add_argument('--bed', type=float, default=256.0, help='bed size in mm for --printable')
+    ap.add_argument('--diff', action='store_true', help='no picture: compare the first STL with the second')
     a = ap.parse_args()
+    if a.printable:
+        print(json.dumps(printability(read_stl(a.stl[0]), a.printable, a.bed), indent=1))
+        sys.exit(0)
+    if a.diff:
+        if len(a.stl) != 2:
+            raise SystemExit('--diff takes exactly two STL files')
+        print(json.dumps(mesh_diff(read_stl(a.stl[0]), read_stl(a.stl[1])), indent=1))
+        sys.exit(0)
     out = a.out or str(Path(a.stl[0]).with_suffix('.sheet.png'))
     res = sheet(a.stl, out, a.px, [float(v) for v in a.crop.split(',')] if a.crop else None, a.together)
     print(json.dumps(res, indent=1))
