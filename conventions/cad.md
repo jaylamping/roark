@@ -26,6 +26,9 @@ nothing.
 ## 2. Rules
 
 1. **Work in `_wip/`.** New ideas, variants and experiments start there and are never committed.
+   Print files that are not released (test rigs, coupons, the 3MF and G-code of a staged or superseded revision) go in
+   `cad/_wip/prints/<region>/`. They are never committed, are copied between machines by hand, and move to
+   `cad/prints/<region>/` only through the gate ([part-lifecycle.md](part-lifecycle.md)).
 2. **Promote when chosen.** A part moves into its region folder when it is picked: it passes its gate, or an assembly or a
    print starts using it. Move and rename native files **inside SolidWorks** (Pack and Go or SOLIDWORKS Explorer), never with
    a plain file move. Rebuild and save the top assembly, stage everything, then run
@@ -73,6 +76,7 @@ cad/
   scripts/                    CAD automation scripts and macros
   # scratch (gitignored): nothing a kept assembly references
   _wip/<topic>/  _sim/<region>/  _archive/
+  _wip/prints/<region>/       print files not released yet (rule 1)
 ```
 
 ## 4. Names

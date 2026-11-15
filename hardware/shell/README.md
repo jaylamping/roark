@@ -14,34 +14,37 @@ change the panels only if needed.
 
 ## Changes owed at the next rebuild
 
-### 1. Shoulder opening grows to r 80 (shoulder option A, 2026-11-11)
+### 1. Shoulder opening grows (shoulder option A, 2026-11-11; target r 75 from 2026-11-14)
 
-The arm cable passes through the shell beside the pitch actuator, so the shell changes and the shoulder stays as designed.
+The arm cable passes through the shell beside the pitch actuator, so the shell opening grows. With the r 75 target the
+shoulder's flange ring gets a rolled rim and the cover band behind it is shell white; the ring and cover sizes in the table
+below are from the r 80 layout and will change with the final radius.
 The study is [hardware/shoulder/study-20261111/shell-opening/OPTIONS.md](../shoulder/study-20261111/shell-opening/OPTIONS.md)
 (PR #47). Coordinates are the rev A frame: X lateral (+X left), Y up, Z forward, in mm. The pitch axis runs along X through
 Y 424.86, Z 0.
 
 | Item | Now | Change |
 | --- | --- | --- |
-| Opening round the pitch axis, both sides | r 60 | **r 80**. r 77.9 is the least that clears the fixed cable cover (r 75.9 + 2). r 79.5 also clears the moving flange ring |
+| Opening round the pitch axis, both sides | r 60 | **Target r 75 (150 mm), not yet confirmed.** A smaller opening narrows the pitch cable channel (16 mm at r 80, 6 mm at r 70), and a printed cable rig decides the final radius. Don't rebuild the socket until the shoulder work gives the final radius and the ring and cover sizes |
 | Shell collar at X 135-137 and its 8 screws at r ≈ 45 | fitted | **Removed.** The screw heads sit where the shoulder drum's spokes turn |
-| Lower spine pad (X 119.4-129, Y 202-276) | ends at X 129 | **Proposed, not yet chosen:** trim up to 3 mm off the outboard end, to end at about X 126, so the pad keeps 3 mm from the upper arm at the 11° inward stop. Today it comes within 0.01 mm of the arm at pitch -30°, yaw -45°. The other fix is moving the inward stop from 11° to 8°, with no trim |
+| Lower spine pad (X 119.4-129, Y 202-276) | ends at X 129 | **Trim up to 3 mm off the outboard end**, to end at about X 126, so the pad keeps 3 mm from the upper arm at the 11° inward stop (today 0.01 mm at pitch -30°, yaw -45°). Chosen 2026-11-11 over moving the stop to 8°: the trim is out of sight on the back and keeps the arm's full inward range |
 | Upper spine pad (X 68-147, Y 368-481, Z -124 to -77) | ends at X 147 | **End it inboard of X 140.** It overlaps the moving flange ring (r 77.5, X 142.5-144.3) by about 0.5 mm and is 1.1 mm from the fixed cover |
 | Fixed cable cover ring (X 113-140.5) | | Stands 4-7 mm proud of the skin (outer face X ≈ 136). The opening edge needs a finish that suits a part passing through it |
 
 Check at the rebuild:
 
-- The skin itself needs no trim for the 11° inward stop: it stays 3.5 mm or more from the arm, and first contact comes at
-  13-15°. Pitch +90° had not been swept yet when this was written
+- **The skin needs about 0.54 mm trimmed just below the opening** (X 142-143, Y 332-342). At the 11° inward stop,
+  pitch -30°, yaw -90°, it clears the shoulder's fork front by 2.46 mm against the 3 mm the check asks for. This replaces
+  the earlier note that the skin needed no trim, which was true until the fork front changed on 2026-11-13. Re-run the
+  shoulder study's `check_shell_trim.py` against the rebuilt shell
   ([CAD_NOTES.md](../shoulder/study-20261111/cad-pass1/CAD_NOTES.md)).
 
 - The moving flange ring sits outboard of the skin and overlaps the opening edge as a labyrinth. Keep at least 2 mm between
   the edge and the ring through full pitch travel.
-- In the marengo shell, the socket floor is a cone starting at r 78 round the pitch axis, with a hole of r 53.5 and stepped
-  collars. A cut at r 80 takes out the whole floor, so the opening edge lands on the cone wall. Re-run the wall-thickness and
-  print-support checks there.
-- All the numbers above come from the shell inner-surface STEP (`shell_inner.step`, SHA-256 6a975342…7f7b335), which has
-  not been checked against a printed shell.
+- In the marengo shell, the socket floor is flat out to r 78 round the pitch axis (X 133.1-135.5), with a hole of r 53.5 and
+  stepped collars, and a cone wall beyond it. At r 75 the opening lands on the flat floor, 3 mm inside its edge, so its edge is a plain flat ring.
+  A cut at r 78 or more would take out the whole floor and put the edge on the cone wall: re-run the wall-thickness and
+  print-support checks if the radius grows that far.
 
 ### 2. Carried over from the marengo shell (2026-11-07)
 

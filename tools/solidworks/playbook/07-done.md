@@ -43,15 +43,84 @@ catches it is a number written down beforehand. Same for modelling: `expect_dv` 
 5. **Every print direction the part could be made in is read from the same result,** as a table of the three measures.
    Whether or not a direction was given: if another one is better, say so and by how much.
 6. Convergence followed the governing measure, not only von Mises (`converge(..., layers=normal)`), over three sizes.
-   **A verdict of pass needs every one of the three measures converged.** If one still moves by more than 5 % at the
-   last refinement, the verdict is "not shown", never pass on the finest value. The measure is climbing at a sharp
+   **A verdict of pass needs every one of the three measures settled.** If one still moves at the last refinement
+   (by more than 5 % of itself and by more than the floor `judge()` allows small stresses), the verdict is "not
+   shown" or "margin, not converged" (`judge()` below says which), never pass
+   on the finest value. The measure is climbing at a sharp
    edge: give that edge the radius the printed part will have (0.4 mm if nothing says otherwise, or the fillet the
    neighbouring edges have), solve again, and judge that. On the second benchmark set this was the one place the
    two models parted: same numbers, one passed the bracket on a climbing value, the other rounded the edge and found
    1.88 against 2.0.
 7. The load path was followed in a sentence: which faces bear, which section carries it, where it leaves.
-8. For contact: the proof that the set is contact and not a bond (reverse a tiny load: the bodies must part), the share
+8. For contact: the proof that the set is contact and not a bond (the test that fits the joint, from
+   [05-fea.md](05-fea.md) "Contact between bodies": reverse a tiny load where faces sit line to line, a tiny load in the
+   working direction where the body has clearance on both sides), the share
    the pads carry, and the contact force summed from the results against the applied load.
+9. **A peak that climbs with growing steps on a seat or bore where another body's sharp corner bears is a
+   contact-edge peak, not a stress of the part.** Give the corner its real radius or chamfer (0.4 mm if nothing says
+   otherwise) and solve again. Until then report the value 1 mm away from it beside the peak. A finer mesh does not
+   settle it. Measured on the split housing (2026-11-14): shear 2.02, 2.43, 3.12 MPa where a steel ring's corner sat
+   0.15 mm from the seat's rim, and 0.61, 0.65, 0.63 MPa 1 mm in.
+
+## The verdict comes from `judge()`, not from reading the table
+
+`swfea.judge(series, limits, need)` takes every measure at every mesh size (and, on a model of several bodies or
+load cases, one entry per body and case) and returns the verdict and the lowest factor. Use it for every verdict and
+put its output in `results.json`. It exists because of what a careful but small model did with correct numbers
+(2026-11-14): a part at factor 3 recorded as a fail because one measure still moved, a correct contact result
+called invalid, and a headline factor of 9.85 where the lowest row in its own table was 5.82.
+
+```python
+allow = dict(vm=45.0, layer=22.5, shear=13.0)                      # MPa
+series = {f'{body}, {case}, {m}': [row[body][case][m] for row in rows]      # rows: coarsest mesh first
+          for body in ('upper half', 'lower half') for case in ('+Y', '+X') for m in allow}
+v = judge(series, {k: allow[k.split(', ')[2]] for k in series}, need=2.0)
+results['verdict'], results['sf_lowest'], results['judge'] = v['verdict'], v['lowest_factor'], v
+```
+
+Give it the cases the part must carry and nothing else: a bonded twin run to prove a contact is not a load case, and
+a peak climbing without end at a fixture edge or a sharp corner is not a stress (round the corner first, step 6
+above).
+
+| Verdict | Means | Write in the report |
+| --- | --- | --- |
+| `pass` | every entry settled, all at or over the factor | the lowest factor and where |
+| `fail` | an entry is under the factor | which, where, and the cheapest change that would fix it |
+| `margin, not converged` | nothing is under the factor and an entry still moves, its last step is no larger than the one before, and it would still hold after two more steps of that size | the lowest factor, which entry moves and by how much. It is not a pass and not a fail: say both halves |
+| `not shown` | an entry still moves and its step is growing; or the margin does not cover the movement; or it has fewer than three sizes | what was tried and what would settle it. For a growing step: where the peak is, and what is there |
+
+**Settled** means the last step is 5 % or less of the value before it, or the last change is 5 % or less of
+limit / need in MPa (1.1 MPa of von Mises against 45, 0.56 of layer tension against 22.5, 0.33 of shear against 13,
+at a factor of 2). The second half is a floor for small stresses: layer tension going from 0.90 to 0.71 MPa moves
+21 % of itself and nothing of the verdict. The floor is for the verdict only. A number that has to be known to 5 %
+(a contact pressure to report) is still checked against itself.
+
+**Two more steps**: a moving entry is taken as rising twice more by the share it moved at the last refinement.
+Von Mises at 9.0, 10.2, 11.5 MPa is up 13.3 % and then 12.7 %, so it is taken at 11.5 x 1.127 x 1.127 = 14.6 MPa,
+factor 3.08 against the 3.91 it reads now: `margin, not converged`. Shear at 4.86, 5.59, 6.11 MPa (the ribbed
+bracket printed with layers along X, 2026-11-14) is at 2.13 now and 1.78 after two more steps: `not shown`. Only an entry
+that fell at every step is taken at its finest value; one that has gone up and down is taken as rising even when
+its last step was down.
+
+**A growing step is never a margin.** When the last step is larger than the one before, two more steps of the last
+size is not a fair reading: the series itself says the next will be larger, and three values give no rate. `judge()`
+then says `not shown` whatever the factor, sets `step_growing` in the entry's row, and its log line says to find
+where the peak is. Two cases, both 2026-11-14:
+
+- The ribbed bracket, von Mises 10.68, 11.06, 12.51 MPa (3.6 %, then 13.1 %), factor 3.60. The peak was on a sharp
+  rib toe. With the toes rounded to 2 mm it read 12.85, 13.25, 13.54 MPa and passed at 2.99 on layer tension.
+- The split housing, shear 2.02, 2.43, 3.12 MPa (20 %, then 28 %), factor 4.17. Taken on with steps of the same
+  size it reads 2.53, with steps growing as they did 1.92. The peak was the corner of the steel ring on the rim of
+  its seat (step 9 above).
+
+A growing step is the mark of a peak the mesh has only begun to see: a sharp edge, or the edge of a contact. Do not
+refine again. Find the peak, round the edge or read 1 mm away from it, and judge that.
+
+`judge()` logs every entry that is not a pass with these numbers; the rows are in what it returns.
+
+A result is **valid** when the model is right: the reaction matches the load, the contact proof holds, the hand value
+is within its tolerance. Convergence is a separate question. A valid result that has not converged is reported as
+valid with the verdict `margin, not converged` or `not shown`, never as invalid.
 
 ## "It passes" is not the end
 
@@ -69,6 +138,55 @@ that works: print direction, a radius at the peak, material where the stress is,
 When asked to make something better with no stated end (lighter, stiffer), keep going until two more steps in a row gain
 under 3 %, or a requirement stops you. Say which requirement governs at the end: if none is at its limit, you stopped
 early.
+
+## Do not stop early
+
+Stopping before the work is finished is the most expensive mistake on this list, because nobody is watching: the person
+comes back hours later to half a job. One benchmark run (2026-11-13) ended a five-task set after eight minutes: a
+task left at "not shown" after one attempt, a design task given one try, and a task never started because free
+memory was 0.4 GB under the floor for a moment. Every one of those had a next step written on these pages.
+
+**Before you write the final report, go down the task list and give every task one of these three states.** There
+is no fourth.
+
+| State | It needs |
+| --- | --- |
+| done | every item of "A model is done when" or "A study is done when" has its number |
+| not possible | the requirement that cannot be met, shown with numbers, and the nearest thing that can be |
+| blocked | the same obstacle met **three times, in three different ways**, with what each try was and its log, **and** the task's time limit used up or the list below it worked through |
+
+**What counts as a different way.** A different mesh size, pad stiffness or solver setting is the same way again. A
+different way changes the model of the problem: another support or load model, another way to hold the loose body
+(a soft spring, a pad somewhere else, a tiny load that seats it first), a simpler twin that isolates the part that
+fails, the same question answered by hand or from section forces. When a coarse run works and finer ones do not, the
+coarse run is the lead: find what changed between them before trying a fifth mesh. The repeat of that benchmark set
+closed a contact task as blocked after four and a half of its forty minutes, on three mesh and stiffness variations
+of one approach.
+
+Then, for anything that is not done, these are not reasons to stop:
+
+- **"Not shown" after one attempt.** It is a state to work out of, not a result. The page says what comes next (round
+  the edge, try the second support, refine the control): do that, then judge.
+- **A helper refused.** Memory under the floor: `job(wait_s=1800)` waits. A launch that did not answer: the same. A
+  mesh over the node limit is not the end of a convergence series: coarsen the global size and keep the local
+  controls, shrink the control to the one feature that governs, cut the model at a symmetry plane, or run the
+  series on the governing body alone with the loads the full model gave it. A refusal tells you what to change, not
+  to give up the task.
+- **One task failed.** The others do not depend on it. Write down where it stands and do the rest, then come back to
+  it with the time that is left.
+- **Time.** Take it from `swkit.stamp(folder, label)`, called at the start and end of each task, never from a
+  feeling: runs of twenty minutes have reported eighty. It returns the minutes since the first call in that folder
+  and keeps them in `times.log` there, so use the job's own folder. If the brief gives a budget, use it: a report
+  handed in at a tenth of the budget with tasks open is not early, it is unfinished. If it gives none, the tasks set
+  the length, not your sense that it has been a while.
+- **It seems good enough.** Check the brief line by line against what you have. A requirement you did not test is open.
+- **You have a plan for the rest.** A plan is not a result. Do not end with "next I would": do it.
+
+What does end a job early is on the short list in [README.md](README.md), "Stop and hand it up", and each item there
+ends **that task**, not the job: report it, and carry on with every task it does not block.
+
+**Why:** the models that did best here were not the ones with better numbers, they were the ones that kept asking what
+was still open. The check above costs a minute and is the difference between a set finished and a set abandoned.
 
 ## Long jobs: show the work early
 
@@ -102,6 +220,14 @@ you do:
 3. A guess at the cause, and the one experiment that would test it.
 
 Then hand up all of that. Most of the time step 2 finds the answer.
+
+## Count the runs, do not remember them
+
+Every `job()` adds a line to `runs.log` beside the script: when it started, how long it ran, and `ok` or the error it
+ended on. `python tools/pc/run_metrics.py <run folder>` reads that file and `times.log` and prints, per task and in total:
+jobs launched, jobs that failed before one worked, whether the first job passed, and minutes from the clock. Put that
+table in the report as it is printed. "The runs that failed before it worked" comes from this file, like the times:
+a session's memory of how often it retried is no better than its memory of how long it took.
 
 ## The last ten minutes
 

@@ -47,6 +47,12 @@ allowed in: everything on `tailscale0`, and SSH and mDNS from the LAN's IPv4 sub
 - `systemd-networkd` is not enabled: `deploy/` has no `.link` or `.network` files for the buses yet, so the bus names
   follow probe order (`can0` on `spi0.0`, `can1` on `spi1.0` on this boot).
 
+**Added after setup, 2026-11-13:** the RT kernel packages `linux-image-rpi-v8-rt`, `linux-base-rpi-v8-rt`,
+`linux-image-6.18.60+rpt-rpi-v8-rt` and `linux-base-6.18.60+rpt-rpi-v8-rt` (1:6.18.60-1+rpt1), installed for the
+[kernel comparison](bench-results/realtime/2026-11-13-kernel-compare/README.md) and held. They put `kernel8_rt.img` and
+`initramfs8_rt` on the boot partition. The default boot is unchanged: the stock kernel, with no `kernel=` line in
+`config.txt`.
+
 **Realtime baseline:** [bench-results/realtime/2026-11-13](bench-results/realtime/2026-11-13/README.md). One hour of
 `cyclictest` under `stress-ng`, stock kernel, governor `performance`: worst latency 294 µs, peak 62 °C, no throttling.
 

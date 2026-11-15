@@ -23,6 +23,7 @@ import os
 import re
 import threading
 import time
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -31,6 +32,7 @@ import win32con
 import win32gui
 import win32process
 from scipy.spatial import cKDTree
+from scipy.spatial.transform import Rotation
 
 from swkit import NUL, Failed, L, call, dispatch_array, free_gb, log, solid_bodies
 
@@ -41,7 +43,8 @@ STEEL = dict(name='Steel', EX=2.1e11, NUXY=0.28, DENS=7850.0, SIGYLD=640e6, SIGX
 BRASS = dict(name='Brass', EX=1.0e11, NUXY=0.33, DENS=8500.0, SIGYLD=240e6, SIGXT=340e6)
 LAYER_FACTOR = 0.5            # allowable across print layers, as a share of yield
 NO_PENETRATION, BONDED = 0, 1         # CreateContactSet types
-SOLVER_DIRECT = 1             # swsSolverType_e: 0 automatic, 1 direct sparse, 2 FFEPlus (iterative), 7 Intel direct sparse
+BEARING_X, BEARING_SINE, BEARING_PARABOLIC = 0, 0, 1      # ICWBearingLoad Direction and DistributionType (measured)
+SOLVER_DIRECT = 1            # swsSolverType_e: 0 automatic, 1 direct sparse, 2 FFEPlus (iterative), 7 Intel direct sparse
 MAX_NODES = 450_000           # above this a direct-sparse solve does not fit holly-pc's memory (05-fea.md, memory)
 HEAVY_NODES = 200_000         # above this a solve needs over about 6 GB: one at a time machine-wide (heavy_solve_lock)
 HEAVY_LOCK = Path(os.environ.get('FEA_SOLVE_LOCK', r'C:\joe\.fea_solve.lock'))
@@ -51,6 +54,155 @@ def _arr(q, cols):
     """A COM result as an (n, cols) array; late binding sometimes wraps it in a (data, error) tuple."""
     q = q[0] if isinstance(q, tuple) and len(q) == 2 and not np.isscalar(q[0]) else q
     return np.array(q, float).reshape(-1, cols)
+
+
+_STRESS_COLS = ((0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (9, 10))   # (component asked for, column in GetStress)
+
+
+def stress_table(components, node_ids=None):
+    """The 12-column table GetStress returns (node id, sx sy sz txy txz tyz, p1 p2 p3, von Mises, intensity) built from
+    one (n, 2) array of node id and value per component, as GetStressForEntities3 gives them. A node shared by two bodies
+    is listed once per body with the same value and is kept once. The principals and the intensity are computed from the
+    tensor. None if the components do not list the same nodes, or not exactly `node_ids` (the mesh's own)."""
+    ids, cols = None, {}
+    for col, q in components:
+        q = np.asarray(q, float).reshape(-1, 2)
+        i = q[:, 0].astype(np.int64)
+        order = np.argsort(i, kind='stable')
+        i, v = i[order], q[order, 1]
+        keep = np.r_[True, i[1:] != i[:-1]]
+        i, v = i[keep], v[keep]
+        if ids is None:
+            ids = i
+        elif len(i) != len(ids) or (i != ids).any():
+            return None
+        cols[col] = v
+    if ids is None or (node_ids is not None and (len(ids) != len(node_ids) or set(ids.tolist()) != set(node_ids))):
+        return None
+    s = np.zeros((len(ids), 12))
+    s[:, 0] = ids
+    for col, v in cols.items():
+        s[:, col] = v
+    t = np.empty((len(ids), 3, 3))
+    t[:, 0, 0], t[:, 1, 1], t[:, 2, 2] = s[:, 1], s[:, 2], s[:, 3]
+    t[:, 0, 1] = t[:, 1, 0] = s[:, 4]
+    t[:, 0, 2] = t[:, 2, 0] = s[:, 5]
+    t[:, 1, 2] = t[:, 2, 1] = s[:, 6]
+    w = np.linalg.eigvalsh(t)                      # ascending
+    s[:, 7], s[:, 8], s[:, 9] = w[:, 2], w[:, 1], w[:, 0]
+    s[:, 11] = w[:, 2] - w[:, 0]
+    return s
+
+
+def _stress_by_body(d, res, node_ids, name):
+    """The nodal stresses read one component at a time over the solid bodies. GetStress for every node goes through COM
+    one value at a time and took 734 s on a 745,656-node model; this took 7 x 19 s and gave the same value at every node
+    (shoulder hub, 2026-11-13). Pass bodies, never faces: hundreds of faces ended the instance ("remote procedure call
+    failed"). None if the read fails or does not cover exactly the mesh's nodes; the caller then reads the slow way."""
+    if os.environ.get('SWFEA_SLOW_READ') == '1':
+        return None
+    t0 = time.time()
+    try:
+        bodies = solid_bodies(d)
+        parts = [(col, _arr(res.GetStressForEntities3(True, comp, 1, NUL, bodies, 3, 0, 0, False, L()), 2))
+                 for comp, col in _STRESS_COLS]
+        s = stress_table(parts, node_ids)
+    except Exception as ex:      # noqa: BLE001 - any failure here only costs time: the slow read follows
+        log(f'{name}: stresses not read by body ({str(ex)[:80]}); reading every node instead')
+        return None
+    if s is None:
+        log(f'{name}: the read by body did not cover the mesh\'s nodes; reading every node instead')
+        return None
+    log(f'{name}: stresses read by body, {len(s)} nodes in {time.time() - t0:.0f} s')
+    return s
+
+
+def once_per_node(q, cols=2):
+    """Rows of (node id, values) sorted by node id, each node kept once: a read over the bodies lists a node shared by
+    two bodies once per body, with the same values."""
+    q = np.asarray(q, float).reshape(-1, cols)
+    q = q[np.argsort(q[:, 0], kind='stable')]
+    return q[np.r_[True, q[1:, 0] != q[:-1, 0]]] if len(q) else q
+
+
+def node_coords(parts, count):
+    """The (n, 4) table GetNodes returns (node id, x y z in m) from one such table per solid body, as
+    GetNodeDataFromEntity gives them. None unless it holds exactly `count` different nodes (the mesh's node count)."""
+    if not parts:
+        return None
+    raw = once_per_node(np.concatenate([np.asarray(p, float).reshape(-1, 4) for p in parts]), 4)
+    return raw if len(raw) == count else None
+
+
+def component_table(components, node_ids):
+    """An (n, 1 + number of components) table, node id then one column per component in the order given, from one
+    (n, 2) array of node id and value per component, as GetDisplacementForEntities gives them. None if the components do
+    not list the same nodes, or not exactly `node_ids` (the mesh's own)."""
+    cols = [once_per_node(q) for q in components]
+    ids = cols[0][:, 0].astype(np.int64) if cols else None
+    if ids is None or len(ids) != len(node_ids) or set(ids.tolist()) != set(node_ids):
+        return None
+    if any(len(c) != len(ids) or (c[:, 0] != cols[0][:, 0]).any() for c in cols[1:]):
+        return None
+    return np.c_[cols[0][:, 0], np.column_stack([c[:, 1] for c in cols])]
+
+
+def disp_table(components, node_ids):
+    """The 5-column table GetTranslationalDisplacement returns (node id, UX UY UZ, resultant) from the three components
+    read over the bodies; the resultant is computed. None as component_table()."""
+    t = component_table(components, node_ids)
+    return None if t is None else np.c_[t, np.linalg.norm(t[:, 1:4], axis=1)]
+
+
+def reaction_total(components, node_ids):
+    """[Fx, Fy, Fz, resultant] N summed over every node, each node counted once, from the three reaction components
+    read over the bodies. None as component_table()."""
+    t = component_table(components, node_ids)
+    if t is None:
+        return None
+    f = t[:, 1:4].sum(axis=0)
+    return [round(float(v), 3) for v in f] + [round(float(np.linalg.norm(f)), 3)]
+
+
+def _by_body(name, what, read):
+    """read() for one of the reads over the solid bodies, with one log line. None, and the caller reads every node the
+    old way, if it fails, returns None (it did not cover exactly the mesh's nodes) or SWFEA_SLOW_READ is 1.
+    Measured on a 144,396-node contact model, 2026-11-15, the same value at every node each time: node coordinates
+    1.6 s against 3.1, displacements 2.5 s against 4.8, reactions 4.2 s against 14.6."""
+    if os.environ.get('SWFEA_SLOW_READ') == '1':
+        return None
+    t0 = time.time()
+    try:
+        v = read()
+    except Exception as ex:      # noqa: BLE001 - any failure here only costs time: the slow read follows
+        log(f'{name}: {what} not read by body ({str(ex)[:80]}); reading every node instead')
+        return None
+    if v is None:
+        log(f'{name}: the {what} read by body did not cover the mesh\'s nodes; reading every node instead')
+        return None
+    log(f'{name}: {what} read by body in {time.time() - t0:.0f} s')
+    return v
+
+
+def _nodes_by_body(d, mesh, count, name):
+    """Node id and coordinates (m) as GetNodes gives them, read one solid body at a time."""
+    return _by_body(name, 'node coordinates',
+                    lambda: node_coords([_arr(mesh.GetNodeDataFromEntity(b, L()), 4) for b in solid_bodies(d)], count))
+
+
+def _entity_components(d, res, comps):
+    """One (n, 2) array of node id and value per displacement component (swsDisplacementComponent_e: 0 1 2 UX UY UZ in
+    mm, 4 5 6 RFX RFY RFZ in N), over the solid bodies."""
+    bodies = solid_bodies(d)
+    return [_arr(res.GetDisplacementForEntities(comp, 1, NUL, bodies, 0, L()), 2) for comp in comps]
+
+
+def _disp_by_body(d, res, node_ids, name):
+    return _by_body(name, 'displacements', lambda: disp_table(_entity_components(d, res, (0, 1, 2)), node_ids))
+
+
+def _reaction_by_body(d, res, node_ids, name):
+    return _by_body(name, 'reactions', lambda: reaction_total(_entity_components(d, res, (4, 5, 6)), node_ids))
 
 
 def _material(body, mat):
@@ -110,8 +262,9 @@ def _solver_dialogs(pid, stop, seen):
     The solver (star.exe, a child of the instance) asks Yes / No / Cancel when a body moves a long way. On a hidden
     instance nobody sees it: the solve waits for ever, --status shows busy, and every other session's launch waits
     behind it (10 minutes on 2026-11-12 before it was found). No finishes the solve with the small-displacement
-    result. Only dialogs titled "Simulation" in this instance's own process tree are read, and only that one is
-    answered; any other is logged with its text, which is the first thing to read if a solve never returns.
+    result. Only dialogs titled "Simulation" in this instance's own process tree are read. Any other dialog is logged
+    with its text and static() fails the run with it ("Fixture transfer failed" went unread on 2026-11-13 and the run
+    was reported as if it had solved); one that offers only OK is dismissed first so the solve returns.
     """
     done = set()
 
@@ -143,8 +296,15 @@ def _solver_dialogs(pid, stop, seen):
                         seen.append(('noconverge', text))
                         log('solver could not reach equilibrium: answered OK; the result is not valid')
             else:
-                seen.append(('unanswered', text))
-                log('solver dialog NOT answered, the solve may be waiting on it:', text[:300])
+                btns = [c for c in kids if win32gui.GetClassName(c) == 'Button']
+                names = [win32gui.GetWindowText(c).replace('&', '').strip() for c in btns]
+                if names == ['OK']:            # a notice with nothing to choose: dismiss it so the solve returns
+                    win32gui.PostMessage(btns[0], win32con.BM_CLICK, 0, 0)
+                    seen.append(('notice', text))
+                    log('solver notice dismissed with OK, the run will be failed with its text:', text[:300])
+                else:
+                    seen.append(('unanswered', text))
+                    log('solver dialog NOT answered, the solve may be waiting on it:', text[:300])
         except Exception:      # noqa: BLE001 - a window that closed while it was being read
             pass
         return True
@@ -263,6 +423,70 @@ class Result:
         return out
 
 
+def _delete_feature(d, feat):
+    d.ClearSelection2(True)
+    if feat.Select2(False, 0):
+        d.Extension.DeleteSelection2(0)
+    d.ClearSelection2(True)
+
+
+def _bearing_frame(fs, force, name):
+    """(origin mm, unit force direction, unit axis) of a bearing load, or Failed: the faces must be cylinders about one
+    axis and the force square to it."""
+    force = np.array(force, float)
+    axis = origin = None
+    for f in fs:
+        s = f.GetSurface
+        if not s.IsCylinder:
+            raise Failed(f'{name}: a bearing load takes cylindrical faces only')
+        p = np.array(s.CylinderParams, float)
+        o, a = p[:3] * 1e3, p[3:6] / np.linalg.norm(p[3:6])
+        if axis is None:
+            axis, origin = a, o
+        elif abs(abs(a @ axis) - 1) > 1e-6 or np.linalg.norm(np.cross(o - origin, axis)) > 0.01:
+            raise Failed(f'{name}: the faces of one bearing load must share one axis (give each bore its own load)')
+    size = float(np.linalg.norm(force))
+    if size == 0:
+        raise Failed(f'{name}: a bearing load of zero')
+    if abs(force @ axis) > 1e-3 * size:
+        raise Failed(f'{name}: the force has {force @ axis:.3f} N along the bore axis, which a bearing load cannot carry: '
+                     'give the axial part to another load')
+    return origin, force / size, axis
+
+
+def _bearing_csys(d, fs, force, name):
+    """A coordinate system for a bearing load: Z along the faces' common axis, X along the force. Returns the feature.
+
+    SolidWorks' bearing load takes its direction from a coordinate system whose Z is the bore axis. One is made here
+    from numbers and read back, and static() deletes it with the study. Adding and deleting it leaves face objects
+    valid (measured 2026-11-14). A feature of the same name left by a failed run is replaced.
+    """
+    origin, x, axis = _bearing_frame(fs, force, name)
+    R = np.c_[x, np.cross(axis, x), axis]          # columns: the coordinate system's X, Y, Z in the model frame
+    old = d.FeatureByName(name)
+    if old is not None:
+        _delete_feature(d, old)
+    fm = d.FeatureManager
+    fm._FlagAsMethod('CreateCoordinateSystemUsingNumericalValues')
+    # the three angles are Euler angles whose order the documentation does not give: each order is tried and the
+    # result read back, so a wrong guess can only fail, never point the load somewhere else
+    for seq in ('xyz', 'XYZ', 'zyx', 'ZYX'):
+        with warnings.catch_warnings():            # gimbal lock only means one of several equal answers is taken
+            warnings.simplefilter('ignore')
+            ang = dict(zip(seq.lower(), Rotation.from_matrix(R).as_euler(seq)))
+        cs = fm.CreateCoordinateSystemUsingNumericalValues(True, origin[0] / 1e3, origin[1] / 1e3, origin[2] / 1e3, True,
+                                                           float(ang['x']), float(ang['y']), float(ang['z']))
+        if cs is None:
+            continue
+        T = np.array(d.Extension.GetCoordinateSystemTransformByName(cs.Name).ArrayData, float)
+        if np.abs(T[0:3] - x).max() < 1e-6 and np.abs(T[6:9] - axis).max() < 1e-6:
+            cs.Name = name
+            return cs
+        _delete_feature(d, cs)
+    raise Failed(f'{name}: no coordinate system could be made with X along {x.round(4).tolist()} and Z along '
+                 f'{axis.round(4).tolist()}')
+
+
 @contextlib.contextmanager
 def heavy_solve_lock(owner, wait_s=3600):
     """Hold the machine-wide lock for one heavy solve (over HEAVY_NODES). One such solve at a time on holly-pc.
@@ -316,6 +540,9 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
     matches a body when the body's Simulation name contains it, whatever the case; that name is "SolidBody 3(PAD)" for
     a body made in the part and "SolidBody 2(<pad>-<PAD>)" for one brought in from pad.SLDPRT. A key that matches no
     body, or a body matched by two keys, raises, and each body's material is logged.
+    [('bearing', faces, (Fx, Fy, Fz) N)] is a pin or shaft pressing on a bore: cylindrical faces about one axis, the
+    force square to that axis. Only the half of the bore the force points at is loaded, heaviest where it points
+    (peak 4 F / (pi d t)), and nothing holds the faces rigid. No contact, no clearance: playbook/05-fea.md.
     fixtures: [('fixed' | 'hinge', faces)]. loads: [('normal', faces, newtons)] presses on the faces along their own
     normals with that many newtons IN TOTAL, shared between the faces by area (one even pressure; positive pushes into
     the material). [('remote', faces, (x, y, z) mm, (Fx, Fy, Fz) N, (Mx, My, Mz) N.m)] applies a force and moment at a
@@ -334,6 +561,9 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
     doc = cw.ActiveDoc
     if doc is None:
         raise Failed('Simulation sees no active document: open_doc() the model before static()')
+    for ld in loads:                                   # refused before a study exists, so nothing is left in the model
+        if ld[0] == 'bearing' and ld[1]:
+            _bearing_frame(ld[1], ld[2], name)
     sm = doc.StudyManager
     err = L()
     tag = re.sub(r'[^A-Za-z0-9_ -]', '_', name)[:24]     # a dot in a study name fails with error 2 (2026-11-13)
@@ -341,22 +571,22 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
     if st is None or err.value:
         raise Failed(f'study not created ({err.value}); a study of the same name already in the model?')
     comp = st.SolidManager.GetComponentAt(0, L())
-    used = set()
-    for k in range(comp.SolidBodyCount):
-        b = comp.GetSolidBodyAt(k, L())
-        bname = str(call(b, 'SolidBodyName'))
-        hit = [key for key in (materials or {}) if key.lower() in bname.lower()]
-        if len(hit) > 1:
-            raise Failed(f'{name}: body "{bname}" matches more than one materials key: {hit}')
-        used.update(hit)
-        mat = materials[hit[0]] if hit else material
+    named = [(b, str(call(b, 'SolidBodyName'))) for b in (comp.GetSolidBodyAt(k, L()) for k in range(comp.SolidBodyCount))]
+    hits = {bname: [key for key in (materials or {}) if key.lower() in bname.lower()] for _, bname in named}
+    unused = sorted(set(materials or {}) - {key for hit in hits.values() for key in hit})
+    twice = {bname: hit for bname, hit in hits.items() if len(hit) > 1}
+    if unused or twice:
+        sm.DeleteStudy(tag)                        # or the corrected call cannot make a study of this name
+        if twice:
+            raise Failed(f'{name}: a body matches more than one materials key: {twice}')
+        raise Failed(f'{name}: materials keys {unused} match no body. The bodies are: {[bname for _, bname in named]}')
+    for b, bname in named:
+        mat = materials[hits[bname][0]] if hits[bname] else material
         _material(b, mat)
         if materials:
             log(f'{name}: body "{bname}" is {mat["name"]}')
-    if materials and used != set(materials):
-        raise Failed(f'{name}: materials keys {sorted(set(materials) - used)} match no body')
     lbc = st.LoadsAndRestraintsManager
-    fixed, loaded, applied = [], [], 0.0
+    fixed, loaded, applied, temps = [], [], 0.0, []
     for kind, fs in fixtures:
         if not fs:
             raise Failed(f'{name}: a {kind} fixture has no faces')
@@ -395,6 +625,23 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
             if rc:
                 raise Failed(f'{name}: remote load not accepted ({rc})')
             applied += float(np.linalg.norm(f))
+        elif ld[0] == 'bearing':
+            f = np.array(ld[2], float)
+            cs = _bearing_csys(d, fs, f, f'BEARING_{tag}_{len(temps)}'.replace(' ', '_'))
+            temps.append(cs)
+            b = lbc.AddBearingLoad(cs, fs, err)
+            if b is None or err.value:
+                raise Failed(f'{name}: bearing load failed ({err.value}): faces must be cylinders about one axis')
+            call(b, 'BearingLoadBeginEdit')
+            b.BearingLoadUnit = 0                  # N
+            b.Direction = BEARING_X                # along the coordinate system's X, which _bearing_csys laid on the force
+            b.XDirectionValue = float(np.linalg.norm(f))
+            b.XDirectionReverse = False
+            b.DistributionType = ld[3] if len(ld) > 3 else BEARING_SINE
+            rc = call(b, 'BearingLoadEndEdit')
+            if rc:
+                raise Failed(f'{name}: bearing load not accepted ({rc})')
+            applied += float(np.linalg.norm(f))
         else:
             raise Failed(f'unknown load kind {ld[0]}')
         if err.value:
@@ -423,9 +670,18 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
     nodes, elements = int(mesh.NodeCount), int(mesh.ElementCount)
     log(f'{name}: mesh rc {rc}, {nodes} nodes, {elements} elements, free {free_gb():.1f} GB')
     if rc or not nodes:
-        raise Failed(f'{name}: mesh failed ({rc}): sliver faces, or an element size larger than a thin wall?')
+        raise Failed(f'{name}: mesh failed ({rc}): sliver faces, or an element size larger than a thin wall?',
+                     try_='in this order: a global size three quarters of this one; a local control of half the '
+                          'thinnest wall on the faces of that wall; then find faces under 0.1 mm2 with list_faces(d) '
+                          'and remove what made them (playbook/07-done.md, "Do not stop early")',
+                     stop='three sizes and a local control have all been refused: the geometry has a sliver, so fix '
+                          'the model, not the mesh')
     if nodes > max_nodes:      # checked before the solve: pass a smaller max_nodes to hold a job to a budget
-        raise Failed(f'{name}: {nodes} nodes is over {max_nodes}: coarsen the global size and keep the local controls')
+        raise Failed(f'{name}: {nodes} nodes is over {max_nodes}: coarsen the global size and keep the local controls',
+                     try_=f'a global size about {(nodes / max_nodes) ** (1 / 3) * 1.1:.2f} times this one (nodes go with '
+                          'the cube of the size); leave the local controls as they are',
+                     stop='the local controls alone are over the limit: make them cover fewer faces, or take the '
+                          'heavy-solve lock and raise max_nodes (playbook/05-fea.md)')
     if solver is not None:
         log(f'{name}: solver macro:', solver_macro(j, d, tag, solver, Path(d.GetPathName).parent).replace('\n', ' | '))
     stop, seen = threading.Event(), []
@@ -450,13 +706,21 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
         raise Failed(f'{name}: the contact iteration did not converge ("Failure to achieve equilibrium"): a body with '
                      'nothing to decide which way it goes. Move the pads, or load it the way that seats it. '
                      'playbook/05-fea.md, "Contact between bodies"')
+    other = [t for k, t in seen if k in ('notice', 'unanswered')]
+    if other:                                      # e.g. "Fixture transfer failed": whatever came back was not the model asked for
+        raise Failed(f'{name}: the solver raised a dialog this helper does not know, so the result is not valid: '
+                     f'{other[0][:300]}')
     res = st.Results
     if rc or res is None:
         raise Failed(f'{name}: solve failed ({rc}). 24 is a singular model (a body free to move) or out of memory: '
                      'playbook/05-fea.md, "When the solve fails"')
-    raw = _arr(call(mesh, 'GetNodes'), 4)
+    raw = _nodes_by_body(d, mesh, nodes, name)
+    if raw is None:
+        raw = _arr(call(mesh, 'GetNodes'), 4)
     xyz = dict(zip(raw[:, 0].astype(int), raw[:, 1:] * 1000))
-    s = _arr(res.GetStress(0, 1, NUL, 3, L()), 12)       # 3 = N/mm2
+    s = _stress_by_body(d, res, set(xyz), name)
+    if s is None:
+        s = _arr(res.GetStress(0, 1, NUL, 3, L()), 12)       # 3 = N/mm2
     pos = np.array([xyz[int(i)] for i in s[:, 0]])
 
     def face_nodes(fs):
@@ -473,15 +737,19 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
             log(f'{name}: {label} nodes {len(pts)}, box {pts.min(axis=0).round(2).tolist()} to {pts.max(axis=0).round(2).tolist()}')
     disp = reaction = None
     try:
-        disp = _arr(res.GetTranslationalDisplacement(1, NUL, 0, L()), 5)       # last argument: 0 mm, 1 cm, 2 m, 3 inch
+        disp = _disp_by_body(d, res, set(xyz), name)
+        if disp is None:
+            disp = _arr(res.GetTranslationalDisplacement(1, NUL, 0, L()), 5)   # last argument: 0 mm, 1 cm, 2 m, 3 inch
     except Exception as ex:      # noqa: BLE001
         log(f'{name}: displacements not read ({str(ex)[:80]})')
     try:
-        # per node: id, Fx Fy Fz Fres, Mx My Mz Mres; zero except on restrained nodes. Last argument 0 = N (1 = lbf).
-        # GetReactionForces2 does not exist on SolidWorks 2026.
-        q = _arr(res.GetReactionForcesAndMoments(0, NUL, 0, L()), 9)
-        f = q[:, 1:4].sum(axis=0)
-        reaction = [round(float(v), 3) for v in f] + [round(float(np.linalg.norm(f)), 3)]
+        reaction = _reaction_by_body(d, res, set(xyz), name)
+        if reaction is None:
+            # per node: id, Fx Fy Fz Fres, Mx My Mz Mres; zero except on restrained nodes. Last argument 0 = N
+            # (1 = lbf). GetReactionForces2 does not exist on SolidWorks 2026.
+            q = _arr(res.GetReactionForcesAndMoments(0, NUL, 0, L()), 9)
+            f = q[:, 1:4].sum(axis=0)
+            reaction = [round(float(v), 3) for v in f] + [round(float(np.linalg.norm(f)), 3)]
     except Exception as ex:      # noqa: BLE001
         log(f'{name}: reactions not read ({str(ex)[:80]})')
     extra = post(st, res) if post is not None else None
@@ -490,6 +758,8 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
             sm.DeleteStudy(tag)
         except Exception:      # noqa: BLE001 - the study staying in the model only costs file size
             pass
+        for cs in temps:                           # the bearing loads' coordinate systems go with the study
+            _delete_feature(d, cs)
     # A document closed unsaved after a study and opened again in the same instance fails its next solve at once with
     # error 24, the solver stopping while it loads its input (selftest beam then loads, 2026-11-12). Saved, it does not.
     _save_as_is(d)
@@ -524,6 +794,105 @@ def converge(run, sizes, tol=0.05, layers=None, mask=None):
         if len(rows) > 2 and all(abs(a - b) <= tol * abs(b) for a, b in zip(rows[-1][2:], rows[-2][2:])):
             return rows, True
     return rows, False
+
+
+def judge(series, limits, need=2.0, tol=0.05):
+    """The verdict of a study series, worked out the same way every time. Returns a dict.
+
+    series: {entry: [value at the coarsest mesh, ..., value at the finest]} in MPa, peak magnitudes (zero or more),
+    one entry for every measure and, on a model of several bodies or load cases, for every body and case
+    ('lower half, +X, layer shear'). Only cases the part must carry: a bonded twin run to prove a contact is not one.
+    Only real stresses: a peak that climbs without end at a fixture edge or a sharp corner is not one (converge()).
+    limits: {entry: allowable MPa} with the same keys. need: the factor required. tol: as in converge().
+
+    For each entry: factor = limit / finest value; step = the last change as a share of the value before it, as
+    converge() measures it. An entry is settled (converged) when it has at least three values and either that step is
+    at or under tol, or the last change is at or under tol * limit / need in MPa: with the defaults, 5 % of the
+    stress the part is allowed at the factor asked for (1.1 MPa of von Mises against 45, 0.56 of layer tension
+    against 22.5, 0.33 of shear against 13). That floor is there so that a small stress which moves by a large share
+    of itself (0.9 to 0.7 MPa is 21 %) does not hold up a verdict it cannot change. It is a rule for the verdict, not
+    for how well a number is known: a value that has to be reported to 5 % is still checked against itself. The
+    lowest factor is taken over every entry, so it cannot be read from the wrong row. verdict is the worst state of
+    any entry:
+      'fail'                    its factor is under need, settled or not
+      'not shown'               it still moves and its step is growing, or the margin does not cover the movement
+                                (below), or it has under three values
+      'margin, not converged'   it still moves, its last step is no larger than the one before, and it would be at
+                                or over need after two more refinements. Not a pass: the report says which entry
+                                moves and by how much. Not a fail either
+      'pass'                    settled and at or over need
+    The margin: an entry that fell at every step is taken at its finest value. Any other is taken as rising by the
+    last step twice more, last * (1 + step)^2, whichever way the last step went: a series that has gone both ways
+    (contact pressure does) can come back up by as much as it moved. At a sharp corner, where each refinement adds
+    about the same share, that is what two more refinements of the same ratio would read; a peak that is settling
+    stays under it.
+    A growing step: the last step is larger than the step before it, and the entry did not fall at every step. Two
+    more steps of the last size is then not a fair reading, because the series itself says the next one will be
+    larger, and three values give no rate to project with: 2.02, 2.43, 3.12 MPa against 13 reads 2.53 after two
+    steps of the same size and 1.92 if the steps go on growing as they did. Such an entry is 'not shown' whatever
+    its factor, its row has step_growing True, and the log line says where to look. It is the mark of a peak the
+    mesh has only begun to see: a sharp edge, or the edge of a contact where another body's corner bears. A finer
+    mesh does not settle it; give the edge its radius, or read the stress 1 mm away from it (07-done.md).
+    """
+    if not series or set(series) != set(limits):
+        raise Failed(f'judge: series and limits must have the same keys, at least one: {sorted(set(series) ^ set(limits))}')
+    rows, lowest = [], None
+
+    def share(a, b):                     # the change from a to b as a share of a, as converge() measures it
+        return abs(b - a) / a if a else (0.0 if b == 0 else float('inf'))
+
+    def shown(f):                        # json has no infinity: an entry with no stress has no factor
+        return None if f is None or f == float('inf') else round(f, 2)
+
+    def pct(s):
+        return None if s is None or s == float('inf') else round(100 * s, 1)
+
+    for key, vals in series.items():
+        vals, limit = [float(v) for v in vals], float(limits[key])
+        if not vals or not all(v >= 0 for v in vals) or not limit > 0:     # written so that nan is refused too
+            raise Failed(f'judge: "{key}" needs at least one value, none negative, and a limit over zero: {vals}, {limit}')
+        last = vals[-1]
+        step = share(vals[-2], last) if len(vals) > 1 else None
+        before = share(vals[-3], vals[-2]) if len(vals) > 2 else None
+        floor = tol * limit / need
+        conv = len(vals) >= 3 and (step <= tol or abs(last - vals[-2]) <= floor)
+        fell = all(b <= a for a, b in zip(vals, vals[1:]))
+        growing = len(vals) >= 3 and not conv and not fell and step > before * (1 + 1e-9)
+        projected = last if step is None or fell else last * (1 + step) ** 2
+        factor = limit / last if last else float('inf')
+        f_proj = limit / projected if projected else float('inf')
+        if factor < need:
+            state = 'fail'
+        elif conv:
+            state = 'pass'
+        elif len(vals) >= 3 and not growing and f_proj >= need:
+            state = 'margin, not converged'
+        else:
+            state = 'not shown'
+        if lowest is None or factor < lowest[0]:
+            lowest = (factor, key)
+        rows.append(dict(entry=key, values=vals, limit=limit, factor=shown(factor), converged=conv,
+                         last_step_pct=pct(step), step_before_pct=pct(before),
+                         last_change_mpa=None if len(vals) < 2 else round(abs(last - vals[-2]), 3),
+                         settled_under_mpa=round(floor, 3), step_growing=growing,
+                         factor_after_two_more_steps=shown(f_proj), state=state))
+    order = ['fail', 'not shown', 'margin, not converged', 'pass']
+    verdict = min((r['state'] for r in rows), key=order.index)
+    out = dict(verdict=verdict, need=need, lowest_factor=shown(lowest[0]), lowest_entry=lowest[1], rows=rows)
+    log(f'judge: {verdict}; lowest factor {out["lowest_factor"]} at "{lowest[1]}"')
+    for r in rows:
+        if r['state'] == 'pass':
+            continue
+        if len(r['values']) < 3:
+            why = f'only {len(r["values"])} of the three sizes'
+        elif r['step_growing']:
+            why = (f'last step {r["last_step_pct"]} % after {r["step_before_pct"]} %: the step is growing, the mark of a '
+                   f'sharp edge or of a contact edge where the corner of another body bears. Find where the peak is, '
+                   f'then round the edge or read 1 mm away from it; a finer mesh will not settle it')
+        else:
+            why = f'last step {r["last_step_pct"]} %, factor after two more {r["factor_after_two_more_steps"]}'
+        log(f'judge:   {r["state"]}: "{r["entry"]}" factor {r["factor"]}, {why}')
+    return out
 
 
 def body_named(d, part):

@@ -52,7 +52,7 @@ print(r.summary())
   area as one even pressure (SolidWorks' own normal force puts the value on each face: [02-com.md](02-com.md)). Positive
   pushes into the material. `'remote'` applies a force and a moment
   at a point and carries them rigidly to the faces: use it for a load that acts away from the part (a hand load at the end
-  of the forearm, a motor torque).
+  of the forearm, a motor torque). `'bearing'` is a pin pressing on a bore (below).
 - **A rigid load lends the part stiffness it does not have.** `'remote'` makes its faces move as one rigid body, so
   small holes and thin ligaments beside them stop flexing and read low. It also holds separate faces level with each
   other: four post tops joined by one rigid load deflected four times less than the hand value, with no hole anywhere
@@ -64,6 +64,50 @@ print(r.summary())
   a screwed-on part, the screw holes or the rings under the heads, not the bore its boss sits in); when a hole, slot or
   thin wall lies within a few wall thicknesses of a loaded face, run the load a second way and report the higher; and
   do a hand value for every small hole in a stressed wall (nominal stress there times 3) before the solve.
+- **A pin, shaft or bearing in a bore: `('bearing', faces, (Fx, Fy, Fz))`.** The faces are the bore (cylinders about
+  one axis: give it every face of the bore, both halves on a STEP import, since one half alone still takes the
+  whole force without a word), the force is in newtons in the model frame and must be square to the bore
+  axis (a part along the axis is refused: give it to another load). It is SolidWorks' own bearing load; `static()`
+  makes the coordinate system it needs and deletes it with the study. Measured on a 60 x 60 x 10 plate with a 20 mm
+  bore, 100 N, 82,345 nodes (`selftest.py bearing`, [eval/bearing-load](https://github.com/jaylamping/cad-daddy/blob/main/eval/bearing-load/RESULTS.md), 2026-11-14):
+
+  | What | Measured | Hand |
+  | --- | --- | --- |
+  | Reaction | 100.001 N, and each component of a force at 45° or across two model axes within 0.01 N | 100 |
+  | Pressure where the force points | 0.640 MPa | 4 F / (π d t) = 0.637 |
+  | Pressure on the half the force pulls away from | under 0.005 MPa | 0 |
+  | Pressure 45° round from the force | 0.223 MPa | p₀ cos³ 45° = 0.225 (a cosine pressure would be 0.450) |
+  | Pressure summed over the bore | 75.2 N | 3 F / 4 |
+  | Traction along the force summed over the bore | 99.99 N | F |
+
+  So the load is **not** a cosine pressure normal to the wall. It is a traction along the force direction, p₀ cos θ per
+  projected area (p₀ cos² θ per wall area): a quarter of the force goes in as shear along the wall, as if the pin were
+  stuck to it. The peak is the textbook 4 F / (π d t) all the same. Pass `BEARING_PARABOLIC` as a fourth item for
+  SolidWorks' other distribution: peak 0.754 MPa against 3 F / (2 d t) = 0.750, narrower still.
+- **Which load for a bore.** The same 100 N on that bore three ways, same mesh:
+
+  | Load | Reaction | Worst stress on the bore wall | Hoop stress beside the bore (hand: 0.25 MPa nominal) | Bore moves |
+  | --- | --- | --- | --- | --- |
+  | `'bearing'` | 100.0 N | 1.19 MPa, 70° round from the force | 0.99 MPa | front 12.3 µm, back 0.4 µm: it stretches |
+  | `'remote'` at the bore centre | 100.0 N | 0.36 MPa | 0.00 MPa | 2.67 µm front and back: held round |
+  | `'normal'`, 100 N | **0.0 N** | 0.31 MPa | 0.17 MPa | swells evenly |
+
+  Use `'bearing'` when a pin, shaft, bush or bearing outer ring pushes on a bore and the stress round that bore, or
+  how far it stretches, is the question. Use `'remote'` when the load acts away from the part and the faces really are
+  held rigid by what is fastened to them (a motor flange screwed down, a clamped tube); on a bore it keeps the hole
+  round, pulls on the back half as hard as it pushes on the front, and here read the wall 3.3 times low and the
+  movement 4.6 times low. An even `'normal'` force on a whole bore pushes outwards all round and sums to nothing: the
+  reaction is zero while `r.applied` still says 100, which only check 1 catches. An even force is right only on a
+  face that looks one way (a flat pad, half a bore that has been split off).
+- **What a bearing load cannot do.** There is no contact and no clearance: the pressure always covers exactly half
+  the bore, however loose or tight the pin (a loose pin bears on a narrower arc and peaks higher, a press fit loads
+  all round); the pin's own bending and the load moving towards one end of the bore are not there; and the bore can
+  pull away from where the pin would be. For those, model the pin as a body with no-penetration contact
+  ("Contact between bodies"). The force must lie square to the axis, and one load takes one axis.
+- **The stress it puts on the bore is the answer, not an artefact, so the default mask hides it.** `r.peak()` drops
+  nodes within two elements of every load face: here it reported 0.54 MPa with 1.19 on the wall. With a bearing load
+  read the bore wall yourself (`r.near(r.loaded_pts, 0.1)` or `r.in_box(...)`) and report it; the pressure patch
+  itself (compression of 4 F / (π d t)) is the bearing stress to judge against the material's bearing strength.
 - **The default mask can hide exactly that.** `r.away()` drops nodes within two elements of every load face. With the
   load on or beside small holes it removed the governing rim (9.8 reported, 15.4 real). When a real feature sits inside
   the mask, read it separately with `r.in_box(...)` and report it; only a fixture singularity may be left out.
@@ -132,7 +176,11 @@ first. Most questions do not need a heavy solve: coarsen the global size and kee
 | about 800,000 with contact, direct sparse | | **ran out of memory** on the 32 GB machine, reported as error 24 | |
 
 `static()` refuses meshes over 450,000 nodes, or over `max_nodes=` when a job has a smaller budget; halving the element
-size multiplies the nodes by about six, so work out the finest size before starting a series. A mesh control on a face
+size multiplies the nodes by about six, so work out the finest size before starting a series. That rule holds only
+for a mesh with no local controls: with controls most of the nodes sit in the controlled faces and the global size
+hardly moves the count, so mesh once and read the count before planning (it is checked before the solve, and a refused
+mesh costs seconds). For the same reason a series that changes only the global size is not a convergence series when the
+peak sits inside a control: shrink the control with it, or say that the peak was read at one control size. A mesh control on a face
 takes the whole face; to refine one corner of a large face, put the control on its edge (`ctrl=[([edge], size)]`,
 edges from `edges_where`), which works and costs few nodes. `r.average()` is a mean over nodes, so it drifts as nodes
 crowd toward a corner: compare averages at one mesh, not across meshes. To get under it, coarsen the global size and keep the local controls: a 4 mm
@@ -170,7 +218,13 @@ What was learned on the upper-arm hub joint, 2026-11-11 and 12:
    in its hole, a bolt in its thread) needs its own `BONDED` set. An insert that came loose showed 5 km of displacement.
 5. **Split the results by body with geometry, not node order.** Label each node by which solid it lies inside, with a
    margin at the interfaces, and stop if any node of one body lies inside another. A split by index range scored steel
-   bolt nodes as plastic and moved every reported number.
+   bolt nodes as plastic and moved every reported number. **A split by radius alone misfiles nodes where two bodies
+   touch:** a seat of radius 26.1 touching a ring of radius 26.0 at its crown put 222 to 666 seat nodes within
+   2.5 mm of each crown under "radius up to 26.0005", so they were counted as ring and a rigid fit of the ring
+   seemed to leave 0.53 mm over (it left 0.0002, 2026-11-14). Where the gap closes to nothing no radius separates
+   the two, so split by body where the result allows: the mesh numbers each body's nodes in one unbroken run, so
+   take the geometric mask, find its one long run of node indices, and give the nodes of the mask outside that run
+   to the other body. Print the counts.
 6. **Check the load path, not just the stress:** the force each bolt or lug carries (mean stress over a section × its
    area) against what the joint is meant to do. A tie that should be carried by a ridge showing up as bolt tension means
    the contact is not engaged.
@@ -189,6 +243,14 @@ What was learned on the upper-arm hub joint, 2026-11-11 and 12:
    (0.085 mm on the selftest blocks), bonded they move a millionth of that. `contact()` in
    [selftest.py](../selftest.py) is the worked example, with both blocks drawn line-to-line: flat faces pressed
    together were seen as in contact every time.
+
+10. **A round body free to spin makes the largest displacement useless as a check.** A pin in a hole or a ring in a
+    seat, held by frictionless contact and soft pads, turns about its own axis by whatever the mesh happens to give:
+    a pin 1.29, 0.34 and 0.20 degrees over three meshes, a ring 0.89 to 1.50 degrees (0.55 to 0.83 mm at its rim)
+    while the part itself moved 0.2 mm and no stress or screw load changed (2026-11-14). The spin is harmless, but
+    `predict()` and `compare()` on `r.max_disp()` then check nothing. Compare the body's translation instead (the
+    mean displacement of its nodes), or fit its nodes as a rigid body (a translation and a turn, by least squares)
+    and report the turn and what the fit leaves over: 0.0002 mm over means it moved as a rigid body.
 
 A contact study with more than two bodies, a gap, or a result that decides a design is work to hand up
 ([06-judgment.md](06-judgment.md)), or at least to have reviewed before anyone acts on it.
@@ -256,6 +318,7 @@ where the answer is known: the section between the load and the first contact mu
 | Error 24 at once on a model that solved a minute ago, benchmark log ending at `Loading-and-preparing-input-data-Start` | the document was closed unsaved after an earlier study and opened again in the same instance | save before closing; `static()` saves when it finishes (2026-11-12) |
 | Error 24 after a minute or more, memory falling | out of memory in the factorisation | node count; free memory when it failed; coarsen |
 | Solver iterates and never finishes | iterative solver on contact | direct sparse |
+| Error 24 after 2 to 15 minutes on a model with bolt connectors and no-penetration contact, benchmark log ending at `Element-stiffness-Start (contact)` | FFEPlus, whether forced or picked by Automatic (Automatic picked it at 356,000 nodes and did not fall back; holly-pc, 10 of 10 runs, 2026-11-13 and 14) | direct sparse; the same model solved in 349 s |
 | Displacement of metres | a loose body, or a bond lost to a contact set | explicit `BONDED` sets |
 | A small solve never returns, files beside the model stop changing | a hidden solver dialog | `%TEMP%\sw_hidden_<pid>.log` shows `#32770 \| Simulation`; `static()` answers the excessive-displacement one itself, and logs the text of any other |
 | `GetStress` raises or the instance dies on readback | result too large | smaller model |
@@ -270,3 +333,7 @@ For each case: the model file and its SHA-256, the load and support in words, el
 the five checks with their numbers, the peak with its location and what was excluded, the layer stress and its direction,
 the factor of safety against the right allowable, and anything you could not verify. Nodal results go to
 `cad/_sim/<region>/<case>.npz` so the numbers can be recomputed without solving again.
+
+Times: the minutes column of `times.log` (`swkit.stamp()`) is a running total since the first stamp, not a
+duration. A job's length is the difference between its end line and its start line; a report that quoted the
+running totals gave two jobs of 10.0 and 10.4 minutes as 10.9 and 10.7 (2026-11-14).
