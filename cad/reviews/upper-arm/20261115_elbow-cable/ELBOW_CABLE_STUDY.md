@@ -80,6 +80,25 @@ CAD were changed.
   stub's existing bore. The halves' passages (neck, rib gap, down to the stub) already meet the 3.5 × 13 reserve.
 - **Outer shapes:** no change. The cap stays where it is, and the pocket goes into the cheek, not out.
 
+## Assumptions checked (2026-11-15)
+
+- **The thinner bearing shoulder is OK on paper.**
+  - In the inboard cheek, the 6808's outer race sits on an annular lip, r 21.5-26, X 131.5-134, 2.5 thick, cantilevered 4.5 mm
+    inward from the cheek wall. The race's outer ring bears on about r 23.7-26.
+  - Thinned to 1.2 mm at 100 N axial: shear across the lip root about 0.5 MPa; bending about 6 MPa in the layer plane (the cheek
+    disc prints flat, layers normal to the axis), SF about 7.5 against 45. At 300 N, SF about 2.5.
+  - 1.2 mm is 6 layers, printable.
+  - Elsewhere the deeper floor leaves 1.7 mm of wall over the stop-lug slot.
+  - No FE is needed at this level.
+- **The cap can't take the extra depth instead.** It is a 1.6 mm plate whose outer face is the arm's outline. Moving it out by 1.3
+  would grow the elbow, and thinning it to 0.3 is not a part. So the depth goes into the cheek.
+- **The rig is ready:** `cad/upper-arm/ELBOW_CABLE_RIG.md`. The files are on holly-pc in `C:\joe\prints\elbow-cable-rig\`, not
+  in git. Generator: `cad/scripts/arm/elbow_cable_rig.py`.
+- **New find while building the rig: the bend where the strip leaves the stub bore.** It turns from along the axis to radial over
+  the 5.6 mm depth, so about R 5 there. That is static (that end is tied and turns with the stub), but it is about 2 × OD, below
+  the usual 4-6 × for a static bend. A lead-in round on the bore's edge (R 3 or more) belongs in the design. The rig's notch shows
+  whether it kinks.
+
 ## Assumptions not yet checked
 
 1. **The wire.** 18 AWG OD 2.4 and 26 AWG OD 1.1 are not measured. Joey to caliper the wire he buys; a fatter 18 AWG cuts A3's
