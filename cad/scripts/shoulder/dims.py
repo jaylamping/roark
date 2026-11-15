@@ -297,4 +297,5 @@ HUB_NOSUP = os.environ.get('HUB_NOSUP') == '1'
 HUB_SLIT_FILL = os.environ.get('HUB_SLIT_FILL') == '1'      # candidate, default off: see STEP_RING in build_hub
 SKIRT_DROP = float(os.environ.get('SKIRT_DROP', '0'))      # candidate, default off: the fork front's skirt this much longer at its lower edge (3.0 with the +3.0 hub)
 RS02_SEAT_FIX = os.environ.get('RS02_SEAT_FIX') == '1'      # candidate, default off: washer seats for the five RS02 screws (build_fork_front)
+RS02_SEAT_DEPTH = float(os.environ.get('RS02_SEAT_DEPTH', '2.0'))      # with RS02_SEAT_FIX: how far the screw seats lie below the seat ring's top (0 = on top, no counterbore; floor 10.0)
 CH_DZ = -1.0 if os.environ.get('LEG2') else 0.0   # LEG2 mock-up: the fork rear's channels 1 mm further back (front wall 3.4)

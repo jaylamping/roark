@@ -783,7 +783,10 @@ def build_fork_front():
         _y0 = SL['y_bot'] + 0.3
         extrude(d, ysk(d, _y0, 'SKIRT_EXT', lambda s_: [s_.spline(EV.sleeve_section(_y0, 0.3)), s_.spline(EV.sleeve_section(_y0, 2.0))]),
                 'SKIRT_EXT', SKIRT_DROP + 0.3, NY, lo=-1.0)
-        yaw_rev(d, 'SKIRT_EXT_BORE', [(0, SL['y_bot'] - SKIRT_DROP - 1), (SL['bore_skirt'], SL['y_bot'] - SKIRT_DROP - 1), (SL['bore_skirt'], SL['y_bot'] + 0.2), (0, SL['y_bot'] + 0.2)], cut=True, )
+        try:      # only where the extension's skin reaches inside the skirt's bore; at 3 mm it does not, and the cut is empty
+            yaw_rev(d, 'SKIRT_EXT_BORE', [(0, SL['y_bot'] - SKIRT_DROP - 1), (SL['bore_skirt'], SL['y_bot'] - SKIRT_DROP - 1), (SL['bore_skirt'], SL['y_bot'] + 0.2), (0, SL['y_bot'] + 0.2)], cut=True, )
+        except SystemExit as e_:
+            log('  SKIRT_EXT_BORE: nothing to cut (%s)' % e_)
     ym = (SEAT_Y[0] + SEAT_Y[1]) / 2
     # the joint face: the 0.5 mm from the sleeve's back (JZ0 + 0.5) down to the joint plane, over the bolted pad
     _py0 = min([SEAT_Y[0]] + [y_ - 4.0 for _, y_ in JOINT_PTS])   # r 47: the pad reaches down past the lower screw pair
@@ -876,13 +879,14 @@ def build_fork_front():
             # KEY_SLOT_DEG from the screw's axis, 7 wide, out into the drum's envelope (cut on the plane X = the screw's)
             low = [a_ for a_ in RS02_ACCESS_ANG if ypt(36.5, a_, 0.0)[2] < 38.0]
             _ar = 3.9 if RS02_SEAT_FIX else 3.5      # with the washer seats: the bore and the slot pass a dia 7 washer on its screw
-            extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, SEAT_Y[1] - 3.5), _ar) for a_ in low]),
+            _ya = SEAT_Y[1] - (RS02_SEAT_DEPTH if RS02_SEAT_FIX else 3.5)      # the access bore starts at the screw seat
+            extrude(d, ysk(d, _ya, 'RS02_ACCESS', lambda s_: [s_.circle(ypt(36.5, a_, _ya), _ar) for a_ in low]),
                     'RS02_ACCESS', 140.0, Y, cut=True)
             for a_ in [q for q in RS02_ACCESS_ANG if q not in low]:
                 xk, _, zk = ypt(36.5, a_, 0.0)
                 t_ = math.radians(KEY_SLOT_DEG)
                 u_, n_ = (math.cos(t_), -math.sin(t_)), (math.sin(t_), math.cos(t_))      # (Y, Z): along the key, across it
-                y0_ = SEAT_Y[1] - 2.0
+                y0_ = SEAT_Y[1] - (RS02_SEAT_DEPTH - 1.5 if RS02_SEAT_FIX else 2.0)      # 1.5 above the screw seat either way: the slot's low corner stays off the seat
                 pts = [(xk, y0_ + sy * _ar * n_[0] + L_ * u_[0], zk + sy * _ar * n_[1] + L_ * u_[1]) for sy, L_ in ((1, 0.0), (1, 46.0), (-1, 46.0), (-1, 0.0))]
                 extrude(d, xsk(d, xk, 'KEY_SLOT', lambda s_, pts=pts: s_.poly(pts)), 'KEY_SLOT', 2 * _ar, X, cut=True, mode=MID)
         elif not NOACC:
@@ -994,29 +998,19 @@ def build_fork_front():
         # the five screw seats for a standard M3 washer (dia 7) on a thicker floor: seat 1.5 mm higher (floor 8.0, was 6.5),
         # flat to r 3.5, then R 1.0 into a dia 9 counterbore wall (the bolted case put the low spot in the square corner
         # of the dia 6.6 counterbore, FORK_FRONT_FE.md). One revolve cut per screw about its own axis
-        ys_ = SEAT_Y[1] - 2.0
+        ys_ = SEAT_Y[1] - RS02_SEAT_DEPTH
         for i_, a in enumerate(RS02_SCREWS):
             cx, _, cz = ypt(36.5, a, 0.0)
-            for sense in (-1, 1):
-                va = vol(d)
-                with Sk(d, plane(d, 'Z', cz, f'P_RS02_CB{i_}'), f'RS02_CB{i_}') as s_:
-                    sm_ = d.SketchManager
-                    Pt = lambda dx_, y_: s_.p((cx + dx_, y_, cz))
-                    A_, B_, C_, D_, E_, O_ = Pt(0.0, ys_), Pt(3.5, ys_), Pt(4.5, ys_ + 1.0), Pt(4.5, ys_ + 10.0), Pt(0.0, ys_ + 10.0), Pt(3.5, ys_ + 1.0)
-                    for u_, v_ in ((A_, B_), (C_, D_), (D_, E_), (E_, A_)):
-                        sm_.CreateLine(u_[0], u_[1], 0, v_[0], v_[1], 0)
-                    sm_.CreateArc(O_[0], O_[1], 0, B_[0], B_[1], 0, C_[0], C_[1], 0, sense)
-                    s_.cline((cx, ys_ - 5.0, cz), (cx, ys_ + 15.0, cz))
-                try:
-                    revolve(d, s_.feat, f'RS02_CB{i_}', cut=True, lo=0.5)
-                except SystemExit:
-                    d.EditUndo2(1)
-                    continue
-                # the short arc leaves the fillet's material in the corner: about 4 mm3 less cut than the square corner
-                if va - vol(d) < math.pi * 4.5 ** 2 * 10.0 - 2.0:
-                    break
-                d.EditUndo2(2)
-                d.ForceRebuild3(False)
+            with Sk(d, plane(d, 'Z', cz, f'P_RS02_CB{i_}'), f'RS02_CB{i_}') as s_:
+                sm_ = d.SketchManager
+                Pt = lambda dx_, y_: s_.p((cx + dx_, y_, cz))
+                A_, B_, C_, D_, E_ = Pt(0.0, ys_), Pt(3.5, ys_), Pt(4.5, ys_ + 1.0), Pt(4.5, ys_ + 10.0), Pt(0.0, ys_ + 10.0)
+                M_ = Pt(3.5 + math.sqrt(0.5), ys_ + 1.0 - math.sqrt(0.5))      # the fillet's mid point: a three-point arc has one way round only
+                for u_, v_ in ((A_, B_), (C_, D_), (D_, E_), (E_, A_)):
+                    sm_.CreateLine(u_[0], u_[1], 0, v_[0], v_[1], 0)
+                sm_.Create3PointArc(B_[0], B_[1], 0, C_[0], C_[1], 0, M_[0], M_[1], 0)
+                s_.cline((cx, ys_ - 5.0, cz), (cx, ys_ + 15.0, cz))
+            revolve(d, s_.feat, f'RS02_CB{i_}', cut=True, lo=0.5)
     else:
         extrude(d, ysk(d, SEAT_Y[1] - 3.5, 'RS02_CB', lambda s: [s.circle(ypt(36.5, a, SEAT_Y[1] - 3.5), 3.3) for a in RS02_SCREWS]), 'RS02_CB', 10, Y, cut=True)
     extrude(d, ysk(d, SEAT_Y[0] - 1, 'SOCKETS', lambda s: [sector(s, lambda r, a: ypt(r, a, SEAT_Y[0] - 1), 30.0, 40.5, a0, a1, 1.5) for a0, a1 in SOCKET_POCKETS]),

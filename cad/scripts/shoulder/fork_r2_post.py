@@ -23,6 +23,8 @@ import fea_shoulder as FS
 from dims import RS02_SCREWS, ROLL_OUT, RX, RY, SEAT_Y, YZ
 
 Y0 = SEAT_Y[0]
+import os
+SEATH = float(os.environ.get('R2_SEAT_YH', '358.4'))      # Y of the screw seats: 359.9 with RS02_SEAT_FIX
 ALLOW = (('vM', FS.YIELD), ('layer', FS.YIELD * FS.LAYER), ('shear', FS.YIELD * FS.LAYER / math.sqrt(3.0)))
 
 
@@ -55,7 +57,7 @@ def post(case, tag):
         t = math.radians(a)
         dr = np.hypot(x - 36.5 * math.cos(t), zz - 36.5 * math.sin(t))
         near |= dr < 4.5
-        tie |= (np.abs(dr - 1.8) < 1.2) & (np.abs(y - 358.4) < 1.2)
+        tie |= (np.abs(dr - 1.8) < 1.2) & (np.abs(y - SEATH) < 1.2)
     rr = np.hypot(x, y - RY)
     rest = ~ring & ~((pos[:, 2] < ROLL_OUT + 4.0) & (rr < 23.0)) & ~((rr < 30.5) & (pos[:, 2] < -36.0)) & ~((pos[:, 2] < -28.0) & (rr > 24.0) & (rr < 46.0) & (y < RY - 18.0))
     print(f'== {case} {tag}: {len(pos)} fork nodes ({int((~fork).sum())} stand-in and seat-plane nodes left out). SF worst 0.5 / 1 / 2 mm ball')
