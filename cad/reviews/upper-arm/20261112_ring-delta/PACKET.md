@@ -47,6 +47,11 @@ peak, routine) therefore passes through the two lugs as a Z couple. On rev D:
     `cad/exports/shoulder/shoulder_hub_left.STL`, the same SHA-256.
     - Its print file `shoulder_hub_left_revD3c7.3mf` (2 h 47 min, 81.9 g) holds the same mesh.
     - The 3MF is on the PCs, not in the repo.
+  - **Status 2026-11-15: fit only.**
+    - The released D3c7 has six 0.5 mm through-slits in its motor plate (r 19.1-19.5, Y 316-319.86), a build error confirmed in
+      the STL. They are 14 mm away from the lugs, groove and spigot.
+    - The bench runs the fit steps on it, and the weight steps wait for the corrected hub (same groove, lugs and spigot; about
+      15 g more). The picks get a quick re-check on that hub.
   - The D3c4 and D3b checks are in `D3C4_CHECK.md` and `D3B_CHECK.md` alongside it.
 - **Our side (unchanged since R1g).**
   - A shallow seam pocket at X offset 34.6 for the whole lug height.
@@ -302,6 +307,7 @@ Sheets: `r1g_front_half_sheet.png`, `r1g_shim_ring_set_sheet.png`, `r1h_d34_lug_
 the R1h back half in `../20261111_r1c-delta/r1d/r1g/r1h_back_sheet.png`.
 
 **Open:**
+- **The corrected hub** (the D3c7 motor-plate slits filled): needed for the bench weight steps. The fit steps run on D3c7.
 - **Insert torque capacity: untested** (Joey's choice, 2026-11-14). The lug bolts' 0.3 N·m cap is a hand-feel rule ("snug") until a
   later iteration measures it.
 - **Read-back trim test** (all-node GetStress against per-body GetStressForEntities3): not done.

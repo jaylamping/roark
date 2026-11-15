@@ -15,7 +15,19 @@
 - Before the push, this file was marked provisional: it was a copy of the shoulder thread's local build
   (`C:\joe\code\roark-wt\shoulder-study\cad\_wip\shoulder-pass1\stl_look_hubD3c7\hub.STL`).
 
-**What D3c7 is.** D3c6 plus Dia 3.8 lug holes, with the cable window at 68 deg (a flat inner wall; footprint at Y 298:
+**Motor-plate slits (2026-11-15).** The shoulder thread reported a build error, and I confirmed it in this STL.
+- Six through-slits about 0.4-0.5 mm wide at r 19.1-19.5, each about 40 deg long (empty at θ 348-27, 48-87, 108-147, 168-207,
+  228-267, 288-327), with 20 deg bridges between them.
+- They run from Y 316.0 to the RS02 face at Y 319.86, through the motor plate into the cavity below.
+- They are 14 mm above every surface we fit to: the lugs, groove and spigot are Y 288-302. So none of the checks below is affected,
+  and the hub is good for fit checks.
+- **These checks could not have caught them.**
+  - The STL is watertight (the slits are valid geometry).
+  - The comparison against D3c4 only examined our interfaces, and it lumped everything above Y 302.3 as "187 changed pieces,
+    inside the hub" (the window rework) without looking at them.
+- **Lesson:** a hub check should also compare the parts we don't touch, at least by a section survey.
+
+ D3c6 plus Dia 3.8 lug holes, with the cable window at 68 deg (a flat inner wall; footprint at Y 298:
 r 15.7-21.0, ±8 across).
 
 **Ours:**

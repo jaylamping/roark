@@ -99,6 +99,13 @@ become:
 - No measured torque, no insert torque test (steps 3's scrap block and 14), and no 24 h re-check (step 13).
 - After the test there is a plain look instead: inserts not lifted or spun, plates not cracked.
 - The steps below are the full version, kept for reference and for later iterations.
+- **First hub (D3c7, 2026-11-15): fit checks only.** Its motor plate has six 0.5 mm through-slits (r 19.1-19.5, Y 316 to the RS02
+  face, a build error).
+  - Run only the hub check, gauges, inserts, bare fit, ring and plate picks, bolt and rock, play check, then the inspection.
+  - The yaw load, stop load and 1.5 × proof wait for the corrected hub, because the bench grip and the RS02 boss would carry load
+    through the slit bridges.
+  - The picks are expected to carry over, with a quick re-check on the corrected hub.
+  - Clamp the hub by its body, never by the RS02 boss.
 
 **Run this on the final hub only:** the shoulder thread's frozen release. The hub is D3c7, the shoulder thread's
 release, adopted 2026-11-14 at commit 355aa9b (`shoulder_hub_left.STL`, SHA-256 a73103ad…259b), with Dia 3.8 lug

@@ -1,7 +1,13 @@
 # Upper arm, stage 1: print the hub-end test set, then test it on the bench
 
-**Status: ready to print, hub first, once I say go.** The shoulder thread released the hub for stage 1 (2026-11-14). The two arm
-halves stay on hold until these tests pass (see "What happens after").
+**Status: ready to print, hub first.** The shoulder thread released the hub for stage 1 (2026-11-14). The two arm halves stay on
+hold until these tests pass (see "What happens after").
+
+**The first hub (rev D3c7) is for fit checks only: steps 0-7 and 11.**
+- **Why:** its motor plate (the round boss on the RS02 face) has six thin slits from a build error, 0.5 mm wide, right through.
+- **Wait for the corrected hub** for the weight steps (8-10). A corrected hub is coming from the shoulder thread: the same
+  groove, lugs and spigot, about 15 g more.
+- The ring and plate picks should carry over. On the corrected hub, redo steps 4-7 quickly to confirm them before loading it.
 
 Stage 1 is a short test of the arm's hub end before the 10 h of halves:
 - the **shoulder hub**, printed first, because everything else is fitted to it;
@@ -70,14 +76,14 @@ The brass inserts sit in PETG, and a hard turn pulls them out. "Loose" means bac
 | 3 | **Bare fit:** hub into the back coupon, close the front by hand. No ring, no plates. | Note only |
 | 4 | **Ring pick:** thickest ring first, close by hand, step down until the seam shuts by hand. | One ring closes by hand |
 | 5 | **Plate pick:** blue marker on the plate tops, close and bolt (snug), open, check. Then step plates down, alternating sides, until it closes by hand. | No blue on the hub fillet; one pick closes |
-| 6 | **Bolt it** (snug), clamp the hub upright, coupon on top. Rock and twist it by hand. | Seam shut; no click, no free turn |
+| 6 | **Bolt it** (snug), clamp the hub upright by its body (not the small boss on the RS02 face), coupon on top. Rock and twist it by hand. | Seam shut; no click, no free turn |
 | 7 | **Play:** lever on, pointer fixed. Bolts loose. 1 kg at the lever's hook one way, photo; 1 kg the other way, photo; three times. Then snug the bolts again. | **Travel ≤ 0.3 mm** (a plate one size too thin reads about 0.6) |
-| 8 | **Yaw:** 8.7 kg at the hook, 10 s, each way. Photo loaded and unloaded. | **≤ 2.2 mm** loaded; back to the start |
-| 9 | **Stop load:** 8.7 kg at the hook plus 4.5 kg hanging sideways on a cord round the coupon at the lug line, 10 s, each way. Then once more with the bolts loose, watching a pen mark on the coupon's side against a ruler. | Pointer ≤ 2.2 and back; with the bolts loose, the side mark moves ≤ 0.25 |
-| 10 | **Last, and optional: proof.** 13 kg at the hook, 10 s, each way. Skip it if you'd rather keep the coupon. | No click, crack or whitening; back to the start |
+| 8 | **Corrected hub only.** **Yaw:** 8.7 kg at the hook, 10 s, each way. Photo loaded and unloaded. | **≤ 2.2 mm** loaded; back to the start |
+| 9 | **Corrected hub only.** **Stop load:** 8.7 kg at the hook plus 4.5 kg hanging sideways on a cord round the coupon at the lug line, 10 s, each way. Then once more with the bolts loose, watching a pen mark on the coupon's side against a ruler. | Pointer ≤ 2.2 and back; with the bolts loose, the side mark moves ≤ 0.25 |
+| 10 | **Corrected hub only. Last, and optional: proof.** 13 kg at the hook, 10 s, each way. Skip it if you'd rather keep the coupon. | No click, crack or whitening; back to the start |
 | 11 | **Open it and look**, and photograph everything: ring, plates, inserts, the hub's lugs and lug roots (the rounded corner where each lug meets the hub), the groove. | Inserts not lifted or spun; plates not cracked; no whitening or cracks; imprints at most felt, nothing that catches a fingernail |
 
-Twelve steps (0-11).
+Twelve steps (0-11). On the first hub: 0-7, then 11. On the corrected hub: 4-7 again, then 8-11.
 
 **What this short version gives up:**
 - **No torque numbers.** "Snug" replaces the 0.3 N·m cap, so the clamp varies from bolt to bolt. That matters little: the play
@@ -102,12 +108,12 @@ Twelve steps (0-11).
 | Luggage scale, or water: 1 L = 1 kg (1, 4.5, 8.7, 13 kg) | Steps 7-10 |
 | Cord and an S-hook | Hanging the loads |
 | Blue marker (or pencil graphite) | Step 5 |
-| A vise or G-clamps holding the hub upright by its top end; it must not move under 13 kg on the lever | Steps 6-10 |
+| A vise or G-clamps holding the hub upright by its **body** (the wide part above the groove), soft jaws, **never on the small round boss of the RS02 face**; it must not move under 13 kg on the lever | Steps 6-10 |
 | Torch and phone camera | Photos, step 11 |
 
 ## 4. What happens after
 
-- **The halves are released** (back R1h, front R1g; about 10 h 15 min and 233 g) when every row passes, and you send me the
+- **The halves are released** (back R1h, front R1g; about 10 h 15 min and 233 g) when every row passes (the weight steps on the corrected hub), and you send me the
   spigot numbers and the photos.
 - **Stop and send me the photos** if any of these happens:
   - a pass fails;
