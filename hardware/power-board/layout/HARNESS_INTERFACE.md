@@ -128,6 +128,21 @@ the hand budget is 2 A at 48 V (an estimate; no hand is designed). Neither is me
 the same pair takes a 7.5 A fuse with no rewiring; a hand that needs more than about 7.5 A sustained (360 W) would need a
 second pair, which the elbow spiral does not fit.
 
+**Arm wire to buy** (replaces the wire rows of the reference repo's left-arm-trunk BUY_LIST; connectors and fuses there
+still apply, plus one 58 V 10 A MINI fuse and holder per arm for the gauge step):
+
+| Use | Wire | Outside diameter | Buy | For both arms |
+| --- | --- | --- | --- | --- |
+| Power, board to the roll drive (S0–S2, RS03 drops) | 16 AWG silicone, red and black | 3.0 mm (catalogue figure, not checked) | BNTECHGO 16 gauge silicone, red + black | about 3 m per colour |
+| Power, yaw drive to the forearm (S3, S4, RS02 / RS00 / hand drops) | 18 AWG silicone, 150 × 0.08 mm strands, red and black | **2.3 ± 0.1 mm** (seller specification for this construction); passages are sized for 2.6 mm, which covers every catalogue figure found (2.3 to 2.6) | BNTECHGO model **SW18G150008F25C2** (red 25 ft + black 25 ft) | about 3 m per colour |
+| CAN pairs (arm bus and hand bus), twisted about 1 turn per 25 mm | **28 AWG** silicone, 16 × 0.08 mm strands, two colours per pair | about 1.2 mm (from memory, not checked against a specification) | BNTECHGO 28 gauge silicone in a multi-colour kit (the red + black spool is model SW28A16008F10C2; pick the kit with yellow and green) | about 10 m per colour |
+
+**The CAN pairs are 28 AWG, not 26 AWG.** The 2026-11-06 trunk spec chose 26 AWG "so it fits the JST-GH and GH1.25 crimps",
+but those crimps take 26 to 30 AWG, and the pre-crimped GH leads on the same buy list are already 28 AWG. Electrically
+the gauge does not matter at these lengths: 28 AWG is about 0.21 Ω/m, so a 3 m bus adds about 1.3 Ω of loop resistance
+against the 60 Ω of the two terminators (wire resistance from standard tables; arm bus length assumed). 28 AWG is what fits
+the yaw joint with the third reserved pair.
+
 **Pi link J21 pinout** (JST GH 8, 26 AWG; rev B5 added pin 8 for the power-fail warning). Every Pi input here is
 open drain or driven at 3.3 V from the Pi's own rail; nothing above 3.3 V reaches the cable.
 
