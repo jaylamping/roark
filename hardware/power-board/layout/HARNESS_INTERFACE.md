@@ -101,6 +101,15 @@ bus currents are not measured yet; the arm trunk plan's branch fuses for them ad
 expects a real draw of a few amps. A shoulder run on 18 AWG would need the arm port's inline fuse at 15 A at most
 instead of 20 A; that is not the plan.
 
+Why the shoulder stays 16 AWG: the shoulder section carries the whole arm, two RS03 drives included. The RS03 manual
+(RS03_User_Manual_261013, section 1.3) gives phase currents only: 13 Apk at the rated 20 N·m and 43 Apk at the 60 N·m
+peak. Supply current is not in the manual and not measured; rated load at 100 rpm is about 210 W at the shaft, so about
+5 to 6 A from the bus per RS03 with losses assumed. Two of them working hard plus the rest of the arm fits the 15 A
+software limit on 16 AWG (about 43 K rise) but not the 7.5 to 10 A that keeps 18 AWG at the same temperature. The wire runs
+through PETG parts, which soften near 80 °C, so the sustained wire temperature matters more than the 200 °C silicone
+rating. Voltage drop is not the issue either way: about 13 mΩ against 21 mΩ for a 0.5 m section there and back, 0.26 V
+against 0.42 V at 20 A.
+
 **Pi link J21 pinout** (JST GH 8, 26 AWG; rev B5 added pin 8 for the power-fail warning). Every Pi input here is
 open drain or driven at 3.3 V from the Pi's own rail; nothing above 3.3 V reaches the cable.
 
