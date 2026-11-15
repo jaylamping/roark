@@ -1,5 +1,5 @@
 #!/bin/bash
-# r1e_solve3 (2026-11-13, coordinator 19:35Z): as r1e_solve2, but "used" counts only our own process tree (resident: working set; the
+# r1e_solve3 (2026-11-13, decision 19:35Z): as r1e_solve2, but "used" counts only our own process tree (resident: working set; the
 # first version summed private commit, which reads about 1.4x the resident figure and stopped a job with 11 GB free): the job's Python process and
 # our SolidWorks (its PID from this job's session state file) with all their child processes. The free-memory
 # stop (MEMSTOP_FREE) still guards the machine. Before: "used" was the machine's free-memory drop, so another session's solve counted.
@@ -43,9 +43,9 @@ until ! python "$SWI" --status 2>/dev/null | grep -q "busy"; do sleep 30; done
 ls cad/_wip/arm-sw*/HUNG_PID >/dev/null 2>&1 && { echo "STOPPED: HUNG_PID present" >> $L; exit 1; }
 if [ -f $STAMP ]; then while [ $(( $(date +%s) - $(cat $STAMP) )) -lt 180 ]; do sleep 10; done; fi
 # The machine-wide large-solve lock C:\joe\.fea_solve.lock (RULES.md rule 6), taken ONLY at the moment of launch: wait for free
-# memory, take the lock, re-check free memory, launch; if the re-check fails, let it go and wait again. Since 2026-11-14 (coordinator)
+# memory, take the lock, re-check free memory, launch; if the re-check fails, let it go and wait again. Since 2026-11-14
 # it is taken in main's big_solve layout by a helper process (solve_lock_hold.py) that lives for the whole job, and a lock that looks
-# stale is NEVER removed: the helper waits and logs it for a person (a Git Bash pid in another thread's lock looked dead on 2026-11-13
+# stale is NEVER removed: the helper waits and logs it for a person (a Git Bash pid in another job's lock looked dead on 2026-11-13
 # while its solve was alive). Released by slrelease after end_session.
 wpid() { cat /proc/$$/winpid 2>/dev/null || echo $$; }
 hpid=

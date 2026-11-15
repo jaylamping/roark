@@ -1,5 +1,5 @@
 #!/bin/bash
-# R1e wedge seat, bearing case (2026-11-12, coordinator): flank line-to-line, no ribs (0 gap). Waits for the running queue
+# R1e wedge seat, bearing case (2026-11-12): flank line-to-line, no ribs (0 gap). Waits for the running queue
 # (COMBINED_DONE), builds the 0 gap model, then 0 gap G90, a mesh-only probe for the groove-band refinement, and 0 gap STOP_0 and
 # STOP_124 with 0.3 on the lug roots (plus the groove band at 0.3 or 0.5 if under NMAX nodes). No preload in these.
 cd /j/code/roark-wt/left-arm-organic

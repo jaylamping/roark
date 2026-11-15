@@ -1,6 +1,6 @@
 #!/bin/bash
 # After the yaw cases and STOP_124 (r1e_yaw.sh): the 0 gap STOP_0 again (its 17:57 run was stopped by the memory watch when another
-# thread's job took the free RAM), then the shim-body STOP_0 (r1e_shim_stop2.sh: probes, then the solve).
+# job took the free RAM), then the shim-body STOP_0 (r1e_shim_stop2.sh: probes, then the solve).
 cd /j/code/roark-wt/left-arm-organic
 L=cad/_wip/r1d_combined.log
 until grep -q "R1E_STOPB_DONE .*(after the yaw cases)" $L; do sleep 30; done

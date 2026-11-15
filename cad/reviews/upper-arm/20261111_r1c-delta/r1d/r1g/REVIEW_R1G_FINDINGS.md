@@ -80,7 +80,7 @@ Corrected, at the extended lug's outer root (X offset 34.4, Y 294.9), shear at 0
 | R1g YAW -17 | 1.15 / 1.54 / 2.44 | +X |
 | r1g2 YAW +17 | 1.23 / 1.56 / 2.38 | -X |
 
-The packet rows (1.45, 1.41 / 2.26) are corrected. The shoulder thread's FE governs the hub.
+The packet rows (1.45, 1.41 / 2.26) are corrected. The shoulder study's FE governs the hub.
 
 ## Minor items
 

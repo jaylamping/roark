@@ -35,7 +35,7 @@ while ours_live; do sleep 30; done
 until ! python "$SWI" --status 2>/dev/null | grep -q "busy"; do sleep 30; done
 ls cad/_wip/arm-sw*/HUNG_PID >/dev/null 2>&1 && { echo "STOPPED: HUNG_PID present" >> $L; exit 1; }
 if [ -f $STAMP ]; then while [ $(( $(date +%s) - $(cat $STAMP) )) -lt 180 ]; do sleep 10; done; fi
-# the machine-wide solve lock (coordinator, 2026-11-13; order fixed 14:17Z): C:\joe\.fea_solve.lock, "owner pid start folder",
+# the machine-wide solve lock (2026-11-13; order fixed 14:17Z): C:\joe\.fea_solve.lock, "owner pid start folder",
 # created exclusively ONLY at the moment of launch: wait for free memory, take the lock, re-check free memory, launch. If the re-check
 # fails, release the lock and go back to waiting, so we never hold it while only waiting at the memory gate. Stale only if its PID
 # is dead. Removed after end_session. Held as well as our worktree lock.

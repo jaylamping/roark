@@ -17,7 +17,7 @@ lock() {
   until mkdir $LK 2>/dev/null; do sleep 15; done; echo "$1 $$" > $LK/owner
   until ! python "$SWI" --status 2>/dev/null | grep -q "busy"; do sleep 30; done
   if [ -f $STAMP ]; then while [ $(( $(date +%s) - $(cat $STAMP) )) -lt 180 ]; do sleep 10; done; fi
-  # builds take only the worktree lock (coordinator 22:55Z): C:\joe\.fea_solve.lock is for large solves only (r1e_solve2/3)
+  # builds take only the worktree lock (decision 22:55Z): C:\joe\.fea_solve.lock is for large solves only (r1e_solve2/3)
   until [ "$(free)" -ge ${MINFREE:-18000} ]; do sleep 60; done; }
 unlock() { (cd cad/scripts/arm && ARM_SW_DIR="$1" python -c "from swlib import finish; finish()") >> $L 2>&1; date +%s > $STAMP
   grep -q "^left-arm-organic $(wpid) " $SL 2>/dev/null && rm -f $SL

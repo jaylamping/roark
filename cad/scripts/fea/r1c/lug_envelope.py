@@ -1,4 +1,4 @@
-"""Free space around the hub lugs inside our arm (2026-11-12, shoulder thread question): Y-plane sections of both printed halves
+"""Free space around the hub lugs inside our arm (2026-11-12, shoulder study question): Y-plane sections of both printed halves
 (and the hub, for the lugs themselves) from Y 280 to 296, and per section where our material is near each lug: the smallest r of
 arm material within each lug's angular window, arm material inside r 20, and our parts between the lug's outer end and the bore.
     python lug_envelope.py FRONT_STL BACK_STL HUB_STL      (run under capped.py)"""

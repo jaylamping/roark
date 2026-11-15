@@ -1,5 +1,5 @@
 #!/bin/bash
-# Hub rev E1 candidate (shoulder thread c7231b1, armframe STL sha256 c004bc2d...452a) against our halves, the final plates and the 0.70
+# Hub rev E1 candidate (shoulder study c7231b1, armframe STL sha256 c004bc2d...452a) against our halves, the final plates and the 0.70
 # ring (2026-11-15), as d3c7_check.sh with D3c7 as the old hub. Outputs to cad/reviews/.../r1d/r1g/e1_*.
 # Halves: the R1h back half if it has been built (cad/_wip/r1d_r1h_print/exports), otherwise the R1g halves (said in the output).
 cd /j/code/roark-wt/left-arm-organic

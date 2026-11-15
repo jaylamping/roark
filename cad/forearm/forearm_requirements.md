@@ -92,8 +92,8 @@ The `[[load_case]]` table above is the list the gate checks. In words:
   face plus self-weight, about 14–17 N·m at the elbow when horizontal (the upper arm uses 17.2 N·m for the same case).
   Strength wins over interior space.
 - **Pass marks:** 1.5 bulk / 1.25 layer for the worst case and the stop; 2.0 / 1.5 for the working case (500 g hand plus
-  test weights) (left-arm thread, 11-07).
-- **Material model:** PETG, E 1.9 GPa, yield 45 MPa, layer strength 0.5 × yield (left-arm thread, 11-07).
+  test weights) (left-arm study, 11-07).
+- **Material model:** PETG, E 1.9 GPa, yield 45 MPa, layer strength 0.5 × yield (left-arm study, 11-07).
 - **Elbow stop contact:** pressure under 55 / 1.5 = 36.7 MPa at the RS02 peak and at 34 N·m shoulder-driven (draft 4).
 - **Not a structural spec for the motors:** 5 kg with the forearm horizontal (straight or bent arm, the elbow moment is the
   same, about 14–17 N·m) is past the RS02's continuous rating (about 6 N·m); carrying it is for behaviours to manage, and

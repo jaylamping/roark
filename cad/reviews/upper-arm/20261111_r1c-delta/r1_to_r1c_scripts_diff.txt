@@ -342,7 +342,7 @@ index 0000000..a2bc32d
 +            rb = 35.8 - depth
 +            # the 45 deg flank stops at the disc face (r 35.8, Y y0 + 4 = 302): the cut must not undercut the disc (2026-11-11: running it
 +            # on to (36.5, 302.7) notched a wedge into the disc underside, a knife edge under the arm's end face, 1,447 MPa at STOP_0)
-+            # rev C+ (shoulder thread, 2026-11-11): the 45 deg flank reaches r 35.8 at Y 301.9 (bottom ends at Y 300.4), then 0.1 of cylinder
++            # rev C+ (shoulder study, 2026-11-11): the 45 deg flank reaches r 35.8 at Y 301.9 (bottom ends at Y 300.4), then 0.1 of cylinder
 +            # to the flat disc face at Y 302.0; set HS_REVCP=0 for the earlier profile (bottom to Y 300.5, flank to r 35.8 at Y 302.0)
 +            ytop = YTOP
 +            prof = [(36.5, y0 - 0.7 * t30), (rb, y0 + depth * t30), (rb, ytop - depth), (35.8, ytop), (36.5, ytop)]
@@ -368,7 +368,7 @@ index 0000000..a2bc32d
 +                    centerline_(sk_, (HX, 250.0, CZ), (HX, 340.0, CZ))
 +                revolve_(h, sk_.feat, f'SPIGOT_FILL{tag}', None, False, angle=130.0, mid=True, lo=0.01)
 +        h.ForceRebuild3(False)
-+        if os.environ.get('HS_ROUNDS', '1') == '1':      # 2026-11-11: hub rounds the shoulder thread is adding to the real hub
++        if os.environ.get('HS_ROUNDS', '1') == '1':      # 2026-11-11: hub rounds the shoulder study is adding to the real hub
 +            rad = lambda p: m_.hypot(p[0] - HX, p[2] - CZ)
 +            r45 = float(os.environ.get('HS_GROOVE_R45', '0.4'))      # 45 deg-side bottom corner; up to 1.0 clears the ridge's top tip corner
 +            sets = [('GROOVE_BOT_ROUND', 0.4, lambda p: abs(rad(p) - 34.3) < 0.03 and abs(p[1] - (y0 + 1.5 * t30)) < 0.05),

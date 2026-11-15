@@ -1,5 +1,5 @@
 #!/bin/bash
-# Hub D3c7 candidate (shoulder thread, local, not yet pushed; SHA-256 a73103ad...259b) against our halves, the final plates and the
+# Hub D3c7 candidate (shoulder study, local, not yet pushed; SHA-256 a73103ad...259b) against our halves, the final plates and the
 # 0.70 ring (2026-11-13). Post-processing only, under capped.py. Outputs to cad/reviews/.../r1d/r1g/d3c7_*.
 # Halves: the R1h back half if it has been built (cad/_wip/r1d_r1h_print/exports), otherwise the R1g halves (said in the output).
 cd /j/code/roark-wt/left-arm-organic

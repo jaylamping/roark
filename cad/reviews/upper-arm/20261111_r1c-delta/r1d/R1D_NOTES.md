@@ -24,7 +24,7 @@ All arm-side:
 With the flank gap, the arm can move away from the hub along −Y until something catches it:
 - **The ridge:** the 30° flank closes after 0.1 / cos 30 = **0.115 mm** of axial travel (0.1 gap), or 0.231 mm (0.2 gap).
 - **The bolts:** the lug holes are Ø3.4 on M3 bolts (Ø3.0), so a bolt only bears after **0.2 mm** of radial travel of the lug
-  relative to the posts. At Ø3.6, the shoulder thread's option, that becomes 0.3 mm.
+  relative to the posts. At Ø3.6, the shoulder study's option, that becomes 0.3 mm.
 - **Nothing else:** the posts carry the lugs only in Z (0.1 clear), the floor is 0.3 clear, and the bore is 0.1 clear
   radially.
 
@@ -124,7 +124,7 @@ The tapered R1d baseline (5-segment ramps, about 1.2 mm faces) meshes in 39 s, 0
 
 1. **Geometry: the ridge takes the tie before the bolts.**
    - The 0.1 flank gap closes after 0.115 mm of axial travel.
-   - The lug bolts only bear after 0.2 mm, because the lug holes are Ø3.4 on M3. At Ø3.6, the shoulder thread's option, that
+   - The lug bolts only bear after 0.2 mm, because the lug holes are Ø3.4 on M3. At Ø3.6, the shoulder study's option, that
      becomes 0.3 mm.
    - Nothing else restrains the arm along −Y: the floor is 0.3 clear, and the posts are 0.1 clear of the lugs.
    - So, from the first loading, the joint behaves like the nominal model (flank seated) plus a 0.115 mm rigid shift.
@@ -245,9 +245,9 @@ Re-post-processed with the new split (files here replaced; the tapered one is `r
   percent (in the notes and the report).
 - A layer average of "-" in the tables means no tensile average anywhere (all compression). It used to print as 0.00.
 
-## Slot edge break for the shoulder thread's lug-root fillet (2026-11-12, prepared, not solved, not released)
+## Slot edge break for the shoulder study's lug-root fillet (2026-11-12, prepared, not solved, not released)
 
-The shoulder thread adds R1.2 at the hub lug roots (lug Z faces at CZ ± 5 meeting the spigot underside at Y 296). Our slot walls
+The shoulder study adds R1.2 at the hub lug roots (lug Z faces at CZ ± 5 meeting the spigot underside at Y 296). Our slot walls
 (the posts' lug-facing faces at CZ ± 5.1) run up to the floor at Y 295.7, so their top edges must be broken.
 `slot_edge_break.py` (section study plus the printed halves and rev D meshes), `slot_edge_break.json`:
 - Lug-bearing face per post: 48.4 mm² (front, with the Ø4.0 insert hole) and 51.8 mm² (back, Ø3.4 hole), contact Y 288.0-295.7.
@@ -265,11 +265,11 @@ The shoulder thread adds R1.2 at the hub lug roots (lug Z faces at CZ ± 5 meeti
 - Prepared in code as `ARM_SLOT_BREAK="a,b"` (organic_parts.r1d_slot_break: the printed halves, and the FEA hub-seat posts),
   along each lug's X span + 0.5. Off unless set.
 
-## Memory cap on every python job (2026-11-12, coordinator rule)
+## Memory cap on every python job (2026-11-12, project rule)
 
 At 09:47 the first version of slot_edge_break.py (a point-in-mesh test over the whole half meshes) reached 61 GB committed and
 took holly-pc to 3 GB free; Remote Control showed the machine offline at 15:47Z. It was stopped at about 09:53. The memory watch
-had already ended my M solve's instance cleanly at 09:51. No other thread's SolidWorks instance crashed: the application log's
+had already ended my M solve's instance cleanly at 09:51. No other SolidWorks instance crashed: the application log's
 SolidWorks faults today are all my own instances, see below.
 - `cad/scripts/fea/r1c/capped.py`: `python capped.py --mb 6144 -- python script.py ...`. It starts the job suspended, puts it in a
   Windows job object with a 6 GB per-process and per-job committed-memory limit and kill-on-close, then resumes it. Over the
@@ -304,7 +304,7 @@ The post-macro readback is now removed. The macro's own log and the benchmark lo
 
 ## Shoulder hub bc16e97 (rev D candidate with R1.2 Z-face lug-root fillets): checks (2026-11-12 10:55)
 
-- Fetched from claude/project-thread-90ef87 at bc16e97 (Git LFS). STL SHA-256 18db5676…f261e matches the coordinator's note.
+- Fetched from claude/project-thread-90ef87 at bc16e97 (Git LFS). STL SHA-256 18db5676…f261e matches the expected hash.
   Volume 61,624.9 mm³ against 61,615.6 for 556cc44 (+9.3 mm³, about four R1.2 fillets 8 mm long).
 - Sections (fixed axes, fillet_check.py): the only differences from 556cc44 are at X 140.5-148.5 and 192.5-200.5,
   Y 295.0-296.0. That is 0.619 mm² per X section = two R1.2 fillet sections (2 × 0.309). Only the lug roots changed.
@@ -331,7 +331,7 @@ The post-macro readback is now removed. The macro's own log and the benchmark lo
   - hub groove bottom + 45° flank: 2.31 / 1.22 / 1.26.
   - spigot ring above the groove: 2.82 / 1.53 / 1.62; spigot core: 2.69 / 1.22 / 1.91.
   - outer ring and θ 0/180: 3.90 / 1.90 / 3.56.
-  - hub lug roots: 2.22 / 1.23 / 1.33, layer at [144.6, 295.7, 11.0] (-X lug, +Z face, Y 296: the root the shoulder thread
+  - hub lug roots: 2.22 / 1.23 / 1.33, layer at [144.6, 295.7, 11.0] (-X lug, +Z face, Y 296: the root the shoulder study
     fillets).
 - Inserts 58 MPa (SF 4.1 against 240 MPa brass); bolts 59 MPa (SF 10.9).
 - Lug forces: -X axial 34 N, Fx 38 N, Fz 174 N; +X 3 / 0 / -115 N.
@@ -340,7 +340,7 @@ The post-macro readback is now removed. The macro's own log and the benchmark lo
 
 ## Combined pass: FEA hub (2026-11-12 11:05)
 
-- HUB_RING_ZF = our ring FEA hub plus the shoulder thread's R1.2 Z-root fillet, with their exact edge selection (Y 296,
+- HUB_RING_ZF = our ring FEA hub plus the shoulder study's R1.2 Z-root fillet, with their exact edge selection (Y 296,
   |Z - CZ| 5, r 18-31.5 from the hub axis): 8 edge segments.
 - Check against our unfilleted hub (`hub_zf_vs_ring.json`): Y sections differ only at Y 295.0-295.75, the fillet. The X-section
   differences of about 1 mm² across the middle come from STL export resolution (the new hub was exported finer).
@@ -350,10 +350,10 @@ The post-macro readback is now removed. The macro's own log and the benchmark lo
   - above Y 300.5 rev D differs: slightly larger outer radius from Y 302.5, and a much smaller top boss (r about 24 at Y 319,
     ours 38.7).
   - So our fixture face at the hub top (Y 319.86) is larger than rev D's. Joint and lug-root figures are representative. The
-    hub's upper-region figures (outer ring above the groove) are this approximation, so the shoulder thread's own FEA governs
+    hub's upper-region figures (outer ring above the groove) are this approximation, so the shoulder study's own FEA governs
     there.
 
-## End-face inner edge: decision (2026-11-12, coordinator) and bearing
+## End-face inner edge: decision (2026-11-12) and bearing
 
 Decision: keep the existing 0.5 × 45° chamfer. No geometry change.
 - The chamfer clears the rev D spigot-foot fillet by 0.248 (bc16e97 sections: the disc's flat face starts at r 36.02-36.04).
@@ -374,7 +374,7 @@ End-face bearing on the hub disc (σy, both sides of the contact; face band r 36
 
 The bench notes' split-and-inspect step now looks at that edge and the hub disc for crushing or whitening.
 
-## Crush ribs: decision C (2026-11-12, coordinator), bedding, play, fit coupon
+## Crush ribs: decision C (2026-11-12), bedding, play, fit coupon
 
 - Decision: no rib change now. The ribs are take-up features, not the strength path. In nominal STOP_0 and G90 (cases 3 and 4)
   the ribs, 0.1 proud and touching, carry the flank load as point contacts (arm shear 0.36 / 0.43 at 0.5 mm). That is rib
@@ -383,7 +383,7 @@ The bench notes' split-and-inspect step now looks at that edge and the hub disc 
 - The strength claim rests on the flank bearing across the print's gap band. Done: 0.1 gap STOP_0 and G90. Queued: 0.2 gap
   STOP_0 and G90; 0 gap (flank in contact, no ribs) G90 and STOP_0.
 - Hub flank marking risk: the hub shows shear 0.70 (stop) and 0.83 (G90) at 0.5 mm, locally, under a rib. Flagged for the
-  shoulder thread and the reviewer.
+  shoulder study and the reviewer.
 - Rib flattening load:
   - A rib's flank face is 0.8 mm radial (0.92 mm along the 30° flank) × 1.0 mm, so about 0.9 mm² once fully engaged. At PETG
     45-55 MPa that holds about 41-51 N before it flattens further.
@@ -444,7 +444,7 @@ The bench notes' split-and-inspect step now looks at that edge and the hub disc 
     seam (where closing would shave). Catch: for poses whose lift-off side is near the seam, the play is the full 0.2 (axial
     0.23).
 
-### The wedge seat, thought through (coordinator question, notes only)
+### The wedge seat, thought through (project question, notes only)
 
 - Closing is along Z, so the wedge only preloads directly near the crowns (θ 90 / 270, radial approach). Near the seam
   (θ 0 / 180) the closing motion is tangential, so no wedge forms there.
@@ -461,7 +461,7 @@ The bench notes' split-and-inspect step now looks at that edge and the hub disc 
   wedge preload is not in them: it adds a steady axial compression on the flank and the end face, and tension in the lug bolts
   and the hub-end skin. To be checked with a preload step if the design is pursued.
 
-## Free space around the hub lugs for a hub web (shoulder thread question, 2026-11-12)
+## Free space around the hub lugs for a hub web (shoulder study question, 2026-11-12)
 
 Y-plane sections every 0.5 mm, Y 280-296, of our printed ring halves and the bc16e97 hub (`lug_envelope.py`,
 `lug_envelope.json`). The slot edge break (Y 294.3-295.7 at the lug faces) is not in these halves; it only removes material.
@@ -588,10 +588,10 @@ covered the band r 36.45-37.55 only.
 7. **Coupon (1)** rebuilt from the R1e halves (cut at Y 284) plus the shim set. The procedure adds the ring pick, and the coupon
    proves the pick works.
 
-## R1e build decisions (2026-11-12, after the coordinator's go and the shoulder thread's disc data)
+## R1e build decisions (2026-11-12, after the go-ahead and the shoulder study's disc data)
 
 - Hub disc (bc16e97, sections at 7 angles): flat at Y 302.00 from r 36.05 to 38.73 (38.5 at θ 180), then rolling off; the
-  shoulder thread gives 36.0-38.6.
+  shoulder study gives 36.0-38.6.
   - Our end face (r 36.4-39.0) overhangs the roll-off beyond about 38.6. With R1e it is lowered and never touches the disc; the
     shim sets the contact annulus.
   - The true common bearing annulus before R1e was r 36.4-38.7, 2.3 mm (2.1 at θ 180). The earlier end-face table (band r
@@ -652,12 +652,12 @@ covered the band r 36.45-37.55 only.
   up, over θ 70-110 and 250-290 (sections every 10°). Our end face is at Y 301.3 on both halves at every angle and our skin is
   smooth (r 38.9-39.1). Nothing to fix on our side.
 - Added `r1e_side_with_shoulder.png` (straight view from the front, +Z, the whole upper arm) and `r1e_junction_under_cuff.png`,
-  with the shoulder thread's WIP fork meshes (shoulder-study `cad/_wip/shoulder-pass1/stl/fork_front.STL` / `fork_rear.STL`,
+  with the shoulder study's WIP fork meshes (shoulder-study `cad/_wip/shoulder-pass1/stl/fork_front.STL` / `fork_rear.STL`,
   saved 2026-11-12 05:41; not a released export). The fork starts at Y 314.5, so the cuff ends about 12.5 mm above the junction.
 - The shim-body arm model's build failed once: with the end face lowered, the ridge-top flat cut stopped at Y 301.6 and left a
   free 0.1 sliver of the old ridge top (Y 301.6-301.7, r about 35.8) as a second body. The print halves had it too, but their
   build keeps only the main body, so they are unaffected. Fixed: with ARM_END_DROP the cut runs to Y 302.5.
-- The shim queue then waited about an hour (15:14-16:15) for the shoulder thread's busy instance (fea_shoulder HUBL_STOP2), per
+- The shim queue then waited about an hour (15:14-16:15) for the shoulder study's busy instance (fea_shoulder HUBL_STOP2), per
   the launch rules.
 
 ## FEA job control: one job at a time (2026-11-12, evening)
@@ -668,11 +668,11 @@ What went wrong:
      as it is.
   2. The queued STOP_124 and YAW +17 at 18:07. The cause: the hand-off killed the old queue script and then raced its child.
 - With a shared pid file, a memory stop or finish() ends whichever instance was written last, not the job's own.
-- Another thread's uncapped python job, up to 28 GB, took the free RAM at 18:02. Our 0 gap STOP_0 was stopped by the memory
-  watch at 18:04. The watch judges "used" by the drop in free RAM, so it counts other threads' memory as ours.
+- Another uncapped python job, up to 28 GB, took the free RAM at 18:02. Our 0 gap STOP_0 was stopped by the memory
+  watch at 18:04. The watch judges "used" by the drop in free RAM, so it counts other jobs' memory as ours.
 
 What I did:
-- I ended YAW +17 cleanly through its own session file (coordinator's call), and let STOP_124 finish alone.
+- I ended YAW +17 cleanly through its own session file (a project decision), and let STOP_124 finish alone.
 - I restored STOP_124's state file (PID 29836 plus its start time; its parent was our HS_STOP_124_fine client) so its own
   finish() ends it.
 
@@ -725,14 +725,14 @@ Remedies, cheapest first (gains are first estimates, to be scaled from the YAW_1
 5. **Third and fourth lug at θ 90 / 270** (hub change).
    - The couple splits over four lugs: about 176 N each, about 2× on the posts, lug roots and inserts alike.
    - The new lugs point along ±Z, so each half closes onto its lug along Z, into a pocket whose walls face X: feasible.
-   - Shoulder thread: a hub rev with two more lugs, its FEA and its closing check. Ours: two pockets, new posts or bosses, a
+   - Shoulder study: a hub rev with two more lugs, its FEA and its closing check. Ours: two pockets, new posts or bosses, a
      re-check of the harness path at θ 90 (front) and 270 (back), new print and coupon.
 6. **Positive torque key between ridge and groove** (hub change).
    - One or two key blocks or flats in the groove at θ 90 / 270, with matching flats on our ridge. Keys at the seam (θ 0 / 180)
      can't close along Z.
    - A short, stiff key in parallel with the lugs takes most of the torque. At r about 35 the key face sees about 490 N for
      17 N·m (one key) or 245 N (two), on a face of about 3 × 8 mm. That could relieve the lugs 3× or more, the largest gain.
-   - Costs: the full-ring groove that the shoulder thread just settled changes (its FEA and print). Our ridge stops being a plain
+   - Costs: the full-ring groove that the shoulder study just settled changes (its FEA and print). Our ridge stops being a plain
      ring, so the closing path, the ring FEA and the fit coupon are re-done.
 
 Suggested order, if YAW_17 fails: (1) as the stated duty in the meantime; (2) plus (3) on our side, since neither touches the hub;
@@ -761,7 +761,7 @@ Against the remedies:
 5. **Third and fourth lugs, or 6. a torque key.** Both are hub changes, and the only hardware routes that clear the hub lug roots:
    lugs about 2×, a key 3× or more.
 
-So at 17 N·m the limit is the hub as well as our posts. Unless the shoulder thread revises the hub, a yaw torque cap of about
+So at 17 N·m the limit is the hub as well as our posts. Unless the shoulder study revises the hub, a yaw torque cap of about
 10 N·m is needed whatever we do on our side.
 
 ## Torque key at the spigot: our side (2026-11-12, 19:40)
@@ -974,12 +974,12 @@ is drawn; θ 0 mirrors it. r is measured from the hub axis.
   2026-11-13 it sampled once a minute, which can miss a short solver peak. The Intel solver's BenchMark file records no memory
   figure.
 - **Measured, r1g2 (about 391 k nodes, 1.17 M equations, 13 contact sets):** sampled peaks 10.3 / 10.7 / 10.9 / 11.1 / 11.3 /
-  11.8 GB over six solves. r1g3_stop0 read 13.2 GB, with another thread's solve overlapping. **The footprint used for planning
+  11.8 GB over six solves. r1g3_stop0 read 13.2 GB, with another solve overlapping. **The footprint used for planning
   is 11.8 GB.** The peak lasts about a minute, inside the solve (the contact iterations); the rest of a job sits at 1-2 GB.
 - **Launch rule (this machine, 31.9 GB):** launch at footprint + memory-stop margin. With the stop at 2 GB free that is about
   14 GB free (MINFREE=14000, MEMSTOP_FREE=2048). Sampling is now every 15 s (MEM_SAMPLE=15), to catch the real peak.
 - **Explorer leak.** explorer.exe (PID 80728, running since 2026-11-12 06:41) held 12.1 GB private at 08:16 and 14.4 GB at 09:49
   on 2026-11-13, and was still growing. With it, the machine's free memory sat at 11.5-12.6 GB with no solve running, below the
-  14 GB launch level, so the r1g4 queue waited. Restarting Explorer is the owner's decision. No thread touches it.
+  14 GB launch level, so the r1g4 queue waited. Restarting Explorer is the owner's decision. No job touches it.
 - **Shared solve lock.** C:\joe\.fea_solve.lock is taken only at the moment of launch: memory, then lock, then re-check memory.
   If the re-check fails, the lock is released and the job goes back to waiting. A job waiting at the memory gate must not hold it.

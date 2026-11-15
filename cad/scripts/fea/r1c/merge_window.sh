@@ -1,5 +1,5 @@
 #!/bin/bash
-# Merge window (2026-11-13, coordinator 19:05Z): hold our worktree lock so no job of ours runs or launches, then merge origin/main
+# Merge window (2026-11-13, decision 19:05Z): hold our worktree lock so no job of ours runs or launches, then merge origin/main
 # (main's tools/solidworks/RULES.md and sw_instance.py taken outright, verified byte-identical), sw_instance --status, a smoke
 # test (launch and end one session), push; then the D3c7 hub checks with no solve running; then release the lock.
 cd /j/code/roark-wt/left-arm-organic

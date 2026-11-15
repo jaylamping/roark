@@ -1,5 +1,5 @@
 #!/bin/bash
-# r1g6 (2026-11-13, coordinator 20:11Z): hub lug holes Dia 3.8 (HUB_D3S38) with the lumped plate hole Dia 3.4 (r 1.7), plate top Y 294.6.
+# r1g6 (2026-11-13, decision 20:11Z): hub lug holes Dia 3.8 (HUB_D3S38) with the lumped plate hole Dia 3.4 (r 1.7), plate top Y 294.6.
 # One job at a time, both locks, 14 GB gate, "used" = our own process tree, stopped at 15 GB, free stop 2 GB (r1e_solve3).
 #   R1G6_PHASE=first: build UA_HUBSEAT_r1d_r1g6, then G90 + YAW -17 only (the case that failed on r1g5), then stop for review.
 #   R1G6_PHASE=rest : STOP_0, STOP_124, G90 + YAW +17, YAW -17, YAW +17, G90 on r1g6; the R1h back half; the convergence run on r1g6.
@@ -17,7 +17,7 @@ lock() {
   until mkdir $LK 2>/dev/null; do sleep 15; done; echo "$1 $$" > $LK/owner
   until ! python "$SWI" --status 2>/dev/null | grep -q "busy"; do sleep 30; done
   if [ -f $STAMP ]; then while [ $(( $(date +%s) - $(cat $STAMP) )) -lt 180 ]; do sleep 10; done; fi
-  # builds take only the worktree lock (coordinator 22:55Z): C:\joe\.fea_solve.lock is for large solves only (r1e_solve3 takes it at launch);
+  # builds take only the worktree lock (decision 22:55Z): C:\joe\.fea_solve.lock is for large solves only (r1e_solve3 takes it at launch);
   # and a lock whose PID looks dead is never removed here (a Git Bash PID is not a Windows PID: 2026-11-13 22:52Z)
   until [ "$(free)" -ge ${MINFREE:-18000} ]; do sleep 60; done; }
 unlock() { (cd cad/scripts/arm && ARM_SW_DIR="$1" python -c "from swlib import finish; finish()") >> $L 2>&1; date +%s > $STAMP
@@ -90,10 +90,10 @@ else
   echo "R1H SLICED+GATED $(grep -E '"job"' $X/print_check.log | sed -E 's/.*"job": "([a-z]+)", "mesh_gate": "([A-Z]+)".*"time_s": ([0-9]+), "grams": ([0-9.]+).*/  s g/' | tr '
 ' ' ')" >> $L
 fi
-# (coordinator 22:51Z) after the R1h build: the STOP_124 and G90 reruns first, then the convergence run last; a 3 minute gap after
-# each of our jobs so the shoulder thread's solves can take the shared lock in between; the mesh retried once if a body is left out
+# (decision 22:51Z) after the R1h build: the STOP_124 and G90 reruns first, then the convergence run last; a 3 minute gap after
+# each of our jobs so the shoulder study's solves can take the shared lock in between; the mesh retried once if a body is left out
 export MESH_MIN_NODES=300000
-holdsolver() {      # (coordinator 22:54Z) never launch while another session's solver runs: wait while any star.exe exists (none of
+holdsolver() {      # (decision 22:54Z) never launch while another job's solver runs: wait while any star.exe exists (none of
   # ours runs between our jobs), on top of the free-memory gate, which can be fooled early in their solve
   while tasklist //FI "IMAGENAME eq star.exe" 2>/dev/null | grep -qi "star.exe"; do
     grep -q "HOLD star.exe" <(tail -1 $L) || echo "HOLD star.exe running (another session's solve) $(date +%H:%M): waiting" >> $L

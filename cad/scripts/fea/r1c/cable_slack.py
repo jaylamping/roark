@@ -1,4 +1,4 @@
-"""Hub harness slack and sliding check (2026-11-13, shoulder thread question), R1g halves + the RS02 ring + the vendor RS02 placed.
+"""Hub harness slack and sliding check (2026-11-13, shoulder study question), R1g halves + the RS02 ring + the vendor RS02 placed.
 Bundle 13 x 3.5 laid flat (13 along u, 3.5 along v), minimum bend radius RB across the thin direction (no edgewise bends).
 Theta (ours = the hub's): atan2(Z - CZ, X - HX), 0 = +X lug, + toward +Z (front half). The elbow drum axis runs along X at
 (Y CY, Z CZ); phi about it: 0 = +Y (toward the hub / the neck).

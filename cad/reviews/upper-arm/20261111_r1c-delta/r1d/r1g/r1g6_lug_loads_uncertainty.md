@@ -20,7 +20,7 @@ Source: `r1g6_lug_loads.txt` (lug_loads.py) and `r1g6_lug_plate_distribution.txt
     | G90 + YAW +17 | 294 / 272 N (+8 %) | 221 / 220 N (+1 %) | ±8 % |
 
   - **For a design value, take the larger of the two.** That is the face total, at most 299 N per lug (G90 + YAW -17, +X lug),
-    against the shoulder thread's 304 N design value and 370 N bound.
+    against the shoulder study's 304 N design value and 370 N bound.
 - **Do not use the "both lugs" net force.**
   - The two lugs push in opposite directions, so their net is the small difference of two large numbers. The face/section
     difference of each lug lands in the net whole.

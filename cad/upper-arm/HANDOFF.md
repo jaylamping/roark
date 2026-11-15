@@ -11,7 +11,7 @@
 
 **R2** is an attempt to strengthen the neck-opening corner where the rib meets the drum wall, at φ 41° and 336°. Nothing is
 built yet. Tried and dropped: a web on the rib's inboard side, which raised the peak to E34 SF 0.16.
-The next ideas, both from the Opus review:
+The next ideas, both from review B of the print release:
 - a bead along the drum wall's free edge at the neck opening, at φ 36–46° and 331–341°;
 - narrowing the neck opening (now φ −24° to 41°) toward the φ ±15° the harness needs.
 Both must keep 3.5 × 13 for the harness, the RS02 plug path, and finger room for plugging in. No outside change.

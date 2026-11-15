@@ -1,5 +1,5 @@
 #!/bin/bash
-# Combined pass, extension (2026-11-12, coordinator decision C: ribs are take-up features, not the strength path). Bracket the
+# Combined pass, extension (2026-11-12, decision C: ribs are take-up features, not the strength path). Bracket the
 # print's flank-gap band 0 to 0.2 with the flank bearing, for both loads: 0 gap (flank in contact, no ribs) G90 and STOP_0, and
 # 0.2 gap G90. Waits for the resumed queue to finish (COMBINED_DONE). Same model recipe as r1d_combined.sh.
 cd /j/code/roark-wt/left-arm-organic

@@ -38,7 +38,7 @@
 Everything below is the check made before the decision (with up to three holders). It stays as the record; its sections 2 and 3
 (fixing, reach) apply unchanged.
 
-**The ask.** The shoulder thread proposes option C (not decided by Joey): the 16-to-18 AWG splice stays in the shoulder behind the
+**The ask.** The shoulder study proposes option C (not decided by Joey): the 16-to-18 AWG splice stays in the shoulder behind the
 yaw RS02, and its 10 A inline fuse moves into our upper arm just below the yaw joint. They want a pocket of about 70 × 16 × 11 mm
 on the power pair's run (holder about 36 × 14 × 9, **assumed**, plus 15 mm of straight wire each end), somewhere that opens with
 the arm on the robot and not in the hub's bore. Source: roark `hardware/shoulder/study-20261111/checks/WIRING_CONSEQUENCES.md`,
@@ -142,7 +142,7 @@ the arm on the robot and not in the hub's bore. Source: roark `hardware/shoulder
   - Every 18 AWG conductor below it, S4 included, is then protected at 10 A. **So the S4 segment fuse is no longer needed to
     protect wire**, and the 10 A can take its place.
   - The M14 drop fuse stays.
-- **What S4's own fuse still gave, for the power thread to weigh:**
+- **What S4's own fuse still gave, for the power study to weigh:**
   1. Selectivity: a fault in S4 itself (the elbow crossing, the most-flexed wire in the arm) would blow the 10 A and take the
      elbow RS02 down with it, instead of the forearm only. Faults in the forearm's drops are still cleared by their own 3 A fuses.
   2. Heat: in option A3, S4 is coiled under the inboard elbow cap. Up to 10 A in a coil runs warmer than up to 5 A.
@@ -154,7 +154,7 @@ the arm on the robot and not in the hub's bore. Source: roark `hardware/shoulder
 
 | Variant | Where the fuse is | To change it |
 | --- | --- | --- |
-| A | the shoulder's cavity behind the yaw RS02 | strip the fork rear (the shoulder thread's "strip-down") |
+| A | the shoulder's cavity behind the yaw RS02 | strip the fork rear (the shoulder study's "strip-down") |
 | B | no separate fuse | nothing to change; the board's 15 A port trip protects |
 | C, 10 A replaces S4 (recommended if C) | our neck, with the M14 drop fuse | support the forearm; out with 2 seam screws and 2 lug bolts from the back; front half off; swap the fuse; refit. About 10 minutes. The same as any of our neck fuses today. |
 | C, all three holders | doesn't fit without changing the halves | - |
@@ -167,13 +167,13 @@ cover the trunk README asks for.
 - Today it fits only just. With the 10 A in the neck, it fits only if the holders are no bigger than our assumed 15 × 10 × 38.
 - If it has to go, removing the arm means unsoldering at M14 again. That is the price of option C in our neck, unless:
   - the holders bought are small enough, or
-  - the plug break moves upstream, into the shoulder (the shoulder thread's call).
+  - the plug break moves upstream, into the shoulder (the shoulder study's call).
 
-## 7. For Joey and the other threads
+## 7. For Joey and the other studies
 
-1. **Power thread:** is S4 OK at 10 A (one 18 AWG pair, coiled in A3)? If yes, the 10 A replaces the S4 segment fuse and option
+1. **Power study:** is S4 OK at 10 A (one 18 AWG pair, coiled in A3)? If yes, the 10 A replaces the S4 segment fuse and option
    C fits in our neck.
 2. **Joey:** measure the 58 V-rated MINI holder you buy. At 15 × 10 × 38 or less, the plug break can stay too.
-3. **Shoulder thread:** a 70 mm straight pocket doesn't exist here. The holder body stands in Y 251-290 and its pigtails follow
+3. **Shoulder study:** a 70 mm straight pocket doesn't exist here. The holder body stands in Y 251-290 and its pigtails follow
    the trunk.
 4. **Arm (us):** nothing to change in the halves. Option C in our neck needs no reprint.

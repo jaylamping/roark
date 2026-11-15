@@ -2,7 +2,7 @@
 # Ring 0.1 gap STOP_0 at 0.8 mm (pads E 0.5) with direct sparse.
 #   mode "saved": solve the study saved by r1d_ring_saved.sh as it is (solver set by hand in the GUI, or by the macro)
 #   mode "new":   a new study (Simulation default solver set to direct sparse in the GUI)
-# Memory watch (coordinator, 2026-11-12): stop cleanly if our instance's processes pass 12 GB or the machine drops under 4 GB free.
+# Memory watch (2026-11-12): stop cleanly if our instance's processes pass 12 GB or the machine drops under 4 GB free.
 # Clean stop = stop the client, then end our session (swlib.finish). No force-kill of anything else.
 mode=${1:-saved}
 MTAG=${MTAG:-ringg01p}; CASE=${CASE:-HS_STOP_0_fine}      # model tag (UA_HUBSEAT_r1d_<MTAG>) and case

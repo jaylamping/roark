@@ -1,5 +1,5 @@
 #!/bin/bash
-# R1e YAW_17 (coordinator, 2026-11-12): the RS02's 17 N.m peak about the hub (yaw) axis, applied to the arm through the RS02 bore
+# R1e YAW_17 (2026-11-12): the RS02's 17 N.m peak about the hub (yaw) axis, applied to the arm through the RS02 bore
 # (remote load, as G90), hub top fixed. The full ring carries no torque about the hub axis, so it all goes through the two lugs.
 # R1e 0 gap model with the shim lumped (ringg00zi), 0.8 on posts / lugs / fins, 0.5 on the lug roots at global 5.0 (the probe
 # that fits). Both signs: the joint is not symmetric in Z (front posts have the brass inserts, back posts clearance holes).

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Read-back trim test runner (2026-11-14, coordinator): a copy of the solved r1g6_g90 study, read all-node and per body, then the
+# Read-back trim test runner (2026-11-14): a copy of the solved r1g6_g90 study, read all-node and per body, then the
 # spot and region reports from both reads, diffed. Lock rules as for a large job (it loads a full result): the worktree lock, 180 s
 # after our last job, 18 GB free, the large-solve lock (solve_lock_hold.py, main's layout, never removing another's).
 cd /j/code/roark-wt/left-arm-organic

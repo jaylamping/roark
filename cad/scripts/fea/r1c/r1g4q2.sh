@@ -1,10 +1,10 @@
 #!/bin/bash
-# r1g4 (2026-11-13, after the review of 39154dd; queue reordered by the coordinator 13:30Z): lug plates with a Dia 3.8 hole (the
+# r1g4 (2026-11-13, after the review of 39154dd; queue reordered by the decision 13:30Z): lug plates with a Dia 3.8 hole (the
 # plate holds the insert captive) and the plate top at Y 294.7, short lip; halves unchanged. The r1g2 G90 + YAW +17 job was dropped.
 #   1. build the hub-seat model UA_HUBSEAT_r1d_r1g4 (both locks); the closing path with plates and lips is close_path_plates_r1g4
 #   2. STOP_0, YAW -17, G90, G90 + YAW -17, one at a time (r1e_solve2.sh: worktree lock + machine-wide solve lock, mesh guard,
 #      memory watch), each followed by post_r1g.sh (all-candidate averages, spot list with the PETG ring and brass apart)
-# Coordinator 15:49Z (Explorer holds about 14 GB): MINFREE=14000 (our footprint about 11.8 GB sampled + the 2 GB free stop), memory stop
+# Decision 15:49Z (Explorer holds about 14 GB): MINFREE=14000 (our footprint about 11.8 GB sampled + the 2 GB free stop), memory stop
 # at MEMSTOP_FREE=2048 free, sampling MEM_SAMPLE=15 s; R1G4_STOP_AFTER_STOP0=1 pauses after STOP_0 to report the memory low point.
 # The build also holds both locks (it runs SolidWorks).
 cd /j/code/roark-wt/left-arm-organic
@@ -20,7 +20,7 @@ lock() {
   until mkdir $LK 2>/dev/null; do sleep 15; done; echo "$1 $$" > $LK/owner
   until ! python "$SWI" --status 2>/dev/null | grep -q "busy"; do sleep 30; done
   if [ -f $STAMP ]; then while [ $(( $(date +%s) - $(cat $STAMP) )) -lt 180 ]; do sleep 10; done; fi
-  # builds take only the worktree lock (coordinator 22:55Z): C:\joe\.fea_solve.lock is for large solves only (r1e_solve2/3)
+  # builds take only the worktree lock (decision 22:55Z): C:\joe\.fea_solve.lock is for large solves only (r1e_solve2/3)
   until [ "$(free)" -ge ${MINFREE:-18000} ]; do sleep 60; done; }
 unlock() { (cd cad/scripts/arm && ARM_SW_DIR="$1" python -c "from swlib import finish; finish()") >> $L 2>&1; date +%s > $STAMP
   grep -q "^left-arm-organic $(wpid) " $SL 2>/dev/null && rm -f $SL
@@ -66,7 +66,7 @@ if [ "$R1G4_EXTRA" = 1 ]; then      # the two cases kept from r1g2 until now, re
   echo "R1G4Q2_EXTRA_DONE $(date)" >> $L; exit 0
 fi
 [ "$R1G4_SKIP_STOP0" = 1 ] || job r1g4_stop0 HS_STOP_0_fine 0.5
-[ "$R1G4_STOP_AFTER_STOP0" = 1 ] && { echo "R1G4Q2 paused after STOP_0 (coordinator: report memory first) $(date +%H:%M)" >> $L; exit 0; }
+[ "$R1G4_STOP_AFTER_STOP0" = 1 ] && { echo "R1G4Q2 paused after STOP_0 (report memory first) $(date +%H:%M)" >> $L; exit 0; }
 job r1g4_yawm HS_LC2M_fine 0.5
 job r1g4_g90 HS_G90_fine 0.05
 job r1g4_g90ym HS_G90YM_fine 0.05

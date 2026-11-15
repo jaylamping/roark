@@ -1,5 +1,5 @@
 #!/bin/bash
-# R1f on hub rev D3 (shoulder thread 22ead5b; 2026-11-12). One process; every SolidWorks step under the one-job lock
+# R1f on hub rev D3 (shoulder study 22ead5b; 2026-11-12). One process; every SolidWorks step under the one-job lock
 # (cad/_wip/.fea_job_lock; 180 s since the last job; >= 16 GB free):
 #   1. the R1f halves (web from offset 26.0), slice, gate        (r1f_build.sh)
 #   2. closing path: D3 + the 0.70 ring + four 0.45 lug plates against the R1f halves
@@ -25,7 +25,7 @@ trap 'grep -q " $$\$" $LK/owner 2>/dev/null && rm -rf $LK' EXIT
 echo "R1G3S (r1g3 STOP_0, with the machine-wide solve lock) start $(date +%H:%M)" >> $L
 export CAD_WRITER='upper-arm-r1:2bcc415b' SW_PART_TEMPLATE='C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2026\templates\MBD\part 0051mm to 0250mm.prtdot'
 export ARM_R1C=1 ARM_R1D=1 ARM_SLOT_BREAK=1.2,1.6 ARM_LUG_POCKET=1 ARM_SLOT_CL=0.5 ARM_PLATE_LUMP=1 ARM_PLATE_HOLE_R=3.0 HS_D3=1
-# 5 STOP_0 on r1g3 (plate hole Dia 6.0; coordinator 2026-11-13); post / lug / fin control 1.0, bearing faces 0.8 (the R1g probe: 390 k nodes)
+# 5 STOP_0 on r1g3 (plate hole Dia 6.0; decision 2026-11-13); post / lug / fin control 1.0, bearing faces 0.8 (the R1g probe: 390 k nodes)
 export HS_SEAT_MESH=0.8 HS_SEAT_MESH_AMAX=600 HS_POST_MESH=1.0 HS_LUGFACE_MESH=0.8 R1C_RING=1 R1C_INSERTS=1 R1C_D3=1 HS_GLOBAL_EL=4.0
 export HUBFILE=HUB_D3S.SLDPRT HUBSTL=HUB_D3S.STL DS_SOLVER=1 FEA_SAVE_DISP=1
 job() {

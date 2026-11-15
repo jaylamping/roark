@@ -63,7 +63,7 @@ Nothing is released.
    - The first strict run found 28 missing rows. All are now in the table.
 6. **Omitted rows.** Confirmed. **Fixed in the table:**
    - **STOP_0, hub -X lug outer front edge**, vm 0.74 / 1.26 / 2.80 at [136.1, 293.4, 11.0]. Checked from the r1g6 STOP_0
-     result, post-processing only (`r1g6_stop0_hub_edge_probe.txt`), against the shoulder thread's explanation. **Confirmed: it is
+     result, post-processing only (`r1g6_stop0_hub_edge_probe.txt`), against the shoulder study's explanation. **Confirmed: it is
      the lumped plate boss's step edge.**
      - The arm's boss carries 16-23 MPa on its last 0.5 mm before its edge at X offset 34.2 (X offset 33.2-34.0: mean 10.5-16.0,
        peak 21-23 MPa).
@@ -75,7 +75,7 @@ Nothing is released.
        - 0.5 / 1.0 mm into the lug (-Z): vm SF 1.47 / 3.11;
        - 0.5 / 1.0 mm inward, inside the boss outline: 1.38 / 2.37;
        - against 0.76 (tensor) at the spot.
-     - **The shoulder thread's fine hub reads about 8 there** (von Mises 7.98 peak, 8.71 at 0.5 mm, friction variant; 8.13 / 8.89
+     - **The shoulder study's fine hub reads about 8 there** (von Mises 7.98 peak, 8.71 at 0.5 mm, friction variant; 8.13 / 8.89
        bolt-wall variant; their `A_HUB_LUGS.md` at b5679c6). The table and the known-items list quote it as **the governing
        number**.
      - The "hub's worst is the root" wording is corrected.
@@ -110,7 +110,7 @@ Nothing is released.
 9. **Tie bridge.** The wall at the bridge reads SF 2.77 or more without it (`r1h_tie_wall_probe.txt`), more than 2.0.
    - Readings: STOP_124 shear 2.77 / 2.77 / 2.96 at [146.18, 255.3, 5.37]; STOP_0 shear 3.43, layer 3.47.
    - The mesh there is coarse: 52 arm nodes, one per 0.5 mm sphere.
-   - **The geometry stays as built** (coordinator 00:18Z). The unrounded post-to-wall corners are recorded in the packet and
+   - **The geometry stays as built** (decision 00:18Z). The unrounded post-to-wall corners are recorded in the packet and
      added to the whole-arm test's inspection list (BENCH_TESTS 5).
    - The STOP_124 layer 1.32 at Y 242 is 13 mm below the bridge.
 10. **Mesh guard and body split.** **Fixed:**
@@ -136,10 +136,10 @@ Nothing is released.
 
 ## Also from this round
 
-- **Large-solve lock** (coordinator 00:10Z). `r1e_solve3.sh` takes `C:\joe\.fea_solve.lock` in main's big_solve layout, held for
+- **Large-solve lock** (decision 00:10Z). `r1e_solve3.sh` takes `C:\joe\.fea_solve.lock` in main's big_solve layout, held for
   the whole job by `solve_lock_hold.py`, and never removes a lock it did not write: one that looks stale is waited on and logged.
 - **Read-back trim test: not done.**
   - A saved r1g6 study re-opened in a hidden instance gives no Results object out of process. The results folder setting is
     only reachable through StaticStudyOptions, which faults from Python.
-  - It ran under the large-solve lock, which the shoulder thread held until 00:19Z.
+  - It ran under the large-solve lock, which the shoulder study held until 00:19Z.
   - Proposed: do the two reads in-process right after the next real solve.

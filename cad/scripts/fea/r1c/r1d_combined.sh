@@ -1,8 +1,8 @@
 #!/bin/bash
-# Combined-geometry pass (2026-11-12, coordinator): the shoulder thread's rev D hub with R1.2 Z-face lug-root fillets (bc16e97,
+# Combined-geometry pass (2026-11-12): the shoulder study's rev D hub with R1.2 Z-face lug-root fillets (bc16e97,
 # reproduced on our ring FEA hub with their edge selection), our slot top edges broken 1.2 x 1.6 (ARM_SLOT_BREAK), the lug bolt
 # joint as built (brass inserts, explicit bonds). Models: 0.1 gap (ringg01zi), nominal = 0.1 gap with 0.1 ribs (ringnomzi),
-# 0.2 gap (ringg02zi). Then the solves in the coordinator's order, Intel direct sparse set by macro, post/lug/fin 0.8 control,
+# 0.2 gap (ringg02zi). Then the solves in the agreed order, Intel direct sparse set by macro, post/lug/fin 0.8 control,
 # global 4.0, memory watch. One SolidWorks job at a time, 3-minute gaps, clean closes; python checks under capped.py.
 #   r1d_combined.sh [hub] [models] [solves]      (stages to run; default all three)
 cd /j/code/roark-wt/left-arm-organic
@@ -26,7 +26,7 @@ if [[ " $STAGES " == *" hub "* ]]; then
   ARM_SW_DIR="$R/_wip/arm-sw-hub" ARM_FEA_DIR="$R/_sim/ua2" python cad/scripts/fea/hub_seat.py zfillet HUB_GROOVE_RING.SLDPRT $HUBF > cad/_wip/r1d_hub_zf.log 2>&1; fin "$R/_wip/arm-sw-hub"
   grep -q "LUG_ZROOTS feature True" cad/_wip/r1d_hub_zf.log || { echo "HUB_ZF_FAILED $(tail -2 cad/_wip/r1d_hub_zf.log | tr '\n' ' ' | cut -c1-200)" >> $L; exit 1; }
   echo "HUB_ZF built $(date +%H:%M): $(grep 'LUG_ZROOTS edges' cad/_wip/r1d_hub_zf.log)" >> $L
-  # our filleted FEA hub against the shoulder thread's export: only the lug roots may differ from our unfilleted hub, and the
+  # our filleted FEA hub against the shoulder study's export: only the lug roots may differ from our unfilleted hub, and the
   # fillet must match theirs (fillet_check: sections, fixed axes)
   $PYC cad/scripts/fea/r1c/fillet_check.py cad/_sim/ua2/$HUBS cad/_sim/ua2/HUB_GROOVE_RING.STL 1.2 1.6 139.75,149.0 192.0,201.25 > $RV/hub_zf_vs_ring.json 2>cad/_wip/fc_zf.err
   $PYC cad/scripts/fea/r1c/fillet_check.py cad/_sim/ua2/$HUBS cad/_wip/shoulder_hub_bc16e97/shoulder_hub_left_revD_candidate.STL 1.2 1.6 139.75,149.0 192.0,201.25 > $RV/hub_zf_vs_bc16e97.json 2>>cad/_wip/fc_zf.err

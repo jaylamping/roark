@@ -8,7 +8,7 @@ Not released. Files here that are NOT current for the R1g6 / R1h hub-end set (20
 | `upper_arm_organic_back_r1g.3mf / .gcode` | **Superseded** by the R1h back half (the harness tie bridge). | `upper_arm_organic_back_r1h.3mf / .gcode` |
 | `upper_arm_organic_back.*`, `upper_arm_organic_front.*`, `*_r1c.*` | **Superseded** (R1, R1c). | the R1h back and R1g front halves |
 
-Current hub-end set (with the shoulder thread's hub):
+Current hub-end set (with the shoulder study's hub):
 - the back half `..._back_r1h` and the front half `..._front_r1g`;
 - the hub-end coupon `..._{back,front}_r1g_coupon`;
 - the shim rings `..._shim_rings_{A,B,C}_r1g`;

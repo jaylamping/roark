@@ -1,8 +1,8 @@
-# SolidWorks hangs on holly-pc, 2026-11-11 evening (upper-arm thread's record)
+# SolidWorks hangs on holly-pc, 2026-11-11 evening (upper-arm study's record)
 
 Times are local (CST, UTC−6).
 
-## How the upper-arm thread launches SolidWorks
+## How the upper-arm study launches SolidWorks
 
 - **Launcher:** `tools/solidworks/sw_instance.py`, via `cad/scripts/arm/swlib.py`.
   - `app()` calls `session(ARM_SW_DIR/.sw_instance_pid)`. That reuses the instance named in the PID file, or calls
@@ -45,7 +45,7 @@ the 300 s timeout, then usually exits:
 - **PID 20948** (mine, started 18:21, `arm-sw-fea2`). In a long COM readback (`GetStress`, 2.4 M nodes) since about 20:32,
   CPU climbing slowly.
   - **Launches still worked** while it was busy: 20:47, 20:49, 21:12 and 21:25 (PID 29808, closed cleanly later).
-- **PIDs 14328 (24 GB) and 22520:** the shoulder thread's, closed about 21:27.
+- **PIDs 14328 (24 GB) and 22520:** the shoulder study's, closed about 21:27.
 - **Helpers:** `sldworks_fs` (12:00), `sldBgDwld`, `lmgrd` ×2, two `swCefSubProc` (20:21), `sldProcMon` (22:06, alongside
   the new launch).
 
@@ -56,7 +56,7 @@ the 300 s timeout, then usually exits:
 - Earlier today a launch also failed once to register under heavy CPU load (12:21). That one recovered on the next try.
 - Free RAM stayed 15-24 GB throughout, and CPU load was about 21%.
 
-## Suggestions for the "Stop SolidWorks hanging" thread
+## Suggestions for the "Stop SolidWorks hanging" study
 
 - Never kill a solve's client Python while SolidWorks is meshing or solving. Let it finish or time out, then `end_session`.
 - Give `end_session` a hard-kill fallback for this machine's own instances: PID plus start time are recorded, so it is

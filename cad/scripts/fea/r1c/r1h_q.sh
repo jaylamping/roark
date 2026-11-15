@@ -1,7 +1,7 @@
 #!/bin/bash
-# After r1g5 (coordinator 18:31Z): one queue, one SolidWorks job at a time, both locks, 14 GB gate.
+# After r1g5 (decision 18:31Z): one queue, one SolidWorks job at a time, both locks, 14 GB gate.
 #   1. r1g5 STOP_0 and STOP_124 again (a refused launch and an old-rule memory stop), then G90 + YAW +17; "used" = our own process
-#      tree, stopped at 15 GB (MEMSTOP_USED=15360), the free stop 2 GB, launch at 14 GB (coordinator 19:35Z)
+#      tree, stopped at 15 GB (MEMSTOP_USED=15360), the free stop 2 GB, launch at 14 GB (decision 19:35Z)
 #   2. R1h back half: the R1g build plus the harness tie bridge (ARM_TIE_BRIDGE=1), into cad/_wip/r1d_r1h_print; slice, mesh gate;
 #      the front half stays R1g (its files unchanged)
 #   3. the convergence run, last: r1g4 G90 + YAW +17 with local refinement 0.5 (HS_LOCAL_REFINE) at the plate outline corners, the
@@ -21,7 +21,7 @@ lock() {
   until mkdir $LK 2>/dev/null; do sleep 15; done; echo "$1 $$" > $LK/owner
   until ! python "$SWI" --status 2>/dev/null | grep -q "busy"; do sleep 30; done
   if [ -f $STAMP ]; then while [ $(( $(date +%s) - $(cat $STAMP) )) -lt 180 ]; do sleep 10; done; fi
-  # builds take only the worktree lock (coordinator 22:55Z): C:\joe\.fea_solve.lock is for large solves only (r1e_solve2/3)
+  # builds take only the worktree lock (decision 22:55Z): C:\joe\.fea_solve.lock is for large solves only (r1e_solve2/3)
   until [ "$(free)" -ge ${MINFREE:-18000} ]; do sleep 60; done; }
 unlock() { (cd cad/scripts/arm && ARM_SW_DIR="$1" python -c "from swlib import finish; finish()") >> $L 2>&1; date +%s > $STAMP
   grep -q "^left-arm-organic $(wpid) " $SL 2>/dev/null && rm -f $SL
@@ -42,7 +42,7 @@ export DS_SOLVER=1 FEA_SAVE_DISP=1
 job() {
   rm -f cad/_wip/hs_root_mesh/$1.txt
   bash cad/scripts/fea/r1c/mesh_guard.sh $1 &
-  FOLDER=$1 MTAG=$4 CASE=$2 PADE=$3 bash cad/scripts/fea/r1c/r1e_solve3.sh      # own-process-tree memory (coordinator 19:35Z)
+  FOLDER=$1 MTAG=$4 CASE=$2 PADE=$3 bash cad/scripts/fea/r1c/r1e_solve3.sh      # own-process-tree memory (decision 19:35Z)
   echo "CASE_DONE $1 $(date +%H:%M) $(grep -E " control |mesh 0" cad/_sim/$1/run.log | tr '
 ' ' ' | cut -c1-260) $(grep -E "^(SOLVED|SOLVE_FAILED) $1" cad/_wip/r1d_ring_ds.log | tail -1 | cut -c1-160)" >> $L
   grep -q "^SOLVED $1" cad/_wip/r1d_ring_ds.log && bash cad/scripts/fea/r1c/post_r1g.sh $1 1.9 294.7 >> $L 2>&1

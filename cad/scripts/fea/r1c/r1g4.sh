@@ -1,5 +1,5 @@
 #!/bin/bash
-# R1f on hub rev D3 (shoulder thread 22ead5b; 2026-11-12). One process; every SolidWorks step under the one-job lock
+# R1f on hub rev D3 (shoulder study 22ead5b; 2026-11-12). One process; every SolidWorks step under the one-job lock
 # (cad/_wip/.fea_job_lock; 180 s since the last job; >= 16 GB free):
 #   1. the R1f halves (web from offset 26.0), slice, gate        (r1f_build.sh)
 #   2. closing path: D3 + the 0.70 ring + four 0.45 lug plates against the R1f halves

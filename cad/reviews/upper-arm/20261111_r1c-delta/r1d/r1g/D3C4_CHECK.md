@@ -1,6 +1,6 @@
 # Hub D3c4 candidate against r1g4: checks (2026-11-13)
 
-**Source.** Shoulder thread, commit a1057a9 on `claude/project-thread-90ef87`, read-only:
+**Source.** Shoulder study, commit a1057a9 on `claude/project-thread-90ef87`, read-only:
 `cad/exports/shoulder/shoulder_hub_left_revD3c4_candidate.STL` / `.STEP`, copied to `cad/_wip/shoulder_hub_d3c4_a1057a9/`. It
 replaces D3b (6b2fd93, `D3B_CHECK.md`).
 
@@ -59,5 +59,5 @@ window measured -24 to +40 deg, centre +8.
 - **Nothing of ours relies on the old window.** The upper arm has no clip, guide or channel between the hub and Y 245. Its only
   harness features are at the elbow end.
 
-**FEA.** Our FEA hub is not changed. The shoulder thread's FE governs the hub. Our r1g2 and r1g4 runs use the D3b-shaped FEA hub;
+**FEA.** Our FEA hub is not changed. The shoulder study's FE governs the hub. Our r1g2 and r1g4 runs use the D3b-shaped FEA hub;
 D3c4 differs from it only inside r 23 and above Y 296, plus the inboard root extension.

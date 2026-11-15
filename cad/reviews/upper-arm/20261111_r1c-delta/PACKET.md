@@ -17,7 +17,7 @@ The geometry changes only between Y 276 and 302 (the hub end). Frame: the hub ax
 
 1. **Hub-post fins:** 9 mm fins joining each of the four hub posts (X 147.5 / 193.5, Y 291.4) to the seam posts (Y 272),
    over Y 276 to 291.4, from the lug-face level out to 0.4 into the skin.
-2. **Ridge in the hub seat:** it closes around a groove in the hub spigot, the shoulder thread's hub rev C+. Section
+2. **Ridge in the hub seat:** it closes around a groove in the hub spigot, the shoulder study's hub rev C+. Section
    (r, Y), revolved over θ 35-145 (front half) and 215-325 (back half), with flat radial end faces:
    - load flank (the low-Y side): 30° from the radial plane, line-to-line with the groove's flank,
      Y = 298.0 + (35.8 − r)·tan 30, from the bore (r 35.9, Y 297.94) to r 34.67;
@@ -59,7 +59,7 @@ Front +2,978 mm³, back +4,730 mm³ (about 9.8 g, mostly the fins).
 | Check | Result |
 | --- | --- |
 | Hub-seat contact FEA (bolted, no preload, grooved hub as its own body, lugs in frictionless contact, steel M3s), G90 and STOP_0 (515 N) | Arm passes at the 0.5 mm average: G90 ≥ 2.42, stop ≥ 1.29. Every peak is listed unexcluded. See `RIDGE5_6_FEA.md` (ridge6b and ridge6c). Each case was solved twice and matched exactly. |
-| Hub side of the same FEA | All pass except the hub groove's 45°-side corner at the stop: 1.13-1.16 at 0.5 mm. That is the shoulder thread's hub, and their r 23 fill was being solved as this was written. |
+| Hub side of the same FEA | All pass except the hub groove's 45°-side corner at the stop: 1.13-1.16 at 0.5 mm. That is the shoulder study's hub, and their r 23 fill was being solved as this was written. |
 | Bolts and lugs, with the ridge in place | Bolts 81 MPa (G90) and 105 MPa (stop). Lug axial force 4-16 N. With the plain hub the same model gives 770 MPa and 453 N. |
 | Nothing else moved | G90_fine SF 3.08 against R1's 3.08; HALFK31_fine 1.60 against 1.66 (layer 1.41 against 1.45). Same peak nodes. |
 | Closing path | Halves closing along Z onto the rev C+ hub, the vendor RS02 and the ring: 0 path collisions, nothing inside at the final position (`../20261111_print-release/r1c/close_path_ridge6.json`). |

@@ -54,7 +54,7 @@ R1c, R1d and R1e halves have a ridge inside the hub seat that closes around a gr
   between the end face and the hub disc takes up the rest. Pick the ring once, by trial, on the coupon (section 2b), and use the
   same ring in the arm. The ring goes over the hub spigot, flat against the disc, before the hub goes into the back half.
 - R1d (superseded): 12 small crush ribs on the ridge's low-Y flank, meant to be squashed on closing.
-- **They need the grooved hub:** R1e the rev D hub (shoulder thread, bc16e97 or later); R1c / R1d rev C+.
+- **They need the grooved hub:** R1e the rev D hub (shoulder study, bc16e97 or later); R1c / R1d rev C+.
 - **They will not close around today's hub.** The ridge sits 1.3 mm into its plain spigot, about 220 mm³ of overlap per half.
   Don't force it.
 - **Once assembled, the hub is captive.** It can only come out by splitting the arm (seam screws and lug bolts out, front half
@@ -116,10 +116,10 @@ become:
   - The picks are expected to carry over, with a quick re-check on the corrected hub.
   - Clamp the hub by its body, never by the RS02 boss.
 
-**Run this on the final hub only:** the shoulder thread's frozen release. The hub is D3c7, the shoulder thread's
+**Run this on the final hub only:** the shoulder study's frozen release. The hub is D3c7, the shoulder study's
 release, adopted 2026-11-14 at commit 355aa9b (`shoulder_hub_left.STL`, SHA-256 a73103ad…259b), with Dia 3.8 lug
 holes and the 68 deg cable window. The ring and plate picks depend on the hub as printed, so a hub
-printed before the shoulder thread freezes it forces a re-pick.
+printed before the shoulder study freezes it forces a re-pick.
 
 **Picking the ring: start with the thickest ring, and work down until the front half closes by hand with the seam shut. Use that
 one.**
@@ -169,7 +169,7 @@ by trial, once, at assembly.
 
 **Steps.**
 
-0. **The hub's own checks, right after printing it** (the shoulder thread's, from its PRINT_NOTES):
+0. **The hub's own checks, right after printing it** (the shoulder study's, from its PRINT_NOTES):
    - pull the support out of the dish;
    - both lug holes take a 3.8 mm drill shank freely (if not, clear them by hand with a 3.8 drill);
    - measure the spigot (Dia 71.6 in CAD) with calipers in two directions at right angles and record both;
@@ -282,7 +282,7 @@ by trial, once, at assembly.
     - **Pass:** no click, no crack or whitening, and back within 0.03 of the start (0.23 at R 300).
     - **Then inspect the hub lug roots.** Open the coupon. With the torch, look at the outer R1.2 round where each lug's Z faces meet
       the hub (X offset about 33, Y 295.6), on both lugs and both faces. Look for whitening or a crack, and photograph each one.
-      - This proof is the test of that root in the real material. The shoulder thread's FE gives shear 1.42-1.44 there at the
+      - This proof is the test of that root in the real material. The shoulder study's FE gives shear 1.42-1.44 there at the
         upper-bound lug force, and 1.58-1.59 at the design load.
       - Any whitening or crack: stop and tell me.
 12. **Open and look, after all the loads:** take the bolts out and the front coupon off.

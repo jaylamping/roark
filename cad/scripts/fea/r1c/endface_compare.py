@@ -1,4 +1,4 @@
-"""End-face corner: r1g4 against r1g6 for one case (2026-11-13, coordinator 23:48Z). Post-processing only.
+"""End-face corner: r1g4 against r1g6 for one case (2026-11-13, decision 23:48Z). Post-processing only.
     python endface_compare.py NPZ_A DISP_A POST_A NPZ_B DISP_B POST_B [LABEL_A LABEL_B]      (under capped.py)
 (a) the end-face contact (arm end face at its top Y, r 35.8-45) by 30 deg sector: nodes, mean and peak normal pressure (-sy), and
     the sector force (mean pressure x the sector's annulus area); the same on the hub disc face; totals.

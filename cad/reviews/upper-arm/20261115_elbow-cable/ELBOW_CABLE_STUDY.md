@@ -2,7 +2,7 @@
 
 **Decision (Joey, 2026-11-15 05:05Z): option A3, the inside spiral, rig first.** The halves print only after the rig passes, the bench passes and the corrected hub exists.
 
-**Correction 2026-11-15:** the signal wire is 28 AWG (1.2 mm), per the 11-11 scheme, pending the coordinator's single definition, not 26 AWG at 1.1. The 26 AWG figures below scale with OD: about 10 % more bundle. The recommendation is unchanged (signals on an FFC). Power across the elbow is one 18 AWG pair, confirmed by the power board thread.
+**Correction 2026-11-15:** the signal wire is 28 AWG (1.2 mm), per the 11-11 scheme, pending a single project-wide definition, not 26 AWG at 1.1. The 26 AWG figures below scale with OD: about 10 % more bundle. The recommendation is unchanged (signals on an FFC). Power across the elbow is one 18 AWG pair, confirmed by the power board study.
 
 **The question:** how 2 × 18 AWG power plus up to three 26 AWG signal pairs cross the elbow through 0-124 deg for many cycles, and
 whether that changes the upper-arm halves Joey prints next.
@@ -117,7 +117,7 @@ CAD were changed.
 
 ## The rig that would prove A3
 
-Minimal, after the idea of the shoulder thread's cable rigs (a pitch tray and lid in `C:\joe\prints\cable-rigs`):
+Minimal, after the idea of the shoulder study's cable rigs (a pitch tray and lid in `C:\joe\prints\cable-rigs`):
 - **Two prints:**
   - a tray with the cheek's pocket (r 22-34.8, 5.6 deep) and the drop exit;
   - a lid with the cap's rim and a centre boss standing in for the stub, with a lever arm.

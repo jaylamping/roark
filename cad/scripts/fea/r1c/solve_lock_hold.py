@@ -4,9 +4,9 @@
 
 The lock is the one tools/solidworks/sw_instance.big_solve uses (RULES.md rule 6): the file is created exclusively, with the
 lines owner, pid, process start time and time taken, and it is removed by its holder only. This process is the holder: a real
-Windows process that lives for the whole job, so its pid and start time prove it alive to every other thread's check.
+Windows process that lives for the whole job, so its pid and start time prove it alive to every other job's check.
 
-Unlike big_solve, it never removes a lock it did not write (coordinator, 2026-11-14). If the file looks stale by big_solve's own
+Unlike big_solve, it never removes a lock it did not write (2026-11-14). If the file looks stale by big_solve's own
 rule (sw_instance._solve_lock_holder), it waits anyway and reports that once to LOG, for a person to decide.
 
 It writes HELD to STATUS_FILE once it holds the lock, and lets go when RELEASE_FILE appears or the shell job PARENT_WINPID ends.
@@ -47,7 +47,7 @@ while True:
                 text = open(LOCK).read().strip().replace('\n', ' | ')
             except OSError:
                 text = '(unreadable)'
-            say(f'SOLVE LOCK LOOKS STALE, not removed, waiting (report to the coordinator): {LOCK}: {text}')
+            say(f'SOLVE LOCK LOOKS STALE, not removed, waiting: {LOCK}: {text}')
             reported = True
         time.sleep(15)
         continue

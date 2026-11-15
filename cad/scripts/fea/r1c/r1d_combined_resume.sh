@@ -1,5 +1,5 @@
 #!/bin/bash
-# Combined pass, resumed after the end-face review (2026-11-12, coordinator: keep the 0.5 chamfer, no geometry change). Waits
+# Combined pass, resumed after the end-face review (2026-11-12, decision: keep the 0.5 chamfer, no geometry change). Waits
 # for the nominal STOP_0 solve (pid in $1) to finish, then the remaining cases in order. The 0.1 gap STOP_0 repeat carries the
 # 0.3 mm lug-root control (flag file cad/_wip/hs_root_mesh/r1d11_g01_stop_rep.txt).
 cd /j/code/roark-wt/left-arm-organic

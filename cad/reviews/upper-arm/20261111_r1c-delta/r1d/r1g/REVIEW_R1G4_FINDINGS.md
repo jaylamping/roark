@@ -49,7 +49,7 @@ right, that is said.
     So it is a contact-edge concentration.
   - It is now in the table and among the known items.
 - **The hub layer rows**, 1.37-1.48 at 0.5 mm in the yaw cases: confirmed in the reports and added. They are in the hub, which
-  the shoulder thread's FE governs.
+  the shoulder study's FE governs.
 - **STOP_0 "lowest":** confirmed. The -X fin reads shear 3.29 / 3.70 / 4.14 (region report), below the post's 3.63. Corrected.
 - **The corner probe, like for like:** confirmed. The tensor average at the same centre is 1.44, so stepping in raises it from
   1.44 to 1.77 (0.5 mm) and 2.04 (1.0 mm). The packet now says so. The table's 1.02 is the spot report's average of nodal
@@ -69,7 +69,7 @@ right, that is said.
 
 **Confirmed.** BENCH 2b is rewritten:
 - The title is R1g.
-- The hub is "the final hub only (the shoulder thread's frozen release)".
+- The hub is "the final hub only (the shoulder study's frozen release)".
 - The plates are four of each per print (two full sets).
 
 ### 5. Mesh

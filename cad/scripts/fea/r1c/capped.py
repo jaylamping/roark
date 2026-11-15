@@ -2,7 +2,7 @@
 
     python capped.py [--mb 6144] -- python script.py args...
 
-Coordinator rule (2026-11-12, after a 61 GB geometry check took the machine to 3 GB free): every python job we start (post-
+Project rule (2026-11-12, after a 61 GB geometry check took the machine to 3 GB free): every python job we start (post-
 processing, geometry checks, sweeps, SolidWorks clients) runs under about 6 GB. The child starts suspended, is put in a job
 object with a per-process and a per-job committed-memory limit, then resumed. Over the limit its allocations fail (Python raises
 MemoryError and exits), and the job is closed with KILL_ON_JOB_CLOSE, so nothing it started outlives it. The exit code is the

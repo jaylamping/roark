@@ -1,4 +1,4 @@
-"""Hub cable window study (shoulder thread question, 2026-11-13): what of ours lies inside r RMAX of the yaw (hub) axis, by Y plane
+"""Hub cable window study (shoulder study question, 2026-11-13): what of ours lies inside r RMAX of the yaw (hub) axis, by Y plane
 sections of the R1g halves (plus the lug bolts and seam screws as solid cylinders), and where a round cable bundle of diameter DB,
 centred at r RC, can drop straight down (along -Y) from the hub bore without touching anything.
 Theta convention (ours, used in every r1c script): theta = atan2(Z - CZ, X - HX), 0 deg at +X (the +X lug), increasing toward

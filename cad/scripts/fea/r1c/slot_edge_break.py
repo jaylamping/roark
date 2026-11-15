@@ -1,4 +1,4 @@
-"""Slot edge break study (2026-11-12): the shoulder thread adds an R1.2 fillet at the hub lug roots (lug Z faces at CZ +- 5 meeting
+"""Slot edge break study (2026-11-12): the shoulder study adds an R1.2 fillet at the hub lug roots (lug Z faces at CZ +- 5 meeting
 the spigot underside at Y 296). Our post faces (the slot walls) sit at Z = CZ +- 5.1 up to the post top (Y 295.7), so their top
 edges need breaking. For a 45 deg chamfer and for a round, both 1.4: clearance to the fillet (section in Y-Z), bearing area lost
 on the lug-facing post faces (from the printed-half and hub meshes), and the distance to the insert / clearance hole mouth and
@@ -15,7 +15,7 @@ LUG_HZ, CL = 5.0, 0.1
 FACE = LUG_HZ + CL          # post face, from the seam plane
 POST_TOP = 295.7            # R1d trimmed post top
 SPIGOT = 296.0              # hub spigot underside (lug root)
-FR = 1.2                    # shoulder thread's lug-root fillet radius
+FR = 1.2                    # shoulder study's lug-root fillet radius
 BREAK = 1.4
 COLS = [(147.5, 292.0), (193.5, 292.0)]
 FIN_TOP = 291.4             # organic_parts.HUB_POST_Y: the fins run from here down to Y 276

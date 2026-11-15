@@ -1,5 +1,5 @@
 #!/bin/bash
-# R1d solves, resumable (skips cases with a result), detached from any Claude session. Mesh control 0.35 on ridge + groove faces only.
+# R1d solves, resumable (skips cases with a result), detached from the launching shell. Mesh control 0.35 on ridge + groove faces only.
 # Each result: post-processed, JSON copied to the review folder, committed and pushed (under a mkdir lock).
 cd /j/code/roark-wt/left-arm-organic
 R=J:/code/roark-wt/left-arm-organic/cad

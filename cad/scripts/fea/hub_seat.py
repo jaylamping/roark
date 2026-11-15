@@ -31,7 +31,7 @@ GROOVE = os.environ.get('HS_GROOVE') == '1'      # option (d): groove in the hub
 BOLTED = os.environ.get('HS_BOLTED') == '1'     # lugs in frictionless contact, steel M3 bodies bonded in the post bores, no preload
 MODEL = F / os.environ.get('HS_MODEL', ('UA_HUBSEAT_v31' if R1C else 'UA_HUBSEAT_v28') + ('_bolted' if BOLTED else '') + '.SLDPRT')
 BOLTS = F / 'HS_BOLTS.SLDPRT'
-# HS_INSERT_MODEL (2026-11-12, coordinator "M"): the lug bolt joint as built. Front post: the Ruthex M3 x 5.7 insert (Dia 4.0
+# HS_INSERT_MODEL (2026-11-12, model "M"): the lug bolt joint as built. Front post: the Ruthex M3 x 5.7 insert (Dia 4.0
 # hole, so the insert is a Dia 4.0 x 5.7 brass sleeve; its knurl crests sit in the PETG) bonded in the post from the lug face, the
 # bolt bonded inside it, the rest of the 6.5 insert hole and the Dia 3.2 pilot left open. Back post: Dia 3.4 clearance hole and the
 # Dia 6.0 counterbore 7 below the lug face (R1d); the M3 x 25 DIN 912 bolt (head Dia 5.5 x 3) in no-penetration contact there,
@@ -82,7 +82,7 @@ def build():
             rb = 35.8 - depth
             # the 45 deg flank stops at the disc face (r 35.8, Y y0 + 4 = 302): the cut must not undercut the disc (2026-11-11: running it
             # on to (36.5, 302.7) notched a wedge into the disc underside, a knife edge under the arm's end face, 1,447 MPa at STOP_0)
-            # rev C+ (shoulder thread, 2026-11-11): the 45 deg flank reaches r 35.8 at Y 301.9 (bottom ends at Y 300.4), then 0.1 of cylinder
+            # rev C+ (shoulder study, 2026-11-11): the 45 deg flank reaches r 35.8 at Y 301.9 (bottom ends at Y 300.4), then 0.1 of cylinder
             # to the flat disc face at Y 302.0; set HS_REVCP=0 for the earlier profile (bottom to Y 300.5, flank to r 35.8 at Y 302.0)
             ytop = YTOP
             prof = [(36.5, y0 - 0.7 * t30), (rb, y0 + depth * t30), (rb, ytop - depth), (35.8, ytop), (36.5, ytop)]
@@ -112,7 +112,7 @@ def build():
                     centerline_(sk_, (HX, 250.0, CZ), (HX, 340.0, CZ))
                 revolve_(h, sk_.feat, f'SPIGOT_FILL{tag}', None, False, angle=360.0 if GFULL else 130.0, mid=True, lo=0.01)
         h.ForceRebuild3(False)
-        if os.environ.get('HS_ROUNDS', '1') == '1':      # 2026-11-11: hub rounds the shoulder thread is adding to the real hub
+        if os.environ.get('HS_ROUNDS', '1') == '1':      # 2026-11-11: hub rounds the shoulder study is adding to the real hub
             rad = lambda p: m_.hypot(p[0] - HX, p[2] - CZ)
             r45 = float(os.environ.get('HS_GROOVE_R45', '0.4'))      # 45 deg-side bottom corner; up to 1.0 clears the ridge's top tip corner
             sets = [('GROOVE_BOT_ROUND', 0.4, lambda p: abs(rad(p) - 34.3) < 0.03 and abs(p[1] - (y0 + 1.5 * t30)) < 0.05),
@@ -494,7 +494,7 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                     # end-face corner: a small box at the YAW +17 / G90 + YAW +17 spot (theta 296: X 186.7, Z -26.6); 'touch' takes the
                     # whole end-face annulus (about 583 mm2) and its chamfer, not the hub disc face (about 2300 mm2, over the limit)
                     c['ctrl'] = list(c.get('ctrl', [])) + [(('touch', [184.7, 300.9, -28.6, 188.7, 302.05, -24.6], 900.0), lr)]
-                # 2026-11-12: lug-root refinement (coordinator: the settled repeat case). HS_ROOT_MESH, or a flag file
+                # 2026-11-12: lug-root refinement (the settled repeat case). HS_ROOT_MESH, or a flag file
                 # cad/_wip/hs_root_mesh/<run folder>.txt holding the size, puts that size on every face meeting each lug-root box:
                 # the R1.2 Z-root fillets, the lug faces next to them, and any small adjoining face (under HS_ROOT_MESH_AMAX mm2;
                 # the large spigot underside face stays at its own size)
@@ -513,7 +513,7 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
                         # FIRST in the list: a face already under a control keeps it (a later control on the same face had no effect,
                         # case r1d11_g01_stop_rep meshed to the same node count as without it)
                         c['ctrl'] = [(('touch', [x0, 292.5, CZ - 8.5, x1, 296.6, CZ + 8.5], float(ram)), float(rm))] + list(c.get('ctrl', []))
-                # 2026-11-12: groove-region refinement (coordinator, the settled 0.2 gap run): HS_GROOVE_MESH or a flag file
+                # 2026-11-12: groove-region refinement (the settled 0.2 gap run): HS_GROOVE_MESH or a flag file
                 # cad/_wip/hs_groove_mesh/<run folder>.txt. The joint faces are full rings, so this refines every face meeting the
                 # groove band (Y 298.7-302.05, both bodies), not only the θ of the peak
                 gflag = CAD / '_wip' / 'hs_groove_mesh' / (Path(os.environ.get('ARM_FEA_DIR', 'x')).name + '.txt')
@@ -538,7 +538,7 @@ def register(CASES, PARTS, pythoncom, VARIANT, I):
 
 
 def zfillet(src, dst):
-    """Rev D lug-root fillet on our FEA hub (2026-11-12, the shoulder thread's bc16e97 change, same selection as their
+    """Rev D lug-root fillet on our FEA hub (2026-11-12, the shoulder study's bc16e97 change, same selection as their
     build_parts.hub_lug_roots): R1.2 where the lugs' Z faces (|Z - CZ| = 5) meet the spigot underside at Y 296, r 18-31.5 from the
     hub axis, both lugs. Copies src to dst in F, fillets, saves, and writes dst's STL for the post-processing."""
     sys.path.insert(0, str(ARM))
@@ -570,7 +570,7 @@ def zfillet(src, dst):
 
 
 def d3hub(src, dst):
-    """Hub rev D3 lugs on our FEA hub (2026-11-12; shoulder thread 22ead5b, A_HUB_LUGS.md "Rev D3 as built"): each lug grown out
+    """Hub rev D3 lugs on our FEA hub (2026-11-12; shoulder study 22ead5b, A_HUB_LUGS.md "Rev D3 as built"): each lug grown out
     from its outer face (X offset 29.5) to a straight face at X offset 34.4 over Y 288-294.5, stepped out to 36.35 over Y 294.5-297.6
     with a 45 deg chamfer from (36.35, Y 296.7) to the land (35.45, Y 297.6), at the lug's own thickness (|Z - CZ| <= 5); then the
     R1.2 Z roots along Y 296 from the bore out to the land (r up to 35.9) and R0.5 where the step underside (Y 294.5) meets the
@@ -634,7 +634,7 @@ def d3hub(src, dst):
 
 
 def hubhole(src, dst, r):
-    """r1g5 (2026-11-13, second review): open our FEA hub (src), cut the two lug bolt holes out to radius r (the shoulder thread's
+    """r1g5 (2026-11-13, second review): open our FEA hub (src), cut the two lug bolt holes out to radius r (the shoulder study's
     Dia 3.4 to Dia 3.8 proposal), through the lug thickness (Z CZ +- 6), nothing else changed; saved as dst with its STL."""
     sys.path.insert(0, str(ARM))
     os.chdir(ARM)

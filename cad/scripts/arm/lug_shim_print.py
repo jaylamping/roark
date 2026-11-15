@@ -39,15 +39,15 @@ OUT = Path(os.environ.get('LUG_SHIM_OUT', P.REPO / 'cad' / '_wip' / 'r1f_lug_shi
 Y0 = 288.0      # local origin: offset 0 at the yaw axis, Y at the lug's free end
 # r1g6 (2026-11-13, second review): Dia 3.4 hole inside the hub's Dia 3.8 lug hole (r1g4 had Dia 3.8 in a Dia 3.4 lug hole); smaller than the insert's Dia 4.0 hole, so the plate holds the insert captive
 # between it and the post; top Y 294.6 (0.2 below the hub's R1.2 root tangent line Y 294.8), so the strip above the hole is 0.9 (Dia 3.4)
-HOLE_R = float(os.environ.get('LUG_PLATE_HOLE_R', '1.7'))      # r1g6 (coordinator 20:11Z): Dia 3.4, inside the hub's Dia 3.8 lug hole
-PLATE_TOP = float(os.environ.get('LUG_PLATE_TOP', '294.6'))      # back to 294.6 (coordinator 14:56Z): 0.2 below the R1.2 tangent line
+HOLE_R = float(os.environ.get('LUG_PLATE_HOLE_R', '1.7'))      # r1g6 (decision 20:11Z): Dia 3.4, inside the hub's Dia 3.8 lug hole
+PLATE_TOP = float(os.environ.get('LUG_PLATE_TOP', '294.6'))      # back to 294.6 (decision 14:56Z): 0.2 below the R1.2 tangent line
 
 
 def outline(t):
-    # D3 (coordinator 01:35Z): flat face X 18.76-34.4 over Y 288-294.8 (R1.2 root above), the strip X 35.45-36.35 flat over
+    # D3 (decision 01:35Z): flat face X 18.76-34.4 over Y 288-294.8 (R1.2 root above), the strip X 35.45-36.35 flat over
     # Y 294.5-296.7; 0.2 in from every edge
     main = box(18.96, 288.2, 34.2, PLATE_TOP)
-    # (2026-11-13, coordinator: no strip; the plate covers the main flat face only, so the lug's step and column above Y 294.6
+    # (2026-11-13, decision: no strip; the plate covers the main flat face only, so the lug's step and column above Y 294.6
     # sit in the 0.5 gap and carry nothing, and no plate edge lands on our corner at the root relief)
     lip_strip = box(18.96, 287.2, 32.5, 288.2)      # to X offset 32.5, clear of our wall below the pocket floor (review 2026-11-13)
     p = unary_union([main, lip_strip]).difference(Point(23.0, 292.0).buffer(HOLE_R, 64))      # Dia 4.4 (2026-11-13): the plate edge 0.5 off the hub lug's Dia 3.4 hole rim, 0.2 off our insert's Dia 4.0

@@ -1,6 +1,6 @@
 # Upper arm, stage 1: print the hub-end test set, then test it on the bench
 
-**Status: ready to print, hub first.** The shoulder thread released the hub for stage 1 (2026-11-14). The two arm halves stay on
+**Status: ready to print, hub first.** The shoulder study released the hub for stage 1 (2026-11-14). The two arm halves stay on
 hold until these tests pass (see "What happens after").
 
 **Two hubs in stage 1:**
@@ -27,7 +27,7 @@ Stage 1 is a short test of the arm's hub end before the 10 h of halves:
 - the **shim rings** and **lug plates** that take up the play;
 - a printed **yaw lever** to load it.
 
-The hub is the shoulder thread's part, and its print file is on the PCs (below). Everything else is in `cad/prints/upper-arm/` on
+The hub is the shoulder study's part, and its print file is on the PCs (below). Everything else is in `cad/prints/upper-arm/` on
 branch `left-arm-organic-r1`.
 
 ## 1. Print (white PETG, Cool Plate SuperTack, no glue, 0.4 High Flow nozzle)
@@ -56,7 +56,7 @@ Plus the corrected hub E1 for the weight tests: 3 h 15 min, 115.8 g, black PETG 
   [PRINT_NOTES.md](https://github.com/jaylamping/roark/blob/claude/project-thread-90ef87/hardware/shoulder/study-20261111/cad-pass1/PRINT_NOTES.md).
   - Leave its two small top holes (the ones a 4 mm pin won't enter) for now; they are reamed later, when the shoulder goes
     together.
-  - The shoulder thread mentions ironing the disc face if the slicer offers it. It is not set in the 3MF, so print it as it is.
+  - The shoulder study mentions ironing the disc face if the slicer offers it. It is not set in the 3MF, so print it as it is.
 - **Don't change the layer heights of the plates and rings.** Their thickness is built from those layers.
 - The coupons' tree supports come out of the hub seat; pick them off the ridge flanks.
 - The plates have notches (wide = 0.25, narrow = +0.05), and the rings have notches (thickness = 0.25 + 0.05 × notches).

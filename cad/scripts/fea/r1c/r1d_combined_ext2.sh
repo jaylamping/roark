@@ -1,5 +1,5 @@
 #!/bin/bash
-# Combined pass, last case (2026-11-12, coordinator): 0.1 gap STOP_124, the highest lug load with the flank bearing. Waits for
+# Combined pass, last case (2026-11-12): 0.1 gap STOP_124, the highest lug load with the flank bearing. Waits for
 # the extension cases (EXT_DONE).
 cd /j/code/roark-wt/left-arm-organic
 L=cad/_wip/r1d_combined.log

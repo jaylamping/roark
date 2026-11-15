@@ -1,5 +1,5 @@
 #!/bin/bash
-# Combined pass, last case (2026-11-12, coordinator): 0.2 gap STOP_0 refined, 0.3 mm on the lug-root fillets and, if it fits in
+# Combined pass, last case (2026-11-12): 0.2 gap STOP_0 refined, 0.3 mm on the lug-root fillets and, if it fits in
 # memory, on the groove band too (groove bottom, 45 flank, spigot core faces: full rings, both bodies). Mesh-only probes pick the
 # groove size: 0.3 if the model stays under NMAX nodes, else 0.5, else none. Waits for EXT2_DONE.
 cd /j/code/roark-wt/left-arm-organic

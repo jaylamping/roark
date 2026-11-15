@@ -96,8 +96,8 @@ The `[[load_case]]` table above is the list the gate checks. In words:
 
 ## Motion
 
-- Upper-arm yaw (RS02 at the top of the link): range **TBD**, to agree with the controls side (the arm thread owns the number).
-- Elbow (RS02 at the bottom of the link): 0–124°, folds forward (Joey, left-arm thread). Printed stop carries 17 N·m.
+- Upper-arm yaw (RS02 at the top of the link): range **TBD**, to agree with the controls side (the arm study owns the number).
+- Elbow (RS02 at the bottom of the link): 0–124°, folds forward (Joey, left-arm study). Printed stop carries 17 N·m.
 
 ## Mass and CoM
 

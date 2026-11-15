@@ -70,11 +70,11 @@ No edge is within 5 mm of the bundle on this route, so no radius is needed in th
 
 ## Second review (2026-11-13): the route is static, and a tie point is proposed
 
-**Status.** The hub window is fixed at 68 deg (entry r 17.2-19). The shoulder thread clamps the bundle at the window, so the yaw
+**Status.** The hub window is fixed at 68 deg (entry r 17.2-19). The shoulder study clamps the bundle at the window, so the yaw
 slack stays above the hub and nothing slides into the arm.
 
 **The S-bend to the rib gap (R about 15).** The bundle is loose wires: **18 AWG silicone power (decided by Joey, 2026-11-15; was
-16 or 18)** plus signal pairs, 28 AWG (1.2 mm), per the 11-11 scheme, pending the coordinator's single definition.
+16 or 18)** plus signal pairs, 28 AWG (1.2 mm), per the 11-11 scheme, pending a single project-wide definition.
 - **The check below used OD 3.0 (16 AWG) and stands.** 18 AWG silicone is about 2.3-2.5 OD, so every ratio only gains.
 - R 15 at the bundle centre line is 5 x the largest wire's OD at 3.0, and about 6 x at 2.5.
 - The innermost wire of a 3.5-thick bundle bends at about R 13, which is 4.4 x OD at 3.0 and about 5.2 x at 2.5.

@@ -1,6 +1,6 @@
 #!/bin/bash
 # After the 0.1 gap STOP_0: rebuild print / tg02 / tnom with 5-segment ramps (+ the tg02 pad model, pads E 0.5 MPa for the stop),
-# then the release-order solves (coordinator 2026-11-12 08:29Z): nominal STOP_0, G90, STOP_124; then the 0.2 gap STOP_0.
+# then the release-order solves (decision 2026-11-12 08:29Z): nominal STOP_0, G90, STOP_124; then the 0.2 gap STOP_0.
 cd /j/code/roark-wt/left-arm-organic
 R=J:/code/roark-wt/left-arm-organic/cad
 L=cad/_wip/r1d_after.log

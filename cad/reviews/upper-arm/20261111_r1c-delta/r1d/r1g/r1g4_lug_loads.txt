@@ -1,4 +1,4 @@
-r1g4 hub lug loads by face, for the shoulder thread's FE (2026-11-13). Upper arm r1g4: lug plates Dia 3.8, lumped as a 0.5 boss of
+r1g4 hub lug loads by face, for the shoulder study's FE (2026-11-13). Upper arm r1g4: lug plates Dia 3.8, lumped as a 0.5 boss of
 our post inside the plate outline; our FEA hub is the D3b-shaped hub (straight lugs to X offset 34.4, R1.2 Z roots).
 
 FRAME AND UNITS

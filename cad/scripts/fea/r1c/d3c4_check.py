@@ -34,7 +34,7 @@ def th(x, z):
     return float(np.degrees(np.arctan2(z - CZ, x - HX)) % 360)
 
 
-# 1 watertight and mass (PETG 1.27 g/cm3 as the shoulder thread)
+# 1 watertight and mass (PETG 1.27 g/cm3 as the shoulder study)
 res['1'] = dict(watertight=bool(c4.is_watertight), volume_mm3=round(float(c4.volume), 1), mass_g_petg127=round(float(c4.volume) * 1.27e-3, 1),
                 bounds=np.round(c4.bounds, 2).tolist())
 # 2 section diff D3b vs D3c4

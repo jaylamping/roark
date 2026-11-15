@@ -1,4 +1,4 @@
-"""Hub cable window footprint against the R1g halves (shoulder thread pick, 2026-11-13): a slot centred at THETA (ours: 0 = +X lug,
+"""Hub cable window footprint against the R1g halves (shoulder study pick, 2026-11-13): a slot centred at THETA (ours: 0 = +X lug,
 positive toward +Z front), +-W/2 tangentially, from r R0 to R1 about the yaw axis, dropped straight down (along -Y) from Y 298 to
 Y 240. Every Y section of both halves every 1 mm (bolt / insert / screw holes filled) is checked for overlap with the footprint; the
 smallest clearance and where it is are reported, with a picture of the footprint on the sections.

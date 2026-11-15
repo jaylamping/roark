@@ -1,4 +1,4 @@
-"""Cable route from the hub window down into the arm's open cavity (2026-11-13, shoulder thread question), R1g halves.
+"""Cable route from the hub window down into the arm's open cavity (2026-11-13, shoulder study question), R1g halves.
 Bundle: flat 16 x 6 (16 along u, 6 along v). At the hub window (theta, Y 298) its centre is at r RC with v radial (the 6 mm is
 radial) and u tangential. Theta (ours = the hub's): atan2(Z - CZ, X - HX), 0 = +X lug, + toward +Z (front half).
 Route model (bends across the thin direction only, no edgewise bend): the centre moves sideways only along the bundle's current

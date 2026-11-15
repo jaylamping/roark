@@ -2,7 +2,7 @@
 (as lug_loads.py: t = sigma.n, linear over the face, 0.1 mm grid), compressive normal force only, split by where it lands relative
 to the plate (lumped in the model: X offset 18.96-34.2 x Y 288.2-294.6, hole r 1.7 round the bolt):
   within 1 mm of the plate's outer outline / within 1 mm of the plate hole edge / the rest of the plate / outside the plate.
-Also the centre of pressure and the force-weighted spread. For the shoulder thread, which applies the plate force more evenly.
+Also the centre of pressure and the force-weighted spread. For the shoulder study, which applies the plate force more evenly.
     python lug_plate_dist.py NPZ POST_TXT [LABEL] [HUB_HOLE_R=1.9]"""
 import re
 import sys

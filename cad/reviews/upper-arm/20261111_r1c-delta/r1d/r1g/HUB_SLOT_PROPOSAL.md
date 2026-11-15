@@ -1,6 +1,6 @@
-# Shoulder thread's hub cable slot proposal: our check (2026-11-15)
+# Shoulder study's hub cable slot proposal: our check (2026-11-15)
 
-**The proposal (shoulder thread, quoted by the coordinator):** a dog-leg tunnel, 4.5 mm (radial plane) × 11 mm (tangential), with
+**The proposal (shoulder study):** a dog-leg tunnel, 4.5 mm (radial plane) × 11 mm (tangential), with
 corners and mouth edges R 1.5, centred on 68 deg.
 - The mouth is in the dish floor at r 27.0-31.5, straight down.
 - Then it slants inward (a 40 deg knee 5.5 mm below the floor) and exits through the bore wall (r 23) between Y 302.1 and 309.1.
@@ -63,7 +63,7 @@ The bundle bends across its thin direction (2.6) in the tunnel's 4.5 plane, neve
   unplugging. The neck has room for it (cavity 1438 mm² or more at every 5 mm, Y 250-295).
 - **Recommended:** keep that joint break.
 
-## Correction from the shoulder thread, and our re-check (2026-11-15, 05:41Z)
+## Correction from the shoulder study, and our re-check (2026-11-15, 05:41Z)
 
 **Correction.** The tunnel ends where it breaks through the bore wall (r 23, Y 302.1-309.1).
 - Below that is open bore. The bundle hangs straight down against the bore wall, centre about r 21.5 for our 2.6 flat bundle.

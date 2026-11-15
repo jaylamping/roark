@@ -30,15 +30,15 @@ peak, routine) therefore passes through the two lugs as a Z couple. On rev D:
 - There was about ±0.22° (±1.1 mm at the wrist) of free yaw play in the 0.1 lug slots.
 
 **What r1g6 changes from r1g4.** Only the hole layout:
-- The hub's lug holes are Dia 3.8 (the shoulder thread's D3c7; Dia 3.4 before).
+- The hub's lug holes are Dia 3.8 (the shoulder study's D3c7; Dia 3.4 before).
 - The plate holes are Dia 3.4, inside the hub's hole. In r1g5 the plate and hub holes were both Dia 3.8, and the lumped plate's
   step sat edge on edge with the hub's hole rim. r1g6 puts the plate step inside the hub hole, over the brass insert's rim.
 
 **Design.**
-- **Hub (shoulder thread).** The lugs grow out to one straight outer face at X offset 34.4, over Y 288-296, with the R1.2 Z roots
+- **Hub (shoulder study).** The lugs grow out to one straight outer face at X offset 34.4, over Y 288-296, with the R1.2 Z roots
   and an R0.8 outward root.
   - The hub is **D3c7**: D3c6 plus the Dia 3.8 lug holes and the cable window at 68 deg.
-    - Pushed by the shoulder thread in commit 96f74abc669b20ee1ed6831b4f1c47b818df69d2 (branch `claude/project-thread-90ef87`),
+    - Pushed by the shoulder study in commit 96f74abc669b20ee1ed6831b4f1c47b818df69d2 (branch `claude/project-thread-90ef87`),
       as `cad/exports/shoulder/shoulder_hub_left_revD3c7_candidate.STL`.
     - The real LFS object hashes to SHA-256 a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b (3,136,484 bytes),
       the same file the checks were run on.
@@ -196,8 +196,8 @@ clearance (the mesh reads 0.36-0.40).
 **Remaining below target. These are known items, not passes.**
 1. **The hub lug root at the extended lug's outer face** (X offset 34.4, Y 294.9).
    - Readings: YAW ±17 shear 1.14-1.17; G90 + YAW ±17 1.00; STOP_0 vm 0.98 and shear 1.16 on the -X outer root.
-   - This is the hub, and the shoulder thread's FE governs it. Our FEA hub is the D3b shape on a coarser mesh.
-   - **The shoulder thread's re-solve (D3c7, 1.0 M nodes, their `A_HUB_LUGS.md` at b399e84), at our centres of pressure:**
+   - This is the hub, and the shoulder study's FE governs it. Our FEA hub is the D3b shape on a coarser mesh.
+   - **The shoulder study's re-solve (D3c7, 1.0 M nodes, their `A_HUB_LUGS.md` at b399e84), at our centres of pressure:**
      - At our section totals (governing lug 270.9 / 272.2 N): shear 1.58 / 1.59. That passes 1.5.
      - At the larger of the section and face totals (299 / 294 N), at the outer R1.2 root (X offset 32.6-33.0, Y 295.6):
        - G90 + YAW -17: shear 1.42, layer 1.57;
@@ -211,7 +211,7 @@ clearance (the mesh reads 0.36-0.40).
      - Accepted for the test print because the bench ends with the 1.5 × yaw proof (25.5 N·m) on the printed hub, which loads that
        root in the real material. After the proof, the hub lug roots are inspected and photographed.
    - **STOP_0, -X lug outer front edge** (X offset 34.4, Y 293.4, Z 11.0): vm 0.74 / 1.26 / 2.80.
-     - The shoulder thread's fine hub reads about 8 there (von Mises 7.98 peak, 8.71 at 0.5 mm, friction variant; 8.13 / 8.89 with
+     - The shoulder study's fine hub reads about 8 there (von Mises 7.98 peak, 8.71 at 0.5 mm, friction variant; 8.13 / 8.89 with
        the bolt-wall variant; their `A_HUB_LUGS.md` at b5679c6). **Their number governs.**
      - Ours is the lumped plate boss's step edge (`r1g6_stop0_hub_edge_probe.txt`, findings item 6). The arm's boss carries
        16-23 MPa on its last 0.5 mm before its edge at X offset 34.2.
@@ -323,7 +323,7 @@ the R1h back half in `../20261111_r1c-delta/r1d/r1g/r1h_back_sheet.png`.
   - **Superseded, do not print:** the first E1 file (3MF aa4c7dd3…4a81, STL ec8c8a59…74fb4; 6.2 mm of thread in a hole that
     bottoms at 6.5-7).
   - It moves the arm 3.00 mm down the yaw axis, against Joey's "215 mm shoulder to elbow, don't lengthen it": **Joey to decide**,
-    or the shoulder thread recovers the 3 mm.
+    or the shoulder study recovers the 3 mm.
 - **Stage 2 (the halves) waits for:** the bench on the corrected hub, and the elbow cable rig passing.
   - The elbow cable crossing is option A3, chosen by Joey on 2026-11-15 (05:05Z): a flat clock-spring of the power pair under the
     inboard cap, in forearm parts only. Rig first (`cad/upper-arm/ELBOW_CABLE_RIG.md`).
@@ -370,7 +370,7 @@ from a printed shim:
 - Outside: the shim shows as a thin band at the arm-hub junction, 0.6 inside our skin. The shoulder cuff ends about Y 313.6, so
   it doesn't cover it. The step visible in the band near θ 70-110 and 250-290 is the hub's own outer wall stepping out (r 38.76
   to 39.3). Pictures: `r1e_hub_end_front.png`, `r1e_hub_end_back.png`, `r1e_shadow_line_closeup.png`,
-  `r1e_side_with_shoulder.png`, `r1e_junction_under_cuff.png` (the last two use the shoulder thread's WIP fork meshes).
+  `r1e_side_with_shoulder.png`, `r1e_junction_under_cuff.png` (the last two use the shoulder study's WIP fork meshes).
 
 R1e checks (`../20261111_r1c-delta/r1d/r1e/`):
 
@@ -382,7 +382,7 @@ R1e checks (`../20261111_r1c-delta/r1d/r1e/`):
 | Hub-end fit coupon (cut at Y 284) | Back PASS 69 min / 16.9 g; front PASS 64 min / 16.1 g; cut-plane slivers accepted in a coupon-only list. Procedure: BENCH_TESTS.md section 2b, pass rule included. |
 | 0 gap G90 (flank line-to-line, shim lumped into the end face) | All ≥ 1.5. Lowest: end-face corner θ 296, shear 1.68 / 3.48 / 11.14 at 0.5 / 1 / 2 mm (0.81 at the 0.1 gap). Hub groove bottom / spigot core layer 2.20; posts layer 2.38. |
 | 0 gap STOP_0, STOP_124 | Done on the clean 4.0 mesh (r1e_g00_stop_d, r1e_g00_stop124_d; the 0.4 / 0.5 lug-root refinement at global 5.0 broke the spigot-underside mesh and was dropped). STOP_124 is 1.33 or more. STOP_0 is 1.2 or more except the lumped end-face corner (shear 1.04 / 1.93). Superseded by R1g. |
-| Shim ring bearing (from the lumped runs; the ring was **not** modelled as a separate body, see below) | End-face contact pressure of the 0 gap model mapped onto the ring annulus r 36.2-38.4 (516 mm2), arm side. Mean / net axial force / worst 30 deg sector mean / worst 0.5 mm / 1 mm average / peak (MPa, compression): G90 1.2 / 0.64 kN / 4.6 / 15.2 / 7.4 / 29; STOP_0 1.0 / 0.50 kN / 3.0 / 30.1 / 13.6 / 43; STOP_124 2.2 / 1.1 kN / 9.4 / 19.7 / 15.1 / 21; YAW +17 1.2 / 0.64 kN / 4.4 / 35.2 / 14.3 / 69. Against 45 MPa (the model's PETG yield; printed PETG compression is about 55-60 and through the layers is not a weak direction): sector means SF 4.8 or more, 1 mm averages SF 3.0 or more. The 0.5 mm values and the peaks all sit at r 36.40, the contact edge where the 0.5 bore chamfer meets the end face: a model edge, local to the ring's inner rim. Hand check: 1.1 kN over 516 mm2 is 2.1 MPa mean (the shoulder thread's figure is about 3 MPa per kN on their 324.6 mm2 seat; same order). `ring_bearing_lumped.txt` |
+| Shim ring bearing (from the lumped runs; the ring was **not** modelled as a separate body, see below) | End-face contact pressure of the 0 gap model mapped onto the ring annulus r 36.2-38.4 (516 mm2), arm side. Mean / net axial force / worst 30 deg sector mean / worst 0.5 mm / 1 mm average / peak (MPa, compression): G90 1.2 / 0.64 kN / 4.6 / 15.2 / 7.4 / 29; STOP_0 1.0 / 0.50 kN / 3.0 / 30.1 / 13.6 / 43; STOP_124 2.2 / 1.1 kN / 9.4 / 19.7 / 15.1 / 21; YAW +17 1.2 / 0.64 kN / 4.4 / 35.2 / 14.3 / 69. Against 45 MPa (the model's PETG yield; printed PETG compression is about 55-60 and through the layers is not a weak direction): sector means SF 4.8 or more, 1 mm averages SF 3.0 or more. The 0.5 mm values and the peaks all sit at r 36.40, the contact edge where the 0.5 bore chamfer meets the end face: a model edge, local to the ring's inner rim. Hand check: 1.1 kN over 516 mm2 is 2.1 MPa mean (the shoulder study's figure is about 3 MPa per kN on their 324.6 mm2 seat; same order). `ring_bearing_lumped.txt` |
 | **YAW_17** (RS02 17 N·m peak about the hub axis, both signs; 0 gap lumped model; global 4.0, 0.8 on posts / lugs / fins, lug-root fillets at 0.8) | **Below 1.5.** The ring carries no torque about the hub axis, so all of it goes through the lugs: 312-334 N per lug in Z (pads < 1 N). Loaded post (the one the lug pushes on, at its top edge by the slot break, Y 294.5): vm 0.99 / 1.41 / 1.86 (+17, +X front, n 6/31/170) and 0.95 / 1.47 / 2.05 (-17, +X back); the opposite-corner posts 1.17 / 1.09; post shear 1.07-1.54. Hub lug roots layer 0.92-0.96 / 1.32-1.38 / 2.1-2.2, shear 0.95-0.99 (0.8 mesh: the refined value would be lower). Hub lug bolt-hole bearing 1.19-1.26. Inserts vm 188 MPa (SF 1.27 vs brass yield). Bolts SF 4.9-5.4 (transverse shear only about 30 MPa: the load runs along the bolt axis). Fins ≥ 3.2. End-face corner θ 296 (+17) shear 0.69 / 1.23 / 2.88: the lumped model's contact edge, where R1e has the shim. G90 + yaw by superposition: the same figures within 0.05 except the end-face corner (0.49 / 0.88 / 2.11). `r1e_g00_yaw*3*.txt`; remedies in R1D_NOTES.md "YAW_17" |
 
 Rejected variants, and why:
@@ -403,8 +403,8 @@ Rejected variants, and why:
 
 Open caveats:
 - **Upper hub approximated above Y 300.5.** The FEA hub is our ring hub plus the rev D lug-root fillet (the same edge selection as
-  the shoulder thread). Through the joint (Y 295.5-300) its sections match bc16e97 within 0.1 %. Above that, rev D's outer wall
-  and top boss differ, so the hub's upper-region figures are indicative only; the shoulder thread's FEA governs there. Our FEA
+  the shoulder study). Through the joint (Y 295.5-300) its sections match bc16e97 within 0.1 %. Above that, rev D's outer wall
+  and top boss differ, so the hub's upper-region figures are indicative only; the shoulder study's FEA governs there. Our FEA
   hub also has a sharp spigot foot where rev D has about R0.23 (it doesn't touch the arm).
 - **Mesh:** 4.0 mm global (5.0 in the refined stop runs), 0.8 on the seat, posts, lugs and fins. The lug-root fillets are refined
   to 0.4, not 0.3: 0.3 exceeded the solver's memory limit (458 k nodes). The groove band can't be refined, because its faces are
@@ -438,10 +438,10 @@ that R1e replaces.
 3. **Crush ribs.** 12 ribs on the load flank, 6 per half, at θ 15 / 45 / 75 / 105 / 135 / 165 (+180), about 1 × 1 mm. They
    print 0.25 proud and crush on assembly to take up the 0.1 flank gap, so there is no axial play.
 4. **Collar** r 35.9-37.4, Y 295.7-302, with a foot chamfer. Head counterbores Ø6.0 for DIN 912 M3 socket heads.
-5. **Slot edge break, new today.** The shoulder thread's hub rev D candidate (bc16e97) adds R1.2 fillets where the lugs' Z faces
+5. **Slot edge break, new today.** The shoulder study's hub rev D candidate (bc16e97) adds R1.2 fillets where the lugs' Z faces
    meet the spigot underside. Our slot walls (the posts' lug faces at |Z| 5.1, up to Y 295.7) get a 1.2 (down the face) × 1.6
    (across the post top) chamfer along each fillet's X span ± 0.5: X 139.75-149.0 and 192.0-201.25, all four post faces.
-6. **Hub (shoulder thread, rev D candidate bc16e97).** Full-ring groove, r 23-28.2 fill, and the R1.2 lug-root fillets.
+6. **Hub (shoulder study, rev D candidate bc16e97).** Full-ring groove, r 23-28.2 fill, and the R1.2 lug-root fillets.
 
 The R1c print files (0d8f841) are not released and do not change.
 
@@ -527,7 +527,7 @@ End-face bearing on the hub disc (σy on the face, r 36.45-37.55):
    see about 95-130 N normal in G90. So they bed in within the first routine cycles until the flank bears, which is the
    strength case covered by the 0 / 0.1 / 0.2 gap runs. Play once bedded: axial 0.115 / 0.231 mm and rocking 0.09° / 0.18° for
    gaps 0.1 / 0.2 (0.66 / 1.31 mm sideways at the wrist), showing only on load reversal.
-   **Flag: hub flank marking under a rib (hub shear 0.70 stop, 0.83 G90, local), for the shoulder thread and the reviewer.** R2
+   **Flag: hub flank marking under a rib (hub shear 0.70 stop, 0.83 G90, local), for the shoulder study and the reviewer.** R2
    options: wider / longer ribs that crush flush on assembly, or a line-to-line flank. A fit coupon tests closing, crush and
    play on a printed rev D hub.
    Earlier wording of this item: **Nominal stop: the θ 135 crush rib carries the flank load.** It is overloaded at the rib (arm shear 0.36 at 0.5 mm, 0.66
@@ -542,9 +542,9 @@ End-face bearing on the hub disc (σy on the face, r 36.45-37.55):
 ## Not verified / caveats
 
 - **Upper hub approximated above Y 300.5.** The FEA hub is our ring hub with the rev D lug-root fillet applied (the same edge
-  selection as the shoulder thread's build). Through the joint (Y 295.5-300) its sections match bc16e97 within 0.1 %. Above
+  selection as the shoulder study's build). Through the joint (Y 295.5-300) its sections match bc16e97 within 0.1 %. Above
   that, rev D has a slightly larger outer radius and a much smaller top boss, so our top fixture face is larger. The hub's
-  upper-region figures (outer ring above the groove) are indicative only; the shoulder thread's own FEA governs there. Our FEA
+  upper-region figures (outer ring above the groove) are indicative only; the shoulder study's own FEA governs there. Our FEA
   hub also has a sharp spigot foot where rev D has about R0.23; that does not touch the arm.
 - Frictionless contact, no bolt preload, linear PETG with isotropic stiffness and the layer allowables above. Print
   tolerances and droop on the bore's ceiling are not modelled.

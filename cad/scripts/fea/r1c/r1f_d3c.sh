@@ -1,5 +1,5 @@
 #!/bin/bash
-# R1f on hub rev D3 (shoulder thread 22ead5b; 2026-11-12). One process; every SolidWorks step under the one-job lock
+# R1f on hub rev D3 (shoulder study 22ead5b; 2026-11-12). One process; every SolidWorks step under the one-job lock
 # (cad/_wip/.fea_job_lock; 180 s since the last job; >= 16 GB free):
 #   1. the R1f halves (web from offset 26.0), slice, gate        (r1f_build.sh)
 #   2. closing path: D3 + the 0.70 ring + four 0.45 lug plates against the R1f halves
@@ -25,7 +25,7 @@ trap 'grep -q " $$\$" $LK/owner 2>/dev/null && rm -rf $LK' EXIT
 echo "R1F_D3 (hub-seat model with the lug plates lumped) start $(date +%H:%M)" >> $L
 # (steps 1-3 done: FEA hub HUB_D3 built (R1.2 roots only to r 31.5, the new stretch stayed sharp); steps 1 and 2 done by hand on 2026-11-12: halves PASS; closing path with D3 + ring 0 path collisions, CLOSE_EXTRA_PLANES=301.3, CLOSE_FORCE_CONTAINS=1)
 export CAD_WRITER='upper-arm-r1:2bcc415b' SW_PART_TEMPLATE='C:\ProgramData\SOLIDWORKS\SOLIDWORKS 2026\templates\MBD\part 0051mm to 0250mm.prtdot'
-# FEA: the lug plates lumped into our faces (coordinator 2026-11-13): our post / web / pocket faces line-to-line with the lug Z
+# FEA: the lug plates lumped into our faces (decision 2026-11-13): our post / web / pocket faces line-to-line with the lug Z
 # faces (ARM_SLOT_CL=0), frictionless no-penetration in the lug set (HS_D3=1 puts the D3 lug faces there); the printed halves keep 0.5
 export ARM_R1C=1 ARM_R1D=1 ARM_SLOT_BREAK=1.2,1.6 ARM_LUG_POCKET=1 ARM_SLOT_CL=0 HS_D3=1
 # 4 hub-seat model

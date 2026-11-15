@@ -1,5 +1,5 @@
 #!/bin/bash
-# R1e shim-body model (2026-11-12, coordinator): the arm with its end face lowered 0.70 (gap 0, no ribs, slot break, inserts as
+# R1e shim-body model (2026-11-12): the arm with its end face lowered 0.70 (gap 0, no ribs, slot break, inserts as
 # built) and the printed PETG shim ring (r 36.2-38.4 x 0.70) as its own body: no-penetration against the end face, held on the
 # disc by the touching-face bond. G90 and STOP_0 (0.3 on the lug roots for the stop). Waits for the 0 gap stop cases.
 cd /j/code/roark-wt/left-arm-organic

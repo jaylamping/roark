@@ -229,7 +229,7 @@ SLOT_BREAK_X = [(139.75, 149.0), (192.0, 201.25)]      # the lug-root fillets X 
 
 def r1d_slot_break(d, sg, zl):
     """R1d, ARM_SLOT_BREAK="a,b" (2026-11-12, prepared, not released): break the lug slot's top edges, where each post's lug-facing
-    face (Z = zl) meets the floor / post top (Y FLOOR_Y), so they clear the R1.2 fillet the shoulder thread adds at the hub lug
+    face (Z = zl) meets the floor / post top (Y FLOOR_Y), so they clear the R1.2 fillet the shoulder study adds at the hub lug
     roots (lug Z faces meeting the spigot underside at Y 296). A chamfer a down the face (Y) by b across the post top (Z), along
     each lug's X span only, inside the seat (no outside surface). The thin end is on the face, so the print sees a slope a over b
     (steeper than 45 deg when b > a) under the face's own support. Not near the ridge, ribs, end face or bore."""
@@ -246,15 +246,15 @@ def r1d_slot_break(d, sg, zl):
         feat(d, s.feat, name, x1 - x0, True, mode=MID, lo=0.01)
 
 
-# R1f lug pocket (hub rev D3: the lugs grown out to r 36.8 into seam-split pockets in our collar; coordinator / shoulder thread,
+# R1f lug pocket (hub rev D3: the lugs grown out to r 36.8 into seam-split pockets in our collar; shoulder study,
 # 2026-11-12). Offsets are X from the yaw axis on each lug's side. Our pocket edge: the hub's outer edge + 0.2, the hub's edge
 # capped so our wall to the skin keeps >= 1.2 (skin at Z 5.5: 36.3 at Y 288 ... 38.1 at Y 294 ... 38.5 at Y 298).
-# D3 as built by the shoulder thread (coordinator 2026-11-13 01:35Z): lug Z faces Z 1.0 / 11.0; outer edge X offset 34.4 for
+# D3 as built by the shoulder study (decision 2026-11-13 01:35Z): lug Z faces Z 1.0 / 11.0; outer edge X offset 34.4 for
 # Y 288-294.5, stepping to 36.35 for Y 294.5-297.6 (45 deg top chamfer 36.35 @ Y 296.7 to the land 35.45 @ 297.6); R1.2 Z roots
 # along Y 296 out to X 35.45 (tangents Y 294.8, |Z| 6.2); R0.5 inside corner at (34.4, 294.5). Our pocket 0.2 outside:
 # wall to the skin (at Z 5.5) 1.7 at Y 288, 1.55 at Y 294.3, 1.95 at Y 297.8.
 R1F_POCKET_DEEP = [(287.5, 34.6), (294.3, 34.6), (294.3, 36.55), (297.8, 36.55)]      # R1f (D3 with the step and column)
-# R1g (2026-11-13, coordinator + shoulder thread): the lug loses its step and column (straight outer face at X offset 34.4 up to the
+# R1g (2026-11-13, shoulder study): the lug loses its step and column (straight outer face at X offset 34.4 up to the
 # spigot underside), so the pocket is X offset 34.6 for the whole lug height up to our floor; no cut into the collar
 R1F_POCKET = R1F_POCKET_DEEP if os.environ.get('ARM_LUG_POCKET_DEEP') == '1' else [(287.5, 34.6), (295.75, 34.6)]
 R1F_POCKET_TOP = 297.8 if os.environ.get('ARM_LUG_POCKET_DEEP') == '1' else 295.75
@@ -349,7 +349,7 @@ def r1c_fins(d, sg, zl):
         M.feat(d, s_.feat, f'R1C_FIN{i}', 9.0, False, mode=M.MID, lo=0.01)
 
 
-# R1h (2026-11-13, coordinator): harness tie point in the back half. A bridge on the -X inner wall at the neck (Y 255-261), standing
+# R1h (2026-11-13): harness tie point in the back half. A bridge on the -X inner wall at the neck (Y 255-261), standing
 # on the seam face (the back half prints on it, so no support): a bar 2.0 thick (X 147.9-149.9) 1.6 off the wall (inner face X 146.3),
 # two posts 1.5 long at its ends embedded 0.7 into the wall, and a 3.0 x 1.6 slot between them for a 2.5 x 1.0 cable tie passing along
 # Z round the bar and the bundle. 4.0 deep (Z CZ-4 to CZ). Every corner the wires can touch is rounded: the outline's vertical edges

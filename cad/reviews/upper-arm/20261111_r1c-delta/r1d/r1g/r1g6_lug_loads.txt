@@ -1,4 +1,4 @@
-r1g6 hub lug loads by face, for the shoulder thread's FE (2026-11-13, INTERIM: cases are added as they land). Upper arm r1g6: hub lug
+r1g6 hub lug loads by face, for the shoulder study's FE (2026-11-13, INTERIM: cases are added as they land). Upper arm r1g6: hub lug
 holes Dia 3.8 (the bolt is free in them), lug plates Dia 3.4, lumped as a 0.5 boss of our post inside the plate outline (top Y 294.6);
 our FEA hub is the D3b-shaped hub with Dia 3.8 lug holes (straight lugs to X offset 34.4, R1.2 Z roots).
 
@@ -31,7 +31,7 @@ HOW THE FORCES WERE INTEGRATED
   within 2-3 %, Fz within 10 %. Its Fy reads -9 to -41 N where 0 is applied: integration error on the hub's coarse 4 mm mesh at
   Y 310 (bending stresses that should cancel). The "ring, ridge, groove and spigot" share = applied minus the lugs (sections).
 
-THE LUG'S OUTER FACE AND THE SIDEWAYS LOAD (r1g6; corrected 2026-11-13 after the shoulder thread's question)
+THE LUG'S OUTER FACE AND THE SIDEWAYS LOAD (r1g6; corrected 2026-11-13 after the shoulder study's question)
 Sign convention: every face row is the force ON THE HUB, the integral of sigma.n over the hub face with n the hub's outward normal.
 For the -X lug, +X is inward (toward the yaw axis). The section row is the force the hub ABOVE Y 294.5 exerts on the lug BELOW it, so
 the face forces below the section sum to minus the section row.
@@ -47,7 +47,7 @@ the face forces below the section sum to minus the section row.
   - In the real joint, that outward push of about 22-26 N goes through friction under the bolt clamp at the plates (0.3 N.m: about
     0.33-0.5 kN preload, so about 200-300 N of friction capacity). Failing that, it goes onto the bolt: the -X shank's gap on that
     side is already down to 0.102 here. It does NOT go onto the outer face, which can only push inward.
-  - For the shoulder thread's stop case:
+  - For the shoulder study's stop case:
     - the lug's outer face takes at most about 9 N inward (+X) from our pocket wall, near Y 293.2, Z 9.7;
     - the lug's net sideways load is about 26 N outward (-X), to be applied at the lug's Z faces (friction) or at its bolt hole
       (bearing), not at the outer face.

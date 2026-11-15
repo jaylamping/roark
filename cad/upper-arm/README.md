@@ -60,7 +60,7 @@ everything against it.
   - Two crush ribs (0.25 mm) on each bearing face put both bearing keys of each direction in contact from assembly.
   - Layer directions: the halves print seam face down (layers normal to Z), so key bending and shear lie in their layers.
     The ring prints flat (layers normal to X) and takes its keys in bearing and in-plane shear.
-- **Criterion (coordinator, 2026-11-11):**
+- **Criterion (2026-11-11):**
   - (a) Any one key alone carries the RS02's own 17 N·m peak at bulk and layer SF ≥ 1.5, at the fine mesh, on the ring and
     the halves.
   - (b) 34 N·m is carried by two keys sharing, at SF ≥ 1.5.
@@ -194,11 +194,11 @@ forearm models except the inboard cheek's stop lug, 23 min newer and away from t
     are printed, or accept that the halves commit the arm to the internal route.
 - **Signal wires our passages were sized for:** up to three signal pairs per joint (Joey, 2026-11-11), each pair 2.2 × 3.4, three
   together 2.2 × 8.
-  - **Signal wire (corrected 2026-11-15):** 28 AWG (1.2 mm), per the 11-11 scheme, pending the coordinator's single definition. That means two pairs plus one reserved. The earlier "26 AWG" came from the older
+  - **Signal wire (corrected 2026-11-15):** 28 AWG (1.2 mm), per the 11-11 scheme, pending a single project-wide definition. That means two pairs plus one reserved. The earlier "26 AWG" came from the older
     trunk README.
   - A pair of 1.2 mm wires laid flat (2.4 × 1.2) fits the 2.2 × 3.4 allowance. Twisted, a pair's envelope is about Ø2.4, so 0.2
     over the 2.2 thickness; flatten the twist where a pair passes a 2.2 slot.
-  - **Power across the elbow: one 18 AWG pair**, confirmed by the power board thread (2026-11-15, about 3-3.5 A expected, fine to
+  - **Power across the elbow: one 18 AWG pair**, confirmed by the power board study (2026-11-15, about 3-3.5 A expected, fine to
     7.5 A). The four-wire S4 in the trunk README is being corrected in roark PR #84. Free sections are from `cad/_wip/organic-arm/cad/passages.py` (neck slices) and
 the CAD dimensions (everything else).
 

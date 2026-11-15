@@ -1,6 +1,6 @@
 # Hub D3b candidate against R1g: checks (2026-11-13)
 
-**Source.** Shoulder thread, commit 6b2fd93 on `claude/project-thread-90ef87`, read-only. Copied to
+**Source.** Shoulder study, commit 6b2fd93 on `claude/project-thread-90ef87`, read-only. Copied to
 `cad/_wip/shoulder_hub_d3b_6b2fd93/`.
 
 **Method.** All checks are by Y-plane section every 0.1 from Y 286 to 303 (`d3_check.py`), plus the closing path
@@ -18,6 +18,6 @@
 | 4b | Closing path against the four lug plates (0.45, Dia 4.4 hole, main face) | **PASS**: no hits along the path. Seated clearance 0.036 front / 0.064 back with 0.45 plates; a pick of about 0.49 / 0.51 closes it. | `close_path_plates.json`, `close_path_plates.txt` |
 | 5 | Groove, R0.3 disc corner, disc face Y 302 | **PASS**: identical to rev D (no section difference above Y 298.7 apart from the square spigot corner's slivers up to Y 298.4). R1g assumes rev D there. | `d3b_fit.json` |
 
-**Flat plate area per lug Z face below Y 294.8** (shoulder thread): -X lug 94.4 / 107.1 mm², +X lug 100.3 / 100.7 mm². Our plate
+**Flat plate area per lug Z face below Y 294.8** (shoulder study): -X lug 94.4 / 107.1 mm², +X lug 100.3 / 100.7 mm². Our plate
 outline (X offset 18.96-34.2 × Y 288.2-294.6, less the Dia 4.4 hole) is about 98 - 15 = 83 mm² net. It sits inside the flat face
 everywhere.

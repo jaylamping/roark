@@ -1,4 +1,4 @@
-"""Read-back trim test (2026-11-14, coordinator): one solved study's stresses read two ways, timed.
+"""Read-back trim test (2026-11-14): one solved study's stresses read two ways, timed.
     python readback_trim.py MODEL.SLDPRT STUDY_NAME OUT_DIR
 A: all nodes at once, CWResults.GetStress(0, 1, NUL, 3) (what p3_fea.py does), node id + 11 values per node.
 B: per solid body, CWResults.GetStressForEntities3(True, component, 1, NUL, (body,), 3, 0, 0, False) for components 0-10, one

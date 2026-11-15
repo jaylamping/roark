@@ -1,21 +1,21 @@
 # Hub D3c7 candidate against R1g / R1h, the final plates and the 0.70 ring: checks (2026-11-13), FINAL for the pushed candidate
 
-**Final (2026-11-14).** The shoulder thread pushed D3c7 in commit 96f74abc669b20ee1ed6831b4f1c47b818df69d2 on branch
+**Final (2026-11-14).** The shoulder study pushed D3c7 in commit 96f74abc669b20ee1ed6831b4f1c47b818df69d2 on branch
 `claude/project-thread-90ef87`, as `cad/exports/shoulder/shoulder_hub_left_revD3c7_candidate.STL` (and `.STEP`).
 - I fetched the real LFS object (git lfs smudge into a scratch folder, not the pointer) and hashed it: a binary STL, 3,136,484
   bytes, SHA-256 a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b.
 - That equals the local build these checks were run on (`cad/_wip/shoulder_hub_d3c7_local/`, same SHA-256). So every result
   below holds for the pushed candidate as it is, and no rerun is needed.
-- **Released (2026-11-14):** the shoulder thread adopted D3c7 in commit 355aa9b3c1ffd0e5c1fa4ebe013ef0fa41353b85, as
+- **Released (2026-11-14):** the shoulder study adopted D3c7 in commit 355aa9b3c1ffd0e5c1fa4ebe013ef0fa41353b85, as
   `cad/exports/shoulder/shoulder_hub_left.STL` (the `_candidate` files are gone). Its real LFS object also hashes to a73103ad…259b
   (3,136,484 bytes).
   - The print file `shoulder_hub_left_revD3c7.3mf` (SHA-256 d8022071…397d, on holly-pc in `C:\joe\prints\shoulder-hub\`)
     holds the same mesh: 62,728 triangles, 31,336 vertices, extents 31.86 × 78.6 × 78.6, volume 63,186.8 mm³.
   - That folder's STL hashes to a73103ad…259b as well.
-- Before the push, this file was marked provisional: it was a copy of the shoulder thread's local build
+- Before the push, this file was marked provisional: it was a copy of the shoulder study's local build
   (`C:\joe\code\roark-wt\shoulder-study\cad\_wip\shoulder-pass1\stl_look_hubD3c7\hub.STL`).
 
-**Motor-plate slits (2026-11-15).** The shoulder thread reported a build error, and I confirmed it in this STL.
+**Motor-plate slits (2026-11-15).** The shoulder study reported a build error, and I confirmed it in this STL.
 - Six through-slits about 0.4-0.5 mm wide at r 19.1-19.5, each about 40 deg long (empty at θ 348-27, 48-87, 108-147, 168-207,
   228-267, 288-327), with 20 deg bridges between them.
 - They run from Y 316.0 to the RS02 face at Y 319.86, through the motor plate into the cavity below.

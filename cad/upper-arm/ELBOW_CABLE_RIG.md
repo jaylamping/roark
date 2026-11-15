@@ -26,7 +26,7 @@ About 2 h and 54 g. Everything prints the way it lies.
 - **For the signal test, pick one:**
   - **FFC stand-in:** a strip of thin plastic (cut from a plastic folder or sheet protector), 4.5 mm wide and 700 mm long, taped
     end to end if needed. It behaves like a flat flex cable. Nothing to buy for the test.
-  - **Or the signal wire itself, 28 AWG (1.2 mm), per the 11-11 scheme, pending the coordinator's single definition: three pairs of 300 mm**, if you have it. If you don't, skip that part.
+  - **Or the signal wire itself, 28 AWG (1.2 mm), per the 11-11 scheme, pending a single project-wide definition: three pairs of 300 mm**, if you have it. If you don't, skip that part.
 - Nothing needs buying. A real FFC (8-way, 0.5 mm pitch, about 700 mm) only matters later, for the arm.
 
 ## 3. Set up

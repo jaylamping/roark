@@ -1,4 +1,4 @@
-"""Resultant load on each hub lug by face (2026-11-13, for the shoulder thread's FE). Hub-side nodal stresses, traction t = sigma.n
+"""Resultant load on each hub lug by face (2026-11-13, for the shoulder study's FE). Hub-side nodal stresses, traction t = sigma.n
 (n = the hub's outward normal), linearly interpolated over each face and integrated on a 0.1 mm grid:
   front Z face (Z 11.0), back Z face (Z 1.0), outer face (X offset 34.4), bolt-hole wall (r 1.7).
 Force = what our side applies to the hub. Centre of pressure (X offset, Y) on the Z faces from the normal component.

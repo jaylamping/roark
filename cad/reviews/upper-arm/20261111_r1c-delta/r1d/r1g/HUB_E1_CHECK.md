@@ -65,7 +65,7 @@ else:
 
 ## First E1 candidate (c7231b1), the earlier check
 
-**What was checked.** The shoulder thread's E1 candidate, roark commit c7231b1 on branch `claude/project-thread-90ef87`, file
+**What was checked.** The shoulder study's E1 candidate, roark commit c7231b1 on branch `claude/project-thread-90ef87`, file
 `cad/exports/shoulder/shoulder_hub_left_revE1_candidate_armframe.STL`. It is in our present arm coordinates, Y 288.00-322.86.
 The baseline is D3c7 (a73103ad…259b).
 
@@ -99,7 +99,7 @@ None of the claims were trusted. Everything here comes from the file, with the s
   - A ring at r 35.8, Y 301.75: the section grazing the groove's sloped flank. D3c7 has it too, so it isn't new.
   - **New:** a feather edge of bore wall at the top of the tunnel exit, Y 309.25-310.25, r 23.0-24.0, θ 54-82, under 1 mm thick
     and about 1.7-5.6 mm² per section. It may print ragged. It is above the bundle's path (the bundle leaves over the exit's lower
-    edge and hangs down), so it is a print-quality note for the shoulder thread, not a fit issue.
+    edge and hangs down), so it is a print-quality note for the shoulder study, not a fit issue.
 
 **Check 4, the tunnel as built.** The section through θ 68:
 - A vertical leg 4.5 radial (r 27.0-31.5) from the dish floor at Y 318.5 (mouth rounded, Y 317-318.5) down to about Y 314.5.
@@ -130,10 +130,10 @@ between Y 298 and 302, so the flat 2.6 bundle hangs at r 20.2-22.8 with room.
   Don't lengthen it (Joey 2026-11-06: the built right arm already feels long)."
   - E1 puts the elbow 3.00 mm further from the shoulder: RS02 face to elbow axis goes from 110.0 to 113.0 in our frame. That makes
     the arm 218 instead of 215, unless the shoulder takes the 3 mm back above the RS02.
-  - This is Joey's to accept, or for the shoulder thread to recover.
+  - This is Joey's to accept, or for the shoulder study to recover.
   - The URDF and the kinematics belong to the software project. They need the +3.00 on the upper-arm link if E1 is adopted.
   - Our `config/skeleton.yaml` holds joint limits only, no lengths.
-- **Fork skirt:** we have no skirt geometry. If the shoulder thread lengthens the skirt by exactly 3.00, the gap to our arm's top
+- **Fork skirt:** we have no skirt geometry. If the shoulder study lengthens the skirt by exactly 3.00, the gap to our arm's top
   is unchanged; they should confirm it in their assembly.
 - **Our constants that hold the old top face**, to change only if E1 is adopted, together with any rerun:
   - `HUB_Y = 319.86` in `cad/scripts/arm/organic_master.py`;
@@ -144,8 +144,8 @@ between Y 298 and 302, so the flat 2.6 bundle hangs at r 20.2-22.8 with room.
   - Our FE hub is the solid D3b-shaped FEA hub (it never had the slits), fixed at its top face.
   - E1's 3 mm taller, solid centre moves the fixed face up and stiffens the hub, which changes our lug-to-groove load share only
     slightly.
-  - The hub's own figures (the lug roots, the plate) are the shoulder thread's FE, and they govern.
-  - A rerun would only be worth it if the shoulder thread's E1 hub FE showed a different lug load split. It would be a geometry
+  - The hub's own figures (the lug roots, the plate) are the shoulder study's FE, and they govern.
+  - A rerun would only be worth it if the shoulder study's E1 hub FE showed a different lug load split. It would be a geometry
     change in hub_seat (HUB_TOP 322.86, the E1 hub body), not a new mesh study.
 
 ## Verdict on the first candidate (superseded)
@@ -155,6 +155,6 @@ is as confirmed, the heads clear by 4.91, and the fit checks and the route pass.
 
 **Open, before adoption:**
 1. **Joey's 215 mm rule against the +3.00 mm.**
-2. **The feather edge** at the top of the tunnel exit (print quality, the shoulder thread's call).
-3. **The skirt gap**, to be confirmed by the shoulder thread.
+2. **The feather edge** at the top of the tunnel exit (print quality, the shoulder study's call).
+3. **The skirt gap**, to be confirmed by the shoulder study.
 4. **The URDF** gets +3.00 if E1 is adopted (software project).
