@@ -9,7 +9,7 @@ since the last look: failures and crashes whose kind has not been seen on this P
 with how often they came back. Exit 0 when no kind is new, 1 when one is.
 
 The first look covers the last N hours (default 24). After it, each look starts where the last one ended; that time
-and the kinds already seen are kept in sw_watch_state.json in the claims folder. --peek looks without moving them.
+and the kinds already seen are kept in sw_watch_state.txt in the claims folder. --peek looks without moving them.
 
 A "kind" is the error text with its numbers, paths and names taken out, so that the same fault in two parts or at two
 node counts counts once. A job killed from outside leaves no line, and a hang leaves none until something ends it:
@@ -121,7 +121,7 @@ def crashes(since: float) -> list[dict] | None:
 def state_file() -> Path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import claims
-    return claims.claims_dir() / "sw_watch_state.json"
+    return claims.claims_dir() / "sw_watch_state.txt"  # not .json: claims.py reads every .json there as a claim
 
 
 def main(argv: list[str]) -> int:
