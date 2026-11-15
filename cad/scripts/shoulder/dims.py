@@ -196,7 +196,7 @@ ARM_HW = 17.0
 Y_EX = 319.55                    # yaw exit channel centre
 Y_BOT = Y_EX - 3 - WALL
 CHEEK_R, HOUSE_R = 35.0, 33.0
-BRG_SEAT_R, BRG_LIP_R = float(os.environ.get('BRG_SEAT_R', '26.0')), 24.0   # housing dia 52.0 since the adoption of 2026-11-15: the outer race a hand push with no play (D_6808_FITS.md; final size from the seat coupon). 26.1 = the dia 52.2 of check (d). Flat-topped teardrop kept
+BRG_SEAT_R, BRG_LIP_R = float(os.environ.get('BRG_SEAT_R', '26.05')), 24.0   # housing dia 52.1, from the printed seat test rings (Joey, 2026-11-15; the real part is 52.0 until adopt_fork_rear_wiring.sh has run). Before: dia 52.0 since the adoption of 2026-11-15: the outer race a hand push with no play (D_6808_FITS.md; final size from the seat coupon). 26.1 = the dia 52.2 of check (d). Flat-topped teardrop kept
 BRG_LIP_Z = -47.7                # check (d): the outer-race lip 0.4 behind the bearing's rear face (the outer race floats)
 STUB_LEAD = 0.5                  # check (d): 0.5 x 45 lead-in on the stub's free end (stub stays Ø40.0, as the arm's coupon)
 # ---- hub (frozen interface; dished top) ----

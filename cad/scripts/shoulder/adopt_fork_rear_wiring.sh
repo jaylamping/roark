@@ -2,8 +2,9 @@
 # Adopt the fork rear's two wiring changes (OPEN_ASSUMPTIONS items 47 and 51; Joey: "Yes, take both", 2026-11-15) as THE
 # fork rear:
 #   the opening between the signal and the power channel 18 mm high, with a sloped wall end (was 6 mm);
-#   a tie bar, 2 x 2 mm, across the power channel at the underside.
-# The outside, the 6808 seat, the joint face and the screw positions do not change. The fork front is not touched.
+#   a tie bar, 2 x 2 mm, across the power channel at the underside;
+#   the 6808's housing at dia 52.1 (was 52.0): the size that fitted on the printed seat test rings (Joey, 2026-11-15).
+# The outside, the lip behind the bearing, the joint face and the screw positions do not change. The fork front is not touched.
 # The candidate it must reproduce: cad/exports/shoulder/shoulder_fork_rear_left_wiring_candidate.STL.
 #   bash cad/scripts/shoulder/adopt_fork_rear_wiring.sh            the adoption
 #   DRY=1 bash cad/scripts/shoulder/adopt_fork_rear_wiring.sh      a trial: steps 1 and 2 into a scratch look folder, nothing real changes
@@ -14,9 +15,9 @@
 #   3. Replaces the two exports, records them, removes the candidate files and their manifest entries, layout check.
 #   4. Runs the clearance sweep on the real set. No SolidWorks may be in set-up beside it.
 # Every way out prints its reason and a last line: ADOPTED, or NOT ADOPTED with what (if anything) was changed.
-# After it: switch the defaults in dims.py (FR_JOIN_H 18.0, FR_TIE_BAR on), rebuild and save the assembly, commit as Joey.
+# After it: switch the defaults in dims.py (FR_JOIN_H 18.0, FR_TIE_BAR on; BRG_SEAT_R is 26.05 already), rebuild and save the assembly, commit as Joey.
 export PYTHONDONTWRITEBYTECODE=1
-export FR_JOIN_H=18.0 FR_TIE_BAR=1
+export FR_JOIN_H=18.0 FR_TIE_BAR=1 BRG_SEAT_R=26.05
 REPO=/j/code/roark-wt/shoulder-study
 cd $REPO/cad/scripts/shoulder || { echo "NOT ADOPTED: $REPO/cad/scripts/shoulder not found. Nothing was changed."; exit 1; }
 PY=C:/joe/code/_venvs/shoulder/Scripts/python
@@ -64,7 +65,7 @@ while kill -0 $pid 2>/dev/null; do
 done
 wait $pid; rc=$?
 [ $rc -eq 0 ] || { echo "the build's last lines ($BL):"; tail -4 $BL; stop "the build ended with exit code $rc"; }
-for f_ in "CH_JOIN: cut 161" "TIE_BAR: added 34" "== shoulder_fork_rear_left: 1 bodies"; do
+for f_ in "SEAT: cut 19093" "CH_JOIN: cut 161" "TIE_BAR: added 34" "== shoulder_fork_rear_left: 1 bodies"; do
   grep -q "$f_" $BL || stop "missing from the build log ($f_)"
 done
 
@@ -106,7 +107,7 @@ cp cad/_wip/shoulder-pass1/step/$p cad/exports/shoulder/shoulder_fork_rear_left.
 cp cad/_wip/shoulder-pass1/stl/$s cad/exports/shoulder/shoulder_fork_rear_left.STL || stop 'could not replace shoulder_fork_rear_left.STL'
 for f in STEP STL; do
   C:/Users/holly/AppData/Local/Programs/Python/Python312/python.exe tools/cad/record_export.py \
-    exports/shoulder/shoulder_fork_rear_left.$f shoulder/left/shoulder_fork_rear_left.SLDPRT --settings "adopted 2026-11-15 (channel opening 18 mm with sloped wall end; tie bar at the underside; 6808 housing dia 52.0): build_parts.py fork_rear with FR_JOIN_H=18.0 FR_TIE_BAR=1" > /dev/null || stop "record_export.py failed for shoulder_fork_rear_left.$f"
+    exports/shoulder/shoulder_fork_rear_left.$f shoulder/left/shoulder_fork_rear_left.SLDPRT --settings "adopted 2026-11-15 (channel opening 18 mm with sloped wall end; tie bar at the underside; 6808 housing dia 52.1 from the seat test rings): build_parts.py fork_rear with FR_JOIN_H=18.0 FR_TIE_BAR=1 BRG_SEAT_R=26.05" > /dev/null || stop "record_export.py failed for shoulder_fork_rear_left.$f"
 done
 git rm -q -f --ignore-unmatch cad/exports/shoulder/$CAND.STEP cad/exports/shoulder/$CAND.STL || stop 'git rm of the candidate exports failed'
 rm -f cad/exports/shoulder/$CAND.ST*

@@ -17,13 +17,13 @@ still needs its pre-print gate
 | Part | File | Mass (PETG) | Geometry last changed | Status |
 |---|---|---|---|---|
 | Cable test rigs: roll, yaw, pitch (PLA) | `cad/exports/fixtures/fixtures_cable_rig_*.STL`; sliced plates in `C:\joe\prints\cable-rigs\` and `J:\code\prints\cable-rigs\` | 35 g / 45 g / 42 g | 2026-11-13 | **Print now, roll first.** They decide the three cable crossings ([CABLE_RIGS.md](../checks/CABLE_RIGS.md)) |
-| 6808 housing seat coupon | not modelled yet | about 5 g | | **Print before the fork rear** (D_6808_FITS.md) |
+| 6808 housing seat test rings | `fixtures_brg_seat_coupon_d519 / d520 / d521` (`brg_coupon.py`) | 27.5 g for the three | 2026-11-15 | **Printed 2026-11-15** (P2S, PETG). Ring 3 (Ø52.1) fitted best: a hand push with light pressure. The housing is Ø52.1 (D_6808_FITS.md) |
 | Drum | `shoulder_roll_drum_left` | 227.1 g | 2026-11-14 (rear cap screw fix: collars, Ø2.1 pilots) | Exported and recorded 2026-11-14. **Waits** for the roll cable decision (the roll rig) |
 | Flange ring | `shoulder_pitch_flange_ring_left` | 38.1 g | 2026-11-14 (rolled rim B, adopted) | Exported and recorded 2026-11-14. Colour not decided |
 | Rear cap | `shoulder_roll_cap_left` | 85.4 g | 2026-11-14 (rear cap screw fix: sockets, Ø2.9 holes) | Exported and recorded 2026-11-14. **Waits** for the roll cable decision (the roll rig) |
 | Drum port cap | `shoulder_roll_drum_port_cap_left` | 1.4 g | 2026-11-11 | Geometry settled. **No recorded export** |
 | Fork front | `shoulder_fork_front_left` | 152.3 g | 2026-11-15 (washer seats for the RS02's five M3, round key tunnel, skirt 3.00 mm longer) | Exported and recorded 2026-11-15. **Not for load yet:** no print file; it waits for the 6808 coupon, the rig and a real plug tried in the channel (CAD_NOTES, "Adopted 2026-11-15", lists what is still needed) |
-| Fork rear | `shoulder_fork_rear_left` | 68.4 g | 2026-11-15 (6808 housing Ø52.0: the outer race a hand push with no play) | Exported and recorded 2026-11-15. **Waits** for the 6808 coupon (the housing is sized from it) and for the rig (it carries the cable channels) |
+| Fork rear | `shoulder_fork_rear_left` | 68.4 g | 2026-11-15 (6808 housing Ø52.0: the outer race a hand push with no play) | Exported and recorded 2026-11-15. **Next revision, not adopted yet:** housing Ø52.1 from the test rings and the two wiring changes (`adopt_fork_rear_wiring.sh`). Waits for the rig (it carries the cable channels) |
 | Cover ring (optional) | `shoulder_roll_cover_ring_left` | 13.1 g | 2026-11-14 (new) | Exported and recorded 2026-11-14. Dark PETG. Can be left off |
 | **Hub** | `shoulder_hub_left` | 117.3 g | 2026-11-15 (rev E1, adopted) | **Print file ready** (hub section below). Rev D3c7's print is superseded: fit bench only |
 | Pitch loop cover | `shoulder_pitch_loop_cover_left` | 102.3 g | 2026-11-11 | **Waits:** its M5 pads are placeholders and the feed position waits for the final shell (CAD_NOTES "Still open") |
@@ -105,8 +105,9 @@ Material PETG throughout. "Not sliced" applies to every orientation and support 
   (0.1 mm proud of its recess).
 - **Orientation:** upright, Y up; it starts on its flat bottom at Y 340.
 - **Supports:** its hollow's roof (Y 340-349); a small one under the stop tooth's outer face (that face carries no load).
-- **6808 housing:** modelled **Ø52.0** (since 2026-11-15) with a 0.4 mm flat at the top, because the bore prints on its
-  side. **Print the seat coupon first** and size the housing from it: a hand push **with no play**. The fork's strength
+- **6808 housing:** **Ø52.1** from the printed seat test rings (2026-11-15; the adopted part is Ø52.0 until
+  `adopt_fork_rear_wiring.sh` has run), with a 0.4 mm flat at the top, because the bore prints on its side. The rings were
+  P2S, PETG, 4 walls: print the fork rear the same way, or print the rings again. The fit wanted: a hand push **with no play**. The fork's strength
   depends on it (D_6808_FITS.md): if the race rocks in the seat, that fork rear is not for a loaded arm.
 - **Joint:** 6 × ISO 7380 M4 button heads into the fork front's inserts. The recesses are about 3.1 mm deep, so a DIN 912
   head would stand proud.
@@ -220,8 +221,8 @@ pre-print gate report). STL SHA-256 `a73103adb49bb9a4fe3b3901fea852e6668e928e7e1
 
 ## Coupons first
 
-- **6808 housing seat ring** (D_6808_FITS.md): a thin ring with the fork rear's Ø52.0 bore, about 3 mm wall, 7 mm deep,
-  printed upright like the fork rear. Size the housing from it: a hand push with no play.
+- **6808 housing seat ring** (D_6808_FITS.md): three rings (Ø51.9, 52.0, 52.1), 3.5 mm wall, 6.9 mm deep, printed upright like the fork
+  rear. Printed 2026-11-15: Ø52.1 fitted (a hand push with light pressure).
 - The cap's Ø40.0 stub needs no coupon.
 - **The three cable test rigs** (table above; CABLE_RIGS.md).
 

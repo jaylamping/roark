@@ -224,7 +224,8 @@ Numbers and the table are in CAD_NOTES.md, "Hub cable window against the boss tu
 - **52. The fork's strength depends on the 6808 carrying radial load with no play.** With 0.1 mm of radial clearance at
   the outer race (as drawn) the fork reads 0.3 to 0.6 at the 17 N·m roll stop and 0.5 to 0.9 under the design load, in a
   model without the RS02; with none it meets the target (D_6808_FITS.md, last section). Decided: a snug outer race,
-  sized on the coupon, and a check at assembly that the race does not rock. Open: the model with the RS02 and the race
+  sized on the coupon, and a check at assembly that the race does not rock. **Coupon printed 2026-11-15: Ø52.1 as drawn
+  fits (a hand push with light pressure, Joey); the housing is Ø52.1.** The no-rock check at assembly stays: it was not reported. Open: the model with the RS02 and the race
   together, to know how bad a loose seat really is.
 - **Other places where a result on record holds a printed face as if the fit had no play** (listed, not solved):
   - **Hub in the arm:** the hub cases hold the spigot (Ø71.6) radially and the face at Y 302 axially, as if the arm's

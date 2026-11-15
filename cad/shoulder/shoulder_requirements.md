@@ -141,8 +141,8 @@ The `[[load_case]]` table above is the list the gate checks. In words:
   bottom out at 6.5 to 7 mm (Joey, decided and measured 2026-11-15); two of the six holes reamed to 4.00 (PN).
 - **Fork joint:** 6 × ISO 7380 M4 into M4 inserts. **Flange ring:** 5 × M3 × 5 into M3 inserts. **Rear cap:** 3 × M2.5 × 14
   thread-forming (PN).
-- **Bearing:** 6808-2RS, 40 × 52 × 7; stub Ø40.0; housing Ø52.0, sized on the coupon to a hand push with no play: the
-  fork's strength depends on it (D68, 2026-11-15).
+- **Bearing:** 6808-2RS, 40 × 52 × 7; stub Ø40.0; housing Ø52.1 as drawn, from the printed seat test rings (P2S, PETG; a hand
+  push with light pressure, Joey 2026-11-15). The race must not rock in the seat: the fork's strength depends on it (D68).
 - **Hub to arm:** spigot Ø71.6, two lugs with Ø3.8 holes; the hub's centre sits 3 mm taller from rev E1, so the arm hangs
   3 mm lower: motor face to the arm's seat 20.86 mm (Joey 2026-11-15, AHL).
 - **Screws:** snug by hand for the first iterations, no torque procedure, no threadlocker in testing (Joey 2026-11-15, PN).

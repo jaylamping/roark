@@ -117,3 +117,23 @@ or without its 0.1 mm radial clearance, in the same model. Fork body only, by bo
   whether or not the motor is in the model, and the motor's own screw seats are dragged down with it.
 - So the decision above stands on its own: **the bearing's outer race must sit without play**, and a fork rear whose
   race rocks is not for a loaded arm.
+
+## Seat test rings printed: the housing is Ø52.1 (2026-11-15)
+
+- **Printed:** `fixtures_brg_seat_coupon.3mf` (`cad/scripts/shoulder/brg_coupon.py`): three rings, bore Ø51.9, 52.0 and
+  52.1 as drawn, each the fork rear's seat on its own (bore 6.9 deep, flat-topped teardrop, lip), standing up as the
+  fork rear prints. Bambu P2S, 0.4 nozzle, Generic PETG, 0.20 mm layers, 4 walls, 25 % infill.
+- **Result (Joey, 2026-11-15):** ring 3, drawn **Ø52.1**, fitted best: the 6808 "fit perfectly with a little bit of
+  pressure". So Ø52.0 as drawn printed tighter than wanted, and the printed bore of the Ø52.1 ring is a hand push on the
+  Ø52.0 race. No caliper readings were taken. **Whether the race rocks was not reported:** the check at assembly stays.
+- **Locked:** the fork rear's housing is **Ø52.1** (`BRG_SEAT_R` 26.05, the default in `dims.py`). The lip (Ø48.0, 0.4 mm
+  behind the bearing), the teardrop's rule (flat 0.4 mm above the bore) and the collar's outside (r 33.0) are as before;
+  the wall round the bearing is 6.95 mm against 7.00.
+- **Against the strength model:** the snug case that passes has the race touching the seat all round (race r 26.0 in a
+  seat of r 26.0). Taken at face value, Ø52.1 as drawn is 0.05 mm of radial clearance, half of the 0.1 mm that reads 0.3
+  to 0.6 at the stop. But the drawn size is not the printed size: on this printer, in this orientation and material, the
+  Ø52.1 drawing prints a bore the race pushes into with light pressure, which is the touching case. **The printed fit is
+  what counts, not the nominal**, so the snug results stand and the model was not solved again at a 0.05 mm gap.
+- **What this rests on:** one print of one ring, by feel. A fork rear printed on another printer, in another material
+  or with different walls needs the rings again. At assembly the race must not rock or rattle in the seat; if it does,
+  that fork rear is not for a loaded arm.

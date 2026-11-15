@@ -348,19 +348,19 @@
       "export": "exports/shoulder/shoulder_fork_rear_left_wiring_candidate.STEP",
       "source": "scripts/shoulder/build_parts.py",
       "config": "",
-      "settings": "candidate, not adopted: build_parts.py fork_rear with FR_JOIN_H=18.0 FR_TIE_BAR=1 (channel opening 18 mm with sloped wall end; tie bar at the underside)",
+      "settings": "candidate, not adopted: build_parts.py fork_rear with FR_JOIN_H=18.0 FR_TIE_BAR=1 BRG_SEAT_R=26.05 (channel opening 18 mm with sloped wall end; tie bar at the underside; 6808 housing dia 52.1 from the seat test rings)",
       "sourceSha256": "6551356484f5ce0acec2e613a0d692e2a1d7e98c2228a9caca1330d498e81e50",
-      "exportSha256": "3cfda56c1844d5bac3958b6ddbfb6594dec5f690a21143903d276a42af22e9b3",
-      "recorded": "2026-11-15T19:39:51Z"
+      "exportSha256": "e9f6ae0ca2ad23c3ecf7fa76075234182afcd4921bfea1f23e4e38354b2ba185",
+      "recorded": "2026-11-15T22:26:01Z"
     },
     {
       "export": "exports/shoulder/shoulder_fork_rear_left_wiring_candidate.STL",
       "source": "scripts/shoulder/build_parts.py",
       "config": "",
-      "settings": "candidate, not adopted: build_parts.py fork_rear with FR_JOIN_H=18.0 FR_TIE_BAR=1 (channel opening 18 mm with sloped wall end; tie bar at the underside)",
+      "settings": "candidate, not adopted: build_parts.py fork_rear with FR_JOIN_H=18.0 FR_TIE_BAR=1 BRG_SEAT_R=26.05 (channel opening 18 mm with sloped wall end; tie bar at the underside; 6808 housing dia 52.1 from the seat test rings)",
       "sourceSha256": "6551356484f5ce0acec2e613a0d692e2a1d7e98c2228a9caca1330d498e81e50",
-      "exportSha256": "196ef32ad2c1db3241e40c7fd0372838db09acb33b4d3cef5e5b7bdd7634f1af",
-      "recorded": "2026-11-15T19:39:53Z"
+      "exportSha256": "12437f94609c51bceee3b30126aacf929d01a249230fca52562e840a2adca2f4",
+      "recorded": "2026-11-15T22:26:05Z"
     },
     {
       "export": "exports/shoulder/shoulder_hub_left.STEP",
