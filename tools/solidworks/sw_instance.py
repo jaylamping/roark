@@ -428,7 +428,7 @@ class stall_watch:  # noqa: N801 - reads as a verb at the call site
     A COM call has no timeout: when a hidden dialog holds the instance the script waits for ever and says nothing
     (the Welcome dialog under a first STEP import, 2026-11-15, found only by hand). The watch looks every few seconds at
     the processor time this script has used; when the script has used next to none for stall_s seconds, is not
-    standing in a sleep() of its own (a wait loop), and the instance is neither solving nor using a core (a long mesh
+    standing in a wait of its own (a sleep() loop, a child process, an event), and the instance is neither solving nor using a core (a long mesh
     or rebuild does), it writes stall_<pid>_<time>.txt into folder: where the script stands, the
     instance's windows and dialog texts, and the end of its hidden-window log. One report per stall, one log line, and
     one line in the claims folder's runs.log (outcome "STALLED ..."), so that tools/pc/sw_watch.py finds it even when
@@ -467,6 +467,19 @@ class stall_watch:  # noqa: N801 - reads as a verb at the call site
         own = [f for f in stack if not f.filename.startswith((lib, "<")) and "site-packages" not in f.filename] or stack
         return stack, (f"{Path(own[-1].filename).name}:{own[-1].lineno} {own[-1].line}" if own else "?")
 
+    def _waiting_on_purpose(self):
+        """True when the watched thread stands in a wait of the script's own making and not in a call into SolidWorks:
+        its innermost frame is inside the standard library (subprocess, threading, queue, socket: a child process, an
+        event, a lock) or is a line that calls sleep(. A COM call's innermost frame is win32com's, in site-packages."""
+        frame = sys._current_frames().get(self.tid)
+        stack = traceback.extract_stack(frame) if frame is not None else []
+        if not stack:
+            return False
+        lib, inner = os.path.dirname(os.__file__), stack[-1]
+        if inner.filename.startswith(lib) and "site-packages" not in inner.filename:
+            return True
+        return "sleep(" in (inner.line or "")
+
     def _working(self):
         """True while the instance is solving or using more than a tenth of a core: slow, not stuck."""
         try:
@@ -486,7 +499,7 @@ class stall_watch:  # noqa: N801 - reads as a verb at the call site
                 idle = now - since
                 if idle < self.stall_s or told:
                     continue
-                if "sleep(" in self._where()[1] or self._working():  # waiting on purpose, or SolidWorks is at work
+                if self._waiting_on_purpose() or self._working():  # waiting on purpose, or SolidWorks is at work
                     since = now
                     continue
                 told = True
