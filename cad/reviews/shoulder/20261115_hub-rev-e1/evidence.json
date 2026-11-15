@@ -1,6 +1,6 @@
 {
   "sources": {
-    "exports/shoulder/shoulder_hub_left.STL": "1392a808ffab59eb052bf44a83f6eb2ebd02b79af58a322f63125824a091a190"
+    "exports/shoulder/shoulder_hub_left.STL": "638facef4a15a6ed8f9315f58ed556b567e72503f3a60d0bdfcbd1103de0080b"
   },
   "load_cases": {
     "HUB_TOP": "e73202b0fe2df9a67fd13d5e5e448f6f5eca7030854b4eaada5a053a614155ce",
@@ -11,28 +11,29 @@
     {
       "case": "HUB_TOP",
       "part": "shoulder_hub_left",
-      "bulk_sf": 3.68,
-      "layer_sf": 3.16,
-      "shear_sf": 2.07,
-      "converged": false,
-      "note": "HUBB_Ah on the final rev E1 shape, global element 6.0 with the fine zones, Intel direct sparse; 1 mm ball 4.20 / 3.54 / 2.68. Not converged by the rule: a finer global mesh passes the 14 GB limit of the direct solver, and on rev D3c7 the same step (4.5 against 2.6) moved the layer figure from 0.91 to 0.65"
+      "bulk_sf": 2.84,
+      "layer_sf": 2.3,
+      "shear_sf": 1.83,
+      "converged": true,
+      "note": "HUBB_Ah on the adopted shape (seats at Y 298.86, R 4 at the tubes), Intel direct sparse. The lowest of the hub-top regions on the run with a 1.3 mm zone on the six tube-to-plate rounds (383k nodes): von Mises and layer tension round the cable tunnel, shear at the rounds. Standard mesh (338k nodes): 1.95 in shear at the rounds, within 6 % on the 0.5 mm ball and 1 % on the 1 mm ball (2.07 against 2.06). Left out as a connector artefact: the tube walls within 3 mm of the head seats, where the screws are tied rigidly (shear 1.40 to 1.47)"
     },
     {
       "case": "HUB_LUG",
       "part": "shoulder_hub_left",
-      "bulk_sf": 1.56,
-      "layer_sf": 1.61,
-      "shear_sf": 1.56,
+      "bulk_sf": 1.55,
+      "layer_sf": 1.62,
+      "shear_sf": 1.55,
       "converged": false,
-      "note": "HUBL_G90YAWP_MAX, 1.19 M nodes; 1.56 is the governing figure (shear across the layers at the lug), entered as bulk. Run on the first rev E1 shape; the later edits (hole edges, step fillet, head seats) do not touch the lugs, but the run has not been repeated on this export"
+      "note": "HUBL_G90YAWP_MAX on the adopted shape, 1.20 M nodes; 1.55 is the governing figure (shear across the layers at the lug), entered as bulk; von Mises 2.66. Not repeated on a second mesh for this shape: the lugs are those of rev D3c7, whose mesh study is in A_HUB_LUGS.md, and the figure moved by 0.01 across the four rev E1 shapes"
     },
     {
       "case": "HUB_ESTOP",
       "part": "shoulder_hub_left",
-      "bulk_sf": 3.1,
-      "layer_sf": 3.1,
+      "bulk_sf": 3.11,
+      "layer_sf": 3.27,
+      "shear_sf": 3.11,
       "converged": false,
-      "note": "HUBL_STOP6_ZB; 3.10 is the governing figure of the read-out, entered for both marks. Run on the first rev E1 shape, not repeated on this export"
+      "note": "HUBL_STOP6_ZB on the adopted shape, 1.20 M nodes; 3.11 is shear across the layers, entered as bulk; von Mises 5.44. Not repeated on a second mesh"
     }
   ],
   "access": [
@@ -40,8 +41,8 @@
       "part": "shoulder_hub_left",
       "insertion_clear": true,
       "screws_reachable": true,
-      "method": "by geometry, not a ray check: the six M4 heads sit on the tube ends in the open centre bore and take a straight driver from the arm side before the arm goes on; the arm thread compared this export with the released hub below Y 302 (identical) and checked its cable route (3.64 mm smallest clearance)",
-      "notes": "the RS02 output thread depth (7 mm on the drawing) is not measured on a real motor"
+      "method": "by geometry, not a ray check: the six M4 heads sit on the tube ends in the open centre bore and take a straight driver from the arm side before the arm goes on; the arm thread compared the first rev E1 export with the released hub below Y 302 (identical) and checked its cable route (3.64 mm smallest clearance)",
+      "notes": "M4 x 30 with one washer goes 5.2 mm into the RS02; its holes bottom out at 6.5 to 7 mm (Joey, measured 2026-11-15)"
     }
   ]
 }
