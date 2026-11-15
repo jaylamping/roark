@@ -196,7 +196,7 @@ ARM_HW = 17.0
 Y_EX = 319.55                    # yaw exit channel centre
 Y_BOT = Y_EX - 3 - WALL
 CHEEK_R, HOUSE_R = 35.0, 33.0
-BRG_SEAT_R, BRG_LIP_R = 26.1, 24.0   # check (d): housing Ø52.2 (printed on its side) with a flat-topped teardrop
+BRG_SEAT_R, BRG_LIP_R = float(os.environ.get('BRG_SEAT_R', '26.1')), 24.0   # check (d): housing Ø52.2 (printed on its side) with a flat-topped teardrop
 BRG_LIP_Z = -47.7                # check (d): the outer-race lip 0.4 behind the bearing's rear face (the outer race floats)
 STUB_LEAD = 0.5                  # check (d): 0.5 x 45 lead-in on the stub's free end (stub stays Ø40.0, as the arm's coupon)
 # ---- hub (frozen interface; dished top) ----

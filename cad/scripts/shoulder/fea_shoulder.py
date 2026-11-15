@@ -304,6 +304,13 @@ def run(name, c):
                         s_.circle((cx_, ys_, cz_), wo_)
                         s_.circle((cx_, ys_, cz_), wi_)
                     extrude(d, s_.feat, f'DUMMY_WASHER{i_}', wt_, (0, 1, 0), merge=False)
+            if dm_.get('race'):
+                # a second stand-in in the same model: the 6808's outer race in the fork's housing (as the R6_* cases)
+                ro_, ri_, z0_, t_ = dm_['race']
+                with Sk(d, plane(d, 'Z', z0_, 'P_DUMMY_RACE'), 'DUMMY_RACE') as s_:
+                    s_.circle((RX, RY, z0_), ro_)
+                    s_.circle((RX, RY, z0_), ri_)
+                extrude(d, s_.feat, 'DUMMY_RACE', t_, (0, 0, -1), merge=False)
         if os.environ.get('DUMMY_SEAT_RING') == '1':
             # the vendor model's output flange: its lowest face is only the ring r 6.75 to 14.9 (the six M4 are in it at r 12);
             # inside and outside that ring the face stands 0.5 mm higher. The dummy relieved the same way
@@ -1245,6 +1252,11 @@ _r2b = dict(part='fork2', fix=[('fixed', FK_BOSS), ('radial', FK_SEAT6808)], el=
 for nm_, mom_ in (('MX', (23.0, YAW_T, 0.0)), ('MXn', (23.0, -YAW_T, 0.0)), ('MZ', (0.0, YAW_T, 23.0))):
     CASES['R2_' + nm_] = dict(_r2b, remote=(pl((RX, R2_Y0 - 10.0, YZ)), AT, (0.0, -310.0, 0.0), mom_))
 CASES['R2_STOP'] = dict(_r2b, forces=CASES['F2_STOP']['forces'])
+# BOTH STAND-INS (2026-11-15): the RS02 bolted in (R2_*) and the 6808's race with its clearance (R6_*) in one model, to
+# see how much a loose bearing seat costs once the motor's housing stiffens the collar. Read-out: fork_r2_body_post.py
+_r26 = dict(_r2b, fix=[('fixed', FK_BOSS), ('radial', R6_BORE)], dummy=dict(_r2d, race=(R6_RO, R6_RI, BRG_Z[0], BRG_Z[0] - BRG_Z[1])))
+CASES['R26_STOP'] = dict(_r26, forces=CASES['F2_STOP']['forces'])
+CASES['R26_MX'] = dict(_r26, remote=CASES['R2_MX']['remote'])
 # THE SIX-SCREW JOINT (OPEN_ASSUMPTIONS item 41, 2026-11-14). The fork front and the fork rear as two bodies, joined as built:
 # six M4 (ISO 7380 button heads, dia 7.6) from the fork rear's counterbores into the fork front's heat-set inserts, each a
 # bolt connector with a preload; no-penetration contact on the joint pad (Z = JZ0). Boss fixed, 6808 seat held radially.
