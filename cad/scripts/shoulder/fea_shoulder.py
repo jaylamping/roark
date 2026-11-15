@@ -20,6 +20,7 @@ from scipy.spatial import cKDTree
 
 from swk import app, session, STATE, L, NUL, CAD, VARIANT, pythoncom
 from dims import *
+RS02_OUT += float(os.environ.get('HUB_TOP_RAISE', '0'))      # a hub candidate with a taller centre: its top face (the RS02 seat) is this much higher in the part's coordinates
 
 F = CAD / '_sim' / 'shoulder'
 F.mkdir(parents=True, exist_ok=True)
@@ -262,6 +263,16 @@ def run(name, c):
         with Sk(d, plane(d, 'Y', dm_['y0'], 'P_DUMMY'), 'DUMMY') as s_:
             s_.circle((RX, dm_['y0'], YZ), dm_['r'])
         extrude(d, s_.feat, 'DUMMY', dm_['t'], (0, 1, 0), merge=False)
+        if os.environ.get('DUMMY_SEAT_RING') == '1':
+            # the vendor model's output flange: its lowest face is only the ring r 6.75 to 14.9 (the six M4 are in it at r 12);
+            # inside and outside that ring the face stands 0.5 mm higher. The dummy relieved the same way
+            with Sk(d, plane(d, 'Y', dm_['y0'], 'P_DUMMY_R'), 'DUMMY_RELIEF') as s_:
+                s_.circle((RX, dm_['y0'], YZ), dm_['r'] + 1.0)
+                s_.circle((RX, dm_['y0'], YZ), 14.9)
+            extrude(d, s_.feat, 'DUMMY_RELIEF', 0.5, (0, 1, 0), cut=True)
+            with Sk(d, plane(d, 'Y', dm_['y0'], 'P_DUMMY_R2'), 'DUMMY_RELIEF_IN') as s_:
+                s_.circle((RX, dm_['y0'], YZ), 6.75)
+            extrude(d, s_.feat, 'DUMMY_RELIEF_IN', 0.5, (0, 1, 0), cut=True)
         if dm_.get('bolts'):
             # tapped M4 holes in the dummy (thread faces for the bolt connectors), on the hub's six screw axes
             cen_ = hole_centres(d)

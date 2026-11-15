@@ -5,6 +5,13 @@ below). For the other parts, orientations and supports are judged from the geome
 still needs its pre-print gate
 ([part-lifecycle.md](../../../../conventions/part-lifecycle.md)).
 
+## Colours (Joey, 2026-11-15)
+
+- **Black for the under-exoskeleton:** the inner structural and joint parts, the hub included.
+- **White for the shell.**
+- **The shoulder's fixed cable cover band,** which shows through the shell's opening, is **black.**
+- The fork, the drum and the flange ring: **not decided.**
+
 ## What can print now, and what waits
 
 | Part | File | Mass (PETG) | Geometry last changed | Status |
@@ -12,7 +19,7 @@ still needs its pre-print gate
 | Cable test rigs: roll, yaw, pitch (PLA) | `cad/exports/fixtures/fixtures_cable_rig_*.STL`; sliced plates in `C:\joe\prints\cable-rigs\` and `J:\code\prints\cable-rigs\` | 35 g / 45 g / 42 g | 2026-11-13 | **Print now, roll first.** They decide the three cable crossings ([CABLE_RIGS.md](../checks/CABLE_RIGS.md)) |
 | 6808 housing seat coupon | not modelled yet | about 5 g | | **Print before the fork rear** (D_6808_FITS.md) |
 | Drum | `shoulder_roll_drum_left` | 227.1 g | 2026-11-14 (rear cap screw fix: collars, Ø2.1 pilots) | Exported and recorded 2026-11-14. **Waits** for the roll cable decision (the roll rig) |
-| Flange ring | `shoulder_pitch_flange_ring_left` | 38.1 g | 2026-11-14 (rolled rim B, adopted) | Exported and recorded 2026-11-14. Prints in the visible white |
+| Flange ring | `shoulder_pitch_flange_ring_left` | 38.1 g | 2026-11-14 (rolled rim B, adopted) | Exported and recorded 2026-11-14. Colour not decided |
 | Rear cap | `shoulder_roll_cap_left` | 85.4 g | 2026-11-14 (rear cap screw fix: sockets, Ø2.9 holes) | Exported and recorded 2026-11-14. **Waits** for the roll cable decision (the roll rig) |
 | Drum port cap | `shoulder_roll_drum_port_cap_left` | 1.4 g | 2026-11-11 | Geometry settled. **No recorded export** |
 | Fork front | `shoulder_fork_front_left` | 151.8 g | 2026-11-14 (yoke; then the key slot, 3 mm joint pad and two inside gussets) | Exported and recorded 2026-11-14. **Waits** for a real plug tried in the channel, and for the rig (the skirt bounds the dish loop) |
@@ -43,7 +50,7 @@ Material PETG throughout. "Not sliced" applies to every orientation and support 
 
 ### Flange ring
 - **Orientation:** flat, on its inboard face (the flat one). No support. 5 × M3 into the drum's spoke inserts.
-- **Colour:** the visible white PETG, like the drum and the fork (Joey, 2026-11-14).
+- **Colour:** not decided (see "Colours" below; the 2026-11-14 note "visible white" is withdrawn).
 - **Rolled rim B, adopted 2026-11-14:** the outboard face rolls R3.2 from the rim into a rim 4.2 deep and eases back to the
   1.8 mm web by r 68.3. The roll is on the top of the print.
 
@@ -175,8 +182,8 @@ pre-print gate report). STL SHA-256 `a73103adb49bb9a4fe3b3901fea852e6668e928e7e1
   recorded in this repo.
 
 ### Pitch loop cover
-- **Colour:** the visible white PETG, like the shell (Joey, 2026-11-14). Its outer band shows between the shell's
-  opening and the flange ring; in the shell's white it stops reading as a separate part. Colour only: no change to the part.
+- **Colour: BLACK** (Joey's colour rule of 2026-11-15; this replaces "cover band in shell white" of 2026-11-14). Its
+  outer band shows through the shell's opening. Colour only: no change to the part.
 - **Orientation:** not settled. Back wall (X 75) down puts the whole wall on support, because the feed riser stands
   about 6 mm proud of it (sliced: 23.5 g of support, 84% of it under the wall). Turn it over, or split the riser off.
   Waits, as above.
@@ -205,27 +212,29 @@ clamps nothing.**
 
 | Joint | Screws | Thread in the motor or insert | Notes |
 |---|---|---|---|
-| Hub → RS02 output | 6 × M4: **M4 × 28**, or M4 × 30 with 1.6-2 mm of washer under the head. 2 of them partially threaded, in the reamed holes | 6 × M4, depth 7 min | 0.3 N·m. M4 × 30 bare goes in 8.2 mm and can bottom. Probe one hole: 9 mm or more clears M4 × 30 bare |
-| Fork front → RS03 roll output | 6 × **M4 × 18** + 3 × Ø4 pins | 6 × M4, depth 6, blind; 3 × Ø4, depth 7, blind | 0.3 N·m. 5.6 mm engaged. M4 × 20 bottoms. Pins: at most 7 mm into the motor |
+| Hub → RS02 output | 6 × M4: **M4 × 28**, or M4 × 30 with 1.6-2 mm of washer under the head. 2 of them partially threaded, in the reamed holes | 6 × M4, depth 7 min | Snug by hand (0.3 N·m is the background figure). M4 × 30 bare goes in 8.2 mm and can bottom. Probe one hole: 9 mm or more clears M4 × 30 bare |
+| Fork front → RS03 roll output | 6 × **M4 × 18** + 3 × Ø4 pins | 6 × M4, depth 6, blind; 3 × Ø4, depth 7, blind | Snug by hand (0.3 N·m is the background figure). 5.6 mm engaged. M4 × 20 bottoms. Pins: at most 7 mm into the motor |
 | Drum → pitch RS03 output | 6 × **M4 × 18 with one washer**, or M4 × 16 | 6 × M4, depth 6, blind | Pad 11.7 mm. M4 × 18 bare goes in 6.3 mm and bottoms; with a 0.8 mm washer 5.5 mm; M4 × 16 gives 4.3 mm |
 | Drum → roll RS03 housing | 8 × **M4 × 10** | 8 × M4, depth 8 | Flange 3.5 mm under the head. M4 × 10 gives 6.5 mm; M4 × 12 goes in 8.5 mm and bottoms |
 | Fork front → RS02 body | 5 × **M3 × 12** on PCD 73 at -96 / -56 / -16 / 104 / 144° | 9 × M3, depth 8 (given from the output side) | Seat 6.5 mm. 5.5 mm into the motor. M3 × 16 bottoms. **Check on the motor** that the holes are threaded from the rear, as the old bracket used them |
-| Fork rear → fork front (joint) | 6 × ISO 7380 M4 button heads: **2 × M4 × 10** (X ±17) and **4 × M4 × 8** | M4 heat-set inserts, bore Ø5.6 × 7.3-7.8 deep | **Torque 0.3 N·m** (about 400 N per screw): with the 4 mm floors on solid plate the joint reads 3.1 under that preload alone and 1.67 or better at the 17 N·m stop (FORK_FRONT_FE.md, "The adopted set"). The recesses are about 3.1 mm deep, so a DIN 912 head would stand proud. **Use short inserts (4 mm):** a standard 8.1 mm insert stands proud of the joint face |
+| Fork rear → fork front (joint) | 6 × ISO 7380 M4 button heads: **2 × M4 × 10** (X ±17) and **4 × M4 × 8** | M4 heat-set inserts, bore Ø5.6 × 7.3-7.8 deep | **Snug by hand.** Background: at 0.3 N·m (about 400 N per screw), with the 4 mm floors on solid plate, the joint reads 3.1 under that preload alone and 1.67 or better at the 17 N·m stop (FORK_FRONT_FE.md, "The adopted set"). The recesses are about 3.1 mm deep, so a DIN 912 head would stand proud. **Use short inserts (4 mm):** a standard 8.1 mm insert stands proud of the joint face |
 | Flange ring → drum spokes | 5 × **M3 × 5** | M3 × 4 inserts, bore 3.8 deep | Ring 1.8 mm. M3 × 6 bottoms in the bore |
 | Rear cap → drum | 3 × **M2.5 × 14, thread-forming** (for plastics; pan or cap head up to Ø5.0), at r 50.6, 0 / 180 / 270°. M2.5 × 16 also fits | Ø2.1 pilots through a 2.5 mm locating collar on the drum, 11 mm deep from the collar's top | 5.6 mm of cap under the head. M2.5 × 14 gives 8.2 mm in the pilot; × 16 gives 10.2 with 0.8 to spare; **M2.5 × 18 bottoms.** The collars locate the cap and carry the roll stop's reaction; the screws only clamp. **Buy 3, and spares.** (Adopted 2026-11-14; before that the parts took M3 at r 50, which no longer fit) |
 
-## Low preload and re-torque (every printed-to-RobStride joint)
+## Low preload (every printed-to-RobStride joint)
 
-- **0.3 N·m** on the M4 screws, so they don't crush the printed bosses.
-- **Without a torque screwdriver:** pull the long arm of the hex key with a luggage or kitchen hook scale at a measured
-  lever L from the screw axis: F = 0.3 / L. At L = 60 mm that is 5.0 N, about a 0.51 kg reading.
+- **First-iteration parts are bolted by feel: snug by hand, no torque procedure** (Joey, 2026-11-15). Snug is where
+  the screw stops turning easily with the short arm of the hex key between two fingers. Do not lean on it: the printed
+  bosses crush.
+- **Background, not a step:** the strength checks assume about 0.3 N·m on the M4 screws (about 400 N each). If a check
+  is ever wanted, a hook scale on the hex key's long arm at 60 mm reads about 0.5 kg at that torque.
 - **No threadlocker in testing.**
-- **Re-torque after 24 h and again after the first bench session.**
-- **Do the 24 h re-torque before a joint is closed in:**
+- **Check the screws for snugness after 24 h and again after the first bench session** (printed PETG creeps).
+- **Do the 24 h check before a joint is closed in:**
   - RS02 on the fork front: on the bench, before the fork front goes onto the drum. Assembled, only the 104° screw
     can be reached.
   - Hub on the RS02: before the arm halves go on. Their heads are inside the bore.
-- **The second re-torque of those two joints needs a strip-down** (arm halves off; for the RS02, the fork front off the
+- **The second check of those two joints needs a strip-down** (arm halves off; for the RS02, the fork front off the
   drum). Decide before the first bench session whether to plan one.
 
 ## Arm-side parts at the hub (owned by the arm thread; for reference)
@@ -234,7 +243,7 @@ clamps nothing.**
   (an ordinary top surface in the hub's print file; not ironed).
 - **Lug shim plates:** fixed plates with a Ø3.4 hole (the hub's lug holes are Ø3.8, so the bolt is free in the hub) in the
   arm's collar pockets; they pinch the hub's lugs and carry the
-  yaw torque. The lug M3 is capped at 0.3 N·m.
+  yaw torque. The lug M3: snug by hand (0.3 N·m is the background cap).
 - Details: the arm thread's `R1D_NOTES.md` and its print-release packet (`cad/reviews/upper-arm/`).
 
 ## RS02 plug and clock (pp_r, 2026-11-13)
@@ -248,7 +257,7 @@ clamps nothing.**
    1. Plug the XT30(2+2)-F onto the 228° socket radially.
    2. Fold the lead into the tap and run it to TAP_LINK.
    3. Fit the five RS02 screws: the three rear ones from above, and the 104° and 144° ones through their access bores.
-2. **Fork front onto the drum,** after the 24 h re-torque of the RS02 screws. After this the drum blocks every RS02
+2. **Fork front onto the drum,** after the 24 h check of the RS02 screws. After this the drum blocks every RS02
    screw except 104°, so the order is fixed.
 3. (No access plug: the key slot is on the underside.)
 4. Feed the bundle down from the ring's open top (Y 340), round the bend and out of the exit, as bare wire with no
@@ -256,5 +265,5 @@ clamps nothing.**
    - The side-centre round laid the bundles first and slid the RS02 in past them. With the RS02 fitted first, the
      bundle goes in from the top instead. Not tried by hand ([OPEN_ASSUMPTIONS.md](../checks/OPEN_ASSUMPTIONS.md), item 12).
    - **No plug or joint break fits inside any channel** (item 13): thread the wires, then terminate.
-5. Hub onto the RS02 output from below, six M4 at 0.3 N·m; lay the arm bundle in the dish and through the window. Then
+5. Hub onto the RS02 output from below, six M4, snug by hand; lay the arm bundle in the dish and through the window. Then
    the arm halves.

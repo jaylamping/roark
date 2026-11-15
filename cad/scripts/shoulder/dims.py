@@ -285,4 +285,10 @@ HUB_D2 = os.environ.get('HUB_D2', 'f') if HUB_GROOVE_RING else ''   # rev D3c4 a
 # The arm's seam-split collar pockets pinch the lugs along Z through picked flat shim plates, so the yaw torque bears on the
 # whole lug face at a larger radius instead of through the lug bolts. Also remakes the spigot skin (topology; see build_parts)
 HUB_D3 = os.environ.get('HUB_D3', '1') != '0' and HUB_GROOVE_RING      # rev D3 adopted
+# NO-SUPPORT CANDIDATE (2026-11-15, default off; print orientation RS02 face down): material only, inside the hub, so the
+# inner pocket prints without support. (1) a 45 deg cone under the spigot's inner ledge (the flat at Y 302.3, r 23 to 35.8),
+# from the ledge's inner edge to the pocket's floor at r 33.8; cut by the cable window like the rest. (2) a 45 deg rib under
+# each lug's inner block (its flat end at Y 300, X offset 18.76 to 20.7, in the lug's own Z band), lying on that cone.
+HUB_NOSUP = os.environ.get('HUB_NOSUP') == '1'
+HUB_SLIT_FILL = os.environ.get('HUB_SLIT_FILL') == '1'      # candidate, default off: see STEP_RING in build_hub
 CH_DZ = -1.0 if os.environ.get('LEG2') else 0.0   # LEG2 mock-up: the fork rear's channels 1 mm further back (front wall 3.4)

@@ -139,8 +139,8 @@ def main():
              fontsize=22, ha='center', weight='bold')
     fig.text(0.035, 0.012,
              'Measured from the models (hub and fork front exports; RobStride RS02 model as placed): motor body underside Y 323.86; motor flange face Y 319.86, flange dia 43; '
-             'hub top face dia 47;\nhub floor Y 318.36 from r 25.1 to r 39.3; fork skirt r %.1f. '
-             'So the gap is 5.5 mm high (a 1.5 mm step in the hub top + the 4.0 mm that the flange stands proud of the motor body) and %.1f mm wide.\nSlot 9 x 16 mm at 68 deg. '
+             'hub top face dia 47;\nhub floor Y 318.36 from r 25.1 to r 39.3; fork wall r 41.5 for 2 mm above the floor, then r %.1f. '
+             'So the gap is 5.5 mm high (a 1.5 mm step in the hub top + the 4.0 mm that the flange stands proud of the motor body) and %.1f mm wide at its narrowest (16.4 at the floor).\nSlot 9 x 16 mm at 68 deg. '
              'Wires: 2 x 18 AWG (2.3 mm) + 4 x 28 AWG (1.2 mm), to scale; where they lie is drawn, not measured.' % (skirt_r, skirt_r - STEP_R),
              fontsize=13.5, va='bottom')
     OUT.parent.mkdir(parents=True, exist_ok=True)

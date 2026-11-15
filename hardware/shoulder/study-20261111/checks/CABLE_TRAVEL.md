@@ -12,6 +12,10 @@ The pictures are schematic.
 | **Pitch** | 230-270° (not fixed) | No | **About 115°** as a spiral in the present channel | A bight in the void under the frame's step: no outline change, needs a pull-down, **about 140° alone; 230° only together with the spiral; not enough for 270°** ([PITCH_BIGHT.md](PITCH_BIGHT.md), corrected 2026-11-14). Or the channel 9.5 mm deeper (outline grows) |
 
 - **Outer outline:** every option marked alive below keeps it, except the deeper pitch channel.
+- **Decided (Joey, 2026-11-15):** both shoulder RS03s stay on **16 AWG**, so the pitch and roll crossings carry 16 AWG
+  as written below, and **18 AWG runs from the yaw RS02 on down the arm**. The yaw dish therefore holds 2 × 18 AWG and
+  the signal singles: **option C (the spiral) is the plan, option E (the plain arc, about ±37°) the fallback.** The
+  16 AWG rows for the yaw dish are history, and the dish is not deepened for 16 AWG. Still to be proven on the yaw rig.
 - **The cheapest fix everywhere is less travel.** What each joint really needs is a question for Joey (facts at the end).
 
 ## The wires and the rules
@@ -42,6 +46,29 @@ The pictures are schematic.
 high. The fork's exit enters at 261.7°, fixed. The hub's window is at 68° and turns with the arm. **The arm cannot take
 any slack** (arm thread, CABLE_SLACK.md), so the bundle is clamped at the window.
 
+**Measured on the adopted parts (2026-11-15,** [hub_print/YAW_CABLE_SECTION.png](hub_print/YAW_CABLE_SECTION.png)**):** the
+gap is 5.5 mm high (a 1.5 mm step in the hub top plus the 4.0 mm that the RS02's output flange stands proud of its
+body). The inner wall is the hub's step, r 25.1 at the floor. The fork's wall is r 41.5 only for the first 2 mm above
+the floor; above that the cuff comes in to r 40.7 under the motor. The clock-spring model with walls at 25.1 and 40.7,
+at its ideal limit (turns touching at both ends of travel):
+
+| Band, radial | What lies in it | Ideal travel | Height needed |
+|---|---|---|---|
+| 3.5 mm | 2 × 18 AWG stacked, signal singles stacked beside them | **±94°** | 4.8 (two pairs); 7.2 (three pairs) |
+| 4.0 mm | | ±82° | |
+| 4.7 mm | 2 × 18 AWG stacked, twisted pairs stacked beside them | ±70° | 4.8 (two pairs); 7.2 (three) |
+| 5.4 mm | | ±61° | |
+| 6.0 to 6.4 mm | the whole bundle loose in a 1/4 in braided sleeve, lying round | ±55° to ±51° | 6.5 or more |
+
+- The tables below were worked with walls at r 25 and r 41.5 and read about 8° higher.
+- **None of these figures allows slack between the turns.** With the three-quarters rule used for the pitch spiral,
+  the 3.5 mm band gives about ±70°. So ±90° holds on paper with 4° to spare and nothing for slack: the rig decides.
+- **A sleeve over the dish stretch does not reach ±90° at any dish height** on this model. If the sleeve kept the
+  wires stacked (band about 4.2 mm, 5.5 mm high) it would read about ±78°; a loose sleeve will not hold them so.
+- **Proposed, not decided:** a hub with its centre 2 mm taller (gap 7.5 mm,
+  [hub_print/HUB_TALLER_CENTRE.png](hub_print/HUB_TALLER_CENTRE.png)). It does not add travel; it gives the height for
+  the third signal pair as six stacked singles at the same 3.5 mm band, and it thickens the hub top.
+
 | Option | What | Numbers | Outline | Verdict |
 |---|---|---|---|---|
 | A | Take-up loop behind the fork's exit | An R 30 take-up for 100 mm needs a clear pocket about 63 × 90 × 5 mm. The fork rear's leg is 73 × 28 in section and carries the 6808 and the roll stop. The cavity behind the RS02 is 8-27 mm deep, 30 mm high | kept | **No room** |
@@ -56,6 +83,8 @@ any slack** (arm thread, CABLE_SLACK.md), so the bundle is clamped at the window
 The table above counted one 26 AWG pair. The agreed scheme is two pairs of 28 AWG (each wire 1.2 mm; a twisted pair
 takes 2.4 mm), with a third pair reserved. The spiral's band is then the power wires' column plus the signal wires'
 column. Travel follows from the band: the full ±90° needs 4.0 mm or less.
+
+(Rows with 16 AWG, and the 7.0 mm dish: history since 2026-11-15.)
 
 | Wires | Dish | Signal wires laid as | Band | Travel on paper |
 |---|---|---|---|---|
@@ -76,6 +105,9 @@ column. Travel follows from the band: the full ±90° needs 4.0 mm or less.
 - **Both ends turn 90° in the dish plane within 8-10 mm:** the exit enters radially and the window leaves radially,
   while the loop runs round. That is under the static rule (15 mm for 16 AWG, 11.5 for 18). It needs a clamp at each
   turn, and it is a reason to turn the exit's last 10 mm toward the tangent when the fork rear is next rebuilt.
+  **With 18 AWG decided the rule is 11.5 mm,** so the two end bends are 1.5 to 3.5 mm under it. They are clamped and
+  do not move, so only the static rule applies. The window's mouth in the hub is sharp-edged as modelled; it gets a
+  1.5 mm round in the next hub revision.
 - **The 2.2 mm gap** between the hub rim (r 39.3) and the skirt (r 41.5) cannot take a power wire, but a 2.0 mm CAN pair
   can wedge in it.
 
@@ -228,6 +260,7 @@ weight. About 40 g.
   forward). Reaching overhead (+180°) or well behind (-50°) needs the wrap and bight.
 
 **2. 18 AWG for the arm segment (RS02 splice to elbow splice, about 0.5 m, plus about 0.5 m in the spiral).**
+**Decided 2026-11-15 (Joey): yes, 18 AWG from the yaw RS02 on; 16 AWG stays up to and including both shoulder RS03s.**
 - **Loads past the yaw joint** (trunk plan's drop fuses): elbow RS02 5 A, forearm RS00 3 A, hand 3 A (its own load about
   1.3 A). Fuse-limited worst case 11 A. A realistic continuous figure is about 4 A (RS02 at its rated 6 N·m and 100 rpm
   is about 65 W, the RS00 less, the hand 60 W).

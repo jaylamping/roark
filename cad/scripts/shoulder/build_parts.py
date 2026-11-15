@@ -394,6 +394,14 @@ def hub_d3(d, gplane=None):
             for sg in (-1, 1):
                 s_w.poly([(RX + sg * 18.76, 296.0, 6.0), (RX + sg * 22.5, 296.0, 6.0), (RX + sg * 22.5, 299.74, 6.0)])
         extrude(d, s_w.feat, 'D3_WEB', 10.0, Z, mode=MID)
+    if HUB_NOSUP:
+        # the lug's inner block ends flat at Y 300 between its inner face (X offset 18.76) and the D2 bore's 45 deg top
+        # (r 20.7 there); that top and the NOSUP_CONE run parallel to any 45 deg face started at the block's corner, so the
+        # rib lies on them all the way to the pocket's floor: 1.4 mm thick, in the lug's own Z band
+        with Sk(d, pl0, 'NOSUP_RIB') as s_r:
+            for sg in (-1, 1):
+                s_r.poly([(RX + sg * 18.76, 299.8, 6.0), (RX + sg * 32.26, 313.3, 6.0), (RX + sg * 34.5, 313.3, 6.0), (RX + sg * 21.0, 299.8, 6.0)])
+        extrude(d, s_r.feat, 'NOSUP_RIB', 10.0, Z, mode=MID)
     if gplane is not None and os.environ.get('HUB_D3_EDGE', '1') != '0':   # D3b: keeps the R0.8 outward roots clear of the R0.4
         # the spigot's bottom outer edge (r 35.8, Y 296) left square over each lug's band (+-10.9 deg, Z - YZ within +-6.77 at
         # r 35.8: inside the arm's pocket (|Z| <= 5.5) and root relief (Z 5.5-6.8, r <= 36.3)): the R1.2 Z roots then run out on plain faces instead of into
@@ -1181,6 +1189,9 @@ def build_cover():
 # ================================================================================================================== hub
 def build_hub():
     sw = app()
+    # a STEP import started in the same second as SolidWorks' start-up dialog leaves both waiting on each other (a hidden
+    # instance sat 20 min with the import open and nothing saved, twice, 2026-11-14): let the start-up settle first
+    time.sleep(12)
     step = CAD / 'reference' / 'shoulder' / 'upper_arm_hub_left.step'
     e = L()
     dd = sw.GetImportFileData(str(step))
@@ -1191,10 +1202,15 @@ def build_hub():
     d.Extension.SaveAs(str(OUT / f"{NAMES['hub']}.SLDPRT"), 0, 1, NUL, e2, w2)
     log('hub imported', bodies(d))
     yaw_rev(d, 'DISH', [(DISH_R0, DISH_Y), (45.0, DISH_Y), (45.0, 330.0), (DISH_R0, 330.0)], cut=True)
-    yaw_rev(d, 'STEP_RING', [(19.5, 312.8), (DISH_R0 + 0.01, 312.8), (DISH_R0 + 0.01, RS02_OUT), (19.5, RS02_OUT)])
+    # the imported hub's top plate ends at r 19.0 between its six screw spokes; a ring started at 19.5 leaves six arc slits
+    # 0.5 mm wide right through the top (found 2026-11-15). HUB_SLIT_FILL starts the ring inside the plate's edge
+    _sr0 = 18.8 if HUB_SLIT_FILL else 19.5
+    yaw_rev(d, 'STEP_RING', [(_sr0, 312.8), (DISH_R0 + 0.01, 312.8), (DISH_R0 + 0.01, RS02_OUT), (_sr0, RS02_OUT)])
     yaw_rev(d, 'FLOOR', [(DISH_R0 - 0.5, 312.8), (38.6, 312.8), (38.6, DISH_Y), (DISH_R0 + DISH_FILLET, DISH_Y), (DISH_R0 - 0.5, min(DISH_Y + DISH_FILLET, RS02_OUT - 0.01))],
             [0, 0, 0.8, 1.0, 0])     # HUB REV B: thicker floor, with a fillet into the step ring
     yaw_rev(d, 'RIM', [(38.5, 305.0), (39.3, 305.0), (39.3, DISH_Y), (38.5, DISH_Y)])
+    if HUB_NOSUP:      # before HUB_WIN, so the window cuts it; the wall and band fills below merge into it
+        yaw_rev(d, 'NOSUP_CONE', [(22.9, 302.2), (35.9, 302.2), (35.9, 313.1), (33.8, 313.1)])
     ax = ref_axis(d, plane(d, 'X', RX, 'P_X_RX'), plane(d, 'Z', YZ, 'P_Z_YZ'), 'YAW_AXIS')
     t = math.radians(HUB_WIN_A)
     u = (math.cos(t), 0.0, math.sin(t))

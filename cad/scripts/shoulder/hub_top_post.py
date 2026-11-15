@@ -36,6 +36,7 @@ def regions(pos):
     return {
         'whole hub': np.ones(len(pos), bool),
         'hub top (Y 311.5 up)': y >= 311.5,
+        'hub top, away from the screw holes': (y >= 311.5) & ~np.any([tube(a_, 3.4) for a_ in (-142.0, -82.0, -22.0, 38.0, 98.0, 158.0)], axis=0),
         'round the window at 68 deg': (across <= 7.0) & (along >= 13.0) & (y >= 302.0),
         'boss tube at 38 deg': tube(38.0, 4.6),
         'boss tube at 98 deg': tube(98.0, 4.6),
@@ -50,7 +51,7 @@ def regions(pos):
 def post(name):
     z = np.load(str(FS.F / f'{name}.npz'))
     pos, s = z['pos'], z['s']
-    keep = pos[:, 1] <= 319.87
+    keep = pos[:, 1] <= FS.RS02_OUT + 0.01      # FS.RS02_OUT follows HUB_TOP_RAISE (a hub candidate with a taller centre)
     pos, s = pos[keep], s[keep]
     tree = cKDTree(pos)
     q = dict(layer=(np.maximum(s[:, 2], 0.0), L), shear=(np.sqrt(s[:, 4] ** 2 + s[:, 6] ** 2), T), vM=(s[:, 10], B))

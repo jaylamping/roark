@@ -11,6 +11,7 @@ that every list in the project's settings has the seed's length (the fault that 
 Uses the arm thread's slicing helper and seed project read-only (as rig_plates.py).
 """
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -29,7 +30,7 @@ from swk import CAD, WIP  # noqa: E402
 
 SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else CAD / 'exports' / 'shoulder' / 'shoulder_hub_left_revD3c7_candidate.STL'
 OUT = WIP.parent / 'shoulder-hub' / 'plate'
-NAME = 'shoulder_hub_left_revD3c7'
+NAME = os.environ.get('HUB_PLATE_NAME', 'shoulder_hub_left_revD3c7')      # a candidate slices under its own name, never over the released plate
 R = np.eye(4)
 R[:3, :3] = [[1, 0, 0], [0, 0, 1], [0, -1, 0]]            # model Y (toward the RS02) becomes bed -Z: RS02 face down
 # what differs from the seed project (each one is flagged in the 3MF and listed in PRINT_NOTES.md)
@@ -103,7 +104,7 @@ def main():
             if n.endswith('plate_1.png'):
                 (OUT / f'{NAME}_plate.png').write_bytes(z.read(n))
         shutil.copy(f, OUT / final)
-    (OUT / 'result.json').write_text(json.dumps(res, indent=1))
+    (OUT / ('result.json' if NAME == 'shoulder_hub_left_revD3c7' else f'result_{NAME}.json')).write_text(json.dumps(res, indent=1))
     print(json.dumps(res), flush=True)
 
 

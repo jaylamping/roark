@@ -13,7 +13,7 @@ infill, no support, no brim) are on holly-pc in `C:\joe\prints\cable-rigs\`. The
 | Crossing | Power | Signal |
 |---|---|---|
 | Pitch and roll | 2 × 16 AWG silicone (OD 3.0) | 2 twisted pairs of 28 AWG (each wire 1.2 mm); a third pair is reserved |
-| Yaw | 2 × 18 AWG (OD 2.3), 10 A fuse at the step. **The gauge is to be decided from the yaw rig:** test 18 AWG and 16 AWG | the same |
+| Yaw | 2 × 18 AWG (OD 2.3). **Decided 2026-11-15 (Joey): 18 AWG from the yaw RS02 on.** A 10 A fuse at the step is in the scheme; where it can sit is open ([WIRING_CONSEQUENCES.md](WIRING_CONSEQUENCES.md)) | the same |
 
 Test with two pairs, and once with three.
 
@@ -168,6 +168,12 @@ Every part from all sides: [SHEET_yaw.png](cable_rigs/SHEET_yaw.png)
 | **C3** | 2 × 16 AWG + 2 pairs | 7.0 | The same | **Close:** pairs untwisted, band 4.2 mm, about ±85°. Twisted: 5.4 mm, about ±56° |
 | **D** | 2 × 16 AWG + 2 pairs | 5.5 | One plain arc from the exit round to the window, flat; turn only between -37 and +37, then try ±45 and ±50 once | Free to ±37 |
 
+- **Since 2026-11-15 (18 AWG decided): C1 is the run that matters.** Run it with the pairs twisted, with them
+  untwisted, and once with the third pair. C2, C3 and the deeper dish are history. D is now the fallback test and is
+  run with 18 AWG: the plain arc to ±37°, then ±45° and ±50° once.
+- **Sleeve trial (Joey's wish):** run C1 once more with the dish stretch in the 1/4 in braided sleeve. A round sleeved
+  bundle is about 6 mm and the dish is 5.5 mm high, so it only goes in lying flat (power wires side by side). On paper
+  a sleeved bundle reaches about ±51° to ±55° at best (CABLE_TRAVEL.md). Note where it binds.
 - If the spiral runs the wrong way (slack, then tight), re-lay it the other way round.
 - **Run C1 and C3 twice:** once with the pairs twisted as they come, once with the last half metre untwisted and the four
   wires stacked. Note the angle where the spiral runs out.
