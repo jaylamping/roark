@@ -1017,6 +1017,11 @@ been shown to it.
 - **Strength:** A_HUB_LUGS.md, "Rev E1". Hub top 3.9 / 2.4 / 4.3 (layer / shear / von Mises, worst 0.5 mm ball) against
   0.65 / 0.38 / 0.73 for rev D3c7; at the tube-to-plate rounds 8.1 / 1.83 / 3.1 (R 1 read 1.16 in shear, R 2.5 1.46);
   lug gate 1.55 (1.44); elbow stop 3.11 (2.49).
+- **Clearance sweep with the arm 3 mm lower** (`check_clearance.py`, 36 brief poses and 492 sweep poses, 2026-11-15;
+  result in `cad/_wip/shoulder-pass1/clearance_adopt_hubE1.json`, not in git): nothing new under the 2.0 mm running gap.
+  Fork front to hub 2.20 (2.19 before); hub to RS02 3.42; fork front to upper arm 15.72 (12.77); RS02 to upper arm 24.86
+  (21.86); ring to hub 21.86 (19.09). The two figures under 2.0 are the old ones: rear cap to fork rear 0.02 at the
+  roll stop (the stop's own contact) and flange ring to fork front 1.06 at roll -12, past the stop.
 - **Not done here:** the fork front's skirt, 3.00 mm longer to follow the hub (with the fork front's next revision,
-  OPEN_ASSUMPTIONS item 49); the clearance sweep's result (`clearance_adopt_hubE1.json`) is to be read after the
-  adoption run.
+  OPEN_ASSUMPTIONS item 49). Until then the skirt covers the hub's rim by less than before; it is a matter of looks,
+  not of clearance.
