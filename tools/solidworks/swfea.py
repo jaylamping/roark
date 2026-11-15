@@ -56,6 +56,67 @@ def _arr(q, cols):
     return np.array(q, float).reshape(-1, cols)
 
 
+_STRESS_COLS = ((0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (9, 10))   # (component asked for, column in GetStress)
+
+
+def stress_table(components, node_ids=None):
+    """The 12-column table GetStress returns (node id, sx sy sz txy txz tyz, p1 p2 p3, von Mises, intensity) built from
+    one (n, 2) array of node id and value per component, as GetStressForEntities3 gives them. A node shared by two bodies
+    is listed once per body with the same value and is kept once. The principals and the intensity are computed from the
+    tensor. None if the components do not list the same nodes, or not exactly `node_ids` (the mesh's own)."""
+    ids, cols = None, {}
+    for col, q in components:
+        q = np.asarray(q, float).reshape(-1, 2)
+        i = q[:, 0].astype(np.int64)
+        order = np.argsort(i, kind='stable')
+        i, v = i[order], q[order, 1]
+        keep = np.r_[True, i[1:] != i[:-1]]
+        i, v = i[keep], v[keep]
+        if ids is None:
+            ids = i
+        elif len(i) != len(ids) or (i != ids).any():
+            return None
+        cols[col] = v
+    if ids is None or (node_ids is not None and (len(ids) != len(node_ids) or set(ids.tolist()) != set(node_ids))):
+        return None
+    s = np.zeros((len(ids), 12))
+    s[:, 0] = ids
+    for col, v in cols.items():
+        s[:, col] = v
+    t = np.empty((len(ids), 3, 3))
+    t[:, 0, 0], t[:, 1, 1], t[:, 2, 2] = s[:, 1], s[:, 2], s[:, 3]
+    t[:, 0, 1] = t[:, 1, 0] = s[:, 4]
+    t[:, 0, 2] = t[:, 2, 0] = s[:, 5]
+    t[:, 1, 2] = t[:, 2, 1] = s[:, 6]
+    w = np.linalg.eigvalsh(t)                      # ascending
+    s[:, 7], s[:, 8], s[:, 9] = w[:, 2], w[:, 1], w[:, 0]
+    s[:, 11] = w[:, 2] - w[:, 0]
+    return s
+
+
+def _stress_by_body(d, res, node_ids, name):
+    """The nodal stresses read one component at a time over the solid bodies. GetStress for every node goes through COM
+    one value at a time and took 734 s on a 745,656-node model; this took 7 x 19 s and gave the same value at every node
+    (shoulder hub, 2026-11-13). Pass bodies, never faces: hundreds of faces ended the instance ("remote procedure call
+    failed"). None if the read fails or does not cover exactly the mesh's nodes; the caller then reads the slow way."""
+    if os.environ.get('SWFEA_SLOW_READ') == '1':
+        return None
+    t0 = time.time()
+    try:
+        bodies = solid_bodies(d)
+        parts = [(col, _arr(res.GetStressForEntities3(True, comp, 1, NUL, bodies, 3, 0, 0, False, L()), 2))
+                 for comp, col in _STRESS_COLS]
+        s = stress_table(parts, node_ids)
+    except Exception as ex:      # noqa: BLE001 - any failure here only costs time: the slow read follows
+        log(f'{name}: stresses not read by body ({str(ex)[:80]}); reading every node instead')
+        return None
+    if s is None:
+        log(f'{name}: the read by body did not cover the mesh\'s nodes; reading every node instead')
+        return None
+    log(f'{name}: stresses read by body, {len(s)} nodes in {time.time() - t0:.0f} s')
+    return s
+
+
 def _material(body, mat):
     mt = body.GetDefaultMaterial
     mt.MaterialUnits = 0                       # SI
@@ -558,7 +619,9 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
                      'playbook/05-fea.md, "When the solve fails"')
     raw = _arr(call(mesh, 'GetNodes'), 4)
     xyz = dict(zip(raw[:, 0].astype(int), raw[:, 1:] * 1000))
-    s = _arr(res.GetStress(0, 1, NUL, 3, L()), 12)       # 3 = N/mm2
+    s = _stress_by_body(d, res, set(xyz), name)
+    if s is None:
+        s = _arr(res.GetStress(0, 1, NUL, 3, L()), 12)       # 3 = N/mm2
     pos = np.array([xyz[int(i)] for i in s[:, 0]])
 
     def face_nodes(fs):
