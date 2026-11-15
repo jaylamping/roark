@@ -22,9 +22,7 @@ import contextlib
 import math
 import os
 import sys
-import threading
 import time
-import traceback
 from pathlib import Path
 
 import numpy as np
@@ -33,15 +31,13 @@ import pythoncom
 from win32com.client import VARIANT
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import sw_instance  # noqa: E402
-from sw_instance import close_welcome, launch  # noqa: E402
+from sw_instance import STALL_S, close_welcome, launch, stall_watch  # noqa: E402
 
 m = 1e-3
 NUL = VARIANT(pythoncom.VT_DISPATCH, None)       # "no object" for an optional COM argument; plain None is refused
 BASE = {'X': 'Right Plane', 'Y': 'Top Plane', 'Z': 'Front Plane'}       # the default plane normal to each model axis
 BLIND, THRU_ALL, UP_TO_NEXT, MID = 0, 1, 2, 6      # swEndConditions_e
 PART, ASSEMBLY = 1, 2                              # swDocumentTypes_e
-STALL_S = 180                                      # a call out this long with SolidWorks idle is written up (stall_watch)
 MIN_FREE_GB = 8.0                                  # holly-pc rule: leave this much free after a launch (cad-workstation.md)
 
 
@@ -81,108 +77,6 @@ def log(*a):
 
 def free_gb():
     return psutil.virtual_memory().available / 2 ** 30
-
-
-class stall_watch:      # noqa: N801 - reads as a verb at the call site, like job
-    """with stall_watch(pid, folder): write a report when this thread makes no progress while SolidWorks sits idle.
-
-    A COM call has no timeout: when a hidden dialog holds the instance the script waits for ever and says nothing
-    (the Welcome dialog under a first STEP import, 2026-11-15, found only by hand). The watch counts this thread's
-    calls and returns; when the count has not moved for stall_s seconds, and the instance is neither solving nor using
-    a core (a long mesh or rebuild does), it writes stall_<pid>_<time>.txt into folder: where the script stands, the
-    instance's windows and dialog texts, and the end of its hidden-window log. One report per stall, one log line, and
-    one line in the claims folder's runs.log (outcome "STALLED ..."), so that tools/pc/sw_watch.py finds it even when
-    the job is later killed and never writes its own line. It stops nothing and changes nothing: ending a stuck instance
-    stays with its owner (playbook/01-session.md). job() runs one for its instance; stall_s=0 turns it off.
-
-    180 s: the hang it was written for never returns, the slowest call seen to sit idle and still come back is a
-    launch behind a busy instance (150 s, before the job has an instance to watch), and every long call that is
-    working (mesh, rebuild, solve, reading results) shows a solver process or a busy core and is passed over.
-    """
-
-    def __init__(self, pid, folder, stall_s=STALL_S, poll=5.0):
-        self.pid, self.folder, self.stall_s, self.poll = pid, Path(folder), stall_s, poll
-        self.n, self.reports, self._stop = 0, [], None
-
-    def _tick(self, _frame, _event, _arg):
-        self.n += 1
-
-    def __enter__(self):
-        if not self.stall_s or sys.getprofile() is not None:        # off, or the script runs its own profiler
-            return self
-        self.tid = threading.get_ident()
-        self._stop = threading.Event()
-        sys.setprofile(self._tick)
-        threading.Thread(target=self._run, daemon=True).start()
-        return self
-
-    def __exit__(self, *exc):
-        if self._stop is not None:
-            self._stop.set()
-            if sys.getprofile() == self._tick:
-                sys.setprofile(None)
-
-    def _working(self):
-        """True while the instance is solving or using more than a tenth of a core: slow, not stuck."""
-        try:
-            return sw_instance._solving(self.pid) or psutil.Process(self.pid).cpu_percent(interval=1.0) > 10.0
-        except psutil.Error:
-            return False
-
-    def _run(self):
-        seen, since, told = self.n, time.time(), False
-        while not self._stop.wait(self.poll):
-            try:
-                if self.n != seen:
-                    seen, since, told = self.n, time.time(), False
-                    continue
-                idle = time.time() - since
-                if idle < self.stall_s or told or self._working():
-                    continue
-                told = True
-                self._report(idle)
-            except Exception as ex:      # noqa: BLE001 - the watch must never be what breaks a job
-                log(f'stall watch: {str(ex)[:120]}')
-
-    def _report(self, idle):
-        frame = sys._current_frames().get(self.tid)
-        stack = traceback.extract_stack(frame) if frame is not None else []
-        own = [f for f in stack if 'win32com' not in f.filename and not f.filename.startswith('<')] or stack
-        where = f'{Path(own[-1].filename).name}:{own[-1].lineno} {own[-1].line}' if own else '?'
-        wins = sw_instance.windows(self.pid)
-        try:
-            with open(sw_instance.hider_log(self.pid), encoding='utf8') as f:
-                hidden = f.read().splitlines()[-30:]
-        except OSError:
-            hidden = ['(no hidden-window log)']
-        path = self.folder / f'stall_{self.pid}_{time.strftime("%Y%m%d_%H%M%S")}.txt'
-        text = '\n'.join(
-            [f'{time.strftime("%Y-%m-%d %H:%M:%S %z")}  no progress for {idle:.0f} s at {where}',
-             f'script: {" ".join(sys.argv)}',
-             f'SolidWorks pid {self.pid}: answers {sw_instance.answers(self.pid)}, not solving, under a tenth of a core',
-             '', 'windows (class | title | visible | enabled | dialog texts):']
-            + [f'  {c} | {t} | {v} | {e} | {k}' for c, t, v, e, k in wins]
-            + ['', 'hidden-window log, newest last:'] + ['  ' + h for h in hidden]
-            + ['', 'where the script stands:'] + [ln.rstrip() for ln in traceback.format_list(stack)])
-        try:
-            path.write_text(text + '\n', encoding='utf-8')
-        except OSError as ex:
-            path = f'(not written: {ex})'
-        self.reports.append(str(path))
-        try:                 # a job's five fields and the folder it ran in, where sw_instance.session() writes its runs
-            claims = Path(sw_instance._claims().claims_dir())
-            claims.mkdir(parents=True, exist_ok=True)
-            with open(claims / 'runs.log', 'a', encoding='utf-8') as f:
-                f.write('\t'.join([time.strftime('%Y-%m-%d %H:%M:%S %z', time.localtime(time.time() - idle)), f'{idle:.0f} s',
-                                   ' '.join(Path(a).name for a in sys.argv) or '-', f'pid {self.pid}',
-                                   ' '.join(f'STALLED at {where}; report {path}'.split())[:300], os.getcwd()]) + '\n')
-        except Exception:    # noqa: BLE001 - the report file is written; a log line must not be what fails
-            pass
-        dialogs = [(t, k) for c, t, _v, _e, k in wins if c == '#32770'] or 'none listed'
-        disabled = any(not e for c, _t, _v, e, _k in wins if c.startswith('Afx:'))
-        log(f'STALLED {idle:.0f} s at {where}; SolidWorks pid {self.pid} is idle'
-            + (', its main window disabled (a modal dialog holds it)' if disabled else '')
-            + f'; dialogs: {dialogs}; report: {path}')
 
 
 class job:
