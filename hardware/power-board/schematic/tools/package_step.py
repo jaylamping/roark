@@ -92,7 +92,7 @@ LIMB={'J8':'L_ARM','J9':'R_ARM','J10':'WAIST','J11':'AUX','J12':'L_LEG','J13':'R
 for r,tag in LIMB.items():
     s=1 if conn[r]['box'][0]>0 else -1; od,g=(3.6,'14') if 'LEG' in tag else (3.0,'16')
     for num,x,y,net in pads(r): wire(f'WIRE_LIMB_{tag}_{r}_{num}_{net.lstrip("/")}',net,(x,y,T),(0,0,1),od,2.0,(s,0,0),3*od,100.0,
-                                      f'{g} AWG pigtail to inline 20 A MINI fuse and '+('XT60' if 'LEG' in tag else 'XT30(2+2)-F')+('' if tag in ('L_ARM','R_ARM','WAIST') else ' (unfitted)'))
+                                      f'{g} AWG '+('board ' if 'ARM' in tag else '')+'pigtail to inline 20 A MINI fuse and '+('XT60' if 'LEG' in tag else 'XT30(2+2)-F')+('; arm trunk is 18 AWG only from the yaw drive down' if 'ARM' in tag else '' if tag=='WAIST' else ' (unfitted)'))
 # brake leads: Mini-Fit Jr plug (mated top about 22 mm above the board), 18 AWG silicone twisted pair, 2.3 mm OD, toward +Y
 for r in ('J3','J25'): nested(r,T+22.0,2.3,8.0,1,90.0,'BRAKE','18 AWG twisted pair to the HS50 on the '+('+X' if r=='J3' else '-X')+' gusset')
 # 12 V converter pigtail J24: Micro-Fit 3.0 2 x 6 (mated top about 16 mm), 18 AWG thin-wall, 1.9 mm OD, toward +Y

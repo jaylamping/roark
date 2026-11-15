@@ -56,6 +56,155 @@ def _arr(q, cols):
     return np.array(q, float).reshape(-1, cols)
 
 
+_STRESS_COLS = ((0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (9, 10))   # (component asked for, column in GetStress)
+
+
+def stress_table(components, node_ids=None):
+    """The 12-column table GetStress returns (node id, sx sy sz txy txz tyz, p1 p2 p3, von Mises, intensity) built from
+    one (n, 2) array of node id and value per component, as GetStressForEntities3 gives them. A node shared by two bodies
+    is listed once per body with the same value and is kept once. The principals and the intensity are computed from the
+    tensor. None if the components do not list the same nodes, or not exactly `node_ids` (the mesh's own)."""
+    ids, cols = None, {}
+    for col, q in components:
+        q = np.asarray(q, float).reshape(-1, 2)
+        i = q[:, 0].astype(np.int64)
+        order = np.argsort(i, kind='stable')
+        i, v = i[order], q[order, 1]
+        keep = np.r_[True, i[1:] != i[:-1]]
+        i, v = i[keep], v[keep]
+        if ids is None:
+            ids = i
+        elif len(i) != len(ids) or (i != ids).any():
+            return None
+        cols[col] = v
+    if ids is None or (node_ids is not None and (len(ids) != len(node_ids) or set(ids.tolist()) != set(node_ids))):
+        return None
+    s = np.zeros((len(ids), 12))
+    s[:, 0] = ids
+    for col, v in cols.items():
+        s[:, col] = v
+    t = np.empty((len(ids), 3, 3))
+    t[:, 0, 0], t[:, 1, 1], t[:, 2, 2] = s[:, 1], s[:, 2], s[:, 3]
+    t[:, 0, 1] = t[:, 1, 0] = s[:, 4]
+    t[:, 0, 2] = t[:, 2, 0] = s[:, 5]
+    t[:, 1, 2] = t[:, 2, 1] = s[:, 6]
+    w = np.linalg.eigvalsh(t)                      # ascending
+    s[:, 7], s[:, 8], s[:, 9] = w[:, 2], w[:, 1], w[:, 0]
+    s[:, 11] = w[:, 2] - w[:, 0]
+    return s
+
+
+def _stress_by_body(d, res, node_ids, name):
+    """The nodal stresses read one component at a time over the solid bodies. GetStress for every node goes through COM
+    one value at a time and took 734 s on a 745,656-node model; this took 7 x 19 s and gave the same value at every node
+    (shoulder hub, 2026-11-13). Pass bodies, never faces: hundreds of faces ended the instance ("remote procedure call
+    failed"). None if the read fails or does not cover exactly the mesh's nodes; the caller then reads the slow way."""
+    if os.environ.get('SWFEA_SLOW_READ') == '1':
+        return None
+    t0 = time.time()
+    try:
+        bodies = solid_bodies(d)
+        parts = [(col, _arr(res.GetStressForEntities3(True, comp, 1, NUL, bodies, 3, 0, 0, False, L()), 2))
+                 for comp, col in _STRESS_COLS]
+        s = stress_table(parts, node_ids)
+    except Exception as ex:      # noqa: BLE001 - any failure here only costs time: the slow read follows
+        log(f'{name}: stresses not read by body ({str(ex)[:80]}); reading every node instead')
+        return None
+    if s is None:
+        log(f'{name}: the read by body did not cover the mesh\'s nodes; reading every node instead')
+        return None
+    log(f'{name}: stresses read by body, {len(s)} nodes in {time.time() - t0:.0f} s')
+    return s
+
+
+def once_per_node(q, cols=2):
+    """Rows of (node id, values) sorted by node id, each node kept once: a read over the bodies lists a node shared by
+    two bodies once per body, with the same values."""
+    q = np.asarray(q, float).reshape(-1, cols)
+    q = q[np.argsort(q[:, 0], kind='stable')]
+    return q[np.r_[True, q[1:, 0] != q[:-1, 0]]] if len(q) else q
+
+
+def node_coords(parts, count):
+    """The (n, 4) table GetNodes returns (node id, x y z in m) from one such table per solid body, as
+    GetNodeDataFromEntity gives them. None unless it holds exactly `count` different nodes (the mesh's node count)."""
+    if not parts:
+        return None
+    raw = once_per_node(np.concatenate([np.asarray(p, float).reshape(-1, 4) for p in parts]), 4)
+    return raw if len(raw) == count else None
+
+
+def component_table(components, node_ids):
+    """An (n, 1 + number of components) table, node id then one column per component in the order given, from one
+    (n, 2) array of node id and value per component, as GetDisplacementForEntities gives them. None if the components do
+    not list the same nodes, or not exactly `node_ids` (the mesh's own)."""
+    cols = [once_per_node(q) for q in components]
+    ids = cols[0][:, 0].astype(np.int64) if cols else None
+    if ids is None or len(ids) != len(node_ids) or set(ids.tolist()) != set(node_ids):
+        return None
+    if any(len(c) != len(ids) or (c[:, 0] != cols[0][:, 0]).any() for c in cols[1:]):
+        return None
+    return np.c_[cols[0][:, 0], np.column_stack([c[:, 1] for c in cols])]
+
+
+def disp_table(components, node_ids):
+    """The 5-column table GetTranslationalDisplacement returns (node id, UX UY UZ, resultant) from the three components
+    read over the bodies; the resultant is computed. None as component_table()."""
+    t = component_table(components, node_ids)
+    return None if t is None else np.c_[t, np.linalg.norm(t[:, 1:4], axis=1)]
+
+
+def reaction_total(components, node_ids):
+    """[Fx, Fy, Fz, resultant] N summed over every node, each node counted once, from the three reaction components
+    read over the bodies. None as component_table()."""
+    t = component_table(components, node_ids)
+    if t is None:
+        return None
+    f = t[:, 1:4].sum(axis=0)
+    return [round(float(v), 3) for v in f] + [round(float(np.linalg.norm(f)), 3)]
+
+
+def _by_body(name, what, read):
+    """read() for one of the reads over the solid bodies, with one log line. None, and the caller reads every node the
+    old way, if it fails, returns None (it did not cover exactly the mesh's nodes) or SWFEA_SLOW_READ is 1.
+    Measured on a 144,396-node contact model, 2026-11-15, the same value at every node each time: node coordinates
+    1.6 s against 3.1, displacements 2.5 s against 4.8, reactions 4.2 s against 14.6."""
+    if os.environ.get('SWFEA_SLOW_READ') == '1':
+        return None
+    t0 = time.time()
+    try:
+        v = read()
+    except Exception as ex:      # noqa: BLE001 - any failure here only costs time: the slow read follows
+        log(f'{name}: {what} not read by body ({str(ex)[:80]}); reading every node instead')
+        return None
+    if v is None:
+        log(f'{name}: the {what} read by body did not cover the mesh\'s nodes; reading every node instead')
+        return None
+    log(f'{name}: {what} read by body in {time.time() - t0:.0f} s')
+    return v
+
+
+def _nodes_by_body(d, mesh, count, name):
+    """Node id and coordinates (m) as GetNodes gives them, read one solid body at a time."""
+    return _by_body(name, 'node coordinates',
+                    lambda: node_coords([_arr(mesh.GetNodeDataFromEntity(b, L()), 4) for b in solid_bodies(d)], count))
+
+
+def _entity_components(d, res, comps):
+    """One (n, 2) array of node id and value per displacement component (swsDisplacementComponent_e: 0 1 2 UX UY UZ in
+    mm, 4 5 6 RFX RFY RFZ in N), over the solid bodies."""
+    bodies = solid_bodies(d)
+    return [_arr(res.GetDisplacementForEntities(comp, 1, NUL, bodies, 0, L()), 2) for comp in comps]
+
+
+def _disp_by_body(d, res, node_ids, name):
+    return _by_body(name, 'displacements', lambda: disp_table(_entity_components(d, res, (0, 1, 2)), node_ids))
+
+
+def _reaction_by_body(d, res, node_ids, name):
+    return _by_body(name, 'reactions', lambda: reaction_total(_entity_components(d, res, (4, 5, 6)), node_ids))
+
+
 def _material(body, mat):
     mt = body.GetDefaultMaterial
     mt.MaterialUnits = 0                       # SI
@@ -565,9 +714,13 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
     if rc or res is None:
         raise Failed(f'{name}: solve failed ({rc}). 24 is a singular model (a body free to move) or out of memory: '
                      'playbook/05-fea.md, "When the solve fails"')
-    raw = _arr(call(mesh, 'GetNodes'), 4)
+    raw = _nodes_by_body(d, mesh, nodes, name)
+    if raw is None:
+        raw = _arr(call(mesh, 'GetNodes'), 4)
     xyz = dict(zip(raw[:, 0].astype(int), raw[:, 1:] * 1000))
-    s = _arr(res.GetStress(0, 1, NUL, 3, L()), 12)       # 3 = N/mm2
+    s = _stress_by_body(d, res, set(xyz), name)
+    if s is None:
+        s = _arr(res.GetStress(0, 1, NUL, 3, L()), 12)       # 3 = N/mm2
     pos = np.array([xyz[int(i)] for i in s[:, 0]])
 
     def face_nodes(fs):
@@ -584,15 +737,19 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
             log(f'{name}: {label} nodes {len(pts)}, box {pts.min(axis=0).round(2).tolist()} to {pts.max(axis=0).round(2).tolist()}')
     disp = reaction = None
     try:
-        disp = _arr(res.GetTranslationalDisplacement(1, NUL, 0, L()), 5)       # last argument: 0 mm, 1 cm, 2 m, 3 inch
+        disp = _disp_by_body(d, res, set(xyz), name)
+        if disp is None:
+            disp = _arr(res.GetTranslationalDisplacement(1, NUL, 0, L()), 5)   # last argument: 0 mm, 1 cm, 2 m, 3 inch
     except Exception as ex:      # noqa: BLE001
         log(f'{name}: displacements not read ({str(ex)[:80]})')
     try:
-        # per node: id, Fx Fy Fz Fres, Mx My Mz Mres; zero except on restrained nodes. Last argument 0 = N (1 = lbf).
-        # GetReactionForces2 does not exist on SolidWorks 2026.
-        q = _arr(res.GetReactionForcesAndMoments(0, NUL, 0, L()), 9)
-        f = q[:, 1:4].sum(axis=0)
-        reaction = [round(float(v), 3) for v in f] + [round(float(np.linalg.norm(f)), 3)]
+        reaction = _reaction_by_body(d, res, set(xyz), name)
+        if reaction is None:
+            # per node: id, Fx Fy Fz Fres, Mx My Mz Mres; zero except on restrained nodes. Last argument 0 = N
+            # (1 = lbf). GetReactionForces2 does not exist on SolidWorks 2026.
+            q = _arr(res.GetReactionForcesAndMoments(0, NUL, 0, L()), 9)
+            f = q[:, 1:4].sum(axis=0)
+            reaction = [round(float(v), 3) for v in f] + [round(float(np.linalg.norm(f)), 3)]
     except Exception as ex:      # noqa: BLE001
         log(f'{name}: reactions not read ({str(ex)[:80]})')
     extra = post(st, res) if post is not None else None
