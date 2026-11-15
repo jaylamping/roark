@@ -1,6 +1,6 @@
 """Run a command under a hard memory cap (Windows job object), so a runaway job fails instead of filling holly-pc.
 
-    python tools/pc/capped.py [--mb 6144] -- python script.py args...
+    python tools/pc/capped.py [--mb 6144] [--normal] -- python script.py args...
 
 Every python job on the CAD workstation that is not a SolidWorks client (post-processing, geometry checks, sweeps, slicing)
 runs under about 6 GB (2026-11-12, after a 61 GB geometry check took holly-pc to 3 GB free). A SolidWorks client is left
@@ -9,6 +9,10 @@ out: the SolidWorks it launches would land in the same job, under the same cap, 
 The child starts suspended, is put in a job object with a per-process and a per-job committed-memory limit, then resumed.
 Over the limit its allocations fail (Python raises MemoryError and exits), and the job is closed with KILL_ON_JOB_CLOSE, so
 nothing it started outlives it. The exit code is the child's; 'CAPPED: ...' is printed to stderr if the limit was hit.
+
+The job also runs below normal priority. SolidWorks sets up and meshes on one core, and an all-core sweep at normal
+priority beside it stretched an 80 s set-up to 13 minutes (2026-11-14). Below normal the sweep still takes every core
+nobody else wants. --normal leaves the priority alone.
 """
 import os
 import sys
@@ -21,10 +25,12 @@ import win32job
 import win32process
 
 args = sys.argv[1:]
-mb = 6144
-if args[:1] == ['--mb']:
-    mb = int(args[1])
-    args = args[2:]
+mb, normal = 6144, False
+while args[:1] in (['--mb'], ['--normal']):
+    if args[0] == '--normal':
+        normal, args = True, args[1:]
+    else:
+        mb, args = int(args[1]), args[2:]
 if args[:1] == ['--']:
     args = args[1:]
 if not args:
@@ -36,6 +42,9 @@ info['ProcessMemoryLimit'] = mb * 1024 * 1024
 info['JobMemoryLimit'] = mb * 1024 * 1024
 info['BasicLimitInformation']['LimitFlags'] |= (win32job.JOB_OBJECT_LIMIT_PROCESS_MEMORY | win32job.JOB_OBJECT_LIMIT_JOB_MEMORY
                                                | win32job.JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE)
+if not normal:      # every process in the job, whatever it asks for itself
+    info['BasicLimitInformation']['LimitFlags'] |= win32job.JOB_OBJECT_LIMIT_PRIORITY_CLASS
+    info['BasicLimitInformation']['PriorityClass'] = win32process.BELOW_NORMAL_PRIORITY_CLASS
 win32job.SetInformationJobObject(job, win32job.JobObjectExtendedLimitInformation, info)
 
 si = win32process.STARTUPINFO()
