@@ -24,7 +24,7 @@ from dims import DISH_R0, DISH_Y, HUB, HUB_WIN_A, HUB_WIN_CLIP, RS02_OUT, RX, YZ
 from swk import *
 from swk import vol_com
 
-assert LOOK, 'look builds only: this never writes the real part'
+assert LOOK or __name__ != '__main__', 'look builds only: this never writes the real part'      # imported by hub_candidate2.py, which has its own guard
 SRC = CAD / 'shoulder' / 'left' / f"{NAMES['hub']}.SLDPRT"
 DST = OUT / f"{NAMES['hub']}.SLDPRT"
 K = math.tan(math.radians(float(os.environ.get('NOSUP_DEG', '50'))))

@@ -17,6 +17,7 @@
 #   5. Runs the clearance sweep with the arm 3 mm lower (UA_SHIFT_Y=-3). No SolidWorks may be in set-up beside it.
 # The commit is left to the operator (as Joey, with CAD_WRITER set). The print file is made separately (hub_plate.py).
 set -e
+export PYTHONDONTWRITEBYTECODE=1      # a __pycache__ under cad/scripts fails the layout check
 REPO=/j/code/roark-wt/shoulder-study
 cd $REPO/cad/scripts/shoulder
 PY=C:/joe/code/_venvs/shoulder/Scripts/python
@@ -100,6 +101,7 @@ def drop(x):
 json.dump(drop(d), io.open(p, 'w', encoding='utf8'), indent=2)
 print('manifest: candidate entries removed')
 PYEOF
+rm -rf cad/scripts/shoulder/__pycache__
 $PY tools/cad/check_cad_layout.py $REPO/cad
 
 # 5. the sweep with the arm 3 mm lower
