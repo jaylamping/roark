@@ -73,13 +73,16 @@ No edge is within 5 mm of the bundle on this route, so no radius is needed in th
 **Status.** The hub window is fixed at 68 deg (entry r 17.2-19). The shoulder thread clamps the bundle at the window, so the yaw
 slack stays above the hub and nothing slides into the arm.
 
-**The S-bend to the rib gap (R about 15).** The bundle is loose wires: 16 or 18 AWG silicone (OD about 3.0) plus 26 AWG pairs.
-- R 15 at the bundle centre line is 5 x the largest wire's OD.
-- The innermost wire of a 3.5-thick bundle bends at about R 13, which is 4.4 x OD.
+**The S-bend to the rib gap (R about 15).** The bundle is loose wires: **18 AWG silicone power (decided by Joey, 2026-11-15; was
+16 or 18)** plus 26 AWG pairs.
+- **The check below used OD 3.0 (16 AWG) and stands.** 18 AWG silicone is about 2.3-2.5 OD, so every ratio only gains.
+- R 15 at the bundle centre line is 5 x the largest wire's OD at 3.0, and about 6 x at 2.5.
+- The innermost wire of a 3.5-thick bundle bends at about R 13, which is 4.4 x OD at 3.0 and about 5.2 x at 2.5.
+- The 3.5 x 13 reserve and the 68 deg window route were sized for 16 or 18 AWG, so with 18 AWG they only gain room.
 - That is acceptable for a static, clamped run, the usual guide being 4-6 x OD for fixed silicone wire. It would not be acceptable
   for a run that flexes. With the clamp at the window, the bend never moves.
 
-**Tie point.** Proposed, not applied (`cable_tie_point_proposal.png`).
+**Tie point.** Applied in the R1h back half (`R1H_BACK.md`): a bridge on the -X inner wall at the neck, Y 255-261, with a 1.7 x 3.0 slot for a 2.5 x 1.0 cable tie. The proposal is `cable_tie_point_proposal.png`.
 - **Shape:** a bridge on the back half's -X inner wall (X 146.3) at the neck, Y 255-261, Z CZ-4 to CZ:
   - a bar 2.0 thick (X 147.9-149.9), standing 1.6 off the wall;
   - posts 1.5 long at each end;

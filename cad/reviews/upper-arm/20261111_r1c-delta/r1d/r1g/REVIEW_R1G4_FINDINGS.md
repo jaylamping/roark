@@ -121,7 +121,7 @@ right, that is said.
 
 The window is fixed at 68 deg and the bundle is clamped at the hub window.
 - **The R 15 static S-bend to the rib gap is acceptable.** The wires are loose (16 or 18 AWG silicone, OD about 3.0, plus 26 AWG
-  pairs). R 15 at the centre line is 5 x the largest OD, and the innermost wire is at about R 13 (4.4 x OD). That is within the
+  pairs; 18 AWG decided 2026-11-15, OD about 2.3-2.5, so the ratios below only gain). R 15 at the centre line is 5 x the largest OD, and the innermost wire is at about R 13 (4.4 x OD). That is within the
   usual 4-6 x OD for fixed runs, because the clamp keeps it from ever flexing. It would not be acceptable for a moving run.
 - **Tie point: proposed, not applied** (`cable_tie_point_proposal.png`, CABLE_SLACK.md).
   - **Shape:** a bridge on the back half's -X inner wall at the neck, Y 255-261: a 2.0 x 4.0 bar, 1.6 off the wall, and a 3.0 x

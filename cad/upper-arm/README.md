@@ -82,7 +82,20 @@ camera). Every joint carries 48 V, GND and up to three signal pairs. Room to kee
 - Elbow and the forearm's fixed run: 3 × 12.
 
 The total may be split across passages (Joey). The power pair goes in one, 3.5 × 5.6 for 18 AWG in the upper arm and
-3 × 4.6 for 20 AWG at the elbow. The three signal pairs go in another, 2.2 × 8 together or 2.2 × 3.4 each. A twisted pair is
+3 × 4.6 for 20 AWG at the elbow.
+
+**Wire gauge: 18 AWG power for the arm, decided by Joey 2026-11-15** (the arm trunk was 16 AWG).
+- **Upper arm, neck and hub window:** no change. Their room was sized for 16 or 18 AWG.
+- **Elbow and forearm passages:** these were sized for a 20 AWG power pair (3 × 4.6), so 18 AWG uses their margin up rather than
+  gaining.
+  - With 18 AWG silicone at about 2.4 OD, the pair is about 2.4 × 4.8.
+  - Under the inboard elbow cap, the one-layer coil (power pair plus the 2.2 × 8 signal pairs) then needs about 12.8 wide, against
+    12.8 available: 0 spare instead of 0.8.
+  - At the 3.5 × 5.6 allowance used in the upper arm, it needs 13.6: 0.8 short.
+- **Open:** before the elbow and forearm are rebuilt, measure the 18 AWG wire actually bought. Then either:
+  - widen the cap pocket by about 1 mm; or
+  - route one signal pair (2.2 × 3.4) through another passage, as the split above allows.
+- The drop into the forearm (3 × 10) was already 2 mm too narrow; its planned widening to 4 × 12 covers 18 AWG. The three signal pairs go in another, 2.2 × 8 together or 2.2 × 3.4 each. A twisted pair is
 never split, 48 V and its ground stay together, and no outside shape grows for wiring. Every upper-arm passage below meets
 the single-passage total, so no split is needed there.
 
