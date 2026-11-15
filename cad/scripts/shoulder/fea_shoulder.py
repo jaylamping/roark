@@ -867,9 +867,9 @@ CASES['HUBL_STOP'] = dict(part='hub', fix=HUB_FIX, el=1.5, ctrl=[(LUG_HOLES[0], 
                                    (LUG_HOLES[1], (193.5, 292.0, YZ), (0.0, 0.0, -112.0), (0.0, 0.0, 0.0), 1)])
 
 SCREW_ANGLES = [-142.0, -82.0, -22.0, 38.0, 98.0, 158.0]     # hub screws on PCD 24 (measured on the hub)
-HEAD_SEAT_Y = 298.06                                          # bottom face of each screw boss (tube r 2.15-4.4 in the lightening
+HEAD_SEAT_Y = float(os.environ.get('HUB_HEAD_SEAT_Y', '298.06'))                                          # bottom face of each screw boss (tube r 2.15-4.4 in the lightening
                                                               # pocket, Y 298.06-319.86): the heads bear here, clamping 21.8 mm of boss
-WASHER_OD, SHANK_D = 8.8, 4.0                                 # bearing limited by the boss OD 8.8 (washer Ø9): r 2.15-4.4, 46.3 mm2
+WASHER_OD, SHANK_D = float(os.environ.get('HUB_WASHER_OD', '8.8')), 4.0                                 # bearing limited by the boss OD 8.8 (washer Ø9): r 2.15-4.4, 46.3 mm2
 
 
 def hole_centres(d):
@@ -960,7 +960,7 @@ for k_ in ('A', 'B'):
 # contact seat + six preloaded M4 (bearing 15 MPa on the boss end, 46.3 mm2 -> 0.69 kN; relaxed after creep: half)
 for k_, pre_ in (('A', 690.0), ('B', 690.0), ('Ah', 345.0)):
     base_ = CASES['HUBD_' + k_[0]]
-    CASES['HUBB_' + k_] = dict(base_, dummy=dict(base_['dummy'], bolts=True), pre_mesh=bolt_setup(pre_), stabilise=True)
+    CASES['HUBB_' + k_] = dict(base_, dummy=dict(base_['dummy'], bolts=True), pre_mesh=bolt_setup(float(os.environ.get('HUBB_PRE', pre_))), stabilise=True)   # HUBB_PRE: another preload per screw, N
 # the same with the yaw moment reversed (-17 N.m): the window moved to 68 deg, and which yaw sign is worse at its slot is
 # not known beforehand
 for k_ in ('A', 'Ah'):

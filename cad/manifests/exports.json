@@ -309,6 +309,42 @@
       "recorded": "2026-11-14T02:51:54Z"
     },
     {
+      "export": "exports/shoulder/shoulder_hub_left_revE1_candidate.STEP",
+      "source": "shoulder/left/shoulder_hub_left.SLDPRT",
+      "config": "",
+      "settings": "rev E1 candidate (not adopted): hub_candidate2.py on the rev D3c7 part, TOP_RAISE=3.0 SEAT_Y=299.86; centre 3 mm taller, top slits filled, pocket solid, plate and boss tubes thicker, head seats for M4 x 30 with one flat washer, dog-leg cable slot 4.5 x 11. The armframe files are the same solid 3 mm higher, in the arm's present coordinates",
+      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
+      "exportSha256": "1413fe01545213b37dcebc13ee827c12bbdc3805529290d51a3ed41c0e5c9edb",
+      "recorded": "2026-11-15T07:23:41Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_hub_left_revE1_candidate.STL",
+      "source": "shoulder/left/shoulder_hub_left.SLDPRT",
+      "config": "",
+      "settings": "rev E1 candidate (not adopted): hub_candidate2.py on the rev D3c7 part, TOP_RAISE=3.0 SEAT_Y=299.86; centre 3 mm taller, top slits filled, pocket solid, plate and boss tubes thicker, head seats for M4 x 30 with one flat washer, dog-leg cable slot 4.5 x 11. The armframe files are the same solid 3 mm higher, in the arm's present coordinates",
+      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
+      "exportSha256": "3b5a8a87c4db23612d72dcf0bbbc8a5b9cc22ff8c386d39acc7406edd7c3148c",
+      "recorded": "2026-11-15T07:23:41Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_hub_left_revE1_candidate_armframe.STEP",
+      "source": "shoulder/left/shoulder_hub_left.SLDPRT",
+      "config": "",
+      "settings": "rev E1 candidate (not adopted): hub_candidate2.py on the rev D3c7 part, TOP_RAISE=3.0 SEAT_Y=299.86; centre 3 mm taller, top slits filled, pocket solid, plate and boss tubes thicker, head seats for M4 x 30 with one flat washer, dog-leg cable slot 4.5 x 11. The armframe files are the same solid 3 mm higher, in the arm's present coordinates",
+      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
+      "exportSha256": "f4971ce9af1b9664692e72dbe87c85266d8f0a8a7b3ed3e792d2c02caa9b7c4d",
+      "recorded": "2026-11-15T07:23:43Z"
+    },
+    {
+      "export": "exports/shoulder/shoulder_hub_left_revE1_candidate_armframe.STL",
+      "source": "shoulder/left/shoulder_hub_left.SLDPRT",
+      "config": "",
+      "settings": "rev E1 candidate (not adopted): hub_candidate2.py on the rev D3c7 part, TOP_RAISE=3.0 SEAT_Y=299.86; centre 3 mm taller, top slits filled, pocket solid, plate and boss tubes thicker, head seats for M4 x 30 with one flat washer, dog-leg cable slot 4.5 x 11. The armframe files are the same solid 3 mm higher, in the arm's present coordinates",
+      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
+      "exportSha256": "c004bc2d1c2778f436f5f07df96224bbefb1ec2b58903fb2a1335f90d64e452a",
+      "recorded": "2026-11-15T07:23:42Z"
+    },
+    {
       "export": "exports/shoulder/shoulder_pitch_flange_ring_left.STEP",
       "source": "shoulder/left/shoulder_pitch_flange_ring_left.SLDPRT",
       "config": "",

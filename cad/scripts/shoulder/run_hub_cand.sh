@@ -37,6 +37,6 @@ for c in $CASES; do
   esac
   if [ -n "$ELV" ]; then export FEA_EL=$ELV; else unset FEA_EL; fi
   FEA_SOLVER=$SOLV HUB_FEA_FILE=hub_fea_${TAG}_$c.SLDPRT job .sw_instance_pid_hc "hub candidate $V $c" $W/${c}_$TAG.txt $PY capped.py --mb 14336 -- $PY -u fea_shoulder.py $c
-  cp ../../_sim/shoulder/$c.npz ../../_sim/shoulder/${c}_$TAG.npz
+  rm -f ../../_sim/shoulder/${c}_$TAG.npz; grep -q "^ solve 0" $W/${c}_$TAG.txt && cp ../../_sim/shoulder/$c.npz ../../_sim/shoulder/${c}_$TAG.npz
   echo "hub candidate $V $c done $(date +%T): $(grep 'mesh \|solve' $W/${c}_$TAG.txt | tr '\n' ' ' | cut -c1-120)" >> $L
 done

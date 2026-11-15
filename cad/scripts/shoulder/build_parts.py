@@ -777,6 +777,13 @@ def build_fork_front():
         k.Select2(True, 1)
     fh = d.FeatureManager.InsertCutBlend(False, True, False, 1.0, 0, 0, False, 0, 0, 0, True, True)
     log('  CUFF_HOLLOW', fh is not None)
+    if SKIRT_DROP:
+        # the skirt's lower edge carried straight down by SKIRT_DROP (dims): the bottom outline's 2 mm skin, bored like the
+        # skirt above it. It follows a hub with a taller centre, so the skirt covers the hub's rim as before
+        _y0 = SL['y_bot'] + 0.3
+        extrude(d, ysk(d, _y0, 'SKIRT_EXT', lambda s_: [s_.spline(EV.sleeve_section(_y0, 0.3)), s_.spline(EV.sleeve_section(_y0, 2.0))]),
+                'SKIRT_EXT', SKIRT_DROP + 0.3, NY, lo=-1.0)
+        yaw_rev(d, 'SKIRT_EXT_BORE', [(0, SL['y_bot'] - SKIRT_DROP - 1), (SL['bore_skirt'], SL['y_bot'] - SKIRT_DROP - 1), (SL['bore_skirt'], SL['y_bot'] + 0.2), (0, SL['y_bot'] + 0.2)], cut=True, )
     ym = (SEAT_Y[0] + SEAT_Y[1]) / 2
     # the joint face: the 0.5 mm from the sleeve's back (JZ0 + 0.5) down to the joint plane, over the bolted pad
     _py0 = min([SEAT_Y[0]] + [y_ - 4.0 for _, y_ in JOINT_PTS])   # r 47: the pad reaches down past the lower screw pair
@@ -959,8 +966,9 @@ def build_fork_front():
     try:     # the sleeve's back is open toward the fork rear, so the notch may find nothing left to cut
         if SC47:
             raise SystemExit('closed ring: the exit runs inside it, no notch')
-        extrude(d, ysk(d, SL['y_bot'] - 1, 'CUFF_NOTCH', lambda s: sector(s, lambda r, a: ypt(r, a, SL['y_bot'] - 1), cf['ri'] - 1, YZ - JZ0 + 3.0, cf['notch'][0], cf['notch'][1], 2.0)),
-                'CUFF_NOTCH', Y_EX + 3 + WALL + 1.5 - (SL['y_bot'] - 1), Y, cut=True)
+        _ynb = SL['y_bot'] - 1 - SKIRT_DROP
+        extrude(d, ysk(d, _ynb, 'CUFF_NOTCH', lambda s: sector(s, lambda r, a: ypt(r, a, _ynb), cf['ri'] - 1, YZ - JZ0 + 3.0, cf['notch'][0], cf['notch'][1], 2.0)),
+                'CUFF_NOTCH', Y_EX + 3 + WALL + 1.5 - _ynb, Y, cut=True)
     except SystemExit:
         log('  CUFF_NOTCH: nothing to cut (sleeve open at the back)')
     if SC:

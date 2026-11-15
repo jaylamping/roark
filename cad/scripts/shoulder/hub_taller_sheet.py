@@ -1,8 +1,8 @@
-"""HUB_TALLER_CENTRE.png: the hub's centre made 2 mm taller and stronger, before and after. Top: the section of
+"""HUB_TALLER_CENTRE.png: the hub's centre made 3 mm taller and stronger, before and after. Top: the section of
 YAW_CABLE_SECTION.png (through the yaw axis and the cable window) for today's released hub and for the candidate, wires
 to scale, added material in green. Bottom: the outside view of both, and the figures in plain words.
 
-    python hub_taller_sheet.py            (needs yaw_cable_section.py's pickles and the look build hubT20)
+    python hub_taller_sheet.py            (needs yaw_cable_section.py's pickles and the look build hubT30A)
 
 The figures in the text box come from cad/_wip/shoulder-pass1/hub_taller_figs.json (written by hand from the FE read-outs).
 """
@@ -26,7 +26,8 @@ from dims import HUB_WIN_A, RX, YZ
 from swk import CAD, WIP
 from yaw_cable_section import section
 
-H = 2.0
+H = 3.0
+LOOKN = 'hubT30A'
 OUT = CAD.parent / 'hardware' / 'shoulder' / 'study-20261111' / 'checks' / 'hub_print' / 'HUB_TALLER_CENTRE.png'
 T = WIP / 'taller_views'
 COL = dict(hub='#3b4a5a', rs02='#c9ccd1', fork_front='#b9a27c', fork_rear='#b9a27c', arm='#e6e6e3', add='#2ca02c')
@@ -60,7 +61,7 @@ def shift(loops, dy):
     return [l + np.array((0.0, dy)) for l in loops]
 
 
-def panel(ax, loops, hub_loops, arm_loops, old_hub_loops, floor_y, n_sig, title, gap):
+def panel(ax, loops, hub_loops, arm_loops, old_hub_loops, floor_y, n_sig, title, gap, path=None):
     for k in ('rs02', 'fork_front', 'fork_rear'):
         fill(ax, shape_of(loops[k]), COL[k], 2)
     fill(ax, shape_of(arm_loops), COL['arm'], 2)
@@ -82,7 +83,7 @@ def panel(ax, loops, hub_loops, arm_loops, old_hub_loops, floor_y, n_sig, title,
     for r_ in (-35.2, -30.9, -27.2):
         band(r_, flip=-1)
     dy = floor_y - 318.36
-    pts = np.array([(28.4, 320.9 + dy * 0.5), (26.6, 318.6 + dy), (24.6, 313.2 + dy), (22.3, 308.6 + dy), (20.3, 304.6 + dy), (19.3, 300.5 + dy), (19.2, 296.5 + dy), (19.2, 289.5)])
+    pts = np.array([(28.4, 320.9 + dy * 0.5), (26.6, 318.6 + dy), (24.6, 313.2 + dy), (22.3, 308.6 + dy), (20.3, 304.6 + dy), (19.3, 300.5 + dy), (19.2, 296.5 + dy), (19.2, 289.5)]) if path is None else np.array(path)
     tck, _ = splprep(pts.T, s=0, k=3)
     c = np.array(splev(np.linspace(0, 1, 200), tck)).T
     d_ = np.gradient(c, axis=0)
@@ -108,8 +109,12 @@ def panel(ax, loops, hub_loops, arm_loops, old_hub_loops, floor_y, n_sig, title,
 def main():
     figs = json.load(open(WIP / 'hub_taller_figs.json')) if (WIP / 'hub_taller_figs.json').exists() else {}
     loops = pickle.load(open(WIP / 'yaw_section_loops.pkl', 'rb'))
-    new = trimesh.load(WIP / 'stl_look_hubT20' / 'hub.stl')
-    new_loops = shift(section(new, HUB_WIN_A), -H)
+    new = trimesh.load(WIP / f'stl_look_{LOOKN}' / 'hub.STL')          # already in the assembly frame
+    new_loops = section(new, HUB_WIN_A)
+    new.export(T / 'hub1.stl')
+    arm0 = trimesh.load(T / 'arm0.stl')
+    arm0.apply_translation((0, -H, 0))
+    arm0.export(T / 'arm1.stl')
     ua = pickle.load(open(WIP / 'ua_meshes.pkl', 'rb'))
     arm_loops = [l for m in ua[:2] for l in section(m, HUB_WIN_A)]
     arm_loops = [l for l in arm_loops if l[:, 1].max() > 280]
@@ -117,22 +122,24 @@ def main():
     a0 = fig.add_axes([0.005, 0.50, 0.495, 0.42])
     a1 = fig.add_axes([0.50, 0.50, 0.495, 0.42])
     panel(a0, loops, loops['hub'], arm_loops, None, 318.36, 4, 'TODAY (the hub now printing): gap 5.5 mm', 5.5)
-    panel(a1, loops, new_loops, shift(arm_loops, -H), shift(loops['hub'], -H), 318.36 - H, 6, 'PROPOSED: centre 2 mm taller, gap 7.5 mm (green = added material)', 5.5 + H)
+    panel(a1, loops, new_loops, shift(arm_loops, -H), shift(loops['hub'], -H), 318.36 - H, 6, 'NEW HUB: centre 3 mm taller, gap 8.5 mm (green = added material)', 5.5 + H,
+          path=[(29.3, 320.6 - H), (29.25, 316.0 - H), (28.6, 312.6 - H), (26.0, 308.7 - H), (23.4, 305.5 - H), (21.8, 302.6 - H), (21.5, 299.0 - H), (21.5, 286.0)])
     a0.annotate('step in the hub top: 1.5 mm', (-24.3, 319.1), (-65.0, 309.0), fontsize=13, weight='bold', ha='left', arrowprops=dict(arrowstyle='->', lw=1.3), zorder=9)
     a0.annotate('thin slits right through the top\n(six, each 0.5 mm wide): found today', (-19.25, 318.0), (-8.0, 303.0), fontsize=13, weight='bold', ha='center', color='#b00020',
                 arrowprops=dict(arrowstyle='->', lw=1.3, color='#b00020'), zorder=9)
     a0.annotate('pocket that needed\nsupport to print', (30.0, 307.5), (63.0, 300.0), fontsize=13, weight='bold', ha='right', arrowprops=dict(arrowstyle='->', lw=1.3), zorder=9)
-    a1.annotate('step 3.5 mm: the centre is\n2 mm thicker, slits filled', (-21.0, 319.0), (-65.0, 306.5), fontsize=13, weight='bold', ha='left', color='#1a7a1a',
+    a1.annotate('centre 3 mm taller and solid\nunderneath: plate 11 mm thick,\nslits filled', (-17.0, 316.0), (-65.0, 303.5), fontsize=13, weight='bold', ha='left', color='#1a7a1a',
                 arrowprops=dict(arrowstyle='->', lw=1.3, color='#1a7a1a'), zorder=9)
-    a1.annotate('pocket filled on a slope:\nprints without support inside', (31.0, 302.0), (63.0, 293.5), fontsize=13, weight='bold', ha='right', color='#1a7a1a',
+    a1.annotate('pocket filled solid: stronger,\nand no support inside to print', (33.0, 302.5), (63.0, 290.5), fontsize=13, weight='bold', ha='right', color='#1a7a1a',
                 arrowprops=dict(arrowstyle='->', lw=1.3, color='#1a7a1a'), zorder=9)
-    a1.annotate('room for the third\nsignal pair (6 wires)', (38.9, 320.5), (63.0, 329.5), fontsize=13, weight='bold', ha='right', color=CAB, arrowprops=dict(arrowstyle='->', lw=1.3, color=CAB), zorder=9)
-    a1.annotate('arm sits 2 mm lower', (-39.0, 299.5), (-65.0, 288.0), fontsize=13, weight='bold', ha='left', arrowprops=dict(arrowstyle='->', lw=1.3), zorder=9)
+    a1.annotate('new cable slot, 4.5 x 11 mm,\nclear of the step', (29.3, 309.5), (63.0, 302.5), fontsize=13, weight='bold', ha='right', arrowprops=dict(arrowstyle='->', lw=1.3), zorder=9)
+    a1.annotate('room for the third\nsignal pair (6 wires)', (38.9, 319.5), (63.0, 329.5), fontsize=13, weight='bold', ha='right', color=CAB, arrowprops=dict(arrowstyle='->', lw=1.3, color=CAB), zorder=9)
+    a1.annotate('arm sits 3 mm lower', (-39.0, 299.5), (-65.0, 288.0), fontsize=13, weight='bold', ha='left', arrowprops=dict(arrowstyle='->', lw=1.3), zorder=9)
     # outside views
     for tag in ('0', '1'):
         view.render([str(T / 'ff.stl'), str(T / 'fr.stl'), str(T / f'hub{tag}.stl'), str(T / f'arm{tag}.stl')], str(T / f'out{tag}.png'), az=25, el=5, size=(900, 800), zoom=1.6,
                     colors=[(0.93, 0.93, 0.92), (0.93, 0.93, 0.92), (0.15, 0.15, 0.16), (0.93, 0.93, 0.92)])
-    for i, (tag, ttl) in enumerate((('0', 'Outside, today: black hub band 12.5 mm'), ('1', 'Outside, proposed: band 14.5 mm, nothing else changes'))):
+    for i, (tag, ttl) in enumerate((('0', 'Outside, today: black hub band 12.5 mm'), ('1', 'Outside, new hub: band 15.5 mm (fork skirt as today)'))):
         bx = fig.add_axes([0.01 + 0.235 * i, 0.03, 0.225, 0.40])
         bx.imshow(mpimg.imread(T / f'out{tag}.png'))
         bx.axis('off')
@@ -140,7 +147,7 @@ def main():
     lines = figs.get('lines') or ['(figures pending)']
     fig.text(0.495, 0.455, 'What it buys and what it costs', fontsize=20, weight='bold', va='top')
     fig.text(0.495, 0.428, '\n'.join(lines), fontsize=14.5, va='top', linespacing=1.32)
-    fig.text(0.5, 0.965, 'Hub centre 2 mm taller and stronger: before and after (same cut as the cable picture; wires to scale)', fontsize=23, ha='center', weight='bold')
+    fig.text(0.5, 0.965, 'Hub centre 3 mm taller and stronger: before and after (same cut as the cable picture; wires to scale)', fontsize=23, ha='center', weight='bold')
     fig.savefig(OUT)
     print(OUT)
 
