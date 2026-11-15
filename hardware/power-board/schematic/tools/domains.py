@@ -83,7 +83,7 @@ def clearance(a,b,outer):
 # Each excepted via is pinned to its coordinates (page mm, VIA_TOL): a via of the same net anywhere else fails.
 # Vias of another net inside a MID pour outline: the three VBUS vias at the bank B FETs' pins 2-3 (tools/route_power.py),
 # GATE_A's at Q8's gate, GA2's in the pour's dead tip beside U8, and G2's at Q2's gate (the only way out of the slot
-# between Q1's tab and Q2's pins; accepted in the project thread on 2026-11-10, to be confirmed at the review).
+# between Q1's tab and Q2's pins; accepted on 2026-11-10, to be confirmed at the review).
 VIA_TOL=0.05
 MID_VIA_OK={'/VBUS':[(151.2,161.46),(151.2,162.73),(132.0,162.73)],'/GATE_A':[(132.0,141.46)],'/GA2':[(167.95,157.0)],'/G2':[(149.9,160.19)]}
 # Gate-drive nets (LAYOUT_RULES "Critical nets") take at most 2 vias. GATE_A has 3 from the staged routing: every one of
