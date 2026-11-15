@@ -995,3 +995,28 @@ inside the sleeve and on the fork front's underside.
 **Sheets:** [../checks/size_audit/YOKE_ADOPTED.png](../checks/size_audit/YOKE_ADOPTED.png) (refreshed),
 [../checks/size_audit/KEY_ACCESS.png](../checks/size_audit/KEY_ACCESS.png).
 
+## Adopted 2026-11-15: hub rev E1 (taller, solid top)
+
+Joey's decisions of 2026-11-15: the hub's centre 3 mm taller; M4 × 30 with washers; stronger over sooner; and his
+measurement that the RS02's output holes bottom out at 6.5 to 7 mm. The arm thread checked the first rev E1 candidate
+against rev D3c7 on its side and gave its go; the two later changes (seats, rounds) are inside the bore and have not
+been shown to it.
+
+- **Built by** `hub_candidate2.py` on the archived rev D3c7 part (`cad/_archive/hub_revD3c7/`, not in git), through
+  `adopt_hub_revE1.sh`. The part's last feature moves the body 3 mm down the yaw axis, so the part file and the exports
+  are in the assembly frame: top face on the RS02's output face at Y 319.86, body Y 285.00 to 319.86.
+- **STL SHA-256** `638facef4a15a6ed8f9315f58ed556b567e72503f3a60d0bdfcbd1103de0080b`. 92,305 mm³, 117.3 g PETG (rev D3c7: 63,202 mm³, 80.3 g).
+- **For the arm and the URDF:** RS02 output face to the hub's disc underside, where the arm's end face seats: 17.86 mm
+  before, **20.86 mm** now. Everything on the arm moves 3.00 mm down the yaw axis.
+- **What changed** (in the arm's coordinates nothing below Y 302 moved): top face +3.0; six slits r 19.0-19.5 filled;
+  pocket under the spigot's ledge solid; centre plate thickened 4 mm downward between the tubes; tubes dia 10.8; head
+  seats at Y 298.86 (were 298.06; grip 24.0, so M4 × 30 with one washer goes 5.2 mm into the motor); R 4 where the
+  six tubes meet the plate's underside, and the 1 mm step in that underside (r 18.9 to 23) filled level; cable slot 4.5 × 11 as a dog-leg (down through the dish floor at r 27.0-31.5, then
+  50° inward, out through the bore wall at Y 302.1-309.1), mouth rounded 1.5, knee rounded 2.0, exit lip cut square;
+  R 2 from the step wall into the dish floor; seat-face hole edges square.
+- **Strength:** A_HUB_LUGS.md, "Rev E1". Hub top 3.9 / 2.4 / 4.3 (layer / shear / von Mises, worst 0.5 mm ball) against
+  0.65 / 0.38 / 0.73 for rev D3c7; at the tube-to-plate rounds 8.1 / 1.83 / 3.1 (R 1 read 1.16 in shear, R 2.5 1.46);
+  lug gate 1.55 (1.44); elbow stop 3.11 (2.49).
+- **Not done here:** the fork front's skirt, 3.00 mm longer to follow the hub (with the fork front's next revision,
+  OPEN_ASSUMPTIONS item 49); the clearance sweep's result (`clearance_adopt_hubE1.json`) is to be read after the
+  adoption run.

@@ -15,7 +15,7 @@ free_gb() { powershell -NoProfile -c "[math]::Floor((Get-CimInstance Win32_Opera
 trap '$LK drop $WP >> $L 2>&1; $CL release $S > /dev/null 2>&1' EXIT
 job() {
   local st=$1 status=$2 out=$3; shift 3
-  until [ "$(free_gb)" -ge 10 ]; do sleep 60; done
+  until [ "$(free_gb)" -ge ${FEA_FREE_GB:-18} ]; do sleep 60; done
   $CL claim $S --worktree 'J:\code\roark-wt\shoulder-study' --status "$status" > /dev/null 2>&1
   SW_STATE_NAME=$st "$@" > $out 2>&1 &
   local pid=$!
@@ -36,7 +36,7 @@ for c in $CASES; do
     *) SOLV=2; ELV= ;;
   esac
   if [ -n "$ELV" ]; then export FEA_EL=$ELV; else unset FEA_EL; fi
-  FEA_SOLVER=$SOLV HUB_FEA_FILE=hub_fea_${TAG}_$c.SLDPRT job .sw_instance_pid_hc "hub candidate $V $c" $W/${c}_$TAG.txt $PY capped.py --mb 14336 -- $PY -u fea_shoulder.py $c
+  FEA_SOLVER=$SOLV HUB_FEA_FILE=hub_fea_${TAG}_$c.SLDPRT job .sw_instance_pid_hc "hub candidate $V $c" $W/${c}_$TAG.txt $PY capped.py --mb ${FEA_MB:-20480} -- $PY -u fea_shoulder.py $c
   rm -f ../../_sim/shoulder/${c}_$TAG.npz; grep -q "^ solve 0" $W/${c}_$TAG.txt && cp ../../_sim/shoulder/$c.npz ../../_sim/shoulder/${c}_$TAG.npz
   echo "hub candidate $V $c done $(date +%T): $(grep 'mesh \|solve' $W/${c}_$TAG.txt | tr '\n' ' ' | cut -c1-120)" >> $L
 done

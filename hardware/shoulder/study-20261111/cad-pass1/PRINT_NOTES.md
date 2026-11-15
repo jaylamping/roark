@@ -25,7 +25,7 @@ still needs its pre-print gate
 | Fork front | `shoulder_fork_front_left` | 151.8 g | 2026-11-14 (yoke; then the key slot, 3 mm joint pad and two inside gussets) | Exported and recorded 2026-11-14. **Waits** for a real plug tried in the channel, and for the rig (the skirt bounds the dish loop) |
 | Fork rear | `shoulder_fork_rear_left` | 68.2 g | 2026-11-14 (stiffer leg; then 4 mm counterbore floors on a solid 4.4 mm front plate) | Exported and recorded 2026-11-14. **Waits** for the 6808 coupon and for the rig (it carries the yaw exit) |
 | Cover ring (optional) | `shoulder_roll_cover_ring_left` | 13.1 g | 2026-11-14 (new) | Exported and recorded 2026-11-14. Dark PETG. Can be left off |
-| **Hub** | `shoulder_hub_left` | 80.2 g | 2026-11-14 (rev D3c7, adopted) | **Released for the stage 1 print. Print file ready** (hub section below) |
+| **Hub** | `shoulder_hub_left` | 117.3 g | 2026-11-15 (rev E1, adopted) | **Print file ready** (hub section below). Rev D3c7's print is superseded: fit bench only |
 | Pitch loop cover | `shoulder_pitch_loop_cover_left` | 102.3 g | 2026-11-11 | **Waits:** its M5 pads are placeholders and the feed position waits for the final shell (CAD_NOTES "Still open") |
 
 **Exports:**
@@ -111,7 +111,34 @@ Material PETG throughout. "Not sliced" applies to every orientation and support 
   head would stand proud.
 - Source: CAD_NOTES "Side centre r 47"; D_6808_FITS.md; B_ROLL_STOPS.md.
 
-### Hub (rev D3c7, released for the stage 1 print 2026-11-14)
+### Hub (rev E1, adopted 2026-11-15)
+
+**Print file:** `shoulder_hub_left_revE1.3mf` with the STL and a README, in the roark folder under
+`cad/_wip/prints/shoulder/` (ignored by git; unreleased until the pre-print gate passes, conventions/cad.md), and in
+`C:\joe\prints\shoulder-hub\` on holly-pc. **Rev D3c7's file is superseded:** D3c7 has six slits through its top and is
+good for the fit bench only. An earlier rev E1 file (seats for 6.2 mm of thread) is superseded too: its screws can bottom out.
+
+- **Colour:** black PETG. **Settings:** Generic PETG, 0.20 mm, 6 walls, **100 % infill, no brim**, tree supports with
+  blockers round the groove and at the two lugs, Cool Plate SuperTack. Motor face down, lugs up.
+- **Sliced:** 115.8 g, 3 h 15 min; 4.9 g of it support. Part 117.3 g by volume.
+- **Supports:** all in the lowest 4.6 mm on the plate side: a ring under the floor of the cable space, open at the rim,
+  and small plugs in the mouths of the six screw holes, the centre hole and the cable tunnel. **Nothing inside the hub.**
+- **After printing:** peel the ring off at the rim; pick out the plugs; smooth the cable space's floor and the tunnel's
+  mouth. **Clear the cable tunnel with a 4 mm rod:** straight down the mouth from the cable-space side (6 mm), and up
+  from the bore at about 40° to the bore's axis. Check the lug holes with a 3.8 mm drill shank. Measure the spigot
+  (CAD 71.6 mm). Ream the two smaller holes to 4.00 mm when the shoulder goes together.
+- **What rev E1 is** (A_HUB_LUGS.md, "Rev E1"): the centre 3 mm taller (cable gap 8.5 mm; the hub and the arm sit 3 mm
+  lower on the yaw axis), the six top slits filled, the inner pocket solid, the centre plate 11 mm thick, the six screw
+  tubes dia 10.8 with a 4 mm round into the plate, a 4.5 × 11 mm cable tunnel with one bend that stays clear of the step ring. The arm's side is unchanged.
+- **Screws: six M4 × 30, each with ONE standard flat washer** (dia 9, 0.8 thick), **snug by hand.** 5.2 mm into the
+  motor, whose holes bottom out at 6.5 to 7 mm (Joey, measured 2026-11-15). Without the washer 6.0 mm; two washers, or
+  a flat and a split spring washer: 4.2 to 4.4 mm, still enough. **Not M4 × 35:** it bottoms out before it clamps. Any
+  two of the six go in the reamed holes; they need not be partially threaded.
+- **Threading the cable:** bare wires only, from the cable-space side, one or two at a time with tweezers; they come
+  out in the bore and hang straight down against its wall (about r 21.5). Tie the bundle to the screw tube next to the
+  tunnel, inside the bore. Cut the length in the cable space to about 500 mm (CABLE_TRAVEL.md).
+
+### Hub rev D3c7 (superseded 2026-11-15; kept for the record of the stage 1 print)
 
 **Print file:** `shoulder_hub_left_revD3c7.3mf` with the STL and a README, on holly-pc in `C:\joe\prints\shoulder-hub\`
 and on Joey-PC in `J:\code\prints\shoulder-hub\`. The 3MF is not in the repo (a 3MF under `cad/prints/` needs a
@@ -212,7 +239,7 @@ clamps nothing.**
 
 | Joint | Screws | Thread in the motor or insert | Notes |
 |---|---|---|---|
-| Hub → RS02 output | 6 × M4: **M4 × 28**, or M4 × 30 with 1.6-2 mm of washer under the head. 2 of them partially threaded, in the reamed holes | 6 × M4, depth 7 min | Snug by hand (0.3 N·m is the background figure). M4 × 30 bare goes in 8.2 mm and can bottom. Probe one hole: 9 mm or more clears M4 × 30 bare |
+| Hub → RS02 output | 6 × **M4 × 30, each with one standard flat washer** (dia 9, 0.8 thick). Rev E1's seats are set for it: 5.2 mm into the motor (holes bottom at 6.5 to 7 mm). Not M4 × 35 | 6 × M4, depth 7 min | Snug by hand (0.3 N·m is the background figure). M4 × 30 bare goes in 8.2 mm and can bottom. Probe one hole: 9 mm or more clears M4 × 30 bare |
 | Fork front → RS03 roll output | 6 × **M4 × 18** + 3 × Ø4 pins | 6 × M4, depth 6, blind; 3 × Ø4, depth 7, blind | Snug by hand (0.3 N·m is the background figure). 5.6 mm engaged. M4 × 20 bottoms. Pins: at most 7 mm into the motor |
 | Drum → pitch RS03 output | 6 × **M4 × 18 with one washer**, or M4 × 16 | 6 × M4, depth 6, blind | Pad 11.7 mm. M4 × 18 bare goes in 6.3 mm and bottoms; with a 0.8 mm washer 5.5 mm; M4 × 16 gives 4.3 mm |
 | Drum → roll RS03 housing | 8 × **M4 × 10** | 8 × M4, depth 8 | Flange 3.5 mm under the head. M4 × 10 gives 6.5 mm; M4 × 12 goes in 8.5 mm and bottoms |

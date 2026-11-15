@@ -37,6 +37,7 @@ def regions(pos):
     return {
         'whole hub': np.ones(len(pos), bool),
         'hub top (Y 311.5 up)': y >= 311.5,
+        'tube-to-plate rounds (Y 307.5-312.3, r under 21)': (y >= 307.5) & (y <= 312.3) & (r < 21.0),
         'hub top, away from the screw holes': (y >= 311.5) & ~np.any([tube(a_, 3.4) for a_ in (-142.0, -82.0, -22.0, 38.0, 98.0, 158.0)], axis=0),
         'round the window at 68 deg': (across <= 7.0) & (along >= 13.0) & (y >= 302.0),
         'boss tube at 38 deg': tube(38.0, 4.6),

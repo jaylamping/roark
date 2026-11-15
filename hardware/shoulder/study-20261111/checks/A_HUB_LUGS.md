@@ -1314,3 +1314,58 @@ Intel direct sparse). Safety factor, worst 0.5 mm ball / 1 mm ball, hub nodes on
 | G90 + yaw at the arm's face totals, governing lug | 1.44 | 1.56 | 1.5 |
 | Elbow stop | 2.49 | 3.10 | 1.2 |
 | Hub top, bolted, worst 0.5 mm ball (layer / shear / von Mises) | 0.65 / 0.38 / 0.73 | 3.16 / 2.07 / 3.68 | 1.5 |
+
+## Rev E1 as adopted (2026-11-15): seats for 5.2 mm of thread, R 4 at the tubes
+
+Adopted the same day as the candidate above, with two changes inside the bore. The part of record is
+`cad/shoulder/left/shoulder_hub_left.SLDPRT`; exports `cad/exports/shoulder/shoulder_hub_left.STEP/.STL` (assembly frame,
+STL SHA-256 `638facef4a15a6ed8f9315f58ed556b567e72503f3a60d0bdfcbd1103de0080b`). 92,305 mm³, 117.3 g. The candidate files
+are gone; the figures of the section above stand for the first shape only.
+
+**Why it changed after the candidate.**
+1. **Thread depth.** Joey measured the M4 holes in the RS02's output face: they bottom out at 6.5 to 7 mm. The candidate
+   put an M4 × 30 with one washer 6.2 mm in. The six head seats moved 1.0 mm away from the motor (Y 298.86 in the arm's
+   coordinates, grip 24.0): **5.2 mm** in, 1.3 to 1.8 mm short of the bottom. About 25 mm² of thread shear area after one
+   pitch is discounted: about 2.5 kN even at 100 MPa (the flange's alloy is not known), against 345 N of preload and at
+   most about 0.7 kN from the arm on the worst screw.
+2. **The tube-to-plate corner.** With the solver's memory limit raised (20 GB), a fine mesh could be put where the six
+   screw tubes meet the centre plate's underside. That inside corner was sharp, and it is the lowest place of the hub
+   top in shear across the layers. It was rounded in three steps, and the 1 mm step in the plate's underside beside the
+   tubes (r 18.9 to 23) was filled level:
+
+| Tube-to-plate corner, bolted case Ah, hub nodes only | Shear, 0.5 mm ball | Shear, 1 mm ball | Von Mises, 0.5 mm | Layer, 0.5 mm | Mesh |
+|---|---|---|---|---|---|
+| Sharp (seats moved only) | 1.64 at the refined tube, 1.42 at an unrefined one; peak node 1.21 | 2.04 | 2.38 | 3.19 | 0.8 zone on one tube, 292k nodes |
+| R 1 | **1.16** | 1.77 | 2.09 | 2.74 | 0.5 zone on the six rounds, 427k |
+| R 1 | 1.14 | 1.71 | 2.06 | 3.15 | standard (global 6.0), 365k |
+| R 2.5, step filled | **1.46** | 1.91 | 2.81 | 7.08 | 1.0 zone, 416k |
+| R 2.5, step filled | 1.50 | 1.92 | 2.80 | 6.56 | standard, 350k |
+| **R 4, step filled (adopted)** | **1.83** | 2.07 | 3.08 | 8.14 | 1.3 zone, 383k |
+| **R 4, step filled (adopted)** | 1.95 | 2.06 | 3.57 | 15.6 | standard, 338k |
+
+The earlier figures for the hub top (3.16 / 2.07 / 3.68) were read on meshes too coarse at this corner to see it.
+
+**Figures of the adopted shape** (worst 0.5 mm ball / 1 mm ball, hub nodes only):
+
+| Case | Layer tension | Shear across layers | Von Mises | Target |
+|---|---|---|---|---|
+| Lug gate, G90 + yaw +17 at the arm's face totals (1.20 M nodes) | 1.62 / 2.39 | **1.55** / 2.13 | 2.66 / 3.34 | 1.5 |
+| Elbow stop (1.20 M nodes) | 3.27 / 4.54 | 3.11 / 4.30 | 5.44 / 6.81 | 1.2 |
+| Hub top, tube-to-plate rounds (1.3 zone) | 8.14 / 16.75 | 1.83 / 2.07 | 3.08 / 3.75 | 1.5 |
+| Hub top above the rounds (1.3 zone) | 3.89 / 4.62 | 2.37 / 3.03 | 4.32 / 5.43 | 1.5 |
+| Round the cable tunnel (1.3 zone) | 2.30 / 3.55 | 1.90 / 1.96 | 2.84 / 2.84 | 1.5 |
+
+- **Set aside, not settled:** in the walls of the six tubes, 2 to 3 mm above the head seats, shear reads 1.40 to 1.47
+  on the 0.5 mm ball (1.61 to 1.64 on 1 mm). The first rev E1 shape reads 1.45 to 1.49 there. It is where the model ties
+  each screw rigidly to the tube's end; the peak node and the 0.5 mm ball are the same number, so the mesh is coarse
+  there. A run with the washers as bodies would settle it.
+- **Mesh and memory.** Direct sparse, bolted contact: about 300k nodes fit under the old 14 GB cap and about 430k under
+  20 GB (442k and 528k did not). The standard mesh and the zone runs agree within 3 to 6 % on the 0.5 mm ball and within
+  1 % on the 1 mm ball for R 2.5 and R 4.
+- **Print** (one slice): 115.8 g, 3 h 15 min, 4.93 g of support, all in the lowest 4.6 mm on the plate side, none
+  inside. The rounds and the longer tubes stand on the plate as printed.
+- **Geometry check against the first candidate:** the surface differs only at the six tube ends (Y 298.86 to 299.86,
+  within r 17.4) and under the centre plate (Y 307.5 to 312.8, within r 23). The rounds stay clear of the tunnel's exit.
+- **Adoption:** `adopt_hub_revE1.sh`; its trial mode rebuilt the hub from the archived rev D3c7 part and reproduced the
+  candidate byte for byte before the real part was written.
+- **Not verified:** a print; a real RS02's flange face; the yaw rig; the arm thread has seen only the first candidate.

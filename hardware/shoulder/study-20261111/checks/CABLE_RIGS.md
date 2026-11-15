@@ -5,7 +5,8 @@ work out on paper. PLA, flat, no support. Script: `cad/scripts/shoulder/cable_ri
 `cad/exports/fixtures/fixtures_cable_rig_*.STL`, already turned to print flat.
 
 **Order:** roll first, then yaw, then pitch. Sliced plates (Bambu Studio 3MF, P2S, PLA Basic, 0.20 mm, 3 walls, 15%
-infill, no support, no brim) are on holly-pc in `C:\joe\prints\cable-rigs\`. They are not in the repo: a 3MF under
+infill, no support, no brim) are on holly-pc in `C:\joe\prints\cable-rigs\` and, on both workstations, in the roark folder under
+`cad/_wip/prints/shoulder/fixtures/` (ignored by git). They are not in the repo: a 3MF under
 `cad/prints/` needs a pre-print gate report, and these fixtures have no spec. The STLs here print the same way.
 
 **Wires for every test:** the real ones, loose, not sleeved. By the robot's wiring scheme (Joey, 2026-11-11):

@@ -13,6 +13,10 @@ YZ = 5.99                        # yaw axis along Y through (RX, YZ)
 ROLL_OUT, ROLL_REAR = 30.64, -25.96      # roll RS03 output face / rear face (Z)
 PITCH_OUT, PITCH_REAR = 97.0, 40.4       # pitch RS03 output face / rear face (X)
 RS02_REAR, RS02_SEAT, RS02_UNDER, RS02_OUT = 365.26, 351.86, 323.86, 319.86   # yaw RS02 (Y)
+# Hub rev E1 (adopted 2026-11-15): the hub's centre is 3 mm taller, so the hub and the arm sit 3 mm lower on the yaw axis.
+# RS02 output face to the hub's disc underside, where the arm's end face seats: 20.86 mm (rev D3c7: 17.86).
+HUB_ARM_DROP = 3.0               # mm the arm's exports (still in their pre-E1 coordinates) are lowered by in the assembly checks
+HUB_FACE_TO_ARM_SEAT = 20.86
 PETG = 1.27e-3                   # g/mm3, solid
 DISH_R0 = 23.5
 DISH_Y = float(__import__('os').environ.get('DISH_Y', 318.36))   # HUB REV B: floor top raised 315.8 -> 318.36 (yaw-loop gap 8.06 -> 5.5)

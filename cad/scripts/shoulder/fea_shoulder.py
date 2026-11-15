@@ -969,6 +969,15 @@ for k_ in ('A', 'B'):
 for k_, pre_ in (('A', 690.0), ('B', 690.0), ('Ah', 345.0)):
     base_ = CASES['HUBD_' + k_[0]]
     CASES['HUBB_' + k_] = dict(base_, dummy=dict(base_['dummy'], bolts=True), pre_mesh=bolt_setup(float(os.environ.get('HUBB_PRE', pre_))), stabilise=True)   # HUBB_PRE: another preload per screw, N
+# HUBB_TOP_EL: a second mesh for the hub-top figure. A local zone of this size on the faces of the hub top (the seat face,
+# the step, the tubes' ends, the tunnel's mouth: every face under 2000 mm2 that meets the box), with the lug and groove
+# zones relaxed to 1.5 so the model stays inside the direct solver's memory. Read the hub-top regions only from such a run.
+_te = os.environ.get('HUBB_TOP_EL')
+if _te:
+    for k_ in ('A', 'B', 'Ah'):
+        c_ = CASES['HUBB_' + k_]
+        CASES['HUBB_' + k_] = dict(c_, ctrl_optional=1, ctrl=[(s_, max(e_, float(os.environ.get('HUBB_RELAX', '1.5')))) for s_, e_ in c_['ctrl']] + [
+            (('touch', ([float(v_) for v_ in os.environ['HUBB_TOP_BOX'].split(',')] if os.environ.get('HUBB_TOP_BOX') else [RX - 25.0, RS02_OUT - 11.5, YZ - 25.0, RX + 25.0, RS02_OUT + 0.01, YZ + 25.0]), float(os.environ.get('HUBB_TOP_AREA', '2000'))), float(_te))])      # HUBB_TOP_BOX: another box for the zone (x0,y0,z0,x1,y1,z1)
 # the same with the yaw moment reversed (-17 N.m): the window moved to 68 deg, and which yaw sign is worse at its slot is
 # not known beforehand
 for k_ in ('A', 'Ah'):

@@ -294,55 +294,19 @@
       "export": "exports/shoulder/shoulder_hub_left.STEP",
       "source": "shoulder/left/shoulder_hub_left.SLDPRT",
       "config": "",
-      "settings": "rev D3c7: full-ring groove and fill, 2 x \u00d83.8 locating holes, R1.2 Z lug roots, lugs to X 34.4 with R0.8 outward roots (yaw torque path), cable window at 68 deg clipped clear of the boss tubes, r 20 fill behind both lugs",
-      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
-      "exportSha256": "744e2f78e9fa6378f2e564c9d25416794b778e52ec63a30b9a1718691056f2a0",
-      "recorded": "2026-11-14T02:51:53Z"
+      "settings": "rev E1: centre 3 mm taller, top slits filled, pocket solid, plate and boss tubes thicker, head seats at Y 298.86 for M4 x 30 with one washer (5.2 mm into the RS02), dog-leg cable slot 4.5 x 11; hub_candidate2.py on the rev D3c7 part",
+      "sourceSha256": "0cad6efc3461c1a9a9a73bd4979a65c0bb8a46460e4dfc62de13ce2b9daaf9d8",
+      "exportSha256": "60e910be39068ed8e1e23c8d315df2b04053becd52f689ad5c42e3258d0cfab8",
+      "recorded": "2026-11-15T13:28:57Z"
     },
     {
       "export": "exports/shoulder/shoulder_hub_left.STL",
       "source": "shoulder/left/shoulder_hub_left.SLDPRT",
       "config": "",
-      "settings": "rev D3c7: full-ring groove and fill, 2 x \u00d83.8 locating holes, R1.2 Z lug roots, lugs to X 34.4 with R0.8 outward roots (yaw torque path), cable window at 68 deg clipped clear of the boss tubes, r 20 fill behind both lugs",
-      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
-      "exportSha256": "a73103adb49bb9a4fe3b3901fea852e6668e928e7e1586953bc8b25a0c10259b",
-      "recorded": "2026-11-14T02:51:54Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_hub_left_revE1_candidate.STEP",
-      "source": "shoulder/left/shoulder_hub_left.SLDPRT",
-      "config": "",
-      "settings": "rev E1 candidate, final (not adopted): hub_candidate2.py on the rev D3c7 part, TOP_RAISE=3.0 SEAT_Y=299.86; square seat-face hole edges; tunnel exit lip blunted. The armframe files are the same solid 3 mm higher, in the arm's present coordinates",
-      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
-      "exportSha256": "c4f58c5f8a81c46a96448b05817510476d172d4ee46c5e8c33f6167123c4dd70",
-      "recorded": "2026-11-15T08:14:29Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_hub_left_revE1_candidate.STL",
-      "source": "shoulder/left/shoulder_hub_left.SLDPRT",
-      "config": "",
-      "settings": "rev E1 candidate, final (not adopted): hub_candidate2.py on the rev D3c7 part, TOP_RAISE=3.0 SEAT_Y=299.86; square seat-face hole edges; tunnel exit lip blunted. The armframe files are the same solid 3 mm higher, in the arm's present coordinates",
-      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
-      "exportSha256": "1392a808ffab59eb052bf44a83f6eb2ebd02b79af58a322f63125824a091a190",
-      "recorded": "2026-11-15T08:14:29Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_hub_left_revE1_candidate_armframe.STEP",
-      "source": "shoulder/left/shoulder_hub_left.SLDPRT",
-      "config": "",
-      "settings": "rev E1 candidate, final (not adopted): hub_candidate2.py on the rev D3c7 part, TOP_RAISE=3.0 SEAT_Y=299.86; square seat-face hole edges; tunnel exit lip blunted. The armframe files are the same solid 3 mm higher, in the arm's present coordinates",
-      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
-      "exportSha256": "bf93be7ea1a7bffa9ae56dc0344921c39c505294992351c8b8408cd3321cf041",
-      "recorded": "2026-11-15T08:14:31Z"
-    },
-    {
-      "export": "exports/shoulder/shoulder_hub_left_revE1_candidate_armframe.STL",
-      "source": "shoulder/left/shoulder_hub_left.SLDPRT",
-      "config": "",
-      "settings": "rev E1 candidate, final (not adopted): hub_candidate2.py on the rev D3c7 part, TOP_RAISE=3.0 SEAT_Y=299.86; square seat-face hole edges; tunnel exit lip blunted. The armframe files are the same solid 3 mm higher, in the arm's present coordinates",
-      "sourceSha256": "67844d6a64b8db2858203041954896b3d338bdb26be993cbf63719c2609b4fb8",
-      "exportSha256": "ec8c8a592d71f1dca96f6f40d940408df3c612e0657353c72f51756744874fb4",
-      "recorded": "2026-11-15T08:14:31Z"
+      "settings": "rev E1: centre 3 mm taller, top slits filled, pocket solid, plate and boss tubes thicker, head seats at Y 298.86 for M4 x 30 with one washer (5.2 mm into the RS02), dog-leg cable slot 4.5 x 11; hub_candidate2.py on the rev D3c7 part",
+      "sourceSha256": "0cad6efc3461c1a9a9a73bd4979a65c0bb8a46460e4dfc62de13ce2b9daaf9d8",
+      "exportSha256": "638facef4a15a6ed8f9315f58ed556b567e72503f3a60d0bdfcbd1103de0080b",
+      "recorded": "2026-11-15T13:28:59Z"
     },
     {
       "export": "exports/shoulder/shoulder_pitch_flange_ring_left.STEP",

@@ -118,8 +118,11 @@ def load():
     P['torso'] = np.vstack([frame_samples(), pm])
     ua = [samp(mesh_step(UA / f'upper_arm_organic_{n}_left.step', tol=0.3), 1.0) for n in ('front', 'back', 'rs02_ring')]
     P['upper_arm'] = np.vstack(ua)
-    if os.environ.get('UA_SHIFT_Y'):      # a hub with a taller centre puts the arm this much lower on the yaw axis (negative = down)
-        P['upper_arm'] = P['upper_arm'] + np.array((0.0, float(os.environ['UA_SHIFT_Y']), 0.0))
+    # the arm's exports are in their pre-E1 coordinates: with hub rev E1 the arm sits HUB_ARM_DROP lower on the yaw axis.
+    # UA_SHIFT_Y overrides it (negative = down; 0 = the arm as exported, for a hub before rev E1)
+    _dy = float(os.environ['UA_SHIFT_Y']) if os.environ.get('UA_SHIFT_Y') else -HUB_ARM_DROP
+    if _dy:
+        P['upper_arm'] = P['upper_arm'] + np.array((0.0, _dy, 0.0))
     p = P['roll_rs03']; r = np.hypot(p[:, 0] - RX, p[:, 1] - RY)
     P['roll_rs03'] = p[~((r < 23.8) & (np.abs(p[:, 2] - ROLL_OUT) < 4.5))]
     p = P['rs02']; r = np.hypot(p[:, 0] - RX, p[:, 2] - YZ)

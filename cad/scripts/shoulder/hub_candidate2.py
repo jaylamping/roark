@@ -31,7 +31,8 @@ from swk import *
 
 ADOPT = os.environ.get('HUB_ADOPT') == '1'      # only adopt_hub_revE1.sh sets this: build the REAL part from the archived rev D3c7 part
 assert LOOK or ADOPT, 'look builds only, unless the adoption script runs it'
-SRC = (CAD / '_archive' / 'hub_revD3c7' if ADOPT else CAD / 'shoulder' / 'left') / f"{NAMES['hub']}.SLDPRT"
+# HUB_SRC_ARCHIVE=1 (the adoption script's trial run): a look build from the archived rev D3c7 part, as the adoption would
+SRC = (CAD / '_archive' / 'hub_revD3c7' if ADOPT or os.environ.get('HUB_SRC_ARCHIVE') == '1' else CAD / 'shoulder' / 'left') / f"{NAMES['hub']}.SLDPRT"
 DST = OUT / f"{NAMES['hub']}.SLDPRT"
 K = math.tan(math.radians(50.0))
 YAX, ZAX = (0, 1, 0), (0, 0, 1)
@@ -137,6 +138,26 @@ def main():
             'PLATE_THICK', 4.1, YAX)
     extrude(d, ysk(d, 298.06, 'TUBE_THICK', lambda s: [c for _, cx, cz in cen for c in (s.circle((cx, 298.06, cz), 5.4), s.circle((cx, 298.06, cz), 4.3))]),
             'TUBE_THICK', 311.95 - 298.06, YAX)
+    # TUBE_FILLET (mm, default 4.0, 0 = off): a round where each boss tube meets the plate's underside (Y 311.9). The corner
+    # was sharp, and the bolted case put its lowest shear figure there on a fine mesh (A_HUB_LUGS.md). One revolve per tube
+    rf = float(os.environ.get('TUBE_FILLET', '4.0'))
+    if rf:
+        va = vol(d)
+        if rf > 1.4:      # the round reaches past the thickened plate's edge (r 18.9), where the underside steps up 1 mm to
+            # the pocket fill (Y 312.9 out to r 23): that step filled level first, so the tubes do not stand beside a notch
+            yaw_rev(d, 'PLATE_STEP_FILL', [(18.85, 311.9), (23.05, 311.9), (23.05, 312.95), (18.85, 312.95)])
+        for i_, (_, cx, cz) in enumerate(cen):
+            with Sk(d, plane(d, 'Z', cz, f'P_TUBE_FILLET{i_}'), f'TUBE_FILLET{i_}') as s_t:
+                sm_ = d.SketchManager
+                Pt = lambda dx_, y_: s_t.p((cx + dx_, y_, cz))
+                A_, B_, C_, D_, E_ = Pt(5.3, 311.95), Pt(5.4 + rf, 311.95), Pt(5.4 + rf, 311.9), Pt(5.4, 311.9 - rf), Pt(5.3, 311.9 - rf)
+                M_ = Pt(5.4 + rf - rf * math.sqrt(0.5), 311.9 - rf + rf * math.sqrt(0.5))
+                for u_, v_ in ((A_, B_), (B_, C_), (D_, E_), (E_, A_)):
+                    sm_.CreateLine(u_[0], u_[1], 0, v_[0], v_[1], 0)
+                sm_.Create3PointArc(C_[0], C_[1], 0, D_[0], D_[1], 0, M_[0], M_[1], 0)
+                s_t.cline((cx, 290.0, cz), (cx, 325.0, cz))
+            revolve(d, s_t.feat, f'TUBE_FILLET{i_}', lo=0.5)
+        log(f'  TUBE_FILLET: added {vol(d) - va:.0f} mm3 (R {rf} at the six tubes, under the plate)')
     # the six head seats (the tubes' ends; Y 298.06 as imported). SEAT_Y sets the grip for the screw length in use:
     # higher = the tube ends cut back, lower = the tubes carried on down at dia 10.8 with a dia 4.3 hole
     seat = float(os.environ.get('SEAT_Y', '298.06'))
