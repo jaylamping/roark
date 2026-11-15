@@ -27,9 +27,9 @@ def test_a_call_that_does_not_return_is_written_up_and_a_polling_loop_is_not(tmp
             sum(range(1000))  # two seconds of computing
         threading.Event().wait(2.0)  # two seconds waiting on an event, as for a child process or a worker thread
         assert w.reports == []
-        ctypes.windll.kernel32.SleepEx(4000, False)  # one call out of Python that does not come back, as a COM call
+        ctypes.windll.kernel32.SleepEx(6000, False)  # one call out of Python that does not come back, as a COM call
     assert len(w.reports) == 1
     text = Path(w.reports[0]).read_text(encoding="utf-8")
-    assert "SleepEx(4000, False)" in text and "test_swkit.py" in text
+    assert "SleepEx(6000, False)" in text and "test_swkit.py" in text
     line = (tmp_path / "runs.log").read_text(encoding="utf-8").splitlines()[-1].split("\t")
     assert len(line) == 6 and line[4].startswith("STALLED at test_swkit.py")

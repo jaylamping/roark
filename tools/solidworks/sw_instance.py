@@ -488,10 +488,13 @@ class stall_watch:  # noqa: N801 - reads as a verb at the call site
             return False
 
     def _run(self):
-        seen, at, since, told = time.process_time(), time.time(), time.time(), False
+        def cpu():  # the script's processor time: the process's less this thread's, or a report would read as progress
+            return time.process_time() - time.thread_time()
+
+        seen, at, since, told = cpu(), time.time(), time.time(), False
         while not self._stop.wait(self.poll):
             try:
-                used, now = time.process_time() - seen, time.time()
+                used, now = cpu() - seen, time.time()
                 seen, busy, at = seen + used, used > 0.02 * (now - at), now
                 if busy:  # the script is computing or making calls that come back
                     since, told = now, False
