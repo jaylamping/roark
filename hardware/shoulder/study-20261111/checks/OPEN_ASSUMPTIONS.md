@@ -239,3 +239,9 @@ Numbers and the table are in CAD_NOTES.md, "Hub cable window against the boss tu
     fit in the drum is not modelled, and the drum has no strength record at all (item 24).
   - **Pitch side:** the drum on the pitch RS03's output and the flange ring have never been analysed; nothing there has
     a figure that could depend on a fit.
+- **53. Hub: the washers' rims on the tube ends** (2026-11-15). With the six M4 washers as bodies the tube ends read 1.33
+  to 1.45 in shear and, at the washer's rim, 0.86 in layer tension on the 0.5 mm ball (1.47 on 1 mm), at snug preload
+  (A_HUB_LUGS.md, "The six M4 washers as bodies"). Accepted for the print in hand with "snug only, re-snug once". For the
+  next hub revision: a raised land dia 8.5 × 0.5 under each washer, or the tubes at dia 12.
+- **54. Fork: the 104° washer's rim** (2026-11-15). The seat candidate sf5 passes everywhere but in shear on the 0.5 mm
+  ball under that rim (0.92 to 0.94 on the fine mesh, in compression; FORK_FRONT_FE.md). Accepted with the statement.

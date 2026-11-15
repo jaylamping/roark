@@ -130,6 +130,8 @@ good for the fit bench only. An earlier rev E1 file (seats for 6.2 mm of thread)
 - **What rev E1 is** (A_HUB_LUGS.md, "Rev E1"): the centre 3 mm taller (cable gap 8.5 mm; the hub and the arm sit 3 mm
   lower on the yaw axis), the six top slits filled, the inner pocket solid, the centre plate 11 mm thick, the six screw
   tubes dia 10.8 with a 4 mm round into the plate, a 4.5 × 11 mm cable tunnel with one bend that stays clear of the step ring. The arm's side is unchanged.
+- **SNUG ONLY, NEVER TIGHTENED HARD,** and re-snugged once after the first hours of use: with real washers in the
+  model the plastic at the washers' rims is the lowest place of the hub at snug preload already (A_HUB_LUGS.md).
 - **Screws: six M4 × 30, each with ONE standard flat washer** (dia 9, 0.8 thick), **snug by hand.** 5.2 mm into the
   motor, whose holes bottom out at 6.5 to 7 mm (Joey, measured 2026-11-15). Without the washer 6.0 mm; two washers, or
   a flat and a split spring washer: 4.2 to 4.4 mm, still enough. **Not M4 × 35:** it bottoms out before it clamps. Any
@@ -294,3 +296,12 @@ clamps nothing.**
    - **No plug or joint break fits inside any channel** (item 13): thread the wires, then terminate.
 5. Hub onto the RS02 output from below, six M4, snug by hand; lay the arm bundle in the dish and through the window. Then
    the arm halves.
+
+### Screws into printed seats: snug only (2026-11-15)
+
+Checked with the washers as real parts in the model: the plastic under a washer's rim is the first place to go past the
+target, and it does so quickly as the screw is tightened.
+- **Hub → RS02 output, six M4 × 30 with one washer each:** snug by hand, never hard; re-snug once after the first hours.
+- **Fork front → RS02 body, five M3 with one washer each** (M3 × 12 on the released part; M3 × 14 on the seat candidate):
+  snug by hand, never hard. At about four times snug (1000 N per screw) the model reads 0.65 in shear under the washers.
+- A screw that keeps coming loose is a finding to report, not a reason to tighten harder.

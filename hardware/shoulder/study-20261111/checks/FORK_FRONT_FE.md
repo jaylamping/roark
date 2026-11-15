@@ -448,3 +448,79 @@ no clearance: its extra width and depth are behind and beside the leg, away from
 - The share of the 17 N·m yaw torque between the RS03 output and the rear leg: the combined model.
 - The yoke STL with pockets (`LOOK=yoke`) is not watertight after export (3 non-manifold edges); the solid-neck build
   is clean. Only the solid-neck build should go further.
+
+## The RS02's five screw seats: candidate "sf5" (2026-11-15, not adopted)
+
+Sheet for Joey: [fork_seats/FORK_SEATS_CANDIDATE.png](fork_seats/FORK_SEATS_CANDIDATE.png). Look build
+`cad/_wip/look/sf5` (`RS02_SEAT_FIX=1 RS02_SEAT_R_CHEEK=2.5 KEY_ROUND=1 SKIRT_DROP=3.0`, `build_parts.py fork_front`),
+combined with the released fork rear as `cad/_sim/shoulder/fork2_sf5.SLDPRT`. Nothing real is changed.
+
+**Why.** The audit of 2026-11-15 found that the record's read-outs left a band out round the RS02's seats. Run as a
+bolted joint (`R2_*` cases: an aluminium stand-in for the RS02 under the seat ring, five M3 bolt connectors at 250 N,
+contact on the seat, direct sparse), the released part reads 0.76 to 0.79 in layer tension at the screw under the cheek
+(104°).
+
+**What the candidate changes** (hidden, except the skirt):
+- each seat: a flat to r 3.5 for a standard M3 washer on an 8.0 mm floor (was a dia 6.6 counterbore on 6.5 mm), R 1 from
+  the flat into a dia 9 pocket wall; **R 2.5 at the two screws under the cheek** (104° and 144°). M3 × 14 with one washer;
+- the key access to the 104° screw: a round tunnel dia 7.8 on the key's line in place of the square-ended slot 7.0 wide
+  (its mouth is inside the drum's envelope, as before), starting 1.5 mm above the seat as before; the access bore of
+  the 144° screw dia 7.8 (was 7.0), so a washer passes on its screw;
+- the skirt exactly 3.00 mm longer (Joey, with hub rev E1): it covers the hub's rim by 3.9 mm (0.9 mm today).
+
+**Variants on the way** (forward design load, yaw +17, 104° screw, worst 0.5 / 1 mm ball, rigid-washer model):
+
+| Variant | Layer tension | Shear across layers | Von Mises |
+|---|---|---|---|
+| Released | 0.76 / 1.33 | 1.02 / 1.43 | 1.54 / 2.16 |
+| sf2: washer seats, R 1, floor 8.0 | 0.83 / 1.33 | 0.81 / 1.21 | 1.47 / 1.84 |
+| sf3: no counterbore, seats on the ring's top, floor 10.0 (dropped: the −16° screw fell to 0.83 / 0.97 in shear) | 0.83 / 1.34 | 0.76 / 1.20 | 1.26 / 1.65 |
+| sf4: sf2 with the round key tunnel | 0.93 / 1.57 | 0.84 / 1.26 | 1.55 / 2.20 |
+| **sf5: sf4 with R 2.5 at the two cheek-side screws** | 1.20 / 2.02 | 0.99 / 1.62 | 1.78 / 2.19 |
+
+The low was never under the head: it sat in the wall beside the seat, where the cheek's load comes into the ring.
+
+**Figures of the candidate, washers as bodies** (five steel washers dia 7 × 0.5 on the seats, contact to the fork, the
+M3 head dia 5.5 on the washer; **the fork's own nodes by body, nothing left out**; `fork_r2_body_post.py`):
+
+| Case | Part, seat mesh | Governing screw | Layer tension | Shear across layers | Von Mises |
+|---|---|---|---|---|---|
+| Forward, yaw +17, 250 N | released, 1.6 mm | 104° | **0.79 / 1.40** | 1.04 / 1.46 | 1.59 / 2.22 |
+| Forward, yaw +17, 250 N | sf5, 1.6 mm (221k nodes) | 104° | 1.17 / 1.93 | 1.10 / 1.61 | 1.84 / 2.32 |
+| Forward, yaw +17, 250 N | sf5, 1.1 mm (372k nodes) | 104° | 1.58 / 2.03 | **0.94** / 1.56 | 1.61 / 2.28 |
+| Forward, yaw +17, 250 N | sf5, 1.1 mm, washer 1.0 thick | 104° | 1.57 / 2.03 | 0.92 / 1.56 | 1.59 / 2.28 |
+| Forward, yaw +17, 250 N | sf5, 1.1 mm | −16° (next lowest) | 4.78 / 9.82 | 1.29 / 1.54 | 1.99 / 2.64 |
+| Roll stop at 17 N·m, 250 N | sf5, 1.6 mm | lowest of the five | 3.22 / 3.70 | 1.90 / 2.69 | 2.86 / 3.96 |
+| Forward, yaw +17, **1000 N** | sf5, 1.6 mm | 104° | 1.02 / 1.64 | **0.65 / 0.96** | 1.08 / 1.30 |
+| Roll stop at 17 N·m, **1000 N** | sf5, 1.6 mm | lowest of the five | 1.45 / 2.26 | 0.76 / 1.17 | 1.27 / 1.62 |
+
+Rigid-washer model, other design cases on sf5 (1.6 mm): forward yaw −17 lowest 1.43 / 2.47 layer, 1.29 / 1.94 shear;
+sideways 2.29 / 2.78 layer, 1.22 / 1.73 shear. Rest of the fork in all these runs: 1.74 / 2.08 or better.
+
+- **Accepted as the candidate (coordinator, 2026-11-15) with one figure under target:** shear on the 0.5 mm ball under
+  the rim of the 104° washer, 0.92 to 0.94 on the fine mesh (1.10 on the 1.6 mm mesh), 0.6 mm below the seat, where the
+  normal stress is compressive (−13 MPa; −32 to −40 MPa at the rim on the surface). It is the washer's rim bedding into
+  the plastic under the cheek's load. A washer twice as thick does not change it; a wider one does not fit (the RS02's
+  rear body stands 4.0 mm from each screw axis). All 1 mm readings are 1.54 or better and layer tension passes.
+- **Snug only.** At 1000 N per screw (about four times snug) the plastic under an M3 washer is past the target at every
+  screw. The five M3 are tightened by feel and never hard (PRINT_NOTES).
+- **Stop figures, a correction.** The lows quoted earlier for the stop (0.30 to 0.40) were at 60 N·m and counted
+  compression under the washers as layer stress. At 17 N·m, in tension, the released part reads 1.31 / 2.11 (rigid
+  washers) and sf5 3.22 / 3.70. Counting stress of either sign sf5 reads 0.97 / 1.66 under the −56° washer: bearing
+  pressure, not layer tension.
+- **The 6808 seat** was run with a stand-in outer race: D_6808_FITS.md, last section. It passes, and it showed that the
+  fork needs the race to carry radial load with no play.
+- **Open:** a model with the RS02 and the race together; the candidate's STL has one sliver facet from the export's own
+  repair (on the ring's top at the front), to be collapsed before any export; the fork rear's housing at Ø52.0.
+
+### What each read-out of the fork leaves out
+
+| Read-out | Takes | Leaves out |
+|---|---|---|
+| `ff_post.py`, `ff_proper_post.py`, the figures of record before 2026-11-15 | all nodes of the model | 4 mm round fixed and loaded faces, and 2 mm round screw seats: the RS02 seat ring, the 6808 seat and the joint's screw seats were inside those bands |
+| `fork_r2_post.py` (2026-11-15, rigid-washer runs) | fork nodes by position | the RS02 stand-in (by position), the nodes on the seat plane itself, and for "rest of the fork" the 4 mm at the fixed boss face, the 6808 seat band and the tooth; its "tie rings out" row also leaves out 1.2 mm round each hole edge |
+| `fork_r6_post.py` (6808 with a stand-in race) | fork nodes by position | the race (by position); for "rest" the 4 mm at the fixed boss face and the RS02 seat ring |
+| `fork_r2_body_post.py` (washers as bodies) | **the fork's body, from the body record in the result file** | nothing at the screws; for "rest of the fork" the 4 mm at the fixed boss face |
+
+Result files written since 2026-11-15 carry each node's body (`body`, `body_names`), so a read-out no longer has to
+tell bodies apart by position.

@@ -1238,7 +1238,7 @@ def rs02_setup(preload):
 
 _r2d = dict(r=39.2, y0=R2_Y0, t=10.0, dir=-1, taps='rs02', tap_r=1.25, tap_depth=8.0)
 if os.environ.get('R2_WASHER') == '1':      # washers as bodies (dia 7 x 0.5, bore 3.4); use R2_HEAD_OD=5.5 with it (the cap head on the washer)
-    _r2d['washer'] = (3.5, 1.7, 0.5)
+    _r2d['washer'] = (3.5, 1.7, float(os.environ.get('R2_WASHER_T', '0.5')))      # R2_WASHER_T: 1.0 = two washers stacked, modelled as one
 _r2c = [(('touch', [RX - 47, R2_Y0 - 0.5, YZ - 47, RX + 47, SEAT_Y[1] + 0.5, YZ + 47], 3000.0), float(os.environ.get('R2_CTRL', '1.2')))]
 _r2b = dict(part='fork2', fix=[('fixed', FK_BOSS), ('radial', FK_SEAT6808)], el=3.5, coupling=0, disp=FF_DISP, dummy=_r2d,
             ctrl=_r2c, ctrl_optional=1, pre_mesh=rs02_setup(R2_PRE), stabilise=True)

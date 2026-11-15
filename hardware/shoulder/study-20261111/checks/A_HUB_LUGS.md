@@ -1369,3 +1369,29 @@ The earlier figures for the hub top (3.16 / 2.07 / 3.68) were read on meshes too
 - **Adoption:** `adopt_hub_revE1.sh`; its trial mode rebuilt the hub from the archived rev D3c7 part and reproduced the
   candidate byte for byte before the real part was written.
 - **Not verified:** a print; a real RS02's flange face; the yaw rig; the arm thread has seen only the first candidate.
+
+### The six M4 washers as bodies (2026-11-15)
+
+The adopted hub with six steel washers dia 9 × 0.8 on the tube ends (contact to the hub, the M4 head dia 7 on the washer,
+345 N per screw), read by body: the hub alone, nothing left out (`hub_top_post.py` uses the body record when the result
+file has one).
+
+| Region, worst 0.5 / 1 mm ball | Mesh | Layer tension | Shear across layers | Von Mises |
+|---|---|---|---|---|
+| Tube ends (38° and 98° tubes, the lower of the two) | standard, 340k nodes | 1.36 / 1.53 | 1.33 / 1.63 | 2.03 / 2.03 |
+| Tube ends | 1.0 mm zone at the six tube ends, 233k nodes | **0.86 / 1.47** | 1.36 / 1.57 | 1.27 / 1.78 |
+| Hub top above the rounds | both | 3.81 / 3.76 | 2.41 / 2.56 | 4.28 / 4.75 |
+| Tube-to-plate rounds | both | 14.9 or more | 1.88 / 2.09 | 3.47 / 3.47 |
+| Round the cable tunnel | both | 2.53 / 3.44 | 1.92 / 1.93 | 2.72 / 2.72 |
+
+- **The tube ends are a real low, not a connector artefact.** With the rigid tie gone, the old "tie ring" figure (0.59
+  to 0.71 in layer tension) becomes 1.36 on the standard mesh, but shear in the tube walls stays at 1.33 to 1.45 on the
+  0.5 mm ball (1.57 to 1.63 on 1 mm), just under the 1.5 mark.
+- **At the washer's rim** (4.5 mm from the screw axis; the tube's end is 5.4) the fine zone reads 0.86 in layer tension on
+  the 0.5 mm ball, 1.47 on 1 mm: the plastic just outside the rim is stretched as the rim presses in. A contact-edge
+  peak about 0.5 mm wide.
+- **Read (coordinator, 2026-11-15):** local bedding of the washer into the tube end with some loss of preload, not a
+  path to breaking the hub. The print is not held. **The six M4 are snug only, never tightened hard, and re-snugged once
+  after the first hours of use.**
+- **For a later hub revision** (OPEN_ASSUMPTIONS item 53): a raised land dia 8.5 × 0.5 under each washer, so the rim
+  overhangs free plastic, or the tubes at dia 12.
