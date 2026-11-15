@@ -80,6 +80,27 @@ pair of 16 AWG silicone (13.2 mΩ/m, 3.0 mm OD), in still air with about 12 W/m�
 | Port overload trip (TPS48111, 30 A, about 16 ms) | 30 A | 0.04 K (adiabatic) | negligible |
 | Short at the pigtail end (1.1–1.4 kA, under 2 µs) | — | 0.01 K | negligible |
 
+**18 AWG down the arm (decided 2026-11-14).** The arm harness drops to 18 AWG where it crosses the upper-arm yaw joint
+(16 AWG allowed only about ±37° there; 18 AWG gives ±90°). The board pigtails J8 and J9 stay 16 AWG: they carry the whole
+arm, and the shoulder pitch and roll runs are still 16 AWG. Nothing on the board changes: the pads take either gauge, and
+the port breaker (30 A overload, 35–45 A short circuit) opens on a short at the end of an 18 AWG run as it does on 16 AWG.
+
+The same check for a twisted pair of 18 AWG silicone (20.9 mΩ/m, 2.3 mm OD), copper resistance corrected for temperature:
+
+| Current, sustained | Temperature rise | Verdict |
+| --- | --- | --- |
+| 5 A | about 9 K | fine |
+| 7.5 A | about 20 K | fine: the software limit for the 18 AWG section |
+| 10 A | about 39 K → about 80 °C at 40 °C | fine: the fuse rating for the 18 AWG section |
+| 15 A | about 105 K → about 145 °C | survivable for 200 °C silicone, not a running point: the most an 18 AWG run may ever be fused at |
+| 20 A | about 265 K | over the insulation rating: **18 AWG must never sit behind only the 20 A port fuse** |
+
+So every 18 AWG run needs its own fuse where the gauge steps down, **10 A** (the same 58 V MINI family), with the sustained
+software limit for that section at 7.5 A. It feeds the upper-arm yaw, elbow and forearm drives and the hand. The drives'
+bus currents are not measured yet; the arm trunk plan's branch fuses for them add up to 13 A plus 3 A for the hand, and it
+expects a real draw of a few amps. If the shoulder runs also go to 18 AWG later, the arm port's inline fuse drops from 20 A to
+15 A at most (10 A if the measured draw allows) and the pigtail may then be 18 AWG as well.
+
 **Pi link J21 pinout** (JST GH 8, 26 AWG; rev B5 added pin 8 for the power-fail warning). Every Pi input here is
 open drain or driven at 3.3 V from the Pi's own rail; nothing above 3.3 V reaches the cable.
 
