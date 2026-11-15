@@ -9,7 +9,7 @@ import sw_watch
 
 
 def test_the_same_fault_in_two_parts_is_one_kind_and_a_known_kind_is_not_reported_as_new() -> None:
-    """Guards: the daily look must tell Joey about a fault once. The FFEPlus contact failure (2026-11-13) came back in
+    """Guards: bug - the daily look must tell Joey about a fault once. The FFEPlus contact failure (2026-11-13) came back in
     every bolted study with a different file and node count in its text; reported as new each time it would bury a
     fault that really is new, such as the STEP import that never returned (2026-11-15)."""
     log = "\n".join([
@@ -35,7 +35,7 @@ def test_the_same_fault_in_two_parts_is_one_kind_and_a_known_kind_is_not_reporte
 
 
 def test_kinds_keep_what_tells_two_faults_apart_and_drop_what_does_not() -> None:
-    """Guards: on holly-pc (2026-11-15) the first kind() made one kind of every COM error ("RPC server is unavailable"
+    """Guards: bug - on holly-pc (2026-11-15) the first kind() made one kind of every COM error ("RPC server is unavailable"
     and "remote procedure call failed" alike), cut a path at its first space, and made a kind per feature name; 32
     crash events in three days read as 32 lines, and solver (STAR.exe) crashes were left out."""
     kind, crash = sw_watch.kind, sw_watch.crash_kind
