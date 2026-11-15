@@ -18,6 +18,7 @@ millimetres and degrees in the model frame; SolidWorks itself works in metres an
 The feature calls are the ones the left-arm build scripts proved on SolidWorks 2026 (cad/scripts/arm/swg.py and
 organic_master.py on branch left-arm-organic-r1). Windows only: needs pywin32, psutil and numpy.
 """
+import contextlib
 import math
 import os
 import sys
@@ -73,8 +74,10 @@ def free_gb():
 class job:
     """with job() as j: one SolidWorks instance for one script, closed on the way out whatever happens.
 
-    Refuses to start when the machine has less than min_free_gb free. j.sw is the SldWorks object, j.inst the
+    Refuses to start when the machine has less than min_free_gb free. With wait_s it keeps asking for that long first,
+    both for memory and for a launch queued behind a busy instance. j.sw is the SldWorks object, j.inst the
     sw_instance.Instance (j.inst.pid for claims.py), j.simulation() loads the Simulation add-in.
+    The job changes no SolidWorks setting: export() sets the export options and puts them back.
     """
 
     def __init__(self, min_free_gb=MIN_FREE_GB, visible=False, wait_s=0):
@@ -82,9 +85,13 @@ class job:
         self.inst = self.sw = None
 
     def __enter__(self):
-        if free_gb() < self.min_free_gb:
-            raise Failed(f'only {free_gb():.1f} GB free, under the {self.min_free_gb} GB floor: wait, do not launch')
         end = time.time() + self.wait_s
+        while free_gb() < self.min_free_gb:      # other jobs finish and hand memory back: a short dip is a queue too
+            if time.time() >= end:
+                raise Failed(f'only {free_gb():.1f} GB free, under the {self.min_free_gb} GB floor: wait, do not '
+                             'launch (job(wait_s=...) waits for you)')
+            log(f'launch is waiting for memory: {free_gb():.1f} GB free, floor {self.min_free_gb} GB')
+            time.sleep(min(20, max(0.0, end - time.time())))
         while True:
             try:
                 self.inst = launch(visible=self.visible)
@@ -97,7 +104,6 @@ class job:
                 log('launch is waiting behind a busy instance:', str(ex)[:120])
                 time.sleep(20)
         self.sw = self.inst.sw
-        pin_export_prefs(self.sw)
         log('SolidWorks pid', self.inst.pid, 'free GB', round(free_gb(), 1))
         return self
 
@@ -117,16 +123,31 @@ class job:
 
 # ---- documents ---------------------------------------------------------------------------------------------------------
 
-def pin_export_prefs(sw):
-    """STL and STEP options are per-machine settings, not part of a part: set them so every machine exports alike.
+EXPORT_TOGGLES = {69: True, 71: True}               # swSTLBinaryFormat, swSTLDontTranslateToPositive
+EXPORT_INTS = {211: 0, 78: 2, 75: 203}              # swExportStlUnits = mm, swSTLQuality = Fine, swStepAP = AP203
 
-    Binary STL in mm, quality Fine, kept in the model frame (no shift to positive space), STEP AP203 (cad.md section 9).
+
+@contextlib.contextmanager
+def export_prefs(sw):
+    """Set the STL and STEP options for one export, then put back what the machine had.
+
+    They are per-user SolidWorks settings, not part of a part, and SolidWorks writes them to the registry when it
+    closes: left set, a script would change every later session on the PC, the person's own included. Binary STL in
+    mm, quality Fine, kept in the model frame (no shift to positive space), STEP AP203 (cad.md section 9).
     """
-    sw.SetUserPreferenceToggle(69, True)           # swSTLBinaryFormat
-    sw.SetUserPreferenceToggle(71, True)           # swSTLDontTranslateToPositive
-    sw.SetUserPreferenceIntegerValue(211, 0)       # swExportStlUnits = mm
-    sw.SetUserPreferenceIntegerValue(78, 2)        # swSTLQuality = Fine
-    sw.SetUserPreferenceIntegerValue(75, 203)      # swStepAP = AP203
+    was_t = {k: sw.GetUserPreferenceToggle(k) for k in EXPORT_TOGGLES}
+    was_i = {k: sw.GetUserPreferenceIntegerValue(k) for k in EXPORT_INTS}
+    try:
+        for k, v in EXPORT_TOGGLES.items():
+            sw.SetUserPreferenceToggle(k, v)
+        for k, v in EXPORT_INTS.items():
+            sw.SetUserPreferenceIntegerValue(k, v)
+        yield
+    finally:
+        for k, v in was_t.items():
+            sw.SetUserPreferenceToggle(k, bool(v))
+        for k, v in was_i.items():
+            sw.SetUserPreferenceIntegerValue(k, int(v))
 
 
 def part_template(sw):
@@ -178,13 +199,13 @@ def save_as(d, path):
 
 
 def export(sw, d, path):
-    """Export the part to .step or .stl by its extension, with the pinned options, and check the file landed."""
-    pin_export_prefs(sw)
+    """Export the part to .step or .stl by its extension, with the house options (put back afterwards), and check the file landed."""
     d.ForceRebuild3(False)
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     if os.path.exists(path):
         os.remove(path)
-    save_as(d, path)
+    with export_prefs(sw):
+        save_as(d, path)
     log('exported', path, os.path.getsize(path), 'bytes')
 
 
@@ -227,13 +248,42 @@ def bbox(d):
     return [float(v) for v in bs[:, :3].min(axis=0)] + [float(v) for v in bs[:, 3:].max(axis=0)]
 
 
-def expect(what, got, want, tol):
-    """Stop unless got is within tol (relative when 0 < tol < 1 and want != 0, else absolute) of want."""
+def expect(what, got, want, tol, abs_tol=0.0):
+    """Stop unless got is within tol of want: relative when 0 < tol < 1 and want is not zero, else absolute.
+
+    A want that is zero to within 1e-9 counts as zero, so tol is then absolute (a coordinate that should be 0 comes
+    back as 6e-17, and one per cent of that allows nothing). abs_tol is a floor under the allowance, for small
+    targets: expect(..., want=0.02, tol=0.05, abs_tol=0.01) allows 0.01, not 0.001. A got that is not a number fails.
+    """
     err = abs(got - want)
-    lim = tol * abs(want) if 0 < tol < 1 and want else tol
-    if err > lim:
-        raise Failed(f'{what}: got {got:.4f}, expected {want:.4f} (off by {err:.4f}, allowed {lim:.4f})')
+    lim = max(tol * abs(want), abs_tol) if 0 < tol < 1 and abs(want) > 1e-9 else max(tol, abs_tol)
+    if not err <= lim:                                   # written this way round so that nan fails
+        raise Failed(f'{what}: got {got:.4f}, expected {want:.4f} (off by {err:.4g}, allowed {lim:.4g})')
     log(f'ok {what}: {got:.4f} (expected {want:.4f})')
+
+
+def stamp(folder, label):
+    """Write the time and a label to <folder>/times.log and return the minutes since the first line in it.
+
+    A job spread over several scripts has no clock of its own, and a session's sense of how long it has been is not
+    one: four benchmark runs of twenty minutes reported up to eighty-four. Call it at the start and end of every
+    task; quote times in a report from times.log, never from memory. The clock starts at the first call in that
+    folder and runs on across scripts, so give each job a folder of its own: in a folder an earlier job used, it
+    goes on counting from that job's start. A line is: seconds since 1970, local time, minutes since the first
+    line, label, with tabs between.
+    """
+    path = Path(folder) / 'times.log'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    now = time.time()
+    lines = path.read_text(encoding='utf-8').splitlines() if path.exists() else []
+    first = float(lines[0].split('\t')[0]) if lines else now
+    mins = (now - first) / 60
+    label = ' '.join(str(label).split())                 # one line each: no tab or line break from the label
+    with open(path, 'a', encoding='utf-8') as f:
+        f.write(f'{now:.3f}\t{time.strftime("%Y-%m-%d %H:%M:%S %z", time.localtime(now))}\t'
+                f'{mins:.1f} min\t{label}\n')
+    log(f'clock: {label}: {mins:.1f} min since the job began')
+    return mins
 
 
 def set_dim(d, feat_name, old_mm, new_mm):
@@ -500,6 +550,50 @@ def loft(d, sketches, name):
             log(f'{name}: added {volume(d) - v0:.2f} mm3 (merge {merge})')
             return f
     raise Failed(name + ': loft failed (sections must be closed, and their start points roughly in line)')
+
+
+def offset_loop(pts, off):
+    """A closed flat outline moved outwards by off mm in its own plane, point for point (inwards when off is negative).
+
+    Each point moves square to the line through its two neighbours, so the count and the start point stay the same and
+    the result lofts against the original. For smooth outlines; off must stay well under the tightest radius."""
+    P = np.array(pts, float)
+    c = P.mean(axis=0)
+    nrm = sum(np.cross(P[i] - c, P[(i + 1) % len(P)] - c) for i in range(len(P)))
+    nrm = nrm / np.linalg.norm(nrm)
+    out = []
+    for i in range(len(P)):
+        o = np.cross(P[(i + 1) % len(P)] - P[i - 1], nrm)
+        out.append(tuple(float(v) for v in P[i] + off * o / np.linalg.norm(o)))
+    return out
+
+
+def skirt(d, outline, axis, at, radius, name, side=+1, steps=5, sink=0.15):
+    """Round a lofted stem into the flat face it stands on, with a small second loft laid over the junction.
+
+    Use it where fillet() on the seam is not to be trusted or returns nothing. outline(c) -> the stem's closed outline as
+    3D points in the plane axis = c (the function its own sections were drawn from; same count and start point at
+    every height). The face is the plane axis = at and the stem rises towards side (+1 or -1) along that axis. The
+    skirt's sections follow a quarter circle of the given radius: the first lies in the face, radius wider than the
+    stem all round, and the last sits `sink` mm inside the stem at height radius, so no two faces coincide. It leaves
+    a crease of a few degrees where it sinks into the stem and meets the face at a shallow angle, not at a tangent.
+    Raises unless it added volume, left the body count alone and rebuilt clean. Needs `radius` of room on the face all
+    round. Measured: playbook/03-modelling.md, eval/loft-blend.
+    """
+    v0, n0 = volume(d), len(solid_bodies(d))
+    sks = []
+    for k in range(steps):
+        phi = math.radians(90.0 * k / (steps - 1))
+        c = at + side * radius * (1 - math.cos(phi))
+        off = radius * (1 - math.sin(phi)) if k < steps - 1 else -sink
+        with Sk(d, plane(d, axis, c, f'{name}_P{k}'), f'{name}_S{k}') as s:
+            s.spline(offset_loop(outline(c), off))
+        sks.append(s.feat)
+    f = loft(d, sks, name)
+    dv, errs = volume(d) - v0, feature_errors(d)
+    if dv <= 0 or len(solid_bodies(d)) != n0 or errs:
+        raise Failed(f'{name}: skirt added {dv:.2f} mm3, bodies {n0} -> {len(solid_bodies(d))}, errors {errs}')
+    return f
 
 
 def shell(d, open_face_points, t, name):

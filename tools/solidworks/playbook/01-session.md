@@ -27,7 +27,8 @@ The rules themselves live in [RULES.md](../RULES.md), [cad-workstation.md](../..
    | `busy` | another session is meshing, solving or reading a result back; it does not answer meanwhile | go on: `launch()` starts beside it. Without the keeper the new instance can sit at the splash screen until the oldest instance answers, which `launch()` waits out ([RULES.md](../RULES.md#launching-beside-a-busy-instance)). Never treat the other instance as hung |
    | `HALF-CLOSED` | a dead instance that stalls every launch on the machine | stop. Report the PID and the `taskkill /PID <pid> /T /F` line for Joey. Do not launch |
 
-4. **Memory.** `job()` refuses to start under 8 GB free. Do not lower it. Joey's rule for holly-pc (2026-11-11): each job
+4. **Memory.** `job()` refuses to start under 8 GB free. Do not lower it. A dip under the floor is other jobs working, not a
+   reason to drop the task: `job(wait_s=1800)` waits for memory as it waits for a busy instance. Joey's rule for holly-pc (2026-11-11): each job
    stays near 6 GB, three or four ordinary jobs and one or two heavy ones machine-wide.
    A `STALE` claim of another session is not yours to clear: leave it, and mention it in your report.
 5. **Claim** your worktree, and add the PID once you have one:
