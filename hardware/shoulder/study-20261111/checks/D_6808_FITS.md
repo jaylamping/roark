@@ -98,3 +98,22 @@ with the revised RS02 seats behaves the same.
 - **At assembly, Joey checks:** with the bearing pushed into the fork rear by hand, the race must not rock or rattle in
   the seat. If it does, that fork rear is not for a loaded arm: shim the seat (one turn of 0.05 mm tape) or reprint from
   the coupon's size.
+
+### Both stand-ins in one model (2026-11-15): the motor does not rescue a loose seat
+
+`R26_*` cases: the RS02 bolted in (aluminium stand-in, five M3 at 250 N, steel washers as bodies) and the 6808's race with
+or without its 0.1 mm radial clearance, in the same model. Fork body only, by body, nothing left out
+(`fork_r2_body_post.py`); 222k nodes, about 4 minutes a solve. Candidate fork (sf5) unless said.
+
+| Case | Race | Lowest at the five screws: layer tension / shear / von Mises (0.5 mm ball) | Rest of the fork |
+|---|---|---|---|
+| Roll stop at 17 N·m | no clearance | 3.24 / 1.91 / 2.90 | 1.71 / 1.62 / 2.32 |
+| Roll stop at 17 N·m | 0.1 mm clearance | **0.47 / 0.43 / 0.61** (104° and −16° screws) | 0.47 / 0.38 / 0.57 |
+| Roll stop at 17 N·m, released fork | 0.1 mm clearance | 0.40 / 0.40 / 0.57 | 0.48 / 0.36 / 0.56 |
+| Forward design load, yaw +17 | no clearance | 1.20 / 1.12 / 1.87 (104°) | 1.77 / 2.04 / 2.58 |
+| Forward design load, yaw +17 | 0.1 mm clearance | **0.98 / 0.70 / 1.21** (104°) | 0.99 / 0.51 / 0.77 |
+
+- With no clearance the figures are those of the candidate's record. With 0.1 mm the fork is under 1.0 at the stop
+  whether or not the motor is in the model, and the motor's own screw seats are dragged down with it.
+- So the decision above stands on its own: **the bearing's outer race must sit without play**, and a fork rear whose
+  race rocks is not for a loaded arm.
