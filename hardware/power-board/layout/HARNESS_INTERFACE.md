@@ -1,7 +1,8 @@
 # Power board rev B5: harness interface
 
 This is the hand-off from the power board to the torso harness (the frame thread's `harness.py`). It covers what leaves the
-board, where it leaves, and what each run ends in. In-torso routing is the frame thread's job once Joey places the board.
+board, where it leaves, and what each run ends in. In-torso routing is the frame thread's job once Joey places the board;
+section 5 proposes the arm runs (board to the shoulder foot, the fuse and plug joint, the CAN adapters) for the floorplan position.
 
 | File | Content |
 | --- | --- |
@@ -48,8 +49,8 @@ series, not from a drawing, and should be checked against the 43025 and 5557 dra
 
 ## 3. Wire list
 
-The full list is in [harness_wires.csv](harness_wires.csv): 21 rows with net, gauge, OD including the jacket, from, to,
-length, twist and status. It also covers the off-board thermostat pair and the fan leads.
+The full list is in [harness_wires.csv](harness_wires.csv): 23 rows with net, gauge, OD including the jacket, from, to,
+length, twist and status. It also covers the off-board thermostat pair, the fan leads and the two arm CAN pairs.
 
 ## 4. Connectors at the far ends
 
@@ -58,7 +59,7 @@ All dimensions marked "about" are approximate. Take the drawing before freezing 
 | Run | Board end | Far end, part number | Mated envelope |
 | --- | --- | --- | --- |
 | Pack | 8 AWG soldered pair → **Amass XT90 (board half, solder cups take 8 AWG)** | **Pack-side XT90S half in a case-wall pocket** (battery main ec2513d): X +10..+45, Y 323..345, Z −45..−60 in torso coordinates, **mating face toward −X**, leads inside the case | about 21 × 11 mm section, about 55 mm mated length along −X/+X. The 8 AWG pair has to arrive along +X into the pocket face, so it needs space for an R15 turn before the plug (8 AWG plus the plug back is about 30 mm straight) |
-| L arm, R arm, waist (aux the same) | **16 AWG** silicone pigtail, as in the arm trunk plan → inline 58 V MINI blade fuse holder (20 A, Littelfuse 997 class) → **Amass XT30(2+2)-F** on the pigtail (live side), joint at the frame step corner (arm-trunk agreement) | arm trunk XT30(2+2)-M | fuse holder about 40 × 20 × 15 mm (inline 58 V part still to choose); XT30(2+2) mated about 15 × 8 × 32 mm. The 2 signal pins carry the trunk's CAN from the Pi's USB-CAN adapter; this board carries no CAN |
+| L arm, R arm, waist (aux the same) | **16 AWG** silicone pigtail, as in the arm trunk plan → inline 58 V MINI blade fuse holder (20 A, Littelfuse 997 class) → **Amass XT30(2+2)-F** on the pigtail (live side), joint in the void under the step (section 5). **This row is the board pigtail only**: after the plug the arm trunk stays 16 AWG through shoulder pitch and roll and is 18 AWG from the yaw drive down (table below) | arm trunk XT30(2+2)-M | fuse holder about 40 × 20 × 15 mm (inline 58 V part still to choose); XT30(2+2) mated about 15 × 8 × 32 mm. The 2 signal pins carry the trunk's CAN from the Pi's USB-CAN adapter; this board carries no CAN |
 | L leg, R leg (rev C) | 14 AWG pigtail (kept heavier for the leg ports, rev C) → fuse → **Amass XT60** + separate JST GH CAN at the leg | — | XT60 mated about 16 × 8 × 32 mm |
 | Aux | as arms | — | unfitted |
 | Brake ×2 | Mini-Fit Jr 5557-02R plug | HS50 tabs (solder or ring) | plug about 10 × 10 mm, 22 mm above the board |
@@ -158,4 +159,57 @@ open drain or driven at 3.3 V from the Pi's own rail; nothing above 3.3 V reache
 | 8 | PWR_FAIL_N | board → Pi | GPIO input **with a pull-up to the Pi's 3.3 V** (10k, or the internal pull-up): low = converter input under 31.4 V (re-arms at 34.4 V) |
 
 The CAN pair for the XT30(2+2) signal pins doesn't come from this board. It comes from the Pi's USB-CAN adapter and joins at
-the pigtail's XT30(2+2)-F.
+the pigtail's XT30(2+2)-F (section 5).
+
+## 5. Arm runs in the torso: board to the shoulder foot
+
+**Status: proposed 2026-11-15, from numbers only.** Nothing here has been drawn or clash-checked in CAD. It holds for the
+board at its floorplan position (section 1); if Joey places the board elsewhere, legs 1 and 2 change and the rest stays.
+Sources: the reference repo's [torso-frame README](https://github.com/jaylamping/marengo/blob/main/hardware/designs/torso-frame/README.md)
+(frame members, side bands, compute shelf, Pi) and the shoulder scripts' `FEED` numbers (riser foot). Coordinates are
+torso coordinates: X to the robot's left, Y up, Z forward. The left arm is given; the right arm is the mirror in X.
+
+**Where the run ends.** The shoulder cover's two feed risers (power 16 × 6, signal 10 × 5) open downward at the
+**shoulder foot: X 107, Y 300, Z 0**, in the void under the step overhang (X 75 to 113, Y 300 to 353.6, outside the lower
+box's posts). The riser duct is 32.8 wide across Z (Z ±16.4).
+
+**Power pigtail W3 (16 AWG pair, about 250 mm with the fuse holder):**
+
+| Leg | From | To | Passage | Length |
+| --- | --- | --- | --- | --- |
+| 1 | J8 pads, board X 45, Y 241 and 248, top face (Z 49.1) | side band at the board's +X edge | the wires lie over the board edge and drop into the band, X 50 to 55, Z 42 to 50 (5 × 8 mm: two 3.0 mm wires side by side along Z). The front post face at X 55 is 5 mm outside the board edge, so the `harness_exits.csv` bend (+Z, then +X at R9) has to be laid flatter here | about 15 |
+| 2 | band at Y 245 | band at Y 312 | up the side band | about 70 |
+| 3 | band, Y 305 to 320 | void under the step, X 75 | outboard behind the front post (X 55 to 75, post at Z 50 to 70; the wires pass at Z 42 to 50), below the corner bracket at Y 325 to 353 | about 25 |
+| 4 | X 75, Y 312, Z 46 | fuse holder, +Z end | up and outboard in the void | about 35 |
+
+**Fuse and plug joint.** Both sit in the void under the step, side by side along Z, on one printed clip screwed to the two
+spare M5 T-nuts in the step side rail's underside slot (X 103, Y 353.6):
+
+| Part | Envelope | Position |
+| --- | --- | --- |
+| Inline 20 A MINI fuse holder | 40 × 20 × 15 | X 78 to 93, Y 333 to 353, Z 8 to 48, long axis along Z; the pigtail enters at the +Z end |
+| XT30(2+2)-F on the pigtail, mated with the trunk's XT30(2+2)-M | 15 × 8 × 32 mated | X 78 to 93, Y 337 to 345, Z −27 to 5, long axis along Z, the trunk leaving at the −Z end |
+
+From the plug the trunk (S0, about 70 mm) turns down and outboard to the shoulder foot, with the M11 splice for the pitch
+drive on the way. The joint sits inboard of the riser (X 101.6 to 112.4) and under the 18 mm gap between the shelf rail
+(X 75) and the step side rail (X 93), which is where the CAN pair and the pitch drive's drop come down.
+
+**CAN adapters and CAN pairs W22, W23.** One USB-CAN adapter per bus (model not chosen, nothing bought; envelope
+assumed 30 × 60 × 12). The two arm adapters sit on the compute shelf beside the Pi on its +X side, stacked: footprint
+X 24 to 52, Z −45 to 15, left arm at Y 376 to 388, right arm at Y 390 to 402, USB toward the rear on short cables to the
+Pi. The left arm's pair (28 AWG, twisted) runs outboard along the shelf to X 75, over the shelf rail and down the gap
+between the shelf rail and the step side rail to the plug's two signal pins: about 120 mm. The right arm's pair crosses
+the upper bay to the −X side first: about 270 mm. The compute bay is Joey's to pack, so this is a reserved space, not a
+fixed one.
+
+**Open in this proposal:**
+
+- Not checked in CAD: the leg 3 crossing behind the front post (pack cradle, tray rail and bracket are near), the clip
+  against the riser and the pitch bracket, and the adapter stack against the Pi power stub (X 22 to 52, Z 20 to 40) and
+  the Jetson shelf (Y 410).
+- Which shell piece uncovers the fuse.
+- The hand bus pair: the XT30(2+2) has two signal pins, so the hand's CAN pair needs its own 2-pin plug beside it, and
+  the hand, waist and leg buses need five more adapters with no place yet (the frame README has no home for a hub board).
+- The board is 100 × 170 (Y 170 to 340); the frame model's envelope is still the older 100 × 150 (Y 190 to 340), and the
+  bottom front rail is at Y 155 to 175, Z 50 to 70. The bottom 5 mm of the board and the J21 cable's exit need a check
+  against that rail when the board is placed.

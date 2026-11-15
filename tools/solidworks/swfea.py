@@ -670,9 +670,18 @@ def static(j, d, name, material, fixtures, loads, el, ctrl=(), contacts=(), mate
     nodes, elements = int(mesh.NodeCount), int(mesh.ElementCount)
     log(f'{name}: mesh rc {rc}, {nodes} nodes, {elements} elements, free {free_gb():.1f} GB')
     if rc or not nodes:
-        raise Failed(f'{name}: mesh failed ({rc}): sliver faces, or an element size larger than a thin wall?')
+        raise Failed(f'{name}: mesh failed ({rc}): sliver faces, or an element size larger than a thin wall?',
+                     try_='in this order: a global size three quarters of this one; a local control of half the '
+                          'thinnest wall on the faces of that wall; then find faces under 0.1 mm2 with list_faces(d) '
+                          'and remove what made them (playbook/07-done.md, "Do not stop early")',
+                     stop='three sizes and a local control have all been refused: the geometry has a sliver, so fix '
+                          'the model, not the mesh')
     if nodes > max_nodes:      # checked before the solve: pass a smaller max_nodes to hold a job to a budget
-        raise Failed(f'{name}: {nodes} nodes is over {max_nodes}: coarsen the global size and keep the local controls')
+        raise Failed(f'{name}: {nodes} nodes is over {max_nodes}: coarsen the global size and keep the local controls',
+                     try_=f'a global size about {(nodes / max_nodes) ** (1 / 3) * 1.1:.2f} times this one (nodes go with '
+                          'the cube of the size); leave the local controls as they are',
+                     stop='the local controls alone are over the limit: make them cover fewer faces, or take the '
+                          'heavy-solve lock and raise max_nodes (playbook/05-fea.md)')
     if solver is not None:
         log(f'{name}: solver macro:', solver_macro(j, d, tag, solver, Path(d.GetPathName).parent).replace('\n', ' | '))
     stop, seen = threading.Event(), []

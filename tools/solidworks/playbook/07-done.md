@@ -221,6 +221,14 @@ you do:
 
 Then hand up all of that. Most of the time step 2 finds the answer.
 
+## Count the runs, do not remember them
+
+Every `job()` adds a line to `runs.log` beside the script: when it started, how long it ran, and `ok` or the error it
+ended on. `python tools/pc/run_metrics.py <run folder>` reads that file and `times.log` and prints, per task and in total:
+jobs launched, jobs that failed before one worked, whether the first job passed, and minutes from the clock. Put that
+table in the report as it is printed. "The runs that failed before it worked" comes from this file, like the times:
+a session's memory of how often it retried is no better than its memory of how long it took.
+
 ## The last ten minutes
 
 Before writing the report, read your own results as a reviewer who wants to find the mistake:

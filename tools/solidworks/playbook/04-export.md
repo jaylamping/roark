@@ -53,6 +53,31 @@ Record the export right after making it, from the worktree root:
 
 ## Printing
 
+Before a part is called printable, ask the STL: `python tools/solidworks/sheet.py part.stl --printable +y` (the direction that
+points away from the bed; `sheet.printability(tris, up)` from a script). It answers with numbers: whether it fits the
+256 mm bed, whether it is one watertight piece, the area lying on the bed, and the area that faces down more steeply
+than 45 degrees and so needs support, with where the largest patch is. Quote those in the report in place of "prints
+fine". `ok` means it fits, is one closed piece and touches the bed: it does not mean no supports, and it says nothing
+about wall thickness or bridges.
+
+**Choosing the print direction.** Strength across the layers is one of three things to weigh, not the only one. For
+every direction you consider, put these side by side in one table before picking:
+
+| What | From | Rule |
+|---|---|---|
+| Height | `height_mm`, `fits_bed` | Must fit the printer (256 mm cube) with a few mm to spare. A part within about 10 mm of the limit gets a brim, not a raft, and no tilt that raises it. |
+| Support on faces that show | `overhang_mm2`, `worst_overhang_at` | Supported faces come off rough and are not sanded. Least support on outward faces wins; support that cannot be avoided goes on a mounting face or inside a fork or bore. |
+| Strength | the factor for layers stacked along that direction ([05-fea.md](05-fea.md)) | Must reach the required factor. |
+
+When the direction with the clean faces is short on strength, add material there (a thicker stem, a larger blend) and
+solve again, before turning the part to a stronger direction that needs a raft and support under the whole form. A
+direction that passes strength with thousands of mm2 of support under a visible face is not a pass: say so and give
+the table. Upright (the long axis vertical) is usually the clean one, and is also the one that runs into the height
+limit, so check both for it first.
+
+To check a part against a reference (an earlier revision, a supplier's model, a scan), both in the same frame:
+`python tools/solidworks/sheet.py part.stl ref.stl --diff` gives the volume and box differences and the largest gap between
+the two surfaces, with where it is. A gap under about twice the `resolution_mm` it prints is no finding.
 A print project is built from the STL export, not from SolidWorks: orientation, the 100 % infill modifiers, supports and
 the Bambu Studio command line are in `cad/scripts/arm/organic_print.py` on branch `left-arm-organic-r1`, and the gate every
 print passes is [part-lifecycle.md](../../../conventions/part-lifecycle.md). Slice with the CLI (`--slice 0 --export-3mf`),
