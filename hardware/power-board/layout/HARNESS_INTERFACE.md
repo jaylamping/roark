@@ -67,7 +67,7 @@ All dimensions marked "about" are approximate. Take the drawing before freezing 
 | 12 V outputs (buck board) | Micro-Fit 3.0 43025-0200/-0400 | loads | plug about 7 × 10 mm |
 | Pi link, E-stop | JST GH GHR-08V-S (both) | Pi adapter; E-stop and reset buttons | plug about 11 × 4.25 × 6.5 mm |
 
-**Arm, waist and aux pigtails are 16 AWG** (coordinator 18:55Z, matching
+**Arm, waist and aux pigtails are 16 AWG** (matching
 [wiring/left-arm-trunk](https://github.com/jaylamping/marengo/blob/main/hardware/electrical/wiring/left-arm-trunk/README.md): 16 AWG trunk power on XT30, GH1.25 CAN). The XT30 cups
 take 16 AWG, and the board's SolderWire-2.5sqmm pads (2.4 mm hole, 3.6 mm relief) take it unchanged. Check, for a twisted
 pair of 16 AWG silicone (13.2 mΩ/m, 3.0 mm OD), in still air with about 12 W/m²K from the surface and a 1.3 factor for the pair:
