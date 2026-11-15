@@ -62,3 +62,26 @@ The bundle bends across its thin direction (2.6) in the tunnel's 4.5 plane, neve
   joint break (XT30U pair plus a GH pair), placed between the hub and M14, lets the arm come off by opening the front half and
   unplugging. The neck has room for it (cavity 1438 mm² or more at every 5 mm, Y 250-295).
 - **Recommended:** keep that joint break.
+
+## Correction from the shoulder thread, and our re-check (2026-11-15, 05:41Z)
+
+**Correction.** The tunnel ends where it breaks through the bore wall (r 23, Y 302.1-309.1).
+- Below that is open bore. The bundle hangs straight down against the bore wall, centre about r 21.5 for our 2.6 flat bundle.
+- At Y 298 the free opening runs from the Dia 10.8 tube (r 15.8 on the centre line; the tubes start at Y 298.06) to the bore wall
+  at r 23. That is 7.2 radial, centre r 19.4, with about 4 mm between the bundle and the 98 deg tube for the tie.
+- No r 19 shift is made, and all six tubes stay thickened. The knee gets R 2 on its inner corner, and the tunnel's long corners
+  R 1.5.
+
+**Our route from r 21.5** at θ 68 (`cable_slack.py`, R1h halves, the conservative 3.5 × 13 reserve bundle;
+`cad/_wip/route_r21.5/`): **PASS**.
+- Smallest clearance 3.64, to the arm wall at Y 278. Fin end 3.66 (Y 273), hub post / web corner 4.09 (Y 292), the waist's front
+  wall 4.94 (Y 269).
+- R 24.7 at each bend of the S, steepest slope 0.68.
+- The front half's assembly sweep is 0 mm².
+- Near the top, our seat bore and end face are 11.6-11.8 away at Y 296-298, and 5.6 at Y 295, so it rubs nothing of ours there.
+- The tie bridge (Y 255-261) is in the checked halves and clear.
+- That compares with 5.43 from r 18. The real 2.6 bundle gains about 0.45 per side over the 3.5 reserve.
+- The RS02 ring sits at the elbow, far from this.
+- **It does not hurt us.** Requests 1 (the shift) and the tube concern are withdrawn: the bundle hangs at r 21.5, about 4 from the
+  98 deg tube.
+- Request 2 stands: a joint break in our neck so the arm can be removed without unsoldering.
