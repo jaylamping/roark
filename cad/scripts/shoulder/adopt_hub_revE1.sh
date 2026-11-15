@@ -24,6 +24,13 @@ W=../../_wip/shoulder-pass1
 L=$W/queue5.log
 CL="$PY $REPO/tools/pc/claims.py"
 CAND=../../exports/shoulder/shoulder_hub_left_revE1_candidate.STL
+# Safe to start while this thread's solves are running: it takes the workstation's solve lock first, which waits for a
+# running solve (and its queue's current batch) to finish and holds the next one off until the adoption is done.
+LK="$PY $REPO/cad/_wip/shoulder-pass1/solve_lock.py"
+WP=$(cat /proc/$$/winpid)
+echo 'waiting for the solve lock (a running solve finishes first; this can take up to 20 minutes) ...'
+$LK take "shoulder hub E1 adoption" $WP
+trap '$LK drop $WP > /dev/null 2>&1; $CL release shoulder-study-fea > /dev/null 2>&1' EXIT
 [ -f $CAND ] || { echo 'no rev E1 candidate export: stopping'; exit 1; }
 
 # 1. the source part
@@ -37,7 +44,6 @@ PYEOF
 # 2. the real part, hidden, with a claim
 until [ "$(powershell -NoProfile -c "[math]::Floor((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory/1MB)")" -ge 10 ]; do sleep 60; done
 $CL claim shoulder-study-fea --worktree 'J:\code\roark-wt\shoulder-study' --status "adoption: hub rev E1" > /dev/null 2>&1
-trap '$CL release shoulder-study-fea > /dev/null 2>&1' EXIT
 echo "adoption of hub rev E1: build start $(date +%T)" >> $L
 unset LOOK
 SW_VISIBLE=0 HUB_ADOPT=1 TOP_RAISE=3.0 SEAT_Y=299.86 SW_STATE_NAME=.sw_instance_pid_adoptE1 $PY capped.py --mb 6144 -- $PY -u hub_candidate2.py > $W/build_adopt_revE1.txt 2>&1 &

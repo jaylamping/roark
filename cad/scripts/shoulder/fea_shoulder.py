@@ -262,7 +262,15 @@ def run(name, c):
         dm_ = c['dummy']
         with Sk(d, plane(d, 'Y', dm_['y0'], 'P_DUMMY'), 'DUMMY') as s_:
             s_.circle((RX, dm_['y0'], YZ), dm_['r'])
-        extrude(d, s_.feat, 'DUMMY', dm_['t'], (0, 1, 0), merge=False)
+        dy_ = dm_.get('dir', 1)      # -1: the stand-in hangs below its seat plane (the RS02's body under the fork's seat ring)
+        extrude(d, s_.feat, 'DUMMY', dm_['t'], (0, dy_, 0), merge=False)
+        if dm_.get('taps') == 'rs02':
+            cen_ = _r2_holes(d)
+            print(' RS02 screw holes in the fork (x, z, seat Y, r):', [tuple(round(v, 2) for v in c_) for c_ in cen_], flush=True)
+            with Sk(d, plane(d, 'Y', dm_['y0'], 'P_DUMMY_T'), 'DUMMY_TAPS') as s_:
+                for cx_, cz_, _ys, _rh in cen_:
+                    s_.circle((cx_, dm_['y0'], cz_), dm_.get('tap_r', 1.25))
+            extrude(d, s_.feat, 'DUMMY_TAPS', dm_.get('tap_depth', 8.0), (0, dy_, 0), cut=True)
         if os.environ.get('DUMMY_SEAT_RING') == '1':
             # the vendor model's output flange: its lowest face is only the ring r 6.75 to 14.9 (the six M4 are in it at r 12);
             # inside and outside that ring the face stands 0.5 mm higher. The dummy relieved the same way
@@ -551,7 +559,7 @@ def run(name, c):
         away &= ~np.all((pos >= np.array(bx[:3])) & (pos <= np.array(bx[3:])), axis=1)
     if c.get('exclude'):
         print(' excluded', c['exclude'], flush=True)
-    if c.get('dummy'):
+    if c.get('dummy') and c['dummy'].get('dir', 1) > 0:      # (a stand-in below its seat is told apart in the read-out, by position)
         keep_ = pos[:, 1] <= c['dummy']['y0'] + 0.01      # hub nodes only (the dummy sits above the seat)
         pos, s, away = pos[keep_], s[keep_], away[keep_]
     vm = s[:, 10]
@@ -1051,6 +1059,97 @@ CASES['F2_STOP'] = dict(part='fork2', fix=[('fixed', FK_BOSS), ('radial', FK_SEA
                         forces=[(('plane', _rp(35.0, _ta - _th, -37.0), None, 'on'), STOP_F, None)])
 CASES['P_MXbs'] = dict(CASES['P_MXb'], fix=FF_SEATS + [('axialY', FF_JOINT[0])])
 CASES['F2_MXs'] = dict(CASES['F2_MX'], fix=FF_SEATS + [('radial', FK_SEAT6808)])
+# THE RS02 ON THE FORK FRONT AS A BOLTED JOINT (OPEN_ASSUMPTIONS item 49, 2026-11-15). The combined fork (fork2) with an
+# aluminium stand-in for the RS02's body under the seat ring (a disc r 39.2, 10 thick, below Y 351.86, inside the cuff's
+# bore), five M3 bolt connectors from the fork's screw seats into tapped holes in the stand-in, each with a preload
+# (R2_PRE N; head or washer diameter R2_HEAD_OD), and no-penetration contact on the seat. The arm's load goes in on the
+# stand-in's lower face about the arm's hub point. Boss fixed, 6808 seat held radially, as the F2_* cases. Intel direct
+# sparse. Read-out: fork_r2_post.py, which leaves the stand-in's nodes out by position.
+R2_PRE = float(os.environ.get('R2_PRE', '250'))            # about 0.15 N.m on an M3: snug by hand
+R2_HEAD_OD = float(os.environ.get('R2_HEAD_OD', '7.0'))    # an M3 flat washer; 5.5 for a bare cap head
+R2_Y0 = SEAT_Y[0]
+
+
+def _r2_holes(d):
+    """(x, z, seat Y, radius) of the five RS02 screw holes in the fork: for each nominal position on PCD 73, the highest
+    circular edge of radius 1.5 to 2.0 on that axis (the hole's edge at the screw seat)."""
+    import inspect
+    out = []
+    for a_ in RS02_SCREWS:
+        t_ = math.radians(a_)
+        nx, nz = RX + 36.5 * math.cos(t_), YZ + 36.5 * math.sin(t_)
+        best = None
+        for b in d.GetBodies2(0, True):
+            es = b.GetEdges
+            for ed in (es() if inspect.ismethod(es) else es):
+                cv = ed.GetCurve
+                if not cv.IsCircle:
+                    continue
+                cp = cv.CircleParams
+                cx_, cy_, cz_, r_ = cp[0] * 1e3, cp[1] * 1e3, cp[2] * 1e3, cp[6] * 1e3
+                if 1.5 < r_ < 2.0 and math.hypot(cx_ - nx, cz_ - nz) < 0.6 and R2_Y0 - 0.1 < cy_ < SEAT_Y[1] + 0.2 and (best is None or cy_ > best[2]):
+                    best = (cx_, cz_, cy_, r_)
+        if best is None:
+            raise SystemExit('RS02 screw hole not found at %.0f deg' % a_)
+        out.append(best)
+    return out
+
+
+def rs02_setup(preload):
+    def hook(st, d, lbc):
+        cm = st.ContactManager
+        try:
+            r_ = cm.SetGlobalContact(2, 0)
+        except Exception as e_:
+            r_ = repr(e_)
+        print(' global contact no-penetration', r_, flush=True)
+        from swk import edges_where
+        out = []
+        for cx, cz, ys, rh in _r2_holes(d):
+            head = edges_where(d, lambda p, cx=cx, cz=cz, ys=ys, rh=rh: abs(p[1] - ys) < 0.08 and math.hypot(p[0] - cx, p[2] - cz) < rh + 0.2,
+                               pair=lambda p0, p1, cx=cx, cz=cz, rh=rh: all(abs(math.hypot(q[0] - cx, q[2] - cz) - rh) < 0.12 for q in (p0, p1)))
+            thr = pick(d, cyl(1.25, [cx - 1.6, R2_Y0 - 8.3, cz - 1.6, cx + 1.6, R2_Y0 + 0.1, cz + 1.6]))
+            err = I()
+            b = lbc.AddBoltConnector(2, head[:1], thr, err)
+            if b is None:
+                print(' bolt at', round(cx, 1), round(cz, 1), 'head edges', len(head), 'thread faces', len(thr), 'err', err.value, flush=True)
+                raise SystemExit('bolt failed')
+            call(b, 'BoltConnectorBeginEdit')
+            b.HeadDiameterUnit = 0
+            b.HeadDiameterValue = R2_HEAD_OD
+            b.BoltShankDiameterUnit = 0
+            b.BoltShankDiameterValue = 3.0
+            b.MaterialSource = 1
+            b.MaterialUnit = 0
+            b.YoungModulus = 210e9
+            b.PoissonsRatio = 0.28
+            b.ThermalCoefficient = 1.2e-5
+            b.PreLoadForceType = 0
+            b.PreLoadForceValue = float(preload)
+            rc = call(b, 'BoltConnectorEndEdit')
+            out.append((round(ys, 2), len(head), len(thr), rc))
+        print(' bolts (seat Y, head edges, thread faces, rc)', out, 'preload', preload, 'head dia', R2_HEAD_OD, flush=True)
+        dn, up = [], []
+        for f in faces_of(d):
+            t_, r_, n_, bx, a_ = info(f)
+            if t_ == 'plane' and abs(bx[1] - R2_Y0) < 0.02 and abs(bx[4] - R2_Y0) < 0.02 and n_ is not None:
+                (dn if n_[1] < -0.9 else up if n_[1] > 0.9 else []).append(f)
+        err = I()
+        cs = cm.CreateContactSet2(0, 0, dn, up, err)
+        print(' seat contact set: fork faces', len(dn), 'stand-in faces', len(up), 'err', err.value, 'set', cs is not None, flush=True)
+        if cs is None or err.value:
+            raise SystemExit('contact set failed')
+        return None
+    return hook
+
+
+_r2d = dict(r=39.2, y0=R2_Y0, t=10.0, dir=-1, taps='rs02', tap_r=1.25, tap_depth=8.0)
+_r2c = [(('touch', [RX - 47, R2_Y0 - 0.5, YZ - 47, RX + 47, SEAT_Y[1] + 0.5, YZ + 47], 3000.0), float(os.environ.get('R2_CTRL', '1.2')))]
+_r2b = dict(part='fork2', fix=[('fixed', FK_BOSS), ('radial', FK_SEAT6808)], el=3.5, coupling=0, disp=FF_DISP, dummy=_r2d,
+            ctrl=_r2c, ctrl_optional=1, pre_mesh=rs02_setup(R2_PRE), stabilise=True)
+for nm_, mom_ in (('MX', (23.0, YAW_T, 0.0)), ('MXn', (23.0, -YAW_T, 0.0)), ('MZ', (0.0, YAW_T, 23.0))):
+    CASES['R2_' + nm_] = dict(_r2b, remote=(pl((RX, R2_Y0 - 10.0, YZ)), AT, (0.0, -310.0, 0.0), mom_))
+CASES['R2_STOP'] = dict(_r2b, forces=CASES['F2_STOP']['forces'])
 # THE SIX-SCREW JOINT (OPEN_ASSUMPTIONS item 41, 2026-11-14). The fork front and the fork rear as two bodies, joined as built:
 # six M4 (ISO 7380 button heads, dia 7.6) from the fork rear's counterbores into the fork front's heat-set inserts, each a
 # bolt connector with a preload; no-penetration contact on the joint pad (Z = JZ0). Boss fixed, 6808 seat held radially.
