@@ -1,5 +1,39 @@
 # Hub rev E1 candidate against our arm: checks (2026-11-15)
 
+## FINAL candidate (roark 92cf101, checked 2026-11-15)
+
+**File:** `shoulder_hub_left_revE1_candidate_armframe.STL` at 92cf101 (`claude/project-thread-90ef87`). The real LFS object hashes to
+SHA-256 **ec8c8a592d71f1dca96f6f40d940408df3c612e0657353c72f51756744874fb4**, as claimed. 3,170,584 bytes, watertight, one body,
+90,676 mm³ = 115.2 g.
+
+**Against D3c7 (a73103ad):**
+- Every arm-facing surface is unchanged: below Y 296, max 0.0000; the groove, flanks, land, disc face and spigot, 0.0000 from
+  D3c7 to final.
+- The only change past r 23.5 is still the tunnel mouth (Y 302.0-302.3, r 23.0-23.8, θ 57-79).
+
+**Against the first E1 candidate (c7231b1), every difference.** 200,000 samples each way. Exactly the two claimed changes, nothing
+else:
+1. **The tunnel exit's top edge cut square:** Y 308.4-310.6, r 23.0-24.8, θ 54-82, up to 1.76. The feather edge is gone.
+2. **The six screw-hole edges on the RS02 seat face squared:** Y 322.37-322.86, r 9.4-14.6, all round, up to 0.35.
+
+**Whole-part survey, every 0.5 mm:**
+- No enclosed void under 1.0 mm wide.
+- The only material strip under 1 mm is the groove-flank ring at r 35.8, Y 301.75, which D3c7 has too. **The feather edge at the
+  tunnel exit is gone.**
+
+**Fit check rerun** (`cad/scripts/fea/r1c/e1f_check.sh`, outputs `e1f_*`, `close_path_e1f.*`): the same as D3c7 and c7231b1.
+- Roots against our posts 0.300; plate top to the R1.2 fillet 0.267.
+- Closing path on final E1 plus the 0.70 ring: final overlap 0.041 / 0.039, on the flank only.
+- Nothing of ours inside r 22.
+- Window footprint at the hub end 3.23; the 98 deg boss region and our nearest part unchanged.
+- **The M4 heads:** the head seats inside the hub didn't change (the changes are on the top face), so the 4.91 clearance stands.
+- **The route** from r 21.5 uses our halves only, so its pass (3.64, R 24.7, sweep 0) stands.
+
+**Verdict: GO for the arm interface.** The open item is unchanged: the arm sits 3.00 mm lower, and Joey's 215 mm rule decides it
+(below).
+
+## First E1 candidate (c7231b1), the earlier check
+
 **What was checked.** The shoulder thread's E1 candidate, roark commit c7231b1 on branch `claude/project-thread-90ef87`, file
 `cad/exports/shoulder/shoulder_hub_left_revE1_candidate_armframe.STL`. It is in our present arm coordinates, Y 288.00-322.86.
 The baseline is D3c7 (a73103ad…259b).

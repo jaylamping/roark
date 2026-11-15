@@ -1,0 +1,916 @@
+{
+ "2_entry_scan": {
+  "15.0": {
+   "inner_face_r": 13.25,
+   "min_clearance": 6.56,
+   "R": 24.1,
+   "s_end": -21.0
+  },
+  "15.5": {
+   "inner_face_r": 13.75,
+   "min_clearance": 6.38,
+   "R": 24.1,
+   "s_end": -21.0
+  },
+  "16.0": {
+   "inner_face_r": 14.25,
+   "min_clearance": 6.18,
+   "R": 24.7,
+   "s_end": -23.0
+  },
+  "16.5": {
+   "inner_face_r": 14.75,
+   "min_clearance": 5.99,
+   "R": 24.1,
+   "s_end": -21.0
+  },
+  "17.0": {
+   "inner_face_r": 15.25,
+   "min_clearance": 5.8,
+   "R": 24.1,
+   "s_end": -21.0
+  },
+  "17.5": {
+   "inner_face_r": 15.75,
+   "min_clearance": 5.61,
+   "R": 24.7,
+   "s_end": -23.0
+  },
+  "18.0": {
+   "inner_face_r": 16.25,
+   "min_clearance": 5.43,
+   "R": 24.1,
+   "s_end": -21.0
+  },
+  "18.5": {
+   "inner_face_r": 16.75,
+   "min_clearance": 5.23,
+   "R": 24.1,
+   "s_end": -17.0
+  },
+  "19.0": {
+   "inner_face_r": 17.25,
+   "min_clearance": 5.04,
+   "R": 24.1,
+   "s_end": -21.0
+  },
+  "19.5": {
+   "inner_face_r": 17.75,
+   "min_clearance": 4.85,
+   "R": 24.7,
+   "s_end": -23.0
+  },
+  "20.0": {
+   "inner_face_r": 18.25,
+   "min_clearance": 4.46,
+   "R": 24.1,
+   "s_end": -21.0
+  },
+  "20.5": {
+   "inner_face_r": 18.75,
+   "min_clearance": 4.03,
+   "R": 24.7,
+   "s_end": -23.0
+  },
+  "21.0": {
+   "inner_face_r": 19.25,
+   "min_clearance": 3.84,
+   "R": 24.7,
+   "s_end": -23.0
+  },
+  "21.5": {
+   "inner_face_r": 19.75,
+   "min_clearance": 3.64,
+   "R": 24.7,
+   "s_end": -23.0
+  }
+ },
+ "2_route": {
+  "rc": 17.45,
+  "s_end": -23.0,
+  "y1": 298.0,
+  "L": 53.0,
+  "tau": -15.0,
+  "R": 24.748800421854508,
+  "min_clearance": 5.625183056192678,
+  "max_slope_mm_per_mm": 0.682,
+  "assembly_front_sweep_overlap_mm2": 0.0,
+  "hub_end_min_clearance_Y298_284": 5.63
+ },
+ "2_edges": {
+  "arm wall": {
+   "y": 274.0,
+   "clearance": 6.02,
+   "feature": "arm wall",
+   "at": [
+    167.92,
+    23.97
+   ],
+   "corner": [
+    179.9,
+    2.88,
+    0.26
+   ]
+  },
+  "hub post / web corner": {
+   "y": 292.0,
+   "clearance": 5.63,
+   "feature": "hub post / web corner",
+   "at": [
+    189.05,
+    20.63
+   ],
+   "corner": [
+    90.0,
+    1.6,
+    3.5
+   ]
+  },
+  "waist front wall": {
+   "y": 272.0,
+   "clearance": 6.06,
+   "feature": "waist front wall",
+   "at": [
+    167.17,
+    22.89
+   ],
+   "corner": [
+    179.8,
+    0.34,
+    2.7
+   ]
+  },
+  "waist back wall": {
+   "y": 250.0,
+   "clearance": 11.46,
+   "feature": "waist back wall",
+   "at": [
+    153.8,
+    -4.77
+   ],
+   "corner": [
+    90.0,
+    6.21,
+    0.78
+   ]
+  }
+ },
+ "2_rows": [
+  {
+   "y": 298.0,
+   "clearance": 15.45,
+   "feature": "arm wall",
+   "at": [
+    172.67,
+    41.64
+   ],
+   "corner": [
+    180.0,
+    0.47,
+    4.21
+   ]
+  },
+  {
+   "y": 297.0,
+   "clearance": 15.57,
+   "feature": "arm wall",
+   "at": [
+    172.67,
+    41.74
+   ],
+   "corner": [
+    180.0,
+    2.72,
+    1.97
+   ]
+  },
+  {
+   "y": 296.0,
+   "clearance": 15.62,
+   "feature": "arm wall",
+   "at": [
+    172.65,
+    41.74
+   ],
+   "corner": [
+    180.0,
+    0.63,
+    4.07
+   ]
+  },
+  {
+   "y": 295.0,
+   "clearance": 7.16,
+   "feature": "hub post / web corner",
+   "at": [
+    190.8,
+    21.17
+   ],
+   "corner": [
+    90.0,
+    1.24,
+    1.98
+   ]
+  },
+  {
+   "y": 294.0,
+   "clearance": 6.25,
+   "feature": "hub post / web corner",
+   "at": [
+    189.83,
+    21.03
+   ],
+   "corner": [
+    179.9,
+    1.98,
+    17.86
+   ]
+  },
+  {
+   "y": 293.0,
+   "clearance": 5.79,
+   "feature": "hub post / web corner",
+   "at": [
+    189.31,
+    20.86
+   ],
+   "corner": [
+    179.9,
+    0.5,
+    15.76
+   ]
+  },
+  {
+   "y": 292.0,
+   "clearance": 5.63,
+   "feature": "hub post / web corner",
+   "at": [
+    189.05,
+    20.63
+   ],
+   "corner": [
+    90.0,
+    1.6,
+    3.5
+   ]
+  },
+  {
+   "y": 291.0,
+   "clearance": 5.67,
+   "feature": "hub post / web corner",
+   "at": [
+    189.0,
+    20.38
+   ],
+   "corner": [
+    180.0,
+    8.01,
+    9.01
+   ]
+  },
+  {
+   "y": 290.0,
+   "clearance": 5.79,
+   "feature": "hub post / web corner",
+   "at": [
+    189.0,
+    20.08
+   ],
+   "corner": [
+    180.0,
+    4.56,
+    3.53
+   ]
+  },
+  {
+   "y": 289.0,
+   "clearance": 5.92,
+   "feature": "hub post / web corner",
+   "at": [
+    189.0,
+    19.76
+   ],
+   "corner": [
+    180.0,
+    1.3,
+    7.82
+   ]
+  },
+  {
+   "y": 288.0,
+   "clearance": 6.07,
+   "feature": "hub post / web corner",
+   "at": [
+    189.0,
+    19.39
+   ],
+   "corner": [
+    180.0,
+    0.77,
+    3.52
+   ]
+  },
+  {
+   "y": 287.0,
+   "clearance": 6.23,
+   "feature": "hub post / web corner",
+   "at": [
+    189.0,
+    19.0
+   ],
+   "corner": [
+    180.0,
+    2.19,
+    1.0
+   ]
+  },
+  {
+   "y": 286.0,
+   "clearance": 6.41,
+   "feature": "hub post / web corner",
+   "at": [
+    189.0,
+    18.57
+   ],
+   "corner": [
+    180.0,
+    0.66,
+    2.68
+   ]
+  },
+  {
+   "y": 285.0,
+   "clearance": 6.6,
+   "feature": "hub post / web corner",
+   "at": [
+    189.0,
+    18.12
+   ],
+   "corner": [
+    180.0,
+    0.68,
+    0.78
+   ]
+  },
+  {
+   "y": 284.0,
+   "clearance": 6.81,
+   "feature": "hub post / web corner",
+   "at": [
+    189.0,
+    17.64
+   ],
+   "corner": [
+    180.0,
+    0.55,
+    1.33
+   ]
+  },
+  {
+   "y": 283.0,
+   "clearance": 7.03,
+   "feature": "arm wall",
+   "at": [
+    189.0,
+    17.13
+   ],
+   "corner": [
+    180.0,
+    0.23,
+    0.56
+   ]
+  },
+  {
+   "y": 282.0,
+   "clearance": 7.18,
+   "feature": "arm wall",
+   "at": [
+    170.0,
+    29.3
+   ],
+   "corner": [
+    179.6,
+    0.73,
+    2.74
+   ]
+  },
+  {
+   "y": 281.0,
+   "clearance": 6.88,
+   "feature": "arm wall",
+   "at": [
+    169.78,
+    28.53
+   ],
+   "corner": [
+    179.7,
+    2.73,
+    0.71
+   ]
+  },
+  {
+   "y": 280.0,
+   "clearance": 6.65,
+   "feature": "arm wall",
+   "at": [
+    169.59,
+    27.8
+   ],
+   "corner": [
+    178.2,
+    2.1,
+    1.29
+   ]
+  },
+  {
+   "y": 279.0,
+   "clearance": 6.44,
+   "feature": "arm wall",
+   "at": [
+    169.21,
+    27.07
+   ],
+   "corner": [
+    178.4,
+    0.13,
+    3.21
+   ]
+  },
+  {
+   "y": 278.0,
+   "clearance": 6.29,
+   "feature": "arm wall",
+   "at": [
+    168.96,
+    26.41
+   ],
+   "corner": [
+    178.4,
+    1.47,
+    1.84
+   ]
+  },
+  {
+   "y": 277.0,
+   "clearance": 6.16,
+   "feature": "arm wall",
+   "at": [
+    168.73,
+    25.75
+   ],
+   "corner": [
+    179.7,
+    0.46,
+    2.8
+   ]
+  },
+  {
+   "y": 276.0,
+   "clearance": 6.09,
+   "feature": "arm wall",
+   "at": [
+    168.47,
+    25.13
+   ],
+   "corner": [
+    179.8,
+    2.37,
+    0.85
+   ]
+  },
+  {
+   "y": 275.0,
+   "clearance": 6.05,
+   "feature": "arm wall",
+   "at": [
+    168.21,
+    24.54
+   ],
+   "corner": [
+    177.9,
+    2.13,
+    1.03
+   ]
+  },
+  {
+   "y": 274.0,
+   "clearance": 6.02,
+   "feature": "arm wall",
+   "at": [
+    167.92,
+    23.97
+   ],
+   "corner": [
+    179.9,
+    2.88,
+    0.26
+   ]
+  },
+  {
+   "y": 273.0,
+   "clearance": 6.04,
+   "feature": "arm wall",
+   "at": [
+    167.45,
+    23.43
+   ],
+   "corner": [
+    178.2,
+    1.49,
+    1.59
+   ]
+  },
+  {
+   "y": 272.0,
+   "clearance": 6.06,
+   "feature": "waist front wall",
+   "at": [
+    167.17,
+    22.89
+   ],
+   "corner": [
+    179.8,
+    0.34,
+    2.7
+   ]
+  },
+  {
+   "y": 271.0,
+   "clearance": 6.11,
+   "feature": "waist front wall",
+   "at": [
+    166.87,
+    22.38
+   ],
+   "corner": [
+    179.9,
+    2.13,
+    0.87
+   ]
+  },
+  {
+   "y": 270.0,
+   "clearance": 6.18,
+   "feature": "waist front wall",
+   "at": [
+    166.57,
+    21.9
+   ],
+   "corner": [
+    179.9,
+    0.93,
+    2.03
+   ]
+  },
+  {
+   "y": 269.0,
+   "clearance": 6.25,
+   "feature": "waist front wall",
+   "at": [
+    166.26,
+    21.43
+   ],
+   "corner": [
+    180.0,
+    2.66,
+    0.27
+   ]
+  },
+  {
+   "y": 268.0,
+   "clearance": 6.36,
+   "feature": "waist front wall",
+   "at": [
+    165.95,
+    20.99
+   ],
+   "corner": [
+    177.6,
+    1.39,
+    1.47
+   ]
+  },
+  {
+   "y": 267.0,
+   "clearance": 6.43,
+   "feature": "waist front wall",
+   "at": [
+    165.38,
+    20.53
+   ],
+   "corner": [
+    179.8,
+    0.34,
+    2.48
+   ]
+  },
+  {
+   "y": 266.0,
+   "clearance": 6.54,
+   "feature": "waist front wall",
+   "at": [
+    165.07,
+    20.12
+   ],
+   "corner": [
+    179.8,
+    0.73,
+    2.01
+   ]
+  },
+  {
+   "y": 265.0,
+   "clearance": 6.65,
+   "feature": "waist front wall",
+   "at": [
+    164.78,
+    19.72
+   ],
+   "corner": [
+    179.8,
+    1.78,
+    0.88
+   ]
+  },
+  {
+   "y": 264.0,
+   "clearance": 6.77,
+   "feature": "waist front wall",
+   "at": [
+    164.5,
+    19.35
+   ],
+   "corner": [
+    177.4,
+    2.31,
+    0.23
+   ]
+  },
+  {
+   "y": 263.0,
+   "clearance": 6.96,
+   "feature": "waist front wall",
+   "at": [
+    164.19,
+    19.06
+   ],
+   "corner": [
+    177.4,
+    1.18,
+    1.28
+   ]
+  },
+  {
+   "y": 262.0,
+   "clearance": 7.13,
+   "feature": "waist front wall",
+   "at": [
+    163.57,
+    18.75
+   ],
+   "corner": [
+    177.4,
+    0.04,
+    0.41
+   ]
+  },
+  {
+   "y": 261.0,
+   "clearance": 7.43,
+   "feature": "waist front wall",
+   "at": [
+    163.32,
+    18.61
+   ],
+   "corner": [
+    177.6,
+    1.5,
+    0.99
+   ]
+  },
+  {
+   "y": 260.0,
+   "clearance": 7.72,
+   "feature": "waist front wall",
+   "at": [
+    163.02,
+    18.48
+   ],
+   "corner": [
+    177.6,
+    0.4,
+    2.02
+   ]
+  },
+  {
+   "y": 259.0,
+   "clearance": 8.09,
+   "feature": "waist front wall",
+   "at": [
+    162.81,
+    18.46
+   ],
+   "corner": [
+    179.8,
+    0.66,
+    1.56
+   ]
+  },
+  {
+   "y": 258.0,
+   "clearance": 8.5,
+   "feature": "waist front wall",
+   "at": [
+    162.5,
+    18.48
+   ],
+   "corner": [
+    179.8,
+    1.7,
+    0.54
+   ]
+  },
+  {
+   "y": 257.0,
+   "clearance": 8.94,
+   "feature": "waist front wall",
+   "at": [
+    162.32,
+    18.58
+   ],
+   "corner": [
+    179.9,
+    0.33,
+    1.93
+   ]
+  },
+  {
+   "y": 256.0,
+   "clearance": 9.46,
+   "feature": "waist front wall",
+   "at": [
+    162.05,
+    18.77
+   ],
+   "corner": [
+    179.9,
+    1.41,
+    0.88
+   ]
+  },
+  {
+   "y": 255.0,
+   "clearance": 9.98,
+   "feature": "waist front wall",
+   "at": [
+    161.88,
+    18.99
+   ],
+   "corner": [
+    178.3,
+    2.29,
+    0.18
+   ]
+  },
+  {
+   "y": 254.0,
+   "clearance": 10.62,
+   "feature": "waist front wall",
+   "at": [
+    161.65,
+    19.35
+   ],
+   "corner": [
+    179.9,
+    1.19,
+    1.17
+   ]
+  },
+  {
+   "y": 253.0,
+   "clearance": 11.23,
+   "feature": "waist front wall",
+   "at": [
+    161.42,
+    19.71
+   ],
+   "corner": [
+    179.9,
+    2.34,
+    0.04
+   ]
+  },
+  {
+   "y": 252.0,
+   "clearance": 12.01,
+   "feature": "waist front wall",
+   "at": [
+    161.32,
+    20.27
+   ],
+   "corner": [
+    178.6,
+    1.34,
+    1.18
+   ]
+  },
+  {
+   "y": 251.0,
+   "clearance": 12.76,
+   "feature": "waist front wall",
+   "at": [
+    161.14,
+    20.83
+   ],
+   "corner": [
+    180.0,
+    2.37,
+    0.1
+   ]
+  },
+  {
+   "y": 250.0,
+   "clearance": 11.46,
+   "feature": "waist back wall",
+   "at": [
+    153.8,
+    -4.77
+   ],
+   "corner": [
+    90.0,
+    6.21,
+    0.78
+   ]
+  },
+  {
+   "y": 249.0,
+   "clearance": 11.08,
+   "feature": "arm wall",
+   "at": [
+    153.8,
+    -4.5
+   ],
+   "corner": [
+    90.0,
+    5.41,
+    4.08
+   ]
+  },
+  {
+   "y": 248.0,
+   "clearance": 10.73,
+   "feature": "arm wall",
+   "at": [
+    153.8,
+    -4.23
+   ],
+   "corner": [
+    90.0,
+    4.61,
+    4.36
+   ]
+  },
+  {
+   "y": 247.0,
+   "clearance": 10.43,
+   "feature": "arm wall",
+   "at": [
+    153.8,
+    -3.97
+   ],
+   "corner": [
+    90.0,
+    3.82,
+    3.61
+   ]
+  },
+  {
+   "y": 246.0,
+   "clearance": 10.15,
+   "feature": "arm wall",
+   "at": [
+    153.8,
+    -3.7
+   ],
+   "corner": [
+    90.0,
+    3.02,
+    2.85
+   ]
+  },
+  {
+   "y": 245.0,
+   "clearance": 9.92,
+   "feature": "arm wall",
+   "at": [
+    153.8,
+    -3.43
+   ],
+   "corner": [
+    90.0,
+    2.22,
+    2.1
+   ]
+  }
+ ]
+}

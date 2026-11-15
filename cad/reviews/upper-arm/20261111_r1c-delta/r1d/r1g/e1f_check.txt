@@ -1,0 +1,205 @@
+{
+ "1": {
+  "watertight": true,
+  "volume_mm3": 90676.0,
+  "mass_g_petg127": 115.2,
+  "bounds": [
+   [
+    131.19,
+    288.0,
+    -33.31
+   ],
+   [
+    209.79,
+    322.86,
+    45.29
+   ]
+  ]
+ },
+ "2_summary": {
+  "below_Y296": {
+   "n": 0,
+   "y": null,
+   "r": null,
+   "xoff": null,
+   "kinds": []
+  },
+  "arm_facing_Y296_302p3_r_over_23p5": {
+   "n": 5,
+   "pieces": [
+    {
+     "y": 302.0,
+     "area": 0.88,
+     "kind": "removed in E1",
+     "r": [
+      23.0,
+      23.57
+     ],
+     "xoff": [
+      10.31,
+      13.86
+     ],
+     "theta": 57.0,
+     "z": [
+      24.33,
+      26.55
+     ]
+    },
+    {
+     "y": 302.0,
+     "area": 0.89,
+     "kind": "removed in E1",
+     "r": [
+      23.0,
+      23.57
+     ],
+     "xoff": [
+      2.38,
+      6.9
+     ],
+     "theta": 79.0,
+     "z": [
+      27.93,
+      29.3
+     ]
+    },
+    {
+     "y": 302.1,
+     "area": 2.49,
+     "kind": "removed in E1",
+     "r": [
+      23.0,
+      23.65
+     ],
+     "xoff": [
+      2.38,
+      13.86
+     ],
+     "theta": 68.0,
+     "z": [
+      24.33,
+      29.38
+     ]
+    },
+    {
+     "y": 302.2,
+     "area": 3.41,
+     "kind": "removed in E1",
+     "r": [
+      23.0,
+      23.73
+     ],
+     "xoff": [
+      2.38,
+      13.86
+     ],
+     "theta": 68.0,
+     "z": [
+      24.33,
+      29.45
+     ]
+    },
+    {
+     "y": 302.3,
+     "area": 4.34,
+     "kind": "removed in E1",
+     "r": [
+      23.0,
+      23.82
+     ],
+     "xoff": [
+      2.38,
+      13.86
+     ],
+     "theta": 68.0,
+     "z": [
+      24.33,
+      29.53
+     ]
+    }
+   ]
+  },
+  "above_Y302p3": {
+   "n": 1167
+  }
+ },
+ "3_front": {
+  "points": 1704,
+  "min_clearance": 0.3,
+  "at": [
+   143.94,
+   295.7,
+   14.28
+  ],
+  "xoff": 26.55,
+  "dz": 8.29,
+  "n_under_0p3": 158
+ },
+ "3_back": {
+  "points": 1490,
+  "min_clearance": 0.3,
+  "at": [
+   146.5,
+   295.7,
+   -1.2
+  ],
+  "xoff": 23.99,
+  "dz": -7.19,
+  "n_under_0p3": 145
+ },
+ "3_plates": {
+  "points": 62809,
+  "min_clearance": 0.0,
+  "at": [
+   191.72,
+   293.4,
+   11.0
+  ],
+  "xoff": 21.23,
+  "dz": 5.01,
+  "n_under_0p3": 29142
+ },
+ "6": {
+  "ours_inside_r22_max_mm2": 0.0,
+  "hub_to_ours_min_gap": 0.0
+ },
+ "5": {
+  "slot_vs_ours_min_distance": 11.607,
+  "slot_vs_ours_overlap_mm2": 0.0,
+  "our_sections_in_slot_span": 34,
+  "hub_material_at_r15p5": {
+   "300.0": {
+    "0": false,
+    "8": false,
+    "20": false,
+    "248": false,
+    "330": true,
+    "350": true
+   },
+   "302.0": {
+    "0": false,
+    "8": false,
+    "20": false,
+    "248": false,
+    "330": true,
+    "350": true
+   },
+   "306.0": {
+    "0": false,
+    "8": false,
+    "20": false,
+    "248": false,
+    "330": true,
+    "350": true
+   },
+   "310.0": {
+    "0": false,
+    "8": false,
+    "20": false,
+    "248": false,
+    "330": true,
+    "350": true
+   }
+  }
+ }
+}
