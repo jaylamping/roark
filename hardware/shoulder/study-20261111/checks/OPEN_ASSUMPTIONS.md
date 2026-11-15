@@ -218,3 +218,24 @@ Numbers and the table are in CAD_NOTES.md, "Hub cable window against the boss tu
   in this shoulder.
 - The RS02's own lead is plugged at the motor end first (radially, with the fork front open) and its wires run through
   the tap.
+
+### 16. What the strength record takes for granted about fits (2026-11-15)
+
+- **52. The fork's strength depends on the 6808 carrying radial load with no play.** With 0.1 mm of radial clearance at
+  the outer race (as drawn) the fork reads 0.3 to 0.6 at the 17 N·m roll stop and 0.5 to 0.9 under the design load, in a
+  model without the RS02; with none it meets the target (D_6808_FITS.md, last section). Decided: a snug outer race,
+  sized on the coupon, and a check at assembly that the race does not rock. Open: the model with the RS02 and the race
+  together, to know how bad a loose seat really is.
+- **Other places where a result on record holds a printed face as if the fit had no play** (listed, not solved):
+  - **Hub in the arm:** the hub cases hold the spigot (Ø71.6) radially and the face at Y 302 axially, as if the arm's
+    ring clamped it without play. The fit and the clamp are the arm thread's (shim ring, lug plates).
+  - **Hub lugs:** one lug is held rigidly at its hole (said in A_HUB_LUGS.md); the pins' fit in the Ø3.8 holes is not
+    modelled.
+  - **Fork front on the RS03 output:** the boss face is fixed, as if the six M4 and the three Ø4 pins held it without
+    slip. The pins go in reamed holes; the screws are in Ø4.5 clearance holes and are tightened by feel.
+  - **Rear cap's stub in the 6808's bore:** the stub and the cap have no case with the bearing's radial reaction on
+    them (tens of newtons in use, up to a few hundred at the stop). The inner race is a press fit on Ø40.0.
+  - **Roll stop reaction into the drum:** taken through the three locating collars (275 N on the worst, CAD_NOTES); their
+    fit in the drum is not modelled, and the drum has no strength record at all (item 24).
+  - **Pitch side:** the drum on the pitch RS03's output and the flange ring have never been analysed; nothing there has
+    a figure that could depend on a fit.

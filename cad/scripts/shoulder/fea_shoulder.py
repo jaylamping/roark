@@ -295,6 +295,15 @@ def run(name, c):
                 for cx_, cz_, _ys, _rh in cen_:
                     s_.circle((cx_, dm_['y0'], cz_), dm_.get('tap_r', 1.25))
             extrude(d, s_.feat, 'DUMMY_TAPS', dm_.get('tap_depth', 8.0), (0, dy_, 0), cut=True)
+            if dm_.get('washer'):
+                # a flat washer under each screw head as a body of its own (steel): outer radius, bore radius, thickness.
+                # The bolt connector's head then sits on the washer's bore edge, and the washer bears on the fork by contact
+                wo_, wi_, wt_ = dm_['washer']
+                for i_, (cx_, cz_, ys_, _rh) in enumerate(cen_):
+                    with Sk(d, plane(d, 'Y', ys_, f'P_DUMMY_W{i_}'), f'DUMMY_WASHER{i_}') as s_:
+                        s_.circle((cx_, ys_, cz_), wo_)
+                        s_.circle((cx_, ys_, cz_), wi_)
+                    extrude(d, s_.feat, f'DUMMY_WASHER{i_}', wt_, (0, 1, 0), merge=False)
         if os.environ.get('DUMMY_SEAT_RING') == '1':
             # the vendor model's output flange: its lowest face is only the ring r 6.75 to 14.9 (the six M4 are in it at r 12);
             # inside and outside that ring the face stands 0.5 mm higher. The dummy relieved the same way
@@ -313,6 +322,14 @@ def run(name, c):
                 for cx_, cz_ in cen_:
                     s_.circle((cx_, dm_['y0'], cz_), 1.65)
             extrude(d, s_.feat, 'DUMMY_TAPS', 8.0, (0, 1, 0), cut=True)
+            if HUB_WASHER_BODY:
+                # the six M4 flat washers as steel bodies on the tubes' ends (dia 9 x 0.8, bore 4.3), hanging below the head
+                # seats; the bolt connector's head then sits on the washer's lower bore edge
+                for i_, (cx_, cz_) in enumerate(cen_):
+                    with Sk(d, plane(d, 'Y', HEAD_SEAT_Y, f'P_DUMMY_W{i_}'), f'DUMMY_WASHER{i_}') as s_:
+                        s_.circle((cx_, HEAD_SEAT_Y, cz_), 4.5)
+                        s_.circle((cx_, HEAD_SEAT_Y, cz_), 2.145)
+                    extrude(d, s_.feat, f'DUMMY_WASHER{i_}', 0.8, (0, -1, 0), merge=False)
         d.ForceRebuild3(False)
     if c.get('split'):
         # split lines on the FEA copy, so a load can go on part of a face (e.g. only inside the arm's shim plates): for each
@@ -395,8 +412,10 @@ def run(name, c):
         if is_dummy:
             ma = cb.GetDefaultMaterial
             ma.MaterialUnits = 0
-            ma.MaterialName = 'AL'
-            for k_, v_ in (('EX', 69e9), ('NUXY', 0.33), ('GXY', 26e9), ('DENS', 2700.0), ('SIGYLD', 250e6), ('SIGXT', 300e6)):
+            st_ = 'WASHER' in nm_.upper()      # washers are steel; the motor stand-ins aluminium
+            ma.MaterialName = 'STEEL' if st_ else 'AL'
+            for k_, v_ in ((('EX', 200e9), ('NUXY', 0.29), ('GXY', 77e9), ('DENS', 7850.0), ('SIGYLD', 300e6), ('SIGXT', 400e6)) if st_ else
+                           (('EX', 69e9), ('NUXY', 0.33), ('GXY', 26e9), ('DENS', 2700.0), ('SIGYLD', 250e6), ('SIGXT', 300e6))):
                 ma.SetPropertyByName2(k_, v_, False)
             mats.append(('dummy', cb.SetSolidBodyMaterial(ma)))
         else:
@@ -537,6 +556,7 @@ def run(name, c):
     pos = np.array([xyz[int(i)] for i in s[:, 0]])
     print(' read-back s: GetNodes call %.0f, to arrays %.0f, GetStress call %.0f, to arrays %.0f' % (t1 - tr, t2 - t1, t3 - t2, time.time() - t3), flush=True)
     np.savez(str(F / (name + '.npz')), pos=pos, s=s)      # saved first: the fixture readback below has failed on contact models
+    body = bnames = None
     if c.get('dummy'):      # more than one body: record which body each node is in, so a read-out can take the printed part alone
         try:
             body, bnames = node_bodies(d, res, s[:, 0].astype(np.int64))
@@ -593,8 +613,12 @@ def run(name, c):
     if c.get('dummy') and c['dummy'].get('dir', 1) > 0:      # (a stand-in below its seat is told apart in the read-out, by position)
         keep_ = pos[:, 1] <= c['dummy']['y0'] + 0.01      # hub nodes only (the dummy sits above the seat)
         pos, s, away = pos[keep_], s[keep_], away[keep_]
+        body = body[keep_] if body is not None else None
     vm = s[:, 10]
-    np.savez(str(F / (name + '.npz')), pos=pos, s=s)
+    if body is not None:
+        np.savez(str(F / (name + '.npz')), pos=pos, s=s, body=body, body_names=np.array(bnames))
+    else:
+        np.savez(str(F / (name + '.npz')), pos=pos, s=s)
     i = np.flatnonzero(away)[np.argmax(vm[away])]
     out = dict(extra, case=name, part=c['part'], el=el, nodes=int(len(pos)), elements=int(_safe(lambda: mesh.ElementCount, -1)), peak_vm=round(float(vm.max()), 2), vm=round(float(vm[i]), 2), at=pos[i].round(1).tolist(), sf=round(YIELD / float(vm[i]), 2))
     for label, n in (('x', (1, 0, 0)), ('y', (0, 1, 0)), ('z', (0, 0, 1))):
@@ -909,6 +933,7 @@ SCREW_ANGLES = [-142.0, -82.0, -22.0, 38.0, 98.0, 158.0]     # hub screws on PCD
 HEAD_SEAT_Y = float(os.environ.get('HUB_HEAD_SEAT_Y', '298.06'))                                          # bottom face of each screw boss (tube r 2.15-4.4 in the lightening
                                                               # pocket, Y 298.06-319.86): the heads bear here, clamping 21.8 mm of boss
 WASHER_OD, SHANK_D = float(os.environ.get('HUB_WASHER_OD', '8.8')), 4.0                                 # bearing limited by the boss OD 8.8 (washer Ø9): r 2.15-4.4, 46.3 mm2
+HUB_WASHER_BODY = os.environ.get('HUB_WASHER_BODY') == '1'      # the six washers as steel bodies; use HUB_WASHER_OD=7.0 with it (the M4 cap head on the washer)
 
 
 def hole_centres(d):
@@ -950,7 +975,8 @@ def bolt_setup(preload):
         from swk import edges_where
         out = []
         for a_, (cx, cz) in zip(SCREW_ANGLES, hole_centres(d)):
-            head = edges_where(d, lambda p, cx=cx, cz=cz: abs(p[1] - HEAD_SEAT_Y) < 0.08 and math.hypot(p[0] - cx, p[2] - cz) < 2.3,
+            hy_ = HEAD_SEAT_Y - (0.8 if HUB_WASHER_BODY else 0.0)      # with washers as bodies: the head on the washer's lower face
+            head = edges_where(d, lambda p, cx=cx, cz=cz, hy_=hy_: abs(p[1] - hy_) < 0.08 and math.hypot(p[0] - cx, p[2] - cz) < 2.3,
                                pair=lambda p0, p1, cx=cx, cz=cz: all(min(abs(math.hypot(q[0] - cx, q[2] - cz) - 2.145), abs(math.hypot(q[0] - cx, q[2] - cz) - 1.9)) < 0.12 for q in (p0, p1)))   # Ø4.3 clearance or Ø3.8 locating
             thr = pick(d, cyl(1.65, [cx - 2, RS02_OUT - 0.1, cz - 2, cx + 2, RS02_OUT + 8.2, cz + 2]))
             err = I()
@@ -1211,6 +1237,8 @@ def rs02_setup(preload):
 
 
 _r2d = dict(r=39.2, y0=R2_Y0, t=10.0, dir=-1, taps='rs02', tap_r=1.25, tap_depth=8.0)
+if os.environ.get('R2_WASHER') == '1':      # washers as bodies (dia 7 x 0.5, bore 3.4); use R2_HEAD_OD=5.5 with it (the cap head on the washer)
+    _r2d['washer'] = (3.5, 1.7, 0.5)
 _r2c = [(('touch', [RX - 47, R2_Y0 - 0.5, YZ - 47, RX + 47, SEAT_Y[1] + 0.5, YZ + 47], 3000.0), float(os.environ.get('R2_CTRL', '1.2')))]
 _r2b = dict(part='fork2', fix=[('fixed', FK_BOSS), ('radial', FK_SEAT6808)], el=3.5, coupling=0, disp=FF_DISP, dummy=_r2d,
             ctrl=_r2c, ctrl_optional=1, pre_mesh=rs02_setup(R2_PRE), stabilise=True)

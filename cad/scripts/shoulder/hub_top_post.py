@@ -58,6 +58,10 @@ def post(name):
     # (found 2026-11-15: the low 'screw-hole rim' readings were dummy nodes at its thread radius, read against PETG).
     # HUB_POST_FACE=1 puts them back
     keep = pos[:, 1] <= FS.RS02_OUT + (0.01 if os.environ.get('HUB_POST_FACE') == '1' else -0.02)
+    if 'body' in z:      # result files since 2026-11-15 say which body each node is in: the hub's own nodes, nothing left out
+        names = [str(n) for n in z['body_names']]
+        keep = np.isin(z['body'], [k for k, n in enumerate(names) if 'DUMMY' not in n.upper()])
+        print(f'   ({name}: read by body, hub body {[n for n in names if "DUMMY" not in n.upper()]}, nothing left out)')
     pos, s = pos[keep], s[keep]
     tree = cKDTree(pos)
     q = dict(layer=(np.maximum(s[:, 2], 0.0), L), shear=(np.sqrt(s[:, 4] ** 2 + s[:, 6] ** 2), T), vM=(s[:, 10], B))

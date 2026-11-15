@@ -61,3 +61,40 @@
   `SEAT_TEARDROP` in `build_fork_rear`.
 - The cap and fork rear SLDPRTs are **not rebuilt yet**. SolidWorks launches on holly-pc are on hold until the stuck
   instance is cleared.
+
+## The outer race must carry radial load with no play (2026-11-15)
+
+Found with the bearing's outer race as a body in the fork model (`fea_shoulder.py` R6_* cases, `fork_r6_post.py`; a stiff
+ring r 23 to 26.0 or 26.1 in the housing, its bore held radially, no-penetration contact, boss fixed, direct sparse, no
+RS02 in the model). Fork nodes only; nothing left out but the 4 mm at the fixed boss face. Released fork; the candidate
+with the revised RS02 seats behaves the same.
+
+| Roll stop at 17 N·m, worst 0.5 / 1 mm ball | Bearing seat | Rest of the fork |
+|---|---|---|
+| Race r 26.1: no radial clearance | von Mises 2.56 / 3.29, layer 2.47 / 3.46, shear 1.76 / 2.36 | 1.61 / 2.42, 1.72 / 1.97, 1.43 / 2.09 |
+| Race r 26.0: 0.1 mm radial clearance (as drawn: Ø52.2 for a Ø52 bearing) | 3.05 / 3.87, 3.37 / 4.42, 2.23 / 2.84 | **0.35 / 0.64, 0.32 / 0.57, 0.28 / 0.53** |
+
+| Forward design load | Bearing seat | Rest of the fork |
+|---|---|---|
+| No radial clearance | 11 or more | 2.21 / 3.45, 1.57 / 2.20, 1.59 / 2.38 |
+| 0.1 mm radial clearance | the race is not touched | 0.83 / 1.11, 0.94 / 0.94, 0.55 / 0.71 |
+
+- **The seat and its lip are not the weak place:** with the race carrying load they read 1.76 or better on the 0.5 mm
+  ball. The low of 1.45 in the audit of 2026-11-15 was the fixture on the PETG face.
+- **With play the bearing does nothing until the fork has bent by the play.** Under the design load it never comes to
+  bear, and the boss on the RS03 carries everything. At the stop the tooth's force goes round through the collar and the
+  front cheek to the boss before the race takes any: the lows are in the collar round the RS02 (Y 354 to 361) and at
+  the boss's root (r 26.5 from the roll axis, Z 39).
+- **Pessimistic in one known way:** no RS02 in these models; its bolted housing stiffens the collar. A model with both
+  stand-ins is to follow, for the record.
+- Every fork figure on record before this was made with the seat held radially, which is the no-clearance case.
+
+**Decision (coordinator, 2026-11-15), for the fork rear's next revision:**
+- The outer race is a **snug fit: a hand push, with no radial play.** Housing nominal **Ø52.0** (`BRG_SEAT_R` 26.0), flat-topped
+  teardrop kept; the final size comes from the seat-ring coupon, printed upright like the fork rear, **before the fork
+  rear prints**.
+- **Axial float** stays: the lip stands 0.4 mm behind the bearing, and a hand-push outer race still slides. The inner
+  race on the stub (Ø40.0) is the fixed one.
+- **At assembly, Joey checks:** with the bearing pushed into the fork rear by hand, the race must not rock or rattle in
+  the seat. If it does, that fork rear is not for a loaded arm: shim the seat (one turn of 0.05 mm tape) or reprint from
+  the coupon's size.
