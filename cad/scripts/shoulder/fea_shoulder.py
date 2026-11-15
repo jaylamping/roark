@@ -179,6 +179,23 @@ def read_stress_by_body(d, res):
         return None
 
 
+def node_bodies(d, res, ids):
+    """Which solid body each node belongs to: von Mises read body by body (GetStressForEntities3 on one body at a time).
+    Returns (index per node, -1 if in none; body names). With contact between bodies each body has its own nodes; a node two
+    bodies share (bonded) goes to the first."""
+    out = -np.ones(len(ids), int)
+    names = []
+    for k, b in enumerate(d.GetBodies2(0, True)):
+        q = res.GetStressForEntities3(True, 9, 1, NUL, [b], 3, 0, 0, False, I())
+        q = np.array(q[0] if isinstance(q, tuple) and len(q) == 2 else q, float).reshape(-1, 2)
+        try:
+            names.append(str(b.Name))
+        except Exception:
+            names.append('body %d' % k)
+        out[np.isin(ids, q[:, 0].astype(np.int64)) & (out < 0)] = k
+    return out, names
+
+
 def read_test(d, res, s, name):
     """READ_TEST=1: time other ways of reading the stresses of a solved study and compare each with the all-node GetStress
     read `s` (node id, sx sy sz txy txz tyz, p1 p2 p3, von Mises, intensity). Prints only; changes nothing of record."""
@@ -260,10 +277,17 @@ def run(name, c):
         # 3 kN of preload each), so the load reaches the hub through the seat and the bolt pattern, not through hub faces
         from swk import Sk, plane, extrude
         dm_ = c['dummy']
-        with Sk(d, plane(d, 'Y', dm_['y0'], 'P_DUMMY'), 'DUMMY') as s_:
-            s_.circle((RX, dm_['y0'], YZ), dm_['r'])
         dy_ = dm_.get('dir', 1)      # -1: the stand-in hangs below its seat plane (the RS02's body under the fork's seat ring)
-        extrude(d, s_.feat, 'DUMMY', dm_['t'], (0, dy_, 0), merge=False)
+        if dm_.get('kind') == 'race':
+            # the 6808's outer race: a ring about the roll axis in the fork's bearing seat, from z0 toward -Z
+            with Sk(d, plane(d, 'Z', dm_['z0'], 'P_DUMMY'), 'DUMMY') as s_:
+                s_.circle((RX, RY, dm_['z0']), dm_['ro'])
+                s_.circle((RX, RY, dm_['z0']), dm_['ri'])
+            extrude(d, s_.feat, 'DUMMY', dm_['t'], (0, 0, -1), merge=False)
+        else:
+            with Sk(d, plane(d, 'Y', dm_['y0'], 'P_DUMMY'), 'DUMMY') as s_:
+                s_.circle((RX, dm_['y0'], YZ), dm_['r'])
+            extrude(d, s_.feat, 'DUMMY', dm_['t'], (0, dy_, 0), merge=False)
         if dm_.get('taps') == 'rs02':
             cen_ = _r2_holes(d)
             print(' RS02 screw holes in the fork (x, z, seat Y, r):', [tuple(round(v, 2) for v in c_) for c_ in cen_], flush=True)
@@ -513,6 +537,13 @@ def run(name, c):
     pos = np.array([xyz[int(i)] for i in s[:, 0]])
     print(' read-back s: GetNodes call %.0f, to arrays %.0f, GetStress call %.0f, to arrays %.0f' % (t1 - tr, t2 - t1, t3 - t2, time.time() - t3), flush=True)
     np.savez(str(F / (name + '.npz')), pos=pos, s=s)      # saved first: the fixture readback below has failed on contact models
+    if c.get('dummy'):      # more than one body: record which body each node is in, so a read-out can take the printed part alone
+        try:
+            body, bnames = node_bodies(d, res, s[:, 0].astype(np.int64))
+            np.savez(str(F / (name + '.npz')), pos=pos, s=s, body=body, body_names=np.array(bnames))
+            print(' bodies of the nodes:', {bnames[k]: int((body == k).sum()) for k in range(len(bnames))}, 'in none', int((body < 0).sum()), flush=True)
+        except Exception as ex:
+            print(' body read failed:', str(ex)[:120], flush=True)
     if os.environ.get('READ_TEST'):
         read_test(d, res, s, name)
     extra = {}
@@ -1066,6 +1097,33 @@ CASES['P_MZ'] = dict(CASES['P_MX'], remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (0.
 CASES['F2_MZ'] = dict(CASES['F2_MX'], remote=(FF_RS02, AT, (0.0, -310.0, 0.0), (0.0, YAW_T, 23.0)))
 CASES['F2_STOP'] = dict(part='fork2', fix=[('fixed', FK_BOSS), ('radial', FK_SEAT6808)], el=2.0, ctrl=FF_ROOT, ctrl_optional=1, disp=FF_DISP,
                         forces=[(('plane', _rp(35.0, _ta - _th, -37.0), None, 'on'), STOP_F, None)])
+# THE 6808 SEAT WITH A STAND-IN OUTER RACE (OPEN_ASSUMPTIONS item 49, 2026-11-15). The F2_* cases hold the fork's bearing
+# seat radially on the PETG face itself, which hides what the seat carries. Here the outer race is a stiff ring (r R6_RI
+# to R6_RO, 7 wide, in the housing), its bore held radially, with no-penetration contact to the housing, so the fork
+# bears on the race as it would. The boss fixed as before. Intel direct sparse. Read-out: fork_r6_post.py.
+R6_RO = float(os.environ.get('R6_RO', '26.0'))      # the 6808's outer radius; the housing is r 26.1
+R6_RI = 23.0
+_r6d = dict(kind='race', ro=R6_RO, ri=R6_RI, z0=BRG_Z[0], t=BRG_Z[0] - BRG_Z[1], dir=-1)
+R6_BORE = cyl(R6_RI, [RX - 24, RY - 24, BRG_Z[1] - 0.1, RX + 24, RY + 24, BRG_Z[0] + 0.1])
+
+
+def race_setup():
+    def hook(st, d, lbc):
+        try:
+            r_ = st.ContactManager.SetGlobalContact(2, 0)
+        except Exception as e_:
+            r_ = repr(e_)
+        print(' global contact no-penetration', r_, flush=True)
+        return None
+    return hook
+
+
+_r6b = dict(part='fork2', fix=[('fixed', FK_BOSS), ('radial', R6_BORE)], el=3.5, coupling=0, disp=FF_DISP, dummy=_r6d,
+            ctrl=[(('touch', [RX - 29, RY - 29, BRG_LIP_Z - 1.0, RX + 29, RY + 29, BRG_Z[0] + 1.5], 3000.0), float(os.environ.get('R6_CTRL', '1.2')))],
+            ctrl_optional=1, pre_mesh=race_setup(), stabilise=True)
+CASES['R6_STOP'] = dict(_r6b, forces=CASES['F2_STOP']['forces'])
+for nm_ in ('MX', 'MXn', 'MZ'):
+    CASES['R6_' + nm_] = dict(_r6b, remote=CASES['F2_' + nm_]['remote'])
 CASES['P_MXbs'] = dict(CASES['P_MXb'], fix=FF_SEATS + [('axialY', FF_JOINT[0])])
 CASES['F2_MXs'] = dict(CASES['F2_MX'], fix=FF_SEATS + [('radial', FK_SEAT6808)])
 # THE RS02 ON THE FORK FRONT AS A BOLTED JOINT (OPEN_ASSUMPTIONS item 49, 2026-11-15). The combined fork (fork2) with an
