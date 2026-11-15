@@ -379,10 +379,9 @@ SIM_PROMPT_YES = "&Yes, continue to load SOLIDWORKS Simulation"
 def _answer_simulation_prompt(pid):
     """Press Yes on this PID's "continue to load SOLIDWORKS Simulation?" prompt. Returns True if it was there.
 
-    SolidWorks asks it when Simulation starts loading while another instance of the same user is still loading it, or
-    sits at this very prompt (likely through a per-user registry marker; not proven): on 2026-11-15 two loads six
-    seconds apart left one instance waiting at it, hidden, for half an hour, and each waiting instance passed it on to
-    the next. Only that exact prompt, only in this PID.
+    SolidWorks asked it on 2026-11-15 when Simulation was loaded seconds after another instance of the same user had
+    loaded it or started up, and again in the next instance while one sat at the prompt or had been killed there. The
+    instance waits at it, hidden, for ever; Yes lets it carry on. Only that exact prompt, only in this PID.
     """
     hit = []
 
@@ -464,8 +463,8 @@ class stall_watch:  # noqa: N801 - reads as a verb at the call site
         """(the watched thread's stack, the innermost line of it that is the script's own: file:line text)."""
         frame = sys._current_frames().get(self.tid)
         stack = traceback.extract_stack(frame) if frame is not None else []
-        lib = os.path.dirname(os.__file__)  # the standard library and, under it, site-packages (win32com)
-        own = [f for f in stack if not f.filename.startswith((lib, "<"))] or stack
+        lib = os.path.dirname(os.__file__)  # the standard library; win32com is in a site-packages
+        own = [f for f in stack if not f.filename.startswith((lib, "<")) and "site-packages" not in f.filename] or stack
         return stack, (f"{Path(own[-1].filename).name}:{own[-1].lineno} {own[-1].line}" if own else "?")
 
     def _working(self):
@@ -792,9 +791,11 @@ class Instance:
     def load_simulation(self):
         """Load the Simulation add-in in this instance. Returns its CosmosWorks object.
 
-        One load at a time on the machine (a lock file in the claims folder, held only for the load), because a load
-        that overlaps another instance's stops at a hidden prompt; and that prompt, should it still come up (an
-        instance of an older checkout loading beside this one), is answered Yes in this PID while the load runs.
+        The load takes the launch lock, so that it never runs beside another instance's load or startup: on
+        2026-11-15 a load that came seconds after another instance's load or startup stopped at a hidden "continue to
+        load SOLIDWORKS Simulation?" prompt, four times, for up to half an hour. What exactly raises the prompt is not
+        known (six deliberate overlaps did not), so while the load runs the prompt is also answered Yes in this PID;
+        that is what released every real case.
         """
         add = None
         for prog in ("SldWorks.Simulation", "CosmosWorks.CosmosWorks"):  # already loaded: nothing to queue for
@@ -804,11 +805,6 @@ class Instance:
                 add = None
             if add is not None:
                 return wc.dynamic.Dispatch(add.CosmosWorks._oleobj_)
-        try:
-            lock = os.path.join(str(_claims().claims_dir()), "simulation_load.lock")
-            os.makedirs(os.path.dirname(lock), exist_ok=True)
-        except Exception:  # noqa: BLE001 - no claims folder: the lock still works from the temp folder
-            lock = os.path.join(tempfile.gettempdir(), "sw_instance_simulation_load.lock")
         done = threading.Event()
 
         def answer():
@@ -818,7 +814,7 @@ class Instance:
 
         threading.Thread(target=answer, daemon=True).start()
         try:
-            with _LaunchLock(600, lock, "another instance's Simulation load"):
+            with _LaunchLock(600, LOCK, "a SolidWorks launch or another instance's Simulation load"):
                 return self._load_simulation()
         finally:
             done.set()
