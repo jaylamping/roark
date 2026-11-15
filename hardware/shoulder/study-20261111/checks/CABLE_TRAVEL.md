@@ -65,9 +65,20 @@ at its ideal limit (turns touching at both ends of travel):
   the 3.5 mm band gives about ±70°. So ±90° holds on paper with 4° to spare and nothing for slack: the rig decides.
 - **A sleeve over the dish stretch does not reach ±90° at any dish height** on this model. If the sleeve kept the
   wires stacked (band about 4.2 mm, 5.5 mm high) it would read about ±78°; a loose sleeve will not hold them so.
-- **Proposed, not decided:** a hub with its centre 2 mm taller (gap 7.5 mm,
-  [hub_print/HUB_TALLER_CENTRE.png](hub_print/HUB_TALLER_CENTRE.png)). It does not add travel; it gives the height for
-  the third signal pair as six stacked singles at the same 3.5 mm band, and it thickens the hub top.
+- **Decided (Joey, 2026-11-15): the hub's centre 3 mm taller,** gap 8.5 mm
+  ([hub_print/HUB_TALLER_CENTRE.png](hub_print/HUB_TALLER_CENTRE.png); hub rev E1, a candidate until the arm side has
+  checked it). It does not add travel; it gives the height for the third signal pair as six stacked singles (7.2 mm)
+  with 1.3 mm to spare, and it thickens the hub top.
+- **The innermost wire nests in the step's fillet, so the fillet's radius sets the inner radius** (the figures in the
+  table above take the inner wall at r 25.1, the fillet's foot). With the wire nested, 18 AWG at OD 2.3 / 2.6 and
+  28 AWG singles: today's R 1.5 fillet ±111° / ±104°; rev E1's R 2 about ±104° / ±97°; R 3 would give ±91° / ±85°.
+  With 26 AWG singles (1.5 mm): ±102° / ±97° today. Twisted 28 AWG pairs: ±83° / ±79° today.
+- **Turns and length, reconciled with the wiring render (2026-11-15).** The exit (261.7°) and the window (68°) fix the
+  turn count at yaw 0 to **2.46**, and to 2.21 and 2.71 at the two ends of ±90°. Wound tight at 2.71 turns the loop
+  needs 495 mm; lying out at 2.21 turns it can take up 512 mm (band 3.5, R 2 fillet). So **cut the dish length to about
+  500 mm (495 to 512).** The wiring render's 517 mm is 2.46 turns at the dish's mean radius; the "about 470 mm, 2.25
+  to 2.5 turns" elsewhere on this page is the ideal model's best-travel length, not the installed one. The 17 mm
+  between 495 and 512 is all the margin ±90° has.
 
 | Option | What | Numbers | Outline | Verdict |
 |---|---|---|---|---|

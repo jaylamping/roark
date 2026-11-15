@@ -10,6 +10,7 @@ Y 302 and up); the boss tubes at 38 and 98 deg (within 4.6 mm of each tube's axi
 (-142 and 38 deg, within 2.7 mm of the axis); the wall under the groove (Y 298.6-300.8); the two lugs.
 """
 import math
+import os
 import sys
 
 import numpy as np
@@ -51,7 +52,11 @@ def regions(pos):
 def post(name):
     z = np.load(str(FS.F / f'{name}.npz'))
     pos, s = z['pos'], z['s']
-    keep = pos[:, 1] <= FS.RS02_OUT + 0.01      # FS.RS02_OUT follows HUB_TOP_RAISE (a hub candidate with a taller centre)
+    # FS.RS02_OUT follows HUB_TOP_RAISE (a hub candidate with a taller centre). The nodes ON the seat plane are left out:
+    # the aluminium dummy's bottom-face nodes lie on it too and the result file does not say which body a node belongs to
+    # (found 2026-11-15: the low 'screw-hole rim' readings were dummy nodes at its thread radius, read against PETG).
+    # HUB_POST_FACE=1 puts them back
+    keep = pos[:, 1] <= FS.RS02_OUT + (0.01 if os.environ.get('HUB_POST_FACE') == '1' else -0.02)
     pos, s = pos[keep], s[keep]
     tree = cKDTree(pos)
     q = dict(layer=(np.maximum(s[:, 2], 0.0), L), shear=(np.sqrt(s[:, 4] ** 2 + s[:, 6] ** 2), T), vM=(s[:, 10], B))

@@ -100,10 +100,14 @@ def main():
     k2 = (MOUTH[0], y_l + (MOUTH[0] - 23.0) / c_ * s_)
     e1 = (WIN_CLIP, y_s - (23.0 - WIN_CLIP) / c_ * s_)
     e2 = (WIN_CLIP, y_l - (23.0 - WIN_CLIP) / c_ * s_)
-    new = [(MOUTH[0], DISH_Y + 4.0), (MOUTH[1], DISH_Y + 4.0), k1, e1, e2, k2]
+    # the lip between the slant's lower face and the bore wall would run out to a feather edge (arm thread, 2026-11-15):
+    # it is cut square 1.5 mm up from the exit, which leaves a flat about 1.3 mm wide
+    yb = y_l + 1.5
+    b2 = (23.0 + (yb - y_l) / s_ * c_, yb)
+    new = [(MOUTH[0], DISH_Y + 4.0), (MOUTH[1], DISH_Y + 4.0), k1, e1, (WIN_CLIP, yb), b2, k2]
     log('  NEW_WIN outline (along, Y): ' + ' '.join('(%.2f, %.2f)' % q for q in new) + f'; at the bore wall Y {y_s:.2f} to {y_l:.2f}')
     with Sk(d, pwin, 'NEW_WIN') as s:
-        s.rpoly([win_xyz(q) for q in new], [0, 0, 1.0, 0, 0, KNEE_R])      # the knee's inner corner rounded, so the wires slide round it
+        s.rpoly([win_xyz(q) for q in new], [0, 0, 1.0, 0, 0, 0, KNEE_R])      # the knee's inner corner rounded, so the wires slide round it
     extrude(d, s.feat, 'NEW_WIN', WIN_W, (0, 0, 0), cut=True, mode=MID)
     v3 = vol(d)
     log(f'  NEW_WIN cut {v2 - v3:.0f} mm3')
@@ -149,13 +153,26 @@ def main():
         yaw_rev(d, 'TOP_RAISE', [(1.7, RS02_OUT - 0.56), (DISH_R0 + 0.01, RS02_OUT - 0.56), (DISH_R0 + 0.01, top), (1.7, top)])
         extrude(d, ysk(d, RS02_OUT - 1.0, 'TOP_HOLES', lambda s: [s.circle((cx, RS02_OUT - 1.0, cz), 1.9 if a_ in (-142.0, 38.0) else 2.15) for a_, cx, cz in cen]),
                 'TOP_HOLES', h + 1.5, YAX, cut=True)
+        # the hole edges on the seat face. TOP_EDGE: 'none' (default: square, as on the released hub; a chamfer puts a low
+        # spot at its foot, hub_hole_post.py), 'ch0.5',
+        # 'ch1.0', or 'relief' (the 0.5 chamfer plus a ring 0.2 deep and 1.0 wide round it, so the flange bears on the broad
+        # face away from the hole wall)
+        edge = os.environ.get('TOP_EDGE', 'none')
+        ch = 0.0 if edge == 'none' else 1.0 if edge == 'ch1.0' else 0.5
         for a_, cx, cz in cen:
             r0 = 1.9 if a_ in (-142.0, 38.0) else 2.15
             nm = ('TOP_CH_%+.0f' % a_).replace('+', 'p').replace('-', 'm')
-            with Sk(d, plane(d, 'Z', cz, 'P_' + nm), nm) as s_c:
-                s_c.poly([(cx + r0 - 0.05, top + 0.05, cz), (cx + r0 + 0.5, top + 0.05, cz), (cx + r0 + 0.5, top, cz), (cx + r0, top - 0.5, cz), (cx + r0 - 0.05, top - 0.5, cz)])
-                s_c.cline((cx, top - 5.0, cz), (cx, top + 5.0, cz))
-            revolve(d, s_c.feat, nm, cut=True, lo=0.05)
+            if ch:
+                with Sk(d, plane(d, 'Z', cz, 'P_' + nm), nm) as s_c:
+                    s_c.poly([(cx + r0 - 0.05, top + 0.05, cz), (cx + r0 + ch, top + 0.05, cz), (cx + r0 + ch, top, cz), (cx + r0, top - ch, cz), (cx + r0 - 0.05, top - ch, cz)])
+                    s_c.cline((cx, top - 5.0, cz), (cx, top + 5.0, cz))
+                revolve(d, s_c.feat, nm, cut=True, lo=0.05)
+            if edge == 'relief':
+                with Sk(d, plane(d, 'Z', cz, 'P_' + nm), nm.replace('TOP_CH', 'TOP_REL')) as s_c:
+                    s_c.poly([(cx + r0 + ch - 0.05, top + 0.05, cz), (cx + r0 + ch + 1.0, top + 0.05, cz), (cx + r0 + ch + 1.0, top - 0.2, cz), (cx + r0 + ch - 0.05, top - 0.2, cz)])
+                    s_c.cline((cx, top - 5.0, cz), (cx, top + 5.0, cz))
+                revolve(d, s_c.feat, nm.replace('TOP_CH', 'TOP_REL'), cut=True, lo=0.05)
+        log(f'  seat-face hole edges: {edge}')
         RF = float(os.environ.get('TOP_FILLET', '2.0'))      # R 3 costs about 13 deg of cable travel against R 2 (the innermost wire nests in it)
         pz = plane(d, 'Z', YZ, 'P_Z_YZ')
         for sense in (-1, 1):

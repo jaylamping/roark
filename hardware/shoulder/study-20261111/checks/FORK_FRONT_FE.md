@@ -72,6 +72,38 @@ nodes; joint zone away from the connector ties; fork rear side, then fork front 
   rigidly in the radial direction; the stop case's figures away from the joint come from the combined model, where the
   joint is solid.
 
+### What this record does not cover (audit of 2026-11-15)
+
+Every model on this page is PETG only (one merged body, or two PETG bodies joined by bolt connectors, which have no
+nodes; the 6808 and the motors are fixtures and loads on faces). So no stand-in body's nodes can enter a read-out here,
+which is the fault that was found in the hub-top read the same day (A_HUB_LUGS.md).
+
+What the read-outs **do leave out** is a band round every fixed or loaded face: 4 mm round the boss face, the RS02 seat
+and its five screw holes, the 6808 seat and the stop tooth (about 148,000 of the 511,000 nodes), and at the six-screw
+joint the nodes within 2 mm of each screw's head-seat edge and insert bore. A rigid load or tie makes its own peak
+there, so the figures of record are for the rest of the part. With **nothing left out**, worst 0.5 mm ball
+(von Mises / layer tension), from the stored results of the adopted set:
+
+| Case | Of record | Nothing left out | Where the lower reading is |
+|---|---|---|---|
+| Forward, yaw +17 | 4.33 / 3.79 | 2.57 / **1.41** | RS02 seat, at a screw hole (X offset +11, Y 352, Z 44) |
+| Forward, yaw -17 | 3.74 / 3.25 | 3.27 / 2.75 | RS02 seat, another hole (X offset -22, Y 352, Z -28) |
+| Sideways | 3.29 / 3.07 | 2.76 / 1.82 | the same two places |
+| Stop at 17 N·m (the 60 N·m run, scaled) | 1.87 / 1.84 | 1.87 / **1.45** | the 6808 seat's edge (X offset -12, Y 385, Z -46) |
+| Six-screw joint, stop at 17 N·m, 200 N | 2.85 / 1.66 | 1.97 / **1.07** | a counterbore floor under a screw head (X offset +25, Y 360) |
+| Six-screw joint, stop at 17 N·m, 400 N | 2.48 / 1.67 | 1.48 / 0.93 | the same |
+| Six-screw joint, preload alone, 400 N | 3.06 / 5.69 | 1.88 / 3.48 | under a head |
+
+- **The zones not covered:** the RS02's seat on the fork front with its five M3 screws; the 6808 seat at the stop; the
+  ring under each joint screw's head.
+- The lower readings are taken where a rigid load, fixture or tie acts, so they over-read. But these are also the places
+  where a motor or a screw bears on plastic, and the hub top showed what such a place can hide until it is modelled as
+  a bolted joint. **The record does not cover them; it does not clear them.**
+- **To settle (OPEN_ASSUMPTIONS.md, item 49):** the RS02 on the fork front as a bolted joint (an aluminium stand-in for
+  the motor body, five M3 bolt connectors with washers, contact on the seat, a read-out that keeps the stand-in's nodes
+  out), design cases and the 17 N·m stop; the 6808 seat at the stop with a stand-in outer race in contact; the
+  six-screw joint with a head or washer bearing ring in place of the rigid tie.
+
 ## The six-screw joint between fork front and fork rear (2026-11-14, first check, before the structural revision)
 
 The adopted fork front and fork rear as **two bodies**, joined as built: six M4 button heads from the fork rear's

@@ -290,6 +290,12 @@ unchanged.
 
 ## Hub-top bolted contact, cases B and Ah (2026-11-12, rev C+)
 
+> **Superseded read-out (2026-11-15).** The figures in this section that sit on the seat face (the screw-hole and
+> locating-hole rims, "clamped rims", and the hub-top peak where it is at Y 319.9) were read from a selection that
+> included the bottom face of the aluminium stand-in for the RS02 flange: they are aluminium nodes at the stand-in's
+> thread radius, read against PETG. The "average round the single peak node" figure (1.41, 1.47, 1.64, 1.67, 1.72)
+> also depends on the mesh. Kept as history; the hub top's figures are in "Rev E1 candidate" at the end of this page.
+
 Both cases are solved with FFEPlus, because the direct solver failed with code 24 even running alone. 577,952 nodes.
 Post-processing is `hub_post.py`, with tensile-only layer averages. SF is peak / 1 mm average.
 
@@ -311,6 +317,12 @@ Post-processing is `hub_post.py`, with tensile-only layer averages. SF is peak /
 - **If rev D (full-ring groove) is adopted,** A (with chamfer), B and Ah need re-running on rev D.
 
 ### The hole-rim chamfer makes it worse: not adopted (2026-11-12)
+
+> **Superseded read-out (2026-11-15).** The figures in this section that sit on the seat face (the screw-hole and
+> locating-hole rims, "clamped rims", and the hub-top peak where it is at Y 319.9) were read from a selection that
+> included the bottom face of the aluminium stand-in for the RS02 flange: they are aluminium nodes at the stand-in's
+> thread radius, read against PETG. The "average round the single peak node" figure (1.41, 1.47, 1.64, 1.67, 1.72)
+> also depends on the mesh. Kept as history; the hub top's figures are in "Rev E1 candidate" at the end of this page.
 
 Case A re-run with a 0.5 × 45° chamfer on the six screw-hole rims at the RS02 face (`HUB_CHAMFER=1`, built in
 `_wip/look/hubc`; FFEPlus, 577,829 nodes):
@@ -1177,6 +1189,12 @@ Both with the 9 N inward on a 2.7 mm² patch. FFEPlus, 1.00 million nodes, stop 
   box round the hole (X offset 20-26, Y 293.85-295.0, and X offset 24.85-34.45, Y 290-294).
 
 ### Hub top on D3c7: bolted contact, both yaw signs (2026-11-14)
+
+> **Superseded read-out (2026-11-15).** The figures in this section that sit on the seat face (the screw-hole and
+> locating-hole rims, "clamped rims", and the hub-top peak where it is at Y 319.9) were read from a selection that
+> included the bottom face of the aluminium stand-in for the RS02 flange: they are aluminium nodes at the stand-in's
+> thread radius, read against PETG. The "average round the single peak node" figure (1.41, 1.47, 1.64, 1.67, 1.72)
+> also depends on the mesh. Kept as history; the hub top's figures are in "Rev E1 candidate" at the end of this page.
 
 **Why again:** the cable window moved to 68° and was clipped since the hub-top cases were last run (rev C+ and rev D).
 
