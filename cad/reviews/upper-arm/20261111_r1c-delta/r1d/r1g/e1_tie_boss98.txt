@@ -1,0 +1,5 @@
+Y 300.0: hub material at theta 83-113, r 6.6-33.0 (the boss tube and what joins it); our nearest part 1.73 mm away
+Y 301.0: hub material at theta 83-113, r 6.6-33.0 (the boss tube and what joins it); our nearest part 3.03 mm away
+Y 302.0: hub material at theta 83-113, r 6.6-33.0 (the boss tube and what joins it); our nearest part nan mm away
+Y 303.0: hub material at theta 83-113, r 6.6-33.0 (the boss tube and what joins it); our nearest part nan mm away
+Y 304.0: hub material at theta 83-113, r 6.6-33.0 (the boss tube and what joins it); our nearest part nan mm away

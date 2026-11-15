@@ -311,6 +311,10 @@ Sheets: `r1g_front_half_sheet.png`, `r1g_shim_ring_set_sheet.png`, `r1h_d34_lug_
 the R1h back half in `../20261111_r1c-delta/r1d/r1g/r1h_back_sheet.png`.
 
 **Open:**
+- **Hub rev E1 candidate (shoulder thread c7231b1, 2026-11-15):** checked in `../20261111_r1c-delta/r1d/r1g/HUB_E1_CHECK.md`.
+  - GO for the arm interface: identical on every arm-facing surface, no slits or loose bodies.
+  - It moves the arm 3.00 mm down the yaw axis, against Joey's "215 mm shoulder to elbow, don't lengthen it": **Joey to decide**,
+    or the shoulder thread recovers the 3 mm.
 - **Stage 2 (the halves) waits for:** the bench on the corrected hub, and the elbow cable rig passing.
   - The elbow cable crossing is option A3, chosen by Joey on 2026-11-15 (05:05Z): a flat clock-spring of the power pair under the
     inboard cap, in forearm parts only. Rig first (`cad/upper-arm/ELBOW_CABLE_RIG.md`).
