@@ -2,7 +2,7 @@
 
 Branch `left-arm-organic-r1`.
 
-Pinned commit: 881d3b5dbcceb3389903a8d9bfbb7b4f8a87f1f2 (r1g6 after review 3; hub D3c7 fit only, E1 print file staged and checked; elbow cable A3, rig first). Nothing here is
+Pinned commit: 3bf677ecf03707ed3cea6fa7eaaec98f2a3ff420 (r1g6 after review 3; hub D3c7 fit only, hub E1 adopted at roark 8656e20 and checked, print file on both PCs; elbow cable A3, rig first). Nothing here is
 released.
 
 **Review 3 (head 131cd60) verdict: the coupon, the hub, the shim rings and the yaw lever only.**
@@ -311,18 +311,17 @@ Sheets: `r1g_front_half_sheet.png`, `r1g_shim_ring_set_sheet.png`, `r1h_d34_lug_
 the R1h back half in `../20261111_r1c-delta/r1d/r1g/r1h_back_sheet.png`.
 
 **Open:**
-- **Hub rev E1 print file (staged, not yet released), checked 2026-11-15:** `C:\joe\prints\shoulder-hub\staged_revE1_NOT_RELEASED\`
-  on holly-pc.
-  - 3MF SHA-256 aa4c7dd378e9b5ee82cfa43ed5c9d6ebc185fe205cfc2ad0d04a7e834ebd4a81; the STL beside it ec8c8a59…74fb4.
-  - The mesh inside is identical to the STL: 63,410 triangles, 31,689 vertices, extents 34.86 × 78.6 × 78.6, volume 90,676.
-  - Settings: PETG at 0.20, 6 walls, 100 %, no brim, tree hybrid, SuperTack. 3 h 12 min 23 s, 113.84 g.
-  - RS02 face down (Ø47 contact), lugs up.
-  - The blocker covers z 20.06-36.36, which is the groove (z 20.86-23.86) and both lugs.
-  - Support only within z 0.2-4.6 (hub Y 318.26-322.66: the dish floor, the hole mouths, the tunnel mouth's first 0.24 mm). None
-    in the tunnel, the bore, or on any arm-facing face.
-  - The bench weight steps run on it.
-- **Hub rev E1, final candidate (shoulder thread 92cf101, SHA-256 ec8c8a59…74fb4; first candidate c7231b1), 2026-11-15:** checked in `../20261111_r1c-delta/r1d/r1g/HUB_E1_CHECK.md`.
-  - GO for the arm interface: identical on every arm-facing surface, no slits or loose bodies.
+- **Hub rev E1, adopted (roark 8656e20, gate packet c404ab8), checked 2026-11-15** in `../20261111_r1c-delta/r1d/r1g/HUB_E1_CHECK.md`.
+  - Released export `cad/exports/shoulder/shoulder_hub_left.STL`: the real LFS object hashes to
+    638facef4a15a6ed8f9315f58ed556b567e72503f3a60d0bdfcbd1103de0080b. Assembly frame; moved 3.00 mm up it equals the arm-frame
+    solid c38fafc5…79e5 to 0.00003 mm.
+  - GO for the arm interface: identical to D3c7 on every arm-facing surface. Against the first E1 (ec8c8a59) only the head seats
+    (1.0 mm further from the motor) and the plate underside changed.
+  - Print file `J:\code\roark\cad\_wip\prints\shoulder\shoulder_hub_left_revE1.3mf` on Joey-PC and `C:\joe\code\roark\cad\_wip\prints\shoulder\shoulder_hub_left_revE1.3mf` on holly-pc, SHA-256 c384a067f1f3d5a9532ac16758862e919518f8ac2e4b7a91abf1b6615895fc5a.
+    The mesh is the c38fafc5 solid. PETG 0.20, 6 walls, 100 %, no brim, tree hybrid, SuperTack; 3 h 14 min 39 s, 115.84 g. RS02
+    face down (Ø47 contact), lugs up. The blocker covers z 20.06-36.36 (the groove and both lugs). Support only in z 0.2-4.6.
+  - **Superseded, do not print:** the first E1 file (3MF aa4c7dd3…4a81, STL ec8c8a59…74fb4; 6.2 mm of thread in a hole that
+    bottoms at 6.5-7).
   - It moves the arm 3.00 mm down the yaw axis, against Joey's "215 mm shoulder to elbow, don't lengthen it": **Joey to decide**,
     or the shoulder thread recovers the 3 mm.
 - **Stage 2 (the halves) waits for:** the bench on the corrected hub, and the elbow cable rig passing.

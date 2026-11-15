@@ -99,9 +99,12 @@ become:
 - No measured torque, no insert torque test (steps 3's scrap block and 14), and no 24 h re-check (step 13).
 - After the test there is a plain look instead: inserts not lifted or spun, plates not cracked.
 - The steps below are the full version, kept for reference and for later iterations.
-- **Corrected hub E1 (2026-11-15): the weight tests run on it.**
-  - Print file staged on holly-pc: `C:\joe\prints\shoulder-hub\staged_revE1_NOT_RELEASED\shoulder_hub_left_revE1.3mf`,
-    SHA-256 aa4c7dd3…4a81, STL ec8c8a59…74fb4. Black PETG, 3 h 12 min, 113.8 g.
+- **Corrected hub E1 (2026-11-15): the weight tests run on it.** Adopted at roark 8656e20; released export
+  `cad/exports/shoulder/shoulder_hub_left.STL` (assembly frame), SHA-256 638facef…080b. In our arm frame (3.00 mm up) it is
+  c38fafc5…79e5.
+  - Print file: `J:\code\roark\cad\_wip\prints\shoulder\shoulder_hub_left_revE1.3mf` on Joey-PC, `C:\joe\code\roark\cad\_wip\prints\shoulder\shoulder_hub_left_revE1.3mf` on holly-pc. SHA-256 c384a067…fc5a. Black PETG, 3 h 15 min, 115.8 g.
+  - **Superseded, do not print:** the first E1 file (3MF aa4c7dd3…4a81, STL ec8c8a59…74fb4), in
+    `C:\joe\prints\shoulder-hub\staged_revE1_NOT_RELEASED\` and the `superseded_revE1_seats6p2_do_not_print` folders.
   - Checked against our arm in `cad/reviews/upper-arm/20261111_r1c-delta/r1d/r1g/HUB_E1_CHECK.md`.
   - After printing: the hub check (step 0), then the picks, bolt-and-rock and play (steps 4-7) quickly, then the yaw, stop and
     proof steps.

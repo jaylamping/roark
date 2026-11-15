@@ -1,6 +1,37 @@
-# Hub rev E1 candidate against our arm: checks (2026-11-15)
+# Hub rev E1 against our arm: checks (2026-11-15)
 
-## FINAL candidate (roark 92cf101, checked 2026-11-15)
+## ADOPTED E1 (roark 8656e20, gate packet c404ab8; checked 2026-11-15). THIS IS THE HUB.
+
+**Print from:** `J:\code\roark\cad\_wip\prints\shoulder\shoulder_hub_left_revE1.3mf` on Joey-PC, or
+`C:\joe\code\roark\cad\_wip\prints\shoulder\shoulder_hub_left_revE1.3mf` on holly-pc. SHA-256
+c384a067f1f3d5a9532ac16758862e919518f8ac2e4b7a91abf1b6615895fc5a on both. (`C:\joe\prints\shoulder-hub\revE1_final\` holds the
+same file. The `staged_revE1_seats5p2_NOT_RELEASED` folder named earlier no longer exists; it became `revE1_final`.)
+
+**Superseded, do not print:** the first E1 (92cf101; 3MF aa4c7dd3…4a81, STL ec8c8a59…74fb4). It is still in
+`C:\joe\prints\shoulder-hub\staged_revE1_NOT_RELEASED\` (now with a DO_NOT_PRINT note) and in the
+`superseded_revE1_seats6p2_do_not_print` folders. Its screws would go 6.2 mm into motor holes that bottom out at 6.5-7 mm.
+
+| # | Check | Result |
+| --- | --- | --- |
+| 1 | Released export | `cad/exports/shoulder/shoulder_hub_left.STL` at 8656e20. The real LFS object, smudged and hashed: SHA-256 **638facef4a15a6ed8f9315f58ed556b567e72503f3a60d0bdfcbd1103de0080b**, as claimed. 4,851,484 bytes, one watertight body, 97,028 triangles, 92,304.8 mm³ = 117.2 g. Assembly frame, Y 285.00-319.86. |
+| 2 | Same solid as the arm-frame file | Moved 3.00 mm up (+Y) it equals `shoulder_hub_left_revE1.STL` (c38fafc5a0cd8b96c94611bf43df2747bc2db4234d44981c205a30e57edc79e5, Y 288.00-322.86) to **0.00003 mm** both ways, by vertex and surface. All checks below are on that file. |
+| 3 | Print file = that solid | The 3MF's part is the same mesh: 97,028 triangles, 48,498 vertices, extents 34.86 × 78.6 × 78.6, volume 92,304.8. The other two objects are the 100 % modifier and the support blocker. |
+| 4 | Arm-facing surfaces against D3c7 (a73103ad) | **Identical.** Below Y 296, max 0.0000. D3c7 to E1 on the groove, flanks, land, disc face and spigot: 0.0000. Past r 23.5 only the tunnel mouth (Y 302.04-302.25, r 23.5-23.65, θ 56-81). |
+| 5 | Against the first E1 (ec8c8a59), every difference | Only two: **the six head seats**, 1.0 mm further from the motor (the tube ends, Y 298.86-299.86, r 6.6-17.4, up to 1.0), and **the plate underside** made level with the R 4 tube blends (Y 308.17-312.80, r ≤ 23, up to 1.98). Nothing else. |
+| 6 | Whole-part survey, every 0.5 mm | No enclosed void under 1.0 mm wide. The only material strip under 1 mm is the groove-flank ring at r 35.8, Y 301.75, which D3c7 has too. |
+| 7 | The tunnel | Unchanged against the first E1 (the diff in 5 shows nothing there): 4.5 × 11, the 40 deg knee, the exit at r 23, Y 302.1-309.1. |
+| 8 | The M4 heads, now 1.0 mm lower | Head plus washer envelope Ø9, Y 294.06-298.86: our nearest part (halves, the 0.75 plates, the lug-bolt envelopes) is **3.35 mm** away, at Y 294.06, θ 338. Nothing overlaps; the ring, the halves' top (Y 302) and the lug-bolt tool access are outside the bore. |
+| 9 | Fit check rerun (`cad/scripts/fea/r1c/e1s_check.sh`, outputs `e1s_*`, `close_path_e1s.*`) | Same as D3c7: roots 0.300, plate top to the R1.2 fillet 0.267, closing path final overlap 0.041 / 0.039 on the flank, nothing of ours inside r 22, window footprint 3.23. |
+| 10 | Our route from r 21.5 | Uses our halves only, so its pass (3.64, R 24.7, sweep 0) stands. |
+| 11 | Print file | PETG, 0.20, 6 walls, 100 %, no brim, tree hybrid, SuperTack, Bambu P2S 0.4. **RS02 face down** (Ø47 contact, r ≤ 23.65), **lugs up**. The blocker covers z 20.06-36.36: the groove (z 20.86-23.86) and both lugs. Support only in z 0.2-4.6 (the plate side), none in the tunnel, the bore or on any arm-facing face. 3 h 14 min 39 s, 115.84 g. No blockers to printing. |
+
+**Correction to the earlier wording "identical below Y 302":** that holds outside the bore. Inside it, the head seats changed at
+Y 298.86-299.86 (check 5). Nothing of ours is in the bore there.
+
+**Verdict: GO. Print from the path above.** Open: Joey's 215 mm rule against the +3.00 mm (below); the URDF +3.00 (software project).
+
+## First E1 final candidate (92cf101). SUPERSEDED, do not print.
+
 
 **File:** `shoulder_hub_left_revE1_candidate_armframe.STL` at 92cf101 (`claude/project-thread-90ef87`). The real LFS object hashes to
 SHA-256 **ec8c8a592d71f1dca96f6f40d940408df3c612e0657353c72f51756744874fb4**, as claimed. 3,170,584 bytes, watertight, one body,
@@ -117,7 +148,7 @@ between Y 298 and 302, so the flat 2.6 bundle hangs at r 20.2-22.8 with room.
   - A rerun would only be worth it if the shoulder thread's E1 hub FE showed a different lug load split. It would be a geometry
     change in hub_seat (HUB_TOP 322.86, the E1 hub body), not a new mesh study.
 
-## Verdict
+## Verdict on the first candidate (superseded)
 
 **GO for the arm interface.** It is identical to D3c7 on every arm-facing surface. There are no slits or loose bodies, the tunnel
 is as confirmed, the heads clear by 4.91, and the fit checks and the route pass.

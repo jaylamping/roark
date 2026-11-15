@@ -6,14 +6,14 @@ hold until these tests pass (see "What happens after").
 **Two hubs in stage 1:**
 - **First hub, rev D3c7: fit checks only (steps 0-7 and 11). Done or doing.** Its motor plate has six thin slits from a build
   error.
-- **Corrected hub, rev E1: the weight tests (steps 8-10).**
-  - File: `C:\joe\prints\shoulder-hub\staged_revE1_NOT_RELEASED\shoulder_hub_left_revE1.3mf` on holly-pc. It is staged, not
-    yet released; the released path follows. The shoulder thread's README in that folder still says "do not print until
-    released"; you have the go to print from the staged file anyway.
-  - **Black PETG**, SuperTack, 3 h 12 min, 113.8 g (4.9 g of it support, all in the bottom 4.6 mm).
+- **Corrected hub, rev E1: the weight tests (steps 8-10). Adopted 2026-11-15 (roark 8656e20).**
+  - **Print this file:** `J:\code\roark\cad\_wip\prints\shoulder\shoulder_hub_left_revE1.3mf` on Joey-PC (the same file on holly-pc: `C:\joe\code\roark\cad\_wip\prints\shoulder\shoulder_hub_left_revE1.3mf`). SHA-256 c384a067…fc5a.
+  - **Don't print** anything in a `superseded_…` folder, or the old `C:\joe\prints\shoulder-hub\staged_revE1_NOT_RELEASED\`
+    file (aa4c7dd3…4a81): its screws would go 6.2 mm into motor holes that bottom out at 6.5-7 mm.
+  - **Black PETG**, SuperTack, 3 h 15 min, 115.8 g (4.9 g of it support, all in the bottom 4.6 mm).
   - **RS02 face down, lugs up: don't turn it.**
   - The groove, lugs and spigot are identical to D3c7.
-  - It bolts to the motor later with M4 × 30 and one flat washer each.
+  - It bolts to the motor later with M4 × 30 and one flat washer each (5.2 mm into the motor). Not an M4 × 35.
 - **After printing E1:**
   1. Follow its README: pull the support, and clear the cable tunnel with a 4 mm rod (in at the mouth, out in the bore).
   2. Redo step 0: both lug holes take a 3.8 shank, the spigot in two directions, the groove flanks clean.
@@ -50,7 +50,7 @@ For every plate:
 | 9 | [yaw lever](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_coupon_yaw_lever.3mf) | [sheet](https://github.com/jaylamping/roark/blob/left-arm-organic-r1/cad/prints/upper-arm/upper_arm_organic_coupon_yaw_lever_sheet.png) | 1 h 46 min | 72.4 g | **100 % infill, no support, no brim** |
 
 Total: about 8 h 27 min and 202 g (the hub 2 h 47 min and 81.9 g of it).
-Plus the corrected hub E1 for the weight tests: 3 h 12 min, 113.8 g, black PETG (above).
+Plus the corrected hub E1 for the weight tests: 3 h 15 min, 115.8 g, black PETG (above).
 
 - **The hub's own notes** are in its README and in the hub section of
   [PRINT_NOTES.md](https://github.com/jaylamping/roark/blob/claude/project-thread-90ef87/hardware/shoulder/study-20261111/cad-pass1/PRINT_NOTES.md).
