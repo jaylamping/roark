@@ -3,6 +3,60 @@
   "description": "Where each STEP/STL in cad/exports/ came from. Written by tools/cad/record_export.py; checked by tools/cad/check_cad_layout.py (a changed source makes its export stale). Paths are relative to cad/.",
   "exports": [
     {
+      "export": "exports/fixtures/fixtures_brg_seat_coupon_d519.STEP",
+      "source": "scripts/shoulder/brg_coupon.py",
+      "config": "",
+      "settings": "6808 seat test ring, as printed (cadquery; STL tolerance 0.005 mm): housing bore with teardrop and lip, 3.5 mm wall, square foot",
+      "sourceSha256": "9e28bf18b4c1eb0f65e341da817c1a79bc0bddcd90257e60f2a29e4100505828",
+      "exportSha256": "545e8baaf19c4dbda33c55c5e01aed4dbf1347c99ea71635fce2c9bd93682ec0",
+      "recorded": "2026-11-15T19:36:25Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_brg_seat_coupon_d519.STL",
+      "source": "scripts/shoulder/brg_coupon.py",
+      "config": "",
+      "settings": "6808 seat test ring, as printed (cadquery; STL tolerance 0.005 mm): housing bore with teardrop and lip, 3.5 mm wall, square foot",
+      "sourceSha256": "9e28bf18b4c1eb0f65e341da817c1a79bc0bddcd90257e60f2a29e4100505828",
+      "exportSha256": "a3249c42a06c958fc78d1c9bcf37bf300cfcb7426d581871bca2691452b68f02",
+      "recorded": "2026-11-15T19:36:29Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_brg_seat_coupon_d520.STEP",
+      "source": "scripts/shoulder/brg_coupon.py",
+      "config": "",
+      "settings": "6808 seat test ring, as printed (cadquery; STL tolerance 0.005 mm): housing bore with teardrop and lip, 3.5 mm wall, square foot",
+      "sourceSha256": "9e28bf18b4c1eb0f65e341da817c1a79bc0bddcd90257e60f2a29e4100505828",
+      "exportSha256": "25b003455827a74693a343ab9bffef898f9c35b50ddc8902d14e407647b20b2c",
+      "recorded": "2026-11-15T19:36:29Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_brg_seat_coupon_d520.STL",
+      "source": "scripts/shoulder/brg_coupon.py",
+      "config": "",
+      "settings": "6808 seat test ring, as printed (cadquery; STL tolerance 0.005 mm): housing bore with teardrop and lip, 3.5 mm wall, square foot",
+      "sourceSha256": "9e28bf18b4c1eb0f65e341da817c1a79bc0bddcd90257e60f2a29e4100505828",
+      "exportSha256": "8256a6c344f7a99e749db3965eab197a6dda84fcb06baef52bdde1a8ac58515c",
+      "recorded": "2026-11-15T19:36:30Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_brg_seat_coupon_d521.STEP",
+      "source": "scripts/shoulder/brg_coupon.py",
+      "config": "",
+      "settings": "6808 seat test ring, as printed (cadquery; STL tolerance 0.005 mm): housing bore with teardrop and lip, 3.5 mm wall, square foot",
+      "sourceSha256": "9e28bf18b4c1eb0f65e341da817c1a79bc0bddcd90257e60f2a29e4100505828",
+      "exportSha256": "fa5b15a1f176a56b45e90f6325a7f5b653117b2e0bdccf6d257c2a6a86e59612",
+      "recorded": "2026-11-15T19:36:30Z"
+    },
+    {
+      "export": "exports/fixtures/fixtures_brg_seat_coupon_d521.STL",
+      "source": "scripts/shoulder/brg_coupon.py",
+      "config": "",
+      "settings": "6808 seat test ring, as printed (cadquery; STL tolerance 0.005 mm): housing bore with teardrop and lip, 3.5 mm wall, square foot",
+      "sourceSha256": "9e28bf18b4c1eb0f65e341da817c1a79bc0bddcd90257e60f2a29e4100505828",
+      "exportSha256": "2184352908977df8206e05a3028002cdabf35855ac8a7ebfe19034d4c899e0b8",
+      "recorded": "2026-11-15T19:36:31Z"
+    },
+    {
       "export": "exports/fixtures/fixtures_cable_rig_pitch_lid.STEP",
       "source": "scripts/shoulder/cable_rigs.py",
       "config": "",
