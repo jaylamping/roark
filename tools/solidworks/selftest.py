@@ -1,6 +1,6 @@
 """Prove swkit and swfea against hand answers on this machine's SolidWorks. Also the worked example for the playbook.
 
-    python tools/solidworks/selftest.py [model] [beam] [rod] [extras] [loads] [contact] [bearing] [blend] [verdict] [picks]
+    python tools/solidworks/selftest.py [stepin] [model] [beam] [rod] [extras] [loads] [contact] [bearing] [blend] [verdict] [picks]
 
 All of them when none is named.
 
@@ -8,6 +8,8 @@ Writes to cad/_wip/sw-selftest/ (gitignored) and prints PASS or the first check 
 SolidWorks version the helpers have not been used on, and after changing swkit.py or swfea.py. About two minutes, once
 SolidWorks has started (a launch waits while another session's instance is solving).
 
+  stepin:  a STEP import as the very first action of a fresh instance (the plate an earlier run left; skipped on the
+           first run on a machine). Must stay first: the startup Welcome dialog used to hold that import for ever.
   model:   a 60 x 30 x 10 plate with a through hole and four rounded corners; volume, box and both exports are checked.
   beam:    a 100 x 10 x 10 cantilever with 10 N at the tip through a remote load, against F L^3 / 3 E I.
   rod:     a 20 mm round bar, 50 long, with 100 N pressed on its end through a normal force, against F L / A E.
@@ -38,6 +40,16 @@ from swkit import (BLIND, MID, NUL, Sk, bbox, bodies, call, chamfer, close, cut_
                    new_part, open_doc, pick, plane, redraw_circles, revolve, save, set_dim, shell, single_body, volume)
 
 OUT = Path(__file__).resolve().parents[2] / 'cad' / '_wip' / 'sw-selftest'
+
+
+def stepin(j):
+    """Guards: a STEP import that is the first thing a fresh hidden instance does returns (it hung on the Welcome dialog)."""
+    if not (OUT / 'plate.step').exists():
+        log('stepin: no plate.step from an earlier run; skipped')
+        return
+    d, _ = import_step(j.sw, OUT / 'plate.step', OUT / 'plate_first')
+    expect('first-action import volume', volume(d), 60 * 30 * 10 - math.pi * 160 - (4 - math.pi) * 90, 0.001)
+    close(j.sw, d)
 
 
 def model(j):
@@ -749,7 +761,7 @@ def verdict(j):
         close(j.sw, d)
 
 
-TESTS = {'model': model, 'beam': beam, 'rod': rod, 'extras': extras, 'loads': loads, 'contact': contact, 'bearing': bearing}
+TESTS = {'stepin': stepin, 'model': model, 'beam': beam, 'rod': rod, 'extras': extras, 'loads': loads, 'contact': contact, 'bearing': bearing}
 
 def picks(j):
     """side(), edges_of(), edges_along(), edge_info(), the state line after a feature, what a refused fillet says,

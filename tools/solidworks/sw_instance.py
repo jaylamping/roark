@@ -325,6 +325,22 @@ def _zombie_error(pids):
     )
 
 
+def close_welcome(pid):
+    """Close this PID's startup Welcome dialog. Hidden, it still holds a STEP import: LoadFile4 loads the file and
+    never returns (measured 2026-11-15). A new document dismisses it too; this needs none. Returns how many it closed.
+    """
+    hit = []
+
+    def find(h, _):
+        if win32process.GetWindowThreadProcessId(h)[1] == pid and win32gui.GetClassName(h) == "swWelcomeScreen":
+            win32gui.PostMessage(h, win32con.WM_CLOSE, 0, 0)
+            hit.append(h)
+        return True
+
+    win32gui.EnumWindows(find, None)
+    return len(hit)
+
+
 def _clear_journal_prompt(pid):
     """A third SolidWorks process stops at a modal 'journal file could not be created' prompt. Click OK on it.
 
@@ -963,6 +979,7 @@ def _finish_launch(proc, timeout, visible, busy_wait=0):
     sw.Visible = visible
     if not visible:
         sw.UserControl = False
+        close_welcome(pid)
     inst = Instance(pid, sw)
     inst.no_auto_recover = journal
     return inst
