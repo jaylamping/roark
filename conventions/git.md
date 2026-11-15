@@ -64,9 +64,8 @@
   3. Which tests were added or removed, and what each new one guards ([testing.md](testing.md)).
   4. **Evidence:** for code, the test or `vcan` run that shows it works; for a change that only shows on hardware, the bench
      session ID and its log. No evidence, no review. (PX4's rule for safety-critical changes.)
-  5. **How sure the author is,** and which parts need a closer look: what was run, what was only reasoned about, what
-     was never checked on hardware. Say it about the change, not about who or what typed it (section 2). (rerun asks
-     for the author's confidence.)
+  5. **How sure the author is,** and which parts an agent wrote. A reviewer reads a confident human change and an unchecked
+     agent draft differently. (rerun asks for this.)
   The repo's PR template (`.github/pull_request_template.md`) has these headings.
 - **Self-review first.** Read your own diff on GitHub before asking anyone else to. Most review comments are things the
   author would have caught (Drake's checklist says it covers about 80 % of comments).
