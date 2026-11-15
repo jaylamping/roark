@@ -31,7 +31,7 @@ import pythoncom
 from win32com.client import VARIANT
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from sw_instance import launch  # noqa: E402
+from sw_instance import close_welcome, launch  # noqa: E402
 
 m = 1e-3
 NUL = VARIANT(pythoncom.VT_DISPATCH, None)       # "no object" for an optional COM argument; plain None is refused
@@ -240,6 +240,8 @@ def close(sw, d):
 
 def import_step(sw, step, target):
     """Import a STEP file and save it as a native part or assembly at target (extension chosen by what came in)."""
+    if close_welcome(int(sw.GetProcessID)):         # still open, it holds LoadFile4 for ever (it can come up after launch)
+        time.sleep(1)
     data = sw.GetImportFileData(str(step))
     e = L()
     d = sw.LoadFile4(str(step), 'r', data, e)
