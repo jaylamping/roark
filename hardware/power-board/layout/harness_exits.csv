@@ -1,10 +1,10 @@
 body,net,od_mm,x,y,z,dx,dy,dz,bend_R_mm,then_dx,then_dy,then_dz,note
 WIRE_PACK_8AWG_J1_1_BAT,BAT,7.0,1.0,335.0,1.6,0.0,0.0,1.0,15.0,0.0,1.0,0.0,"8 AWG to the XT90 board half, mating the pack XT90S in its case-wall pocket (mating face toward -X)"
 WIRE_PACK_8AWG_J1_2_GND,GND,7.0,15.0,335.0,1.6,0.0,0.0,1.0,15.0,0.0,1.0,0.0,"8 AWG to the XT90 board half, mating the pack XT90S in its case-wall pocket (mating face toward -X)"
-WIRE_LIMB_L_ARM_J8_1_V_L1,V_L1,3.0,45.0,241.12,1.6,0.0,0.0,1.0,9.0,1.0,0.0,0.0,16 AWG pigtail to inline 20 A MINI fuse and XT30(2+2)-F
-WIRE_LIMB_L_ARM_J8_2_GND,GND,3.0,45.0,248.32,1.6,0.0,0.0,1.0,9.0,1.0,0.0,0.0,16 AWG pigtail to inline 20 A MINI fuse and XT30(2+2)-F
-WIRE_LIMB_R_ARM_J9_1_V_L2,V_L2,3.0,-45.0,248.32,1.6,0.0,0.0,1.0,9.0,-1.0,0.0,0.0,16 AWG pigtail to inline 20 A MINI fuse and XT30(2+2)-F
-WIRE_LIMB_R_ARM_J9_2_GND,GND,3.0,-45.0,241.12,1.6,0.0,0.0,1.0,9.0,-1.0,0.0,0.0,16 AWG pigtail to inline 20 A MINI fuse and XT30(2+2)-F
+WIRE_LIMB_L_ARM_J8_1_V_L1,V_L1,3.0,45.0,241.12,1.6,0.0,0.0,1.0,9.0,1.0,0.0,0.0,16 AWG board pigtail to inline 20 A MINI fuse and XT30(2+2)-F; arm trunk is 18 AWG only from the yaw drive down
+WIRE_LIMB_L_ARM_J8_2_GND,GND,3.0,45.0,248.32,1.6,0.0,0.0,1.0,9.0,1.0,0.0,0.0,16 AWG board pigtail to inline 20 A MINI fuse and XT30(2+2)-F; arm trunk is 18 AWG only from the yaw drive down
+WIRE_LIMB_R_ARM_J9_1_V_L2,V_L2,3.0,-45.0,248.32,1.6,0.0,0.0,1.0,9.0,-1.0,0.0,0.0,16 AWG board pigtail to inline 20 A MINI fuse and XT30(2+2)-F; arm trunk is 18 AWG only from the yaw drive down
+WIRE_LIMB_R_ARM_J9_2_GND,GND,3.0,-45.0,241.12,1.6,0.0,0.0,1.0,9.0,-1.0,0.0,0.0,16 AWG board pigtail to inline 20 A MINI fuse and XT30(2+2)-F; arm trunk is 18 AWG only from the yaw drive down
 WIRE_LIMB_WAIST_J10_1_V_L3,V_L3,3.0,45.0,223.62,1.6,0.0,0.0,1.0,9.0,1.0,0.0,0.0,16 AWG pigtail to inline 20 A MINI fuse and XT30(2+2)-F
 WIRE_LIMB_WAIST_J10_2_GND,GND,3.0,45.0,230.82,1.6,0.0,0.0,1.0,9.0,1.0,0.0,0.0,16 AWG pigtail to inline 20 A MINI fuse and XT30(2+2)-F
 WIRE_LIMB_AUX_J11_1_V_L4,V_L4,3.0,-45.0,230.82,1.6,0.0,0.0,1.0,9.0,-1.0,0.0,0.0,16 AWG pigtail to inline 20 A MINI fuse and XT30(2+2)-F (unfitted)
