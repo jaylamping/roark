@@ -21,4 +21,5 @@ a new dependency (with its reason), a new seam (architecture.md section 11), ske
 
 ## Confidence
 
-<!-- How sure you are, and which parts an agent wrote. -->
+<!-- How sure you are, and which parts need a closer look: what was run, what was only reasoned about. Not who or what
+typed it. -->
