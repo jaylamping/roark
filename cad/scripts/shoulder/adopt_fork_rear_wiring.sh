@@ -111,7 +111,7 @@ cp cad/_wip/shoulder-pass1/step/$p cad/exports/shoulder/shoulder_fork_rear_left.
 cp cad/_wip/shoulder-pass1/stl/$s cad/exports/shoulder/shoulder_fork_rear_left.STL || stop 'could not replace shoulder_fork_rear_left.STL'
 for f in STEP STL; do
   $RPY tools/cad/record_export.py \
-    exports/shoulder/shoulder_fork_rear_left.$f shoulder/left/shoulder_fork_rear_left.SLDPRT --settings "adopted 2026-11-15 (channel opening 18 mm with sloped wall end; tie bar at the underside; 6808 housing dia 52.1 from the seat test rings): build_parts.py fork_rear with FR_JOIN_H=18.0 FR_TIE_BAR=1 BRG_SEAT_R=26.05" > /dev/null || stop "record_export.py failed for shoulder_fork_rear_left.$f"
+    exports/shoulder/shoulder_fork_rear_left.$f shoulder/left/shoulder_fork_rear_left.SLDPRT --settings "adopted 2026-11-17 (channel opening 18 mm with sloped wall end; tie bar at the underside; 6808 housing dia 52.1 from the seat test rings): build_parts.py fork_rear with FR_JOIN_H=18.0 FR_TIE_BAR=1 BRG_SEAT_R=26.05" > /dev/null || stop "record_export.py failed for shoulder_fork_rear_left.$f"
 done
 git rm -q -f --ignore-unmatch cad/exports/shoulder/$CAND.STEP cad/exports/shoulder/$CAND.STL || stop 'git rm of the candidate exports failed'
 rm -f cad/exports/shoulder/$CAND.ST*
