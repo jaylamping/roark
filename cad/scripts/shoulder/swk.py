@@ -103,6 +103,12 @@ def export(d, path, stl_fine=True):
     sw = app()
     old = sw.GetUserPreferenceIntegerValue(78)
     od2, od3 = sw.GetUserPreferenceDoubleValue(2), sw.GetUserPreferenceDoubleValue(3)
+    # STL in the part's own coordinates: "do not translate to positive space" (toggle 71) is off on a fresh install, and the
+    # STL then comes out shifted by the part's negative extents (conventions/cad.md section 9; joey-vm, 2026-11-15)
+    ot71 = sw.GetUserPreferenceToggle(71)
+    sw.SetUserPreferenceToggle(71, True)
+    if not ot71:
+        log('  STL option "do not translate to positive space" was off: on for this export')
     if stl_fine:
         # custom: 0.01 mm deviation, 3 deg angle (the 'fine' preset left sliver triangles at face boundaries, which the
         # pictures' 40 deg feature-edge pass drew as lines across smooth blends)
@@ -117,6 +123,7 @@ def export(d, path, stl_fine=True):
         sw.SetUserPreferenceIntegerValue(78, old)
         sw.SetUserPreferenceDoubleValue(2, od2)
         sw.SetUserPreferenceDoubleValue(3, od3)
+        sw.SetUserPreferenceToggle(71, ot71)
     log('  export', Path(path).name, ok, e.value)
     return ok
 

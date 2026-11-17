@@ -124,8 +124,8 @@ The `[[load_case]]` table above is the list the gate checks. In words:
 
 ## Mass and CoM
 
-- As modelled, solid PETG at 1.27 g/cm³ (CN): drum 227.1 g, fork front 152.3, rear cap 85.4, fork rear 68.4, flange ring
-  38.1, port cap 1.4, hub rev E1 117.3 (rev D3c7 was 80.2). Total about **690 g** (hub rev E1 and the fork revision of 2026-11-15). Cover ring 13.1 g
+- As modelled, solid PETG at 1.27 g/cm³ (CN): drum 227.1 g, fork front 152.3, rear cap 85.4, fork rear 68.2, flange ring
+  38.1, port cap 1.4, hub rev E1 117.3 (rev D3c7 was 80.2). Total about **690 g** (689.8; hub rev E1, the fork revision of 2026-11-15 and the fork rear of 2026-11-17). Cover ring 13.1 g
   (optional), pitch loop cover 102.3 g (torso side).
 - Sliced: hub rev E1 115.8 g. Nothing has been weighed.
 - **OPEN: budget.** None from Joey. The concept note's target was 520 g and the working number about 600 g (CN, OA item 32).
@@ -141,7 +141,7 @@ The `[[load_case]]` table above is the list the gate checks. In words:
   bottom out at 6.5 to 7 mm (Joey, decided and measured 2026-11-15); two of the six holes reamed to 4.00 (PN).
 - **Fork joint:** 6 × ISO 7380 M4 into M4 inserts. **Flange ring:** 5 × M3 × 5 into M3 inserts. **Rear cap:** 3 × M2.5 × 14
   thread-forming (PN).
-- **Bearing:** 6808-2RS, 40 × 52 × 7; stub Ø40.0; housing Ø52.1 as drawn, from the printed seat test rings (P2S, PETG; a hand
+- **Bearing:** 6808-2RS, 40 × 52 × 7; stub Ø40.0; housing Ø52.1 (the adopted fork rear since 2026-11-17), from the printed seat test rings (P2S, PETG; a hand
   push with light pressure, Joey 2026-11-15). The race must not rock in the seat: the fork's strength depends on it (D68).
 - **Hub to arm:** spigot Ø71.6, two lugs with Ø3.8 holes; the hub's centre sits 3 mm taller from rev E1, so the arm hangs
   3 mm lower: motor face to the arm's seat 20.86 mm (Joey 2026-11-15, AHL).

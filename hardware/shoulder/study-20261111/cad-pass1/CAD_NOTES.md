@@ -1061,3 +1061,52 @@ fork front and fork rear", 2026-11-15); he ran `adopt_fork_seats.sh` himself.
   4. the six-screw joint between the two parts, read with nothing left out (1.07 on the 0.5 mm ball at 200 N in the
      audit; not revisited here);
   5. the requirements and the pre-print gate, as for the hub.
+
+
+## Adopted 2026-11-17: fork rear with the two wiring changes and the 6808 housing at Ø52.1
+
+Joey's yes to the two wiring changes ("Yes, take both", 2026-11-15) and to the housing size from the printed seat test
+rings ("#3 fit the best. please lock it in", 2026-11-15). `adopt_fork_rear_wiring.sh` ran on joey-vm on 2026-11-17,
+because holly-pc was down; the fork front is not touched.
+
+- **Built** from scratch by `build_parts.py fork_rear`; the values are the defaults in `dims.py` now (`FR_JOIN_H` 18.0,
+  `FR_TIE_BAR` on, `BRG_SEAT_R` 26.05). Build log as for the candidate: SEAT cut 19,093 mm³, CH_JOIN cut 161 mm³,
+  TIE_BAR added 34 mm³, one body, integrity check passes.
+- **Fork rear** (`shoulder_fork_rear_left`): the opening between the signal and the power channel is 18 mm high with a
+  sloped wall end (was 6 mm; OPEN_ASSUMPTIONS item 47); a 2 × 2 mm tie bar crosses the power channel at the underside,
+  Y 340 to 342 (item 51); the 6808 housing is Ø52.1 (was 52.0), flat-topped teardrop kept. 53,710 mm³, **68.2 g**
+  (53,825 mm³, 68.4 g before).
+- **The adopted STL is joey-vm's rebuild, not the candidate file built on holly-pc.** SHA-256
+  `8074dcc6adaed95c64e7f9a9ccfcdeecbaa432d1d7cd41626fb79458f2074ea7` against the candidate's
+  `12437f94609c51bceee3b30126aacf929d01a249230fca52562e840a2adca2f4`. The two are the same surface to tessellation
+  noise: 57,782 against 57,778 triangles, mesh volume 53,703.36 against 53,703.22 mm³, bounds equal to 0.00000 mm,
+  largest surface offset 0.0021 mm over 100,000 samples each way (99.9 % under 0.0018 mm, mean 0.00005 mm). The script's
+  rule is the same file or the same surface within 0.01 mm; it printed 0.0020 mm. STEP SHA-256
+  `7e955b16692191bbac17aa0440969ca517bc9d910c0cbe5abb8b5974ef894427`. The candidate exports and their records are removed.
+- **What changed against the fork rear before, feature by feature** (150,000 surface samples each way, the adopted STL
+  against the one of 2026-11-15, `e5dc3dcc…`): bounds equal to 0.0000 mm (X 132.0655 to 205.49, Y 340.0 to 459.8598,
+  Z −60.766 to −33.0). 95.5 % of the samples lie within 0.01 mm. Every sample further off lies in one of three places:
+  1. the 6808 housing, bore and its flat-topped teardrop (X 144.4 to 196.5, Y 398.8 to 451.3, Z −47.7 to −41.8, r 26.0
+     to 28.4 about the roll axis): 0.05 mm, the larger radius;
+  2. the channel opening (X 173.1 to 175.1, Y 360.3 to 370.9, Z −53.8 to −48.8): the dividing wall, inside the part;
+  3. the tie bar (X 167.5 to 169.5, Y 340.0 to 342.0, Z −56.9 to −48.0): inside the hollow at the underside, its lower
+     face in the bottom plane Y 340, its end 0.7 mm inside the skin.
+
+  Nothing on the outside, the lip behind the bearing, the joint face or the screw positions moved.
+- **Clearance sweep: owed.** It was not run: `check_clearance.py` needs the rev A frame, `torso_frame.step` (SHA-256
+  9e3ff578…b0b7), which is on holly-pc and Joey-PC only, and the other parts' STL set. The script was run with
+  `SKIP_SWEEP`. The outside of the fork rear is unchanged (above), so the sweep of 2026-11-15 on the real set still
+  describes it; run it again where the frame file is:
+  `cd cad/scripts/shoulder && CLEAR_JSON=clearance_adopt_fork_rear_wiring.json python check_clearance.py`.
+- **Assembly** `shoulder_left_asm.SLDASM` rebuilt by `build_asm.py` with the new fork rear and saved (18 components, the
+  frame's three mates as before).
+- **Strength:** as read on the candidate with both stand-ins (OPEN_ASSUMPTIONS, "Fork rear follow-up candidate"): no
+  measurable change against the part before. Those cases had the housing at Ø52.0 with a snug race; they were not
+  repeated at Ø52.1.
+- **Shoulder total by volume:** drum 227.1, fork front 152.3, hub 117.3, rear cap 85.4, fork rear 68.2, flange ring 38.1,
+  port cap 1.4: **689.8 g** (690.0 before).
+- **Machine notes (joey-vm):** its SolidWorks had the STL option "do not translate to positive space" off, and the first
+  trial's STL came out 60.931 mm off in Z; `swk.export()` now sets the option for each export and puts it back. The
+  script takes its paths from the environment (`REPO`, `PY`, `RPY`, `WT_WIN`) on a machine other than holly-pc.
+- **Still needed before the fork is printed for load:** the clearance sweep above; print files; wire tried in the new
+  opening and on the tie bar; at assembly the race must not rock in the seat; the requirements and the pre-print gate.

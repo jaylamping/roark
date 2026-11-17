@@ -207,6 +207,9 @@ holly-pc's SolidWorks is a fresh install. Its defaults differ from Joey-PC's in 
 | Simulation solver, mesher, Jacobian points | defaults | defaults | `p3_fea.py` logs them. The smoke test re-solved two Joey-PC cases within 2 %, with nearly the same node counts. |
 
 `cad/scripts/arm/organic_master.py` does all of this at startup; copy that block into other export scripts.
+The shoulder's `swk.export()` sets toggle 71 for each export and puts the old value back. **Why:** joey-vm's SolidWorks had it
+off (2026-11-15): a fork rear STL came out 60.931 mm off in Z, and the mesh comparison against the candidate then ran
+past its 6 GB cap before it could say so. Compare the bounds of two meshes before any surface comparison.
 
 Bambu Studio **2.09.01.70**, the version the upper-arm slices used, is installed at `C:\Program Files\Bambu Studio`. Its GUI had
 not been run, so `%APPDATA%\BambuStudio\system\BBL` didn't exist. Fall back to the presets the install ships in

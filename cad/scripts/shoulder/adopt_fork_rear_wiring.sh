@@ -8,6 +8,7 @@
 # The candidate it must reproduce: cad/exports/shoulder/shoulder_fork_rear_left_wiring_candidate.STL.
 #   bash cad/scripts/shoulder/adopt_fork_rear_wiring.sh            the adoption
 #   DRY=1 bash cad/scripts/shoulder/adopt_fork_rear_wiring.sh      a trial: steps 1 and 2 into a scratch look folder, nothing real changes
+#   SKIP_SWEEP="reason" bash cad/scripts/shoulder/adopt_fork_rear_wiring.sh      the adoption without step 4; it prints that the sweep is owed and why
 # What it does:
 #   1. Rebuilds the fork rear from scratch in one hidden instance (build_parts.py fork_rear, with the switches below),
 #      with a claim. The real part is overwritten here.
@@ -16,11 +17,14 @@
 #   4. Runs the clearance sweep on the real set. No SolidWorks may be in set-up beside it.
 # Every way out prints its reason and a last line: ADOPTED, or NOT ADOPTED with what (if anything) was changed.
 # After it: switch the defaults in dims.py (FR_JOIN_H 18.0, FR_TIE_BAR on; BRG_SEAT_R is 26.05 already), rebuild and save the assembly, commit as Joey.
+# Run on joey-vm on 2026-11-17 with SKIP_SWEEP (no torso_frame.step there); the defaults in dims.py are switched.
 export PYTHONDONTWRITEBYTECODE=1
 export FR_JOIN_H=18.0 FR_TIE_BAR=1 BRG_SEAT_R=26.05
-REPO=/j/code/roark-wt/shoulder-study
+REPO=${REPO:-/j/code/roark-wt/shoulder-study}      # REPO, PY, RPY and WT_WIN: set them in the environment on a machine other than holly-pc
 cd $REPO/cad/scripts/shoulder || { echo "NOT ADOPTED: $REPO/cad/scripts/shoulder not found. Nothing was changed."; exit 1; }
-PY=C:/joe/code/_venvs/shoulder/Scripts/python
+PY=${PY:-C:/joe/code/_venvs/shoulder/Scripts/python}
+RPY=${RPY:-C:/Users/holly/AppData/Local/Programs/Python/Python312/python.exe}
+WT_WIN=${WT_WIN:-'J:\code\roark-wt\shoulder-study'}
 W=../../_wip/shoulder-pass1
 L=$W/queue5.log
 CL="$PY $REPO/tools/pc/claims.py"
@@ -45,7 +49,7 @@ $LK take "shoulder fork rear wiring adoption" $WP || stop 'could not take the so
 # 1. the part, hidden, with a claim
 echo 'step 1 of 4: rebuilding the fork rear in a hidden SolidWorks (about 2 minutes) ...'
 until [ "$(powershell -NoProfile -c "[math]::Floor((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory/1MB)")" -ge 10 ]; do echo '  waiting for 10 GB of free memory'; sleep 60; done
-$CL claim shoulder-study-fea --worktree 'J:\code\roark-wt\shoulder-study' --status "adoption: fork rear wiring${DRY:+ (trial)}" > /dev/null 2>&1
+$CL claim shoulder-study-fea --worktree "$WT_WIN" --status "adoption: fork rear wiring${DRY:+ (trial)}" > /dev/null 2>&1
 echo "adoption of the fork rear wiring${DRY:+ (trial)}: build start $(date +%T)" >> $L
 unset LOOK
 if [ -n "$DRY" ]; then
@@ -106,7 +110,7 @@ s=$(ls cad/_wip/shoulder-pass1/stl | grep -i '^fork_rear\.stl$'); p=$(ls cad/_wi
 cp cad/_wip/shoulder-pass1/step/$p cad/exports/shoulder/shoulder_fork_rear_left.STEP || stop 'could not replace shoulder_fork_rear_left.STEP'
 cp cad/_wip/shoulder-pass1/stl/$s cad/exports/shoulder/shoulder_fork_rear_left.STL || stop 'could not replace shoulder_fork_rear_left.STL'
 for f in STEP STL; do
-  C:/Users/holly/AppData/Local/Programs/Python/Python312/python.exe tools/cad/record_export.py \
+  $RPY tools/cad/record_export.py \
     exports/shoulder/shoulder_fork_rear_left.$f shoulder/left/shoulder_fork_rear_left.SLDPRT --settings "adopted 2026-11-15 (channel opening 18 mm with sloped wall end; tie bar at the underside; 6808 housing dia 52.1 from the seat test rings): build_parts.py fork_rear with FR_JOIN_H=18.0 FR_TIE_BAR=1 BRG_SEAT_R=26.05" > /dev/null || stop "record_export.py failed for shoulder_fork_rear_left.$f"
 done
 git rm -q -f --ignore-unmatch cad/exports/shoulder/$CAND.STEP cad/exports/shoulder/$CAND.STL || stop 'git rm of the candidate exports failed'
@@ -127,6 +131,13 @@ rm -rf cad/scripts/shoulder/__pycache__
 $PY tools/cad/check_cad_layout.py $REPO/cad || stop 'the layout check reports errors (listed above)'
 
 # 4. the sweep on the real set
+if [ -n "$SKIP_SWEEP" ]; then
+  DONE=1
+  echo "adoption of the fork rear wiring: clearance sweep SKIPPED ($SKIP_SWEEP) $(date +%T)" >> $REPO/cad/_wip/shoulder-pass1/queue5.log
+  echo "step 4 of 4: clearance sweep SKIPPED: $SKIP_SWEEP"
+  echo "ADOPTED WITHOUT THE SWEEP: the fork rear is the new revision in the working tree (part, exports, manifest). The clearance sweep is owed: cd $REPO/cad/scripts/shoulder && CLEAR_JSON=clearance_adopt_fork_rear_wiring.json $PY check_clearance.py. Not committed yet."
+  exit 0
+fi
 echo 'step 4 of 4: clearance sweep (20 to 30 minutes, all cores) ...'
 CHANGED="The fork rear IS adopted in the working tree (part, exports, manifest), but the clearance sweep did not finish: run it again with  cd $REPO/cad/scripts/shoulder && CLEAR_JSON=clearance_adopt_fork_rear_wiring.json $PY check_clearance.py"
 cd $REPO/cad/scripts/shoulder

@@ -196,7 +196,7 @@ ARM_HW = 17.0
 Y_EX = 319.55                    # yaw exit channel centre
 Y_BOT = Y_EX - 3 - WALL
 CHEEK_R, HOUSE_R = 35.0, 33.0
-BRG_SEAT_R, BRG_LIP_R = float(os.environ.get('BRG_SEAT_R', '26.05')), 24.0   # housing dia 52.1, from the printed seat test rings (Joey, 2026-11-15; the real part is 52.0 until adopt_fork_rear_wiring.sh has run). Before: dia 52.0 since the adoption of 2026-11-15: the outer race a hand push with no play (D_6808_FITS.md; final size from the seat coupon). 26.1 = the dia 52.2 of check (d). Flat-topped teardrop kept
+BRG_SEAT_R, BRG_LIP_R = float(os.environ.get('BRG_SEAT_R', '26.05')), 24.0   # housing dia 52.1, from the printed seat test rings (Joey, 2026-11-15); the real part since the adoption of 2026-11-17. Before: dia 52.0 since the adoption of 2026-11-15: the outer race a hand push with no play (D_6808_FITS.md; final size from the seat coupon). 26.1 = the dia 52.2 of check (d). Flat-topped teardrop kept
 BRG_LIP_Z = -47.7                # check (d): the outer-race lip 0.4 behind the bearing's rear face (the outer race floats)
 STUB_LEAD = 0.5                  # check (d): 0.5 x 45 lead-in on the stub's free end (stub stays Ø40.0, as the arm's coupon)
 # ---- hub (frozen interface; dished top) ----
@@ -302,6 +302,8 @@ RS02_SEAT_FIX = os.environ.get('RS02_SEAT_FIX', '1') == '1'      # washer seats 
 RS02_SEAT_DEPTH = float(os.environ.get('RS02_SEAT_DEPTH', '2.0'))      # with RS02_SEAT_FIX: how far the screw seats lie below the seat ring's top (0 = on top, no counterbore; floor 10.0)
 KEY_ROUND = os.environ.get('KEY_ROUND', '1') == '1'      # the key access to the 104 deg RS02 screw as a round tunnel (0: the square-ended slot)
 RS02_SEAT_R_CHEEK = float(os.environ.get('RS02_SEAT_R_CHEEK', '2.5'))      # with RS02_SEAT_FIX: the round from the washer flat into the pocket wall at the two screws under the cheek
-FR_JOIN_H = float(os.environ.get('FR_JOIN_H', '6.0'))      # candidate (default as built): height of the opening between the fork rear's signal and power channels (18.0: the dividing wall ends 12 mm higher)
-FR_TIE_BAR = os.environ.get('FR_TIE_BAR') == '1'      # candidate, default off: a tie bar across the fork rear's power channel at its underside
+# ADOPTED 2026-11-17 (fork rear, adopt_fork_rear_wiring.sh): the two values below are the fork rear's defaults now; the old part is
+# FR_JOIN_H=6.0 FR_TIE_BAR=0 BRG_SEAT_R=26.0
+FR_JOIN_H = float(os.environ.get('FR_JOIN_H', '18.0'))      # height of the opening between the fork rear's signal and power channels (18.0: the dividing wall ends 12 mm higher, with a sloped end; 6.0 before)
+FR_TIE_BAR = os.environ.get('FR_TIE_BAR', '1') == '1'      # a 2 x 2 mm tie bar across the fork rear's power channel at its underside (0: none, as before)
 CH_DZ = -1.0 if os.environ.get('LEG2') else 0.0   # LEG2 mock-up: the fork rear's channels 1 mm further back (front wall 3.4)
