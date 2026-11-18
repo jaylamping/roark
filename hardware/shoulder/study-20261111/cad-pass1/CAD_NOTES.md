@@ -1123,6 +1123,15 @@ because holly-pc was down; the fork front is not touched.
     identical numbers. Run time 1 min 47 s against 35 min 52 s (14 processes, each pair evaluated once per distinct
     set of the joint angles between its two groups); result in `clearance_adopt_fork_rear_wiring_v2.json`, with the
     hashes of its inputs.
+  - **Drum to fork front, measured exactly** (B-rep distance between the two STEP exports, 2026-11-17; no part opened or
+    saved): **1.977 to 1.980 mm at every roll angle**: 1.9800 at −11°, 1.9798 at 0°, 1.9795 at 30°, 1.9787 at 70°,
+    1.9773 at 110°. The two parts sit on the pitch and the roll group, so their gap depends on roll alone, not on pitch
+    or yaw. It is a radial gap about the roll axis at Z 26.83 to 26.88: the drum's skin reaches r 57.02 there, inside the
+    fork front's r 59.00 clearance cut. The drum's crown is a loft through circles whose largest is r 57.0 at Z 27.5
+    (`DRUM_CROWN`, "never above r 57"); the loft swells 0.02 mm past it just beside that circle. So the running gap is
+    0.02 mm under the 2.0 mm rule, by the loft's overshoot, in a part that prints to about ±0.1 mm. Not changed. The
+    smallest change, if the rule is to hold to the letter: that crown circle at r 56.97, or the fork front's cut at
+    r 59.03.
 - **Assembly** `shoulder_left_asm.SLDASM` rebuilt by `build_asm.py` with the new fork rear and saved (18 components, the
   frame's three mates as before).
 - **Strength:** as read on the candidate with both stand-ins (OPEN_ASSUMPTIONS, "Fork rear follow-up candidate"): no
