@@ -1132,6 +1132,7 @@ because holly-pc was down; the fork front is not touched.
     0.02 mm under the 2.0 mm rule, by the loft's overshoot, in a part that prints to about ±0.1 mm. Not changed. The
     smallest change, if the rule is to hold to the letter: that crown circle at r 56.97, or the fork front's cut at
     r 59.03.
+    **Accepted:** drum to fork front 1.977 mm exact (loft overshoot of the r 57 crown), accepted by Joey 2026-11-18; the 2.0 mm rule is waived for this pair. No part changes.
 - **Assembly** `shoulder_left_asm.SLDASM` rebuilt by `build_asm.py` with the new fork rear and saved (18 components, the
   frame's three mates as before).
 - **Strength:** as read on the candidate with both stand-ins (OPEN_ASSUMPTIONS, "Fork rear follow-up candidate"): no

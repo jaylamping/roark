@@ -120,7 +120,7 @@ The `[[load_case]]` table above is the list the gate checks. In words:
 - **Yaw:** ±90° is the travel the cable work is sized for (CT). No hard stop. **OPEN:** SWH carries soft limits of ±85°
   as an assumption, and Joey has not fixed the yaw travel or said whether a hard stop is wanted (OA item 2).
 - **Pitch:** no stop. **OPEN:** no range agreed; the checks swept −90° to +180° and the trunk plan says −50° to +180° (CN, CT).
-- **Running gap:** 2.0 mm or more between moving pairs over the travel (CN).
+- **Running gap:** 2.0 mm or more between moving pairs over the travel (CN). One pair is waived: drum to fork front 1.977 mm exact (loft overshoot of the r 57 crown), accepted by Joey 2026-11-18; the 2.0 mm rule is waived for this pair (CN, "Adopted 2026-11-17").
 
 ## Mass and CoM
 
