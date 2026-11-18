@@ -1110,10 +1110,19 @@ because holly-pc was down; the fork front is not touched.
   - Inputs: rev A frame `torso_frame.step`, SHA-256 `9e3ff578f2412a1a70c5c3617c24ead6aacf6e1d8a216073af40a47fc8adb0b7`
     (`FRAME_STEP`); the parts' STLs from `cad/exports/shoulder`; the pitch loop cover and the drum port cap re-exported on
     joey-vm from their committed parts (they have no export); motors, pitch RS03 and upper arm from git.
-  - **What the sweep does not check:** its stop section finds no stop lugs (it looks for them behind the rear cap's
-    plate at r 43.5 to 60, where the cap has had none since the stop became a tooth on the fork rear), so "the stop
-    touches first" rests on the rear cap to fork rear figure alone: 0.02 to 0.03 at the two stops, 0.54 and 1.10 two
-    degrees inside them.
+  - **The stop, read by the reworked sweep** (`check_clearance.py` of 2026-11-17, same inputs): the first two runs found
+    no stop lugs, because the script looked for them behind the rear cap's plate, where the cap has had none since the
+    stop became a tooth on the fork rear. It now splits off the tooth and the slot's two end faces and reports their
+    contact apart. Tooth to slot end: 0.02 at the inward stop (−11°) and 0.03 at the outward stop (110°); 0.54 and 1.62 at
+    1° and 3° inside the inward stop, 1.10 at 2° inside the outward one. Closest other pair at the stops: the tooth in
+    its slot 1.97 (the 2 mm all round), drum to fork front 1.98. So the stop touches first at both ends.
+  - **Within travel only, the stop contact apart** (the first two runs counted roll −12° and 111°, beyond the stops):
+    drum to fork front 1.98, flange ring to cover 2.00, flange ring to fork front 2.04 (the 1.05 above is at −12°),
+    fork front to hub 2.20, rear cap to fork rear away from the stop 2.50. All 34 pairs that the stop split does not
+    touch and whose minimum lay within travel read the same as in the first run, to 0.01 mm; a repeat run gave
+    identical numbers. Run time 1 min 47 s against 35 min 52 s (14 processes, each pair evaluated once per distinct
+    set of the joint angles between its two groups); result in `clearance_adopt_fork_rear_wiring_v2.json`, with the
+    hashes of its inputs.
 - **Assembly** `shoulder_left_asm.SLDASM` rebuilt by `build_asm.py` with the new fork rear and saved (18 components, the
   frame's three mates as before).
 - **Strength:** as read on the candidate with both stand-ins (OPEN_ASSUMPTIONS, "Fork rear follow-up candidate"): no
