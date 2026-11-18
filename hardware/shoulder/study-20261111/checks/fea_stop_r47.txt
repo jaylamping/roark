@@ -1,0 +1,11 @@
+STOP_A2_TOOTH_J study 0
+ material [('petg', 0)]
+ fixture fixed 6 err 0
+ restraint edit 0
+ fixture radial 1 err 0
+ normal force 1 1714.2857142857142 err 0
+ options {'solver': 0, 'mesher': 2, 'jacobian': 16, 'auto_transition': False, 'jacobian_check': '?'}
+ control 25 0.5 0
+ mesh 0 nodes 378336 elements 255379
+ solve 0 72 s
+{"case": "STOP_A2_TOOTH_J", "part": "stop_fr", "el": 1.5, "nodes": 378336, "elements": 255379, "peak_vm": 144.3, "vm": 144.3, "at": [158.6, 384.6, -45.9], "sf": 0.31, "layer_x": {"mpa": 154.56, "at": [158.5, 385.1, -45.9], "sf": 0.15}, "layer_y": {"mpa": 122.26, "at": [158.1, 385.5, -45.9], "sf": 0.18}, "layer_z": {"mpa": 150.74, "at": [157.9, 386.0, -45.7], "sf": 0.15}, "region_tooth": {"vm": 144.3, "at": [158.6, 384.6, -45.9], "sf": 0.31, "p1": 229.95, "p3": -191.02, "layer_x": 154.56, "layer_y": 122.26, "sf_layer_y": 0.18, "layer_at": [158.1, 385.5, -45.9], "sf_avg1": 0.58, "sf_layer_y_avg1": 0.66, "n_avg1": 163, "sf_avg05": 0.41, "sf_layer_y_avg05": 0.38, "n_avg05": 29}, "clear": {"vm": 144.3, "at": [158.6, 384.6, -45.9], "sf": 0.31, "layer_x": {"sf": 0.15, "at": [158.5, 385.1, -45.9]}, "layer_z": {"sf": 0.15, "at": [157.9, 386.0, -45.7]}}, "model_sha256": "19ad4b56a4551b063059ca9794374a35577cdc277670b75f46a751c99b9a4411", "peak_layer_noexcl": {"x": 154.56, "y": 122.26, "z": 150.74}, "sf_noexcl": {"bulk": 0.31, "layer_x": 0.15, "layer_y": 0.18, "layer_z": 0.15}} 266 s

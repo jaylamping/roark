@@ -1,0 +1,36 @@
+{
+ "spine_upper_1": {
+  "min_dist_at_stop": ">3.5",
+  "trim_depth_max": 0.0
+ },
+ "spine_lower_1": {
+  "min_dist_at_stop": 0.01,
+  "worst_pose_pitch_yaw_part": [
+   -30.0,
+   -45,
+   "upper_arm"
+  ],
+  "trim_depth_max": 2.99,
+  "trim_region_reva": [
+   119.4,
+   202.2,
+   -124.0,
+   129.0,
+   276.1,
+   -77.0
+  ],
+  "points": 11017
+ },
+ "spine_upper_-1": {
+  "min_dist_at_stop": ">3.5",
+  "trim_depth_max": 0.0
+ },
+ "spine_lower_-1": {
+  "min_dist_at_stop": ">3.5",
+  "trim_depth_max": 0.0
+ },
+ "shell_skin": {
+  "min_dist_at_stop": ">3.5",
+  "trim_depth_max": 0.0
+ }
+}

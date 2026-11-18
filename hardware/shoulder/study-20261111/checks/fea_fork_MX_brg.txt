@@ -1,0 +1,11 @@
+FORK_MX_brg study 0
+ material [('petg', 0), ('petg', 0)]
+ fixture fixed 1 err 0
+ restraint edit 0
+ fixture radial 1 err 0
+ remote 7 err 0
+ remote end 0
+ options {'solver': '?', 'mesher': 2, 'jacobian': 16, 'auto_transition': False, 'jacobian_check': '?'}
+ mesh 0 nodes 51215 elements 30840
+ solve 24 226 s
+solve failed

@@ -1,0 +1,3948 @@
+{
+"n_poses": 29,
+"n_pairs": 315,
+"poses": [
+[
+-87,
+-20,
+-90
+],
+[
+-45,
+-20,
+-90
+],
+[
+-15,
+-20,
+90
+],
+[
+0,
+-30,
+0
+],
+[
+0,
+-20,
+-90
+],
+[
+0,
+-20,
+0
+],
+[
+0,
+-9,
+-90
+],
+[
+0,
+-9,
+0
+],
+[
+0,
+0,
+-90
+],
+[
+0,
+0,
+-50
+],
+[
+0,
+0,
+-25
+],
+[
+0,
+0,
+20
+],
+[
+0,
+0,
+90
+],
+[
+0,
+13,
+0
+],
+[
+0,
+30,
+0
+],
+[
+0,
+52,
+0
+],
+[
+0,
+60,
+90
+],
+[
+0,
+72,
+-90
+],
+[
+0,
+72,
+0
+],
+[
+0,
+91,
+0
+],
+[
+0,
+102,
+90
+],
+[
+0,
+110,
+0
+],
+[
+0,
+120,
+0
+],
+[
+63,
+-20,
+90
+],
+[
+75,
+110,
+90
+],
+[
+129,
+-20,
+90
+],
+[
+132,
+-20,
+90
+],
+[
+138,
+-20,
+90
+],
+[
+162,
+-20,
+90
+]
+],
+"max_abs_diff": 0.28,
+"worst": {
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PITCH_cover",
+"pose": [
+0,
+-20,
+0
+],
+"old": 0.35,
+"new": 0.63,
+"diff": 0.28
+},
+"n_over_tol": 0,
+"n_exact": 277,
+"rows": [
+{
+"kind": "min",
+"key": "pitch|P1_drum|PITCH_cover",
+"pose": [
+75,
+110,
+90
+],
+"old": 0.02,
+"new": 0.07,
+"diff": 0.05
+},
+{
+"kind": "min",
+"key": "pitch|FORK_front|PITCH_cover",
+"pose": [
+138,
+-20,
+90
+],
+"old": 0.02,
+"new": 0.02,
+"diff": 0.0
+},
+{
+"kind": "min",
+"key": "roll|FORK_rear|P1_cap",
+"pose": [
+0,
+60,
+90
+],
+"old": 0.02,
+"new": 0.11,
+"diff": 0.09
+},
+{
+"kind": "min",
+"key": "pitch|UA|FRAME",
+"pose": [
+-15,
+-20,
+90
+],
+"old": 0.03,
+"new": 0.03,
+"diff": 0.0
+},
+{
+"kind": "min",
+"key": "roll|FORK_front|P1_drum",
+"pose": [
+0,
+-20,
+-90
+],
+"old": 0.03,
+"new": 0.03,
+"diff": 0.0
+},
+{
+"kind": "min",
+"key": "roll|FORK_rear|P1_drum",
+"pose": [
+0,
+-9,
+-90
+],
+"old": 0.05,
+"new": 0.07,
+"diff": 0.02
+},
+{
+"kind": "min",
+"key": "pitch|FORK_rear|PITCH_cover",
+"pose": [
+-45,
+-20,
+-90
+],
+"old": 0.07,
+"new": 0.16,
+"diff": 0.09
+},
+{
+"kind": "min",
+"key": "roll|FORK_front|P1_cap",
+"pose": [
+0,
+-20,
+-90
+],
+"old": 0.1,
+"new": 0.1,
+"diff": 0.0
+},
+{
+"kind": "min",
+"key": "pitch|FORK_front|PITCH",
+"pose": [
+63,
+-20,
+90
+],
+"old": 0.13,
+"new": 0.13,
+"diff": 0.0
+},
+{
+"kind": "min",
+"key": "roll|YAW|P1_drum",
+"pose": [
+0,
+-20,
+-90
+],
+"old": 0.24,
+"new": 0.07,
+"diff": -0.17
+},
+{
+"kind": "min",
+"key": "yaw|HUB_dished|FORK_front",
+"pose": [
+0,
+0,
+20
+],
+"old": 1.52,
+"new": 1.52,
+"diff": 0.0
+},
+{
+"kind": "min",
+"key": "yaw|HUB_dished|YAW",
+"pose": [
+0,
+0,
+-50
+],
+"old": 3.41,
+"new": 3.41,
+"diff": 0.0
+},
+{
+"kind": "min",
+"key": "pitch|HUB_dished|PITCH_cover",
+"pose": [
+-87,
+-20,
+-90
+],
+"old": 5.34,
+"new": 5.34,
+"diff": 0.0
+},
+{
+"kind": "min",
+"key": "pitch|FORK_front|FRAME",
+"pose": [
+129,
+-20,
+90
+],
+"old": 8.52,
+"new": 8.52,
+"diff": 0.0
+},
+{
+"kind": "min",
+"key": "roll|FORK_front_cap|ROLL",
+"pose": [
+0,
+102,
+90
+],
+"old": 15.46,
+"new": 15.46,
+"diff": 0.0
+},
+{
+"kind": "min",
+"key": "pitch|FORK_rear|FRAME",
+"pose": [
+162,
+-20,
+90
+],
+"old": 17.17,
+"new": 17.27,
+"diff": 0.1
+},
+{
+"kind": "min",
+"key": "roll|FORK_front_cap|P1_drum",
+"pose": [
+0,
+72,
+-90
+],
+"old": 18.53,
+"new": 18.53,
+"diff": 0.0
+},
+{
+"kind": "min",
+"key": "pitch|YAW|PBRK",
+"pose": [
+132,
+-20,
+90
+],
+"old": 26.47,
+"new": 26.46,
+"diff": -0.01
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PITCH",
+"pose": [
+0,
+-20,
+0
+],
+"old": 3.48,
+"new": 3.48,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PBRK",
+"pose": [
+0,
+-20,
+0
+],
+"old": 5.0,
+"new": 5.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|FRAME",
+"pose": [
+0,
+-20,
+0
+],
+"old": 3.0,
+"new": 3.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PITCH_cover",
+"pose": [
+0,
+-20,
+0
+],
+"old": 0.05,
+"new": 0.05,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PITCH",
+"pose": [
+0,
+-20,
+0
+],
+"old": 7.07,
+"new": 7.07,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PBRK",
+"pose": [
+0,
+-20,
+0
+],
+"old": 29.61,
+"new": 29.78,
+"diff": 0.17
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|FRAME",
+"pose": [
+0,
+-20,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PITCH_cover",
+"pose": [
+0,
+-20,
+0
+],
+"old": 21.12,
+"new": 21.3,
+"diff": 0.18
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PITCH",
+"pose": [
+0,
+-20,
+0
+],
+"old": 23.35,
+"new": 23.35,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PBRK",
+"pose": [
+0,
+-20,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|FRAME",
+"pose": [
+0,
+-20,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PITCH_cover",
+"pose": [
+0,
+-20,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PITCH",
+"pose": [
+0,
+-20,
+0
+],
+"old": 1.32,
+"new": 1.32,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PBRK",
+"pose": [
+0,
+-20,
+0
+],
+"old": 19.75,
+"new": 19.75,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|FRAME",
+"pose": [
+0,
+-20,
+0
+],
+"old": 11.14,
+"new": 11.14,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PITCH_cover",
+"pose": [
+0,
+-20,
+0
+],
+"old": 0.1,
+"new": 0.1,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PITCH",
+"pose": [
+0,
+-20,
+0
+],
+"old": 6.27,
+"new": 6.33,
+"diff": 0.06
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PBRK",
+"pose": [
+0,
+-20,
+0
+],
+"old": 17.17,
+"new": 17.25,
+"diff": 0.08
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|FRAME",
+"pose": [
+0,
+-20,
+0
+],
+"old": 17.17,
+"new": 17.23,
+"diff": 0.06
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PITCH_cover",
+"pose": [
+0,
+-20,
+0
+],
+"old": 0.35,
+"new": 0.63,
+"diff": 0.28
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PITCH",
+"pose": [
+0,
+-20,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PBRK",
+"pose": [
+0,
+-20,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|FRAME",
+"pose": [
+0,
+-20,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PITCH_cover",
+"pose": [
+0,
+-20,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PITCH",
+"pose": [
+0,
+-20,
+0
+],
+"old": 16.58,
+"new": 16.69,
+"diff": 0.11
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PBRK",
+"pose": [
+0,
+-20,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|FRAME",
+"pose": [
+0,
+-20,
+0
+],
+"old": 26.45,
+"new": 26.43,
+"diff": -0.02
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PITCH_cover",
+"pose": [
+0,
+-20,
+0
+],
+"old": 6.51,
+"new": 6.51,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PITCH",
+"pose": [
+0,
+-20,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PBRK",
+"pose": [
+0,
+-20,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|FRAME",
+"pose": [
+0,
+-20,
+0
+],
+"old": 26.57,
+"new": 26.57,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PITCH_cover",
+"pose": [
+0,
+-20,
+0
+],
+"old": 14.17,
+"new": 14.17,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PITCH",
+"pose": [
+0,
+-20,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PBRK",
+"pose": [
+0,
+-20,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|FRAME",
+"pose": [
+0,
+-20,
+0
+],
+"old": 0.3,
+"new": 0.3,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PITCH_cover",
+"pose": [
+0,
+-20,
+0
+],
+"old": 26.89,
+"new": 26.89,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PITCH",
+"pose": [
+0,
+13,
+0
+],
+"old": 3.48,
+"new": 3.48,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PBRK",
+"pose": [
+0,
+13,
+0
+],
+"old": 5.0,
+"new": 5.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|FRAME",
+"pose": [
+0,
+13,
+0
+],
+"old": 3.0,
+"new": 3.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PITCH_cover",
+"pose": [
+0,
+13,
+0
+],
+"old": 0.05,
+"new": 0.05,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PITCH",
+"pose": [
+0,
+13,
+0
+],
+"old": 7.07,
+"new": 7.07,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PBRK",
+"pose": [
+0,
+13,
+0
+],
+"old": 29.61,
+"new": 29.78,
+"diff": 0.17
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|FRAME",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PITCH_cover",
+"pose": [
+0,
+13,
+0
+],
+"old": 21.12,
+"new": 21.3,
+"diff": 0.18
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PITCH",
+"pose": [
+0,
+13,
+0
+],
+"old": 23.35,
+"new": 23.35,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PBRK",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|FRAME",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PITCH_cover",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PITCH",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PBRK",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|FRAME",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PITCH_cover",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PITCH",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PBRK",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|FRAME",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PITCH_cover",
+"pose": [
+0,
+13,
+0
+],
+"old": 28.76,
+"new": 28.58,
+"diff": -0.18
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PITCH",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PBRK",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|FRAME",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PITCH_cover",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PITCH",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PBRK",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|FRAME",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PITCH_cover",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PITCH",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PBRK",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|FRAME",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PITCH_cover",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PITCH",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PBRK",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|FRAME",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PITCH_cover",
+"pose": [
+0,
+13,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PITCH",
+"pose": [
+0,
+52,
+0
+],
+"old": 3.48,
+"new": 3.48,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PBRK",
+"pose": [
+0,
+52,
+0
+],
+"old": 5.0,
+"new": 5.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|FRAME",
+"pose": [
+0,
+52,
+0
+],
+"old": 3.0,
+"new": 3.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PITCH_cover",
+"pose": [
+0,
+52,
+0
+],
+"old": 0.05,
+"new": 0.05,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PITCH",
+"pose": [
+0,
+52,
+0
+],
+"old": 7.07,
+"new": 7.07,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PBRK",
+"pose": [
+0,
+52,
+0
+],
+"old": 29.61,
+"new": 29.78,
+"diff": 0.17
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|FRAME",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PITCH_cover",
+"pose": [
+0,
+52,
+0
+],
+"old": 21.12,
+"new": 21.3,
+"diff": 0.18
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PITCH",
+"pose": [
+0,
+52,
+0
+],
+"old": 23.35,
+"new": 23.35,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PBRK",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|FRAME",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PITCH_cover",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PITCH",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PBRK",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|FRAME",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PITCH_cover",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PITCH",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PBRK",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|FRAME",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PITCH_cover",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PITCH",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PBRK",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|FRAME",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PITCH_cover",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PITCH",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PBRK",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|FRAME",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PITCH_cover",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PITCH",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PBRK",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|FRAME",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PITCH_cover",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PITCH",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PBRK",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|FRAME",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PITCH_cover",
+"pose": [
+0,
+52,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PITCH",
+"pose": [
+0,
+91,
+0
+],
+"old": 3.48,
+"new": 3.48,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PBRK",
+"pose": [
+0,
+91,
+0
+],
+"old": 5.0,
+"new": 5.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|FRAME",
+"pose": [
+0,
+91,
+0
+],
+"old": 3.0,
+"new": 3.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PITCH_cover",
+"pose": [
+0,
+91,
+0
+],
+"old": 0.05,
+"new": 0.05,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PITCH",
+"pose": [
+0,
+91,
+0
+],
+"old": 7.07,
+"new": 7.07,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PBRK",
+"pose": [
+0,
+91,
+0
+],
+"old": 29.61,
+"new": 29.78,
+"diff": 0.17
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|FRAME",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PITCH_cover",
+"pose": [
+0,
+91,
+0
+],
+"old": 21.12,
+"new": 21.3,
+"diff": 0.18
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PITCH",
+"pose": [
+0,
+91,
+0
+],
+"old": 23.35,
+"new": 23.35,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PBRK",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|FRAME",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PITCH_cover",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PITCH",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PBRK",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|FRAME",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PITCH_cover",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PITCH",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PBRK",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|FRAME",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PITCH_cover",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PITCH",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PBRK",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|FRAME",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PITCH_cover",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PITCH",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PBRK",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|FRAME",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PITCH_cover",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PITCH",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PBRK",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|FRAME",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PITCH_cover",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PITCH",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PBRK",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|FRAME",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PITCH_cover",
+"pose": [
+0,
+91,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PITCH",
+"pose": [
+0,
+110,
+0
+],
+"old": 3.48,
+"new": 3.48,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PBRK",
+"pose": [
+0,
+110,
+0
+],
+"old": 5.0,
+"new": 5.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|FRAME",
+"pose": [
+0,
+110,
+0
+],
+"old": 3.0,
+"new": 3.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_drum|PITCH_cover",
+"pose": [
+0,
+110,
+0
+],
+"old": 0.05,
+"new": 0.05,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PITCH",
+"pose": [
+0,
+110,
+0
+],
+"old": 7.07,
+"new": 7.07,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PBRK",
+"pose": [
+0,
+110,
+0
+],
+"old": 29.61,
+"new": 29.78,
+"diff": 0.17
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|FRAME",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|P1_cap|PITCH_cover",
+"pose": [
+0,
+110,
+0
+],
+"old": 21.12,
+"new": 21.3,
+"diff": 0.18
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PITCH",
+"pose": [
+0,
+110,
+0
+],
+"old": 23.35,
+"new": 23.35,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PBRK",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|FRAME",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|ROLL|PITCH_cover",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PITCH",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PBRK",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|FRAME",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front|PITCH_cover",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PITCH",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PBRK",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|FRAME",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_rear|PITCH_cover",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PITCH",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PBRK",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|FRAME",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|FORK_front_cap|PITCH_cover",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PITCH",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PBRK",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|FRAME",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|YAW|PITCH_cover",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PITCH",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PBRK",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|FRAME",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|HUB_dished|PITCH_cover",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PITCH",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PBRK",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|FRAME",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_frame",
+"key": "pitch|UA|PITCH_cover",
+"pose": [
+0,
+110,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front|P1_drum",
+"pose": [
+0,
+-30,
+0
+],
+"old": 0.07,
+"new": 0.07,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front|P1_cap",
+"pose": [
+0,
+-30,
+0
+],
+"old": 0.14,
+"new": 0.14,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|P1_drum",
+"pose": [
+0,
+-30,
+0
+],
+"old": 0.02,
+"new": 0.02,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|P1_cap",
+"pose": [
+0,
+-30,
+0
+],
+"old": 0.03,
+"new": 0.05,
+"diff": 0.02
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|ROLL",
+"pose": [
+0,
+-30,
+0
+],
+"old": 17.54,
+"new": 17.54,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|P1_drum",
+"pose": [
+0,
+-30,
+0
+],
+"old": 18.54,
+"new": 18.54,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|P1_cap",
+"pose": [
+0,
+-30,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|ROLL",
+"pose": [
+0,
+-30,
+0
+],
+"old": 15.47,
+"new": 15.47,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|P1_drum",
+"pose": [
+0,
+-30,
+0
+],
+"old": 0.03,
+"new": 0.05,
+"diff": 0.02
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|P1_cap",
+"pose": [
+0,
+-30,
+0
+],
+"old": 3.77,
+"new": 3.78,
+"diff": 0.01
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|ROLL",
+"pose": [
+0,
+-30,
+0
+],
+"old": 7.02,
+"new": 7.02,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|P1_drum",
+"pose": [
+0,
+-30,
+0
+],
+"old": 8.28,
+"new": 8.28,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|P1_cap",
+"pose": [
+0,
+-30,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|ROLL",
+"pose": [
+0,
+-30,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|P1_drum",
+"pose": [
+0,
+-30,
+0
+],
+"old": 27.56,
+"new": 27.56,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|P1_cap",
+"pose": [
+0,
+-30,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|ROLL",
+"pose": [
+0,
+-30,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front|P1_drum",
+"pose": [
+0,
+-9,
+0
+],
+"old": 0.14,
+"new": 0.14,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front|P1_cap",
+"pose": [
+0,
+-9,
+0
+],
+"old": 4.76,
+"new": 4.76,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|P1_drum",
+"pose": [
+0,
+-9,
+0
+],
+"old": 0.05,
+"new": 0.07,
+"diff": 0.02
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|P1_cap",
+"pose": [
+0,
+-9,
+0
+],
+"old": 0.07,
+"new": 0.07,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|ROLL",
+"pose": [
+0,
+-9,
+0
+],
+"old": 17.54,
+"new": 17.54,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|P1_drum",
+"pose": [
+0,
+-9,
+0
+],
+"old": 18.54,
+"new": 18.54,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|P1_cap",
+"pose": [
+0,
+-9,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|ROLL",
+"pose": [
+0,
+-9,
+0
+],
+"old": 15.46,
+"new": 15.46,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|P1_drum",
+"pose": [
+0,
+-9,
+0
+],
+"old": 2.62,
+"new": 2.63,
+"diff": 0.01
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|P1_cap",
+"pose": [
+0,
+-9,
+0
+],
+"old": 3.71,
+"new": 3.75,
+"diff": 0.04
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|ROLL",
+"pose": [
+0,
+-9,
+0
+],
+"old": 7.96,
+"new": 7.96,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|P1_drum",
+"pose": [
+0,
+-9,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|P1_cap",
+"pose": [
+0,
+-9,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|ROLL",
+"pose": [
+0,
+-9,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|P1_drum",
+"pose": [
+0,
+-9,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|P1_cap",
+"pose": [
+0,
+-9,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|ROLL",
+"pose": [
+0,
+-9,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front|P1_drum",
+"pose": [
+0,
+30,
+0
+],
+"old": 3.0,
+"new": 3.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front|P1_cap",
+"pose": [
+0,
+30,
+0
+],
+"old": 4.75,
+"new": 4.75,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|P1_drum",
+"pose": [
+0,
+30,
+0
+],
+"old": 12.59,
+"new": 12.68,
+"diff": 0.09
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|P1_cap",
+"pose": [
+0,
+30,
+0
+],
+"old": 0.06,
+"new": 0.05,
+"diff": -0.01
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|ROLL",
+"pose": [
+0,
+30,
+0
+],
+"old": 17.54,
+"new": 17.54,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|P1_drum",
+"pose": [
+0,
+30,
+0
+],
+"old": 18.55,
+"new": 18.55,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|P1_cap",
+"pose": [
+0,
+30,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|ROLL",
+"pose": [
+0,
+30,
+0
+],
+"old": 15.46,
+"new": 15.46,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|P1_drum",
+"pose": [
+0,
+30,
+0
+],
+"old": 2.42,
+"new": 2.41,
+"diff": -0.01
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|P1_cap",
+"pose": [
+0,
+30,
+0
+],
+"old": 3.73,
+"new": 3.76,
+"diff": 0.03
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|ROLL",
+"pose": [
+0,
+30,
+0
+],
+"old": 7.02,
+"new": 7.02,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|P1_drum",
+"pose": [
+0,
+30,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|P1_cap",
+"pose": [
+0,
+30,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|ROLL",
+"pose": [
+0,
+30,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|P1_drum",
+"pose": [
+0,
+30,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|P1_cap",
+"pose": [
+0,
+30,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|ROLL",
+"pose": [
+0,
+30,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front|P1_drum",
+"pose": [
+0,
+72,
+0
+],
+"old": 3.0,
+"new": 3.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front|P1_cap",
+"pose": [
+0,
+72,
+0
+],
+"old": 4.74,
+"new": 4.74,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|P1_drum",
+"pose": [
+0,
+72,
+0
+],
+"old": 12.29,
+"new": 12.29,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|P1_cap",
+"pose": [
+0,
+72,
+0
+],
+"old": 0.06,
+"new": 0.08,
+"diff": 0.02
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|ROLL",
+"pose": [
+0,
+72,
+0
+],
+"old": 17.54,
+"new": 17.54,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|P1_drum",
+"pose": [
+0,
+72,
+0
+],
+"old": 18.53,
+"new": 18.53,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|P1_cap",
+"pose": [
+0,
+72,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|ROLL",
+"pose": [
+0,
+72,
+0
+],
+"old": 15.47,
+"new": 15.47,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|P1_drum",
+"pose": [
+0,
+72,
+0
+],
+"old": 2.38,
+"new": 2.38,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|P1_cap",
+"pose": [
+0,
+72,
+0
+],
+"old": 3.73,
+"new": 3.76,
+"diff": 0.03
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|ROLL",
+"pose": [
+0,
+72,
+0
+],
+"old": 6.75,
+"new": 6.75,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|P1_drum",
+"pose": [
+0,
+72,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|P1_cap",
+"pose": [
+0,
+72,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|ROLL",
+"pose": [
+0,
+72,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|P1_drum",
+"pose": [
+0,
+72,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|P1_cap",
+"pose": [
+0,
+72,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|ROLL",
+"pose": [
+0,
+72,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front|P1_drum",
+"pose": [
+0,
+120,
+0
+],
+"old": 3.0,
+"new": 3.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front|P1_cap",
+"pose": [
+0,
+120,
+0
+],
+"old": 4.77,
+"new": 4.77,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|P1_drum",
+"pose": [
+0,
+120,
+0
+],
+"old": 12.56,
+"new": 12.72,
+"diff": 0.16
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|P1_cap",
+"pose": [
+0,
+120,
+0
+],
+"old": 0.02,
+"new": 0.07,
+"diff": 0.05
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_rear|ROLL",
+"pose": [
+0,
+120,
+0
+],
+"old": 17.54,
+"new": 17.54,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|P1_drum",
+"pose": [
+0,
+120,
+0
+],
+"old": 18.55,
+"new": 18.55,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|P1_cap",
+"pose": [
+0,
+120,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|FORK_front_cap|ROLL",
+"pose": [
+0,
+120,
+0
+],
+"old": 15.48,
+"new": 15.48,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|P1_drum",
+"pose": [
+0,
+120,
+0
+],
+"old": 2.41,
+"new": 2.41,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|P1_cap",
+"pose": [
+0,
+120,
+0
+],
+"old": 3.82,
+"new": 3.82,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|YAW|ROLL",
+"pose": [
+0,
+120,
+0
+],
+"old": 7.02,
+"new": 7.02,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|P1_drum",
+"pose": [
+0,
+120,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|P1_cap",
+"pose": [
+0,
+120,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|HUB_dished|ROLL",
+"pose": [
+0,
+120,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|P1_drum",
+"pose": [
+0,
+120,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|P1_cap",
+"pose": [
+0,
+120,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_roll",
+"key": "roll|UA|ROLL",
+"pose": [
+0,
+120,
+0
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|FORK_front",
+"pose": [
+0,
+0,
+-90
+],
+"old": 1.65,
+"new": 1.65,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|FORK_rear",
+"pose": [
+0,
+0,
+-90
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|FORK_front_cap",
+"pose": [
+0,
+0,
+-90
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|YAW",
+"pose": [
+0,
+0,
+-90
+],
+"old": 3.42,
+"new": 3.42,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|FORK_front",
+"pose": [
+0,
+0,
+-90
+],
+"old": 14.8,
+"new": 14.8,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|FORK_rear",
+"pose": [
+0,
+0,
+-90
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|FORK_front_cap",
+"pose": [
+0,
+0,
+-90
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|YAW",
+"pose": [
+0,
+0,
+-90
+],
+"old": 21.86,
+"new": 21.86,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|FORK_front",
+"pose": [
+0,
+0,
+-25
+],
+"old": 1.82,
+"new": 1.82,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|FORK_rear",
+"pose": [
+0,
+0,
+-25
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|FORK_front_cap",
+"pose": [
+0,
+0,
+-25
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|YAW",
+"pose": [
+0,
+0,
+-25
+],
+"old": 3.43,
+"new": 3.43,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|FORK_front",
+"pose": [
+0,
+0,
+-25
+],
+"old": 14.73,
+"new": 14.73,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|FORK_rear",
+"pose": [
+0,
+0,
+-25
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|FORK_front_cap",
+"pose": [
+0,
+0,
+-25
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|YAW",
+"pose": [
+0,
+0,
+-25
+],
+"old": 21.86,
+"new": 21.86,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|FORK_front",
+"pose": [
+0,
+0,
+20
+],
+"old": 1.52,
+"new": 1.52,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|FORK_rear",
+"pose": [
+0,
+0,
+20
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|FORK_front_cap",
+"pose": [
+0,
+0,
+20
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|YAW",
+"pose": [
+0,
+0,
+20
+],
+"old": 3.43,
+"new": 3.43,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|FORK_front",
+"pose": [
+0,
+0,
+20
+],
+"old": 14.75,
+"new": 14.75,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|FORK_rear",
+"pose": [
+0,
+0,
+20
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|FORK_front_cap",
+"pose": [
+0,
+0,
+20
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|YAW",
+"pose": [
+0,
+0,
+20
+],
+"old": 21.86,
+"new": 21.86,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|FORK_front",
+"pose": [
+0,
+0,
+90
+],
+"old": 1.74,
+"new": 1.74,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|FORK_rear",
+"pose": [
+0,
+0,
+90
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|FORK_front_cap",
+"pose": [
+0,
+0,
+90
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|HUB_dished|YAW",
+"pose": [
+0,
+0,
+90
+],
+"old": 3.42,
+"new": 3.42,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|FORK_front",
+"pose": [
+0,
+0,
+90
+],
+"old": 14.81,
+"new": 14.81,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|FORK_rear",
+"pose": [
+0,
+0,
+90
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|FORK_front_cap",
+"pose": [
+0,
+0,
+90
+],
+"old": 30.0,
+"new": 30.0,
+"diff": 0.0
+},
+{
+"kind": "curve_yaw",
+"key": "yaw|UA|YAW",
+"pose": [
+0,
+0,
+90
+],
+"old": 21.86,
+"new": 21.86,
+"diff": 0.0
+}
+]
+}

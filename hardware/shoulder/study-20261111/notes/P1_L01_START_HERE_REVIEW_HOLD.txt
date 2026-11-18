@@ -1,0 +1,138 @@
+LEFT P1 L01 — EXACT WO01 COUNTERPART / INDEPENDENT REVIEW HOLD
+2026-11-05. Prioritized P1 for a potential development print and loose inspection
+while left P2 cable packaging is pending. This packet is ready for parent-led
+Opus/Fable review; neither review has yet run on this revision.
+
+EXACT NEW PROJECT
+slice-L01-normal-context/P1_LEFT_WO01_L01_04HF_REVIEW_HOLD.3mf
+SHA256 5dea466d3580a62327b9d42b53d4fd5f4aaf02ede04b9bf2a38aa372f28d7c1b
+5,116,655 bytes. New actual slice: 5h 01m 10s / 172.73 g, one object, 375 layers,
+CLI Success with empty warning_message. No printer or live Bambu action occurred.
+Do not use inputs/ (unsliced seed with inherited thumbnails) or slice-L01/ (failed
+restricted launch). The changed older projects-HOLD/P1 file was not used.
+
+WHAT HAND IS IT?
+The authoritative torso export contains marengo_arm_right_asm on NEGATIVE STEP X.
+The current fitted-design baseline was built at that side's fixed node38 datum.
+L01 is its counterpart at POSITIVE STEP X, node39: (97,424.860667548201,
+-0.0141253439872) mm, outward +X. Torso midpoint is STEP X=0, Y is up.
+Some fixed-bracket part names contradict these arm names; use node/coordinates.
+The user reported physical fit, but the supplied photos have not been registered
+to anatomical left/right locally. Confirm positive-X side corresponds to the
+robot's intended LEFT before spending a print if that label is uncertain. The
+geometry is an exact opposite-side counterpart regardless of naming.
+
+DERIVED CAD / MIRROR DEFINITION
+geometry/P1_LEFT_WO01_L01_HOLD.brep and .step are in a documented source frame:
+left source X is negative outboard; Y and Z retain baseline directions.
+P1 geometry reflected across source X=0. Left-to-STEP transform:
+[-1,0,0,97; 0,0,1,424.860667548201; 0,1,0,-0.0141253439872; 0,0,0,1].
+Thus it is the world reflection of the right P1 across STEP X=0. The BREP is one
+valid solid, volume133724.75611686375mm3 unchanged, bounds X-130.99..0,
+Y-24..39.55,Z-57.5..57.5mm. Integral pad, broad walls, recessed heads, six-mm
+housing bearing floors and all minimum sections are geometrically preserved.
+This is derived OCCT geometry, not an edited native SolidWorks feature tree.
+
+INTERFACE EVIDENCE
+Actual node39 fixed pitch reference is used unchanged, NOT mirrored motor geometry.
+Its output plane/center coincide with the intended pad datum. Its six modeled
+output holes do NOT align at the source export clock: nearest-hole residual
+7.831272mm. Rotating the pattern by -29.8965616deg (equivalent modulo60) removes
+that numerical mismatch. This is a diagnostic, not a homing calibration, motor
+operation or adopted housing movement. The earlier right-side clock issue was
+also unresolved; physical fit does not establish left output phase.
+Standard roll reference is rigidly translated -146.98mm in sourceX, retaining its
+orientation. All eight mirrored P1 housing-hole axes align to its actual reference
+circles within3.2e-12mm numerically; housing face Y28.15 remains coincident.
+Roll reference contains22 solids; new P1 common volume is0 in this neutral pose.
+Fixed pitch reference is surface-only, so its distance0 is not a solid collision
+or seating/bearing certificate. No invented left-handed motor was substituted.
+All14 nominal D5x60 straight driver cylinders starting at head tops have zero
+intersection with P1 alone. No full handle/connector/P2 access proof follows.
+No whole-arm motion, full torque path or fresh strength/contact solve was run.
+
+PRINT GEOMETRY AND PROCESS
+Exact reviewed HIGH_FLOW slice-P1-normal-context copy hash6c2d3992...206c8
+supplied the mesh/settings. Mirrored numeric X and reversed triangle winding;
+16,075 vertices,32,210 triangles, no boundary/nonmanifold or orientation-edge
+errors. Mesh volume133709.1233mm3,0.01169% below CAD from inherited tessellation.
+New slice preserves the mirrored seed's exact mesh and effective placement.
+Positive-source-Y/counterbore face remains down. Build direction source -Y,
+source Z spans plateY; plateX is mirrored. This preserves vertical section
+ordering, not an assertion that seam, supports or toolpaths are unchanged.
+
+Embedded and written settings to compare in the FULL loaded project:
+P2S /0.4mm /High Flow (not E3D); Generic PETG; Textured PEI.
+0.20mm first/other layers;6 walls;100% Rectilinear (stored enum zig-zag).
+5 top/3 bottom shells; Normal(auto) supports45deg; build-plate-only OFF;
+2 top/2 bottom interface layers;0.5mm interface spacing;0.2mm top/bottom gap;
+0.35mm XY support separation; automatic5mm brim.
+255C nozzle /70C textured bed;12mm3/s material limit;flow ratio0.95.
+Open as a full project, one object on one plate. Do not merge into another preset.
+Read-only loaded-project comparison remains required; user reports0.4HF installed.
+If2walls,15%grid,tree30 orSupertack appears, it is NOT this reviewed process.
+
+SLICER VERSION / METADATA
+Installed slicer is now02.09.01.70, versus earlier02.08.04.57. All previously
+present saved setting values remain equal except the version. New schema keys
+were added automatically, documented in LEFT_SLICE_AUDIT.json. Resolved G-code
+selects High Flow, Direct Drive High Flow and500/600mm/s outer/inner configured
+ceilings, limited by GenericPETG12mm3/s; this is not measured achieved speed.
+New developer metadata extruder_nozzle_volume_type defaults toStandard, while
+selected nozzle_volume_type and resolved print_extruder_variant remainHighFlow.
+Do not mistake this added default for a changed physical nozzle. Upstream code
+defines that developer default and separately selects variants through
+nozzle_volume_type. Installed-output selection is the actual evidence here;
+upstream master is contextual, not identical installed-version provenance.
+https://raw.githubusercontent.com/bambulab/BambuStudio/master/src/libslic3r/PrintConfig.cpp
+Loaded UI/nozzle selection still needs checking. No live project was opened.
+
+FRESH TOOLPATH EVIDENCE
+views/06_LEFT_ACTUAL_TOOLPATHS.png shows support beneath all8housing seats and
+their closing paths, plus body and pitch-crown layers. A fresh parser collected
+642,575 local pitch segments. All6horizontal bores contain planned supports;
+their post-roof layers28.2,32.2,46.8,57.6,53.6,39.0mm were plotted. CentralD21.5
+opening support/crown, pad underside and six1.38mm ligaments were inspected.
+Detailed images are evidence/pitch-paths/01..06. Those use canonical PRE-MIRROR
+X coordinates for direct comparison; their explicit source-to-plate matrix
+reflects X and maps real LEFT G-code. They are not old right-side toolpaths.
+Thin ligaments do not contain six effective walls. Point-section dots exclude
+parallel tracks, so the companion layer detail is included. No bead bonding,
+printed flatness, removal force or strength is established by these plots.
+
+LOOSE-INSPECTION SCOPE / REMAINING RISKS
+Potential release is for a substantial development print and loose dimensional
+inspection only, conditional on independent review and loaded settings. No
+clamping, unsupported arm loading, powered movement, hard-stop impact or hand
+bend-test approval. Remove supports incrementally without levering against roots
+or1.38mm pitch ligaments. Inspect cooled roots/layers, seat undersides, bore crowns,
+pad flatness and accessible openings; do not force hardware or load a cracked part.
+WO01 housing remains8washers/no housing limiters; output/pitch hardware stays
+provisional. Actual threads, bearing contact, limiter lengths, preload and creep
+remain unverified. No tightening torque was invented.
+
+P2 CABLE / REPRINT RISK
+No left P2 was released or silently mirrored. RS02 connector clearance is still
+unresolved. Standard motor rear-hole phase, cable exits, output phase and arm
+attachment must be re-registered on the left. A later P2/harness/stop change could
+require P1 reprint; current P1 is not a promise of an immutable final interface.
+Planned left P2 work: register actual connector and desired exit; test compatible
+lead/clocking where genuinely permitted; then make a measured clearance envelope
+and preserve broad roots, fastener seats and tool corridors. Keep torso fixed.
+Mirror signed motion conventions explicitly; do not copy controller directions
+or declare sampled +5inward/-90outward as approved limits.
+
+REVIEW REQUEST
+Assess exact L01 geometry, actual left datum/clock limitation, support-removal
+risks and new slice evidence for development loose-inspection printing only.
+No historical load result or right whole-arm clearance is asserted as left proof.
+Physical anatomical-side confirmation and later joint/cable facts are explicit.
+No additional generic-material solve is necessary merely to inspect the print;
+it would not resolve these interface uncertainties.
+
+EXECUTION / PRESERVATION
+Restricted owned CLI process56244 ended without result/output; exit code was not
+captured. It was absent before one normal-context isolated retry58380, exit0.
+No duplicate live UI launch, force-close, device or printer command occurred.
+The fitted CAD, reviewed standard/HF sources and user-edited P1 were not modified.
+Exact source hashes and final packet manifest are retained. No external upload.
