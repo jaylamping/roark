@@ -5,7 +5,7 @@ along X through Y 424.86, Z 0.
 
 - **Shoulder parts:** the first-pass SolidWorks solids (`cad/shoulder/left/`, built in the old frame, moved +38 X).
 - **References:** the vendor RS02/RS03, the pitch RS03 as placed, the frozen upper arm, and from
-  `J:\code\_transfer\shoulder\`: `torso_frame.step` (SHA-256 9e3ff578…b0b7) and `shell_inner.step` (6a975342…7f7b335).
+  `J:\code\_transfer\shoulder\`: `torso_frame.step` (SHA-256 9e3ff578…b0b7, in full `9e3ff578f2412a1a70c5c3617c24ead6aacf6e1d8a216073af40a47fc8adb0b7`) and `shell_inner.step` (6a975342…7f7b335, in full `6a975342859f26ade41187d9bb52327a00c62ea948b41ae1654cf9edc1f7b335`).
 - **Simplification:** the shell is drawn as its inner surface only (no 2.4 mm wall), cut at the opening radius.
 - **Script:** [scripts/options.py](scripts/options.py).
 

@@ -1093,11 +1093,27 @@ because holly-pc was down; the fork front is not touched.
      face in the bottom plane Y 340, its end 0.7 mm inside the skin.
 
   Nothing on the outside, the lip behind the bearing, the joint face or the screw positions moved.
-- **Clearance sweep: owed.** It was not run: `check_clearance.py` needs the rev A frame, `torso_frame.step` (SHA-256
-  9e3ff578…b0b7), which is on holly-pc and Joey-PC only, and the other parts' STL set. The script was run with
-  `SKIP_SWEEP`. The outside of the fork rear is unchanged (above), so the sweep of 2026-11-15 on the real set still
-  describes it; run it again where the frame file is:
-  `cd cad/scripts/shoulder && CLEAR_JSON=clearance_adopt_fork_rear_wiring.json python check_clearance.py`.
+- **Clearance sweep on the real set, 2026-11-17** (joey-vm; the adoption itself ran with `SKIP_SWEEP`, the frame file came
+  over afterwards): nothing new under the 2.0 mm running gap, and nothing changed by this revision. Run twice with the
+  same script and sampling, once on the adopted set and once with the fork rear of 2026-11-15 in its place
+  (`clearance_adopt_fork_rear_wiring.json`, `clearance_before_fork_rear_wiring.json`, not in git). 528 poses each, 65
+  pairs, 36 minutes a run.
+  - Under 2.0 mm, the same in both runs: rear cap to fork rear 0.02 (0.04 before) at the roll stops, the stop's own
+    contact; flange ring to fork front 1.05 (1.05) at roll −12°, one degree past the inward stop (2.05 at the stop itself, −11°); drum to fork front
+    1.98 (1.98) at pitch −30°, roll −11°, yaw −90°. The last one is neither part of this revision nor on record from the
+    sweep of 2026-11-15: it is 0.02 mm under the line on a method good to about ±0.4 mm, and wants a look of its own.
+  - Next above: flange ring to cover 2.00 (2.00), fork front to hub 2.20 (2.20), fork front to cover ring 2.44 (2.44).
+  - The fork rear's own pairs, adopted against before: roll RS03 7.04 (7.04), drum 8.45 (8.46), flange ring 9.92 (9.89),
+    cover 16.17 (15.97), port cap 19.58 (19.62), hub 27.74 (27.72), torso 32.04 (31.91); cover ring and upper arm never
+    within 40 mm. The outside of the two fork rears is the same surface, so these differences (up to 0.2 mm) are the
+    sampling's own scatter.
+  - Inputs: rev A frame `torso_frame.step`, SHA-256 `9e3ff578f2412a1a70c5c3617c24ead6aacf6e1d8a216073af40a47fc8adb0b7`
+    (`FRAME_STEP`); the parts' STLs from `cad/exports/shoulder`; the pitch loop cover and the drum port cap re-exported on
+    joey-vm from their committed parts (they have no export); motors, pitch RS03 and upper arm from git.
+  - **What the sweep does not check:** its stop section finds no stop lugs (it looks for them behind the rear cap's
+    plate at r 43.5 to 60, where the cap has had none since the stop became a tooth on the fork rear), so "the stop
+    touches first" rests on the rear cap to fork rear figure alone: 0.02 to 0.03 at the two stops, 0.54 and 1.10 two
+    degrees inside them.
 - **Assembly** `shoulder_left_asm.SLDASM` rebuilt by `build_asm.py` with the new fork rear and saved (18 components, the
   frame's three mates as before).
 - **Strength:** as read on the candidate with both stand-ins (OPEN_ASSUMPTIONS, "Fork rear follow-up candidate"): no
@@ -1108,5 +1124,5 @@ because holly-pc was down; the fork front is not touched.
 - **Machine notes (joey-vm):** its SolidWorks had the STL option "do not translate to positive space" off, and the first
   trial's STL came out 60.931 mm off in Z; `swk.export()` now sets the option for each export and puts it back. The
   script takes its paths from the environment (`REPO`, `PY`, `RPY`, `WT_WIN`) on a machine other than holly-pc.
-- **Still needed before the fork is printed for load:** the clearance sweep above; print files; wire tried in the new
+- **Still needed before the fork is printed for load:** print files; wire tried in the new
   opening and on the tie bar; at assembly the race must not rock in the seat; the requirements and the pre-print gate.
